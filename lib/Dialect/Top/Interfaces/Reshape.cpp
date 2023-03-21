@@ -19,10 +19,7 @@ void top::ReshapeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ReshapeOp::inference(InferenceParameter &p) {
   auto num_elem = module::getNumElements(getOutput());
-#pragma omp parallel for schedule(static, omp_schedule(num_elem))
-  for (int64_t i = 0; i < num_elem; i++) {
-    p.outputs[0][i] = p.inputs[0][i];
-  }
+  memcpy(p.outputs[0], p.inputs[0], num_elem * sizeof(float));
   return success();
 }
 

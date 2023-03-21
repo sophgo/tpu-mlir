@@ -145,14 +145,31 @@ public:
       func.walk([&](ShapeInterface op) {
         LLVM_DEBUG(llvm::dbgs() << "shape infer: " << op << "\n";);
         op.shape_inference();
-        if (op->getUsers().empty()) {
-          op->erase();
-        } else{
+        if (false == removeIfNoUse(op)) {
           WeightFolder(op);
+          removeIfNoUse(op);
+        }
+      });
+    }
+    for (auto func : mOp.getOps<FuncOp>()) {
+      func.walk([&](InferenceInterface op) {
+        LLVM_DEBUG(llvm::dbgs() << "weight infer: " << op << "\n";);
+        if (false == removeIfNoUse(op)) {
+          WeightFolder(op);
+          removeIfNoUse(op);
         }
       });
     }
     module::updateModuleTypes();
+  }
+
+private:
+  bool removeIfNoUse(Operation *op) {
+    if (op->getUsers().empty()) {
+      op->erase();
+      return true;
+    }
+    return false;
   }
 };
 
