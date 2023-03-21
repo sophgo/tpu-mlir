@@ -194,7 +194,7 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
     const auto offset = module::getI64Array(getOffset());
     const auto steps = module::getI64Array(getSteps());
     // TODO: force layer group to allow that offset->at(0) != 0
-    if (num_dims > 1) {
+    if (num_dims > 2) {
       // TODO: force layer group to allow that offset->at(2) != 0
       if (steps->at(1) != 1) return failure();
     }

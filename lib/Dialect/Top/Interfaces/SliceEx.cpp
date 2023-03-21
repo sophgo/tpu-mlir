@@ -12,19 +12,25 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-int64_t top::SelectOp::getFLOPs() { return 0; }
+int64_t top::SliceExOp::getFLOPs() { return 0; }
 
-LogicalResult top::SelectOp::init(InferenceParameter &p) { return success(); }
-void top::SelectOp::deinit(InferenceParameter &p) {}
+LogicalResult top::SliceExOp::init(InferenceParameter &p) { return success(); }
+void top::SliceExOp::deinit(InferenceParameter &p) {}
 
-LogicalResult top::SelectOp::inference(InferenceParameter &p) {
+LogicalResult top::SliceExOp::inference(InferenceParameter &p) {
   llvm_unreachable("Not Implemented");
 }
 
-void top::SelectOp::shape_inference() {
+void top::SliceExOp::shape_inference() {
   auto axis = getAxis();
+  auto start = getStart();
+  auto end = getEnd();
+  auto step = getStep();
   auto in_shape = module::getShape(getInput());
   std::vector<int64_t> out_shape(in_shape);
-  out_shape[axis] = 1;
+  start = start >= 0 ? start : start + in_shape[axis];
+  end = end >= 0 ? end : end + in_shape[axis];
+  end = end < in_shape[axis] ? end : in_shape[axis] - 1;
+  out_shape[axis] = (end - start) / step + 1;
   module::setShapeOrVerify(getOutput(), out_shape);
 }
