@@ -106,27 +106,19 @@ LogicalResult tpu::GroupNormOp::inference(InferenceParameter &p) {
       normlize_f32(input_i, output_i, weight_data, bias_data, inner_dim, eps_);
     }
   }
-  int num_channels = channel * input_shape[0];
-  int num_iter = module::getNumElements(getOutput()) / num_channels;
+  inner_dim /= channel_per_group;
+  int num_iter = module::getNumElements(getOutput()) / channel;
 #pragma omp parallel for schedule(static, omp_schedule(num_iter))
-  for (int i = 0; i < num_channels; ++i) {
-    int c = num_channels % channel;
-    float *output_i = output_data + i * num_iter;
-    auto weight = have_weight ? weight_data[c] : 1.0;
-    auto bias = have_bias ? bias_data[c] : 0.0;
-    if (weight == 1.0 && bias == 0.0) {
-      // do nothing
-    } else {
-      if (is_bf16) {
-        weight = BF16(weight);
-        bias = BF16(bias);
-        for (int j = 0; j < num_iter; ++j) {
-          output_i[j] = BF16(BF16(output_i[j] * weight) + bias);
-        }
-      } else {
-        for (int j = 0; j < num_iter; ++j) {
-          output_i[j] = output_i[j] * weight + bias;
-        }
+  for (int i = 0; i < num_iter; ++i) {
+    const int p = i / inner_dim;
+    const int q = i % inner_dim;
+    float *output_i = output_data + p * channel * inner_dim + q;
+    for (int j = 0; j < channel; ++j) {
+      if (have_weight) {
+        output_i[j * inner_dim] *= weight_data[j];
+      }
+      if (have_bias) {
+        output_i[j * inner_dim] += bias_data[j];
       }
     }
   }
