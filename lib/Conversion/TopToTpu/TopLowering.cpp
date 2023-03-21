@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
+#include "tpu_mlir/Conversion/Conversion.h"
 
 namespace tpu_mlir {
 
