@@ -53,8 +53,7 @@ static void normlize_bf16(const float *input_data, float *output_data,
   }
   rstd = BF16(BF16(rstd) + BF16(eps_));
   if (module::isCV18xx()) {
-    bf16_lut_mantissa(&rstd, &rstd, 1, table, mantissa_table,
-                      "mantissa");
+    bf16_lut_mantissa(&rstd, &rstd, 1, table, mantissa_table, "mantissa");
   } else {
     rstd = std::sqrt(rstd);
     rstd = 1. / rstd;
@@ -98,35 +97,35 @@ LogicalResult tpu::GroupNormOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
   for (int i = 0; i < outer_dim; ++i) {
-    const float* input_i = input_data + i * inner_dim;
-    float* output_i = output_data + i * inner_dim;
+    const float *input_i = input_data + i * inner_dim;
+    float *output_i = output_data + i * inner_dim;
     if (is_bf16) {
-      normlize_bf16(input_i, output_i, weight_data, bias_data, table,
-                    mtable, inner_dim, eps_);
+      normlize_bf16(input_i, output_i, weight_data, bias_data, table, mtable,
+                    inner_dim, eps_);
     } else {
-      normlize_f32(input_i, output_i, weight_data, bias_data, inner_dim,
-                   eps_);
+      normlize_f32(input_i, output_i, weight_data, bias_data, inner_dim, eps_);
     }
   }
-  const int num_iter = module::getNumElements(getInput()) / channel;
+  int num_channels = channel * input_shape[0];
+  int num_iter = module::getNumElements(getOutput()) / num_channels;
 #pragma omp parallel for schedule(static, omp_schedule(num_iter))
-  for (int i = 0; i < num_iter; ++i) {
-    const int p = i / inner_dim;
-    const int q = i % inner_dim;
-    float *output_i = output_data + p * channel * inner_dim + q;
-    for (int j = 0; j < channel; ++j) {
-      if (have_weight) {
-        if (is_bf16) {
-          output_i[j * inner_dim] = BF16(output_i[j * inner_dim] * weight_data[j]);
-        } else {
-          output_i[j * inner_dim] *= weight_data[j];
+  for (int i = 0; i < num_channels; ++i) {
+    int c = num_channels % channel;
+    float *output_i = output_data + i * num_iter;
+    auto weight = have_weight ? weight_data[c] : 1.0;
+    auto bias = have_bias ? bias_data[c] : 0.0;
+    if (weight == 1.0 && bias == 0.0) {
+      // do nothing
+    } else {
+      if (is_bf16) {
+        weight = BF16(weight);
+        bias = BF16(bias);
+        for (int j = 0; j < num_iter; ++j) {
+          output_i[j] = BF16(BF16(output_i[j] * weight) + bias);
         }
-      }
-      if (have_bias) {
-        if (is_bf16) {
-          output_i[j * inner_dim] = BF16(output_i[j * inner_dim] + bias_data[j]);
-        } else {
-          output_i[j * inner_dim] += bias_data[j];
+      } else {
+        for (int j = 0; j < num_iter; ++j) {
+          output_i[j] = output_i[j] * weight + bias;
         }
       }
     }
@@ -134,9 +133,7 @@ LogicalResult tpu::GroupNormOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::GroupNormOp::LocalGenSupport() {
-  return success();
-}
+LogicalResult tpu::GroupNormOp::LocalGenSupport() { return success(); }
 
 LogicalResult tpu::GroupNormOp::AllowDataSplit(int64_t axis,
                                                group_type_t group_type) {

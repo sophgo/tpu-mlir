@@ -167,7 +167,7 @@ class TorchTransformer(ModelTransformer):
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import torch_inference
-        return torch_inference(inputs, self.converter.model)
+        return torch_inference(inputs, self.model_def)
 
 
 def get_model_transform(args):
