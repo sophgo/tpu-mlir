@@ -80,7 +80,7 @@ The "YUV*" type format is the special input format of CV18xx series chips. When 
 
 Model Deployment Example
 -------------------------
-Take the mobilenet_v2 model as an example, use the model_transform tool to generate the original mlir, and the run_calibration tool to generate the calibration table in the tpu-mlir/regression/regression_out/ directory (refer to the chapter "Compiling the ONNX Model" for more details).
+Take the mobilenet_v2 model as an example, use the model_transform tool to generate the original mlir, and the run_calibration tool to generate the calibration table in the tpu-mlir/regression/regression_out/ directory (refer to the chapter "Compiling the Caffe Model" for more details).
 
 
 Deploy to BM168x
@@ -139,4 +139,3 @@ When the input data comes from the video post-processing module VPSS provided by
        --model mobilenet_v2_cv183x_int8_sym_fuse_preprocess_aligned.cvimodel
 
 In the above command, aligned_input specifies the alignment that the model input needs to do. It should be noted that both fuse_preprocess and aligned_input need to be done for input data in YUV format. The rest formats can do both or only one of the two operations. If you only do aligned_input operation, you need to set test_input to the preprocessed ``${model_name}_in_f32.npz`` format, which is consistent with the setting in the chapter "Compile ONNX model".
-

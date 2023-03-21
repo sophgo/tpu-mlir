@@ -68,7 +68,7 @@ The model conversion command is as follows:
        --output_names 350,498,646 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
-       --mlir yolov5s.mlir
+       --mlir yolov5s.mlir \
        --post_handle_type yolo
 
 ``model_transform.py`` supports the following parameters:
