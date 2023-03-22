@@ -12,6 +12,7 @@ from typing import List
 class Top:
     # NOTICE: Please add the Op alphabetically !!!
     AbsOp = 'top.Abs'
+    AdaptiveAvgPoolOp = 'top.AdaptiveAvgPool'
     AddOp = 'top.Add'
     ArgOp = 'top.Arg'
     AddConstOp = 'top.AddConst'
@@ -32,6 +33,7 @@ class Top:
     EluOp = 'top.Elu'
     ErfOp = 'top.Erf'
     ExpOp = 'top.Exp'
+    FlattenOp = 'top.Flatten'
     FloorOp = 'top.Floor'
     FrcnDetection = 'top.FrcnDetection'
     GatherOp = 'top.Gather'
@@ -395,6 +397,14 @@ class MLIRImporter(object):
             param["ceil_mode"] = BoolAttr.get(kargs["ceil_mode"])
         return self.buildOp(Top.AvgPoolOp, operands, [output_type], **param)
 
+    def create_adaptive_avgpool_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {
+            'name': kargs['name'],
+            'output_size': self.ArrayAttr(kargs['output_size']),
+        }
+        return self.buildOp(Top.AdaptiveAvgPoolOp, operands, [output_type], **param)
+
     def create_batchnorm_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
         param = {
@@ -566,6 +576,15 @@ class MLIRImporter(object):
         output_type = self.get_tensor_type(output_shape)
         param = {'name': kargs['name']}
         return self.buildOp(Top.ViewOp, operands, [output_type], **param)
+
+    def create_flatten_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {
+            'name': kargs['name'],
+            'start_dim': IntegerAttr.get(self.mlir_type['INT64'], kargs['start_dim']),
+            'end_dim': IntegerAttr.get(self.mlir_type['INT64'], kargs['end_dim'])
+        }
+        return self.buildOp(Top.FlattenOp, operands, [output_type], **param)
 
     def create_zeros_op(self, operands, output_shape, **kargs):
         out_type = self.get_tensor_type(output_shape)

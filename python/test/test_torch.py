@@ -37,63 +37,65 @@ class TORCH_IR_TESTER(object):
             # Torch Test Case, Alphabetically
             ##################################
             # case: (test, bm1684x_support, bm1686_support, cv183x_support)
-            "Abs":              (self.test_Abs,         Y, N, N),
-            "Activation":       (self.test_Activation,  Y, N, N),
-            "Add":              (self.test_Add,         Y, N, N),
-            "Addmm":            (self.test_Addmm,       Y, N, N),
-            "Arange":           (self.test_Arange,      Y, N, N),
-            "Attention":        (self.test_Attention,   Y, N, N),
-            "AvgPool1d":        (self.test_AvgPool1d,   Y, N, N),
-            "AvgPool2d":        (self.test_AvgPool2d,   Y, N, N),
-            "AvgPool3d":        (self.test_AvgPool3d,   Y, N, N),
-            "BatchNorm":        (self.test_BatchNorm,   Y, N, N),
-            "BMM":              (self.test_BatchMatMul, Y, N, N),
-            "Compare":          (self.test_Compare,     Y, N, N),
-            "Concat":           (self.test_Concat,      Y, N, N),
-            "Conv1d":           (self.test_Conv1d,      Y, N, N),
-            "Conv2d":           (self.test_Conv2d,      Y, N, N),
-            "Conv3d":           (self.test_Conv3d,      Y, N, N),
-            "ConvTrans":        (self.test_ConvTrans,   Y, N, N),
-            "Div":              (self.test_Div,         Y, N, N),
-            "Dropout":          (self.test_Dropout,     Y, N, N),
-            "Elu":              (self.test_Elu,         Y, N, N),
-            "FloorDiv":         (self.test_FloorDiv,    Y, N, N),
-            "Gather":           (self.test_Gather,      N, N, N),
-            "GroupNorm":        (self.test_GroupNorm,   Y, N, N),
-            "GRU":              (self.test_GRU,         Y, N, N),
-            "IndexSelect":      (self.test_IndexSelect, Y, N, N),
-            "InstanceNorm":     (self.test_InstanceNorm,Y, N, N),
-            "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
-            "LeakyRelu":        (self.test_LeakyRelu,   Y, N, N),
-            "Linear":           (self.test_Linear,      Y, N, N),
-            "LogSoftmax":       (self.test_LogSoftmax,  Y, N, N),
-            "LSTM":             (self.test_LSTM,        Y, N, N),
-            "Math":             (self.test_Math,        Y, N, N),
-            "MatMul":           (self.test_MatMul,      Y, N, N),
-            "MaxPool1d":        (self.test_MaxPool1d,   Y, N, N),
-            "MaxPool2d":        (self.test_MaxPool2d,   Y, N, N),
-            "MaxPool3d":        (self.test_MaxPool3d,   Y, N, N),
-            "MM":               (self.test_MM,          Y, N, N),
-            "Mul":              (self.test_Mul,         Y, N, N),
-            "Reshape":          (self.test_Reshape,     Y, N, N),
-            "PRelu":            (self.test_PRelu,       Y, N, N),
-            "Permute":          (self.test_Permute,     Y, N, N),
-            "Pad1d":            (self.test_Pad1d,       Y, N, N),
-            "Pad2d":            (self.test_Pad2d,       Y, N, N),
-            "Scatter":          (self.test_Scatter,     N, N, N),
-            "Select":           (self.test_Select,      Y, N, N),
-            "Slice":            (self.test_Slice,       Y, N, N),
-            "Softmax":          (self.test_Softmax,     Y, N, N),
-            "Softmin":          (self.test_Softmin,     Y, N, N),
-            "Squeeze":          (self.test_Squeeze,     Y, N, N),
-            "Sub":              (self.test_Sub,         Y, N, N),
-            "T":                (self.test_T,           Y, N, N),
-            "Tile":             (self.test_Tile,        Y, N, N),
-            "Transpose":        (self.test_Transpose,   Y, N, N),
-            "Upsample":         (self.test_Upsample,    Y, N, N),
-            "Unsqueeze":        (self.test_Unsqueeze,   Y, N, N),
-            "View":             (self.test_View,        Y, N, N),
-            "Where":            (self.test_Where,       Y, N, N),
+            "Abs":              (self.test_Abs,               Y, N, N),
+            "Activation":       (self.test_Activation,        Y, N, N),
+            "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, Y, N, N),
+            "Add":              (self.test_Add,               Y, N, N),
+            "Addmm":            (self.test_Addmm,             Y, N, N),
+            "Arange":           (self.test_Arange,            Y, N, N),
+            "Attention":        (self.test_Attention,         Y, N, N),
+            "AvgPool1d":        (self.test_AvgPool1d,         Y, N, N),
+            "AvgPool2d":        (self.test_AvgPool2d,         Y, N, N),
+            "AvgPool3d":        (self.test_AvgPool3d,         Y, N, N),
+            "BatchNorm":        (self.test_BatchNorm,         Y, N, N),
+            "BMM":              (self.test_BatchMatMul,       Y, N, N),
+            "Compare":          (self.test_Compare,           Y, N, N),
+            "Concat":           (self.test_Concat,            Y, N, N),
+            "Conv1d":           (self.test_Conv1d,            Y, N, N),
+            "Conv2d":           (self.test_Conv2d,            Y, N, N),
+            "Conv3d":           (self.test_Conv3d,            Y, N, N),
+            "ConvTrans":        (self.test_ConvTrans,         Y, N, N),
+            "Div":              (self.test_Div,               Y, N, N),
+            "Dropout":          (self.test_Dropout,           Y, N, N),
+            "Elu":              (self.test_Elu,               Y, N, N),
+            "Flatten":          (self.test_Flatten,           Y, N, N),
+            "FloorDiv":         (self.test_FloorDiv,          Y, N, N),
+            "Gather":           (self.test_Gather,            N, N, N),
+            "GroupNorm":        (self.test_GroupNorm,         Y, N, N),
+            "GRU":              (self.test_GRU,               Y, N, N),
+            "IndexSelect":      (self.test_IndexSelect,       Y, N, N),
+            "InstanceNorm":     (self.test_InstanceNorm,      Y, N, N),
+            "LayerNorm":        (self.test_LayerNorm,         Y, N, N),
+            "LeakyRelu":        (self.test_LeakyRelu,         Y, N, N),
+            "Linear":           (self.test_Linear,            Y, N, N),
+            "LogSoftmax":       (self.test_LogSoftmax,        Y, N, N),
+            "LSTM":             (self.test_LSTM,              Y, N, N),
+            "Math":             (self.test_Math,              Y, N, N),
+            "MatMul":           (self.test_MatMul,            Y, N, N),
+            "MaxPool1d":        (self.test_MaxPool1d,         Y, N, N),
+            "MaxPool2d":        (self.test_MaxPool2d,         Y, N, N),
+            "MaxPool3d":        (self.test_MaxPool3d,         Y, N, N),
+            "MM":               (self.test_MM,                Y, N, N),
+            "Mul":              (self.test_Mul,               Y, N, N),
+            "Reshape":          (self.test_Reshape,           Y, N, N),
+            "PRelu":            (self.test_PRelu,             Y, N, N),
+            "Permute":          (self.test_Permute,           Y, N, N),
+            "Pad1d":            (self.test_Pad1d,             Y, N, N),
+            "Pad2d":            (self.test_Pad2d,             Y, N, N),
+            "Scatter":          (self.test_Scatter,           N, N, N),
+            "Select":           (self.test_Select,            Y, N, N),
+            "Slice":            (self.test_Slice,             Y, N, N),
+            "Softmax":          (self.test_Softmax,           Y, N, N),
+            "Softmin":          (self.test_Softmin,           Y, N, N),
+            "Squeeze":          (self.test_Squeeze,           Y, N, N),
+            "Sub":              (self.test_Sub,               Y, N, N),
+            "T":                (self.test_T,                 Y, N, N),
+            "Tile":             (self.test_Tile,              Y, N, N),
+            "Transpose":        (self.test_Transpose,         Y, N, N),
+            "Upsample":         (self.test_Upsample,          Y, N, N),
+            "Unsqueeze":        (self.test_Unsqueeze,         Y, N, N),
+            "View":             (self.test_View,              Y, N, N),
+            "Where":            (self.test_Where,             Y, N, N),
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -1507,6 +1509,49 @@ class TORCH_IR_TESTER(object):
             _test_softmax((3, 100, 10, 1), dim)
             _test_softmax((3, 100, 32), dim)
             _test_softmax((3, 100, 32, 1), dim)
+
+    #######################################################################
+    # Flatten
+    # ------------
+    def test_Flatten(self):
+        """Flatten"""
+
+        def _test_flatten(in_shape, start_dim=0, end_dim=-1):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.flatten = nn.Flatten(start_dim=start_dim, end_dim=end_dim)
+
+                def forward(self, x):
+                    return self.flatten(x)
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_flatten((3, 16, 32, 64))
+        _test_flatten((3, 16, 32, 64), end_dim=2)
+        _test_flatten((3, 16, 32, 64), start_dim=1)
+
+    #######################################################################
+    # Adaptive AvgPool2d
+    # ------------
+    def test_AdaptiveAvgPool2d(self):
+        """AdaptiveAvgPool2d"""
+
+        def _test_adaptive_avgpool2d(in_shape, output_size):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return F.adaptive_avg_pool2d(x, output_size)
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_adaptive_avgpool2d((3, 64, 15, 15), (1, 1))
 
     #######################################################################
     # Linear
