@@ -41,6 +41,7 @@ class TORCH_IR_TESTER(object):
             "Activation":       (self.test_Activation,  Y, N, N),
             "Add":              (self.test_Add,         Y, N, N),
             "Addmm":            (self.test_Addmm,       Y, N, N),
+            "Arange":           (self.test_Arange,      Y, N, N),
             "Attention":        (self.test_Attention,   Y, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,   Y, N, N),
             "AvgPool2d":        (self.test_AvgPool2d,   Y, N, N),
@@ -89,6 +90,7 @@ class TORCH_IR_TESTER(object):
             "Tile":             (self.test_Tile,        Y, N, N),
             "Transpose":        (self.test_Transpose,   Y, N, N),
             "Upsample":         (self.test_Upsample,    Y, N, N),
+            "Unsqueeze":        (self.test_Unsqueeze,   Y, N, N),
             "View":             (self.test_View,        Y, N, N),
             "Where":            (self.test_Where,       Y, N, N),
         }
@@ -821,7 +823,9 @@ class TORCH_IR_TESTER(object):
     # ------------
     def test_Addmm(self):
         """Addmm"""
+
         def _test_addmm(beta, alpha):
+
             class Model(nn.Module):
 
                 def __init__(self):
@@ -830,10 +834,52 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x, y, z):
                     o = torch.addmm(beta, x, alpha, y, z)
                     return o
+
             self.trace_and_test([(24, 32), (24, 16), (16, 32)], Model())
 
         _test_addmm(1.0, 1.0)
         # _test_addmm(0.5, 0.3) # need to support add with coeff
+
+    #######################################################################
+    # Arange
+    # ------------
+    def test_Arange(self):
+        """Arange"""
+
+        def _test_arange(step):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    a = torch.arange(0, 60, step)
+                    b = x + a
+                    return b
+
+            self.trace_and_test([(32, 60 // step)], Model())
+
+        _test_arange(1)
+        _test_arange(2)
+
+    #######################################################################
+    # Unsqueeze
+    # ------------
+    def test_Unsqueeze(self):
+        """Unsqueeze"""
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y):
+                a = torch.unsqueeze(y, 1)
+                b = x + a
+                return b
+
+        self.trace_and_test([(32, 16, 28), (32, 28)], Model())
 
     #######################################################################
     # Gather

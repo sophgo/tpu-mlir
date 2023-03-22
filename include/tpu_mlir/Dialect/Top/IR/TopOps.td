@@ -1225,11 +1225,12 @@ def Top_SqueezeOp: Top_Op<"Squeeze"> {
   }];
 
   let arguments = (ins
-    AnyTensor:$inputs,
+    AnyTensor:$input,
     I64ArrayAttr:$axes
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_UnsqueezeOp: Top_Op<"Unsqueeze"> {
@@ -1245,6 +1246,7 @@ def Top_UnsqueezeOp: Top_Op<"Unsqueeze"> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 

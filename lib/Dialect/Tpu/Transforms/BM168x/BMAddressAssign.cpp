@@ -35,7 +35,7 @@ bool BMAddressAssign::is_next_subnet_input(Operation *op, int index) {
   bool ret = false;
   for (uint32_t i = 0; i < op->getNumOperands(); i++) {
     if (i == index) {
-      for (const auto& user : op->getOperand(i).getUsers()) {
+      for (const auto &user : op->getOperand(i).getUsers()) {
         if (isa<FuncOp>(user->getParentOp())) {
           FuncOp funcOp;
           funcOp = cast<FuncOp>(user->getParentOp());
@@ -89,20 +89,20 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       all_ops.emplace_back(op);
     });
   }
-  //update liverange from bottom to top.
+  // update liverange from bottom to top.
   for (auto iter = all_ops.rbegin(); iter != all_ops.rend(); ++iter) {
     auto op = *iter;
     if (isa<ReturnOp>(op)) {
-      updateLiveRangeofBMOps(op, 0, ops_loc, liveRange, common_ops,
-                              inplace_ops, alignment);
+      updateLiveRangeofBMOps(op, 0, ops_loc, liveRange, common_ops, inplace_ops,
+                             alignment);
     }
     int n = op->getNumResults();
     for (int i = 0; i < n; i++) {
       if (module::isNone(op->getResult(i))) {
         continue;
       }
-      updateLiveRangeofBMOps(op, i, ops_loc, liveRange, common_ops,
-                              inplace_ops, alignment);
+      updateLiveRangeofBMOps(op, i, ops_loc, liveRange, common_ops, inplace_ops,
+                             alignment);
     }
   }
   // 1.assign common_ops
@@ -110,7 +110,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   // int64_t
   std::map<ValueInfo, int64_t> gaddrMap;
   if (!common_ops.empty()) {
-    //FitFirstAssign should make sure op's start liverange ascendingly
+    // FitFirstAssign should make sure op's start liverange ascendingly
     GmemAllocator::sortOpByLiveStart(common_ops, liveRange);
     GmemAllocator allocator(gaddrMap, alignment);
     auto gmemUsed =
@@ -129,7 +129,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   }
 
   // 2.set inplace_ops address
-  //inplace_ops' order should be from input to output,thus reverse
+  // inplace_ops' order should be from input to output,thus reverse
   std::reverse(inplace_ops.begin(), inplace_ops.end());
   for (auto v_info : inplace_ops) {
     Operation *op = (Operation *)v_info.op;
@@ -137,9 +137,6 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       auto in0 = concatOp.getInputs()[0];
       if (auto rop = dyn_cast<tpu::ReshapeOp>(in0.getDefiningOp())) {
         in0 = rop.getInput();
-      }
-      if (auto rop = dyn_cast<tpu::SqueezeOp>(in0.getDefiningOp())) {
-        in0 = rop.getInputs();
       }
       int64_t addr = module::getAddress(in0);
       module::setAddress(concatOp.getOutput(), addr);
@@ -149,18 +146,12 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
         if (auto rop = dyn_cast<tpu::ReshapeOp>(input.getDefiningOp())) {
           module::setAddress(input, addr + offset);
           input = rop.getInput();
-        } else if (auto rop = dyn_cast<tpu::SqueezeOp>(input.getDefiningOp())) {
-          module::setAddress(input, addr + offset);
-          input = rop.getInputs();
         }
         module::setAddress(input, addr + offset);
         offset += module::getBytes(input);
       }
     } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
       auto addr = module::getAddress(reshapeOp.getInput());
-      module::setAddress(reshapeOp.getOutput(), addr);
-    } else if (auto reshapeOp = dyn_cast<tpu::SqueezeOp>(op)) {
-      auto addr = module::getAddress(reshapeOp.getInputs());
       module::setAddress(reshapeOp.getOutput(), addr);
     } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
       auto addr = module::getAddress(sliceOp.getInput());
@@ -217,16 +208,19 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       }
       ValueInfo v_info(opd, operand.cast<OpResult>().getResultNumber());
       if (liveRange.find(v_info) != liveRange.end()) {
-        //not first, update operand's liverange
-        liveRange[v_info].start = std::min(liveRange[v_info].start, ops_loc[opd]);
+        // not first, update operand's liverange
+        liveRange[v_info].start =
+            std::min(liveRange[v_info].start, ops_loc[opd]);
         liveRange[v_info].end = std::max(liveRange[v_info].end, endPosition);
         liveRange[v_info].out_index = v_info.index;
       } else {
-        //first update the operand, set its start, end, out_index and tensor_size
+        // first update the operand, set its start, end, out_index and
+        // tensor_size
         liveRange[v_info].start = ops_loc[opd];
         liveRange[v_info].end = endPosition;
         liveRange[v_info].out_index = v_info.index;
-        liveRange[v_info].tensor_size = getTensorGmemSize(opd, v_info.index, alignment);
+        liveRange[v_info].tensor_size =
+            getTensorGmemSize(opd, v_info.index, alignment);
       }
       if (isa<top::InputOp>(opd)) {
         liveRange[v_info].start = 0;
@@ -234,49 +228,47 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       }
     }
   };
-  auto updateSOLOLiveRange = [&](Operation *op, ValueInfo v_info, uint32_t endPosition) {
+  auto updateSOLOLiveRange = [&](Operation *op, ValueInfo v_info,
+                                 uint32_t endPosition) {
     liveRange[v_info].start = ops_loc[op];
     liveRange[v_info].end = endPosition;
     liveRange[v_info].out_index = v_info.index;
-    liveRange[v_info].tensor_size = getTensorGmemSize(op, v_info.index, alignment);
+    liveRange[v_info].tensor_size =
+        getTensorGmemSize(op, v_info.index, alignment);
   };
   ValueInfo v(op, index);
   uint32_t loc = ops_loc[op];
   uint32_t endPosition = loc + 1;
   if (isa<top::InputOp>(op)) {
     // liveRange.emplace_back(TensorLive(out, 0, 0xFFFFFFFF));
-    //updateOperandsLiveRange(op, endPosition);
+    // updateOperandsLiveRange(op, endPosition);
     common_ops.emplace_back(v);
   } else if (isa<FuncOp, top::NoneOp, ReturnOp, top::WeightOp, func::CallOp,
                  tpu::YieldOp>(op) ||
              module::isOpInGroup(op)) {
-      /* for multi_subnet, the returnOp's live range increase if it connect to next subnet
-         Todo: other complex case need to handle, such as it connect to next func's inner group op */
-      //simple solution: don;t set the endlife if it connect to next subnet currently.
-      //updateOperandsLiveRange(op, endPosition+2);
-      //Here, updateLiveRange from the last op to the first op, no need to concern it.
-      updateOperandsLiveRange(op, endPosition);
+    /* for multi_subnet, the returnOp's live range increase if it connect to
+       next subnet Todo: other complex case need to handle, such as it connect
+       to next func's inner group op */
+    // simple solution: don;t set the endlife if it connect to next subnet
+    // currently. updateOperandsLiveRange(op, endPosition+2); Here,
+    // updateLiveRange from the last op to the first op, no need to concern it.
+    updateOperandsLiveRange(op, endPosition);
   } else if (isInPlaceOp(op)) {
     if (isa<tpu::ConcatOp>(op)) {
       uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
-      //liveRange[v] = TensorLive(index, loc, 0xFFFFFFFF, 0);
+      // liveRange[v] = TensorLive(index, loc, 0xFFFFFFFF, 0);
       updateOperandsLiveRange(op, endPosition);
       std::vector<uint32_t> concatLive = getConcatOpLive(op, liveRange);
       for (int i = 0; i < op->getNumOperands(); ++i) {
         auto opd = module::getOperand(op, i);
         auto preOp = opd.getDefiningOp();
-        if (isa<tpu::ReshapeOp, tpu::SqueezeOp>(preOp)) {
+        if (auto rop = dyn_cast<tpu::ReshapeOp>(preOp)) {
           ValueInfo pre_v(preOp, opd.cast<OpResult>().getResultNumber());
           liveRange[pre_v].start = concatLive[0];
           liveRange[pre_v].end = concatLive[1];
           liveRange[pre_v].tensor_size = 0;
-          if (auto rop = dyn_cast<tpu::ReshapeOp>(preOp)) {
-            opd = rop.getInput();
-            preOp = opd.getDefiningOp();
-          } else if (auto rop = dyn_cast<tpu::SqueezeOp>(preOp)) {
-            opd = rop.getInputs();
-            preOp = opd.getDefiningOp();
-          }
+          opd = rop.getInput();
+          preOp = opd.getDefiningOp();
         }
         ValueInfo pre_v(preOp, opd.cast<OpResult>().getResultNumber());
         liveRange[pre_v].start = concatLive[0];
@@ -327,7 +319,7 @@ void BMAddressAssign::findInPlaceOpMaxUsePosition(
 }
 
 bool BMAddressAssign::isInPlaceOp(Operation *op) {
-  if (isa<tpu::ReshapeOp, tpu::SqueezeOp>(op)) {
+  if (isa<tpu::ReshapeOp>(op)) {
     return true;
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
     auto p = sliceOp.parseParam();
@@ -347,8 +339,11 @@ int BMAddressAssign::getOutIndex(Operation *op, Value &out) {
   return -1;
 }
 
-std::vector<uint32_t> BMAddressAssign::getConcatOpLive(Operation *op, std::map<ValueInfo, TensorLive> &liveRange) {
-  //get concatOp and its operands' minimum start and maximum end as the whole live.
+std::vector<uint32_t>
+BMAddressAssign::getConcatOpLive(Operation *op,
+                                 std::map<ValueInfo, TensorLive> &liveRange) {
+  // get concatOp and its operands' minimum start and maximum end as the whole
+  // live.
   assert(isa<tpu::ConcatOp>(op));
   std::vector<uint32_t> live(2);
   ValueInfo op_info(op, 0);

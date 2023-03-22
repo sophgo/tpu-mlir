@@ -18,30 +18,37 @@ LogicalResult top::SqueezeOp::init(InferenceParameter &p) { return success(); }
 void top::SqueezeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SqueezeOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(getOutput());
-#pragma omp parallel for schedule(static, omp_schedule(num_element))
-  for (int64_t i = 0; i < num_element; i++) {
-    p.outputs[0][i] = p.inputs[0][i];
-  }
+  auto num_elem = module::getNumElements(getOutput());
+  memcpy(p.outputs[0], p.inputs[0], num_elem * sizeof(float));
   return success();
 }
 
 void top::SqueezeOp::shape_inference() {
-  auto in_shape = module::getShape(getInputs());
+  auto in_shape = module::getShape(getInput());
+  auto in_dims = in_shape.size();
   auto axes = module::getI64Array(getAxesAttr());
+  std::vector<int64_t> axes_ = *axes;
+  for (auto &a : axes_) {
+    if (a < 0) {
+      a += in_dims;
+    }
+  }
   std::vector<int64_t> out_shape;
-  int64_t in_dims = in_shape.size();
   for (int i = 0; i < in_dims; ++i) {
-    out_shape.push_back(in_shape[i]);
-    for (auto axis : *axes) {
-      if (axis < 0) {
-        axis += in_dims;
+    if (axes_.empty()) {
+      if (in_shape[i] != 1) {
+        out_shape.push_back(in_shape[i]);
       }
-      if (axis == i) {
-        out_shape.pop_back();
+    } else {
+      if (std::find(axes_.begin(), axes_.end(), i) == axes_.end()) {
+        out_shape.push_back(in_shape[i]);
+      } else {
+        assert(in_shape[i]);
       }
     }
   }
+  if (out_shape.empty()) {
+    out_shape.push_back(1);
+  }
   module::setShapeOrVerify(getOutput(), out_shape);
-  // common_shape_inference(getOperation());
 }

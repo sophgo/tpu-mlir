@@ -2182,6 +2182,7 @@ class OnnxConverter(BaseConverter):
         unsqueeze_shape.append(1)
         p = {
             "name": output_name + "_unsqueeze",
+            "axes": [-1]
         }
         batch_indices_xpd = self.mlir.create_unsqueeze_op([batch_indices], unsqueeze_shape, **p)
         concat_shape = rois_shape

@@ -18,11 +18,8 @@ LogicalResult top::UnsqueezeOp::init(InferenceParameter &p) { return success(); 
 void top::UnsqueezeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::UnsqueezeOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(getOutput());
-#pragma omp parallel for schedule(static, omp_schedule(num_element))
-  for (int64_t i = 0; i < num_element; i++) {
-    p.outputs[0][i] = p.inputs[0][i];
-  }
+  auto num_elem = module::getNumElements(getOutput());
+  memcpy(p.outputs[0], p.inputs[0], num_elem * sizeof(float));
   return success();
 }
 

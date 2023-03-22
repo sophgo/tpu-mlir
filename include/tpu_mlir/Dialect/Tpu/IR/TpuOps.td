@@ -1430,21 +1430,6 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
   }];
 }
 
-def Tpu_SqueezeOp: Tpu_Op<"Squeeze"> {
-  let summary = "Squeeze operator";
-
-  let description = [{
-    The operator squeeze the input shapes by given axis.
-  }];
-
-  let arguments = (ins
-    AnyRankedTensor:$inputs,
-    I64ArrayAttr:$axes
-  );
-
-  let results = (outs AnyRankedTensor:$output);
-}
-
 def Tpu_ScaleOp: Tpu_Op<"Scale", [
   SupportFuseRelu, InOutSameShape,
   DeclareOpInterfaceMethods<LocalGenInterface>,

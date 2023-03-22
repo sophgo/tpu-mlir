@@ -136,6 +136,7 @@ class TorchConverter(BaseConverter):
             "aten::abs": lambda node: self.convert_abs_op(node),
             "aten::add": lambda node: self.convert_add_op(node),
             "aten::addmm": lambda node: self.convert_addmm_op(node),
+            "aten::arange": lambda node: self.convert_arange_op(node),
             "aten::avg_pool1d": lambda node: self.convert_avgpool_op(node),
             "aten::avg_pool2d": lambda node: self.convert_avgpool_op(node),
             "aten::avg_pool3d": lambda node: self.convert_avgpool_op(node),
@@ -209,6 +210,7 @@ class TorchConverter(BaseConverter):
             "aten::tile": lambda node: self.convert_tile_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
             "aten::to": lambda node: self.convert_to_op(node),
+            "aten::unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "aten::upsample_nearest2d": lambda node: self.convert_upsample_op(node, mode='nearest'),
             "aten::view": lambda node: self.convert_reshape_op(node),
             "aten::where": lambda node: self.convert_where_op(node),
@@ -523,6 +525,15 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_zeros_op([op0], [], **p)
         self.addOperand(torch_node.name, new_op)
 
+    def convert_arange_op(self, torch_node: TorchNode):
+        start = self.const_val[torch_node.inputs[0]]
+        end = self.const_val[torch_node.inputs[1]]
+        step = self.const_val[torch_node.inputs[2]]
+        data = range(start, end, step)
+        self.const_val[torch_node.name] = data
+        weight = np.array(data, np.float32)
+        self.addWeight(torch_node.name, weight)
+
     def convert_constant(self, torch_node: TorchNode):
         name, data, is_tensor = _get_constant(torch_node.node_proto)
         if not is_tensor:
@@ -747,6 +758,13 @@ class TorchConverter(BaseConverter):
         axes = [self.const_val[torch_node.inputs[1]]] if len(torch_node.inputs) == 2 else []
         p = {'name': torch_node.name, 'axes': axes}
         new_op = self.mlir.create_squeeze_op([op0], [], **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_unsqueeze_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        axis = self.const_val[torch_node.inputs[1]]
+        p = {'name': torch_node.name, 'axes': [axis]}
+        new_op = self.mlir.create_unsqueeze_op([op0], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_where_op(self, torch_node: TorchNode):
