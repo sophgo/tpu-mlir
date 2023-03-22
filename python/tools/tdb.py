@@ -187,27 +187,37 @@ class Tdb(cmd.Cmd):
 
     def print_context(self, offset=5):
         op_len = len(self.current_function.regions[0].blocks[0].operations)
-        lines = self.current_line + np.arange(-offset, offset)
+        lines = self.current_line + np.arange(-offset, offset + 1)
         lines = lines[lines >= 0]
         lines = lines[lines < op_len]
         width = int(np.ceil(np.log10(lines.max())))
         for i in lines:
+            ri = i - self.current_line  # relative line number
             if i == self.current_line and i in self.breakpoint:
-                self.message(f"[bold red]->B {i:{width}} [/bold red] {self.get_op(i)}")
+                self.message(f"[bold red]B+> {i:{width}} [/bold red] {self.get_op(ri)}")
             elif i == self.current_line:
                 self.message(
-                    f"[bold blue]--> {i:{width}} [/bold blue] {self.get_op(i)}"
+                    f"[bold blue]--> {i:{width}} [/bold blue] {self.get_op(ri)}"
                 )
             elif i in self.breakpoint:
-                self.message(f"[bold red] BB {i:{width}} [/bold red] {self.get_op(i)}")
+                self.message(f"[bold red] BB {i:{width}} [/bold red] {self.get_op(ri)}")
             else:
-                self.print_line(i - self.current_line, width + 4)
+                self.print_line(ri, width + 4)
 
-    def do_l(self, _):
+    def do_l(self, arg):
         """l(list)
         show +/-5 lines code around the current line.
         """
-        self.print_context()
+        if arg == "":
+            arg = 5
+        else:
+            try:
+                arg = int(arg)
+                assert arg > 0
+            except:
+                self.error(f"invalid input: {arg}. input should be a positive integer.")
+                return
+        self.print_context(arg)
 
     def do_ll(self, _):
         """list all
@@ -416,15 +426,21 @@ class Tdb(cmd.Cmd):
             raise Exception("please load one file.")
         self.current_function = self.model.module.functions[0]
 
-    def do_restart(self, arg):
+    def do_run(self, arg):
+        """r(un)
+        run from the beginning.
+        """
         self.start()
         if self.inputs:
-            self.load_data(args.inputs)
-        print("restart debugger.")
+            self.load_data(self.inputs)
+        self.do_continue("")
 
-    do_r = do_restart
+    do_r = do_run
 
     def next(self):
+        """n(ext)
+        run next instruction.
+        """
         self.push_status()
         try:
             op = self.get_op()
@@ -476,7 +492,7 @@ if __name__ == "__main__":
             assert path.isfile(inputs)
             assert args.inputs == None
             args.inputs = inputs
-            print(f"load bmodel: {args.inputs}")
+            print(f"load bmodel: {bmodel}")
             tdb.load_file(bmodel)
             tdb.start()
     if args.inputs:
