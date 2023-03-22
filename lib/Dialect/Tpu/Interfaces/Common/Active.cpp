@@ -100,6 +100,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::HSWISH:
     active_func(p, num_element, [](double val) { return hswish(val); });
     break;
+  case ActiveMode::TAN:
+    active_func(p, num_element, [](double val) { return std::tan(val); });
+    break;
   case ActiveMode::TANH:
     active_func(p, num_element, [](double val) { return std::tanh(val); });
     break;
@@ -119,6 +122,18 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
     break;
   case ActiveMode::MISH:
     active_func(p, num_element, activate_f(my_mish_activate));
+    break;
+  case ActiveMode::COS:
+    active_func(p, num_element, [](double val) { return std::cos(val); });
+    break;
+  case ActiveMode::COSH:
+    active_func(p, num_element, [](double val) { return std::cosh(val); });
+    break;
+  case ActiveMode::SIN:
+    active_func(p, num_element, [](double val) { return std::sin(val); });
+    break;
+  case ActiveMode::SINH:
+    active_func(p, num_element, [](double val) { return std::sinh(val); });
     break;
   default:
     llvm_unreachable("Not Implemented");

@@ -142,6 +142,8 @@ class TorchConverter(BaseConverter):
             "aten::bmm": lambda node: self.convert_matmul_op(node),
             "aten::cat": lambda node: self.convert_concat_op(node),
             "aten::chunk": lambda node: self.convert_chunk_op(node),
+            "aten::cos": lambda node: self.convert_math_op(node, "cos"),
+            "aten::cosh": lambda node: self.convert_math_op(node, "cosh"),
             "aten::_convolution": lambda node: self.convert_conv_op(node),
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
             "aten::constant_pad_nd": lambda node: self.convert_pad_op(node, mode='constant'),
@@ -189,6 +191,8 @@ class TorchConverter(BaseConverter):
             "aten::scatter": lambda node: self.convert_scatter_op(node),
             "aten::select": lambda node: self.convert_select_op(node),
             "aten::sigmoid": lambda node: self.convert_sigmoid_op(node),
+            "aten::sin": lambda node: self.convert_math_op(node, "sin"),
+            "aten::sinh": lambda node: self.convert_math_op(node, "sinh"),
             "aten::silu": lambda node: self.convert_silu_op(node),
             "aten::slice": lambda node: self.convert_slice_op(node),
             "aten::softmax": lambda node: self.convert_softmax_op(node),
@@ -198,7 +202,8 @@ class TorchConverter(BaseConverter):
             "aten::sum": lambda node: self.convert_sum_op(node),
             "aten::size": lambda node: self.convert_size_op(node),
             "aten::t": lambda node: self.convert_transpose_op(node),
-            "aten::tanh": lambda node: self.convert_tanh_op(node),
+            "aten::tan": lambda node: self.convert_math_op(node, "tan"),
+            "aten::tanh": lambda node: self.convert_math_op(node, "tanh"),
             "aten::tile": lambda node: self.convert_tile_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
             "aten::to": lambda node: self.convert_to_op(node),
@@ -592,6 +597,15 @@ class TorchConverter(BaseConverter):
             new_op = self.mlir.create_compare_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
+    def convert_math_op(self, torch_node: TorchNode, mode:str):
+        assert mode in ("cos" "cosh" "sin" "sinh" "tan" "tanh")
+        op0 = self.getOp(torch_node.inputs[0])
+        p = {"name": torch_node.name, "mode": mode}
+        cmd = "self.mlir.create_{}_op([op0],[],**p)".format(mode)
+        new_op = eval(cmd)
+        self.addOperand(torch_node.name, new_op)
+
+
     def convert_prelu_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
         op1 = self.getOp(torch_node.inputs[1])
@@ -939,11 +953,6 @@ class TorchConverter(BaseConverter):
         }
         if log: p['log'] = True
         new_op = self.mlir.create_sigmoid_op([op], [], **p)
-        self.addOperand(torch_node.name, new_op)
-
-    def convert_tanh_op(self, torch_node: TorchNode):
-        op = self.getOp(torch_node.inputs[0])
-        new_op = self.mlir.create_tanh_op([op], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
     def convert_softplus_op(self, torch_node: TorchNode):
