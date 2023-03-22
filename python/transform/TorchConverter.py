@@ -272,7 +272,12 @@ class TorchConverter(BaseConverter):
             self.output_names = output_names
         else:
             for outp in self.graph.outputs():
-                self.output_names.append(outp.debugName())
+                if outp.node().kind() == 'prim::TupleConstruct' or \
+                   outp.node().kind() == 'prim::ListConstruct':
+                    ins = outp.node().inputs()
+                    self.output_names.extend([i.debugName() for i in ins])
+                else:
+                    self.output_names.append(outp.debugName())
         self.weight_names = []
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
