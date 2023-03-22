@@ -99,6 +99,11 @@ public:
   static void call_local_func(const char *symbolName, void *params,
                               int param_size, void *info, void *input,
                               void *output);
+  static int64_t call_global_bfsz_func(const char *symbolName, void *params,
+                                       int param_size, void *input, void *output);
+  static int call_local_bfsz_func(const char *symbolName, void *params,
+                                  int param_size, void *info, void *input,
+                                  void *output);
   static DATA_TYPE_T getDataType(Type type);
   static DATA_TYPE_T getDataType(Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
