@@ -371,7 +371,7 @@ def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
     outputs = {}
     names = []
     for out in net.inlined_graph.outputs():
-        if out.node().kind() == 'prim::TupleConstruct':
+        if out.node().kind() == 'prim::TupleConstruct' or out.node().kind() == 'prim::ListConstruct':
             ins = out.node().inputs()
             names.extend([i.debugName() for i in ins])
         else:

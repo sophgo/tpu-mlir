@@ -137,7 +137,54 @@ struct OptMatMulSmallCdim : public OpRewritePattern<MatMulOp> {
   }
 };
 
+// Permute + Matmul ==> Matmul
+struct OptMatMulMergePermute : public OpRewritePattern<MatMulOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    auto left = op.getInput();
+    auto right = op.getRight();
+    auto bias = op.getBias();
+    auto out = op.getResult();
+
+    if (!module::isBM1684XFamily())
+     return failure();
+    auto permute_op = dyn_cast<PermuteOp>(right.getDefiningOp());
+    if (!(permute_op && permute_op->hasOneUse())) {
+      return failure();
+    }
+    auto dim = module::getShape(right).size();
+    if (dim < 2)
+      return failure();
+    auto order = module::getI64Array(permute_op.getOrderAttr());
+    for (int i = 0; i < dim - 2; ++i) {
+      if ((*order)[i] != i)
+        return failure();
+    }
+    if ((*order)[dim - 1] != dim - 2 || (*order)[dim - 2] != dim - 1)
+      return failure();
+
+    // rewrite here
+    std::vector<Value> operands;
+    operands.push_back(left);
+    operands.push_back(permute_op.getInput());
+    operands.push_back(bias);
+    std::vector<NamedAttribute> attrs;
+    for (auto &attr : op->getAttrs()) {
+      if (attr.getName() != "right_transpose")
+        attrs.push_back(attr);
+    }
+    attrs.push_back(
+        rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
+    rewriter.replaceOpWithNewOp<MatMulOp>(
+        op, op.getResult().getType(), operands, attrs);
+
+    return success();
+  }
+};
+
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<MatMulWithBias>(context);
+  results.insert<MatMulWithBias, OptMatMulMergePermute>(context);
 }

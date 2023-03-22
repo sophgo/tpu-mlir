@@ -806,8 +806,8 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x, y):
                     z1 = torch.mm(x, self.weight1)
                     z2 = torch.mm(self.weight0, y)
-                    z3 = torch.transpose(z1, 1, 0)
-                    z4 = torch.mm(z3, z2)
+                    z3 = torch.transpose(z2, 1, 0)
+                    z4 = torch.mm(z1, z3)
                     return z4
 
             self.trace_and_test([input_shape, right_shape], Model())
