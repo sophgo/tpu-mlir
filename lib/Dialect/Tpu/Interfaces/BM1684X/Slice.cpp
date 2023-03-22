@@ -46,17 +46,44 @@ int64_t tpu::SliceOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
     group_type_t group_type) {
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
+  strideslice_local_spec_t spec = {0};
+  auto &common = spec.common;
+  common.begin_mask = 0;
+  common.end_mask = 0;
+  auto output_shape = SmallVector<int64_t>(module::getShape(getOutput()));
+  const int num_dims = output_shape.size();
+  output_shape[0] = out_nslice;
+  if (num_dims > 2) {
+    output_shape[2] = out_hslice;
+  }
   const auto offset = module::getI64Array(getOffset());
-  const auto c_start = offset->at(1);
-  if (c_start % BM168x::NPU_NUM == 0)
-    return 0;
-  int64_t out_n, out_c, out_h, out_w;
-  module::getNCHW(getOutput(), out_n, out_c, out_h, out_w);
-  const int64_t eu_num = BM168x::eu_num(module::getDtypeSize(getInput()));
-  const int64_t out_c_per_npu = ceiling_func(out_c + c_start, BM168x::NPU_NUM);
-  int64_t buffer_size =
-      out_nslice * out_c_per_npu * align_up(out_hslice * out_w, eu_num);
-  return buffer_size;
+  const auto steps = module::getI64Array(getSteps());
+  for (int i = 0; i < num_dims; i++) {
+    common.begin_index[i] = offset->at(i);
+    common.strides[i] = steps->at(i);
+    common.end_index[i] =
+        common.begin_index[i] + output_shape[i] * common.strides[i];
+  }
+  local_sec_info_t sec_info;
+  memset(&sec_info, 0, sizeof(local_sec_info_t));
+  sec_info.group_type = group_type;
+  int64_t n, c, d, h, w, on, oc, od, oh, ow;
+  auto input = op->getOperand(0);
+  auto output = op->getResult(0);
+  module::getNCDHW(input, n, c, d, h, w, group_type);
+  module::getNCDHW(output, on, oc, od, oh, ow, group_type);
+  sec_info.n_slice = in_nslice;
+  sec_info.d_slice = d;
+  sec_info.h_slice = in_hslice;
+  sec_info.w_slice = w;
+  sec_info.out_n_slice = out_nslice;
+  sec_info.out_h_slice = out_hslice;
+  sec_info.out_w_slice = ow;
+  return BM168x::call_local_bfsz_func("backend_api_strideslice_local_bfsz", &spec, sizeof(spec),
+                                      &sec_info, input_spec->data(), output_spec->data());
 }
 
 void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,

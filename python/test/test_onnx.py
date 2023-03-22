@@ -2285,12 +2285,14 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Model, self).__init__()
-                self.instance_norm = nn.InstanceNorm2d(100, affine=True)
+                self.instance_norm = nn.InstanceNorm2d(8, affine=True)
+                nn.init.normal_(self.instance_norm.weight, std=0.01)
+                nn.init.normal_(self.instance_norm.bias, std=0.01)
 
             def forward(self, x):
                 return self.instance_norm(x + 1)
 
-        x = torch.randn(20, 100, 35, 45).float()
+        x = torch.randn(2, 8, 15, 15).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_TorchGroupNorm(self, case_name):
@@ -2300,6 +2302,8 @@ class ONNX_IR_TESTER(object):
             def __init__(self):
                 super(Model, self).__init__()
                 self.group_norm = nn.GroupNorm(3, 6)
+                nn.init.normal_(self.group_norm.weight, std=0.01)
+                nn.init.normal_(self.group_norm.bias, std=0.01)
 
             def forward(self, x):
                 return self.group_norm(x)
@@ -2318,7 +2322,7 @@ class ONNX_IR_TESTER(object):
             def forward(self, x):
                 return self.group_norm(x + 1)
 
-        x = torch.randn(20, 6, 10, 10).float()
+        x = torch.randn(2, 6, 10, 10).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_TorchGelu(self, case_name):

@@ -47,32 +47,40 @@ int64_t tpu::LayerNormOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
     group_type_t group_type) {
-  // TODO: supports true3d case
-  int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w, group_type);
-  int num = in_nslice; // num = depth * nslice
-  const int c_per_npu = ceiling_func(c, BM1684X::NPU_NUM);
-  const int EU_NUM = BM1684X::EU_BYTES / 4;
-  int mr_size = sizeof(float) * num * c_per_npu * EU_NUM;
-  if (group_type == GROUP_NORMAL && getAxis() == 4) {
-    mr_size *= in_hslice;
-  }
-  int tensor_size = sizeof(float) * num * c_per_npu *
-                    align_up((int)in_hslice * (int)w, EU_NUM);
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
+  layer_norm_local_spec_t param = {0};
+  const bool have_weight = !getWeight().getType().isa<NoneType>();
+  const bool have_bias = !getBias().getType().isa<NoneType>();
   const bool need_mean = !getMean().getType().isa<NoneType>();
   const bool need_rstd = !getRstd().getType().isa<NoneType>();
-  bool need_new_mr = false;
-  if (group_type == GROUP_NORMAL && getAxis() <= 1) {
-    need_new_mr = need_new_mr || c_per_npu > 1;
+  param.common.axis = (int)getAxis();
+  if (group_type == GROUP_SMALL_C) {
+    auto shape = module::getShape(getInput());
+    param.common.axis = 2;
   }
-  int64_t buffer_size = tensor_size;
-  if (!need_mean || need_new_mr) {
-    buffer_size += mr_size;
-  }
-  if (!need_rstd || need_new_mr) {
-    buffer_size += mr_size;
-  }
-  return buffer_size;
+  param.common.eps = getEps().convertToDouble();
+  param.common.affine = (have_weight << 0) + (have_bias << 1);
+  param.common.need_mean = need_mean;
+  param.common.need_rstd = need_rstd;
+  local_sec_info_t sec_info;
+  memset(&sec_info, 0, sizeof(local_sec_info_t));
+  sec_info.group_type = group_type;
+  int64_t n, c, d, h, w, on, oc, od, oh, ow;
+  auto input = op->getOperand(0);
+  auto output = op->getResult(0);
+  module::getNCDHW(input, n, c, d, h, w, group_type);
+  module::getNCDHW(output, on, oc, od, oh, ow, group_type);
+  sec_info.n_slice = in_nslice;
+  sec_info.d_slice = d;
+  sec_info.h_slice = in_hslice;
+  sec_info.w_slice = w;
+  sec_info.out_n_slice = out_nslice;
+  sec_info.out_h_slice = out_hslice;
+  sec_info.out_w_slice = ow;
+  return BM168x::call_local_bfsz_func("backend_api_layer_norm_local_bfsz", &param, sizeof(param),
+                                      &sec_info, input_spec->data(), output_spec->data());
 }
 
 void tpu::LayerNormOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
