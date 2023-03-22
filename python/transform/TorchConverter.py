@@ -293,7 +293,16 @@ class TorchConverter(BaseConverter):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
-            input_op = self.mlir.create_input_op(_name, idx, **{})
+            input_shape = self.getShape(_name)
+            channel_axis = 1
+            if self.preprocess_args and self.preprocess_args['channel_format'] == 'nhwc':
+                channel_axis = -1
+            image = (len(input_shape) == 4 and input_shape[channel_axis] <= 4) or \
+                    (len(input_shape) == 3)  # gray
+            if not self.preprocess_args or not image:
+                input_op = self.mlir.create_input_op(_name, idx, **{})
+            else:
+                input_op = self.mlir.create_input_op(_name, idx, **self.preprocess_args)
             self.addOperand(_name, input_op)
 
         def NoneAndRaise(node):
