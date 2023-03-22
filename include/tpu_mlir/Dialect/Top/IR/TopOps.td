@@ -400,6 +400,15 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
 def Top_AvgPoolOp:Top_PoolOp<"AvgPool">;
 def Top_MaxPoolOp:Top_PoolOp<"MaxPool">;
 
+def Top_AdaptiveAvgPoolOp:Top_PoolOp<"AdaptiveAvgPool"> {
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$output_size
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_MaxPoolWithMaskOp:Top_PoolOp<"MaxPoolWithMask"> {
   let results = (outs
     AnyTensor:$output,
@@ -772,6 +781,19 @@ def Top_ViewOp:Top_Op<"View"> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$shape
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_FlattenOp:Top_Op<"Flatten"> {
+  let summary = "Flatten operation";
+  let description = [{
+    gen by torch aten::flatten
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    DefaultValuedAttr<I64Attr, "0">:$start_dim,
+    DefaultValuedAttr<I64Attr, "-1">:$end_dim
   );
   let results = (outs AnyTensor:$output);
 }

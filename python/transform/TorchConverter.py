@@ -134,6 +134,7 @@ class TorchConverter(BaseConverter):
             # Torch Convert, Alphabetically
             #############################
             "aten::abs": lambda node: self.convert_abs_op(node),
+            "aten::adaptive_avg_pool2d": lambda node: self.convert_adaptive_avgpool_op(node, spatial_rank=2),
             "aten::add": lambda node: self.convert_add_op(node),
             "aten::addmm": lambda node: self.convert_addmm_op(node),
             "aten::arange": lambda node: self.convert_arange_op(node),
@@ -156,6 +157,7 @@ class TorchConverter(BaseConverter):
             "aten::exp": lambda node: self.convert_math_op(node, "exp"),
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
             "aten::floor_divide": lambda node: self.convert_floor_divide_op(node),
+            "aten::flatten": lambda node: self.convert_flatten_op(node),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
             "aten::group_norm": lambda node: self.convert_group_norm_op(node),
@@ -406,6 +408,19 @@ class TorchConverter(BaseConverter):
     def convert_conv_mode_op(self, torch_node: TorchNode):
         # only for convolution
         self.convert_base_conv_op(torch_node, True)
+
+    def convert_adaptive_avgpool_op(self, torch_node: TorchNode, spatial_rank=1):
+        op = self.getOp(torch_node.inputs[0])
+        output_size = self.const_val[torch_node.inputs[1]]
+        assert (output_size == [1, 1]
+                and "Currently adaptive_avgpool2d is only taken as global_avgpool")
+
+        p = {
+            'name': torch_node.name,
+            'output_size': output_size,
+        }
+        new_op = self.mlir.create_adaptive_avgpool_op([op], [], **p)
+        self.addOperand(torch_node.name, new_op)
 
     def convert_avgpool_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
@@ -720,6 +735,19 @@ class TorchConverter(BaseConverter):
             p = {'name': torch_node.name}
             new_op = self.mlir.create_view_op([in_op, shape_op], [], **p)
             self.addOperand(torch_node.name, new_op)
+
+    def convert_flatten_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        start_dim = 0
+        end_dim = -1
+        if len(torch_node.inputs) > 1:
+            start_dim = self.const_val[torch_node.inputs[1]]
+        if len(torch_node.inputs) > 2:
+            end_dim = self.const_val[torch_node.inputs[2]]
+        p = {'name': torch_node.name, 'start_dim': start_dim, 'end_dim': end_dim}
+
+        new_op = self.mlir.create_flatten_op([op], [], **p)
+        self.addOperand(torch_node.name, new_op)
 
     def convert_scatter_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
