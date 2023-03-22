@@ -144,9 +144,10 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     det_param.loc_shape = module::getShape(getInputs()[0]);
     det_param.conf_shape = module::getShape(getInputs()[1]);
     det_param.prior_shape = module::getShape(getInputs()[2]);
+    det_param.onnx_nms = p.inputs.size() >= 3 ? 0 : 1;
     det_param.loc_data = p.inputs[0];
     det_param.conf_data = p.inputs[1];
-    det_param.prior_data = p.inputs[2];
+    det_param.prior_data = det_param.onnx_nms ? nullptr : p.inputs[2];
     det_param.output_data = p.outputs[0];
     mlir::DictionaryAttr param = this->getParam().value();
     det_param.keep_top_k = param.get("keep_top_k").cast<IntegerAttr>().getInt();
