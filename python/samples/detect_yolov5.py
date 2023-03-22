@@ -11,7 +11,7 @@ import os
 import sys
 import argparse
 import cv2
-from tools.model_runner import mlir_inference, model_inference, onnx_inference
+from tools.model_runner import mlir_inference, model_inference, onnx_inference, torch_inference
 from utils.preprocess import supported_customization_format
 
 COCO_CLASSES = ("person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck",
@@ -308,6 +308,8 @@ def main():
     output = dict()
     if args.model.endswith('.onnx'):
         output = onnx_inference(data, args.model, False)
+    elif args.model.endswith('.pt') or args.model.endswith('.pth'):
+        output = torch_inference(data, args.model, False)
     elif args.model.endswith('.mlir'):
         output = mlir_inference(data, args.model, False)
     elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
