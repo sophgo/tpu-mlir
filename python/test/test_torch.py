@@ -65,6 +65,7 @@ class TORCH_IR_TESTER(object):
             "Linear":           (self.test_Linear,      Y, N, N),
             "LogSoftmax":       (self.test_LogSoftmax,  Y, N, N),
             "LSTM":             (self.test_LSTM,        Y, N, N),
+            "Math":             (self.test_Math,        Y, N, N),
             "MatMul":           (self.test_MatMul,      Y, N, N),
             "MaxPool1d":        (self.test_MaxPool1d,   Y, N, N),
             "MaxPool2d":        (self.test_MaxPool2d,   Y, N, N),
@@ -262,7 +263,7 @@ class TORCH_IR_TESTER(object):
     def trace_and_test(
         self,
         in_shapes,
-        torch_model:nn.Module,
+        torch_model: nn.Module,
     ):
         """Generic function to generate and compare torch and Tpu-Mlir output"""
         model_name = "{}_{}".format(self.CURRENT_CASE, TORCH_IR_TESTER.ID)
@@ -906,6 +907,28 @@ class TORCH_IR_TESTER(object):
         _test_t((32, ))
 
     #######################################################################
+    # Math: cos/sin/tan/tanh
+    # ------------
+    def test_Math(self):
+        """Tanh"""
+
+        def _test_math(func):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = func(x)
+                    return y
+
+            self.trace_and_test([(4, 3, 16, 16)], Model())
+
+        for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.tan, torch.tanh]:
+            _test_math(f)
+
+    #######################################################################
     # Tile
     # ------------
     def test_Tile(self):
@@ -999,21 +1022,22 @@ class TORCH_IR_TESTER(object):
         # _test_where((2, 32, 16), (32, 1))
         # _test_where((32, 32), (1, 32))
 
-
     #######################################################################
     # Attention
     # ------------
     def test_Attention(self):
+
         class Model(torch.nn.Module):
+
             def __init__(self):
                 super(Model, self).__init__()
                 self.attention = nn.MultiheadAttention(embed_dim=64, num_heads=4)
 
             def forward(self, x, y, z):
-                out, out_w = self.attention(x,y,z)
+                out, out_w = self.attention(x, y, z)
                 return out, out_w
-        self.trace_and_test([(1, 4, 64), (1, 4, 64), (1, 4, 64)], Model())
 
+        self.trace_and_test([(1, 4, 64), (1, 4, 64), (1, 4, 64)], Model())
 
     #######################################################################
     # Select
@@ -1052,7 +1076,7 @@ class TORCH_IR_TESTER(object):
                     super(Model, self).__init__()
 
                 def forward(self, x):
-                    y1 = x[:,2::2]
+                    y1 = x[:, 2::2]
                     return y1
 
             self.trace_and_test([in0_shape], Model())

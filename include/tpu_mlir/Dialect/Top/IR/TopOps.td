@@ -1098,6 +1098,76 @@ def Top_ExpOp: Top_Op<"Exp"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_CosOp: Top_Op<"Cos"> {
+  let summary = "Cos operator";
+
+  let description = [{
+    Calculates the Cos of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_CoshOp: Top_Op<"Cosh"> {
+  let summary = "Cosh operator";
+
+  let description = [{
+    Calculates the Cosh of the giventanh input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_SinOp: Top_Op<"Sin"> {
+  let summary = "Sin operator";
+
+  let description = [{
+    Calculates the Sin of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_SinhOp: Top_Op<"Sinh"> {
+  let summary = "Sinh operator";
+
+  let description = [{
+    Calculates the Sinh of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_TanOp: Top_Op<"Tan"> {
+  let summary = "Tan operator";
+
+  let description = [{
+    Calculates the tan of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_TanhOp: Top_Op<"Tanh"> {
   let summary = "Tanh operator";
 

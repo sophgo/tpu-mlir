@@ -22,6 +22,8 @@ class Top:
     ConvOp = 'top.Conv'
     CompareOp = 'top.Compare'
     CompareConstOp = 'top.CompareConst'
+    CosOp = 'top.Cos'
+    CoshOp = 'top.Cosh'
     Depth2SpaceOp = 'top.Depth2Space'
     DequantizeLinearOp = 'top.DequantizeLinear'
     DeconvOp = 'top.Deconv'
@@ -84,6 +86,8 @@ class Top:
     SigmoidOp = 'top.Sigmoid'
     SiLUOp = 'top.SiLU'
     SizeOp = 'top.Size'
+    SinOp = 'top.Sin'
+    SinhOp = 'top.Sinh'
     SoftmaxOp = 'top.Softmax'
     SoftplusOp = 'top.Softplus'
     SqueezeOp = 'top.Squeeze'
@@ -94,6 +98,7 @@ class Top:
     ShuffleChannelOp = 'top.ShuffleChannel'
     TileOp = 'top.Tile'
     TileExOp = 'top.TileEx'
+    TanOp = 'top.Tan'
     TanhOp = 'top.Tanh'
     TopKOp = 'top.TopK'
     TransposeOp = 'top.Transpose'
@@ -688,23 +693,42 @@ class MLIRImporter(object):
 
     def create_exp_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-        }
+        param = {'name': kargs['name']}
         return self.buildOp(Top.ExpOp, operands, [output_type], **param)
+
+    def create_cos_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.CosOp, operands, [output_type], **param)
+
+    def create_cosh_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.CoshOp, operands, [output_type], **param)
+
+    def create_sin_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.SinOp, operands, [output_type], **param)
+
+    def create_sinh_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.SinhOp, operands, [output_type], **param)
+
+    def create_tan_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.TanOp, operands, [output_type], **param)
 
     def create_tanh_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-        }
+        param = {'name': kargs['name']}
         return self.buildOp(Top.TanhOp, operands, [output_type], **param)
 
     def create_mish_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-        }
+        param = {'name': kargs['name']}
         return self.buildOp(Top.MishOp, operands, [output_type], **param)
 
     def create_elu_op(self, operands, output_shape, **kargs):
@@ -717,9 +741,7 @@ class MLIRImporter(object):
 
     def create_erf_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-        }
+        param = {'name': kargs['name']}
         return self.buildOp(Top.ErfOp, operands, [output_type], **param)
 
     def create_pad_op(self, operands, output_shape, **kargs):
