@@ -135,6 +135,7 @@ class TorchConverter(BaseConverter):
             #############################
             "aten::abs": lambda node: self.convert_abs_op(node),
             "aten::add": lambda node: self.convert_add_op(node),
+            "aten::addmm": lambda node: self.convert_addmm_op(node),
             "aten::avg_pool1d": lambda node: self.convert_avgpool_op(node),
             "aten::avg_pool2d": lambda node: self.convert_avgpool_op(node),
             "aten::avg_pool3d": lambda node: self.convert_avgpool_op(node),
@@ -151,6 +152,7 @@ class TorchConverter(BaseConverter):
             "aten::div": lambda node: self.convert_div_op(node),
             "aten::dropout": lambda node: self.convert_skip_op(node),
             "aten::elu": lambda node: self.convert_elu_op(node),
+            "aten::exp": lambda node: self.convert_math_op(node, "exp"),
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
@@ -469,6 +471,19 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_add_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
+    def convert_addmm_op(self, torch_node: TorchNode):
+        in_op = self.getOp(torch_node.inputs[0])
+        mat1_op = self.getOp(torch_node.inputs[1])
+        mat2_op = self.getOp(torch_node.inputs[2])
+        beta = self.const_val[torch_node.inputs[3]]
+        alpha = self.const_val[torch_node.inputs[4]]
+        p = {'name': torch_node.name + "_mm", 'do_relu': False}
+        mm_op = self.mlir.create_matmul_op([mat1_op, mat2_op, self.mlir.none_op], [], **p)
+        p = {'name': torch_node.name, 'coeff': [beta, alpha]}
+        assert (beta == 1.0 and alpha == 1.0)  # TODO:need to support
+        new_op = self.mlir.create_add_op([in_op, mm_op], [], **p)
+        self.addOperand(torch_node.name, new_op)
+
     def convert_sub_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
         scale = self.const_val[torch_node.inputs[2]]
@@ -611,14 +626,13 @@ class TorchConverter(BaseConverter):
             new_op = self.mlir.create_compare_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
-    def convert_math_op(self, torch_node: TorchNode, mode:str):
-        assert mode in ("cos" "cosh" "sin" "sinh" "tan" "tanh")
+    def convert_math_op(self, torch_node: TorchNode, mode: str):
+        assert mode in ["cos", "cosh", "sin", "sinh", "tan", "tanh", "exp"]
         op0 = self.getOp(torch_node.inputs[0])
-        p = {"name": torch_node.name, "mode": mode}
+        p = {"name": torch_node.name}
         cmd = "self.mlir.create_{}_op([op0],[],**p)".format(mode)
         new_op = eval(cmd)
         self.addOperand(torch_node.name, new_op)
-
 
     def convert_prelu_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
@@ -697,13 +711,7 @@ class TorchConverter(BaseConverter):
         op0 = self.getOp(torch_node.inputs[0])
         axis = self.const_val[torch_node.inputs[1]]
         index = self.const_val[torch_node.inputs[2]]
-        p = {
-            'name': torch_node.name,
-            'axis': axis,
-            "start": index,
-            "end": index,
-            "step": 1
-        }
+        p = {'name': torch_node.name, 'axis': axis, "start": index, "end": index, "step": 1}
         new_op = self.mlir.create_slice_ex_op([op0], [], **p)
         self.addOperand(torch_node.name, new_op)
 
@@ -713,13 +721,7 @@ class TorchConverter(BaseConverter):
         start = self.const_val[torch_node.inputs[2]]
         end = self.const_val[torch_node.inputs[3]]
         step = self.const_val[torch_node.inputs[4]]
-        p = {
-            'name': torch_node.name,
-            'axis': axis,
-            "start": start,
-            "end": end,
-            "step": step
-        }
+        p = {'name': torch_node.name, 'axis': axis, "start": start, "end": end, "step": step}
         new_op = self.mlir.create_slice_ex_op([op0], [], **p)
         self.addOperand(torch_node.name, new_op)
 

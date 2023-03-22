@@ -40,6 +40,7 @@ class TORCH_IR_TESTER(object):
             "Abs":              (self.test_Abs,         Y, N, N),
             "Activation":       (self.test_Activation,  Y, N, N),
             "Add":              (self.test_Add,         Y, N, N),
+            "Addmm":            (self.test_Addmm,       Y, N, N),
             "Attention":        (self.test_Attention,   Y, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,   Y, N, N),
             "AvgPool2d":        (self.test_AvgPool2d,   Y, N, N),
@@ -816,6 +817,25 @@ class TORCH_IR_TESTER(object):
         _test_mm((32, 16), (16, 34))
 
     #######################################################################
+    # Addmm
+    # ------------
+    def test_Addmm(self):
+        """Addmm"""
+        def _test_addmm(beta, alpha):
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x, y, z):
+                    o = torch.addmm(beta, x, alpha, y, z)
+                    return o
+            self.trace_and_test([(24, 32), (24, 16), (16, 32)], Model())
+
+        _test_addmm(1.0, 1.0)
+        # _test_addmm(0.5, 0.3) # need to support add with coeff
+
+    #######################################################################
     # Gather
     # ------------
     def test_Gather(self):
@@ -925,7 +945,7 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([(4, 3, 16, 16)], Model())
 
-        for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.tan, torch.tanh]:
+        for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.tan, torch.tanh, torch.exp]:
             _test_math(f)
 
     #######################################################################
