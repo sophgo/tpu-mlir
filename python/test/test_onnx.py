@@ -69,6 +69,7 @@ class ONNX_IR_TESTER(object):
             "ConvTrans2":   (self.test_ConvTrans2,  Y, N, Y),  #no pad
             "Clip":         (self.test_Clip,        Y, N, Y),
             "DepthToSpace": (self.test_DepthToSpace,Y, N, Y),
+            "Deconv":       (self.test_Deconv,      N, Y, N),
             "Div":          (self.test_Div,         Y, N, Y),
             "DivBcast":     (self.test_DivBcast,    Y, N, N),
             "DivBcast2":    (self.test_DivBcast2,   Y, N, N),
@@ -149,8 +150,8 @@ class ONNX_IR_TESTER(object):
             "Transpose":    (self.test_Transpose,   Y, N, Y),
             "Transpose2":   (self.test_Transpose2,  Y, N, Y),
             "TopK":         (self.test_TopK,        Y, N, N),
+            "Upsample":     (self.test_Upsample,    Y, N, N),
             "Where":        (self.test_Where,       Y, N, Y),
-            "Deconv":        (self.test_Deconv,       N, Y, N),
             #####################################
             # Torch Test Case, Alphabetically
             #####################################
@@ -1934,6 +1935,18 @@ class ONNX_IR_TESTER(object):
                 return y
 
         x = torch.randn(4, 8, 60, 80).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_Upsample(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.Upsample = nn.Upsample(scale_factor=2, mode="nearest")
+            def forward(self, x):
+                return self.Upsample(x)
+        x = torch.randn(2,64,184,320).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_Deconv(self, case_name):
