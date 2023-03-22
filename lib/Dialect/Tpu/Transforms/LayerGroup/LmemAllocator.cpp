@@ -230,7 +230,7 @@ static bool isInplaceOp(Operation *op) {
       if (in_zp != 0 || out_zp != 0) flag = false;
     }
     flag = flag && !module::getStorageType(in).isF32();
-  } else if (isa<tpu::ReshapeOp, tpu::SqueezeOp>(op)) {
+  } else if (isa<tpu::ReshapeOp>(op)) {
     flag = true;
   }
   return flag && module::getBytes(op->getOperand(0)) >= module::getBytes(op->getResult(0));

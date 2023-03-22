@@ -105,6 +105,7 @@ class Top:
     TupleOp = 'top.Tuple'
     UnTupleOp = 'top.UnTuple'
     UnpackOp = 'top.Unpack'
+    UnsqueezeOp = 'top.Unsqueeze'
     UpsampleOp = 'top.Upsample'
     ViewOp = 'top.View'
     WeightOp = 'top.Weight'
@@ -585,7 +586,8 @@ class MLIRImporter(object):
 
     def create_unsqueeze_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
-        return self.buildOp(Top.ReshapeOp, operands, [output_type], name=kargs['name'])
+        p = {'name': kargs['name'], 'axes': self.ArrayAttr(kargs['axes'])}
+        return self.buildOp(Top.UnsqueezeOp, operands, [output_type], **p)
 
     def create_reverse_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
