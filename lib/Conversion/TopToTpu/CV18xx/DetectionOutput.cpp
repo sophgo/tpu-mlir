@@ -41,6 +41,8 @@ void loweringDetectionOutput(PatternRewriter &rewriter,
   param.emplace_back(rewriter.getNamedAttr(
       "code_type", rewriter.getStringAttr(op.getCodeType())));
   param.emplace_back(rewriter.getNamedAttr(
+      "onnx_nms", rewriter.getI64IntegerAttr(op.getInputs().size() >= 3 ? 0 : 1)));
+  param.emplace_back(rewriter.getNamedAttr(
       "share_location", rewriter.getBoolAttr(op.getShareLocation())));
   attrs.emplace_back(
       rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(param)));
