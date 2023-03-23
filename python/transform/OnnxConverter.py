@@ -1677,7 +1677,7 @@ class OnnxConverter(BaseConverter):
             new_op = self.mlir.create_reshape_op([new_op], input_shape_ex, **p)
             out_shape = input_shape_ex
         # tile one axis each time to avoid gmem buffer
-        count = sum([input_shape[-i] != output_shape[-i] for i in range(1, len(input_shape) + 1)])
+        count = sum([out_shape[-i] != output_shape[-i] for i in range(1, len(out_shape) + 1)])
         assert count > 0
 
         for i in range(1, len(output_shape) + 1):
