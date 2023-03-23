@@ -161,11 +161,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     return;
   }
   BM168x::fix_shape(input_spec->at(0), {p.M, p.K});
-  if (p.right_transpose == false) {
-    BM168x::fix_shape(input_spec->at(1), {p.K, p.N});
-  } else {
-    BM168x::fix_shape(input_spec->at(1), {p.N, p.K});
-  }
+  BM168x::fix_shape(input_spec->at(1), {p.K, p.N});
   BM168x::fix_shape(output_spec->at(0), {p.M, p.N});
   fc_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));

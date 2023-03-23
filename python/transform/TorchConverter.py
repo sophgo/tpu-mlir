@@ -553,6 +553,10 @@ class TorchConverter(BaseConverter):
     def convert_constant(self, torch_node: TorchNode):
         name, data, is_tensor = _get_constant(torch_node.node_proto)
         if not is_tensor:
+            if isinstance(data, int):
+                # avoid to large
+                if data > np.iinfo(np.int32).max:
+                    data = np.iinfo(np.int32).max
             self.const_val[name] = data
         elif data is None:
             self.addOperand(name, self.mlir.none_op)
@@ -761,8 +765,8 @@ class TorchConverter(BaseConverter):
         op0 = self.getOp(torch_node.inputs[0])
         axis = self.const_val[torch_node.inputs[1]]
         index = self.const_val[torch_node.inputs[2]]
-        p = {'name': torch_node.name, 'axis': axis, "start": index, "end": index, "step": 1}
-        new_op = self.mlir.create_slice_ex_op([op0], [], **p)
+        p = {'name': torch_node.name, 'axis': axis, "start": index, "end": index + 1, "step": 1}
+        new_op = self.mlir.create_slice_axis_op([op0], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_slice_op(self, torch_node: TorchNode):
@@ -772,7 +776,7 @@ class TorchConverter(BaseConverter):
         end = self.const_val[torch_node.inputs[3]]
         step = self.const_val[torch_node.inputs[4]]
         p = {'name': torch_node.name, 'axis': axis, "start": start, "end": end, "step": step}
-        new_op = self.mlir.create_slice_ex_op([op0], [], **p)
+        new_op = self.mlir.create_slice_axis_op([op0], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_upsample_op(self, torch_node: TorchNode, mode: str):

@@ -16,10 +16,10 @@
 using namespace mlir;
 using namespace tpu_mlir::top;
 
-struct TopSliceExToStridedSlice : public OpRewritePattern<SliceExOp> {
+struct SliceAxisToStridedSlice : public OpRewritePattern<SliceAxisOp> {
   using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(SliceExOp op,
+  LogicalResult matchAndRewrite(SliceAxisOp op,
                                 PatternRewriter &rewriter) const override {
 
     auto out_shape = module::getShape(op.getOutput());
@@ -45,7 +45,7 @@ struct TopSliceExToStridedSlice : public OpRewritePattern<SliceExOp> {
   }
 };
 
-void SliceExOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                           MLIRContext *context) {
-  results.insert<TopSliceExToStridedSlice>(context);
+void SliceAxisOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                              MLIRContext *context) {
+  results.insert<SliceAxisToStridedSlice>(context);
 }

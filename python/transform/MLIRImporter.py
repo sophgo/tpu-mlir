@@ -84,7 +84,7 @@ class Top:
     ScatterNDOp = 'top.ScatterND'
     SubOp = 'top.Sub'
     SliceOp = 'top.Slice'
-    SliceExOp = 'top.SliceEx'
+    SliceAxisOp = 'top.SliceAxis'
     SigmoidOp = 'top.Sigmoid'
     SiLUOp = 'top.SiLU'
     SizeOp = 'top.Size'
@@ -635,17 +635,17 @@ class MLIRImporter(object):
         }
         return self.buildOp(Top.SliceOp, operands, [output_type], **param)
 
-    def create_slice_ex_op(self, operands, output_shape, **kargs):
+    def create_slice_axis_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = self.get_tensor_type(output_shape)
         param = {
             'name': kargs['name'],
-            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
-            'start': IntegerAttr.get(self.mlir_type['INT64'], kargs['start']),
-            'end': IntegerAttr.get(self.mlir_type['INT64'], kargs['end']),
-            'step': IntegerAttr.get(self.mlir_type['INT64'], kargs['step']),
+            'axis': IntegerAttr.get(self.mlir_type['INT32'], kargs['axis']),
+            'start': IntegerAttr.get(self.mlir_type['INT32'], kargs['start']),
+            'end': IntegerAttr.get(self.mlir_type['INT32'], kargs['end']),
+            'step': IntegerAttr.get(self.mlir_type['INT32'], kargs['step']),
         }
-        return self.buildOp(Top.SliceExOp, operands, [output_type], **param)
+        return self.buildOp(Top.SliceAxisOp, operands, [output_type], **param)
 
     def create_sigmoid_op(self, operands, output_shape, **kargs):
         # get_value_type
