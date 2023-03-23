@@ -91,7 +91,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     auto new_bias = op.getBias();
     if (with_bias) {
       std::vector<int64_t> shape(left_num_dims, 1);
-      shape[left_num_dims - 1]= p.N;
+      shape[left_num_dims - 1] = p.N;
       auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
       new_bias = top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
       operands.push_back(new_bias);
@@ -122,7 +122,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
             std::round(bias_fp32->at(j) / (w_scale * in_scale));
       }
       std::vector<int64_t> shape(left_num_dims, 1);
-      shape[left_num_dims - 1]= bias_n;
+      shape[left_num_dims - 1] = bias_n;
       auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
       auto new_bias =
           top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
@@ -289,7 +289,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     auto new_bias = op.getBias();
     if (with_bias) {
       std::vector<int64_t> shape(left_num_dims, 1);
-      shape[left_num_dims - 1]= p.N;
+      shape[left_num_dims - 1] = p.N;
       auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
       new_bias = top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
       operands.push_back(new_bias);
@@ -320,7 +320,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
             std::round(bias_fp32->at(j) / (w_scale * in_scale));
       }
       std::vector<int64_t> shape(left_num_dims, 1);
-      shape[left_num_dims - 1]= bias_n;
+      shape[left_num_dims - 1] = bias_n;
       auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
       auto new_bias =
           top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
@@ -380,12 +380,49 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
 }
 void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::MatMulOp op) const {
-  lowering_common_bf16<tpu::MatMulOp>(rewriter, op);
+  bool bias_use_fp32 = module::isBM1686();
+  auto newType = getQuantBF16Type(op->getResult(0));
+  auto stype = module::getStorageType(newType);
+  std::vector<Value> operands;
+  for (int i = 0; i < op->getNumOperands(); ++i) {
+    auto in = op->getOperand(i);
+    if (auto wOp = dyn_cast<top::WeightOp>(in.getDefiningOp())) {
+      auto wtype = module::getStorageType(in);
+      if (i == 2 && bias_use_fp32) {
+        operands.push_back(in);
+      } else {
+        operands.push_back(wOp.clone_bf16(op));
+      }
+    } else {
+      operands.push_back(in);
+    }
+  }
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
+                                             op->getAttrs());
 }
 
 void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
-  lowering_common_f16<tpu::MatMulOp>(rewriter, op);
+  bool bias_use_fp32 = module::isBM1686();
+  auto newType = getQuantF16Type(op->getResult(0));
+  auto stype = module::getStorageType(newType);
+  std::vector<Value> operands;
+  for (int i = 0; i < op->getNumOperands(); ++i) {
+    auto in = op->getOperand(i);
+    if (auto wOp = dyn_cast<top::WeightOp>(in.getDefiningOp())) {
+      auto wtype = module::getStorageType(in);
+      if (i == 2 && bias_use_fp32) {
+        operands.push_back(in);
+      } else {
+        operands.push_back(wOp.clone_f16(op));
+      }
+    } else {
+      operands.push_back(in);
+    }
+  }
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
+                                             op->getAttrs());
+
 }
 
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
@@ -455,7 +492,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     bias_quant = i32_array_t(new std::vector<int32_t>(col_size, 0));
   }
   std::vector<int64_t> shape(left_num_dims, 1);
-  shape[left_num_dims - 1]= col_size;
+  shape[left_num_dims - 1] = col_size;
   auto bias_type = RankedTensorType::get(shape, rewriter.getI32Type());
 
   if (can_merge_izp) {
