@@ -13,7 +13,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 int64_t top::MulConstOp::getFLOPs() {
-  return module::getNumElements(getOutput()) * (1 + getDoRelu() ? 1 : 0);
+  return module::getNumElements(getOutput()) * (1 + (getDoRelu() ? 1 : 0));
 }
 
 LogicalResult top::MulConstOp::init(InferenceParameter &p) { return success(); }

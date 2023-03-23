@@ -16,7 +16,7 @@ int64_t top::SoftmaxOp::getFLOPs() {
   //   2*n          -- compute shifted logits
   //   n            -- exp of shifted logits
   //   2*n          -- compute softmax from exp of shifted logits
-  return module::getNumElements(getInput()) * (5 + getLog() ? 1 : 0);
+  return module::getNumElements(getInput()) * (5 + (getLog() ? 1 : 0));
 }
 
 LogicalResult top::SoftmaxOp::init(InferenceParameter &p) {
