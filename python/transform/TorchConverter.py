@@ -155,6 +155,7 @@ class TorchConverter(BaseConverter):
             "aten::elu": lambda node: self.convert_elu_op(node),
             "aten::exp": lambda node: self.convert_math_op(node, "exp"),
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
+            "aten::floor_divide": lambda node: self.convert_floor_divide_op(node),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
             "aten::group_norm": lambda node: self.convert_group_norm_op(node),
@@ -600,13 +601,24 @@ class TorchConverter(BaseConverter):
     def convert_div_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
         op1 = self.getOp(torch_node.inputs[1])
-        p = {
-            'name': torch_node.name,
-            'do_relu': False,
-        }
+        p = {'name': torch_node.name}
         new_op = self.mlir.create_div_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
-        return
+
+    def convert_floor_divide_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        if torch_node.inputs[1] in self.const_val:
+            var = self.const_val[torch_node.inputs[1]]
+            p = {'name': torch_node.name + "_div", 'const_val': 1.0 / var}
+            div_op = self.mlir.create_mul_const_op([op0], [], **p)
+
+        else:
+            op1 = self.getOp(torch_node.inputs[1])
+            p = {'name': torch_node.name + "_div"}
+            div_op = self.mlir.create_div_op([op0, op1], [], **p)
+        p = {'name': torch_node.name}
+        floor_op = self.mlir.create_floor_op([div_op], [], **p)
+        self.addOperand(torch_node.name, floor_op)
 
     def convert_skip_op(self, torch_node: TorchNode):
         # warning: in_op.output name shoud change to torch_node name

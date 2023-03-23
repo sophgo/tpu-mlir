@@ -57,6 +57,7 @@ class TORCH_IR_TESTER(object):
             "Div":              (self.test_Div,         Y, N, N),
             "Dropout":          (self.test_Dropout,     Y, N, N),
             "Elu":              (self.test_Elu,         Y, N, N),
+            "FloorDiv":         (self.test_FloorDiv,    Y, N, N),
             "Gather":           (self.test_Gather,      N, N, N),
             "GroupNorm":        (self.test_GroupNorm,   Y, N, N),
             "GRU":              (self.test_GRU,         Y, N, N),
@@ -1326,6 +1327,31 @@ class TORCH_IR_TESTER(object):
         _test_elu((1, 3, 32, 32), 2.0)
         _test_elu((3, 16, 32), 3.5)
         _test_elu((64, 32))
+
+    #######################################################################
+    # FloorDiv
+    # ------------
+    def test_FloorDiv(self):
+        """FloorDiv"""
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y):
+                o = torch.floor_divide(x, y)
+                return o
+        class Model2(nn.Module):
+
+            def __init__(self):
+                super(Model2, self).__init__()
+
+            def forward(self, x):
+                o = torch.floor_divide(x, 0.8)
+                return o
+
+        self.trace_and_test([(4, 3, 32, 32), (4, 3, 32, 32)], Model())
+        self.trace_and_test([(4, 3, 32, 32)], Model2())
 
     #######################################################################
     # Activation
