@@ -18,8 +18,8 @@ typedef sg_reduce_method_t Reduce_method;
 Reduce_method reduce_max = SG_REDUCE_MAX;
 Reduce_method reduce_min = SG_REDUCE_MIN;
 typedef arg_method_t Arg_method;
-Arg_method arg_max = ARG_MAX;
-Arg_method arg_min = ARG_MIN;
+Arg_method arg_max = ARG_MAXT;
+Arg_method arg_min = ARG_MINT;
 struct TopArgReducefull : public OpRewritePattern<ArgOp> {
   using OpRewritePattern::OpRewritePattern;
 
