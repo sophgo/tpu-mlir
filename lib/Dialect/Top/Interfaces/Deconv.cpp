@@ -82,7 +82,7 @@ deconv_attr_t top::DeconvOp::parseParam() {
 
 int64_t top::DeconvOp::getFLOPs() {
   auto attr = parseParam();
-  auto extra = attr.with_bias ? 1 : 0 + attr.do_relu ? 1 : 0;
+  auto extra = (attr.with_bias ? 1 : 0) + (attr.do_relu ? 1 : 0);
   return module::getNumElements(getInput()) *
          (attr.kw * attr.kw * attr.oc / attr.g * 2 + extra);
 }

@@ -54,7 +54,7 @@ matmul_attr_t top::MatMulOp::parseParam() {
 
 int64_t top::MatMulOp::getFLOPs() {
   auto p = parseParam();
-  auto extra = p.with_bias ? 1 : 0 + p.do_relu ? 1 : 0;
+  auto extra = (p.with_bias ? 1 : 0) + (p.do_relu ? 1 : 0);
   return p.batch * (2 * p.K + extra) * p.N * p.M;
 }
 

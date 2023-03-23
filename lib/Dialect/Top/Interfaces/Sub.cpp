@@ -14,7 +14,7 @@
 
 int64_t top::SubOp::getFLOPs() {
   return module::getNumElements(getOutput()) *
-         (getInputs().size() - 1 + getDoRelu() ? 1 : 0);
+         (getInputs().size() - 1 + (getDoRelu() ? 1 : 0));
 }
 
 LogicalResult top::SubOp::init(InferenceParameter &p) {

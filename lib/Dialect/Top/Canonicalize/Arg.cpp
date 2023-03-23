@@ -18,8 +18,8 @@ typedef sg_reduce_method_t Reduce_method;
 Reduce_method reduce_max = SG_REDUCE_MAX;
 Reduce_method reduce_min = SG_REDUCE_MIN;
 typedef arg_method_t Arg_method;
-Arg_method arg_max = ARG_MAX;
-Arg_method arg_min = ARG_MIN;
+Arg_method arg_max = ARG_MAXT;
+Arg_method arg_min = ARG_MINT;
 struct TopArgReducefull : public OpRewritePattern<ArgOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -84,7 +84,8 @@ struct TopTransposeArg : public OpRewritePattern<ArgOp> {
     auto old_axis = op.getAxis();
     auto permute_order = module::getI64Array(permuteOp.getOrder());
     auto permute_order_len = permute_order->size();
-    int  order_mask[permute_order_len-1] = {0};
+    int  order_mask[permute_order_len-1];
+    memset(order_mask, 0, sizeof(int) * (permute_order_len-1));
     int  order_dim = 0;
     for(int i=0; i<permute_order_len; i++){
       if(i == old_axis) continue;
