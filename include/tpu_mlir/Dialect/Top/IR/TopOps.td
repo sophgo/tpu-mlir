@@ -899,10 +899,11 @@ def Top_SplitOp: Top_Op<"Split"> {
 
   let arguments = (
     ins AnyTensor:$input,
-    I64Attr:$axis,
+    SI32Attr:$axis,
     I64Attr:$num
   );
   let results = (outs Variadic<AnyTensor>:$outputs);
+  let hasCanonicalizer = 1;
 }
 
 def Top_SliceOp: Top_Op<"Slice"> {

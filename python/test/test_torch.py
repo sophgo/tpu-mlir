@@ -49,6 +49,7 @@ class TORCH_IR_TESTER(object):
             "AvgPool3d":        (self.test_AvgPool3d,         Y, N, N),
             "BatchNorm":        (self.test_BatchNorm,         Y, N, N),
             "BMM":              (self.test_BatchMatMul,       Y, N, N),
+            "Chunk":            (self.test_Chunk,             Y, N, N),
             "Compare":          (self.test_Compare,           Y, N, N),
             "Concat":           (self.test_Concat,            Y, N, N),
             "Conv1d":           (self.test_Conv1d,            Y, N, N),
@@ -643,6 +644,34 @@ class TORCH_IR_TESTER(object):
 
         input_shape = [14, 25] + normalize_shape
         self.trace_and_test([input_shape], Model())
+
+    #######################################################################
+    # Chunk
+    # ------------
+    def test_Chunk(self):
+
+        class Model0(torch.nn.Module):
+
+            def __init__(self):
+                super(Model0, self).__init__()
+
+            def forward(self, x):
+                a, b, c = torch.chunk(x, 3, -1)
+                d = a * b + c
+                return d
+        class Model1(torch.nn.Module):
+
+            def __init__(self):
+                super(Model1, self).__init__()
+                self.weight = torch.randn((4, 16, 30))
+
+            def forward(self, x):
+                a, b, c = torch.chunk(self.weight, 3, -1)
+                d = a * b + c + x
+                return d
+
+        self.trace_and_test([(4, 16, 30)], Model0())
+        self.trace_and_test([(4, 16, 10)], Model1())
 
     #######################################################################
     # MatMul
@@ -1335,6 +1364,7 @@ class TORCH_IR_TESTER(object):
     # ------------
     def test_FloorDiv(self):
         """FloorDiv"""
+
         class Model(nn.Module):
 
             def __init__(self):
@@ -1343,6 +1373,7 @@ class TORCH_IR_TESTER(object):
             def forward(self, x, y):
                 o = torch.floor_divide(x, y)
                 return o
+
         class Model2(nn.Module):
 
             def __init__(self):

@@ -698,18 +698,23 @@ class MLIRImporter(object):
             param['log'] = BoolAttr.get(kargs['log'])
         return self.buildOp(Top.SoftmaxOp, operands, [output_type], **param)
 
+    def create_split_op(self, operands, output_shapes, **kargs):
+        output_types = self.get_tensor_type(output_shapes)
+        p = {
+            'name': kargs['name'],
+            'axis': IntegerAttr.get(self.mlir_type['INT32'], kargs['axis']),
+            'num': IntegerAttr.get(self.mlir_type['INT64'], kargs['num']),
+        }
+        return self.buildOp(Top.SplitOp, operands, output_types, **p)
+
     def create_softplus_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-        }
+        param = {'name': kargs['name']}
         return self.buildOp(Top.SoftplusOp, operands, [output_type], **param)
 
     def create_log_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-        }
+        param = {'name': kargs['name']}
         return self.buildOp(Top.LogOp, operands, [output_type], **param)
 
     def create_exp_op(self, operands, output_shape, **kargs):
