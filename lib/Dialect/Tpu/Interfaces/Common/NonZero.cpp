@@ -61,3 +61,11 @@ LogicalResult tpu::NonZeroOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+mlir::Type tpu::NonZeroOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  auto op = getOperation();
+  if (opd_idx == 0) {
+    return do_nothing(mode);
+  }
+  return type_verify_case_same(op, opd_idx, mode);
+}

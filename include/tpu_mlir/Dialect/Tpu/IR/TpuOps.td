@@ -1377,7 +1377,9 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
   );
 }
 
-def Tpu_NonZeroOp:Tpu_Op<"NonZero"> {
+
+def Tpu_NonZeroOp:Tpu_Op<"NonZero", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "NonZero operation";
   let description = [{
     Returns the indices of the elements that are non-zero
