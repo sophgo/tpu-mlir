@@ -1125,9 +1125,7 @@ class MLIRImporter(object):
 
     def create_floor_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-        }
+        param = {'name': kargs['name']}
         return self.buildOp(Top.FloorOp, operands, [output_type], **param)
 
     def create_retinaface_detection_op(self, operands, output_shape, **kargs):
