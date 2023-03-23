@@ -944,19 +944,19 @@ def Top_StridedSliceOp: Top_Op<"StridedSlice"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_SliceExOp: Top_Op<"SliceEx"> {
-  let summary = "Select operator";
+def Top_SliceAxisOp: Top_Op<"SliceAxis"> {
+  let summary = "Slice operator on one axis";
 
   let description = [{
-    Select Operation on input.
+    Slice Operation on input.
   }];
 
   let arguments = (ins
     AnyTensor:$input,
-    I64Attr:$axis,
-    I64Attr:$start,
-    I64Attr:$step,
-    I64Attr:$end
+    SI32Attr:$axis,
+    SI32Attr:$start,
+    SI32Attr:$step,
+    SI32Attr:$end
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;

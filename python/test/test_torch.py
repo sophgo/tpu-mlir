@@ -1166,22 +1166,29 @@ class TORCH_IR_TESTER(object):
     def test_Slice(self):
         """Slice"""
 
-        def _test_slice(in0_shape):
+        class Model0(nn.Module):
 
-            class Model(nn.Module):
+            def __init__(self):
+                super(Model0, self).__init__()
 
-                def __init__(self):
-                    super(Model, self).__init__()
+            def forward(self, x):
+                y1 = x[:, 2::2]
+                return y1
 
-                def forward(self, x):
-                    y1 = x[:, 2::2]
-                    return y1
+        class Model1(nn.Module):
 
-            self.trace_and_test([in0_shape], Model())
+            def __init__(self):
+                super(Model1, self).__init__()
+                self.weight = torch.randn((16, 32, 8))
 
-        _test_slice((1, 3, 32, 32))
-        _test_slice((3, 32, 16))
-        _test_slice((32, 16))
+            def forward(self, x):
+                w = self.weight[:, 2:20:2]
+                y = x + w
+                return y
+
+        self.trace_and_test([(16, 32, 8)], Model0())
+        self.trace_and_test([(16, 9, 8)], Model1())
+
 
     #######################################################################
     # Squeeze
