@@ -176,7 +176,7 @@ class ONNX_IR_TESTER(object):
             "TorchLogSoftmax":      (self.test_TorchLogSoftmax,     Y, N, Y),
             "TorchLSTM":            (self.test_TorchLSTM,           Y, N, Y),
             "TorchMaskedFill":      (self.test_TorchMaskedFill,     Y, N, N),
-            "TorchNonZero":         (self.test_TorchNonZero,        N, N, N),
+            "TorchNonZero":         (self.test_TorchNonZero,        Y, N, N),
             "TorchReflectionPad":   (self.test_TorchReflectionPad,  Y, N, Y),
             "TorchRoiAlign":        (self.test_TorchRoiAlign,       Y, N, N),
             "TorchSize":            (self.test_TorchSize,           Y, N, Y),

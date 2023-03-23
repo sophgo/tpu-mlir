@@ -396,6 +396,9 @@ struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
                                 PatternRewriter &rewriter) const override {
     const auto &input = op.getInput();
     // check topo
+    if (!input.hasOneUse()) {
+      return failure();
+    }
     auto in_op = input.getDefiningOp();
     if (!isa<NonZeroOp>(in_op)) {
       return failure();
