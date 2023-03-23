@@ -13,7 +13,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 int64_t top::ScaleOp::getFLOPs() {
-  return module::getNumElements(getOutput()) * (2 + getDoRelu() ? 1 : 0);
+  return module::getNumElements(getOutput()) * (2 + (getDoRelu() ? 1 : 0));
 }
 
 LogicalResult top::ScaleOp::init(InferenceParameter &p) { return success(); }

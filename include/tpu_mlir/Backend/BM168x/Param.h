@@ -180,8 +180,8 @@ typedef enum {
 } sg_reduce_method_t;
 
 typedef enum {
-  ARG_MAX = 0,
-  ARG_MIN = 1,
+  ARG_MAXT = 0,
+  ARG_MINT = 1,
 } arg_method_t;
 // -------------------------------------------------------------------
 // Struct Definition
