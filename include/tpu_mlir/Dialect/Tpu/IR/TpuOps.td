@@ -1353,7 +1353,7 @@ def Tpu_SplitOp: Tpu_Op<"Split"> {
 
   let arguments = (
     ins AnyRankedTensor:$input,
-    I64Attr:$axis,
+    SI32Attr:$axis,
     I64Attr:$num
   );
   let results = (outs Variadic<AnyRankedTensor>:$outputs);

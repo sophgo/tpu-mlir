@@ -626,7 +626,6 @@ class TorchConverter(BaseConverter):
             var = self.const_val[torch_node.inputs[1]]
             p = {'name': torch_node.name + "_div", 'const_val': 1.0 / var}
             div_op = self.mlir.create_mul_const_op([op0], [], **p)
-
         else:
             op1 = self.getOp(torch_node.inputs[1])
             p = {'name': torch_node.name + "_div"}
@@ -880,15 +879,17 @@ class TorchConverter(BaseConverter):
 
     def convert_chunk_op(self, torch_node: TorchNode):
         num = self.const_val[torch_node.inputs[1]]
-        assert (self.isWeight(torch_node.inputs[0]))
-        data = self.getWeight(torch_node.inputs[0])
-        new_data = np.split(data, num, axis=0)
+        axis = self.const_val[torch_node.inputs[2]]
+        op0 = self.getOp(torch_node.inputs[0])
         tensors = []
         for i in range(num):
-            name = "{}_{}".format(torch_node.name, i)
-            self.addWeight(name, new_data[i])
-            tensors.append(name)
-        self.tensor_list[torch_node.name] = tensors
+            out = "{}_{}".format(torch_node.name, i)
+            tensors.append(out)
+        p = {'name': tensors, 'axis': axis, 'num': num}
+        new_ops = self.mlir.create_split_op([op0], [[]] * num, **p)
+        for i in range(num):
+            self.addOperand(tensors[i], new_ops[i])
+        self.tensor_list[torch_node.outputs[0]] = tensors
 
     def convert_relu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
