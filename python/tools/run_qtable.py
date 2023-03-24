@@ -34,6 +34,9 @@ if __name__ == '__main__':
     parser.add_argument('--chip', required=True, type=str,
                         choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x'],
                         help='chip platform name')
+    parser.add_argument('--fp_type', default='auto', type=str,
+                        choices=['auto', 'F16', 'F32', 'BF16'],
+                        help='float type of mix precision')
     parser.add_argument('--loss_table', default='full_loss_table.txt',
                         help="output all loss of layers if each layer is quantized to f16")
     parser.add_argument('-o', '--quantize_table', required=True,
