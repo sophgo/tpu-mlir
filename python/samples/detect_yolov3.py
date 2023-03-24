@@ -13,6 +13,7 @@ import argparse
 import cv2
 from tools.model_runner import mlir_inference, model_inference, onnx_inference
 from PIL import Image
+from pathlib import Path
 
 COCO_CLASSES = ("person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck",
                 "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench",
@@ -61,7 +62,7 @@ MASKS = [[3, 4, 5], [1, 2, 3]]
 
 
 def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
-
+    res_line = ''
     for i in range(len(boxes)):
         box = boxes[i]
         cls_id = int(cls_ids[i])
@@ -74,6 +75,7 @@ def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
         y1 = int(box[3])
         color = (_COLORS[cls_id] * 255).astype(np.uint8).tolist()
         text = '{}:{:.1f}%'.format(class_names[cls_id], score * 100)
+        res_line += f'{text}, '
         print(text)
         txt_color = (0, 0, 0) if np.mean(_COLORS[cls_id]) > 0.5 else (255, 255, 255)
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -86,7 +88,7 @@ def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
                       txt_bk_color, -1)
         cv2.putText(img, text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
 
-    return img
+    return img, res_line[:-2]
 
 
 def nms(boxes, box_confidences, iou_thres, conf_thres):
@@ -286,8 +288,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Inference Keras Yolo3 network.')
     parser.add_argument("--model", type=str, required=True, help="Model definition file")
     parser.add_argument("--net_input_dims", type=str, default="416,416", help="(h,w) of net input")
-    parser.add_argument("--input", type=str, required=True, help="Input image for testing")
-    parser.add_argument("--output", type=str, required=True, help="Output image after detection")
+    parser.add_argument("--input", type=str, required=True, help="Input image or dir for testing")
+    parser.add_argument("--output", type=str, required=True, help="Output image or dir after detection")
     parser.add_argument("--conf_thres", type=float, default=0.001, help="Confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="NMS IOU threshold")
     parser.add_argument("--score_thres", type=float, default=0.6, help="Score of the result")
@@ -299,55 +301,82 @@ def main():
     args = parse_args()
     input_shape = tuple(map(int, args.net_input_dims.split(',')))
 
-    origin_image = Image.open(args.input)
-    image_data = preprocess(origin_image, input_shape)
-
-    image_size = np.array([origin_image.size[1], origin_image.size[0]],
-                          dtype=np.float32).reshape(1, 2)
-    data = {"input_1": image_data, "image_shape": image_size}  # input name from model
-
-    output = dict()
-    if args.model.endswith('.onnx'):
-        output = onnx_inference(data, args.model, False)
-        all_boxes, scores, indices = None, None, None
-        for out in output.values():
-            if out.shape[-1] == 4:
-                all_boxes = out
-            elif out.shape[1] == 80:
-                scores = out
-            else:
-                indices = out
-        boxes, confidences, categories = [], [], []
-        for idx_ in indices[0]:
-            idx_ = tuple(map(int, idx_))
-            categories.append(idx_[1])
-            confidences.append(scores[idx_])
-            idx_1 = (idx_[0], idx_[2])
-            y0, x0, y1, x1 = all_boxes[idx_1]
-            boxes.append([x0, y0, x1, y1])
+    image_datas, file_list = [], []
+    if Path(args.input).is_file():
+        origin_image = Image.open(args.input)
+        image_data = preprocess(origin_image, input_shape)
+        image_datas.append(image_data)
+        file_list.append(args.input)
     else:
-        if args.model.endswith('.mlir'):
-            output = mlir_inference(data, args.model, False)
-        elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
-            output = model_inference(data, args.model)
+        dir_or_files = os.listdir(args.input)
+        for dir_file in dir_or_files:
+            dir_file_path = os.path.join(args.input,dir_file)
+            ext_name = os.path.splitext(dir_file)[-1]
+            if not os.path.isdir(dir_file_path) and ext_name in ['.jpg','.png','.jpeg','.bmp','.JPEG','.JPG','.BMP']:
+                file_list.append(dir_file_path)
+                origin_image = Image.open(dir_file_path)
+                image_data = preprocess(origin_image, input_shape)
+                image_datas.append(image_data)
+
+    fname = args.model
+    fname = fname.split('/')[-1]
+    file = open(f'{fname}_image_dir_result', 'w')
+    for file_name, image_data in zip(file_list, image_datas):
+        image_size = np.array([origin_image.size[1], origin_image.size[0]],
+                            dtype=np.float32).reshape(1, 2)
+        data = {"input_1": image_data, "image_shape": image_size}  # input name from model
+
+        output = dict()
+        if args.model.endswith('.onnx'):
+            output = onnx_inference(data, args.model, False)
+            all_boxes, scores, indices = None, None, None
+            for out in output.values():
+                if out.shape[-1] == 4:
+                    all_boxes = out
+                elif out.shape[1] == 80:
+                    scores = out
+                else:
+                    indices = out
+            boxes, confidences, categories = [], [], []
+            for idx_ in indices[0]:
+                idx_ = tuple(map(int, idx_))
+                categories.append(idx_[1])
+                confidences.append(scores[idx_])
+                idx_1 = (idx_[0], idx_[2])
+                y0, x0, y1, x1 = all_boxes[idx_1]
+                boxes.append([x0, y0, x1, y1])
         else:
-            raise RuntimeError("not support modle file:{}".format(args.model))
-        if args.model.endswith(".cvimodel"):
-            output = refine_cvi_output(output)
-        boxes, categories, confidences = postprocess(output, input_shape, origin_image.size,
-                                                     args.score_thres, args.iou_thres,
-                                                     args.conf_thres)
-    image = cv2.imread(args.input)
-    if boxes is not None:
-        fix_img = vis(image,
-                      boxes,
-                      confidences,
-                      categories,
-                      conf=args.score_thres,
-                      class_names=COCO_CLASSES)
-        cv2.imwrite(args.output, fix_img)
-    else:
-        raise RuntimeError("model:[{}] nothing detect out:{}".format(args.model, args.input))
+            if args.model.endswith('.mlir'):
+                output = mlir_inference(data, args.model, False)
+            elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
+                output = model_inference(data, args.model)
+            else:
+                raise RuntimeError("not support modle file:{}".format(args.model))
+            if args.model.endswith(".cvimodel"):
+                output = refine_cvi_output(output)
+
+            boxes, categories, confidences = postprocess(output, input_shape, origin_image.size,
+                                                        args.score_thres, args.iou_thres,
+                                                        args.conf_thres)
+        image = cv2.imread(file_name)
+        res_line = ''
+        tmpstr = file_name.split('/')[-1].replace(' ', '_')
+        if boxes is not None:
+            fix_img, res_line = vis(image,
+                        boxes,
+                        confidences,
+                        categories,
+                        conf=args.score_thres,
+                        class_names=COCO_CLASSES)
+            if Path(args.output).is_file():
+                output_file = args.output
+            else:
+                output_file = os.path.join(args.output, f'{tmpstr}_res')
+            cv2.imwrite(output_file, fix_img)
+        if len(boxes) == 0:
+            print('No object was detected')
+        file.write(tmpstr +': '+res_line + '\n')
+    file.close()
 
 
 if __name__ == '__main__':
