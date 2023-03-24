@@ -132,8 +132,8 @@ public:
       }
       attrs.emplace_back(
           builder.getNamedAttr("sign", builder.getBoolAttr(sign)));
-      auto cali_type = quant::CalibratedQuantizedType::get(
-          builder.getF32Type(), min, max);
+      auto cali_type =
+          quant::CalibratedQuantizedType::get(builder.getF32Type(), min, max);
       auto type = RankedTensorType::get({n, c, h, w}, cali_type);
       auto newOp = builder.create<top::PreprocessOp>(
           loc, type, ArrayRef<Value>{currentOut}, attrs);
