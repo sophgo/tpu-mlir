@@ -85,6 +85,7 @@ typedef struct {
   double relu_limit;
   bool left_transpose;
   bool right_transpose;
+  bool output_transpose;
   bool hdim_is_batch;
   int64_t input_zp;
   int64_t right_zp;
