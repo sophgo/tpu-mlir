@@ -1248,6 +1248,12 @@ class MLIRImporter(object):
         }
         return self.buildOp(Top.RoiAlignOp, operands, [output_type], **param)
 
+    def create_channel_shuffle_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name'],'group': IntegerAttr.get(self.mlir_type['INT64'], kargs["group"])}
+        return self.buildOp(Top.ShuffleChannelOp, operands, [output_type], **param)
+
     def create_silu_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = self.get_tensor_type(output_shape)
