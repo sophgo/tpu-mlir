@@ -49,6 +49,7 @@ class TORCH_IR_TESTER(object):
             "AvgPool3d":        (self.test_AvgPool3d,         Y, N, N),
             "BatchNorm":        (self.test_BatchNorm,         Y, N, N),
             "BMM":              (self.test_BatchMatMul,       Y, N, N),
+            "ChannelShuffle":   (self.test_ChannelShuffle,   Y, N, N),
             "Chunk":            (self.test_Chunk,             Y, N, N),
             "Compare":          (self.test_Compare,           Y, N, N),
             "Concat":           (self.test_Concat,            Y, N, N),
@@ -1092,6 +1093,22 @@ class TORCH_IR_TESTER(object):
 
         in_shape = (512, 1024)
         self.trace_and_test([in_shape], Model())
+
+    #######################################################################
+    # ChannelShuffle
+    # ------------
+    def test_ChannelShuffle(self):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.channel_shuffle = nn.ChannelShuffle(2)
+
+            def forward(self, x):
+                x = self.channel_shuffle(x)
+                return x
+        self.trace_and_test([(1, 4, 100, 100)], Model())
 
     #######################################################################
     # Where

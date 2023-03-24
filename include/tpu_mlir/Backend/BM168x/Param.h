@@ -1073,6 +1073,11 @@ typedef struct {
   int updates_dims;
 } scatter_nd_global_param_t;
 
+typedef struct {
+  int group;
+}
+shuffle_channel_param_t;
+
 typedef struct strideslice_common_spec {
   int begin_mask;
   int end_mask;

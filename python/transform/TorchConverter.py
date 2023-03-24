@@ -201,6 +201,7 @@ class TorchConverter(BaseConverter):
             "aten::sinh": lambda node: self.convert_math_op(node, "sinh"),
             "aten::silu": lambda node: self.convert_silu_op(node),
             "aten::slice": lambda node: self.convert_slice_op(node),
+            "aten::channel_shuffle": lambda node: self.convert_channel_shuffle_op(node),
             "aten::softmax": lambda node: self.convert_softmax_op(node),
             "aten::softplus": lambda node: self.convert_softplus_op(node),
             "aten::squeeze": lambda node: self.convert_squeeze_op(node),
@@ -1052,6 +1053,15 @@ class TorchConverter(BaseConverter):
     def convert_silu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
         new_op = self.mlir.create_silu_op([op], [], **{'name': torch_node.name})
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_channel_shuffle_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        p = {
+            'name': torch_node.name,
+            'group': self.const_val[torch_node.inputs[1]],
+        }
+        new_op = self.mlir.create_channel_shuffle_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_softmax_op(self, torch_node: TorchNode, log: bool = False):
