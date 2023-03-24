@@ -20,17 +20,6 @@ void PermuteLowering::LoweringINT8(PatternRewriter &rewriter, top::PermuteOp op,
 
 void PermuteLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::PermuteOp op) const {
-  auto out = op.getOutput();
-  if (module::isCalibratedType(out)) {
-    //For fuse-preprocess(image transpose, (n,h,w,c)->(n,c,h,w)) use, it should be lowered to uint8.
-    auto qtype = module::getCalibratedType(out);
-    auto max = qtype.getMax();
-    auto min = qtype.getMin();
-    if (min == 0 && max == 255) {
-      lowering_common_int8<tpu::PermuteOp>(rewriter, op, false, 2);
-      return;
-    }
-  }
   lowering_common_bf16<tpu::PermuteOp>(rewriter, op, 2);
 }
 
