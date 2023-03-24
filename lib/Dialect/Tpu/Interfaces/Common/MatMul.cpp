@@ -34,9 +34,12 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
   p.right_zp = getRightZp();
   p.right_transpose = getRightTranspose();
   p.left_transpose = getLeftTranspose();
+  p.output_transpose = getOutputTranspose();
   p.hdim_is_batch = getHdimIsBatch();
+  auto a_dims = a_s.size();
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();
+  p.batch = 1;
   p.batch_low = 1;
   if (b_dims == 1) {
     assert(p.right_transpose == false);
@@ -48,17 +51,12 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
   // for hdim_is_batch = true,
   // BM1684x: (B0, M, B1, K) x (B0, K, B1, N) = (B0, M, B1, N)
   // CV18xx:  (B0, B1, M, K) x (B0, K, B1, N) = (B0, B1, M, N)
+  // up to now bm168x right_trans, left_trans, output_trans always be true
+  //           cv18xx support either one to be true
   if (p.right_transpose) {
-    if (getHdimIsBatch()) {
-      // trans ch
-      if (module::isCV18xx()) {
-        p.K = b_s[b_dims - 3];
-        p.N = b_s[b_dims - 1];
-      } else {
-        p.K = b_s[b_dims - 1];
-        p.N = b_s[b_dims - 3];
-      }
-      p.batch_low = b_s[b_dims - 2];
+    if (p.hdim_is_batch) {
+      p.K = b_s[b_dims - 3];
+      p.N = b_s[b_dims - 1];
     } else {
       // trans hw
       p.N = b_s[b_dims - 2];
@@ -68,21 +66,39 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
     p.N = b_s[b_dims - 1];
     p.K = b_s[b_dims - 2];
   }
-  assert(p.N == o_s[o_dims - 1]);
 
-  if (!module::isCV18xx() && p.hdim_is_batch) {
-    p.M = o_s[o_dims - 3];
-    p.batch = o_s[0];
-  } else {
-    p.batch = 1;
-    for (int i = 0; i < b_dims - 2; i++) {
-      p.batch *= o_s[i];
+  if (p.left_transpose) {
+    if (p.hdim_is_batch) {
+      p.M = a_s[a_dims - 3];
+    } else {
+      // trans hw
+      p.M = a_s[a_dims - 1];
+      for (int i = 0; i < a_dims - 2; i++) {
+        p.batch *= a_s[i];
+      }
     }
+  } else {
+    p.M = a_s[a_dims - 2];
+  }
+  // parse batch info from output
+  for (int i = 0; i < o_dims - 2; i++) {
+    p.batch *= o_s[i];
+  }
+  if (p.hdim_is_batch) {
+    p.batch = o_s[0];
+    if (!p.output_transpose && module::isCV18xx()) {
+      p.batch_low = o_s[1];
+    } else {
+      p.batch_low = o_s[2];
+      p.output_transpose = true; // tmp code remove later
+    }
+  }
+  if (!p.hdim_is_batch) {
+    // if right batch dim is broadcast, merge left batch to M
     int right_batch = 1;
     for (int i = 0; i < b_dims - 2; i++) {
       right_batch *= b_s[i];
     }
-    // if right batch dim is broadcast, merge left batch to M
     if (right_batch != p.batch && right_batch == 1) {
       p.batch = 1;
     }
@@ -100,8 +116,9 @@ LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
   auto a = parseParam();
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
-                a.M, a.K, a.N, a.do_relu, a.relu_limit, a.right_zp,
-                a.right_transpose, a.input_zp, getHdimIsBatch(), a.batch_low);
+                a.batch_low, a.M, a.K, a.N, a.do_relu, a.relu_limit, a.right_zp,
+                a.input_zp, a.right_transpose, a.left_transpose,
+                a.output_transpose, a.hdim_is_batch);
   p.handle = (void *)matmul;
   return success();
 }
@@ -135,20 +152,21 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     auto qmode = getQuantMode();
     if (is_cv18xx) {
       auto a = parseParam();
+      auto full_batch = a.batch * a.batch_low;
       bool is_fc = isa<top::WeightOp>(getRight().getDefiningOp());
       i64_array_t rshift_v;
       i64_array_t multiplier_v;
       if (is_fc) {
-        rshift_v = module::getI64Array(getRshifts(), a.batch, 0);
-        multiplier_v = module::getI64Array(getMultipliers(), a.batch, 1);
+        rshift_v = module::getI64Array(getRshifts(), full_batch, 0);
+        multiplier_v = module::getI64Array(getMultipliers(), full_batch, 1);
       } else {
         rshift_v = module::getI64Array(getRshifts(), 1, 0);
         multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
-        rshift_v->resize(a.batch, rshift_v->at(0));
-        multiplier_v->resize(a.batch, multiplier_v->at(0));
+        rshift_v->resize(full_batch, rshift_v->at(0));
+        multiplier_v->resize(full_batch, multiplier_v->at(0));
       }
       int64_t isz = a.M * a.N;
-      for (int64_t i = 0; i < a.batch; ++i) {
+      for (int64_t i = 0; i < full_batch; ++i) {
 #pragma omp parallel for schedule(static, omp_schedule(isz))
         for (int64_t j = 0; j < isz; ++j) {
           int64_t offset = i * isz + j;

@@ -195,7 +195,8 @@ class ONNX_IR_TESTER(object):
             "GaToSlice":        (self.test_GaToSlice,       Y, N, Y),
             "Mul2Scale":        (self.test_Mul2Scale,       Y, N, Y),
             "MatMulTranspose":  (self.test_MatMulTranspose, Y, N, Y),
-            "MatMulTranspose2":  (self.test_MatMulTranspose2, N, N, Y),
+            "MatMulTranspose2":  (self.test_MatMulTranspose2, Y, N, Y),
+            "MatMulTranspose3":  (self.test_MatMulTranspose3, Y, N, Y),
             "PadConv1d":        (self.test_PadConv1d,       N, N, Y),
             "PadConv2d":        (self.test_PadConv2d,       Y, N, Y),
             "PadConv3d":        (self.test_PadConv3d,       N, N, N),
@@ -2664,6 +2665,22 @@ class ONNX_IR_TESTER(object):
                 return b
 
         x = torch.randn(10, 10, 49, 32).float()
+        y = torch.randn(10, 32, 10, 49).float()
+        self.torch_and_test((x, y), Model(), case_name)
+
+    def test_MatMulTranspose3(self, case_name):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y):
+                a = torch.transpose(x, 2, 1)
+                a1 = torch.transpose(y, 2, 1)
+                b = torch.matmul(a, a1)
+                return torch.transpose(b, 2, 1)
+        x = torch.randn(10, 49, 10, 32).float()
         y = torch.randn(10, 32, 10, 49).float()
         self.torch_and_test((x, y), Model(), case_name)
 
