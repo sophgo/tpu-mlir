@@ -202,5 +202,7 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_float2int8_local_keep_input);
   CAST_FUNCTION(tensor_int8_to_float_local_v2);
   CAST_FUNCTION(get_broadcast_binary_buffer_size);
+  CAST_FUNCTION(nodechip_group_norm);
+  CAST_FUNCTION(nodechip_group_norm_local);
   // clang-format on
 }
