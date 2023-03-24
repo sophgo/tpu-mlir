@@ -1345,21 +1345,6 @@ def Tpu_StridedSliceOp: Tpu_Op<"StridedSlice"> {
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_SplitOp: Tpu_Op<"Split"> {
-  let summary = "Split operator";
-
-  let description = [{
-    Split input tensor into a list of tensors.
-  }];
-
-  let arguments = (
-    ins AnyRankedTensor:$input,
-    SI32Attr:$axis,
-    I64Attr:$num
-  );
-  let results = (outs Variadic<AnyRankedTensor>:$outputs);
-}
-
 def Tpu_TopKOp:Tpu_Op<"TopK"> {
   let summary = "TopK operation";
   let description = [{

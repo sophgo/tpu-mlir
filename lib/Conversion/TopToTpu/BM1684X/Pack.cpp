@@ -55,9 +55,6 @@ void PackLowering::LoweringQuantized(PatternRewriter &rewriter,
 
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("axis", op.getAxisAttr()));
-  attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
-  attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
-
   rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, op.getOutput().getType(),
                                              operands, attrs);
 }

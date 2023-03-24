@@ -11,8 +11,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::UnpackOp::getFLOPs() { return 0; }
 
 LogicalResult top::UnpackOp::init(InferenceParameter &p) { return success(); }
@@ -20,8 +18,8 @@ void top::UnpackOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::UnpackOp::inference(InferenceParameter &p) {
   auto axis_ = getAxis();
-  auto num_ = getNum();
   auto in_shape = module::getShape(getInput());
+  auto num_ = in_shape[axis_];
 
   int64_t high = 1, inner = 1;
   for (int64_t i = 0; i < axis_; ++i)
@@ -42,8 +40,7 @@ LogicalResult top::UnpackOp::inference(InferenceParameter &p) {
   for (int i = 0; i < high; ++i) {
     int64_t index = i * in_shape[axis_] * inner;
     for (int j = 0; j < num_; ++j) {
-      memcpy(p.outputs[j] + i * inner,
-             p.inputs[0] + index + j * inner,
+      memcpy(p.outputs[j] + i * inner, p.inputs[0] + index + j * inner,
              inner * sizeof(float));
     }
   }

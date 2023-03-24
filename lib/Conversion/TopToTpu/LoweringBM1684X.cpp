@@ -77,7 +77,6 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       StridedSliceLowering,
       ReduceLowering,
       PackLowering,
-      UnpackLowering,
       SubLowering,
       SqrtLowering,
       SwapDimInnerLowering,

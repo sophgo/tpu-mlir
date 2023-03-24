@@ -252,7 +252,7 @@ def Top_ConcatOp: Top_Op<"Concat", [SupportFuseRelu]> {
   let hasCanonicalizer = 1;
 }
 
-def Top_PackOp: Top_Op<"Pack", [SupportFuseRelu]> {
+def Top_PackOp: Top_Op<"Pack"> {
   let summary = "Pack operator";
 
   let description = [{
@@ -263,16 +263,14 @@ def Top_PackOp: Top_Op<"Pack", [SupportFuseRelu]> {
   let arguments = (
     ins Variadic<AnyTensor>:$inputs,
     SI32Attr:$axis,
-    I64Attr:$values_count,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    I64Attr:$values_count
   );
 
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
 }
 
-def Top_UnpackOp: Top_Op<"Unpack", [SupportFuseRelu]> {
+def Top_UnpackOp: Top_Op<"Unpack"> {
   let summary = "Unpack operator";
 
   let description = [{
@@ -281,14 +279,11 @@ def Top_UnpackOp: Top_Op<"Unpack", [SupportFuseRelu]> {
 
   let arguments = (
     ins AnyTensor:$input,
-    I64Attr:$axis,
-    I64Attr:$num,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    SI32Attr:$axis
   );
 
   let results = (outs Variadic<AnyTensor>:$outputs);
-  // let hasCanonicalizer = 1;
+  let hasCanonicalizer = 1;
 }
 
 def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
