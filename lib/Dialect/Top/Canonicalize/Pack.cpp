@@ -66,10 +66,6 @@ struct PackMatmulPattern : public OpRewritePattern<PackOp> {
     rewriter.setInsertionPointAfter(op);
     auto none = module::getNoneOp(op);
     std::vector<NamedAttribute> attrs;
-    if (op.getDoRelu()) {
-      attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
-      attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
-    }
     auto batchMatMul = rewriter.create<MatMulOp>(
         op.getLoc(), op.getOutput().getType(),
         ValueRange{l_split.getInput(), r_split.getInput(), none}, attrs);
