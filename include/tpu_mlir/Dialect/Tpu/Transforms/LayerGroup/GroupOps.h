@@ -69,7 +69,8 @@ protected:
   int64_t MAX_ID_;
 
   // used for group overlap
-  ValueIntMap overlap_ops_;
+  ValueIntMap self_up_overlap_ops_;
+  ValueIntMap self_down_overlap_ops_;
   std::vector<Operation*> groups_;
 };
 

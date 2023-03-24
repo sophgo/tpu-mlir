@@ -66,7 +66,7 @@ up_overlap_depth(BasicTimeStepPtr &up_time_step,
             std::make_pair(iter->second.addr, iter->second.size));
       }
     } else {
-      // whether to consider the mem bufer or not
+      // whether to consider the mem buffer or not
       Value tensor = iter->first.value;
       auto &up_ts_tensors = up_time_step->getTensors(start_ts);
       bool consider = true;
@@ -513,9 +513,9 @@ static void assign_up_to_down_overlap_timestep(
 
 static bool connect_neuron_overlap_valid(Value tensor,
                                          const BasicTimeStepPtr &up_time_step,
-                                         const shape_secs_t up_secs,
+                                         const shape_secs_t &up_secs,
                                          const BasicTimeStepPtr &down_time_step,
-                                         const shape_secs_t down_secs,
+                                         const shape_secs_t &down_secs,
                                          bool dynamic_compile) {
   bool valid = false;
   if (dynamic_compile) {
