@@ -20,8 +20,6 @@
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicNetIr.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 #include <llvm/Support/Debug.h>
@@ -208,7 +206,8 @@ CodegenPass::CreateShapeVector(const ArrayRef<int64_t> &shape) {
 
 Offset<Vector<Offset<bmodel::Tensor>>>
 CodegenPass::CreateTensorVector(const std::vector<Value> &values,
-                                std::vector<bool> is_cpu, std::vector<uint32_t> cpu_addr) {
+                                std::vector<bool> is_cpu,
+                                std::vector<uint32_t> cpu_addr) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   int index = 0;
@@ -271,7 +270,7 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values,
     }
     tb.add_device_addr(module::getAddress(v));
     tb.add_size(Arch::get_gmem_bytes(v));
-    if(!cpu_addr.empty())
+    if (!cpu_addr.empty())
       tb.add_cpu_addr(cpu_addr[index]);
     tensor_v.push_back(tb.Finish());
     ++index;
@@ -595,7 +594,7 @@ void CodegenPass::codegen(Operation *op) {
   } else if (module::isOpInGroup(op)) {
     return;
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    std::string prefix = op->getName().getStringRef().str();
+    std::string prefix = op->getName().getStringRef().str().substr(4);
     auto pid_node = (CMD_ID_NODE *)BM168x::instance()->cmdid_node;
     BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
     LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(op) << "'\n");
@@ -613,10 +612,11 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
     if (first) {
       first = false;
       auto prevs = op->getOperands();
-      if(!prevs.empty()){
+      if (!prevs.empty()) {
         for (auto prev : prevs) {
           if (prev.getDefiningOp() != nullptr) {
-            input_is_cpu.push_back(isa<tpu::GenericCpuOp>(prev.getDefiningOp()));
+            input_is_cpu.push_back(
+                isa<tpu::GenericCpuOp>(prev.getDefiningOp()));
           } else {
             input_is_cpu.push_back(false);
           }
@@ -688,18 +688,18 @@ Offset<bmodel::SubNet> CodegenPass::CreateCPUSubNet(func::CallOp call) {
   std::vector<uint32_t> out_cpu_addr = {};
   uint32_t cpu_addr = 0;
   in_cpu_addr.push_back(0);
-  if(inputs.size() > 1) {
-    for(int i = 1; i<inputs.size();++i) {
+  if (inputs.size() > 1) {
+    for (int i = 1; i < inputs.size(); ++i) {
       // cpu input is always float
-      cpu_addr += module::getNumElements(inputs[i-1]) * sizeof(float);
+      cpu_addr += module::getNumElements(inputs[i - 1]) * sizeof(float);
       in_cpu_addr.push_back(cpu_addr);
     }
   }
-  cpu_addr += module::getNumElements(inputs[inputs.size()-1]) * sizeof(float);
+  cpu_addr += module::getNumElements(inputs[inputs.size() - 1]) * sizeof(float);
   out_cpu_addr.push_back(cpu_addr);
-  if(outputs.size() > 1) {
-    for(int i = 1; i<outputs.size();++i) {
-      cpu_addr += module::getNumElements(outputs[i-1]) * sizeof(float);
+  if (outputs.size() > 1) {
+    for (int i = 1; i < outputs.size(); ++i) {
+      cpu_addr += module::getNumElements(outputs[i - 1]) * sizeof(float);
       out_cpu_addr.push_back(cpu_addr);
     }
   }
@@ -859,7 +859,6 @@ CodegenPass::CreateStageIRVector(const vector<stage_param_t> &stage_param_v,
   u8 *buffer = (u8 *)binary_ir_v.data();
   binary_ir = model_gen->WriteBinary(ir_size, buffer + ir_offset);
   return stage_ir;
-
 }
 } // namespace tpu
 } // namespace tpu_mlir
