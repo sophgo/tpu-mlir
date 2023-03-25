@@ -100,6 +100,7 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_upsample_mask_forward);
   CAST_FUNCTION(nodechip_multiregion_forward_parallel);
   CAST_FUNCTION(nodechip_deconv_forward_parallel_with_data_split);
+  CAST_FUNCTION(nodechip_deconv_forward_parallel_with_data_split_v2);
   CAST_FUNCTION(nodechip_deconv_fix16b_forward_parallel);
   CAST_FUNCTION(nodechip_deconv_fix8b_forward_parallel);
   CAST_FUNCTION(nodechip_conv_forward_parallel_with_data_split);
