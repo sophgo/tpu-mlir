@@ -52,8 +52,8 @@ static void set_group_type(LgInfo &lg_info) {
     }
   }
 
-  if (module::isCV18xx()) {
-    // cv18xx only support GROUP_NORMAL
+  if (module::isCV18xx() || module::isBM1684Family()) {
+    //cv18xx only support GROUP_NORMAL
     lg_info.type = GROUP_NORMAL;
     return;
   }

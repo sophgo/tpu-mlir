@@ -11,22 +11,12 @@
 namespace tpu_mlir{
 namespace bm1684 {
 
+// 1684's sigmoid nodechip will cover input, so here save input firstly.
+// sigmoid's nodechip can be found nodechip_local_func_v2.c:316
 void SiLULowering::LoweringF32(PatternRewriter &rewriter, top::SiLUOp op) const {
-    // SiLU = x * sigmoid(x)
-    auto o_name = module::getName(op.getOutput());
-    std::vector<NamedAttribute> attrs;
-    // sigmoid(x)
-    auto sigmoid_loc = NameLoc::get(rewriter.getStringAttr(o_name.str() + "_sigmoid"));
-    auto sigmoid_op = rewriter.create<tpu::ActiveOp>(sigmoid_loc,
-                        op.getOutput().getType(), ValueRange{op.getInput()}, attrs);
-    auto sigmoid_op_ = sigmoid_op.getOperation();
-    sigmoid_op_ ->setAttr("mode", tpu::ActiveModeAttr::get(sigmoid_op.getContext(), tpu::ActiveMode::SIGMOID));
-    // x
-    attrs.clear();
-    auto mul_op = rewriter.create<tpu::MulOp>(op.getLoc() ,
-                    op.getOutput().getType(), ValueRange{op.getInput(), sigmoid_op.getOutput()}, attrs);
-    op.replaceAllUsesWith(mul_op.getOperation());
-    op.erase();
+    auto op_ = op.getOperation();
+    op_ ->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SILU));
+    lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
 void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op, bool asymmetric) const {
