@@ -150,6 +150,7 @@ class ONNX_IR_TESTER(object):
             "Transpose2":   (self.test_Transpose2,  Y, N, Y),
             "TopK":         (self.test_TopK,        Y, N, N),
             "Where":        (self.test_Where,       Y, N, Y),
+            "Deconv":        (self.test_Deconv,       N, Y, N),
             #####################################
             # Torch Test Case, Alphabetically
             #####################################
@@ -1932,6 +1933,20 @@ class ONNX_IR_TESTER(object):
                 return y
 
         x = torch.randn(4, 8, 60, 80).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_Deconv(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.deconv = nn.ConvTranspose2d( in_channels=64,out_channels=64,kernel_size=2,stride=2,padding=0,output_padding=0,groups=1,bias=False,dilation=1)
+            def forward(self, x):
+                y = self.deconv(x)
+                return y
+
+        x = torch.randn(3,64,184,320).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_Slice3(self, case_name):

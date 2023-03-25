@@ -21,6 +21,41 @@
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684;
 
+void deconv_weight_transform(int ic, int oc, int kh, int kw,
+                           const void *weight_orig, const void *weight_trans,
+                           int type_bytes) {
+  int trans_offset;
+  int hw = kw* kh;
+  for (int oc_idx = 0; oc_idx < oc; oc_idx++) {
+    for (int ic_idx = 0; ic_idx < ic; ic_idx++) {
+      for(int k_idx=0; k_idx< hw; k_idx++) {
+        int orig_offset = ic_idx *oc * hw  + k_idx + oc_idx * hw;
+        orig_offset = oc_idx*ic*hw  + ic_idx*hw  + k_idx;
+        switch (type_bytes) {
+        case 4:
+          trans_offset = oc_idx*align_up(ic,2)*hw + ic_idx/2*hw*2 + k_idx*2 + ic_idx%2;
+          *((float *)weight_trans + trans_offset) =
+              *((float *)weight_orig + orig_offset);
+          break;
+        // case 1:
+        //   trans_offset = ic_idx + k_idx * align_up(ic, 4) +
+        //                  oc_idx * kh * kw * align_up(ic, 4);
+        //   *((char *)weight_trans + trans_offset) =
+        //       *((char *)weight_orig + orig_offset);
+        //   break;
+        // case 2:
+        //   trans_offset = ic_idx + k_idx * ic + oc_idx * kh * kw * ic;
+        //   *((short *)weight_trans + trans_offset) =
+        //       *((short *)weight_orig + orig_offset);
+        //   break;
+        default:
+          llvm_unreachable("wrong conv weight data type");
+        }
+      }
+    }
+  }
+}
+
 template <>
 LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
@@ -54,8 +89,96 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   return success();
 }
 
+template <>
+LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
+    tpu::DeconvOp op, PatternRewriter &rewriter) const {
+  if (!module::getStorageType(op.getFilter()).isF32())
+    return failure();
+  auto attr = op.parseParam();
+  auto type_bytes = 4;
+  auto out_type = module::getStorageType(op.getOutput());
+  // filter reorder
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
+  auto weight_data = filterOp.read_as_byte();
+  if (attr.is_dw == false) {
+    std::vector<int64_t> new_shape = {1, attr.oc * attr.g, align_up(attr.ic, 2l)/2,
+                        attr.kh * attr.kw *2};
+    int new_count =
+        align_up(attr.ic, 2l) * attr.oc * attr.g * attr.kh * attr.kw;
+    auto filter_new = std::make_shared<std::vector<float>>(new_count, 0);
+    deconv_weight_transform( attr.ic, attr.oc * attr.g,attr.kh, attr.kw,
+                          weight_data->data(), filter_new->data(), type_bytes);
+    auto new_type = RankedTensorType::get(new_shape, out_type);
+    auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
+                                            "reorderd", *filter_new, new_type);
+    op->setOperand(1, new_filter);
+
+  } else {
+    int64_t filter_shape[4];
+    filter_shape[0] = 1;
+    filter_shape[1] = attr.oc * attr.g;
+    filter_shape[2] = align_up(attr.ic, 2l)/2 ;
+    filter_shape[3] = attr.kh * attr.kw *2;
+    auto new_type = RankedTensorType::get(filter_shape, out_type);
+    op.getFilter().setType(new_type);
+
+
+  }
+  // bias op
+  if (attr.with_bias) {
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    auto bias_type = module::getStorageType(op.getBias());
+    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+    auto new_type = RankedTensorType::get(bias_shape, bias_type);
+    op.getBias().setType(new_type);
+  }
+  return success();
+}
+
 void tpu::DeconvOp::codegen_global_bm1684() {
-  llvm_unreachable("Not Implemented");
+  auto attr = parseParam();
+  auto in_addr = module::getAddress(getInput());
+  auto out_addr = module::getAddress(getOutput());
+  auto filter_addr = module::getAddress(getFilter());
+  auto bias_addr = module::getAddress(getBias());
+
+  if (attr.is_dw) {
+      BM1684::instance().dl_nodechip_depthwise_forward_parallel(
+          in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic, attr.ih,
+          attr.iw, attr.kh, attr.kw, attr.pad_h, attr.pad_h_after, attr.pad_w, attr.pad_w_after,
+          attr.sh, attr.sw, attr.dh, attr.dw, attr.with_bias ? 1 : 0,
+          attr.do_relu ? 1 : 0, attr.relu_limit,
+          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+    } else {
+      BM1684::instance().dl_nodechip_deconv_forward_parallel_with_data_split_v2(
+            in_addr,
+            out_addr,
+            filter_addr,
+            bias_addr,
+            attr.n,
+            attr.ic,
+            attr.ih,
+            attr.iw,
+            attr.g,
+            attr.oc,
+            attr.kh,
+            attr.kw,
+            attr.dh,
+            attr.dw,
+            attr.pad_h,
+            attr.pad_h_after,
+            attr.pad_w,
+            attr.pad_w_after,
+            attr.sh,
+            attr.sw,
+            attr.output_pad_h,attr.output_pad_w,
+            attr.with_bias ? 1 : 0,
+            0,
+            attr.do_relu ? 1 : 0,
+            1,
+            1,
+            (CMD_ID_NODE *)BM1684::instance().cmdid_node
+            );}
 }
 
 int64_t tpu::DeconvOp::getBufferSize_bm1684(
@@ -66,5 +189,44 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684(
 }
 
 void tpu::DeconvOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
-  llvm_unreachable("Not Implemented");
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto f_gi = LocalGenInterface::getGroupInfo(getFilter());
+  auto b_gi = LocalGenInterface::getGroupInfo(getBias());
+  auto gi = getGroupInfo(n_step, h_step);
+  auto p = parseParam();
+  int bottom_dim[4] = {(int)in_gi.n_slice, (int)p.ic, (int)in_gi.h_slice,
+                       (int)p.iw};
+  int top_dim[4] = {(int)gi.n_slice, (int)p.oc, (int)gi.h_slice, (int)p.ow};
+  int kh_ext = (p.kh - 1) * p.dh + 1;
+  if (auto deconv_in_slice = DeconvSlice(gi.h_idx, gi.h_slice, p.sh, kh_ext,
+                                         p.ih, p.pad_h)) {
+    p.pad_h = deconv_in_slice.value()[0];
+    p.pad_h_after = deconv_in_slice.value()[1];
+  } else {
+    p.pad_h = p.kh - p.pad_h - 1;
+    p.pad_h_after = p.kh - p.pad_h_after - 1 + p.output_pad_h;
+  }
+  p.pad_w = p.kw - p.pad_w - 1;
+  p.pad_w_after = p.kw - p.pad_w_after - 1 + p.output_pad_w;
+  BM1684::instance().dl_nodechip_deconv_forward_local(
+      in_gi.out_addr,
+      f_gi.out_addr,
+      b_gi.out_addr,
+      gi.out_addr,
+      bottom_dim, top_dim,
+      p.g,
+      p.kh,
+      p.kw,
+      p.dh,
+      p.dw,
+      p.pad_h,
+      p.pad_h_after,
+      p.pad_w,
+      p.pad_w_after,
+      p.sh-1,p.sw-1,
+      p.with_bias,
+      0,
+      p.do_relu ? 1 : 0,
+      (CMD_ID_NODE *)BM1684::instance().bdc_node
+    );
 }
