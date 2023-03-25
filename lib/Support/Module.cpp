@@ -564,7 +564,7 @@ void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
               int64_t &w, group_type_t group_type) {
   auto shape = v.getType().cast<RankedTensorType>().getShape();
   int num_dims = shape.size();
-  if (GROUP_3D == group_type && isBM1684XFamily()) {
+  if (GROUP_3D == group_type) {
     n = num_dims > 0 ? shape[0] : 1;
     c = num_dims > 1 ? shape[1] : 1;
     d = num_dims > 2 ? shape[2] : 1;
