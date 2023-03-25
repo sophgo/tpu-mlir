@@ -21,23 +21,35 @@ struct PackMatmulPattern : public OpRewritePattern<PackOp> {
 
   LogicalResult matchAndRewrite(PackOp op,
                                 PatternRewriter &rewriter) const override {
-    Operation *l_split_op = nullptr;
-    Operation *r_split_op = nullptr;
     if (!op->hasOneUse()) {
       return failure();
     }
+    Value l_in = nullptr;
+    Value r_in = nullptr;
     for (auto in : op.getInputs()) {
       auto matmul = dyn_cast<MatMulOp>(in.getDefiningOp());
       if (!matmul || !matmul->hasOneUse()) {
         return failure();
       }
-      auto the_split_op = matmul.getInput().getDefiningOp();
-      auto split = dyn_cast<SplitOp>(the_split_op);
-      if (!split) {
+      auto the_slice_op = matmul.getInput().getDefiningOp();
+      auto slice = dyn_cast<SliceOp>(the_slice_op);
+      if (!slice || !slice->hasOneUse()) {
         return failure();
-      } else if (l_split_op == nullptr) {
-        l_split_op = the_split_op;
-      } else if (l_split_op != the_split_op) {
+      } else {
+        auto steps = module::getI64Array(slice.getSteps());
+        auto step_ = std::accumulate(steps->begin(), steps->end(), 1,
+                                     std::multiplies<int64_t>());
+        if (step_ != 1) {
+          return failure();
+        }
+        auto shape = module::getShape(slice.getOutput());
+        if (shape[0] != 1) {
+          return failure();
+        }
+      }
+      if (l_in == nullptr) {
+        l_in = slice.getInput();
+      } else if (l_in != slice.getInput()) {
         return failure();
       }
       auto permute = dyn_cast<PermuteOp>(matmul.getRight().getDefiningOp());
@@ -48,27 +60,37 @@ struct PackMatmulPattern : public OpRewritePattern<PackOp> {
       if (!reshape || !reshape->hasOneUse()) {
         return failure();
       }
-      the_split_op = reshape.getInput().getDefiningOp();
-      split = dyn_cast<SplitOp>(the_split_op);
-      if (!split) {
+      the_slice_op = reshape.getInput().getDefiningOp();
+      slice = dyn_cast<SliceOp>(the_slice_op);
+      if (!slice || !slice->hasOneUse()) {
         return failure();
-      } else if (r_split_op == nullptr) {
-        r_split_op = the_split_op;
-      } else if (r_split_op != the_split_op) {
+      } else {
+        auto steps = module::getI64Array(slice.getSteps());
+        auto step_ = std::accumulate(steps->begin(), steps->end(), 1,
+                                     std::multiplies<int64_t>());
+        if (step_ != 1) {
+          return failure();
+        }
+        auto shape = module::getShape(slice.getOutput());
+        if (shape[0] != 1) {
+          return failure();
+        }
+      }
+      if (r_in == nullptr) {
+        r_in = slice.getInput();
+      } else if (r_in != slice.getInput()) {
         return failure();
       }
     }
-    if (!l_split_op || !r_split_op) {
+    if (r_in == nullptr || l_in == nullptr) {
       return failure();
     }
-    auto l_split = cast<SplitOp>(l_split_op);
-    auto r_split = cast<SplitOp>(r_split_op);
     rewriter.setInsertionPointAfter(op);
     auto none = module::getNoneOp(op);
     std::vector<NamedAttribute> attrs;
-    auto batchMatMul = rewriter.create<MatMulOp>(
-        op.getLoc(), op.getOutput().getType(),
-        ValueRange{l_split.getInput(), r_split.getInput(), none}, attrs);
+    auto batchMatMul =
+        rewriter.create<MatMulOp>(op.getLoc(), op.getOutput().getType(),
+                                  ValueRange{l_in, r_in, none}, attrs);
     op.replaceAllUsesWith(batchMatMul.getOperation());
     rewriter.eraseOp(op);
     return success();
