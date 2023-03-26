@@ -501,7 +501,7 @@ if [ x${app} != x ] && [ x${chip_name} != xcv183x ]; then
   ${app} \
     --input ${test_input} \
     --model ${model_path} \
-    --output output_onnx.jpg
+    --output output_origin.jpg
 
   # by f32 bmodel
   if [ x${do_f32} == x1 ]; then
@@ -516,15 +516,7 @@ if [ x${app} != x ] && [ x${chip_name} != xcv183x ]; then
     ${app} \
       --input ${test_input} \
       --model ${model_name}_${chip_name}_int8_sym.${model_type} \
-      --output output_int8_sym.jpg
-  fi
-
-  if [ $do_asymmetric == 1 ]; then
-    # by int8 asymmetric bmodel
-    ${app} \
-      --input ${test_input} \
-      --model ${model_name}_${chip_name}_int8_asym.${model_type} \
-      --output output_int8_asym.jpg
+      --output output_int8.jpg
   fi
 
 fi

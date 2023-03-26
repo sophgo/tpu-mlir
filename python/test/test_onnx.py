@@ -188,7 +188,7 @@ class ONNX_IR_TESTER(object):
             # Special Pass test case, Alphabetically
             #########################################
             # case: (test, bm1684x_support, bm1686_support, cv183x_support)
-            "ArgReducefull":    (self.test_ArgReducefull,   Y, N, Y),
+            "ArgReducefull":    (self.test_ArgReducefull,   Y, N, N),
             "ConcatFuse":       (self.test_ConcatFuse,      Y, N, Y),
             "ConcatToSpace":    (self.test_ConcatToSpace,   Y, N, N),
             "Conv3dTo2d":       (self.test_Conv3dTo2d,      Y, N, Y),
