@@ -29,7 +29,11 @@ class TORCH_IR_TESTER(object):
     CURRENT_CASE = ""
 
     # This class is built for testing single operator transform.
-    def __init__(self, chip: str = "bm1684x", mode: str = "all", simple: bool = False):
+    def __init__(self,
+                 chip: str = "bm1684x",
+                 mode: str = "all",
+                 simple: bool = False,
+                 disable_thread: bool = False):
         Y, N = True, False
         # yapf: disable
         self.test_cases = {
@@ -107,6 +111,7 @@ class TORCH_IR_TESTER(object):
         self.is_cv18xx = False
         self.chip = chip.lower()
         self.simple = simple
+        self.multithread = not disable_thread
         if self.simple:
             self.support_quant_modes = ["f16"]
             self.support_asym = [False]
@@ -660,6 +665,7 @@ class TORCH_IR_TESTER(object):
                 a, b, c = torch.chunk(x, 3, -1)
                 d = a * b + c
                 return d
+
         class Model1(torch.nn.Module):
 
             def __init__(self):
@@ -1108,6 +1114,7 @@ class TORCH_IR_TESTER(object):
             def forward(self, x):
                 x = self.channel_shuffle(x)
                 return x
+
         self.trace_and_test([(1, 4, 100, 100)], Model())
 
     #######################################################################
@@ -1205,7 +1212,6 @@ class TORCH_IR_TESTER(object):
 
         self.trace_and_test([(16, 32, 8)], Model0())
         self.trace_and_test([(16, 9, 8)], Model1())
-
 
     #######################################################################
     # Squeeze
@@ -1768,32 +1774,34 @@ def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cas
 
 
 def test_all(tester: TORCH_IR_TESTER):
-    import multiprocessing
-    process_number = multiprocessing.cpu_count() // 2 + 1
-    processes = []
-    error_cases = multiprocessing.Manager().list()
-    success_cases = multiprocessing.Manager().list()
-    for case in tester.test_cases:
-        if tester.check_support(case):
-            p = multiprocessing.Process(target=test_one_case_in_all,
-                                        args=(tester, case, error_cases, success_cases))
-            processes.append(p)
-        if len(processes) == process_number:
+    if tester.multithread:
+        import multiprocessing
+        process_number = multiprocessing.cpu_count() // 2 + 1
+        processes = []
+        error_cases = multiprocessing.Manager().list()
+        success_cases = multiprocessing.Manager().list()
+        for case in tester.test_cases:
+            if tester.check_support(case):
+                p = multiprocessing.Process(target=test_one_case_in_all,
+                                            args=(tester, case, error_cases, success_cases))
+                processes.append(p)
+            if len(processes) == process_number:
+                for p in processes:
+                    p.start()
+                for j in processes:
+                    j.join()
+                processes = []
+        if processes:
             for p in processes:
                 p.start()
             for j in processes:
                 j.join()
-            processes = []
-    if processes:
-        for p in processes:
-            p.start()
-        for j in processes:
-            j.join()
-    # error_cases = []
-    # success_cases = []
-    # for case in tester.test_cases:
-    #     if tester.check_support(case):
-    #         test_one_case_in_all(tester, case, error_cases, success_cases)
+    else:
+        error_cases = []
+        success_cases = []
+        for case in tester.test_cases:
+            if tester.check_support(case):
+                test_one_case_in_all(tester, case, error_cases, success_cases)
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
     if error_cases:
@@ -1813,10 +1821,11 @@ if __name__ == "__main__":
                         help="chip platform name")
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
+    parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     # yapf: enable
     args = parser.parse_args()
-    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple)
+    tester = TORCH_IR_TESTER(args.chip, args.mode, args.simple, args.disable_thread)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:

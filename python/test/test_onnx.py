@@ -22,7 +22,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import onnxruntime
-import multiprocessing
 
 
 class ONNX_IR_TESTER(object):
@@ -31,7 +30,8 @@ class ONNX_IR_TESTER(object):
                  chip: str = "bm1684x",
                  mode: str = "all",
                  dynamic: bool = True,
-                 simple: bool = False):
+                 simple: bool = False,
+                 disable_thread: bool = False):
         Y, N = True, False
         # yapf: disable
         self.test_cases = {
@@ -233,6 +233,7 @@ class ONNX_IR_TESTER(object):
         self.chip = chip.lower()
         self.dynamic = dynamic
         self.simple = simple
+        self.multithread = not disable_thread
         if self.simple:
             self.support_quant_modes = ["f16", "int8"]
             self.support_asym = [False]
@@ -4405,26 +4406,34 @@ def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_case
 
 
 def test_all(tester: ONNX_IR_TESTER):
-    process_number = multiprocessing.cpu_count() // 2 + 1
-    processes = []
-    error_cases = multiprocessing.Manager().list()
-    success_cases = multiprocessing.Manager().list()
-    for case in tester.test_cases:
-        if tester.check_support(case):
-            p = multiprocessing.Process(target=test_one_case_in_all,
-                                        args=(tester, case, error_cases, success_cases))
-            processes.append(p)
-        if len(processes) == process_number:
+    if tester.multithread:
+        import multiprocessing
+        process_number = multiprocessing.cpu_count() // 2 + 1
+        processes = []
+        error_cases = multiprocessing.Manager().list()
+        success_cases = multiprocessing.Manager().list()
+        for case in tester.test_cases:
+            if tester.check_support(case):
+                p = multiprocessing.Process(target=test_one_case_in_all,
+                                            args=(tester, case, error_cases, success_cases))
+                processes.append(p)
+            if len(processes) == process_number:
+                for p in processes:
+                    p.start()
+                for j in processes:
+                    j.join()
+                processes = []
+        if processes:
             for p in processes:
                 p.start()
             for j in processes:
                 j.join()
-            processes = []
-    if processes:
-        for p in processes:
-            p.start()
-        for j in processes:
-            j.join()
+    else:
+        error_cases = []
+        success_cases = []
+        for case in tester.test_cases:
+            if tester.check_support(case):
+                test_one_case_in_all(tester, case, error_cases, success_cases)
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
     if error_cases:
@@ -4446,10 +4455,11 @@ if __name__ == "__main__":
     parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
+    parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     # yapf: enable
     args = parser.parse_args()
-    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple)
+    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
