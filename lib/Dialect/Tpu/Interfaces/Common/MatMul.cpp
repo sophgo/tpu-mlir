@@ -36,6 +36,7 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
   p.left_transpose = getLeftTranspose();
   p.output_transpose = getOutputTranspose();
   p.hdim_is_batch = getHdimIsBatch();
+  p.left_reuse = getLeftReuse();
   auto a_dims = a_s.size();
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();

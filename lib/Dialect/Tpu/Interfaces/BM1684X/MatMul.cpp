@@ -307,6 +307,7 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   common.R_trans = p.right_transpose;
   common.has_bias = p.with_bias;
   common.hdim_is_batch = p.hdim_is_batch;
+  common.left_reuse = p.left_reuse;
   common.requant_mode = -1;
   if (module::isUniformQuantized(getInput())) {
     common.R_zp_is_const = true;
