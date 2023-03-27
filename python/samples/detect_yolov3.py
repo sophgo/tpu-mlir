@@ -368,12 +368,12 @@ def main():
                         categories,
                         conf=args.score_thres,
                         class_names=COCO_CLASSES)
-            if Path(args.output).is_file():
+            if Path(args.input).is_file():
                 output_file = args.output
             else:
                 output_file = os.path.join(args.output, f'{tmpstr}_res')
             cv2.imwrite(output_file, fix_img)
-        if len(boxes) == 0:
+        else:
             print('No object was detected')
         file.write(tmpstr +': '+res_line + '\n')
     file.close()

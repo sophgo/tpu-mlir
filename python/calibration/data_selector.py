@@ -72,8 +72,8 @@ class DataSelector:
             name = str(file)
             if self.is_npz(name) or self.is_npy(name) or self.is_image(name):
                 full_list.append(name)
-        # avoid different result by same command
-        random.seed(777)
+        full_list = sorted(full_list)
+        random.seed(1684)
         random.shuffle(full_list)
         num = num if len(full_list) > num else len(full_list)
         if num == 0:
