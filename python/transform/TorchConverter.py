@@ -561,6 +561,7 @@ class TorchConverter(BaseConverter):
             self.const_val[name] = data
         elif data is None:
             self.addOperand(name, self.mlir.none_op)
+        #    self.const_val[name] = None
         else:
             self.addWeight(name, data)
 
@@ -707,17 +708,22 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.name, new_op)
 
     def convert_transpose_op(self, torch_node: TorchNode):
+        import mlir.dialects.top as top
+        output = self.mlir.get_tensor_type([])
         op = self.getOp(torch_node.inputs[0])
         no_dims = len(torch_node.inputs) == 1
         dim0 = self.const_val[torch_node.inputs[1]] if not no_dims else 0
         dim1 = self.const_val[torch_node.inputs[2]] if not no_dims else 1
-        p = {
-            'name': torch_node.name,
-            'dim0': dim0,
-            'dim1': dim1,
-        }
-        new_op = self.mlir.create_transpose_op([op], [], **p)
-        self.addOperand(torch_node.name, new_op)
+        new_op = top.TransposeOp(output, op, dim0, dim1,
+            loc=Location.fused([Location.name(torch_node.name)], context=self.mlir.ctx),
+            ip=self.mlir.insert_point)
+        # p = {
+        #     'name': torch_node.name,
+        #     'dim0': dim0,
+        #     'dim1': dim1,
+        # }
+        # new_op = self.mlir.create_transpose_op([op], [], **p)
+        self.addOperand(torch_node.name, new_op.output)
 
     def convert_index_select_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
