@@ -843,6 +843,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     DefaultValuedAttr<I64Attr, "0">:$right_zp,
     DefaultValuedAttr<I64Attr, "0">:$input_zp,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
+    DefaultValuedAttr<I64Attr, "1">:$left_reuse,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 

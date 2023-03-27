@@ -218,6 +218,20 @@ static void _3D_group_post_transform(const LgInfo &lg_info) {
   }
 }
 /// The pass of group post transform
+
+static void matmul_left_reuse_setting(const LgInfo &lg_info) {
+  for (auto op : lg_info.group_ops) {
+    if (isa<tpu::MatMulOp>(op)) {
+      auto malmul_op = dyn_cast<tpu::MatMulOp>(op);
+      auto in_op = malmul_op.getInput().getDefiningOp();
+      if (in_op->hasOneUse()) {
+        malmul_op.setLeftReuse(0);
+      } else {
+        malmul_op.setLeftReuse(1);
+      }
+    }
+  }
+}
 class GroupPostTransformPass : public LgPass {
 public:
   GroupPostTransformPass() {}
@@ -225,6 +239,7 @@ public:
     if (module::isBM1684XFamily()) {
       for (size_t i = 0; i < pass_ir->lg_infos.size(); ++i) {
         _3D_group_post_transform(pass_ir->lg_infos[i]);
+        matmul_left_reuse_setting(pass_ir->lg_infos[i]);
       }
     }
     return true;

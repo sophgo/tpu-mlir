@@ -983,6 +983,7 @@ typedef struct batch_matmul_common_spec {
   int shift_val;
   int offset_val;
   int round_mode;
+  int left_reuse;
 } batch_matmul_common_spec_t;
 
 typedef struct batch_matmul_global_spec {

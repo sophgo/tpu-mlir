@@ -89,6 +89,7 @@ typedef struct {
   bool hdim_is_batch;
   int64_t input_zp;
   int64_t right_zp;
+  int64_t left_reuse;
 } matmul_attr_t;
 
 typedef struct {
