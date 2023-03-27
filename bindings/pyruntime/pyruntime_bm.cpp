@@ -147,11 +147,6 @@ struct PythonNet {
 
   std::vector<std::vector<size_t>>
   forward_dynamic(std::vector<std::vector<size_t>> dyn_input_shapes) {
-    // auto ret = bmrt_launch_data(
-    //     p_bmrt, name.c_str(), input_datas.data(), dyn_input_shapes.data(),
-    //     num_input, output_datas.data(), dyn_output_shapes.data(), num_output,
-    //     true);
-    // assert(true == ret);
     auto input_shapes_ = input_shapes;
     auto output_shapes_ = output_shapes;
     auto num_inputs = input_shapes.size();

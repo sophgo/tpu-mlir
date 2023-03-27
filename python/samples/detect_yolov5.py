@@ -272,7 +272,6 @@ def parse_args():
     parser.add_argument("--net_input_dims", type=str, default="640,640", help="(h,w) of net input")
     parser.add_argument("--input", type=str, required=True, help="Input image for testing")
     parser.add_argument("--output", type=str, required=True, help="Output image after detection")
-    parser.add_argument("--input_names", type=str, default="images", help="Input name for testing")
     parser.add_argument("--conf_thres", type=float, default=0.001, help="Confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.6, help="NMS IOU threshold")
     parser.add_argument("--score_thres", type=float, default=0.5, help="Score of the result")
@@ -304,7 +303,7 @@ def main():
     img = np.expand_dims(img, axis=0)
     if (not fuse_pre):
         img /= 255.  # 0 - 255 to 0.0 - 1.0
-    data = {args.input_names: img}  # input name from model
+    data = {"data": img}  # input name from model
     output = dict()
     if args.model.endswith('.onnx'):
         output = onnx_inference(data, args.model, False)
