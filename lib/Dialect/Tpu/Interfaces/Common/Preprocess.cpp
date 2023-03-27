@@ -322,7 +322,7 @@ private:
     auto newOp = rewriter.create<tpu::ScaleLutOp>(
         loc, type, ArrayRef<Value>{opd, none}, attrs);
 
-    if (!this->sign) {
+    if (!this->sign && !module::isCV18xx) {
       std::vector<uint8_t> table(table_size, 0);
       auto table_type =
           RankedTensorType::get(table_shape, rewriter.getIntegerType(8, false));
