@@ -73,12 +73,13 @@ void cvi_backend_tl_crop(uint32_t layer_id, int64_t *input_dim,
     p.layer_id = layer_id;
     CV18xx::tiu_copy(&p);
   } else {
-    CV18xx::parallel_disable();
     cvk_tdma_l2l_tensor_copy_param_t p1 = {0};
     p1.dst = &tl_output;
     p1.src = &tl_input;
     p1.layer_id = layer_id;
+    CV18xx::parallel_disable();
     CV18xx::tdma_l2l_tensor_copy(&p1);
+    CV18xx::parallel_enable();
   }
 }
 

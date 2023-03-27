@@ -560,7 +560,7 @@ int64_t CV18xx::lmem_woring_size(std::vector<int64_t> shape, int count,
   assert(shape.size() == 4);
   if (eu_align) {
     return count * shape[0] * ceiling_func(shape[1], NPU_NUM) *
-           ALIGN(shape[2] * shape[3], EU_BYTES) * bytesize_of_fmt(fmt);
+           ALIGN(shape[2] * shape[3] * bytesize_of_fmt(fmt), EU_BYTES) ;
   } else {
     return count * shape[0] * ceiling_func(shape[1], NPU_NUM) * shape[2] *
            shape[3] * bytesize_of_fmt(fmt);

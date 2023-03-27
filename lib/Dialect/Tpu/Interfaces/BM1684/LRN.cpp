@@ -16,7 +16,7 @@
 using namespace tpu_mlir::backend;
 
 void tpu::LRNOp::codegen_global_bm1684() {
-  
+
   auto in_addr = module::getAddress(getInput());
   auto out_addr = module::getAddress(getOutput());
   int64_t n, c, h, w;
@@ -33,4 +33,17 @@ void tpu::LRNOp::codegen_global_bm1684() {
       getBeta().convertToDouble(), getBias().convertToDouble(), 1, 1,
       (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
+}
+
+int64_t tpu::LRNOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
+                                          int64_t out_lmem_bytes,
+                                          int64_t in_nslice, int64_t in_hslice,
+                                          int64_t out_nslice,
+                                          int64_t out_hslice) {
+  llvm_unreachable("not supported now");
+  return 0;
+}
+
+void tpu::LRNOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
+  llvm_unreachable("Not Implemented");
 }
