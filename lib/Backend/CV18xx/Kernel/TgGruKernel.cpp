@@ -136,7 +136,7 @@ void TgGruKernel::sigmoid(const cvk_ml_t &ml_out, const cvk_ml_t &ml_in,
       layer_id, ml_in.start_address, ml_out.start_address,
       ml_buff.start_address, addr_sigmoid, addr_sigmoid_slope,
       -1 * SIGMOID_BF16_LUT_RANGE, SIGMOID_BF16_LUT_RANGE, ml_in.shape.n,
-      ml_in.shape.c, 1, ml_in.shape.w);
+      ml_in.shape.c, 1, ml_in.shape.w, false);
 }
 void TgGruKernel::tanh(const cvk_ml_t &ml_out, const cvk_ml_t &ml_in,
                        const cvk_ml_t &ml_buff) {
@@ -144,7 +144,7 @@ void TgGruKernel::tanh(const cvk_ml_t &ml_out, const cvk_ml_t &ml_in,
       layer_id, ml_in.start_address, ml_out.start_address,
       ml_buff.start_address, addr_tanh, addr_tanh_slope,
       -1 * TANH_BF16_LUT_RANGE, TANH_BF16_LUT_RANGE, ml_in.shape.n,
-      ml_in.shape.c, 1, ml_in.shape.w);
+      ml_in.shape.c, 1, ml_in.shape.w, false);
 }
 
 void TgGruKernel::assign_matrix(cvk_ml_t *ml_mem, const cvk_ml_shape_t &shape) {

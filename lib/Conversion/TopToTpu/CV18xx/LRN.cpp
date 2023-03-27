@@ -11,7 +11,6 @@
 #define DEBUG_TYPE "lowering-lrn"
 namespace tpu_mlir {
 namespace cv18xx {
-static double active_log(double val) { return std::log(val); }
 
 void LRNLowering::LoweringINT8(PatternRewriter &rewriter, top::LRNOp op,
                                bool asymmetric) const {

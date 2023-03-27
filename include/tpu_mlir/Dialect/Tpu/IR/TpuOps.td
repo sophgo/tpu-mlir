@@ -1444,7 +1444,9 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_LRNOp: Tpu_Op<"LRN", [InOutSameShape]> {
+def Tpu_LRNOp: Tpu_Op<"LRN", [
+  InOutSameShape,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "Local Response Normalization";
 
   let description = [{

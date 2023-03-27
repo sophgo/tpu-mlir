@@ -23,6 +23,7 @@ ConvertArgmaxOp::matchAndRewrite(top::ArgOp op,
   if (axis == shape.size() -1) {
     return failure();
   }
+  assert(axis < shape.size());
 
   std::vector<int64_t> order(shape.size());
   std::iota(order.begin(), order.end(), 0);

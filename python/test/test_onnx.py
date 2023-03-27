@@ -2019,7 +2019,7 @@ class ONNX_IR_TESTER(object):
               graph_def = helper.make_graph([arg_max], "{}_{}".format(case_name, keep),
                                           [input], [output1])
               self.onnx_and_test(graph_def)
-              return
+              continue
 
             output2 = helper.make_tensor_value_info('o_min', TensorProto.INT64, output_shape)
             arg_min = helper.make_node(

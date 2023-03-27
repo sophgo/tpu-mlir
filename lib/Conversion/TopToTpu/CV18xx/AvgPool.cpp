@@ -95,7 +95,7 @@ static void splitPool(PatternRewriter &rewriter, Operation *op,
 
   std::vector<NamedAttribute> concat_attrs;
   concat_attrs.emplace_back(
-      rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(2)));
+      rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(2)));
   int h_slices_num = h_slices.size();
   std::vector<int64_t> multilpier_arr(h_slices_num, 1);
   std::vector<int64_t> rshifts_arr(h_slices_num, 0);

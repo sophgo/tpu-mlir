@@ -18,11 +18,10 @@
 namespace tpu_mlir {
 namespace backend {
 // axis = 1
-void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c,
-                                        int input_size, int *output_dim,
-                                        laddr_t *la_input, laddr_t la_output,
-                                        bool do_relu, int32_t *r_i8,
-                                        int32_t *m_i8, cvk_fmt_t fmt) {
+void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c, int input_size,
+                           int *output_dim, laddr_t *la_input,
+                           laddr_t la_output, bool do_relu, int32_t *r_i8,
+                           int32_t *m_i8, cvk_fmt_t fmt) {
 
   LLVM_DEBUG(llvm::errs() << llvm::format("cvi_backend_tl_concat:\n"
                                           "  layer_id %d, fmt %d\n",
@@ -35,10 +34,9 @@ void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c,
 
   LLVM_DEBUG(llvm::errs() << llvm::format("la_output:%d\n", la_output));
 
-  CV18xx::parallel_disable();
-
   uint32_t out_csize_local =
-      ALIGN(output_dim[2] * output_dim[3] * CV18xx::bytesize_of_fmt(fmt), CV18xx::EU_BYTES);
+      ALIGN(output_dim[2] * output_dim[3] * CV18xx::bytesize_of_fmt(fmt),
+            CV18xx::EU_BYTES);
   uint32_t n = output_dim[0];
   uint32_t oc = output_dim[1];
   uint32_t h = output_dim[2];
@@ -47,8 +45,8 @@ void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c,
   uint32_t concat_c = 0;
   for (int i = 0; i < input_size; i++) {
     uint32_t out_offset = (concat_c / CV18xx::NPU_NUM) * out_csize_local;
-    uint32_t out_addr =
-        (concat_c % CV18xx::NPU_NUM) * CV18xx::LMEM_BYTES + la_output + out_offset;
+    uint32_t out_addr = (concat_c % CV18xx::NPU_NUM) * CV18xx::LMEM_BYTES +
+                        la_output + out_offset;
     int16_t multiplier = 1;
     if (m_i8 != nullptr && m_i8[i] != 0) {
       multiplier = static_cast<int16_t>(m_i8[i]);
@@ -80,7 +78,9 @@ void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c,
     cvk_tdma_l2l_tensor_copy_param_t p10 = {0};
     p10.dst = &tl_output;
     p10.src = &tl_input;
+    CV18xx::parallel_disable();
     CV18xx::tdma_l2l_tensor_copy(&p10);
+    CV18xx::parallel_enable();
 
     if (do_quant) {
       tl_input.start_address = out_addr;
@@ -104,7 +104,8 @@ void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c,
       int align_up_c = align_up(tl_output.shape.c, step);
       int slice_nr = align_up_c / step;
       uint32_t in_csize_local =
-          ALIGN(shape.h * shape.w * CV18xx::bytesize_of_fmt(fmt), CV18xx::EU_BYTES) *
+          ALIGN(shape.h * shape.w * CV18xx::bytesize_of_fmt(fmt),
+                CV18xx::EU_BYTES) *
           (step / CV18xx::NPU_NUM);
       for (int s = 0; s < slice_nr; s++) {
         cvk_tl_t _tl_output = {};
@@ -112,7 +113,8 @@ void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c,
         _tl_output.fmt = fmt;
         _tl_output.shape = shape;
         _tl_output.shape.c = std::min(tl_output.shape.c - s * step, step);
-        _tl_output.stride = CV18xx::tl_default_stride(shape, fmt, /*eu_aling=*/1);
+        _tl_output.stride =
+            CV18xx::tl_default_stride(shape, fmt, /*eu_aling=*/1);
         p.res_low = &_tl_output;
         p.a = &_tl_output;
         CV18xx::tiu_mul(&p);

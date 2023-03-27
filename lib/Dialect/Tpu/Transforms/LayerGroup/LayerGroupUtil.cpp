@@ -678,6 +678,8 @@ bool need_bcast(Value opd) {
     return opd == cast_op.getTable();
   } else if (auto cast_op = dyn_cast<tpu::LutBF16Op>(use_op)) {
     return opd == cast_op.getTable() || opd == cast_op.getMantissa();
+  } else if (auto cast_op = dyn_cast<tpu::LRNOp>(use_op)) {
+    return opd == cast_op.getTable() || opd == cast_op.getMantissa();
   } else if (auto cast_op = dyn_cast<tpu::LayerNormOp>(use_op)) {
     return module::isCV18xx() && isa<top::WeightOp>(opd.getDefiningOp());
   } else {
