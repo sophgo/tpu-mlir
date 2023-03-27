@@ -15,7 +15,7 @@ CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工�
 本项目的技术细节可以参考：[TPU-MLIR开发参考手册](https://tpumlir.org/docs/developer_manual/index.html)。
 同时也有论文，介绍整体的设计思路：<https://arxiv.org/abs/2210.15016>
 
-目前该工程支持BM1684X，后面会陆续支持BM1684、CV183x、CV182x、Mars等等芯片。
+目前该工程直接支持的AI框架包括PyTorch、ONNX、TFLite和Caffe，其他框架模型需要转成ONNX。
 
 # 编译工程
 
@@ -40,28 +40,6 @@ docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev
 cd tpu-mlir
 source ./envsetup.sh
 ./build.sh
-```
-
-# 代码验证
-
-``` shell
-# 本工程包含yolov5s.onnx模型，可以直接用来验证
-pushd regression
-./run_model.sh yolov5s
-popd
-```
-
-**以下可选：**
-
-如果要验证更多网络，需要克隆其他模型，参考<https://github.com/sophgo/model-zoo>
-
-克隆后模型路径对应为`/workspace/model-zoo`，然后如下命令验证：
-
-``` shell
-# 执行时间很长，该步骤也可以跳过
-pushd regression
-./run_all.sh
-popd
 ```
 
 # 使用方法
@@ -109,8 +87,7 @@ model_transform.py \
     --output_names 350,498,646 \
     --test_input ../image/dog.jpg \
     --test_result yolov5s_top_outputs.npz \
-    --mlir yolov5s.mlir \
-    --post_handle_type yolo
+    --mlir yolov5s.mlir
 ```
 
 `model_transform.py`支持的参数如下:
@@ -118,9 +95,9 @@ model_transform.py \
 | **参数名**           | 必选？ | **说明**            |
 | ------------------- | ----- | ------------------- |
 | model_name          | 是    | 指定模型名称          |
-| model_def           | 是    | 指定模型定义文件，比如`.onnx`或`.tflite`或`.prototxt`文件 |
+| model_def           | 是    | 指定模型定义文件，比如`.onnx`或`.pt`或`.tflite`或`.prototxt`文件 |
 | model_data          | 否    | 指定模型权重文件，caffe模型需要，对应`.caffemodel`文件 |
-| input_shapes        | 否    | 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况 |
+| input_shapes        | 否    | 指定输入的shape，例如`[[1,3,640,640]]`；二维数组，可以支持多输入情况 |
 | resize_dims         | 否    | 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸 |
 | keep_aspect_ratio   | 否    | 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0 |
 | mean                | 否    | 图像每个通道的均值，默认为0.0,0.0,0.0                    |
@@ -130,24 +107,24 @@ model_transform.py \
 | test_input          | 否    | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
 | test_result         | 否    | 指定验证后的输出文件                                         |
 | excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开                      |
+| debug | 否 | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
 | mlir                | 是    | 指定输出的mlir文件路径                                       |
-| post_handle_type    | 否    | 将后处理融合到模型中，指定后处理类型， 比如yolo、ssd            |
 
 转成mlir文件后，会生成一个`${model_name}_in_f32.npz`文件，该文件是模型的输入文件。它是通过对图片输入进行预处理后得到的数据。
 
 
-## MLIR转F32模型
+## MLIR转F16模型
 
-将mlir文件转换成f32的bmodel，操作方法如下：
+将mlir文件转换成f16的bmodel，操作方法如下：
 
 ``` shell
 model_deploy.py \
   --mlir yolov5s.mlir \
-  --quantize F32 \
+  --quantize F16 \
   --chip bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
-  --model yolov5s_1684x_f32.bmodel
+  --model yolov5s_1684x_f16.bmodel
 ```
 
 model_deploy.py的相关参数说明如下：
@@ -161,6 +138,7 @@ model_deploy.py的相关参数说明如下：
 | tolerance           | 否    | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
 | correctnetss        | 否    | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
 | excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开 |
+| debug | 否 | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
 | model               | 是    | 指定输出的model文件路径                                  |
 
 
@@ -191,23 +169,10 @@ model_deploy.py \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --tolerance 0.85,0.45 \
-  --model yolov5s_1684x_int8_sym.bmodel
+  --model yolov5s_1684x_int8.bmodel
 ```
 
-转成INT8非对称量化模型，执行如下命令：
 
-``` shell
-model_deploy.py \
-  --mlir yolov5s.mlir \
-  --quantize INT8 \
-  --asymmetric \
-  --calibration_table yolov5s_cali_table \
-  --chip bm1684x \
-  --test_input yolov5s_in_f32.npz \
-  --test_reference yolov5s_top_outputs.npz \
-  --tolerance 0.90,0.55 \
-  --model yolov5s_1684x_int8_asym.bmodel
-```
 
 ## 效果对比
 
@@ -223,16 +188,14 @@ detect_yolov5.py \
 ```
 
 
-
-f32 bmodel的执行方式如下，得到`dog_f32.jpg`：
+f16 bmodel的执行方式如下，得到`dog_f16.jpg`：
 
 ``` shell
 detect_yolov5.py \
   --input ../image/dog.jpg \
-  --model yolov5s_1684x_f32.bmodel \
-  --output dog_f32.jpg
+  --model yolov5s_1684x_f16.bmodel \
+  --output dog_f16.jpg
 ```
-
 
 
 int8 **对称**bmodel的执行方式如下，得到dog_int8_sym.jpg：
@@ -240,26 +203,14 @@ int8 **对称**bmodel的执行方式如下，得到dog_int8_sym.jpg：
 ``` shell
 detect_yolov5.py \
   --input ../image/dog.jpg \
-  --model yolov5s_1684x_int8_sym.bmodel \
-  --output dog_int8_sym.jpg
+  --model yolov5s_1684x_int8.bmodel \
+  --output dog_int8.jpg
 ```
 
-
-
-int8 **非对称**bmodel的执行方式如下，得到dog_int8_asym.jpg：
-
-``` shell
-detect_yolov5.py \
-  --input ../image/dog.jpg \
-  --model yolov5s_1684x_int8_asym.bmodel \
-  --output dog_int8_asym.jpg
-```
-
-
-
-四张图片对比如下：
+三张图片对比如下：
 
 ![](./docs/quick_start/assets/yolov5s.png)
+
 
 
 # 辅助工具
@@ -294,3 +245,11 @@ model_runner.py \
 ``` shell
 model_tool --info resnet18_1684x_f32.bmodel
 ```
+
+
+
+# 相关链接
+
+* [官方网站](https://tpumlir.org)
+* [问答平台](https://ask.tpumlir.org)
+* [教学视频](https://space.bilibili.com/1829795304/channel/collectiondetail?sid=734875)

@@ -16,8 +16,8 @@ TPU-MLIR的整体架构如下:
    TPU-MLIR的整体架构
 
 
-目前直接支持的框架有ONNX、TFLite和Caffe。其他框架的模型需要转换成onnx模型。如何将其他深
-度学习架构的网络模型转换成onnx, 可以参考onnx官网:
+目前直接支持的框架有PyTorch、ONNX、TFLite和Caffe。其他框架的模型需要转换成ONNX模型。如何将其他深
+度学习架构的网络模型转换成ONNX, 可以参考ONNX官网:
 https://github.com/onnx/tutorials。
 
 转模型需要在指定的docker执行, 主要分两步, 一是通过 ``model_transform.py`` 将原始模型
