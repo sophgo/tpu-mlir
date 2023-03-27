@@ -122,6 +122,7 @@ def cosine_sim(x, y):
 
 
 class SimpleTuner:
+
     def __init__(self, args, ds: DataSelector, ppa_list, abs_max_dict):
         self.args = copy.deepcopy(args)
         self.start_time = time.time()
@@ -132,7 +133,7 @@ class SimpleTuner:
         self.ppa_list = ppa_list
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
         if self.debug_cmd:
-            print('debug_cmd:',self.debug_cmd)
+            print('debug_cmd:', self.debug_cmd)
         if 'input_calibration_table' in self.debug_cmd:
             self.threshold_table = CalibrationTable(self.debug_cmd['input_calibration_table'] +
                                                     ".1")
@@ -203,7 +204,7 @@ class SimpleTuner:
                         x = self.ppa_list[i].run(batched_inputs[i][:-1])
                         name = self.ppa_list[i].input_name
                         self.dq_activations[tune_idx][name] = [x, inp_ref_dict[name]]
-                        self.ref_activations[tune_idx][name] = [x, inp_ref_dict[name]]                        
+                        self.ref_activations[tune_idx][name] = [x, inp_ref_dict[name]]
                 if idx == self.batch_size:
                     idx = 0
                     batched_inputs = self.input_num * ['']
@@ -371,7 +372,7 @@ class SimpleTuner:
             self.print_dbg('waring, threshold > abs_max, do not tune the threshold')
         th_min = threshold
         if 'find_lower_th' in self.debug_cmd:
-            th_min = threshold/3
+            th_min = threshold / 3
         #print(f'tuned_op:{tuned_op}, th_min:{th_min}, abs_max:{abs_max}')
         best_threshold = threshold
         best_cos_sim = 0
@@ -395,9 +396,9 @@ class SimpleTuner:
                     th_min = best_threshold - step
                     th_max = best_threshold + step
                     diff = abs(th_max - th_min)
-                    times = self.tune_steps//2
+                    times = self.tune_steps // 2
                     step = (th_max - th_min) / times
-                    ranges = range(times+1)[1:-1]
+                    ranges = range(times + 1)[1:-1]
                     #print(f'find_lower_th enable,tuned_op:{tuned_op},best_threshold:{best_threshold},step:{step},th_min:{th_min},th_max:{th_max}, times:{times}')
                 for i in ranges:
                     cur_threshold = th_min + step * i
@@ -406,12 +407,12 @@ class SimpleTuner:
                         return False
                     if prev_distance == -1:
                         self.print_dbg("### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, threshold:"
-                                    "{:5f}, distance: {}".format(i, op_no, tuned_op, cur_threshold,
-                                                                    cur_distance))
+                                       "{:5f}, distance: {}".format(i, op_no, tuned_op,
+                                                                    cur_threshold, cur_distance))
                         prev_distance = cur_distance
                         init_cos_sim = cur_cos_sim
                         continue
-                    elif cur_distance < prev_distance: # and cur_cos_sim > best_cos_sim:
+                    elif cur_distance < prev_distance:  # and cur_cos_sim > best_cos_sim:
                         # self.print_dbg(
                         #     "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, find a better threshold:"
                         #     "{:5f}".format(i, op_no, tuned_op,cur_threshold))
@@ -420,9 +421,9 @@ class SimpleTuner:
                         # print(f'tuned_op:{tuned_op}, find best_threshold:{best_threshold}')
                         best_cos_sim = cur_cos_sim
                     # else:
-                        # self.print_dbg(
-                        #     "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, not a better threshold:"
-                        #     "{:5f}".format(i, op_no, tuned_op,cur_threshold))
+                    # self.print_dbg(
+                    #     "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, not a better threshold:"
+                    #     "{:5f}".format(i, op_no, tuned_op,cur_threshold))
 
         for idx in range(self.args.tune_num):
             if 'not_use_fp32_tensor_as_ref' in self.debug_cmd:
@@ -536,8 +537,8 @@ class SimpleTuner:
         return tuned_th_dict
 
 
-
 class ActivationCalibrator2(BaseKldCalibrator):
+
     def __init__(self, args, ds: DataSelector):
         super().__init__()
         self.args = copy.deepcopy(args)
@@ -556,11 +557,14 @@ class ActivationCalibrator2(BaseKldCalibrator):
             if Observer_type == 'MovingAverageMinMaxObserver':
                 from torch.quantization import MovingAverageMinMaxObserver
                 for tensor in self.module.all_tensor_names:
-                    self.torchObserver_dict[tensor] = MovingAverageMinMaxObserver(averaging_constant=0.1, dtype=qint8, qscheme=per_tensor_affine)
+                    self.torchObserver_dict[tensor] = MovingAverageMinMaxObserver(
+                        averaging_constant=0.1, dtype=qint8, qscheme=per_tensor_affine)
             elif Observer_type == 'HistogramObserver':
                 from torch.quantization import HistogramObserver
                 for tensor in self.module.all_tensor_names:
-                    self.torchObserver_dict[tensor] = HistogramObserver(bins=args.histogram_bin_num, dtype=qint8, qscheme=per_tensor_affine)
+                    self.torchObserver_dict[tensor] = HistogramObserver(bins=args.histogram_bin_num,
+                                                                        dtype=qint8,
+                                                                        qscheme=per_tensor_affine)
             else:
                 print('Observer_type in debug_cmd is error')
                 exit(1)
@@ -723,11 +727,18 @@ class ActivationCalibrator2(BaseKldCalibrator):
             if 'use_percetile9999' in self.debug_cmd:
                 #t0 = time.time()
                 all_data = np.abs(np.array(all_data))
-                abs_value2 = np.percentile(all_data, 99.99+i*step)
+                abs_value2 = np.percentile(all_data, 99.99 + i * step)
                 #print('percentile calc:', time.time() - t0, ",rete:", 99.99+i*step)
                 #if abs_value2 < abs_value:
                 #    print(f'percetile9999 valid, rate:{abs_value2/abs_value}')
                 abs_value = abs_value2
+            if abs_value == 0:
+                # if network outputs are all zero, change it to 1e-5 for them.
+                min_value = -1e-5
+                max_value = 1e-5
+                abs_value = 1e-5
+                print("WARNING: layer {} is all zeros. Please check the "
+                      "input data correctness.".format(evaled_op))
             self.activations_statistics[evaled_op] = (min_value, max_value, abs_value)
 
             if 'use_torch_observer_for_cali' not in self.debug_cmd:
@@ -785,7 +796,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 f.write("# op_name    threshold    min    max\n")
                 for i, op_name in enumerate(op_layers):
                     if 'use_torch_observer_for_cali' in self.debug_cmd:
-                        qmin,qmax=-128,127
+                        qmin, qmax = -128, 127
                         scale, zp = self.torchObserver_dict[op_name].calculate_qparams()
                         threshold = float(scale * max(-qmin, qmax))
                         min_value = float(scale * (qmin - zp))
@@ -795,7 +806,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                         min_value, max_value, _ = self.activations_statistics[op_name]
                     thresholds_map_list.append(threshold)
                     f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
-                                                            max_value))
+                                                               max_value))
             # if 'use_torch_observer_for_cali' in self.debug_cmd:
             #     exit(0)
         if self.args.tune_num <= 0:
@@ -823,7 +834,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 else:
                     min_value, max_value, _ = self.activations_statistics[op_name]
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
-                                                        max_value))
+                                                           max_value))
         os.remove(cali_table)
         if 'print_debug_info' in self.debug_cmd:
             th_before_tuned = np.array(thresholds_map_list)
@@ -832,7 +843,8 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 self.args.mlir_file.split('.')[0], self.tunner.args.tune_num,
                 self.tunner.tune_steps)
             save_tensor_diff_subplot(th_before_tuned, th_after_tuned, layer_name_list,
-                                    'before_tuned', 'after_tuned', file_prefix)
+                                     'before_tuned', 'after_tuned', file_prefix)
+
 
 class ActivationCalibrator(BaseKldCalibrator):
 
@@ -924,15 +936,6 @@ class ActivationCalibrator(BaseKldCalibrator):
         pbar.close()
         show_mem_info('mem info after _activations_generator_and_find_minmax')
 
-        # check max is zero
-        for k, v in self.activations_statistics.items():
-            _, _, _abs = v
-            if _abs == 0:
-                # if network outputs are all zero, change it to 1e-5 for them.
-                self.activations_statistics[k] = (-1e-5, 1e-5, 1e-5)
-                print("WARNING: layer {} is all zeros. Please check the "
-                      "input data correctness.".format(k))
-
     def _clean_resource(self):
         del self.module
         self.module = None
@@ -946,6 +949,13 @@ class ActivationCalibrator(BaseKldCalibrator):
             min_value = min(np.min(activation), minimum)
             max_value = max(np.max(activation), maximum)
             abs_value = max(abs(min_value), abs(max_value))
+            if abs_value == 0:
+                # if network outputs are all zero, change it to 1e-5 for them.
+                min_value = -1e-5
+                max_value = 1e-5
+                abs_value = 1e-5
+                print("WARNING: layer {} is all zeros. Please check the "
+                      "input data correctness.".format(op_name))
             self.activations_statistics[op_name] = (min_value, max_value, abs_value)
 
     def calc_thresholds(self):
