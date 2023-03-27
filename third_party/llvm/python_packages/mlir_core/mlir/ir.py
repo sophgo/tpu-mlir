@@ -27,6 +27,11 @@ def _i32Attr(x, context):
   return IntegerAttr.get(
       IntegerType.get_signless(32, context=context), x)
 
+@register_attribute_builder("SI32Attr")
+def _si32Attr(x, context):
+  return IntegerAttr.get(
+      IntegerType.get_signed(32, context=context), x)
+
 @register_attribute_builder("I64Attr")
 def _i64Attr(x, context):
   return IntegerAttr.get(
