@@ -167,7 +167,7 @@ class DeployTool:
                 input_op = self.module.inputs[0].op
                 ppa.load_config(input_op)
                 self.customization_format = getCustomFormat(ppa.pixel_format, ppa.channel_format)
-            assert (self.customization_format.startswith("YUV") < 0)
+            assert (self.customization_format.find("YUV") < 0)
             if str(self.chip).lower().endswith('183x'):
                 ppa.VPSS_W_ALIGN = 32
                 ppa.VPSS_Y_ALIGN = 32
