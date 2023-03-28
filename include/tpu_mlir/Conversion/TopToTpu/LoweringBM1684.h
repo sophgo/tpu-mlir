@@ -58,5 +58,6 @@ LOWERING_BM1684(Min)
 LOWERING_BM1684(Max)
 LOWERING_BM1684(Deconv)
 LOWERING_BM1684(Exp)
+LOWERING_BM1684(PRelu)
 } // namespace bm1684
 } // namespace tpu_mlir
