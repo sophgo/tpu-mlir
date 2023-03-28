@@ -9,13 +9,13 @@
 
 #include "ConvUtils.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -541,24 +541,83 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
 
   // filter reorder
   std::vector<int64_t> filter_shape = {1, output_c, gic, kh * kw};
-  int ocloops = ceiling_func(output_c, npu_num);
   if (out_type.isF32()) {
     if (strideh_gt_15 || stridew_gt_15) {
-      for (int oc = 0; oc < output_c; oc++) {
-        for (int ic = 0; ic < gic; ic++) {
-          for (int icell_h = 0; icell_h < (kh / cell_h); icell_h++) {
-            for (int ih = 0; ih < cell_h; ih++) {
-              for (int icell_w = 0; icell_w < (kw / cell_w); icell_w++) {
-                for (int iw = 0; iw < cell_w; iw++) {
-                  int orig_offset = oc * gic * kh * kw + ic * kh * kw +
-                                    icell_h * cell_h * kw + ih * kw +
-                                    icell_w * cell_w + iw;
-                  int trans_offset = (oc % npu_num) * ocloops * gic * kh * kw +
-                                     (icell_h * (kw / cell_w) + icell_w) *
-                                         ocloops * cell_h * cell_w * gic +
-                                     (oc / npu_num) * cell_h * cell_w * gic +
-                                     ic * cell_h * cell_w + ih * cell_w + iw;
-                  data_f32->at(trans_offset) = filter_f32->at(orig_offset);
+      vector<int> cell_h;
+      vector<int> cell_w;
+      vector<int> cell_h_sum;
+      vector<int> cell_w_sum;
+      int cell_num_h = 1;
+      int cell_num_w = 1;
+      int max_cell_h = kh;
+      int max_cell_w = kw;
+
+      if (strideh_gt_15) {
+        cell_num_h = ceiling_func(kh, 15);
+        max_cell_h = ceiling_func(kh, cell_num_h);
+        int cur_h = 0;
+        int sum_h = 0;
+        for (int i = 0; i < cell_num_h; i++) {
+          cur_h = kh / cell_num_h + ((i < kh % cell_num_h) ? 1 : 0);
+          cell_h.push_back(cur_h);
+          cell_h_sum.push_back(sum_h);
+          sum_h += cur_h;
+        }
+      } else {
+        cell_h.push_back(max_cell_h);
+        cell_h_sum.push_back(0);
+      }
+
+      if (stridew_gt_15) {
+        cell_num_w = ceiling_func(kw, 15);
+        max_cell_w = ceiling_func(kw, cell_num_w);
+        int cur_w = 0;
+        int sum_w = 0;
+        for (int i = 0; i < cell_num_w; i++) {
+          cur_w = kw / cell_num_w + ((i < kw % cell_num_w) ? 1 : 0);
+          cell_w.push_back(cur_w);
+          cell_w_sum.push_back(sum_w);
+          sum_w += cur_w;
+        }
+      } else {
+        cell_w.push_back(max_cell_w);
+        cell_w_sum.push_back(0);
+      }
+
+      int oc_per_groups = output_c / groups;
+      int weight_size_per_group =
+          ((oc_per_groups < npu_num) ? oc_per_groups
+                                     : align_up(oc_per_groups, npu_num)) *
+          gic * cell_num_h * max_cell_h * cell_num_w * max_cell_w;
+      size_t weight_size = groups * weight_size_per_group;
+      auto data_f32 = std::make_shared<std::vector<float>>(weight_size);
+      int ocloops = ceiling_func(oc_per_groups, npu_num);
+      for (int group_idx = 0; group_idx < groups; group_idx++) {
+        for (int oc = 0; oc < oc_per_groups; oc++) {
+          for (int ic = 0; ic < gic; ic++) {
+            for (int cell_h_idx = 0; cell_h_idx < cell_num_h; cell_h_idx++) {
+              for (int ih = 0; ih < cell_h[cell_h_idx]; ih++) {
+                for (int cell_w_idx = 0; cell_w_idx < cell_num_w;
+                     cell_w_idx++) {
+                  for (int iw = 0; iw < cell_w[cell_w_idx]; iw++) {
+                    int orig_offset =
+                        group_idx * oc_per_groups * gic * kh * kw +
+                        oc * gic * kh * kw + ic * kh * kw +
+                        cell_h_sum[cell_h_idx] * kw + ih * kw +
+                        cell_w_sum[cell_w_idx] + iw;
+                    int trans_offset =
+                        groups * (oc % npu_num) * ocloops * gic * cell_num_h *
+                            max_cell_h * cell_num_w * max_cell_w + // npu idx
+                        group_idx * ocloops * gic * cell_num_h * max_cell_h *
+                            cell_num_w * max_cell_w + // group idx
+                        (cell_h_idx * cell_num_w + cell_w_idx) * ocloops *
+                            max_cell_h * max_cell_w * gic + // cell idx
+                        (oc / npu_num) * cell_h[cell_h_idx] *
+                            cell_w[cell_w_idx] * gic + // oc offset
+                        ic * cell_h[cell_h_idx] * cell_w[cell_w_idx] +
+                        ih * cell_w[cell_w_idx] + iw;
+                    data_f32->at(trans_offset) = filter_f32->at(orig_offset);
+                  }
                 }
               }
             }
@@ -567,9 +626,10 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
       }
 
       filter_shape[0] = 1;
-      filter_shape[1] = npu_num;
+      filter_shape[1] = (oc_per_groups < npu_num) ? oc_per_groups : npu_num;
       filter_shape[2] = 1;
-      filter_shape[3] = ceiling_func(output_c, npu_num) * gic * kh * kw;
+      filter_shape[3] = groups * ocloops * gic * cell_num_h * max_cell_h *
+                        cell_num_w * max_cell_w;
 
       if (filter_shape[3] > MAX_TPU_DIM) {
         if (attr.is_dw) {
@@ -864,6 +924,4 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
-int64_t tpu::Conv2DOp::get_fw_type_bm1684x() {
-  return FW_BMNET_CONV;
-}
+int64_t tpu::Conv2DOp::get_fw_type_bm1684x() { return FW_BMNET_CONV; }
