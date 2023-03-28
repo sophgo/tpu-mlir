@@ -198,6 +198,9 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
       // TODO: force layer group to allow that offset->at(2) != 0
       if (steps->at(1) != 1) return failure();
     }
+    if (num_dims > 4) {
+      return failure();
+    }
     return success();
   }
 }
