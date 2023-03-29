@@ -461,6 +461,8 @@ bool GroupMethod::update_sequence_group_cost(
     if (group_one_layer_proc(*groups[i], true, &group_costs[i])) {
       shape_secs[i].nsecs = 1;
       shape_secs[i].hsecs = 1;
+      shape_secs[i].dsecs = 1;
+      shape_secs[i].wsecs = 1;
       continue;
     }
 

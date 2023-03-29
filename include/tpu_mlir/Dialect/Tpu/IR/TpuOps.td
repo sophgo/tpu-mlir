@@ -76,10 +76,14 @@ def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
     "int64_t":$buffer_addr,
     "int64_t":$buffer_size,
     "bool":$eu_align,
-    "DenseI64ArrayAttr":$h_idx,
-    "DenseI64ArrayAttr":$h_slice,
     "DenseI64ArrayAttr":$n_idx,
     "DenseI64ArrayAttr":$n_slice,
+    "DenseI64ArrayAttr":$d_idx,
+    "DenseI64ArrayAttr":$d_slice,
+    "DenseI64ArrayAttr":$h_idx,
+    "DenseI64ArrayAttr":$h_slice,
+    "DenseI64ArrayAttr":$w_idx,
+    "DenseI64ArrayAttr":$w_slice,
     "int64_t":$id,
     "int64_t":$stage,
     "int64_t":$group_type
@@ -271,7 +275,7 @@ def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
 class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     !listconcat(traits, [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport", "assign_sec_info"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>])> {
   let summary = "convolution operator";
 
@@ -317,7 +321,7 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
 def Tpu_Conv1DOp : Tpu_ConvOp<"Conv1D">;
 def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D">;
 def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardD", "assign_sec_info"]>]> {
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$filter,
@@ -340,10 +344,10 @@ def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
   );
 }
 
-class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
-  [SupportFuseRelu,
-   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH","assign_sec_info"]>,
-   DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
+class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
+  !listconcat(traits, [SupportFuseRelu,
+   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info"]>,
+   DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>])> {
   let summary = "pool operator";
 
   let description = [{
@@ -378,11 +382,12 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
 
 def Tpu_Pool1DOp:Tpu_PoolOp<"Pool1D">;
 def Tpu_Pool2DOp:Tpu_PoolOp<"Pool2D">;
-def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D">;
+def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D",[
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardD"]>]>;
 
 def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
   [SupportFuseRelu,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max pool with operator";
 
@@ -425,7 +430,7 @@ def Tpu_PoolMaskOp: Tpu_Op<"PoolMask"> {
 
 def Tpu_AddOp: Tpu_Op<"Add", [
   SupportFuseRelu, SupportEarlyStride,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add operator";
 
@@ -1069,6 +1074,8 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
     Variadic<AnyRankedTensor>:$inputs,
     I64Attr:$nsecs,
     I64Attr:$hsecs,
+    I64Attr:$dsecs,
+    I64Attr:$wsecs,
     I64Attr:$swpipl_stage_num,
     I64Attr:$group_type,
     // store timestep_idx(negative) and op_id(positive)
@@ -1228,7 +1235,7 @@ def Tpu_ShuffleChannelOp: Tpu_Op<"ShuffleChannel"> {
 
 def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Upsample operation";
   let description = [{
@@ -1246,7 +1253,7 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
 }
 
 def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]>  {
   let summary = "MaxUnpool operation";
   let description = [{
@@ -1263,7 +1270,7 @@ def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
 }
 
 def Tpu_PadOp:Tpu_Op<"Pad", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport"]>]> {
   let summary = "Pad operation";
   let description = [{
     This operation pads a tensor according to the paddings you specify.
@@ -1307,7 +1314,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [
 }
 
 def Tpu_SliceOp: Tpu_Op<"Slice", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "LocalGenSupport"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "LocalGenSupport"]>]> {
   let summary = "Slice operator";
   let description = [{
     Slice Operation on input.
@@ -1385,7 +1392,7 @@ def Tpu_NonZeroOp:Tpu_Op<"NonZero", [
 def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "deconvolution operator";
 

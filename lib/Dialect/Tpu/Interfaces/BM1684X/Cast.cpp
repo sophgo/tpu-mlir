@@ -80,9 +80,8 @@ void tpu::CastOp::codegen_global_bm1684x() {
 
 int64_t tpu::CastOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
                                            int64_t out_lmem_bytes,
-                                           int64_t in_nslice, int64_t in_hslice,
-                                           int64_t out_nslice,
-                                           int64_t out_hslice,
+                                           int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+                                           int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
                                            group_type_t group_type) {
   if (getInput().hasOneUse()) {
     return 0;
@@ -93,7 +92,7 @@ int64_t tpu::CastOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return in_lmem_bytes;
 }
 
-void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                         group_type_t group_type,
                                         local_sec_info_t &sec_info) {
   int64_t n, c, d, h, w;
@@ -101,8 +100,8 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto op = getOperation();
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
-  auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
 
   if (!qInput && !qOutput) {
     cast_local_spec_t spec = {0};
@@ -124,7 +123,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
       param.output_addr = gi.out_addr;
       param.requant_addr = 0;
       param.buffer_local_addr = buffer_addr;
-      param.n = sec_info.out_n_slice * d;
+      param.n = sec_info.out_n_slice * in_gi.d_slice;
       param.c = c;
       param.h = sec_info.out_h_slice;
       param.w = sec_info.out_w_slice;
@@ -142,7 +141,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
       param.input_addr = in_gi.out_addr;
       param.output_addr = gi.out_addr;
       param.dequant_addr = 0;
-      param.n = sec_info.out_n_slice * d;
+      param.n = sec_info.out_n_slice * in_gi.d_slice;
       param.c = c;
       param.h = sec_info.out_h_slice;
       param.w = sec_info.out_w_slice;
@@ -161,7 +160,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 int64_t tpu::CastOp::dyn_codegen_local_bm1684x(void *buffer) {
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
-  auto gi = getGroupInfo(0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);

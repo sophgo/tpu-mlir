@@ -51,8 +51,8 @@ void tpu::DequantIntOp::codegen_global_bm1684x() {
 // =========================================
 
 int64_t tpu::DequantIntOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
     group_type_t group_type) {
   if (getQuantMode() == DequantMode::TFLite) {
     return out_lmem_bytes;
@@ -60,18 +60,18 @@ int64_t tpu::DequantIntOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                               group_type_t group_type,
                                               local_sec_info_t &sec_info) {
   int64_t n, c, d, h, w;
   module::getNCDHW(getInput(), n, c, d, h, w, group_type);
   dequant_int_param_t param = {0};
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
   param.input_addr = (uint32_t)in_gi.out_addr;
   param.output_addr = (uint32_t)gi.out_addr;
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;
-  param.n = sec_info.out_n_slice * d;
+  param.n = sec_info.out_n_slice * in_gi.d_slice;
   param.c = c;
   param.h = sec_info.out_h_slice;
   param.w = sec_info.out_w_slice;
@@ -98,7 +98,7 @@ int64_t tpu::DequantIntOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer) return sizeof(dyn_dequant_int_local_spec_t);
   dyn_dequant_int_local_spec_t param = {0};
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
-  auto gi = getGroupInfo(0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0);
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;
   auto qtype = module::getUniformQuantizedType(getInput());
   param.common.scale_val = getMultiplier();

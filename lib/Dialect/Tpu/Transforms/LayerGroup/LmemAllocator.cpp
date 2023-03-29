@@ -138,12 +138,12 @@ static inline int64_t increase_nsecs(int64_t nsecs, int64_t batch_size) {
   return next_nsecs;
 }
 
-static inline void update_shape_secs(shape_secs_t &shape_secs,
-                                     const shape_secs_t &max_shape_secs) {
+static inline void update_shape_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
+                    int64_t &dhw_secs, const shape_secs_t &max_shape_secs) {
   if (shape_secs.nsecs < max_shape_secs.nsecs) {
     shape_secs.nsecs = increase_nsecs(shape_secs.nsecs, max_shape_secs.nsecs);
   } else {
-    ++(shape_secs.hsecs);
+    assign_dhwsecs(lg_info, shape_secs, ++dhw_secs, max_shape_secs);
   }
 }
 
@@ -671,7 +671,7 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
                                    BasicTimeStepPtr &time_step,
                                    const shape_secs_t &shape_secs) {
   time_step->update_all_mem_buffer_size(lg_info);
-  bool one_loop = (shape_secs.nsecs == 1 && shape_secs.hsecs == 1);
+  bool one_loop = (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 && shape_secs.dsecs == 1 && shape_secs.wsecs == 1);
 
   std::list<MemBufSortStd> membuf_list;
   init_membuf_list(membuf_list, time_step, one_loop);
@@ -757,8 +757,11 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   int64_t try_num = 0;
   bool status = false;
   const int64_t MAX_TRY_NUM = 20;
+  int64_t dhw_secs = shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
   while (shape_secs.nsecs <= max_shape_secs.nsecs &&
-         shape_secs.hsecs <= max_shape_secs.hsecs) {
+         shape_secs.dsecs <= max_shape_secs.dsecs &&
+         shape_secs.hsecs <= max_shape_secs.hsecs &&
+         shape_secs.wsecs <= max_shape_secs.wsecs) {
     // reassign time step
     status = time_step->assignTimeStep(lg_info, shape_secs, true);
     if (status == false) {
@@ -767,7 +770,7 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
     status = assignLmemAddr(lg_info, time_step, shape_secs);
 
     if (status == false) {
-      update_shape_secs(shape_secs, max_shape_secs);
+      update_shape_secs(lg_info, shape_secs, dhw_secs, max_shape_secs);
     } else {
       break;
     }

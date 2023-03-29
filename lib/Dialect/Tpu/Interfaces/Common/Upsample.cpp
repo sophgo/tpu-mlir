@@ -54,6 +54,17 @@ LogicalResult tpu::UpsampleOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
+LogicalResult tpu::UpsampleOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
+                                         int64_t out_idx, int64_t out_slice) {
+  auto unit = getScaleW();
+  if (out_idx % unit || out_slice % unit) {
+    return failure();
+  }
+  in_idx = out_idx / unit;
+  in_slice = out_slice / unit;
+  return success();
+}
+
 LogicalResult tpu::UpsampleOp::LocalGenSupport() {
   if (module::isCV18xx() && (getScaleH() >= 16 || getScaleW() >= 16)) {
     return failure();

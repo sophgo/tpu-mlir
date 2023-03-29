@@ -31,7 +31,7 @@ void tpu::ActiveOp::codegen_global_bm1684() {
             coeffs[i] = (float)coeffs_->at(i);
         }
     }
-    
+
     int activate_type = (int)getMode();
     switch(getMode()){
        case ActiveMode::EXP:
@@ -43,7 +43,7 @@ void tpu::ActiveOp::codegen_global_bm1684() {
        default:
            llvm_unreachable("Not Implement such activate type, please add it.");
            break;
-    } 
+    }
     if (module::isUniformQuantized(getOutput())){
         llvm_unreachable("Not Implemented!");
     }else{
@@ -77,9 +77,9 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684(
 }
 
 void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
-    auto out_g_info = getGroupInfo(n_step, h_step);
+    auto out_g_info = getGroupInfo(n_step, h_step, 0, 0);
     auto in_g_info = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
-    
+
     int64_t n=1, c=1, h=1, w=1, depth=1;
     uint32_t bottom_dim[MAX_SHAPE_DIMS] = {1};
     if (out_g_info.type == GROUP_NORMAL){
@@ -88,7 +88,7 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
         bottom_dim[1] = (uint32_t)c;
         bottom_dim[2] = (uint32_t)in_g_info.h_slice;
         bottom_dim[3] = (uint32_t)w;
-    }else if (out_g_info.type == GROUP_3D){   
+    }else if (out_g_info.type == GROUP_3D){
         module::getNCDHW(getInput(), n, c, depth, h, w, GROUP_3D);
         bottom_dim[0] = (uint32_t)in_g_info.n_slice;
         bottom_dim[1] = (uint32_t)c;
@@ -100,7 +100,7 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
     uint32_t bottom_local_offset = in_g_info.out_addr;
     uint32_t top_local_offset = out_g_info.out_addr;
     uint32_t imm_buffer_local_offet = out_g_info.buffer_addr;
- 
+
     int activate_type = (int)getMode();
     float prelu_slope = 0.0;
     switch(getMode()){

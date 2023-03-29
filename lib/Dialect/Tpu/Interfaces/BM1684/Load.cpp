@@ -30,7 +30,7 @@ int64_t tpu::LoadOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
 void tpu::LoadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                        local_sec_info_t &sec_info) {
   auto pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
-  auto gi = getGroupInfo(n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0);
   assert(false == gi.overstepped);
   auto data_type = BM168x::getDataType(getOutput());
   auto gdma_format = BM168x::getGdmaFormat(data_type);

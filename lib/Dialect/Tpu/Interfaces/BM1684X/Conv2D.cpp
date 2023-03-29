@@ -719,8 +719,8 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
 // ======================================
 
 int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
     group_type_t group_type) {
   if (module::isBM1686() && getCoeffMerged()) {
     return 0;
@@ -739,7 +739,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     sz += int32_size;
   }
   if (p.groups > 1) {
-    sz += in_nslice * ic_per_npu * align_up(in_hslice * p.iw, eu_num) *
+    sz += in_nslice * ic_per_npu * align_up(in_hslice * in_wslice, eu_num) * 
           in_type_len;
     sz += ic_per_npu * 2 * in_type_len;
   }
@@ -755,30 +755,30 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   }
   int use_3ic = (getUse_3icOptimize() & 0x3);
   if (use_3ic == 1) { // merge kh to ic
-    sz += align_up(out_hslice * p.iw, eu_num) * in_nslice * in_type_len;
+    sz += align_up(out_hslice * in_wslice, eu_num) * in_nslice * in_type_len;
     sz += 64 * 2;
     sz += p.kh * in_type_len;
   } else if (use_3ic == 2) { // merge kw to ic
-    sz += align_up(in_hslice * p.ow, eu_num) * in_nslice * in_type_len;
+    sz += align_up(in_hslice * out_wslice, eu_num) * in_nslice * in_type_len;
     sz += 64 * 2;
     sz += p.kw * in_type_len;
   } else if (use_3ic == 3) { // merge kh and kw to ic
-    sz += align_up(out_hslice * p.ow, eu_num) * in_nslice * in_type_len;
+    sz += align_up(out_hslice * out_wslice, eu_num) * in_nslice * in_type_len;
     sz += 64 * 2;
     sz += p.kh * p.kw * in_type_len;
   }
   return sz;
 }
 
-void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
 
   conv_local_param_t p;
   memset(&p, 0, sizeof(p));
@@ -797,8 +797,8 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   common.groups = attr.groups;
   common.pad_h_t = (in_gi.h_idx == 0 ? attr.pht : 0);
   common.pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
-  common.pad_w_l = attr.pwl;
-  common.pad_w_r = attr.pwr;
+  common.pad_w_l = (in_gi.w_idx == 0 ? attr.pwl : 0);
+  common.pad_w_r = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pwr : 0);
   common.round_mode = ROUNDING_HALF_UP;
   common.has_bias = attr.has_bias;
   common.bias_sign = true;
@@ -834,7 +834,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  auto gi = getGroupInfo(0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
 
   param.spec.buffer_local_addr = gi.buffer_addr;

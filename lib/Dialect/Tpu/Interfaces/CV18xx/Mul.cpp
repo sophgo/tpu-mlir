@@ -117,7 +117,7 @@ void tpu::MulOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   auto shape = module::getShape(getInputs()[0]);
   module::getNCHW(shape, n, c, h, w);
 
-  auto gi = getGroupInfo(n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0);
   auto in0_gi = LocalGenInterface::getGroupInfo(getInputs()[0], n_step, h_step);
   auto in1_gi = LocalGenInterface::getGroupInfo(getInputs()[1], n_step, h_step);
   auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
