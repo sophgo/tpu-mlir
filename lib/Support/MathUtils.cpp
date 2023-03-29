@@ -1163,6 +1163,9 @@ bool compare(float a, float b, llvm::StringRef mode) {
   if (mode == "LessOrEqual") {
     return a <= b;
   }
+  if (mode == "NotEqual") {
+    return a != b;
+  }
   llvm_unreachable("Not Implemented");
   return false;
 }
