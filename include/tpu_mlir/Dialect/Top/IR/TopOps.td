@@ -34,12 +34,6 @@ def Top_Dialect : Dialect {
   let name = "top";
   let summary = "A topdialect for the TPU_MLIR specification";
   let cppNamespace = "::tpu_mlir::top";
-  let extraClassDeclaration = [{
-  void loadWeightFile(llvm::StringRef file) {
-    wFile = std::make_unique<mlir::TensorFile>(file, false);
-  }
-  std::unique_ptr<mlir::TensorFile> wFile;
-  }];
 }
 
 //===----------------------------------------------------------------------===//
@@ -114,8 +108,6 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
   template<typename T>
-  mlir::LogicalResult update(const std::vector<T>& data, size_t count);
-  template<typename T>
   std::shared_ptr<std::vector<T>> read();
   std::shared_ptr<std::vector<float>> read_as_float();
   std::shared_ptr<std::vector<int32_t>> read_as_int32();
@@ -125,6 +117,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
                             llvm::StringRef suffix,
                             const std::vector<T>& data,
                             mlir::RankedTensorType& type);
+  template<typename T>
+  mlir::LogicalResult update(const std::vector<T>& data, size_t count);
   mlir::Value clone_bf16(mlir::Operation * OwnerOp);
   mlir::Value clone_f16(mlir::Operation * OwnerOp);
   mlir::Value clone_int(mlir::Operation *OwnerOp);

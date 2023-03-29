@@ -84,6 +84,7 @@ void ModuleInterpreter::allocate_resources() {
         }
       }
     });
+    module::detachWeightFile();
     for (auto &name : output_names) {
       if (std::find(all_tensor_names.begin(), all_tensor_names.end(), name) ==
           all_tensor_names.end()) {

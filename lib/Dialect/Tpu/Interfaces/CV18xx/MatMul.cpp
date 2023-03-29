@@ -156,13 +156,13 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
           layer_id, ga_input, ga_filter, ga_bias, ga_output, p.M, p.K, p.N,
           p.with_bias, p.do_relu, rshift_int32, multiplier_int32, nullptr,
           nullptr, batch_high, batch_low, getLeftTranspose(),
-          getRightTranspose(),  getOutputTranspose());
+          getRightTranspose(), getOutputTranspose());
     } else {
       // TODO batch_high, batch_low, lt, rt, ot
       cvi_backend_tg_bf16_fc_kernel(
           layer_id, ga_input, ga_filter, GA_INVALID, ga_output, p.M, p.K, p.N,
           false, p.do_relu, nullptr, nullptr, batch_high, batch_low,
-          getLeftTranspose(), getRightTranspose(),  getOutputTranspose());
+          getLeftTranspose(), getRightTranspose(), getOutputTranspose());
     }
   }
 }

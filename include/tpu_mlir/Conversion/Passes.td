@@ -42,6 +42,8 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
            "chip: cv183x/cv182x/bm1684/bm1684x">,
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"false",
            "true for asymmetric quantization, or false for symmetric">,
+    Option<"weightFileName", "weightFileName", "std::string", /*default=*/"",
+           "weight file name to save">,
   ];
 }
 

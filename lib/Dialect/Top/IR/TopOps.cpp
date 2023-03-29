@@ -31,7 +31,6 @@ void TopDialect::initialize() {
 #define GET_OP_LIST
 #include "tpu_mlir/Dialect/Top/IR/TopOps.cpp.inc"
       >();
-  wFile = nullptr;
 }
 
 //===----------------------------------------------------------------------===//
