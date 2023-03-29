@@ -43,12 +43,15 @@ static ModuleOp m = nullptr;
 static MLIRContext *ctx = nullptr;
 static Chip chip = Chip::ALL;
 static Platform platform = Platform::ONNX;
+static std::unique_ptr<mlir::TensorFile> wFile = nullptr;
+static std::string weightFileName = "";
 
 void init(ModuleOp module) {
   m = module;
   ctx = m.getContext();
   auto chip_ = m->getAttrOfType<StringAttr>(Attr::CHIP);
   chip = symbolizeChip(chip_).value_or(Chip::ALL);
+  wFile = nullptr;
   if (m->hasAttrOfType<StringAttr>(Attr::PLATFORM)) {
     auto p = m->getAttrOfType<StringAttr>(Attr::PLATFORM);
     platform = symbolizePlatform(p).value_or(Platform::ONNX);
@@ -210,32 +213,6 @@ void removeUnusedOp() {
       (*iter)->erase();
     }
   }
-}
-
-std::string genWeightFileName(bool &same_name) {
-  auto name = getModuleName();
-  auto state = getState();
-  auto chip_ = getChip();
-  auto chip = stringifyChip(chip_);
-  auto old_name = getWeightFile();
-  std::string file_name = name.lower() + std::string("_") +
-                          stringifyState(state).lower() + std::string("_") +
-                          chip.lower();
-  if (!isChip(Chip::ALL)) {
-    auto mode = getMode();
-    std::string sym = "";
-    if (mode == Mode::INT8) {
-      sym = isAsymmetric() ? "_asym" : "_sym";
-    }
-    auto mode_ = stringifyMode(mode);
-    file_name += std::string("_") + mode_.lower() + sym;
-  }
-  auto new_name = file_name + "_weight.npz";
-  same_name = (old_name == new_name);
-  if (same_name) {
-    new_name = file_name + "_weight_fix.npz";
-  }
-  return new_name;
 }
 
 int64_t getAddress(Value v) {
@@ -729,12 +706,6 @@ void setMode(Mode mode) {
   m->setAttr(Attr::MODE, StringAttr::get(ctx, s));
 }
 
-StringRef getWeightFile() {
-  return m->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
-}
-void setWeightFile(StringRef weight_file) {
-  m->setAttr(Attr::WEIGHT_FILE, StringAttr::get(ctx, weight_file));
-}
 int64_t getFLOPs() {
   return m->getAttrOfType<IntegerAttr>(Attr::FLOPS).getInt();
 }
@@ -1045,6 +1016,104 @@ quant::UniformQuantizedType getUniformQuantizedType(Type t) {
   return t.cast<RankedTensorType>()
       .getElementType()
       .cast<quant::UniformQuantizedType>();
+}
+
+//-----------------------------------------------------------------
+// Helper Functions for weight
+//-----------------------------------------------------------------
+static std::string genWeightFileName(bool &same_name) {
+  auto name = getModuleName();
+  auto state = getState();
+  auto chip_ = getChip();
+  auto chip = stringifyChip(chip_);
+  auto old_name = m->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
+  std::string file_name = name.lower() + std::string("_") +
+                          stringifyState(state).lower() + std::string("_") +
+                          chip.lower();
+  if (!isChip(Chip::ALL)) {
+    auto mode = getMode();
+    std::string sym = "";
+    if (mode == Mode::INT8) {
+      sym = isAsymmetric() ? "_asym" : "_sym";
+    }
+    auto mode_ = stringifyMode(mode);
+    file_name += std::string("_") + mode_.lower() + sym;
+  }
+  auto new_name = file_name + "_weight.npz";
+  same_name = (old_name == new_name);
+  if (same_name) {
+    new_name = file_name + "_weight_fix.npz";
+  }
+  return new_name;
+}
+
+void saveWeight() {
+  // check name conflict
+  std::set<StringRef> all_names;
+  for (auto func : m.getOps<FuncOp>()) {
+    func.walk([&](Operation *op) {
+      if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
+        auto name = module::getName(op);
+        if (all_names.find(name) != all_names.end()) {
+          op->dump();
+          llvm_unreachable("op name conflict");
+        }
+        all_names.insert(name);
+      }
+    });
+  }
+  bool same_name = true;
+  std::string filename_;
+  if (weightFileName == "") {
+    filename_ = module::genWeightFileName(same_name);
+  } else {
+    same_name = false;
+    filename_ = weightFileName;
+  }
+  // weight remove unused in npz
+  if (wFile == nullptr) {
+    if (!same_name) {
+      weightFile().save(filename_);
+      m->setAttr(Attr::WEIGHT_FILE, StringAttr::get(ctx, filename_));
+    }
+    return;
+  }
+  if (wFile->changed() == false && same_name) {
+    return;
+  }
+  std::set<StringRef> weight_names;
+  for (auto func : m.getOps<FuncOp>()) {
+    func.walk([&](top::WeightOp op) {
+      weight_names.insert(module::getName(op.getOperation()));
+    });
+  }
+  std::set<StringRef> npz_names;
+  wFile->getAllNames(npz_names);
+  std::set<StringRef> dif_names;
+  for (auto name : npz_names) {
+    if (weight_names.find(name) == weight_names.end()) {
+      dif_names.insert(name);
+    }
+  }
+  for (auto &name : dif_names) {
+    wFile->deleteTensor(name);
+  }
+  if (wFile->changed() == false && same_name) {
+    return;
+  }
+  wFile->save(filename_);
+  m->setAttr(Attr::WEIGHT_FILE, StringAttr::get(ctx, filename_));
+}
+
+void setWeightFileName(const std::string &name) { weightFileName = name; }
+void detachWeightFile() { wFile = nullptr; }
+
+mlir::TensorFile &weightFile() {
+  if (wFile == nullptr) {
+    auto name = m->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
+    wFile = std::make_unique<mlir::TensorFile>(name, false);
+  }
+  return *wFile;
 }
 
 } // namespace module

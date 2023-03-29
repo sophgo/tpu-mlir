@@ -582,12 +582,9 @@ if [ x${do_int4_sym} == x1 ]; then
 
   #Temporary test code
   tpuc-opt ${model_name}.mlir \
-      --init \
       --import-calibration-table="file=${CALI_TABLE} asymmetric=false" \
       --convert-top-to-tpu="mode=INT4 asymmetric=false chip=bm1686" \
       --canonicalize \
-      --save-weight \
-      --mlir-print-debuginfo \
       -o ${model_name}_bm1686_tpu_int4_sym.mlir
 
   model_runner.py \

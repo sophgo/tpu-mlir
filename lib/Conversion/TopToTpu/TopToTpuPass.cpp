@@ -332,6 +332,9 @@ public:
     assert(mode.has_value());
     module::setChip(chip.value());
     module::setMode(mode.value());
+    if (weightFileName != "") {
+      module::setWeightFileName(weightFileName);
+    }
     if (module::isState(module::State::TOP_QUANTIZED)) {
       module::setAsymmetric(true);
       LoweringConfig::isQuantized = true;

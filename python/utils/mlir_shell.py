@@ -21,11 +21,10 @@ def _os_system(cmd: list):
 
 
 def mlir_opt_for_top(mlirfile, opt_mlirfile, post_handle_type=""):
-    cmd = ["tpuc-opt", "--init", "--shape-infer", "--canonicalize"]
+    cmd = ["tpuc-opt", mlirfile, "--shape-infer", "--canonicalize"]
     if len(post_handle_type) > 0:
         cmd.extend([f"--post-handle=\"type={post_handle_type}\""])
-    cmd.extend(
-        ["--after-optimize", "--save-weight", "--mlir-print-debuginfo", mlirfile, "-o", opt_mlirfile])
+    cmd.extend(["--after-optimize", "-o", opt_mlirfile])
     _os_system(cmd)
 
 
@@ -40,7 +39,7 @@ def mlir_lowering(top_mlir: str,
                   customization_format: str = None,
                   fuse_preprocess: bool = False,
                   aligned_input: bool = False):
-    cmd = ["tpuc-opt", top_mlir, "--init"]
+    cmd = ["tpuc-opt", top_mlir]
     mode = mode.upper()
     if mode == 'QDQ':
         assert cali_table == None, "qdq cannot work with cali_table"
@@ -65,19 +64,15 @@ def mlir_lowering(top_mlir: str,
             chip.lower(), customization_format)
         cmd.extend([aligned_param])
     qtable = ""
-    save_w_cmd = "--save-weight"
     if quantize_table:
         assert (tpu_mlir.endswith(".mlir"))
         weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"
-        save_w_cmd = f"--save-weight=\"file={weight_name}\""
-        qtable = "qtable={}".format(quantize_table)
+        qtable = "qtable={} weightFileName={}".format(quantize_table, weight_name)
     lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={} chip={}\"".format(
         mode, qtable, asymmetric, chip.lower())
     cmd.extend([
         lower_param,
         "--canonicalize",
-        save_w_cmd,
-        "--mlir-print-debuginfo",
         "-o",
         tpu_mlir,
     ])
@@ -109,7 +104,6 @@ def mlir_to_model(tpu_mlir: str,
     cmd = [
         "tpuc-opt",
         tpu_mlir,
-        "--init",
         "--mlir-disable-threading",
         "--do-extra-opt",
         strip_io_quant_param,
@@ -117,8 +111,6 @@ def mlir_to_model(tpu_mlir: str,
         subnet_param,
         lg_param,
         address_assign_param,
-        "--save-weight",
-        "--mlir-print-debuginfo",
         "-o",
         final_mlir,
     ]
@@ -133,14 +125,14 @@ def mlir_to_model(tpu_mlir: str,
     cmd = [
         "tpuc-opt",
         final_mlir,
-        "--init",
         codegen_param,
         "-o /dev/null",
     ]
     _os_system(cmd)
 
     try:
-        _os_system(["mv compiler_profile_0.[td][xa]t", model + ".compiler_profile_0.txt"])
+        if model.endswith(".bmodel"):
+            _os_system(["mv compiler_profile_0.[td][xa]t", model + ".compiler_profile_0.txt"])
     except RuntimeError:
         pass
 
@@ -161,15 +153,16 @@ def f32_blobs_compare(a_npz: str,
     _os_system(cmd)
 
 
-
 # TOPTOTOSA
-def top2tosa(top_mlir: str, tosa_mlir: str,):
-    cmd = ["tpuc-opt", top_mlir, "--init"]
+def top2tosa(
+    top_mlir: str,
+    tosa_mlir: str,
+):
+    cmd = ["tpuc-opt", top_mlir]
     lower_param = "--convert-top-to-tosa"
     cmd.extend([
         lower_param,
         "--canonicalize",
-        "--mlir-print-debuginfo",
         "-o",
         tosa_mlir,
     ])

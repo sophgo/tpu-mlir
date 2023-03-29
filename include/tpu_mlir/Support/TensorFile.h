@@ -346,17 +346,6 @@ private:
   std::atomic<int> cnt_update = {0};
 };
 
-/// Open the file specified by its name for reading.
-std::unique_ptr<TensorFile> openInputTensorFile(llvm::StringRef filename);
-
-/// Create a new file specified by its name for writing.
-std::unique_ptr<TensorFile>
-openOutputTensorFile(llvm::StringRef outputFilename);
-
-/// Open a existing file specified by its name for updating, create one if not
-/// exist.
-std::unique_ptr<TensorFile> openTensorFile(llvm::StringRef filename);
-
 } // namespace mlir
 
 #endif // MLIR_SUPPORT_TENSORFILE_H_
