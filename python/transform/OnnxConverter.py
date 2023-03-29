@@ -125,6 +125,7 @@ class OnnxConverter(BaseConverter):
             "Concat": lambda node: self.convert_concat_op(node),
             "Constant": lambda node: self.convert_constant_op(node),
             "Conv": lambda node: self.convert_conv_op(node),
+            "Cos": lambda node: self.convert_cos_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
             "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
             "DepthToSpace": lambda node: self.convert_depth2space_op(node),
@@ -187,6 +188,7 @@ class OnnxConverter(BaseConverter):
             "ScatterND": lambda node: self.convert_scatternd_op(node),
             "Shape": lambda node: self.convert_shape_op(node),
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
+            "Sin": lambda node: self.convert_sin_op(node),
             "Slice": lambda node: self.convert_slice_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
             "Softplus": lambda node: self.convert_softplus_op(node),
@@ -1130,6 +1132,22 @@ class OnnxConverter(BaseConverter):
             'bias': bias
         }
         new_op = self.mlir.create_sigmoid_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+    
+    def convert_sin_op(self, onnx_node):
+        assert (onnx_node.op_type == "Sin")
+        op = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_sin_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+    
+    def convert_cos_op(self, onnx_node):
+        assert (onnx_node.op_type == "Cos")
+        op = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_cos_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_slice_op(self, onnx_node):
