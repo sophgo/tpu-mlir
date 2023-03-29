@@ -589,12 +589,25 @@ class OnnxConverter(BaseConverter):
         if not self.isWeight(lhs) and self.isWeight(rhs):
             opd1_num_elem = np.prod(self.getShape(rhs))
             channel = output_shape[1]
+            is_scale = False
+            if opd1_num_elem == channel:
+                rhs_shape = self.getShape(rhs)
+                axis = len(output_shape) - len(rhs_shape)
+                if axis > 1:
+                    # the second dim (channel) need broadcast
+                    is_scale = False
+                elif rhs_shape[1 - axis] == channel:
+                    # all dim except channel is 1 need broadcast, use scaleop
+                    is_scale = True
+                else:
+                    # channel need broadcast, use addop
+                    is_scale = False
             lhs_op = self.getOp(lhs)
             if self.isScalar(rhs):
                 p['do_relu'] = False
                 p['const_val'] = self.getScalar(rhs)
                 new_op = self.mlir.create_add_const_op([lhs_op], output_shape, **p)
-            elif opd1_num_elem == channel:
+            elif is_scale:
                 bias = self.getWeight(rhs)
                 weight_data = np.ones_like(bias)
                 self.addWeight(name + '_scale', weight_data)
