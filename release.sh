@@ -25,7 +25,7 @@ echo "Create ${__envsetupfile}" 1>&2
 more > "${__envsetupfile}" <<'//MY_CODE_STREAM'
 #!/bin/bash
 # set environment variable
-TPUC_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export TPUC_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 export PATH=${TPUC_ROOT}/bin:$PATH
 export PATH=${TPUC_ROOT}/python/tools:$PATH
