@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright 2016-2022 Intel Corporation
+* Copyright 2016-2023 Intel Corporation
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -29,71 +29,47 @@ extern "C" {
 #include <stdint.h>
 /// @endcond
 
+#include "oneapi/dnnl/dnnl_config.h"
+
+#include "oneapi/dnnl/dnnl_common_types.h"
+
 /// @addtogroup dnnl_api
 /// @{
 
-/// @addtogroup dnnl_api_utils
-/// @{
-
-/// Status values returned by the library functions.
-typedef enum {
-    /// The operation was successful
-    dnnl_success = 0,
-    /// The operation failed due to an out-of-memory condition
-    dnnl_out_of_memory = 1,
-    /// The operation failed because of incorrect function arguments
-    dnnl_invalid_arguments = 2,
-    /// The operation failed because requested functionality is not implemented
-    dnnl_unimplemented = 3,
-    /// Primitive iterator passed over last primitive descriptor
-    dnnl_iterator_ends = 4,
-    /// Primitive or engine failed on execution
-    dnnl_runtime_error = 5,
-    /// Queried element is not required for given primitive
-    dnnl_not_required = 6,
-} dnnl_status_t;
-
-/// @} dnnl_api_utils
-
 /// @addtogroup dnnl_api_memory
 /// @{
-
-/// Data type specification
-typedef enum {
-    /// Undefined data type, used for empty memory descriptors.
-    dnnl_data_type_undef = 0,
-    /// 16-bit/half-precision floating point.
-    dnnl_f16 = 1,
-    /// non-standard 16-bit (bfloat16 w/ 7 bit mantissa) floating point.
-    dnnl_bf16 = 2,
-    /// 32-bit/single-precision floating point.
-    dnnl_f32 = 3,
-    /// 32-bit signed integer.
-    dnnl_s32 = 4,
-    /// 8-bit signed integer.
-    dnnl_s8 = 5,
-    /// 8-bit unsigned integer.
-    dnnl_u8 = 6,
-    /// 64-bit/double-precision floating point.
-    dnnl_f64 = 7,
-} dnnl_data_type_t;
 
 /// Memory format kind
 typedef enum {
     /// Undefined memory format kind, used for empty memory descriptors.
     dnnl_format_kind_undef = 0,
-    /// Unspecified format kind.
-    /// The primitive selects a format automatically.
+    /// A special format kind that indicates that the actual format will be
+    /// selected by a primitive automatically.
     dnnl_format_kind_any,
     /// A tensor in a generic format described by the stride and blocking
-    /// values in each dimension. See @ref dnnl_blocking_desc_t for more
-    /// information.
+    /// values in each dimension.
     dnnl_blocked,
-    /// Weights format used in 8bit Winograd convolution
-    dnnl_format_kind_wino,
-    /// Packed weights format used in RNN
-    dnnl_format_kind_rnn_packed,
+    /// A special format kind that indicates that tensor format is opaque.
+    dnnl_format_kind_opaque,
+#ifdef DNNL_EXPERIMENTAL_SPARSE
+    /// Format kind for sparse tensors.
+    dnnl_format_kind_sparse,
+#endif
+    /// Parameter to allow internal only format kinds without undefined
+    /// behavior. This parameter is chosen to be valid for so long as
+    /// sizeof(int) >= 2.
+    dnnl_format_kind_max = 0x7fff,
 } dnnl_format_kind_t;
+
+#ifdef DNNL_EXPERIMENTAL_SPARSE
+/// Sparse encodings.
+typedef enum {
+    /// Undefined sparse encoding kind, used for empty memory descriptors.
+    dnnl_sparse_encoding_undef = 0,
+    /// Compressed Sparse Row (CSR) encoding.
+    dnnl_csr,
+} dnnl_sparse_encoding_t;
+#endif
 
 /// Memory format tag specification.
 ///
@@ -115,13 +91,16 @@ typedef enum {
 /// int ndims = 5; // 5D tensor
 /// dnnl_dims_t dims = {batch, channels, depth, height, width};
 /// dnnl_memory_desc_t data_in_ncdhw;
-/// dnnl_memory_desc_init_by_tag(
+/// dnnl_memory_desc_create_with_tag(
 ///      &data_in_ncdhw, 5, dims, dnnl_f32, dnnl_ncdhw);
 ///
 /// // note that in both cases dims passed are the same
 /// dnnl_memory_desc_t data_in_ndhwc;
-/// dnnl_memory_desc_init_by_tag(
+/// dnnl_memory_desc_create_with_tag(
 ///      &data_in_ndhwc, 5, dims, dnnl_f32, dnnl_ndhwc);
+///
+/// dnnl_memory_desc_destroy(data_in_ncdhw);
+/// dnnl_memory_desc_destroy(data_in_ndhwc);
 /// ~~~
 ///
 /// Memory format tags can be further divided into two categories:
@@ -180,7 +159,6 @@ typedef enum {
     dnnl_ab, ///< plain 2D tensor
     dnnl_abc, ///< plain 3D tensor
     dnnl_abcd, ///< plain 4D tensor
-    dnnl_acbd, ///< plain 4D tensor
     dnnl_abcde, ///< plain 5D tensor
     dnnl_abcdef, ///< plain 6D tensor
     dnnl_abcdefg, ///< plain 7D tensor
@@ -192,28 +170,38 @@ typedef enum {
 
     // Permuted plain formats
 
-    dnnl_abdc, ///< permuted 4D tensor
-    dnnl_abdec, ///< permuted 5D tensor
-    dnnl_acb, ///< permuted 3D tensor
-    dnnl_acbde, ///< permuted 5D tensor
-    dnnl_acbdef, ///< permuted 6D tensor
-    dnnl_acdb, ///< permuted 4D tensor
-    dnnl_acdeb, ///< permuted 5D tensor
     dnnl_ba, ///< permuted 2D tensor
+    dnnl_acb, ///< permuted 3D tensor
     dnnl_bac, ///< permuted 3D tensor
-    dnnl_bacd, ///< permuted 4D tensor
-    dnnl_bacde, ///< permuted 5D tensor
     dnnl_bca, ///< permuted 3D tensor
-    dnnl_bcda, ///< permuted 4D tensor
-    dnnl_bcdea, ///< permuted 5D tensor
+    dnnl_cab, ///< permuted 3D tensor
     dnnl_cba, ///< permuted 3D tensor
+    dnnl_abdc, ///< permuted 4D tensor
+    dnnl_acbd, ///< permuted 4D tensor
+    dnnl_acdb, ///< permuted 4D tensor
+    dnnl_adbc, ///< permuted 4D tensor
+    dnnl_adcb, ///< permuted 4D tensor
+    dnnl_bacd, ///< permuted 4D tensor
+    dnnl_bcda, ///< permuted 4D tensor
+    dnnl_cdab, ///< permuted 4D tensor
     dnnl_cdba, ///< permuted 4D tensor
     dnnl_dcab, ///< permuted 4D tensor
+    dnnl_abced, ///< permuted 5D tensor
+    dnnl_abdec, ///< permuted 5D tensor
+    dnnl_acbde, ///< permuted 5D tensor
+    dnnl_acdeb, ///< permuted 5D tensor
+    dnnl_adecb, ///< permuted 5D tensor
+    dnnl_bacde, ///< permuted 5D tensor
+    dnnl_bcdea, ///< permuted 5D tensor
+    dnnl_cdeab, ///< permuted 5D tensor
     dnnl_cdeba, ///< permuted 5D tensor
     dnnl_decab, ///< permuted 5D tensor
-    dnnl_defcab, ///< permuted 6D tensor
-    dnnl_abced, ///< permuted 5D tensor
     dnnl_abcdfe, ///< permuted 6D tensor
+    dnnl_abdefc, ///< permuted 6D tensor
+    dnnl_abdfce, ///< permuted 6D tensor
+    dnnl_acbdef, ///< permuted 6D tensor
+    dnnl_adefcb, ///< permuted 6D tensor
+    dnnl_defcab, ///< permuted 6D tensor
     dnnl_abcdegf, ///< permuted 7D tensor
     dnnl_abcdefhg, ///< permuted 8D tensor
     dnnl_abcdefgih, ///< permuted 9D tensor
@@ -423,8 +411,6 @@ typedef enum {
     dnnl_aCBdef4c8b8c4b,
     dnnl_BAcde16a16b,
     dnnl_aCBdef16b16c,
-    dnnl_abdfce, ///< permuted 6D tensor
-    dnnl_abdefc, ///< permuted 6D tensor
     dnnl_ABc16b32a,
     dnnl_ABc16b64a,
     dnnl_ABc4b32a4b,
@@ -492,7 +478,6 @@ typedef enum {
     dnnl_aBdc64b,
     dnnl_aBdC64b2c,
     dnnl_aBdC64b4c,
-    dnnl_adcb,
     dnnl_adCb2c,
     dnnl_adCb4c,
     dnnl_AcdB32a2b,
@@ -513,7 +498,6 @@ typedef enum {
     dnnl_aBdec64b,
     dnnl_aBdeC64b2c,
     dnnl_aBdeC64b4c,
-    dnnl_adecb,
     dnnl_adeCb2c,
     dnnl_adeCb4c,
     dnnl_Acdeb32a,
@@ -536,7 +520,6 @@ typedef enum {
     dnnl_aBdefc64b,
     dnnl_aBdefC64b2c,
     dnnl_aBdefC64b4c,
-    dnnl_adefcb,
     dnnl_adefCb2c,
     dnnl_adefCb4c,
     dnnl_AB16b32a4b,
@@ -712,13 +695,205 @@ typedef enum {
     dnnl_aBC16b32c,
     dnnl_AB16a16b,
     dnnl_AB16a32b,
-    dnnl_adbc,
     dnnl_ABcde16a16b2a,
     dnnl_aBCdef16b16c2b,
     dnnl_Acedb16a,
     dnnl_aBdfec16b,
     dnnl_abdEC64e2c,
     dnnl_abdEC64e4c,
+    dnnl_aCB16b16c,
+    dnnl_aCB16b32c,
+    dnnl_aCB16b48c,
+    dnnl_aCB16b64c,
+    dnnl_aCB16b16c2b,
+    dnnl_aCB16b32c2b,
+    dnnl_aCB16b48c2b,
+    dnnl_aCB16b64c2b,
+    dnnl_aCB16b16c4b,
+    dnnl_aCB16b32c4b,
+    dnnl_aCB16b48c4b,
+    dnnl_aCB16b64c4b,
+    dnnl_abCd4c,
+    dnnl_abCde4c,
+    dnnl_abCdef4c,
+    dnnl_abCde32c,
+    dnnl_abCdef32c,
+    dnnl_ABcd16a32b,
+    dnnl_decbA8a,
+    dnnl_aCdefB16b32c2b,
+    dnnl_aCdefB16b32c4b,
+    dnnl_aCdefB16b48c2b,
+    dnnl_aCdefB16b48c4b,
+    dnnl_aCdefB16b64c2b,
+    dnnl_aCdefB16b64c4b,
+    dnnl_BcdeA16a32b2a,
+    dnnl_BcdeA16a32b4a,
+    dnnl_BcdeA16a48b2a,
+    dnnl_BcdeA16a48b4a,
+    dnnl_BcdeA16a64b2a,
+    dnnl_BcdeA16a64b4a,
+    dnnl_aCdefb32c,
+    dnnl_aCdefB32c2b,
+    dnnl_aCdefB32c4b,
+    dnnl_aCdefb48c,
+    dnnl_aCdefB48c2b,
+    dnnl_aCdefB48c4b,
+    dnnl_aCdefb64c,
+    dnnl_aCdefB64c2b,
+    dnnl_aCdefB64c4b,
+    dnnl_Bcdea32b,
+    dnnl_BcdeA32b2a,
+    dnnl_BcdeA32b4a,
+    dnnl_Bcdea48b,
+    dnnl_BcdeA48b2a,
+    dnnl_BcdeA48b4a,
+    dnnl_Bcdea64b,
+    dnnl_BcdeA64b2a,
+    dnnl_BcdeA64b4a,
+    dnnl_Bca32b,
+    dnnl_BcA32b2a,
+    dnnl_BcA32b4a,
+    dnnl_Bca48b,
+    dnnl_BcA48b2a,
+    dnnl_BcA48b4a,
+    dnnl_Bca64b,
+    dnnl_BcA64b2a,
+    dnnl_BcA64b4a,
+    dnnl_aCdb32c,
+    dnnl_aCdB32c2b,
+    dnnl_aCdB32c4b,
+    dnnl_aCdb48c,
+    dnnl_aCdB48c2b,
+    dnnl_aCdB48c4b,
+    dnnl_aCdb64c,
+    dnnl_aCdB64c2b,
+    dnnl_aCdB64c4b,
+    dnnl_BcA16a16b2a,
+    dnnl_BcA16a16b4a,
+    dnnl_BcdA16a16b2a,
+    dnnl_BcdA16a16b4a,
+    dnnl_BcdeA16a16b2a,
+    dnnl_BcdeA16a16b4a,
+    dnnl_aCdB16b16c2b,
+    dnnl_aCdB16b16c4b,
+    dnnl_aCdeB16b16c2b,
+    dnnl_aCdeB16b16c4b,
+    dnnl_aCdefB16b16c2b,
+    dnnl_aCdefB16b16c4b,
+    dnnl_BcA16a32b2a,
+    dnnl_BcA16a32b4a,
+    dnnl_BcA16a48b2a,
+    dnnl_BcA16a48b4a,
+    dnnl_BcA16a64b2a,
+    dnnl_BcA16a64b4a,
+    dnnl_aCdB16b32c2b,
+    dnnl_aCdB16b32c4b,
+    dnnl_aCdB16b48c2b,
+    dnnl_aCdB16b48c4b,
+    dnnl_aCdB16b64c2b,
+    dnnl_aCdB16b64c4b,
+    dnnl_BcdA16a32b2a,
+    dnnl_BcdA16a32b4a,
+    dnnl_BcdA16a48b2a,
+    dnnl_BcdA16a48b4a,
+    dnnl_BcdA16a64b2a,
+    dnnl_BcdA16a64b4a,
+    dnnl_aCdeB16b32c2b,
+    dnnl_aCdeB16b32c4b,
+    dnnl_aCdeB16b48c2b,
+    dnnl_aCdeB16b48c4b,
+    dnnl_aCdeB16b64c2b,
+    dnnl_aCdeB16b64c4b,
+    dnnl_Bca16b,
+    dnnl_BcA16b2a,
+    dnnl_BcA16b4a,
+    dnnl_Bcda16b,
+    dnnl_BcdA16b2a,
+    dnnl_BcdA16b4a,
+    dnnl_Bcdea16b,
+    dnnl_BcdeA16b2a,
+    dnnl_BcdeA16b4a,
+    dnnl_aCdb16c,
+    dnnl_aCdB16c2b,
+    dnnl_aCdB16c4b,
+    dnnl_aCdeb16c,
+    dnnl_aCdeB16c2b,
+    dnnl_aCdeB16c4b,
+    dnnl_aCdefb16c,
+    dnnl_aCdefB16c2b,
+    dnnl_aCdefB16c4b,
+    dnnl_Bcda32b,
+    dnnl_BcdA32b2a,
+    dnnl_BcdA32b4a,
+    dnnl_Bcda48b,
+    dnnl_BcdA48b2a,
+    dnnl_BcdA48b4a,
+    dnnl_Bcda64b,
+    dnnl_BcdA64b2a,
+    dnnl_BcdA64b4a,
+    dnnl_aCdeb32c,
+    dnnl_aCdeB32c2b,
+    dnnl_aCdeB32c4b,
+    dnnl_aCdeb48c,
+    dnnl_aCdeB48c2b,
+    dnnl_aCdeB48c4b,
+    dnnl_aCdeb64c,
+    dnnl_aCdeB64c2b,
+    dnnl_aCdeB64c4b,
+    dnnl_Acb24a,
+    dnnl_Acdb24a,
+    dnnl_Acdeb24a,
+    dnnl_aBdc24b,
+    dnnl_aBdec24b,
+    dnnl_aBdefc24b,
+    dnnl_abDc16d,
+    dnnl_abdEc16e,
+    dnnl_abdCe16c,
+    dnnl_AcB24a2b,
+    dnnl_AcdB24a2b,
+    dnnl_AcdeB24a2b,
+    dnnl_aBdC24b2c,
+    dnnl_aBdeC24b2c,
+    dnnl_aBdefC24b2c,
+    dnnl_AcB8a2b,
+    dnnl_AcdB8a2b,
+    dnnl_AcdeB8a2b,
+    dnnl_aBdC8b2c,
+    dnnl_aBdeC8b2c,
+    dnnl_aBdefC8b2c,
+    dnnl_AB8b32a,
+    dnnl_ABc8b32a,
+    dnnl_ABcd8b32a,
+    dnnl_ABcde8b32a,
+    dnnl_AB8b24a,
+    dnnl_ABc8b24a,
+    dnnl_ABcd8b24a,
+    dnnl_ABcde8b24a,
+    dnnl_AB8b16a,
+    dnnl_ABc8b16a,
+    dnnl_ABcd8b16a,
+    dnnl_ABcde8b16a,
+    dnnl_AB8b8a,
+    dnnl_AcB24a4b,
+    dnnl_AcdB24a4b,
+    dnnl_AcdeB24a4b,
+    dnnl_aBdC24b4c,
+    dnnl_aBdeC24b4c,
+    dnnl_aBdefC24b4c,
+    dnnl_AcB8a4b,
+    dnnl_AcdB8a4b,
+    dnnl_AcdeB8a4b,
+    dnnl_aBdC8b4c,
+    dnnl_aBdeC8b4c,
+    dnnl_aBdefC8b4c,
+    dnnl_AB4b8a4b,
+    dnnl_AB4b24a4b,
+    dnnl_ABc4b8a4b,
+    dnnl_ABc4b24a4b,
+    dnnl_ABcd4b8a4b,
+    dnnl_ABcd4b24a4b,
+    dnnl_ABcde4b8a4b,
+    dnnl_ABcde4b24a4b,
 
     /// Just a sentinel, not real memory format tag. Must be changed after new
     /// format tag is added.
@@ -761,12 +936,16 @@ typedef enum {
     dnnl_owi = dnnl_acb,
     /// 3D CNN weights tensor, an alias to #dnnl_cba
     dnnl_wio = dnnl_cba,
+    /// 3D CNN weights tensor, an alias to #dnnl_cab
+    dnnl_woi = dnnl_cab,
     /// 3D CNN weights tensor, an alias to #dnnl_bca
     dnnl_iwo = dnnl_bca,
     /// 4D CNN weights tensor, an alias to #dnnl_abcd
     dnnl_oihw = dnnl_abcd,
     /// 4D CNN weights tensor, an alias to #dnnl_cdba
     dnnl_hwio = dnnl_cdba,
+    /// 4D CNN weights tensor, an alias to #dnnl_cdab
+    dnnl_hwoi = dnnl_cdab,
     /// 4D CNN weights tensor, an alias to #dnnl_acdb
     dnnl_ohwi = dnnl_acdb,
     /// 4D CNN weights tensor, an alias to #dnnl_bcda
@@ -779,6 +958,8 @@ typedef enum {
     dnnl_iodhw = dnnl_bacde,
     /// 5D CNN weights tensor, an alias to #dnnl_cdeba
     dnnl_dhwio = dnnl_cdeba,
+    /// 5D CNN weights tensor, an alias to #dnnl_cdeab
+    dnnl_dhwoi = dnnl_cdeab,
     /// 5D CNN weights tensor, an alias to #dnnl_acdeb
     dnnl_odhwi = dnnl_acdeb,
     /// 5D CNN weights tensor, an alias to #dnnl_bcdea
@@ -846,15 +1027,18 @@ typedef enum {
     ///  - For GRU cells, the gates order is update, reset and output gate.
     dnnl_ldgo = dnnl_abcd,
     /// 5D LSTM projection tensor
+    dnnl_ldOi16o = dnnl_abDc16d,
     dnnl_ldOi32o = dnnl_abDc32d,
     dnnl_ldOI32o4i = dnnl_abDC32d4c,
     dnnl_ldIo32i = dnnl_abCd32c,
     /// 6D RNN weights tensor
+    dnnl_ldgOi16o = dnnl_abdEc16e,
     dnnl_ldgOi32o = dnnl_abdEc32e,
     dnnl_ldgOI32o2i = dnnl_abdEC32e2c,
     dnnl_ldgOI32o4i = dnnl_abdEC32e4c,
     dnnl_ldgOI64o2i = dnnl_abdEC64e2c,
     dnnl_ldgOI64o4i = dnnl_abdEC64e4c,
+    dnnl_ldgIo16i = dnnl_abdCe16c,
     dnnl_ldgIo32i = dnnl_abdCe32c,
     dnnl_ldgIO32i2o = dnnl_abdCE32c2e,
 
@@ -902,6 +1086,7 @@ typedef enum {
     dnnl_NChw16n16c = dnnl_ABcd16a16b,
     dnnl_NCw32n16c = dnnl_ABc32a16b,
     dnnl_NChw32n16c = dnnl_ABcd32a16b,
+    dnnl_NChw16n32c = dnnl_ABcd16a32b,
     dnnl_NCdhw32n16c = dnnl_ABcde32a16b,
     dnnl_NCw32n32c = dnnl_ABc32a32b,
     dnnl_NChw32n32c = dnnl_ABcd32a32b,
@@ -914,10 +1099,17 @@ typedef enum {
     dnnl_OI8i16o2i = dnnl_AB8b16a2b,
     dnnl_OI8i32o2i = dnnl_AB8b32a2b,
     dnnl_OI8i64o2i = dnnl_AB8b64a2b,
+    dnnl_OI4i8o4i = dnnl_AB4b8a4b,
     dnnl_OI4i16o4i = dnnl_AB4b16a4b,
+    dnnl_OI4i24o4i = dnnl_AB4b24a4b,
     dnnl_OI4i32o4i = dnnl_AB4b32a4b,
     dnnl_OI4i64o4i = dnnl_AB4b64a4b,
     dnnl_OI16i16o4i = dnnl_AB16b16a4b,
+    dnnl_OI8i32o = dnnl_AB8b32a,
+    dnnl_OI8i24o = dnnl_AB8b24a,
+    dnnl_OI8i16o = dnnl_AB8b16a,
+    dnnl_OI8i8o = dnnl_AB8b8a,
+
     // weights, 3D
     dnnl_IOw16o16i = dnnl_BAc16a16b,
     dnnl_IOw16i16o = dnnl_BAc16b16a,
@@ -926,7 +1118,9 @@ typedef enum {
     dnnl_OIw16i64o = dnnl_ABc16b64a,
     dnnl_OIw16o16i = dnnl_ABc16a16b,
     dnnl_Oiw16o = dnnl_Abc16a,
+    dnnl_OIw4i8o4i = dnnl_ABc4b8a4b,
     dnnl_OIw4i16o4i = dnnl_ABc4b16a4b,
+    dnnl_OIw4i24o4i = dnnl_ABc4b24a4b,
     dnnl_OIw4i32o4i = dnnl_ABc4b32a4b,
     dnnl_OIw4i64o4i = dnnl_ABc4b64a4b,
     dnnl_OIw2i8o4i = dnnl_ABc2b8a4b,
@@ -947,8 +1141,16 @@ typedef enum {
     dnnl_Owi16o = dnnl_Acb16a,
     dnnl_OwI16o2i = dnnl_AcB16a2b,
     dnnl_OwI16o4i = dnnl_AcB16a4b,
+    dnnl_Iwo16i = dnnl_Bca16b,
+    dnnl_IwO16i2o = dnnl_BcA16b2a,
+    dnnl_IwO16i4o = dnnl_BcA16b4a,
     dnnl_Owi4o = dnnl_Acb4a,
     dnnl_Owi8o = dnnl_Acb8a,
+    dnnl_OwI8o2i = dnnl_AcB8a2b,
+    dnnl_OIw8i32o = dnnl_ABc8b32a,
+    dnnl_OIw8i24o = dnnl_ABc8b24a,
+    dnnl_OIw8i16o = dnnl_ABc8b16a,
+    dnnl_OwI8o4i = dnnl_AcB8a4b,
 
     // weights, 4D
     dnnl_IOhw16i16o = dnnl_BAcd16b16a,
@@ -956,15 +1158,23 @@ typedef enum {
     dnnl_Ohwi16o = dnnl_Acdb16a,
     dnnl_OhwI16o2i = dnnl_AcdB16a2b,
     dnnl_OhwI16o4i = dnnl_AcdB16a4b,
+    dnnl_Ihwo16i = dnnl_Bcda16b,
+    dnnl_IhwO16i2o = dnnl_BcdA16b2a,
+    dnnl_IhwO16i4o = dnnl_BcdA16b4a,
+    dnnl_Ohwi24o = dnnl_Acdb24a,
     dnnl_Ohwi32o = dnnl_Acdb32a,
     dnnl_Ohwi4o = dnnl_Acdb4a,
     dnnl_Ohwi8o = dnnl_Acdb8a,
+    dnnl_OhwI8o2i = dnnl_AcdB8a2b,
+    dnnl_OhwI8o4i = dnnl_AcdB8a4b,
     dnnl_OIhw16i16o = dnnl_ABcd16b16a,
     dnnl_OIhw16i32o = dnnl_ABcd16b32a,
     dnnl_OIhw16i64o = dnnl_ABcd16b64a,
     dnnl_OIhw16o16i = dnnl_ABcd16a16b,
     dnnl_Oihw16o = dnnl_Abcd16a,
+    dnnl_OIhw4i8o4i = dnnl_ABcd4b8a4b,
     dnnl_OIhw4i16o4i = dnnl_ABcd4b16a4b,
+    dnnl_OIhw4i24o4i = dnnl_ABcd4b24a4b,
     dnnl_OIhw4i32o4i = dnnl_ABcd4b32a4b,
     dnnl_OIhw4i64o4i = dnnl_ABcd4b64a4b,
     dnnl_OIhw16i16o4i = dnnl_ABcd16b16a4b,
@@ -983,13 +1193,21 @@ typedef enum {
     dnnl_OIhw8o8i = dnnl_ABcd8a8b,
     dnnl_OIhw8o4i = dnnl_ABcd8a4b,
     dnnl_Owhi16o = dnnl_Adcb16a,
+    dnnl_OIhw8i32o = dnnl_ABcd8b32a,
+    dnnl_OIhw8i24o = dnnl_ABcd8b24a,
+    dnnl_OIhw8i16o = dnnl_ABcd8b16a,
 
     // weights, 5D
     dnnl_Odhwi16o = dnnl_Acdeb16a,
     dnnl_OdhwI16o2i = dnnl_AcdeB16a2b,
     dnnl_OdhwI16o4i = dnnl_AcdeB16a4b,
+    dnnl_Idhwo16i = dnnl_Bcdea16b,
+    dnnl_IdhwO16i2o = dnnl_BcdeA16b2a,
+    dnnl_IdhwO16i4o = dnnl_BcdeA16b4a,
     dnnl_Odhwi4o = dnnl_Acdeb4a,
     dnnl_Odhwi8o = dnnl_Acdeb8a,
+    dnnl_OdhwI8o2i = dnnl_AcdeB8a2b,
+    dnnl_OdhwI8o4i = dnnl_AcdeB8a4b,
     dnnl_Odwhi16o = dnnl_Acedb16a,
     dnnl_OIdhw16i16o = dnnl_ABcde16b16a,
     dnnl_OIdhw16i32o = dnnl_ABcde16b32a,
@@ -1005,7 +1223,9 @@ typedef enum {
     dnnl_OIdhw8i8o = dnnl_ABcde8b8a,
     dnnl_OIdhw8o16i2o = dnnl_ABcde8a16b2a,
     dnnl_IOdhw8o16i2o = dnnl_BAcde8a16b2a,
+    dnnl_OIdhw4i8o4i = dnnl_ABcde4b8a4b,
     dnnl_OIdhw4i16o4i = dnnl_ABcde4b16a4b,
+    dnnl_OIdhw4i24o4i = dnnl_ABcde4b24a4b,
     dnnl_OIdhw4i32o4i = dnnl_ABcde4b32a4b,
     dnnl_OIdhw4i64o4i = dnnl_ABcde4b64a4b,
     dnnl_OIdhw16i16o4i = dnnl_ABcde16b16a4b,
@@ -1017,6 +1237,9 @@ typedef enum {
     dnnl_OIdhw4o8i8o4i = dnnl_ABcde4a8b8a4b,
     dnnl_IOdhw16o16i = dnnl_BAcde16a16b,
     dnnl_OIdhw16o16i2o = dnnl_ABcde16a16b2a,
+    dnnl_OIdhw8i32o = dnnl_ABcde8b32a,
+    dnnl_OIdhw8i24o = dnnl_ABcde8b24a,
+    dnnl_OIdhw8i16o = dnnl_ABcde8b16a,
 
     // weights w/ groups, 3D
     dnnl_Goiw16g = dnnl_Abcd16a,
@@ -1044,13 +1267,20 @@ typedef enum {
     dnnl_gOwi16o = dnnl_aBdc16b,
     dnnl_gOwI16o2i = dnnl_aBdC16b2c,
     dnnl_gOwI16o4i = dnnl_aBdC16b4c,
+    dnnl_gIwo16i = dnnl_aCdb16c,
+    dnnl_gIwO16i2o = dnnl_aCdB16c2b,
+    dnnl_gIwO16i4o = dnnl_aCdB16c4b,
     dnnl_gOwi4o = dnnl_aBdc4b,
     dnnl_gOwi8o = dnnl_aBdc8b,
+    dnnl_gOwI8o2i = dnnl_aBdC8b2c,
+    dnnl_gOwI8o4i = dnnl_aBdC8b4c,
     dnnl_Goiw32g = dnnl_Abcd32a,
     dnnl_gOIw2i4o2i = dnnl_aBCd2c4b2c,
     dnnl_gOIw2o4i2o = dnnl_aBCd2b4c2b,
     dnnl_gOIw4i8o2i = dnnl_aBCd4c8b2c,
     dnnl_gOIw4o8i2o = dnnl_aBCd4b8c2b,
+    dnnl_goIw4i = dnnl_abCd4c,
+    dnnl_goIw32i = dnnl_abCd32c,
 
     // weights w/ groups, 4D
     dnnl_gIOhw16i16o = dnnl_aCBde16c16b,
@@ -1058,9 +1288,17 @@ typedef enum {
     dnnl_gOhwi16o = dnnl_aBdec16b,
     dnnl_gOhwI16o2i = dnnl_aBdeC16b2c,
     dnnl_gOhwI16o4i = dnnl_aBdeC16b4c,
+    dnnl_gIhwo16i = dnnl_aCdeb16c,
+    dnnl_gIhwO16i2o = dnnl_aCdeB16c2b,
+    dnnl_gIhwO16i4o = dnnl_aCdeB16c4b,
     dnnl_gOhwi32o = dnnl_aBdec32b,
+    dnnl_gOhwi24o = dnnl_aBdec24b,
+    dnnl_gOhwI24o2i = dnnl_aBdeC24b2c,
+    dnnl_gOhwI24o4i = dnnl_aBdeC24b4c,
     dnnl_gOhwi4o = dnnl_aBdec4b,
     dnnl_gOhwi8o = dnnl_aBdec8b,
+    dnnl_gOhwI8o2i = dnnl_aBdeC8b2c,
+    dnnl_gOhwI8o4i = dnnl_aBdeC8b4c,
     dnnl_Goihw16g = dnnl_Abcde16a,
     dnnl_gOIhw16i16o = dnnl_aBCde16c16b,
     dnnl_gOIhw16o16i = dnnl_aBCde16b16c,
@@ -1083,6 +1321,8 @@ typedef enum {
     dnnl_gOIhw8o4i = dnnl_aBCde8b4c,
     dnnl_Goihw32g = dnnl_Abcde32a,
     dnnl_gOwhi16o = dnnl_aBedc16b,
+    dnnl_goIhw4i = dnnl_abCde4c,
+    dnnl_goIhw32i = dnnl_abCde32c,
 
     dnnl_OIw4o8i8o4i = dnnl_ABc4a8b8a4b,
     dnnl_OIhw4o8i8o4i = dnnl_ABcd4a8b8a4b,
@@ -1109,8 +1349,13 @@ typedef enum {
     dnnl_gOdhwi16o = dnnl_aBdefc16b,
     dnnl_gOdhwI16o2i = dnnl_aBdefC16b2c,
     dnnl_gOdhwI16o4i = dnnl_aBdefC16b4c,
+    dnnl_gIdhwo16i = dnnl_aCdefb16c,
+    dnnl_gIdhwO16i2o = dnnl_aCdefB16c2b,
+    dnnl_gIdhwO16i4o = dnnl_aCdefB16c4b,
     dnnl_gOdhwi4o = dnnl_aBdefc4b,
     dnnl_gOdhwi8o = dnnl_aBdefc8b,
+    dnnl_gOdhwI8o2i = dnnl_aBdefC8b2c,
+    dnnl_gOdhwI8o4i = dnnl_aBdefC8b4c,
     dnnl_gOdwhi16o = dnnl_aBdfec16b,
     dnnl_gOIdhw16i16o = dnnl_aBCdef16c16b,
     dnnl_gOIdhw4i16o4i = dnnl_aBCdef4c16b4c,
@@ -1135,7 +1380,13 @@ typedef enum {
     dnnl_gOIdhw4i8o2i = dnnl_aBCdef4c8b2c,
     dnnl_gOIdhw2o4i2o = dnnl_aBCdef2b4c2b,
     dnnl_gOIdhw4o8i2o = dnnl_aBCdef4b8c2b,
+    dnnl_goIdhw4i = dnnl_abCdef4c,
+    dnnl_goIdhw32i = dnnl_abCdef32c,
+
     // weights, 3D
+    dnnl_Owi24o = dnnl_Acb24a,
+    dnnl_OwI24o2i = dnnl_AcB24a2b,
+    dnnl_OwI24o4i = dnnl_AcB24a4b,
     dnnl_Owi32o = dnnl_Acb32a,
     dnnl_OwI32o2i = dnnl_AcB32a2b,
     dnnl_OwI32o4i = dnnl_AcB32a4b,
@@ -1145,8 +1396,20 @@ typedef enum {
     dnnl_Owi64o = dnnl_Acb64a,
     dnnl_OwI64o2i = dnnl_AcB64a2b,
     dnnl_OwI64o4i = dnnl_AcB64a4b,
+    dnnl_Iwo32i = dnnl_Bca32b,
+    dnnl_IwO32i2o = dnnl_BcA32b2a,
+    dnnl_IwO32i4o = dnnl_BcA32b4a,
+    dnnl_Iwo48i = dnnl_Bca48b,
+    dnnl_IwO48i2o = dnnl_BcA48b2a,
+    dnnl_IwO48i4o = dnnl_BcA48b4a,
+    dnnl_Iwo64i = dnnl_Bca64b,
+    dnnl_IwO64i2o = dnnl_BcA64b2a,
+    dnnl_IwO64i4o = dnnl_BcA64b4a,
     dnnl_wIo2i = dnnl_cBa2b,
     dnnl_wIo4i = dnnl_cBa4b,
+    dnnl_gOwi24o = dnnl_aBdc24b,
+    dnnl_gOwI24o2i = dnnl_aBdC24b2c,
+    dnnl_gOwI24o4i = dnnl_aBdC24b4c,
     dnnl_gOwi32o = dnnl_aBdc32b,
     dnnl_gOwI32o2i = dnnl_aBdC32b2c,
     dnnl_gOwI32o4i = dnnl_aBdC32b4c,
@@ -1156,10 +1419,22 @@ typedef enum {
     dnnl_gOwi64o = dnnl_aBdc64b,
     dnnl_gOwI64o2i = dnnl_aBdC64b2c,
     dnnl_gOwI64o4i = dnnl_aBdC64b4c,
+    dnnl_gIwo32i = dnnl_aCdb32c,
+    dnnl_gIwO32i2o = dnnl_aCdB32c2b,
+    dnnl_gIwO32i4o = dnnl_aCdB32c4b,
+    dnnl_gIwo48i = dnnl_aCdb48c,
+    dnnl_gIwO48i2o = dnnl_aCdB48c2b,
+    dnnl_gIwO48i4o = dnnl_aCdB48c4b,
+    dnnl_gIwo64i = dnnl_aCdb64c,
+    dnnl_gIwO64i2o = dnnl_aCdB64c2b,
+    dnnl_gIwO64i4o = dnnl_aCdB64c4b,
     dnnl_gwio = dnnl_adcb,
     dnnl_gwIo2i = dnnl_adCb2c,
     dnnl_gwIo4i = dnnl_adCb4c,
     // weights, 4D
+    dnnl_OhwI24o = dnnl_Acdb24a,
+    dnnl_OhwI24o2i = dnnl_AcdB24a2b,
+    dnnl_OhwI24o4i = dnnl_AcdB24a4b,
     dnnl_OhwI32o = dnnl_Acdb32a,
     dnnl_OhwI32o2i = dnnl_AcdB32a2b,
     dnnl_OhwI32o4i = dnnl_AcdB32a4b,
@@ -1169,8 +1444,18 @@ typedef enum {
     dnnl_Ohwi64o = dnnl_Acdb64a,
     dnnl_OhwI64o2i = dnnl_AcdB64a2b,
     dnnl_OhwI64o4i = dnnl_AcdB64a4b,
+    dnnl_Ihwo32i = dnnl_Bcda32b,
+    dnnl_IhwO32i2o = dnnl_BcdA32b2a,
+    dnnl_IhwO32i4o = dnnl_BcdA32b4a,
+    dnnl_Ihwo48i = dnnl_Bcda48b,
+    dnnl_IhwO48i2o = dnnl_BcdA48b2a,
+    dnnl_IhwO48i4o = dnnl_BcdA48b4a,
+    dnnl_Ihwo64i = dnnl_Bcda64b,
+    dnnl_IhwO64i2o = dnnl_BcdA64b2a,
+    dnnl_IhwO64i4o = dnnl_BcdA64b4a,
     dnnl_hwIo2i = dnnl_cdBa2b,
     dnnl_hwIo4i = dnnl_cdBa4b,
+    dnnl_gOhwI24o = dnnl_aBdec24b,
     dnnl_gOhwI32o = dnnl_aBdec32b,
     dnnl_gOhwI32o2i = dnnl_aBdeC32b2c,
     dnnl_gOhwI32o4i = dnnl_aBdeC32b4c,
@@ -1180,10 +1465,22 @@ typedef enum {
     dnnl_gOhwi64o = dnnl_aBdec64b,
     dnnl_gOhwI64o2i = dnnl_aBdeC64b2c,
     dnnl_gOhwI64o4i = dnnl_aBdeC64b4c,
+    dnnl_gIhwo32i = dnnl_aCdeb32c,
+    dnnl_gIhwO32i2o = dnnl_aCdeB32c2b,
+    dnnl_gIhwO32i4o = dnnl_aCdeB32c4b,
+    dnnl_gIhwo48i = dnnl_aCdeb48c,
+    dnnl_gIhwO48i2o = dnnl_aCdeB48c2b,
+    dnnl_gIhwO48i4o = dnnl_aCdeB48c4b,
+    dnnl_gIhwo64i = dnnl_aCdeb64c,
+    dnnl_gIhwO64i2o = dnnl_aCdeB64c2b,
+    dnnl_gIhwO64i4o = dnnl_aCdeB64c4b,
     dnnl_ghwio = dnnl_adecb,
     dnnl_ghwIo2i = dnnl_adeCb2c,
     dnnl_ghwIo4i = dnnl_adeCb4c,
     // weights, 5D
+    dnnl_Odhwi24o = dnnl_Acdeb24a,
+    dnnl_OdhwI24o2i = dnnl_AcdeB24a2b,
+    dnnl_OdhwI24o4i = dnnl_AcdeB24a4b,
     dnnl_Odhwi32o = dnnl_Acdeb32a,
     dnnl_OdhwI32o2i = dnnl_AcdeB32a2b,
     dnnl_OdhwI32o4i = dnnl_AcdeB32a4b,
@@ -1193,8 +1490,20 @@ typedef enum {
     dnnl_Odhwi64o = dnnl_Acdeb64a,
     dnnl_OdhwI64o2i = dnnl_AcdeB64a2b,
     dnnl_OdhwI64o4i = dnnl_AcdeB64a4b,
+    dnnl_Idhwo32i = dnnl_Bcdea32b,
+    dnnl_IdhwO32i2o = dnnl_BcdeA32b2a,
+    dnnl_IdhwO32i4o = dnnl_BcdeA32b4a,
+    dnnl_Idhwo48i = dnnl_Bcdea48b,
+    dnnl_IdhwO48i2o = dnnl_BcdeA48b2a,
+    dnnl_IdhwO48i4o = dnnl_BcdeA48b4a,
+    dnnl_Idhwo64i = dnnl_Bcdea64b,
+    dnnl_IdhwO64i2o = dnnl_BcdeA64b2a,
+    dnnl_IdhwO64i4o = dnnl_BcdeA64b4a,
     dnnl_dhwIo2i = dnnl_cdeBa2b,
     dnnl_dhwIo4i = dnnl_cdeBa4b,
+    dnnl_gOdhwi24o = dnnl_aBdefc24b,
+    dnnl_gOdhwI24o2i = dnnl_aBdefC24b2c,
+    dnnl_gOdhwI24o4i = dnnl_aBdefC24b4c,
     dnnl_gOdhwi32o = dnnl_aBdefc32b,
     dnnl_gOdhwI32o2i = dnnl_aBdefC32b2c,
     dnnl_gOdhwI32o4i = dnnl_aBdefC32b4c,
@@ -1204,6 +1513,15 @@ typedef enum {
     dnnl_gOdhwi64o = dnnl_aBdefc64b,
     dnnl_gOdhwI64o2i = dnnl_aBdefC64b2c,
     dnnl_gOdhwI64o4i = dnnl_aBdefC64b4c,
+    dnnl_gIdhwo32i = dnnl_aCdefb32c,
+    dnnl_gIdhwO32i2o = dnnl_aCdefB32c2b,
+    dnnl_gIdhwO32i4o = dnnl_aCdefB32c4b,
+    dnnl_gIdhwo48i = dnnl_aCdefb48c,
+    dnnl_gIdhwO48i2o = dnnl_aCdefB48c2b,
+    dnnl_gIdhwO48i4o = dnnl_aCdefB48c4b,
+    dnnl_gIdhwo64i = dnnl_aCdefb64c,
+    dnnl_gIdhwO64i2o = dnnl_aCdefB64c2b,
+    dnnl_gIdhwO64i4o = dnnl_aCdefB64c4b,
     dnnl_gdhwio = dnnl_adefcb,
     dnnl_gdhwIo2i = dnnl_adefCb2c,
     dnnl_gdhwIo4i = dnnl_adefCb4c,
@@ -1238,49 +1556,98 @@ typedef enum {
     dnnl_OhwI16i16o4i = dnnl_AcdB16b16a4b,
     dnnl_OdhwI16i16o2i = dnnl_AcdeB16b16a2b,
     dnnl_OdhwI16i16o4i = dnnl_AcdeB16b16a4b,
+    dnnl_IwO16o16i2o = dnnl_BcA16a16b2a,
+    dnnl_IwO16o16i4o = dnnl_BcA16a16b4a,
+    dnnl_IhwO16o16i2o = dnnl_BcdA16a16b2a,
+    dnnl_IhwO16o16i4o = dnnl_BcdA16a16b4a,
+    dnnl_IdhwO16o16i2o = dnnl_BcdeA16a16b2a,
+    dnnl_IdhwO16o16i4o = dnnl_BcdeA16a16b4a,
     dnnl_gOwI16i16o2i = dnnl_aBdC16c16b2c,
     dnnl_gOwI16i16o4i = dnnl_aBdC16c16b4c,
     dnnl_gOhwI16i16o2i = dnnl_aBdeC16c16b2c,
     dnnl_gOhwI16i16o4i = dnnl_aBdeC16c16b4c,
     dnnl_gOdhwI16i16o2i = dnnl_aBdefC16c16b2c,
     dnnl_gOdhwI16i16o4i = dnnl_aBdefC16c16b4c,
+    dnnl_gIwO16o16i2o = dnnl_aCdB16b16c2b,
+    dnnl_gIwO16o16i4o = dnnl_aCdB16b16c4b,
+    dnnl_gIhwO16o16i2o = dnnl_aCdeB16b16c2b,
+    dnnl_gIhwO16o16i4o = dnnl_aCdeB16b16c4b,
+    dnnl_gIdhwO16o16i2o = dnnl_aCdefB16b16c2b,
+    dnnl_gIdhwO16o16i4o = dnnl_aCdefB16b16c4b,
     dnnl_OwI16i32o2i = dnnl_AcB16b32a2b,
     dnnl_OwI16i32o4i = dnnl_AcB16b32a4b,
     dnnl_OwI16i48o2i = dnnl_AcB16b48a2b,
     dnnl_OwI16i48o4i = dnnl_AcB16b48a4b,
     dnnl_OwI16i64o2i = dnnl_AcB16b64a2b,
     dnnl_OwI16i64o4i = dnnl_AcB16b64a4b,
+    dnnl_IwO16o32i2o = dnnl_BcA16a32b2a,
+    dnnl_IwO16o32i4o = dnnl_BcA16a32b4a,
+    dnnl_IwO16o48i2o = dnnl_BcA16a48b2a,
+    dnnl_IwO16o48i4o = dnnl_BcA16a48b4a,
+    dnnl_IwO16o64i2o = dnnl_BcA16a64b2a,
+    dnnl_IwO16o64i4o = dnnl_BcA16a64b4a,
     dnnl_gOwI16i32o2i = dnnl_aBdC16c32b2c,
     dnnl_gOwI16i32o4i = dnnl_aBdC16c32b4c,
     dnnl_gOwI16i48o2i = dnnl_aBdC16c48b2c,
     dnnl_gOwI16i48o4i = dnnl_aBdC16c48b4c,
     dnnl_gOwI16i64o2i = dnnl_aBdC16c64b2c,
     dnnl_gOwI16i64o4i = dnnl_aBdC16c64b4c,
+    dnnl_gIwO16o32i2o = dnnl_aCdB16b32c2b,
+    dnnl_gIwO16o32i4o = dnnl_aCdB16b32c4b,
+    dnnl_gIwO16o48i2o = dnnl_aCdB16b48c2b,
+    dnnl_gIwO16o48i4o = dnnl_aCdB16b48c4b,
+    dnnl_gIwO16o64i2o = dnnl_aCdB16b64c2b,
+    dnnl_gIwO16o64i4o = dnnl_aCdB16b64c4b,
     dnnl_OhwI16i32o2i = dnnl_AcdB16b32a2b,
     dnnl_OhwI16i32o4i = dnnl_AcdB16b32a4b,
     dnnl_OhwI16i48o2i = dnnl_AcdB16b48a2b,
     dnnl_OhwI16i48o4i = dnnl_AcdB16b48a4b,
     dnnl_OhwI16i64o2i = dnnl_AcdB16b64a2b,
     dnnl_OhwI16i64o4i = dnnl_AcdB16b64a4b,
+    dnnl_IhwO16o32i2o = dnnl_BcdA16a32b2a,
+    dnnl_IhwO16o32i4o = dnnl_BcdA16a32b4a,
+    dnnl_IhwO16o48i2o = dnnl_BcdA16a48b2a,
+    dnnl_IhwO16o48i4o = dnnl_BcdA16a48b4a,
+    dnnl_IhwO16o64i2o = dnnl_BcdA16a64b2a,
+    dnnl_IhwO16o64i4o = dnnl_BcdA16a64b4a,
     dnnl_gOhwI16i32o2i = dnnl_aBdeC16c32b2c,
     dnnl_gOhwI16i32o4i = dnnl_aBdeC16c32b4c,
     dnnl_gOhwI16i48o2i = dnnl_aBdeC16c48b2c,
     dnnl_gOhwI16i48o4i = dnnl_aBdeC16c48b4c,
     dnnl_gOhwI16i64o2i = dnnl_aBdeC16c64b2c,
     dnnl_gOhwI16i64o4i = dnnl_aBdeC16c64b4c,
+    dnnl_gIhwO16o32i2o = dnnl_aCdeB16b32c2b,
+    dnnl_gIhwO16o32i4o = dnnl_aCdeB16b32c4b,
+    dnnl_gIhwO16o48i2o = dnnl_aCdeB16b48c2b,
+    dnnl_gIhwO16o48i4o = dnnl_aCdeB16b48c4b,
+    dnnl_gIhwO16o64i2o = dnnl_aCdeB16b64c2b,
+    dnnl_gIhwO16o64i4o = dnnl_aCdeB16b64c4b,
     dnnl_OdhwI16i32o2i = dnnl_AcdeB16b32a2b,
     dnnl_OdhwI16i32o4i = dnnl_AcdeB16b32a4b,
     dnnl_OdhwI16i48o2i = dnnl_AcdeB16b48a2b,
     dnnl_OdhwI16i48o4i = dnnl_AcdeB16b48a4b,
     dnnl_OdhwI16i64o2i = dnnl_AcdeB16b64a2b,
     dnnl_OdhwI16i64o4i = dnnl_AcdeB16b64a4b,
+    dnnl_IdhwO16o32i2o = dnnl_BcdeA16a32b2a,
+    dnnl_IdhwO16o32i4o = dnnl_BcdeA16a32b4a,
+    dnnl_IdhwO16o48i2o = dnnl_BcdeA16a48b2a,
+    dnnl_IdhwO16o48i4o = dnnl_BcdeA16a48b4a,
+    dnnl_IdhwO16o64i2o = dnnl_BcdeA16a64b2a,
+    dnnl_IdhwO16o64i4o = dnnl_BcdeA16a64b4a,
     dnnl_gOdhwI16i32o2i = dnnl_aBdefC16c32b2c,
     dnnl_gOdhwI16i32o4i = dnnl_aBdefC16c32b4c,
     dnnl_gOdhwI16i48o2i = dnnl_aBdefC16c48b2c,
     dnnl_gOdhwI16i48o4i = dnnl_aBdefC16c48b4c,
     dnnl_gOdhwI16i64o2i = dnnl_aBdefC16c64b2c,
     dnnl_gOdhwI16i64o4i = dnnl_aBdefC16c64b4c,
+    dnnl_gIdhwO16o32i2o = dnnl_aCdefB16b32c2b,
+    dnnl_gIdhwO16o32i4o = dnnl_aCdefB16b32c4b,
+    dnnl_gIdhwO16o48i2o = dnnl_aCdefB16b48c2b,
+    dnnl_gIdhwO16o48i4o = dnnl_aCdefB16b48c4b,
+    dnnl_gIdhwO16o64i2o = dnnl_aCdefB16b64c2b,
+    dnnl_gIdhwO16o64i4o = dnnl_aCdefB16b64c4b,
     dnnl_hwioG16g = dnnl_decbA16a,
+    dnnl_hwioG8g = dnnl_decbA8a,
     dnnl_NCdhw40n16c = dnnl_ABcde40a16b,
     dnnl_NCw40n16c = dnnl_ABc40a16b,
     dnnl_NChw40n16c = dnnl_ABcd40a16b,
@@ -1346,8 +1713,6 @@ typedef enum {
     /// perform only computations that are necessary for inference and omit
     /// computations that are necessary only for backward propagation.
     dnnl_forward_inference = 96,
-    /// Forward data propagation (alias for @c dnnl_forward_inference).
-    dnnl_forward_scoring = dnnl_forward_inference,
     /// Forward data propagation (alias for @c dnnl_forward_training).
     dnnl_forward = dnnl_forward_training,
     /// Backward propagation (with respect to all parameters).
@@ -1379,16 +1744,10 @@ typedef enum {
     dnnl_deconvolution,
     /// An element-wise primitive.
     dnnl_eltwise,
-    /// A softmax primitive.
-    dnnl_softmax,
-    /// A pooling primitive.
-    dnnl_pooling,
     /// An LRN primitive.
     dnnl_lrn,
     /// A batch normalization primitive.
     dnnl_batch_normalization,
-    /// A layer normalization primitive.
-    dnnl_layer_normalization,
     /// An inner product primitive.
     dnnl_inner_product,
     /// A rnn primitive.
@@ -1397,21 +1756,20 @@ typedef enum {
     dnnl_gemm,
     /// A binary primitive.
     dnnl_binary,
-    /// A logsoftmax primitive.
-    dnnl_logsoftmax,
     /// A matrix multiplication primitive.
     dnnl_matmul,
     /// A resampling primitive.
     dnnl_resampling,
-    /// A pooling version 2 primitive (pooling with dilation support).
-    dnnl_pooling_v2,
+    /// A pooling primitive.
+    dnnl_pooling,
     /// A reduction primitive.
     dnnl_reduction,
     /// A PReLU primitive.
     dnnl_prelu,
-    /// A softmax version 2 primitive (softmax with destination memory
-    /// descriptor and algorithm kind).
-    dnnl_softmax_v2,
+    /// A softmax primitive.
+    dnnl_softmax,
+    /// A layer normalization primitive.
+    dnnl_layer_normalization,
 
     /// Parameter to allow internal only primitives without undefined behavior.
     /// This parameter is chosen to be valid for so long as sizeof(int) >= 2.
@@ -1432,78 +1790,70 @@ typedef enum {
     /// Winograd deconvolution
     dnnl_deconvolution_winograd = 0xb,
     /// Eltwise: ReLU
-    dnnl_eltwise_relu = 0x1f,
+    dnnl_eltwise_relu = 0x20,
     /// Eltwise: hyperbolic tangent non-linearity (tanh)
-    dnnl_eltwise_tanh = 0x2f,
+    dnnl_eltwise_tanh,
     /// Eltwise: exponential linear unit (elu)
-    dnnl_eltwise_elu = 0x3f,
+    dnnl_eltwise_elu,
     /// Eltwise: square
-    dnnl_eltwise_square = 0x4f,
+    dnnl_eltwise_square,
     /// Eltwise: abs
-    dnnl_eltwise_abs = 0x5f,
+    dnnl_eltwise_abs,
     /// Eltwise: square root
-    dnnl_eltwise_sqrt = 0x6f,
+    dnnl_eltwise_sqrt,
     /// Eltwise: linear
-    dnnl_eltwise_linear = 0x7f,
-    /// Eltwise: bounded_relu
-    dnnl_eltwise_bounded_relu = 0x8f,
+    dnnl_eltwise_linear,
     /// Eltwise: soft_relu
-    dnnl_eltwise_soft_relu = 0x9f,
-    /// Eltwise: soft_relu version 2
-    dnnl_eltwise_soft_relu_v2 = 0xa0,
+    dnnl_eltwise_soft_relu,
+    /// Eltwise: hardsigmoid
+    dnnl_eltwise_hardsigmoid,
     /// Eltwise: logistic
-    dnnl_eltwise_logistic = 0xaf,
+    dnnl_eltwise_logistic,
     /// Eltwise: exponent
-    dnnl_eltwise_exp = 0xbf,
+    dnnl_eltwise_exp,
     /// Eltwise: gelu
     ///
     /// @note Tanh approximation formula is used to approximate
     /// the cumulative distribution function of a Gaussian here
-    dnnl_eltwise_gelu_tanh = 0xcf,
-    /// Eltwise: tanh-based gelu (alias for dnnl_eltwise_gelu_tanh)
-    dnnl_eltwise_gelu = dnnl_eltwise_gelu_tanh,
+    dnnl_eltwise_gelu_tanh,
     /// Eltwise: swish
-    dnnl_eltwise_swish = 0xdf,
+    dnnl_eltwise_swish,
     /// Eltwise: natural logarithm
-    dnnl_eltwise_log = 0xef,
+    dnnl_eltwise_log,
     /// Eltwise: clip
-    dnnl_eltwise_clip = 0xff,
+    dnnl_eltwise_clip,
     /// Eltwise: clip version 2
-    dnnl_eltwise_clip_v2 = 0x10,
+    dnnl_eltwise_clip_v2,
     /// Eltwise: pow
-    dnnl_eltwise_pow = 0x20,
+    dnnl_eltwise_pow,
     /// Eltwise: erf-based gelu
-    dnnl_eltwise_gelu_erf = 0x30,
+    dnnl_eltwise_gelu_erf,
     /// Eltwise: round
-    dnnl_eltwise_round = 0x40,
-    /// Eltwise: logsigmoid
-    dnnl_eltwise_logsigmoid = 0x50,
+    dnnl_eltwise_round,
     /// Eltwise: mish
-    dnnl_eltwise_mish = 0x60,
+    dnnl_eltwise_mish,
     /// Eltwise: hardswish
-    dnnl_eltwise_hardswish = 0x70,
+    dnnl_eltwise_hardswish,
     /// Eltwise: ReLU (dst for backward)
     dnnl_eltwise_relu_use_dst_for_bwd = 0x100,
     /// Eltwise: hyperbolic tangent non-linearity (tanh) (dst for backward)
-    dnnl_eltwise_tanh_use_dst_for_bwd = 0x101,
+    dnnl_eltwise_tanh_use_dst_for_bwd,
     /// Eltwise: exponential linear unit (elu) (dst for backward)
-    dnnl_eltwise_elu_use_dst_for_bwd = 0x102,
+    dnnl_eltwise_elu_use_dst_for_bwd,
     /// Eltwise: square root (dst for backward)
-    dnnl_eltwise_sqrt_use_dst_for_bwd = 0x103,
+    dnnl_eltwise_sqrt_use_dst_for_bwd,
     /// Eltwise: logistic (dst for backward)
-    dnnl_eltwise_logistic_use_dst_for_bwd = 0x104,
+    dnnl_eltwise_logistic_use_dst_for_bwd,
     /// Eltwise: exp (dst for backward)
-    dnnl_eltwise_exp_use_dst_for_bwd = 0x105,
+    dnnl_eltwise_exp_use_dst_for_bwd,
     /// Eltwise: clip version 2 (dst for backward)
-    dnnl_eltwise_clip_v2_use_dst_for_bwd = 0x106,
+    dnnl_eltwise_clip_v2_use_dst_for_bwd,
     /// Max pooling
     dnnl_pooling_max = 0x1ff,
     /// Average pooling include padding
     dnnl_pooling_avg_include_padding = 0x2ff,
     /// Average pooling exclude padding
     dnnl_pooling_avg_exclude_padding = 0x3ff,
-    /// Average pooling (alias for #dnnl_pooling_avg_exclude_padding)
-    dnnl_pooling_avg = dnnl_pooling_avg_exclude_padding,
     /// Local response normalization (LRN) across multiple channels
     dnnl_lrn_across_channels = 0xaff,
     /// LRN within a single channel
@@ -1603,18 +1953,22 @@ typedef enum {
     ///   - on backward propagation compute full derivative wrt data
     dnnl_use_global_stats = 0x1U,
 
-    /// Use scale and shift parameters
+    /// Use scale parameter
     ///
     /// If specified:
-    ///  - on forward propagation use scale and shift (aka scale and bias) for
-    ///    the normalization results
+    ///  - on forward propagation use scale for the normalization results
     ///  - on backward propagation (for prop_kind == #dnnl_backward) compute
-    ///    diff wrt scale and shift (hence one extra output used)
+    ///    diff wrt scale (hence one extra output used)
+    dnnl_use_scale = 0x2U,
+
+    /// Use shift parameter
     ///
-    /// If no specified:
-    ///  - on backward propagation prop_kind == #dnnl_backward_data has the
-    ///    same behavior as prop_kind == #dnnl_backward
-    dnnl_use_scaleshift = 0x2U,
+    /// If specified:
+    ///  - on forward propagation use shift (aka bias) for the normalization
+    ///    results
+    ///  - on backward propagation (for prop_kind == #dnnl_backward) compute
+    ///    diff wrt shift (hence one extra output used)
+    dnnl_use_shift = 0x4U,
 
     /// Fuse with ReLU
     ///
@@ -1627,24 +1981,22 @@ typedef enum {
     ///    fused with ReLU using post ops API with zero negative slope.
     ///  - on training primitive requires workspace (required to be able to
     ///    perform backward pass)
-    dnnl_fuse_norm_relu = 0x4U,
+    dnnl_fuse_norm_relu = 0x8U,
 
-    /// Use scale parameter
+    /// Fuse with Add and then fuse with ReLU
     ///
     /// If specified:
-    ///  - on forward propagation use scale for the normalization results
-    ///  - on backward propagation (for prop_kind == #dnnl_backward) compute
-    ///    diff wrt scale (hence one extra output used)
-    dnnl_use_scale = 0x8U,
-
-    /// Use shift parameter
     ///
-    /// If specified:
-    ///  - on forward propagation use shift (aka bias) for the normalization
-    ///    results
-    ///  - on backward propagation (for prop_kind == #dnnl_backward) compute
-    ///    diff wrt shift (hence one extra output used)
-    dnnl_use_shift = 0x10U,
+    ///  - on forward propagation apply element-wise binary Add operation to
+    ///    to the normalization results with an additional input tensor and then
+    ///    apply ReLU with negative slope being 0.
+    ///  - on training primitive requires workspace (required to be able to
+    ///    perform backward pass).
+    ///  - on backward propagation save the result of backward ReLU operation
+    ///    with input tensor and workspace from forward pass to extra output
+    ///    tensor and then perform backward normalization.
+    dnnl_fuse_norm_add_relu = 0x10U,
+
 } dnnl_normalization_flags_t;
 
 /// @} dnnl_api_primitives_common
@@ -1652,11 +2004,6 @@ typedef enum {
 
 /// @addtogroup dnnl_api_memory
 /// @{
-
-/// Maximum number of dimensions a tensor can have. Only restricts the amount
-/// of space used for the tensor description. Individual computational
-/// primitives may support only tensors of certain dimensions.
-#define DNNL_MAX_NDIMS 12
 
 /// A wildcard value for dimensions that are unknown at a primitive creation
 /// time.
@@ -1687,168 +2034,15 @@ static const int DNNL_RUNTIME_S32_VAL_REP = INT32_MIN;
 /// time.
 #define DNNL_RUNTIME_S32_VAL DNNL_RUNTIME_S32_VAL_REP
 
-/// A type to describe tensor dimension.
-typedef int64_t dnnl_dim_t;
+/// @struct dnnl_memory_desc
+/// An opaque structure to describe a memory descriptor.
+struct dnnl_memory_desc;
 
-/// A type to describe tensor dimensions.
-typedef dnnl_dim_t dnnl_dims_t[DNNL_MAX_NDIMS];
+/// A memory descriptor handle.
+typedef struct dnnl_memory_desc *dnnl_memory_desc_t;
 
-/// Generic description of blocked data layout for most memory formats.
-///
-/// @sa @ref dev_guide_understanding_memory_formats
-typedef struct {
-    /// The strides between the outermost blocks.
-    /// In case of plain (non-blocked) formats the strides between dimensions.
-    dnnl_dims_t strides;
-    // Innermost section
-    // ASSUMPTION: the innermost blocks are always dense
-    /// The number of innermost blocks, e.g. 3 in case of `OIhw_4i16o4i_`
-    int inner_nblks;
-    /// The size of the blocks, e.g. `{4, 16, 4}` in case of `OIhw_4i16o4i`
-    dnnl_dims_t inner_blks;
-    /// The logical indices of the blocks, e.g. `{1, 0, 1}` in case of
-    /// `4i16o4i`, because `i` is the 1st dim and `o` is the 0st dim
-    dnnl_dims_t inner_idxs;
-} dnnl_blocking_desc_t;
-
-/// Winograd-specific formats
-typedef enum {
-    /// Undefined memory format, used for empty memory descriptors.
-    dnnl_wino_undef = 0,
-    // Tensors of weights for 2x3 winograd convolutions.
-    dnnl_wino_wei_aaOIoi, ///< Internal weights format for 2x3 Winograd
-    dnnl_wino_wei_aaOio, ///< Internal weights format for 2x3 Winograd
-    dnnl_wino_wei_aaOBiOo, ///< Internal weights format for 2x3 Winograd
-    // Tensor of weights for 4x3 convolution.
-    dnnl_wino_wei_OBaaIBOIio ///< Internal weights format for 4x3 Winograd
-} dnnl_wino_memory_format_t;
-
-/// Description of tensor of weights for winograd 2x3 convolution.
-typedef struct {
-    dnnl_wino_memory_format_t wino_format;
-    int r;
-    int alpha;
-    int ic;
-    int oc;
-    int ic_block;
-    int oc_block;
-    int ic2_block;
-    int oc2_block;
-    float adj_scale;
-    size_t size;
-} dnnl_wino_desc_t;
-
-typedef enum {
-    dnnl_packed_format_undef = 0,
-    dnnl_ldigo_p,
-    dnnl_ldgoi_p,
-    dnnl_ldio_p
-} dnnl_rnn_packed_memory_format_t;
-
-/// Maximum number of parts of RNN weights tensor that require separate
-/// computation.
-#define DNNL_RNN_MAX_N_PARTS 4
-
-/// Description of tensor of packed weights for rnn.
-typedef struct {
-    dnnl_rnn_packed_memory_format_t format;
-    int n_parts;
-    int n;
-    int ldb;
-    int parts[DNNL_RNN_MAX_N_PARTS];
-    size_t part_pack_size[DNNL_RNN_MAX_N_PARTS];
-    unsigned pack_part[DNNL_RNN_MAX_N_PARTS];
-    size_t offset_compensation;
-    size_t size;
-    char reserved[200];
-} dnnl_rnn_packed_desc_t;
-
-/// Flags for memory special features
-typedef enum {
-    dnnl_memory_extra_flag_none = 0x0U,
-    /// Indicates the weights have an additional buffer, that depends on the
-    /// @p compensation_mask.
-    ///
-    /// For instance, in 4D case with the compensation mask equals (1 << 0)
-    /// the additional buffer would consist of OC values:
-    /// O[oc : 0,OC] =
-    ///  -128 * SUM(ic : 0,IC; kh : 0,KH; kw : 0,KW){ weights(oc, ic, kh, kw) }
-    dnnl_memory_extra_flag_compensation_conv_s8s8 = 0x1U,
-    dnnl_memory_extra_flag_scale_adjust = 0x2U,
-    dnnl_memory_extra_flag_rnn_u8s8_compensation = 0x4U,
-    dnnl_memory_extra_flag_gpu_rnn_u8s8_compensation
-    = dnnl_memory_extra_flag_rnn_u8s8_compensation,
-    dnnl_memory_extra_flag_compensation_conv_asymmetric_src = 0x8U,
-    dnnl_memory_extra_flag_rnn_s8s8_compensation = 0x16U,
-} dnnl_memory_extra_flags_t;
-
-/// Description of extra information stored in memory
-typedef struct {
-    /// The flags contain arbitrary extra information, such as compensation.
-    /// @sa dnnl_memory_extra_flags_t
-    uint64_t flags;
-    /// Compensation mask
-    int compensation_mask;
-    /// Scale applied to the data
-    float scale_adjust;
-    /// Compensation mask for asymmetric quantization
-    int asymm_compensation_mask;
-    /// For future backwards compatibility
-    char reserved[60];
-} dnnl_memory_extra_desc_t;
-
-/// Memory descriptor. The description is based on a number of dimensions,
-/// dimensions themselves, plus information about elements type and memory
-/// format. Additionally, contains format-specific descriptions of the data
-/// layout.
-typedef struct {
-    /// Number of dimensions
-    int ndims;
-    /// Dimensions in the following order:
-    /// - CNN data tensors: mini-batch, channel, spatial
-    ///   (<code>{N, C, [[D,] H,] W}</code>)
-    /// - CNN weight tensors: group (optional), output channel, input channel,
-    ///   spatial (<code>{[G,] O, I, [[D,] H,] W}</code>)
-    /// - RNN data tensors: time, mini-batch, channels (<code>{T, N, C}</code>)
-    ///   or layers, directions, states, mini-batch, channels (<code>{L, D, S, N, C}</code>)
-    /// - RNN weight tensor: layers, directions, input channel, gates, output channels
-    ///   (<code>{L, D, I, G, O}</code>).
-    ///
-    /// @note
-    ///    The order of dimensions does not depend on the memory format, so
-    ///    whether the data is laid out in #dnnl_nchw or #dnnl_nhwc
-    ///    the dims for 4D CN data tensor would be <code>{N, C, H, W}</code>.
-    dnnl_dims_t dims;
-
-    /// Data type of the tensor elements.
-    dnnl_data_type_t data_type;
-
-    /// Size of the data including padding in each dimension.
-    dnnl_dims_t padded_dims;
-
-    /// Per-dimension offset from the padding to actual data, the top-level
-    /// tensor with offsets applied must lie within the padding area.
-    dnnl_dims_t padded_offsets;
-
-    /// Offset from memory origin to the current block, non-zero only in
-    /// a description of a memory sub-block.
-    dnnl_dim_t offset0;
-
-    /// Memory format kind.
-    dnnl_format_kind_t format_kind;
-    union {
-        /// Description of the data layout for memory formats that use
-        /// blocking.
-        dnnl_blocking_desc_t blocking;
-        /// Tensor of weights for integer 8bit winograd convolution.
-        dnnl_wino_desc_t wino_desc;
-        /// Tensor of packed weights for RNN.
-        dnnl_rnn_packed_desc_t rnn_packed_desc;
-        // ... other descriptions possible
-    } format_desc;
-
-    dnnl_memory_extra_desc_t extra;
-} dnnl_memory_desc_t;
+/// A memory descriptor handle.
+typedef const struct dnnl_memory_desc *const_dnnl_memory_desc_t;
 
 /// @struct dnnl_memory
 /// An opaque structure to describe a memory.
@@ -1872,448 +2066,6 @@ typedef const struct dnnl_memory *const_dnnl_memory_t;
 
 /// @addtogroup dnnl_api_primitives
 /// @{
-/// @addtogroup dnnl_api_primitives_common
-/// @{
-
-/// A pointer to any of the operation descriptors.
-typedef void *dnnl_op_desc_t;
-/// A pointer to any of the operation descriptors (constant variant).
-typedef const void *const_dnnl_op_desc_t;
-
-/// @} dnnl_api_primitives_common
-/// @} dnnl_api_primitives
-
-/// @addtogroup dnnl_api_primitives
-/// @{
-
-/// @addtogroup dnnl_api_convolution
-/// @{
-
-/// A descriptor of a convolution operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_convolution.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, #dnnl_backward_data,
-    /// #dnnl_backward_weights, and #dnnl_backward_bias.
-    dnnl_prop_kind_t prop_kind;
-    /// The kind of the convolution algorithm. Possible values:
-    /// #dnnl_convolution_direct.
-    dnnl_alg_kind_t alg_kind;
-    /// Source memory descriptor.
-    dnnl_memory_desc_t src_desc;
-    /// Source gradient memory descriptor.
-    dnnl_memory_desc_t diff_src_desc;
-    /// Weights memory descriptor.
-    dnnl_memory_desc_t weights_desc;
-    /// Weights gradient memory descriptor.
-    dnnl_memory_desc_t diff_weights_desc;
-    /// Bias memory descriptor.
-    dnnl_memory_desc_t bias_desc;
-    /// Bias gradient memory descriptor.
-    dnnl_memory_desc_t diff_bias_desc;
-    /// Destination memory descriptor.
-    dnnl_memory_desc_t dst_desc;
-    /// Destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_dst_desc;
-    /// Convolution strides in each spatial dimension.
-    dnnl_dims_t strides;
-    /// Convolution dilates in each spatial dimension.
-    dnnl_dims_t dilates;
-    /// Padding in each spatial dimension. padding[0] is a padding in the
-    /// beginning (@p padding_l), padding[1] is a padding in the end (@p
-    /// padding_r).
-    dnnl_dims_t padding[2];
-    /// The accumulator data type. Initialized automatically.
-    dnnl_data_type_t accum_data_type;
-} dnnl_convolution_desc_t;
-
-/// @} dnnl_api_convolution
-
-/// @addtogroup dnnl_api_deconvolution
-/// @{
-
-/// A descriptor of a deconvolution operation.
-typedef dnnl_convolution_desc_t dnnl_deconvolution_desc_t;
-
-/// @} dnnl_api_deconvolution
-
-/// @addtogroup dnnl_api_shuffle
-/// @{
-
-/// A descriptor of a shuffle operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_shuffle.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, and #dnnl_backward_data.
-    dnnl_prop_kind_t prop_kind;
-    /// Source and destination memory descriptor,
-    /// and source and destination gradient memory descriptor.
-    dnnl_memory_desc_t data_desc;
-    /// Axis for shuffling.
-    int axis;
-    /// Number of groups.
-    dnnl_dim_t group_size;
-} dnnl_shuffle_desc_t;
-
-/// @} dnnl_api_shuffle
-
-/// @addtogroup dnnl_api_eltwise
-/// @{
-
-/// A descriptor of a element-wise operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_eltwise.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, #dnnl_backward, and #dnnl_backward_data.
-    dnnl_prop_kind_t prop_kind;
-    /// The kind of eltwise algorithm. Possible values: #dnnl_eltwise_relu,
-    /// #dnnl_eltwise_tanh, #dnnl_eltwise_elu, #dnnl_eltwise_square,
-    /// #dnnl_eltwise_abs, #dnnl_eltwise_sqrt, #dnnl_eltwise_linear,
-    /// #dnnl_eltwise_bounded_relu, #dnnl_eltwise_soft_relu, #dnnl_eltwise_soft_relu_v2,
-    /// #dnnl_eltwise_logistic, #dnnl_eltwise_exp, #dnnl_eltwise_gelu_tanh,
-    /// #dnnl_eltwise_swish, #dnnl_eltwise_log, #dnnl_eltwise_clip,
-    /// #dnnl_eltwise_clip_v2, #dnnl_eltwise_pow, #dnnl_eltwise_gelu_erf,
-    /// #dnnl_eltwise_round, #dnnl_eltwise_logsigmoid, #dnnl_eltwise_mish,
-    /// #dnnl_eltwise_hardswish.
-    /// Possible values for passing destination memory on backward:
-    /// #dnnl_eltwise_relu_use_dst_for_bwd, #dnnl_eltwise_tanh_use_dst_for_bwd,
-    /// #dnnl_eltwise_elu_use_dst_for_bwd, #dnnl_eltwise_sqrt_use_dst_for_bwd,
-    /// #dnnl_eltwise_logistic_use_dst_for_bwd,
-    /// #dnnl_eltwise_exp_use_dst_for_bwd,
-    /// #dnnl_eltwise_clip_v2_use_dst_for_bwd.
-    dnnl_alg_kind_t alg_kind;
-    /// Source and destination memory descriptor.
-    dnnl_memory_desc_t data_desc;
-    /// Source and destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_data_desc;
-    /// Algorithm specific parameter.
-    /// Accordance table:
-    ///  - #dnnl_eltwise_relu: @p alpha -- negative slope, @p beta ignored
-    ///  - #dnnl_eltwise_tanh: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_elu: @p alpha -- negative slope, @p beta ignored
-    ///  - #dnnl_eltwise_square: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_abs: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_sqrt: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_linear: @p alpha -- scale, @p beta -- shift
-    ///  - #dnnl_eltwise_bounded_relu: @p alpha -- upper bound, @p beta ignored
-    ///  - #dnnl_eltwise_soft_relu: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_soft_relu_v2: @p alpha -- soft_relu_v2 arg scaling, @p beta ignored
-    ///  - #dnnl_eltwise_logistic: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_exp: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_gelu_tanh: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_swish: @p alpha -- sigmoid arg scaling, @p beta ignored
-    ///  - #dnnl_eltwise_log: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_clip: @p alpha -- lower bound, @p beta -- upper bound
-    ///  - #dnnl_eltwise_clip_v2: @p alpha -- lower bound, @p beta -- upper bound
-    ///  - #dnnl_eltwise_pow: @p alpha -- scale, @p beta -- exponent
-    ///  - #dnnl_eltwise_gelu_erf: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_round: @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_logsigmoid @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_mish @p alpha and @p beta ignored
-    ///  - #dnnl_eltwise_hardswish @p alpha and @p beta ignored
-    float alpha, beta;
-} dnnl_eltwise_desc_t;
-
-/// @} dnnl_api_eltwise
-
-/// @addtogroup dnnl_api_softmax
-/// @{
-
-/// A descriptor of a Softmax operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_softmax.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, and #dnnl_backward_data.
-    dnnl_prop_kind_t prop_kind;
-    /// Source and destination memory descriptor.
-    dnnl_memory_desc_t data_desc;
-    /// Source and Destination of gradient memory descriptor.
-    dnnl_memory_desc_t diff_desc;
-    /// The axis along which to perform the softmax.
-    int softmax_axis;
-} dnnl_softmax_desc_t;
-
-/// @} dnnl_api_softmax
-
-/// @addtogroup dnnl_api_softmax_v2
-/// @{
-
-/// A descriptor of a Softmax operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_softmax_v2.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, and #dnnl_backward_data.
-    dnnl_prop_kind_t prop_kind;
-    /// Source memory descriptor.
-    dnnl_memory_desc_t src_desc;
-    /// Source gradient memory descriptor.
-    dnnl_memory_desc_t diff_src_desc;
-    /// The axis along which to perform the softmax.
-    int softmax_axis;
-    /// Softmax algorithm. Possible values: #dnnl_softmax_accurate and
-    /// #dnnl_softmax_log.
-    dnnl_alg_kind_t alg_kind;
-    /// Destination memory descriptor.
-    dnnl_memory_desc_t dst_desc;
-    /// Destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_dst_desc;
-} dnnl_softmax_v2_desc_t;
-
-/// @} dnnl_api_softmax_v2
-
-/// @addtogroup dnnl_api_logsoftmax
-/// @{
-
-/// A descriptor of a LogSoftmax operation. An alias of Softmax structure, but
-/// primitive_kind must be #dnnl_logsoftmax.
-typedef dnnl_softmax_desc_t dnnl_logsoftmax_desc_t;
-
-/// @} dnnl_api_logsoftmax
-
-/// @addtogroup dnnl_api_pooling
-/// @{
-
-/// A descriptor of a pooling operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_pooling.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, #dnnl_backward, and #dnnl_backward_data.
-    dnnl_prop_kind_t prop_kind;
-    /// The kind of pooling algorithm.
-    /// Possible values: #dnnl_pooling_max,
-    /// #dnnl_pooling_avg_include_padding, and
-    /// #dnnl_pooling_avg_exclude_padding.
-    dnnl_alg_kind_t alg_kind;
-    /// Source memory descriptor.
-    dnnl_memory_desc_t src_desc;
-    /// Source gradient memory descriptor.
-    dnnl_memory_desc_t diff_src_desc;
-    /// Destination memory descriptor.
-    dnnl_memory_desc_t dst_desc;
-    /// Destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_dst_desc;
-    /// Pooling kernel strides for spatial dimensions.
-    dnnl_dims_t strides;
-    /// Pooling kernel spatial dimensions.
-    dnnl_dims_t kernel;
-    /// Padding in each spatial dimension. padding[0] is a padding in the
-    /// beginning (@p padding_l), padding[1] is a padding in the end (@p
-    /// padding_r).
-    dnnl_dims_t padding[2];
-    /// The accumulator data type. Initialized automatically.
-    dnnl_data_type_t accum_data_type;
-} dnnl_pooling_desc_t;
-
-/// @} dnnl_api_pooling
-
-/// @addtogroup dnnl_api_pooling_v2
-/// @{
-
-/// A descriptor of a pooling operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_pooling_v2.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, #dnnl_backward, and #dnnl_backward_data.
-    dnnl_prop_kind_t prop_kind;
-    /// The kind of pooling algorithm.
-    /// Possible values: #dnnl_pooling_max,
-    /// #dnnl_pooling_avg_include_padding, and
-    /// #dnnl_pooling_avg_exclude_padding.
-    dnnl_alg_kind_t alg_kind;
-    /// Source memory descriptor.
-    dnnl_memory_desc_t src_desc;
-    /// Source gradient memory descriptor.
-    dnnl_memory_desc_t diff_src_desc;
-    /// Destination memory descriptor.
-    dnnl_memory_desc_t dst_desc;
-    /// Destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_dst_desc;
-    /// Pooling kernel strides for spatial dimensions.
-    dnnl_dims_t strides;
-    /// Pooling kernel spatial dimensions.
-    dnnl_dims_t kernel;
-    /// Padding in each spatial dimension. padding[0] is a padding in the
-    /// beginning (@p padding_l), padding[1] is a padding in the end (@p
-    /// padding_r).
-    dnnl_dims_t padding[2];
-    /// The accumulator data type. Initialized automatically.
-    dnnl_data_type_t accum_data_type;
-    /// Pooling dilations for spatial dimensions.
-    dnnl_dims_t dilation;
-} dnnl_pooling_v2_desc_t;
-
-/// @} dnnl_api_pooling_v2
-
-/// @addtogroup dnnl_api_prelu
-/// @{
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_prelu.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, #dnnl_backward
-    dnnl_prop_kind_t prop_kind;
-    /// Source and destination memory descriptor.
-    dnnl_memory_desc_t data_desc;
-    /// Learnable parameter alpha memory descriptor.
-    /// Alpha describes negative slope.
-    dnnl_memory_desc_t weights_desc;
-    /// Source and destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_data_desc;
-    /// Learnable parameter alpha gradient memory descriptor.
-    dnnl_memory_desc_t diff_weights_desc;
-} dnnl_prelu_desc_t;
-
-/// @} dnnl_api_prelu
-
-/// @addtogroup dnnl_api_lrn
-/// @{
-
-/// A descriptor of a Local Response Normalization (LRN) operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_lrn.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, #dnnl_backward, and #dnnl_backward_data.
-    dnnl_prop_kind_t prop_kind;
-    /// LRN algorithm. Possible values: #dnnl_lrn_within_channel and
-    /// #dnnl_lrn_across_channels.
-    dnnl_alg_kind_t alg_kind;
-    /// Source and destination memory descriptor.
-    dnnl_memory_desc_t data_desc;
-    /// Source and destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_data_desc;
-    /// The number of channels to sum over (for cross-channel LRN) or the side
-    /// length of the square region to sum over (for within-channel LRN).
-    dnnl_dim_t local_size;
-    /// LRN alpha parameter.
-    float lrn_alpha;
-    /// LRN beta parameter.
-    float lrn_beta;
-    /// LRN k parameter.
-    float lrn_k;
-} dnnl_lrn_desc_t;
-
-/// @} dnnl_api_lrn
-
-/// @addtogroup dnnl_api_batch_normalization
-/// @{
-
-/// A descriptor of a Batch Normalization operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_batch_normalization.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, #dnnl_backward, and #dnnl_backward_data.
-    dnnl_prop_kind_t prop_kind;
-    /// Source and destination memory descriptor.
-    dnnl_memory_desc_t data_desc;
-    /// Source and destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_data_desc;
-    /// Scale and shift data and gradient memory descriptors.
-    ///
-    /// Scaleshift memory descriptor uses 2D #dnnl_nc format[2,Channels]. 1-st
-    /// dimension contains gamma parameter, 2-nd dimension contains beta
-    /// parameter.
-    dnnl_memory_desc_t data_scaleshift_desc;
-    dnnl_memory_desc_t diff_data_scaleshift_desc;
-    /// Statistics memory descriptor.
-    ///
-    /// Statistics (mean or variance) descriptor use 1D #dnnl_x format[Channels].
-    dnnl_memory_desc_t stat_desc;
-    /// Batch normalization epsilon parameter.
-    float batch_norm_epsilon;
-    unsigned flags;
-} dnnl_batch_normalization_desc_t;
-
-/// @} dnnl_api_batch_normalization
-
-/// @addtogroup dnnl_api_layer_normalization
-/// @{
-
-/// A descriptor of a Layer Normalization operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_layer_normalization.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, #dnnl_backward, and #dnnl_backward_data.
-    dnnl_prop_kind_t prop_kind;
-    /// Source and destination memory descriptor.
-    dnnl_memory_desc_t data_desc;
-    /// Source and destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_data_desc;
-    /// Scale and shift data and gradient memory descriptors.
-    ///
-    /// Scaleshift memory descriptor uses 2D #dnnl_ab
-    /// format[2, normalized_dim] where 1-st dimension contains gamma parameter,
-    /// 2-nd dimension contains beta parameter. Normalized_dim is equal to the
-    /// last logical dimension of the data tensor across which normalization is
-    /// performed.
-    dnnl_memory_desc_t data_scaleshift_desc;
-    dnnl_memory_desc_t diff_data_scaleshift_desc;
-    /// Mean and variance data memory descriptors.
-    ///
-    /// Statistics (mean and variance) memory descriptor is the k-dimensional tensor
-    /// where k is equal to data_tensor_ndims - 1 and may have any plain
-    /// (stride[last_dim] == 1) user-provided format.
-    dnnl_memory_desc_t stat_desc;
-    /// Layer normalization epsilon parameter.
-    float layer_norm_epsilon;
-    unsigned flags;
-} dnnl_layer_normalization_desc_t;
-
-/// @} dnnl_api_layer_normalization
-
-/// @addtogroup dnnl_api_inner_product
-/// @{
-
-/// A descriptor of an inner product operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_inner_product.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, #dnnl_backward_data,
-    /// #dnnl_backward_weights, and #dnnl_backward_bias.
-    dnnl_prop_kind_t prop_kind;
-    /// Source memory descriptor.
-    dnnl_memory_desc_t src_desc;
-    /// Source gradient memory descriptor.
-    dnnl_memory_desc_t diff_src_desc;
-    /// Weights memory descriptor.
-    dnnl_memory_desc_t weights_desc;
-    /// Weights gradient memory descriptor.
-    dnnl_memory_desc_t diff_weights_desc;
-    /// Bias memory descriptor.
-    dnnl_memory_desc_t bias_desc;
-    /// Bias gradient memory descriptor.
-    dnnl_memory_desc_t diff_bias_desc;
-    /// Destination memory descriptor.
-    dnnl_memory_desc_t dst_desc;
-    /// Destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_dst_desc;
-    /// The accumulator data type. Initialized automatically.
-    dnnl_data_type_t accum_data_type;
-} dnnl_inner_product_desc_t;
-
-/// @} dnnl_api_inner_product
 
 /// @addtogroup dnnl_api_rnn
 /// @{
@@ -2321,11 +2073,15 @@ typedef struct {
 /// Flags for RNN cell.
 typedef enum {
     /// Undefined RNN flags
-    dnnl_rnn_flags_undef = 0x0
+    dnnl_rnn_flags_undef = 0x0,
+    /// Do not add weights gradient to existing diff_weights memory
+    dnnl_rnn_flags_diff_weights_overwrite = 0x1,
 } dnnl_rnn_flags_t;
 
 /// A direction of RNN primitive execution.
 typedef enum {
+    /// Undefined RNN direction.
+    dnnl_rnn_direction_undef = 0,
     /// Unidirectional execution of RNN primitive from left to right.
     dnnl_unidirectional_left2right,
     /// Unidirectional execution of RNN primitive from right to left.
@@ -2336,242 +2092,16 @@ typedef enum {
     /// Bidirectional execution of RNN primitive with summation of the
     /// results.
     dnnl_bidirectional_sum,
-    /// Alias for #dnnl_unidirectional_left2right.
-    dnnl_unidirectional = dnnl_unidirectional_left2right,
 } dnnl_rnn_direction_t;
-
-/// A descriptor for an RNN operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_rnn.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, and #dnnl_backward.
-    dnnl_prop_kind_t prop_kind;
-    /// RNN cell kind. Must be one of #dnnl_vanilla_rnn,
-    /// #dnnl_vanilla_lstm, #dnnl_vanilla_gru, or #dnnl_lbr_gru.
-    dnnl_alg_kind_t cell_kind;
-    /// The direction of RNN primitive execution.
-    dnnl_rnn_direction_t direction;
-    /// Source layer memory descriptor.
-    dnnl_memory_desc_t src_layer_desc;
-    /// Source iteration memory descriptor for hidden state.
-    dnnl_memory_desc_t src_iter_desc;
-    /// Source iteration memory descriptor for cell state.
-    dnnl_memory_desc_t src_iter_c_desc;
-    /// Weights layer memory descriptor.
-    dnnl_memory_desc_t weights_layer_desc;
-    /// Weights iteration memory descriptor.
-    dnnl_memory_desc_t weights_iter_desc;
-    /// Bias memory descriptor.
-    dnnl_memory_desc_t bias_desc;
-    /// Destination layer memory descriptor.
-    dnnl_memory_desc_t dst_layer_desc;
-    /// Destination iter memory descriptor for hidden state.
-    dnnl_memory_desc_t dst_iter_desc;
-    /// Destination iter memory descriptor for cell state.
-    dnnl_memory_desc_t dst_iter_c_desc;
-    /// Weights peephole memory descriptor.
-    /// This memory descriptor is equal to zero memory descriptor in case of
-    /// non-peephole LSTMs and other non-LSTM RNNs.
-    dnnl_memory_desc_t weights_peephole_desc;
-    /// Weights projection memory descriptor.
-    /// This memory descriptor is equal to zero memory descriptor in case of
-    /// non-projection LSTMs and other non-LSTM RNNs.
-    dnnl_memory_desc_t weights_projection_desc;
-
-    /// Source gradient layer memory descriptor.
-    dnnl_memory_desc_t diff_src_layer_desc;
-    /// Source gradient iter memory descriptor for hidden state.
-    dnnl_memory_desc_t diff_src_iter_desc;
-    /// Source gradient iter memory descriptor for cell state.
-    dnnl_memory_desc_t diff_src_iter_c_desc;
-    /// Weights gradient layer memory descriptor.
-    dnnl_memory_desc_t diff_weights_layer_desc;
-    /// Weights gradient iter memory descriptor.
-    dnnl_memory_desc_t diff_weights_iter_desc;
-    /// Bias gradient memory descriptor.
-    dnnl_memory_desc_t diff_bias_desc;
-    /// Destination gradient layer memory descriptor.
-    dnnl_memory_desc_t diff_dst_layer_desc;
-    /// Destination gradient iteration memory descriptor for hidden state.
-    dnnl_memory_desc_t diff_dst_iter_desc;
-    /// Destination gradient iteration memory descriptor for cell state.
-    dnnl_memory_desc_t diff_dst_iter_c_desc;
-    /// Weights gradient peephole memory descriptor.
-    /// This memory descriptor is equal to zero memory descriptor in case of
-    /// non-peephole LSTMs and other non-LSTM RNNs.
-    dnnl_memory_desc_t diff_weights_peephole_desc;
-    /// Weights gradient projection memory descriptor.
-    /// This memory descriptor is equal to zero memory descriptor in case of
-    /// non-projection LSTMs and other non-LSTM RNNs.
-    dnnl_memory_desc_t diff_weights_projection_desc;
-
-    /// RNN cell flags
-    unsigned int flags;
-    /// Activation function used for vanilla_rnn cell kind.
-    /// Must be either #dnnl_eltwise_relu or #dnnl_eltwise_tanh.
-    dnnl_alg_kind_t activation_kind;
-    float alpha;
-    float beta;
-
-} dnnl_rnn_desc_t;
 
 /// @} dnnl_api_rnn
 
-/// @addtogroup dnnl_api_binary
-/// @{
-
-/// A descriptor of a binary operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_binary.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of the binary algorithm. Possible values:
-    /// #dnnl_binary_add, #dnnl_binary_mul, #dnnl_binary_max, #dnnl_binary_min,
-    /// #dnnl_binary_div and #dnnl_binary_sub.
-    dnnl_alg_kind_t alg_kind;
-    /// Source memory descriptors.
-    dnnl_memory_desc_t src_desc[2];
-    /// Destination memory descriptor.
-    dnnl_memory_desc_t dst_desc;
-} dnnl_binary_desc_t;
-
-/// @} dnnl_api_binary
-
-/// @addtogroup dnnl_api_matmul
-/// @{
-
-/// A descriptor of a matrix multiplication operation.
-///
-/// 2D case:
-///     dst[m, n] = src[m, k] * weights[k, n] + bias[m, n]
-///
-/// 3D case:
-///     dst[mb, m, n] = src[mb, m, k] * weights[mb, k, n] + bias[mb, m, n]
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_matmul.
-    dnnl_primitive_kind_t primitive_kind;
-    /// Source memory descriptor.
-    dnnl_memory_desc_t src_desc;
-    /// Weights memory descriptor.
-    dnnl_memory_desc_t weights_desc;
-    /// Bias memory descriptor.
-    dnnl_memory_desc_t bias_desc;
-    /// Destination memory descriptor.
-    dnnl_memory_desc_t dst_desc;
-    /// The accumulator data type. Initialized automatically.
-    dnnl_data_type_t accum_data_type;
-} dnnl_matmul_desc_t;
-
-/// @} dnnl_api_matmul
-
-/// @addtogroup dnnl_api_resampling
-/// @{
-
-/// A descriptor of resampling operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_resampling.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of propagation. Possible values: #dnnl_forward_training,
-    /// #dnnl_forward_inference, #dnnl_backward_data,
-    dnnl_prop_kind_t prop_kind;
-    /// The kind of the resampling algorithm. Possible values:
-    /// #dnnl_resampling_nearest, #dnnl_resampling_linear.
-    dnnl_alg_kind_t alg_kind;
-    /// Source memory descriptor.
-    dnnl_memory_desc_t src_desc;
-    /// Source gradient memory descriptor.
-    dnnl_memory_desc_t diff_src_desc;
-    /// Destination memory descriptor.
-    dnnl_memory_desc_t dst_desc;
-    /// Destination gradient memory descriptor.
-    dnnl_memory_desc_t diff_dst_desc;
-    /// Resampling factor in each spatial dimension.
-    float factors[DNNL_MAX_NDIMS];
-} dnnl_resampling_desc_t;
-
-/// @} dnnl_api_resampling
-
-/// @addtogroup dnnl_api_reduction
-/// @{
-
-/// A descriptor of reduction operation.
-typedef struct {
-    /// The kind of primitive. Used for self-identifying the primitive
-    /// descriptor. Must be #dnnl_reduction.
-    dnnl_primitive_kind_t primitive_kind;
-    /// The kind of reduction algorithm. Possible values:
-    /// #dnnl_reduction_max, #dnnl_reduction_min, #dnnl_reduction_sum,
-    /// #dnnl_reduction_mul, #dnnl_reduction_mean, #dnnl_reduction_norm_lp_max,
-    /// #dnnl_reduction_norm_lp_sum, #dnnl_reduction_norm_lp_power_p_max,
-    /// #dnnl_reduction_norm_lp_power_p_sum.
-    dnnl_alg_kind_t alg_kind;
-    /// Source memory descriptor.
-    dnnl_memory_desc_t src_desc;
-    /// Destination memory descriptor.
-    dnnl_memory_desc_t dst_desc;
-    /// Algorithm specific parameters.
-    /// Accordance table:
-    /// #dnnl_reduction_max: @p p and @p eps are ignored
-    /// #dnnl_reduction_min: @p p and @p eps are ignored
-    /// #dnnl_reduction_norm_lp_max: @p p -- power, @p eps -- epsilon
-    /// #dnnl_reduction_norm_lp_sum: @p p -- power, @p eps -- epsilon
-    /// #dnnl_reduction_norm_lp_power_p_max: @p p -- power, @p eps -- epsilon
-    /// #dnnl_reduction_norm_lp_power_p_sum: @p p -- power, @p eps -- epsilon
-    /// #dnnl_reduction_sum: @p p and @p eps are ignored
-    /// #dnnl_reduction_mul: @p p and @p eps are ignored
-    /// #dnnl_reduction_mean: @p p and @p eps are ignored
-    float p, eps;
-} dnnl_reduction_desc_t;
-
-/// @} dnnl_api_reduction
-
 /// @} dnnl_api_primitives
-
-/// @addtogroup dnnl_api_engine
-/// @{
-
-/// @brief Kinds of engines.
-typedef enum {
-    /// An unspecified engine.
-    dnnl_any_engine,
-    /// CPU engine.
-    dnnl_cpu,
-    /// GPU engine.
-    dnnl_gpu,
-} dnnl_engine_kind_t;
-
-/// @struct dnnl_engine
-/// @brief An opaque structure to describe an engine.
-struct dnnl_engine;
-/// @brief An engine handle.
-typedef struct dnnl_engine *dnnl_engine_t;
-#if 0
-// FIXME: looks like this never happens
-/// @brief A constant engine handle.
-typedef const struct dnnl_engine *const_dnnl_engine_t;
-#endif
-
-/// @} dnnl_api_engine
 
 /// @addtogroup dnnl_api_primitives
 /// @{
 /// @addtogroup dnnl_api_primitives_common
 /// @{
-
-/// @struct dnnl_primitive_desc_iterator
-/// @brief An opaque structure to describe a primitive descriptor iterator.
-struct dnnl_primitive_desc_iterator;
-
-/// @brief A primitive descriptor iterator handle.
-typedef struct dnnl_primitive_desc_iterator *dnnl_primitive_desc_iterator_t;
-
-/// @brief A constant primitive descriptor iterator handle.
-typedef const struct dnnl_primitive_desc_iterator
-        *const_dnnl_primitive_desc_iterator_t;
 
 /// @struct dnnl_primitive_desc
 /// @brief An opaque structure to describe a primitive descriptor.
@@ -2587,18 +2117,6 @@ typedef const struct dnnl_primitive_desc *const_dnnl_primitive_desc_t;
 
 /// @addtogroup dnnl_api_attributes
 /// @{
-
-/// Floating-point math mode
-typedef enum {
-    /// Default behavior, no downconversions allowed
-    dnnl_fpmath_mode_strict,
-    /// Implicit f32->bf16 conversions allowed
-    dnnl_fpmath_mode_bf16,
-    /// Implicit f32->f16 conversions allowed
-    dnnl_fpmath_mode_f16,
-    /// Implicit f32->f16 or f32->bf16 conversions allowed
-    dnnl_fpmath_mode_any,
-} dnnl_fpmath_mode_t;
 
 /// Scratchpad mode
 typedef enum {
@@ -2737,9 +2255,6 @@ typedef const struct dnnl_primitive *const_dnnl_primitive_t;
 /// A special mnemonic for primitives that have a single weights
 /// argument. Alias for #DNNL_ARG_WEIGHTS_0.
 #define DNNL_ARG_WEIGHTS DNNL_ARG_WEIGHTS_0
-/// A special mnemonic for scale and shift argument of normalization
-/// primitives. Alias for #DNNL_ARG_WEIGHTS_0.
-#define DNNL_ARG_SCALE_SHIFT DNNL_ARG_WEIGHTS_0
 /// A special mnemonic for RNN weights applied to the layer input. An
 /// alias for #DNNL_ARG_WEIGHTS_0.
 #define DNNL_ARG_WEIGHTS_LAYER DNNL_ARG_WEIGHTS_0
@@ -2834,9 +2349,6 @@ typedef const struct dnnl_primitive *const_dnnl_primitive_t;
 /// A special mnemonic for primitives that have a single diff weights
 /// argument. Alias for #DNNL_ARG_DIFF_WEIGHTS_0.
 #define DNNL_ARG_DIFF_WEIGHTS DNNL_ARG_DIFF_WEIGHTS_0
-/// A special mnemonic for diff of scale and shift argument of normalization
-/// primitives. Alias for #DNNL_ARG_DIFF_WEIGHTS_0.
-#define DNNL_ARG_DIFF_SCALE_SHIFT DNNL_ARG_DIFF_WEIGHTS_0
 /// A special mnemonic for diff of RNN weights applied to the layer input. An
 /// alias for #DNNL_ARG_DIFF_WEIGHTS_0.
 #define DNNL_ARG_DIFF_WEIGHTS_LAYER DNNL_ARG_DIFF_WEIGHTS_0
@@ -2877,23 +2389,23 @@ typedef const struct dnnl_primitive *const_dnnl_primitive_t;
 /// variable number of destination arguments.
 #define DNNL_ARG_MULTIPLE_DST 2048
 
+/// Scaling factors provided at execution time.
+#define DNNL_ARG_ATTR_SCALES 4096
+
 /// Zero points provided at execution time.
-#define DNNL_ARG_ATTR_ZERO_POINTS 4096
+#define DNNL_ARG_ATTR_ZERO_POINTS 8192
 
 /// Arguments for fused depthwise convolution.
 /// See @ref dev_guide_attributes_post_ops_depthwise_fusion
-#define DNNL_ARG_ATTR_POST_OP_DW 8192
+#define DNNL_ARG_ATTR_POST_OP_DW 16384
 
 /// Starting point for a binary post operation.
-#define DNNL_ARG_ATTR_MULTIPLE_POST_OP_BASE 16384
+#define DNNL_ARG_ATTR_MULTIPLE_POST_OP_BASE 32768
 
 /// Arguments for a binary post operation. Up to 32 arguments are supported.
 /// See @ref dev_guide_attributes_post_ops_binary_fusion
 #define DNNL_ARG_ATTR_MULTIPLE_POST_OP(idx) \
     (DNNL_ARG_ATTR_MULTIPLE_POST_OP_BASE * ((idx) + 1))
-
-/// Input scaling factors provided at execution time.
-#define DNNL_ARG_ATTR_INPUT_SCALES 1048576
 
 /// A structure that contains an index and a memory object, and is used to pass
 /// arguments to dnnl_primitive_execute().
@@ -2918,13 +2430,31 @@ typedef struct {
 /// #dnnl_query_primitive_kind      | #dnnl_primitive_kind_t *
 /// dnnl_query_*_s32                | int *
 /// dnnl_query_*_s64                | #dnnl_dim_t * (same as int64_t *)
+/// dnnl_query_*_f32                | float *
 /// dnnl_query_*_f64                | double *
 /// dnnl_query_*_str                | const char **
-/// #dnnl_query_op_d                | #const_dnnl_op_desc_t *
-/// dnnl_query_*_md                 | const #dnnl_memory_desc_t **
-/// dnnl_query_*_\<op\>_d           | const dnnl_\<op\>_desc_t **
+/// dnnl_query_*_md                 | #const_dnnl_memory_desc_t *
 /// dnnl_query_*_pd                 | #const_dnnl_primitive_desc_t *
 /// dnnl_query_cache_blob_id        | const uint8_t **
+/// dnnl_query_strides              | const #dnnl_dims_t **
+/// dnnl_query_dilations            | const #dnnl_dims_t **
+/// dnnl_query_padding_l            | const #dnnl_dims_t **
+/// dnnl_query_padding_r            | const #dnnl_dims_t **
+/// dnnl_query_flags                | unsigned *
+/// dnnl_query_alg_kind             | #dnnl_alg_kind_t *
+/// dnnl_query_factors              | const float **
+/// dnnl_query_cell_kind            | #dnnl_alg_kind_t *
+/// dnnl_query_direction            | #dnnl_rnn_direction_t *
+/// dnnl_query_activation_kind      | #dnnl_alg_kind_t *
+/// dnnl_query_kernel               | const #dnnl_dims_t **
+/// dnnl_query_dims                 | const #dnnl_dims_t **
+/// dnnl_query_data_type            | #dnnl_data_type_t *
+/// dnnl_query_padded_dims          | const #dnnl_dims_t **
+/// dnnl_query_padded_offsets       | const #dnnl_dims_t **
+/// dnnl_query_format_kind          | #dnnl_format_kind_t *
+/// dnnl_query_inner_blks           | const #dnnl_dims_t **
+/// dnnl_query_inner_idxs           | const #dnnl_dims_t **
+/// dnnl_query_sparse_encoding      | #dnnl_sparse_encoding_t *
 ///
 /// @note
 ///     Rule of thumb: all opaque types and structures are returned by
@@ -2964,29 +2494,25 @@ typedef enum {
     dnnl_query_cache_blob_id_size_s64, ///< size of cache blob ID in bytes
     dnnl_query_cache_blob_id, ///< cache blob  ID (pointer to array)
 
-    // memory and op descriptor section
-    dnnl_query_some_d = 64, ///< stub
-    dnnl_query_op_d, ///< op descriptor
-    dnnl_query_convolution_d, ///< convolution descriptor
-    dnnl_query_deconvolution_d, ///< deconvolution descriptor
-    dnnl_query_shuffle_d, ///< shuffle descriptor
-    dnnl_query_eltwise_d, ///< eltwise descriptor
-    dnnl_query_softmax_d, ///< softmax descriptor
-    dnnl_query_pooling_d, ///< pooling descriptor
-    dnnl_query_lrn_d, ///< lrn descriptor
-    dnnl_query_batch_normalization_d, ///< batch normalization descriptor
-    dnnl_query_layer_normalization_d, ///< layer normalization descriptor
-    dnnl_query_inner_product_d, ///< inner product descriptor
-    dnnl_query_rnn_d, ///< rnn descriptor
-    dnnl_query_gemm_d, ///< GEMM descriptor (internal)
-    dnnl_query_binary_d, ///< binary descriptor
-    dnnl_query_logsoftmax_d, ///< logsoftmax descriptor
-    dnnl_query_matmul_d, ///< matrix multiplication (matmul) descriptor
-    dnnl_query_resampling_d, ///< resampling descriptor
-    dnnl_query_pooling_v2_d, ///< pooling version 2 descriptor
-    dnnl_query_reduction_d, ///< reduction descriptor
-    dnnl_query_prelu_d, ///< prelu descriptor
-    dnnl_query_softmax_v2_d, ///< softmax version 2 descriptor
+    dnnl_query_strides, ///< strides
+    dnnl_query_dilations, ///< dilations
+    dnnl_query_padding_l, ///< left padding
+    dnnl_query_padding_r, ///< right padding
+    dnnl_query_epsilon_f32, ///< epsilon
+    dnnl_query_flags, ///< flags
+    dnnl_query_alg_kind, ///< algorithm kind
+    dnnl_query_alpha_f32, ///< alpha
+    dnnl_query_beta_f32, ///< beta
+    dnnl_query_axis_s32, ///< axis
+    dnnl_query_local_size_s64, ///< LRN parameter local size
+    dnnl_query_k_f32, ///< LRN parameter K
+    dnnl_query_p_f32, ///< Reduction parameter P
+    dnnl_query_factors, ///< Resampling parameter factors
+    dnnl_query_cell_kind, ///< RNN parameter cell kind
+    dnnl_query_direction, ///< RNN parameter direction
+    dnnl_query_activation_kind, ///< RNN parameter activation kind
+    dnnl_query_kernel, ///< Pooling parameter kernel
+    dnnl_query_group_size_s64, ///< Shuffle parameter group size
 
     // memory descriptor section
     dnnl_query_some_md = 128, ///< stub
@@ -3000,6 +2526,22 @@ typedef enum {
     dnnl_query_scratchpad_md, ///< scratchpad memory desc
     dnnl_query_exec_arg_md = 255, ///< memory desc of an execute argument
 
+    dnnl_query_ndims_s32, ///< number of dimensions
+    dnnl_query_dims, ///< vector of dimensions
+    dnnl_query_data_type, ///< data type
+    dnnl_query_submemory_offset_s64, ///< submemory offset
+    dnnl_query_padded_dims, ///< vector of padded dimensions
+    dnnl_query_padded_offsets, ///< vector of padded offsets
+    dnnl_query_format_kind, ///< format kind
+    dnnl_query_inner_nblks_s32, ///< number of innermost blocks
+    dnnl_query_inner_blks, ///< vector of sizes of the innermost blocks
+    dnnl_query_inner_idxs, ///< vector of logical indices of the blocks
+#ifdef DNNL_EXPERIMENTAL_SPARSE
+    dnnl_query_sparse_encoding, ///< Sparse encoding
+    dnnl_query_nnz_s64, ///< Number of non-zero entries
+    dnnl_query_num_handles_s32, ///< Number of buffers required for a memory
+///  descriptor
+#endif
     // Max value to prevent UB for internal use only dnnl_query_t
     dnnl_query_max = 0x7fff,
 } dnnl_query_t;
@@ -3008,66 +2550,8 @@ typedef enum {
 
 /// @} dnnl_api_primitives
 
-/// @addtogroup dnnl_api_stream
-/// @{
-
-/// @brief Stream flags.
-typedef enum {
-    // In-order execution.
-    dnnl_stream_in_order = 0x1U,
-    /// Out-of-order execution.
-    dnnl_stream_out_of_order = 0x2U,
-    /// Default stream configuration.
-    dnnl_stream_default_flags = dnnl_stream_in_order,
-} dnnl_stream_flags_t;
-
-/// @struct dnnl_stream
-/// An opaque structure to describe an execution stream.
-struct dnnl_stream;
-/// An execution stream handle.
-typedef struct dnnl_stream *dnnl_stream_t;
-/// A constant execution stream handle.
-typedef const struct dnnl_stream *const_dnnl_stream_t;
-
-/// @} dnnl_api_stream
-
 /// @addtogroup dnnl_api_service
 /// @{
-
-/// No runtime (disabled)
-#define DNNL_RUNTIME_NONE 0u
-
-/// Sequential runtime (CPU only)
-#define DNNL_RUNTIME_SEQ 1u
-
-/// OpenMP runtime (CPU only)
-#define DNNL_RUNTIME_OMP 2u
-
-/// TBB runtime (CPU only)
-#define DNNL_RUNTIME_TBB 4u
-
-/// Threadpool runtime (CPU only)
-#define DNNL_RUNTIME_THREADPOOL 8u
-
-/// OpenCL runtime
-#define DNNL_RUNTIME_OCL 256u
-
-/// SYCL runtime
-#define DNNL_RUNTIME_SYCL 512u
-
-/// DPC++ runtime
-#define DNNL_RUNTIME_DPCPP DNNL_RUNTIME_SYCL
-
-/// Structure containing version information as per [Semantic
-/// Versioning](https://semver.org)
-typedef struct {
-    int major; ///< Major version
-    int minor; ///< Minor version
-    int patch; ///< Patch version
-    const char *hash; ///< Git hash of the sources (may be absent)
-    unsigned cpu_runtime; ///< CPU runtime
-    unsigned gpu_runtime; ///< GPU runtime
-} dnnl_version_t;
 
 /// Disable profiling completely
 #define DNNL_JIT_PROFILE_NONE 0u
@@ -3091,8 +2575,8 @@ typedef struct {
 
 /// CPU instruction set flags
 typedef enum {
-    /// Any ISA (excepting those listed as initial support)
-    dnnl_cpu_isa_all = 0x0,
+    /// Library choice of ISA (excepting those listed as initial support)
+    dnnl_cpu_isa_default = 0x0,
 
     /// Intel Streaming SIMD Extensions 4.1 (Intel SSE4.1)
     dnnl_cpu_isa_sse41 = 0x1,
@@ -3103,13 +2587,13 @@ typedef enum {
     /// Intel Advanced Vector Extensions 2 (Intel AVX2)
     dnnl_cpu_isa_avx2 = 0x7,
 
-    /// (deprecated) Intel Advanced Vector Extensions 512 (Intel AVX-512) subset
-    /// for Intel Xeon Phi processors x200 Series.
-    dnnl_cpu_isa_avx512_mic = 0xf,
+    /// Intel AVX2 and Intel Deep Learning Boost (Intel DL Boost) support
+    dnnl_cpu_isa_avx2_vnni = 0xf,
 
-    /// (deprecated) Intel AVX-512 subset
-    /// for Intel Xeon Phi processors 7235, 7285, 7295 Series.
-    dnnl_cpu_isa_avx512_mic_4ops = 0x1f,
+    /// Intel AVX2 and Intel Deep Learning Boost (Intel DL Boost)
+    /// with 8-bit integer, float16 and bfloat16 support
+    /// (preview support)
+    dnnl_cpu_isa_avx2_vnni_2 = 0x1f,
 
     /// Intel AVX-512 subset for Intel Xeon Scalable processor family
     /// and Intel Core processor family.
@@ -3125,13 +2609,19 @@ typedef enum {
     /// and Intel Core processor family.
     dnnl_cpu_isa_avx512_core_bf16 = 0xe7,
 
-    /// Intel AVX-512, Intel DL Boost and bfloat16 support and
+    /// Intel AVX-512 with float16, Intel DL Boost and bfloat16 support
+    /// for Intel Xeon Scalable processor family
+    /// and Intel Core processor family.
+    dnnl_cpu_isa_avx512_core_fp16 = 0x1ef,
+
+    /// Intel AVX-512 with float16, Intel DL Boost and bfloat16 support and
     /// Intel AMX with 8-bit integer and bfloat16 support
-    dnnl_cpu_isa_avx512_core_amx = 0x3e7,
+    dnnl_cpu_isa_avx512_core_amx = 0xfef,
 
-    /// Intel AVX2 and Intel Deep Learning Boost (Intel DL Boost) support
-    dnnl_cpu_isa_avx2_vnni = 0x407,
-
+    /// Intel AVX-512 with float16, Intel DL Boost and bfloat16 support and
+    /// Intel AMX with 8-bit integer, bfloat16 and float16 support
+    /// (preview support)
+    dnnl_cpu_isa_avx512_core_amx_fp16 = 0x1fef,
 } dnnl_cpu_isa_t;
 
 /// CPU ISA hints flags

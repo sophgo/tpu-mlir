@@ -774,9 +774,8 @@ int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
   auto dst_md = memory::desc({dst_tz}, dt::f32, tag::any);
 
   // fc desc
-  auto fc_desc = inner_product_forward::desc(
-      prop_kind::forward_inference, src_md, weights_md, bias_md, dst_md);
-  auto fc_prim_desc = inner_product_forward::primitive_desc(fc_desc, eng);
+  auto fc_prim_desc = inner_product_forward::primitive_desc(
+      eng, prop_kind::forward_inference, src_md, weights_md, bias_md, dst_md);
 
   // do reorder if needed
   auto src_memory = user_src_memory;

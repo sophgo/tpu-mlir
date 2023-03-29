@@ -65,14 +65,10 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
         for (int64_t kt = 0; kt < KT; kt++) {
           for (int64_t khw = 0; khw < KH * KW; khw++) {
             long long src_offset = oc * (IC * KT * KH * KW) +
-                                   ic * (KT * KH * KW) +
-                                   kt * (KH * KW) +
-                                   khw;
-          long long dst_offset = oc * (IC * KT * KH * KW) +
-                                 kt * (IC * KH * KW) +
-                                 ic * (KH * KW) +
-                                 khw;
-          filter_new->at(dst_offset) = filter_f32->at(src_offset);
+                                   ic * (KT * KH * KW) + kt * (KH * KW) + khw;
+            long long dst_offset = oc * (IC * KT * KH * KW) +
+                                   kt * (IC * KH * KW) + ic * (KH * KW) + khw;
+            filter_new->at(dst_offset) = filter_f32->at(src_offset);
           }
         }
       }
@@ -86,8 +82,8 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
              lg_info.group_ops.size() > 1) {
     // (oc, ic, kt, kh, kw) -> (1, oc, kt, ic/IC_PARALLEL, kh*kw * IC_PARALLEL)
     auto filter_u16 = filter_op.read<uint16_t>();
-    std::vector<int64_t> filter_shape = {1, OC, KT, ceiling_func(IC, IC_PARALLEL),
-                                         KH * KW * IC_PARALLEL};
+    std::vector<int64_t> filter_shape = {
+        1, OC, KT, ceiling_func(IC, IC_PARALLEL), KH * KW * IC_PARALLEL};
     auto filter_new =
         std::make_shared<std::vector<uint16_t>>(get_shape_size(filter_shape));
     for (int oc = 0; oc < OC; ++oc) {
@@ -101,8 +97,8 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
                               (ic * IC_PARALLEL + inner) * KT * KH * KW +
                               kt * (KH * KW) + khw;
               long long dst = oc * KT * align_up(IC, IC_PARALLEL) * KH * KW +
-                              kt *  align_up(IC, IC_PARALLEL) * KH * KW +
-                              ic *IC_PARALLEL * KH * KW + khw * IC_PARALLEL +
+                              kt * align_up(IC, IC_PARALLEL) * KH * KW +
+                              ic * IC_PARALLEL * KH * KW + khw * IC_PARALLEL +
                               inner;
               filter_new->at(dst) = filter_u16->at(src);
             }
@@ -147,8 +143,8 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
   } else if (filter_type.isInteger(8) && lg_info.group_ops.size() > 1) {
     // (oc, ic, kt, kh, kw) -> (1, oc, kt, ic/IC_PARALLEL, kh*kw * IC_PARALLEL)
     auto filter_i8 = filter_op.read<int8_t>();
-    std::vector<int64_t> filter_shape = {1, OC, KT, ceiling_func(IC, IC_PARALLEL),
-                                         KH * KW * IC_PARALLEL};
+    std::vector<int64_t> filter_shape = {
+        1, OC, KT, ceiling_func(IC, IC_PARALLEL), KH * KW * IC_PARALLEL};
     auto filter_new =
         std::make_shared<std::vector<int8_t>>(get_shape_size(filter_shape));
     for (int oc = 0; oc < OC; ++oc) {
@@ -162,7 +158,7 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
                               (ic * IC_PARALLEL + inner) * KT * KH * KW +
                               kt * (KH * KW) + khw;
               long long dst = oc * KT * align_up(IC, IC_PARALLEL) * KH * KW +
-                              kt *  align_up(IC, IC_PARALLEL) * KH * KW +
+                              kt * align_up(IC, IC_PARALLEL) * KH * KW +
                               ic * IC_PARALLEL * KH * KW + khw * IC_PARALLEL +
                               inner;
               filter_new->at(dst) = filter_i8->at(src);
@@ -223,8 +219,8 @@ static void matmul_left_reuse_setting(const LgInfo &lg_info) {
   for (auto op : lg_info.group_ops) {
     if (isa<tpu::MatMulOp>(op)) {
       auto malmul_op = dyn_cast<tpu::MatMulOp>(op);
-      auto in_op = malmul_op.getInput().getDefiningOp();
-      if (in_op->hasOneUse()) {
+      auto in = malmul_op.getInput();
+      if (in.hasOneUse()) {
         malmul_op.setLeftReuse(0);
       } else {
         malmul_op.setLeftReuse(1);
