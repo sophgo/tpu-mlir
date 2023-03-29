@@ -63,7 +63,7 @@ class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
     !foldl(/*init*/!head(cases), /*list*/!tail(cases),
            prev, cur, prev # ", or " # cur)>;
 def ArgModeAttr: AnyStrAttrOf<["ArgMin","ArgMax"]>;
-def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual"]>;
+def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual", "NotEqual"]>;
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
 def InterpModeAttr: AnyStrAttrOf<["nearest","linear"]>;
 def InterpCoordModeAttr: AnyStrAttrOf<["align_corners", "half_pixel", "pytorch_half_pixel"]>;
@@ -557,6 +557,24 @@ def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_SubConstOp: Top_Op<"SubConst", [SupportFuseRelu]> {
+  let summary = "Sub Const operator";
+
+  let description = [{
+    Y = X - const_val or const_val - X
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr: $const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu]> {
   let summary = "Mul Const operator";
 
@@ -850,13 +868,14 @@ def Top_SizeOp: Top_Op<"Size"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_ZerosOp: Top_Op<"Zeros"> {
-  let summary = "zeros operator";
+def Top_ConstantFillOp: Top_Op<"ConstantFill"> {
+  let summary = "constant fill operator";
   let description = [{
-    gen by torch aten::zeros
+    fill the constant value
   }];
   let arguments = (ins
-    AnyTensor:$input
+    AnyTensor:$input,
+    F64Attr:$value
   );
 
   let results = (outs

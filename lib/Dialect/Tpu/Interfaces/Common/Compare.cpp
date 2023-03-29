@@ -20,7 +20,8 @@ LogicalResult tpu::CompareOp::init(InferenceParameter &p) {
       {"Greater", algorithm::binary_gt},
       {"GreaterOrEqual", algorithm::binary_ge},
       {"Less", algorithm::binary_lt},
-      {"LessOrEqual", algorithm::binary_le}};
+      {"LessOrEqual", algorithm::binary_le},
+      {"NotEqual", algorithm::binary_ne}};
 
   auto binary = new Binary();
   auto lhs_shape = module::getShape(getOperand(0));

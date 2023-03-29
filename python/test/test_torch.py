@@ -61,6 +61,7 @@ class TORCH_IR_TESTER(object):
             "Conv2d":           (self.test_Conv2d,            Y, N, N),
             "Conv3d":           (self.test_Conv3d,            Y, N, N),
             "ConvTrans":        (self.test_ConvTrans,         Y, N, N),
+            "ConstantFill":     (self.test_ConstantFill,      Y, N, N),
             "Div":              (self.test_Div,               Y, N, N),
             "Dropout":          (self.test_Dropout,           Y, N, N),
             "Elu":              (self.test_Elu,               Y, N, N),
@@ -83,11 +84,13 @@ class TORCH_IR_TESTER(object):
             "MaxPool3d":        (self.test_MaxPool3d,         Y, N, N),
             "MM":               (self.test_MM,                Y, N, N),
             "Mul":              (self.test_Mul,               Y, N, N),
+            "Reduce":           (self.test_Reduce,            Y, N, N),
             "Reshape":          (self.test_Reshape,           Y, N, N),
             "PRelu":            (self.test_PRelu,             Y, N, N),
             "Permute":          (self.test_Permute,           Y, N, N),
             "Pad1d":            (self.test_Pad1d,             Y, N, N),
             "Pad2d":            (self.test_Pad2d,             Y, N, N),
+            "Pow":              (self.test_Pow,               Y, N, N),
             "Scatter":          (self.test_Scatter,           N, N, N),
             "Select":           (self.test_Select,            Y, N, N),
             "Slice":            (self.test_Slice,             Y, N, N),
@@ -99,6 +102,7 @@ class TORCH_IR_TESTER(object):
             "Tile":             (self.test_Tile,              Y, N, N),
             "Transpose":        (self.test_Transpose,         Y, N, N),
             "Upsample":         (self.test_Upsample,          Y, N, N),
+            "Unary":            (self.test_Unary,             Y, N, N),
             "Unsqueeze":        (self.test_Unsqueeze,         Y, N, N),
             "View":             (self.test_View,              Y, N, N),
             "Where":            (self.test_Where,             Y, N, N),
@@ -530,7 +534,7 @@ class TORCH_IR_TESTER(object):
     #######################################################################
     # Binary Base
     # ------------
-    def _test_binary(self, op_type, in0_shape, in1_shape, alpha=None):
+    def _test_binary(self, op_type, in0_shape, in1_shape, alpha=None, is_reverse=False):
 
         _alpha = {}
         if alpha:
@@ -543,7 +547,10 @@ class TORCH_IR_TESTER(object):
                 self.weight = torch.randn(in1_shape)
 
             def forward(self, x):
-                y0 = x + 3
+                if is_reverse:
+                    y0 = 3 - x
+                else:
+                    y0 = x + 3
                 y1 = op_type(self.weight, y0, **_alpha)
                 y2 = op_type(y0, y1, **_alpha)
                 return y2
@@ -567,7 +574,7 @@ class TORCH_IR_TESTER(object):
         """Sub"""
 
         self._test_binary(torch.sub, (1, 3, 32, 31), (1, 3, 32, 1), 3)
-        self._test_binary(torch.sub, (2, 32, 16), (2, 1, 16), 3)
+        self._test_binary(torch.sub, (2, 32, 16), (2, 1, 16), 3, is_reverse=True)
         self._test_binary(torch.sub, (32, 32), (32))
 
     #######################################################################
@@ -619,6 +626,7 @@ class TORCH_IR_TESTER(object):
         self._test_binary(torch.less, (1, 3, 32, 31), (1, 3, 32, 1))
         self._test_binary(torch.less_equal, (1, 3, 32, 31), (1, 3, 32, 1))
         self._test_binary(torch.eq, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(torch.ne, (1, 3, 32, 31), (1, 3, 32, 1))
         test_cmp_const(torch.greater, (1, 2, 3, 4), 0)
         test_cmp_const(lambda x, y: y > x, (1, 2, 3, 4), 0)
         test_cmp_const(torch.greater_equal, (1, 2, 3, 4), 0)
@@ -629,6 +637,8 @@ class TORCH_IR_TESTER(object):
         test_cmp_const(lambda x, y: y <= x, (1, 2, 3, 4), 0)
         test_cmp_const(torch.eq, (1, 2, 3, 4), 0)
         test_cmp_const(lambda x, y: y == x, (1, 2, 3, 4), 0)
+        test_cmp_const(torch.ne, (1, 2, 3, 4), 0)
+        test_cmp_const(lambda x, y: y != x, (1, 2, 3, 4), 0)
 
     #######################################################################
     # LayerNorm
@@ -695,6 +705,74 @@ class TORCH_IR_TESTER(object):
                 return z
 
         self.trace_and_test([(4, 8, 49, 32), (4, 8, 32, 49)], Model())
+
+    #######################################################################
+    # ConstantFill
+    # ------------
+    def test_ConstantFill(self):
+
+        def _test_constant_fill(func, shape, type=None):
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = func(shape, dtype=type)
+                    z = y + x
+                    return z
+
+            self.trace_and_test([shape], Model())
+
+        _test_constant_fill(torch.zeros, (2, 3, 64, 64), torch.float32)
+        _test_constant_fill(torch.zeros, (3, 64, 64))
+        _test_constant_fill(torch.ones, (1, 3, 64, 64), torch.float32)
+        _test_constant_fill(torch.ones, (3, 64, 64))
+
+    #######################################################################
+    # Reduce
+    # ------------
+    def test_Reduce(self):
+
+        def _test_reduce(func, shape, dim=None, keepdim=False):
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = func(x, dim, keepdim)
+                    return y
+
+            self.trace_and_test([shape], Model())
+
+        # _test_reduce(torch.sum, (2, 3, 64, 64))
+        _test_reduce(torch.sum, (1, 3, 64, 64), 1, True)
+        _test_reduce(torch.sum, (2, 3, 64, 64), [0,1,2])
+        # _test_reduce(torch.mean, (2, 3, 64, 64))
+        _test_reduce(torch.mean, (1, 3, 64, 64), 1, True)
+        _test_reduce(torch.mean, (2, 3, 64, 64), [1,2])
+
+    #######################################################################
+    # Pow
+    # ------------
+    def test_Pow(self):
+
+        def _test_pow(shape, exp):
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = torch.pow(x, exponent=exp)
+                    return y
+
+            self.trace_and_test([shape], Model())
+
+        _test_pow((2, 3, 64, 64), 2)
+        _test_pow((3, 64, 64), 3)
+        _test_pow((64, 64), 0.5)
 
     #######################################################################
     # Reshape
@@ -1415,6 +1493,29 @@ class TORCH_IR_TESTER(object):
 
         self.trace_and_test([(4, 3, 32, 32), (4, 3, 32, 32)], Model())
         self.trace_and_test([(4, 3, 32, 32)], Model2())
+
+    #######################################################################
+    # Unary
+    # ------------
+    def test_Unary(self):
+        """Unary Functions"""
+
+        def _test_unary(op_type, in_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return op_type(x)
+
+            self.trace_and_test([in_shape], Model())
+
+        for op_type in [torch.sqrt]:
+            _test_unary(op_type, (1, 3, 32, 32))
+            _test_unary(op_type, (3, 16, 32))
+            _test_unary(op_type, (64, 32))
 
     #######################################################################
     # Activation
