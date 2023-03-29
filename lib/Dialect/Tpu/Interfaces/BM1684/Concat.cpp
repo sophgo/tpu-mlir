@@ -51,7 +51,7 @@ void tpu::ConcatOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                          local_sec_info_t &sec_info) {
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
-  auto gi = getGroupInfo(n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0);
   int num_inputs = getInputs().size();
   int is_st_concat_way[num_inputs] = {0};
   uint32_t in_addr[num_inputs] = {0};

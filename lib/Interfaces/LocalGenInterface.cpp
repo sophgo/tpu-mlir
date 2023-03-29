@@ -27,8 +27,8 @@ void LocalGenInterface::fixSlice(int64_t &in_idx, int64_t &in_slice,
   in_slice = end_idx - in_idx;
 }
 
-group_info_t LocalGenInterface::getGroupInfo(mlir::Value v, int64_t n_step,
-                                             int64_t h_step) {
+group_info_t LocalGenInterface::getGroupInfo(mlir::Value v,
+                                             int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step) {
   auto op = v.getDefiningOp();
   if (op == nullptr || !op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) {
     // generate ginfo
@@ -42,15 +42,19 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Value v, int64_t n_step,
                        .cast<tpu::LayerGroupAttr>();
     int64_t nslice = g_param.getNSlice()[0];
     int64_t hslice = g_param.getHSlice()[0];
+    int64_t dslice = g_param.getDSlice()[0];
+    int64_t wslice = g_param.getWSlice()[0];
     dst_lg_op.BackwardN(ginfo.n_idx, ginfo.n_slice, 0, nslice);
     dst_lg_op.BackwardH(ginfo.h_idx, ginfo.h_slice, 0, hslice);
+    dst_lg_op.BackwardD(ginfo.d_idx, ginfo.d_slice, 0, dslice);
+    dst_lg_op.BackwardW(ginfo.w_idx, ginfo.w_slice, 0, wslice);
     return ginfo;
   }
-  return getGroupInfo(op, n_step, h_step);
+  return getGroupInfo(op, n_step, h_step, d_step, w_step);
 }
 
 group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
-                                             int64_t n_step, int64_t h_step) {
+                                             int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step) {
   group_info_t ginfo = {0};
   if (isa<top::NoneOp>(op)) {
     return ginfo;
@@ -71,21 +75,33 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
   auto n_slice_v = g_param.getNSlice();
   auto h_idx_v = g_param.getHIdx();
   auto h_slice_v = g_param.getHSlice();
-  if (n_idx_v.empty() && h_idx_v.empty()) {
-    int64_t n, c, h, w;
-    ginfo.overstepped = !(n_step == 0 && h_step == 0);
-    module::getNCHW(op->getResult(0), n, c, h, w);
+  auto d_idx_v = g_param.getDIdx();
+  auto d_slice_v = g_param.getDSlice();
+  auto w_idx_v = g_param.getWIdx();
+  auto w_slice_v = g_param.getWSlice();
+  if (n_idx_v.empty() && d_idx_v.empty() && h_idx_v.empty() && w_idx_v.empty()) {
+    int64_t n, c, d, h, w;
+    ginfo.overstepped = !(n_step == 0 && d_step == 0 && h_step == 0 && w_step == 0);
+    module::getNCDHW(op->getResult(0), n, c, d, h, w, (group_type_t)ginfo.type);
     ginfo.n_slice = n;
     ginfo.h_slice = h;
+    ginfo.d_slice = d;
+    ginfo.w_slice = w;
   } else {
     if (n_step >= (int64_t)n_idx_v.size() ||
-        h_step >= (int64_t)h_idx_v.size()) {
+        h_step >= (int64_t)h_idx_v.size() ||
+        d_step >= (int64_t)d_idx_v.size() ||
+        w_step >= (int64_t)w_idx_v.size()) {
       ginfo.overstepped = true;
     } else {
       ginfo.n_idx = n_idx_v[n_step];
       ginfo.n_slice = n_slice_v[n_step];
       ginfo.h_idx = h_idx_v[h_step];
       ginfo.h_slice = h_slice_v[h_step];
+      ginfo.d_idx = d_idx_v[d_step];
+      ginfo.d_slice = d_slice_v[d_step];
+      ginfo.w_idx = w_idx_v[w_step];
+      ginfo.w_slice = w_slice_v[w_step];
       ginfo.overstepped = false;
     }
   }

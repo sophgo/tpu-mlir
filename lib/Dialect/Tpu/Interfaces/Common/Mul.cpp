@@ -75,7 +75,7 @@ LogicalResult tpu::MulOp::LocalGenSupport() {
   return BroadCastBinaryLocalGenSupport(getOperation());
 }
 
-void tpu::MulOp::assign_sec_info(int64_t n_step, int64_t h_step,
+void tpu::MulOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                    group_type_t group_type,
                                    local_sec_info_t &sec_info) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
@@ -87,17 +87,20 @@ void tpu::MulOp::assign_sec_info(int64_t n_step, int64_t h_step,
   module::getNCDHW(input0, n0, c0, d0, h0, w0, group_type);
   module::getNCDHW(input1, n1, c1, d1, h1, w1, group_type);
   module::getNCDHW(output, on, oc, od, oh, ow, group_type);
-  auto gi = getGroupInfo(n_step, h_step);
-  auto in0_gi = LocalGenInterface::getGroupInfo(input0, n_step, h_step);
-  auto in1_gi = LocalGenInterface::getGroupInfo(input1, n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
+  auto in0_gi = LocalGenInterface::getGroupInfo(input0, n_step, h_step, d_step, w_step);
+  auto in1_gi = LocalGenInterface::getGroupInfo(input1, n_step, h_step, d_step, w_step);
   sec_info.n_slice = std::max(in0_gi.n_slice, in1_gi.n_slice);
-  sec_info.d_slice = std::max(d0, d1);
+  sec_info.d_slice = std::max(in0_gi.d_slice, in1_gi.d_slice);
   sec_info.h_slice = std::max(in0_gi.h_slice, in1_gi.h_slice);
+  sec_info.w_slice = std::max(in0_gi.w_slice, in1_gi.w_slice);
   sec_info.h_idx = std::max(in0_gi.h_idx, in1_gi.h_idx);
   sec_info.is_h_split = !(std::max(in0_gi.h_idx, in1_gi.h_idx) == 0 && std::max(in0_gi.h_slice, in1_gi.h_slice) == std::max(h0, h1));
-  sec_info.w_slice = std::max(w0, w1);
+  sec_info.w_idx = std::max(in0_gi.w_idx, in1_gi.w_idx);
+  sec_info.is_w_split = !(std::max(in0_gi.w_idx, in1_gi.w_idx) == 0 && std::max(in0_gi.w_slice, in1_gi.w_slice) == std::max(w0, w1));
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
-  sec_info.out_w_slice = ow;
+  sec_info.out_w_idx = gi.w_idx;
+  sec_info.out_w_slice = gi.w_slice;
 }

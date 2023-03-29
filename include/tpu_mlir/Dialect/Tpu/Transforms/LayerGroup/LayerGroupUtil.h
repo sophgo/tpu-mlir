@@ -33,16 +33,18 @@ bool strip_back_judge(Value v, const LgInfo &lg_info,
                       const std::multiset<Operation *> &op_set,
                       const std::set<Value, value_compare> &out_tensor_set);
 bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1);
-slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
-                                int64_t h);
+slice_info_t get_out_slice_info(const shape_secs_t &shape_secs,
+                                int64_t n, int64_t h, int64_t d, int64_t w);
 bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
                              Operation *op);
 bool stripe_mine_max_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
                            TensorInfo &tensor_infos);
 
-void get_max_slice_nh(const slice_info_t &slice_info, int64_t &max_nslice,
-                      int64_t &max_hslice);
+void get_max_slice_nhdw(const slice_info_t &slice_info,
+                        int64_t &max_nslice, int64_t &max_hslice, int64_t &max_dslice, int64_t &max_wslice);
+void assign_dhwsecs(const LgInfo & lg_info, shape_secs_t &shape_secs,
+                    int64_t &dhw_secs, const shape_secs_t &max_shape_secs);
 
 int64_t get_buffer_size(Value v, const tensor_info_t &ti,
                         group_type_t group_type);
@@ -51,8 +53,8 @@ bool stripe_mine_idx_slice(const LgInfo &lg_info,
                            const shape_secs_t &shape_secs,
                            TensorInfo &tensor_infos);
 
-void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
-                                int64_t hidx, int64_t hslice);
+void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice, int64_t hidx, int64_t hslice,
+                                int64_t didx, int64_t dslice, int64_t widx, int64_t wslice);
 void delete_fake_local_layer_param(Operation *op);
 void generate_fake_global_addr(Operation *op);
 

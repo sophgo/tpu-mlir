@@ -197,8 +197,8 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
 // LocalGenInterface
 // =========================================
 int64_t tpu::MatMulOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
     group_type_t group_type) {
   auto p = parseParam();
   int64_t n0, c0, h0, w0, n1, c1, h1, w1;
@@ -290,14 +290,14 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
   return buffer_size;
 }
 
-void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto p = parseParam();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
-  const auto &gi = getGroupInfo(n_step, h_step);
+  const auto &gi = getGroupInfo(n_step, h_step, d_step, w_step);
 
   batch_matmul_local_spec_t param{0};
   param.buffer_addr = gi.buffer_addr;

@@ -60,7 +60,7 @@ void tpu::GroupNormOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                             local_sec_info_t &sec_info) {
   int input_shape[MAX_SHAPE_DIMS];
   int64_t depth = 1;
-  auto out_g_info = getGroupInfo(n_step, h_step);
+  auto out_g_info = getGroupInfo(n_step, h_step, 0, 0);
   module::getLocalShape(getInput(), n_step, h_step, input_shape);
   if (out_g_info.type == GROUP_3D && module::getShape(getInput()).size() > 4) {
     int64_t n, c, h, w;

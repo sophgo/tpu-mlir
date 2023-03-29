@@ -221,6 +221,28 @@ LogicalResult tpu::PadOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
+LogicalResult tpu::PadOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
+                                    int64_t out_idx, int64_t out_slice) {
+  i64_array_t pads = module::getI64Array(getPaddings());
+  auto out_shape = module::getShape(getOutput());
+  in_idx = out_idx ? out_idx - pads->at(3) : 0;
+  if (out_idx == 0) {
+    if (out_slice == out_shape[3]) {
+      in_slice = out_slice - pads->at(3) - pads->at(7);
+    } else {
+      in_slice = out_slice - pads->at(3);
+    }
+  } else if (out_idx + out_slice == out_shape[3]) {
+    in_slice = out_slice - pads->at(7);
+  } else {
+    in_slice = out_slice;
+  }
+  if (in_slice <= 0 || in_idx < 0) {
+    return failure();
+  }
+  return success();
+}
+
 LogicalResult tpu::PadOp::LocalGenSupport() {
   if (module::isCV18xx()) {
     if (getMode() != 0 || module::getShape(getInput()).size() != 4) {
