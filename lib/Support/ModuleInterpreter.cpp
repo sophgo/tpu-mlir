@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #include <llvm/Support/Debug.h>
+#include "progressbar.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -45,6 +46,8 @@ void ModuleInterpreter::allocate_resources() {
   all_tensor_names.clear();
   value_map.clear();
   mem_map.clear();
+  num_infer_op = 0;
+  int64_t total_count = 0;
   for (auto func : module.getOps<FuncOp>()) {
     // if (func.getName() != "main") {
     //   continue;
@@ -65,6 +68,7 @@ void ModuleInterpreter::allocate_resources() {
           }
           auto type = result.getType().cast<RankedTensorType>();
           auto count = type.getNumElements();
+          total_count += count;
           auto name = module::getName(result).str();
           value_map[name] = result;
           if (auto wOp = llvm::dyn_cast<top::WeightOp>(op)) {
@@ -91,6 +95,7 @@ void ModuleInterpreter::allocate_resources() {
     // input output buffers for all ops
     func.walk([&](Operation *op) {
       if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
+        num_infer_op++;
         auto name = module::getName(op).str();
         auto param = std::make_shared<InferenceParameter>();
         for (auto result : op->getResults()) {
@@ -123,11 +128,13 @@ void ModuleInterpreter::allocate_resources() {
       }
     });
   }
+  LLVM_DEBUG(llvm::dbgs() << "Allocate size: " << total_count * 4 / 1024
+                          << " KB\n");
 }
 
 void ModuleInterpreter::fake_quant_weight() {
   module::init(module);
-  llvm::errs() << "start fake_quant_weight\n";
+  LLVM_DEBUG(llvm::errs() << "start fake_quant_weight\n");
   std::vector<std::string> not_quant_weight_names;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
@@ -158,8 +165,10 @@ void ModuleInterpreter::fake_quant_weight() {
 
 void ModuleInterpreter::invoke(bool express_type) {
   module::init(module);
+  progressbar bar(num_infer_op);
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](InferenceInterface infer_op) {
+      bar.update();
       auto name = module::getName(infer_op.getOperation()).str();
       LLVM_DEBUG(llvm::dbgs() << "compute: '" << infer_op << "'\n");
       if (failed(infer_op.inference(*inference_map[name]))) {

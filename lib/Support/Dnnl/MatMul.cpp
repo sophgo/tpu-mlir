@@ -89,14 +89,11 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
       memory::desc(weights_dims, memory::data_type::f32, tag::abc);
   auto bias_md = memory::desc(bias_dims, memory::data_type::f32, tag::abc);
   auto dst_md = memory::desc(dst_dims, memory::data_type::f32, tag::abc);
-  auto matmul_d = matmul::desc(src_md, weights_md, bias_md, dst_md);
-  post_ops ops;
-  matmul::primitive_desc matmul_pd;
-  primitive_attr matmul_attr;
 
-  post_relu(matmul_attr, do_relu, relu_limit);
-
-  matmul_pd = matmul::primitive_desc(matmul_d, matmul_attr, eng);
+  primitive_attr relu_attr;
+  post_relu(relu_attr, do_relu, relu_limit);
+  auto matmul_pd = matmul::primitive_desc(eng, src_md, weights_md, bias_md,
+                                          dst_md, relu_attr);
 
   auto src_float_memory =
       memory({{src_dims}, memory::data_type::f32, memory::format_tag::abc}, eng,
@@ -195,7 +192,8 @@ void MatMul::run() {
       tensor_hw_transpose(output_after_trans->data(), origin_output, batch_,
                           batch_low_, M_, N_);
     }
-    memcpy(origin_output, output_after_trans->data(), output_after_trans->size() * sizeof(float));
+    memcpy(origin_output, output_after_trans->data(),
+           output_after_trans->size() * sizeof(float));
   }
 }
 

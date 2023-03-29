@@ -52,6 +52,7 @@ void Pooling::setup(float *input, float *output, pool_attr_t attr, bool is_avg,
   memory::dims dst_shape = {attr.n, attr.c, attr.od, attr.oh, attr.ow};
   memory::dims strides = {attr.sd, attr.sh, attr.sw};
   memory::dims kernel = {attr.kd, attr.kh, attr.kw};
+  memory::dims dilation = {0, 0, 0};
   memory::dims padding_tl = {attr.pad_d, attr.pad_h, attr.pad_w};
   memory::dims padding_br = {attr.pad_d_after, attr.pad_h_after,
                              attr.pad_w_after};
@@ -63,12 +64,10 @@ void Pooling::setup(float *input, float *output, pool_attr_t attr, bool is_avg,
                            ? algorithm::pooling_avg_include_padding
                            : algorithm::pooling_avg_exclude_padding;
   // pool desc
-  auto pool_desc = pooling_forward::desc(
-      prop_kind::forward_inference,
+  auto prim_desc = pooling_forward::primitive_desc(
+      eng, prop_kind::forward_inference,
       is_avg ? pool_avg_algo : algorithm::pooling_max, src_md, dst_md, strides,
-      kernel, padding_tl, padding_br);
-
-  prim_desc = pooling_forward::primitive_desc(pool_desc, eng);
+      kernel, dilation, padding_tl, padding_br);
   memory src_memory =
       memory({{src_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
              eng, p_input);

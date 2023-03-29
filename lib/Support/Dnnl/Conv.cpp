@@ -103,21 +103,21 @@ void Conv::setup(float *input, float *weight, float *bias, float *output,
   auto dst_md = memory::desc({dst_shape}, memory::data_type::f32,
                              memory::format_tag::any);
 
-  auto conv_desc = convolution_forward::desc(
-      prop_kind::forward_inference, algorithm::convolution_direct, src_md,
-      filter_md, bias_md, dst_md, strides, dilation, padding_l, padding_r);
-
-  if (bias == nullptr)
-    conv_desc = convolution_forward::desc(
-        prop_kind::forward_inference, algorithm::convolution_direct, src_md,
-        filter_md, dst_md, strides, dilation, padding_l, padding_r);
-
   // post_ops ops;
   primitive_attr conv_attr;
   post_relu(conv_attr, attr.do_relu, attr.relu_limit);
 
-  conv_prim_desc =
-      convolution_forward::primitive_desc(conv_desc, conv_attr, eng);
+  if (bias != nullptr) {
+    conv_prim_desc = convolution_forward::primitive_desc(
+        eng, prop_kind::forward_inference, algorithm::convolution_direct,
+        src_md, filter_md, bias_md, dst_md, strides, dilation, padding_l,
+        padding_r, conv_attr);
+  } else {
+    conv_prim_desc = convolution_forward::primitive_desc(
+        eng, prop_kind::forward_inference, algorithm::convolution_direct,
+        src_md, filter_md, dst_md, strides, dilation, padding_l, padding_r,
+        conv_attr);
+  }
 
   // set mkldnn memory
   auto filter_tag = (attr.groups != 1) ? memory::format_tag::goidhw
