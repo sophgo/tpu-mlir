@@ -24,7 +24,6 @@ include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/FlopsInterface.td"
 include "tpu_mlir/Interfaces/ShapeInterface.td"
 include "tpu_mlir/Traits/Traits.td"
-
 // =============================================================================
 //
 // Defines TOP Dialect.
@@ -2181,5 +2180,50 @@ def Top_EluOp : Top_Op<"Elu"> {
     F64Attr:$alpha
   );
   let results = (outs AnyTensor:$output);
+}
+
+def Top_YieldOp : Top_Op<"Yield", [Pure, Terminator]> {
+  let summary = "top return operation";
+  let description = [{
+    The `Top.Yield` operation represents a return operation within an subgraph.
+    The operation takes variable number of operands and produces no results.
+
+    This operation is not part of the standard and was added to assist tpu-mlr.
+  }];
+
+  let arguments = (ins Variadic<AnyType>:$operands);
+
+  let builders = [
+    OpBuilder<(ins),
+    [{ build($_builder, $_state, std::nullopt); }]>];
+
+  let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
+}
+
+def Top_IfOp : Top_Op<"If"> {
+  let summary = "if operation";
+  let description = [{
+    If conditional
+  }];
+  let arguments = (ins TensorOf<[I1]>:$cond);
+  let results = (outs Variadic<AnyTensor>:$output);
+  let regions = (region SizedRegion<1>:$then_branch,
+    SizedRegion<1>:$else_branch);
+  let extraClassDeclaration = [{
+    static int getNumberOfOperands() {
+      return 1;
+    }
+    static int getNumberOfResults() {
+      return -1;
+    }
+    static std::vector<int> getTypeMap() {
+      return {-1};
+    }
+  int64_t getSubgraphRegionIdx(const std::string& name) {
+    if (name == "then_branch") return 0;
+    if (name == "else_branch") return 1;
+    llvm_unreachable("region with the specified name does not exist");
+  }
+  }];
 }
 #endif // Top_OPS
