@@ -1688,6 +1688,7 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
     ArgModeAttr:$mode
   );
 
+  let hasCanonicalizeMethod = 1;
   let results = (outs
     AnyRankedTensor:$indices,
     AnyTensorOrNone:$values

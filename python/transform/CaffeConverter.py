@@ -30,7 +30,7 @@ class CaffeConverter(BaseConverter):
         # yapf: disable
         # for caffe v1
         self.layer_type = {
-            0: 'None', 35: 'Absval', 1: 'Accuracy', 30: 'Argmax', 2: 'Bnll',
+            0: 'None', 35: 'Absval', 1: 'Accuracy', 30: 'ArgMax', 2: 'Bnll',
             3: 'Concat', 37: 'ContrastiveLoss', 4: 'Convolution', 5: 'Data',
             39: 'Deconvolution', 6: 'Dropout', 32: 'DummyData', 7: 'EuclideanLoss',
             25: 'Eltwise', 38: 'Exp', 8: 'Flatten', 9: 'Hdf5Data', 10: 'Hdf5Output',
@@ -61,6 +61,7 @@ class CaffeConverter(BaseConverter):
 
         self.caffeop_factory = {
             #pls add the Op alphabetically
+            'ArgMax': lambda layer: self.convert_argmax_op(layer),
             'BatchNorm': lambda layer: self.convert_batchnorm_op(layer),
             'BN': lambda layer: self.convert_bn_op(layer),
             'Concat': lambda layer: self.convert_concat_op(layer),
@@ -240,6 +241,34 @@ class CaffeConverter(BaseConverter):
     def create_weight_op(self, name, data):
         self.addWeight(name, data)
         return self.getWeightOp(name)
+
+    def convert_argmax_op(self, layer):
+        layer_type = self.layerType(layer)
+        assert (layer_type == "ArgMax")
+        input_shape = self.getShape(layer.bottom[0])
+        out_shape = self.getShape(layer.top[0])
+        in_op = self.getOperand(layer.bottom[0])
+        p = layer.argmax_param
+        out_max_val = p.out_max_val
+        top_k = p.top_k
+        name = self.get_loc(layer.top[0])
+        assert (top_k == 1 and "Only support top_k = 1 for now")
+        axis = p.axis
+        if axis < 0:
+            axis += len(input_shape)
+        tmp_shape = input_shape
+        tmp_shape[axis] = top_k
+        assert (tmp_shape == out_shape and "Must provide axis")
+        attrs = {
+            'name': [name + "_indices", name + "_values"],
+            'mode': layer_type,
+            'axis': axis,
+            'keepdims': True
+        }
+        output_shapes = [out_shape]
+        output_shapes += [out_shape] if out_max_val else [None]
+        out_ops = self.mlir.create_arg_op([in_op], output_shapes, **attrs)
+        self.addOperand(layer.top[0], out_ops[1] if out_max_val else out_ops[0])
 
     def convert_convolution_op(self, layer):
         layer_type = self.layerType(layer)

@@ -95,3 +95,22 @@ mlir::Type tpu::ArgOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   }
   return do_nothing(mode);
 }
+
+LogicalResult tpu::ArgOp::canonicalize(tpu::ArgOp op,
+                                              PatternRewriter &rewriter) {
+  if (!module::isBM1684X()) {
+    return failure();
+  }
+  auto input = op.getInput();
+  if (module::getStorageType(input).isInteger(8)) {
+    rewriter.setInsertionPointAfter(input.getDefiningOp());
+    auto name = module::getName(input).str();
+    auto newType =
+        RankedTensorType::get(module::getShape(input), rewriter.getF32Type());
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_cast"));
+    auto castOp = rewriter.create<tpu::CastOp>(loc, newType, ValueRange{input});
+    op.setOperand(castOp);
+  }
+  return success();
+};
+
