@@ -2251,6 +2251,7 @@ class OnnxConverter(BaseConverter):
         region = op.regions[region_idx]
         self.mlir.buildBlock(region)
         self.mlir.reconfig_insert_point(region.blocks[0])
+        #Todo: maybe need to add block argument to entry block
         # add all weight
         for tensor in graph_node.initializer:
             name = tensor.name
