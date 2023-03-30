@@ -10,10 +10,10 @@
 #include "tpu_mlir/Support/Dnnl/Deconv.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -226,8 +226,10 @@ void tpu::DeconvOp::codegen_global_bm1684x() {
 // ======================================
 
 int64_t tpu::DeconvOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
-    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t in_dslice, int64_t in_wslice, int64_t out_nslice,
+    int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
+    group_type_t group_type) {
   int64_t sz = out_lmem_bytes * sizeof(int32_t);
   auto &attr = getDeconvParam(*this);
 
@@ -243,23 +245,25 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   }
   // quant : used for groups > 1, input must start from npu 0,
   if (attr.g > 1 && !attr.is_dw && type_len == 1) {
-    sz +=
-        ic_per_npu *
-        (align_up(in_hslice * in_wslice, eu_num) + attr.pad_insert_is_const ? 0
-                                                                          : 2);
+    sz += ic_per_npu * (align_up(in_hslice * in_wslice, eu_num) +
+                        (attr.pad_insert_is_const ? 0 : 2));
   }
 
   return sz;
 }
 
-void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          int64_t d_step, int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
-  auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), n_step, h_step, d_step, w_step);
-  auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), n_step, h_step, d_step, w_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step);
+  auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), n_step, h_step,
+                                                   d_step, w_step);
+  auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), n_step, h_step,
+                                                 d_step, w_step);
 
   deconv_local_param_t param = {0};
   param.input_local_addr = (uint32_t)in_gi.out_addr;
@@ -290,7 +294,7 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_
   }
   int kw_ext = (attr.kw - 1) * attr.dw + 1;
   if (auto deconv_in_slice = DeconvSlice(gi.w_idx, gi.w_slice, attr.sw, kw_ext,
-                                      attr.iw, attr.pad_w)) {
+                                         attr.iw, attr.pad_w)) {
     param.pad[2] = deconv_in_slice.value()[0];
     param.pad[3] = deconv_in_slice.value()[1];
   } else {
@@ -325,7 +329,8 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_
 
 // dynamic codegen
 int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(dyn_deconv_local_spec_t);
+  if (!buffer)
+    return sizeof(dyn_deconv_local_spec_t);
   auto attr = parseParam();
   auto gi = getGroupInfo(0, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
@@ -376,7 +381,8 @@ int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::DeconvOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(dyn_deconv_global_spec_t);
+  if (!buffer)
+    return sizeof(dyn_deconv_global_spec_t);
   auto attr = parseParam();
   dyn_deconv_global_spec_t param = {0};
   param.common.groups = attr.g;
@@ -418,6 +424,4 @@ int64_t tpu::DeconvOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::DeconvOp::get_fw_type_bm1684x() {
-  return FW_BMNET_DECONV;
-}
+int64_t tpu::DeconvOp::get_fw_type_bm1684x() { return FW_BMNET_DECONV; }

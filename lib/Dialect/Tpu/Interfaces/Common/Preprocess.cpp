@@ -163,7 +163,7 @@ public:
         auto cali_type = module::getCalibratedType(op.getOutput());
         int64_t zeropoint = 0;
         module::getScaleAndZeroPoint(op.getOutput(), qscale, zeropoint,
-                                     this->sign, module::isAsymmetric);
+                                     this->sign, module::isAsymmetric());
         int64_t qmin = this->sign ? -128 : 0, qmax = this->sign ? 127 : 255;
         auto ctx = op.getOutput().getContext();
         qtype = quant::UniformQuantizedType::get(
@@ -322,7 +322,7 @@ private:
     auto newOp = rewriter.create<tpu::ScaleLutOp>(
         loc, type, ArrayRef<Value>{opd, none}, attrs);
 
-    if (!this->sign && !module::isCV18xx) {
+    if (!this->sign && !module::isCV18xx()) {
       std::vector<uint8_t> table(table_size, 0);
       auto table_type =
           RankedTensorType::get(table_shape, rewriter.getIntegerType(8, false));
