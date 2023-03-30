@@ -125,6 +125,7 @@ class ONNX_IR_TESTER(object):
             "ReduceProd":   (self.test_ReduceProd,  Y, N, N),
             "Reciprocal":   (self.test_Reciprocal,  Y, N, Y),
             "Relu":         (self.test_Relu,        Y, N, Y),
+            "PermuteMove":  (self.test_PermuteMove, Y, N, Y),
             "ScatterND":    (self.test_ScatterND,   Y, N, N),
             "SiLU":         (self.test_SiLU,        Y, N, Y),
             "Softmax":      (self.test_Softmax,     Y, N, Y),
@@ -282,7 +283,7 @@ class ONNX_IR_TESTER(object):
             inputs[name] = np.clip(np.random.randn(*shape).astype(np.float32), -10, 10)
         return inputs
 
-    def onnx_convert(self, input_data: dict, graph_def, model_name: str):
+    def onnx_convert(self, input_data: dict, graph_def, model_name: str, dump_all: bool = True):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
@@ -303,9 +304,9 @@ class ONNX_IR_TESTER(object):
         np.savez(input_npz, **input_data)
         # top mlir outputs will be inferenced first in case the quant mode is int8
         show_fake_cmd(input_npz, onnx_model, "onnx_out.npz")
-        onnx_outs = onnx_inference(input_data, onnx_model, True)
+        onnx_outs = onnx_inference(input_data, onnx_model, dump_all)
         show_fake_cmd(input_npz, fp32_mlir, "top_out.npz")
-        top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
+        top_mlir_outs = mlir_inference(input_data, fp32_mlir, dump_all)
 
         return (onnx_outs, top_mlir_outs, input_npz, node_name_mapping)
 
@@ -465,17 +466,19 @@ class ONNX_IR_TESTER(object):
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
         self.onnx_and_test(onnx_model.graph, name=model_name, input_data=in_data)
 
-    def onnx_and_test(self, graph_def, name: str = "", input_data: dict = None, qdq: bool = False):
+    def onnx_and_test(self, graph_def, name: str = "", input_data: dict = None, qdq: bool = False, check_last: bool = None):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
-            input_data, graph_def, model_name)
+            input_data, graph_def, model_name, not check_last)
         # test onnx and mlir outputs
         counter = 0
+        if check_last and len(onnx_outs) == 1 and len(top_mlir_outs) == 1:
+            top_mlir_outs = {next(iter(onnx_outs.keys())): next(iter(top_mlir_outs.values()))}
         for name in onnx_outs:
             if name in top_mlir_outs:
-                print("Compare mlir and onnx:{}\n".format(name))
+                print("Compare onnx and mlir:{}\n".format(name))
                 top_mlir_output = top_mlir_outs[name].flatten()
                 onnx_output = onnx_outs[name].flatten()
                 self.compare(onnx_output, top_mlir_output)
@@ -483,7 +486,7 @@ class ONNX_IR_TESTER(object):
             elif name in node_name_mapping:
                 mapped_name = node_name_mapping[name]
                 if mapped_name in top_mlir_outs:
-                    print("Compare mlir and onnx:{}\n".format(mapped_name))
+                    print("Compare onnx and mlir:{}\n".format(mapped_name))
                     top_mlir_output = top_mlir_outs[mapped_name].flatten()
                     onnx_output = onnx_outs[name].flatten()
                     self.compare(onnx_output, top_mlir_output)
@@ -1147,6 +1150,57 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[weight, bias])
         self.onnx_and_test(graph_def)
+
+    def test_PermuteMove(self, case_name):
+        input_shape = [1, 16, 28, 28]
+        input2_shape = [1, 1, 28, 28]
+        output_shape = [16, 1, 28, 28]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, input2_shape)
+        transpose_node = helper.make_node("Transpose",
+                                         inputs=['input'],
+                                         outputs=['e'],
+                                         perm=[1, 0, 2, 3])
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        w_data = np.random.rand(*output_shape).astype(np.float32)
+        w_value = helper.make_tensor(
+            name='w',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=w_data.shape,
+            vals=w_data.flatten(),
+        )
+
+        for i in ['Relu', 'Sigmoid']:
+            add_node = helper.make_node(
+                i,  # node name
+                ['e'],  # inputs
+                ['output'],  # outputs
+            )
+            graph_def = helper.make_graph([transpose_node, add_node],
+                                          case_name + '_' + i, [input], [output])
+            self.onnx_and_test(graph_def, check_last=True)
+
+        # add cast
+        add_node = helper.make_node(
+                'Add',  # node name
+                ['e', 'input2'],  # inputs
+                ['output'],  # outputs
+                )
+        graph_def = helper.make_graph([transpose_node, add_node],
+                                      case_name + '_' + 'AddCast', [input, input2], [output])
+        self.onnx_and_test(graph_def, check_last=True)
+
+        # addconst
+        add_node = helper.make_node(
+                'Add',  # node name
+                ['e', 'w'],  # inputs
+                ['output'],  # outputs
+                )
+        graph_def = helper.make_graph([transpose_node, add_node],
+                                      case_name + '_' + 'AddConst', [input], [output], initializer=[w_value])
+        self.onnx_and_test(graph_def, check_last=True)
+
 
     def test_LeakyRelu(self, case_name):
         oc = 32

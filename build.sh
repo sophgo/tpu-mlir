@@ -25,7 +25,7 @@ cmake -G Ninja \
   $BUILD_FLAG \
   -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH \
   ${PROJECT_ROOT}
-cmake --build . --target install -j8
+cmake --build . --target install -j
 popd
 
 # Clean up some files for release build
