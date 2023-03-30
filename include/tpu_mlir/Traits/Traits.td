@@ -18,6 +18,7 @@ class TPUMLIROpTrait<string name> : NativeOpTrait<name> {
 
 def ShapeProducer : TPUMLIROpTrait<"ShapeProducer">;
 def ShapeConsumer : TPUMLIROpTrait<"ShapeConsumer">;
+def SupportPermuteMove : TPUMLIROpTrait<"SupportPermuteMove">;
 def SupportFuseRelu : TPUMLIROpTrait<"SupportFuseRelu">;
 def SupportEarlyStride : TPUMLIROpTrait<"SupportEarlyStride">;
 def TpuTypeRestrict: TPUMLIROpTrait<"TpuTypeRestrict">;
