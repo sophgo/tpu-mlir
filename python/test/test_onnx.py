@@ -46,7 +46,7 @@ class ONNX_IR_TESTER(object):
             "AddBcast2":    (self.test_AddBcast2,   Y, N, N),
             "AddBcast3":    (self.test_AddBcast3,   N, N, N),  # failed cases
             "Arg":          (self.test_Arg,         Y, N, Y),
-            "AddConst":     (self.test_AddConst,    Y, N, Y),
+            "AddWeight":     (self.test_AddWeight,  Y, N, Y),
             "AvgPool1d":    (self.test_AvgPool1d,   Y, N, Y),
             "AvgPool2d":    (self.test_AvgPool2d,   Y, N, Y),
             "AvgPool3d":    (self.test_AvgPool3d,   Y, N, Y),
@@ -130,6 +130,7 @@ class ONNX_IR_TESTER(object):
             "ReduceProd":   (self.test_ReduceProd,  Y, N, N),
             "Reciprocal":   (self.test_Reciprocal,  Y, N, Y),
             "Relu":         (self.test_Relu,        Y, N, Y),
+            "PermuteMove":  (self.test_PermuteMove, Y, N, Y),
             "ScatterND":    (self.test_ScatterND,   Y, N, N),
             "Shape":        (self.test_Shape,       Y, N, N),
             "SiLU":         (self.test_SiLU,        Y, N, Y),
@@ -325,6 +326,7 @@ class ONNX_IR_TESTER(object):
         np.savez(self.ref_npz, **top_mlir_outs)
         self.table_name = "{}_cali_table".format(model_name)
         self.make_test_calibration_table(top_mlir_outs, self.table_name)
+
         return (onnx_outs, top_mlir_outs, input_npz, node_name_mapping)
 
     def bmodel_generate(self, model_name: str, quant_mode: str, isAsym: bool = False):
@@ -467,17 +469,20 @@ class ONNX_IR_TESTER(object):
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
         self.onnx_and_test(onnx_model.graph, name=model_name, input_data=in_data, use_onnxsim=use_onnxsim)
 
-    def onnx_and_test(self, graph_def, name: str = "", input_data: dict = None, use_onnxsim = True):
+    def onnx_and_test(self, graph_def, name: str = "", input_data: dict = None, use_onnxsim = True, check_last: bool = False):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
             input_data, graph_def, model_name, use_onnxsim=use_onnxsim)
+        # this assumes that outputs are in order, i.e. the last one is the output
+        if check_last:
+            top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
         # test onnx and mlir outputs
         counter = 0
         for name in onnx_outs:
             if name in top_mlir_outs:
-                print("Compare mlir and onnx:{}\n".format(name))
+                print("Compare onnx and mlir:{}\n".format(name))
                 top_mlir_output = top_mlir_outs[name].flatten()
                 onnx_output = onnx_outs[name].flatten()
                 self.compare(onnx_output, top_mlir_output)
@@ -485,7 +490,7 @@ class ONNX_IR_TESTER(object):
             elif name in node_name_mapping:
                 mapped_name = node_name_mapping[name]
                 if mapped_name in top_mlir_outs:
-                    print("Compare mlir and onnx:{}\n".format(mapped_name))
+                    print("Compare onnx and mlir:{}\n".format(mapped_name))
                     top_mlir_output = top_mlir_outs[mapped_name].flatten()
                     onnx_output = onnx_outs[name].flatten()
                     self.compare(onnx_output, top_mlir_output)
@@ -1142,6 +1147,46 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[weight, bias])
         self.onnx_and_test(graph_def)
+
+    def test_PermuteMove(self, case_name):
+        input_shape = [1, 16, 28, 28]
+        input2_shape = [1, 1, 28, 28]
+        output_shape = [16, 1, 28, 28]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, input2_shape)
+        transpose_node = helper.make_node("Transpose",
+                                         inputs=['input'],
+                                         outputs=['e'],
+                                         perm=[1, 0, 2, 3])
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        w_data = np.random.rand(1).astype(np.float32)
+        w_value = helper.make_tensor(
+            name='w',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=w_data.shape,
+            vals=w_data.flatten(),
+        )
+
+        for i in ['Relu', 'Sigmoid']:
+            add_node = helper.make_node(
+                i,  # node name
+                ['e'],  # inputs
+                ['output'],  # outputs
+            )
+            graph_def = helper.make_graph([transpose_node, add_node],
+                                          case_name + '_' + i, [input], [output])
+            self.onnx_and_test(graph_def, check_last=True)
+
+        # addconst
+        add_node = helper.make_node(
+                'Add',  # node name
+                ['e', 'w'],  # inputs
+                ['output'],  # outputs
+                )
+        graph_def = helper.make_graph([transpose_node, add_node],
+                                      case_name + '_' + 'AddConst', [input], [output], initializer=[w_value])
+        self.onnx_and_test(graph_def, check_last=True)
 
     def test_LeakyRelu(self, case_name):
         oc = 32
@@ -3096,7 +3141,7 @@ class ONNX_IR_TESTER(object):
             ), [a, b, c], [output])
             self.onnx_and_test(graph_def)
 
-    def test_AddConst(self, case_name):
+    def test_AddWeight(self, case_name):
         input_shape = [1, 16, 28, 28]
         output_shape = [1, 16, 28, 28]
 

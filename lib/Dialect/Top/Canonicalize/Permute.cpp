@@ -14,6 +14,7 @@
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
+using namespace tpu_mlir::trait;
 
 struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -504,9 +505,65 @@ struct PermutePadSwap : public OpRewritePattern<PermuteOp> {
   }
 };
 
+/**
+ * Op1 -> perm -> next  => Op1 -> next -> perm
+ **/
+struct PermuteMovePattern : public OpRewritePattern<PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(PermuteOp permOp,
+                                PatternRewriter &rewriter) const override {
+    // check topo
+    // have one user only
+    if (!permOp.getOutput().hasOneUse()) {
+      return failure();
+    }
+    // move trait
+    auto nextOp = *permOp.getOutput().user_begin();
+    if (!nextOp->hasTrait<SupportPermuteMove>()) {
+      return failure();
+    }
+    // permute only accept one argument
+    // thus the output of 'next' should be exactly one
+    // otherwise, we need to construct new permutation op
+    if (nextOp->getResults().size() != 1) {
+      return failure();
+    }
+
+    // rewrite
+    auto input = permOp.getInput();
+    auto inputType = input.getType();
+    // input -> next
+    rewriter.updateRootInPlace(nextOp, [&] {
+      nextOp->setOperands(input);
+      // should be the same type as the input
+      nextOp->getResult(0).setType(inputType);
+      // rewrite loc for tests
+      auto loc = NameLoc::get(
+          rewriter.getStringAttr(module::getName(input).str() + "_" +
+                                 nextOp->getName().getStringRef()));
+      nextOp->setLoc(loc);
+    });
+    // replace all uses of next to perm
+    rewriter.replaceAllUsesWith(nextOp->getResult(0), permOp->getResult(0));
+    // next -> perm
+    rewriter.updateRootInPlace(permOp, [&] {
+      permOp->setOperands(nextOp->getResults());
+      // linear IR, tweak order
+      permOp->moveAfter(nextOp);
+      // rewrite loc for tests
+      auto loc = NameLoc::get(
+          rewriter.getStringAttr(module::getName(nextOp).str() + "_" +
+                                 permOp->getName().getStringRef()));
+      permOp->setLoc(loc);
+    });
+    return success();
+  }
+};
+
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopPermuteToPixelShuffle, TopPermuteToReorg, Permute5dSplit,
-                 PermuteFuse, TopPermuteToReshape, NonZeroPermutePattern,
-                 PermutePadSwap>(context);
+                 PermuteFuse, PermuteMovePattern, TopPermuteToReshape,
+                 NonZeroPermutePattern, PermutePadSwap>(context);
 }

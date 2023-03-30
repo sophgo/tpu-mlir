@@ -41,6 +41,10 @@ class SupportFuseRelu
     : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportFuseRelu> {};
 
 template <typename ConcreteType>
+class SupportPermuteMove
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportPermuteMove> {};
+
+template <typename ConcreteType>
 class SupportEarlyStride
     : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportEarlyStride> {};
 
