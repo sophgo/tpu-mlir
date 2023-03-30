@@ -12,6 +12,7 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
+#include <cstdint>
 
 using namespace tpu_mlir::backend;
 
@@ -42,7 +43,7 @@ int64_t tpu::LutOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   shape[0] = align_up(shape[0], 4);
   int cnum = (shape[1] + BM1684::NPU_NUM - 1) / BM1684::NPU_NUM;
   int cstride =
-      align_up(shape[2] * shape[3], (int)BM1684::eu_num(INT8_WIDTH) * 4);
+      align_up(shape[2] * shape[3], (int)BM1684::eu_num(sizeof(std::int8_t)) * 4);
   buffer_size = n * cnum * cstride;
   return buffer_size * 2;
 }

@@ -245,8 +245,8 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   if (attr.g > 1 && !attr.is_dw && type_len == 1) {
     sz +=
         ic_per_npu *
-        (align_up(in_hslice * attr.iw, eu_num) + attr.pad_insert_is_const ? 0
-                                                                          : 2);
+        (align_up(in_hslice * attr.iw, eu_num) + 
+				 (attr.pad_insert_is_const ? 0 : 2));
   }
 
   return sz;

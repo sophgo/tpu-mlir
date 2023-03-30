@@ -402,7 +402,7 @@ void Conv::initializeGlobalMemWeight() {
   // weight is already altered for do_ic_alignment
   // do_ic_alignment is not applied in depthwise convolution.
   input_c =
-      !isDwConv() && args.do_ic_alignment ? align_up(input_c, 2) : input_c;
+      !isDwConv() && args.do_ic_alignment ? align_up(input_c, 2ll) : input_c;
 
   std::vector<uint32_t> shapes = {1, groups(), group_output_channels(),
                                   kernel_height() * kernel_width(), input_c};

@@ -46,12 +46,12 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
     data_type = DTYPE_INT8;
     if (gi.h_slice == H) {
-      if (W * H & 0x1 == 1) {
+      if ((W * H & 0x1) == 1) {
         W = align_up(W * H, (int64_t)2) / 2;
         H = 1;
         real_hslice = 1;
       } else {
-        if (W & 0x1 == 1)
+        if ((W & 0x1) == 1)
           real_hslice >>= 1;
         else
           W >>= 1;

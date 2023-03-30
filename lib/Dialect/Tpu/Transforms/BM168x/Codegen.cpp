@@ -360,7 +360,7 @@ void CodegenPass::codegen_for_overlap_ops(
       auto &cur_ops = iter->second;
       for (auto op : cur_ops) {
         auto lgOp = cast<LocalGenInterface>(op);
-        auto ginfo = lgOp.getGroupInfo(0l, 0l);
+        auto ginfo = lgOp.getGroupInfo(int64_t(0), 0l);
         // add prefix to each cmd in profile.txt
         std::string prefix = op->getName().getStringRef().str().substr(4);
         auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;

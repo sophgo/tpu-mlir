@@ -567,17 +567,17 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
 
     // get and push fw_timestep_base_info_t
     fw_timestep_base_info_t timestep_base_info = {
-      ts_num_and_split_tensor_num : (timestep_num << 16),
-      max_nslice_deprecated : 255, // 255 means invalid
-      input_tensor_num : (uint8_t)(sub_group.group_ins.size()),
-      output_tensor_num : (uint8_t)(sub_group.group_outs.size()),
-      flags :
+      .ts_num_and_split_tensor_num = (timestep_num << 16),
+      .max_nslice_deprecated = 255, // 255 means invalid
+      .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
+      .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
+      .flags =
           (uint8_t)((1 << 5) | (sub_group.type << 2) |
                     ((1 << 1) |
                      (hsecs >
                       1))), // group_type, using max_nslice, h_is_split or not
-      swpipl_stage_num : (uint8_t)(swpipl_stage_num),
-      max_nslice : max_nslice
+      .swpipl_stage_num = (uint8_t)(swpipl_stage_num),
+      .max_nslice = max_nslice
     };
     ir_group_timestep_base_info.push_back(timestep_base_info);
     fw_ir_length += sizeof(fw_timestep_base_info_t);
@@ -588,11 +588,11 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
     if (hsecs == 1) {
       for (int i = 0; i < sub_group.group_ins.size(); i++) {
         fw_input_tensor_info_t input_tensor_info = {
-          tensor_id_and_max_hslice :
+          .tensor_id_and_max_hslice =
               ((uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16),
-          stride_h_and_kh : 0,
-          pad_h_top_and_bottom : 0,
-          min_pool_kh : 0
+          .stride_h_and_kh = 0,
+          .pad_h_top_and_bottom = 0,
+          .min_pool_kh = 0
         };
 
         input_tensor_info_v.push_back(input_tensor_info);
@@ -614,13 +614,13 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
         uint32_t global_down_pad_h = dynamic_tensor_info.global_down_pad_h;
 
         fw_input_tensor_info_t input_tensor_info = {
-          tensor_id_and_max_hslice :
+          .tensor_id_and_max_hslice =
                   ((uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16) |
               (max_hslice & 0xffff),
-          stride_h_and_kh : (global_stride_h << 16) | (global_kh & 0xffff),
-          pad_h_top_and_bottom :
+          .stride_h_and_kh = (global_stride_h << 16) | (global_kh & 0xffff),
+          .pad_h_top_and_bottom =
                   (global_up_pad_h << 16) | (global_down_pad_h & 0xffff),
-          min_pool_kh : (u32)get_group_global_pooling_kh(
+          .min_pool_kh = (u32)get_group_global_pooling_kh(
               sub_group, sub_group.group_ins[i], global_kh, global_up_pad_h,
               global_down_pad_h)
         };
@@ -737,15 +737,15 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
       m_layer_groups_.push_back(sub_group);
       // get and push fw_timestep_base_info_t
       fw_timestep_base_info_t timestep_base_info = {
-        ts_num_and_split_tensor_num : 1 << 16,
+        .ts_num_and_split_tensor_num = 1 << 16,
         // 252 is aligned to 4, because it may meet 4N
-        max_nslice_deprecated : 255, // 255 means invalid
-        input_tensor_num : (uint8_t)(sub_group.group_ins.size()),
-        output_tensor_num : (uint8_t)(sub_group.group_outs.size()),
-        flags : (uint8_t)((1 << 5) | (sub_group.type << 2) |
+        .max_nslice_deprecated = 255, // 255 means invalid
+        .input_tensor_num = (uint8_t)(sub_group.group_ins.size()),
+        .output_tensor_num = (uint8_t)(sub_group.group_outs.size()),
+        .flags = (uint8_t)((1 << 5) | (sub_group.type << 2) |
                           ((1 << 1) | 0)), // using max_nslice, h is not split
-        swpipl_stage_num : 1,
-        max_nslice : (uint32_t)batch_num
+        .swpipl_stage_num = 1,
+        .max_nslice = (uint32_t)batch_num
       };
       ir_group_timestep_base_info.push_back(timestep_base_info);
       fw_ir_length += sizeof(fw_timestep_base_info_t);
@@ -754,11 +754,11 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
       vector<fw_input_tensor_info_t> input_tensor_info_v;
       for (int i = 0; i < sub_group.group_ins.size(); i++) {
         fw_input_tensor_info_t input_tensor_info = {
-          tensor_id_and_max_hslice :
+          .tensor_id_and_max_hslice =
                   (uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16,
-          stride_h_and_kh : 0,
-          pad_h_top_and_bottom : 0,
-          min_pool_kh : 0
+          .stride_h_and_kh = 0,
+          .pad_h_top_and_bottom = 0,
+          .min_pool_kh = 0
         };
 
         input_tensor_info_v.push_back(input_tensor_info);
