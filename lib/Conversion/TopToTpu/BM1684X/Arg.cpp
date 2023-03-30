@@ -30,6 +30,7 @@ void LoweringArg(PatternRewriter &rewriter, top::ArgOp op) {
     new_types.push_back(op.getIndices().getType());
   }
   new_types.push_back(op.getValues().getType());
+
   rewriter.replaceOpWithNewOp<tpu::ArgOp>(op, new_types, operands, attrs);
   return;
 }
