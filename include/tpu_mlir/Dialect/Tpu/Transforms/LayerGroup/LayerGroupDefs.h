@@ -105,7 +105,7 @@ struct tensor_info_t {
       : mode(mode), stage(0), use_3ic_opt(0), eu_align(false),
         need_bcast(false) {}
   tensor_info_t(slice_info_t slice_info)
-      : slice_info(slice_info), mode(mode), stage(0), use_3ic_opt(0),
+      : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0), use_3ic_opt(0),
         eu_align(false), need_bcast(false) {}
 };
 

@@ -21,8 +21,10 @@ void tpu::ConcatOp::codegen_global_bm1684() {
   }
   int num_input = getInputs().size();
   int(*bottomtensor_shape)[MAX_SHAPE_DIMS] = new int[num_input][MAX_SHAPE_DIMS];
-  int is_st_concat_way[num_input] = {0};
-  uint64_t in_addr[num_input] = {0};
+  int is_st_concat_way[num_input];
+  memset(is_st_concat_way, 0, sizeof(int) * (num_input + 1));
+  uint64_t in_addr[num_input];
+  memset(in_addr, 0, sizeof(int) * (num_input + 1));
   auto out_addr = module::getAddress(getOutput());
   for (int i = 0; i < num_input; ++i) {
     in_addr[i] = module::getAddress(getInputs()[i]);
@@ -53,8 +55,10 @@ void tpu::ConcatOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   module::getNCHW(getOutput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step, 0, 0);
   int num_inputs = getInputs().size();
-  int is_st_concat_way[num_inputs] = {0};
-  uint32_t in_addr[num_inputs] = {0};
+  int is_st_concat_way[num_inputs];
+  memset(is_st_concat_way, 0, sizeof(int) * (num_inputs + 1));
+  uint32_t in_addr[num_inputs];
+  memset(in_addr, 0, sizeof(int) * (num_inputs + 1));
   auto bottomtensor_shape = new int *[num_inputs];
   for (int i = 0; i < num_inputs; i++) {
     in_addr[i] = LocalGenInterface::getGroupInfo(getInputs()[i], n_step, h_step)
@@ -70,7 +74,7 @@ void tpu::ConcatOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       num_inputs, is_st_concat_way, out_shape,
       getAxis(), (CMD_ID_NODE *)BM1684::instance().bdc_node,
       (CMD_ID_NODE *)BM1684::instance().gdma_node);
-  for(int i = 0; i < num_inputs; ++i) {
+  for (int i = 0; i < num_inputs; ++i) {
     delete[] bottomtensor_shape[i];
   }
   delete[] bottomtensor_shape;

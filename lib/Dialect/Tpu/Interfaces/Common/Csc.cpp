@@ -11,8 +11,8 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/MathUtils.h"
 static inline int align_up(int x, int n) {
   if (n == 0 || n == 1) {
     return x;
@@ -24,12 +24,7 @@ static inline float UINT8(float data) {
   return static_cast<float>(to_uint8(data, ROUNDING_HALF_TO_EVEN));
 }
 
-enum YuvType {
-  YUV_UNKNOWN = 0,
-  YUV420_PLANAR = 1,
-  YUV_NV12 = 2,
-  YUV_NV21 = 3
-};
+enum YuvType { YUV_UNKNOWN = 0, YUV420_PLANAR = 1, YUV_NV12 = 2, YUV_NV21 = 3 };
 
 struct AlignParam {
   YuvType pixel_type;
@@ -38,8 +33,8 @@ struct AlignParam {
   int channel_align;
 };
 
-void yuv_csc(float *input, float *output, int n, int c, int h,
-                             int w, std::vector<int> &order, int quant_type, AlignParam align_param) {
+void yuv_csc(float *input, float *output, int n, int c, int h, int w,
+             std::vector<int> &order, int quant_type, AlignParam align_param) {
   YuvType pixel_type = align_param.pixel_type;
   int y_align = align_param.y_align;
   int w_align = align_param.w_align;
@@ -65,17 +60,21 @@ void yuv_csc(float *input, float *output, int n, int c, int h,
         int y_idx = y_offset + idx_n * n_stride + idx_h * y_w_aligned + idx_w;
         int u_idx = 0;
         int v_idx = 0;
-        if (pixel_type == YUV420_PLANAR)  { // i420
+        if (pixel_type == YUV420_PLANAR) { // i420
           u_idx = u_offset + idx_n * n_stride + idx_h / 2 * uv_w_aligned +
-                      idx_w / 2;
+                  idx_w / 2;
           v_idx = v_offset + idx_n * n_stride + idx_h / 2 * uv_w_aligned +
                   idx_w / 2;
-        } else if (pixel_type == YUV_NV12) {  //nv12
-          u_idx = u_offset + idx_n * n_stride + idx_h / 2 * uv_w_aligned + idx_w / 2 * 2;
-          v_idx = v_offset + idx_n * n_stride + idx_h / 2 * uv_w_aligned + idx_w / 2 * 2 + 1;
-        } else {  //nv21
-          u_idx = u_offset + idx_n * n_stride + idx_h / 2 * uv_w_aligned + idx_w / 2 * 2 + 1;
-          v_idx = v_offset + idx_n * n_stride + idx_h / 2 * uv_w_aligned + idx_w / 2 * 2;
+        } else if (pixel_type == YUV_NV12) { // nv12
+          u_idx = u_offset + idx_n * n_stride + idx_h / 2 * uv_w_aligned +
+                  idx_w / 2 * 2;
+          v_idx = v_offset + idx_n * n_stride + idx_h / 2 * uv_w_aligned +
+                  idx_w / 2 * 2 + 1;
+        } else { // nv21
+          u_idx = u_offset + idx_n * n_stride + idx_h / 2 * uv_w_aligned +
+                  idx_w / 2 * 2 + 1;
+          v_idx = v_offset + idx_n * n_stride + idx_h / 2 * uv_w_aligned +
+                  idx_w / 2 * 2;
         }
         float y = input[y_idx];
         float u = input[u_idx];
@@ -130,7 +129,7 @@ inline int crop_offset(const std::vector<int> &indices, const int64_t *shape) {
   return offset;
 }
 
-inline int copy_offset(const int *indices, int32_t * stride) {
+inline int copy_offset(const int *indices, int32_t *stride) {
   int offset = 0;
   for (int i = 0; i < 4; ++i) {
     offset += indices[i] * stride[i];
@@ -181,7 +180,6 @@ void stride_copy(float *input, float *output, const int64_t *shape,
   }
 }
 
-
 LogicalResult tpu::CscOp::init(InferenceParameter &p) { return success(); }
 void tpu::CscOp::deinit(InferenceParameter &p) {}
 
@@ -210,7 +208,7 @@ LogicalResult tpu::CscOp::inference(InferenceParameter &p) {
   AlignParam param;
   if (pixel_format == "YUV420_PLANAR") {
     std::vector<int> orders{0, 1, 2};
-    //here DataType is UI8/BF16
+    // here DataType is UI8/BF16
     param = {YUV420_PLANAR, y_align, w_align, channel_align};
     yuv_csc(input_data, output_data, on, oc, oh, ow, orders, 1, param);
   } else if (pixel_format == "YUV_NV12") {
@@ -231,19 +229,19 @@ LogicalResult tpu::CscOp::inference(InferenceParameter &p) {
       int in_stride = ic_stride * ic;
       std::vector<int32_t> input_stride = {in_stride, ic_stride, iw, 1};
       std::vector<int32_t> output_stride = {ow * oh * oc, ow * oh, ow, 1};
-      stride_copy(input_data, output_data, output_shape.data(), input_stride.data(),
-           output_stride.data(), 0, indices.data());
+      stride_copy(input_data, output_data, output_shape.data(),
+                  input_stride.data(), output_stride.data(), 0, indices.data());
     } else {
       // do crop to make data unaligned
       std::vector<int64_t> crop_shape(input_shape.begin(), input_shape.end());
       crop_shape[3] = (int)(oc * oh * ow / (ic * ih));
       std::vector<int> crop_offset{0, 0, 0, 0};
       std::vector<int> indices(4, 0);
-      crop(input_data, output_data, input_shape.data(),
-           crop_shape.data(), 0, crop_offset.data(), indices.data());
+      crop(input_data, output_data, input_shape.data(), crop_shape.data(), 0,
+           crop_offset.data(), indices.data());
     }
   } else {
-    memcpy(output_data, input_data, on * oc *oh *ow);
+    memcpy(output_data, input_data, on * oc * oh * ow);
   }
   return success();
 }

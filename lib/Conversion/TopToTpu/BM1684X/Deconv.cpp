@@ -138,7 +138,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   std::string deconv_name = module::getName(op.getOperation()).str() + "_i32";
   auto name = rewriter.getStringAttr(deconv_name);
   attrs.push_back(
-      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(param.with_bias)));
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto deconvType = RankedTensorType::get(
       {param.n, param.oc, param.oh, param.ow}, rewriter.getI32Type());
   auto deconvOp = rewriter.create<tpu::DeconvOp>(NameLoc::get(name), deconvType,
@@ -148,7 +148,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
 
   auto quant_int32 = std::make_shared<std::vector<int32_t>>(param.oc * 3, 0);
   int int32_multiplier, rshift;
-  for (int c = 0; c < param.oc; c++) { // per-channel量化
+  for (int c = 0; c < param.oc; c++) { // per-channel quant
     float *p_filter = filter_f32->data() + c * inner_dim;
     float w_max = findMaxabs(p_filter, inner_dim);
     double scale_w = std::max(w_max / fqmax, 1e-5f);
