@@ -40,6 +40,9 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_pooling_fix8b_forward_local);
   CAST_FUNCTION(nodechip_conv_forward_local_fix8b);
   CAST_FUNCTION(nodechip_conv_forward_local_fix16b);
+  CAST_FUNCTION(nodechip_reduce_full_v3);
+  CAST_FUNCTION(nodechip_reduce_full_fix8b);
+  CAST_FUNCTION(nodechip_reduce_get_buffer_size_fix8b);
   CAST_FUNCTION(nodechip_winograd_forward_local_fix8b);
   CAST_FUNCTION(nodechip_winograd_double_buffer_forward_local_fix8b);
   CAST_FUNCTION(nodechip_deconv_forward_local);
