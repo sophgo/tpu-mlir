@@ -33,13 +33,13 @@ function run_cvi_net() {
 
   if [ "${PIPESTATUS[0]}" -ne "0" ]; then
     echo "$info regression FAILED"
-    echo "$info regression FAILED" >>${log_dir}/result.log
+    echo "$info regression FAILED" >>${log_dir}/result_cvi_samples.log
     cat $out_log >>${log_dir}/fail.log
     exit 1
   else
     echo "$info regression PASSED"
-    echo "$info regression PASSED" >>${log_dir}/result.log
-    #rm ${out_log}
+    echo "$info regression PASSED" >>${log_dir}/result_cvi_samples.log
+    rm ${out_log}
   fi
 
   local ori_file=${REGRESSION_PATH}/regression_out/${model}_${chip}/*.cvimodel
