@@ -150,13 +150,16 @@ compact_coeff_for_int4(std::shared_ptr<std::vector<int8_t>> &weight_nIC,
     // DIV_UP(oc, nIC) * w * nIC/2  )
     auto new_w = align_up(W, (int64_t)2) / 2;
     auto filter_new = std::make_shared<std::vector<int8_t>>(new_w * C, 0);
+    int col_size = align_up(W, (int64_t)2);
     for (uint i = 0; i < C; i++) {
       for (uint j = 0; j < W; j++) {
+        int src_index = i * W + j;
+        int dst_index = (i * col_size + j) >> 1;
         if ((j & 1) == 0) {
-          filter_new->at((i * W + j) >> 1) = (weight_nIC->at(i * W + j) & 0x0f);
+          filter_new->at(dst_index) = (weight_nIC->at(src_index) & 0x0f);
         } else {
-          filter_new->at((i * W + j) >> 1) &= 0x0f;
-          filter_new->at((i * W + j) >> 1) |= (weight_nIC->at(i * W + j) << 4);
+          filter_new->at(dst_index) &= 0x0f;
+          filter_new->at(dst_index) |= (weight_nIC->at(src_index) << 4);
         }
       }
     }
@@ -172,19 +175,22 @@ compact_coeff_for_int4(std::shared_ptr<std::vector<int8_t>> &weight_nIC,
     N = shape[1];
     auto new_n = align_up(N, (int64_t)2) / 2;
     auto filter_new = std::make_shared<std::vector<int8_t>>(K * new_n, 0);
+    int col_size = align_up(N, (int64_t)2);
     for (uint i = 0; i < K; i++) {
       for (uint j = 0; j < N; j++) {
+        int src_index = i * N + j;
+        int dst_index = (i * col_size + j) >> 1;
         if ((j & 1) == 0) {
-          filter_new->at((i * K + j) >> 1) = (weight_nIC->at(i * K + j) & 0x0f);
+          filter_new->at(dst_index) = (weight_nIC->at(src_index) & 0x0f);
         } else {
-          filter_new->at((i * K + j) >> 1) &= 0x0f;
-          filter_new->at((i * K + j) >> 1) |= (weight_nIC->at(i * K+ j) << 4);
+          filter_new->at(dst_index) &= 0x0f;
+          filter_new->at(dst_index) |= (weight_nIC->at(src_index) << 4);
         }
       }
     }
     shape.assign(shape.size(), 1);
     shape[0] = K;
-    shape.back() = (new_n << 1);
+    shape.back() = N;
     weight_nIC = filter_new;
   }
 }

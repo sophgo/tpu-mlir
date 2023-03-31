@@ -63,6 +63,19 @@ void tpu::CastOp::codegen_global_bm1684x() {
       param.c = (int)c;
       param.h = (int)h;
       param.w = (int)w;
+
+      auto value = getInput();
+      auto stype = module::getStorageType(value);
+      if(stype.isInteger(4)){
+        auto op = value.getDefiningOp();
+        if (isa<tpu::MatMulOp>(op)) {
+          auto p =  dyn_cast<tpu::MatMulOp>(op).parseParam();
+          param.n = p.batch;
+          param.c = p.M;
+          param.h = p.N;
+          param.w = 1;
+        }
+      }
       param.is_perchannel = false;
       param.scale_value = qtype.getScale();
       param.offset_value = qtype.getZeroPoint();

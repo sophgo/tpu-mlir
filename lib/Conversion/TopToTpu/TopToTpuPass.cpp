@@ -559,7 +559,7 @@ protected:
         } else if (isa<tpu::Conv2DOp>(user)) {
           auto conv = dyn_cast<tpu::Conv2DOp>(user);
           auto conv_attr = getConv2DParam(conv);
-          if (conv_attr.is_dw) {
+          if (conv_attr.is_dw /*|| conv_attr.sw > 1*/) {
             all_next_layer_is_int4 = false;
           }
         }

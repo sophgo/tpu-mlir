@@ -301,6 +301,9 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   auto elem_type = module::getStorageType(op.getFilter());
   auto coeff_type = RankedTensorType::get(coeff_shape, elem_type);
   bool sign = coeff_type.getElementType().isSignedInteger();
+  if (isINT4Conv) {
+    coeff_type = RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
+  }
   auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
   op->removeAttr("rshift");
   op->removeAttr("multiplier");
@@ -311,11 +314,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
 
   auto new_type_ = RankedTensorType::get(coeff_shape, in_stype);
   if (isINT4Conv) {
-    // weight data type is same as input tensor's data type, and sign is same
-    // as Filter.
-    new_type_ =
-        RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
-    op.getFilter().setType(new_type_);
+    op.getFilter().setType(coeff_type);
   }
   return success();
 }
