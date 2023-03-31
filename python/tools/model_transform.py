@@ -157,13 +157,14 @@ class TorchTransformer(ModelTransformer):
                  model_name,
                  model_def,
                  input_shapes: list = [],
+                 input_dtypes: list = [],
                  output_names=[],
                  preprocessor=None):
         super().__init__(model_name)
         self.model_def = model_def
         from transform.TorchConverter import TorchConverter
-        self.converter = TorchConverter(self.model_name, self.model_def, input_shapes, output_names,
-                                          preprocessor)
+        self.converter = TorchConverter(self.model_name, self.model_def, input_shapes,
+                                        input_dtypes, output_names, preprocessor)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import torch_inference
@@ -186,7 +187,7 @@ def get_model_transform(args):
         tool = TFLiteTransformer(args.model_name, args.model_def, args.input_shapes,
                                  args.output_names, preprocessor.to_dict())
     elif args.model_def.endswith('.pt'):
-        tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
+        tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes, args.input_dtypes,
                                   args.output_names, preprocessor.to_dict())
     else:
         # TODO: support more AI model types
@@ -203,6 +204,8 @@ if __name__ == '__main__':
     parser.add_argument("--model_data", help="caffemodel, only for caffe model")
     parser.add_argument("--input_shapes", type=str2shape, default=list(),
                         help="list of input shapes, like:[[2,3],[1,2]]")
+    parser.add_argument("--input_dtypes", type=str2shape, default=list(),
+                        help="list of input data types, like:['float32','int32']")
     parser.add_argument("--output_names", type=str2list, default=list(),
                         help="if set, will find names in model and set as real outputs")
     parser.add_argument("--test_input", default="", type=str2list,
