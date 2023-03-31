@@ -65,17 +65,31 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
       auto filterOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
 
       auto filter_i8 = filterOp.read<int8_t>();
-      std::vector<int64_t> filter_shape; // = {1, p.K, 1, p.N};
+      std::vector<int64_t> coeff_shape; // = {1, p.K, 1, p.N};
       auto shape = module::getShape(op.getRight());
       for (int i = 0; i < shape.size(); ++i) {
-        filter_shape[i] = shape[i];
+        coeff_shape.push_back(shape[i]);
       }
 
-      tpu::compact_coeff_for_int4(filter_i8, filter_shape, false);
+      tpu::compact_coeff_for_int4(filter_i8, coeff_shape, false);
       bool sign = true;
-      auto new_type =
-          RankedTensorType::get(filter_shape, rewriter.getIntegerType(4, sign));
+      //auto stype = module::getStorageType(op.getRight());
+      //auto new_type = RankedTensorType::get(coeff_shape, stype);
+      auto new_type = RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
+      auto new_op =
+          top::WeightOp::create(op, "filter_reorderd", *filter_i8, new_type);
+      op->setOperand(1, new_op);
       op.getRight().setType(new_type);
+    } else {
+      return failure();
+    }
+  }
+  i32_array_t bias_quant;
+  if (isa<top::WeightOp>(op.getBias().getDefiningOp())) {
+    bias_quant =
+        cast<top::WeightOp>(op.getBias().getDefiningOp()).read<int32_t>();
+    for (size_t i = 0; i < p.N; ++i) {
+      bias_quant->data()[i] += p.input_zp * p.right_zp * p.K;
     }
   } else {
     i32_array_t bias_quant;
@@ -195,7 +209,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
 
 // =========================================
 // LocalGenInterface
-// =========================================
+// ======q======================
 int64_t tpu::MatMulOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,

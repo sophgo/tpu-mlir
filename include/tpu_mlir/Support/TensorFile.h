@@ -131,9 +131,10 @@ public:
   /// if the name is already used, return failure()
   template <typename T>
   LogicalResult addTensor(llvm::StringRef name, const T *data,
-                          RankedTensorType &type) {
+                          RankedTensorType &type, int64_t length=0) {
     assert(!readOnly);
-    assert(check_type<T>(type.getElementType()) == true);
+    if(!type.getElementType().isInteger(4))
+      assert(check_type<T>(type.getElementType()) == true);
     auto it = map.find(name.str());
     if (it != map.end()) {
       llvm::errs() << "failed to add tensor " << name.str()
@@ -143,8 +144,12 @@ public:
     }
     std::vector<int64_t> shape = type.getShape();
     std::vector<size_t> shape_npz;
+    if(type.getElementType().isInteger(4)) {
+      shape_npz.push_back((size_t)length);
+    } else {
     for (auto it = shape.begin(); it != shape.end(); ++it) {
       shape_npz.push_back((size_t)*it);
+    }
     }
     cnpy::npz_add_array(map, name.str(), &data[0], shape_npz);
     cnt_add++;
@@ -155,8 +160,9 @@ public:
   LogicalResult addTensor(llvm::StringRef name, const std::vector<T> *data,
                           RankedTensorType &type) {
     assert(!readOnly);
-    assert(check_type<T>(type.getElementType()) == true);
-    return addTensor(name, data->data(), type);
+    if(!type.getElementType().isInteger(4))
+      assert(check_type<T>(type.getElementType()) == true);
+    return addTensor(name, data->data(), type, data->size());
   }
 
   /// add a new tensor to file
@@ -200,7 +206,7 @@ public:
       return failure();
     }
     auto arr = it->second;
-    if (arr.num_bytes() != count * sizeof(T)) {
+    if (arr.num_bytes() != count * sizeof(T) && !isINT4) {
       llvm::errs() << "size does not match for tensor " << name.str() << "\n";
       llvm_unreachable("readTensor failed");
       return failure();
@@ -210,8 +216,10 @@ public:
                                               (char *)(data + arr.num_vals));
       colMajorToRowMajor(data_holder, arr);
     } else {
-      int cpy_bytes = isINT4 ? (count+1)/2 : arr.num_bytes();
-      memcpy(data, arr.data_holder->data(), cpy_bytes);
+      if(isINT4)
+        memcpy(data, arr.data_holder->data(), count);
+      else
+        memcpy(data, arr.data_holder->data(), arr.num_bytes());
     }
     return success();
   }
@@ -223,9 +231,21 @@ public:
     bool isINT4 = type.getElementType().isInteger(4);
     if(!isINT4) {
       assert(check_type<T>(type.getElementType()) == true);
+    } else {
+      auto dims = type.getShape().size();
+      if(dims == 2) {  // for MatMul
+        count = type.getDimSize(0) * ((type.getDimSize(1) + 1) / 2);
+      } else if(dims == 4) {  // for Conv2d
+       /* count = type.getDimSize(0) *
+                type.getDimSize(1) *
+                ((type.getDimSize(2) * type.getDimSize(3) + 1)/2); */
+          count = (count + 1) / 2;
+      } else {
+        assert(0);
+      }
     }
 
-    auto data = std::make_unique<std::vector<T>>(isINT4 ? ((count + 1) / 2) : count);
+    auto data = std::make_unique<std::vector<T>>(count);
     auto ret = readTensor(name, (T *)data.get()->data(), count, isINT4);
     assert(succeeded(ret));
     return data;

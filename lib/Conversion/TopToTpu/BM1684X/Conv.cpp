@@ -254,7 +254,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
   llvm::errs() << "start conv LoweringINT4, name:"
                << module::getName(op.getOperation()).str() << "\n";
   auto attr = op.parseParam();
-  if (attr.is_dw) {
+  if (attr.is_dw /*|| attr.sw > 1*/) {
     return LoweringINT8(rewriter, op, asymmetric);
   }
   rewriter.setInsertionPointAfter(op);
@@ -570,7 +570,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     auto newValue = CreateConvOp(rewriter, op.getKernelShape().size(),
                                 op->getLoc(), newType, operands, attrs);
 
-   
+
     rewriter.replaceOp(op, {newValue});
   }
 
