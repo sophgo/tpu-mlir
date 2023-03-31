@@ -230,7 +230,7 @@ if [ x${test_input} != x ]; then
   test_reference_opt="--test_reference=${top_result}"
 fi
 
-if [ ${fuse_preprocess} -eq 1 ]; then
+if [ x${fuse_preprocess} == x1 ]; then
   test_innpz_opt="--test_input=${IMAGE_PATH}"
   fuse_opt="--fuse_preprocess"
 fi
@@ -301,7 +301,7 @@ fi
 
 if [ ${do_f16} == 1 ]; then
   model_file=${model_name}_${chip_name}_f16
-  if [ ${fuse_preprocess} -eq 1 ]; then
+  if [ x${fuse_preprocess} == x1 ]; then
     model_file=${model_file}_fuse_preprocess
   fi
   model_deploy.py \
@@ -323,13 +323,13 @@ fi
 
 if [ ${do_bf16} == 1 ]; then
   model_file=${model_name}_${chip_name}_bf16
-  if [ ${fuse_preprocess} -eq 1 ]; then
+  if [ x${fuse_preprocess} == x1 ]; then
     model_file=${model_file}_fuse_preprocess
   fi
-  if [ ${aligned_input} -eq 1 ]; then
+  if [ x${aligned_input} == x1 ]; then
     model_file=${model_file}_aligned
   fi
-  if [ ${merge_weight} -eq 1 ]; then
+  if [ x${merge_weight} == x1 ]; then
     model_file=${model_file}_merge_weight
   fi
   tolerance_bf16_opt="--tolerance 0.95,0.85"
@@ -396,13 +396,13 @@ if [ ${do_symmetric} == 1 ]; then
     tolerance_sym_opt="--tolerance ${int8_sym_tolerance}"
   fi
   model_file=${model_name}_${chip_name}_int8_sym
-  if [ ${fuse_preprocess} -eq 1 ]; then
+  if [ x${fuse_preprocess} == x1 ]; then
     model_file=${model_file}_fuse_preprocess
   fi
-  if [ ${aligned_input} -eq 1 ]; then
+  if [ x${aligned_input} == x1 ]; then
     model_file=${model_file}_aligned
   fi
-  if [ ${merge_weight} -eq 1 ]; then
+  if [ x${merge_weight} == x1 ]; then
     model_file=${model_file}_merge_weight
   fi
   quant_output_opt=
@@ -439,7 +439,7 @@ if [ $do_asymmetric == 1 ]; then
     tolerance_asym_opt="--tolerance ${int8_asym_tolerance}"
   fi
   model_file=${model_name}_${chip_name}_int8_asym
-  if [ ${fuse_preprocess} -eq 1 ]; then
+  if [ x${fuse_preprocess} == x1 ]; then
     model_file=${model_file}_fuse_preprocess
   fi
   model_deploy.py \
