@@ -564,6 +564,26 @@ if [ x${do_int4_sym} == x1 ]; then
     tolerance_sym_opt="--tolerance ${int4_sym_tolerance}"
   fi
 
+  #Temporary test code
+  tpuc-opt ${model_name}.mlir \
+      --init \
+      --import-calibration-table="file=${CALI_TABLE} asymmetric=false" \
+      --convert-top-to-tpu="mode=INT4 asymmetric=false chip=bm1686" \
+      --canonicalize \
+      --mlir-print-debuginfo \
+      -o ${model_name}_bm1686_tpu_int4_sym.mlir
+
+  model_runner.py \
+      --model ${model_name}_bm1686_tpu_int4_sym.mlir \
+      --input ${model_name}_in_f32.npz \
+      --dump_all_tensors \
+      --output ${model_name}_bm1686_tpu_int4_sym_outputs.npz
+
+  npz_tool.py compare \
+      ${model_name}_bm1686_tpu_int4_sym_outputs.npz \
+      ${model_name}_top_outputs.npz \
+      --tolerance ${int4_sym_tolerance} -v
+
   #It is not supported now, first comment it
   # model_deploy.py \
   #   --mlir ${model_name}.mlir \
@@ -577,26 +597,7 @@ if [ x${do_int4_sym} == x1 ]; then
   #   ${excepts_opt} \
   #   --quant_input \
   #   --quant_output \
-  #   --model ${model_name}_${chip_name}_int4_sym.${model_type} \
-  #   ${do_post_opt}
-
-  #Temporary test code
-  tpuc-opt ${model_name}.mlir \
-      --import-calibration-table="file=${CALI_TABLE} asymmetric=false" \
-      --convert-top-to-tpu="mode=INT4 asymmetric=false chip=bm1686" \
-      --canonicalize \
-      -o ${model_name}_bm1686_tpu_int4_sym.mlir
-
-  model_runner.py \
-      --model ${model_name}_bm1686_tpu_int4_sym.mlir \
-      --input ${model_name}_in_f32.npz \
-      --dump_all_tensors \
-      --output ${model_name}_bm1686_tpu_int4_sym_outputs.npz
-
-  npz_tool.py compare \
-      ${model_name}_bm1686_tpu_int4_sym_outputs.npz \
-      ${model_name}_top_outputs.npz \
-      --tolerance ${int4_sym_tolerance} -v
+  #   --model ${model_name}_${chip_name}_int4_sym.${model_type}
 
 fi #do_int4_sym
 #########################
