@@ -213,19 +213,23 @@ class TPULANG_IR_TESTER(object):
         """Mul"""
 
         @tpulang
-        def _test_mul(shape: List[int], dtype="float32"):
-            x_data = rand_data(shape, dtype)
-            y_data = rand_data(shape, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape, data=y_data)
-            conv = self.mul_op(x, y, dtype=dtype)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [conv], False, 2)
+        def _test_mul(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            mul = self.mul_op(x, y, dtype=dtype)
+            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [mul], False, 2)
             TPULANG_IR_TESTER.ID += 1
 
-        _test_mul([1, 3, 28, 28])
-        _test_mul([1, 3, 32, 32])
+        _test_mul([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_mul([1, 3, 32, 32], [1, 3, 32, 32])
+        _test_mul([1, 3, 32, 32], [1, 1, 32, 32])
+        _test_mul([1, 3, 32, 32], [1])
+        _test_mul([1], [1, 3, 32, 32])
         _test_mul(
-            [1, 3, 32, 32],
+            [1, 1, 32, 32],
+            [1, 3, 1, 32],
             dtype="int8",
         )
 
