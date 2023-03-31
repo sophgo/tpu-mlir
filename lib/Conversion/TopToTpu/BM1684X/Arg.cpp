@@ -14,13 +14,9 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void LoweringArg(PatternRewriter &rewriter, top::ArgOp op) {
+void LoweringArg(PatternRewriter &rewriter, top::ArgOp op, Type type) {
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   std::vector<Type> new_types;
   if (!module::isNone(op.getIndices())) {
     auto shape = module::getShape(op.getIndices());
@@ -29,30 +25,35 @@ void LoweringArg(PatternRewriter &rewriter, top::ArgOp op) {
   } else {
     new_types.push_back(op.getIndices().getType());
   }
-  new_types.push_back(op.getValues().getType());
-
-  rewriter.replaceOpWithNewOp<tpu::ArgOp>(op, new_types, operands, attrs);
+  new_types.push_back(type);
+  rewriter.replaceOpWithNewOp<tpu::ArgOp>(op, new_types, operands,
+                                          op->getAttrs());
   return;
 }
 
 void ArgLowering::LoweringF32(PatternRewriter &rewriter, top::ArgOp op) const {
-  LoweringArg(rewriter, op);
+  LoweringArg(rewriter, op, getQuantFloatType(op.getValues()));
 }
+
 void ArgLowering::LoweringINT4(PatternRewriter &rewriter, top::ArgOp op,
                                bool asymmetric) const {
-  LoweringArg(rewriter, op);
+  LoweringINT8(rewriter, op, asymmetric);
 }
 void ArgLowering::LoweringINT8(PatternRewriter &rewriter, top::ArgOp op,
                                bool asymmetric) const {
-  LoweringArg(rewriter, op);
+  if (asymmetric) {
+    LoweringF16(rewriter, op);
+  } else {
+    LoweringArg(rewriter, op, getQuantInt8Type(op.getValues()));
+  }
 }
 
 void ArgLowering::LoweringBF16(PatternRewriter &rewriter, top::ArgOp op) const {
-  LoweringArg(rewriter, op);
+  LoweringArg(rewriter, op, getQuantBF16Type(op.getValues()));
 }
 
 void ArgLowering::LoweringF16(PatternRewriter &rewriter, top::ArgOp op) const {
-  LoweringArg(rewriter, op);
+  LoweringArg(rewriter, op, getQuantF16Type(op.getValues()));
 }
 
 void ArgLowering::LoweringQuantized(PatternRewriter &rewriter,

@@ -259,12 +259,8 @@ class CaffeConverter(BaseConverter):
         tmp_shape = input_shape
         tmp_shape[axis] = top_k
         assert (tmp_shape == out_shape and "Must provide axis")
-        attrs = {
-            'name': [name + "_indices", name + "_values"],
-            'mode': layer_type,
-            'axis': axis,
-            'keepdims': True
-        }
+        attrs = {'mode': layer_type, 'axis': axis, 'keepdims': True}
+        attrs['name'] = [name + "_indices", name] if out_max_val else [name, name + "_values"]
         output_shapes = [out_shape]
         output_shapes += [out_shape] if out_max_val else [None]
         out_ops = self.mlir.create_arg_op([in_op], output_shapes, **attrs)
