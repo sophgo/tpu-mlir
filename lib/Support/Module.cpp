@@ -745,6 +745,23 @@ bool isTpuOp(Operation *op) {
   return (op->getDialect()->getNamespace() == "tpu");
 }
 
+bool isInt4Op(Operation *op) {
+  if (isa<top::ConvOp, tpu::Conv2DOp>(op)) {
+  // if (isa<top::ConvOp, top::MatMulOp, tpu::Conv2DOp, tpu::MatMulOp>(op)) {
+    if (auto convOp = dyn_cast<top::ConvOp>(op)) {
+      if(convOp.parseParam().is_dw)
+        return false;
+    }
+    if (auto convOp = dyn_cast<tpu::Conv2DOp>(op)) {
+      if(convOp.parseParam().is_dw)
+        return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
 bool isCV18xx() {
   return (chip == Chip::CV183x || chip == Chip::CV182x ||
           chip == Chip::CV181x || chip == Chip::CV180x);
@@ -952,6 +969,32 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
 void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                           bool &sign, bool asymmetric, int bitwidth) {
   if (isCalibratedType(v)) {
+    if (bitwidth == 8) {
+      auto pre_op = v.getDefiningOp();
+      if (module::isInt4Op(pre_op)) {
+        if (auto convOp = dyn_cast<top::ConvOp>(pre_op)) {
+          if (convOp.getOutInt8Scale().has_value()) {
+            scale =
+                convOp.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
+            zeropoint =
+                int64_t(convOp.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble());
+            return;
+          }
+        } else {
+          if (auto matmulOp = dyn_cast<top::MatMulOp>(pre_op)) {
+            // break; //todo matmul need support int4
+            if (matmulOp.getOutInt8Scale().has_value()) {
+              scale =
+                  matmulOp.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
+              zeropoint =
+                  int64_t(matmulOp.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble());
+              return;
+            }
+          }
+        }
+      }
+    }
+
     auto qtype = getCalibratedType(v);
     auto max = qtype.getMax();
     auto min = qtype.getMin();

@@ -61,7 +61,7 @@ public:
 
       std::istringstream iss(line);
       std::string name;
-      if (weight_scale_meeted) {
+      if (weight_scale_meeted) { //third run, read weight_scale
         std::string name;
         double value;
         int num = 0;
@@ -74,30 +74,28 @@ public:
           vScales->data()[i] = value;
         }
         per_chan_scales_map[name] = vScales;
-      } else if (int4_th_meeted) {
-        cali_info info = {0, 0, 0};
-        if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
-          break;
-        }
-        calibration_map_int4[name] = info;
-      } else {
+      } else if (int4_th_meeted) { //second run, read int4 th
         if (std::regex_match(line, cali_pattern)) {
           cali_info info = {0, 0, 0};
           if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
-            break;
+            llvm::errs() << line;
+            llvm_unreachable("\n  => not match required format\n");
+          }
+          calibration_map_int4[name] = info;
+        } else if (std::regex_match(line, info_pattern) && std::string::npos != line.find("#weight_scale")) {
+          int4_th_meeted = false;
+          weight_scale_meeted = true;
+        }
+      } else {
+        if (std::regex_match(line, cali_pattern)) { //first run, read int8 th
+          cali_info info = {0, 0, 0};
+          if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
+            llvm::errs() << line;
+            llvm_unreachable("\n  => not match required format\n");
           }
           calibration_map[name] = info;
-        } else if (std::regex_match(line, info_pattern)) {
-          if (std::string::npos != line.find("#int4_th"))
-            int4_th_meeted = true;
-          if (std::string::npos != line.find("#weight_scale")) {
-            int4_th_meeted = false;
-            weight_scale_meeted = true;
-          }
-        } else {
-          // Format of threshold table error
-          llvm::errs() << line;
-          llvm_unreachable("\n  => not match required format\n");
+        } else if (std::regex_match(line, info_pattern) && std::string::npos != line.find("#int4_th")) {
+          int4_th_meeted = true;
         }
       }
     }
@@ -115,14 +113,19 @@ public:
             }
 
             auto name = module::getName(value).str();
-            cali_info info = {0};
+            cali_info info = {0,0,0};
             if (calibration_map.find(name) != calibration_map.end()) {
               info = calibration_map[name];
-            } else if (calibration_map_int4.find(name) !=
-                       calibration_map_int4.end()) {
-              info = calibration_map_int4[name];
-            } else {
-              continue;
+            }
+            if (calibration_map_int4.size() > 0
+              && (module::isInt4Op(op) ||
+              (isa<top::InputOp>(op) && module::isInt4Op(*(op->getUsers().begin()))))) {
+                if (calibration_map_int4.find(name) != calibration_map_int4.end()) {
+                  info = calibration_map_int4[name];
+                }
+            }
+            if (info.max == 0 && info.min == 0 && info.threshold == 0 ) {
+                continue;
             }
 
             getMinMax(op, info, min, max);
@@ -130,27 +133,6 @@ public:
                 type.getElementType(), min, max);
             auto new_type = RankedTensorType::get(type.getShape(), quant_type);
             value.setType(new_type);
-
-            // std::string name2 = name + "_4";
-            // if (calibration_map.find(name2) != calibration_map.end()) {
-            //   auto &info = calibration_map[name2];
-            //   getMinMax(op, info, min, max);
-            //   for (auto user:op->getUsers()) {
-            //     OpBuilder builder(user);
-            //     user->setAttr("in_scale",
-            //                 builder.getF64ArrayAttr(ArrayRef<double>{max}));
-            //   }
-            // }
-            // name2 = name + "_8";
-            // if (calibration_map.find(name2) != calibration_map.end()) {
-            //   auto &info = calibration_map[name2];
-            //   getMinMax(op, info, min, max);
-            //   for (auto user:op->getUsers()) {
-            //     OpBuilder builder(user);
-            //     user->setAttr("in_scale",
-            //                 builder.getF64ArrayAttr(ArrayRef<double>{max}));
-            //   }
-            // }
           }
         } else if (isa<WeightOp>(op)) {
           auto user = op->getUsers().begin();
@@ -161,13 +143,13 @@ public:
           }
         }
 
-        if (isa<ConvOp>(op) || isa<MatMulOp>(op)) {
+        if (calibration_map_int4.size() > 0 && module::isInt4Op(op)) {
           OpBuilder builder(op);
           double scale;
           int64_t zeropoint;
           auto name = module::getName(op->getResults()[0]).str();
           for (auto user : op->getUsers()) {
-            if (!isa<top::ConvOp, top::MatMulOp>(user)) {
+            if (!module::isInt4Op(user) && !isa<ReturnOp>(user)) {
               if (calibration_map.find(name) != calibration_map.end()) {
                 auto &info = calibration_map[name];
                 module::getScaleAndZeroPoint(info.min, info.max, scale,
@@ -175,13 +157,16 @@ public:
                 op->setAttr("out_int8_scale", builder.getF64FloatAttr(scale));
                 op->setAttr("out_int8_zp",
                             builder.getF64FloatAttr((double)zeropoint));
+              } else {
+                llvm::errs() <<"not find "<< name<<"\n";
+                llvm_unreachable("int4 layer's output int8 cali_info not exist\n");
               }
               break;
             }
           }
 
           auto preOp = op->getOperands()[0].getDefiningOp();
-          if (!isa<top::ConvOp, top::MatMulOp>(preOp) && !isa<InputOp>(preOp)) {
+          if (!module::isInt4Op(preOp) && !isa<InputOp>(preOp)) {
             name = module::getName(op->getOperands()[0]).str();
             if (calibration_map_int4.find(name) != calibration_map_int4.end()) {
               auto &info = calibration_map_int4[name];
@@ -190,6 +175,9 @@ public:
               op->setAttr("in_int4_scale", builder.getF64FloatAttr(scale));
               op->setAttr("in_int4_zp",
                           builder.getF64FloatAttr((double)zeropoint));
+            } else {
+              llvm::errs() <<"not find "<< name<<"\n";
+              llvm_unreachable("int4 layer's input int4 cali_info not exist\n");
             }
           }
         }

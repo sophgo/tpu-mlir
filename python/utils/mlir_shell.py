@@ -48,6 +48,8 @@ def mlir_lowering(top_mlir: str,
         mode = 'INT8'
     if mode != 'INT8':
         asymmetric = True
+    if mode == 'INT4':
+        asymmetric = False
     if cali_table != None:
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)

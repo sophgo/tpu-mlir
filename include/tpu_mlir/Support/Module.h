@@ -154,6 +154,7 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
                       std::vector<Value> &outputs);
 
 bool isTpuOp(Operation *op);
+bool isInt4Op(Operation *op);
 bool isCV18xx();
 bool isBM1684Family();
 bool isBM1684XFamily();
