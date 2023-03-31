@@ -24,6 +24,16 @@ mlir::LogicalResult verifyTpuTypeRestrictTrait(mlir::Operation *op);
 mlir::LogicalResult verifyInOutSameShapeTrait(mlir::Operation *op);
 } // namespace impl
 
+// If a op has this trait, it means that some output(s) is(are) shape tensor(s)
+template <typename ConcreteType>
+class ShapeProducer
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, ShapeProducer> {};
+
+// If a op has this trait, it means that some input(s) is(are) shape tensor(s)
+template <typename ConcreteType>
+class ShapeConsumer
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, ShapeConsumer> {};
+
 // If a op has this trait, it means that relu follow this op can be fused to
 // this op
 template <typename ConcreteType>

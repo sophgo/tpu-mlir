@@ -1488,6 +1488,12 @@ typedef struct {
   pooling3d_common_param_t common;
   int64_t buffer_addr;
 } dyn_pooling3d_global_spec_t;
+
+typedef struct {
+    unsigned int        filled_value;
+    int                 dtype;
+} constantfill_common_spec_t;
+
 #ifdef __cplusplus
 }
 #endif

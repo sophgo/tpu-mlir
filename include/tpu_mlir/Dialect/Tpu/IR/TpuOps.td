@@ -2133,4 +2133,56 @@ def Tpu_DetectionOutputOp : Tpu_Op<"DetectionOutput"> {
   );
   let results = (outs AnyTensor:$output);
 }
+
+def Tpu_ShapeOp : Tpu_Op<"Shape", [
+    ShapeProducer,
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Shape operation";
+  let description = [{
+    Takes a tensor as input and outputs an 1D int tensor containing the shape
+     of the input tensor.
+  }];
+  let arguments = (ins AnyTensor:$input);
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_ConstantFillOp: Tpu_Op<"ConstantFill", [
+    ShapeConsumer,
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "constant fill operator";
+  let description = [{
+    fill the constant value
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$value
+  );
+
+  let results = (outs
+    AnyTensor:$output
+  );
+}
+
+def Tpu_Host2DeviceOp : Tpu_Op<"Host2Device", [
+    ShapeConsumer,
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Host2Device Operation";
+  let description = [{
+    takes data from host mem to device mem
+  }];
+  let arguments = (ins AnyTensor:$input);
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_Device2HostOp : Tpu_Op<"Device2Host", [
+    ShapeProducer,
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Device2Host Operation";
+  let description = [{
+    takes data from device mem to host mem
+  }];
+  let arguments = (ins AnyTensor:$input);
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

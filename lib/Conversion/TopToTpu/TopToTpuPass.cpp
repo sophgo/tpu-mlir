@@ -401,6 +401,19 @@ public:
     }
     init_qtable();
     RewritePatternSet patterns(ctx_);
+
+    // process shape related ops
+    if (module::isBM1684XFamily()) {
+      bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
+    }
+
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+
+    patterns.clear();
+
+    hd_convert_process();
+
+    // process other ops
     if (module::isBM1684XFamily()) {
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
     } else if (module::isBM1684Family()) {
@@ -496,6 +509,23 @@ protected:
     patterns.clear();
     patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepAddSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  }
+
+  void hd_convert_process() {
+    // return types
+    auto retTypes = mainFunc_.getResultTypes();
+    mainFunc_.walk([&](Operation *op) {
+      if (!isa<ReturnOp>(op))
+        return;
+      for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+        auto opd = op->getOperand(idx);
+        auto def_op = opd.getDefiningOp();
+        if (def_op->hasTrait<trait::ShapeProducer>()) {
+          auto hdOp = insert_host2device(opd, opd.getType());
+          op->setOperand(idx, hdOp);
+        }
+      }
+    });
   }
 
   void relu_process() {
@@ -613,6 +643,18 @@ protected:
       break;
     }
     return v;
+  }
+
+  Value insert_host2device(Value v, Type to) {
+    auto ctx = v.getContext();
+    OpBuilder builder(ctx);
+    builder.setInsertionPointAfterValue(v);
+    auto name = module::getName(v).str();
+    name += "_host2device";
+    auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
+    auto loc = NameLoc::get(builder.getStringAttr(name));
+    auto hdOp = builder.create<tpu::Host2DeviceOp>(loc, newType, ValueRange{v});
+    return hdOp.getOutput();
   }
 
   Value insert_18xx_cpu_cast(OpBuilder &builder, Value &v, NameLoc &loc,

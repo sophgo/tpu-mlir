@@ -23,6 +23,7 @@ class Top:
     ConvOp = 'top.Conv'
     CompareOp = 'top.Compare'
     CompareConstOp = 'top.CompareConst'
+    ConstantFillOp = 'top.ConstantFill'
     CosOp = 'top.Cos'
     CoshOp = 'top.Cosh'
     Depth2SpaceOp = 'top.Depth2Space'
@@ -85,6 +86,7 @@ class Top:
     SubOp = 'top.Sub'
     SliceOp = 'top.Slice'
     SliceAxisOp = 'top.SliceAxis'
+    ShapeOp = 'top.Shape'
     SigmoidOp = 'top.Sigmoid'
     SiLUOp = 'top.SiLU'
     SizeOp = 'top.Size'
@@ -1301,6 +1303,27 @@ class MLIRImporter(object):
                               attributes=param)
         self.insert_point.insert(op)
         return op.results[0]
+
+    def create_shape_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.ShapeOp, operands, [output_type], **param)
+
+    def create_constant_fill_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = self.get_tensor_type(output_shape)
+        param = {
+            'name': kargs['name'],
+            "value": FloatAttr.get(self.mlir_type['F64'], kargs['value']),
+        }
+        return self.buildOp(Top.ConstantFillOp, operands, [output_type], **param)
+
+    def create_range_op(self, operands, output_shape, **kargs):
+        # output_type = self.get_tensor_type(output_shape)
+        # param = {'name': kargs['name']}
+        # return self.buildOp(Top.RangeOp, operands, [output_type], **param)
+        pass
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
