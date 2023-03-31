@@ -174,16 +174,28 @@ public:
     module::setState(module::State::TPU_DIVIDED);
   }
 
+  static bool force_dynamic_run(Operation *op) {
+    if (isa<TopKOp,
+            YoloDetectionOp,
+            DetectionOutputOp,
+            RoiAlignOp,
+            NonZeroOp>(op)) {
+      return true;
+    } else if (op->hasTrait<trait::ShapeProducer>()) {
+      return true;
+    } else if (op->hasTrait<trait::ShapeConsumer>()) {
+      return true;
+    }
+    return false;
+  }
+
   // seperate: whether seperate with other op
   RunMode getOpMode(Operation *op, bool &seperate) {
     seperate = false;
     if (isa<GenericCpuOp>(op)) {
       seperate = true;
       return RunMode::CPU;
-    } else if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp>(op)) {
-      return RunMode::TPU_DYNAMIC;
-    }
-    if (dynamic) {
+    } else if (dynamic || force_dynamic_run(op)) {
       return RunMode::TPU_DYNAMIC;
     }
     return RunMode::TPU_STATIC;

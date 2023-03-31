@@ -2404,4 +2404,15 @@ def Top_LoopOp : Top_Op<"Loop"> {
     }
   }];
 }
+
+def Top_ShapeOp : Top_Op<"Shape"> {
+  let summary = "Shape operation";
+  let description = [{
+    Takes a tensor as input and outputs an 1D int tensor containing the shape
+     of the input tensor.
+  }];
+  let arguments = (ins AnyTensor:$input);
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS

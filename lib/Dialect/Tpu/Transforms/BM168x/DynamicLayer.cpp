@@ -116,15 +116,12 @@ size_t copy_spec_to_buffer<dynamic_layer::INPUT>(
   write_var(spec.type);
   write_var(spec.id);
   write_var(spec.addr);
-  if (spec.type == DYNAMIC_NEURON) {
-    goto end;
+  if (spec.type != DYNAMIC_NEURON) {
+    write_var(spec.dtype);
+    write_var(spec.dims);
+    for (int i = 0; i < spec.dims; ++i)
+      write_var(spec.shape[i]);
   }
-  write_var(spec.dtype);
-  write_var(spec.dims);
-  for (int i = 0; i < spec.dims; ++i)
-    write_var(spec.shape[i]);
-
-end:
   return u8_buffer - static_cast<uint8_t *>(buffer);
 }
 
@@ -223,6 +220,15 @@ DynamicTensorType to_dynamic_tensor_type(Value v) {
   }
   if (isa<top::WeightOp>(op)) {
     return DYNAMIC_COEFF;
+  }
+  const auto def_op = v.getDefiningOp();
+  if (def_op->hasTrait<trait::ShapeProducer>()) {
+    return DYNAMIC_SHAPE;
+  }
+  for (const auto use_op : v.getUsers()) {
+    if (use_op->hasTrait<trait::ShapeConsumer>()) {
+      return DYNAMIC_SHAPE;
+    }
   }
   if (auto load_op = dyn_cast<tpu::LoadOp>(op)) {
     // TODO: LoadOp belong to weight ?

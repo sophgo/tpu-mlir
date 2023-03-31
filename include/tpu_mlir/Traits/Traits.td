@@ -16,6 +16,8 @@ class TPUMLIROpTrait<string name> : NativeOpTrait<name> {
   let cppNamespace = "::tpu_mlir::trait";
 }
 
+def ShapeProducer : TPUMLIROpTrait<"ShapeProducer">;
+def ShapeConsumer : TPUMLIROpTrait<"ShapeConsumer">;
 def SupportFuseRelu : TPUMLIROpTrait<"SupportFuseRelu">;
 def SupportEarlyStride : TPUMLIROpTrait<"SupportEarlyStride">;
 def TpuTypeRestrict: TPUMLIROpTrait<"TpuTypeRestrict">;

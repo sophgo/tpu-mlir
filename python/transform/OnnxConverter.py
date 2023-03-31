@@ -99,14 +99,16 @@ class OnnxConverter(BaseConverter):
                  onnx_file,
                  input_shapes: list,
                  output_names: list,
-                 preprocess_args=None):
+                 preprocess_args=None,
+                 use_onnxsim=True):
         super().__init__()
+
         self.model_name = model_name
         self.weight_file = "{}_top_origin_weight.npz".format(model_name)
         self.model = None
         self.mlir = None
         self.node_name_mapping = {}  # used in onnx opt
-        self.load_onnx_model(onnx_file, input_shapes, output_names)
+        self.load_onnx_model(onnx_file, input_shapes, output_names, use_onnxsim)
         self.init_MLIRImporter()
         self.opset = self.model.opset_import[-1].version
         self.preprocess_args = preprocess_args
@@ -124,6 +126,7 @@ class OnnxConverter(BaseConverter):
             "Cast": lambda node: self.convert_cast_op(node),
             "Concat": lambda node: self.convert_concat_op(node),
             "Constant": lambda node: self.convert_constant_op(node),
+            "ConstantOfShape": lambda node: self.convert_constantofshape_op(node),
             "Conv": lambda node: self.convert_conv_op(node),
             "Cos": lambda node: self.convert_cos_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
@@ -173,6 +176,7 @@ class OnnxConverter(BaseConverter):
             "PRelu": lambda node: self.convert_prelu_op(node),
             "Pow": lambda node: self.convert_pow_op(node),
             "QuantizeLinear": lambda node: self.convert_qlinear_op(node),
+            "Range": lambda node: self.convert_range_op(node),
             "Reciprocal": lambda node: self.convert_reciprocal_op(node),
             "ReduceMean": lambda node: self.convert_reduce_op(node),
             "ReduceMax": lambda node: self.convert_reduce_op(node),
@@ -342,21 +346,23 @@ class OnnxConverter(BaseConverter):
                 v = self.model.graph.value_info[0]
                 self.model.graph.value_info.remove(v)
 
-    def model_simplify(self):
+    def model_simplify(self, use_onnxsim=True):
         self.clean_up_shape_info()
         is_ok = False
         times = 0
-        for i in range(5):
-            try:
-                model_simplified, is_ok = onnxsim.simplify(self.model)
-            except:
-                is_ok = False
-            if not is_ok:
-                break
-            if model_simplified == self.model:
-                break
-            times += 1
-            self.model = model_simplified
+        if use_onnxsim:
+            for i in range(5):
+                try:
+                    model_simplified, is_ok = onnxsim.simplify(self.model)
+                    print(is_ok)
+                except:
+                    is_ok = False
+                if not is_ok:
+                    break
+                if model_simplified == self.model:
+                    break
+                times += 1
+                self.model = model_simplified
         print("Run onnxsim {} times, model simplified: {}".format(times, is_ok))
         if not is_ok:
             try:
@@ -365,16 +371,20 @@ class OnnxConverter(BaseConverter):
                 return is_ok
         return is_ok
 
-    def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list):
+    def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list, use_onnxsim=True):
         if isinstance(onnx_file, str):
             self.model = onnx.load(onnx_file)
         else:
             self.model = onnx_file
-        is_ok_ = self.model_simplify()  # need shape_info for select_output
+        print("--------------------------------")
+        print("Before assigning input_shape:")
+        is_ok_ = self.model_simplify(use_onnxsim)  # need shape_info for select_output
         # select_output before model_shape_infer to remove useless inputs
         # so that those inputs dont have to be specified in cfg file
         if (not is_ok_):
             print("WARNING: Onnx-sim failed please check onnx model.")
+        print("--------------------------------")
+
         if output_names:
             self.select_output(output_names)
         self.input_names = self.get_input_names(self.model)
@@ -383,9 +393,11 @@ class OnnxConverter(BaseConverter):
         self.input_shapes = self.get_input_shapes(self.model)
         self.input_types = self.get_input_types(self.model)
         self.output_types = self.get_output_types(self.model)
-        is_ok = self.model_simplify()
+        print("After assigning input_shape:")
+        is_ok = self.model_simplify(use_onnxsim)
         if (is_ok_ and not is_ok):
             print("WARNING: Onnx-sim failed caused by assign input_shape.")
+        print("--------------------------------")
         # add all weight
         for tensor in self.model.graph.initializer:
             name = tensor.name
@@ -428,7 +440,7 @@ class OnnxConverter(BaseConverter):
                 nodes_with_shape.append(output.name)
         # get unknow shape
         full_nodes = []
-        no_list = ["Cast", "Shape", "Constant", "Unsqueeze", "Dropout", "Loop", "TopK"]
+        no_list = ["Cast", "Constant", "Unsqueeze", "Dropout", "Loop", "TopK"]
         for n in graph.node:
             if n.op_type == 'Loop':
                 #special handle: get the shape of loop op
@@ -442,7 +454,6 @@ class OnnxConverter(BaseConverter):
                     continue
                 full_nodes.append(name)
         unk_op.extend(set(full_nodes) - set(nodes_with_shape))
-
         if (flag and unk_op):
             unk_shape = self.get_unk_shape(unk_op)
             for n, s in unk_shape:
@@ -741,6 +752,29 @@ class OnnxConverter(BaseConverter):
         onnx_tensor = onnx_node.attrs['value']
         np_tensor = numpy_helper.to_array(onnx_tensor)
         self.addWeight(onnx_node.name, np_tensor)
+
+    def convert_constantofshape_op(self, onnx_node):
+        """
+            Constant Op is tensor data at IR,
+            we change it to load weight tensor, and store
+        """
+        assert (onnx_node.op_type == "ConstantOfShape")
+        value = 0
+        dtype = np.float32
+        if 'value' in onnx_node.attrs:
+            onnx_tensor = onnx_node.attrs['value']
+            np_tensor = numpy_helper.to_array(onnx_tensor)
+            assert (np_tensor.size == 1)
+            assert (np_tensor.dtype == np.float32)
+            value = np_tensor[0]
+            dtype = np_tensor.dtype
+        assert (dtype == np.float32)
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+             "value": value}
+        op = self.getOp(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        new_op = self.mlir.create_constant_fill_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_conv_op(self, onnx_node):
         assert (onnx_node.op_type == "Conv")
@@ -1124,9 +1158,40 @@ class OnnxConverter(BaseConverter):
 
     def convert_shape_op(self, onnx_node):
         assert (onnx_node.op_type == "Shape")
-        input_shape = self.getShape(onnx_node.inputs[0])
-        data = np.array(input_shape)
-        self.addWeight(onnx_node.name, data)
+        input = onnx_node.inputs[0]
+        input_shape = self.getShape(input)
+        input_dims = len(input_shape)
+        start = onnx_node.attrs.get("start", 0)
+        end = onnx_node.attrs.get("end", input_dims)
+        op = self.getOp(input)
+        mid_name = "{}_{}_{}".format(onnx_node.name, onnx_node.op_type, 0)
+        final_name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        no_slice = start == 0 and end == input_dims
+        if no_slice:
+            mid_name = final_name
+        p = {'name': mid_name}
+        new_op = self.mlir.create_shape_op([op], [input_dims], **p)
+        if not no_slice:
+            p = {
+                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                'offset': [start],
+                'steps': [1],
+                'end': [end],
+            }
+            new_op = self.mlir.create_slice_op([new_op], [end - start], **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_range_op(self, onnx_node):
+        assert (onnx_node.op_type == "Range")
+        print(self.getShape(onnx_node.inputs[0]))
+        print(self.getShape(onnx_node.inputs[1]))
+        print(self.getShape(onnx_node.inputs[2]))
+        start_op = self.getOp(onnx_node.inputs[0])
+        limit_op = self.getOp(onnx_node.inputs[1])
+        delta_op = self.getOp(onnx_node.inputs[2])
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_range_op([start_op, limit_op, delta_op], [], **p)
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_sigmoid_op(self, onnx_node):
         assert (onnx_node.op_type == "Sigmoid")

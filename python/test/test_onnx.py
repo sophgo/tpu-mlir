@@ -6,6 +6,7 @@
 #
 # ==============================================================================
 
+import pdb
 from copy import deepcopy
 import numpy as np
 import onnx
@@ -60,6 +61,7 @@ class ONNX_IR_TESTER(object):
             "Compare2":     (self.test_Compare2,    N, N, N),
             "Concat":       (self.test_Concat,      Y, N, Y),
             "Concat2":      (self.test_Concat2,     Y, N, Y),
+            "ConstOfShape": (self.test_ConstOfShape, Y, N, N),
             "Conv1d":       (self.test_Conv1d,      Y, N, Y),
             "Conv2d":       (self.test_Conv2d,      Y, N, Y),
             "Conv3d":       (self.test_Conv3d,      Y, N, Y),
@@ -82,6 +84,7 @@ class ONNX_IR_TESTER(object):
             "Expand2":      (self.test_Expand2,     Y, N, Y),
             "Floor":        (self.test_floor,       Y, N, N),
             "Gather":       (self.test_Gather,      Y, N, Y),
+            # "Gather2":      (self.test_Gather2,     Y, N, Y),
             "Gemm":         (self.test_Gemm,        Y, N, Y),
             "GroupFC":      (self.test_GroupFC,     Y, N, Y),
             "GRU":          (self.test_GRU,         Y, N, Y),  # test gru output Y
@@ -115,6 +118,7 @@ class ONNX_IR_TESTER(object):
             "Pow1":         (self.test_Pow1,        Y, N, Y),  # y = x ^ n
             "Pow2":         (self.test_Pow2,        N, N, N),  # y = n ^ x
             "PRelu":        (self.test_PRelu,       Y, N, Y),
+            # "Range":        (self.test_Range,       Y, N, N),
             "Resize":       (self.test_Resize,      Y, N, Y),
             "Resize2":      (self.test_Resize2,     Y, N, Y),
             "Reshape":      (self.test_Reshape,     Y, N, N),
@@ -127,6 +131,7 @@ class ONNX_IR_TESTER(object):
             "Reciprocal":   (self.test_Reciprocal,  Y, N, Y),
             "Relu":         (self.test_Relu,        Y, N, Y),
             "ScatterND":    (self.test_ScatterND,   Y, N, N),
+            "Shape":        (self.test_Shape,       Y, N, N),
             "SiLU":         (self.test_SiLU,        Y, N, Y),
             "Softmax":      (self.test_Softmax,     Y, N, Y),
             "Softplus":     (self.test_Softplus,    Y, N, Y),
@@ -290,13 +295,13 @@ class ONNX_IR_TESTER(object):
             inputs[name] = np.clip(np.random.randn(*shape).astype(np.float32), -10, 10)
         return inputs
 
-    def onnx_convert(self, input_data: dict, graph_def, model_name: str):
+    def onnx_convert(self, input_data: dict, graph_def, model_name: str, use_onnxsim=True):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
         model_def.opset_import[0].version = 13
         onnx.checker.check_model(model_def)
-        tool = OnnxTransformer(model_name, model_def)
+        tool = OnnxTransformer(model_name, model_def, use_onnxsim=use_onnxsim)
         node_name_mapping = tool.converter.node_name_mapping
         tool.model_transform(fp32_mlir)
 
@@ -433,7 +438,7 @@ class ONNX_IR_TESTER(object):
             self.compare(origin_output.data.numpy().flatten(), onnx_outs[0].flatten())
         print("* Torch and Onnx result compared *")
 
-    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str):
+    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str, use_onnxsim=True):
         if isinstance(inputs, tuple):
             origin_output = torch_model(*inputs)
         else:
@@ -460,14 +465,14 @@ class ONNX_IR_TESTER(object):
             input_names=in_names)
         onnx_model = onnx.load(onnx_file)
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
-        self.onnx_and_test(onnx_model.graph, name=model_name, input_data=in_data)
+        self.onnx_and_test(onnx_model.graph, name=model_name, input_data=in_data, use_onnxsim=use_onnxsim)
 
-    def onnx_and_test(self, graph_def, name: str = "", input_data: dict = None):
+    def onnx_and_test(self, graph_def, name: str = "", input_data: dict = None, use_onnxsim = True):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
-            input_data, graph_def, model_name)
+            input_data, graph_def, model_name, use_onnxsim=use_onnxsim)
         # test onnx and mlir outputs
         counter = 0
         for name in onnx_outs:
@@ -4871,6 +4876,89 @@ class ONNX_IR_TESTER(object):
             ],
         )
         self.onnx_and_test(graph_def)
+
+    def test_Shape(self, case_name):
+        input_shape = [2, 3]
+        output_shape = [2]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        shapeinfo = helper.make_tensor_value_info('shapeinfo', TensorProto.INT64, output_shape)
+        shape_node = helper.make_node(
+                'Shape',   # node name
+                ['input'],   # inputs
+                ['shapeinfo'],   # outputs
+        )
+        graph_def = helper.make_graph(
+                [shape_node],
+                case_name,
+                [input],
+                [shapeinfo]
+        )
+        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
+    def test_ConstOfShape(self, case_name):
+        input_shape = [4, 10, 27, 27]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        shape_node = helper.make_node(
+            'Shape',  # node name
+            ['input'],  # inputs
+            ['soutput'],  # outputs
+        )
+        cos_node = helper.make_node(
+            'ConstantOfShape',  # node name
+            ['soutput'],  # inputs
+            ['output'],  # outputs
+        )
+        graph_def = helper.make_graph(
+            [shape_node, cos_node],
+            case_name,
+            [input],
+            [output],
+        )
+        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
+    def test_Gather2(self, case_name):
+        indices_data = [1]
+        input_shape = [2, 3]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.INT64, [])
+        indices = helper.make_tensor(name='indices',
+                                     data_type=TensorProto.INT64,
+                                     dims=[],
+                                     vals=indices_data)
+        shape_node = helper.make_node(
+                'Shape',   # node name
+                ['input'],   # inputs
+                ['shapeinfo'],   # outputs
+        )
+        gather_node = helper.make_node(
+                'Gather',   # node name
+                ['shapeinfo','indices'],   # inputs
+                ['output'],   # outputs
+        )
+        graph_def = helper.make_graph(
+                [shape_node, gather_node],
+                case_name,
+                [input],
+                [output],
+                initializer=[indices]
+        )
+        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
+    def test_Range(self, case_name):
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                x = torch.nonzero(x)
+                x_shape = x.shape
+                y = torch.arange(1, x_shape[1], dtype=torch.float32)
+                return y
+
+        x = torch.randn(4, 8, 32, 32).float()
+        self.torch_and_test(x, Model(), case_name, use_onnxsim=False)
 
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):

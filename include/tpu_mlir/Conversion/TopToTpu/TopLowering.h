@@ -101,6 +101,21 @@ public:
   }
 };
 
+template <typename OpTy> class TopShapeLowering : public OpRewritePattern<OpTy> {
+public:
+  using OpRewritePattern<OpTy>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(OpTy opTy, PatternRewriter &rewriter) const override {
+    Lowering(rewriter, opTy);
+    return success();
+  }
+
+public:
+  virtual void Lowering(PatternRewriter &rewriter, OpTy opTy) const {
+    llvm_unreachable("Not Implemented");
+  }
+};
+
 // ================================
 // Lowering Helper Apis
 // ================================

@@ -24,14 +24,16 @@ LogicalResult top::ConstantFillOp::inference(InferenceParameter &p) {
   for (int i = 0; i < num_elem; ++i) {
     p.outputs[0][i] = const_val;
   }
-  // memset(p.outputs[0], const_val, sizeof(float) * num_elem);
   return success();
 }
 
 void top::ConstantFillOp::shape_inference() {
-  assert(module::isWeight(getInput()));
-  auto weight = cast<top::WeightOp>(getInput().getDefiningOp());
-  auto shape = weight.read<float>();
-  std::vector<int64_t> shape_(shape->begin(), shape->end());
-  module::setShapeOrVerify(getOutput(), shape_);
+  if (module::isWeight(getInput())) {
+    auto weight = cast<top::WeightOp>(getInput().getDefiningOp());
+    const auto shape = weight.read<float>();
+    std::vector<int64_t> shape_(shape->begin(), shape->end());
+    module::setShapeOrVerify(getOutput(), shape_);
+  } else {
+    // do nothing
+  }
 }
