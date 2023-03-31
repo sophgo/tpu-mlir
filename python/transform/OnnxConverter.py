@@ -495,7 +495,10 @@ class OnnxConverter(BaseConverter):
             _shape = []
             for _i, _dim in enumerate(_dims):
                 if _dim.dim_value <= 0:
-                    _dim.dim_value = 1 if no_shape else input_shapes[idx][_i]
+                    if no_shape:
+                        assert 0, "Please check --input_shapes formula or check if there is any dynamic dim"
+                    else:
+                        _dim.dim_value = input_shapes[idx][_i]
                 # elif not no_shape:
                 #     check_shape(_dim_value, input_shapes)
                 elif not no_shape and input_shapes[idx][_i] != _dim.dim_value:
