@@ -393,12 +393,18 @@ def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
         else:
             raise RuntimeError("Not Implemented")
 
+    outputs = {}
+    if dump_all:
+        from transform.TorchConverter import TorchReader
+        net = TorchReader(model)
+        net.run_model(inputs)
+        return net.ref_tensor
     net = torch.jit.load(model, map_location=torch.device('cpu'))
     net.eval()
     in_tensors = [torch.from_numpy(v) for k, v in inputs.items()]
     with torch.no_grad():
         out_tensors = net(*in_tensors)
-    outputs = {}
+
     names = []
     graph_alive = net.inlined_graph
     for out in graph_alive.outputs():
