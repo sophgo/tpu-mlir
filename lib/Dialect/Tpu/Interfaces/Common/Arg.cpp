@@ -93,8 +93,11 @@ mlir::Type tpu::ArgOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto op = getOperation();
   if (module::isCV18xx()) {
     return type_verify_case_same(op, opd_idx, mode);
-  } else if (module::isNone(getValues()) == false) {
-    return type_verify_case_type(op, opd_idx, getValues().getType(), mode);
+  } else {
+    return type_verify_case_type(op, opd_idx, Builder(op).getF32Type(), mode);
   }
+  // } else if (module::isNone(getValues()) == false) {
+  //   return type_verify_case_type(op, opd_idx, getValues().getType(), mode);
+  // }
   return do_nothing(mode);
 }
