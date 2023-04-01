@@ -41,19 +41,22 @@ void ArgLowering::LoweringINT4(PatternRewriter &rewriter, top::ArgOp op,
 }
 void ArgLowering::LoweringINT8(PatternRewriter &rewriter, top::ArgOp op,
                                bool asymmetric) const {
-  if (asymmetric) {
-    LoweringF16(rewriter, op);
-  } else {
-    LoweringArg(rewriter, op, getQuantInt8Type(op.getValues()));
-  }
+  LoweringF32(rewriter, op);
+  // if (asymmetric) {
+  //   LoweringF16(rewriter, op);
+  // } else {
+  //   LoweringArg(rewriter, op, getQuantInt8Type(op.getValues()));
+  // }
 }
 
 void ArgLowering::LoweringBF16(PatternRewriter &rewriter, top::ArgOp op) const {
-  LoweringArg(rewriter, op, getQuantBF16Type(op.getValues()));
+  LoweringF32(rewriter, op);
+  //LoweringArg(rewriter, op, getQuantBF16Type(op.getValues()));
 }
 
 void ArgLowering::LoweringF16(PatternRewriter &rewriter, top::ArgOp op) const {
-  LoweringArg(rewriter, op, getQuantF16Type(op.getValues()));
+  LoweringF32(rewriter, op);
+  //LoweringArg(rewriter, op, getQuantF16Type(op.getValues()));
 }
 
 void ArgLowering::LoweringQuantized(PatternRewriter &rewriter,

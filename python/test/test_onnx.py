@@ -189,6 +189,7 @@ class ONNX_IR_TESTER(object):
             # Special Pass test case, Alphabetically
             #########################################
             # case: (test, bm1684x_support, bm1686_support, cv183x_support)
+            "ArgError":         (self.test_ArgError,        Y, N, N),
             "ArgReducefull":    (self.test_ArgReducefull,   Y, N, N),
             "ConcatFuse":       (self.test_ConcatFuse,      Y, N, Y),
             "ConcatToSpace":    (self.test_ConcatToSpace,   Y, N, N),
@@ -4024,6 +4025,25 @@ class ONNX_IR_TESTER(object):
         )
         graph_def = helper.make_graph([transpose_def, arg_max_def], case_name, [input],
                                       [arg_output])
+        self.onnx_and_test(graph_def)
+
+    def test_ArgError(self, case_name):
+        input_shape = [1, 1000, 1, 1]
+        output_shape = [1, 1, 1, 1]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output1 = helper.make_tensor_value_info('o_max', TensorProto.INT64, output_shape)
+        x2 = helper.make_tensor_value_info('x2', TensorProto.FLOAT, input_shape)
+        relu_def = helper.make_node("Relu", inputs=['input'], outputs=['x2'])
+        arg_max = helper.make_node(
+            'ArgMax',
+            ['x2'],
+            ['o_max'],
+            keepdims=1,
+            axis=1,
+        )
+        graph_def = helper.make_graph([relu_def, arg_max], "{}".format(case_name),
+                                        [input], [output1, x2])
         self.onnx_and_test(graph_def)
 
     def test_ArgReducefull(self, case_name):
