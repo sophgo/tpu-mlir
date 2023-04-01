@@ -160,7 +160,7 @@ class ONNX_IR_TESTER(object):
             "TorchArgmax":          (self.test_TorchArgmax,         N, N, N),
             "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N),
             "TorchChunk":           (self.test_TorchChunk,          Y, N, Y),
-            "TorchConv2d":          (self.test_TorchConv2d,           N, N, Y),
+            "TorchConv2d":          (self.test_TorchConv2d,         N, N, Y),
             "TorchConv3dTrans":     (self.test_TorchConv3dTrans,    Y, N, Y),
             "TorchHardSwish":       (self.test_TorchHardSwish,      Y, N, Y),
             "TorchHardSigmoid":     (self.test_TorchHardSigmoid,    Y, N, Y),
