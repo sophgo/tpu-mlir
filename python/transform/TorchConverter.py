@@ -941,6 +941,7 @@ class TorchConverter(BaseConverter):
             tensors.append(out)
         p = {'name': tensors, 'axis': axis, 'num': num}
         new_ops = self.mlir.create_split_op([op0], [[]] * num, **p)
+        new_ops = [new_ops] if num == 1 else new_ops
         for i in range(num):
             self.addOperand(tensors[i], new_ops[i])
         self.tensor_list[torch_node.outputs[0]] = tensors

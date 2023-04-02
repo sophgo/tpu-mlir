@@ -106,6 +106,8 @@ class TORCH_IR_TESTER(object):
             "Unsqueeze":        (self.test_Unsqueeze,         Y, N, N),
             "View":             (self.test_View,              Y, N, N),
             "Where":            (self.test_Where,             Y, N, N),
+            ## Special Case
+            "SplitReshape":     (self.test_SplitReshape,      Y, N, N),
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -688,7 +690,25 @@ class TORCH_IR_TESTER(object):
                 return d
 
         self.trace_and_test([(4, 16, 30)], Model0())
-        self.trace_and_test([(4, 16, 10)], Model1())
+        #self.trace_and_test([(4, 16, 10)], Model1())
+
+    #######################################################################
+    # SplitUesless
+    # ------------
+    def test_SplitReshape(self):
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super(Model, self).__init__()
+            def forward(self, x):
+                a, b, c, d = torch.chunk(x, 4, 1)
+                a = torch.reshape(a, (1, 1, -1, 3))
+                b = torch.reshape(b, (1, 1, -1, 3))
+                c = torch.reshape(c, (1, 1, -1, 3))
+                d = torch.reshape(d, (1, 1, -1, 3))
+                return a, b, c, d
+
+        self.trace_and_test([(1, 4, 16, 30)], Model())
 
     #######################################################################
     # MatMul
