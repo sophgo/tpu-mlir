@@ -195,6 +195,7 @@ class ONNX_IR_TESTER(object):
             "ConcatToSpace":    (self.test_ConcatToSpace,   Y, N, N),
             "Conv3dTo2d":       (self.test_Conv3dTo2d,      Y, N, Y),
             "Div2Mul":          (self.test_Div2Mul,         Y, N, Y),
+            "ConvSlice":        (self.test_ConvSlice,       Y, N, N),
             "GaToSlice":        (self.test_GaToSlice,       Y, N, Y),
             "Mul2Scale":        (self.test_Mul2Scale,       Y, N, Y),
             "MatMulTranspose":  (self.test_MatMulTranspose, Y, N, Y),
@@ -1910,6 +1911,7 @@ class ONNX_IR_TESTER(object):
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
         starts = helper.make_tensor('starts', TensorProto.INT64, [4], starts_data)
         ends = helper.make_tensor('ends', TensorProto.INT64, [4], ends_data)
         axes = helper.make_tensor('axes', TensorProto.INT64, [4], axes_data)
@@ -1939,6 +1941,19 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(4, 8, 60, 80).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_ConvSlice(self, case_name):
+        class Model(nn.Module):
+            def __init__(self):
+                super(Model, self).__init__()
+                self.filter = torch.randn(8, 3, 3, 3)
+            def forward(self, x):
+                x = F.conv2d(x, self.filter, padding=2)
+                y = x[:, :, 0:-1, 0:-1]
+                return y
+        x = torch.randn(1, 3, 8, 8)
+        self.torch_and_test(x, Model(), case_name)
+
 
     def test_Upsample(self, case_name):
 
