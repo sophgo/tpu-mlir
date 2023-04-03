@@ -163,8 +163,8 @@ def npz_compare(args_list):
                        per_axis_compare=args.per_axis_compare)
 
     common = list()
-    for name in npz1.files:
-        if name in npz2.files and name not in excepts:
+    for name in npz2.files:
+        if name in npz1.files and name not in excepts:
             common.append(name)
     if ordered_names:
         names = []
