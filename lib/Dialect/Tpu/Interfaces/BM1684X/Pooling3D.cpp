@@ -105,7 +105,7 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
     int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
     group_type_t group_type) {
   int64_t buffer_size = 0;
-  auto out_dtype = getOutput().getType();
+  auto out_dtype = module::getStorageType(getOutput());
   auto attr = parseParam();
 
   int c_per_npu = ceiling_func(attr.c, BM168x::NPU_NUM);
