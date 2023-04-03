@@ -33,9 +33,38 @@ def linear_plot(data, name=None, max_sampling=1000):
     fig = plt.plot_float_vs_fixpoint(
         index, (blob_fp.flatten()[::step], blob_int.flatten()[::step]),
         subplot_titles=(name, "float - int8\t "))
-    fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
+    fig.update_layout(legend=dict(yanchor="top", y=0.99,
+                      xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
     fig.update_layout(margin=dict(l=10, r=10, t=20, b=20),
                       hovermode='x unified')
+    return fig
+
+
+def dist_plot(data, name=None, scale=1.0, dtype='I8'):
+    import numpy as np
+    from . import plot_utils as plt
+    blob_fp, blob_int = data.tensor(name)
+    if dtype == 'I8':
+        min_ = -128*scale
+        max_ = 127*scale
+    elif dtype == 'U8':
+        min_ = 0
+        max_ = 255*scale
+    max_f = np.max(np.max(blob_fp), 0)
+    min_f = np.min(np.min(blob_fp), 0)
+    max_bin = np.ceil(max_f/scale)
+    min_bin = np.abs(np.floor(min_f/scale))
+    bins = int(max_bin+min_bin)
+    hist = np.histogram(blob_fp, bins=bins,
+                        range=(-min_bin*scale, max_bin*scale))
+    hist_fp = hist[0]
+    hist = np.histogram(blob_int, bins=bins,
+                        range=(-min_bin*scale, max_bin*scale))
+    hist_quant = hist[0]
+    index = np.arange(bins)
+    fig = plt.plot_dist_fp_fixpoint(
+        index, (hist_fp, hist_quant),
+        subplot_titles=(name, "dist fp vs int8\t "))
     return fig
 
 
@@ -51,7 +80,8 @@ def metrics_plot(tensor_info):
         name = name.upper()
         if name == "SQNR":
             import math
-            max_value = np.max(tensor_info[name].values, where=(tensor_info[name] != math.inf), initial=1.0)
+            max_value = np.max(tensor_info[name].values, where=(
+                tensor_info[name] != math.inf), initial=1.0)
             new_value = np.clip(tensor_info[name]/max_value, 0, 1)
             name = name + "/" + "{:.1f}".format(max_value)
         else:
@@ -67,7 +97,8 @@ def metrics_plot(tensor_info):
             ))
     fig.update_traces(mode="lines+markers")
     fig.update_yaxes(range=[-0.05, 1.05])
-    fig.update_xaxes(tickmode='array', tickvals=np.arange(len(x_name)-1), ticktext=x_name, range=[-0.5, len(x_name)], type='linear')
+    fig.update_xaxes(tickmode='array', tickvals=np.arange(
+        len(x_name)-1), ticktext=x_name, range=[-0.5, len(x_name)], type='linear')
     fig.update_layout(margin=dict(l=0, r=0, t=10, b=10),
                       xaxis_visible=True,
                       xaxis_title=None,

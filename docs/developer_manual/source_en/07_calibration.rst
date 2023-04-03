@@ -171,22 +171,24 @@ to get output of every layer, if the nets are huge, it would took a long time to
    :width: 800px
    :align: center
 
-Areas of the UI is marked with light blue rectangle for reference, includeing:
+Areas of the UI is marked with light blue rectangle for reference, dark green comments on the areas, includeing:
    1. working directory and net file indication
-   2. accuracy summary
-   3. layer information card
+   2. accuracy summary area
+   3. layer information area
    4. graph display area
-   5. tensor data compare figure
-   6. infomation summary
+   5. tensor data compare figure area
+   6. infomation summary and tensor distribution area (by switching tabs)
 
 With scroll wheel over graph display area, the displayed net graph can be zoomed in and out, and hover or click on the nodes (layer), the attributes of 
 it will be displayed in the layer information card, by clicking on the edges (tensor), the compare of tensor data in float and quantized net is displayed
 in tensor data compare figure, and by clicking on the dot in accuracy summary or information list cells, the layer/tensor will be located in graph display
 area.
 
-Notice: the net graph is displayed according to quantized net, and there may be difference in it comparing to float net, some layer/tensor may not exist in 
+**Notice: the net graph is displayed according to quantized net, and there may be difference in it comparing to float net, some layer/tensor may not exist in 
 float net, but the data is copied from quantized net for compare, so the accuracy may seem perfect, but in fact, it should be ignored. Typical layer is Cast
-layer in quantized net, in following picture, the non-exist tensor data type will be NA.
+layer in quantized net, in following picture, the non-exist tensor data type will be NA.**
+**Notice: without --debug parameter in deployment of the net, some essential intermediate files needed by visual tool would have been deleted by default,
+please re-deploy with --debug parameter.**
 
 information displayed on edge (tensor) is illustrated as following:
 
