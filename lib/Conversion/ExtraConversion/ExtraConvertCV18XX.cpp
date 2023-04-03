@@ -32,7 +32,8 @@ void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
       ConvertWhereOp,
       ConvertMatMulWithRightTranspose,
       convertMaxPool3D,
-      ConvertSqrtOp
+      ConvertSqrtOp,
+      ConvertAvgPoolOp
       >(patterns->getContext());
   // clang-format on
 }
