@@ -49,7 +49,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       MaxLowering,
       DeconvLowering,
       ExpLowering,
-      PReluLowering
+      PReluLowering,
+      LSTMLowering
       // clang-format on
       >(patterns->getContext());
 }
