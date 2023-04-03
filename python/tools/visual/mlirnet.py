@@ -1,12 +1,13 @@
+from calibration.data_selector import DataSelector
+from utils.preprocess import get_preprocess_parser, preprocess
+from utils.mlir_parser import MlirParser
 from threading import Thread
 import pandas as pd
 import numpy as np
 import pymlir
 import sys
 sys.path.append('../..')
-from utils.mlir_parser import MlirParser
-from utils.preprocess import get_preprocess_parser, preprocess
-from calibration.data_selector import DataSelector
+
 
 def find_mlir_net(folder):
     import os
@@ -69,7 +70,7 @@ class mlir_net:
         self.tensor_att = {
             '_dtype': lambda x: self.tensor_qtype(x),
             '_shape': lambda x: self.tensor_shape(x)
-            }
+        }
         self.preprocess = []
 
     def forward(self, start=None, end=None):
@@ -80,12 +81,15 @@ class mlir_net:
             self.inputs = np.load(self.input)
             for i in self.mlir_module.input_names:
                 if not i in self.inputs.files:
-                    print("{}th input in npz not match mlir file {}".format(i, self.mlir_file))
+                    print("{}th input in npz not match mlir file {}".format(
+                        i, self.mlir_file))
             for name in self.mlir_module.input_names:
                 if self.inputs[name].dtype == np.int8 or self.inputs[name].dtype == np.uint8:
-                    self.mlir_module.set_tensor_from_int(name, self.inputs[name].astype(np.float32))
+                    self.mlir_module.set_tensor_from_int(
+                        name, self.inputs[name].astype(np.float32))
                 else:
-                    self.mlir_module.set_tensor(name, self.inputs[name].astype(np.float32))
+                    self.mlir_module.set_tensor(
+                        name, self.inputs[name].astype(np.float32))
         else:
             from utils.preprocess import preprocess
             for i in np.arange(self.mlir_parser.get_input_num()):
@@ -100,9 +104,11 @@ class mlir_net:
                 i_name = self.mlir_module.input_names[i]
                 self.inputs[i_name] = self.preprocess[i].run(inputs_[i])
                 if self.inputs[i_name].dtype == np.int8 or self.inputs[i_name].dtype == np.uint8:
-                    self.mlir_module.set_tensor_from_int(i_name, self.inputs[i_name].astype(np.float32))
+                    self.mlir_module.set_tensor_from_int(
+                        i_name, self.inputs[i_name].astype(np.float32))
                 else:
-                    self.mlir_module.set_tensor(i_name, self.inputs[self.mlir_module.input_names[i]].astype(np.float32))
+                    self.mlir_module.set_tensor(
+                        i_name, self.inputs[self.mlir_module.input_names[i]].astype(np.float32))
 
         self.mlir_module.invoke()
 
@@ -119,6 +125,10 @@ class mlir_net:
     def tensor_qtype(self, name):
         q_info = self.mlir_module.get_tensor_qinfo(name)
         return q_info.dtype
+
+    def tensor_scale(self, name):
+        q_info = self.mlir_module.get_tensor_qinfo(name)
+        return q_info.scale
 
     def output_names(self):
         return self.mlir_module.output_names
@@ -137,7 +147,7 @@ class analysis_data():
             f32_mlir, quant_mlir, mlir_input = find_mlir_net(path)
 
         print("---------------------------------------------")
-        print("f32 mlir is  :{}".format(f32_mlir,quant_mlir))
+        print("f32 mlir is  :{}".format(f32_mlir, quant_mlir))
         print("quant mlir is:{}".format(quant_mlir))
         print("input is     :{}".format(mlir_input))
         print("---------------------------------------------")
@@ -159,10 +169,14 @@ class analysis_data():
 
     def check_valid(self, f32, quant, input):
         import os
-        nval1 = lambda x: True if x == "" or not os.path.isfile(x) else False
+
+        def nval1(x): return True if x == "" or not os.path.isfile(
+            x) else False
         if nval1(f32) or nval1(quant):
             return False
-        nval2 = lambda x: True if x.lower().split(".")[-1] not in ['jpg','jpeg','png','npz'] else False
+
+        def nval2(x): return True if x.lower().split(
+            ".")[-1] not in ['jpg', 'jpeg', 'png', 'npz'] else False
         if input == "" or nval2(input):
             return False
         if input.lower().endswith(".npz"):
@@ -194,7 +208,8 @@ class analysis_data():
     def clean_unused(self):
         for t in self.tensor_base['tensor']:
             if t not in self.quant_net.all_tensor_names():
-                row = self.tensor_base[self.tensor_base.tensor == t].index.tolist()
+                row = self.tensor_base[self.tensor_base.tensor ==
+                                       t].index.tolist()
                 self.tensor_base = self.tensor_base.drop(row)
 
     def forward(self):
@@ -242,7 +257,7 @@ class analysis_data():
             new_items = {'forward_index': self.forward_count}
             f32_tensor = None
             quant_tensor = None
-            f32_qinfo  = None
+            f32_qinfo = None
             quant_qinfo = None
             if name in self.quant_net.all_tensor_names():
                 quant_tensor = self.quant_net.tensor(name)
@@ -261,7 +276,7 @@ class analysis_data():
                 'int8net' + k: f(name)
                 for k, f in self.quant_net.tensor_att.items()
             })
-            
+
             #fp32_t, int8_t = self.tensor(name)
             new_items.update({
                 k.upper(): fun(v, f32_tensor, quant_tensor)

@@ -43,7 +43,9 @@ def forward_net(app):
         if 'forward-state' in button_id:
             if state == "Forward":
                 return dash.no_update, dash.no_update
-            app.Global.figure_cache = plot.figure_cache(app.Global.analysis_data)
+            app.Global.figure_cache = plot.figure_cache(
+                app.Global.analysis_data)
+            app.Global.dist_cache = plot.figure_cache(app.Global.analysis_data)
             if state == "Idle":
                 return app.Global.analysis_data.forward_count, True
             return dash.no_update, False
@@ -138,33 +140,6 @@ def show_node_flow(app):
 
 
 @register
-def draggable_card(app):
-    # show hide card
-    @app.callback(Output('draggable-card', 'style'),
-                  Output('show-card', 'children'),
-                  Input('draggable-card', 'layout'),
-                  Input('show-card', 'n_clicks'),
-                  prevent_initial_call=True)
-    def callback(data, clicks):
-        ctx = dash.callback_context
-        button_id = [x['prop_id'].split('.')[0] for x in ctx.triggered]
-        app.Global.zIndex += 1
-        if 'draggable-card' in button_id:
-            return {
-                'position': 'absolute',
-                'zIndex': app.Global.zIndex
-            }, dash.no_update
-        if 'show-card' in button_id:
-            if clicks % 2 == 0:
-                return {'position': 'absolute', 'display': 'none'}, "show card"
-            else:
-                return {
-                    'position': 'absolute',
-                    'zIndex': app.Global.zIndex
-                }, "hide card"
-
-
-@register
 def draggable_toolbox(app):
     @app.callback(Output('draggable-toolbox', 'style'),
                   Output('show-toolbox', 'children'),
@@ -200,7 +175,7 @@ def load_model(app):
                   Output('top-label', 'children'),
                   Output('top-label', 'style'),
                   Output('forward', 'n_clicks'),
-                  Input('auto_load','interval'))
+                  Input('auto_load', 'interval'))
     def callback(interval):
         import os
         path = os.getcwd()
@@ -208,7 +183,8 @@ def load_model(app):
         if path is None:
             return dash.no_update, dash.no_update, dash.no_update
         try:
-            app.Global.analysis_data = mlirnet.analysis_data(path, app.Global.f32_mlir, app.Global.quant_mlir, app.Global.input)
+            app.Global.analysis_data = mlirnet.analysis_data(
+                path, app.Global.f32_mlir, app.Global.quant_mlir, app.Global.input)
         except Exception as e:
             errmsg_style["color"] = "#e63946"
             return dash.no_update, str(e), errmsg_style, dash.no_update
@@ -217,10 +193,10 @@ def load_model(app):
         errmsg_style["color"] = 'blue'
         if app.Global.manual_run:
             return app.Global.graph.cy_nodes() + app.Global.graph.cy_edges(
-            ), "{}: {} vs {}".format(path,app.Global.f32_mlir,app.Global.quant_mlir), errmsg_style, dash.no_update
+            ), "{}: {} vs {}".format(path, app.Global.f32_mlir, app.Global.quant_mlir), errmsg_style, dash.no_update
         else:
             return app.Global.graph.cy_nodes() + app.Global.graph.cy_edges(
-            ), "{}: {} vs {}".format(path,app.Global.f32_mlir,app.Global.quant_mlir), errmsg_style, 1
+            ), "{}: {} vs {}".format(path, app.Global.f32_mlir, app.Global.quant_mlir), errmsg_style, 1
 
 
 @register
@@ -259,12 +235,49 @@ def show_figure(app):
 
 
 @register
-def show_node_info(app):
+def show_dist(app):
+    # show graph
+    @app.callback(Output('dist-graph', 'figure'),
+                  Output('dist-store', 'data'),
+                  Input('cytoscape-responsive-layout', 'tapEdgeData'),
+                  Input('metrics-figure', 'clickData'),
+                  Input('info-tabulator', 'selected_cells'),
+                  State('dist-store', 'data'),
+                  prevent_initial_call=True)
+    def show_dist(edgeData, click, cell, name):
+        if app.Global.dist_cache is None:
+            return dash.no_update, dash.no_update
+        ctx = dash.callback_context
+        button_id = [x['prop_id'].split('.')[0] for x in ctx.triggered]
+        if 'cytoscape-responsive-layout' in button_id:
+            id = tuple(int(edgeData[x]) for x in ('source', 'target'))
+            name = app.Global.graph.edge(id)
+        if 'metrics-figure' in button_id:
+            name = click['points'][0]['customdata']
+        if 'info-tabulator' in button_id:
+            if len(cell) == 0:
+                return dash.no_update
+            id = cell[0]['row_id']
+            name = app.Global.graph.edge(eval(id))
+        if name == "" or name not in app.Global.analysis_data.quant_net.all_tensor_names():
+            return dash.no_update, dash.no_update
+
+        scale = app.Global.analysis_data.quant_net.tensor_scale(name)
+        dtype = app.Global.analysis_data.quant_net.tensor_qtype(name)
+        fig = app.Global.dist_cache.get_figure(plot.dist_plot,
+                                               name=name, scale=scale, dtype=dtype)
+        return fig, name
+
+
+@register
+def show_layer_info(app):
     # show layer information
-    @app.callback(Output('info-card-body', 'children'),
+    @app.callback(Output('layer-info-card0', 'children'),
                   Input('cytoscape-responsive-layout', 'mouseoverNodeData'),
                   prevent_initial_call=True)
     def show_node_info(nodeData):
+        if nodeData is None:
+            return dash.no_update
         if app.Global.graph is None:
             return dash.no_update
         id = int(nodeData['id'])
@@ -405,17 +418,3 @@ def sync_sample(app):
         Input('figure-sample', 'value'),
         prevent_initial_call=True,
     )
-
-
-# get windows size
-# app.clientside_callback(
-#     """
-#     function(href) {
-#         var w = window.innerWidth;
-#         var h = window.innerHeight;
-#         return JSON.stringify({'height': h, 'width': w}).toString();
-#     }
-#     """,
-#     Output('viewport-container', 'children'),
-#     Input('url', 'href')
-# )
