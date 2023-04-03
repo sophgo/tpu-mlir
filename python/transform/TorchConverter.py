@@ -8,6 +8,8 @@
 from .MLIRImporter import MLIRImporter, Platform
 from .BaseConverter import BaseConverter
 from mlir.ir import *
+from typing import List
+from utils.misc import Desc
 import numpy as np
 import torch
 import mlir.dialects.top as top
@@ -150,15 +152,17 @@ class TorchReader():
         assert node.op_type.split('::')[0] == 'prim'
         if node.op_type == "prim::ListConstruct" or node.op_type == "prim::TupleConstruct":
             self.ref_tensor[node.outputs[0]] = [self.get_input(name) for name in node.inputs]
-        if node.op_type in ["prim::TupleUnpack", "prim::ListUnpack"]:
+        elif node.op_type in ["prim::TupleUnpack", "prim::ListUnpack"]:
             for i in range(len(node.outputs)):
                 self.ref_tensor[node.outputs[i]] = self.get_input(node.inputs[0])[i]
-        if node.op_type == "prim::NumToTensor":
+        elif node.op_type == "prim::NumToTensor":
             self.ref_tensor[node.outputs[0]] = torch.tensor(self.get_input(node.inputs[0]))
-        if node.op_type == "prim::Constant":
+        elif node.op_type == "prim::Constant":
             self.convert_constant(node)
-        if node.op_type == "prim::GetAttr":
+        elif node.op_type == "prim::GetAttr":
             self.convert_attr(node)
+        else:
+            raise RuntimeError("{} not suppose".format(node.op_type))
 
     def run_aten(self, node: TorchNode):
         ParamMap = {
@@ -169,7 +173,6 @@ class TorchReader():
             "aten::gelu": ['approximate'],
             "aten::add": ['alpha'],
             "aten::sub": ['alpha'],
-            # "aten::div": ['rounding_mode'],
             "aten::arange": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::addmm": ['beta', 'alpha'],
         }
@@ -246,12 +249,23 @@ class TorchConverter(BaseConverter):
         "uint64": "UINT64",
         "bool": "BOOL",
     }
+    TorchTypeMap = {
+        0: "UINT8",
+        1: "INT8",
+        2: "INT16",
+        3: "INT32",
+        4: "INT64",
+        6: "F32",
+        7: "F64",
+        11: "BOOL",
+    }
+
 
     def __init__(self,
                  model_name: str,
                  torch_file,
                  input_shapes: list,
-                 input_dtypes: list,
+                 input_descs: dict,
                  output_names: list,
                  preprocess_args=None):
         super().__init__()
@@ -262,7 +276,7 @@ class TorchConverter(BaseConverter):
         self.node_name_mapping = {}  # used in torch opt
 
         self.torch_reader = TorchReader(torch_file)
-        self.load_torch_model(torch_file, input_shapes, input_dtypes, output_names)
+        self.load_torch_model(torch_file, input_shapes, input_descs, output_names)
         self.init_MLIRImporter()
         self.unranked_type = self.mlir.get_tensor_type([])
         self.preprocess_args = preprocess_args
@@ -409,7 +423,7 @@ class TorchConverter(BaseConverter):
             raise RuntimeError(
                 "The following operators are not implemented: {}".format(unknown_ops))
 
-    def load_torch_model(self, torch_file, input_shapes: list, input_dtypes: list,
+    def load_torch_model(self, torch_file, input_shapes: list, input_descs: dict,
                          output_names: list):
         if isinstance(torch_file, str):
             self.model = torch.jit.load(torch_file, map_location=torch.device('cpu'))
@@ -440,11 +454,27 @@ class TorchConverter(BaseConverter):
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
         self.input_shapes = input_shapes
-        if len(input_dtypes) == 0:
-            input_dtypes = ['float32'] * self.num_input
-        self.origin_input_types = input_dtypes
-        self.input_types = [self.TypeMap[input_dtypes[i]] for i in range(self.num_input)]
+        for i in range(self.num_input):
+            if i not in input_descs.keys():
+                input_descs[i] = Desc("float32")
+        self.origin_input_types = [input_descs[i].dtype for i in range(self.num_input)]
+        self.input_types = [self.TypeMap[input_descs[i].dtype] for i in range(self.num_input)]
+        # self.input_types = [self.TypeMap[input_dtypes[i]] for i in range(self.num_input)]
         self.output_shapes = [[]] * self.num_output
+
+        inputs = {}
+        for idx, _name in enumerate(self.input_names):
+            desc = input_descs[idx]
+            scale = desc.max - desc.min
+            data = (np.random.rand(*input_shapes[idx])*scale - desc.min).astype(desc.dtype)
+            inputs[_name] = torch.from_numpy(data)
+
+        self.torch_reader.run_model(inputs)
+        self.const_val = self.torch_reader.const_val
+        self.ref_data = self.torch_reader.ref_tensor
+        # out_dtypes = [self.ref_data[name].numpy().dtype.name for name in self.output_names]
+        # out_dtypes = [t if t.find('int') == -1 else 'int32' for t in out_dtypes]
+        # self.output_dtypes = [self.TypeMap[dt] for dt in out_dtypes]
 
     def init_MLIRImporter(self):
         input_shapes = list()
@@ -454,6 +484,22 @@ class TorchConverter(BaseConverter):
         self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name, Platform.TORCH,
                                  self.input_types)
         self.weight_file = self.mlir.weight_file
+
+    def get_shape(self, name):
+        if name in self.ref_data.keys():
+            return self.ref_data[name].numpy().shape
+        elif name in self.torch_reader.coeff.keys():
+            return self.torch_reader.coeff[name].numpy().shape
+        else:
+            raise RuntimeError("can not find {} shape".format(name))
+
+    def get_dtype(self, name):
+        if name in self.ref_data.keys():
+            return self.ref_data[name].numpy().dtype.name
+        elif name in self.torch_reader.coeff.keys():
+            return self.torch_reader.coeff[name].numpy().dtype.name
+        else:
+            raise RuntimeError("can not find {} data type".format(name))
 
     def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
@@ -687,10 +733,6 @@ class TorchConverter(BaseConverter):
         else:
             op1 = self.get_input_by_name(torch_node.inputs[1]) if scale == 1 else \
                 self._mul_scale(torch_node.inputs[1], scale)
-            # new_op = top.SubOp(output, [op0, op1], is_reverse=is_reverse,
-            #     loc=Location.fused([Location.name(torch_node.name)], context=self.mlir.ctx),
-            #     ip=self.mlir.insert_point)
-            # new_op = self.mlir.create_sub_op([op0, op1], [], **p)
             new_op = top.SubOp(self.unranked_type, [op0, op1],
                                is_reverse=is_reverse,
                                loc=self.get_loc(torch_node.name),
@@ -701,7 +743,9 @@ class TorchConverter(BaseConverter):
         assert method in ("ReduceMin", "ReduceMax", "ReduceMean", "ReduceL2", "ReduceL1",
                           "ReduceSum", "ReduceProd")
         op0 = self.getOp(torch_node.inputs[0])
+        in_shape = self.get_shape(torch_node.inputs[0])
         axes = self.const_val[torch_node.inputs[1]]
+        axes = [ax if ax >= 0 else ax + len(in_shape) for ax in axes]
         keepdims = self.const_val[torch_node.inputs[2]]
         # TODO: axes are not consecutive numbers
         # TODO: axes is none
@@ -862,19 +906,23 @@ class TorchConverter(BaseConverter):
 
     def convert_to_op(self, torch_node: TorchNode):
         in_op = self.getOp(torch_node.inputs[0])
-        out_type = self.const_val[torch_node.inputs[1]]
+        # out_type = self.const_val[torch_node.inputs[1]]
         # type define in pytorch/c10/core/ScalarType.h:AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS
-        if (out_type in [5, 6, 7, 15, 'cpu']):  # float
-            self.addOperand(torch_node.name, in_op)
-        elif out_type in [0, 1, 2, 3, 4, 11]:
-            type = self.mlir.get_tensor_type([], self.mlir.mlir_type["INT32"])
-            new_op = top.CastOp(type,
-                                in_op,
-                                loc=self.get_loc(torch_node.name),
-                                ip=self.mlir.insert_point).output
-            self.addOperand(torch_node.name, new_op)
-        else:
-            raise RuntimeError("data type {} do not suppose".format(out_type))
+        # if (out_type in [5, 6, 7, 15, 'cpu']):  # float
+        self.addOperand(torch_node.name, in_op)
+        # elif out_type in [0, 1, 2, 3, 4, 11]:
+        #     if self.get_dtype(torch_node.inputs[0]) == 'int32':
+        #         self.addOperand(torch_node.name, in_op)
+        #     else:
+        #         # type = self.mlir.get_tensor_type([], self.mlir.mlir_type[self.TorchTypeMap[out_type]])
+        #         type = self.mlir.get_tensor_type([], self.mlir.mlir_type["INT32"])
+        #         new_op = top.CastOp(type,
+        #                             in_op,
+        #                             loc=self.get_loc(torch_node.name),
+        #                             ip=self.mlir.insert_point).output
+        #         self.addOperand(torch_node.name, new_op)
+        # else:
+        #     raise RuntimeError("data type {} do not suppose".format(out_type))
 
     def convert_compare_op(self, torch_node: TorchNode, mode):
         assert mode in ("Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual", "NotEqual")
@@ -904,7 +952,11 @@ class TorchConverter(BaseConverter):
 
     def convert_prelu_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
-        op1 = self.getOp(torch_node.inputs[1])
+        in0_shape = self.get_shape(torch_node.inputs[0])
+        weight_shape = len(in0_shape) * [1]
+        num_slope = np.prod(self.get_shape(torch_node.inputs[1]))
+        weight_shape[1 if len(in0_shape) > 1 else 0] = num_slope
+        op1 = self.getWeightOp(torch_node.inputs[1], weight_shape)
         new_op = self.mlir.create_prelu_op([op0, op1], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 

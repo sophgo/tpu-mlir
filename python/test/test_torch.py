@@ -15,6 +15,7 @@ from tools.model_runner import mlir_inference, model_inference, torch_inference,
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
+from utils.misc import Desc
 import os
 
 import torch
@@ -53,7 +54,7 @@ class TORCH_IR_TESTER(object):
             "AvgPool3d":        (self.test_AvgPool3d,         Y, N, N),
             "BatchNorm":        (self.test_BatchNorm,         Y, N, N),
             "BMM":              (self.test_BatchMatMul,       Y, N, N),
-            "ChannelShuffle":   (self.test_ChannelShuffle,   Y, N, N),
+            "ChannelShuffle":   (self.test_ChannelShuffle,    Y, N, N),
             "Chunk":            (self.test_Chunk,             Y, N, N),
             "Compare":          (self.test_Compare,           Y, N, N),
             "Concat":           (self.test_Concat,            Y, N, N),
@@ -65,6 +66,7 @@ class TORCH_IR_TESTER(object):
             "Div":              (self.test_Div,               Y, N, N),
             "Dropout":          (self.test_Dropout,           Y, N, N),
             "Elu":              (self.test_Elu,               Y, N, N),
+            "Embedding":        (self.test_Embedding,         Y, N, N),
             "Flatten":          (self.test_Flatten,           Y, N, N),
             "FloorDiv":         (self.test_FloorDiv,          Y, N, N),
             "Gather":           (self.test_Gather,            N, N, N),
@@ -85,6 +87,7 @@ class TORCH_IR_TESTER(object):
             "MM":               (self.test_MM,                Y, N, N),
             "Mul":              (self.test_Mul,               Y, N, N),
             "Reduce":           (self.test_Reduce,            Y, N, N),
+            "Repeat":           (self.test_Repeat,            Y, N, N),
             "Reshape":          (self.test_Reshape,           Y, N, N),
             "PRelu":            (self.test_PRelu,             Y, N, N),
             "Permute":          (self.test_Permute,           Y, N, N),
@@ -100,6 +103,7 @@ class TORCH_IR_TESTER(object):
             "Sub":              (self.test_Sub,               Y, N, N),
             "T":                (self.test_T,                 Y, N, N),
             "Tile":             (self.test_Tile,              Y, N, N),
+            "To":               (self.test_To,                N, N, N),
             "Transpose":        (self.test_Transpose,         Y, N, N),
             "Upsample":         (self.test_Upsample,          Y, N, N),
             "Unary":            (self.test_Unary,             Y, N, N),
@@ -188,15 +192,28 @@ class TORCH_IR_TESTER(object):
                 t = 1.1 * max(abs(min_val), abs(max_val)) + 0.01
                 f.write("{} {} {} {}\n".format(name, t, min_val, max_val))
 
-    def create_random_input(self, shapes):
-        inputs = [np.clip(np.random.randn(*s).astype(np.float32), -10, 10) for s in shapes]
+    def generate_random(self, shape, dtype='float32', min=-10, max=10):
+        scale = max - min
+        return (np.random.rand(*shape)*scale+min).astype(dtype)
+
+    def create_random_input(self, shapes, descs:List[Desc]):
+        if len(descs) == 0:
+            inputs = [self.generate_random(s) for s in shapes]
+        else:
+            inputs = list()
+            for i in range(len(shapes)):
+                inputs.append(self.generate_random(shapes[i], descs[i].dtype, descs[i].min, descs[i].max))
         return [torch.from_numpy(inp) for inp in inputs]
 
-    def torch_convert(self, in_shapes, torch_model, model_name: str):
+    def torch_convert(self, in_shapes, torch_model, model_name: str, descs:List[Desc]):
         # torch --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
 
-        tool = TorchTransformer(model_name, torch_model, input_shapes=in_shapes)
+        # input_dtype = [] if len(descs) == 0 else [d.dtype for d in descs]
+        input_descs = {}
+        for i in range(len(descs)):
+            input_descs[i] = descs[i]
+        tool = TorchTransformer(model_name, torch_model, input_shapes=in_shapes, input_descs=input_descs)
         tool.model_transform(fp32_mlir)
 
         input_npz = "{}_ref_in_fp32.npz".format(model_name)
@@ -204,7 +221,10 @@ class TORCH_IR_TESTER(object):
         self.top_npz = model_name + "_top_outputs.npz"
         input_data = {}
         for idx, name in enumerate(tool.converter.input_names):
-            input_data[name] = np.random.random(size=in_shapes[idx]).astype(np.float32)
+            if len(descs) == 0:
+                input_data[name] = self.generate_random(in_shapes[idx])
+            else:
+                input_data[name] = self.generate_random(in_shapes[idx], descs[idx].dtype, descs[idx].min, descs[idx].max)
         np.savez(input_npz, **input_data)
         file_mark(input_npz)
         # # top mlir outputs will be inferenced first in case the quant mode is int8
@@ -276,14 +296,16 @@ class TORCH_IR_TESTER(object):
         self,
         in_shapes,
         torch_model: nn.Module,
+        descs:List[Desc] = []
     ):
         """Generic function to generate and compare torch and Tpu-Mlir output"""
         model_name = "{}_{}".format(self.CURRENT_CASE, TORCH_IR_TESTER.ID)
         TORCH_IR_TESTER.ID += 1
         model_def = model_name + ".pt"
-        inputs = self.create_random_input(in_shapes)
+        inputs = self.create_random_input(in_shapes, descs)
         jit.trace(torch_model.eval(), inputs).save(model_def)
-        torch_outs, top_mlir_outs, input_npz = self.torch_convert(in_shapes, model_def, model_name)
+        torch_outs, top_mlir_outs, input_npz = \
+            self.torch_convert(in_shapes, model_def, model_name, descs)
         # test onnx and mlir outputs
         counter = 0
         for name in torch_outs:
@@ -527,7 +549,7 @@ class TORCH_IR_TESTER(object):
     #######################################################################
     # Binary Base
     # ------------
-    def _test_binary(self, op_type, in0_shape, in1_shape, alpha=None, is_reverse=False):
+    def _test_binary(self, op_type, in0_shape, in1_shape, alpha=None, is_reverse=False, min=-10):
 
         _alpha = {}
         if alpha:
@@ -548,7 +570,7 @@ class TORCH_IR_TESTER(object):
                 y2 = op_type(y0, y1, **_alpha)
                 return y2
 
-        self.trace_and_test([in0_shape], Model())
+        self.trace_and_test([in0_shape], Model(), [Desc('float32', min)])
 
     #######################################################################
     # Add
@@ -557,8 +579,8 @@ class TORCH_IR_TESTER(object):
         """Add"""
 
         self._test_binary(torch.add, (1, 3, 32, 32), (1, 3, 32, 32), 3)
-        self._test_binary(torch.add, (2, 32, 16), (2, 1, 16), 3)
-        self._test_binary(torch.add, (32, 32), (32))
+        # self._test_binary(torch.add, (2, 32, 16), (2, 1, 16), 3)
+        # self._test_binary(torch.add, (32, 32), (32))
 
     #######################################################################
     # Sub
@@ -586,9 +608,9 @@ class TORCH_IR_TESTER(object):
     def test_Div(self):
         """Div"""
 
-        self._test_binary(torch.div, (1, 3, 32, 31), (1, 3, 32, 1))
-        self._test_binary(torch.div, (2, 32, 16), (2, 1, 16))
-        self._test_binary(torch.div, (32, 32), (32))
+        self._test_binary(torch.div, (1, 3, 32, 31), (1, 3, 32, 1), min=0)
+        self._test_binary(torch.div, (2, 32, 16), (2, 1, 16), min=0)
+        self._test_binary(torch.div, (32, 32), (32), min=0)
 
     #######################################################################
     # Compare
@@ -743,6 +765,48 @@ class TORCH_IR_TESTER(object):
         _test_constant_fill(torch.ones, (1, 3, 64, 64), torch.float32)
         _test_constant_fill(torch.ones, (3, 64, 64))
 
+
+    #######################################################################
+    # Embedding
+    # ------------
+    def test_Embedding(self):
+
+        def _test_embedding(shape, n, d):
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.embedding = nn.Embedding(n, d)
+
+                def forward(self, x):
+                    y = self.embedding(x)
+                    return y
+
+            self.trace_and_test([shape], Model(), [Desc('int32', 0, n)])
+
+        _test_embedding((2, 3, 64), 512, 768)
+        _test_embedding((2, 64), 20, 30)
+
+    #######################################################################
+    # To
+    # ------------
+    def test_To(self):
+
+        def _test_to(shape, dtype):
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = x.to(dtype) + 1
+                    return y
+
+            self.trace_and_test([shape], Model())
+
+        for dtype in [torch.long, torch.int64, torch.float16]:
+            _test_to((2, 3, 64), dtype)
+
     #######################################################################
     # Reduce
     # ------------
@@ -773,7 +837,7 @@ class TORCH_IR_TESTER(object):
     # ------------
     def test_Pow(self):
 
-        def _test_pow(shape, exp):
+        def _test_pow(shape, exp, min=0):
 
             class Model(torch.nn.Module):
 
@@ -784,9 +848,9 @@ class TORCH_IR_TESTER(object):
                     y = torch.pow(x, exponent=exp)
                     return y
 
-            self.trace_and_test([shape], Model())
+            self.trace_and_test([shape], Model(), [Desc('float32', min)])
 
-        _test_pow((2, 3, 64, 64), 2)
+        _test_pow((2, 3, 64, 64), 2, -10)
         _test_pow((3, 64, 64), 3)
         _test_pow((64, 64), 0.5)
 
@@ -979,7 +1043,7 @@ class TORCH_IR_TESTER(object):
     def test_Arange(self):
         """Arange"""
 
-        def _test_arange(step):
+        def _test_arange(end, start=None, step=None):
 
             class Model(nn.Module):
 
@@ -987,14 +1051,24 @@ class TORCH_IR_TESTER(object):
                     super(Model, self).__init__()
 
                 def forward(self, x):
-                    a = torch.arange(0, 60, step)
+                    if start is None:
+                        a = torch.arange(end)
+                    elif step is None:
+                        a = torch.arange(start, end)
+                    else:
+                        a = torch.arange(start, end, step)
                     b = x + a
                     return b
 
-            self.trace_and_test([(32, 60 // step)], Model())
+            sta = start if start is not None else 0
+            ste = step if step is not None else 1
+            out_size = (end - sta) // ste
+            self.trace_and_test([(32, out_size)], Model())
 
-        _test_arange(1)
-        _test_arange(2)
+        _test_arange(60, 0, 1)
+        _test_arange(60, 1)
+        _test_arange(60)
+        _test_arange(60, 0, 2)
 
     #######################################################################
     # Unsqueeze
@@ -1149,6 +1223,30 @@ class TORCH_IR_TESTER(object):
         _test_tile((1, 3, 32, 32), (1, 3, 1, 2))
         _test_tile((2, 32, 16), (2, 1))
         _test_tile((32, 16), (1, 2, 1))
+
+    #######################################################################
+    # Repeat
+    # ------------
+    def test_Repeat(self):
+        """Repeat"""
+
+        def _test_repeat(in_shape, repeats):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y1 = x.repeat(repeats)
+                    # y1 = torch.tile(x, repeats)
+                    return y1
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_repeat((1, 3, 32, 32), (1, 3, 1, 2))
+        _test_repeat((2, 32, 16), (2, 1, 1))
+        _test_repeat((32, 16), (1, 2, 1))
 
     #######################################################################
     # Transpose

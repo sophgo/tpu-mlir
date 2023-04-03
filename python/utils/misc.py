@@ -159,6 +159,26 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+
+class Desc():
+    def __init__(self, dtype, min=-10, max=10) -> None:
+        self.dtype = dtype
+        self.min = min
+        self.max = max
+
+def str2desc(v):
+    descs_vec = {}
+    descs = v
+    descs = descs.replace(" ", "")
+    descs = descs.split(r'],')
+    for desc in descs:
+        if desc != '':
+            desc = desc.split(r'[')[1]
+            desc = desc.split(r']')[0]
+            desc = desc.split(r',')
+            descs_vec[int(desc[0])] = Desc((desc[1]), float(desc[2]), float(desc[3]))
+    return descs_vec
+
 def cos_sim(vector_a, vector_b):
     vector_a = vector_a.reshape(-1)
     vector_b = vector_b.reshape(-1)

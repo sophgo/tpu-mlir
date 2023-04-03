@@ -1536,6 +1536,7 @@ def Top_PowOp : Top_Op<"Pow"> {
     F64Attr: $exponent
   );
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_SqrtOp : Top_Op<"Sqrt"> {
