@@ -73,6 +73,8 @@ class ONNX_IR_TESTER(object):
             "Div":          (self.test_Div,         Y, N, Y),
             "DivBcast":     (self.test_DivBcast,    Y, N, N),
             "DivBcast2":    (self.test_DivBcast2,   Y, N, N),
+            "Einsum":       (self.test_Einsum,      Y, N, Y),
+            "Einsum2":      (self.test_Einsum2,     Y, N, Y),
             "Elu":          (self.test_Elu,         Y, N, N),
             "Erf":          (self.test_Erf,         Y, N, N),
             "Exp":          (self.test_Exp,         Y, N, Y),
@@ -3794,6 +3796,47 @@ class ONNX_IR_TESTER(object):
             graph_def = helper.make_graph([cmp_def], case_name, inputs, [output])
             self.onnx_and_test(graph_def, input_data=input_data)
             print("====== TEST {} Success ======".format(cmp_type))
+
+    def test_Einsum(self, case_name):
+        input_shape = {"input1": [1, 26, 12, 26], "input2": [12, 26, 312]}
+        output_shape = [1, 26, 312]
+
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        einsum_def = helper.make_node(
+            "Einsum",
+            inputs=['input1', 'input2'],
+            outputs=['output'],
+            equation='bfnd,ndh->bfh',
+        )
+
+        graph_def = helper.make_graph([einsum_def], case_name, inputs, [output])
+        self.onnx_and_test(graph_def)
+
+    def test_Einsum2(self, case_name):
+        input_shape = [1, 26, 12, 26]
+        filter_shape = [12, 26, 312]
+        output_shape = [1, 26, 312]
+
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        einsum_def = helper.make_node(
+            "Einsum",
+            inputs=['input', 'weight'],
+            outputs=['output'],
+            equation='bfnd,ndh->bfh',
+        )
+
+        graph_def = helper.make_graph([einsum_def],
+                                      case_name, [input], [output],
+                                      initializer=[weight])
+        self.onnx_and_test(graph_def)
 
     def test_Elu(self, case_name):
         oc = 32

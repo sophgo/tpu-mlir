@@ -73,7 +73,7 @@ struct StripOutputQuantCpuCastPattern
       : OpRewritePattern<tpu::GenericCpuOp>(context) {}
   LogicalResult matchAndRewrite(tpu::GenericCpuOp op,
                                 PatternRewriter &rewriter) const override {
-    if(module::isCV18xx()) {
+    if (module::isCV18xx()) {
       if (op.getOutputs()[0].hasOneUse() &&
           isa<ReturnOp>(op.getOutputs()[0].use_begin().getUser())) {
         rewriter.replaceOp(op, op.getInputs()[0]);
