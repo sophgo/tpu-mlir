@@ -24,7 +24,6 @@ include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/FlopsInterface.td"
 include "tpu_mlir/Interfaces/ShapeInterface.td"
 include "tpu_mlir/Traits/Traits.td"
-
 // =============================================================================
 //
 // Defines TOP Dialect.
@@ -35,12 +34,6 @@ def Top_Dialect : Dialect {
   let name = "top";
   let summary = "A topdialect for the TPU_MLIR specification";
   let cppNamespace = "::tpu_mlir::top";
-  let extraClassDeclaration = [{
-  void loadWeightFile(llvm::StringRef file) {
-    wFile = std::make_unique<mlir::TensorFile>(file, false);
-  }
-  std::unique_ptr<mlir::TensorFile> wFile;
-  }];
 }
 
 //===----------------------------------------------------------------------===//
@@ -63,7 +56,7 @@ class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
     !foldl(/*init*/!head(cases), /*list*/!tail(cases),
            prev, cur, prev # ", or " # cur)>;
 def ArgModeAttr: AnyStrAttrOf<["ArgMin","ArgMax"]>;
-def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual"]>;
+def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual", "NotEqual"]>;
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
 def InterpModeAttr: AnyStrAttrOf<["nearest","linear"]>;
 def InterpCoordModeAttr: AnyStrAttrOf<["align_corners", "half_pixel", "pytorch_half_pixel"]>;
@@ -115,8 +108,6 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
   template<typename T>
-  mlir::LogicalResult update(const std::vector<T>& data, size_t count);
-  template<typename T>
   std::shared_ptr<std::vector<T>> read();
   std::shared_ptr<std::vector<float>> read_as_float();
   std::shared_ptr<std::vector<int32_t>> read_as_int32();
@@ -126,6 +117,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
                             llvm::StringRef suffix,
                             const std::vector<T>& data,
                             mlir::RankedTensorType& type);
+  template<typename T>
+  mlir::LogicalResult update(const std::vector<T>& data, size_t count);
   mlir::Value clone_bf16(mlir::Operation * OwnerOp);
   mlir::Value clone_f16(mlir::Operation * OwnerOp);
   mlir::Value clone_int(mlir::Operation *OwnerOp);
@@ -557,6 +550,24 @@ def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu, SupportPermuteMove]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_SubConstOp: Top_Op<"SubConst", [SupportFuseRelu]> {
+  let summary = "Sub Const operator";
+
+  let description = [{
+    Y = X - const_val or const_val - X
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr: $const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu]> {
   let summary = "Mul Const operator";
 
@@ -850,13 +861,14 @@ def Top_SizeOp: Top_Op<"Size"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_ZerosOp: Top_Op<"Zeros"> {
-  let summary = "zeros operator";
+def Top_ConstantFillOp: Top_Op<"ConstantFill"> {
+  let summary = "constant fill operator";
   let description = [{
-    gen by torch aten::zeros
+    fill the constant value
   }];
   let arguments = (ins
-    AnyTensor:$input
+    AnyTensor:$input,
+    F64Attr:$value
   );
 
   let results = (outs
@@ -2162,5 +2174,50 @@ def Top_EluOp : Top_Op<"Elu"> {
     F64Attr:$alpha
   );
   let results = (outs AnyTensor:$output);
+}
+
+def Top_YieldOp : Top_Op<"Yield", [Pure, Terminator]> {
+  let summary = "top return operation";
+  let description = [{
+    The `Top.Yield` operation represents a return operation within an subgraph.
+    The operation takes variable number of operands and produces no results.
+
+    This operation is not part of the standard and was added to assist tpu-mlr.
+  }];
+
+  let arguments = (ins Variadic<AnyType>:$operands);
+
+  let builders = [
+    OpBuilder<(ins),
+    [{ build($_builder, $_state, std::nullopt); }]>];
+
+  let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
+}
+
+def Top_IfOp : Top_Op<"If"> {
+  let summary = "if operation";
+  let description = [{
+    If conditional
+  }];
+  let arguments = (ins TensorOf<[I1]>:$cond);
+  let results = (outs Variadic<AnyTensor>:$output);
+  let regions = (region SizedRegion<1>:$then_branch,
+    SizedRegion<1>:$else_branch);
+  let extraClassDeclaration = [{
+    static int getNumberOfOperands() {
+      return 1;
+    }
+    static int getNumberOfResults() {
+      return -1;
+    }
+    static std::vector<int> getTypeMap() {
+      return {-1};
+    }
+  int64_t getSubgraphRegionIdx(const std::string& name) {
+    if (name == "then_branch") return 0;
+    if (name == "else_branch") return 1;
+    llvm_unreachable("region with the specified name does not exist");
+  }
+  }];
 }
 #endif // Top_OPS

@@ -102,7 +102,7 @@ int64_t tpu::Pool1DOp::getBufferSize_cv18xx(
 void tpu::Pool1DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
   auto attr = parseParam();
 
-  auto gi = getGroupInfo(n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
   laddr_t la_input = in_gi.out_addr;

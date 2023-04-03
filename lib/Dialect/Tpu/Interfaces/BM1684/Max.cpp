@@ -71,7 +71,7 @@ void tpu::MaxOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   module::getNCHW(getOutput(), t_n, t_c, t_h, t_w);
   module::getNCHW(getInputs()[0], b0_n, b0_c, b0_h, b0_w);
   module::getNCHW(getInputs()[1], b1_n, b1_c, b1_h, b1_w);
-  auto top_ginfo = getGroupInfo(n_step, h_step);
+  auto top_ginfo = getGroupInfo(n_step, h_step, 0, 0);
   auto b0_ginfo = LocalGenInterface::getGroupInfo(getInputs()[0]);
   auto b1_ginfo = LocalGenInterface::getGroupInfo(getInputs()[1]);
   int b0_shape[MAX_SHAPE_DIMS] = {(int)b0_ginfo.n_slice, (int)b0_c,

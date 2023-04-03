@@ -1,7 +1,7 @@
 include(AddMLIRPython)
 
 set(TOP_MLIR_PYTHON_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mlir")
-set(TOP_MLIR_PYTHON_PACKAGES_DIR "${INSTALL_PATH}/python")
+set(TOP_MLIR_PYTHON_PACKAGES_DIR "${CMAKE_BINARY_DIR}/python")
 
 ################################################################################
 # Structural groupings.

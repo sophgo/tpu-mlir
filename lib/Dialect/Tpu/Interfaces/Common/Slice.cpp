@@ -178,6 +178,18 @@ LogicalResult tpu::SliceOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
+LogicalResult tpu::SliceOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
+                                      int64_t out_idx, int64_t out_slice) {
+  const auto offset = module::getI64Array(getOffset());
+  const auto steps = module::getI64Array(getSteps());
+  auto &p = getSliceParam(*this);
+  in_idx = out_idx * steps->at(3);
+  in_slice = out_slice * steps->at(3) + offset->at(3);
+  bool is_last = (out_idx + out_slice == p.os_4[3]);
+  LocalGenInterface::fixSlice(in_idx, in_slice, p.is_4[3], is_last);
+  return success();
+}
+
 LogicalResult tpu::SliceOp::LocalGenSupport() {
   auto shape = module::getShape(getInput());
   int num_dims = shape.size();
@@ -197,6 +209,9 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
     if (num_dims > 2) {
       // TODO: force layer group to allow that offset->at(2) != 0
       if (steps->at(1) != 1) return failure();
+    }
+    if (num_dims > 4) {
+      return failure();
     }
     return success();
   }

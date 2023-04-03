@@ -101,5 +101,17 @@ MatMulHdimBatchPattern::matchAndRewrite(tpu::MatMulOp op,
   return failure();
 }
 
+LogicalResult
+MatMulLeftReusePattern::matchAndRewrite(tpu::MatMulOp op,
+                                        PatternRewriter &rewriter) const {
+  auto in_op = op.getInput().getDefiningOp();
+  if (in_op->hasOneUse()) {
+    op.setLeftReuse(0);
+  } else {
+    op.setLeftReuse(1);
+  }
+  return success();
+}
+
 } // namespace bm1684x
 } // namespace tpu_mlir

@@ -42,14 +42,15 @@ The operation is as follows:
 
    $ detect_yolov3.py \
         --model ../tiny-yolov3-11.onnx \
-        --input ../COCO2017/000000051598.jpg \
+        --input ../COCO2017/000000366711.jpg \
         --output yolov3_onnx.jpg
 
 The print result as follows:
 
 .. code-block:: shell
 
-    sink:67.4%
+    person:60.7%
+    orange:77.5%
 
 And get result image ``yolov3_onnx.jpg``, as below( :ref:`yolov3_onnx_result` ):
 
@@ -109,14 +110,14 @@ Step 4: Run model
 
    $ detect_yolov3.py \
         --model yolov3_int8.bmodel \
-        --input ../COCO2017/000000051598.jpg \
+        --input ../COCO2017/000000366711.jpg \
         --output yolov3_int8.jpg
 
-The print result as follows, indicates that no target is detected:
+The print result as follows, indicates that one target is detected:
 
 .. code-block:: shell
 
-  No object was detected
+    orange:73.0%
 
 And get image ``yolov3_int8.jpg``, as below( :ref:`yolov3_int8_result` ):
 
@@ -127,7 +128,7 @@ And get image ``yolov3_int8.jpg``, as below( :ref:`yolov3_int8_result` ):
 
    yolov3_tiny int8 symmetric
 
-Compared with onnx result, It can be seen that int8 symmetric quantization model has a poor effect on this graph compared with the original model, and no target has been detected..
+It can be seen that the int8 symmetric quantization model performs poorly compared to the original model on this image and only detects one target.
 
 To Mix Precision Model
 -----------------------
@@ -163,7 +164,7 @@ Use ``run_qtable.py`` to gen qtable, parameters as below:
      - The platform that the model will use. Support bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x.
    * - fp_type
      - N
-     - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program 
+     - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
    * - input_num
      - N
      - The number of sample, default 10
@@ -195,8 +196,9 @@ The operation is as follows:
 The final output after execution is printed as follows:
 
 .. code-block:: shell
-    int8 outputs_cos:0.999346
-    mix model outputs_cos:0.999735
+
+    int8 outputs_cos:0.999317
+    mix model outputs_cos:0.999739
     Output mix quantization table to yolov3_qtable
     total time:44 second
 
@@ -205,16 +207,16 @@ In addition，get quantization table ``yolov3_qtable``, context as below:
 
 .. code-block:: shell
 
-  # op_name   quantize_mode
-  model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu F16
-  model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool F16
-  convolution_output10_Conv F16
-  model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu F16
-  model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu F16
-  model_1/leaky_re_lu_5/LeakyRelu:0_pooling0_MaxPool F16
-  model_1/concatenate_1/concat:0_Concat F16
-  model_1/leaky_re_lu_6/LeakyRelu:0_LeakyRelu F16
-  model_1/leaky_re_lu_6/LeakyRelu:0_pooling0_MaxPool F16
+    # op_name   quantize_mode
+    convolution_output11_Conv F16
+    model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu F16
+    model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool F16
+    convolution_output10_Conv F16
+    convolution_output9_Conv F16
+    model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu F16
+    model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu F16
+    model_1/leaky_re_lu_5/LeakyRelu:0_pooling0_MaxPool F16
+    model_1/concatenate_1/concat:0_Concat F16
 
 
 In the table, first col is layer name, second is quantization type.
@@ -225,21 +227,18 @@ Also ``full_loss_table.txt`` is generated, context as blow:
 
     # chip: bm1684x  mix_mode: F16
     ###
-    No.0   : Layer: convolution_output11_Conv                                               Cos: 0.987377
-    No.1   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu                             Cos: 0.996800
-    No.2   : Layer: convolution_output10_Conv                                               Cos: 0.997409
-    No.3   : Layer: model_1/leaky_re_lu_6/LeakyRelu:0_LeakyRelu                             Cos: 0.997870
-    No.4   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu                             Cos: 0.998756
-    No.5   : Layer: convolution_output9_Conv                                                Cos: 0.999224
-    No.6   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu                             Cos: 0.999244
-    No.7   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu                             Cos: 0.999293
-    No.8   : Layer: convolution_output8_Conv                                                Cos: 0.999444
-    No.9   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.999504
-    No.10  : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.999573
-    No.11  : Layer: convolution_output7_Conv                                                Cos: 0.999683
-    No.12  : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.999845
-    No.13  : Layer: convolution_output12_Conv                                               Cos: 0.999886
-	....
+    No.0   : Layer: convolution_output11_Conv                            Cos: 0.984398
+    No.1   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu          Cos: 0.998341
+    No.2   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool   Cos: 0.998500
+    No.3   : Layer: convolution_output9_Conv                             Cos: 0.998926
+    No.4   : Layer: convolution_output8_Conv                             Cos: 0.999249
+    No.5   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_pooling0_MaxPool   Cos: 0.999284
+    No.6   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu          Cos: 0.999368
+    No.7   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu          Cos: 0.999554
+    No.8   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool   Cos: 0.999576
+    No.9   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_pooling0_MaxPool   Cos: 0.999723
+    No.10  : Layer: convolution_output12_Conv                            Cos: 0.999810
+
 
 This table is arranged smoothly according to the cos from small to large, indicating the cos calculated
 by this Layer after the precursor layer of this layer has been changed to the corresponding floating-point mode.
@@ -270,14 +269,15 @@ Step 3: run mix precision model
 
    $ detect_yolov3.py \
         --model yolov3_mix.bmodel \
-        --input ../COCO2017/000000051598.jpg \
+        --input ../COCO2017/000000366711.jpg \
         --output yolov3_mix.jpg
 
 The print result as follows:
 
 .. code-block:: shell
 
-	sink:63.8%
+    person:63.9%
+    orange:73.0%
 
 And get image ``yolov3_mix.jpg`` , as below( :ref:`yolov3_mix_result` ):
 

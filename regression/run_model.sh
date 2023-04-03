@@ -9,6 +9,11 @@ model_name=$1
 chip_name=$2
 test_type=$3
 dyn_mode=$4
+quant_mode=$5
+fuse_preprocess=$6 #0/1
+customization_format=$7
+aligned=$8 #0/1
+merge_weight=$9 #0/1
 do_post_handle=0
 if [ x$1 == x ]; then
   echo "Error: $0 model_name [bm1684x|cv183x]"
@@ -121,6 +126,38 @@ if [ ${do_int4_sym} == 1 ]; then
   do_symmetric=0
   do_asymmetric=0
 fi
+
+#only deploy the quant_mode model
+if [ x${quant_mode} != x ];then
+  echo "Set quant_type as ${quant_mode}."
+  do_f32=0
+  do_f16=0
+  do_bf16=0
+  do_symmetric=0
+  do_asymmetric=0
+  case $quant_mode in
+      "F32")
+        do_f32=1
+      ;;
+      "F16")
+        do_f16=1
+      ;;
+      "BF16")
+        do_bf16=1
+      ;;
+      "INT8_SYM")
+        do_symmetric=1
+      ;;
+      "INT8_ASYM")
+        do_asymmetric=1
+      ;;
+      *)
+        echo "Error! You set unexpected quant_mode, please reset."
+        exit 1
+      ;;
+  esac
+fi
+
 excepts_opt=
 if [ x${excepts} != x ]; then
   excepts_opt="--excepts=${excepts}"
@@ -193,6 +230,23 @@ if [ x${test_input} != x ]; then
   test_reference_opt="--test_reference=${top_result}"
 fi
 
+if [ x${fuse_preprocess} == x1 ]; then
+  test_innpz_opt="--test_input=${IMAGE_PATH}"
+  fuse_opt="--fuse_preprocess"
+fi
+
+if [ x${customization_format} != x ]; then
+  cust_format_opt="--customization_format=${customization_format}"
+fi
+
+if [ ${aligned} -eq 1 ]; then
+  aligned_opt="--aligned_input"
+fi
+
+if [ ${merge_weight} -eq 1 ];then
+ merge_weight_opt="--merge_weight"
+fi
+
 model_transform.py \
   --model_name ${model_name} \
   ${model_def_opt} \
@@ -224,6 +278,10 @@ fi
 # deploy to float bmodel
 #########################
 if [ ${do_f32} == 1 ]; then
+  model_file=${model_name}_${chip_name}_f32
+  if [ ${fuse_preprocess} -eq 1 ]; then
+    model_file=${model_file}_fuse_preprocess
+  fi
   model_deploy.py \
     --mlir ${model_name}.mlir \
     --quantize F32 \
@@ -233,11 +291,19 @@ if [ ${do_f32} == 1 ]; then
     ${excepts_opt} \
     --tolerance 0.99,0.99 \
     --compare_all \
-    --model ${model_name}_${chip_name}_f32.${model_type} \
+    --model ${model_file}.${model_type} \
+    ${fuse_opt} \
+    ${cust_format_opt} \
+    ${aligned_opt} \
+    ${merge_weight_opt} \
     ${do_post_opt}
 fi
 
 if [ ${do_f16} == 1 ]; then
+  model_file=${model_name}_${chip_name}_f16
+  if [ x${fuse_preprocess} == x1 ]; then
+    model_file=${model_file}_fuse_preprocess
+  fi
   model_deploy.py \
     --mlir ${model_name}.mlir \
     --quantize F16 \
@@ -247,11 +313,29 @@ if [ ${do_f16} == 1 ]; then
     ${excepts_opt} \
     --tolerance 0.95,0.85 \
     --compare_all \
-    --model ${model_name}_${chip_name}_f16.${model_type} \
+    --model ${model_file}.${model_type} \
+    ${fuse_opt} \
+    ${cust_format_opt} \
+    ${aligned_opt} \
+    ${merge_weight_opt} \
     ${do_post_opt}
 fi
 
 if [ ${do_bf16} == 1 ]; then
+  model_file=${model_name}_${chip_name}_bf16
+  if [ x${fuse_preprocess} == x1 ]; then
+    model_file=${model_file}_fuse_preprocess
+  fi
+  if [ x${aligned_input} == x1 ]; then
+    model_file=${model_file}_aligned
+  fi
+  if [ x${merge_weight} == x1 ]; then
+    model_file=${model_file}_merge_weight
+  fi
+  tolerance_bf16_opt="--tolerance 0.95,0.85"
+  if [ x${bf16_tolerance} != x ]; then
+    tolerance_bf16_opt="--tolerance "${bf16_tolerance}
+  fi
   model_deploy.py \
     --mlir ${model_name}.mlir \
     --quantize BF16 \
@@ -259,9 +343,13 @@ if [ ${do_bf16} == 1 ]; then
     ${test_innpz_opt} \
     ${test_reference_opt} \
     ${excepts_opt} \
-    --tolerance 0.95,0.85 \
+    ${tolerance_bf16_opt} \
     --compare_all \
-    --model ${model_name}_${chip_name}_bf16.${model_type} \
+    --model ${model_file}.${model_type} \
+    ${fuse_opt} \
+    ${cust_format_opt} \
+    ${aligned_opt} \
+    ${merge_weight_opt} \
     ${do_post_opt}
 fi
 
@@ -307,6 +395,20 @@ if [ ${do_symmetric} == 1 ]; then
   if [ x${int8_sym_tolerance} != x ]; then
     tolerance_sym_opt="--tolerance ${int8_sym_tolerance}"
   fi
+  model_file=${model_name}_${chip_name}_int8_sym
+  if [ x${fuse_preprocess} == x1 ]; then
+    model_file=${model_file}_fuse_preprocess
+  fi
+  if [ x${aligned_input} == x1 ]; then
+    model_file=${model_file}_aligned
+  fi
+  if [ x${merge_weight} == x1 ]; then
+    model_file=${model_file}_merge_weight
+  fi
+  quant_output_opt=
+  if [ ${model_type} == "bmodel" ]; then
+    quant_output_opt="--quant_output"
+  fi
   model_deploy.py \
     --mlir ${model_name}.mlir \
     --quantize INT8 \
@@ -319,8 +421,12 @@ if [ ${do_symmetric} == 1 ]; then
     ${excepts_opt} \
     --compare_all \
     --quant_input \
-    --quant_output \
-    --model ${model_name}_${chip_name}_int8_sym.${model_type} \
+    ${quant_output_opt} \
+    --model ${model_file}.${model_type} \
+    ${fuse_opt} \
+    ${cust_format_opt} \
+    ${aligned_opt} \
+    ${merge_weight_opt} \
     ${do_post_opt}
 
 fi #do_symmetric
@@ -331,6 +437,10 @@ if [ $do_asymmetric == 1 ]; then
   tolerance_asym_opt=
   if [ x${int8_asym_tolerance} != x ]; then
     tolerance_asym_opt="--tolerance ${int8_asym_tolerance}"
+  fi
+  model_file=${model_name}_${chip_name}_int8_asym
+  if [ x${fuse_preprocess} == x1 ]; then
+    model_file=${model_file}_fuse_preprocess
   fi
   model_deploy.py \
     --mlir ${model_name}.mlir \
@@ -344,7 +454,7 @@ if [ $do_asymmetric == 1 ]; then
     ${tolerance_asym_opt} \
     ${excepts_opt} \
     --compare_all \
-    --model ${model_name}_${chip_name}_int8_asym.${model_type} \
+    --model ${model_file}.${model_type} \
     ${do_post_opt}
 
 fi #do_asymmetric
@@ -454,29 +564,12 @@ if [ x${do_int4_sym} == x1 ]; then
     tolerance_sym_opt="--tolerance ${int4_sym_tolerance}"
   fi
 
-  #It is not supported now, first comment it
-  # model_deploy.py \
-  #   --mlir ${model_name}.mlir \
-  #   --quantize INT4 \
-  #   ${cali_opt} \
-  #   ${qtable_opt} \
-  #   --chip ${chip_name} \
-  #   ${test_innpz_opt} \
-  #   ${test_reference_opt} \
-  #   ${tolerance_sym_opt} \
-  #   ${excepts_opt} \
-  #   --quant_input \
-  #   --quant_output \
-  #   --model ${model_name}_${chip_name}_int4_sym.${model_type} \
-  #   ${do_post_opt}
-
   #Temporary test code
   tpuc-opt ${model_name}.mlir \
       --init \
       --import-calibration-table="file=${CALI_TABLE} asymmetric=false" \
       --convert-top-to-tpu="mode=INT4 asymmetric=false chip=bm1686" \
       --canonicalize \
-      --save-weight \
       --mlir-print-debuginfo \
       -o ${model_name}_bm1686_tpu_int4_sym.mlir
 
@@ -490,6 +583,21 @@ if [ x${do_int4_sym} == x1 ]; then
       ${model_name}_bm1686_tpu_int4_sym_outputs.npz \
       ${model_name}_top_outputs.npz \
       --tolerance ${int4_sym_tolerance} -v
+
+  #It is not supported now, first comment it
+  # model_deploy.py \
+  #   --mlir ${model_name}.mlir \
+  #   --quantize INT4 \
+  #   ${cali_opt} \
+  #   ${qtable_opt} \
+  #   --chip ${chip_name} \
+  #   ${test_innpz_opt} \
+  #   ${test_reference_opt} \
+  #   ${tolerance_sym_opt} \
+  #   ${excepts_opt} \
+  #   --quant_input \
+  #   --quant_output \
+  #   --model ${model_name}_${chip_name}_int4_sym.${model_type}
 
 fi #do_int4_sym
 #########################

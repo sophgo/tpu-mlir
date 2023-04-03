@@ -52,19 +52,18 @@ void cvi_backend_tl_quant(uint32_t layer_id, laddr_t la_input,
   tl_output->start_address = la_output;
   tl_output->fmt = to;
   tl_output->shape = CV18xx::tl_shape_t4(n, c, h, w);
-  tl_output->stride =
-      CV18xx::tl_default_stride(tl_output->shape, tl_output->fmt, /*eu_align=*/1);
+  tl_output->stride = CV18xx::tl_default_stride(tl_output->shape,
+                                                tl_output->fmt, /*eu_align=*/1);
 
+  // NOTICE: make sure tdma order before mul
   // compute
   if (is_dequant) {
     cvk_tdma_l2l_tensor_copy_param_t p1 = {0};
     p1.src = tl_input;
     p1.dst = tl_output;
-    CV18xx::tdma_l2l_tensor_copy(&p1);
-
-    // NOTICE: make sure tdma order before than mul
-    CV18xx::parallel_enable();
     CV18xx::parallel_disable();
+    CV18xx::tdma_l2l_tensor_copy(&p1);
+    CV18xx::parallel_enable();
 
     // move to high accurcy to calculate quant/dequant
     cvk_tiu_mul_param_t p = {0};
@@ -88,8 +87,8 @@ void cvi_backend_tl_quant(uint32_t layer_id, laddr_t la_input,
       _tl_output.fmt = tl_output->fmt;
       _tl_output.shape = tl_output->shape;
       _tl_output.shape.c = std::min(tl_output->shape.c - s * step, step);
-      _tl_output.stride = CV18xx::tl_default_stride(tl_output->shape,
-                                                tl_output->fmt, /*eu_aling=*/1);
+      _tl_output.stride = CV18xx::tl_default_stride(
+          tl_output->shape, tl_output->fmt, /*eu_aling=*/1);
       p.res_low = &_tl_output;
       p.a = &_tl_output;
       CV18xx::tiu_mul(&p);
@@ -114,15 +113,13 @@ void cvi_backend_tl_quant(uint32_t layer_id, laddr_t la_input,
 
     CV18xx::tiu_mul(&p);
 
-    // NOTICE: make sure tdma order before than mul
-    CV18xx::parallel_enable();
-    CV18xx::parallel_disable();
-
     // leverage l2l to implement bf16->int8
     cvk_tdma_l2l_tensor_copy_param_t p1 = {0};
     p1.src = tl_working;
     p1.dst = tl_output;
+    CV18xx::parallel_disable();
     CV18xx::tdma_l2l_tensor_copy(&p1);
+    CV18xx::parallel_enable();
 
     delete tl_working;
   }

@@ -21,6 +21,7 @@ void populateDoExtraOptPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
     MatMulHdimBatchPattern,
+    MatMulLeftReusePattern,
     PermuteReorderPattern
   >(patterns->getContext());
   // clang-format on

@@ -22,7 +22,7 @@ static void update_cycle_info(std::vector<int64_t> &total_gdma_cycle_v,
                               std::vector<int64_t> &total_layer_cycle_v,
                               const BasicTimeStepPtr &time_step,
                               const shape_secs_t &shape_secs) {
-  bool one_loop = (shape_secs.nsecs * shape_secs.hsecs == 1);
+  bool one_loop = (shape_secs.nsecs * shape_secs.hsecs * shape_secs.dsecs * shape_secs.wsecs == 1);
   int64_t ts_num = time_step->get_timestep_num();
   total_gdma_cycle_v.clear();
   total_layer_cycle_v.clear();
@@ -375,7 +375,7 @@ static void merge_timesteps(const LgInfo &lg_info, BasicTimeStepPtr &time_step,
     std::vector<TpuTsField> new_ts_layers_v(ts_layers_v);
     MemBuff new_mem_buffer;
 
-    bool one_loop = shape_secs.nsecs * shape_secs.hsecs;
+    bool one_loop = (shape_secs.nsecs * shape_secs.hsecs * shape_secs.dsecs * shape_secs.wsecs == 1);
     if (time_step->layer_can_merge_backward(ts, one_loop)) {
       // update timestep layers and tensors
       new_ts_layers_v[ts].insert(new_ts_layers_v[ts].end(),

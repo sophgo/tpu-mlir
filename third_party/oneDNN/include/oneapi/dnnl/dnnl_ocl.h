@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright 2020-2021 Intel Corporation
+* Copyright 2020-2022 Intel Corporation
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ extern "C" {
 /// @returns #dnnl_success on success and a status describing the error
 ///     otherwise.
 dnnl_status_t DNNL_API dnnl_ocl_interop_memory_create(dnnl_memory_t *memory,
-        const dnnl_memory_desc_t *memory_desc, dnnl_engine_t engine,
+        const_dnnl_memory_desc_t memory_desc, dnnl_engine_t engine,
         dnnl_ocl_interop_memory_kind_t memory_kind, void *handle);
 
 /// Returns the memory allocation kind associated with a memory object.
@@ -105,6 +105,63 @@ dnnl_status_t DNNL_API dnnl_ocl_interop_memory_get_mem_object(
 ///     otherwise.
 dnnl_status_t DNNL_API dnnl_ocl_interop_memory_set_mem_object(
         dnnl_memory_t memory, cl_mem mem_object);
+
+/// Retrieves a cache blob ID for the OpenCL device.
+///
+/// @warning
+///     This API is intended to be used with
+///     #dnnl_ocl_interop_engine_get_cache_blob() and
+///     #dnnl_ocl_interop_engine_create_from_cache_blob(). The returned cache
+///     blob ID can only be used as an ID of the cache blob returned by
+///     #dnnl_ocl_interop_engine_get_cache_blob().
+///
+/// @note The cache blob ID can be empty (@p size will be 0 and
+///     @p cache_blob_id will be nullptr) if oneDNN doesn't have anything to
+///     put in the cache blob. (#dnnl_ocl_interop_engine_get_cache_blob will
+///     return an empty cache blob).
+///
+/// @param device An OpenCL device.
+/// @param size Size of the cache blob ID in bytes.
+/// @param cache_blob_id Cache blob id of size @p size. If
+///     the @p cache_blob_id is nullptr then the size of the cache blob ID is
+///     returned in @p size.
+/// @returns #dnnl_success on success and a status describing the error
+///     otherwise.
+dnnl_status_t DNNL_API dnnl_ocl_interop_engine_get_cache_blob_id(
+        cl_device_id device, size_t *size, uint8_t *cache_blob_id);
+
+/// Retrieves a cache blob associated with the given engine.
+///
+/// @note The cache blob can be empty (@p size will be 0 and @p cache_blob
+///     will be nullptr) if oneDNN doesn't have anything to put in the cache
+///     blob. It's the user's responsibility to check whether it's empty
+///     prior to passing it to
+///     #dnnl_ocl_interop_engine_create_from_cache_blob().
+///
+/// @param engine Engine to query for the cache blob.
+/// @param size Size of the cache blob in bytes.
+/// @param cache_blob Cache blob of size @p size. If the @p cache_blob is
+///     nullptr then the size of the cache blob is returned in @p size.
+/// @returns #dnnl_success on success and a status describing the error
+///     otherwise.
+dnnl_status_t DNNL_API dnnl_ocl_interop_engine_get_cache_blob(
+        dnnl_engine_t engine, size_t *size, uint8_t *cache_blob);
+
+/// Creates an engine from the given cache blob.
+///
+/// @param engine Output engine.
+/// @param device The OpenCL device that this engine will encapsulate.
+/// @param context The OpenCL context (containing the device) that this
+///     engine will use for all operations.
+/// @returns #dnnl_success on success and a status describing the error
+///     otherwise.
+/// @param size Size of the cache blob in bytes.
+/// @param cache_blob Cache blob of size @p size.
+/// @returns #dnnl_success on success and a status describing the error
+///     otherwise.
+dnnl_status_t DNNL_API dnnl_ocl_interop_engine_create_from_cache_blob(
+        dnnl_engine_t *engine, cl_device_id device, cl_context context,
+        size_t size, const uint8_t *cache_blob);
 
 /// Creates an engine associated with an OpenCL device and an OpenCL context.
 ///
@@ -153,6 +210,31 @@ dnnl_status_t DNNL_API dnnl_ocl_interop_stream_create(
 ///     otherwise.
 dnnl_status_t DNNL_API dnnl_ocl_interop_stream_get_command_queue(
         dnnl_stream_t stream, cl_command_queue *queue);
+
+/// Executes computations specified by the primitive in a specified stream and
+/// returns an OpenCL event.
+///
+/// @param primitive Primitive to execute.
+/// @param stream Stream to use.
+/// @param nargs Number of arguments.
+/// @param args Array of arguments. Each argument is an
+///     <index, #dnnl_memory_t> pair. The index is one of the `DNNL_ARG_*`
+///     values such as `DNNL_ARG_SRC`. Unless runtime shapes are used (see
+///     #DNNL_RUNTIME_DIM_VAL), the memory object must have the same memory
+///     descriptor as that returned by
+///     #dnnl_primitive_desc_query_md(#dnnl_query_exec_arg_md, index).
+/// @param deps A pointer to a vector of size @p ndeps that contains
+///     dependencies.
+/// @param ndeps Number of dependencies.
+/// @param return_event Output event. It's the user's responsibility to
+///     manage lifetime of the event. Can be NULL. When @p stream is in-order
+///     NULL will be returned.
+/// @returns #dnnl_success on success and a status describing the error
+///     otherwise.
+dnnl_status_t DNNL_API dnnl_ocl_interop_primitive_execute(
+        const_dnnl_primitive_t primitive, dnnl_stream_t stream, int nargs,
+        const dnnl_exec_arg_t *args, const cl_event *deps, int ndeps,
+        cl_event *return_event);
 
 /// @} dnnl_api_ocl_interop
 

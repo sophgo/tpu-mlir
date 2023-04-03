@@ -75,10 +75,10 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
   }
 };
 
-//reshape1+permute+reshape2 ===> reorg
-//reshape1:[1x128x64x64] -> [1x128x32x2x32x2]
-//permute:[1x128x32x2x32x2] -> [1x128x2x2x32x32]
-//reshape2:[1x128x2x2x32x32] -> [1x512x32x32]
+// reshape1+permute+reshape2 ===> reorg
+// reshape1:[1x128x64x64] -> [1x128x32x2x32x2]
+// permute:[1x128x32x2x32x2] -> [1x128x2x2x32x32]
+// reshape2:[1x128x2x2x32x32] -> [1x512x32x32]
 //==>reorg:[1x128x64x64] -> [1x512x32x32]
 struct TopPermuteToReorg : public OpRewritePattern<PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -139,11 +139,9 @@ struct TopPermuteToReorg : public OpRewritePattern<PermuteOp> {
   }
 };
 
-
-template<typename T>
-static int remove_value(std::vector<T> & v, T value) {
+template <typename T> static int remove_value(std::vector<T> &v, T value) {
   int idx = 0;
-  for(auto iter = v.begin(); iter != v.end(); iter++, idx++) {
+  for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
     if (*iter == value) {
       v.erase(iter);
       return idx;
@@ -153,14 +151,15 @@ static int remove_value(std::vector<T> & v, T value) {
 }
 
 static void refresh(std::vector<int64_t> &order, int64_t idx) {
-  for(auto &v:order) {
+  for (auto &v : order) {
     if (v > idx) {
       v--;
     }
   }
 }
 
-static bool is_valid_order(std::vector<int64_t> shape, std::vector<int64_t> order) {
+static bool is_valid_order(std::vector<int64_t> shape,
+                           std::vector<int64_t> order) {
   int num_dims = order.size();
   int target_dim = num_dims;
   bool valid_order = true;
@@ -185,16 +184,17 @@ static bool is_valid_order(std::vector<int64_t> shape, std::vector<int64_t> orde
         }
       }
     } // end for check continous order
-  } // end num_dims > 4
+  }   // end num_dims > 4
   return valid_order;
 }
 
-static int indx(std::vector<int64_t> & v, int64_t value) {
+static int indx(std::vector<int64_t> &v, int64_t value) {
   return find(v.begin(), v.end(), value) - v.begin();
 }
 
-static void left_continous(std::vector<int64_t> &order, std::vector<int64_t> &lorder0,
-                    std::vector<int64_t> &lorder1) {
+static void left_continous(std::vector<int64_t> &order,
+                           std::vector<int64_t> &lorder0,
+                           std::vector<int64_t> &lorder1) {
   lorder0.clear();
   lorder1.clear();
   auto begin = order.front();
@@ -219,7 +219,7 @@ struct Permute5dSplit : public OpRewritePattern<PermuteOp> {
 
   LogicalResult matchAndRewrite(PermuteOp op,
                                 PatternRewriter &rewriter) const override {
-    //implement
+    // implement
     std::vector<int64_t> order = *(module::getI64Array(op.getOrder()));
     auto input = op.getInput();
     std::string name = module::getName(op.getOutput()).str();
@@ -227,8 +227,8 @@ struct Permute5dSplit : public OpRewritePattern<PermuteOp> {
     std::vector<int64_t> order1;
     std::vector<int64_t> input_shape = module::getShape(input);
     std::vector<int64_t> output_shape = module::getShape(op.getOutput());
-    std::vector<int64_t> new_shape0(order.size()); //permute0 output_shape
-    std::vector<int64_t> new_shape1(order.size()); //permute1 output_shape
+    std::vector<int64_t> new_shape0(order.size()); // permute0 output_shape
+    std::vector<int64_t> new_shape1(order.size()); // permute1 output_shape
     if (order.size() != 5 || is_valid_order(input_shape, order)) {
       return failure();
     }
@@ -240,24 +240,29 @@ struct Permute5dSplit : public OpRewritePattern<PermuteOp> {
       new_shape1[i] = new_shape0[order1[i]];
     }
     assert(new_shape1 == output_shape);
-    //create permute0
+    // create permute0
     rewriter.setInsertionPointAfterValue(input);
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_expand0"));
     std::vector<Value> operands;
     std::vector<NamedAttribute> attrs;
     operands.emplace_back(input);
-    attrs.emplace_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order0)));
-    auto eltType = op.getResult().getType().cast<RankedTensorType>().getElementType();
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order0)));
+    auto eltType =
+        op.getResult().getType().cast<RankedTensorType>().getElementType();
     auto outType = RankedTensorType::get(new_shape0, eltType);
-    auto permute0_op = rewriter.create<top::PermuteOp>(loc, outType, operands, attrs);
+    auto permute0_op =
+        rewriter.create<top::PermuteOp>(loc, outType, operands, attrs);
     auto permute0_out = permute0_op.getOutput();
-    //create permute1
+    // create permute1
     operands.clear();
     attrs.clear();
     operands.emplace_back(permute0_out);
-    attrs.emplace_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order1)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order1)));
     auto outType1 = op.getResult().getType().cast<RankedTensorType>();
-    auto permute1_op = rewriter.create<top::PermuteOp>(op.getLoc(), outType1, operands, attrs);
+    auto permute1_op =
+        rewriter.create<top::PermuteOp>(op.getLoc(), outType1, operands, attrs);
     rewriter.replaceOp(op, {permute1_op.getResult()});
     return success();
   }
@@ -356,8 +361,8 @@ struct PermuteFuse : public OpRewritePattern<PermuteOp> {
 struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(PermuteOp op,
-                              PatternRewriter &rewriter) const override {
-    //todo
+                                PatternRewriter &rewriter) const override {
+    // todo
     std::vector<int64_t> shape = module::getShape(op.getInput());
     int dim_size = shape.size();
     int start = 0, end = dim_size - 1;
@@ -382,7 +387,8 @@ struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
     }
     std::vector<Value> operands;
     operands.emplace_back(op.getInput());
-    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, op.getResult().getType(), operands);
+    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, op.getResult().getType(),
+                                                operands);
     return success();
   }
 };
@@ -415,13 +421,14 @@ struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
     }
     // rewrite now !
     const auto old_nz_order = nonzero_op.getOrder().str();
-    const auto new_nz_order = old_nz_order == "ColMajor" ? "RowMajor" : "ColMajor";
+    const auto new_nz_order =
+        old_nz_order == "ColMajor" ? "RowMajor" : "ColMajor";
     Value from = nonzero_op.getInput();
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getStringAttr(new_nz_order)));
-    rewriter.replaceOpWithNewOp<NonZeroOp>(
-        op, op.getResult().getType(), ValueRange{from}, attrs);
+    rewriter.replaceOpWithNewOp<NonZeroOp>(op, op.getResult().getType(),
+                                           ValueRange{from}, attrs);
     return success();
   }
 };
@@ -479,8 +486,8 @@ struct PermutePadSwap : public OpRewritePattern<PermuteOp> {
     for (size_t i = 0; i < order->size(); ++i) {
       new_padded_shape[i] = in_shape[i] + new_paddings[i] + new_paddings[i + 5];
     }
-    auto newType =
-        RankedTensorType::get(new_padded_shape, module::getElementType(permute_in));
+    auto newType = RankedTensorType::get(new_padded_shape,
+                                         module::getElementType(permute_in));
     auto loc = NameLoc::get(
         rewriter.getStringAttr(module::getName(permute_in).str() + "_pad"));
     auto new_pad_op = rewriter.create<PadOp>(
@@ -490,9 +497,10 @@ struct PermutePadSwap : public OpRewritePattern<PermuteOp> {
     auto new_permuted_shape = module::getShape(pad_out);
     auto new_pad_out = new_pad_op.getOutput();
     rewriter.setInsertionPointAfterValue(new_pad_out);
-    newType =
-        RankedTensorType::get(new_permuted_shape, module::getElementType(pad_out));
-    rewriter.replaceOpWithNewOp<PermuteOp>(pad_op, newType, new_pad_out, new_permute_attrs);
+    newType = RankedTensorType::get(new_permuted_shape,
+                                    module::getElementType(pad_out));
+    rewriter.replaceOpWithNewOp<PermuteOp>(pad_op, newType, new_pad_out,
+                                           new_permute_attrs);
     return success();
   }
 };

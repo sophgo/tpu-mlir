@@ -40,6 +40,9 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_pooling_fix8b_forward_local);
   CAST_FUNCTION(nodechip_conv_forward_local_fix8b);
   CAST_FUNCTION(nodechip_conv_forward_local_fix16b);
+  CAST_FUNCTION(nodechip_reduce_full_v3);
+  CAST_FUNCTION(nodechip_reduce_full_fix8b);
+  CAST_FUNCTION(nodechip_reduce_get_buffer_size_fix8b);
   CAST_FUNCTION(nodechip_winograd_forward_local_fix8b);
   CAST_FUNCTION(nodechip_winograd_double_buffer_forward_local_fix8b);
   CAST_FUNCTION(nodechip_deconv_forward_local);
@@ -202,5 +205,7 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_float2int8_local_keep_input);
   CAST_FUNCTION(tensor_int8_to_float_local_v2);
   CAST_FUNCTION(get_broadcast_binary_buffer_size);
+  CAST_FUNCTION(nodechip_group_norm);
+  CAST_FUNCTION(nodechip_group_norm_local);
   // clang-format on
 }

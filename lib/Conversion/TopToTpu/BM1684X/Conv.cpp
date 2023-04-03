@@ -268,22 +268,20 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
   int bitwidth = 4;
   Value value;
   if (op.getInInt4Scale().has_value()) {
+    // bool find = false; //会导致性能大幅下降，原因待分析
+    // for (auto user : op.getInput().getDefiningOp()->getUsers()) {
+    //   if (isa<tpu::RequantFpOp>(user)) {
+    //     find = true;
+    //     operands.push_back(user->getResults()[0]);
+    //     break;
+    //   }
+    // }
+    // if (!find) {
     // 存在int4的输入scale，说明上一层是int8，故输入tensor也是int8，需要requant为int4
     in_scale = op.getInInt4Scale().value().convertToDouble();
     in_zp = op.getInInt4Zp().value().convertToDouble();
     module::getScaleAndZeroPoint(op.getInput(), in_int8_scale, in_int8_zp,
-                                 asymmetric);
-    // input int8, requant to int4
-    //  auto ctx = op.getInput().getContext();
-    //  auto cali_type = module::getCalibratedType(op.getInput());
-    //  auto qtype =
-    //  quant::UniformQuantizedType::get(quant::QuantizationFlags::Signed,
-    //                                                IntegerType::get(ctx, 4),
-    //                                                cali_type.getExpressedType(),
-    //                                                in_scale, in_zp, -8, 7);
-    //  auto output_type =
-    //  RankedTensorType::get(op.getInput().getType().cast<RankedTensorType>().getShape(),
-    //  qtype);
+                                asymmetric);
     auto output_type = getQuantIntType(op.getInput(), in_scale, in_zp, 4);
     double scale = in_int8_scale / in_scale; // 将int8转为int4的rq参数
     double offset = in_zp - in_int8_zp * scale;
@@ -292,6 +290,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     llvm::errs() << "conv input requantFp, to_name:" << to_name << "\n";
     value.dump();
     operands.push_back(value);
+    // }
   } else { // 输入tensor也是int4
     operands.push_back(op.getInput());
     module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric,
@@ -325,10 +324,10 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
 
   bool all_next_layer_is_int8 = true;
   bool all_next_layer_is_int4 = true;
-  double out_int8_scale = 1;
-  double out_int8_zp = 0;
+  double out_int8_scale = op.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
+  double out_int8_zp = op.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble();
   for (auto user : op->getUsers()) {
-    if (isa<top::ConvOp, top::MatMulOp, tpu::Conv2DOp, tpu::MatMulOp>(user)) {
+    if (module::isInt4Op(user)) {
       all_next_layer_is_int8 = false;
     } else {
       all_next_layer_is_int4 = false;
@@ -357,8 +356,6 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     }
     double scale_f;
     if (all_next_layer_is_int8) {
-      out_int8_scale =
-          op.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
       scale_f = scale_w * in_scale / out_int8_scale;
     } else {
       scale_f = scale_w * in_scale / out_scale;
@@ -462,54 +459,121 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     return;
   }
 
-  auto ctx = op->getContext();
-  attrs.push_back(rewriter.getNamedAttr(
-      "quant_mode",
-      tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
-  attrs.push_back(rewriter.getNamedAttr(
-      "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
-  attrs.push_back(rewriter.getNamedAttr(
-      "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
-
-  auto newType = getQuantInt4Type(op.getOutput(), asymmetric);
-  if (all_next_layer_is_int8)
-    newType = getQuantInt8Type(op.getOutput(), asymmetric);
-  auto newValue = CreateConvOp(rewriter, op.getKernelShape().size(),
-                               op->getLoc(), newType, operands, attrs);
-
   if (!all_next_layer_is_int8 && !all_next_layer_is_int4) {
-    bool first = true;
-    Value value;
+    // to int32, and then requant to int8
+    auto convType = RankedTensorType::get(module::getShape(op.getOutput()),
+                                          rewriter.getI32Type());
+    auto conv_name = module::getName(op.getOperation()).str() + "_int32";
+    auto name_loc = NameLoc::get(rewriter.getStringAttr(conv_name));
+    auto conv_out = CreateConvOp(rewriter, op.getKernelShape().size(), name_loc,
+                                 convType, operands, attrs);
+
+    std::vector<Operation*> int8_op;
+    std::vector<Operation*> int4_op;
+    std::vector<Operation*> cur_op;
     for (auto user : op->getUsers()) {
-      if (!isa<top::ConvOp>(user) && !isa<top::MatMulOp>(user)) {
-        if (first) {
-          first = false;
-          out_int8_scale =
-              op.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
-          out_int8_zp =
-              op.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble();
-          // requant to int8
-          double scale = out_scale / out_int8_scale;
-          double offset = out_int8_zp - out_zp * scale;
-          auto output_type =
-              getQuantIntType(op.getOutput(), out_int8_scale, out_int8_zp);
-          auto to_name = module::getName(op.getOperation()).str() + "_to_b8";
-          value = do_requantFp(newValue, scale, offset, output_type, to_name);
-          llvm::errs() << "conv output requantFp, to_name:" << to_name
-                       << ",value:";
-          value.dump();
+      if (!module::isInt4Op(user)) {
+        int8_op.push_back(user);
+      } else {
+        int4_op.push_back(user);
+      }
+    }
+
+    auto ctx = op.getOutput().getContext();
+    OpBuilder builder(ctx);
+    for (int i = 0; i < 2; i++) {
+      Type newType;
+      std::string w_name, requant_name;
+      if (i == 0) {
+        w_name = "w_quant_int8_for_" + module::getName(op.getOperation()).str();
+        requant_name = "requant_int8_for_" + module::getName(op.getOperation()).str();
+        cur_op.swap(int8_op);
+        newType = getQuantIntType(op.getOutput(), out_int8_scale, out_int8_zp);
+      } else {
+        w_name = "w_quant_int4_for_" + module::getName(op.getOperation()).str();
+        requant_name = "requant_int4_for_" + module::getName(op.getOperation()).str();
+        cur_op.swap(int4_op);
+        newType = getQuantInt4Type(op.getOutput(), asymmetric);
+      }
+      auto requant_name_loc = NameLoc::get(builder.getStringAttr(requant_name));
+      multiplier_v.clear();
+      rshift_v.clear();
+      for (int c = 0; c < attr.oc; c++) { // per-channel量化
+        float *p_filter = filter_f32->data() + c * inner_dim;
+        if (filterOp.getScale().has_value() && weight_scale_v->size()) {
+          scale_w = weight_scale_v->data()[c];
+        } else {
+          float w_max = findMaxabs(p_filter, inner_dim);
+          scale_w = std::max(w_max / fqmax, 1e-5f);
         }
-        for (uint32_t idx = 0; idx < user->getNumOperands(); idx++) {
-          if (op.getOutput() == user->getOperand(idx)) {
-            llvm::errs() << "setOperand, idx:" << idx << "\n";
-            user->setOperand(idx, value);
+        double scale_f;
+        if (i == 0)
+          scale_f = scale_w * in_scale / out_int8_scale;
+        else
+          scale_f = scale_w * in_scale / out_scale;
+        get_scale_and_shift(scale_f, int32_multiplier, shift, 32);
+        multiplier_v.push_back(int32_multiplier);
+        rshift_v.push_back(shift);
+      }
+      // requant
+      std::vector<int32_t> quant(attr.oc * 3, 0);
+      int64_t quant_w_size = 0;
+      if (module::isBM1686()) {
+        quant_w_size = 2;
+        for (size_t i = 0; i < attr.oc; ++i) {
+          quant[i * 2] = multiplier_v[i];
+          quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xff) |
+                            (((int32_t)out_zp & 0xffff) << 16);
+        }
+      } else {
+        quant_w_size = 3;
+        for (size_t i = 0; i < attr.oc; ++i) {
+          quant[i * 3] = multiplier_v[i];
+          quant[i * 3 + 1] = -rshift_v[i];
+          quant[i * 3 + 2] = out_zp;
+        }
+      }
+      auto quant_type = RankedTensorType::get({1, attr.oc, 1, 1, quant_w_size},
+                                              rewriter.getI32Type());
+      auto quant_value = top::WeightOp::create(op, w_name, quant, quant_type);
+
+      auto newValue = do_requant(requant_name_loc, conv_out, quant_value, newType,
+                                true, tpu::RequantMode::MultiplierShift);
+
+      for (auto op2 : cur_op) {
+        std::string str = module::getName(op2).str();
+        for (uint32_t idx = 0; idx < op2->getNumOperands(); idx++) {
+          if (op.getOutput() == op2->getOperand(idx)) {
+            llvm::errs() << "setOperand, idx:" << idx <<",name:"<<str<< "\n";
+            op2->setOperand(idx, newValue);
           }
         }
       }
     }
+    rewriter.replaceOp(op, {conv_out});
+  } else {
+    auto ctx = op->getContext();
+    attrs.push_back(rewriter.getNamedAttr(
+        "quant_mode",
+        tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
+    attrs.push_back(rewriter.getNamedAttr(
+        "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
+    attrs.push_back(rewriter.getNamedAttr(
+        "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
+
+    auto newType = getQuantInt4Type(op.getOutput(), asymmetric);
+    if (all_next_layer_is_int8) {
+      newType =
+          getQuantIntType(op.getOutput(), out_int8_scale, out_int8_zp);
+
+    }
+    auto newValue = CreateConvOp(rewriter, op.getKernelShape().size(),
+                                op->getLoc(), newType, operands, attrs);
+
+   
+    rewriter.replaceOp(op, {newValue});
   }
 
-  rewriter.replaceOp(op, {newValue});
   return;
 }
 

@@ -95,6 +95,35 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
   }
 };
 
+struct ForwardArg : public OpRewritePattern<top::ArgOp> {
+  using OpRewritePattern<top::ArgOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::ArgOp op,
+                                PatternRewriter &rewriter) const override {
+    if (module::isNone(op.getValues())) {
+      return failure();
+    }
+    auto in = op.getInput();
+    auto out = op.getValues();
+    if (!module::isCalibratedType(in)) {
+      return failure();
+    }
+    auto in_qtype = module::getCalibratedType(in);
+    if (module::isCalibratedType(out)) {
+      auto out_qtype = module::getCalibratedType(out);
+      if (in_qtype.getMax() == out_qtype.getMax() &&
+          in_qtype.getMin() == out_qtype.getMin()) {
+        return failure();
+      }
+    }
+    auto out_type = out.getType().cast<RankedTensorType>();
+    auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+    out.setType(new_type);
+    Forward(out);
+    return success();
+  }
+};
+
 template <typename TyOp>
 struct KeepSignPattern : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
@@ -332,6 +361,9 @@ public:
     assert(mode.has_value());
     module::setChip(chip.value());
     module::setMode(mode.value());
+    if (weightFileName != "") {
+      module::setWeightFileName(weightFileName);
+    }
     if (module::isState(module::State::TOP_QUANTIZED)) {
       module::setAsymmetric(true);
       LoweringConfig::isQuantized = true;
@@ -416,7 +448,8 @@ protected:
                  ForwardCalibartion<top::UpsampleOp>,
                  ForwardCalibartion<top::LeakyReluOp>,
                 //  ForwardCalibartion<top::PReluOp>,
-                 ForwardCalibartion<top::AbsOp>
+                 ForwardCalibartion<top::AbsOp>,
+                 ForwardArg
                 >(ctx_);
     // clang-format on
     if (!module::isCV18xx()) {

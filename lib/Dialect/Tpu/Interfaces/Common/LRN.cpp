@@ -68,3 +68,10 @@ LogicalResult tpu::LRNOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+LogicalResult tpu::LRNOp::LocalGenSupport() {
+  if (module::isCV18xx()) {
+    return success();
+  }
+  return failure();
+}

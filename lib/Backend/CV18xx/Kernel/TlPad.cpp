@@ -29,7 +29,6 @@ void cvi_backend_tl_pad(uint32_t layer_id, int64_t *input_dim,
 
   LLVM_DEBUG(llvm::errs() << llvm::format("la_output:%d\n", la_output));
 
-  CV18xx::parallel_disable();
 
   uint32_t in = input_dim[0];
   uint32_t ic = input_dim[1];
@@ -69,6 +68,7 @@ void cvi_backend_tl_pad(uint32_t layer_id, int64_t *input_dim,
   p1.constant = const_val;
   p1.dst = &tl_output;
   p1.layer_id = layer_id;
+  CV18xx::parallel_disable();
   CV18xx::tdma_g2l_tensor_fill_constant(&p1);
 
   tl_output.start_address = out_addr;
@@ -78,6 +78,7 @@ void cvi_backend_tl_pad(uint32_t layer_id, int64_t *input_dim,
   p2.src = &tl_input;
   p2.layer_id = layer_id;
   CV18xx::tdma_l2l_tensor_copy(&p2);
+  CV18xx::parallel_enable();
 }
 
 void cvi_backend_tl_bf16_pad(uint32_t layer_id, int64_t *input_dim,
@@ -93,7 +94,6 @@ void cvi_backend_tl_bf16_pad(uint32_t layer_id, int64_t *input_dim,
 
   LLVM_DEBUG(llvm::errs() << llvm::format("la_output:%d\n", la_output));
 
-  CV18xx::parallel_disable();
 
   uint32_t in = input_dim[0];
   uint32_t ic = input_dim[1];
@@ -133,6 +133,7 @@ void cvi_backend_tl_bf16_pad(uint32_t layer_id, int64_t *input_dim,
   p1.constant = CV18xx::convert_fp32_to_bf16(const_val);
   p1.dst = &tl_output;
   p1.layer_id = layer_id;
+  CV18xx::parallel_disable();
   CV18xx::tdma_g2l_tensor_fill_constant(&p1);
 
   tl_output.start_address = out_addr;
@@ -142,6 +143,7 @@ void cvi_backend_tl_bf16_pad(uint32_t layer_id, int64_t *input_dim,
   p2.src = &tl_input;
   p2.layer_id = layer_id;
   CV18xx::tdma_l2l_tensor_copy(&p2);
+  CV18xx::parallel_enable();
 }
 } // namespace backend
 } // namespace tpu_mlir

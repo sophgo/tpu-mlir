@@ -60,8 +60,8 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
 // LocalGenInterface
 // =========================================
 int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
     group_type_t group_type) {
   int64_t N, C, H, W;
   module::getNCHW(getInput(), N, C, H, W, group_type);
@@ -71,29 +71,29 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
   auto eu_num = BM168x::eu_num(sizeof(float));
   int64_t axis = group_type == GROUP_SMALL_C ? 2 : getAxis();
   if (axis == 2) {
-    buffer_size += c_per_npu * align_up(W, eu_num) * sizeof(float);
+    buffer_size += c_per_npu * align_up(in_wslice, eu_num) * sizeof(float);
   } else if (axis == 3) {
-    buffer_size += c_per_npu * align_up(in_hslice, eu_num) * sizeof(float);
+    buffer_size += c_per_npu * align_up(in_hslice, eu_num) * sizeof(float); 
   }
   // 32 coeff and 192 table
   buffer_size += align_up((int64_t)32, eu_num) * sizeof(float);
   buffer_size += align_up((int64_t)192, eu_num) * sizeof(float);
   buffer_size +=
-      c_per_npu * align_up(in_hslice * W, eu_num) * sizeof(float) * 2;
+      c_per_npu * align_up(in_hslice * in_wslice, eu_num) * sizeof(float) * 2;
   if (getLog()) {
-    buffer_size += c_per_npu * align_up(in_hslice * W, eu_num) * sizeof(float);
+    buffer_size += c_per_npu * align_up(in_hslice * in_wslice, eu_num) * sizeof(float);
   }
 
   return buffer_size;
 }
 
-void tpu::SoftmaxOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+void tpu::SoftmaxOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                            group_type_t group_type,
                                            local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
-  const auto &gi = getGroupInfo(n_step, h_step);
+  const auto &gi = getGroupInfo(n_step, h_step, d_step, w_step);
 
   float in_scale = 1.0;
   if (module::isUniformQuantized(getInput())) {

@@ -75,14 +75,14 @@ void tpu::InterpOp::codegen_global_bm1684x() {
 // =========================================
 
 int64_t tpu::InterpOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice, group_type_t group_type) {
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   return 0;
 }
 
-void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,) {
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0);
   int64_t n, c, ih, iw, oh, ow;
   module::getNCHW(getInput(), n, c, ih, iw);
   module::getNCHW(getOutput(), n, c, oh, ow);
@@ -92,9 +92,9 @@ void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.input_n = static_cast<int32_t>(in_gi.n_slice);
   param.input_c = static_cast<int32_t>(c);
   param.input_h = static_cast<int32_t>(in_gi.h_slice);
-  param.input_w = static_cast<int32_t>(iw);
+  param.input_w = static_cast<int32_t>(in_gi.w_slice);
   param.output_h = gi.h_slice;
-  param.output_w = ow;
+  param.output_w = gi.w_slice;
   param.pad_bag = 0;
   param.pad_end = 0;
   param.dtype = BM168x::getDataType(getInput());

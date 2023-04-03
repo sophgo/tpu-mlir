@@ -201,6 +201,7 @@ class OnnxConverter(BaseConverter):
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "Upsample": lambda node: self.convert_upsample_op(node),
             "Where": lambda node: self.convert_where_op(node),
+            "If": lambda node: self.convert_if_op(node),
         }
 
     def __del__(self):
@@ -381,13 +382,14 @@ class OnnxConverter(BaseConverter):
         is_ok = self.model_simplify()
         if (is_ok_ and not is_ok):
             print("WARNING: Onnx-sim failed caused by assign input_shape.")
+
         # add all weight
         for tensor in self.model.graph.initializer:
             name = tensor.name
             data = numpy_helper.to_array(tensor).astype(np.float32)
             self.addWeight(name, data)
             # TODO: for quantized onnx, keep the same type
-        self.add_shape_info()
+        self.add_shape_info(self.model.graph)
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         file_mark(self.onnx_file)
         onnx.save(self.model, self.onnx_file)
@@ -400,29 +402,31 @@ class OnnxConverter(BaseConverter):
             # fuse ops such as layernorm gelu...
             self.model, self.node_name_mapping = onnx_opt(self.model, True)
 
-    def add_shape_info(self):
+    def add_shape_info(self, graph):
         unk_op = []
         nodes_with_shape = []
-        for info in self.model.graph.value_info:
+        for info in graph.value_info:
             shape = [i.dim_value for i in info.type.tensor_type.shape.dim]
             if np.any(np.array(shape) <= 0):
                 unk_op.append(info.name)
             else:
                 self.addShape(info.name, shape)
             nodes_with_shape.append(info.name)
-        for output in self.model.graph.output:
+        for output in graph.output:
             if not self.isWeight(output.name):
                 self.output_names.append(output.name)
                 shape = [i.dim_value for i in output.type.tensor_type.shape.dim]
-            if np.any(np.array(shape) <= 0) or len(shape) == 0:
-                unk_op.append(output.name)
-            else:
-                self.addShape(output.name, shape)
-            nodes_with_shape.append(output.name)
+            var_exists = 'shape' in locals() or 'shape' in globals()
+            if var_exists:
+                if np.any(np.array(shape) <= 0) or len(shape) == 0:
+                    unk_op.append(output.name)
+                else:
+                    self.addShape(output.name, shape)
+                nodes_with_shape.append(output.name)
         # get unknow shape
         full_nodes = []
         no_list = ["Cast", "Shape", "Constant", "Unsqueeze", "Dropout", "Loop", "TopK"]
-        for n in self.model.graph.node:
+        for n in graph.node:
             if n.op_type in no_list:
                 continue
             for name in n.output:
@@ -585,12 +589,25 @@ class OnnxConverter(BaseConverter):
         if not self.isWeight(lhs) and self.isWeight(rhs):
             opd1_num_elem = np.prod(self.getShape(rhs))
             channel = output_shape[1]
+            is_scale = False
+            if opd1_num_elem == channel:
+                rhs_shape = self.getShape(rhs)
+                axis = len(output_shape) - len(rhs_shape)
+                if axis > 1:
+                    # the second dim (channel) need broadcast
+                    is_scale = False
+                elif rhs_shape[1 - axis] == channel:
+                    # all dim except channel is 1 need broadcast, use scaleop
+                    is_scale = True
+                else:
+                    # channel need broadcast, use addop
+                    is_scale = False
             lhs_op = self.getOp(lhs)
             if self.isScalar(rhs):
                 p['do_relu'] = False
                 p['const_val'] = self.getScalar(rhs)
                 new_op = self.mlir.create_add_const_op([lhs_op], output_shape, **p)
-            elif opd1_num_elem == channel:
+            elif is_scale:
                 bias = self.getWeight(rhs)
                 weight_data = np.ones_like(bias)
                 self.addWeight(name + '_scale', weight_data)
@@ -2215,3 +2232,64 @@ class OnnxConverter(BaseConverter):
         }
         new_op = self.mlir.create_nonzero_op([input_data], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
+    def parse_subgraph(self, op, region_idx, graph_node):
+        converted_nodes = list()
+        for n in graph_node.node:
+            node = OnnxNode(n)
+            converted_nodes.append(node)
+
+        unsupported = set()
+        for n in converted_nodes:
+            if n.op_type not in self.onnxop_factory:
+                unsupported.add(n.op_type)
+        if unsupported:
+            raise RuntimeError("Op not support:{}".format(unsupported))
+        initializer_names = [x.name for x in graph_node.initializer]
+        for name in initializer_names:
+            self.input_names.append(name)
+        region = op.regions[region_idx]
+        self.mlir.buildBlock(region)
+        self.mlir.reconfig_insert_point(region.blocks[0])
+        #Todo: maybe need to add block argument to entry block
+        # add all weight
+        for tensor in graph_node.initializer:
+            name = tensor.name
+            data = numpy_helper.to_array(tensor).astype(np.float32)
+            self.addWeight(name, data)
+        self.add_shape_info(graph_node)
+        for n in converted_nodes:
+            self.onnxop_factory.get(n.op_type, lambda x: NoneAndRaise(x))(n)
+
+        yield_op = list()
+        #remove the input/output tensor from self.input_names
+        for n in initializer_names:
+            self.input_names.remove(n)
+        #Todo: remove the shape/tensor from self.shapes/self.tensors
+        for output in graph_node.output:
+            if not self.isWeight(output.name):
+                self.output_names.remove(output.name)
+                op = self.getOperand(output.name)
+                yield_op.append(op)
+            else:
+                yield_op.append(self.getWeightOp(output.name))
+        self.mlir.create_yield_op(yield_op)
+
+    def convert_if_op(self, onnx_node):
+        assert (onnx_node.op_type == "If")
+        assert (len(onnx_node.inputs) == 1)
+        input_data = self.getOp(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "region": 2,
+        }
+        new_op = self.mlir.create_if_op([input_data], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+        for attr in onnx_node.node_proto.attribute:
+            #attr.type == 5 : graph
+            region_idx = 0 if attr.name == "then_branch" else 1
+            if attr.type == 5:
+                self.parse_subgraph(new_op.owner, region_idx, attr.g)
+        #restore the insert_point
+        self.mlir.restore_insert_point()

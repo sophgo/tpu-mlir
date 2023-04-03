@@ -408,6 +408,9 @@ int BM168x::compare_mode(StringRef mode) {
   if (mode == "LessOrEqual") {
     return BINARY_LE;
   }
+  if (mode == "NotEqual") {
+    return BINARY_NE;
+  }
   llvm_unreachable("Not Implemented");
 }
 

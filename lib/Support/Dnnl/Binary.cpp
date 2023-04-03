@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/Binary.h"
 #include "oneapi/dnnl/dnnl.hpp"
-
+#include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
 using namespace dnnl;
 
 namespace tpu_mlir {
@@ -19,27 +19,11 @@ Binary::Binary() {
 }
 
 void Binary::setup() {
-  // memory description with primitive description
-  auto op_desc = binary::desc(algorithm_, lhs_mem.get_desc(),
-                              rhs_mem.get_desc(), dst_mem.get_desc());
-  // define a primitive
-  using pd_t = binary::primitive_desc;
-
-  auto pd = pd_t();
-  if (do_relu_) {
-    dnnl::post_ops ops_eltwise;
-    // https://oneapi-src.github.io/oneDNN/dev_guide_eltwise.html
-    if (relu_limit_ > 0)
-      ops_eltwise.append_eltwise(1.0f, dnnl::algorithm::eltwise_clip, 0.f,
-                                 relu_limit_);
-    else
-      ops_eltwise.append_eltwise(1.0f, dnnl::algorithm::eltwise_relu, 0.f, 0.f);
-    dnnl::primitive_attr attr_po_eltwise;
-    attr_po_eltwise.set_post_ops(ops_eltwise);
-    pd = pd_t(op_desc, attr_po_eltwise, eng);
-  } else {
-    pd = pd_t(op_desc, eng);
-  }
+  primitive_attr relu_attr;
+  post_relu(relu_attr, do_relu_, relu_limit_);
+  auto pd =
+      binary::primitive_desc(eng, algorithm_, lhs_mem.get_desc(),
+                             rhs_mem.get_desc(), dst_mem.get_desc(), relu_attr);
   binary_prim = binary(pd);
 }
 

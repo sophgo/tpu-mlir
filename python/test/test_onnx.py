@@ -69,6 +69,7 @@ class ONNX_IR_TESTER(object):
             "ConvTrans2":   (self.test_ConvTrans2,  Y, N, Y),  #no pad
             "Clip":         (self.test_Clip,        Y, N, Y),
             "DepthToSpace": (self.test_DepthToSpace,Y, N, Y),
+            "Deconv":       (self.test_Deconv,      N, Y, N),
             "Div":          (self.test_Div,         Y, N, Y),
             "DivBcast":     (self.test_DivBcast,    Y, N, N),
             "DivBcast2":    (self.test_DivBcast2,   Y, N, N),
@@ -150,8 +151,8 @@ class ONNX_IR_TESTER(object):
             "Transpose":    (self.test_Transpose,   Y, N, Y),
             "Transpose2":   (self.test_Transpose2,  Y, N, Y),
             "TopK":         (self.test_TopK,        Y, N, N),
+            "Upsample":     (self.test_Upsample,    Y, N, N),
             "Where":        (self.test_Where,       Y, N, Y),
-            "Deconv":        (self.test_Deconv,       N, Y, N),
             #####################################
             # Torch Test Case, Alphabetically
             #####################################
@@ -160,7 +161,7 @@ class ONNX_IR_TESTER(object):
             "TorchArgmax":          (self.test_TorchArgmax,         N, N, N),
             "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N),
             "TorchChunk":           (self.test_TorchChunk,          Y, N, Y),
-            "TorchConv2d":          (self.test_TorchConv2d,           N, N, Y),
+            "TorchConv2d":          (self.test_TorchConv2d,         N, N, Y),
             "TorchConv3dTrans":     (self.test_TorchConv3dTrans,    Y, N, Y),
             "TorchHardSwish":       (self.test_TorchHardSwish,      Y, N, Y),
             "TorchHardSigmoid":     (self.test_TorchHardSigmoid,    Y, N, Y),
@@ -189,6 +190,7 @@ class ONNX_IR_TESTER(object):
             # Special Pass test case, Alphabetically
             #########################################
             # case: (test, bm1684x_support, bm1686_support, cv183x_support)
+            "ArgError":         (self.test_ArgError,        Y, N, N),
             "ArgReducefull":    (self.test_ArgReducefull,   Y, N, N),
             "ConcatFuse":       (self.test_ConcatFuse,      Y, N, Y),
             "ConcatToSpace":    (self.test_ConcatToSpace,   Y, N, N),
@@ -222,6 +224,8 @@ class ONNX_IR_TESTER(object):
             "SliceToReverse":   (self.test_SliceToReverse,  Y, N, N),
             "StaticDynMixed":   (self.test_StaticDynMixed,  Y, N, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, N, Y),
+            #"If":               (self.test_If,    Y, N, N)
+            #"If2":               (self.test_If_v2,    Y, N, N)
         }
         # yapf: enable
 
@@ -1990,6 +1994,18 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(4, 8, 60, 80).float()
         self.torch_and_test(x, Model(), case_name)
 
+    def test_Upsample(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.Upsample = nn.Upsample(scale_factor=2, mode="nearest")
+            def forward(self, x):
+                return self.Upsample(x)
+        x = torch.randn(2,64,184,320).float()
+        self.torch_and_test(x, Model(), case_name)
+
     def test_Deconv(self, case_name):
 
         class Model(nn.Module):
@@ -2060,7 +2076,7 @@ class ONNX_IR_TESTER(object):
               graph_def = helper.make_graph([arg_max], "{}_{}".format(case_name, keep),
                                           [input], [output1])
               self.onnx_and_test(graph_def)
-              return
+              continue
 
             output2 = helper.make_tensor_value_info('o_min', TensorProto.INT64, output_shape)
             arg_min = helper.make_node(
@@ -4065,6 +4081,25 @@ class ONNX_IR_TESTER(object):
                                       [arg_output])
         self.onnx_and_test(graph_def)
 
+    def test_ArgError(self, case_name):
+        input_shape = [1, 1000, 1, 1]
+        output_shape = [1, 1, 1, 1]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output1 = helper.make_tensor_value_info('o_max', TensorProto.INT64, output_shape)
+        x2 = helper.make_tensor_value_info('x2', TensorProto.FLOAT, input_shape)
+        relu_def = helper.make_node("Relu", inputs=['input'], outputs=['x2'])
+        arg_max = helper.make_node(
+            'ArgMax',
+            ['x2'],
+            ['o_max'],
+            keepdims=1,
+            axis=1,
+        )
+        graph_def = helper.make_graph([relu_def, arg_max], "{}".format(case_name),
+                                        [input], [output1, x2])
+        self.onnx_and_test(graph_def)
+
     def test_ArgReducefull(self, case_name):
         input_shape = [2, 3, 4]
         arg_axis = 0
@@ -4449,6 +4484,232 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(4, 8, 32, 32).float()
         self.torch_and_test(x, Model(), case_name)
 
+    def test_If(self, case_name):
+        from onnx.numpy_helper import from_array
+        from onnx.helper import (
+            make_node, make_graph, make_model, make_tensor_value_info)
+        # initializers
+        value = np.array([0], dtype=np.float32)
+        zero = from_array(value, name='zero')
+        value2 = np.array([0,1], dtype=np.int64)
+        axes = from_array(value2, name='axes')
+        input_shape = [5,5]
+        # Same as before, X is the input, Z is the output.
+        X = make_tensor_value_info('X', onnx.TensorProto.FLOAT, input_shape)
+        Z = make_tensor_value_info('Z', onnx.TensorProto.FLOAT, input_shape)
+        # The node building the condition. The first one
+        # sum over all axes.
+        rsum = make_node('ReduceSum', ['X','axes'], ['rsum'], keepdims=0)
+        # The second compares the result to 0.
+        cond = make_node('Greater', ['rsum', 'zero'], ['cond'])
+
+        # Builds the graph is the condition is True.
+        # Input for then
+        then_out_data = np.random.rand(*input_shape).astype(np.float32)
+        then_out2_data = np.random.rand(*input_shape).astype(np.float32)
+        then_const_node = onnx.helper.make_node(
+                    'Constant',
+                    inputs=[],
+                    outputs=['then_out'],
+                    value=onnx.helper.make_tensor(
+                        name='const_tensor',
+                        data_type=onnx.TensorProto.FLOAT,
+                        dims=then_out_data.shape,
+                        vals=then_out_data.flatten(),
+                    ),
+                )
+
+        then2_const_node = onnx.helper.make_node(
+            'Constant',
+            inputs=[],
+            outputs=['then2_out'],
+            value=onnx.helper.make_tensor(
+                name='const_tensor',
+                data_type=onnx.TensorProto.FLOAT,
+                dims=then_out2_data.shape,
+                vals=then_out2_data.flatten(),
+            ),
+        )
+
+        then3_out = make_tensor_value_info(
+            'then3_out', onnx.TensorProto.FLOAT, input_shape)
+
+        then_node = helper.make_node(
+        "Add", # node name
+        ["then_out", "then2_out"], # inputs
+        ["then3_out"] # outputs
+        )
+
+        # And the graph wrapping these elements.
+        then_body = make_graph(
+            [then_const_node, then2_const_node, then_node], 'then_body', [], [then3_out])
+
+        # Same process for the else branch.
+        else_out_data = np.random.rand(*input_shape).astype(np.float32)
+        else_out2_data = np.random.rand(*input_shape).astype(np.float32)
+        else_const_node = onnx.helper.make_node(
+                    'Constant',
+                    inputs=[],
+                    outputs=['else_out'],
+                    value=onnx.helper.make_tensor(
+                        name='const_tensor',
+                        data_type=onnx.TensorProto.FLOAT,
+                        dims=else_out_data.shape,
+                        vals=else_out_data.flatten(),
+                    ),
+                )
+
+        else2_const_node = onnx.helper.make_node(
+                    'Constant',
+                    inputs=[],
+                    outputs=['else2_out'],
+                    value=onnx.helper.make_tensor(
+                        name='const_tensor',
+                        data_type=onnx.TensorProto.FLOAT,
+                        dims=else_out2_data.shape,
+                        vals=else_out2_data.flatten(),
+                    ),
+                )
+        else3_out = make_tensor_value_info(
+            'else3_out', onnx.TensorProto.FLOAT, input_shape)
+
+        else_node = helper.make_node(
+        'Sub', # node name
+        ["else_out", "else2_out"], # inputs
+        ['else3_out']# outputs
+        )
+
+        else_body = make_graph(
+            [else_const_node, else2_const_node, else_node], 'else_body',
+            [], [else3_out])
+
+        # Finally the node If taking both graphs as attributes.
+        if_node = onnx.helper.make_node(
+            "If", ["cond"], ["Z"],
+            then_branch=then_body,
+            else_branch=else_body)
+
+        # The final graph.
+        graph_def = make_graph([rsum, cond, if_node], "if", [X], [Z], [zero, axes])
+        self.onnx_and_test(graph_def)
+
+    def test_If_v2(self, case_name):
+        #test if op case2: cover more usage scene of onnx if op
+        from onnx.numpy_helper import from_array
+        from onnx.helper import (
+            make_node, make_graph, make_model, make_tensor_value_info)
+        # initializers
+        value = np.array([0], dtype=np.float32)
+        zero = from_array(value, name='zero')
+        value2 = np.array([0,1], dtype=np.int64)
+        axes = from_array(value2, name='axes')
+        shape = [5,5]
+        # Same as before, X is the input, Y is the output.
+        X = make_tensor_value_info('X', onnx.TensorProto.FLOAT, shape)
+        Z = make_tensor_value_info('Z', onnx.TensorProto.FLOAT, shape)
+        Y = make_tensor_value_info('Y', onnx.TensorProto.FLOAT, shape)
+        K = make_tensor_value_info('K', onnx.TensorProto.FLOAT, shape)
+        # The node building the condition. The first one
+        # sum over all axes.
+        rsum = make_node('ReduceSum', ['X','axes'], ['rsum'], keepdims=0)
+        # The second compares the result to 0.
+        cond = make_node('Greater', ['rsum', 'zero'], ['cond'])
+
+        # Builds the graph is the condition is True.
+        # Input for then
+        then_out_data = np.random.rand(*shape).astype(np.float32)
+        then_out2_data = np.random.rand(*shape).astype(np.float32)
+        then_const_node = onnx.helper.make_node(
+                    'Constant',
+                    inputs=[],
+                    outputs=['then_out'],
+                    value=onnx.helper.make_tensor(
+                        name='const_tensor',
+                        data_type=onnx.TensorProto.FLOAT,
+                        dims=then_out_data.shape,
+                        vals=then_out_data.flatten(),
+                    ),
+                )
+
+        then2_const_node = onnx.helper.make_node(
+                    'Constant',
+                    inputs=[],
+                    outputs=['then2_out'],
+                    value=onnx.helper.make_tensor(
+                        name='const_tensor',
+                        data_type=onnx.TensorProto.FLOAT,
+                        dims=then_out2_data.shape,
+                        vals=then_out2_data.flatten(),
+                    ),
+                )
+        then4_out = make_tensor_value_info(
+            'then4_out', onnx.TensorProto.FLOAT, shape)
+
+        then_node = helper.make_node(
+        "Add", # node name
+        ["Y", "then2_out"], # inputs
+        ["then3_out"] # outputs
+        )
+
+        mul_node = helper.make_node(
+        "Mul", # node name
+        ["then3_out", "then_out"], # inputs
+        ["then4_out"] # outputs
+        )
+
+        # And the graph wrapping these elements.
+        then_body = make_graph(
+            [then2_const_node, then_node, then_const_node, mul_node], 'then_body', [], [then4_out])
+
+        # Same process for the else branch.
+        else_out_data = np.random.rand(*shape).astype(np.float32)
+        else_out2_data = np.random.rand(*shape).astype(np.float32)
+        else_const_node = onnx.helper.make_node(
+                    'Constant',
+                    inputs=[],
+                    outputs=['else_out'],
+                    value=onnx.helper.make_tensor(
+                        name='const_tensor',
+                        data_type=onnx.TensorProto.FLOAT,
+                        dims=else_out_data.shape,
+                        vals=else_out_data.flatten(),
+                    ),
+                )
+
+        else2_const_node = onnx.helper.make_node(
+                    'Constant',
+                    inputs=[],
+                    outputs=['else2_out'],
+                    value=onnx.helper.make_tensor(
+                        name='const_tensor',
+                        data_type=onnx.TensorProto.FLOAT,
+                        dims=else_out2_data.shape,
+                        vals=else_out2_data.flatten(),
+                    ),
+                )
+        else3_out = make_tensor_value_info(
+            'else3_out', onnx.TensorProto.FLOAT, shape)
+
+        else_node = helper.make_node(
+        'Sub', # node name
+        ["K", "else2_out"], # inputs
+        ['else3_out']# outputs
+        )
+
+        else_body = make_graph(
+            [else2_const_node, else_node], 'else_body',
+            [], [else3_out])
+
+        # Finally the node If taking both graphs as attributes.
+        if_node = onnx.helper.make_node(
+            "If", ["cond"], ["Z"],
+            then_branch=then_body,
+            else_branch=else_body)
+
+        # The final graph.
+        graph_def = make_graph([rsum, cond, if_node], "if", [X, Y, K], [Z], [zero, axes])
+
+        self.onnx_and_test(graph_def)
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:

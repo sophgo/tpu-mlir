@@ -81,30 +81,69 @@ public:
     if (attr.simplified == false) {
       llvm_unreachable("Not Implemented");
     }
-    auto type = module::getStorageType(reduceOp.getInput());
-    auto input_spec = BM168x::get_input_spec(reduceOp);
-    auto output_spec = BM168x::get_output_spec(reduceOp);
-    BM168x::fix_shape(input_spec->at(0), {attr.outer_n, attr.outer_c,
-                                          attr.axis_dims, attr.inner_dims});
-    BM168x::fix_shape(output_spec->at(0),
-                      {attr.outer_n, attr.outer_c, 1, attr.inner_dims});
-    reduce_full_global_param_t param = {0};
-    param.spec.common.axis_num = 1;
-    param.spec.common.axis[0] = 2;
-    param.spec.common.method = BM168x::get_reduce_type(reduceOp.getMode());
-    param.if_getting_buffer_size = true;
-    uint64_t buffer_size = 0;
-    param.buffer_size_ptr = &buffer_size;
-    BM168x::call_global_func("backend_api_reduce_full_global", &param,
-                             sizeof(param), input_spec->data(),
-                             output_spec->data());
-    if (buffer_size > 0) {
-      std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
-      auto buffer_type = RankedTensorType::get(buffer_shape, type);
-      auto buffer = tpu::BufferOp::create(reduceOp, buffer_type);
-      reduceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-        return operand.get() == reduceOp.getBuffer();
-      });
+    if (module::isBM1684XFamily()) {
+      auto type = module::getStorageType(reduceOp.getInput());
+      auto input_spec = BM168x::get_input_spec(reduceOp);
+      auto output_spec = BM168x::get_output_spec(reduceOp);
+      BM168x::fix_shape(input_spec->at(0), {attr.outer_n, attr.outer_c,
+                                            attr.axis_dims, attr.inner_dims});
+      BM168x::fix_shape(output_spec->at(0),
+                        {attr.outer_n, attr.outer_c, 1, attr.inner_dims});
+      reduce_full_global_param_t param = {0};
+      param.spec.common.axis_num = 1;
+      param.spec.common.axis[0] = 2;
+      param.spec.common.method = BM168x::get_reduce_type(reduceOp.getMode());
+      param.if_getting_buffer_size = true;
+      uint64_t buffer_size = 0;
+      param.buffer_size_ptr = &buffer_size;
+      BM168x::call_global_func("backend_api_reduce_full_global", &param,
+                               sizeof(param), input_spec->data(),
+                               output_spec->data());
+      if (buffer_size > 0) {
+        std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+        auto buffer_type = RankedTensorType::get(buffer_shape, type);
+        auto buffer = tpu::BufferOp::create(reduceOp, buffer_type);
+        reduceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+          return operand.get() == reduceOp.getBuffer();
+        });
+      }
+    } else if (module::isBM1684Family()) {
+      auto type = module::getStorageType(reduceOp.getInput());
+      auto in_addr = module::getAddress(reduceOp.getInput());
+      auto out_addr = module::getAddress(reduceOp.getOutput());
+      int input_dims = module::getShape(reduceOp.getInput()).size();
+      uint64_t buffer_size = 0;
+      uint64_t *buffer_size_ptr = &buffer_size;
+      uint32_t *input_shape = new uint32_t[MAX_SHAPE_DIMS];
+      for (auto v : llvm::enumerate(module::getShape(reduceOp.getInput())))
+        input_shape[v.index()] = (uint32_t)v.value();
+      auto &&axes = reduceOp.getAxes();
+      int axis_num = axes.size();
+      int axis_list[axis_num];
+      for (int i = 0; i < axes.size(); i++)
+        axis_list[i] = (axes[i].cast<IntegerAttr>().getInt());
+      int method = BM1684::get_reduce_type(reduceOp.getMode());
+      uint64_t buffer_addr = module::getAddress(reduceOp.getBuffer());
+      if (BM1684::getDataType(reduceOp.getInput()) == DTYPE_FP32 ||
+          BM1684::getDataType(reduceOp.getInput()) == DTYPE_INT32 ||
+          BM1684::getDataType(reduceOp.getInput()) == DTYPE_UINT32) {
+        BM1684::instance().dl_nodechip_reduce_full_v3(
+            in_addr, out_addr, (const uint32_t *)input_shape, input_dims,
+            axis_list, axis_num, method, buffer_addr, buffer_size_ptr,
+            (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      } else {
+        int keep_dims = reduceOp.getKeepdims() ? 1 : 0;
+        buffer_size = BM1684::instance().dl_nodechip_reduce_get_buffer_size_fix8b(
+            input_shape, input_dims, axis_list, axis_num, method, keep_dims);
+      }
+      if (buffer_size > 0) {
+        std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+        auto buffer_type = RankedTensorType::get(buffer_shape, type);
+        auto buffer = tpu::BufferOp::create(reduceOp, buffer_type);
+        reduceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+          return operand.get() == reduceOp.getBuffer();
+        });
+      }
     }
 
     return success();

@@ -62,7 +62,8 @@ LogicalResult tpu::ArgOp::inference(InferenceParameter &p) {
               target_val = v;
             }
           }
-          p.outputs[0][o * tile_num * inner_dims + t * inner_dims + i] = target_val;
+          p.outputs[0][o * tile_num * inner_dims + t * inner_dims + i] =
+              target_val;
         }
       }
     }
@@ -89,9 +90,14 @@ LogicalResult tpu::ArgOp::inference(InferenceParameter &p) {
 }
 
 mlir::Type tpu::ArgOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  auto op = getOperation();
   if (module::isCV18xx()) {
-    auto op = getOperation();
     return type_verify_case_same(op, opd_idx, mode);
+  } else {
+    return type_verify_case_type(op, opd_idx, Builder(op).getF32Type(), mode);
   }
+  // } else if (module::isNone(getValues()) == false) {
+  //   return type_verify_case_type(op, opd_idx, getValues().getType(), mode);
+  // }
   return do_nothing(mode);
 }
