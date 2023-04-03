@@ -35,17 +35,11 @@ def mlir_lowering(top_mlir: str,
                   cali_table: str = None,
                   asymmetric: bool = False,
                   quantize_table: str = None,
-                  qdq: bool = False,
                   customization_format: str = None,
                   fuse_preprocess: bool = False,
                   aligned_input: bool = False):
     cmd = ["tpuc-opt", top_mlir]
     mode = mode.upper()
-    if mode == 'QDQ':
-        assert cali_table == None, "qdq cannot work with cali_table"
-        assert quantize_table == None, "qdq cannot work with quantize_table"
-        cmd.extend(["--convert-qdq-to-calibrated-dialect"])
-        mode = 'INT8'
     if mode != 'INT8':
         asymmetric = True
     if mode == 'INT4':

@@ -201,7 +201,7 @@ class TORCH_IR_TESTER(object):
 
         input_npz = "{}_ref_in_fp32.npz".format(model_name)
         ref_npz = model_name + '_ref_outputs.npz'
-        top_npz = model_name + "_top_outputs.npz"
+        self.top_npz = model_name + "_top_outputs.npz"
         input_data = {}
         for idx, name in enumerate(tool.converter.input_names):
             input_data[name] = np.random.random(size=in_shapes[idx]).astype(np.float32)
@@ -212,30 +212,27 @@ class TORCH_IR_TESTER(object):
         torch_outs = torch_inference(input_data, torch_model, True)
         np.savez(ref_npz, **torch_outs)
         file_mark(ref_npz)
-        show_fake_cmd(input_npz, fp32_mlir, top_npz)
+        show_fake_cmd(input_npz, fp32_mlir, self.top_npz)
         top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
-        np.savez(top_npz, **top_mlir_outs)
+        np.savez(self.top_npz, **top_mlir_outs)
+        self.table_name = "{}_cali_table".format(model_name)
+        self.make_test_calibration_table(top_mlir_outs, self.table_name)
         return (torch_outs, top_mlir_outs, input_npz)
 
-    def bmodel_generate(self,
-                        model_name: str,
-                        top_mlir_outs: dict,
-                        quant_mode: str,
-                        isAsym: bool = False):
-        table_name = None
+    def bmodel_generate(self, model_name: str, quant_mode: str, isAsym: bool = False):
         top_mlir = "{}.mlir".format(model_name)
         tpu_mlir = "{}_{}".format(model_name, quant_mode)
+        table = None
         if quant_mode == "int8":
             tpu_mlir += "_asym" if isAsym else "_sym"
-            table_name = "{}_cali_table".format(model_name)
-            self.make_test_calibration_table(top_mlir_outs, table_name)
+            table = self.table_name
 
         # lowering
         mlir_lowering(top_mlir,
                       tpu_mlir + ".mlir",
                       mode=quant_mode,
                       chip=self.chip,
-                      cali_table=table_name,
+                      cali_table=table,
                       asymmetric=isAsym)
 
         # transform
@@ -246,7 +243,6 @@ class TORCH_IR_TESTER(object):
         return (tpu_mlir + ".mlir", bmodel)
 
     def inference_and_compare(self,
-                              torch_output: dict,
                               tpu_mlir: str,
                               bmodel: str,
                               input_npz: str,
@@ -255,17 +251,14 @@ class TORCH_IR_TESTER(object):
                               isAsym: bool = False):
         ref_tpu_tolerance = "0.9,0.9"
         input_data = np.load(input_npz)
-        # save ref
-        ref_npz = "{}_ref_outputs.npz".format(model_name)
         # tpu mlir inference and compare
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
         show_fake_cmd(input_npz, tpu_mlir, tpu_npz)
         tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
-        np.savez(ref_npz, **torch_output)
         np.savez(tpu_npz, **tpu_mlir_outs)
-        file_mark(ref_npz)
+        file_mark(self.top_npz)
         file_mark(tpu_npz)
-        npz_compare([ref_npz, tpu_npz, "--tolerance", ref_tpu_tolerance, "-v"])
+        npz_compare([self.top_npz, tpu_npz, "--tolerance", ref_tpu_tolerance, "-v"])
         # bmodel inference and compare
         model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
         show_fake_cmd(input_npz, bmodel, model_npz)
@@ -306,14 +299,12 @@ class TORCH_IR_TESTER(object):
         for quant_mode in self.quant_modes:
             if quant_mode == "int8" or quant_mode == "int4":
                 for isAsym in self.support_asym:
-                    tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, quant_mode,
-                                                            isAsym)
-                    self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz,
-                                               quant_mode, model_name, isAsym)
+                    tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode, isAsym)
+                    self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name,
+                                               isAsym)
             else:
-                tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, quant_mode)
-                self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz, quant_mode,
-                                           model_name)
+                tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode)
+                self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name)
 
     #######################################################################
     # Convolution
@@ -698,8 +689,10 @@ class TORCH_IR_TESTER(object):
     def test_SplitReshape(self):
 
         class Model(torch.nn.Module):
+
             def __init__(self):
                 super(Model, self).__init__()
+
             def forward(self, x):
                 a, b, c, d = torch.chunk(x, 4, 1)
                 a = torch.reshape(a, (1, 1, -1, 3))
@@ -732,6 +725,7 @@ class TORCH_IR_TESTER(object):
     def test_ConstantFill(self):
 
         def _test_constant_fill(func, shape, type=None):
+
             class Model(torch.nn.Module):
 
                 def __init__(self):
@@ -755,6 +749,7 @@ class TORCH_IR_TESTER(object):
     def test_Reduce(self):
 
         def _test_reduce(func, shape, dim=None, keepdim=False):
+
             class Model(torch.nn.Module):
 
                 def __init__(self):
@@ -768,10 +763,10 @@ class TORCH_IR_TESTER(object):
 
         # _test_reduce(torch.sum, (2, 3, 64, 64))
         _test_reduce(torch.sum, (1, 3, 64, 64), 1, True)
-        _test_reduce(torch.sum, (2, 3, 64, 64), [0,1,2])
+        _test_reduce(torch.sum, (2, 3, 64, 64), [0, 1, 2])
         # _test_reduce(torch.mean, (2, 3, 64, 64))
         _test_reduce(torch.mean, (1, 3, 64, 64), 1, True)
-        _test_reduce(torch.mean, (2, 3, 64, 64), [1,2])
+        _test_reduce(torch.mean, (2, 3, 64, 64), [1, 2])
 
     #######################################################################
     # Pow
@@ -779,6 +774,7 @@ class TORCH_IR_TESTER(object):
     def test_Pow(self):
 
         def _test_pow(shape, exp):
+
             class Model(torch.nn.Module):
 
                 def __init__(self):

@@ -2036,7 +2036,7 @@ class OnnxConverter(BaseConverter):
 
     def convert_layer_norm_op(self, onnx_node):
         assert (onnx_node.op_type == "LayerNormalization")
-        assert (len(onnx_node.inputs) in (2, 3))
+        assert (len(onnx_node.inputs) <= 3)
         input_shape = self.getShape(onnx_node.inputs[0])
         num_dims = len(input_shape)
         axis = onnx_node.attrs.get("axis", -1)
