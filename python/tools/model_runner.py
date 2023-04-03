@@ -151,7 +151,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         elif i.dtype == "u4" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, 0, 15).astype(np.uint8).reshape(i.data.shape)
-
+        elif i.dtype == "f32":
+            i.data[:] = input.astype(np.float32)
         else:
             raise ValueError(f"unknown type: form {input.dtype} to {i.data.dtype}")
     if not is_dynamic:
