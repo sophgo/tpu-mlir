@@ -6,10 +6,10 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
+#include "tpu_mlir/Conversion/Conversion.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include "tpu_mlir/Conversion/Conversion.h"
 #include "tpu_mlir/Support/Module.h"
 #include <fstream>
 #include <regex>
@@ -346,6 +346,37 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   }
 };
 
+struct CastInputPattern : public OpRewritePattern<tpu::CastOp> {
+  using OpRewritePattern<tpu::CastOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::CastOp op,
+                                PatternRewriter &rewriter) const override {
+    auto setOpResultType = [](Value value, Type eltType) {
+      auto shape = module::getShape(value);
+      auto type = RankedTensorType::get(shape, eltType);
+      value.setType(type);
+    };
+
+    auto prevOp = op->getOperand(0).getDefiningOp();
+    if (isa<tpu::ReshapeOp>(prevOp)) {
+      prevOp = prevOp->getOperand(0).getDefiningOp();
+    }
+    if (!isa<top::InputOp>(prevOp)) {
+      return failure();
+    }
+    auto storage_type = module::getStorageType(op->getResult(0));
+    if (storage_type.isIntOrIndex() &&
+        storage_type.getIntOrFloatBitWidth() == 16) {
+      // setOpResultType(prevOp->getOperand(0), storage_type);
+      setOpResultType(prevOp->getResult(0), storage_type);
+      setOpResultType(op->getOperand(0), storage_type);
+      rewriter.replaceOp(op, {op->getOperand(0)});
+      return success();
+    }
+    return failure();
+  }
+};
+
 struct ConvertTopToTpu : public ::impl::ConvertTopToTpuBase<ConvertTopToTpu> {
 public:
   void runOnOperation() override {
@@ -372,6 +403,7 @@ public:
       module::setAsymmetric(isAsymmetric);
       if (module::isCV18xx()) {
         all_int8_process();
+        input_type_process();
         module::updateModuleTypes();
       }
       calibration_process();
@@ -396,6 +428,11 @@ public:
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     cast_process();
     relu_process();
+    if (module::isCV18xx()) {
+      patterns.clear();
+      patterns.add<CastInputPattern>(ctx_);
+      applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    }
     module::updateModuleTypes();
     module::setState(module::State::TPU_LOWERED);
   }
@@ -485,6 +522,29 @@ protected:
             auto new_type =
                 RankedTensorType::get(module::getShape(value), quant_type);
             value.setType(new_type);
+          }
+        }
+      }
+    });
+  }
+
+  void input_type_process() {
+    mainFunc_.walk([&](Operation *op) {
+      if (isa<top::InputOp>(op)) {
+        auto output_value = op->getResult(0);
+        auto storage_type = module::getStorageType(output_value);
+        if (storage_type.isIntOrIndex()) {
+          if (module::isCalibratedType(output_value)) {
+            auto cali_type = module::getCalibratedType(output_value);
+            auto ele_type = RankedTensorType::get(
+                module::getShape(output_value), Builder(op).getF32Type());
+            auto new_type = quant::CalibratedQuantizedType::get(
+                ele_type, cali_type.getMin(), cali_type.getMax());
+            output_value.setType(new_type);
+          } else {
+            auto new_type = RankedTensorType::get(
+                module::getShape(output_value), Builder(op).getF32Type());
+            output_value.setType(new_type);
           }
         }
       }

@@ -132,7 +132,9 @@ void cvi_backend_tl_lrn(uint32_t layer_id, laddr_t ifmap_laddr,
     lrn_shift_p.src = &top;
     lrn_shift_p.right_shift = false;
     lrn_shift_p.lrn_step = step;
+    CV18xx::parallel_disable();
     CV18xx::tdma_l2l_tensor_lrn_shift(&lrn_shift_p);
+    CV18xx::parallel_enable();
 
     cvk_tiu_mac_param_t p3 = {0};
     p3.res_high = &sum_high;
@@ -152,7 +154,9 @@ void cvi_backend_tl_lrn(uint32_t layer_id, laddr_t ifmap_laddr,
     lrn_shift_p.src = &top;
     lrn_shift_p.right_shift = true;
     lrn_shift_p.lrn_step = step;
+    CV18xx::parallel_disable();
     CV18xx::tdma_l2l_tensor_lrn_shift(&lrn_shift_p);
+    CV18xx::parallel_enable();
 
     p3.res_high = &sum_high;
     p3.res_low = &sum;

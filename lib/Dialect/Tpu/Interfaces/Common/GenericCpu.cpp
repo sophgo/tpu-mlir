@@ -355,7 +355,7 @@ mlir::Type tpu::GenericCpuOp::type_verify(uint64_t opd_idx,
   auto op = getOperation();
   if (func_name == "embedding") {
     if (opd_idx == 0) {
-      return do_nothing(mode);
+      return type_verify_case_type(op, opd_idx, Builder(op).getIntegerType(16, false), mode);
     }
     return type_verify_case_same(op, opd_idx, mode);
   }

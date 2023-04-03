@@ -1149,6 +1149,13 @@ public:
     cv18xx->cvk_ctx_->ops->tdma_g2g_bf16_tensor_copy(cv18xx->cvk_ctx_, param);
   }
 
+  // Attention: lookup_interp_table function include tdma operation
+  static void tiu_bf16_lookup_interp_table(
+      cvk_tiu_bf16_lookup_interp_table_param_t *param) {
+    cv18xx->cvk_ctx_->ops->tiu_bf16_lookup_interp_table(cv18xx->cvk_ctx_,
+                                                        param);
+  }
+
   //
   // tiu kernel api
   //
@@ -1216,12 +1223,6 @@ public:
 
   static void tiu_lookup_table(const cvk_tiu_lookup_table_param_t *param) {
     cv18xx->cvk_ctx_->ops->tiu_lookup_table(cv18xx->cvk_ctx_, param);
-  }
-
-  static void tiu_bf16_lookup_interp_table(
-      cvk_tiu_bf16_lookup_interp_table_param_t *param) {
-    cv18xx->cvk_ctx_->ops->tiu_bf16_lookup_interp_table(cv18xx->cvk_ctx_,
-                                                        param);
   }
 
   static void tiu_pt_convolution(const cvk_tiu_pt_convolution_param_t *param) {

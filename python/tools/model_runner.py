@@ -137,14 +137,14 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         elif i.dtype == "u8" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8).reshape(i.data.shape)
+        elif i.dtype == "u16" and (input.dtype == np.float32 or input.dtype == np.int32):
+            i.data[:] = input.astype(np.uint16).reshape(i.data.shape)
         elif i.dtype == "f16" and input.dtype == np.float32:
             i.data[:] = input.astype(np.float16)
         elif i.dtype == "bf16" and input.dtype == np.float32:
-            i.data[:] = fp32_to_bf16(input)
-        elif i.dtype == "i32" and input.dtype == np.float32:
+            i.data[:] = fp32_to_bf16(input).reshape(i.data.shape)
+        elif i.dtype == "i32" and (input.dtype == np.float32 or input.dtype == np.int64):
             i.data[:] = input.astype(np.int32).reshape(i.data.shape)
-        elif i.dtype == "i32" and input.dtype == np.int64:
-            i.data[:] = input.astype(np.int32)
         elif i.dtype == "i4" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, -8, 7).astype(np.int8).reshape(i.data.shape)
@@ -169,6 +169,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
                 zp = i.qzero_point
                 outputs[i.name] = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
                                            dtype=np.float32)
+        elif (i.dtype == 'u16'):
+            outputs[i.name] = np.array(i.data.astype(np.float32))
         elif (i.dtype == "f16"):
             outputs[i.name] = np.array(i.data.astype(np.float32))
         elif (i.dtype == "bf16"):

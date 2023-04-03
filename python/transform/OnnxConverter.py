@@ -132,6 +132,7 @@ class OnnxConverter(BaseConverter):
             "DequantizeLinear": lambda node: self.convert_deqlinear_op(node),
             "Div": lambda node: self.convert_div_op(node),
             "Dropout": lambda node: self.convert_skip_op(node),
+            "Einsum": lambda node: self.convert_einsum_op(node),
             "Elu": lambda node: self.convert_elu_op(node),
             "Erf": lambda node: self.convert_erf_op(node),
             "Exp": lambda node: self.convert_exp_op(node),
@@ -1271,6 +1272,40 @@ class OnnxConverter(BaseConverter):
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_log_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_einsum_op(self, onnx_node):
+        assert (onnx_node.op_type == "Einsum")
+        equation = onnx_node.attrs.get("equation")
+        if equation == b"bfnd,ndh->bfh":
+            lhs = self.getOperand(onnx_node.inputs[0])
+            rhs = self.getOp(onnx_node.inputs[1])
+            lhs_shape = self.getShape(onnx_node.inputs[0])
+            rhs_shape = self.getShape(onnx_node.inputs[1])
+            output_shape = self.getShape(onnx_node.name)
+            if not self.isWeight(lhs):
+                lhs_reshape_rst = [lhs_shape[0] * lhs_shape[1], lhs_shape[2] * lhs_shape[3]]
+                p = {'name': "{}_{}".format(onnx_node.name, "lhs_reshape")}
+                lhs_reshape_op = self.mlir.create_reshape_op([lhs], lhs_reshape_rst, **p)
+                if not self.isWeight(rhs):
+                    rhs_reshape_rst = [rhs_shape[0] * rhs_shape[1], rhs_shape[2]]
+                    p = {'name': "{}_{}".format(onnx_node.name, "rhs_reshape")}
+                    rhs_reshape_op = self.mlir.create_reshape_op([rhs], rhs_reshape_rst, **p)
+                    matmul_shape = [lhs_shape[0] * lhs_shape[1], rhs_shape[2]]
+                    p = {'name': "{}_{}".format(onnx_node.name, "matmul"), 'do_relu': False}
+                    matmul_op = self.mlir.create_matmul_op([lhs_reshape_op, rhs_reshape_op, self.mlir.none_op], matmul_shape, **p)
+                    p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+                    output_reshape_op = self.mlir.create_reshape_op([matmul_op], output_shape, **p)
+                    self.addOperand(onnx_node.name, output_reshape_op)
+                    return
+                else:
+                    weight_shape = [rhs_shape[0] * rhs_shape[1], lhs_shape[2]]
+                    weight_op = self.getWeightOp(onnx_node.inputs[1], weight_shape)
+                    matmul_shape = [lhs_shape[0] * lhs_shape[1], rhs_shape[2]]
+                    p = {'name': "{}_{}".format(onnx_node.name, "matmul"), 'do_relu': False}
+                    matmul_op = self.mlir.create_matmul_op([lhs_reshape_op, weight_op, self.mlir.none_op], matmul_shape, **p)
+                    self.addOperand(onnx_node.name, matmul_op)
+                    return
+        raise RuntimeError("Einsum {}, {} not support now".format(onnx_node.name, equation))
 
     def convert_exp_op(self, onnx_node):
         assert (onnx_node.op_type == "Exp")
