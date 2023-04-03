@@ -96,7 +96,7 @@ class DeployTool:
         file_mark(self.tpu_mlir)
         self.final_mlir = "{}_final.mlir".format(self.prefix)
         mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
-                      self.asymmetric, self.quantize_table, False, self.customization_format,
+                      self.asymmetric, self.quantize_table, self.customization_format,
                       self.fuse_preprocess, self.aligned_input)
         if self.do_validate:
             tool.validate_tpu_mlir()
