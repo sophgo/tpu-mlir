@@ -128,7 +128,7 @@ void pad_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
 void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
                            int h, int w, int kd, int kh, int kw, int dd, int dh,
                            int dw, int sd, int sh, int sw, int pdf, int pdb,
-                           int pht, int phb, int pwl, int pwr, float pad_value);
+                           int pht, int phb, int pwl, int pwr, int opd, int oph, int opw, float pad_value);
 void dilate_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
                    int w, int pdf, int pdb, int pht, int phb, int pwl, int pwr,
                    float pad_value, int ins_h, int ins_w, float ins_value);

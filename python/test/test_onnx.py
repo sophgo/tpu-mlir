@@ -1742,11 +1742,13 @@ class ONNX_IR_TESTER(object):
         pads = [1, 1, 1, 1]
         strides = [2, 2]
         dilations = [1, 1]
-        oh = (ih - 1) * strides[0] + (kernel_shape[0] - 1) * dilations[0] + 1 - pads[0] - pads[2]
-        ow = (iw - 1) * strides[1] + (kernel_shape[1] - 1) * dilations[1] + 1 - pads[1] - pads[3]
+        output_padding = [1, 1]
+        oh = (ih - 1) * strides[0] + output_padding[0] + (kernel_shape[0] - 1) * dilations[0] + 1 - pads[0] - pads[2]
+        ow = (iw - 1) * strides[1] + output_padding[0] + (kernel_shape[1] - 1) * dilations[1] + 1 - pads[1] - pads[3]
         input_shape = [1, ic, ih, iw]
         output_shape = [1, oc, oh, ow]
         filter_shape = [ic, oc, kernel_shape[0], kernel_shape[1]]
+
 
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(oc).astype(np.float32)
@@ -1760,6 +1762,7 @@ class ONNX_IR_TESTER(object):
                                          outputs=['output'],
                                          kernel_shape=kernel_shape,
                                          pads=pads,
+                                         output_padding=output_padding,
                                          strides=strides,
                                          dilations=dilations,
                                          group=1)
@@ -1772,7 +1775,7 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 64, 35, 35]
         filter_shape = [64, 32, 2, 2]
         bias_shape = [32]
-        output_shape = [1, 32, 70, 70]
+        output_shape = [1, 32, 71, 71]
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(*bias_shape).astype(np.float32)
 
@@ -1785,6 +1788,7 @@ class ONNX_IR_TESTER(object):
                                          outputs=['output'],
                                          kernel_shape=[2, 2],
                                          pads=[0, 0, 0, 0],
+                                         output_padding=[1, 1],
                                          strides=[2, 2],
                                          dilations=[1, 1],
                                          group=1)

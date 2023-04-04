@@ -41,6 +41,9 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
   auto dilation = module::getI64Array(getDilations(), 2, 1);
   p.dh = dilation->at(0);
   p.dw = dilation->at(1);
+  auto output_padding = module::getI64Array(getOutputPadding(), 2, 1);
+  p.output_pad_h = output_padding->at(0);
+  p.output_pad_w = output_padding->at(1);
   p.g = getGroup();
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
@@ -136,7 +139,7 @@ tpu_mlir::DeconvSlice(int64_t out_idx, int64_t out_slice, int64_t stride,
 
   float pad_t = (pad_th + real_in_idx * stride - in_idx);
   float pad_b = (in_end_idx - (pad_th + real_in_end_idx * stride));
-  assert(pad_t >= 0 && pad_b >= 0 && pad_t < filter && pad_b < filter);
+  assert(pad_t >= 0 && pad_b >= 0);
   return Optional<SmallVector<float, 4>>(
       {pad_t, pad_b, real_in_idx, real_in_end_idx - real_in_idx + 1});
 }
