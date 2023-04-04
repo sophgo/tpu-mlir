@@ -1412,6 +1412,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     I64ArrayAttr:$pads,
     DefaultValuedAttr<I64Attr, "1">:$group,
     OptionalAttr<I64ArrayAttr>:$dilations,
+    OptionalAttr<I64ArrayAttr>:$output_padding,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     //new param

@@ -1497,6 +1497,7 @@ class OnnxConverter(BaseConverter):
             'strides': strides,
             'dilations': dilations,
             'pads': pads,
+            'output_padding': output_padding,
             'group': group,
             'do_relu': False,
         }

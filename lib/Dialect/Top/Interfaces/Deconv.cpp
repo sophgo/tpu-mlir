@@ -23,6 +23,7 @@ deconv_attr_t top::DeconvOp::parseParam() {
   auto dilation =
       module::getI64Array(getDilations(), getKernelShape().size(), 1);
   auto pad = module::getI64Array(getPads());
+  auto output_padding = module::getI64Array(getOutputPadding(), getKernelShape().size(), 1);
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.with_bias = !getBias().getType().isa<NoneType>();
@@ -52,6 +53,9 @@ deconv_attr_t top::DeconvOp::parseParam() {
     p.pad_d_after = pad->at(3);
     p.pad_h_after = pad->at(4);
     p.pad_w_after = pad->at(5);
+    p.output_pad_d = output_padding->at(0);
+    p.output_pad_h = output_padding->at(1);
+    p.output_pad_w = output_padding->at(2);
   } else {
     p.n = ishape[0];
     p.ic = ishape[1];
@@ -70,6 +74,8 @@ deconv_attr_t top::DeconvOp::parseParam() {
     p.pad_w = pad->at(1);
     p.pad_h_after = pad->at(2);
     p.pad_w_after = pad->at(3);
+    p.output_pad_h = output_padding->at(0);
+    p.output_pad_w = output_padding->at(1);
     p.id = 1;
     p.od = 1;
     p.kd = 1;
@@ -140,6 +146,5 @@ void top::DeconvOp::shape_inference() {
                    output_paddding->at(i) + 1;
     out_shape.push_back(out_dim);
   }
-  removeOutputPaddingAttr();
   module::setShapeOrVerify(getOutput(), out_shape);
 }

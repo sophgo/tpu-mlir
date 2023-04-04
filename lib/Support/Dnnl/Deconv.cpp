@@ -31,11 +31,11 @@ void Deconv::pad_init(float *input, deconv_attr_t &attr, int izp) {
     src_shape = {
         attr.n, attr.ic,
         (attr.id - 1) * attr.sd + 1 +
-            attr.dd * (2 * attr.kd - 2 - attr.pad_d - attr.pad_d_after),
+            attr.dd * (2 * attr.kd - 2 - attr.pad_d - attr.pad_d_after) + attr.output_pad_d,
         (attr.ih - 1) * attr.sh + 1 +
-            attr.dh * (2 * attr.kh - 2 - attr.pad_h - attr.pad_h_after),
+            attr.dh * (2 * attr.kh - 2 - attr.pad_h - attr.pad_h_after) + attr.output_pad_h,
         (attr.iw - 1) * attr.sw + 1 +
-            attr.dw * (2 * attr.kw - 2 - attr.pad_w - attr.pad_w_after)};
+            attr.dw * (2 * attr.kw - 2 - attr.pad_w - attr.pad_w_after) + attr.output_pad_w} ;
     int input_padded_size = src_shape[0] * src_shape[1] * src_shape[2] *
                             src_shape[3] * src_shape[4];
     input_after_pad = std::make_shared<std::vector<float>>(input_padded_size);
@@ -70,6 +70,7 @@ void Deconv::setup(float *input, float *weight, float *bias, float *output,
   memory::dims padding_l = {attr.pad_d, attr.pad_h, attr.pad_w};
   memory::dims padding_r = {attr.pad_d_after, attr.pad_h_after,
                             attr.pad_w_after};
+
   memory::dims dilation = {attr.dd - 1, attr.dh - 1, attr.dw - 1};
 
   net.clear();
@@ -248,7 +249,8 @@ void Deconv::run() {
                           _attrs.kh, _attrs.kw, _attrs.dd, _attrs.dh, _attrs.dw,
                           _attrs.sd, _attrs.sh, _attrs.sw, _attrs.pad_d,
                           _attrs.pad_d_after, _attrs.pad_h, _attrs.pad_h_after,
-                          _attrs.pad_w, _attrs.pad_w_after, _izp);
+                          _attrs.pad_w, _attrs.pad_w_after, _attrs.output_pad_d,
+                          _attrs.output_pad_h, _attrs.output_pad_w, _izp);
   }
   for (size_t i = 0; i < net.size(); ++i) {
     net.at(i).execute(eng_stream, net_args.at(i));

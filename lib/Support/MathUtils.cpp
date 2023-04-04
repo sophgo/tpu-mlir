@@ -562,14 +562,14 @@ void pad_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
 void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
                            int h, int w, int kd, int kh, int kw, int dd, int dh,
                            int dw, int sd, int sh, int sw, int pdf, int pdb,
-                           int pht, int phb, int pwl, int pwr,
+                           int pht, int phb, int pwl, int pwr, int opd, int oph, int opw,
                            float pad_value) {
   int nc = n * c;
-  int od = (d - 1) * sd + 1 + dd * (2 * kd - 2 - pdf - pdb);
-  int oh = (h - 1) * sh + 1 + dh * (2 * kh - 2 - pht - phb);
-  int ow = (w - 1) * sw + 1 + dw * (2 * kw - 2 - pwl - pwr);
+  int od = (d - 1) * sd + 1 + dd * (2 * kd - 2 - pdf - pdb) + opd;
+  int oh = (h - 1) * sh + 1 + dh * (2 * kh - 2 - pht - phb) + oph;
+  int ow = (w - 1) * sw + 1 + dw * (2 * kw - 2 - pwl - pwr) + opw;
   int pst[3] = {(kd - 1) * dd - pdf, (kh - 1) * dh - pht, (kw - 1) * dw - pwl};
-  int ped[3] = {(kd - 1) * dd - pdb, (kh - 1) * dh - phb, (kw - 1) * dw - pwr};
+  int ped[3] = {(kd - 1) * dd - pdb + opd, (kh - 1) * dh - phb + oph, (kw - 1) * dw - pwr + opw};
   for (int i = 0; i < nc; i++) {
     for (int m = 0; m < od; m++) {
       for (int j = 0; j < oh; j++) {
