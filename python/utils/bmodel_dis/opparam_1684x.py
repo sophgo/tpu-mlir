@@ -108,10 +108,11 @@ class Layout(Enum):
     T4 = 31
     T5 = 32
     # GDMA special layout
-    DMAstride = 40  # contains lane mask
-    DMA4Bank = 41
-    DMAmatrix = 42
-    DMAlinear = 43
+    continuous = 40
+    DMAstride = 41  # contains lane mask
+    DMA4Bank = 42
+    DMAmatrix = 43
+    DMAlinear = 44
 
     def __call__(self, *args, **kargs):
         return ExtEnum(self, *args, **kargs)
@@ -141,13 +142,13 @@ class DType(IntEnum):
     bf16 = 5
     i64 = 6
     # unsign integer
-    u8 = i8 + 8  # type: ignore
-    u16 = i16 + 8  # type: ignore
-    u32 = i32 + 8  # type: ignore
+    ui8 = i8 + 8  # type: ignore
+    ui16 = i16 + 8  # type: ignore
+    ui32 = i32 + 8  # type: ignore
     # sign integer
-    s8 = i8 + 16  # type: ignore
-    s16 = i16 + 16  # type: ignore
-    s32 = i32 + 16  # type: ignore
+    si8 = i8 + 16  # type: ignore
+    si16 = i16 + 16  # type: ignore
+    si32 = i32 + 16  # type: ignore
 
     def is_float(self):
         return self in (DType.f32, DType.f16, DType.bf16)
@@ -163,14 +164,14 @@ def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
 
 
 to_np_dtype = {
-    DType.s8: np.int8,
-    DType.u8: np.uint8,
+    DType.si8: np.int8,
+    DType.ui8: np.uint8,
     DType.f16: np.float16,
     DType.f32: np.float32,
-    DType.s16: np.int16,
-    DType.u16: np.uint16,
-    DType.s32: np.int32,
-    DType.u32: np.uint32,
+    DType.si16: np.int16,
+    DType.ui16: np.uint16,
+    DType.si32: np.int32,
+    DType.ui32: np.uint32,
     DType.i8: np.uint8,
     DType.i16: np.uint16,
     DType.i32: np.uint32,
@@ -251,7 +252,7 @@ class MemRef:
 
     def __init__(self, address, shape, dtype: DType, stride=None, layout=None):
         self.address = address
-        self.mtype = self.__get_mtype(address)  # extended enumerate type
+        self.mtype = MemRef.get_mtype(address)  # extended enumerate type
         self.shape = shape
         self.dtype = dtype
         self.layout = layout
@@ -263,11 +264,15 @@ class MemRef:
         if self.mtype == MType.R and layout != Layout.stride:
             self.stride = local_layout_to_stride(self)
 
+        if self.mtype == MType.G and layout == Layout.continuous:
+            self.stride = tuple(np.cumprod([1] + shape[-1:0:-1])[::-1])
+
         # print information
         self.name = self.__name()
         self.type_str = self.__type_str()
 
-    def __get_mtype(self, address):
+    @staticmethod
+    def get_mtype(address):
         # R : "npu_offset", "bank_index", "bank_offset", "r_addr"
         # G/S/L : "r_addr"
         for k, v in memmap.items():
@@ -304,7 +309,7 @@ class MemRef:
 
     def __type_str(self):
         s = [str(x) for x in self.shape]
-        if self.stride and any((x != 0 for x in self.stride)):
+        if self.stride is not None and any((x != 0 for x in self.stride)):
             return f"memref<{'x'.join(s)}x{self.dtype.name}, strides: [{str(self.stride)[1:-1]}]>"
         return f"memref<{'x'.join(s)}x{self.dtype.name}>"
 
@@ -499,7 +504,6 @@ class Memory:
             Layout._1IC: get_1ic_data,
             Layout.matrix: get_matrix_data,
             Layout.matrix2: get_matrix2_data,
-            Layout._32IC: get_32ic_data,
             Layout.T3: get_stride_data,
             Layout.T4: get_stride_data,
             Layout.T5: get_stride_data,
@@ -531,7 +535,7 @@ class Memory:
             return self._ddr_to_numpy(value)
         if value.mtype == MType.R:
             return self._local_mem_to_numpy(value)
-        raise ValueError("unsupported memory view!")
+        raise ValueError(f"unsupported memory view: {value}")
 
 
 def get_value(
@@ -1042,7 +1046,7 @@ def _converter(reg):
     elif reg.tsk_eu_typ in [0, 2]:  # depthwise, depthwise_relu
         res0["dtype"] = (reg.res0_prec, reg.opd0_sign or reg.opd1_sign or reg.opd2_sign)
         if reg.opd0_prec == DType.i8:
-            opd2["dtype"] = DType.s32
+            opd2["dtype"] = DType.si32
         else:
             opd2["dtype"] = opd0["dtype"]
         if reg.tsk_eu_typ == 2:
@@ -1050,11 +1054,11 @@ def _converter(reg):
         opds = [opd0, opd1, opd2, opd3]
     elif reg.tsk_eu_typ in [6, 7]:
         opd3["shape"] = (1, reg.res0_w, 1, 4)
-        opd3["dtype"] = DType.s16
+        opd3["dtype"] = DType.si16
         opds = [opd0, opd3]
     elif reg.tsk_eu_typ == 5:
         opd3["shape"] = (1, reg.res0_w, 1, 4)
-        opd3["dtype"] = DType.s16
+        opd3["dtype"] = DType.si16
         opds = [opd0, opd1, opd3]
 
     attr = dict(
@@ -1129,7 +1133,7 @@ def _converter(reg):
             opd2["address"] = reg.opd2_addr
         opds = [opd0, opd1, opd2]
     elif reg.tsk_eu_typ == 1:  # rq_1
-        opd1["dtype"] = DType.s32
+        opd1["dtype"] = DType.si32
         opd1["shape"] = (1, c, 1, 1)
         opd2 = dict(opd1)
         opd2["address"] += 4
@@ -1137,7 +1141,7 @@ def _converter(reg):
         opd3["address"] += 4
         if opd1["is_const"]:
             opd2["address"] = reg.opd2_addr
-            opd2["dtype"] = DType.s8
+            opd2["dtype"] = DType.si8
             opd3["address"] = reg.opd2_addr // 2**8
             opd3["dtype"] = (DType.i16, reg.opd2_sign)
         opds = [opd0, opd1, opd2, opd3]
@@ -1155,7 +1159,7 @@ def _converter(reg):
             opd2["address"] = reg.opd2_addr
         opds = [opd0, opd1, opd2]
     elif reg.tsk_eu_typ == 4:  # dq_1
-        opd1["dtype"] = DType.s32  # zp
+        opd1["dtype"] = DType.si32  # zp
         opd1["shape"] = (1, c, 1, 1)
         opd2 = dict(opd1)  # scale
         opd2["address"] += 4
@@ -1165,9 +1169,9 @@ def _converter(reg):
         if opd1["is_const"]:
             opd1["dtype"] = (DType.i16, reg.opd0_sign)  # zp
             opd2["address"] = reg.opd1_addr // 2**16  # shift
-            opd2["dtype"] = DType.s16
+            opd2["dtype"] = DType.si16
             opd3["address"] = reg.opd2_addr  # scale
-            opd3["dtype"] = DType.s32
+            opd3["dtype"] = DType.si32
             opds = [opd0, opd1, opd3, opd2]
     else:
         raise KeyError("Should not be here.")
@@ -1217,7 +1221,7 @@ def _converter(reg):
     elif reg.tsk_eu_typ == 2:
         opd0["shape"] = (n, c, reg.opd0_h, reg.opd0_w)
         opd1["shape"] = (1, reg.opd1_c, 1, 4)
-        opd1["dtyp"] = DType.u16
+        opd1["dtyp"] = DType.ui16
         opd1["layout"] = Layout.compact
         kh = reg.opd3_addr // 2**16
         kw = reg.opd3_addr % 2**16
@@ -1231,7 +1235,7 @@ def _converter(reg):
         opd1["shape"] = (n, c, 1, reg.opd1_w)
         res1 = dict(
             address=reg.res1_addr,
-            dtype=DType.s16,
+            dtype=DType.si16,
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
@@ -1241,7 +1245,7 @@ def _converter(reg):
         opds = [opd0]
         res1 = dict(
             address=reg.res1_addr,
-            dtype=DType.s16,
+            dtype=DType.si16,
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
@@ -1306,7 +1310,7 @@ def _converter(reg):
         res0["layout"] = Layout.T3
         res1 = dict(
             address=reg.res1_addr,
-            dtype=DType.s16,
+            dtype=DType.si16,
             shape=(n, c, 1, 1),
             layout=Layout.compact,
         )
@@ -1652,7 +1656,7 @@ def dma_gather_base(reg):
     )
     opd1 = dict(
         address=dma_addr(reg.index_start_addr_h8, reg.index_start_addr_l32),
-        dtype=DType.u32,
+        dtype=DType.ui32,
         shape=(1, reg.index_csize, d_h, 1),
         stride=(0, reg.index_cstride, reg.index_hstride, 1),
         layout=Layout.stride,

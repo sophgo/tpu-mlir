@@ -7,7 +7,6 @@
 # third-party components.
 #
 # ==============================================================================
-from torch.nn.modules import linear
 from bmodel_dis import Bmodel2MLIR, opdef_1684x, tensor2memref
 from utils.bmodel_dis.opparam_1684x import MType, Memory, memmap
 from utils.cmodel import lib, gen_lookup_table
@@ -102,14 +101,17 @@ class Tdb(cmd.Cmd):
         self.ddr = np.ndarray([])
         self.lmem = np.ndarray([])
         self.record_status = False
-        self.model = None
+        self.module = None
         self.current_function = None
         self.status = {}
         self.file = None
         self.inputs = None
-        self.current_line = 0
+        self.enable_message = True
+        self.current_line = -1
         self.breakpoint = []
         self.inital_runtime()
+        # The temporary breakpoint must be hit and then destroyed after it is used.
+        self.temporary_breakpoint = False
 
     def __del__(self):
         self.close()
@@ -121,8 +123,9 @@ class Tdb(cmd.Cmd):
         self.ddr.fill(0)
         self.lmem.fill(0)
         self.status = {}
-        self.current_line = 0
+        self.current_line = -1
         self.current_function = None
+        self._make_continue_iter()
         # self.breakpoint = []
 
     def inital_runtime(self):
@@ -140,10 +143,12 @@ class Tdb(cmd.Cmd):
         self.mem_manager = Memory(self.lmem, self.ddr)
 
     def message(self, msg):
-        print(msg, file=self.stdout)
+        if self.enable_message:
+            print(msg, file=self.stdout)
 
     def error(self, msg):
-        print("***", msg, file=self.stdout)
+        if self.enable_message:
+            print("***", msg, file=self.stdout)
 
     def do_break(self, arg):
         if arg:
@@ -185,24 +190,29 @@ class Tdb(cmd.Cmd):
             f"[bold green]{line_num:{padding}} [/bold green] {self.get_op(offset)}"
         )
 
-    def print_context(self, offset=5):
+    def get_context(self, offset=5):
         op_len = len(self.current_function.regions[0].blocks[0].operations)
         lines = self.current_line + np.arange(-offset, offset + 1)
         lines = lines[lines >= 0]
         lines = lines[lines < op_len]
-        width = int(np.ceil(np.log10(lines.max())))
+        width = int(np.ceil(np.log10(lines.max())))  # get line number width
+        msg = []
         for i in lines:
             ri = i - self.current_line  # relative line number
             if i == self.current_line and i in self.breakpoint:
-                self.message(f"[bold red]B+> {i:{width}} [/bold red] {self.get_op(ri)}")
+                msg.append(f"[bold red]B+> {i:{width}} [/bold red] {self.get_op(ri)}")
             elif i == self.current_line:
-                self.message(
-                    f"[bold blue]--> {i:{width}} [/bold blue] {self.get_op(ri)}"
-                )
+                msg.append(f"[bold blue]--> {i:{width}} [/bold blue] {self.get_op(ri)}")
             elif i in self.breakpoint:
-                self.message(f"[bold red] BB {i:{width}} [/bold red] {self.get_op(ri)}")
+                msg.append(f"[bold red] BB {i:{width}} [/bold red] {self.get_op(ri)}")
             else:
-                self.print_line(ri, width + 4)
+                msg.append(
+                    f"[bold green]{' '*4}{i:{width}} [/bold green] {self.get_op(ri)}"
+                )
+        return "\n".join(msg)
+
+    def print_context(self, offset=5):
+        self.message(self.get_context(offset))
 
     def do_l(self, arg):
         """l(list)
@@ -234,27 +244,49 @@ class Tdb(cmd.Cmd):
         try:
             self.print_line()
             self.next()
-        except ValueError:
-            print("End of execution!")
+        except StopIteration:
+            self.message("End of execution!")
 
     do_n = do_next
+
+    def should_stop(self):
+        if self.current_line in self.breakpoint:
+            if self.temporary_breakpoint:
+                self.breakpoint.remove(self.current_line)
+            return True
+        for f in filter(callable, self.breakpoint):
+            if f():
+                if self.temporary_breakpoint:
+                    self.breakpoint.remove(f)
+                self.message(f"Hit breakpoint: {f}")
+                return True
+        return False
+
+    def _make_continue_iter(self):
+        class continueIter:
+            def __iter__(_self):
+                return _self
+
+            def __next__(_self):
+                try:
+                    if not self.temporary_breakpoint:
+                        self.next()
+                    while not self.should_stop():
+                        self.next()
+                except:
+                    raise StopIteration
+
+        self.continues = continueIter()
 
     def do_continue(self, arg):
         """c(ontinue)
         Continue execution, only stop when a breakpoint is encountered.
         """
         try:
-            self.get_op()
-        except ValueError:
-            self.message("End of execution!")
-        try:
-            self.next()
-            while self.current_line not in self.breakpoint:
-                self.next()
-            if self.current_line in self.breakpoint:
-                self.print_context()
-        except ValueError:
-            pass
+            next(self.continues)
+            self.print_context()
+        except StopIteration:
+            self.message("End of execution.")
 
     do_c = do_continue
 
@@ -389,9 +421,9 @@ class Tdb(cmd.Cmd):
         ops = self.current_function.regions[0].blocks[0].operations
         line = self.current_line + offset
         if line >= len(ops):
-            raise ValueError("end of execution.")
+            raise StopIteration("End of execution.")
         if line < 0:
-            raise ValueError("ahead of execution.")
+            raise ValueError("Ahead of execution.")
         return ops[line]
 
     def push_status(self):
@@ -416,15 +448,15 @@ class Tdb(cmd.Cmd):
 
     def start(self):
         self.reset()
-        self.model = Bmodel2MLIR(self.file)
-        coeff = self.model.module.functions[0].regions[0].data
+        self.module = Bmodel2MLIR(self.file)
+        coeff = self.module.functions[0].regions[0].data
         if coeff:
             addr = coeff.address - memmap[MType.G][0]
             # load constant data
             self.ddr[addr : addr + len(coeff.data)] = memoryview(coeff.data)
-        if self.model is None:
+        if self.module is None:
             raise Exception("please load one file.")
-        self.current_function = self.model.module.functions[0]
+        self.current_function = self.module.functions[0]
 
     def do_run(self, arg):
         """r(un)
@@ -441,6 +473,9 @@ class Tdb(cmd.Cmd):
         """n(ext)
         run next instruction.
         """
+        if self.current_line == -1:
+            self.current_line += 1
+            return
         self.push_status()
         try:
             op = self.get_op()
@@ -522,7 +557,7 @@ if __name__ == "__main__":
         def __init__(self, index=0) -> None:
             self.index = index
 
-        def __repr__(self) -> str:
+        def __repr__(self):
             print(tdb.get_op(self.index))
 
         def ins(self, index):
@@ -531,7 +566,7 @@ if __name__ == "__main__":
             print(value)
             return tdb.get_data(value)
 
-        def ous(self, index):
+        def outs(self, index):
             op = tdb.get_op(self.index)
             value = op.results[index]
             print(value)
