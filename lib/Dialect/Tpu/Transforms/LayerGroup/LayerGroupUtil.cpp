@@ -33,6 +33,7 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
   // Need consider n_align if backend is BM1684
   int64_t n_align = 1;
   for (auto op : lg_info.group_ops) {
+    auto mode = getRunMode(dyn_cast<func::FuncOp>(op->getParentOp()));
     auto lgOp = cast<LocalGenInterface>(op);
     for (auto v : get_output_values(op)) {
       module::getNCDHW(v, n, c, d, h, w, lg_info.type);
@@ -43,9 +44,10 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
       }
       max_nsecs = std::min(max_nsecs, ceiling_func(n, n_align));
 
-      // split d now only supports BM1684X and not int4
+      // split d now only supports BM1684X and not int4, not dynamic
       if (module::isBM1684X() && (!stype.isInteger(4)) &&
           lg_info.type == GROUP_3D &&
+          mode != RunMode::TPU_DYNAMIC &&
           succeeded(lgOp.AllowDataSplit(2, lg_info.type))) {
         max_dsecs = std::min(max_dsecs, d);
       } else {
@@ -56,8 +58,9 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
       } else {
         max_hsecs = 1;
       }
-      // split w now only supports BM1684X and not int4
+      // split w now only supports BM1684X and not int4, not dynamic
       if (module::isBM1684X() && (!stype.isInteger(4)) &&
+          mode != RunMode::TPU_DYNAMIC &&
           succeeded(lgOp.AllowDataSplit(3 + (lg_info.type == GROUP_3D ? 1 : 0), lg_info.type))) {
         max_wsecs = std::min(max_wsecs, w);
       } else {
