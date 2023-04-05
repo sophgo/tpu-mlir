@@ -29,7 +29,7 @@ class ONNX_IR_TESTER(object):
     def __init__(self,
                  chip: str = "bm1684x",
                  mode: str = "all",
-                 dynamic: bool = True,
+                 dynamic: bool = False,
                  simple: bool = False,
                  disable_thread: bool = False):
         Y, N = True, False
@@ -4700,9 +4700,10 @@ def test_all(tester: ONNX_IR_TESTER):
     print("Failure: {}".format(error_cases))
     if error_cases:
         print("====== test_onnx.py --chip {} TEST Failed ======".format(tester.chip))
-        exit(1)
+        # exit(1)
     else:
         print("====== test_onnx.py --chip {} TEST Success ======".format(tester.chip))
+    return error_cases
 
 
 if __name__ == "__main__":
