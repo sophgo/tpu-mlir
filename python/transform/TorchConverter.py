@@ -507,7 +507,6 @@ class TorchConverter(BaseConverter):
     def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
         # add input op
-        inputs = {}
         for idx, _name in enumerate(self.input_names):
             input_shape = self.getShape(_name)
             channel_axis = 1
@@ -520,12 +519,6 @@ class TorchConverter(BaseConverter):
             else:
                 input_op = self.mlir.create_input_op(_name, idx, **self.preprocess_args)
             self.addOperand(_name, input_op)
-            dtype = self.origin_input_types[idx]
-            inputs[_name] = torch.from_numpy(np.random.rand(*input_shape).astype(dtype))
-
-        self.torch_reader.run_model(inputs)
-        self.const_val = self.torch_reader.const_val
-        self.ref_data = self.torch_reader.ref_tensor
 
         def NoneAndRaise(node):
             raise RuntimeError("{} Op not support now".format(node.op_type))
