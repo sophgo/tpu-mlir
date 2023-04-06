@@ -37,6 +37,7 @@ class MAIN_ENTRY(object):
         }
         # yapf: enable
         self.results = []
+        self.time_cost = []
 
     def add_result(self, test_name: str, status: bool, error_cases: list = []):
         self.results.append({
@@ -94,7 +95,7 @@ class MAIN_ENTRY(object):
                 if not success and self.test_type == "basic":
                     return 1
             end_time = time.time()
-            print(f"run_{op_source}: {int(end_time - tmp_time)} seconds")
+            self.time_cost.append(f"run_{op_source}: {int(end_time - tmp_time)} seconds")
             tmp_time = end_time
 
         # test script
@@ -102,7 +103,7 @@ class MAIN_ENTRY(object):
         if not success and self.test_type == "basic":
             return 1
         end_time = time.time()
-        print(f"run_script: {int(end_time - tmp_time)} seconds")
+        self.time_cost.append(f"run_script: {int(end_time - tmp_time)} seconds")
         tmp_time = end_time
 
         # test model regression
@@ -136,9 +137,9 @@ class MAIN_ENTRY(object):
                     return 1
 
             end_time = time.time()
-            print(f"run models for {chip}: {int(end_time - tmp_time)} seconds")
+            self.time_cost.append(f"run models for {chip}: {int(end_time - tmp_time)} seconds")
             tmp_time = end_time
-        print(f"total time: {int(end_time - start_time)} seconds")
+        self.time_cost.append(f"total time: {int(end_time - start_time)} seconds")
 
         return 1 if any(result.get("status") == "FAILED" for result in self.results) else 0
 
@@ -158,6 +159,8 @@ if __name__ == "__main__":
 
     main_entry = MAIN_ENTRY(args.test_type)
     exit_status = main_entry.run_all()
+    for time in main_entry.time_cost:
+        print(time)
     for result in main_entry.results:
         print("{} {}".format(result["name"], result["status"]))
         if result["error_cases"]:

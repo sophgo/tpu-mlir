@@ -15,6 +15,8 @@ import configparser
 from tools.model_transform import *
 from utils.mlir_shell import *
 import os
+import threading
+import queue
 
 
 class MODEL_RUN(object):
@@ -192,14 +194,28 @@ class MODEL_RUN(object):
 
         _os_system(cmd)
 
+    def test_input_copy(self, quant_mode):
+        test_input = self.ini_content["test_input"].split(
+            "/")[-1] if self.fuse_pre else self.ini_content["input_npz"]
+        new_test_input = ""
+        if self.fuse_pre:
+            new_test_input = test_input.replace(".jpg", f"_for_{quant_mode}.jpg")
+        else:
+            new_test_input = test_input.replace(".npz", f"_for_{quant_mode}.npz")
+        cmd = ["cp", test_input, new_test_input]
+        _os_system(cmd)
+        return new_test_input
+
     def run_model_deploy(self,
                          quant_mode: str,
                          model_name: str,
                          dynamic: bool = False,
-                         test: bool = True):
+                         test: bool = True,
+                         do_sample: bool = False):
         '''top mlir -> bmodel/ cvimodel'''
-
         # int4_sym mode currently in test
+        new_test_input = self.test_input_copy(quant_mode)
+
         if quant_mode == "int4_sym":
             self.int4_tmp_test()
             return
@@ -214,10 +230,7 @@ class MODEL_RUN(object):
             cmd += ["--fuse_preprocess"]
             model_file += "_fuse_preprocess"
         if test:
-            cmd += [
-                "--test_input {}".format(self.ini_content["test_input"] if self.fuse_pre else self.
-                                         ini_content["input_npz"])
-            ]
+            cmd += ["--test_input {}".format(new_test_input)]
         if self.aligned_input:
             cmd += ["--aligned_input"]
             model_file += "_aligned_input"
@@ -261,7 +274,12 @@ class MODEL_RUN(object):
 
         _os_system(cmd)
 
-        return model_file
+        os.system(f"rm {new_test_input}")
+
+        # only run sample for f32 and int8_sym mode
+        if do_sample and (quant_mode == "f32" or quant_mode == "int8_sym"):
+            output_file = self.model_name + f"_{quant_mode}.jpg"
+            self.run_sample(model_file, self.ini_content["test_input"], output_file)
 
     def run_dynamic(self, quant_mode: str):
         '''do dynamic regression
@@ -307,6 +325,13 @@ class MODEL_RUN(object):
 
         _os_system(cmd)
 
+    def run_model_deploy_wrapper(self, quant_mode, model_name, do_sample, result_queue):
+        try:
+            self.run_model_deploy(quant_mode, model_name, False, True, do_sample)
+            result_queue.put((quant_mode, True, None))
+        except Exception as e:
+            result_queue.put((quant_mode, False, e))
+
     def run_full(self):
         '''run full process: model_transform, model_deploy, samples and dynamic mode'''
         try:
@@ -320,16 +345,27 @@ class MODEL_RUN(object):
 
             self.run_model_transform(self.model_name)
 
+            if (self.quant_modes["int4_sym"] or self.quant_modes["int8_sym"]
+                    or self.quant_modes["int8_asym"]) and self.do_cali:
+                self.make_calibration_table()
+
+            result_queue = queue.Queue()
+            threads = []
             for quant_mode in self.quant_modes.keys():
                 if self.quant_modes[quant_mode]:
-                    if quant_mode.startswith("int8") and self.do_cali:
-                        self.make_calibration_table()
-                    model_file = self.run_model_deploy(quant_mode, self.model_name)
+                    t = threading.Thread(target=self.run_model_deploy_wrapper,
+                                         args=(quant_mode, self.model_name, do_sample,
+                                               result_queue))
+                    t.start()
+                    threads.append(t)
 
-                    # only run sample for f32 and int8_sym mode
-                    if do_sample and (quant_mode == "f32" or quant_mode == "int8_sym"):
-                        output_file = self.model_name + f"_{quant_mode}.jpg"
-                        self.run_sample(model_file, self.ini_content["test_input"], output_file)
+            for t in threads:
+                t.join()
+
+            while not result_queue.empty():
+                quant_mode, success, error = result_queue.get()
+                if not success:
+                    raise error
 
             # currently only do f32 dynamic mode
             if self.do_dynamic and self.quant_modes["f32"]:
@@ -350,7 +386,7 @@ if __name__ == "__main__":
     parser.add_argument("--dyn_mode", default='store_true', help="dynamic mode")
     parser.add_argument("--do_post_handle", action='store_true', help="whether to do post handle")
     parser.add_argument("--merge_weight", action="store_true",
-                    help="merge weights into one weight binary with previous generated cvimodel")
+                        help="merge weights into one weight binary with previous generated cvimodel")
     # fuse preprocess
     parser.add_argument("--fuse_preprocess", action='store_true',
                         help="add tpu preprocesses (mean/scale/channel_swap) in the front of model")
