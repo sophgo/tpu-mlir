@@ -40,7 +40,7 @@ class MODEL_RUN(object):
         self.merge_weight = merge_weight
         self.model_type = chip_support[self.chip][-1]
 
-        config = configparser.ConfigParser(inline_comment_prefixes=('#',))
+        config = configparser.ConfigParser(inline_comment_prefixes=('#', ))
         config.read(os.path.expandvars(f"$REGRESSION_PATH/config/{self.model_name}.ini"))
         # save all content in model config file as dict
         self.ini_content = dict(config.items("DEFAULT"))
@@ -81,7 +81,10 @@ class MODEL_RUN(object):
         for idx, quant_mode in enumerate(self.quant_modes.keys()):
             if f"do_{quant_mode}" in self.ini_content:
                 self.quant_modes[quant_mode] &= int(self.ini_content[f"do_{quant_mode}"])
-            # check chip support
+            # check chip support from chip.py
+            if quant_mode == mode:
+                assert (chip_support[self.chip][idx]
+                        and "Current chip doesn't support this quant mode")
             self.quant_modes[quant_mode] &= chip_support[self.chip][idx]
 
         self.do_dynamic = self.dyn_mode and ("do_dynamic" in self.ini_content and int(
@@ -322,7 +325,8 @@ class MODEL_RUN(object):
                         self.make_calibration_table()
                     model_file = self.run_model_deploy(quant_mode, self.model_name)
 
-                    if do_sample:
+                    # only run sample for f32 and int8_sym mode
+                    if do_sample and (quant_mode == "f32" or quant_mode == "int8_sym"):
                         output_file = self.model_name + f"_{quant_mode}.jpg"
                         self.run_sample(model_file, self.ini_content["test_input"], output_file)
 
