@@ -115,6 +115,7 @@ class Top:
     YoloDetection = 'top.YoloDetection'
     ZerosOp = 'top.Zeros'
     IfOp = 'top.If'
+    LoopOp = 'top.Loop'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -283,8 +284,8 @@ class MLIRImporter(object):
         else:
             return op.result
 
-    def buildBlock(self, region, **kargs):
-        block = Block.create_at_start(region)
+    def buildBlock(self, region, arg_types, **kargs):
+        block = Block.create_at_start(region, arg_types)
 
     def reconfig_insert_point(self, block):
         self.insert_point_back = self.insert_point \
@@ -1291,6 +1292,22 @@ class MLIRImporter(object):
         param = {'name': kargs['name']}
         region = IntegerAttr.get(self.mlir_type['INT64'], kargs["region"]).value
         return self.buildOp(Top.IfOp, operands, [output_type], region, **param)
+
+    def create_loop_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name']}
+        region = IntegerAttr.get(self.mlir_type['INT64'], kargs["region"]).value
+        return self.buildOp(Top.LoopOp, operands, output_type, region, **param)
+
+    def create_subgraph_input_op(self, name, type, val, **kargs):
+        param = {}
+        op = Operation.create(Top.InputOp,
+                              results=[type],
+                              operands=[val],
+                              loc=Location.fused([Location.name(name)]),
+                              attributes=param)
+        self.insert_point.insert(op)
+        return op.results[0]
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
