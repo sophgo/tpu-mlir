@@ -460,6 +460,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [
 def Tpu_AddConstOp: Tpu_Op<"AddConst",
     [SupportFuseRelu, InOutSameShape,
     DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add const operator";
 

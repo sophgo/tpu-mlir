@@ -75,3 +75,13 @@ LogicalResult tpu::AddConstOp::canonicalize(AddConstOp op,
   }
   return failure();
 };
+
+mlir::Type tpu::AddConstOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  auto op = getOperation();
+  auto in_stype = module::getStorageType(getInput());
+  auto out_stype = module::getStorageType(getOutput());
+  if (in_stype.isIntOrIndex() && out_stype.isIntOrIndex()) {
+    return do_nothing(mode);
+  }
+  return type_verify_case_same(op, opd_idx, mode);
+}
