@@ -23,7 +23,7 @@ bool type_need_cast(Type from, Type to) {
     return false;
   }
   if (f_sType.isIntOrIndex() && t_sType.isIntOrIndex()) {
-    if (f_sType.getIntOrFloatBitWidth() && t_sType.getIntOrFloatBitWidth()) {
+    if (f_sType.getIntOrFloatBitWidth() == t_sType.getIntOrFloatBitWidth()) {
       return false;
     }
   }
