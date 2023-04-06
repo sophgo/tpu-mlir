@@ -108,25 +108,33 @@ class MAIN_ENTRY(object):
         # test model regression
         for chip in chip_support.keys():
             model_list = globals()[f"{chip}_model_list"]
-            # run models regression for a single chip parallelly
-            pool = multiprocessing.Pool(processes=8)
+            process_number = multiprocessing.cpu_count() // 2 + 1
+            processes = []
             finished_list = multiprocessing.Manager().list()
-            regression_results = []
             for model in model_list.keys():
                 if (self.test_type == "basic"
                         and model_list[model][0]) or (self.test_type == "all"
                                                       and model_list[model][1]):
-                    result = pool.apply_async(self.run_regression_net,
-                                              args=(model, chip, finished_list))
-                    regression_results.append(result)
-            for result in regression_results:
-                if not result.get() and self.test_type == "basic":
-                    pool.terminate()
-                    self.results.extend(finished_list)
-                    return 1
-            pool.close()
-            pool.join()
+                    p = multiprocessing.Process(target=self.run_regression_net,
+                                                args=(model, chip, finished_list))
+                    processes.append(p)
+                if len(processes) == process_number:
+                    for p in processes:
+                        p.start()
+                    for j in processes:
+                        j.join()
+                    processes = []
+            if processes:
+                for p in processes:
+                    p.start()
+                for j in processes:
+                    j.join()
+
             self.results.extend(finished_list)
+            for result in finished_list:
+                if result["status"] == "FAILED" and self.test_type == "basic":
+                    return 1
+
             end_time = time.time()
             print(f"run models for {chip}: {int(end_time - tmp_time)} seconds")
             tmp_time = end_time
