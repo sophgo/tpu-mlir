@@ -332,6 +332,7 @@ void BM168x::load_functions() {
   CAST_FUNCTION(get_global_memaddr);
   CAST_FUNCTION(set_cmd_buffer_ptr);
   CAST_FUNCTION(set_cmd_id_prefix);
+  CAST_FUNCTION(enable_profile);
   CAST_FUNCTION(allow_atomic_cmodel_assert);
   CAST_FUNCTION(forbid_atomic_cmodel_assert);
   CAST_FUNCTION(tensor_stride_move_gen_cmd);

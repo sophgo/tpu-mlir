@@ -489,11 +489,6 @@ void ModelCtx::update_net(const string &net_name, const Vector<Offset<NetStatic>
     auto subnet_offset = Pack(model_gen_, net_param->sub_net());
     auto coeff_offset = Pack(model_gen_, net_param->coeff_mem());
 
-    bmodel::Binary profile;
-    if (net_param->net_profile() != NULL) {
-      profile = bmodel::Binary(net_param->net_profile()->start(), net_param->net_profile()->size());
-    }
-
     bmodel::NetParameterBuilder npb(model_gen_->Builder());
     npb.add_input_tensor(input_offset);
     npb.add_output_tensor(output_offset);
@@ -502,9 +497,6 @@ void ModelCtx::update_net(const string &net_name, const Vector<Offset<NetStatic>
     npb.add_coeff_mem(coeff_offset);
     npb.add_is_dynamic(false);
     npb.add_cmd_group(cmdgroup_offset);
-    if (net_param->net_profile() != NULL) {
-      npb.add_net_profile(&profile);
-    }
     npb.add_sub_net(subnet_offset);
     model_gen_->AddNet(net_name, npb.Finish());
   }

@@ -15,6 +15,7 @@
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicNetIr.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/ProfileCtx.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/TensorLocation.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
@@ -51,6 +52,7 @@ public:
       llvm_unreachable("output filename is empty");
     }
     tensor_loc = TensorLocation(module, filename + ".json");
+    profile_ctx = ProfileCtx(module, true);
     bm168x = BM168x::instance();
     DynCodegenInit();
     std::vector<top::WeightOp> weights;
@@ -87,13 +89,16 @@ public:
     bool first_dynamic = false;
     bool is_first = true;
     int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;
+
     main_func.walk([&](func::CallOp call) {
       auto func = module::getFuncOp(call.getCallee());
       auto mode = getRunMode(func);
       switch (mode) {
       case RunMode::TPU_STATIC: {
+        profile_ctx.set_profile_start();
         auto subnet = CreateSubNet(call);
         subnet_v.push_back(subnet);
+        profile_ctx.set_profile_end();
       } break;
       case RunMode::TPU_DYNAMIC: {
         auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
@@ -143,6 +148,21 @@ public:
     // create subnet
     npb.add_sub_net(subnets);
     npb.add_cpu_mem_size(max_cpu_mem_size);
+    if (true) {
+      std::vector<uint8_t> data;
+      auto fp = fopen("net_0.profile", "rb");
+      if (fp) {
+        fseek(fp, 0, SEEK_END);
+        uint32_t size = ftell(fp);
+        data.resize(size);
+        fseek(fp, 0, SEEK_SET);
+        fread(data.data(), 1, size, fp);
+        fclose(fp);
+        auto profile_data = model_gen->WriteBinary(data.size(), data.data());
+        npb.add_net_profile(&profile_data);
+      }
+    }
+
     model_gen->AddNet(module::getModuleName().str(), npb.Finish());
     model_gen->Finish();
     model_gen->Save(filename);
@@ -186,6 +206,7 @@ private:
   std::shared_ptr<bmodel::ModelGen> model_gen;
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> cmd_group_all;
   TensorLocation tensor_loc;
+  ProfileCtx profile_ctx;
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass() {
@@ -373,6 +394,7 @@ void CodegenPass::codegen_for_overlap_ops(
         lgOp.assign_sec_info(0l, 0l, 0l, 0l, next_group_type, sec_info);
         LLVM_DEBUG(llvm::dbgs()
                    << "codegen op: '" << module::getName(lgOp) << "'\n");
+        profile_ctx.log_local_layer(op, 0, 0);
         lgOp.codegen_local_bm168x(0l, 0l, 0l, 0l, next_group_type, sec_info);
       }
     }
@@ -403,6 +425,7 @@ void CodegenPass::codegen_for_overlap_ops(
                              prev_group_type, sec_info);
         LLVM_DEBUG(llvm::dbgs()
                    << "codegen op: '" << module::getName(lgOp) << "'\n");
+        profile_ctx.log_local_layer(op, nsecs - 1, hsecs - 1);
         lgOp.codegen_local_bm168x(nsecs - 1, hsecs - 1, dsecs - 1, wsecs - 1,
                                   prev_group_type, sec_info);
       }
@@ -560,6 +583,9 @@ void CodegenPass::codegen_for_group(GroupOp gOp, Operation *prev_op,
                                group_type, sec_info);
           LLVM_DEBUG(llvm::dbgs()
                      << "codegen op: '" << module::getName(lgOp) << "'\n");
+          auto op = group_ops[id];
+          profile_ctx.log_local_layer(op, tensor_step->nstep,
+                                      tensor_step->hstep);
           lgOp.codegen_local_bm168x(tensor_step->nstep, tensor_step->hstep,
                                     tensor_step->dstep, tensor_step->wstep,
                                     group_type, sec_info);
@@ -622,6 +648,7 @@ void CodegenPass::codegen(Operation *op) {
     auto pid_node = (CMD_ID_NODE *)BM168x::instance()->cmdid_node;
     BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
     LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(op) << "'\n");
+    profile_ctx.log_global_layer(op);
     castOp.codegen_global_bm168x();
   }
 }
