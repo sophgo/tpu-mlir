@@ -187,6 +187,9 @@ class TorchReader():
         if node.op_type == "aten::Int":
             self.const_val[node.outputs[0]] = int(self.get_input(node.inputs[0]))
             return
+        if node.op_type == "aten::to":
+            self.ref_tensor[node.outputs[0]] = self.get_input(node.inputs[0])
+            return
 
         # get function
         func = getattr(torch.ops.aten, node.op_type.split('::')[1])
@@ -228,7 +231,7 @@ class TorchReader():
                 self.ref_tensor[key] = torch.tensor(value)
 
         for node in self.graph.nodes():
-            if node.kind().split('::')[0] == 'aten':
+            if node.kind().startswith('aten'):
                 self.run_aten(TorchNode(node))
             else:
                 self.run_prim(TorchNode(node))
@@ -259,7 +262,6 @@ class TorchConverter(BaseConverter):
         7: "F64",
         11: "BOOL",
     }
-
 
     def __init__(self,
                  model_name: str,
@@ -297,6 +299,7 @@ class TorchConverter(BaseConverter):
             "aten::batch_norm": lambda node: self.convert_batch_norm_op(node),
             "aten::bmm": lambda node: self.convert_matmul_op(node),
             "aten::cat": lambda node: self.convert_concat_op(node),
+            "aten::channel_shuffle": lambda node: self.convert_channel_shuffle_op(node),
             "aten::chunk": lambda node: self.convert_chunk_op(node),
             "aten::cos": lambda node: self.convert_math_op(node, "cos"),
             "aten::cosh": lambda node: self.convert_math_op(node, "cosh"),
@@ -347,6 +350,7 @@ class TorchConverter(BaseConverter):
             "aten::pow": lambda node: self.convert_pow_op(node),
             "aten::prelu": lambda node: self.convert_prelu_op(node),
             "aten::permute": lambda node: self.convert_permute_op(node),
+            "aten::pixel_shuffle": lambda node: self.convert_pixel_shuffle_op(node),
             "aten::repeat": lambda node: self.convert_tile_op(node),
             "aten::reflection_pad1d": lambda node: self.convert_pad_op(node, mode='reflect'),
             "aten::reflection_pad2d": lambda node: self.convert_pad_op(node, mode='reflect'),
@@ -363,7 +367,6 @@ class TorchConverter(BaseConverter):
             "aten::sinh": lambda node: self.convert_math_op(node, "sinh"),
             "aten::silu": lambda node: self.convert_silu_op(node),
             "aten::slice": lambda node: self.convert_slice_op(node),
-            "aten::channel_shuffle": lambda node: self.convert_channel_shuffle_op(node),
             "aten::softmax": lambda node: self.convert_softmax_op(node),
             "aten::softplus": lambda node: self.convert_softplus_op(node),
             "aten::squeeze": lambda node: self.convert_squeeze_op(node),
@@ -466,7 +469,7 @@ class TorchConverter(BaseConverter):
         for idx, _name in enumerate(self.input_names):
             desc = input_descs[idx]
             scale = desc.max - desc.min
-            data = (np.random.rand(*input_shapes[idx])*scale - desc.min).astype(desc.dtype)
+            data = (np.random.rand(*input_shapes[idx]) * scale - desc.min).astype(desc.dtype)
             inputs[_name] = torch.from_numpy(data)
 
         self.torch_reader.run_model(inputs)
@@ -1364,6 +1367,19 @@ class TorchConverter(BaseConverter):
         }
         new_op = self.mlir.create_channel_shuffle_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
+
+    def convert_pixel_shuffle_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        block = self.const_val[torch_node.inputs[1]]
+        new_op = top.Depth2SpaceOp(self.unranked_type,
+                                   op,
+                                   block_h=block,
+                                   block_w=block,
+                                   is_CRD=True,
+                                   is_inversed=False,
+                                   loc=self.get_loc(torch_node.name),
+                                   ip=self.mlir.insert_point)
+        self.addOperand(torch_node.name, new_op.output)
 
     def convert_softmax_op(self, torch_node: TorchNode, log: bool = False):
         op = self.getOp(torch_node.inputs[0])
