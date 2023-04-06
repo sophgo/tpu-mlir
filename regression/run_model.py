@@ -138,6 +138,8 @@ class MODEL_RUN(object):
         # add others
         if "output_names" in self.ini_content:
             cmd += ["--output_names {}".format(self.ini_content["output_names"])]
+        if "descs" in self.ini_content:
+            cmd += ["--descs {}".format(self.ini_content["descs"])]
         if "excepts" in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
         if self.do_post_handle and "post_type" in self.ini_content:

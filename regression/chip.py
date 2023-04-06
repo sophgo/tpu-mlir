@@ -57,6 +57,7 @@ bm1684x_model_list = {
     ######## Pytorch #############
     "yolov5s_pt":          (Y, Y),
     "resnet50_pt":         (N, Y),
+    "bert_pt":             (N, Y),
     ######## onnx ################
     "bert-tiny_from_pt":   (N, Y),
     "densenet121-12":      (N, Y),
