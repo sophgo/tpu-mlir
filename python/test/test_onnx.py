@@ -2027,6 +2027,7 @@ class ONNX_IR_TESTER(object):
                 ['o_max'],
                 keepdims=keep,
                 axis=1,
+                select_last_index=1
             )
             if self.is_cv18xx:
                 graph_def = helper.make_graph([arg_max], "{}_{}".format(case_name, keep), [input],
@@ -2041,6 +2042,7 @@ class ONNX_IR_TESTER(object):
                 ['o_min'],
                 keepdims=keep,
                 axis=1,
+                select_last_index=1
             )
 
             graph_def = helper.make_graph([arg_max, arg_min], "{}_{}".format(case_name, keep),
@@ -4015,18 +4017,13 @@ class ONNX_IR_TESTER(object):
         input_shape = [8, 16, 32, 64]
         transpose_order = [0, 2, 1, 3]
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        transpose_output_shape = [
-            input_shape[transpose_order[i]] for i in range(len(transpose_order))
-        ]
-        transpose_output = helper.make_tensor_value_info('transpose_output', TensorProto.FLOAT,
-                                                         transpose_output_shape)
         transpose_def = helper.make_node("Transpose",
                                          inputs=['input'],
                                          outputs=['transpose_output'],
                                          perm=transpose_order)
         arg_keepdims = False
         arg_axis = 1
-        reduce_output_shape = [8, 1, 16, 64]
+        reduce_output_shape = [8, 16, 64]
         arg_output = helper.make_tensor_value_info('output', TensorProto.INT64, reduce_output_shape)
         arg_max_def = helper.make_node(
             'ArgMax',
@@ -4034,6 +4031,7 @@ class ONNX_IR_TESTER(object):
             ['output'],
             keepdims=arg_keepdims,
             axis=arg_axis,
+            select_last_index=1
         )
         graph_def = helper.make_graph([transpose_def, arg_max_def], case_name, [input],
                                       [arg_output])
@@ -4053,6 +4051,7 @@ class ONNX_IR_TESTER(object):
             ['o_max'],
             keepdims=1,
             axis=1,
+            select_last_index=1
         )
         graph_def = helper.make_graph([relu_def, arg_max], "{}".format(case_name), [input],
                                       [output1, x2])
@@ -4062,14 +4061,15 @@ class ONNX_IR_TESTER(object):
         input_shape = [2, 3, 4]
         arg_axis = 0
         reduce_axes = [0]
-        reduce_axes_num = 1
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output_shape = [1, 3, 4]
         arg_output = helper.make_tensor_value_info('arg_output', TensorProto.INT64, output_shape)
         arg_def = helper.make_node("ArgMax",
                                    inputs=['input'],
                                    outputs=['arg_output'],
-                                   axis=arg_axis)
+                                   axis=arg_axis,
+                                   select_last_index=1
+                                   )
         reduce_output_1 = helper.make_tensor_value_info('reduce_output_1', TensorProto.FLOAT,
                                                         output_shape)
         reduce_def_1 = helper.make_node("ReduceMax",

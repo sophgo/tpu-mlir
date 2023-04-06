@@ -988,6 +988,7 @@ class MLIRImporter(object):
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
             'keepdims': BoolAttr.get(kargs['keepdims']),
             'mode': StringAttr.get(kargs['mode']),
+            'select_last_index': BoolAttr.get(kargs['select_last_index']),
         }
         return self.buildOp(Top.ArgOp, operands, out_types, **param)
 

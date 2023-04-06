@@ -1687,7 +1687,8 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
     AnyRankedTensor:$input,
     I64Attr:$axis,
     BoolAttr:$keepdims,
-    ArgModeAttr:$mode
+    ArgModeAttr:$mode,
+    DefaultValuedAttr<BoolAttr, "true">:$select_last_index
   );
 
   let results = (outs
