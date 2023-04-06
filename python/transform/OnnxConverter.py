@@ -220,7 +220,7 @@ class OnnxConverter(BaseConverter):
             for i in node.inputs:
                 if i == name:
                     return True
-        for name in self.output_names:
+        if name in self.output_names:
             return True
         return False
 
@@ -1560,11 +1560,13 @@ class OnnxConverter(BaseConverter):
         op = self.getOperand(onnx_node.inputs[0])
         axis = onnx_node.attrs.get('axis', 0)
         keepdims = onnx_node.attrs.get('keepdims', 1) != 0
+        select_last_index = onnx_node.attrs.get('select_last_index', 0) != 0
         p = {
             "name": [onnx_node.name + '_indices', onnx_node.name + '_values'],
             "axis": axis,
             "keepdims": keepdims,
-            "mode": onnx_node.op_type
+            "mode": onnx_node.op_type,
+            "select_last_index": select_last_index,
         }
         out_shapes = [None, None]
         out_needs = [False, False]

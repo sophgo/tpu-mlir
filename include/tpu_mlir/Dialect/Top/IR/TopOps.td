@@ -1517,7 +1517,8 @@ def Top_ArgOp : Top_Op<"Arg"> {
     AnyTensor:$input,
     I64Attr:$axis,
     BoolAttr:$keepdims,
-    ArgModeAttr:$mode
+    ArgModeAttr:$mode,
+    DefaultValuedAttr<BoolAttr, "true">:$select_last_index
   );
   let results = (outs
     AnyTensor:$indices,
