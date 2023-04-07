@@ -384,13 +384,9 @@ public:
     ctx_ = &getContext();
     mainFunc_ = module::getMainFuncOp();
     LoweringConfig::isQuantized = false;
-    auto chip_ = StringRef(chip).lower();
     auto mode_ = StringRef(mode).upper();
-    auto chip = module::symbolizeChip(chip_);
-    assert(chip.has_value());
     auto mode = module::symbolizeMode(mode_);
     assert(mode.has_value());
-    module::setChip(chip.value());
     module::setMode(mode.value());
     if (weightFileName != "") {
       module::setWeightFileName(weightFileName);

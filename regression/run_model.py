@@ -174,8 +174,9 @@ class MODEL_RUN(object):
         tpu_mlir = f"{self.model_name}_bm1686_tpu_int4_sym.mlir"
         cmd = [
             "tpuc-opt", f"{self.model_name}.mlir",
+            "--chip=\"type=bm1686\""
             f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
-            "--convert-top-to-tpu=\"mode=INT4 asymmetric=false chip=bm1686\"", "--canonicalize",
+            "--convert-top-to-tpu=\"mode=INT4 asymmetric=false\"", "--canonicalize",
             "--save-weight", "--mlir-print-debuginfo", f"-o {tpu_mlir}"
         ]
         _os_system(cmd)
