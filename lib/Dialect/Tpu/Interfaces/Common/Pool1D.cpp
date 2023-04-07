@@ -231,3 +231,7 @@ int64_t tpu::Pool1DOp::DynForwardHeight(int64_t in_height) {
   //Todo
   return in_height;
 }
+
+void tpu::Pool1DOp::assign_fw_param(void *param) {
+  llvm_unreachable("not implement");
+}

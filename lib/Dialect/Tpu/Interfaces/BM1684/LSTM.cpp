@@ -173,3 +173,11 @@ void tpu::LSTMOp::codegen_global_bm1684() {
     (CMD_ID_NODE *)BM1684::instance().cmdid_node);
 
 }
+
+uint32_t tpu::LSTMOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+int64_t tpu::LSTMOp::get_fw_type_bm1684() {
+  return -1;
+}

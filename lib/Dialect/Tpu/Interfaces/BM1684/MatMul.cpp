@@ -10,6 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
@@ -73,4 +74,49 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684(
 void tpu::MatMulOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                          local_sec_info_t &sec_info) {
   llvm_unreachable("Not supported now");
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+
+uint32_t tpu::MatMulOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
+  auto p = parseParam();
+  uint32_t fw_ir_length = 0;
+  if (p.batch == 1) {
+    fw_fc_layer_param_t fw_fc_layer_param = {0};
+    ir_layer_info_t *fc_ir_layer_info = (ir_layer_info_t *)ir_layer_info;
+    dynamic_common_ir_layer_info(fc_ir_layer_info, getInput(), getOutput());
+    assign_fw_param((void *)&fw_fc_layer_param);
+    fc_ir_layer_info->fw_layer_param_u.fw_fc_layer_param = fw_fc_layer_param;
+    fw_ir_length += sizeof(fw_fc_layer_param_t);
+  } else {
+    ir_layer_info_t *batch_matmul_layer_info = (ir_layer_info_t *)ir_layer_info;
+    dynamic_common_ir_layer_info(batch_matmul_layer_info, getInput(),
+                                 getOutput());
+    fw_batch_matmul_layer_param_t fw_batch_matmul_layer_param = {0};
+    assign_fw_param((void *)&fw_batch_matmul_layer_param);
+    batch_matmul_layer_info->fw_layer_param_u.fw_batch_matmul_layer_param =
+        fw_batch_matmul_layer_param;
+    fw_ir_length += sizeof(fw_batch_matmul_layer_param_t);
+    if (batch_matmul_layer_info->extra_len > 0) {
+      fw_ir_length += sizeof(uint32_t);
+      fw_ir_length += batch_matmul_layer_info->extra_len;
+    }
+  }
+  return fw_ir_length;
+}
+
+int64_t tpu::MatMulOp::get_fw_type_bm1684() {
+  auto p = parseParam();
+  return (p.batch != 1 ? FW_BMNET_BATCH_MATMUL : FW_BMNET_FC);
+}
+
+// ======================================
+// Dynamic LocalGenInterface
+// ======================================
+
+int32_t tpu::MatMulOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
 }

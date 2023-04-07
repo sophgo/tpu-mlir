@@ -7,16 +7,18 @@
 //
 //===----------------------------------------------------------------------===//
 #pragma once
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BM1684/DynGlobalIrWrite.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BM1684/DynLocalIrWrite.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/IrInfo.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
+#include "tpu_mlir/Support/Module.h"
 #include <list>
 #include <map>
 #include <set>
 #include <vector>
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/IrInfo.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 using namespace std;
 using namespace llvm;
 namespace tpu_mlir {
@@ -97,7 +99,9 @@ protected:
   void global_layer_ir_generate(Operation *op);
   void global_layer_ir_generate_v2(Operation *op);
 
-  void local_layer_ir_generate();
+  void local_layer_ir_generate(Operation *op,
+                               vector<ir_layer_info_t> &layer_info_v1,
+                               uint8_t swpipl_stage_num);
   void local_layer_ir_generate_v2(Operation *op);
 
   void
@@ -111,8 +115,9 @@ protected:
                          vector<unsigned int> &output_tensor_ids,
                          int group_start, int group_end);
 
-  void *write_local_layer_info_buffer(void *p_ir_buf,
-                                      ir_layer_info_t *p_ir_layer_info);
+  void *write_local_layer_info_buffer(void *p_ir_buf, Operation *op,
+                                      ir_layer_info_t *p_ir_layer_info,
+                                      shared_ptr<BasicTimeStep> time_step);
   void *write_local_layer_info_buffer_v2(void *p_ir_buf, Operation *op,
                                          FW_LAYER_TYPE_T fw_type,
                                          shared_ptr<BasicTimeStep> time_step);

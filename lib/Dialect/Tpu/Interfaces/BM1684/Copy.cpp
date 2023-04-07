@@ -22,4 +22,11 @@ void tpu::CopyOp::codegen_global_bm1684() {
   llvm_unreachable("Not Implemented");
 }
 
+uint32_t tpu::CopyOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
 
+int64_t tpu::CopyOp::get_fw_type_bm1684() {
+  return -1;
+}

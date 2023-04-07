@@ -18,14 +18,14 @@ using namespace tpu_mlir::backend;
 void tpu::InterpOp::codegen_global_bm1684() {
     uint64_t bottom_global_offset = module::getAddress(getInput());
     uint64_t top_global_offset = module::getAddress(getResult());
-    
+
     int64_t in, ic, ih, iw;
     module::getNCHW(getInput(), in, ic, ih, iw, true);
     int64_t on, oc, oh, ow;
     module::getNCHW(getOutput(), on, oc, oh, ow, true);
-    
+
     // >>>>the followed param are Aligned with nntc bmneto's interp_layer.py
-    int pad_bag = 0, pad_end = 0; 
+    int pad_bag = 0, pad_end = 0;
     bool align_corners, half_pixel_centers = 0;
     PLATFORM_SUPPORT platform_sp;
     if (getMode() == tpu::ResizeMode::linear){
@@ -54,7 +54,7 @@ void tpu::InterpOp::codegen_global_bm1684() {
         }
     }
     // <<<<
-    
+
     BM1684::instance().dl_nodechip_interp_forward_parallel(
             bottom_global_offset,
             top_global_offset,
@@ -64,4 +64,13 @@ void tpu::InterpOp::codegen_global_bm1684() {
             platform_sp,
             (CMD_ID_NODE*)BM1684::instance().cmdid_node);
 
+}
+
+uint32_t tpu::InterpOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+
+int64_t tpu::InterpOp::get_fw_type_bm1684() {
+  return -1;
 }

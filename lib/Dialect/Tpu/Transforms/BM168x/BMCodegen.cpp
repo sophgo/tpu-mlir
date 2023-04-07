@@ -184,15 +184,7 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values,
     auto type = module::getStorageType(v);
     auto shape = module::getShape(v);
     auto data_type = BM168x::getDataType(type);
-    auto gmem_stmode = STORE_MODE_1N;
-    if (module::isBM1684Family()) {
-      auto typeBytes = type.getIntOrFloatBitWidth() / 8;
-      if (typeBytes == 1) {
-        gmem_stmode = STORE_MODE_4N;
-      } else if (typeBytes == 2) {
-        gmem_stmode = STORE_MODE_2N;
-      }
-    }
+    auto gmem_stmode = BM168x::getStoreMode(v);
     // shape info
     auto name = builder.CreateString(v_name);
     auto stage_shape = CreateShapeVector(shape);

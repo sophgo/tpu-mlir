@@ -147,6 +147,22 @@ double BM168x::getFmtBytes(DATA_TYPE_T data_type) {
   return (double)data_byte_size;
 }
 
+STORE_MODE_T BM168x::getStoreMode(Value v) {
+  STORE_MODE_T stmode = STORE_MODE_1N;
+  if (module::isBM1684Family()) {
+    auto type = module::getStorageType(v);
+    auto typeBytes = type.getIntOrFloatBitWidth() / 8;
+    if (typeBytes == 1) {
+      stmode = STORE_MODE_4N;
+    } else if (typeBytes == 2) {
+      stmode = STORE_MODE_2N;
+    } else if (typeBytes != 4) {
+      llvm_unreachable("stmode type error");
+    }
+  }
+  return stmode;
+}
+
 tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
   tensor_spec_t spec;
   memset(&spec, 0, sizeof(spec));

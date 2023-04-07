@@ -29,13 +29,9 @@ def DynLocalGenInterface : OpInterface<"DynLocalGenInterface"> {
       >,
       InterfaceMethod<
         /*desc=*/[{}],
-        /*retType=*/"int64_t",
+        /*retType=*/"int32_t",
         /*methodName=*/"dyn_codegen_local_bm1684",
-        /*args=*/(ins "void *":$buffer),
-        /*methodBody=*/"",
-        /*defaultImplementation=*/[{
-          return 0;
-        }]
+        /*args=*/(ins "void *":$ir_layer_info)
       >,
       InterfaceMethod<
         /*desc=*/[{}],

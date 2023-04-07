@@ -9,6 +9,8 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Module.h"
@@ -249,4 +251,92 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         /* result_add*/ 0, p.do_relu ? 1 : 0, p.relu_limit, 0, 0, 0, 0,
         BM1684::instance().bdc_node);
   }
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+
+uint32_t tpu::Conv2DOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
+  uint32_t fw_ir_length = 0;
+  ir_layer_info_t *conv_layer_info = (ir_layer_info_t *)ir_layer_info;
+  conv_layer_info->data_size =
+      get_dynamic_compiler_tensor_datasize(getOutput());
+  conv_layer_info->intensor_store_mode = BM168x::getStoreMode(getInput());
+  conv_layer_info->outtensor_store_mode = BM168x::getStoreMode(getOutput());
+
+  fw_conv_layer_param_t fw_conv_layer_param = {0};
+  assign_fw_param((void *)&fw_conv_layer_param);
+
+  conv_layer_info->fw_layer_param_u.fw_conv_layer_param = fw_conv_layer_param;
+  fw_ir_length += sizeof(fw_conv_layer_param_t);
+
+  return fw_ir_length;
+}
+
+int64_t tpu::Conv2DOp::get_fw_type_bm1684() { return FW_BMNET_CONV; }
+
+// ======================================
+// Dynamic LocalGenInterface
+// ======================================
+
+int32_t tpu::Conv2DOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
+  int fw_ir_length = 0;
+  ir_layer_info_t *conv_layer_info = (ir_layer_info_t *)ir_layer_info;
+  conv_layer_info->data_size =
+      get_dynamic_compiler_tensor_datasize(getOutput());
+  conv_layer_info->intensor_store_mode = BM168x::getStoreMode(getInput());
+  conv_layer_info->outtensor_store_mode = BM168x::getStoreMode(getOutput());
+
+  // get fw layer param
+  fw_conv_layer_param_t fw_conv_layer_param = {0};
+  assign_fw_param((void *)&fw_conv_layer_param);
+
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
+  int64_t n, c, h, w;
+  module::getNCHW(getOutput(), n, c, h, w);
+  fw_conv_layer_param.c_idx = 0; // not support c_slice now
+  fw_conv_layer_param.reference_id = get_tensor_id(getOutput());
+  fw_conv_layer_param.concat_c = c;
+
+  fw_conv_layer_param.if_double_buffer = 0;
+  int using_immbuf = 0; // ref to Conv2DOp::getBufferSize_bm1684
+  fw_conv_layer_param.if_relu |=
+      (using_immbuf << 4); // conv's if_relu high 4 bit used as immbuf flag
+
+  uint64_t weight_global_addr = module::getAddress(getFilter());
+  fw_conv_layer_param.weight_global_offset = weight_global_addr;
+  fw_conv_layer_param.double_buffer_local_offset = 0;
+
+  conv_layer_info->fw_layer_param_u.fw_conv_layer_param = fw_conv_layer_param;
+  fw_ir_length += sizeof(fw_conv_layer_param_t);
+
+  // get layer input and output
+  conv_layer_info->ir_tensor_info_v.clear();
+  // input tensor
+  dynamic_push_back_local_tensor(conv_layer_info->ir_tensor_info_v, getInput());
+
+  // weight
+  dynamic_push_back_local_tensor(conv_layer_info->ir_tensor_info_v,
+                                 getFilter());
+
+  // bias
+  if (getWithBias()) {
+    dynamic_push_back_local_tensor(conv_layer_info->ir_tensor_info_v,
+                                   getBias());
+  }
+
+  // output, in local concat case, let the out_tensor_id which is the first conv
+  // of concat be concat's out_tensor_id
+  dynamic_push_back_local_tensor(conv_layer_info->ir_tensor_info_v,
+                                 getOutput());
+
+  // compute fw ir info length for conv input and output
+  fw_ir_length += (sizeof(uint32_t) + 3 * sizeof(uint32_t) +
+                   (getWithBias() ? 1 : 0) * sizeof(uint32_t));
+
+  // add fw ir length for output consumer number
+  fw_ir_length += sizeof(uint32_t);
+
+  return fw_ir_length;
 }

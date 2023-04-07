@@ -315,6 +315,7 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
     conv_attr_t parseParam();
+    void assign_fw_param(void *param);
   }];
 }
 
@@ -377,6 +378,7 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
     pool_attr_t parseParam();
+    void assign_fw_param(void *param);
   }];
 }
 
@@ -455,6 +457,9 @@ def Tpu_AddOp: Tpu_Op<"Add", [
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_AddConstOp: Tpu_Op<"AddConst",
@@ -825,6 +830,7 @@ def Tpu_LutBF16Op: Tpu_Op<"LutBF16",
 def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>,
     SupportFuseRelu]> {
   let summary = "matmul operator";
 
@@ -857,6 +863,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
     matmul_attr_t parseParam();
+    void assign_fw_param(void *param);
   }];
 }
 

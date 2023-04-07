@@ -7,20 +7,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <mutex>
-#include <cstddef>
-#include <fstream>
-#include <set>
-#include <sstream>
-#include <vector>
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
+#include "mlir/Support/LLVM.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
+#include "tpu_mlir/Support/Module.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseMapInfo.h"
 #include "llvm/ADT/Hashing.h"
-#include "mlir/Support/LLVM.h"
+#include <cstddef>
+#include <fstream>
+#include <mutex>
+#include <set>
+#include <sstream>
+#include <vector>
 using namespace llvm;
 using namespace mlir;
 using namespace tpu_mlir::backend;
@@ -412,6 +412,112 @@ size_t dynamic_layer::write_global_ir(void *buffer) {
   auto len = this->write_global_ir_impl(buffer_u32 + 1);
   *buffer_u32 = len;
   return len + 2 * sizeof(uint32_t);
+}
+
+uint32_t dynamic_layer::get_global_ir_length(ir_layer_info_t *ir_layer_info) {
+  uint32_t fw_ir_length = 0;
+  if (auto tpuOp = dyn_cast<DynGlobalGenInterface>(op_)) {
+    fw_ir_length += tpuOp.dyn_codegen_global_bm1684((void *)ir_layer_info);
+    ir_layer_info->fw_layer_type = (FW_LAYER_TYPE_T)tpuOp.get_fw_type_bm1684();
+    if (ir_layer_info->fw_layer_type == -1) {
+      llvm_unreachable("Dynamic Layer Type Error");
+    }
+    if (!fw_ir_length) {
+      llvm_unreachable("fw_ir_length error");
+    }
+  } else {
+    llvm_unreachable("Operation not support DynGlobalGenInterface");
+  }
+  return fw_ir_length;
+}
+
+int32_t dynamic_layer::get_local_ir_length(ir_layer_info_t *ir_layer_info) {
+  int32_t fw_ir_length = 0;
+  if (auto tpuOp = dyn_cast<DynLocalGenInterface>(op_)) {
+    fw_ir_length += tpuOp.dyn_codegen_local_bm1684((void *)ir_layer_info);
+    if (!fw_ir_length) {
+      llvm_unreachable("fw_ir_length error");
+    }
+  } else {
+    llvm_unreachable("Operation not support DynLocalGenInterface");
+  }
+  if (auto tpuOp = dyn_cast<DynGlobalGenInterface>(op_)) {
+    ir_layer_info->fw_layer_type = (FW_LAYER_TYPE_T)tpuOp.get_fw_type_bm1684();
+  }
+  if (ir_layer_info->fw_layer_type == -1) {
+    llvm_unreachable("Dynamic Layer Type Error");
+  }
+  return fw_ir_length;
+}
+
+uint32_t push_back_layer_global_tensor(
+    Value v, vector<ir_tensor_info_t> &ir_tensor_info_v, bool is_layer_in) {
+  uint32_t fw_ir_length = 0;
+  ir_tensor_info_t ir_tensor_info;
+
+  /*TODO only support is_neuron*/
+  bool is_neuron = true;
+  bool is_shape = false;
+  bool is_array = false;
+  bool is_flow = false;
+
+  if (is_flow) {
+    return fw_ir_length;
+  }
+
+  /*TODO get tensor_type*/
+  ir_tensor_info.tensor_type = IR_TENSOR_TYPE_NEURON;
+
+  ir_tensor_info.is_io_tensor = 0;
+  if (is_layer_in) {
+    if (is_net_input(v) && is_neuron) {
+      ir_tensor_info.is_io_tensor = 1;
+    }
+  } else {
+    if (is_net_output(v)) {
+      ir_tensor_info.is_io_tensor = 1;
+    }
+  }
+
+  if (is_neuron) {
+    fw_ir_length += sizeof(uint32_t);
+  }
+
+  ir_tensor_info.tensor_id = (uint32_t)get_tensor_id(v);
+  if (is_neuron || is_shape) {
+    fw_ir_length += sizeof(uint32_t);
+  }
+  if (is_array) {
+    fw_ir_length += sizeof(uint64_t);
+  }
+
+  /*TODO ELTWISE coeff need special process*/
+  if (!ir_tensor_info.is_io_tensor && !is_shape) {
+    ir_tensor_info.global_mem_offset = module::getAddress(v);
+    fw_ir_length += sizeof(uint64_t);
+  } else {
+    ir_tensor_info.global_mem_offset = 0;
+  }
+
+  ir_tensor_info.local_mem_offset = 0;
+  ir_tensor_info_v.push_back(ir_tensor_info);
+  return fw_ir_length;
+}
+
+void dynamic_push_back_local_tensor(vector<ir_tensor_info_t> &ir_tensor_info_v,
+                                    Value v) {
+  ir_tensor_info_t ir_tensor_info = TENSOR_INFO_INIT_VALUE;
+  auto g_info = LocalGenInterface::getGroupInfo(v);
+  ir_tensor_info.tensor_id = get_tensor_id(v);
+  ir_tensor_info.local_mem_offset = g_info.out_addr;
+  ir_tensor_info_v.push_back(ir_tensor_info);
+}
+
+void dynamic_common_ir_layer_info(ir_layer_info_t *ir_layer_info, Value input,
+                                  Value output) {
+  ir_layer_info->data_size = get_dynamic_compiler_tensor_datasize(input);
+  ir_layer_info->intensor_store_mode = BM168x::getStoreMode(input);
+  ir_layer_info->outtensor_store_mode = BM168x::getStoreMode(output);
 }
 
 } // namespace tpu

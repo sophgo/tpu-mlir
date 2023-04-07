@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/Module.h"
 
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
 // clang-format off
@@ -260,4 +261,68 @@ mlir::Type tpu::MatMulOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
     return type_verify_case_i32(getOperation(), opd_idx, mode);
   }
   return type_verify_case_same(getOperation(), opd_idx, mode);
+}
+
+void tpu::MatMulOp::assign_fw_param(void *param) {
+  auto p = parseParam();
+  if (p.batch == 1) {
+    // FW_BMNET_FC
+    fw_fc_layer_param_t fw_fc_layer_param = {0};
+    fw_fc_layer_param.input_neuron_num = p.K;
+    fw_fc_layer_param.output_neuron_num = p.N;
+    fw_fc_layer_param.transpose = p.right_transpose;
+    fw_fc_layer_param.using_bias = p.with_bias;
+    fw_fc_layer_param.if_activated = p.do_relu;
+    fw_fc_layer_param.active_type =
+        getDoRelu() ? 1 : 0; // not support prelu now
+    fw_fc_layer_param.relu_upper_limit = p.relu_limit;
+    fw_fc_layer_param.channel_shared = 0; // use for prelu
+    fw_fc_layer_param.shared_slope = 0.f; // use for prelu
+    fw_fc_layer_param.out_dims = module::getShape(getOutput()).size();
+    if (module::isUniformQuantized(getOutput())) {
+      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
+      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
+      fw_fc_layer_param.rshift_num = (uint8_t)rshift_v->at(0);
+      fw_fc_layer_param.opd0_sign = module::isSign(getInput());
+      fw_fc_layer_param.opd1_sign = module::isSign(getRight());
+      fw_fc_layer_param.opd2_sign =
+          fw_fc_layer_param.using_bias ? module::isSign(getBias()) : 0;
+      fw_fc_layer_param.perlayer_bias = 0; // not support;
+
+      fw_fc_layer_param.if_use_scale = 0; // 0:FcPerLayerShift 1:FcPerLayerScale
+      fw_fc_layer_param.if_asymmetric = false; // not support
+      fw_fc_layer_param.if_bias_float =
+          (p.with_bias && BM168x::getDataType(getBias()) == DTYPE_FP32) ? 1 : 0;
+      fw_fc_layer_param.if_perchannel = 0;
+      fw_fc_layer_param.scale = multiplier_v->at(0);
+      fw_fc_layer_param.weight_offset = (short)(0 - p.right_zp);
+      fw_fc_layer_param.output_offset = 0; // not suppot now
+      fw_fc_layer_param.weight_is_datatensor = !module::isWeight(getRight());
+    }
+    fw_fc_layer_param.version = 1;
+    fw_fc_layer_param.res_16b =
+        BM168x::getDataType(getOutput()) == DTYPE_INT16 ||
+        BM168x::getDataType(getOutput()) == DTYPE_UINT16;
+    if (BM168x::getDataType(getOutput()) == DTYPE_FP32 &&
+        (BM168x::getDataType(getInput()) == DTYPE_INT8 ||
+         BM168x::getDataType(getInput()) == DTYPE_UINT8)) {
+      fw_fc_layer_param.res_16b = 2;
+      fw_fc_layer_param.using_bias = 2;
+    }
+    fw_fc_layer_param.output_sign = module::isSign(getOutput());
+    // assign param
+    memcpy(param, &fw_fc_layer_param, sizeof(fw_fc_layer_param_t));
+  } else {
+    // FW_BMNET_BATCH_MATMUL
+    fw_batch_matmul_layer_param_t fw_batch_matmul_layer_param = {0};
+    fw_batch_matmul_layer_param.if_relu = p.do_relu;
+    fw_batch_matmul_layer_param.relu_upper_limit = p.relu_limit;
+    fw_batch_matmul_layer_param.in0_is_coeff = module::isWeight(getInput());
+    fw_batch_matmul_layer_param.in1_is_coeff = module::isWeight(getRight());
+    module::getGlobalShape(getInput(), fw_batch_matmul_layer_param.in0_shape);
+    module::getGlobalShape(getRight(), fw_batch_matmul_layer_param.in1_shape);
+    // assign param
+    memcpy(param, &fw_batch_matmul_layer_param,
+           sizeof(fw_batch_matmul_layer_param_t));
+  }
 }
