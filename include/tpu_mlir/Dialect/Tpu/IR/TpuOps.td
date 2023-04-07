@@ -1577,7 +1577,7 @@ def Tpu_TileOp:Tpu_Op<"Tile", [
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
-    I64Attr:$axis,
+    SI32Attr:$axis,
     I64Attr:$tile
   );
   let results = (outs AnyRankedTensor:$output);

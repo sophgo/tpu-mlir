@@ -99,7 +99,7 @@ class Top:
     SqrtOp = 'top.Sqrt'
     ShuffleChannelOp = 'top.ShuffleChannel'
     TileOp = 'top.Tile'
-    TileExOp = 'top.TileEx'
+    RepeatOp = 'top.Repeat'
     TanOp = 'top.Tan'
     TanhOp = 'top.Tanh'
     TopKOp = 'top.TopK'
@@ -920,18 +920,10 @@ class MLIRImporter(object):
         output_type = self.get_tensor_type(output_shape)
         param = {
             'name': kargs['name'],
-            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+            'axis': IntegerAttr.get(self.mlir_type['INT32'], kargs['axis']),
             'tile': IntegerAttr.get(self.mlir_type['INT64'], kargs['tile']),
         }
         return self.buildOp(Top.TileOp, operands, [output_type], **param)
-
-    def create_tile_ex_op(self, operands, output_shape, **kargs):
-        output_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-            'repeats': self.ArrayAttr(kargs['repeats']),
-        }
-        return self.buildOp(Top.TileExOp, operands, [output_type], **param)
 
     def create_max_op(self, operands, output_shape, **kargs):
         if len(operands) != 2:

@@ -850,12 +850,27 @@ def Top_SoftsignOp: Top_Op<"Softsign"> {
 def Top_SizeOp: Top_Op<"Size"> {
   let summary = "Size operator";
   let description = [{
-    gen by torch aten::Size
+    gen by torch aten::size
   }];
 
   let arguments = (ins
     AnyTensor:$input,
     OptionalAttr<SI32Attr>:$axis
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_ArangeOp: Top_Op<"Arange"> {
+  let summary = "Arange operator";
+  let description = [{
+    gen by torch aten::arange
+  }];
+
+  let arguments = (ins
+    AnyTensorOrNone:$start,
+    AnyTensor:$end,
+    AnyTensorOrNone:$step
   );
 
   let results = (outs AnyTensor:$output);
@@ -1428,7 +1443,7 @@ def Top_TileOp: Top_Op<"Tile"> {
 
   let arguments = (ins
     AnyTensor:$input,
-    I64Attr:$axis,
+    SI32Attr:$axis,
     I64Attr:$tile
   );
 
@@ -1436,15 +1451,15 @@ def Top_TileOp: Top_Op<"Tile"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_TileExOp: Top_Op<"TileEx"> {
-  let summary = "TileEx operator";
+def Top_RepeatOp: Top_Op<"Repeate"> {
+  let summary = "Repeat operator";
   let description = [{
-    Perform Tile operation on the given tensor. similar to numpy tile.
+    Perform aten::repeat operation on the given tensor
   }];
 
   let arguments = (ins
     AnyTensor:$input,
-    I64ArrayAttr:$repeats
+    AnyTensor:$repeats
   );
 
   let results = (outs AnyTensor:$output);
