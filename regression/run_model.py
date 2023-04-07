@@ -48,6 +48,12 @@ class MODEL_RUN(object):
         for key in self.ini_content:
             self.ini_content[key] = os.path.expandvars(self.ini_content[key])
 
+        if not os.path.exists(self.ini_content["model_path"]):
+            assert ("model_path2" in self.ini_content
+                    and os.path.exists(self.ini_content["model_path2"])
+                    and "model path doesn't exist")
+            self.ini_content["model_path"] = self.ini_content["model_path2"]
+
         self.do_cali = not self.ini_content["model_path"].endswith(".tflite")
         self.tolerance = {
             "f32": config.get("DEFAULT", "f32_tolerance", fallback="0.99,0.99"),
@@ -105,11 +111,6 @@ class MODEL_RUN(object):
             f"--test_result {top_result}", f"--mlir {model_name}.mlir"
         ])
 
-        if not os.path.exists(self.ini_content["model_path"]):
-            assert ("model_path2" in self.ini_content
-                    and os.path.exists(self.ini_content["model_path2"])
-                    and "model path doesn't exist")
-            self.ini_content["model_path"] = self.ini_content["model_path2"]
         cmd += ["--model_def {}".format(self.ini_content["model_path"])]
         if "model_data" in self.ini_content:
             cmd += ["--model_data {}".format(self.ini_content["model_data"])]
