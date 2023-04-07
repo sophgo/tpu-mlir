@@ -222,6 +222,9 @@ void assign_dhwsecs(const LgInfo & lg_info, shape_secs_t &shape_secs,
     // split height and width
     float h_len = 0.f, w_len = 0.f;
     for (auto out: group_out_tensors) {
+      if (out.use_empty()) {
+        continue;
+      }
       int64_t n, c, d, h, w;
       module::getNCDHW(out, n, c, d, h, w, lg_info.type);
       h_len += (float)h;
