@@ -1850,15 +1850,7 @@ class OnnxConverter(BaseConverter):
             new_op = self.mlir.create_leaky_relu_op([in_op], output_shape, **p)
             self.addOperand(onnx_node.name, new_op)
             return
-        slope_shape = self.getShape(rhs)
-        num_slope = np.prod(slope_shape)
-        in_shape = self.getShape(lhs)
-        slope_shape = [1] * len(in_shape)
-        if len(in_shape) > 1:
-            slope_shape[1] = num_slope
-        else:
-            slope_shape[0] = num_slope
-        slope = self.getWeightOp(rhs, slope_shape)
+        slope = self.getOp(rhs)
         prelu_op = self.mlir.create_prelu_op([in_op, slope], output_shape, **p)
         self.addOperand(onnx_node.name, prelu_op)
 

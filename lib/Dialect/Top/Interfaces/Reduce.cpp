@@ -97,10 +97,16 @@ void top::ReduceOp::shape_inference() {
   auto num_dims = in_shape.size();
   auto axes = module::getI64Array(getAxes());
   std::vector<int64_t> out_shape;
+  bool fixed = false;
   for (auto &idx : *axes) {
     if (idx < 0) {
       idx += num_dims;
+      fixed = true;
     }
+  }
+  if (fixed) {
+    Builder builder(getContext());
+    setAxesAttr(builder.getI64ArrayAttr(*axes));
   }
   for (int i = 0; i < num_dims; i++) {
     if (std::find(axes->begin(), axes->end(), i) != axes->end()) {
