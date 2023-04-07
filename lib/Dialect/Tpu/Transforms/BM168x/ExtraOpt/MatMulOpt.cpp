@@ -47,6 +47,10 @@ MatMulHdimBatchPattern::matchAndRewrite(tpu::MatMulOp op,
     if (!(r_trans_op && r_trans_op->hasOneUse())) {
       return failure();
     }
+    auto oshape = module::getShape(op.getOutput());
+    if (oshape.size() == 4 && oshape[3] >= 1024) {
+      return failure();
+    }
 
     auto l_order = module::getI64Array(l_trans_op.getOrder());
     auto r_order = module::getI64Array(r_trans_op.getOrder());

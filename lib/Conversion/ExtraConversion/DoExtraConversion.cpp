@@ -49,7 +49,7 @@ public:
       cv18xx::populateDoExtraConversionPatterns(&patterns);
     }
     auto config = GreedyRewriteConfig();
-    config.maxIterations = 3; // apply each pattern only once.
+    config.maxIterations = 5; // apply each pattern only once.
     applyPatternsAndFoldGreedily(mOp, std::move(patterns), config);
     module::updateModuleTypes();
   }
