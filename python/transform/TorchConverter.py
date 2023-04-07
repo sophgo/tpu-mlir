@@ -486,14 +486,6 @@ class TorchConverter(BaseConverter):
                                  self.input_types)
         self.weight_file = self.mlir.weight_file
 
-    def get_shape(self, name):
-        if name in self.ref_data.keys():
-            return self.ref_data[name].numpy().shape
-        elif name in self.torch_reader.coeff.keys():
-            return self.torch_reader.coeff[name].numpy().shape
-        else:
-            raise RuntimeError("can not find {} shape".format(name))
-
     def get_dtype(self, name):
         if name in self.ref_data.keys():
             return self.ref_data[name].numpy().dtype.name
@@ -739,9 +731,7 @@ class TorchConverter(BaseConverter):
         assert method in ("ReduceMin", "ReduceMax", "ReduceMean", "ReduceL2", "ReduceL1",
                           "ReduceSum", "ReduceProd")
         op0 = self.getOp(torch_node.inputs[0])
-        in_shape = self.get_shape(torch_node.inputs[0])
         axes = self.const_val[torch_node.inputs[1]]
-        axes = [ax if ax >= 0 else ax + len(in_shape) for ax in axes]
         keepdims = self.const_val[torch_node.inputs[2]]
         # TODO: axes are not consecutive numbers
         # TODO: axes is none
@@ -948,11 +938,7 @@ class TorchConverter(BaseConverter):
 
     def convert_prelu_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
-        in0_shape = self.get_shape(torch_node.inputs[0])
-        weight_shape = len(in0_shape) * [1]
-        num_slope = np.prod(self.get_shape(torch_node.inputs[1]))
-        weight_shape[1 if len(in0_shape) > 1 else 0] = num_slope
-        op1 = self.getWeightOp(torch_node.inputs[1], weight_shape)
+        op1 = self.getOp(torch_node.inputs[1])
         new_op = self.mlir.create_prelu_op([op0, op1], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
