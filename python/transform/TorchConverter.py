@@ -542,6 +542,8 @@ class TorchConverter(BaseConverter):
             op = self.getOperand(_name)
             return_op.append(op)
 
+        self.ref_data.clear()
+        self.torch_reader.ref_tensor.clear()
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
         with open(mlir_file, "w") as f:
