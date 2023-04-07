@@ -16,10 +16,10 @@
 using namespace mlir;
 using namespace tpu_mlir::top;
 
-struct TopTileExToTile : public OpRewritePattern<TileExOp> {
+struct TopRepeatToTile : public OpRewritePattern<RepeatOp> {
   using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(TileExOp op,
+  LogicalResult matchAndRewrite(RepeatOp op,
                                 PatternRewriter &rewriter) const override {
 
     auto out_shape = module::getShape(op.getOutput());
@@ -53,7 +53,7 @@ struct TopTileExToTile : public OpRewritePattern<TileExOp> {
       int64_t tile = out_shape[i] / in_shape_[i];
       std::vector<NamedAttribute> attrs;
       attrs.push_back(
-          rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(i)));
+          rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(i)));
       attrs.push_back(
           rewriter.getNamedAttr("tile", rewriter.getI64IntegerAttr(tile)));
 
@@ -74,7 +74,7 @@ struct TopTileExToTile : public OpRewritePattern<TileExOp> {
   }
 };
 
-void TileExOp::getCanonicalizationPatterns(RewritePatternSet &results,
+void RepeatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<TopTileExToTile>(context);
+  results.insert<TopRepeatToTile>(context);
 }
