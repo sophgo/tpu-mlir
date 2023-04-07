@@ -780,7 +780,7 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 }
 
 def Tpu_LutOp: Tpu_Op<"Lut",
-    [DeclareOpInterfaceMethods<LocalGenInterface>,
+    [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>,
     InOutSameShape]>{
   let summary = "Lut operator";
