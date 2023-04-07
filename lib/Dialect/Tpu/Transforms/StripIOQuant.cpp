@@ -29,9 +29,24 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
       rewriter.replaceOp(op, inputOp.getResult());
       return success();
     }
+    // for case input -> reshape -> cast -> any op
+    if(auto reshapeOp = op.getInput().getDefiningOp<tpu::ReshapeOp>()) {
+      if (!reshapeOp.getResult().hasOneUse()) {
+        return failure();
+      }
+      auto inputOp = reshapeOp.getInput().getDefiningOp<top::InputOp>();
+      if (!inputOp) {
+        return failure();
+      }
+      auto new_type = op.getResult().getType();
+      inputOp.getResult().setType(new_type);
+      reshapeOp.getResult().setType(new_type);
+      rewriter.replaceOp(op, reshapeOp.getResult());
+    }
     return failure();
   };
 };
+
 struct StripInputQuantCpuCastPattern
     : public OpRewritePattern<tpu::GenericCpuOp> {
   StripInputQuantCpuCastPattern(MLIRContext *context)
@@ -47,6 +62,20 @@ struct StripInputQuantCpuCastPattern
       inputOp.getResult().setType(op.getResults()[0].getType());
       rewriter.replaceOp(op, inputOp.getResult());
       return success();
+    }
+    // for case input -> reshape -> cast -> any op
+    if(auto reshapeOp = op.getInputs()[0].getDefiningOp<tpu::ReshapeOp>()) {
+      if (!reshapeOp.getResult().hasOneUse()) {
+        return failure();
+      }
+      auto inputOp = reshapeOp.getInput().getDefiningOp<top::InputOp>();
+      if (!inputOp) {
+        return failure();
+      }
+      auto new_type = op.getResults()[0].getType();
+      inputOp.getResult().setType(new_type);
+      reshapeOp.getResult().setType(new_type);
+      rewriter.replaceOp(op, reshapeOp.getResult());
     }
     return failure();
   };
