@@ -40,12 +40,11 @@ public:
   void runOnOperation() override {
     auto mOp = getOperation();
     RewritePatternSet patterns(mOp.getContext());
-    std::string chip = this->chip;
-    if (chip == "bm1684x" || chip == "bm1686") {
+    if (module::isBM1684XFamily() || module::isBM1686()) {
       bm1684x::populateDoExtraConversionPatterns(&patterns);
-    } else if (chip == "bm1684") {
+    } else if (module::isBM1684Family()) {
       bm1684::populateDoExtraConversionPatterns(&patterns);
-    } else if (chip.find("cv18") != std::string::npos) {
+    } else if (module::isCV18xx()) {
       cv18xx::populateDoExtraConversionPatterns(&patterns);
     }
     auto config = GreedyRewriteConfig();
