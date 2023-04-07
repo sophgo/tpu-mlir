@@ -62,7 +62,7 @@ class ONNX_IR_TESTER(object):
             "Concat2":      (self.test_Concat2,       Y, N, Y),
             "ConstOfShape": (self.test_ConstOfShape,  Y, N, N),
             "Conv1d":       (self.test_Conv1d,        Y, N, Y),
-            "Conv2d":       (self.test_Conv2d,        Y, N, Y),
+            "Conv2d":       (self.test_Conv2d,        Y, Y, Y),
             "Conv3d":       (self.test_Conv3d,        Y, N, Y),
             "ConvStride":   (self.test_ConvStride,    Y, N, Y),
             "ConvDw":       (self.test_ConvDw,        Y, N, Y),
@@ -99,8 +99,8 @@ class ONNX_IR_TESTER(object):
             "MaxPool1d":    (self.test_MaxPool1d,     Y, N, Y),
             "MaxPool2d":    (self.test_MaxPool2d,     Y, N, Y),
             "MaxPool3d":    (self.test_MaxPool3d,     N, N, Y),
-            "MatMul":       (self.test_MatMul,        Y, N, Y),
-            "MatMul2":      (self.test_MatMul2,       Y, N, Y),
+            "MatMul":       (self.test_MatMul,        Y, Y, Y),
+            "MatMul2":      (self.test_MatMul2,       Y, Y, Y),
             "Max":          (self.test_Max,           Y, N, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, N, N),
             "Mul":          (self.test_Mul,           Y, N, Y),
@@ -5013,6 +5013,56 @@ def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_case
         return
     success_cases.append(case)
 
+def test_int4(tester: ONNX_IR_TESTER):
+    tester.chip = "bm1686"
+    tester.mode = "basic"
+    tester.dynamic = False
+    tester.simple = False
+    tester.disable_thread = False
+    tester.multithread = not tester.disable_thread
+    if tester.multithread:
+        import multiprocessing
+        process_number = multiprocessing.cpu_count() // 2 + 1
+        processes = []
+        error_cases = multiprocessing.Manager().list()
+        success_cases = multiprocessing.Manager().list()
+        Y, N = True, False
+        test_cases = {
+            "Conv2d":       (tester.test_Conv2d,      Y, Y, Y),
+            "MatMul":       (tester.test_MatMul,      Y, Y, Y),
+            "MatMul2":      (tester.test_MatMul2,     Y, Y, Y),
+        }
+        tester.quant_modes = ["int4"]
+        tester.support_asym = [False]
+        for case in test_cases:
+            if tester.check_support(case):
+                p = multiprocessing.Process(target=test_one_case_in_all,
+                                            args=(tester, case, error_cases, success_cases))
+                processes.append(p)
+            if len(processes) == process_number:
+                for p in processes:
+                    p.start()
+                for j in processes:
+                    j.join()
+                processes = []
+        if processes:
+            for p in processes:
+                p.start()
+            for j in processes:
+                j.join()
+    else:
+        error_cases = []
+        success_cases = []
+        for case in tester.test_cases:
+            if tester.check_support(case):
+                test_one_case_in_all(tester, case, error_cases, success_cases)
+    print("Success: {}".format(success_cases))
+    print("Failure: {}".format(error_cases))
+    if error_cases:
+        print("====== test_onnx.py --chip {} TEST Failed ======".format(tester.chip))
+    else:
+        print("====== test_onnx.py --chip {} TEST Success ======".format(tester.chip))
+    return error_cases
 
 def test_all(tester: ONNX_IR_TESTER):
     if tester.multithread:
