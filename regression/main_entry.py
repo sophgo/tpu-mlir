@@ -10,15 +10,15 @@ import os
 
 test_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'python', 'test'))
 sys.path.append(test_dir)
-import argparse
-import test_onnx
-import test_tflite
-import test_torch
-import test_tpulang
-from run_model import MODEL_RUN
-from chip import *
-import time
 import multiprocessing
+import time
+from chip import *
+from run_model import MODEL_RUN
+import test_tpulang
+import test_torch
+import test_tflite
+import test_onnx
+import argparse
 
 
 class MAIN_ENTRY(object):
@@ -29,11 +29,11 @@ class MAIN_ENTRY(object):
         self.is_basic = test_type == "basic"
         # yapf: disable
         self.op_test_types = {
-          # op_source: (tester, test_all_func, chips)
-          "onnx":     (test_onnx.ONNX_IR_TESTER,       test_onnx.test_all,   ["bm1684x", "cv183x"]),
-          "tflite":   (test_tflite.TFLITE_IR_TESTER,   test_tflite.test_all, ["bm1684x"]),
-          "torch":    (test_torch.TORCH_IR_TESTER,     test_torch.test_all,  ["bm1684x"]),
-          "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all,["bm1684x"]),
+            # op_source: (tester, test_all_func, chips)
+            "onnx":     (test_onnx.ONNX_IR_TESTER,       test_onnx.test_all,   ["bm1684x", "cv183x"]),
+            "tflite":   (test_tflite.TFLITE_IR_TESTER,   test_tflite.test_all, ["bm1684x"]),
+            "torch":    (test_torch.TORCH_IR_TESTER,     test_torch.test_all,  ["bm1684x"]),
+            "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x"]),
         }
         # yapf: enable
         self.results = []
@@ -139,7 +139,8 @@ class MAIN_ENTRY(object):
             print(f"run models for {chip}: {int(end_time - tmp_time)} seconds")
             tmp_time = end_time
         print(f"total time: {int(end_time - start_time)} seconds")
-        return 0
+
+        return 1 if any(result.get("status") == "FAILED" for result in self.results) else 0
 
 
 if __name__ == "__main__":
