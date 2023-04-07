@@ -258,6 +258,8 @@ class ONNX_IR_TESTER(object):
             self.quant_modes = [self.mode]
 
     def test_single(self, case: str):
+        np.random.seed(0)
+        torch.manual_seed(7)
         print("Test: {}".format(case))
         if case in self.test_cases:
             func, _, _, _ = self.test_cases[case]
