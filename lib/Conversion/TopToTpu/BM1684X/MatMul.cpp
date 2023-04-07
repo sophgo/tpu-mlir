@@ -146,7 +146,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
   // refer quantize_convlike_layer_int8
   llvm::errs() << "start MatMul LoweringINT4, call LoweringINT8, name:"
                << module::getName(op.getOperation()).str() << "\n";
-  return LoweringINT8(rewriter, op, asymmetric);
+  //return LoweringINT8(rewriter, op, asymmetric);
 
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
