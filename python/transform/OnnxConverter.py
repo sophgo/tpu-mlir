@@ -1841,21 +1841,27 @@ class OnnxConverter(BaseConverter):
                 self.addOperand(onnx_node.outputs[idx], out_ops[idx])
 
     def convert_max_op(self, onnx_node):
-        assert (onnx_node.op_type == "Max")
+        assert(onnx_node.op_type == 'Max')
+        assert(len(onnx_node.inputs) == 2)
         output_shape = self.getShape(onnx_node.name)
-        num_dims = len(output_shape)
-        operands = [self.getOperand(x) for x in onnx_node.inputs]
+        lhs = onnx_node.inputs[0]
+        rhs = onnx_node.inputs[1]
         p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type)}
-        new_op = self.mlir.create_max_op(operands, output_shape, **p)
+        lhs_op = self.getWeightOp(lhs) if self.isWeight(lhs) else self.getOp(lhs)
+        rhs_op = self.getWeightOp(rhs) if self.isWeight(rhs) else self.getOp(rhs)
+        new_op = self.mlir.create_max_op([lhs_op, rhs_op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_min_op(self, onnx_node):
         assert (onnx_node.op_type == "Min")
+        assert(len(onnx_node.inputs) == 2)
         output_shape = self.getShape(onnx_node.name)
-        num_dims = len(output_shape)
-        operands = [self.getOperand(x) for x in onnx_node.inputs]
+        lhs = onnx_node.inputs[0]
+        rhs = onnx_node.inputs[1]
         p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type)}
-        new_op = self.mlir.create_min_op(operands, output_shape, **p)
+        lhs_op = self.getWeightOp(lhs) if self.isWeight(lhs) else self.getOp(lhs)
+        rhs_op = self.getWeightOp(rhs) if self.isWeight(rhs) else self.getOp(rhs)
+        new_op = self.mlir.create_min_op([lhs_op, rhs_op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_abs_op(self, onnx_node):
