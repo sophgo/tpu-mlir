@@ -10,6 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -44,7 +45,46 @@ int64_t tpu::ReshapeOp::getBufferSize_bm1684(
 }
 
 void tpu::ReshapeOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
-                                         local_sec_info_t &sec_info) {
+                                          local_sec_info_t &sec_info) {
   // do nothing
   llvm_unreachable("Not supported now");
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+
+uint32_t tpu::ReshapeOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
+  uint32_t fw_ir_length = 0;
+  fw_reshape_layer_param_t fw_reshape_layer_param = {0};
+  fw_reshape_layer_param.bottom_tensor_id = get_tensor_id(getInput());
+  fw_reshape_layer_param.new_dims = module::getShape(getOutput()).size();
+  module::getGlobalShape(getOutput(), fw_reshape_layer_param.new_shape);
+  fw_reshape_layer_param.global_buffer_addr = 0; // not support buffer
+  int input_shape[MAX_SHAPE_DIMS];
+  module::getGlobalShape(getInput(), input_shape);
+  fw_reshape_layer_param.bottom_n = input_shape[0];
+  fw_reshape_layer_param.bottom_c = input_shape[1];
+
+  ir_layer_info_t *reshape_layer_info = (ir_layer_info_t *)ir_layer_info;
+  reshape_layer_info->data_size =
+      get_dynamic_compiler_tensor_datasize(getInput());
+  reshape_layer_info->intensor_store_mode = BM168x::getStoreMode(getInput());
+  reshape_layer_info->outtensor_store_mode = BM168x::getStoreMode(getOutput());
+  reshape_layer_info->fw_layer_param_u.fw_reshape_layer_param =
+      fw_reshape_layer_param;
+  fw_ir_length += sizeof(fw_reshape_layer_param_t);
+  return fw_ir_length;
+}
+
+int64_t tpu::ReshapeOp::get_fw_type_bm1684() { return FW_BMNET_RESHAPE; }
+
+// ======================================
+// Dynamic LocalGenInterface
+// ======================================
+
+int32_t tpu::ReshapeOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
+  // do nothing
+  llvm_unreachable("Not Implemented");
+  return 0;
 }

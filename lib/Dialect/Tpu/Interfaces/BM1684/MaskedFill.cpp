@@ -31,3 +31,16 @@ int64_t tpu::MaskedFillOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
 void tpu::MaskedFillOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
   llvm_unreachable("Not Implemented");
 }
+
+uint32_t tpu::MaskedFillOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+int64_t tpu::MaskedFillOp::get_fw_type_bm1684() {
+  return -1;
+}
+
+int32_t tpu::MaskedFillOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}

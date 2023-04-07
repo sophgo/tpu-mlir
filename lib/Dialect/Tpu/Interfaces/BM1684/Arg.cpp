@@ -73,3 +73,12 @@ void tpu::ArgOp::codegen_global_bm1684() {
             (CMD_ID_NODE*)BM1684::instance().cmdid_node);
   }
 }
+
+uint32_t tpu::ArgOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+
+int64_t tpu::ArgOp::get_fw_type_bm1684() {
+  return -1;
+}

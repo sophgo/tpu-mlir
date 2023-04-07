@@ -7,12 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -169,7 +170,8 @@ LogicalResult tpu::Conv2DOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
-void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                    int64_t d_step, int64_t w_step,
                                     group_type_t group_type,
                                     local_sec_info_t &sec_info) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
@@ -177,7 +179,8 @@ void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_st
 
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step);
   int64_t pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
   int64_t pad_w_r = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pwr : 0);
   sec_info.n_slice = in_gi.n_slice;
@@ -289,4 +292,38 @@ int64_t tpu::Conv2DOp::DynForwardHeight(int64_t in_height) {
     out_height = 0;
   }
   return out_height;
+}
+
+void tpu::Conv2DOp::assign_fw_param(void *param) {
+  fw_conv_layer_param_t fw_conv_layer_param = {0};
+  auto attr = parseParam();
+  fw_conv_layer_param.ic_oc =
+      ((uint32_t)attr.ic << 16) | ((uint32_t)attr.oc & 0xffff);
+  fw_conv_layer_param.groups = attr.groups;
+  fw_conv_layer_param.kh_kw =
+      ((uint32_t)attr.kh << 16) | ((uint32_t)attr.kw & 0xffff);
+  fw_conv_layer_param.dh = attr.dh;
+  fw_conv_layer_param.dw = attr.dw;
+  fw_conv_layer_param.pad_h = attr.pht;
+  fw_conv_layer_param.pad_h_after = attr.phb;
+  fw_conv_layer_param.pad_w = attr.pwl;
+  fw_conv_layer_param.pad_w_after = attr.pwr;
+  fw_conv_layer_param.stride_h = attr.sh;
+  fw_conv_layer_param.stride_w = attr.sw;
+  fw_conv_layer_param.using_bias = getWithBias();
+  fw_conv_layer_param.if_relu = attr.do_relu;
+  fw_conv_layer_param.relu_upper_limit = attr.relu_limit;
+  fw_conv_layer_param.use_winograd = 0; // not support now
+  uint8_t rshift = 0;
+  if (module::isUniformQuantized(getInput())) {
+    auto shift_v = module::getI64Array(getRshift(), 1, 0);
+    rshift = shift_v->at(0);
+  }
+  fw_conv_layer_param.rshiftbits = rshift;
+  fw_conv_layer_param.opd0_sign = module::isSign(getInput());
+  fw_conv_layer_param.opd1_sign = module::isSign(getFilter());
+  fw_conv_layer_param.opd2_sign = getWithBias() && module::isSign(getBias());
+  fw_conv_layer_param.res_sign = module::isSign(getOutput());
+  fw_conv_layer_param.weight_is_tensor = !module::isWeight(getFilter());
+  memcpy(param, &fw_conv_layer_param, sizeof(fw_conv_layer_param_t));
 }

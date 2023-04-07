@@ -20,3 +20,12 @@ using namespace tpu_mlir::backend;
 void tpu::GRUOp::codegen_global_bm1684() {
   llvm_unreachable("GRU unsupported");
 }
+
+uint32_t tpu::GRUOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+
+int64_t tpu::GRUOp::get_fw_type_bm1684() {
+  return -1;
+}

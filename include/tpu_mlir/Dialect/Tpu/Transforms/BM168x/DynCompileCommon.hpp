@@ -9,6 +9,10 @@
 
 #pragma once
 
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
+
+using namespace tpu_mlir::backend;
+
 /*  Existing Parametric Structure Modification Tips:
  ** 1. New member variables must be added at the
  **    end of the structure.
@@ -1604,6 +1608,30 @@ static inline void dtype_to_dsize_and_sign(int dtype, DATA_SIZE_T *dsize,
     *sign = (FW_DTYPE_INT8 == dtype || FW_DTYPE_INT16 == dtype ||
              FW_DTYPE_INT32 == dtype);
   }
+}
+
+static inline DATA_SIZE_T get_dynamic_compiler_tensor_datasize(Value v) {
+  DATA_SIZE_T data_size;
+  auto data_type = BM168x::getDataType(v);
+  switch (data_type) {
+  case DTYPE_INT8:
+  case DTYPE_UINT8:
+    data_size = DSIZE_8;
+    break;
+  case DTYPE_INT16:
+  case DTYPE_UINT16:
+  case DTYPE_FP16:
+    data_size = DSIZE_16;
+    break;
+  case DTYPE_INT32:
+  case DTYPE_UINT32:
+    data_size = DSIZE_INT32;
+    break;
+  default:
+    data_size = DSIZE_FP32;
+    break;
+  }
+  return data_size;
 }
 
 #ifdef __cplusplus

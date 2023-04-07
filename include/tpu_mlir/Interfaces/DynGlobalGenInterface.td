@@ -18,13 +18,9 @@ def DynGlobalGenInterface : OpInterface<"DynGlobalGenInterface"> {
   let methods = [
       InterfaceMethod<
         /*desc=*/[{}],
-        /*retType=*/"int64_t",
+        /*retType=*/"uint32_t",
         /*methodName=*/"dyn_codegen_global_bm1684",
-        /*args=*/(ins "void *":$buffer),
-        /*methodBody=*/"",
-        /*defaultImplementation=*/[{
-          return 0;
-        }]
+        /*args=*/(ins "void *":$ir_layer_info)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
@@ -36,6 +32,12 @@ def DynGlobalGenInterface : OpInterface<"DynGlobalGenInterface"> {
         /*desc=*/"Return the layer type.",
         /*retType=*/"int64_t",
         /*methodName=*/"get_fw_type_bm1684x",
+        /*args=*/(ins)
+      >,
+      InterfaceMethod<
+        /*desc=*/"Return the layer type.",
+        /*retType=*/"int64_t",
+        /*methodName=*/"get_fw_type_bm1684",
         /*args=*/(ins)
       >,
   ];

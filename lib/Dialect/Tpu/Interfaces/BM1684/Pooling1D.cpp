@@ -71,3 +71,16 @@ void tpu::Pool1DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         (CMD_ID_NODE *)BM1684::instance().bdc_node, p.do_relu);
   }
 }
+
+uint32_t tpu::Pool1DOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+int64_t tpu::Pool1DOp::get_fw_type_bm1684() {
+  return -1;
+}
+
+int32_t tpu::Pool1DOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}

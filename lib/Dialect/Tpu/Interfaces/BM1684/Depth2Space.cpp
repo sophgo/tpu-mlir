@@ -19,3 +19,12 @@ using namespace tpu_mlir::backend;
 void tpu::Depth2SpaceOp::codegen_global_bm1684() {
   // do nothing
 }
+
+uint32_t tpu::Depth2SpaceOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+
+int64_t tpu::Depth2SpaceOp::get_fw_type_bm1684() {
+  return -1;
+}

@@ -14,6 +14,8 @@
 #include <map>
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/IrInfo.hpp"
+
 using namespace std;
 namespace tpu_mlir {
 namespace tpu {
@@ -32,6 +34,9 @@ extern int get_tensor_id(Value v);
 extern bool is_net_input(Value v);
 extern bool is_net_output(Value v);
 extern vector<Value>& get_net_output();
+uint32_t push_back_layer_global_tensor(Value v, vector<ir_tensor_info_t>& ir_tensor_info_v, bool is_layer_in);
+void dynamic_push_back_local_tensor(vector<ir_tensor_info_t> &ir_tensor_info_v, Value v);
+void dynamic_common_ir_layer_info(ir_layer_info_t* ir_layer_info, Value input, Value output);
 enum DynamicTensorType
 {
     DYNAMIC_NEURON = 0,
@@ -70,8 +75,12 @@ public:
     };
 
     explicit dynamic_layer(Operation *op):op_(op) {}
+    //for BM1684X
     size_t get_global_ir_length();
     size_t get_local_ir_length();
+    //for BM1684
+    uint32_t get_global_ir_length(ir_layer_info_t *ir_layer_info);
+    int32_t get_local_ir_length(ir_layer_info_t *ir_layer_info);
     int global_ir_version()
     {
         return 0;

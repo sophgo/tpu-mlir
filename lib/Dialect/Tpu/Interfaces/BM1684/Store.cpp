@@ -57,3 +57,16 @@ void tpu::StoreOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       s_stride.N, s_stride.C, s_stride.H, s_stride.W, g_stride.N, g_stride.C,
       g_stride.H, g_stride.W, gdma_format, GDMA_VALUE_DIR_L2S, 0, pid_node);
 }
+
+uint32_t tpu::StoreOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+int64_t tpu::StoreOp::get_fw_type_bm1684() {
+  return -1;
+}
+
+int32_t tpu::StoreOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}

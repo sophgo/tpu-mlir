@@ -435,3 +435,7 @@ int64_t tpu::MatMulOp::get_fw_type_bm1684x() {
   auto p = parseParam();
   return (p.batch != 1 ? FW_BMNET_BATCH_MATMUL : FW_BMNET_FC);
 }
+
+int64_t tpu::MatMulOp::dyn_codegen_local_bm1684x(void *buffer) {
+  llvm_unreachable("Not Implemented");
+}

@@ -109,6 +109,7 @@ public:
   static DATA_TYPE_T getDataType(Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
   static double getFmtBytes(DATA_TYPE_T data_type);
+  static STORE_MODE_T getStoreMode(Value v);
   static tensor_spec_t value_to_spec(Value v, group_type_t group_type);
   static std::shared_ptr<std::vector<tensor_spec_t>>
   get_input_spec(Operation *op, group_type_t group_type = GROUP_NORMAL);

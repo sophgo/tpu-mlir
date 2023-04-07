@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-
-#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 
@@ -75,4 +75,52 @@ void tpu::Pool2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         is_avg_pooling ? 1 : 0, p.count_include_pad ? 0 : 1,
         (CMD_ID_NODE *)BM1684::instance().bdc_node, p.do_relu);
   }
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+
+uint32_t tpu::Pool2DOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
+  uint32_t fw_ir_length = 0;
+  ir_layer_info_t *pool_layer_info = (ir_layer_info_t *)ir_layer_info;
+  dynamic_common_ir_layer_info(pool_layer_info, getInput(), getOutput());
+
+  fw_pool_layer_param_t fw_pool_layer_param = {0};
+  assign_fw_param((void *)&fw_pool_layer_param);
+  pool_layer_info->fw_layer_param_u.fw_pool_layer_param = fw_pool_layer_param;
+  fw_ir_length += sizeof(fw_pool_layer_param_t);
+  return fw_ir_length;
+}
+
+int64_t tpu::Pool2DOp::get_fw_type_bm1684() { return FW_BMNET_POOL; }
+
+// ======================================
+// Dynamic LocalGenInterface
+// ======================================
+
+int32_t tpu::Pool2DOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
+  int fw_ir_length = 0;
+  ir_layer_info_t *pool_layer_info = (ir_layer_info_t *)ir_layer_info;
+  dynamic_common_ir_layer_info(pool_layer_info, getInput(), getOutput());
+
+  // get fw layer param
+  fw_pool_layer_param_t fw_pool_layer_param = {0};
+  assign_fw_param((void *)&fw_pool_layer_param);
+  pool_layer_info->fw_layer_param_u.fw_pool_layer_param = fw_pool_layer_param;
+  fw_ir_length += sizeof(fw_pool_layer_param_t);
+
+  // input tensor
+  dynamic_push_back_local_tensor(pool_layer_info->ir_tensor_info_v, getInput());
+  // output
+  dynamic_push_back_local_tensor(pool_layer_info->ir_tensor_info_v,
+                                 getOutput());
+
+  // compute fw ir info length for pooling input and output
+  fw_ir_length += (sizeof(uint32_t) + 2 * sizeof(uint32_t));
+
+  // add fw ir length for output consumer number
+  fw_ir_length += sizeof(u32);
+
+  return fw_ir_length;
 }

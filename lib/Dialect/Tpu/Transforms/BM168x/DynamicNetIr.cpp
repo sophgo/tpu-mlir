@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicNetIr.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/GdmaIrgen.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/GdmaIrgen.hpp"
 #include <fstream>
 #include <set>
 #include <sstream>
@@ -452,7 +452,51 @@ void SubnetIr::global_layer_ir_generate_v2(Operation *op) {
 
 // global layer ir generate
 void SubnetIr::global_layer_ir_generate(Operation *op) {
-  // ToDo
+  if (!dynamic_layers_.count(op)) {
+    auto dynamic_instance = new dynamic_layer(op);
+    dynamic_layers_.insert(make_pair(op, dynamic_instance));
+  }
+
+  ir_layer_info_t ir_layer_info;
+  fw_ir_length += sizeof(FW_LAYER_TYPE_T);
+  if (module::isBM1684Family()) {
+    // Only BM1684 dose need the following information
+    fw_ir_length += sizeof(DATA_SIZE_T);
+    ir_layer_info.data_size = DSIZE_FP32; // default fp32
+    fw_ir_length += sizeof(uint32_t);
+    ir_layer_info.intensor_store_mode = 0;
+    fw_ir_length += sizeof(uint32_t);
+    ir_layer_info.outtensor_store_mode = 0;
+  }
+  // fw layer_parameter
+  fw_ir_length += sizeof(uint32_t); // Layer parameter size
+  fw_ir_length += dynamic_layers_[op]->get_global_ir_length(&ir_layer_info);
+
+  // input and output global memory offset
+  ir_layer_info.ir_tensor_info_v.clear();
+  // input
+  for (uint32_t i = 0; i < op->getNumOperands(); ++i) {
+    if (module::isNone(op->getOperand(i)))
+      continue;
+    if (module::isGlobalBuffer(op->getOperand(i)))
+      continue;
+    fw_ir_length += push_back_layer_global_tensor(
+        op->getOperand(i), ir_layer_info.ir_tensor_info_v, true);
+  }
+  // output
+  for (uint32_t i = 0; i < op->getNumResults(); ++i) {
+    if (module::isNone(op->getResult(i)))
+      continue;
+    fw_ir_length += push_back_layer_global_tensor(
+        op->getResult(i), ir_layer_info.ir_tensor_info_v, false);
+  }
+
+  vector<ir_layer_info_t> ir_layer_info_t_v1;
+  vector<vector<ir_layer_info_t>> ir_layer_info_t_v2;
+
+  ir_layer_info_t_v1.push_back(ir_layer_info);
+  ir_layer_info_t_v2.push_back(ir_layer_info_t_v1);
+  ir_group_timestep_layer_param.push_back(ir_layer_info_t_v2);
 }
 
 void SubnetIr::local_layer_ir_generate_v2(Operation *op) {
@@ -465,8 +509,50 @@ void SubnetIr::local_layer_ir_generate_v2(Operation *op) {
   fw_ir_length += dynamic_layers_[op]->get_local_ir_length();
 }
 
-void SubnetIr::local_layer_ir_generate() {
-  // ToDo
+void SubnetIr::local_layer_ir_generate(Operation *op,
+                                       vector<ir_layer_info_t> &layer_info_v1,
+                                       uint8_t swpipl_stage_num) {
+  if (!dynamic_layers_.count(op)) {
+    auto dynamic_instance = new dynamic_layer(op);
+    dynamic_layers_.insert(make_pair(op, dynamic_instance));
+  }
+
+  ir_layer_info_t ir_layer_info;
+
+  ir_layer_info.layer_id = -1; // no use
+  ir_layer_info.is_cpu_layer = false;
+
+  ir_layer_info.swpipl_enable = swpipl_stage_num > 1;
+  if (ir_layer_info.swpipl_enable)
+    fw_ir_length += sizeof(uint32_t);
+  // record base offset
+  uint32_t base_layer_offset = fw_ir_length;
+
+  fw_ir_length += sizeof(FW_LAYER_TYPE_T);
+
+  if (module::isBM1684Family()) {
+    // Only BM1684 need the following information
+    fw_ir_length += sizeof(DATA_SIZE_T);
+    ir_layer_info.data_size = DSIZE_FP32; // default fp32
+    fw_ir_length += sizeof(u32);
+    ir_layer_info.intensor_store_mode = STORE_MODE_1N;
+    fw_ir_length += sizeof(u32);
+    ir_layer_info.outtensor_store_mode = STORE_MODE_1N;
+  }
+
+  // Layer parameter
+  fw_ir_length += sizeof(uint32_t); // Layer parameter size
+  uint32_t pre_fw_ir_length = fw_ir_length;
+  fw_ir_length += dynamic_layers_[op]->get_local_ir_length(&ir_layer_info);
+
+  ir_layer_info.layer_fw_ir_length = fw_ir_length - pre_fw_ir_length;
+  // add for software pipeline
+  uint32_t layer_ir_length = fw_ir_length - base_layer_offset;
+  uint32_t layer_stage = swpipl_stage_num == 1 ? 0 : 1;
+  ir_layer_info.stage_and_ir_size =
+      (layer_stage << 16) | (layer_ir_length & 0xffff);
+
+  layer_info_v1.push_back(ir_layer_info);
 }
 
 void SubnetIr::gdma_tensor_ir_generate(
@@ -678,6 +764,7 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
       gdma_field.clear();
       tensor_gdma_info_v1.clear();
       fw_ir_length += sizeof(uint32_t) * 2;
+      layer_info_v1.clear();
       for (auto id : cur_op_ids) {
         if (isa<tpu::LoadOp, tpu::StoreOp>(sub_group.group_ops[id])) {
           auto lgOp = dyn_cast<DynLocalGenInterface>(sub_group.group_ops[id]);
@@ -703,12 +790,12 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
           if (get_dynamic_version() >= 2) {
             local_layer_ir_generate_v2(sub_group.group_ops[id]);
           } else {
-            layer_info_v1.clear();
-            // ToDo
-            layer_info_v2.push_back(layer_info_v1);
+            local_layer_ir_generate(sub_group.group_ops[id], layer_info_v1,
+                                    swpipl_stage_num);
           }
         }
       }
+      layer_info_v2.push_back(layer_info_v1);
 
       tensor_gdma_info_v2.push_back(tensor_gdma_info_v1);
       time_step->add_tpu0_gdma0_ts_field(tpu_field, gdma_field);
@@ -721,9 +808,7 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
       ir_group_timestep_layer_param.push_back(layer_info_v2);
     ir_group_timestep_tensor_gdma_param.push_back(tensor_gdma_info_v2);
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    if (module::isBM1684Family()) {
-      // TODO
-    } else if (module::isBM1684XFamily()) {
+    if (module::isBM1684XFamily() || module::isBM1684Family()) {
       // global layer
       LgInfo sub_group;
       sub_group.group_ops.push_back(op);
@@ -797,6 +882,8 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
       } else {
         global_layer_ir_generate(op);
       }
+    } else {
+      llvm_unreachable("not support");
     }
   }
 }
@@ -884,10 +971,65 @@ void *SubnetIr::write_local_layer_info_buffer_v2(
 }
 
 void *
-SubnetIr::write_local_layer_info_buffer(void *p_ir_buf,
-                                        ir_layer_info_t *p_ir_layer_info) {
-  // ToDO
-  return nullptr;
+SubnetIr::write_local_layer_info_buffer(void *p_ir_buf, Operation *op,
+                                        ir_layer_info_t *p_ir_layer_info,
+                                        shared_ptr<BasicTimeStep> time_step) {
+  void *p_ir_addr = p_ir_buf;
+  // add for software pipeline
+  if (p_ir_layer_info->swpipl_enable) {
+    // write software pipeline information
+    *(u32 *)p_ir_addr = p_ir_layer_info->stage_and_ir_size;
+    p_ir_addr = (u32 *)p_ir_addr + 1;
+  }
+
+  // write type
+  FW_LAYER_TYPE_T fw_layer_type = p_ir_layer_info->fw_layer_type;
+  *(FW_LAYER_TYPE_T *)p_ir_addr = fw_layer_type;
+  p_ir_addr = (FW_LAYER_TYPE_T *)p_ir_addr + 1;
+
+  if (module::isBM1684Family()) {
+    // Only BM1684 need the following
+    *(DATA_SIZE_T *)p_ir_addr = p_ir_layer_info->data_size;
+    p_ir_addr = (DATA_SIZE_T *)p_ir_addr + 1;
+    *(u32 *)p_ir_addr = (u32)(p_ir_layer_info->intensor_store_mode);
+    p_ir_addr = (u32 *)p_ir_addr + 1;
+    *(u32 *)p_ir_addr = (u32)(p_ir_layer_info->outtensor_store_mode);
+    p_ir_addr = (u32 *)p_ir_addr + 1;
+  }
+
+  map<int, int> tensor_to_consumer_num;
+  get_neuron_timestep_consumer(tensor_to_consumer_num, time_step);
+
+  // store consumer number for each local layer output
+  const int output_num = op->getNumResults();
+  SmallVector<int> out_tensors;
+  for (int i = 0; i < output_num; ++i) {
+    if (module::isNone(op->getResult(i)))
+      continue;
+    out_tensors.push_back(get_tensor_id(op->getResult(i)));
+  }
+  auto set_consumer_num = [&](int tensor_id) {
+    uint32_t consumer_num = 1;
+    if (tensor_to_consumer_num.find(tensor_id) !=
+        tensor_to_consumer_num.end()) {
+      consumer_num = (uint32_t)(tensor_to_consumer_num.find(tensor_id)->second);
+    }
+    // set consumer number
+    for (auto &t_info : p_ir_layer_info->ir_tensor_info_v) {
+      if (t_info.tensor_id == (uint32_t)(tensor_id)) {
+        t_info.consumer_number = consumer_num;
+      }
+    }
+  };
+  for (int i = 0; i < out_tensors.size(); ++i) {
+    set_consumer_num(out_tensors[i]);
+    // TODO deal with ConcatOp
+  }
+
+  p_ir_addr =
+      call_local_layer_ir_write(fw_layer_type, p_ir_addr, p_ir_layer_info);
+
+  return p_ir_addr;
 }
 
 void *SubnetIr::write_tensor_gdma_info_buffer(
@@ -1047,8 +1189,26 @@ void *SubnetIr::write_global_layer_info_buffer_v2(void *p_ir_addr,
 
 void *SubnetIr::write_global_layer_info_buffer(void *p_ir_buf,
                                                ir_layer_info_t *ir_layer_info) {
-  // ToDo
-  return nullptr;
+  void *p_ir_addr = p_ir_buf;
+  FW_LAYER_TYPE_T fw_layer_type = ir_layer_info->fw_layer_type;
+
+  *(FW_LAYER_TYPE_T *)p_ir_addr = fw_layer_type;
+  p_ir_addr = (FW_LAYER_TYPE_T *)p_ir_addr + 1;
+
+  if (module::isBM1684Family()) {
+    // Only BM1684 need the following
+    *(DATA_SIZE_T *)p_ir_addr = ir_layer_info->data_size;
+    p_ir_addr = (DATA_SIZE_T *)p_ir_addr + 1;
+    *(u32 *)p_ir_addr = (u32)(ir_layer_info->intensor_store_mode);
+    p_ir_addr = (u32 *)p_ir_addr + 1;
+    *(u32 *)p_ir_addr = (u32)(ir_layer_info->outtensor_store_mode);
+    p_ir_addr = (u32 *)p_ir_addr + 1;
+  }
+
+  p_ir_addr =
+      call_global_layer_ir_write(fw_layer_type, p_ir_addr, ir_layer_info);
+
+  return p_ir_addr;
 }
 
 /* return writen ir length */
@@ -1146,7 +1306,9 @@ int SubnetIr::write_ir_to_buffer(void *ir_buffer,
           } else {
             ir_layer_info_t ir_layer_info =
                 ir_group_timestep_layer_param[group_idx][ts_idx][i];
-            p_ir_buf = write_local_layer_info_buffer(p_ir_buf, &ir_layer_info);
+            p_ir_buf = write_local_layer_info_buffer(
+                p_ir_buf, timestep_layers[i], &ir_layer_info,
+                m_time_step_groups_[group_idx]);
           }
         }
 

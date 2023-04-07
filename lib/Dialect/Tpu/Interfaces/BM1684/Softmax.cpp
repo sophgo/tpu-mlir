@@ -9,9 +9,9 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 
@@ -72,3 +72,32 @@ void tpu::SoftmaxOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                           local_sec_info_t &sec_info) {
   llvm_unreachable("Not supported now");
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+
+uint32_t tpu::SoftmaxOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
+  uint32_t fw_ir_length = 0;
+  ir_layer_info_t *softmax_layer_info = (ir_layer_info_t *)ir_layer_info;
+  dynamic_common_ir_layer_info(softmax_layer_info, getInput(), getOutput());
+  fw_softmax_layer_param_t fw_softmax_layer_param = {0};
+  fw_softmax_layer_param.softmax_dim = (uint32_t)getAxis() << 28;
+  fw_softmax_layer_param.scale_val = 0.f;
+  if (module::isUniformQuantized(getInput())) {
+    auto qtype = module::getUniformQuantizedType(getInput());
+    fw_softmax_layer_param.scale_val = qtype.getScale();
+  }
+  fw_softmax_layer_param.log = getLog();
+
+  if (softmax_layer_info->intensor_store_mode == 2) {
+    fw_softmax_layer_param.global_offset_1N_buf =
+        module::getAddress(getBuffer());
+  }
+  softmax_layer_info->fw_layer_param_u.fw_softmax_layer_param =
+      fw_softmax_layer_param;
+  fw_ir_length += sizeof(fw_softmax_layer_param_t);
+  return fw_ir_length;
+}
+
+int64_t tpu::SoftmaxOp::get_fw_type_bm1684() { return FW_BMNET_SOFTMAX; }

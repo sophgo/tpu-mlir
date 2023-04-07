@@ -72,3 +72,16 @@ void tpu::UpsampleOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       bottom_dim, top_dim, scale, (CMD_ID_NODE *)BM1684::instance().bdc_node, getDoRelu() ? 1 : 0);
   }
 }
+
+uint32_t tpu::UpsampleOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}
+int64_t tpu::UpsampleOp::get_fw_type_bm1684() {
+  return -1;
+}
+
+int32_t tpu::UpsampleOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+  llvm_unreachable("Not Implemented");
+  return 0;
+}

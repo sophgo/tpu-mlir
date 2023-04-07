@@ -12,6 +12,7 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
 pool_attr_t tpu::Pool2DOp::parseParam() {
@@ -181,7 +182,8 @@ LogicalResult tpu::Pool2DOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
-void tpu::Pool2DOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::Pool2DOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                    int64_t d_step, int64_t w_step,
                                     group_type_t group_type,
                                     local_sec_info_t &sec_info) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
@@ -189,7 +191,8 @@ void tpu::Pool2DOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_st
 
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step);
   int64_t pad_h_b =
       (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
   int64_t pad_w_r =
@@ -268,15 +271,43 @@ LogicalResult tpu::Pool2DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
 int64_t tpu::Pool2DOp::DynForwardHeight(int64_t in_height) {
   auto &attr = getPool2DParam(*this);
   int out_height = 0;
-  if((in_height + attr.pad_h + attr.pad_h_after) >= attr.kh) {
-    out_height = (in_height + attr.pad_h + attr.pad_h_after - attr.kh) / attr.sh + 1;
+  if ((in_height + attr.pad_h + attr.pad_h_after) >= attr.kh) {
+    out_height =
+        (in_height + attr.pad_h + attr.pad_h_after - attr.kh) / attr.sh + 1;
   } else {
     out_height = 0;
   }
-  if ((in_height + attr.pad_h + attr.pad_h_after) >= attr.kh
-     && ((in_height + attr.pad_h + attr.pad_h_after - attr.kh) % attr.sh != 0)
-      && (out_height * attr.sh < (in_height + attr.pad_h))) {
+  if ((in_height + attr.pad_h + attr.pad_h_after) >= attr.kh &&
+      ((in_height + attr.pad_h + attr.pad_h_after - attr.kh) % attr.sh != 0) &&
+      (out_height * attr.sh < (in_height + attr.pad_h))) {
     out_height++;
   }
   return out_height;
+}
+
+void tpu::Pool2DOp::assign_fw_param(void *param) {
+  fw_pool_layer_param_t *fw_pool_layer_param = (fw_pool_layer_param_t *)param;
+  pool_attr_t attr = parseParam();
+  fw_pool_layer_param->ic = attr.c;
+  fw_pool_layer_param->kh_kw =
+      ((uint32_t)attr.kh << 16) | ((uint32_t)attr.kw & 0xffff);
+  fw_pool_layer_param->pad_h_top = attr.pad_h;
+  fw_pool_layer_param->pad_h_bottom = attr.pad_h_after;
+  fw_pool_layer_param->pad_w_left = attr.pad_w;
+  fw_pool_layer_param->pad_w_right = attr.pad_w_after;
+  fw_pool_layer_param->stride_h = attr.sh;
+  fw_pool_layer_param->stride_w = attr.sw;
+  fw_pool_layer_param->if_relu = attr.do_relu;
+  fw_pool_layer_param->relu_upper_limit = attr.relu_limit;
+  bool is_avg_pooling = getPoolMode() == tpu::PoolMode::Avg;
+  // is_avg_pool = 0: max, 1: avg, 2:max_with_mask
+  fw_pool_layer_param->is_avg_pool = is_avg_pooling; // max_with_mask not
+                                                     // support
+  fw_pool_layer_param->avg_pooling_mode = attr.count_include_pad ? 0 : 1;
+  fw_pool_layer_param->opd0_sign = module::isSign(getInput());
+  fw_pool_layer_param->res_sign = module::isSign(getOutput());
+  fw_pool_layer_param->is_global_pool = attr.is_global;
+  fw_pool_layer_param->out_ceil_mode =
+      0; // only suport 0:RoundMode_FLOOR, TODO(1:RoundMode_CEIL
+         // 2:RoundMode_CFDFT 3:RoundMode_TF_SAME_PAD)
 }
