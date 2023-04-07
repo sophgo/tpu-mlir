@@ -175,6 +175,7 @@ class TorchReader():
             "aten::sub": ['alpha'],
             "aten::arange": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::addmm": ['beta', 'alpha'],
+            "aten::to": ['dtype', 'layout', 'device', 'pin_memory', 'non_blocking', 'copy', 'memory_format'],
         }
         assert node.op_type.split('::')[0] == 'aten'
         # get input list
@@ -186,9 +187,6 @@ class TorchReader():
             return
         if node.op_type == "aten::Int":
             self.const_val[node.outputs[0]] = int(self.get_input(node.inputs[0]))
-            return
-        if node.op_type == "aten::to":
-            self.ref_tensor[node.outputs[0]] = self.get_input(node.inputs[0])
             return
 
         # get function
@@ -204,7 +202,7 @@ class TorchReader():
                 mode = input_list[2]
                 input_list = input_list[:-1]
                 output = func(*input_list, rounding_mode=mode)
-        elif node.op_type in ParamMap.keys():
+        elif node.op_type in ParamMap.keys() and (node.op_type != "aten::to" or len(node.inputs) > 6):
             end_param = ParamMap[node.op_type]
             param_len = len(end_param)
             param_dict = {}
