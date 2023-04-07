@@ -26,6 +26,13 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
+class ReshapeReorderPattern : public OpRewritePattern<top::ReshapeOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ReshapeOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns);
 }
 }

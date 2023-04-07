@@ -212,7 +212,8 @@ void assign_dhwsecs(const LgInfo & lg_info, shape_secs_t &shape_secs,
   shape_secs.wsecs = 1;
   ValueSet group_out_tensors;
   for (auto op: lg_info.group_ops) {
-    group_out_tensors.insert(op->getResults().begin(), op->getResults().end());
+    auto outs = get_output_values(op);
+    group_out_tensors.insert(outs.begin(), outs.end());
   }
   if (max_shape_secs.dsecs == 1) {
     shape_secs.dsecs = 1;
@@ -865,7 +866,7 @@ bool is_eu_align_bm1686(Value opd) {
 bool is_eu_align_common(Value opd) {
   auto op = *opd.getUsers().begin();
   if (module::isWeight(opd)) {
-    if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op)) {
+    if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp, tpu::LayerNormOp>(op)) {
       if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
         return false;
       }

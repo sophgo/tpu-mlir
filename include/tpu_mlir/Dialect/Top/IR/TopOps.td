@@ -1768,6 +1768,7 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
   	AnyTensorOrNone:$mean,
   	AnyTensorOrNone:$rstd
   );
+  let hasCanonicalizer = 1;
 }
 
 def Top_InstanceNormOp : Top_Op<"InstanceNorm"> {
@@ -1801,6 +1802,7 @@ def Top_GroupNormOp : Top_Op<"GroupNorm"> {
   let results = (outs
   	AnyTensor:$output
   );
+  let hasCanonicalizer = 1;
 }
 
 def Top_PixelNormOp : Top_Op<"PixelNorm"> {
