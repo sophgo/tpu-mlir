@@ -504,9 +504,76 @@ struct PermutePadSwap : public OpRewritePattern<PermuteOp> {
   }
 };
 
+struct TopMoveAheadpermutePattern : public OpRewritePattern<PermuteOp>{
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    auto input_shape = module::getShape(op.getInput());
+    auto output_shape = module::getShape(op.getResult());
+    auto permute_attr = op->getAttrs();
+    auto nextOp = *op.getOutput().getUsers().begin();
+    if (!(nextOp->hasTrait<trait::SupportPermuteMove>()))
+      return failure();
+    rewriter.setInsertionPoint(op);
+    auto reluop = dyn_cast_or_null<ReluOp>(nextOp);
+    auto sigmoidop = dyn_cast_or_null<SigmoidOp>(nextOp);
+    auto addconstop = dyn_cast_or_null<AddConstOp>(nextOp);
+    auto castop = dyn_cast_or_null<CastOp>(nextOp);
+     if (!reluop && !sigmoidop && !addconstop && !castop)
+      return failure();
+    std::string in_name =
+          module::getName(op.getInput()).str() + "_newOp_after_permute";
+    auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
+    auto newType = RankedTensorType::get(input_shape,
+                                    module::getElementType(op.getInput()));
+    auto oldattr = nextOp->getAttrs();
+    if(reluop){
+      auto newOp = rewriter.create<ReluOp>(
+          loc,newType,op.getInput(),oldattr);
+      op.setOperand(newOp->getResult(0));
+      reluop.getOutput().replaceAllUsesWith(reluop.getOperand());
+      rewriter.eraseOp(reluop);
+    }
+    if(sigmoidop){
+      auto newOp = rewriter.create<SigmoidOp>(
+          loc,newType,op.getInput(),oldattr);
+      op.setOperand(newOp->getResult(0));
+      sigmoidop.getOutput().replaceAllUsesWith(sigmoidop.getOperand());
+      rewriter.eraseOp(sigmoidop);
+    }
+    if(castop){
+      auto castType = RankedTensorType::get(input_shape,
+                                    module::getElementType(nextOp->getResult(0)));
+      auto permuteType = RankedTensorType::get(output_shape,
+                                    module::getElementType(nextOp->getResult(0)));
+      auto newOp = rewriter.create<CastOp>(
+          loc,castType,op.getInput(),oldattr);
+      std::string in_name2 =
+          module::getName(op.getInput()).str() + "newpermuteOp";
+      auto loc2 = NameLoc::get(rewriter.getStringAttr(in_name2));
+      rewriter.setInsertionPoint(op);
+      auto newPermuteOp = rewriter.create<PermuteOp>(
+          loc2,permuteType,newOp->getResult(0),permute_attr);
+      castop.getOutput().replaceAllUsesWith(newPermuteOp.getResult());
+      op.getOutput().replaceAllUsesWith(newPermuteOp.getResult());
+      rewriter.eraseOp(castop);
+      rewriter.eraseOp(op);
+    }
+    if(addconstop){
+      auto newOp = rewriter.create<AddConstOp>(
+          loc,newType,op.getInput(),oldattr);
+      op.setOperand(newOp->getResult(0));
+      addconstop.getOutput().replaceAllUsesWith(addconstop.getOperand());
+      rewriter.eraseOp(addconstop);
+    }
+    return success();
+   }
+};
+
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopPermuteToPixelShuffle, TopPermuteToReorg, Permute5dSplit,
                  PermuteFuse, TopPermuteToReshape, NonZeroPermutePattern,
-                 PermutePadSwap>(context);
+                 PermutePadSwap,TopMoveAheadpermutePattern>(context);
 }
