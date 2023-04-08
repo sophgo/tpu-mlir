@@ -215,7 +215,7 @@ def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu]> {
   let hasCanonicalizer = 1;
 }
 
-def Top_CastOp:Top_Op<"Cast"> {
+def Top_CastOp:Top_Op<"Cast",[SupportPermuteMove]> {
   let summary = "Cast operation";
   let description = [{
     quant::UniformQuantizedType cast to float type; or float type cast to quant::UniformQuantizedType
@@ -533,7 +533,7 @@ def Top_MaxOp: Top_Op<"Max"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu]> {
+def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu,SupportPermuteMove]> {
   let summary = "Add Const operator";
 
   let description = [{
@@ -732,7 +732,7 @@ def Top_ShuffleChannelOp: Top_Op<"ShuffleChannel"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_ReluOp: Top_Op<"Relu"> {
+def Top_ReluOp: Top_Op<"Relu",[SupportPermuteMove]> {
   let summary = "Relu operator";
 
   let description = [{
@@ -819,7 +819,7 @@ def Top_ReverseOp:Top_Op<"Reverse"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_SigmoidOp : Top_Op<"Sigmoid"> {
+def Top_SigmoidOp : Top_Op<"Sigmoid",[SupportPermuteMove]> {
   let summary = " Exp operator,  scale * Sigmoid + bias";
   let description = [{
      Y = scale * Sigmoid(x) + bias
