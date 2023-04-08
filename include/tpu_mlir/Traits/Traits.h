@@ -52,5 +52,9 @@ public:
   }
 };
 
+template <typename ConcreteType>
+class SupportPermuteMove
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportPermuteMove> {};
+    
 } // namespace trait
 } // namespace tpu_mlir
