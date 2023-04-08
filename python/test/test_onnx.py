@@ -110,6 +110,9 @@ class ONNX_IR_TESTER(object):
             "Pad1":         (self.test_Pad1,        Y, N, Y),  # pad val
             "PadEdge":      (self.test_PadEdge,     Y, N, Y),
             "PadReflect":   (self.test_PadReflect,  Y, N, Y),
+            "Permutereluchange":        (self.test_permuterelu,       Y, N, N),
+            "Permutesigmoidchange":     (self.test_permutesigmoid,    Y, N, N),
+            "Permuteaddconstchange":    (self.test_permuteaddconst,   Y, N, N),
             "Pow1":         (self.test_Pow1,        Y, N, Y),  # y = x ^ n
             "Pow2":         (self.test_Pow2,        N, N, N),  # y = n ^ x
             "PRelu":        (self.test_PRelu,       Y, N, Y),
@@ -3704,7 +3707,63 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([sqrt_def], case_name, inputs, outputs)
         input_data = np.abs(np.random.randn(*shape).astype(np.float32))
         self.onnx_and_test(graph_def, input_data={"input": input_data})
+    
+    def test_permuterelu(self, case_name):
+        input_shape = [1, 16, 128, 128]
+        output_shape = [128, 128, 16, 1]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        transpose_def = helper.make_node(
+            "Transpose",
+            inputs=['input'],
+            outputs=['transpose_output'],
+        )
+        relu_def = helper.make_node("Relu", inputs=['transpose_output'], outputs=['output'])
+        graph_def = helper.make_graph([transpose_def, relu_def],
+                                      case_name, [input], [output],
+                                      )
+        self.onnx_and_test(graph_def)
 
+    def test_permutesigmoid(self, case_name):
+        input_shape = [1, 16, 128, 128]
+        output_shape = [128, 128, 16, 1]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        transpose_def = helper.make_node(
+            "Transpose",
+            inputs=['input'],
+            outputs=['transpose_output'],
+        )
+        Sigmoid_def = helper.make_node("Sigmoid", inputs=['transpose_output'], outputs=['output'])
+        graph_def = helper.make_graph([transpose_def, Sigmoid_def],
+                                      case_name, [input], [output],
+                                      )
+        self.onnx_and_test(graph_def)
+
+    def test_permuteaddconst(self, case_name):
+        input_shape = [1, 16, 128, 128]
+        output_shape = [128, 128, 16, 1]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        add_const = helper.make_tensor(name='add_const',
+                                       data_type=TensorProto.FLOAT,
+                                       dims=[],
+                                       vals=[2.0])
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        transpose_def = helper.make_node(
+            "Transpose",
+            inputs=['input'],
+            outputs=['transpose_output'],
+        )
+        Add_def = helper.make_node(
+            "Add",
+            inputs=['transpose_output','add_const'],
+            outputs=['output'],
+            )
+        graph_def = helper.make_graph([transpose_def, Add_def],
+                                      case_name, [input], [output],initializer=[add_const]
+                                      )
+        self.onnx_and_test(graph_def)
+    
     def test_Pow1(self, case_name):
         shape = [1, 3, 27, 27]
         input_data = np.abs(np.random.randn(*shape).astype(np.float32)) + 1e-6
