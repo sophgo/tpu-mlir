@@ -573,6 +573,9 @@ protected:
       if (is_tpu || isa<ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
+          if (module::isWeight(opd) || module::isNone(opd)) {
+            continue;
+          }
           TypeCastMode mode = TypeCastMode::DO_NOTHING;
           mlir::Type target_type;
           if (auto typeIf = dyn_cast<TypeInterface>(op)) {

@@ -824,6 +824,7 @@ def Tpu_LutBF16Op: Tpu_Op<"LutBF16",
 
 def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
+    DeclareOpInterfaceMethods<TypeInterface>,
     SupportFuseRelu]> {
   let summary = "matmul operator";
 
