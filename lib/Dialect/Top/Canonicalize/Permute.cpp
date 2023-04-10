@@ -433,7 +433,7 @@ struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
   }
 };
 
-// permute(0,1,3,4,2)+ pad(0,0,1,1,0) -> pad(0,0,0,1,1)+permute(0,1,3,4,2)
+// permute + pad -> pad + permute
 struct PermutePadSwap : public OpRewritePattern<PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -448,31 +448,26 @@ struct PermutePadSwap : public OpRewritePattern<PermuteOp> {
     if (!pad_op) {
       return failure();
     }
-    auto order = module::getI64Array(op.getOrder());
-    std::vector<int64_t> order_{0, 1, 3, 4, 2};
-    if (order->size() == 5) {
-      for (size_t i = 0; i < order->size(); ++i) {
-        if (order_[i] != order->at(i)) {
-          return failure();
-        }
-      }
-    } else {
-      return failure();
-    }
-    auto paddings = module::getI64Array(pad_op.getPaddings());
-    if (paddings->size() == 10) {
-      for (size_t i = 0; i < paddings->size(); ++i) {
-        if (paddings->at(i) != 0 && !(i == 2 || i == 3 || i == 7 || i == 8)) {
-          return failure();
-        }
-      }
-    } else {
+    auto permute_order = module::getI64Array(op.getOrder());
+    auto padding = module::getI64Array(pad_op.getPaddings());
+    std::size_t num_axis = permute_order->size();
+    if (padding->size() != 2 * num_axis) {
       return failure();
     }
 
-    std::vector<int64_t> new_paddings{
-        0, 0, 0, paddings->at(2), paddings->at(3),
-        0, 0, 0, paddings->at(7), paddings->at(8)};
+    std::vector<int64_t> new_paddings(2 * num_axis, 0);
+    std::vector<int64_t> rev_order(num_axis, 0);
+    new_paddings.assign(padding->begin(), padding->end());
+    rev_order.assign(permute_order->begin(), permute_order->end());
+    // get reverse operation of permute
+    for (int i = 0; i < num_axis; i++) {
+      rev_order[permute_order->at(i)] = i;
+    }
+    // adjust paddings accordingly
+    for (int i = 0; i < num_axis; i++) {
+      new_paddings[i] = padding->at(rev_order[i]);
+      new_paddings[i + num_axis] = padding->at(rev_order[i] + num_axis);
+    }
     pad_op->setAttr("paddings", rewriter.getI64ArrayAttr(new_paddings));
 
     // swap pad Op and permute Op
@@ -482,9 +477,10 @@ struct PermutePadSwap : public OpRewritePattern<PermuteOp> {
     auto pad_out = pad_op.getOutput();
     auto in_shape = module::getShape(permute_in);
     rewriter.setInsertionPointAfterValue(permute_in);
-    std::vector<int64_t> new_padded_shape(in_shape.size(), 0);
-    for (size_t i = 0; i < order->size(); ++i) {
-      new_padded_shape[i] = in_shape[i] + new_paddings[i] + new_paddings[i + 5];
+    std::vector<int64_t> new_padded_shape(num_axis, 0);
+    for (size_t i = 0; i < num_axis; ++i) {
+      new_padded_shape[i] =
+          in_shape[i] + new_paddings[i] + new_paddings[i + num_axis];
     }
     auto newType = RankedTensorType::get(new_padded_shape,
                                          module::getElementType(permute_in));
