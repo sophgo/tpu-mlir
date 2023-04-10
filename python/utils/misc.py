@@ -15,65 +15,64 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-def save_tensor_diff_subplot(tensor_ref, tensor_target, index_list, ref_name, target_name, file_prefix):
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.1,
-        subplot_titles=("{} vs {}".format(target_name, ref_name)))
+def save_tensor_diff_subplot(tensor_ref, tensor_target, index_list, ref_name, target_name,
+                             file_prefix):
+    fig = make_subplots(rows=1,
+                        cols=1,
+                        shared_xaxes=True,
+                        vertical_spacing=0.1,
+                        subplot_titles=("{} vs {}".format(target_name, ref_name)))
     fig.add_trace(go.Scattergl(y=tensor_ref.reshape([-1]),
-                                x=index_list,
-                                name=ref_name,
-                                mode='lines+markers',
-                                marker={
-                                    "size": 6,
-                                    "symbol": 300
-                                },
-                                line={"width": 1}),
-                    row=1,
-                    col=1)
+                               x=index_list,
+                               name=ref_name,
+                               mode='lines+markers',
+                               marker={
+                                   "size": 6,
+                                   "symbol": 300
+                               },
+                               line={"width": 1}),
+                  row=1,
+                  col=1)
     fig.add_trace(go.Scattergl(y=tensor_target.reshape([-1]),
-                                x=index_list,
-                                name=target_name,
-                                mode='lines+markers',
-                                marker={
-                                    "size": 6,
-                                    "symbol": 304,
-                                    "opacity": 0.8
-                                },
-                                line={"width": 1}),
-                    row=1,
-                    col=1)
+                               x=index_list,
+                               name=target_name,
+                               mode='lines+markers',
+                               marker={
+                                   "size": 6,
+                                   "symbol": 304,
+                                   "opacity": 0.8
+                               },
+                               line={"width": 1}),
+                  row=1,
+                  col=1)
 
     fig.update_layout(height=400, width=900)
-    fig.write_html(file_prefix+'.html')
-    fig.write_image(file_prefix+'.png')
+    fig.write_html(file_prefix + '.html')
+    fig.write_image(file_prefix + '.png')
 
 
 def save_tensor_subplot(tensor, index_list, tensor_name, file_prefix):
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.1,
-        subplot_titles=(tensor))
+    fig = make_subplots(rows=1,
+                        cols=1,
+                        shared_xaxes=True,
+                        vertical_spacing=0.1,
+                        subplot_titles=(tensor))
 
     fig.add_trace(go.Scattergl(y=tensor.reshape([-1]),
-                                x=index_list,
-                                name=tensor_name,
-                                mode='lines+markers',
-                                marker={
-                                    "size": 6,
-                                    "symbol": 300
-                                },
-                                line={"width": 1}),
-                    row=1,
-                    col=1)
+                               x=index_list,
+                               name=tensor_name,
+                               mode='lines+markers',
+                               marker={
+                                   "size": 6,
+                                   "symbol": 300
+                               },
+                               line={"width": 1}),
+                  row=1,
+                  col=1)
 
     fig.update_layout(height=400, width=900)
-    fig.write_html(file_prefix+'.html')
-    fig.write_image(file_prefix+'.png')
+    fig.write_html(file_prefix + '.html')
+    fig.write_image(file_prefix + '.png')
 
 
 def parse_debug_cmd(debug_cmd):
@@ -100,13 +99,14 @@ def show_mem_info(info):
 
 
 def is_image_file(filename):
-    support_list={'.jpg','.bmp','.png','.jpeg','.jfif'}
+    support_list = {'.jpg', '.bmp', '.png', '.jpeg', '.jfif'}
     for type in support_list:
         if filename.strip().lower().endswith(type):
             return True
     return False
 
-def get_image_list(image_dir, count = 0):
+
+def get_image_list(image_dir, count=0):
     image_path_list = []
     for image_name in os.listdir(image_dir):
         if is_image_file(image_name):
@@ -143,11 +143,12 @@ def str2shape(v):
 
 
 def str2list(v):
-    files = v.split(',')
-    files = [s.strip() for s in files]
-    while files.count('') > 0:
-        files.remove('')
-    return files
+    vars = v.split(',')
+    vars = [s.strip() for s in vars]
+    while vars.count('') > 0:
+        vars.remove('')
+    return vars
+
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -157,27 +158,8 @@ def str2bool(v):
     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
         return False
     else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+        raise RuntimeError('Boolean value expected.')
 
-
-class Desc():
-    def __init__(self, dtype, min=-10, max=10) -> None:
-        self.dtype = dtype
-        self.min = min
-        self.max = max
-
-def str2desc(v):
-    descs_vec = {}
-    descs = v
-    descs = descs.replace(" ", "")
-    descs = descs.split(r'],')
-    for desc in descs:
-        if desc != '':
-            desc = desc.split(r'[')[1]
-            desc = desc.split(r']')[0]
-            desc = desc.split(r',')
-            descs_vec[int(desc[0])] = Desc((desc[1]), float(desc[2]), float(desc[3]))
-    return descs_vec
 
 def cos_sim(vector_a, vector_b):
     vector_a = vector_a.reshape(-1)
@@ -190,6 +172,7 @@ def cos_sim(vector_a, vector_b):
         cos = np.nan_to_num(num / denom)
     sim = 0.5 + 0.5 * cos
     return sim
+
 
 def seed_all(seed=1029):
     random.seed(seed)

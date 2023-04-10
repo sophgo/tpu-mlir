@@ -157,14 +157,13 @@ class TorchTransformer(ModelTransformer):
                  model_name,
                  model_def,
                  input_shapes: list = [],
-                 input_descs: dict = {},
                  output_names=[],
                  preprocessor=None):
         super().__init__(model_name)
         self.model_def = model_def
         from transform.TorchConverter import TorchConverter
-        self.converter = TorchConverter(self.model_name, self.model_def, input_shapes,
-                                        input_descs, output_names, preprocessor)
+        self.converter = TorchConverter(self.model_name, self.model_def, input_shapes, output_names,
+                                        preprocessor)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import torch_inference
@@ -187,7 +186,7 @@ def get_model_transform(args):
         tool = TFLiteTransformer(args.model_name, args.model_def, args.input_shapes,
                                  args.output_names, preprocessor.to_dict())
     elif args.model_def.endswith('.pt'):
-        tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes, args.descs,
+        tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
                                 args.output_names, preprocessor.to_dict())
     else:
         # TODO: support more AI model types
@@ -203,9 +202,7 @@ if __name__ == '__main__':
     parser.add_argument("--model_def", required=True, help="model definition file.")
     parser.add_argument("--model_data", help="caffemodel, only for caffe model")
     parser.add_argument("--input_shapes", type=str2shape, default=list(),
-                        help="list of input shapes, like:[[2,3],[1,2]]")
-    parser.add_argument("--descs", type=str2desc, default='',
-                        help="Input descriptions, e.g., \"[0, uint8, 0, 256], [2, float32, 10, 20]\"")
+                        help="list of input shapes, like:[[1,3,224,224],[10],[16]]")
     parser.add_argument("--output_names", type=str2list, default=list(),
                         help="if set, will find names in model and set as real outputs")
     parser.add_argument("--test_input", default="", type=str2list,

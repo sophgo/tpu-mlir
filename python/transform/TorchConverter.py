@@ -9,7 +9,6 @@ from .MLIRImporter import MLIRImporter, Platform
 from .BaseConverter import BaseConverter
 from .TorchHelper import *
 from mlir.ir import *
-from utils.misc import Desc
 import mlir.dialects.top as top
 import numpy as np
 
@@ -44,7 +43,6 @@ class TorchConverter(BaseConverter):
                  model_name: str,
                  torch_file,
                  input_shapes: list,
-                 input_descs: dict,
                  output_names: list,
                  preprocess_args=None):
         super().__init__()
@@ -53,7 +51,7 @@ class TorchConverter(BaseConverter):
         self.model = None
         self.mlir = None
         self.node_name_mapping = {}  # used in torch opt
-        self.load_torch_model(torch_file, input_shapes, input_descs, output_names)
+        self.load_torch_model(torch_file, input_shapes, output_names)
         self.init_MLIRImporter()
         self.unranked_type = self.mlir.get_tensor_type([])
         self.preprocess_args = preprocess_args
@@ -202,8 +200,7 @@ class TorchConverter(BaseConverter):
             raise RuntimeError(
                 "The following operators are not implemented: {}".format(unknown_ops))
 
-    def load_torch_model(self, torch_file, input_shapes: list, input_descs: dict,
-                         output_names: list):
+    def load_torch_model(self, torch_file, input_shapes: list, output_names: list):
         if isinstance(torch_file, str):
             self.model = torch.jit.load(torch_file, map_location=torch.device('cpu'))
         else:
@@ -233,28 +230,14 @@ class TorchConverter(BaseConverter):
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
         self.input_shapes = input_shapes
-        for i in range(self.num_input):
-            if i not in input_descs.keys():
-                input_descs[i] = Desc("float32")
-        self.origin_input_types = [input_descs[i].dtype for i in range(self.num_input)]
-        self.input_types = [self.TypeMap[input_descs[i].dtype] for i in range(self.num_input)]
-        # self.input_types = [self.TypeMap[input_dtypes[i]] for i in range(self.num_input)]
         self.output_shapes = [[]] * self.num_output
-
-        inputs = {}
-        for idx, _name in enumerate(self.input_names):
-            desc = input_descs[idx]
-            scale = desc.max - desc.min
-            data = (np.random.rand(*input_shapes[idx]) * scale - desc.min).astype(desc.dtype)
-            inputs[_name] = torch.from_numpy(data)
 
     def init_MLIRImporter(self):
         input_shapes = list()
         for _name in self.input_names:
             input_shapes.append(self.getShape(_name))
         # init importer
-        self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name, Platform.TORCH,
-                                 self.input_types)
+        self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name, Platform.TORCH)
         self.weight_file = self.mlir.weight_file
 
     def generate_mlir(self, mlir_file: str):
