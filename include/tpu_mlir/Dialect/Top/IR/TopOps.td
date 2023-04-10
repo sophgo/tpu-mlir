@@ -1764,9 +1764,9 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
     F64Attr:$eps
   );
   let results = (outs
-  	AnyTensor:$output,
-  	AnyTensorOrNone:$mean,
-  	AnyTensorOrNone:$rstd
+    AnyTensor:$output,
+    AnyTensorOrNone:$mean,
+    AnyTensorOrNone:$rstd
   );
   let hasCanonicalizer = 1;
 }
@@ -1783,7 +1783,7 @@ def Top_InstanceNormOp : Top_Op<"InstanceNorm"> {
     F64Attr:$eps
   );
   let results = (outs
-  	AnyTensor:$output
+    AnyTensor:$output
   );
 }
 
@@ -1800,7 +1800,7 @@ def Top_GroupNormOp : Top_Op<"GroupNorm"> {
     F64Attr:$eps
   );
   let results = (outs
-  	AnyTensor:$output
+    AnyTensor:$output
   );
   let hasCanonicalizer = 1;
 }
@@ -1817,7 +1817,7 @@ def Top_PixelNormOp : Top_Op<"PixelNorm"> {
     F64Attr:$eps
   );
   let results = (outs
-  	AnyTensor:$output
+    AnyTensor:$output
   );
 }
 

@@ -41,6 +41,7 @@ class MODEL_RUN(object):
         self.aligned_input = aligned_input
         self.merge_weight = merge_weight
         self.model_type = chip_support[self.chip][-1]
+        self.command = f"run_model.py {model_name} --chip {chip} --mode {mode}"
 
         config = configparser.ConfigParser(inline_comment_prefixes=('#', ))
         config.read(os.path.expandvars(f"$REGRESSION_PATH/config/{self.model_name}.ini"))
@@ -159,7 +160,8 @@ class MODEL_RUN(object):
             f"$REGRESSION_PATH/cali_tables/{self.model_name}_cali_table")
         if os.path.exists(self.cali_table):
             return
-
+        if "dataset" not in self.ini_content:
+            raise RuntimeError("[!Error]: dataset not set for calibration")
         cmd = ["run_calibration.py"]
         cmd.extend([
             f"{self.model_name}.mlir", "--dataset {}".format(self.ini_content["dataset"]),
@@ -345,7 +347,6 @@ class MODEL_RUN(object):
                     self.ini_content["model_data"] if "model_data" in self.ini_content else "")
 
             self.run_model_transform(self.model_name)
-
             if (self.quant_modes["int4_sym"] or self.quant_modes["int8_sym"]
                     or self.quant_modes["int8_asym"]) and self.do_cali:
                 self.make_calibration_table()
@@ -371,8 +372,15 @@ class MODEL_RUN(object):
             # currently only do f32 dynamic mode
             if self.do_dynamic and self.quant_modes["f32"]:
                 self.run_dynamic("f32")
+            print("Success: {}".format(self.command))
             return 0
+        except RuntimeError as e:
+            print(repr(e))
+            print("Failed: {}".format(self.command))
+            return 1
         except:
+            print("Unknown errors")
+            print("Failed: {}".format(self.command))
             return 1
 
 

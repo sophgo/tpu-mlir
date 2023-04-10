@@ -15,7 +15,6 @@ from tools.model_runner import mlir_inference, model_inference, torch_inference,
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
-from utils.misc import Desc
 import os
 
 import torch
@@ -143,6 +142,12 @@ class TORCH_IR_TESTER(object):
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
             self.quant_modes = [self.mode]
 
+    class Desc():
+        def __init__(self, dtype, min=-10, max=10) -> None:
+            self.dtype = dtype
+            self.min = min
+            self.max = max
+
     def test_single(self, case: str):
         np.random.seed(0)
         torch.manual_seed(7)
@@ -214,7 +219,7 @@ class TORCH_IR_TESTER(object):
         input_descs = {}
         for i in range(len(descs)):
             input_descs[i] = descs[i]
-        tool = TorchTransformer(model_name, torch_model, input_shapes=in_shapes, input_descs=input_descs)
+        tool = TorchTransformer(model_name, torch_model, input_shapes=in_shapes)
         tool.model_transform(fp32_mlir)
 
         input_npz = "{}_ref_in_fp32.npz".format(model_name)
@@ -571,7 +576,7 @@ class TORCH_IR_TESTER(object):
                 y2 = op_type(y0, y1, **_alpha)
                 return y2
 
-        self.trace_and_test([in0_shape], Model(), [Desc('float32', min)])
+        self.trace_and_test([in0_shape], Model(), [self.Desc('float32', min)])
 
     #######################################################################
     # Add
@@ -783,7 +788,7 @@ class TORCH_IR_TESTER(object):
                     y = self.embedding(x)
                     return y
 
-            self.trace_and_test([shape], Model(), [Desc('int32', 0, n)])
+            self.trace_and_test([shape], Model(), [self.Desc('int32', 0, n)])
 
         _test_embedding((2, 3, 64), 512, 768)
         _test_embedding((2, 64), 20, 30)
@@ -849,7 +854,7 @@ class TORCH_IR_TESTER(object):
                     y = torch.pow(x, exponent=exp)
                     return y
 
-            self.trace_and_test([shape], Model(), [Desc('float32', min)])
+            self.trace_and_test([shape], Model(), [self.Desc('float32', min)])
 
         _test_pow((2, 3, 64, 64), 2, -10)
         _test_pow((3, 64, 64), 3)

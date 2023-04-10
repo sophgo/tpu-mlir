@@ -1786,9 +1786,9 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
     F64Attr:$eps
   );
   let results = (outs
-  	AnyRankedTensor:$output,
-  	AnyTensorOrNone:$mean,
-  	AnyTensorOrNone:$rstd
+    AnyRankedTensor:$output,
+    AnyTensorOrNone:$mean,
+    AnyTensorOrNone:$rstd
   );
 }
 
@@ -1809,7 +1809,7 @@ def Tpu_InstanceNormOp : Tpu_Op<"InstanceNorm", [
     F64Attr:$eps
   );
   let results = (outs
-  	AnyRankedTensor:$output
+    AnyRankedTensor:$output
   );
 }
 
@@ -1831,7 +1831,7 @@ def Tpu_GroupNormOp : Tpu_Op<"GroupNorm", [
     F64Attr:$eps
   );
   let results = (outs
-  	AnyRankedTensor:$output
+    AnyRankedTensor:$output
   );
 }
 
@@ -1853,7 +1853,7 @@ def Tpu_PixelNormOp : Tpu_Op<"PixelNorm", [
     F64Attr:$eps
   );
   let results = (outs
-  	AnyRankedTensor:$output
+    AnyRankedTensor:$output
   );
 }
 
