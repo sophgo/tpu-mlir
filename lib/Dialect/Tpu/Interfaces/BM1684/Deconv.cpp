@@ -37,17 +37,6 @@ void deconv_weight_transform(int ic, int oc, int kh, int kw,
           *((float *)weight_trans + trans_offset) =
               *((float *)weight_orig + orig_offset);
           break;
-        // case 1:
-        //   trans_offset = ic_idx + k_idx * align_up(ic, 4) +
-        //                  oc_idx * kh * kw * align_up(ic, 4);
-        //   *((char *)weight_trans + trans_offset) =
-        //       *((char *)weight_orig + orig_offset);
-        //   break;
-        // case 2:
-        //   trans_offset = ic_idx + k_idx * ic + oc_idx * kh * kw * ic;
-        //   *((short *)weight_trans + trans_offset) =
-        //       *((short *)weight_orig + orig_offset);
-        //   break;
         default:
           llvm_unreachable("wrong conv weight data type");
         }
@@ -61,30 +50,25 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
-
   auto attr = op.parseParam();
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
-  int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
+  auto filter_type = filterOp.getType().cast<RankedTensorType>();
+  int new_size = attr.oc * attr.g * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
+  std::vector<int64_t> new_shape = {1, attr.oc* attr.g, attr.kh * attr.kw * align_up(attr.ic, 4l), 1};
+  auto new_type = RankedTensorType::get(new_shape, filter_type.getElementType());
   auto filter_new = std::make_shared<std::vector<int8_t>>(new_size, 0);
   for (int oc_idx = 0; oc_idx < attr.oc; oc_idx++) {
     for (int ic_idx = 0; ic_idx < attr.ic; ic_idx++) {
       for (int k_idx = 0; k_idx < attr.kh * attr.kw; k_idx++) {
-        int orig_offset = ic_idx * attr.kh * attr.kw + k_idx +
-                          oc_idx * attr.kh * attr.kw * attr.ic;
-        int trans_offset = ic_idx + k_idx * align_up(attr.ic, 4l) +
-                           oc_idx * (attr.kh * attr.kw * align_up(attr.ic, 4l));
+        int orig_offset = oc_idx*attr.ic*attr.kh * attr.kw + ic_idx*attr.kh * attr.kw + k_idx;
+        int trans_offset = oc_idx * align_up(attr.ic,4l)*attr.kw*attr.kh + ic_idx/4*attr.kh * attr.kw *4 + k_idx*4 + ic_idx%4;
         filter_new->at(trans_offset) = filter_int8->at(orig_offset);
       }
     }
   }
-  auto filter_type = filterOp.getType().cast<RankedTensorType>();
-  std::vector<int64_t> new_shape = {
-      1, attr.oc, attr.kh * attr.kw * align_up(attr.ic, 4l), 1};
-  auto new_type =
-      RankedTensorType::get(new_shape, filter_type.getElementType());
-  auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
-                                          "reorderd", *filter_new, new_type);
+   auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
+                                              "reorderd", *filter_new, new_type);
   op->setOperand(1, new_filter);
   return success();
 }
@@ -141,7 +125,24 @@ void tpu::DeconvOp::codegen_global_bm1684() {
   auto out_addr = module::getAddress(getOutput());
   auto filter_addr = module::getAddress(getFilter());
   auto bias_addr = module::getAddress(getBias());
-
+  if (module::isUniformQuantized(getInput())) {
+      auto shift_v = module::getI64Array(getRshift(), 1, 0);
+      auto shift = shift_v->at(0);
+      auto in_sign = module::isSign(getInput());
+      auto filter_sign = module::isSign(getFilter());
+      auto bias_sign = attr.with_bias ? module::isSign(getBias()) : 0;
+      BM1684::instance().dl_nodechip_deconv_fix8b_forward_parallel(
+        in_addr, out_addr, filter_addr, bias_addr,
+              attr.n, attr.ic, attr.ih, attr.iw,
+              attr.oc, attr.g, attr.kh, attr.kw, attr.dh, attr.dw,
+              attr.pad_h, attr.pad_h_after, attr.pad_w, attr.pad_w_after,
+              attr.sh, attr.sw,
+              attr.output_pad_h, attr.output_pad_w,
+              attr.with_bias ? 1 : 0, attr.do_relu ? 1 : 0,
+              shift, 1, in_sign, filter_sign, bias_sign,
+              (CMD_ID_NODE *)BM1684::instance().cmdid_node
+              );
+  } else {
   if (attr.is_dw) {
       BM1684::instance().dl_nodechip_depthwise_forward_parallel(
           in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic, attr.ih,
@@ -179,6 +180,7 @@ void tpu::DeconvOp::codegen_global_bm1684() {
             1,
             (CMD_ID_NODE *)BM1684::instance().cmdid_node
             );}
+  }
 }
 
 int64_t tpu::DeconvOp::getBufferSize_bm1684(
@@ -208,7 +210,30 @@ void tpu::DeconvOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
   }
   p.pad_w = p.kw - p.pad_w - 1;
   p.pad_w_after = p.kw - p.pad_w_after - 1 + p.output_pad_w;
-  BM1684::instance().dl_nodechip_deconv_forward_local(
+  if (module::isUniformQuantized(getInput())) {
+    auto shift_v = module::getI64Array(getRshift(), 1, 0);
+    auto shift = shift_v->at(0);
+    auto in_sign = module::isSign(getInput());
+    auto filter_sign = module::isSign(getFilter());
+    auto bias_sign = p.with_bias ? module::isSign(getBias()) : 0;
+    BM1684::instance().dl_nodechip_deconv_fix8b_forward_local(
+      in_gi.out_addr,
+      f_gi.out_addr,
+      b_gi.out_addr,
+      gi.out_addr,
+      bottom_dim,
+      top_dim,
+      p.g,
+      p.kh, p.kw, p.dh, p.dw,
+      p.pad_h,
+      p.pad_h_after,
+      p.pad_w,
+      p.pad_w_after,
+      p.sh-1, p.sw-1,
+      p.with_bias ? 1 : 0, p.do_relu ? 1 : 0, shift, in_sign, filter_sign,  bias_sign,
+      (CMD_ID_NODE *)BM1684::instance().bdc_node);
+  } else {
+    BM1684::instance().dl_nodechip_deconv_forward_local(
       in_gi.out_addr,
       f_gi.out_addr,
       b_gi.out_addr,
@@ -223,12 +248,12 @@ void tpu::DeconvOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
       p.pad_h_after,
       p.pad_w,
       p.pad_w_after,
-      p.sh-1,p.sw-1,
+      p.sh-1, p.sw-1,
       p.with_bias,
       0,
       p.do_relu ? 1 : 0,
-      (CMD_ID_NODE *)BM1684::instance().bdc_node
-    );
+      (CMD_ID_NODE *)BM1684::instance().bdc_node);
+  }
 }
 
 uint32_t tpu::DeconvOp::dyn_codegen_global_bm1684(void* ir_layer_info) {

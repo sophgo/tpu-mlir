@@ -98,11 +98,18 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
     module::getNCHW(getOutput(), n, c, h, w);
     auto rshift_v = module::getI64Array(getRshift().value());
     auto multiplier_v = module::getI64Array(getMultiplier().value());
-    assert(rshift_v->size() == c);
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int oc = 0; oc < c; oc++) {
-      int64_t shift = rshift_v->at(oc);
-      int64_t multi = multiplier_v->at(oc);
+      int64_t shift;
+      int64_t multi;
+      if (c > rshift_v->size()) {
+        shift = rshift_v->at(0);
+        multi= multiplier_v->at(0);
+      }
+      else {
+        shift = rshift_v->at(oc);
+        multi= multiplier_v->at(oc);
+      }
       for (int on = 0; on < n; on++) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (on * c + oc) * h * w + hw;
