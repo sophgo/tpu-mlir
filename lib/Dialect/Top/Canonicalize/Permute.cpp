@@ -557,9 +557,102 @@ struct PermuteMovePattern : public OpRewritePattern<PermuteOp> {
   }
 };
 
+template <typename OpTy>
+void _permute_binary_rewrite(PermuteOp pm_op1, PermuteOp pm_op2, OpTy bi_op,
+                             PatternRewriter &rewriter) {
+  std::vector<NamedAttribute> attrs_bi;
+  for (auto &attr : bi_op->getAttrs()) {
+    attrs_bi.push_back(attr);
+  }
+  std::vector<Value> opds_bi = {pm_op1.getOperand(), pm_op2.getOperand()};
+  auto loc = NameLoc::get(rewriter.getStringAttr(
+      module::getName(bi_op.getOutput()).str() + "_PermuteBinary"));
+  rewriter.setInsertionPointAfterValue(pm_op1.getOperand());
+  rewriter.setInsertionPointAfterValue(pm_op2.getOperand());
+  auto bi_out = bi_op.getOutput();
+  auto bi_out_shape = module::getShape(bi_out);
+  auto order = *module::getI64Array(pm_op1.getOrder());
+  std::vector<int64_t> inv_order(order.size());
+  for (int i = 0; i < order.size(); ++i) {
+    inv_order[order[i]] = i;
+  }
+  std::vector<int64_t> new_bi_out_shape(bi_out_shape.size(), 0);
+  for (auto i = 0; i < bi_out_shape.size(); ++i) {
+    new_bi_out_shape[i] = bi_out_shape[inv_order[i]];
+  }
+  auto new_bi_out_type =
+      RankedTensorType::get(new_bi_out_shape, module::getElementType(bi_out));
+  auto new_bi_op =
+      rewriter.create<OpTy>(loc, new_bi_out_type, opds_bi, attrs_bi);
+  std::vector<NamedAttribute> attrs_pm;
+  attrs_pm.emplace_back(
+      rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
+  rewriter.replaceOpWithNewOp<PermuteOp>(bi_op, bi_op.getResult().getType(),
+                                         new_bi_op.getOutput(), attrs_pm);
+}
+
+/**
+ * Permute(x2)->Binary => Binary->Permute
+ **/
+struct PermuteBinaryPattern : public OpRewritePattern<PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    // check topo
+    const auto &output = op.getOutput();
+    if (!output.hasOneUse()) {
+      return failure();
+    }
+    auto p_next_op = *output.getUsers().begin();
+    if (!isa<AddOp, SubOp, MulOp>(p_next_op)) {
+      return failure();
+    }
+    PermuteOp fd_op = op;
+    assert(p_next_op->getNumOperands() == 2);
+    for (auto opd : p_next_op->getOperands()) {
+      Operation *op_ = opd.getDefiningOp();
+      if (op_ == op.getOperation())
+        continue;
+      if (!opd.hasOneUse()) {
+        return failure();
+      }
+      if (!isa<PermuteOp>(op_)) {
+        return failure();
+      }
+      fd_op = dyn_cast<PermuteOp>(op_);
+    }
+    // check param
+    if (op == fd_op) {
+    } else {
+      const auto order1 = module::getI64Array(op.getOrder());
+      const auto order2 = module::getI64Array(fd_op.getOrder());
+      if (order1->size() != order2->size()) {
+        return failure();
+      }
+      for (auto i = 0; i < order1->size(); ++i) {
+        if (order1->at(i) != order2->at(i)) {
+          return failure();
+        }
+      }
+    }
+    // rewrite now !
+    if (isa<AddOp>(p_next_op)) {
+      _permute_binary_rewrite(op, fd_op, dyn_cast<AddOp>(p_next_op), rewriter);
+    } else if (isa<SubOp>(p_next_op)) {
+      _permute_binary_rewrite(op, fd_op, dyn_cast<SubOp>(p_next_op), rewriter);
+    } else if (isa<MulOp>(p_next_op)) {
+      _permute_binary_rewrite(op, fd_op, dyn_cast<MulOp>(p_next_op), rewriter);
+    } else {
+    }
+    return success();
+  }
+};
+
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopPermuteToPixelShuffle, TopPermuteToReorg, Permute5dSplit,
                  PermuteFuse, PermuteMovePattern, TopPermuteToReshape,
-                 NonZeroPermutePattern, PermutePadSwap>(context);
+                 NonZeroPermutePattern, PermutePadSwap, PermuteBinaryPattern>(
+      context);
 }
