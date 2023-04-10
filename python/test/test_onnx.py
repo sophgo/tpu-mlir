@@ -287,7 +287,7 @@ class ONNX_IR_TESTER(object):
             inputs[name] = np.clip(np.random.randn(*shape).astype(np.float32), -10, 10)
         return inputs
 
-    def onnx_convert(self, input_data: dict, graph_def, model_name: str, dump_all: bool = True):
+    def onnx_convert(self, input_data: dict, graph_def, model_name: str, check_last: bool = False):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
@@ -308,9 +308,16 @@ class ONNX_IR_TESTER(object):
         np.savez(input_npz, **input_data)
         # top mlir outputs will be inferenced first in case the quant mode is int8
         show_fake_cmd(input_npz, onnx_model, "onnx_out.npz")
-        onnx_outs = onnx_inference(input_data, onnx_model, dump_all)
+        onnx_outs = onnx_inference(input_data, onnx_model, True)
         show_fake_cmd(input_npz, fp32_mlir, "top_out.npz")
-        top_mlir_outs = mlir_inference(input_data, fp32_mlir, dump_all)
+        top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
+
+        # this assumes that outputs are in order, i.e. the last one is the output
+        if check_last:
+            ok = list(onnx_outs.keys())[-1]
+            onnx_outs = {ok: onnx_outs[ok]}
+            tk = list(top_mlir_outs.keys())[-1]
+            top_mlir_outs = {ok: top_mlir_outs[tk]}
 
         return (onnx_outs, top_mlir_outs, input_npz, node_name_mapping)
 
@@ -475,11 +482,9 @@ class ONNX_IR_TESTER(object):
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
-            input_data, graph_def, model_name, not check_last)
+            input_data, graph_def, model_name, check_last)
         # test onnx and mlir outputs
         counter = 0
-        if check_last and len(onnx_outs) == 1 and len(top_mlir_outs) == 1:
-            top_mlir_outs = {next(iter(onnx_outs.keys())): next(iter(top_mlir_outs.values()))}
         for name in onnx_outs:
             if name in top_mlir_outs:
                 print("Compare onnx and mlir:{}\n".format(name))
