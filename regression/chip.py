@@ -55,9 +55,11 @@ bm1684x_model_list = {
     # _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
     # model_name:      (basic, all)
     ######## Pytorch #############
-    "yolov5s_pt":          (Y, Y),
-    "resnet50_pt":         (N, Y),
     "bert_pt":             (N, Y),
+    "resnet50_pt":         (N, Y),
+    "sd_encoder_pt":       (N, Y),
+    "sd_decoder_pt":       (N, Y),
+    "yolov5s_pt":          (Y, Y),
     ######## onnx ################
     "bert-tiny_from_pt":   (N, Y),
     "densenet121-12":      (N, Y),

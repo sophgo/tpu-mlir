@@ -75,6 +75,7 @@ class MODEL_RUN(object):
             "int8_asym": 0,
             "int4_sym": 0,
         }
+        self.do_test = "test_input" in self.ini_content
         if self.ini_content["model_path"].endswith(".tflite"):
             self.quant_modes["int8_asym"] = 1
         else:
@@ -101,7 +102,6 @@ class MODEL_RUN(object):
 
     def run_model_transform(self, model_name: str, dynamic: bool = False):
         '''transform from origin model to top mlir'''
-
         cmd = ["model_transform.py"]
         # add required arguments
         top_result = f"{model_name}_top_outputs.npz"
@@ -110,14 +110,16 @@ class MODEL_RUN(object):
             self.ini_content["test_reference"] = top_result
             self.ini_content["input_npz"] = f"{model_name}_in_f32.npz"
         cmd.extend([
-            f"--model_name {model_name}", "--test_input {}".format(self.ini_content["test_input"]),
-            f"--test_result {top_result}", f"--mlir {model_name}.mlir"
+            f"--model_name {model_name}", f"--mlir {model_name}.mlir",
+            "--model_def {}".format(self.ini_content["model_path"])
         ])
-
-        cmd += ["--model_def {}".format(self.ini_content["model_path"])]
         if "model_data" in self.ini_content:
             cmd += ["--model_data {}".format(self.ini_content["model_data"])]
-
+        if self.do_test:
+            cmd.extend([
+                "--test_input {}".format(self.ini_content["test_input"]),
+                f"--test_result {top_result}"
+            ])
         # add preprocess infor
         if dynamic:
             cmd += ["--input_shapes {}".format(self.ini_content["dynamic_shapes"])]
@@ -145,8 +147,6 @@ class MODEL_RUN(object):
         # add others
         if "output_names" in self.ini_content:
             cmd += ["--output_names {}".format(self.ini_content["output_names"])]
-        if "descs" in self.ini_content:
-            cmd += ["--descs {}".format(self.ini_content["descs"])]
         if "excepts" in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
         if self.do_post_handle and "post_type" in self.ini_content:
@@ -175,8 +175,7 @@ class MODEL_RUN(object):
         # generate tpu mlir
         tpu_mlir = f"{self.model_name}_bm1686_tpu_int4_sym.mlir"
         cmd = [
-            "tpuc-opt", f"{self.model_name}.mlir",
-            "--chip=\"type=bm1686\""
+            "tpuc-opt", f"{self.model_name}.mlir", "--chip=\"type=bm1686\""
             f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
             "--convert-top-to-tpu=\"mode=INT4 asymmetric=false\"", "--canonicalize",
             "--save-weight", "--mlir-print-debuginfo", f"-o {tpu_mlir}"
@@ -216,7 +215,9 @@ class MODEL_RUN(object):
                          do_sample: bool = False):
         '''top mlir -> bmodel/ cvimodel'''
         # int4_sym mode currently in test
-        new_test_input = self.test_input_copy(quant_mode)
+        to_test = self.do_test and test
+        if to_test:
+            new_test_input = self.test_input_copy(quant_mode)
 
         if quant_mode == "int4_sym":
             self.int4_tmp_test()
@@ -231,8 +232,6 @@ class MODEL_RUN(object):
         if self.fuse_pre:
             cmd += ["--fuse_preprocess"]
             model_file += "_fuse_preprocess"
-        if test:
-            cmd += ["--test_input {}".format(new_test_input)]
         if self.aligned_input:
             cmd += ["--aligned_input"]
             model_file += "_aligned_input"
@@ -268,15 +267,20 @@ class MODEL_RUN(object):
             "--compare_all",
             f"--model {model_file}",
             "--quantize {}".format(quant_mode.replace("_sym", "").replace("_asym", "")),
-            "--test_reference {}".format(self.ini_content["test_reference"]),
             "--tolerance {}".format(self.tolerance[quant_mode]),
         ])
+        if to_test:
+            cmd.extend([
+                "--test_input {}".format(new_test_input),
+                "--test_reference {}".format(self.ini_content["test_reference"])
+            ])
         if "excepts" in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
 
         _os_system(cmd)
 
-        os.system(f"rm {new_test_input}")
+        if to_test:
+            os.system(f"rm {new_test_input}")
 
         # only run sample for f32 and int8_sym mode
         if do_sample and (quant_mode == "f32" or quant_mode == "int8_sym"):
