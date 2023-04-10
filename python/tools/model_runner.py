@@ -398,8 +398,8 @@ def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
 
     outputs = {}
     if dump_all:
-        from transform.TorchConverter import TorchReader
-        net = TorchReader(model)
+        from transform.TorchInterpreter import TorchInterpreter
+        net = TorchInterpreter(model)
         net.run_model(inputs)
         return net.ref_tensor
     net = torch.jit.load(model, map_location=torch.device('cpu'))
