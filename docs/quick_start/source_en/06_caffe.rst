@@ -77,7 +77,7 @@ Convert the mlir file to the bmodel of f32, the operation method is as follows:
        --tolerance 0.99,0.99 \
        --model mobilenet_v2_1684x_f32.bmodel
 
-After compilation, a file named ``${model_name}_1684x_f32.bmodel`` is generated.
+After compilation, a file named ``mobilenet_v2_1684x_f32.bmodel`` is generated.
 
 
 MLIR to INT8 bmodel
@@ -101,7 +101,7 @@ Here is an example of the existing 100 images from ILSVRC2012 to perform calibra
        --input_num 100 \
        -o mobilenet_v2_cali_table
 
-After running the command above, a file named ``${model_name}_cali_table`` will be generated, which is used as the input file for subsequent compilation of the INT8 model.
+After running the command above, a file named ``mobilenet_v2_cali_table`` will be generated, which is used as the input file for subsequent compilation of the INT8 model.
 
 
 Compile to INT8 symmetric quantized model
@@ -121,7 +121,7 @@ Execute the following command to convert to the INT8 symmetric quantized model:
        --tolerance 0.96,0.70 \
        --model mobilenet_v2_1684x_int8_sym.bmodel
 
-After compilation, a file named ``${model_name}_1684x_int8_sym.bmodel`` is generated.
+After compilation, a file named ``mobilenet_v2_1684x_int8_sym.bmodel`` is generated.
 
 
 Compile to INT8 asymmetric quantized model
@@ -143,4 +143,4 @@ Execute the following command to convert to the INT8 asymmetric quantized model:
        --model mobilenet_v2_1684x_int8_asym.bmodel
 
 
-After compilation, a file named ``${model_name}_1684x_int8_asym.bmodel`` is generated.
+After compilation, a file named ``mobilenet_v2_1684x_int8_asym.bmodel`` is generated.
