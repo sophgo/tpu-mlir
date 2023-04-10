@@ -40,6 +40,7 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Value v,
     auto dst_lg_op = cast<LocalGenInterface>(dst_op);
     auto g_param = dst_op->getAttr(LocalGenInterface::kLayerGroupAttrName)
                        .cast<tpu::LayerGroupAttr>();
+    auto shape = module::getShape(dst_op->getResult(0));
     int64_t nslice = g_param.getNSlice()[0];
     int64_t hslice = g_param.getHSlice()[0];
     int64_t dslice = g_param.getDSlice()[0];
@@ -47,7 +48,9 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Value v,
     dst_lg_op.BackwardN(ginfo.n_idx, ginfo.n_slice, 0, nslice);
     dst_lg_op.BackwardH(ginfo.h_idx, ginfo.h_slice, 0, hslice);
     dst_lg_op.BackwardD(ginfo.d_idx, ginfo.d_slice, 0, dslice);
-    dst_lg_op.BackwardW(ginfo.w_idx, ginfo.w_slice, 0, wslice);
+    if (shape.size() >= 4) {
+      dst_lg_op.BackwardW(ginfo.w_idx, ginfo.w_slice, 0, wslice);
+    }
     return ginfo;
   }
   return getGroupInfo(op, n_step, h_step, d_step, w_step);

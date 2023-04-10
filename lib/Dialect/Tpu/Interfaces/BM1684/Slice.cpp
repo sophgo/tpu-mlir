@@ -96,6 +96,15 @@ void tpu::SliceOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     strides[i] = steps->at(i);
     end_index[i] = begin_index[i] + output_shape[i] * strides[i];
   }
+  if (num_dims < 4) {
+    for (int i = num_dims; i < 4; i++) {
+      input_shape[i] = 1;
+      begin_index[i] = 0;
+      strides[i] = 1;
+      end_index[i] = 1;
+    }
+    num_dims=4;
+  }
   module::getLocalShape(getInput(), n_step, h_step, input_shape);
   if (input_dtype == DTYPE_FP32 || input_dtype == DTYPE_INT32) {
     BM1684::instance().dl_nodechip_stride_slice_forward_local(
