@@ -7,234 +7,11 @@
 
 from .MLIRImporter import MLIRImporter, Platform
 from .BaseConverter import BaseConverter
+from .TorchHelper import *
 from mlir.ir import *
-from typing import List
 from utils.misc import Desc
-import numpy as np
-import torch
 import mlir.dialects.top as top
-
-
-def _get_constant(node):
-    """Retrieve a constant associated with this prim::Constant node"""
-    attribute_names = node.attributeNames()
-    num_attributes = len(attribute_names)
-    name = node.output().debugName()
-    is_tensor = False
-    type = node.output().type().kind()
-    value = None
-    if type == "NoneType":
-        return name, None, True
-    elif num_attributes == 1:
-        attr_name = attribute_names[0]
-        if type == "IntType":
-            value = node.i(attr_name)
-        elif type == "BoolType":
-            value = bool(node.i(attr_name))
-        elif type in ["FloatType", "LongType"]:
-            value = node.f(attr_name)
-        elif type in ["DeviceObjType", "StringType"]:
-            value = node.s(attr_name)
-        elif type in ["TensorType", "CompleteTensorType"]:
-            is_tensor = True
-            tensor = node.t(attr_name)
-            if tensor.is_cuda:
-                tensor = tensor.cpu()
-            value = tensor.numpy()
-        else:
-            raise NotImplementedError("Unsupported type: %s" % type)
-    else:
-        assert num_attributes == 0
-        return None
-    return name, value, is_tensor
-
-
-def _data_expand(data, length):
-    if isinstance(data, int):
-        return [data for i in range(length)]
-    else:
-        return data
-
-
-def _getattr(model, node):
-    if node.kind() == 'prim::Param':
-        return (model, '')
-    if node.kind() == 'prim::GetAttr':
-        name = node.s('name')
-        obj, parent = _getattr(model, node.input().node())
-        return (getattr(obj, name), parent + '.' + name if len(parent) > 0 else name)
-
-
-def _compute_pad(stride, dilation, input_size, filter, padding):
-    stride = np.array(stride)
-    dilation = np.array(dilation)
-    input_size = np.array(input_size)
-    filter = np.array(filter)
-    effective_filter_size = (filter - 1) * dilation + 1
-    if padding == "same":
-        output_size = (input_size + stride - 1) // stride
-    elif padding == "valid":
-        output_size = (input_size + stride - effective_filter_size) // stride
-    padding_needed = np.int64((output_size - 1) * stride + effective_filter_size - input_size)
-    padding_needed = padding_needed.clip(min=0)
-
-    padding_before = padding_needed // 2
-    padding_after = padding_needed - padding_before
-    pad = [i for i in padding_before] + [i for i in padding_after]
-    return pad
-
-
-class BaseNode():
-
-    def __init__(self, info):
-        self.name = str(info["name"])
-        self.op_type = str(info["op_type"])
-        self.inputs = list(info["inputs"])
-        self.outputs = list(info["outputs"])
-
-
-class TorchNode(BaseNode):
-
-    def __init__(self, node):
-        info = dict()
-        op_type = node.kind()
-        info["op_type"] = op_type if not op_type.endswith("_") else op_type[:-1]
-        info["inputs"] = [inp.debugName() for inp in node.inputs()]
-        info["outputs"] = [outp.debugName() for outp in node.outputs()]
-        info["name"] = info["outputs"][0]
-        super().__init__(info)
-        self.node_proto = node
-
-
-class TorchReader():
-
-    def __init__(self, torch_model):
-        self.const_val = {}
-        self.ref_tensor = {}
-        self.coeff = {}
-
-        if isinstance(torch_model, str):
-            self.model = torch.jit.load(torch_model, map_location=torch.device('cpu'))
-        else:
-            self.model = torch_model
-        self.model.eval()
-        self.graph = self.model.inlined_graph
-
-    def get_input(self, name):
-        if name in self.const_val:
-            return self.const_val[name]
-        elif name in self.coeff:
-            return self.coeff[name]
-        else:
-            return self.ref_tensor[name]
-
-    def convert_attr(self, torch_node: TorchNode):
-        node = torch_node.node_proto
-        if node.output().type().kind() != 'TensorType':
-            return
-        data = _getattr(self.model, node)[0].detach()
-        weight_name = node.output().debugName()
-        self.coeff[weight_name] = data
-
-    def convert_constant(self, torch_node: TorchNode):
-        name, data, is_tensor = _get_constant(torch_node.node_proto)
-        if not is_tensor:
-            if isinstance(data, int):
-                if data > np.iinfo(np.int32).max:
-                    data = np.iinfo(np.int32).max
-            self.const_val[name] = data
-        elif data is None:
-            self.ref_tensor[name] = None
-        else:
-            self.coeff[name] = torch.from_numpy(data)
-
-    def run_prim(self, node: TorchNode):
-        assert node.op_type.split('::')[0] == 'prim'
-        if node.op_type == "prim::ListConstruct" or node.op_type == "prim::TupleConstruct":
-            self.ref_tensor[node.outputs[0]] = [self.get_input(name) for name in node.inputs]
-        elif node.op_type in ["prim::TupleUnpack", "prim::ListUnpack"]:
-            for i in range(len(node.outputs)):
-                self.ref_tensor[node.outputs[i]] = self.get_input(node.inputs[0])[i]
-        elif node.op_type == "prim::NumToTensor":
-            self.ref_tensor[node.outputs[0]] = torch.tensor(self.get_input(node.inputs[0]))
-        elif node.op_type == "prim::Constant":
-            self.convert_constant(node)
-        elif node.op_type == "prim::GetAttr":
-            self.convert_attr(node)
-        else:
-            raise RuntimeError("{} not suppose".format(node.op_type))
-
-    def run_aten(self, node: TorchNode):
-        ParamMap = {
-            "aten::ones": ['dtype', 'layout', 'device', 'pin_memory'],
-            "aten::zeros": ['dtype', 'layout', 'device', 'pin_memory'],
-            "aten::mean": ['dtype'],
-            "aten::sum": ['dtype'],
-            "aten::gelu": ['approximate'],
-            "aten::add": ['alpha'],
-            "aten::sub": ['alpha'],
-            "aten::arange": ['dtype', 'layout', 'device', 'pin_memory'],
-            "aten::addmm": ['beta', 'alpha'],
-            "aten::to":
-            ['dtype', 'layout', 'device', 'pin_memory', 'non_blocking', 'copy', 'memory_format'],
-        }
-        assert node.op_type.split('::')[0] == 'aten'
-        # get input list
-        input_list = [self.get_input(name) for name in node.inputs]
-
-        # special aten op
-        if node.op_type == "aten::contiguous":
-            self.ref_tensor[node.outputs[0]] = self.get_input(node.inputs[0])
-            return
-        if node.op_type == "aten::Int":
-            self.const_val[node.outputs[0]] = int(self.get_input(node.inputs[0]))
-            return
-
-        # get function
-        func = getattr(torch.ops.aten, node.op_type.split('::')[1])
-        if node.op_type == "aten::view":
-            func = torch.ops.aten.reshape
-
-        # run function
-        if node.op_type == "aten::div":
-            if len(input_list) == 2:
-                output = func(*input_list)
-            else:
-                mode = input_list[2]
-                input_list = input_list[:-1]
-                output = func(*input_list, rounding_mode=mode)
-        elif node.op_type in ParamMap.keys() and (node.op_type != "aten::to"
-                                                  or len(node.inputs) > 6):
-            end_param = ParamMap[node.op_type]
-            param_len = len(end_param)
-            param_dict = {}
-            for i in range(param_len):
-                param_dict[end_param[i]] = input_list[i - param_len]
-            input_list = input_list[:-param_len]
-            output = func(*input_list, **param_dict)
-        else:
-            output = func(*input_list)
-
-        #save output
-        for i in range(len(node.outputs)):
-            out = output if len(node.outputs) == 1 else output[i]
-            if isinstance(output, torch.Tensor):
-                self.ref_tensor[node.outputs[i]] = out
-            else:
-                self.const_val[node.outputs[i]] = out
-
-    def run_model(self, inputs: dict):
-        for key, value in inputs.items():
-            if isinstance(value, torch.Tensor):
-                self.ref_tensor[key] = value
-            else:
-                self.ref_tensor[key] = torch.tensor(value)
-
-        for node in self.graph.nodes():
-            if node.kind().startswith('aten'):
-                self.run_aten(TorchNode(node))
-            else:
-                self.run_prim(TorchNode(node))
+import numpy as np
 
 
 class TorchConverter(BaseConverter):
@@ -534,6 +311,32 @@ class TorchConverter(BaseConverter):
         return Location.fused([Location.name(name)], context=self.mlir.ctx)
 
     def convert_base_conv_op(self, torch_node: TorchNode, mode=False):
+
+        def _data_expand(data, length):
+            if isinstance(data, int):
+                return [data for i in range(length)]
+            else:
+                return data
+
+        def _compute_pad(stride, dilation, input_size, filter, padding):
+            stride = np.array(stride)
+            dilation = np.array(dilation)
+            input_size = np.array(input_size)
+            filter = np.array(filter)
+            effective_filter_size = (filter - 1) * dilation + 1
+            if padding == "same":
+                output_size = (input_size + stride - 1) // stride
+            elif padding == "valid":
+                output_size = (input_size + stride - effective_filter_size) // stride
+            padding_needed = np.int64((output_size - 1) * stride + effective_filter_size -
+                                      input_size)
+            padding_needed = padding_needed.clip(min=0)
+
+            padding_before = padding_needed // 2
+            padding_after = padding_needed - padding_before
+            pad = [i for i in padding_before] + [i for i in padding_after]
+            return pad
+
         op = self.getOp(torch_node.inputs[0])
         strides = _data_expand(self.const_val[torch_node.inputs[3]], 2)
         pads = self.const_val[torch_node.inputs[4]]
@@ -790,7 +593,7 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.name, new_op.output)
 
     def convert_constant(self, torch_node: TorchNode):
-        name, data, is_tensor = _get_constant(torch_node.node_proto)
+        name, data, is_tensor = get_constant(torch_node.node_proto)
         if data is None:
             self.addOperand(name, self.mlir.none_op)
         elif not is_tensor:
@@ -845,7 +648,7 @@ class TorchConverter(BaseConverter):
 
         if node.output().type().kind() != 'TensorType':
             return
-        data = _getattr(self.model, node)[0].detach()
+        data = get_attr(self.model, node)[0].detach()
         weight_name = node.output().debugName()
         self.addWeight(weight_name, data.numpy())
 

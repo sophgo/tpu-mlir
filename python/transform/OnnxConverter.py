@@ -1292,7 +1292,8 @@ class OnnxConverter(BaseConverter):
                     rhs_reshape_op = self.mlir.create_reshape_op([rhs], rhs_reshape_rst, **p)
                     matmul_shape = [lhs_shape[0] * lhs_shape[1], rhs_shape[2]]
                     p = {'name': "{}_{}".format(onnx_node.name, "matmul"), 'do_relu': False}
-                    matmul_op = self.mlir.create_matmul_op([lhs_reshape_op, rhs_reshape_op, self.mlir.none_op], matmul_shape, **p)
+                    matmul_op = self.mlir.create_matmul_op(
+                        [lhs_reshape_op, rhs_reshape_op, self.mlir.none_op], matmul_shape, **p)
                     p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
                     output_reshape_op = self.mlir.create_reshape_op([matmul_op], output_shape, **p)
                     self.addOperand(onnx_node.name, output_reshape_op)
@@ -1302,7 +1303,8 @@ class OnnxConverter(BaseConverter):
                     weight_op = self.getWeightOp(onnx_node.inputs[1], weight_shape)
                     matmul_shape = [lhs_shape[0] * lhs_shape[1], rhs_shape[2]]
                     p = {'name': "{}_{}".format(onnx_node.name, "matmul"), 'do_relu': False}
-                    matmul_op = self.mlir.create_matmul_op([lhs_reshape_op, weight_op, self.mlir.none_op], matmul_shape, **p)
+                    matmul_op = self.mlir.create_matmul_op(
+                        [lhs_reshape_op, weight_op, self.mlir.none_op], matmul_shape, **p)
                     self.addOperand(onnx_node.name, matmul_op)
                     return
         raise RuntimeError("Einsum {}, {} not support now".format(onnx_node.name, equation))
@@ -2254,10 +2256,7 @@ class OnnxConverter(BaseConverter):
         align_corners = coord_transf_mode == "half_pixel"
         unsqueeze_shape = batch_indices_shape
         unsqueeze_shape.append(1)
-        p = {
-            "name": output_name + "_unsqueeze",
-            "axes": [-1]
-        }
+        p = {"name": output_name + "_unsqueeze", "axes": [-1]}
         batch_indices_xpd = self.mlir.create_unsqueeze_op([batch_indices], unsqueeze_shape, **p)
         concat_shape = rois_shape
         concat_shape[-1] = 5
@@ -2311,7 +2310,9 @@ class OnnxConverter(BaseConverter):
         for input in graph_node.input:
             if input.name not in initializer_names:
                 shape = self.get_shape_from_value_info_proto(input)
-                if input.type.tensor_type.elem_type in [onnx.TensorProto.INT64, onnx.TensorProto.INT32]:
+                if input.type.tensor_type.elem_type in [
+                        onnx.TensorProto.INT64, onnx.TensorProto.INT32
+                ]:
                     dtype = "INT32"
                 else:
                     dtype = "F32"
@@ -2327,7 +2328,8 @@ class OnnxConverter(BaseConverter):
         #create subgraph's input op
         for idx, input in enumerate(graph_node.input):
             if input.name not in initializer_names:
-                input_op = self.mlir.create_subgraph_input_op(input.name, arg_types[idx], entry_block_args[idx], **{})
+                input_op = self.mlir.create_subgraph_input_op(input.name, arg_types[idx],
+                                                              entry_block_args[idx], **{})
                 self.addOperand(input.name, input_op)
         # add all weight
         for tensor in graph_node.initializer:
@@ -2335,6 +2337,10 @@ class OnnxConverter(BaseConverter):
             data = numpy_helper.to_array(tensor).astype(np.float32)
             self.addWeight(name, data)
         self.add_shape_info(graph_node, False)
+
+        def NoneAndRaise(node):
+            raise RuntimeError("{} Op not support now".format(node.op_type))
+
         for n in converted_nodes:
             self.onnxop_factory.get(n.op_type, lambda x: NoneAndRaise(x))(n)
 
