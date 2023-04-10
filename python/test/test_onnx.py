@@ -216,6 +216,7 @@ class ONNX_IR_TESTER(object):
             "PadPool3d":        (self.test_PadPool3d,       N, N, Y),
             "PixelNorm":        (self.test_PixelNorm,       Y, Y, N),
             "PixelNorm2":       (self.test_PixelNorm2,      Y, Y, N),
+            "PermuteBinary":    (self.test_PermuteBinary,   Y, N, Y),
             "PermuteFuse":      (self.test_PermuteFuse,     Y, Y, Y),
             "PermutePad":       (self.test_PermutePad,      Y, N, N),
             "PermuteToReorg":   (self.test_PermuteToReorg,  Y, Y, Y),
@@ -5032,6 +5033,26 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(4, 8, 32, 32).float()
         self.torch_and_test(x, Model(), case_name, use_onnxsim=False)
+
+    def test_PermuteBinary(self, case_name):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self, f):
+                super(Model, self).__init__()
+                self.f = f
+
+            def forward(self, x1, x2):
+                x1 = torch.transpose(x1, 1, 3)
+                x2 = torch.transpose(x2, 1, 3)
+                y = self.f(x1, x2)
+                return y
+
+        x1 = torch.randn(4, 8, 32, 32).float()
+        x2 = torch.randn(4, 1, 32, 32).float()
+        self.torch_and_test((x1, x2), Model(torch.add), case_name + "Add")
+        self.torch_and_test((x1, x2), Model(torch.sub), case_name + "Sub")
+        self.torch_and_test((x1, x2), Model(torch.mul), case_name + "Mul")
 
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
