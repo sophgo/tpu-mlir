@@ -2661,11 +2661,11 @@ class ONNX_IR_TESTER(object):
                 super(Net, self).__init__()
 
             def forward(self, x):
-                a = torch.permute(x, [0, 1, 3, 4, 2])
-                b = torch.nn.functional.pad(a, [0, 0, 1, 1, 1, 1, 0, 0, 0, 0])
+                a = torch.permute(x, [0, 3, 1, 2])
+                b = torch.nn.functional.pad(a, [0, 0, 1, 2, 3, 4, 0, 0])
                 return b
 
-        x = torch.randn(1, 10, 20, 30, 40).float()
+        x = torch.randn(1, 3, 27, 54).float()
         self.torch_and_test(x, Net(), case_name)
 
     def test_MatMulTranspose(self, case_name):
