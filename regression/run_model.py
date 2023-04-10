@@ -198,11 +198,10 @@ class MODEL_RUN(object):
         _os_system(cmd)
 
     def test_input_copy(self, quant_mode):
-        test_input = self.ini_content["test_input"].split(
-            "/")[-1] if self.fuse_pre else self.ini_content["input_npz"]
+        test_input = self.ini_content["test_input"] if self.fuse_pre else self.ini_content["input_npz"]
         new_test_input = ""
         if self.fuse_pre:
-            new_test_input = test_input.replace(".jpg", f"_for_{quant_mode}.jpg")
+            new_test_input = test_input.replace(".jpg", f"_for_{quant_mode}.jpg").split("/")[-1]
         else:
             new_test_input = test_input.replace(".npz", f"_for_{quant_mode}.npz")
         cmd = ["cp", test_input, new_test_input]
