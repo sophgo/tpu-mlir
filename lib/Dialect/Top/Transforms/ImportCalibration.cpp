@@ -129,6 +129,9 @@ public:
             }
 
             getMinMax(op, info, min, max);
+            if (module::isCV18xx()) {
+              min = -max;
+            }
             auto quant_type = quant::CalibratedQuantizedType::get(
                 type.getElementType(), min, max);
             auto new_type = RankedTensorType::get(type.getShape(), quant_type);
