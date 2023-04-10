@@ -182,7 +182,7 @@ class DeployTool:
                 x = np.squeeze(data, 0)
                 if self.customization_format == "GRAYSCALE":
                     x = ppa.align_gray_frame(x, self.aligned_input)
-                elif self.customization_format.endswith("_PLANAR") >= 0:
+                elif self.customization_format.endswith("_PLANAR"):
                     x = ppa.align_planar_frame(x, self.aligned_input)
                 else:
                     x = ppa.align_packed_frame(x, self.aligned_input)
@@ -292,7 +292,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
-
+    if not args.fuse_preprocess and args.customization_format:
+        assert(0 and "Error! If not fuse_preprocess, customization_format shouldn't be set.")
     tool = DeployTool(args)
     # lowering to tpu
     tool.lowering()
