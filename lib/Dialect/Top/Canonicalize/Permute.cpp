@@ -538,6 +538,10 @@ struct PermuteMovePattern : public OpRewritePattern<PermuteOp> {
       nextOp->setOperands(input);
       // should be the same type as the input
       nextOp->getResult(0).setType(inputType);
+			// rewrite loc for tests
+      auto loc = NameLoc::get(rewriter.getStringAttr(
+                           module::getName(input).str() + "_"  + nextOp->getName().getStringRef()));
+      nextOp->setLoc(loc);
     });
     // replace all uses of next to perm
     rewriter.replaceAllUsesWith(nextOp->getResult(0), permOp->getResult(0));
@@ -546,6 +550,10 @@ struct PermuteMovePattern : public OpRewritePattern<PermuteOp> {
       permOp->setOperands(nextOp->getResults());
       // linear IR, tweak order
       permOp->moveAfter(nextOp);
+      // rewrite loc for tests
+      auto loc = NameLoc::get(rewriter.getStringAttr(
+                           module::getName(nextOp).str() + "_" + permOp->getName().getStringRef()));
+      permOp->setLoc(loc);
     });
     return success();
   }

@@ -287,7 +287,7 @@ class ONNX_IR_TESTER(object):
             inputs[name] = np.clip(np.random.randn(*shape).astype(np.float32), -10, 10)
         return inputs
 
-    def onnx_convert(self, input_data: dict, graph_def, model_name: str, check_last: bool = False):
+    def onnx_convert(self, input_data: dict, graph_def, model_name: str):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
@@ -311,13 +311,6 @@ class ONNX_IR_TESTER(object):
         onnx_outs = onnx_inference(input_data, onnx_model, True)
         show_fake_cmd(input_npz, fp32_mlir, "top_out.npz")
         top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
-
-        # this assumes that outputs are in order, i.e. the last one is the output
-        if check_last:
-            ok = list(onnx_outs.keys())[-1]
-            onnx_outs = {ok: onnx_outs[ok]}
-            tk = list(top_mlir_outs.keys())[-1]
-            top_mlir_outs = {ok: top_mlir_outs[tk]}
 
         return (onnx_outs, top_mlir_outs, input_npz, node_name_mapping)
 
@@ -477,12 +470,15 @@ class ONNX_IR_TESTER(object):
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
         self.onnx_and_test(onnx_model.graph, name=model_name, input_data=in_data)
 
-    def onnx_and_test(self, graph_def, name: str = "", input_data: dict = None, qdq: bool = False, check_last: bool = None):
+    def onnx_and_test(self, graph_def, name: str = "", input_data: dict = None, qdq: bool = False, check_last: bool = False):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
-            input_data, graph_def, model_name, check_last)
+            input_data, graph_def, model_name)
+        # this assumes that outputs are in order, i.e. the last one is the output
+        if check_last:
+            top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
         # test onnx and mlir outputs
         counter = 0
         for name in onnx_outs:
