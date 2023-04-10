@@ -397,11 +397,6 @@ public:
     } else {
       LoweringConfig::isQuantized = false;
       module::setAsymmetric(isAsymmetric);
-      if (module::isCV18xx()) {
-        all_int8_process();
-        input_type_process();
-        module::updateModuleTypes();
-      }
       calibration_process();
     }
     init_qtable();
@@ -501,50 +496,6 @@ protected:
     patterns.clear();
     patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepAddSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
-  }
-
-  void all_int8_process() {
-    mainFunc_.walk([&](Operation *op) {
-      if (isa<tpu_mlir::InferenceInterface>(op) || isa<top::InputOp>(op)) {
-        for (auto value : op->getResults()) {
-          if (module::isNone(value) || !module::isCalibratedType(value)) {
-            continue;
-          }
-          auto out_qtype = module::getCalibratedType(value);
-          if (out_qtype.getMin() != -out_qtype.getMax()) {
-            auto max = out_qtype.getMax();
-            auto quant_type = quant::CalibratedQuantizedType::get(
-                out_qtype.getExpressedType(), -max, max);
-            auto new_type =
-                RankedTensorType::get(module::getShape(value), quant_type);
-            value.setType(new_type);
-          }
-        }
-      }
-    });
-  }
-
-  void input_type_process() {
-    mainFunc_.walk([&](Operation *op) {
-      if (isa<top::InputOp>(op)) {
-        auto output_value = op->getResult(0);
-        auto storage_type = module::getStorageType(output_value);
-        if (storage_type.isIntOrIndex()) {
-          if (module::isCalibratedType(output_value)) {
-            auto cali_type = module::getCalibratedType(output_value);
-            auto ele_type = RankedTensorType::get(
-                module::getShape(output_value), Builder(op).getF32Type());
-            auto new_type = quant::CalibratedQuantizedType::get(
-                ele_type, cali_type.getMin(), cali_type.getMax());
-            output_value.setType(new_type);
-          } else {
-            auto new_type = RankedTensorType::get(
-                module::getShape(output_value), Builder(op).getF32Type());
-            output_value.setType(new_type);
-          }
-        }
-      }
-    });
   }
 
   void relu_process() {

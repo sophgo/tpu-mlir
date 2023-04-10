@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/IR/BlockAndValueMapping.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
-#include "mlir/IR/BlockAndValueMapping.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -34,6 +34,27 @@ public:
     auto chip = module::symbolizeChip(chip_);
     assert(chip.has_value());
     module::setChip(chip.value());
+
+    // for cv18xx , input only support fp32
+    if (module::isCV18xx()) {
+      input_type_process();
+    }
+    module::updateModuleTypes();
+  }
+
+  void input_type_process() {
+    auto mainFunc = module::getMainFuncOp();
+    mainFunc.walk([&](Operation *op) {
+      if (isa<top::InputOp>(op)) {
+        auto output_value = op->getResult(0);
+        auto storage_type = module::getStorageType(output_value);
+        if (storage_type.isIntOrIndex()) {
+          auto new_type = RankedTensorType::get(module::getShape(output_value),
+                                                Builder(op).getF32Type());
+          output_value.setType(new_type);
+        }
+      }
+    });
   }
 };
 
