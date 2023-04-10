@@ -27,16 +27,19 @@ struct SplitToSlice : public OpRewritePattern<SplitOp> {
     auto axis = op.getAxis();
     std::vector<int64_t> offset(dims, 0);
     std::vector<int64_t> steps(dims, 1);
+    auto name = module::getName(op.getResult(0)).str();
     rewriter.setInsertionPointAfter(op);
     for (int i = 0; i < num; i++) {
       auto out = op.getResult(i);
       auto out_shape = module::getShape(out);
+      auto out_name = name + "_tpu_" + std::to_string(i);
+      auto name_loc = NameLoc::get(rewriter.getStringAttr(out_name));
       std::vector<NamedAttribute> attrs;
       attrs.push_back(
           rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(offset)));
       attrs.push_back(
           rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(steps)));
-      auto s_op = rewriter.create<SliceOp>(module::getLoc(out), out.getType(),
+      auto s_op = rewriter.create<SliceOp>(name_loc, out.getType(),
                                            op.getInput(), attrs);
       out.replaceAllUsesWith(s_op.getOutput());
       offset[axis] += out_shape[axis];
@@ -62,7 +65,7 @@ struct SplitReshape2ReshapeSplit : public OpRewritePattern<SplitOp> {
     for (auto out : op.getResults()){
         auto RI_shape = module::getShape(out);
         int64_t Ndim_RI = RI_shape.size();
-        auto out_op = out.user_begin(); 
+        auto out_op = out.user_begin();
         if (!out.hasOneUse() || !isa<ReshapeOp>(*out_op)){return failure();}
         auto reshape_out = dyn_cast<ReshapeOp>(*out_op).getResult();
         auto RO_shape = module::getShape(reshape_out);
@@ -83,7 +86,7 @@ struct SplitReshape2ReshapeSplit : public OpRewritePattern<SplitOp> {
     // change split attribute
     // add one reshapeOP before split
     rewriter.setInsertionPointAfterValue(input);
- 
+
     std::string name = module::getName(input).str();
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_reshape"));
     std::vector<NamedAttribute> attrs;
@@ -113,7 +116,7 @@ struct SplitReshape2ReshapeSplit : public OpRewritePattern<SplitOp> {
     op.replaceAllUsesWith(split_op.getOperation());
 
     // delete all reshapeOP aftered split
-    // Attention!!! after replaceAllUsesWith the op has been delete. so use split_op 
+    // Attention!!! after replaceAllUsesWith the op has been delete. so use split_op
     for (auto out : split_op.getResults()){
          ReshapeOp rop = dyn_cast<ReshapeOp> (*out.user_begin());
          // Attention !!!

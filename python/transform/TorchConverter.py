@@ -135,6 +135,8 @@ class TorchConverter(BaseConverter):
             "aten::rsub": lambda node: self.convert_sub_op(node, is_reverse=True),
             "aten::scatter": lambda node: self.convert_scatter_op(node),
             "aten::select": lambda node: self.convert_select_op(node),
+            "aten::split": lambda node: self.convert_split_op(node),
+            "aten::split_with_sizes": lambda node: self.convert_split_op(node),
             "aten::sqrt": lambda node: self.convert_sqrt_op(node),
             "aten::sigmoid": lambda node: self.convert_sigmoid_op(node),
             "aten::sin": lambda node: self.convert_math_op(node, "sin"),
@@ -240,6 +242,12 @@ class TorchConverter(BaseConverter):
         self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name, Platform.TORCH)
         self.weight_file = self.mlir.weight_file
 
+    def generate_list_map(self):
+        self.list_map = dict()
+        for node in self.converted_nodes:
+            if node.op_type == "prim::ListUnpack":
+                self.list_map[node.inputs[0]] = node.outputs
+
     def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
         # add input op
@@ -271,6 +279,7 @@ class TorchConverter(BaseConverter):
         if unsupported:
             raise RuntimeError("Op not support:{}".format(unsupported))
 
+        self.generate_list_map()
         for n in self.converted_nodes:
             self.op_factory.get(n.op_type, lambda x: NoneAndRaise(x))(n)
         # add return op
@@ -806,22 +815,54 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.name, new_op)
 
     def convert_select_op(self, torch_node: TorchNode):
-        op0 = self.getOp(torch_node.inputs[0])
-        axis = self.const_val[torch_node.inputs[1]]
-        index = self.const_val[torch_node.inputs[2]]
-        p = {'name': torch_node.name, 'axis': axis, "start": index, "end": index + 1, "step": 1}
-        new_op = self.mlir.create_slice_axis_op([op0], [], **p)
+        step_name = torch_node.inputs[0] + '_tpu_step'
+        end_name = torch_node.inputs[0] + '_tpu_end'
+        self.addWeight(step_name, np.array([1], dtype=np.float32))
+        assert torch_node.inputs[2] in self.const_val.keys()
+        end = self.const_val[torch_node.inputs[2]] + 1
+        self.addWeight(end_name, np.array([end], dtype=np.float32))
+        new_op = top.SliceAxisOp(self.unranked_type,
+                                 self.getOp(torch_node.inputs[0]),
+                                 self.getOp(torch_node.inputs[1]),
+                                 self.getOp(torch_node.inputs[2]),
+                                 self.getOp(step_name),
+                                 self.getOp(end_name),
+                                 loc=self.get_loc(torch_node.name),
+                                 ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
 
     def convert_slice_op(self, torch_node: TorchNode):
-        op0 = self.getOp(torch_node.inputs[0])
-        axis = self.const_val[torch_node.inputs[1]]
-        start = self.const_val[torch_node.inputs[2]]
-        end = self.const_val[torch_node.inputs[3]]
-        step = self.const_val[torch_node.inputs[4]]
-        p = {'name': torch_node.name, 'axis': axis, "start": start, "end": end, "step": step}
-        new_op = self.mlir.create_slice_axis_op([op0], [], **p)
+        new_op = top.SliceAxisOp(self.unranked_type,
+                                 self.getOp(torch_node.inputs[0]),
+                                 self.getOp(torch_node.inputs[1]),
+                                 self.getOp(torch_node.inputs[2]),
+                                 self.getOp(torch_node.inputs[4]),
+                                 self.getOp(torch_node.inputs[3]),
+                                 loc=self.get_loc(torch_node.name),
+                                 ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
+
+    def convert_split_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        axis = self.const_val[torch_node.inputs[2]]
+        split_size = self.const_val[torch_node.inputs[1]]
+        output_names = self.list_map[torch_node.outputs[0]]
+        if isinstance(split_size, int):
+            num = len(output_names)
+            split_size = [split_size] * num
+        else:
+            num = len(split_size)
+
+        new_op = top.SplitOp([self.unranked_type] * num,
+                             op0,
+                             axis,
+                             num,
+                             split_size = split_size,
+                             loc=self.get_loc(torch_node.name),
+                             ip=self.mlir.insert_point).outputs
+        for i in range(num):
+            self.addOperand(output_names[i], new_op[i])
+        self.tensor_list[torch_node.outputs[0]] = output_names
 
     def convert_upsample_op(self, torch_node: TorchNode, mode: str):
         assert mode == "nearest"
