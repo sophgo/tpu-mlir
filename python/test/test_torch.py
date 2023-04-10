@@ -99,6 +99,7 @@ class TORCH_IR_TESTER(object):
             "Slice":            (self.test_Slice,             Y, N, N),
             "Softmax":          (self.test_Softmax,           Y, N, N),
             "Softmin":          (self.test_Softmin,           Y, N, N),
+            "Split":            (self.test_Split,               Y, N, N),
             "Squeeze":          (self.test_Squeeze,           Y, N, N),
             "Sub":              (self.test_Sub,               Y, N, N),
             "T":                (self.test_T,                 Y, N, N),
@@ -1398,6 +1399,29 @@ class TORCH_IR_TESTER(object):
         _test_select((1, 3, 32, 32), 2, 13)
         _test_select((3, 32, 16), 0, 2)
         _test_select((32, 16), 1, 4)
+
+    #######################################################################
+    # Split
+    # ------------
+    def test_Split(self):
+        """Split"""
+
+        def _test_split(in0_shape, dim, num):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y1 = torch.split(x, dim=dim, split_size_or_sections=num)
+                    return y1
+
+            self.trace_and_test([in0_shape], Model())
+
+        _test_split((1, 3, 32, 32), 2, 8)
+        _test_split((3, 32, 16), 0, (1,2))
+        _test_split((32, 15), 1, 4)
 
     #######################################################################
     # Slice

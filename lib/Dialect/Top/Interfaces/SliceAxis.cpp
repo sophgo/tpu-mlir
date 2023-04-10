@@ -20,12 +20,25 @@ LogicalResult top::SliceAxisOp::init(InferenceParameter &p) {
 void top::SliceAxisOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SliceAxisOp::inference(InferenceParameter &p) {
-  // auto out_num_elem = module::getNumElements(getOutput());
-  auto axis = getAxis();
-  auto start = getStart();
-  auto end = getEnd();
-  auto step = getStep();
   auto in_shape = module::getShape(getInput());
+  auto dims = in_shape.size();
+  auto axis_op = getAxis().getDefiningOp<top::WeightOp>();
+  int axis = axis_op.read<float>()->at(0);
+  if (axis < 0)
+    axis += dims;
+  auto start_op = getStart().getDefiningOp<top::WeightOp>();
+  int start = start_op.read<float>()->at(0);
+  if (start < 0)
+    start += in_shape[axis];
+  auto end_op = getEnd().getDefiningOp<top::WeightOp>();
+  auto end = end_op.read<float>()->at(0);
+  if (end < 0)
+    end += in_shape[axis];
+  if (end > in_shape[axis])
+    end = in_shape[axis];
+  auto step_op = getStep().getDefiningOp<top::WeightOp>();
+  int step = step_op.read<float>()->at(0);
+
   auto outer_size = std::accumulate(in_shape.begin(), in_shape.begin() + axis,
                                     1, std::multiplies<int64_t>());
   auto inner_size = std::accumulate(in_shape.begin() + axis + 1, in_shape.end(),
@@ -43,25 +56,42 @@ LogicalResult top::SliceAxisOp::inference(InferenceParameter &p) {
 }
 
 void top::SliceAxisOp::shape_inference() {
-  auto axis = getAxis();
-  auto start = getStart();
-  auto end = getEnd();
-  auto step = getStep();
+  float start = 0;
+  float step = 1;
+  assert(module::isWeight(getAxis()));
+  auto axis_op = getAxis().getDefiningOp<top::WeightOp>();
+  auto axis_data = axis_op.read<float>();
+  auto axis = axis_data->at(0);
+  assert(module::isWeight(getEnd()));
+  auto end_op = getEnd().getDefiningOp<top::WeightOp>();
+  auto end_data = end_op.read<float>();
+  auto end = end_data->at(0);
+  if (module::isNone(getStart()) == false) {
+    assert(module::isWeight(getStart()));
+    auto start_op = getStart().getDefiningOp<top::WeightOp>();
+    auto start_data = start_op.read<float>();
+    start = start_data->at(0);
+  }
+  if (module::isNone(getStep()) == false) {
+    assert(module::isWeight(getStep()));
+    auto step_op = getStep().getDefiningOp<top::WeightOp>();
+    auto step_data = step_op.read<float>();
+    step = step_data->at(0);
+    assert(step != 0);
+  }
+
   auto in_shape = module::getShape(getInput());
+  auto dims = in_shape.size();
   if (axis < 0) {
-    axis += in_shape.size();
-    setAxis(axis);
+    axis += dims;
   }
   if (start < 0) {
     start += in_shape[axis];
-    setStart(start);
   }
   if (end < 0) {
     end += in_shape[axis];
-    setEnd(end);
   } else if (end > in_shape[axis]) {
     end = in_shape[axis];
-    setEnd(end);
   }
   std::vector<int64_t> out_shape(in_shape);
   out_shape[axis] = (end - start + step - 1) / step;

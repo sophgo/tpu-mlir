@@ -925,7 +925,8 @@ def Top_SplitOp: Top_Op<"Split"> {
   let arguments = (
     ins AnyTensor:$input,
     SI32Attr:$axis,
-    I64Attr:$num
+    I64Attr:$num,
+    OptionalAttr<I64ArrayAttr>:$split_size
   );
   let results = (outs Variadic<AnyTensor>:$outputs);
   let hasCanonicalizer = 1;
@@ -978,10 +979,10 @@ def Top_SliceAxisOp: Top_Op<"SliceAxis"> {
 
   let arguments = (ins
     AnyTensor:$input,
-    SI32Attr:$axis,
-    SI32Attr:$start,
-    SI32Attr:$step,
-    SI32Attr:$end
+    AnyTensor:$axis,
+    AnyTensor:$start,
+    AnyTensor:$step,
+    AnyTensor:$end
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
