@@ -84,11 +84,14 @@ void ProfileCtx::log_tensor(Value value, bool is_in, int64_t n_step,
 
   int64_t tensor_id = 0;
   auto op = value.getDefiningOp();
-  if (op != nullptr && op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) {
+  if (op != nullptr) {
     auto it = opToLineCol.find(op);
     if (it != opToLineCol.end()) {
       tensor_id = it->second.first;
     }
+  }
+
+  if (op != nullptr && op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) {
     auto g_param = op->getAttr(LocalGenInterface::kLayerGroupAttrName)
                        .cast<tpu::LayerGroupAttr>();
     laddr = g_param.getOutAddr();

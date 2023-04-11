@@ -58,4 +58,5 @@ void top::ReshapeOp::shape_inference() {
   auto num_input = module::getNumElements(getInput());
   auto num_output = module::getNumElements(getOutput());
   assert(num_input == num_output);
+  removeShapeAttr();
 }
