@@ -30,6 +30,7 @@ SHAPE_LOWERING_BM1684X(ConstantFill)
 SHAPE_LOWERING_BM1684X(Concat)
 SHAPE_LOWERING_BM1684X(Unsqueeze)
 SHAPE_LOWERING_BM1684X(Squeeze)
+SHAPE_LOWERING_BM1684X(Slice)
 
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 

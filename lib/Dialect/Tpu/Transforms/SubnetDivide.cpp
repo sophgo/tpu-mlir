@@ -209,6 +209,8 @@ public:
       return true;
     } else if (op->hasTrait<trait::ShapeConsumer>()) {
       return true;
+    } else if (isa<SliceOp>(op)) {
+      return !module::isNone(dyn_cast<SliceOp>(op).getOffsetT());
     }
     return false;
   }

@@ -391,8 +391,7 @@ Value insert_host2device(Value v, Type to) {
   builder.setInsertionPointAfterValue(v);
   auto name = module::getName(v).str();
   name += "_host2device";
-  auto newType =
-      RankedTensorType::get(module::getShape(v), module::getStorageType(v));
+  auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
   auto loc = NameLoc::get(builder.getStringAttr(name));
   auto hdOp = builder.create<tpu::Host2DeviceOp>(loc, newType, ValueRange{v});
   return hdOp.getOutput();
@@ -404,14 +403,13 @@ Value insert_device2host(Value v, Type to) {
   builder.setInsertionPointAfterValue(v);
   auto name = module::getName(v).str();
   name += "_device2host";
-  auto newType =
-      RankedTensorType::get(module::getShape(v), module::getStorageType(v));
+  auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
   auto loc = NameLoc::get(builder.getStringAttr(name));
   auto hdOp = builder.create<tpu::Device2HostOp>(loc, newType, ValueRange{v});
   return hdOp.getOutput();
 }
 
-void try_insert_host2device(Operation *op, uint32_t idx) {
+void try_insert_host2device(Operation* op, uint32_t idx) {
   auto opd = op->getOperand(idx);
   auto def_op = opd.getDefiningOp();
   if (def_op->hasTrait<trait::ShapeProducer>()) {
@@ -420,7 +418,7 @@ void try_insert_host2device(Operation *op, uint32_t idx) {
   }
 }
 
-void try_insert_device2host(Operation *op, uint32_t idx) {
+void try_insert_device2host(Operation* op, uint32_t idx) {
   auto opd = op->getOperand(idx);
   auto def_op = opd.getDefiningOp();
   if (!def_op->hasTrait<trait::ShapeProducer>()) {

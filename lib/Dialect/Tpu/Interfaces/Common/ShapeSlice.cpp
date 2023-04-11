@@ -7,20 +7,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 #include <valarray>
 
 
+using namespace tpu_mlir::backend;
 
-int64_t top::SliceOp::getFLOPs() { return 0; }
+LogicalResult tpu::ShapeSliceOp::init(InferenceParameter &p) { return success(); }
+void tpu::ShapeSliceOp::deinit(InferenceParameter &p) {}
 
-LogicalResult top::SliceOp::init(InferenceParameter &p) { return success(); }
-void top::SliceOp::deinit(InferenceParameter &p) {}
-
-LogicalResult top::SliceOp::inference(InferenceParameter &p) {
+LogicalResult tpu::ShapeSliceOp::inference(InferenceParameter &p) {
   auto out_num_elem = module::getNumElements(getOutput());
   auto offset_v = module::getI64Array(getOffset());
   auto steps_v = module::getI64Array(getSteps());
@@ -28,10 +28,12 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
   std::vector<int64_t> in_shape = module::getShape(getInput());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
-  while(out_dims < in_dims) {
+  // just support the dims of input & input is equal.
+  while (out_dims < in_dims) {
     out_shape.insert(out_shape.begin(), 1);
     out_dims++;
   }
+
   // slice[range] -> (offset + stride)
   std::valarray<int64_t> in_stride_v(1, in_dims);
   std::valarray<int64_t> out_stride_v(1, out_dims);
@@ -59,20 +61,6 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::SliceOp::shape_inference() {
-  const auto input_shape = module::getShape(getInput());
-  const size_t dims = input_shape.size();
-  const auto offset_v = module::getI64Array(getOffset());
-  const auto steps_v = module::getI64Array(getSteps());
-  const auto ends_v = module::getI64Array(getEnds());
-  const size_t slice_dims = offset_v->size();
-  std::vector<int64_t> output_shape(input_shape.size());
-  for (size_t i = 0; i < dims; ++i) {
-    if (i < slice_dims) {
-      output_shape[i] = abs_ceiling_func(ends_v->at(i) - offset_v->at(i), steps_v->at(i));
-    } else {
-      output_shape[i] = input_shape[i];
-    }
-  }
-  module::setShapeOrVerify(getOutput(), output_shape);
+mlir::Type tpu::ShapeSliceOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  return do_nothing(mode);
 }

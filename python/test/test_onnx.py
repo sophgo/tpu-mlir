@@ -86,7 +86,7 @@ class ONNX_IR_TESTER(object):
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        N, Y, Y, Y),
             "GatherND":     (self.test_GatherND,      Y, N, N, N),
-            # "Gather2":      (self.test_Gather2,     N, Y, N, Y),
+            "Gather2":      (self.test_Gather2,       N, Y, N, N),
             "Gemm":         (self.test_Gemm,          Y, Y, Y, Y),
             "GroupFC":      (self.test_GroupFC,       N, Y, Y, Y),
             "GRU":          (self.test_GRU,           N, Y, Y, Y),  # test gru output Y
@@ -5291,7 +5291,7 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.INT64, [])
         indices = helper.make_tensor(name='indices',
                                      data_type=TensorProto.INT64,
-                                     dims=[],
+                                     dims=[1],
                                      vals=indices_data)
         shape_node = helper.make_node(
             'Shape',  # node name

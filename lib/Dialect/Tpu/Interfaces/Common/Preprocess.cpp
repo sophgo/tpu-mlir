@@ -255,17 +255,20 @@ private:
     int64_t start_w = resize_w / 2 - w / 2;
     std::vector<int64_t> slice_offset{0, 0, start_h, start_w};
     std::vector<int64_t> slice_step{1, 1, 1, 1};
+    std::vector<int64_t> slice_ends{-1, -1, -1, -1};
     std::vector<NamedAttribute> attrs;
     auto none = module::getNoneOp(opd.getDefiningOp());
     attrs.emplace_back(rewriter.getNamedAttr(
         "offset", rewriter.getI64ArrayAttr(slice_offset)));
     attrs.emplace_back(
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(slice_step)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(slice_ends)));
     RankedTensorType type;
     type = RankedTensorType::get({n, c, h, w},
                                  module::getUniformQuantizedType(opd));
     auto newOp = rewriter.create<tpu::SliceOp>(
-        loc, type, ArrayRef<Value>{opd, none}, attrs);
+        loc, type, ArrayRef<Value>{opd, none, none, none, none}, attrs);
     return newOp.getOutput();
   }
 

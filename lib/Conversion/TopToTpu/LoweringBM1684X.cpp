@@ -24,7 +24,8 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       ConstantFillTryLowering,
       ConcatTryLowering,
       UnsqueezeTryLowering,
-      SqueezeTryLowering
+      SqueezeTryLowering,
+      SliceTryLowering
       // clang-format on
       >(patterns->getContext());
 }

@@ -973,8 +973,12 @@ def Top_SliceOp: Top_Op<"Slice"> {
 
   let arguments = (
     ins AnyTensor:$input,
+    AnyTensorOrNone:$offsetT,
+    AnyTensorOrNone:$endsT,
+    AnyTensorOrNone:$stepsT,
     I64ArrayAttr:$offset,
-    I64ArrayAttr:$steps
+    I64ArrayAttr:$steps,
+    I64ArrayAttr:$ends
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;

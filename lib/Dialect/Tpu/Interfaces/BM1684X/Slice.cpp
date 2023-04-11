@@ -132,29 +132,36 @@ void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
-#if 0
   if (!buffer)
-    return sizeof(strideslice_common_spec_t);
-  strideslice_common_spec_t param = {0};
-  std::vector<int64_t> input_shape = module::getShape(getInput());
-  std::vector<int64_t> output_shape = module::getShape(getOutput());
-  param.begin_mask = 0;
-  param.end_mask = 0;
-  int num_dims = input_shape.size();
-  auto&& offset = getOffset();
-  auto&& step = getSteps();
+    return sizeof(strideslice_global_spec_t);
+  strideslice_global_spec_t param = {0};
+  const std::vector<int64_t> input_shape = module::getShape(getInput());
+  const std::vector<int64_t> output_shape = module::getShape(getOutput());
+  param.common.begin_mask = 0;
+  param.common.end_mask = 0;
+  const int num_dims = input_shape.size();
+  const auto offset = module::getI64Array(getOffset());
+  const auto ends = module::getI64Array(getEnds());
+  const auto steps = module::getI64Array(getSteps());
+  param.shape_size = offset->size();
+  param.ellipsis_mask = 0;
+  param.new_axis_mask = 0;
+  param.shrink_axis_mask = 0;
+  param.is_dynamic = !module::isNone(getOffsetT());
+  if (param.is_dynamic) {
+    assert(!module::isNone(getEndsT()));
+    assert(!module::isNone(getStepsT()));
+  }
   for (int i = 0; i < num_dims; i++) {
-    param.begin_index[i] = offset[i].cast<IntegerAttr>().getInt();
-    param.end_index[i] = output_shape[i] * step[i].cast<IntegerAttr>().getInt()
-                  + offset[i].cast<IntegerAttr>().getInt();
-    param.strides[i] = step[i].cast<IntegerAttr>().getInt();
+    param.common.begin_index[i] = offset->at(i);
+    param.common.strides[i] = steps->at(i);
+    // TODO: fix canonicalizers and reactivate this
+    // param.common.end_index[i] = ends->at(i);
+    param.common.end_index[i] = output_shape[i] * steps->at(i) + offset->at(i);
   }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
-#endif
-  return 0;
 }
 
 int64_t tpu::SliceOp::get_fw_type_bm1684x() {
-  // return FW_BMNET_SLICE;
   return FW_BMNET_STRIDESLICE;
 }
