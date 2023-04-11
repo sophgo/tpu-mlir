@@ -533,6 +533,7 @@ struct TopMoveAheadpermutePattern : public OpRewritePattern<PermuteOp>{
           loc,newType,op.getInput(),oldattr);
       op.setOperand(newOp->getResult(0));
       reluop.getOutput().replaceAllUsesWith(reluop.getOperand());
+      op->setLoc(NameLoc::get(rewriter.getStringAttr("output_Relu")));
       rewriter.eraseOp(reluop);
     }
     if(sigmoidop){
@@ -540,6 +541,7 @@ struct TopMoveAheadpermutePattern : public OpRewritePattern<PermuteOp>{
           loc,newType,op.getInput(),oldattr);
       op.setOperand(newOp->getResult(0));
       sigmoidop.getOutput().replaceAllUsesWith(sigmoidop.getOperand());
+      op->setLoc(NameLoc::get(rewriter.getStringAttr("output_Sigmoid")));
       rewriter.eraseOp(sigmoidop);
     }
     if(castop){
@@ -549,9 +551,7 @@ struct TopMoveAheadpermutePattern : public OpRewritePattern<PermuteOp>{
                                     module::getElementType(nextOp->getResult(0)));
       auto newOp = rewriter.create<CastOp>(
           loc,castType,op.getInput(),oldattr);
-      std::string in_name2 =
-          module::getName(op.getInput()).str() + "newpermuteOp";
-      auto loc2 = NameLoc::get(rewriter.getStringAttr(in_name2));
+      auto loc2 = NameLoc::get(rewriter.getStringAttr("output_Cast"));
       rewriter.setInsertionPoint(op);
       auto newPermuteOp = rewriter.create<PermuteOp>(
           loc2,permuteType,newOp->getResult(0),permute_attr);
@@ -565,6 +565,7 @@ struct TopMoveAheadpermutePattern : public OpRewritePattern<PermuteOp>{
           loc,newType,op.getInput(),oldattr);
       op.setOperand(newOp->getResult(0));
       addconstop.getOutput().replaceAllUsesWith(addconstop.getOperand());
+      op->setLoc(NameLoc::get(rewriter.getStringAttr("output_Relu")));
       rewriter.eraseOp(addconstop);
     }
     return success();
