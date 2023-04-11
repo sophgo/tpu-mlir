@@ -88,7 +88,7 @@ class MType(Enum):
 
 class Layout(Enum):
     """
-    Data layout type in different storage.
+    Data layout type in Local memory.
     """
 
     # Tensor alignment
@@ -108,11 +108,10 @@ class Layout(Enum):
     T4 = 31
     T5 = 32
     # GDMA special layout
-    continuous = 40
-    DMAstride = 41  # contains lane mask
-    DMA4Bank = 42
-    DMAmatrix = 43
-    DMAlinear = 44
+    DMAstride = 40  # contains lane mask
+    DMA4Bank = 41
+    DMAmatrix = 42
+    DMAlinear = 43
 
     def __call__(self, *args, **kargs):
         return ExtEnum(self, *args, **kargs)
@@ -161,6 +160,16 @@ def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
     if prec in (DType.f32, DType.bf16, DType.f16):
         return DType(prec)
     return DType(prec + 8 + (sign == 1) * 8)
+
+
+def bf16_to_fp32(d_bf16):
+    assert d_bf16.dtype == np.uint16
+    s = d_bf16.shape
+    d_bf16 = d_bf16.ravel()
+    d_fp32 = np.empty_like(d_bf16, dtype=np.float32)
+    v_ui16 = d_fp32.view(np.uint16)
+    v_ui16[1::2] = d_bf16
+    return d_fp32.reshape(s)
 
 
 to_np_dtype = {
@@ -263,9 +272,6 @@ class MemRef:
 
         if self.mtype == MType.R and layout != Layout.stride:
             self.stride = local_layout_to_stride(self)
-
-        if self.mtype == MType.G and layout == Layout.continuous:
-            self.stride = tuple(np.cumprod([1] + shape[-1:0:-1])[::-1])
 
         # print information
         self.name = self.__name()
@@ -512,8 +518,10 @@ class Memory:
             Layout.DMAmatrix: get_dma_matrix_data,
             Layout.DMAlinear: get_dma_linear_data,
         }
-
-        return get_data[memref.layout]()
+        data = get_data[memref.layout]()
+        if memref.dtype == DType.bf16:
+            return bf16_to_fp32(data)
+        return data
 
     def _ddr_to_numpy(self, memref):
         assert memref.shape != None
@@ -521,11 +529,14 @@ class Memory:
         assert all(memref.shape)
         assert any(memref.stride)
         offset = memref.mtype.r_addr
-        return np.lib.stride_tricks.as_strided(
+        data = np.lib.stride_tricks.as_strided(
             self.DDR[offset : offset + 4].view(memref.np_dtype),
             np.ctypeslib.as_array(memref.shape),
             np.ctypeslib.as_array(memref.stride) * memref.itemsize,
         )
+        if memref.dtype == DType.bf16:
+            return bf16_to_fp32(data)
+        return data
 
     def get_data(self, value):
         if isinstance(value, Const):

@@ -67,6 +67,7 @@ def pack_bmodel_context(model_file, net):
     out_dir = model_file.rsplit(".", maxsplit=1)[0]
     os.makedirs(out_dir, exist_ok=True)
     shutil.copy(model_file, os.path.join(out_dir, "compilation.bmodel"))
+    shutil.copy(model_file + ".json", os.path.join(out_dir, "tensor_location.json"))
     with open(out_dir + "/input_ref_data.dat", "wb") as f:
         for i in net.inputs:
             i.data.tofile(f)
