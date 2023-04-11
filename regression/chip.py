@@ -8,14 +8,11 @@
 
 # yapf: disable
 ######################################
-# chip support
+# Chip Support
 ######################################
 Y, N = True, False
 
 chip_support = {
-    #########################################
-    # Supported Quant Modes and Model Type
-    #########################################
     # chip_name: (F32, F16, BF16, INT8_sym, INT8_asym, INT4_sym, dynamic, model_type)
     "bm1684":    (Y,   N,   N,    Y,        N,         N,        N,       "bmodel"),
     "bm1684x":   (Y,   Y,   Y,    Y,        Y,         N,        N,       "bmodel"),
@@ -26,198 +23,99 @@ chip_support = {
     "cv183x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
 }
 
-# basic is for each commit test
-# all is for daily test
+'''
+    basic_model_list is for each commit test
+    full_model_list is for daily test
 
+    Note:
+        1. suffix: _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
+        2. order of chips in model list should keep the same as in chip_support
+'''
 
 ######################################
-# model support
+# Model Support
 ######################################
-
-bm1684_model_list = {
-    # _cf = caffe, _tf = tflite, default is onnx
-    # model_name:      (basic, all)
+basic_model_list = {
+    # model_name:          (bm1684, bm1684x, bm1686, cv180x, cv181x, cv182x, cv183x)
     ######## onnx ###############
-    "mobilenet_v2":        (N, N),
-    "resnet18_v1":         (N, N),
-    "resnet18_v2":         (N, N),
-    "resnet50_v1":         (N, N),
-    "resnet50_v2":         (Y, Y),
-    "vgg16":               (N, N),
-    "yolov5s":             (N, N),
-    ######## caffe ##############
-    "mobilenet_v2_cf":     (N, N),
-    "resnet18_cf":         (N, N),
-    "segnet_cf":           (N, N),
+    "resnet50_v2":          (Y,      N,       N,      N,      N,      N,      N),
+    "yolov5s":              (N,      Y,       Y,      N,      N,      N,      Y),
+    "yolox_s_cvi":          (N,      N,       N,      N,      Y,      Y,      Y),
+    "yolov5s_cvi":          (N,      N,       N,      N,      Y,      Y,      Y),
+    "alphapose_res50_cvi":  (N,      N,       N,      N,      Y,      Y,      Y),
+    ######## pytorch ############
+    "yolov5s_pt":           (N,      Y,       N,      N,      N,      N,      N),
+    ######## caffe ################
+    "mobilenet_v2_cf":      (N,      Y,       N,      N,      N,      N,      N),
+    "mobilenet_v2_cvi":     (N,      N,       N,      Y,      Y,      Y,      Y),
+    "mobilenet_v2_cvi_bs4": (N,      N,       N,      N,      Y,      Y,      Y),
+    "retinaface_mnet_cvi":  (N,      N,       N,      Y,      Y,      Y,      Y),
+    "arcface_res50_cvi":    (N,      N,       N,      N,      Y,      Y,      Y),
+    "yolov3_416_cvi":       (N,      N,       N,      N,      N,      Y,      Y),
+    ######## tflite ################
+    "yolov5s_tf":           (N,      Y,       N,      N,      N,      N,      N),
 }
 
-bm1684x_model_list = {
-    # _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
-    # model_name:      (basic, all)
+
+full_model_list = {
+    # model_name:          (bm1684, bm1684x, bm1686, cv180x, cv181x, cv182x, cv183x)
+    ######## onnx ###############
+    "bert-tiny_from_pt":    (N,      Y,       N,      N,      N,      N,      N),
+    "densenet121-12":       (N,      Y,       Y,      N,      N,      N,      Y),
+    "efficientnet":         (N,      Y,       Y,      N,      N,      N,      Y),
+    "inception_v3":         (N,      Y,       Y,      N,      N,      N,      Y),
+    "mnist-12":             (N,      Y,       Y,      N,      N,      N,      Y),
+    "mobilenet_v2":         (N,      Y,       Y,      N,      N,      N,      Y),
+    "resnet18_v1":          (N,      Y,       Y,      N,      N,      N,      Y),
+    "resnet18_v2":          (N,      Y,       Y,      N,      N,      N,      Y),
+    "resnet50_v1":          (N,      Y,       Y,      N,      N,      N,      Y),
+    "resnet50_v2":          (Y,      Y,       Y,      N,      N,      N,      Y),
+    "retinaface":           (N,      Y,       Y,      N,      N,      N,      N),
+    "se-resnet50":          (N,      Y,       Y,      N,      N,      N,      Y),
+    "shufflenet_v2":        (N,      Y,       Y,      N,      N,      N,      Y),
+    "squeezenet1.0":        (N,      Y,       Y,      N,      N,      N,      Y),
+    "ssd-12":               (N,      Y,       Y,      N,      N,      N,      N),
+    "ultraface_640":        (N,      Y,       N,      N,      N,      N,      N),
+    "vgg16":                (N,      Y,       Y,      N,      N,      N,      Y),
+    "yolov5s":              (N,      Y,       Y,      N,      N,      N,      Y),
+    "yolov3_tiny":          (N,      Y,       Y,      N,      N,      N,      Y),
+    "yolox_s_cvi":          (N,      N,       N,      N,      Y,      Y,      Y),
+    "yolov5s_cvi":          (N,      N,       N,      N,      Y,      Y,      Y),
+    "alphapose_res50_cvi":  (N,      N,       N,      N,      Y,      Y,      Y),
     ######## Pytorch #############
-    "bert_pt":             (N, Y),
-    "resnet50_pt":         (N, Y),
-    "sd_encoder_pt":       (N, Y),
-    "sd_decoder_pt":       (N, Y),
-    "yolov5s_pt":          (Y, Y),
-    ######## onnx ################
-    "bert-tiny_from_pt":   (N, Y),
-    "densenet121-12":      (N, Y),
-    "efficientnet":        (N, Y),
-    "inception_v3":        (N, Y),
-    "mnist-12":            (N, Y),
-    "mobilenet_v2":        (N, Y),
-    "resnet18_v1":         (N, Y),
-    "resnet18_v2":         (N, Y),
-    "resnet50_v1":         (N, Y),
-    "resnet50_v2":         (N, Y),
-    "retinaface":          (N, Y),
-    "se-resnet50":         (N, Y),
-    "shufflenet_v2":       (N, Y),
-    "squeezenet1.0":       (N, Y),
-    "ssd-12":              (N, Y),
-    "ultraface_640":       (N, Y),
-    "vgg16":               (N, Y),
-    "yolov5s":             (Y, Y),
-    "yolov3_tiny":         (N, Y),
-    ######## caffe ################
-    "mobilenet_v2_cf":     (Y, Y),
-    "resnet18_cf":         (N, Y),
-    "segnet_cf":           (N, Y),
-    "feature_extract_cf":  (N, Y),
-    "squeezenet_v1.1_cf":  (N, Y),
-    ######## tflite ################
-    "inception_v4_tf":     (N, Y),
-    "mobilenet_v2_tf":     (N, Y),
-    "resnet50_tf":         (N, Y),
-    "ssd_mobilenet_v1_tf": (N, Y),
-    "yolov5s_tf":          (Y, Y),
-    "mobilebert_tf":       (N, Y),
-    ######## PaddlePaddle ##########
-    "pp_humanseg":         (N, Y),
-    "pp_liteseg":          (N, Y),
-    "pp_picodet":          (N, Y),
-    "pp_yoloe":            (N, Y),
-    "pp_yolox":            (N, Y),
-    "pp_yolov3":           (N, Y),
-    "pp_ocr_det":          (N, Y),
-    "pp_ocr_cls":          (N, Y),
-    "pp_ocr_rec":          (N, Y),
-    "pp_hgnet":            (N, Y),
-}
-
-bm1686_model_list = {
-    # _cf = caffe, _tf = tflite, default is onnx
-    # model_name:      (basic, all)
-    ######## onnx ################
-    "bert-tiny_from_pt":   (N, N),
-    "densenet121-12":      (N, Y),
-    "efficientnet":        (N, Y),
-    "inception_v3":        (N, Y),
-    "mnist-12":            (N, Y),
-    "mobilenet_v2":        (N, Y),
-    "resnet18_v1":         (N, Y),
-    "resnet18_v2":         (N, Y),
-    "resnet50_v1":         (N, Y),
-    "resnet50_v2":         (N, Y),
-    "retinaface":          (N, Y),
-    "se-resnet50":         (N, Y),
-    "shufflenet_v2":       (N, Y),
-    "squeezenet1.0":       (N, Y),
-    "ssd-12":              (N, Y),
-    "ultraface_640":       (N, N),
-    "vgg16":               (N, Y),
-    "yolov5s":             (Y, Y),
-    "yolov3_tiny":         (N, Y),
-    ######## caffe ################
-    "mobilenet_v2_cf":     (N, Y),
-    "resnet18_cf":         (N, Y),
-    "segnet_cf":           (N, N),
+    "bert_pt":              (N,      Y,       N,      N,      N,      N,      N),
+    "resnet50_pt":          (N,      Y,       N,      N,      N,      N,      N),
+    "sd_encoder_pt":        (N,      Y,       N,      N,      N,      N,      N),
+    "sd_decoder_pt":        (N,      Y,       N,      N,      N,      N,      N),
+    "yolov5s_pt":           (N,      Y,       N,      N,      N,      N,      N),
+    ######## caffe ##############
+    "mobilenet_v2_cf":      (N,      Y,       Y,      N,      N,      N,      N),
+    "resnet18_cf":          (N,      Y,       Y,      N,      N,      N,      Y),
+    "segnet_cf":            (N,      Y,       N,      N,      N,      N,      N),
+    "mobilenet_v2_cvi":     (N,      N,       N,      Y,      Y,      Y,      Y),
+    "mobilenet_v2_cvi_bs4": (N,      N,       N,      N,      Y,      Y,      Y),
+    "retinaface_mnet_cvi":  (N,      N,       N,      Y,      Y,      Y,      Y),
+    "arcface_res50_cvi":    (N,      N,       N,      N,      Y,      Y,      Y),
+    "yolov3_416_cvi":       (N,      N,       N,      N,      N,      Y,      Y),
     # ----- cvs20-test ------------
-    "feature_extract_cf":  (N, Y),
-    "squeezenet_v1.1_cf":  (N, Y),
+    "feature_extract_cf":   (N,      Y,       Y,      N,      N,      N,      N),
+    "squeezenet_v1.1_cf":   (N,      Y,       Y,      N,      N,      N,      N),
     ######## tflite ################
-    "inception_v4_tf":     (N, N),
-    "mobilenet_v2_tf":     (N, N),
-    "resnet50_tf":         (N, N),
-    "ssd_mobilenet_v1_tf": (N, N),
-    "yolov5s_tf":          (N, N),
-    "mobilebert_tf":       (N, N),
+    "inception_v4_tf":      (N,      Y,       N,      N,      N,      N,      N),
+    "mobilenet_v2_tf":      (N,      Y,       N,      N,      N,      N,      N),
+    "resnet50_tf":          (N,      Y,       N,      N,      N,      N,      N),
+    "ssd_mobilenet_v1_tf":  (N,      Y,       N,      N,      N,      N,      N),
+    "yolov5s_tf":           (N,      Y,       N,      N,      N,      N,      N),
+    "mobilebert_tf":        (N,      Y,       N,      N,      N,      N,      N),
     ######## PaddlePaddle ################
-    "pp_humanseg":         (N, N),
-    "pp_liteseg":          (N, N),
-    "pp_picodet":          (N, Y),
-    "pp_yoloe":            (N, N),
-    "pp_yolox":            (N, N),
-    "pp_yolov3":           (N, N),
-    "pp_ocr_det":          (N, N),
-    "pp_ocr_cls":          (N, N),
-    "pp_ocr_rec":          (N, Y),
-}
-
-cv180x_model_list = {
-    # _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
-    # model_name:      (basic, all)
-    "mobilenet_v2_cvi":    (Y, Y),
-    "retinaface_mnet_cvi": (N, Y),
-  }
-
-cv181x_model_list = {
-    # _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
-    # model_name:      (basic, all)
-    "mobilenet_v2_cvi":    (N, Y),
-    "mobilenet_v2_cvi_bs4":(N, Y),
-    "retinaface_mnet_cvi": (N, Y),
-    "yolox_s_cvi":         (N, Y),
-    "yolov5s_cvi":         (Y, Y),
-    "alphapose_res50_cvi": (N, Y),
-    "arcface_res50_cvi":   (N, Y),
-}
-
-cv182x_model_list = {
-    # _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
-    # model_name:      (basic, all)
-    "mobilenet_v2_cvi":    (N, Y),
-    "mobilenet_v2_cvi_bs4":(N, Y),
-    "retinaface_mnet_cvi": (N, Y),
-    "yolov3_416_cvi":      (N, Y),
-    "yolox_s_cvi":         (N, Y),
-    "yolov5s_cvi":         (Y, Y),
-    "alphapose_res50_cvi": (N, Y),
-    "arcface_res50_cvi":   (N, Y),
-}
-
-cv183x_model_list = {
-    # _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
-    # model_name:      (basic, all)
-    ######## onnx ################
-    "densenet121-12":      (N, Y),
-    "efficientnet":        (N, Y),
-    "inception_v3":        (N, Y),
-    "retinaface":          (N, N),
-    "mnist-12":            (N, Y),
-    "mobilenet_v2":        (N, Y),
-    "resnet18_v1":         (N, Y),
-    "resnet18_v2":         (N, Y),
-    "resnet50_v1":         (N, Y),
-    "resnet50_v2":         (N, Y),
-    "se-resnet50":         (N, Y),
-    "shufflenet_v2":       (N, Y),
-    "squeezenet1.0":       (N, Y),
-    "vgg16":               (N, Y),
-    ######## caffe ################
-    "resnet18_cf":         (N, Y),
-    # object detection
-    "ssd-12":              (N, N),
-    "yolov5s":             (Y, Y),
-    "yolov3_tiny":         (N, Y),
-    # cvimodel samples
-    "mobilenet_v2_cvi":    (N, Y),
-    "mobilenet_v2_cvi_bs4":(N, Y),
-    "retinaface_mnet_cvi": (N, Y),
-    "yolov3_416_cvi":      (N, Y),
-    "yolox_s_cvi":         (N, Y),
-    "yolov5s_cvi":         (N, Y),
-    "alphapose_res50_cvi": (N, Y),
-    "arcface_res50_cvi":   (N, Y),
+    "pp_humanseg":          (N,      Y,       N,      N,      N,      N,      N),
+    "pp_liteseg":           (N,      Y,       N,      N,      N,      N,      N),
+    "pp_picodet":           (N,      Y,       Y,      N,      N,      N,      N),
+    "pp_yoloe":             (N,      Y,       N,      N,      N,      N,      N),
+    "pp_yolox":             (N,      Y,       Y,      N,      N,      N,      N),
+    "pp_yolov3":            (N,      Y,       N,      N,      N,      N,      N),
+    "pp_ocr_det":           (N,      Y,       N,      N,      N,      N,      N),
+    "pp_ocr_cls":           (N,      Y,       N,      N,      N,      N,      N),
+    "pp_ocr_rec":           (N,      Y,       Y,      N,      N,      N,      N),
+    "pp_hgnet":             (N,      Y,       N,      N,      N,      N,      N),
 }
