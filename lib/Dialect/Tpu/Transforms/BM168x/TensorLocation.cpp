@@ -95,10 +95,14 @@ group_info_t getGroupInfo(const OpOperand &v, const slice_index &slice_i) {
   int64_t hslice = g_param.getHSlice()[slice_i.h_step];
   int64_t dslice = g_param.getDSlice()[slice_i.d_step];
   int64_t wslice = g_param.getWSlice()[slice_i.w_step];
-  dst_lg_op.BackwardN(ginfo.n_idx, ginfo.n_slice, slice_i.n_step, nslice);
-  dst_lg_op.BackwardH(ginfo.h_idx, ginfo.h_slice, slice_i.h_step, hslice);
-  dst_lg_op.BackwardD(ginfo.d_idx, ginfo.d_slice, slice_i.d_step, dslice);
-  dst_lg_op.BackwardW(ginfo.w_idx, ginfo.w_slice, slice_i.w_step, wslice);
+  int64_t nindex = g_param.getNIdx()[slice_i.n_step];
+  int64_t hindex = g_param.getHIdx()[slice_i.h_step];
+  int64_t dindex = g_param.getDIdx()[slice_i.d_step];
+  int64_t windex = g_param.getWIdx()[slice_i.w_step];
+  dst_lg_op.BackwardN(ginfo.n_idx, ginfo.n_slice, nindex, nslice);
+  dst_lg_op.BackwardH(ginfo.h_idx, ginfo.h_slice, hindex, hslice);
+  dst_lg_op.BackwardD(ginfo.d_idx, ginfo.d_slice, dindex, dslice);
+  dst_lg_op.BackwardW(ginfo.w_idx, ginfo.w_slice, windex, wslice);
   return ginfo;
 }
 
@@ -144,14 +148,30 @@ json::Object record_tensor(const std::variant<Value, OpOperand *> val_or_opd,
 
   auto layout = ginfo.eu_align ? "eu_align" : "compact";
 
+  auto offset = [&]() -> int64_t {
+    auto fmt_bytes = BM168x::getFmtBytes((DATA_TYPE_T)v_spc.dtype);
+    SmallVector<int64_t> stride;
+    stride.push_back(1);
+    for (auto i : llvm::reverse(re_shape)) {
+      stride.push_back(i * stride.back());
+    }
+    SmallVector<int64_t> idx{ginfo.w_idx, ginfo.h_idx, ginfo.d_idx, 0,
+                             ginfo.n_idx};
+    int64_t offset = 0;
+    for (int i = 0; i < 5; i++) {
+      offset += stride[i] * idx[i];
+    }
+    return offset * fmt_bytes;
+  };
   // global memory
   auto op = val.getDefiningOp();
   if (op == nullptr || !op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) {
     layout = "continuous";
-  }
-  if (isa_and_nonnull<tpu::StoreOp>(op)) {
+    address += offset();
+  } else if (isa_and_nonnull<tpu::StoreOp>(op)) {
     address = module::getAddress(val);
     layout = "continuous";
+    address += offset();
   }
 
   return json::Object{

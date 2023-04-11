@@ -27,9 +27,6 @@ from tdb import Tdb
 console = Console()
 # ------------------------------------------------------------------------------
 
-ID = namedtuple("ID", ["sunnetId", "bdc", "gdma"])
-TR = namedtuple("TensorRecord", ["tensor", "record"])
-
 
 @dataclass
 class Value:
@@ -47,6 +44,9 @@ class Operand(Value):
 
 class TensorLoc:
     __solts__ = ("tensor_loc", "cmd_index")
+    # so many namedTuple, could we use a smart Table?
+    ID = namedtuple("ID", ["sunnetId", "bdc", "gdma"])
+    TR = namedtuple("TensorRecord", ["tensor", "record"])
 
     def __init__(self, ts_des_file):
         def tuples_hook(pairs):
@@ -63,17 +63,19 @@ class TensorLoc:
         for loc in self.tensor_loc:
             loc_s = {k: v for k, v in loc.items() if k not in ("operands", "results")}
             # before this nodechip commands, we can check the input data.
-            key = ID(loc["subnet_id"], *loc["bdc_gdma_id(before)"])
+            key = self.ID(loc["subnet_id"], *loc["bdc_gdma_id(before)"])
             self.breakpoint_loc.setdefault(key, []).extend(
-                TR(Operand(v, i), loc_s)
+                self.TR(Operand(v, i), loc_s)
                 for i, v in enumerate(loc["operands"])
                 if v != {}
             )
 
             # after this nodechip commands, we can check the output data.
-            key = ID(loc["subnet_id"], *loc["bdc_gdma_id(after)"])
+            key = self.ID(loc["subnet_id"], *loc["bdc_gdma_id(after)"])
             self.breakpoint_loc.setdefault(key, []).extend(
-                TR(Result(v, i), loc_s) for i, v in enumerate(loc["results"]) if v != {}
+                self.TR(Result(v, i), loc_s)
+                for i, v in enumerate(loc["results"])
+                if v != {}
             )
 
     def merge_cmd(self, bdc, gdma, subnet_id):
@@ -81,9 +83,9 @@ class TensorLoc:
         self.cmd_index = {}
         for i, x in enumerate(cmd):
             if isinstance(x, bdc_base):
-                k = ID(subnet_id, x.cmd_id, None)
+                k = self.ID(subnet_id, x.cmd_id, None)
             else:
-                k = ID(subnet_id, None, x.cmd_id)
+                k = self.ID(subnet_id, None, x.cmd_id)
             self.cmd_index[k] = i
         return cmd
 
@@ -108,20 +110,15 @@ class TensorLoc:
     def set_breakpoint(self, tdb: Tdb, subnet_id: int = 0):
         bp = filter(lambda x: x[0] == subnet_id, self.breakpoint_loc.keys())
 
-        def le(bdc_id, gdma_id):
-            def func():
-                if tdb.current_line == -1:
-                    return True
-                op = tdb.get_op()
-                if isinstance(op, dma_base):
-                    return op.cmd_id == gdma_id and op.cmd_id_dep <= bdc_id
-                if isinstance(op, bdc_base):
-                    return op.cmd_id == bdc_id and op.cmd_id_dep <= gdma_id
-                raise ValueError("Invalid operation!")
+        def bb(bdc_id, gdma_id):
+            x, y = -1, -1
+            if bdc_id > 0:
+                x = self.cmd_index[(subnet_id, bdc_id, None)]
+            if gdma_id > 0:
+                y = self.cmd_index[(subnet_id, None, gdma_id)]
+            return max(x, y)
 
-            return func
-
-        tdb.breakpoint.extend(le(x, y) for _, x, y in bp)
+        tdb.breakpoint.extend(bb(x, y) for _, x, y in bp)
 
 
 to_dtype = {
@@ -131,26 +128,29 @@ to_dtype = {
     "i8": opparam.DType.i8,
     "si8": opparam.DType.si8,
     "ui8": opparam.DType.ui8,
+    "u8": opparam.DType.ui8,
     "i16": opparam.DType.i16,
     "si16": opparam.DType.si16,
     "ui16": opparam.DType.ui16,
+    "u16": opparam.DType.ui16,
     "i32": opparam.DType.i32,
     "si32": opparam.DType.si32,
     "ui32": opparam.DType.ui32,
+    "u32": opparam.DType.ui32,
 }
 
 
 def get_shape_and_dtype(input_string: str):
     pattern = r"<(\d+(?:x\d+)*)x(\S+)>"
     matches = re.findall(pattern, input_string)
-    numbers = []
+    shape = []
     dtype = []
     for match in matches:
-        numbers.extend(map(int, match[0].split("x")))
+        shape.extend(map(int, match[0].split("x")))
         dtype.append(match[1])
 
     dtype = to_dtype[dtype[0]]
-    return numbers, dtype
+    return shape, dtype
 
 
 def get_mlir_type_info(mlir_type: str):
@@ -160,9 +160,9 @@ def get_mlir_type_info(mlir_type: str):
     quant = r"!quant\.uniform"
     storage_type = r"(?P<storage_type>\w+)"
     express_type = r"(?P<express_type>\w+)"
-    scale = r"(?P<scale>[-+]?\d*\.\d+|\d+)"
-    min_r = r"(?P<min>[-+]?\d*\.\d+|\d+)"
-    max_r = r"(?P<max>[-+]?\d*\.\d+|\d+)"
+    scale = r"(?P<scale>[-+]?\d*\.\d+(e[-+]?\d+)?|\d+)"
+    min_r = r"(?P<min>[-+]?\d*\.\d+(e[-+]?\d+)?|\d+)"
+    max_r = r"(?P<max>[-+]?\d*\.\d+(e[-+]?\d+)?|\d+)"
     zero_point = r"(?P<zero_point>[-+]?\d+)"
     address = r"(?P<address>\d+)\ :\ \w+"
 
@@ -171,7 +171,7 @@ def get_mlir_type_info(mlir_type: str):
         match = re.search(pattern, mlir_type)
         if match:
             return match
-        pattern = rf"tensor<{shape}x{quant}<{storage_type}:{express_type},\ {scale}(:{zero_point})?>>"
+        pattern = rf"tensor<{shape}x{quant}<{storage_type}:{express_type},\ {scale}(:{zero_point})?>(,\ {address})?>"
         match = re.search(pattern, mlir_type)
         if match:
             return match
@@ -219,12 +219,29 @@ class TensorBuilder:
         layout = {
             "eu_align": opparam.Layout.alignEU,
             "compact": opparam.Layout.compact,
-            "continuous": opparam.Layout.continuous,
+            "continuous": None,
         }[layout]
         if address < int("0x1000000", 16):
             address += opparam.memmap[opparam.MType.R][0]
         self.name = tensor_des["name"]
-        self.memref = opparam.MemRef(address, shape, dtype, layout=layout)
+        if layout == None:
+            reshape = tensor_des["reshape"]
+            if reshape:
+                n, c, d, h, w = [int(x) for x in tensor_des["reshape"][1:-1].split("x")]
+                if d == 1 and len(shape) == 4:
+                    reshape = [n, c, h, w]
+                else:
+                    assert len(shape) == 5
+                    reshape = [n, c, d, h, w]
+            else:
+                reshape = shape
+            stride = tuple(np.cumprod([1] + reshape[-1:0:-1])[::-1])
+        else:
+            stride = None
+
+        self.memref = opparam.MemRef(
+            address, shape, dtype, layout=layout, stride=stride
+        )
         self.tensor_des = tensor_des
         self.mlir_type = get_mlir_type_info(tensor_des["type"])
 
@@ -303,10 +320,10 @@ class ErrorMsg:
     file_line: int
     info: Info
 
-    def __rich_console__(self, console, options):
+    def __rich__(self):
         from rich.panel import Panel
 
-        yield Panel(
+        return Panel(
             self.info,
             title=f"[b magenta] file-line:[/b magenta] #{self.file_line}",
             title_align="left",
@@ -326,9 +343,9 @@ class DataChecker(TensorCompare):
         self.failed_tensors = OrderedDict()
 
     def diff_details(self, d1, d2, _):
-        # overwrite TensorCompare
-        _d1 = d1.flatten()
-        _d2 = d2.flatten()
+        # override TensorCompare
+        _d1 = d1.ravel()
+        _d2 = d2.ravel()
         diff = np.abs(_d1 - _d2)
         k = min(_d1.size, 10)
         idx = np.argpartition(diff, -k)[-k:]
@@ -426,9 +443,11 @@ def check_data(tdb, tensors, ref_data):
 class Checker:
     _bmodel_file = "compilation.bmodel"
     _input_data_file = "input_ref_data.dat"
-    _tensor_loc_file = "tensor_loc.json"
+    _tensor_loc_file = "tensor_location.json"
     markers = {"pass": "✓", "unknown": "?", "fail": "✗"}
     colors = {"pass": "green", "unknown": "white", "fail": "red"}
+    SI = namedtuple("SubNetInstruction", ["subnet_id", "instruction_id"])
+    LS = namedtuple("LineState", ["line", "operands", "results"])
 
     def __init__(self, folder, ref_data_npz, fail_fast=False):
         self.tensor_loc = TensorLoc(f"{folder}/{self._tensor_loc_file}")
@@ -465,7 +484,7 @@ class Checker:
 
         for bp, _ in track(
             zip(self.tensor_loc.breakpoint_loc.items(), tdb.continues),
-            description="Processing...",
+            description="Checking...",
             total=len(self.tensor_loc.breakpoint_loc),
         ):
             # The instruction recorded in TensorLoc represents the
@@ -509,8 +528,6 @@ class Checker:
     def gen_report(self):
         cmd_idx = self.tensor_loc.cmd_index
         self.ins_state = {}
-        SI = namedtuple("SubNetInstruction", ["subnet_id", "instruction_id"])
-        LS = namedtuple("LineState", ["line", "operands", "results"])
 
         def state_aggragate(state):
             if False in state:
@@ -528,13 +545,13 @@ class Checker:
             res = state_aggragate(v.results_state)
             self.ins_state.update(
                 {
-                    SI(sid, cmd_idx[(sid, x + 1, None)]): LS(line, ops, res)
+                    self.SI(sid, cmd_idx[(sid, x + 1, None)]): self.LS(line, ops, res)
                     for x in range(bdc_x, bdc_y)
                 }
             )
             self.ins_state.update(
                 {
-                    SI(sid, cmd_idx[(sid, None, x + 1)]): LS(line, ops, res)
+                    self.SI(sid, cmd_idx[(sid, None, x + 1)]): self.LS(line, ops, res)
                     for x in range(gdma_x, gdma_y)
                 }
             )
@@ -543,8 +560,11 @@ class Checker:
         from rich.table import Table
         from rich import box
 
-        ins_num = len(self.ins_state)
-        ins_state = [self.ins_state[x] for x in sorted(self.ins_state.keys())]
+        # support partial check
+        ins_num = max(x.instruction_id for x in self.ins_state) + 1
+        ins_state = [self.LS("?", "unknown", "unknown")] * ins_num
+        for si, s in self.ins_state.items():
+            ins_state[si.instruction_id] = s
 
         def gen_state():
             for x in range(0, ins_num, columns):
@@ -568,7 +588,7 @@ class Checker:
 
     def get_summary(self, style=""):
         def com(state):
-            return f"[{self.colors[state]}]{self.markers[state]}[/]"
+            return f"[{self.colors[state]}]{self.markers[state]:>1}[/]"
 
         state = com(self.state)
 
@@ -703,17 +723,21 @@ def save_to_file(checker, report_file):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--bmodel_context",
+        "--context_dir",
         required=True,
-        help="The folder should contains BModel, it's input_data and tensor_location file.",
+        help="The folder should contain the BModel, its input_data, and tensor_location files.",
     )
     parser.add_argument(
         "--reference_data",
         required=True,
         help="The reference data used for checking this BModel.",
     )
-    parser.add_argument("--report", type=str, help="The report file for saving state.")
-    parser.add_argument("--fail_fast", action="store_true")
+    parser.add_argument(
+        "--report", type=str, help="The report file for saving state and internal data."
+    )
+    parser.add_argument(
+        "--fail_fast", action="store_true", help="Stop if there is a check failure."
+    )
     parser.add_argument("--no_interactive", action="store_true")
 
     args = parser.parse_args()
@@ -722,7 +746,7 @@ if __name__ == "__main__":
     DATA_CHECKER.euclidean_similarity_tol = 0.90
     DATA_CHECKER.signal_to_quantization_noise_tol = float("-inf")
 
-    checker = Checker(args.bmodel_context, args.reference_data, args.fail_fast)
+    checker = Checker(args.context_dir, args.reference_data, args.fail_fast)
 
     if not args.no_interactive:
         console.print(checker.get_summary())
