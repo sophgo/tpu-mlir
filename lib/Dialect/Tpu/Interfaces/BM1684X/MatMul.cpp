@@ -284,6 +284,12 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
                      align_up(oshape[3], BM168x::eu_num(out_type_len));
     }
   } else if (in_type_len == 1 && out_type_len != 4) {
+    if(!p.left_transpose && !p.hdim_is_batch){
+      if (n0 != n1){
+        // need broadcast, if n1 = 1, move n0 to c0; else n0 = 1, keep oshape[1]
+        oshape[1] *= n0;
+      }
+    }
     bool buffer_optimize =
         (ceiling_func(p.left_transpose ? c0 : h0 * w0,
                       BM168x::eu_num(in_type_len)) *
