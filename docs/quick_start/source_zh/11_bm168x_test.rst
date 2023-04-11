@@ -82,8 +82,8 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
    :linenos:
 
    $ tar zxf tpu-mlir_xxxx.tar.gz
-   $ docker pull sophgo/tpuc_dev:latest
-   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:latest
+   $ docker pull sophgo/tpuc_dev:v2.2
+   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v2.2
 
 运行命令后会处于Docker的容器中。
 
@@ -224,14 +224,16 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
    $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
+
+``--target`` 用于指定芯片型号，目前支持 ``BM1684`` 和 ``BM1684X`` 。
 
 注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
 
 .. code-block:: shell
 
-   $ python3 -m tpu_perf.run --devices 2 --mlir -l full_cases.txt
+   $ python3 -m tpu_perf.run --target BM1684X --devices 2 --mlir -l full_cases.txt
 
 
 2. SOC 设备使用以下步骤, 测试生成的 ``bmodel`` 性能。
@@ -245,8 +247,43 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
    $ pip3 install ./tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --mlir -l full_cases.txt
-
+   $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
 
 运行结束后, 性能数据在 ``output/stats.csv`` 中可以获得。该文件中记录了相关模型的
 运行时间、计算资源利用率和带宽利用率。
+
+精度测试
+++++++++
+
+运行测试需要在 Docker 外面的环境(此处假设您已经安装并配置好了1684X设备和
+驱动)中进行, 可以退出 Docker 环境:
+
+.. code :: console
+
+   $ exit
+
+PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 精度。
+
+.. code-block:: shell
+   :linenos:
+
+   $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
+   $ cd model-zoo
+   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt
+
+``--target`` 用于指定芯片型号，目前支持 ``BM1684`` 和 ``BM1684X`` 。
+
+各类精度数据在 output 目录中的各个 csv 文件可以获得。
+
+注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
+``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
+
+.. code-block:: shell
+
+   $ python3 -m tpu_perf.precision_benchmark --target BM1684X --devices 2 --mlir -l full_cases.txt
+
+具体参数说明可以通过以下命令获得：
+
+.. code :: shell
+
+  python3 -m tpu_perf.precision_benchmark --help
