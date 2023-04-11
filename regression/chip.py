@@ -37,22 +37,11 @@ chip_support = {
 ######################################
 basic_model_list = {
     # model_name:          (bm1684, bm1684x, bm1686, cv180x, cv181x, cv182x, cv183x)
-    ######## onnx ###############
-    "resnet50_v2":          (Y,      N,       N,      N,      N,      N,      N),
-    "yolov5s":              (N,      Y,       Y,      N,      N,      N,      Y),
-    "yolox_s_cvi":          (N,      N,       N,      N,      Y,      Y,      Y),
-    "yolov5s_cvi":          (N,      N,       N,      N,      Y,      Y,      Y),
-    "alphapose_res50_cvi":  (N,      N,       N,      N,      Y,      Y,      Y),
-    ######## pytorch ############
-    "yolov5s_pt":           (N,      Y,       N,      N,      N,      N,      N),
-    ######## caffe ################
     "mobilenet_v2_cf":      (N,      Y,       N,      N,      N,      N,      N),
     "mobilenet_v2_cvi":     (N,      N,       N,      Y,      Y,      Y,      Y),
-    "mobilenet_v2_cvi_bs4": (N,      N,       N,      N,      Y,      Y,      Y),
-    "retinaface_mnet_cvi":  (N,      N,       N,      Y,      Y,      Y,      Y),
-    "arcface_res50_cvi":    (N,      N,       N,      N,      Y,      Y,      Y),
-    "yolov3_416_cvi":       (N,      N,       N,      N,      N,      Y,      Y),
-    ######## tflite ################
+    "resnet50_v2":          (Y,      N,       N,      N,      N,      N,      N),
+    "yolov5s":              (N,      Y,       Y,      N,      N,      N,      N),
+    "yolov5s_pt":           (N,      Y,       N,      N,      N,      N,      N),
     "yolov5s_tf":           (N,      Y,       N,      N,      N,      N,      N),
 }
 
@@ -112,7 +101,7 @@ full_model_list = {
     "pp_liteseg":           (N,      Y,       N,      N,      N,      N,      N),
     "pp_picodet":           (N,      Y,       Y,      N,      N,      N,      N),
     "pp_yoloe":             (N,      Y,       N,      N,      N,      N,      N),
-    "pp_yolox":             (N,      Y,       Y,      N,      N,      N,      N),
+    "pp_yolox":             (N,      Y,       N,      N,      N,      N,      N),
     "pp_yolov3":            (N,      Y,       N,      N,      N,      N,      N),
     "pp_ocr_det":           (N,      Y,       N,      N,      N,      N,      N),
     "pp_ocr_cls":           (N,      Y,       N,      N,      N,      N,      N),
