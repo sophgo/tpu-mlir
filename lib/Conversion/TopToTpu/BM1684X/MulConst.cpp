@@ -8,6 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
+#define FP16_MAX 65504.0
+#define FP16_MIN -65504.0
+#define BF16_MAX 3.3895314e38
+#define BF16_MIN -3.3895314e38
 
 namespace tpu_mlir {
 namespace bm1684x {
@@ -45,12 +49,20 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
                                     top::MulConstOp op) const {
-  lowering_common_bf16<tpu::MulConstOp>(rewriter, op);
+  auto const_v = op.getConstVal().convertToDouble();
+  if (const_v > BF16_MAX || const_v < BF16_MIN)
+    LoweringF32(rewriter, op);
+  else
+    lowering_common_bf16<tpu::MulConstOp>(rewriter, op);
 }
 
 void MulConstLowering::LoweringF16(PatternRewriter &rewriter,
                                    top::MulConstOp op) const {
-  lowering_common_f16<tpu::MulConstOp>(rewriter, op);
+  auto const_v = op.getConstVal().convertToDouble();
+  if (const_v > FP16_MAX || const_v < FP16_MIN)
+    LoweringF32(rewriter, op);
+  else
+    lowering_common_f16<tpu::MulConstOp>(rewriter, op);
 }
 
 void MulConstLowering::LoweringQuantized(PatternRewriter &rewriter,
