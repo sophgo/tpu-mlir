@@ -58,13 +58,18 @@ class MODEL_RUN(object):
             self.ini_content["model_path"] = self.ini_content["model_path2"]
 
         self.do_cali = not self.ini_content["model_path"].endswith(".tflite")
+        self.arch = chip
+        if chip.startswith("cv18"):
+            self.arch = "cv18xx"
+        elif chip.startswith("bm1686"):
+            self.arch = "bm1684x"
         self.tolerance = {
-            "f32": config.get("DEFAULT", "f32_tolerance", fallback="0.99,0.99"),
-            "f16": config.get("DEFAULT", "f16_tolerance", fallback="0.95,0.85"),
-            "bf16": config.get("DEFAULT", "bf16_tolerance", fallback="0.95,0.85"),
-            "int8_sym": config.get("DEFAULT", "int8_sym_tolerance", fallback="0.8,0.5"),
-            "int8_asym": config.get("DEFAULT", "int8_asym_tolerance", fallback="0.8,0.5"),
-            "int4_sym": config.get("DEFAULT", "int4_sym_tolerance", fallback="0.8,0.5"),
+            "f32": config.get(self.arch, "f32_tolerance", fallback="0.99,0.99"),
+            "f16": config.get(self.arch, "f16_tolerance", fallback="0.95,0.85"),
+            "bf16": config.get(self.arch, "bf16_tolerance", fallback="0.95,0.85"),
+            "int8_sym": config.get(self.arch, "int8_sym_tolerance", fallback="0.8,0.5"),
+            "int8_asym": config.get(self.arch, "int8_asym_tolerance", fallback="0.8,0.5"),
+            "int4_sym": config.get(self.arch, "int4_sym_tolerance", fallback="0.8,0.5"),
         }
         # set quant_modes according to argument and config files
         self.quant_modes = {
@@ -199,7 +204,8 @@ class MODEL_RUN(object):
         _os_system(cmd)
 
     def test_input_copy(self, quant_mode):
-        test_input = self.ini_content["test_input"] if self.fuse_pre else self.ini_content["input_npz"]
+        test_input = self.ini_content["test_input"] if self.fuse_pre else self.ini_content[
+            "input_npz"]
         new_test_input = ""
         if self.fuse_pre:
             new_test_input = test_input.replace(".jpg", f"_for_{quant_mode}.jpg").split("/")[-1]
