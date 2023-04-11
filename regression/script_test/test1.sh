@@ -98,11 +98,9 @@ model_deploy.py \
 
 # convert to tosa without weight
 tpuc-opt mobilenet_v2.mlir \
-  --init --convert-top-to-tosa="includeWeight=False" \
-  --mlir-print-debuginfo \
+  --convert-top-to-tosa="includeWeight=False" \
   -o mobilenet_v2_tosa_no_weight.mlir
 
 tpuc-opt mobilenet_v2.mlir \
-  --init --convert-top-to-tosa="includeWeight=True" \
-  --mlir-print-debuginfo \
+  --convert-top-to-tosa="includeWeight=True" \
   -o mobilenet_v2_tosa.mlir

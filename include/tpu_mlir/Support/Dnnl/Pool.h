@@ -32,9 +32,8 @@ public:
 private:
   engine eng;
   stream eng_stream;
-  std::vector<primitive> net;
-  std::vector<std::unordered_map<int, memory>> net_args;
-  pooling_forward::primitive_desc prim_desc;
+  primitive prim;
+  memory src_mem, dst_mem;
   memory::dims src_shape;
   memory::dims dst_shape;
   float *p_input;

@@ -21,6 +21,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       AvgPoolLowering,
       ConcatLowering,
       ConvLowering,
+      GroupNormLowering,
       MatMulLowering,
       MaxPoolLowering,
       MulLowering,
@@ -42,11 +43,14 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       AddConstLowering,
       MulConstLowering,
       SubLowering,
+      LayerNormLowering,
       LRNLowering,
       MinLowering,
       MaxLowering,
       DeconvLowering,
-      ExpLowering
+      ExpLowering,
+      PReluLowering,
+      LSTMLowering
       // clang-format on
       >(patterns->getContext());
 }

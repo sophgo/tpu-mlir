@@ -226,8 +226,8 @@ void tpu::DeconvOp::codegen_global_bm1684x() {
 // ======================================
 
 int64_t tpu::DeconvOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice, group_type_t group_type) {
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   int64_t sz = out_lmem_bytes * sizeof(int32_t);
   auto &attr = getDeconvParam(*this);
 
@@ -239,27 +239,27 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   // fp part 2: used for group > 1, input must start from npu 0
   if (attr.g > 1 &&
       (idtype == DTYPE_FP32 || idtype == DTYPE_BFP16 || idtype == DTYPE_FP16)) {
-    sz += ic_per_npu * align_up(in_hslice * attr.iw, eu_num) * type_len;
+    sz += ic_per_npu * align_up(in_hslice * in_wslice, eu_num) * type_len;
   }
   // quant : used for groups > 1, input must start from npu 0,
   if (attr.g > 1 && !attr.is_dw && type_len == 1) {
     sz +=
         ic_per_npu *
-        (align_up(in_hslice * attr.iw, eu_num) + 
-				 (attr.pad_insert_is_const ? 0 : 2));
+        (align_up(in_hslice * in_wslice, eu_num) + 
+          (attr.pad_insert_is_const ? 0 : 2));
   }
 
   return sz;
 }
 
-void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
-  auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
-  auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), n_step, h_step);
-  auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
+  auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), n_step, h_step, d_step, w_step);
+  auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), n_step, h_step, d_step, w_step);
 
   deconv_local_param_t param = {0};
   param.input_local_addr = (uint32_t)in_gi.out_addr;
@@ -270,7 +270,7 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.input_shape[0] = sec_info.n_slice;
   param.input_shape[1] = attr.ic;
   param.input_shape[2] = sec_info.h_slice;
-  param.input_shape[3] = attr.iw;
+  param.input_shape[3] = sec_info.w_slice;
   param.groups = attr.g;
   param.output_c = attr.oc;
   param.kernel[0] = attr.kh;
@@ -288,8 +288,15 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     param.pad[0] = attr.kh - attr.pad_h - 1;
     param.pad[1] = attr.kh - attr.pad_h_after - 1;
   }
-  param.pad[2] = attr.kw - attr.pad_w - 1;
-  param.pad[3] = attr.kw - attr.pad_w_after - 1;
+  int kw_ext = (attr.kw - 1) * attr.dw + 1;
+  if (auto deconv_in_slice = DeconvSlice(gi.w_idx, gi.w_slice, attr.sw, kw_ext,
+                                      attr.iw, attr.pad_w)) {
+    param.pad[2] = deconv_in_slice.value()[0];
+    param.pad[3] = deconv_in_slice.value()[1];
+  } else {
+    param.pad[2] = attr.kw - attr.pad_w - 1;
+    param.pad[3] = attr.kw - attr.pad_w_after - 1;
+  }
   param.has_bias = attr.with_bias;
   param.input_dtype = BM168x::getDataType(getInput());
   param.weight_dtype = BM168x::getDataType(getFilter());
@@ -320,7 +327,7 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer) return sizeof(dyn_deconv_local_spec_t);
   auto attr = parseParam();
-  auto gi = getGroupInfo(0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
   auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), 0, 0);
   auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), 0, 0);

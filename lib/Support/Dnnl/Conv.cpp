@@ -92,92 +92,31 @@ void Conv::setup(float *input, float *weight, float *bias, float *output,
   memory::dims padding_r = {attr.pdb, attr.phb, attr.pwr};
   memory::dims dilation = {attr.dd - 1, attr.dh - 1, attr.dw - 1};
 
-  net.clear();
-  net_args.clear();
-  auto src_md = memory::desc({src_shape}, memory::data_type::f32,
-                             memory::format_tag::any);
-  auto filter_md = memory::desc({filter_shape}, memory::data_type::f32,
-                                memory::format_tag::any);
-  auto bias_md = memory::desc({bias_shape}, memory::data_type::f32,
-                              memory::format_tag::any);
-  auto dst_md = memory::desc({dst_shape}, memory::data_type::f32,
-                             memory::format_tag::any);
-
-  auto conv_desc = convolution_forward::desc(
-      prop_kind::forward_inference, algorithm::convolution_direct, src_md,
-      filter_md, bias_md, dst_md, strides, dilation, padding_l, padding_r);
-
-  if (bias == nullptr)
-    conv_desc = convolution_forward::desc(
-        prop_kind::forward_inference, algorithm::convolution_direct, src_md,
-        filter_md, dst_md, strides, dilation, padding_l, padding_r);
-
+  src_mem =
+      memory({{src_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
+             eng, p_input);
+  auto filter_tag = (attr.groups != 1) ? memory::format_tag::goidhw
+                                       : memory::format_tag::oidhw;
+  filter_mem = memory({{filter_shape}, memory::data_type::f32, filter_tag}, eng,
+                      p_weight);
+  if (bias == nullptr) {
+    bias0 = std::make_shared<std::vector<float>>(attr.oc, 0);
+    bias = bias0->data();
+  }
+  bias_mem = memory(
+      {{bias_shape}, memory::data_type::f32, memory::format_tag::x}, eng, bias);
+  dst_mem =
+      memory({{dst_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
+             eng, output);
   // post_ops ops;
   primitive_attr conv_attr;
   post_relu(conv_attr, attr.do_relu, attr.relu_limit);
 
-  conv_prim_desc =
-      convolution_forward::primitive_desc(conv_desc, conv_attr, eng);
-
-  // set mkldnn memory
-  auto filter_tag = (attr.groups != 1) ? memory::format_tag::goidhw
-                                       : memory::format_tag::oidhw;
-  auto filter_memory = memory(
-      {{filter_shape}, memory::data_type::f32, filter_tag}, eng, p_weight);
-  prim_filter_memory = filter_memory;
-  if (conv_prim_desc.weights_desc() != filter_memory.get_desc()) {
-    prim_filter_memory = memory(conv_prim_desc.weights_desc(), eng);
-    net.push_back(reorder(filter_memory, prim_filter_memory));
-    net_args.push_back(
-        {{DNNL_ARG_FROM, filter_memory}, {DNNL_ARG_TO, prim_filter_memory}});
-  }
-
-  auto prim_bias_memory = memory();
-  if (bias != nullptr) {
-    auto bias_memory =
-        memory({{bias_shape}, memory::data_type::f32, memory::format_tag::x},
-               eng, bias);
-    prim_bias_memory = bias_memory;
-    if (conv_prim_desc.bias_desc() != bias_memory.get_desc()) {
-      prim_bias_memory = memory(conv_prim_desc.bias_desc(), eng);
-      net.push_back(reorder(bias_memory, prim_bias_memory));
-      net_args.push_back(
-          {{DNNL_ARG_FROM, bias_memory}, {DNNL_ARG_TO, prim_bias_memory}});
-    }
-  }
-
-  auto src_memory =
-      memory({{src_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
-             eng, p_input);
-  auto prim_src_memory = src_memory;
-  if (conv_prim_desc.src_desc() != src_memory.get_desc()) {
-    prim_src_memory = memory(conv_prim_desc.src_desc(), eng);
-    net.push_back(reorder(src_memory, prim_src_memory));
-    net_args.push_back(
-        {{DNNL_ARG_FROM, src_memory}, {DNNL_ARG_TO, prim_src_memory}});
-  }
-
-  auto prim_dst_memory = memory(conv_prim_desc.dst_desc(), eng);
-  net.push_back(convolution_forward(conv_prim_desc));
-  if (bias != nullptr) {
-    net_args.push_back({{DNNL_ARG_SRC, prim_src_memory},
-                        {DNNL_ARG_WEIGHTS, prim_filter_memory},
-                        {DNNL_ARG_BIAS, prim_bias_memory},
-                        {DNNL_ARG_DST, prim_dst_memory}});
-  } else {
-    net_args.push_back({{DNNL_ARG_SRC, prim_src_memory},
-                        {DNNL_ARG_WEIGHTS, prim_filter_memory},
-                        {DNNL_ARG_DST, prim_dst_memory}});
-  }
-  // reorder or copy the output
-  auto dst_memory =
-      memory({{dst_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
-             eng, output);
-  if (prim_dst_memory != dst_memory) {
-    net.push_back(reorder(prim_dst_memory, dst_memory));
-    net_args.push_back(
-        {{DNNL_ARG_FROM, prim_dst_memory}, {DNNL_ARG_TO, dst_memory}});
-  }
+  auto conv_prim_desc = convolution_forward::primitive_desc(
+      eng, prop_kind::forward_inference, algorithm::convolution_direct,
+      src_mem.get_desc(), filter_mem.get_desc(), bias_mem.get_desc(),
+      dst_mem.get_desc(), strides, dilation, padding_l, padding_r, conv_attr);
+  prim = convolution_forward(conv_prim_desc);
 }
 
 void Conv::run() {
@@ -194,7 +133,9 @@ void Conv::run() {
     }
   }
 
-  for (size_t i = 0; i < net.size(); ++i)
-    net.at(i).execute(eng_stream, net_args.at(i));
+  prim.execute(eng_stream, {{DNNL_ARG_SRC, src_mem},
+                            {DNNL_ARG_WEIGHTS, filter_mem},
+                            {DNNL_ARG_BIAS, bias_mem},
+                            {DNNL_ARG_DST, dst_mem}});
   eng_stream.wait();
 }

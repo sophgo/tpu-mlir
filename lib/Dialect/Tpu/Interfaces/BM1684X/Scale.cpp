@@ -49,8 +49,8 @@ void tpu::ScaleOp::codegen_global_bm1684x() {
 // =========================================
 
 int64_t tpu::ScaleOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice, group_type_t group_type) {
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   auto out_type = module::getStorageType(getOutput());
   if (out_type.isInteger(8)) {
     // INT16 as middle result
@@ -61,14 +61,14 @@ int64_t tpu::ScaleOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                          group_type_t group_type,
                                          local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
 
-  auto gi = getGroupInfo(n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
   scale_local_spec_t p{0};
 
   p.if_relu = getDoRelu();
@@ -108,7 +108,7 @@ int64_t tpu::ScaleOp::dyn_codegen_local_bm1684x(void *buffer) {
   assert(group_type < GROUP_UNSUPPORT);
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
-  auto gi = getGroupInfo(0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0);
   scale_local_spec_t p{0};
 
   p.if_relu = getDoRelu();

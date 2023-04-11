@@ -160,6 +160,24 @@ LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
+LogicalResult tpu::DeconvOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
+                                       int64_t out_idx, int64_t out_slice) {
+  auto &attr = getDeconvParam(*this);
+  int kw_ext = (attr.kw - 1) * attr.dw + 1;
+  if (auto ret = DeconvSlice(out_idx, out_slice, attr.sw, kw_ext, attr.iw, attr.pad_w)) {
+    in_idx = ret.value()[2];
+    in_slice = ret.value()[3];
+  } else {
+    return failure();
+  }
+
+  bool is_last = (out_idx + out_slice == attr.ow);
+  LocalGenInterface::fixSlice(in_idx, in_slice, attr.iw, is_last);
+  if (in_slice == 0)
+    return failure();
+  return success();
+}
+
 mlir::Type tpu::DeconvOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return type_verify_case_i32(getOperation(), opd_idx, mode);
 }

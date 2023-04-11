@@ -9,7 +9,6 @@
 # keep This file clean and neat.
 
 import numpy as np
-from enum import Enum
 from . import regdef_1684x
 from .opparam_1684x import NamedDict, opparam_converter
 

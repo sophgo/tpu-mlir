@@ -25,10 +25,17 @@ struct SliceAxisToStridedSlice : public OpRewritePattern<SliceAxisOp> {
     auto out_shape = module::getShape(op.getOutput());
     auto in_shape = module::getShape(op.getInput());
     int64_t dims = in_shape.size();
-    auto axis = op.getAxis();
-    auto start = op.getStart();
-    auto step = op.getStep();
-    start = start >= 0 ? start : start + in_shape[axis];
+
+    auto axis_op = op.getAxis().getDefiningOp<top::WeightOp>();
+    auto axis = axis_op.read<float>()->at(0);
+    if (axis < 0)
+      axis += dims;
+    auto start_op = op.getStart().getDefiningOp<top::WeightOp>();
+    auto start = start_op.read<float>()->at(0);
+    if (start < 0)
+      start += in_shape[axis];
+    auto step_op = op.getStep().getDefiningOp<top::WeightOp>();
+    auto step = step_op.read<float>()->at(0);
 
     std::vector<int64_t> offset(dims, 0);
     std::vector<int64_t> steps(dims, 1);

@@ -279,4 +279,13 @@ LogicalResult tpu::InterpOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   in_slice = (int64_t)((double)out_slice / unit);
   return success();
 }
+
+LogicalResult tpu::InterpOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
+                                         int64_t out_idx, int64_t out_slice) {
+  auto unit = getScaleW().convertToDouble();
+
+  in_idx = (int64_t)(out_idx / unit);
+  in_slice = (int64_t)((double)out_slice / unit);
+  return success();
+}
 #endif

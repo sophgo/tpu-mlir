@@ -133,12 +133,9 @@ fi
 
 # lowering to symetric int8
 tpuc-opt ${model_name}.mlir \
-    --init \
     --import-calibration-table="file=${CALI_TABLE} asymmetric=false" \
     --convert-top-to-tpu="mode=INT8 asymmetric=false chip=bm1684x" \
     --canonicalize \
-    --save-weight \
-    --mlir-print-debuginfo \
     -o ${model_name}_bm1684x_tpu_int8_sym.mlir
 
 model_runner.py \
@@ -152,8 +149,6 @@ tpuc-opt ${model_name}.mlir \
     --import-calibration-table="file=${CALI_TABLE} asymmetric=true" \
     --convert-top-to-tpu="mode=INT8 asymmetric=true chip=bm1684x" \
     --canonicalize \
-    --save-weight \
-    --mlir-print-debuginfo \
     -o ${model_name}_bm1684x_tpu_int8_asym.mlir
 
 model_runner.py \

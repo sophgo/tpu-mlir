@@ -34,7 +34,6 @@ void cvi_backend_tl_bf16_layernorm(uint32_t layer_id, laddr_t la_input,
   cvk_tl_t tl_var = {0};
   cvk_tl_t tl_scale = {0};
   cvk_tl_t tl_bias = {0};
-  CV18xx::parallel_disable();
   auto lshape = CV18xx::tl_shape_t4(n, c, h, w);
   auto table_shape = CV18xx::lut_table_shape(fmt);
   auto mean_shape = CV18xx::tl_shape_t4(n, c, 1, 1);

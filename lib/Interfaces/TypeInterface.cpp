@@ -12,8 +12,6 @@
 #include "tpu_mlir/Interfaces/TypeInterface.cpp.inc"
 #include "tpu_mlir/Support/Module.h"
 
-
-
 namespace tpu_mlir {
 
 bool type_need_cast(Type from, Type to) {
@@ -23,7 +21,7 @@ bool type_need_cast(Type from, Type to) {
     return false;
   }
   if (f_sType.isIntOrIndex() && t_sType.isIntOrIndex()) {
-    if (f_sType.getIntOrFloatBitWidth() && t_sType.getIntOrFloatBitWidth()) {
+    if (f_sType.getIntOrFloatBitWidth() == t_sType.getIntOrFloatBitWidth()) {
       return false;
     }
   }
@@ -87,7 +85,7 @@ static mlir::Type verifyCompatibleType(mlir::Value in, mlir::Type to,
 mlir::Type type_verify_case_same(mlir::Operation *op, uint64_t opd_idx,
                                  TypeCastMode &mode) {
   mlir::Type toType;
-  for (auto t:op->getResultTypes()) {
+  for (auto t : op->getResultTypes()) {
     if (!t.isa<mlir::NoneType>()) {
       toType = t;
       break;
@@ -108,18 +106,16 @@ mlir::Type type_verify_case_type(mlir::Operation *op, uint64_t opd_idx,
 
 mlir::Type type_verify_case_i32(mlir::Operation *op, uint64_t opd_idx,
                                 TypeCastMode &mode) {
-  if (opd_idx == 0) {
-    auto in = op->getOperand(opd_idx);
-    auto out = op->getResult(0);
-    auto is_qtype = module::isUniformQuantized(in);
-    auto stype = module::getStorageType(out);
-    if (stype.isInteger(32)) {
-      if (is_qtype) {
-        return do_nothing(mode);
-      } else {
-        mode = TypeCastMode::DO_QUANTIZE;
-        return Builder(op).getI8Type();
-      }
+  auto in = op->getOperand(opd_idx);
+  auto out = op->getResult(0);
+  auto is_qtype = module::isUniformQuantized(in);
+  auto stype = module::getStorageType(out);
+  if (stype.isInteger(32)) {
+    if (is_qtype) {
+      return do_nothing(mode);
+    } else {
+      mode = TypeCastMode::DO_QUANTIZE;
+      return Builder(op).getI8Type();
     }
   }
   return type_verify_case_same(op, opd_idx, mode);

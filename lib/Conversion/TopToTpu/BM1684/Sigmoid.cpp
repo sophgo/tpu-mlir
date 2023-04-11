@@ -18,7 +18,12 @@ void SigmoidLowering::LoweringF32(PatternRewriter &rewriter, top::SigmoidOp op) 
 }
 
 void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op, bool asymmetric) const {
-   llvm_unreachable("Now BM1684 Not Implemented Int8 Lowering"); 
+   Value table = create_lookup_table(
+           op.getInput(), op.getOutput(), asymmetric,
+           [](double x){ return 1 / (1 + std::exp(-x));},
+           32);
+   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType, ValueRange{op.getInput(), table});
 }
 
 } // namespace bm1684

@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/Deconv.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
 #include <string.h>
 
 using namespace dnnl;
@@ -81,30 +82,20 @@ void Deconv::setup(float *input, float *weight, float *bias, float *output,
                               memory::format_tag::any);
   auto dst_md = memory::desc({dst_shape}, memory::data_type::f32,
                              memory::format_tag::any);
+  primitive_attr conv_attr;
+  post_relu(conv_attr, attr.do_relu, attr.relu_limit);
   if (_izp != 0) {
-    auto conv_desc = convolution_forward::desc(
-        prop_kind::forward_inference, algorithm::convolution_direct, src_md,
-        filter_md, bias_md, dst_md, strides, dilation, padding_l, padding_r);
-
-    if (bias == nullptr)
-      conv_desc = convolution_forward::desc(
-          prop_kind::forward_inference, algorithm::convolution_direct, src_md,
-          filter_md, dst_md, strides, dilation, padding_l, padding_r);
-
-    post_ops ops;
-    primitive_attr conv_attr;
-
-    if (attr.do_relu) {
-      const float ops_scale = 1.f;
-      const float ops_alpha = 0.f; // relu negative slope
-      const float ops_beta = 0.f;
-      ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha,
-                         ops_beta);
-      conv_attr.set_post_ops(ops);
+    if (bias != nullptr) {
+      conv_prim_desc = convolution_forward::primitive_desc(
+          eng, prop_kind::forward_inference, algorithm::convolution_direct,
+          src_md, filter_md, bias_md, dst_md, strides, dilation, padding_l,
+          padding_r, conv_attr);
+    } else {
+      conv_prim_desc = convolution_forward::primitive_desc(
+          eng, prop_kind::forward_inference, algorithm::convolution_direct,
+          src_md, filter_md, dst_md, strides, dilation, padding_l, padding_r,
+          conv_attr);
     }
-
-    conv_prim_desc =
-        convolution_forward::primitive_desc(conv_desc, conv_attr, eng);
 
     // set mkldnn memory
     auto filter_tag =
@@ -177,35 +168,17 @@ void Deconv::setup(float *input, float *weight, float *bias, float *output,
           {{DNNL_ARG_FROM, prim_dst_memory}, {DNNL_ARG_TO, dst_memory}});
     }
   } else {
-    auto deconv_desc = deconvolution_forward::desc(
-        prop_kind::forward_inference, algorithm::deconvolution_direct, src_md,
-        filter_md, bias_md, dst_md, strides, dilation, padding_l, padding_r);
-
-    if (bias == nullptr)
-      deconv_desc = deconvolution_forward::desc(
-          prop_kind::forward_inference, algorithm::deconvolution_direct, src_md,
-          filter_md, dst_md, strides, dilation, padding_l, padding_r);
-
-    post_ops ops;
-    primitive_attr deconv_attr;
-
-    if (attr.do_relu) {
-      const float ops_scale = 1.f;
-      float ops_alpha = 0.f; // relu negative slope
-      const float ops_beta = 0.f;
-      if (attr.relu_limit > 0.f) {
-        ops_alpha = attr.relu_limit;
-        ops.append_eltwise(ops_scale, algorithm::eltwise_bounded_relu,
-                           ops_alpha, ops_beta);
-      } else {
-        ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha,
-                           ops_beta);
-      }
-      deconv_attr.set_post_ops(ops);
+    if (bias != nullptr) {
+      deconv_prim_desc = deconvolution_forward::primitive_desc(
+          eng, prop_kind::forward_inference, algorithm::deconvolution_direct,
+          src_md, filter_md, bias_md, dst_md, strides, dilation, padding_l,
+          padding_r, conv_attr);
+    } else {
+      deconv_prim_desc = deconvolution_forward::primitive_desc(
+          eng, prop_kind::forward_inference, algorithm::deconvolution_direct,
+          src_md, filter_md, dst_md, strides, dilation, padding_l, padding_r,
+          conv_attr);
     }
-
-    deconv_prim_desc =
-        deconvolution_forward::primitive_desc(deconv_desc, deconv_attr, eng);
 
     // set mkldnn memory
     auto filter_tag =

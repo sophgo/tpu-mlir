@@ -43,7 +43,7 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684(
 
 void tpu::Pool1DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                          local_sec_info_t &sec_info) {
-  auto out_gi = getGroupInfo(n_step, h_step);
+  auto out_gi = getGroupInfo(n_step, h_step, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto p = parseParam();
   int bottom_dim[4] = {(int)in_gi.n_slice, (int)p.c, (int)in_gi.h_slice,

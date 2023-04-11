@@ -6,15 +6,15 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
-#include "tpu_mlir/Support/TPUCompressUtil.h"
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgBf16SoftmaxKernel.hpp"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Support/LutFunc.h"
+#include "tpu_mlir/Support/TPUCompressUtil.h"
+#include <cmath>
+#include <iostream>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/Format.h>
 #include <llvm/Support/raw_ostream.h>
-#include <iostream>
-#include <cmath>
 #include <numeric>
 
 #define DEBUG_TYPE "cvi_backend_softmax_kernel"
@@ -1241,7 +1241,7 @@ void TgSoftmaxKernel::exponential(cvk_tl_t *tl_in, cvk_tl_t *tl_out,
       tl_work->start_address, tl_exponential_table_answer->start_address,
       tl_exponential_table_answer_slope->start_address, -1 * EXP_BF16_LUT_RANGE,
       EXP_BF16_LUT_RANGE, tl_in->shape.n, tl_in->shape.c, tl_in->shape.h,
-      tl_in->shape.w);
+      tl_in->shape.w, false);
 }
 
 void TgSoftmaxKernel::reciprocal(cvk_tl_t *tl_in, cvk_tl_t *tl_out,
@@ -1250,7 +1250,7 @@ void TgSoftmaxKernel::reciprocal(cvk_tl_t *tl_in, cvk_tl_t *tl_out,
       layer_id, tl_in->start_address, tl_out->start_address,
       tl_work->start_address, tl_reciprocal_table_answer->start_address,
       tl_reciprocal_mantissa_table_answer->start_address, tl_in->shape.n,
-      tl_in->shape.c, tl_in->shape.h, tl_in->shape.w);
+      tl_in->shape.c, tl_in->shape.h, tl_in->shape.w, false);
 }
 
 void TgSoftmaxKernel::log(cvk_tl_t *tl_in, cvk_tl_t *tl_out,
@@ -1259,7 +1259,7 @@ void TgSoftmaxKernel::log(cvk_tl_t *tl_in, cvk_tl_t *tl_out,
       layer_id, tl_in->start_address, tl_out->start_address,
       tl_work->start_address, tl_reciprocal_table_answer->start_address,
       tl_reciprocal_mantissa_table_answer->start_address, tl_in->shape.n,
-      tl_in->shape.c, tl_in->shape.h, tl_in->shape.w);
+      tl_in->shape.c, tl_in->shape.h, tl_in->shape.w, false);
 }
 
 void TgSoftmaxKernel::init(uint32_t layer_id, gaddr_t ga_input,

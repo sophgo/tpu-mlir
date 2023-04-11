@@ -44,9 +44,11 @@ class TPULANG_IR_TESTER(object):
             # TpuLang Test Case, Alphabetically
             #############################
             # case:                 (test,          bm1684x_support)
+            "Add": (self.test_Add, Y),
             "Conv2d": (self.test_Conv2d, Y),
             "HModel": (self.test_Model, N),
             "Mul": (self.test_Mul, Y),
+            "Sub": (self.test_Sub, Y),
         }
         # no quantization when quant_mode == "f32"
         self.quant_modes = ["int8"]
@@ -88,6 +90,38 @@ class TPULANG_IR_TESTER(object):
         data = rand_data(shape, dtype)
         data = data * scale if dtype == 'float32' else data
         return tpul.Tensor(dtype=dtype, shape=shape, data=data, is_const=True)
+
+    #######################################################################
+    # Add
+    # ------------
+    def add_op(self, input_0, input_1, dtype="float32"):
+        out_dtype = dtype if dtype == 'float32' else 'int32'
+        add = tpul.add(input_0, input_1, out_dtype)
+        return add
+
+    def test_Add(self, case_name):
+        """Add"""
+
+        @tpulang
+        def _test_add(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            add = self.add_op(x, y, dtype=dtype)
+            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [add], False, 2)
+            TPULANG_IR_TESTER.ID += 1
+
+        _test_add([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_add([1, 3, 32, 32], [1, 3, 32, 32])
+        _test_add([1, 3, 32, 32], [1, 1, 32, 32])
+        _test_add([1, 3, 32, 32], [1])
+        _test_add([1], [1, 3, 32, 32])
+        _test_add(
+            [1, 1, 32, 32],
+            [1, 3, 1, 32],
+            dtype="int8",
+        )
 
     #######################################################################
     # Convolution
@@ -213,19 +247,55 @@ class TPULANG_IR_TESTER(object):
         """Mul"""
 
         @tpulang
-        def _test_mul(shape: List[int], dtype="float32"):
-            x_data = rand_data(shape, dtype)
-            y_data = rand_data(shape, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=shape, data=x_data)
-            y = tpul.Tensor(dtype=dtype, shape=shape, data=y_data)
-            conv = self.mul_op(x, y, dtype=dtype)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [conv], False, 2)
+        def _test_mul(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            mul = self.mul_op(x, y, dtype=dtype)
+            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [mul], False, 2)
             TPULANG_IR_TESTER.ID += 1
 
-        _test_mul([1, 3, 28, 28])
-        _test_mul([1, 3, 32, 32])
+        _test_mul([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_mul([1, 3, 32, 32], [1, 3, 32, 32])
+        _test_mul([1, 3, 32, 32], [1, 1, 32, 32])
+        _test_mul([1, 3, 32, 32], [1])
+        _test_mul([1], [1, 3, 32, 32])
         _test_mul(
-            [1, 3, 32, 32],
+            [1, 1, 32, 32],
+            [1, 3, 1, 32],
+            dtype="int8",
+        )
+
+    #######################################################################
+    # Sub
+    # ------------
+    def sub_op(self, input_0, input_1, dtype="float32"):
+        out_dtype = dtype if dtype == 'float32' else 'int32'
+        sub = tpul.sub(input_0, input_1, out_dtype)
+        return sub
+
+    def test_Sub(self, case_name):
+        """Sub"""
+
+        @tpulang
+        def _test_sub(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            sub = self.sub_op(x, y, dtype=dtype)
+            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [sub], False, 2)
+            TPULANG_IR_TESTER.ID += 1
+
+        _test_sub([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_sub([1, 3, 32, 32], [1, 3, 32, 32])
+        _test_sub([1, 3, 32, 32], [1, 1, 32, 32])
+        _test_sub([1, 3, 32, 32], [1])
+        _test_sub([1], [1, 3, 32, 32])
+        _test_sub(
+            [1, 1, 32, 32],
+            [1, 3, 1, 32],
             dtype="int8",
         )
 
@@ -272,9 +342,10 @@ def test_all(tester: TPULANG_IR_TESTER):
     print("Failure: {}".format(error_cases))
     if error_cases:
         print("====== test_tpulang.py --chip {} TEST Failed ======".format(tester.chip))
-        exit(1)
+        # exit(1)
     else:
         print("====== test_tpulang.py --chip {} TEST Success ======".format(tester.chip))
+    return error_cases
 
 
 if __name__ == "__main__":

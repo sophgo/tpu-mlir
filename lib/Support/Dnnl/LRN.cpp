@@ -19,12 +19,10 @@ LRN::LRN() {
 }
 
 void LRN::setup() {
-  // memory description with primitive description
-  auto op_desc =
-      lrn_forward::desc(prop_kind::forward_inference, algorithm_,
-                        src_mem.get_desc(), size_, alpha_, beta_, bias_);
   // define a primitive
-  auto pd = lrn_forward::primitive_desc(op_desc, eng);
+  auto pd = lrn_forward::primitive_desc(
+      eng, prop_kind::forward_inference, algorithm_, src_mem.get_desc(),
+      dst_mem.get_desc(), size_, alpha_, beta_, bias_);
   lrn_prim = lrn_forward(pd);
 }
 

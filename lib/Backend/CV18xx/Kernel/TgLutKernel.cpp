@@ -277,7 +277,7 @@ void cvi_backend_tg_bf16_lut_mantissa_kernel(uint32_t layer_id,
           layer_id, tl_ifmap->start_address, tl_ofmap->start_address,
           tl_buf->start_address, tl_table_answer->start_address,
           tl_table_answer_mantissa->start_address, tile.n, tile.c, tile.h,
-          tile.w);
+          tile.w, false);
     }
     CV18xx::tdma_store(tl_ofmap, ga_output + tile.offset);
 

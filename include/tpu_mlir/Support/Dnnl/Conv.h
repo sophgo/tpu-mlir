@@ -21,16 +21,16 @@ public:
   void setup(float *input, float *weight, float *bias, float *output,
              conv_attr_t attr);
   void run();
+
 private:
   void activation_init(float *input, conv_attr_t &attr);
+
 private:
   engine eng;
   stream eng_stream;
-  std::vector<primitive> net;
-  std::vector<std::unordered_map<int, memory>> net_args;
-  convolution_forward::primitive_desc conv_prim_desc;
-  memory prim_filter_memory;
-  memory prim_bias_memory;
+  primitive prim;
+  std::shared_ptr<std::vector<float>> bias0;
+  memory src_mem, filter_mem, bias_mem, dst_mem;
   memory::dims src_shape;
   memory::dims dst_shape;
   float *p_input, *p_weight;

@@ -101,11 +101,11 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
 // =========================================
 
 int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
     group_type_t group_type) {
   int64_t buffer_size = 0;
-  auto out_dtype = getOutput().getType();
+  auto out_dtype = module::getStorageType(getOutput());
   auto attr = parseParam();
 
   int c_per_npu = ceiling_func(attr.c, BM168x::NPU_NUM);
@@ -116,30 +116,30 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
       int64_t dtype_bytes =
           attr.kd * attr.kh * attr.kw > 256 ? sizeof(int) : sizeof(short);
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
-      buffer_size = (1 + attr.od) * align_up(out_hslice * attr.ow, eu_num) *
+      buffer_size = (1 + attr.od) * align_up(out_hslice * out_wslice, eu_num) * 
                     c_per_npu * dtype_bytes;
     } else {
       auto dtype_bytes = BM168x::getFmtBytes(BM168x::getDataType(getOutput()));
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
       buffer_size =
-          align_up(out_hslice * attr.ow, eu_num) * c_per_npu * dtype_bytes;
+          align_up(out_hslice * out_wslice, eu_num) * c_per_npu * dtype_bytes;
     }
   } else if (out_dtype.isInteger(8) && getPoolMode() == tpu::PoolMode::Avg) {
     int64_t dtype_bytes =
         attr.kd * attr.kh * attr.kw > 256 ? sizeof(int32_t) : sizeof(int16_t);
     int64_t eu_num = BM168x::eu_num(dtype_bytes);
-    buffer_size = align_up(out_hslice * attr.ow, eu_num) *
+    buffer_size = align_up(out_hslice * out_wslice, eu_num) *
                   ceiling_func(attr.c, BM168x::NPU_NUM) * dtype_bytes;
   }
   return buffer_size;
 }
 
-void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   // auto op = getOperation();
-  auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
 
   auto attr = parseParam();
   pooling3d_spec_t spec = {0};
@@ -148,25 +148,30 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   spec.buffer_addr = gi.buffer_addr;
   spec.input_shape[0] = sec_info.n_slice;
   spec.input_shape[1] = attr.c;
-  spec.input_shape[2] = attr.id;
+  spec.input_shape[2] = sec_info.d_slice;
   spec.input_shape[3] = sec_info.h_slice;
-  spec.input_shape[4] = attr.iw;
+  spec.input_shape[4] = sec_info.w_slice;
   spec.output_shape[0] = sec_info.out_n_slice;
   spec.output_shape[1] = attr.c;
-  spec.output_shape[2] = attr.od;
+  spec.output_shape[2] = gi.d_slice; // sec_info.out_d_slice; // <- no such attr; need to change along with backend api_common.h:sec_info, otherwise memcpy will mess up
   spec.output_shape[3] = sec_info.out_h_slice;
-  spec.output_shape[4] = attr.ow;
+  spec.output_shape[4] = sec_info.out_w_slice;
   spec.in_dtype = BM168x::getDataType(getInput());
   spec.out_dtype = BM168x::getDataType(getOutput());
 
   int32_t kernel[3] = {(int32_t)attr.kd, (int32_t)attr.kh, (int32_t)attr.kw};
   int32_t dilation[3] = {1, 1, 1};
   int32_t strides[3] = {(int32_t)attr.sd, (int32_t)attr.sh, (int32_t)attr.sw};
-  int32_t pads[6] = {(int32_t)attr.pad_d, (int32_t)attr.pad_d_after,
-                     (int32_t)attr.pad_h, (int32_t)attr.pad_h_after,
-                     (int32_t)attr.pad_w, (int32_t)attr.pad_w_after};
+  int32_t pads[6] = {0, 0, 0, 0, 0, 0};
+  // int32_t pads[6] = {(int32_t)attr.pad_d, (int32_t)attr.pad_d_after,
+  //                    (int32_t)attr.pad_h, (int32_t)attr.pad_h_after,
+  //                    (int32_t)attr.pad_w, (int32_t)attr.pad_w_after};
+  pads[0] = (in_gi.d_idx == 0 ? attr.pad_d : 0);
+  pads[1] = (in_gi.d_idx + in_gi.d_slice == attr.id ? attr.pad_d_after : 0);
   pads[2] = (in_gi.h_idx == 0 ? attr.pad_h : 0);
   pads[3] = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
+  pads[4] = (in_gi.w_idx == 0 ? attr.pad_w : 0);
+  pads[5] = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pad_w_after : 0);
   spec.kernel = kernel;
   spec.dilation = dilation;
   spec.stride = strides;
@@ -210,7 +215,7 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 int64_t tpu::Pool3DOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(dyn_pooling3d_local_spec_t);
-  auto gi = getGroupInfo(0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0);
   auto attr = parseParam();
   dyn_pooling3d_local_spec_t spec = {0};
   spec.buffer_addr = gi.buffer_addr;

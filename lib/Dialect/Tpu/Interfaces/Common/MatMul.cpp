@@ -36,6 +36,7 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
   p.left_transpose = getLeftTranspose();
   p.output_transpose = getOutputTranspose();
   p.hdim_is_batch = getHdimIsBatch();
+  p.left_reuse = getLeftReuse();
   auto a_dims = a_s.size();
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();
@@ -252,4 +253,11 @@ LogicalResult tpu::MatMulOp::AllowDataSplit(int64_t axis,
   }
 
   return failure();
+}
+
+mlir::Type tpu::MatMulOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  if (opd_idx == 0 || opd_idx == 1) {
+    return type_verify_case_i32(getOperation(), opd_idx, mode);
+  }
+  return type_verify_case_same(getOperation(), opd_idx, mode);
 }

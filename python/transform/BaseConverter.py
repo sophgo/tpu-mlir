@@ -58,7 +58,7 @@ class BaseConverter(object):
         if data.dtype != np.float32:
             data = data.astype(np.float32)
         if name in self.tensors:
-            if self.tensors[name] == data:
+            if np.all(self.tensors[name] == data):
                 return
             raise KeyError("tensor {} conflict".format(name))
         if len(data.shape) == 0:

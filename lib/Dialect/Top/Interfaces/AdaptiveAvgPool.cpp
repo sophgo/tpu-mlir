@@ -49,6 +49,7 @@ void top::AdaptiveAvgPoolOp::shape_inference() {
     strides[i] = std::floor(input_spatial_shape[i] / output_size->at(i));
     kernel_shape[i] =
         input_spatial_shape[i] - (output_size->at(i) - 1) * strides[i];
+    strides[i] = output_size->at(i) == 1 ? 1 : strides[i];
   }
 
   auto op = getOperation();

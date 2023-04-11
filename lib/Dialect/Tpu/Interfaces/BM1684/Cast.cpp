@@ -74,7 +74,7 @@ void tpu::CastOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   auto output_dtype = BM1684::getDataType(getOutput());
   auto input_group_info =
       LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
-  auto output_group_info = getGroupInfo(n_step, h_step);
+  auto output_group_info = getGroupInfo(n_step, h_step, 0, 0);
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
   uint32_t input_shape[4] = {(uint32_t)input_group_info.n_slice, (uint32_t)c,

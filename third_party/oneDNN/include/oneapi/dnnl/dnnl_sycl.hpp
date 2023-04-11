@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright 2020-2021 Intel Corporation
+* Copyright 2020-2022 Intel Corporation
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -26,29 +26,16 @@
 #include <vector>
 #include <unordered_map>
 
+#if __has_include(<sycl/sycl.hpp>)
+#include <sycl/sycl.hpp>
+#elif __has_include(<CL/sycl.hpp>)
 #include <CL/sycl.hpp>
-
-#include "oneapi/dnnl/dnnl.hpp"
-#include "oneapi/dnnl/dnnl_sycl.h"
-
-#if defined(__INTEL_LLVM_COMPILER)
-#if (__INTEL_LLVM_COMPILER < 20220000)
-#define DNNL_SYCL_INTEROP_USE_SYCL121
-#endif
-#elif defined(__LIBSYCL_MAJOR_VERSION) && defined(__LIBSYCL_MINOR_VERSION)
-#if (__LIBSYCL_MAJOR_VERSION == 5 && __LIBSYCL_MINOR_VERSION < 4)
-#define DNNL_SYCL_INTEROP_USE_SYCL121
-#endif
 #else
 #error "Unsupported compiler"
 #endif
 
-#ifdef DNNL_SYCL_INTEROP_USE_SYCL121
-// oneAPI DPC++/C++ Compiler issues deprecation warnings for SYCL 1.2.1 API.
-// We suppress the warnings to avoid getting them into the user application.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "oneapi/dnnl/dnnl.hpp"
+#include "oneapi/dnnl/dnnl_sycl.h"
 
 /// @endcond
 
@@ -92,7 +79,7 @@ inline dnnl_sycl_interop_memory_kind_t convert_to_c(memory_kind akind) {
 ///
 /// @returns Created engine.
 inline engine make_engine(
-        const cl::sycl::device &adevice, const cl::sycl::context &acontext) {
+        const sycl::device &adevice, const sycl::context &acontext) {
     dnnl_engine_t aengine;
     error::wrap_c_api(dnnl_sycl_interop_engine_create(&aengine,
                               static_cast<const void *>(&adevice),
@@ -106,12 +93,12 @@ inline engine make_engine(
 /// @param aengine Engine to query.
 ///
 /// @returns The underlying SYCL device of the engine.
-inline cl::sycl::context get_context(const engine &aengine) {
+inline sycl::context get_context(const engine &aengine) {
     void *ctx_ptr;
     error::wrap_c_api(
             dnnl_sycl_interop_engine_get_context(aengine.get(), &ctx_ptr),
             "could not get a context handle");
-    auto ctx = *static_cast<cl::sycl::context *>(ctx_ptr);
+    auto ctx = *static_cast<sycl::context *>(ctx_ptr);
     return ctx;
 }
 
@@ -120,12 +107,12 @@ inline cl::sycl::context get_context(const engine &aengine) {
 /// @param aengine Engine to query.
 ///
 /// @returns The underlying SYCL context of the engine.
-inline cl::sycl::device get_device(const engine &aengine) {
+inline sycl::device get_device(const engine &aengine) {
     void *dev_ptr;
     error::wrap_c_api(
             dnnl_sycl_interop_engine_get_device(aengine.get(), &dev_ptr),
             "could not get a device handle");
-    auto dev = *static_cast<cl::sycl::device *>(dev_ptr);
+    auto dev = *static_cast<sycl::device *>(dev_ptr);
     return dev;
 }
 
@@ -136,7 +123,7 @@ inline cl::sycl::device get_device(const engine &aengine) {
 /// @param aqueue SYCL queue to use for the stream.
 ///
 /// @returns An execution stream.
-inline stream make_stream(const engine &aengine, cl::sycl::queue &aqueue) {
+inline stream make_stream(const engine &aengine, sycl::queue &aqueue) {
     dnnl_stream_t astream;
     error::wrap_c_api(
             dnnl_sycl_interop_stream_create(&astream, aengine.get(), &aqueue),
@@ -149,12 +136,12 @@ inline stream make_stream(const engine &aengine, cl::sycl::queue &aqueue) {
 /// @param astream Execution stream to query.
 ///
 /// @returns SYCL queue object.
-inline cl::sycl::queue get_queue(const stream &astream) {
+inline sycl::queue get_queue(const stream &astream) {
     void *queue_ptr;
     error::wrap_c_api(
             dnnl_sycl_interop_stream_get_queue(astream.get(), &queue_ptr),
             "could not get a stream handle");
-    auto queue = *static_cast<cl::sycl::queue *>(queue_ptr);
+    auto queue = *static_cast<sycl::queue *>(queue_ptr);
     return queue;
 }
 
@@ -169,7 +156,7 @@ inline cl::sycl::queue get_queue(const stream &astream) {
 ///
 /// @returns SYCL buffer associated with the memory object.
 template <typename T, int ndims = 1>
-cl::sycl::buffer<T, ndims> get_buffer(const memory &amemory) {
+sycl::buffer<T, ndims> get_buffer(const memory &amemory) {
     static_assert(ndims == 1, "only 1D buffers supported");
 
     // XXX: workaround: when CPU runtime is not SYCL and amemory was created
@@ -185,15 +172,11 @@ cl::sycl::buffer<T, ndims> get_buffer(const memory &amemory) {
             "could not get SYCL buffer object");
 
     // XXX: workaround: zero-range buffer cannot be constructed.
-    if (!handle_ptr) return cl::sycl::buffer<T, ndims>(cl::sycl::range<1>(1));
+    if (!handle_ptr) return sycl::buffer<T, ndims>(sycl::range<1>(1));
 
-    auto &buf_u8 = *static_cast<cl::sycl::buffer<uint8_t, 1> *>(handle_ptr);
+    auto &buf_u8 = *static_cast<sycl::buffer<uint8_t, 1> *>(handle_ptr);
 
-#ifdef DNNL_SYCL_INTEROP_USE_SYCL121
-    auto range = cl::sycl::range<1>(buf_u8.get_size() / sizeof(T));
-#else
-    auto range = ::sycl::range<1>(buf_u8.byte_size() / sizeof(T));
-#endif
+    auto range = sycl::range<1>(buf_u8.byte_size() / sizeof(T));
     return buf_u8.reinterpret<T, 1>(range);
 }
 
@@ -204,36 +187,11 @@ cl::sycl::buffer<T, ndims> get_buffer(const memory &amemory) {
 /// @param amemory Memory object to change.
 /// @param abuffer SYCL buffer.
 template <typename T, int ndims>
-void set_buffer(memory &amemory, cl::sycl::buffer<T, ndims> &abuffer) {
-#ifdef DNNL_SYCL_INTEROP_USE_SYCL121
-    auto range = cl::sycl::range<1>(abuffer.get_size());
-#else
-    auto range = ::sycl::range<1>(abuffer.byte_size());
-#endif
+void set_buffer(memory &amemory, sycl::buffer<T, ndims> &abuffer) {
+    auto range = sycl::range<1>(abuffer.byte_size());
     auto buf_u8 = abuffer.template reinterpret<uint8_t, 1>(range);
-    error::wrap_c_api(dnnl_sycl_interop_memory_set_buffer(amemory.get(),
-                              static_cast<void *>(&buf_u8), nullptr),
-            "could not set SYCL buffer object");
-}
-
-/// Sets SYCL buffer associated with a memory object in a specified stream.
-///
-/// @tparam T Type of the buffer.
-/// @tparam ndims Number of dimensions of the buffer.
-/// @param amemory Memory object to change.
-/// @param abuffer SYCL buffer.
-/// @param astream Stream to use to execute padding in.
-template <typename T, int ndims>
-void set_buffer(memory &amemory, cl::sycl::buffer<T, ndims> &abuffer,
-        const stream &astream) {
-#ifdef DNNL_SYCL_INTEROP_USE_SYCL121
-    auto range = cl::sycl::range<1>(abuffer.get_size());
-#else
-    auto range = ::sycl::range<1>(abuffer.byte_size());
-#endif
-    auto buf_u8 = abuffer.template reinterpret<uint8_t, 1>(range);
-    error::wrap_c_api(dnnl_sycl_interop_memory_set_buffer(amemory.get(),
-                              static_cast<void *>(&buf_u8), astream.get(true)),
+    error::wrap_c_api(dnnl_sycl_interop_memory_set_buffer(
+                              amemory.get(), static_cast<void *>(&buf_u8)),
             "could not set SYCL buffer object");
 }
 
@@ -283,7 +241,7 @@ inline memory make_memory(const memory::desc &memory_desc,
         void *handle = DNNL_MEMORY_ALLOCATE) {
     dnnl_memory_t c_memory;
     error::wrap_c_api(
-            dnnl_sycl_interop_memory_create(&c_memory, &memory_desc.data,
+            dnnl_sycl_interop_memory_create(&c_memory, memory_desc.get(),
                     aengine.get(), convert_to_c(kind), handle),
             "could not create a memory");
     return memory(c_memory);
@@ -298,7 +256,7 @@ inline memory make_memory(const memory::desc &memory_desc,
 /// @returns Created memory object.
 template <typename T, int ndims = 1>
 memory make_memory(const memory::desc &memory_desc, const engine &aengine,
-        cl::sycl::buffer<T, ndims> &abuffer) {
+        sycl::buffer<T, ndims> &abuffer) {
     memory amemory(memory_desc, aengine, DNNL_MEMORY_NONE);
     set_buffer(amemory, abuffer);
     return amemory;
@@ -318,18 +276,18 @@ memory make_memory(const memory::desc &memory_desc, const engine &aengine,
 /// @param astream Stream object. The stream must belong to the same engine
 ///     as the primitive.
 /// @param args Arguments map.
-/// @param deps Optional vector with `cl::sycl::event` dependencies.
+/// @param deps Optional vector with `sycl::event` dependencies.
 ///
 /// @returns Output event.
-inline cl::sycl::event execute(const dnnl::primitive &aprimitive,
+inline sycl::event execute(const dnnl::primitive &aprimitive,
         const stream &astream, const std::unordered_map<int, memory> &args,
-        const std::vector<cl::sycl::event> &deps = {}) {
+        const std::vector<sycl::event> &deps = {}) {
     std::vector<dnnl_exec_arg_t> c_args;
     c_args.reserve(args.size());
     for (const auto &a : args)
         c_args.push_back({a.first, a.second.get()});
 
-    cl::sycl::event return_event;
+    sycl::event return_event;
     error::wrap_c_api(
             dnnl_sycl_interop_primitive_execute(aprimitive.get(), astream.get(),
                     (int)c_args.size(), c_args.data(), &deps, &return_event),
@@ -346,10 +304,5 @@ inline cl::sycl::event execute(const dnnl::primitive &aprimitive,
 } // namespace dnnl
 
 /// @} dnnl_api
-
-#ifdef DNNL_SYCL_INTEROP_USE_SYCL121
-#undef DNNL_SYCL_INTEROP_USE_SYCL121
-#pragma clang diagnostic pop
-#endif
 
 #endif // DNNL_SYCL_HPP

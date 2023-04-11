@@ -99,7 +99,7 @@ public:
 private:
   engine eng;
   bool do_relu_ = false;
-  float relu_limit_ = -1;
+  double relu_limit_ = -1;
   algorithm algorithm_;
   stream engine_stream;
   primitive binary_prim;

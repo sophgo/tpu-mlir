@@ -23,6 +23,8 @@ namespace tpu {
 typedef struct {
   int64_t nstep;
   int64_t hstep;
+  int64_t dstep;
+  int64_t wstep;
 } tensor_step_t;
 
 typedef enum ld_st_type {
@@ -48,6 +50,8 @@ typedef std::pair<int64_t, int64_t> slice_pair_t; // idx and slice
 struct slice_info_t {
   std::vector<slice_pair_t> h; // h_idx and h_slice
   std::vector<slice_pair_t> n; // n_idx and n_slice
+  std::vector<slice_pair_t> w; // w_idx and w_slice
+  std::vector<slice_pair_t> d; // d_idx and d_slice
 };
 
 typedef struct mem_buffer_key {
@@ -123,6 +127,8 @@ typedef struct {
 typedef struct {
   int64_t nsecs;
   int64_t hsecs;
+  int64_t dsecs;
+  int64_t wsecs;
 } shape_secs_t;
 
 struct LgInfo {

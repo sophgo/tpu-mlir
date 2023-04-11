@@ -137,21 +137,22 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         elif i.dtype == "u8" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8).reshape(i.data.shape)
+        elif i.dtype == "u16" and (input.dtype == np.float32 or input.dtype == np.int32):
+            i.data[:] = input.astype(np.uint16).reshape(i.data.shape)
         elif i.dtype == "f16" and input.dtype == np.float32:
             i.data[:] = input.astype(np.float16)
         elif i.dtype == "bf16" and input.dtype == np.float32:
-            i.data[:] = fp32_to_bf16(input)
-        elif i.dtype == "i32" and input.dtype == np.float32:
+            i.data[:] = fp32_to_bf16(input).reshape(i.data.shape)
+        elif i.dtype == "i32" and (input.dtype == np.float32 or input.dtype == np.int64):
             i.data[:] = input.astype(np.int32).reshape(i.data.shape)
-        elif i.dtype == "i32" and input.dtype == np.int64:
-            i.data[:] = input.astype(np.int32)
         elif i.dtype == "i4" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, -8, 7).astype(np.int8).reshape(i.data.shape)
         elif i.dtype == "u4" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, 0, 15).astype(np.uint8).reshape(i.data.shape)
-
+        elif i.dtype == "f32":
+            i.data[:] = input.astype(np.float32)
         else:
             raise ValueError(f"unknown type: form {input.dtype} to {i.data.dtype}")
     if not is_dynamic:
@@ -168,6 +169,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
                 zp = i.qzero_point
                 outputs[i.name] = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
                                            dtype=np.float32)
+        elif (i.dtype == 'u16'):
+            outputs[i.name] = np.array(i.data.astype(np.float32))
         elif (i.dtype == "f16"):
             outputs[i.name] = np.array(i.data.astype(np.float32))
         elif (i.dtype == "bf16"):
@@ -185,39 +188,39 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     return outputs
 
 
-def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=None) -> dict:
+g_mlir_module = None
 
+
+def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=None) -> dict:
     import pymlir
     from utils.mlir_parser import MlirParser
-
-    if debug == "":
-        pymlir.debug()
-    elif debug:
-        pymlir.debug(debug.split(","))
-    module = pymlir.module()
-    module.load(mlir_file)
+    global g_mlir_module
+    if g_mlir_module != None:
+        g_mlir_module = None
+    g_mlir_module = pymlir.module()
+    g_mlir_module.load(mlir_file)
     parser = MlirParser(mlir_file)
     only_one = len(inputs) == 1
     if only_one:
-        assert (len(module.input_names) == 1)
-    for name in module.input_names:
+        assert (len(g_mlir_module.input_names) == 1)
+    for name in g_mlir_module.input_names:
         if not only_one:
             assert (name in inputs)
             input = inputs[name]
         else:
             input = list(inputs.values())[0]
         if input.dtype == np.int8 or input.dtype == np.uint8:
-            module.set_tensor_from_int(name, input.astype(np.float32))
+            g_mlir_module.set_tensor_from_int(name, input.astype(np.float32))
         else:
-            module.set_tensor(name, input.astype(np.float32))
-    module.invoke()
-    tensors = module.get_all_tensor()
+            g_mlir_module.set_tensor(name, input.astype(np.float32))
+    g_mlir_module.invoke()
+    tensors = g_mlir_module.get_all_tensor()
     if dump_all:
         return tensors
     outputs = dict()
-    for name in module.output_names:
+    for name in g_mlir_module.output_names:
         outputs[name] = tensors[name]
-    for name in module.output_names:
+    for name in g_mlir_module.output_names:
         # assume output of op has the same name
         op_type = parser.get_op_type_by_op_name(name)
         if op_type == "tpu.Cast":
@@ -393,12 +396,18 @@ def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
         else:
             raise RuntimeError("Not Implemented")
 
+    outputs = {}
+    if dump_all:
+        from transform.TorchInterpreter import TorchInterpreter
+        net = TorchInterpreter(model)
+        net.run_model(inputs)
+        return net.ref_tensor
     net = torch.jit.load(model, map_location=torch.device('cpu'))
     net.eval()
     in_tensors = [torch.from_numpy(v) for k, v in inputs.items()]
     with torch.no_grad():
         out_tensors = net(*in_tensors)
-    outputs = {}
+
     names = []
     graph_alive = net.inlined_graph
     for out in graph_alive.outputs():
@@ -444,4 +453,4 @@ if __name__ == '__main__':
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     np.savez(args.output, **output)
-    print("Result saved to:{}".format(args.output))
+    print("\nResult saved to:{}".format(args.output))

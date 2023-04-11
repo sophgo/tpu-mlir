@@ -22,6 +22,12 @@ def Init : Pass<"init", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
 }
 
+def Deinit : Pass<"deinit", "ModuleOp"> {
+  let summary = "deinit module";
+  let constructor = "createDeinitPass()";
+  let dependentDialects = ["TopDialect"];
+}
+
 def ImportCalibrationTable : Pass<"import-calibration-table", "ModuleOp"> {
   let summary = "Import calibration table by tpuc-opt";
   let constructor = "createImportCalibrationTablePass()";
@@ -49,16 +55,6 @@ def AfterOptimize : Pass<"after-optimize", "ModuleOp"> {
 def ShapeInfer : Pass<"shape-infer", "ModuleOp"> {
   let summary = "do shape inference for each op";
   let constructor = "createShapeInferPass()";
-  let dependentDialects = ["TopDialect"];
-}
-
-def SaveWeight : Pass<"save-weight", "ModuleOp"> {
-  let summary = "save weight by tpuc-opt";
-  let constructor = "createSaveWeightPass()";
-  let options = [
-    Option<"file_name", "file", "std::string", /*default=*/"",
-           "specified weight file path">,
-  ];
   let dependentDialects = ["TopDialect"];
 }
 

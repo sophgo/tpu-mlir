@@ -33,8 +33,8 @@ public:
 private:
   engine eng;
   stream engine_stream;
-  std::vector<primitive> net;
-  std::vector<std::unordered_map<int, memory>> net_args;
+  primitive prim;
+  dnnl::memory src_mem, weight_mem, bias_mem, dst_mem;
   std::shared_ptr<std::vector<float>> bias0;
   float *p_right, *p_input;
   float *origin_input, *origin_right, *origin_output;

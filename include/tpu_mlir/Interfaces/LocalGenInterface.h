@@ -26,6 +26,10 @@ typedef struct {
   int64_t n_slice;
   int64_t h_idx;
   int64_t h_slice;
+  int64_t d_idx;
+  int64_t d_slice;
+  int64_t w_idx;
+  int64_t w_slice;
   int64_t id;
   int64_t stage;
   int64_t type;
@@ -40,6 +44,7 @@ typedef struct local_sec_info {
   int32_t out_n_slice;
 
   int32_t d_slice;
+  // int32_t out_d_slice; // <- if add this, need to change along with backend api_common.h:sec_info, otherwise memcpy will mess up
 
   int32_t is_h_split;
   int32_t h_idx;

@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -35,4 +36,51 @@ void tpu::LRNOp::codegen_global_cv18xx(int64_t layer_id) {
                                    mantissa_gaddr, n, c, h, w, local_size,
                                    alpha, k);
   }
+}
+
+int64_t tpu::LRNOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
+                                         int64_t out_lmem_bytes,
+                                         int64_t in_nslice, int64_t in_hslice,
+                                         int64_t out_nslice,
+                                         int64_t out_hslice) {
+  int64_t n, c, h, w;
+  auto vIn = getInput();
+  module::getNCHW(vIn, n, c, h, w);
+  n = in_nslice;
+  h = in_hslice;
+  auto fmt = CV18xx::getDataType(vIn);
+  return CV18xx::lmem_woring_size({n, c, h, w}, 2, true, fmt);
+}
+
+void tpu::LRNOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                      int64_t layer_id) {
+  if (module::isUniformQuantized(getOutput())) {
+    llvm_unreachable("Not supported now");
+  }
+  int64_t n, c, h, w;
+  auto shape = module::getShape(getInput());
+  module::getNCHW(shape, n, c, h, w);
+
+  auto gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
+  auto table_gi = LocalGenInterface::getGroupInfo(getTable(), n_step, h_step);
+  auto mantissa_gi =
+      LocalGenInterface::getGroupInfo(getMantissa(), n_step, h_step);
+  laddr_t la_input = in_gi.out_addr;
+  laddr_t la_output = out_gi.out_addr;
+  laddr_t la_working = gi.buffer_addr;
+  laddr_t la_table = table_gi.out_addr;
+  laddr_t la_mantissa = mantissa_gi.out_addr;
+
+  n = in_gi.n_slice;
+  h = in_gi.h_slice;
+
+  int local_size = getSize();
+  float alpha = getAlpha().convertToDouble();
+  float k = getBias().convertToDouble();
+
+  cvi_backend_bf16_tl_lrn(layer_id, la_input, la_output, la_table, la_mantissa,
+                          la_working, n, c, h, w, local_size, alpha, k);
+  return;
 }

@@ -53,7 +53,7 @@ void tpu::ConcatOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                          local_sec_info_t &sec_info) {
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
-  auto gi = getGroupInfo(n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0);
   int num_inputs = getInputs().size();
   int is_st_concat_way[num_inputs];
   memset(is_st_concat_way, 0, sizeof(int) * (num_inputs + 1));
@@ -71,7 +71,7 @@ void tpu::ConcatOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   module::getLocalShape(getOutput(), n_step, h_step, out_shape);
   BM1684::instance().dl_nodechip_concat_local_v2(
       in_addr, gi.out_addr, bottomtensor_shape,
-      module::getShape(getInputs()[0]).size(), is_st_concat_way, out_shape,
+      num_inputs, is_st_concat_way, out_shape,
       getAxis(), (CMD_ID_NODE *)BM1684::instance().bdc_node,
       (CMD_ID_NODE *)BM1684::instance().gdma_node);
   for (int i = 0; i < num_inputs; ++i) {

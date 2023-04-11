@@ -58,7 +58,18 @@ LogicalResult tpu::MaxUnpoolOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
-void tpu::MaxUnpoolOp::assign_sec_info(int64_t n_step, int64_t h_step,
+LogicalResult tpu::MaxUnpoolOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
+                                          int64_t out_idx, int64_t out_slice) {
+  auto unit = getScaleW();
+  if (out_idx % unit || out_slice % unit) {
+    return failure();
+  }
+  in_idx = out_idx / unit;
+  in_slice = out_slice / unit;
+  return success();
+}
+
+void tpu::MaxUnpoolOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                        group_type_t group_type,
                                        local_sec_info_t &sec_info) {
   llvm_unreachable("Not Implemented");
