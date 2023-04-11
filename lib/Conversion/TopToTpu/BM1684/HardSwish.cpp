@@ -55,7 +55,7 @@ void HardSwishLowering::LoweringINT8(PatternRewriter &rewriter,
   auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
-      [](double x) { return x * std::min(std::max(x + 3, 0.), 3.) / 6.; }, 32);
+      [](double x) { return x * std::min(std::max(x + 3, 0.), 6.) / 6.; }, 32);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
