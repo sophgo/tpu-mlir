@@ -1620,7 +1620,7 @@ class OnnxConverter(BaseConverter):
         group = onnx_node.attrs.get('group', 1)
         strides = onnx_node.attrs.get('strides', dim * [1])
         pads = onnx_node.attrs.get('pads', dim * 2 * [0])
-        output_padding = onnx_node.attrs.get('output_padding', dim * 2 * [0])
+        output_padding = onnx_node.attrs.get('output_padding', dim * [0])
         auto_pad = onnx_node.attrs.get('auto_pad', None)
 
         operands = list()
