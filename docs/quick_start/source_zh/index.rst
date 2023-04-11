@@ -21,4 +21,3 @@ TPU-MLIR快速入门手册
    09_to_onnx_convert
    10_cv18xx_guide
    11_bm168x_test
-   12_fuse_post_handle_op
