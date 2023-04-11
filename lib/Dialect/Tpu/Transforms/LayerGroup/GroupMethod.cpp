@@ -86,6 +86,12 @@ static void set_group_type(LgInfo &lg_info) {
         lg_info.type = GROUP_NORMAL;
         return;
       }
+    } else if (auto op_ = dyn_cast<MatMulOp>(op)) {
+      auto hdim_is_batch = op_.getHdimIsBatch();
+      if (hdim_is_batch) {
+        lg_info.type = GROUP_NORMAL;
+        return;
+      }
     }
 
     if ((shape.size() == 4 &&
