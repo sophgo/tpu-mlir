@@ -107,18 +107,18 @@ class MAIN_ENTRY(object):
         tmp_time = end_time
 
         # test model regression
-        for chip in chip_support.keys():
-            model_list = globals()[f"{chip}_model_list"]
+        model_list = basic_model_list if self.test_type == "basic" else full_model_list
+        for idx, chip in enumerate(chip_support.keys()):
+            cur_model_list = [
+                model_name for model_name, do_test in model_list.items() if do_test[idx]
+            ]
             process_number = multiprocessing.cpu_count() // 2 + 1
             processes = []
             finished_list = multiprocessing.Manager().list()
-            for model in model_list.keys():
-                if (self.test_type == "basic"
-                        and model_list[model][0]) or (self.test_type == "all"
-                                                      and model_list[model][1]):
-                    p = multiprocessing.Process(target=self.run_regression_net,
-                                                args=(model, chip, finished_list))
-                    processes.append(p)
+            for model in cur_model_list:
+                p = multiprocessing.Process(target=self.run_regression_net,
+                                            args=(model, chip, finished_list))
+                processes.append(p)
                 if len(processes) == process_number:
                     for p in processes:
                         p.start()
