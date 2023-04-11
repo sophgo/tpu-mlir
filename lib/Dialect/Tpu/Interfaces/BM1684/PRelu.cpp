@@ -21,15 +21,11 @@ void tpu::PReluOp::codegen_global_bm1684() {
   auto top_global_addr = module::getAddress(getOutput());
   auto slope_num = module::getNumElements(getSlope());
   auto slope_type = module::getStorageType(getSlope());
-
   float slope_val = 0;
-
   int channel_shared = 0;
-
   if (slope_num == 1) {
     channel_shared = 1;
   }
-
   if (channel_shared) {
     if (slope_type.isF32()) {
       auto slopeOp = cast<top::WeightOp>(getSlope().getDefiningOp());
@@ -65,27 +61,20 @@ void tpu::PReluOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                         local_sec_info_t &sec_info) {
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
-
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(),   n_step, h_step);
-  //auto out_gi = LocalGenInterface::getGroupInfo(getOutput(),  n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto slope_gi = LocalGenInterface::getGroupInfo(getSlope(), n_step, h_step);
   auto out_gi = getGroupInfo(n_step, h_step, 0, 0);
-
   n = out_gi.n_slice;
   h = out_gi.h_slice;
-  int bottom_dim[4] = {(int)n, (int)c, (int)h, (int)w};
 
   uint32_t la_input = in_gi.out_addr;
   uint32_t la_output = out_gi.out_addr;
-  //uint32_t la_output = out_g_info.out_addr;
   uint32_t la_slope = slope_gi.out_addr;
   uint32_t la_buffer = out_gi.buffer_addr;
-
   auto slope_num = module::getNumElements(getSlope());
   auto slope_type = module::getStorageType(getSlope());
 
   int channel_shared = 0;
-
   if (slope_num == 1) {
     channel_shared = 1;
   }
@@ -99,11 +88,26 @@ void tpu::PReluOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       slope_val = (float)(*slope_data);
     } else {
       llvm_unreachable("Not Implemented");
-      ;
     }
   }
 
-  BM1684::instance().dl_nodechip_prelu_forward_local_v2(
-      la_input, la_output, la_slope, la_buffer, channel_shared, slope_val,
-      bottom_dim, 0, (CMD_ID_NODE *)BM1684::instance().bdc_node);
+  if (module::isUniformQuantized(getOutput())) {
+    int rshift_bit = getRshift();
+    int upper_limit = -1;
+    int input_sign = module::isSign(getInput());
+    int slope_sign = module::isSign(getSlope());
+    int output_sign = module::isSign(getOutput());
+
+    uint32_t bottom_dim_fix8b[4] = {(uint32_t)n, (uint32_t)c, (uint32_t)h,
+                                    (uint32_t)w};
+    BM1684::instance().dl_nodechip_prelu_forward_local_fix8b_v3(
+        la_input, la_output, la_slope, la_buffer, channel_shared, slope_val,
+        bottom_dim_fix8b, 0, input_sign, slope_sign, output_sign, rshift_bit,
+        upper_limit, (CMD_ID_NODE *)BM1684::instance().bdc_node);
+  } else {
+    int bottom_dim[4] = {(int)n, (int)c, (int)h, (int)w};
+    BM1684::instance().dl_nodechip_prelu_forward_local_v2(
+        la_input, la_output, la_slope, la_buffer, channel_shared, slope_val,
+        bottom_dim, 0, (CMD_ID_NODE *)BM1684::instance().bdc_node);
+  }
 }
