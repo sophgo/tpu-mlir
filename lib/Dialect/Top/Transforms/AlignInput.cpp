@@ -32,8 +32,7 @@ public:
     auto fn = module::getMainFuncOp();
     auto builder = OpBuilder(ctx_);
     std::string pixel_format = this->customization_format;
-    std::string chip = this->chip;
-    assert(chip.find("cv18") != std::string::npos && "AlignInput only support cv18xx chip.");
+    assert(module::isCV18xx() && "AlignInput only support cv18xx chip.");
     std::map<std::string,
              std::pair<std::string, std::string>> attributes_map = {
       {"RGB_PLANAR",    {"rgb", "nchw"}},
@@ -51,7 +50,7 @@ public:
       // auto type = inputOp.getType().cast<RankedTensorType>().getElementType();
       // llvm::errs()<<"type:"<<type<<","<<"module::isUniformQuantized(inputOp.getOutput()):"<<module::isUniformQuantized(inputOp.getOutput())<<".\n";
       module::getNCHW(inputOp.getResult(), n, c, h, w, false);
-      setPixelAlign(pixel_format, chip, this->y_align, this->w_align, this->channel_align);
+      setPixelAlign(pixel_format, this->y_align, this->w_align, this->channel_align);
       auto layout = std::get<1>(attributes_map[pixel_format]);
       std::vector<Operation *> uses;
       std::vector<int64_t> input_shape {n, c, h, w};

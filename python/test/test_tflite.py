@@ -954,9 +954,11 @@ def test_all(tester: TFLITE_IR_TESTER):
   print("Failure: {}".format(error_cases))
   if error_cases:
     print("====== test_tflite.py --chip {} TEST Failed ======".format(tester.chip))
-    exit(1)
+    # exit(1)
   else:
     print("====== test_tflite.py --chip {} TEST Success ======".format(tester.chip))
+  return error_cases
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

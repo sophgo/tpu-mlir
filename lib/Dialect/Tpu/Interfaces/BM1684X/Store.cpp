@@ -33,30 +33,46 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
   int64_t N, C, D, H, W, real_hslice, real_wslice, real_dslice;
   int64_t gdma_format;
-  module::getNCDHW(getOutput(), N, C, D, H, W, group_type);
+  auto shape = module::getShape(getInput());
   auto data_type = BM168x::getDataType(getOutput());
-
   real_hslice = gi.h_slice;
   real_wslice = gi.w_slice;
   real_dslice = gi.d_slice;
   if (data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
     gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
     data_type = DTYPE_INT8;
-    if (gi.h_slice == H) {
-      if (W * H & 0x1 == 1) {
-        W = align_up(W * H, (int64_t)2) / 2;
-        H = 1;
-        real_hslice = 1;
-      } else {
-        if (W & 0x1 == 1)
-          real_hslice >>= 1;
-        else
-          W >>= 1;
-      }
+    if(shape.size() == 2) {
+      N = 1;
+      C = shape[0];
+      D = 1;
+      H = 1;
+      W = align_up(shape[1], (int64_t)2)/2;
+      real_wslice = align_up(shape[1], (int64_t)2)/2;
     } else {
-      real_hslice = gi.h_slice; // to do for int4
+      module::getNCDHW(getOutput(), N, C, D, H, W, group_type);
+      if (gi.h_slice == H) {
+        if (W * H & 0x1 == 1) {
+          W = align_up(W * H, (int64_t)2) / 2;
+          real_wslice = align_up(real_wslice*real_hslice, (int64_t)2) / 2;
+          H = 1;
+          real_hslice = 1;
+        } else {
+          if (W & 0x1 == 1) {
+            real_hslice >>= 1;
+            H >>= 1;
+          } else {
+            W >>= 1;
+            real_wslice >>= 1;
+          }
+        }
+      } else {
+        real_hslice = gi.h_slice; // to do for int4
+      }
     }
+  } else {
+    module::getNCDHW(getOutput(), N, C, D, H, W, group_type);
   }
+
   gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   auto g_addr = module::getAddress(getOutput());

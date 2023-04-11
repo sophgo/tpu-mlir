@@ -460,6 +460,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [
 def Tpu_AddConstOp: Tpu_Op<"AddConst",
     [SupportFuseRelu, InOutSameShape,
     DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add const operator";
 
@@ -779,7 +780,7 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 }
 
 def Tpu_LutOp: Tpu_Op<"Lut",
-    [DeclareOpInterfaceMethods<LocalGenInterface>,
+    [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>,
     InOutSameShape]>{
   let summary = "Lut operator";
@@ -823,6 +824,7 @@ def Tpu_LutBF16Op: Tpu_Op<"LutBF16",
 
 def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
+    DeclareOpInterfaceMethods<TypeInterface>,
     SupportFuseRelu]> {
   let summary = "matmul operator";
 
@@ -1576,7 +1578,7 @@ def Tpu_TileOp:Tpu_Op<"Tile", [
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
-    I64Attr:$axis,
+    SI32Attr:$axis,
     I64Attr:$tile
   );
   let results = (outs AnyRankedTensor:$output);
@@ -1686,7 +1688,8 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
     AnyRankedTensor:$input,
     I64Attr:$axis,
     BoolAttr:$keepdims,
-    ArgModeAttr:$mode
+    ArgModeAttr:$mode,
+    DefaultValuedAttr<BoolAttr, "true">:$select_last_index
   );
 
   let results = (outs
@@ -1783,9 +1786,9 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
     F64Attr:$eps
   );
   let results = (outs
-  	AnyRankedTensor:$output,
-  	AnyTensorOrNone:$mean,
-  	AnyTensorOrNone:$rstd
+    AnyRankedTensor:$output,
+    AnyTensorOrNone:$mean,
+    AnyTensorOrNone:$rstd
   );
 }
 
@@ -1806,7 +1809,7 @@ def Tpu_InstanceNormOp : Tpu_Op<"InstanceNorm", [
     F64Attr:$eps
   );
   let results = (outs
-  	AnyRankedTensor:$output
+    AnyRankedTensor:$output
   );
 }
 
@@ -1828,7 +1831,7 @@ def Tpu_GroupNormOp : Tpu_Op<"GroupNorm", [
     F64Attr:$eps
   );
   let results = (outs
-  	AnyRankedTensor:$output
+    AnyRankedTensor:$output
   );
 }
 
@@ -1850,7 +1853,7 @@ def Tpu_PixelNormOp : Tpu_Op<"PixelNorm", [
     F64Attr:$eps
   );
   let results = (outs
-  	AnyRankedTensor:$output
+    AnyRankedTensor:$output
   );
 }
 

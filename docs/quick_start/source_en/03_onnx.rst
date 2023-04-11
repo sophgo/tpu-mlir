@@ -28,7 +28,7 @@ The operation is as follows:
 .. code-block:: shell
    :linenos:
 
-   $ mkdir model_yolov5s && cd model_yolov5s
+   $ mkdir yolov5s_onnx && cd yolov5s_onnx
    $ cp $TPUC_ROOT/regression/model/yolov5s.onnx .
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
@@ -68,10 +68,9 @@ The model conversion command is as follows:
        --output_names 350,498,646 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
-       --mlir yolov5s.mlir \
-       --post_handle_type yolo
+       --mlir yolov5s.mlir
 
-``model_transform.py`` supports the following parameters:
+The main parameters of ``model_transform.py`` are described as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
 
 
 .. list-table:: Function of model_transform parameters
@@ -120,31 +119,29 @@ The model conversion command is as follows:
    * - mlir
      - Y
      - The output mlir file name (including path)
-   * - post_handle_type
-     - N
-     - fuse the post handle op into bmodel, set the type of post handle op such as yolo、ssd
+
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
 
 
-MLIR to F32 bmodel
+MLIR to F16 bmodel
 ------------------
 
-To convert the mlir file to the f32 bmodel, we need to run:
+To convert the mlir file to the f16 bmodel, we need to run:
 
 .. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
-       --quantize F32 \
+       --quantize F16 \
        --chip bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.99,0.99 \
-       --model yolov5s_1684x_f32.bmodel
+       --model yolov5s_1684x_f16.bmodel
 
 
-The relevant parameters of ``model_deploy.py`` are as follows:
+The main parameters of ``model_deploy.py`` are as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
 
 
 .. list-table:: Function of model_deploy parameters
@@ -186,7 +183,7 @@ The relevant parameters of ``model_deploy.py`` are as follows:
      - Name of output model file (including path)
 
 
-After compilation, a file named ``${model_name}_1684x_f32.bmodel`` is generated.
+After compilation, a file named ``yolov5s_1684x_f16.bmodel`` is generated.
 
 
 MLIR to INT8 bmodel
@@ -210,7 +207,7 @@ Here is an example of the existing 100 images from COCO2017 to perform calibrati
        --input_num 100 \
        -o yolov5s_cali_table
 
-After running the command above, a file named ``${model_name}_cali_table`` will be generated, which is used as the input file for subsequent compilation of the INT8 model.
+After running the command above, a file named ``yolov5s_cali_table`` will be generated, which is used as the input file for subsequent compilation of the INT8 model.
 
 
 Compile to INT8 symmetric quantized model
@@ -230,36 +227,14 @@ Execute the following command to convert to the INT8 symmetric quantized model:
        --tolerance 0.85,0.45 \
        --model yolov5s_1684x_int8_sym.bmodel
 
-After compilation, a file named ``${model_name}_1684x_int8_sym.bmodel`` is generated.
-
-
-Compile to INT8 asymmetric quantized model
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Execute the following command to convert to the INT8 asymmetric quantized model:
-
-.. code-block:: shell
-
-   $ model_deploy.py \
-       --mlir yolov5s.mlir \
-       --quantize INT8 \
-       --asymmetric \
-       --calibration_table yolov5s_cali_table \
-       --chip bm1684x \
-       --test_input yolov5s_in_f32.npz \
-       --test_reference yolov5s_top_outputs.npz \
-       --tolerance 0.90,0.55 \
-       --model yolov5s_1684x_int8_asym.bmodel
-
-
-After compilation, a file named ``${model_name}_1684x_int8_asym.bmodel`` is generated.
+After compilation, a file named ``yolov5s_1684x_int8_sym.bmodel`` is generated.
 
 
 Effect comparison
 ----------------------
 
 There is a yolov5 use case written in python in this release package for object detection on images. The source code path is ``$TPUC_ROOT/python/samples/detect_yolov5.py``. It can be learned how the model is used by reading the code. Firstly, preprocess to get the model's input, then do inference to get the output, and finally do post-processing.
-Use the following codes to validate the inference results of onnx/f32/int8 respectively.
+Use the following codes to validate the inference results of onnx/f16/int8 respectively.
 
 
 The onnx model is run as follows to get ``dog_onnx.jpg``:
@@ -272,14 +247,14 @@ The onnx model is run as follows to get ``dog_onnx.jpg``:
        --output dog_onnx.jpg
 
 
-The f32 bmodel is run as follows to get ``dog_f32.jpg`` :
+The f16 bmodel is run as follows to get ``dog_f16.jpg`` :
 
 .. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
-       --model yolov5s_1684x_f32.bmodel \
-       --output dog_f32.jpg
+       --model yolov5s_1684x_f16.bmodel \
+       --output dog_f16.jpg
 
 
 
@@ -293,17 +268,7 @@ The int8 symmetric bmodel is run as follows to get ``dog_int8_sym.jpg``:
        --output dog_int8_sym.jpg
 
 
-The int8 asymmetric bmodel is run as follows to get ``dog_int8_asym.jpg``:
-
-.. code-block:: shell
-
-   $ detect_yolov5.py \
-       --input ../image/dog.jpg \
-       --model yolov5s_1684x_int8_asym.bmodel \
-       --output dog_int8_asym.jpg
-
-
-The four images are compared as shown in the figure (:ref:`yolov5s_result`).
+The result images are compared as shown in the figure (:ref:`yolov5s_result`).
 
 .. _yolov5s_result:
 .. figure:: ../assets/yolov5s.png
@@ -337,8 +302,7 @@ After installing ``libsophon``, you can use ``bmrt_test`` to test the accuracy a
    # --bmodel parameter followed by bmodel file,
 
    $ cd $TPUC_ROOT/../model_yolov5s/workspace
-   $ bmrt_test --bmodel yolov5s_1684x_f32.bmodel
-   $ bmrt_test --bmodel yolov5s_1684x_int8_asym.bmodel
+   $ bmrt_test --bmodel yolov5s_1684x_f16.bmodel
    $ bmrt_test --bmodel yolov5s_1684x_int8_sym.bmodel
 
 

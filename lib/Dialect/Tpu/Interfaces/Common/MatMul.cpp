@@ -254,3 +254,10 @@ LogicalResult tpu::MatMulOp::AllowDataSplit(int64_t axis,
 
   return failure();
 }
+
+mlir::Type tpu::MatMulOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  if (opd_idx == 0 || opd_idx == 1) {
+    return type_verify_case_i32(getOperation(), opd_idx, mode);
+  }
+  return type_verify_case_same(getOperation(), opd_idx, mode);
+}

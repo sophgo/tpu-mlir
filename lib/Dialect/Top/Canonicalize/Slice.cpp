@@ -121,7 +121,6 @@ struct TopSliceToReverse : public OpRewritePattern<SliceOp> {
     auto in_shape = module::getShape(op.getInput());
     auto output_shape = module::getShape(op.getOutput());
     auto in_dims = in_shape.size();
-    auto Steps = op.getSteps();
     int reverse_count = 0;
     int reverse_dim = 0;
     auto steps = module::getI64Array(op.getSteps());
@@ -142,10 +141,61 @@ struct TopSliceToReverse : public OpRewritePattern<SliceOp> {
   }
 };
 
+// Some cases can remove Slice , when Conv - Slice.
+struct ConvSlice: public OpRewritePattern<SliceOp>{
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(SliceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in_tensor = op.getInput();
+    auto in_op = in_tensor.getDefiningOp();
+    if (!isa<ConvOp>(in_op)) return failure();
+
+    // conv' output is used by mult operation is illegal for this patrern.
+    if (!in_op->hasOneUse()) return failure();
+    conv_attr_t conv_param = (dyn_cast<ConvOp>(in_op)).parseParam();
+    if (conv_param.sh != 1 || conv_param.sw != 1) return failure();
+
+    auto Steps = module::getI64Array(op.getSteps());
+    auto Offsets = module::getI64Array(op.getOffset());
+    auto in_shape = module::getShape(op.getInput());
+    auto out_shape = module::getShape(op.getResult());
+    auto conv_out = (dyn_cast<ConvOp>(in_op)).getResult();
+    auto conv_oshape = module::getShape(conv_out);
+    if ( in_shape.size() != 4) return failure();
+    if (Steps->at(2) != 1 || Steps->at(3) != 1) return failure();
+    
+    int crop_h = Offsets->at(2);
+    int crop_w = Offsets->at(3);
+    if (crop_h > 0 && conv_param.pht < crop_h) return failure();
+    if (crop_w > 0 && conv_param.pwl < crop_w) return failure();
+
+    int crop_h_after = conv_oshape[2] - ( out_shape[2] + Offsets->at(2)); 
+    int crop_w_after = conv_oshape[3] - ( out_shape[3] + Offsets->at(3));
+    if (crop_h_after>0 && conv_param.phb < crop_h_after) return failure();
+    if (crop_w_after>0 && conv_param.pwr < crop_w_after) return failure();
+ 
+    // replace pre op's attr
+    conv_param.pht -= crop_h;
+    conv_param.phb -= crop_h_after;
+    conv_param.pwl -= crop_w;
+    conv_param.pwr -= crop_w_after;
+    dyn_cast<ConvOp>(in_op).setPadsAttr(rewriter.getI64ArrayAttr({conv_param.pht, conv_param.pwl,
+                                                                  conv_param.phb, conv_param.pwr}));
+    // get rid of strideslice op
+    conv_out.setType(op.getOutput().getType());
+    in_op->setLoc(op.getLoc());
+    op.getOutput().replaceAllUsesWith(op.getInput());
+    rewriter.eraseOp(op);
+    return success(); 
+  } 
+};
+
+
 void SliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
   results.insert<NoUseSlicePattern,
                  SplitSlicePattern,
                  MergeSlicePattern,
-                 TopSliceToReverse>(context);
+                 TopSliceToReverse,
+                 ConvSlice>(context);
 }

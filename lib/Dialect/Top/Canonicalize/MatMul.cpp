@@ -61,7 +61,9 @@ struct MatMulWithBias : public OpRewritePattern<MatMulOp> {
       return failure();
     }
     auto bias_op = bias.getDefiningOp();
-    bias_op->moveBefore(op);
+    if (!bias_op->isBeforeInBlock(op)) {
+      bias_op->moveBefore(op);
+    }
     op->setOperand(2, bias);
     op->setLoc(add_op.getLoc());
     add_op.replaceAllUsesWith(op.getOperation());

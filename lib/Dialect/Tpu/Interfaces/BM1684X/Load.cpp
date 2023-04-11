@@ -47,18 +47,24 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t 
     gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
     data_type = DTYPE_INT8;
     if (gi.h_slice == H) {
-      if (W * H & 0x1 == 1) {
+      if (W * H & 0x1 == 1) {  //  H*W is odd
         W = align_up(W * H, (int64_t)2) / 2;
+        real_wslice = align_up(real_wslice*real_hslice, (int64_t)2) / 2;
         H = 1;
         real_hslice = 1;
-      } else {
-        if (W & 0x1 == 1)
-          real_hslice >>= 1;
-        else
+      } else {                 //  H*W is even
+        if (W & 0x1 == 1) {     // W is odd and H is even
+          real_hslice >>= 1;    // real_hslice is even ?  to do
+          H = H >> 1;
+        } else {
           W >>= 1;
+          real_wslice >>= 1;
+        }
       }
     } else {
       real_hslice = gi.h_slice; // to do for int4
+      W >>= 1;
+      real_wslice >>= 1;
     }
   }
   gdma_format = BM168x::getGdmaFormat(data_type);

@@ -35,17 +35,11 @@ def mlir_lowering(top_mlir: str,
                   cali_table: str = None,
                   asymmetric: bool = False,
                   quantize_table: str = None,
-                  qdq: bool = False,
                   customization_format: str = None,
                   fuse_preprocess: bool = False,
                   aligned_input: bool = False):
-    cmd = ["tpuc-opt", top_mlir]
+    cmd = ["tpuc-opt", top_mlir, "--chip=\"type={}\"".format(chip.lower())]
     mode = mode.upper()
-    if mode == 'QDQ':
-        assert cali_table == None, "qdq cannot work with cali_table"
-        assert quantize_table == None, "qdq cannot work with quantize_table"
-        cmd.extend(["--convert-qdq-to-calibrated-dialect"])
-        mode = 'INT8'
     if mode != 'INT8':
         asymmetric = True
     if mode == 'INT4':
@@ -55,23 +49,23 @@ def mlir_lowering(top_mlir: str,
             cali_table, asymmetric)
         cmd.extend([cali_param])
     #do extra conversion for differnet chips
-    extra_conversion_param = "--do-extra-converison=\"chip={}\"".format(chip)
+    extra_conversion_param = "--do-extra-converison"
     cmd.extend([extra_conversion_param])
     if fuse_preprocess:
         fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={}\"".format(
             mode, customization_format)
         cmd.extend([fuse_pre_param])
     if aligned_input:
-        aligned_param = "--align-input=\"chip={} customization_format={}\"".format(
-            chip.lower(), customization_format)
+        aligned_param = "--align-input=\"customization_format={}\"".format(
+            customization_format)
         cmd.extend([aligned_param])
     qtable = ""
     if quantize_table:
         assert (tpu_mlir.endswith(".mlir"))
         weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"
         qtable = "qtable={} weightFileName={}".format(quantize_table, weight_name)
-    lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={} chip={}\"".format(
-        mode, qtable, asymmetric, chip.lower())
+    lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={}\"".format(
+        mode, qtable, asymmetric)
     cmd.extend([
         lower_param,
         "--canonicalize",
@@ -134,10 +128,10 @@ def mlir_to_model(tpu_mlir: str,
 
     try:
         if model.endswith(".bmodel"):
-            _os_system(["mv compiler_profile_0.[td][xa]t", model + ".compiler_profile_0.txt"])
+            _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
+            _os_system(["mv net_0.profile", model + ".net_0.profile"])
     except RuntimeError:
         pass
-
 
 def f32_blobs_compare(a_npz: str,
                       b_npz: str,

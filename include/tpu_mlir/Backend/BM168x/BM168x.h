@@ -28,6 +28,7 @@ typedef void (*set_cmd_buffer_ptr)(void *gdma_buffer_ptr, void *bdc_buffer_ptr);
 typedef void (*set_cmd_id_prefix)(void *pid_node, const char *name_prefix);
 typedef void (*allow_atomic_cmodel_assert)();
 typedef void (*forbid_atomic_cmodel_assert)();
+typedef void (*enable_profile)(bool enable, FILE *fp);
 
 typedef void (*tensor_stride_move_gen_cmd)(
     int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr,
@@ -167,6 +168,7 @@ public:
   forbid_store_cmd dl_forbid_store_cmd;
   use_atomic_cmodel dl_use_atomic_cmodel;
   forbid_atomic_cmodel dl_forbid_atomic_cmodel;
+  enable_profile dl_enable_profile;
   get_global_memaddr dl_get_global_memaddr;
   set_cmd_buffer_ptr dl_set_cmd_buffer_ptr;
   set_cmd_id_prefix dl_set_cmd_id_prefix;

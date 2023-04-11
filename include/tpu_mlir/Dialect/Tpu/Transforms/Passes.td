@@ -91,4 +91,14 @@ def DoExtraOpt : Pass<"do-extra-opt", "ModuleOp"> {
   let constructor = "createDoExtraOptPass()";
   let dependentDialects = ["TpuDialect"];
 }
+
+def ChipAssign : Pass<"chip", "ModuleOp"> {
+  let summary = "Assign chip type";
+  let constructor = "createChipAssignPass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"type", "type", "std::string", /*default=*/"",
+           "chip type: cv183x/cv182x/bm1684/bm1684x">,
+  ];
+}
 #endif

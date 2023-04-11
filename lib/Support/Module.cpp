@@ -526,6 +526,12 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
       }
     }
     module::getNCHW(shape_vec, n, c, h, w, false);
+  } else if(GROUP_MM_INT4 == group_type) {
+    assert (shape.size() == 2);
+    n = shape[0];
+    c = 1;
+    h = shape[1];
+    w = 1;
   } else {
     module::getNCHW(shape, n, c, h, w, true);
   }
@@ -551,6 +557,13 @@ void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
       w *= shape[i];
     }
     return;
+  } else if(GROUP_MM_INT4 == group_type) {
+    assert (num_dims == 2);
+    n = shape[0];
+    c = 1;
+    d = 1;
+    h = shape[1];
+    w = 1;
   } else {
     d = 1;
     getNCHW(shape, n, c, h, w, group_type);
@@ -746,8 +759,8 @@ bool isTpuOp(Operation *op) {
 }
 
 bool isInt4Op(Operation *op) {
-  if (isa<top::ConvOp, tpu::Conv2DOp>(op)) {
-  // if (isa<top::ConvOp, top::MatMulOp, tpu::Conv2DOp, tpu::MatMulOp>(op)) {
+  //if (isa<top::ConvOp, tpu::Conv2DOp>(op)) {
+   if (isa<top::ConvOp, top::MatMulOp, tpu::Conv2DOp, tpu::MatMulOp>(op)) {
     if (auto convOp = dyn_cast<top::ConvOp>(op)) {
       if(convOp.parseParam().is_dw)
         return false;

@@ -966,14 +966,33 @@ void topk_indices(std::vector<std::pair<int, float>> &result,
                          cmp);
 }
 
-std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {
+template <typename T>
+std::vector<int64_t> shape_expand_dim(const std::vector<T> &shape, int dims) {
   int diff = dims - shape.size();
-  if (diff == 0)
-    return shape.vec();
   std::vector<int64_t> shape_v(shape.begin(), shape.end());
+  if (diff == 0)
+    return shape_v;
   shape_v.insert(shape_v.begin(), diff, 1);
   return shape_v;
 }
+template std::vector<int64_t> shape_expand_dim(const std::vector<float> &shape,
+                                               int dims);
+template std::vector<int64_t>
+shape_expand_dim(const std::vector<int64_t> &shape, int dims);
+
+template <typename T>
+std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<T> shape, int dims) {
+  int diff = dims - shape.size();
+  std::vector<int64_t> shape_v(shape.begin(), shape.end());
+  if (diff == 0)
+    return shape_v;
+  shape_v.insert(shape_v.begin(), diff, 1);
+  return shape_v;
+}
+template std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<float> shape,
+                                               int dims);
+template std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape,
+                                               int dims);
 
 std::vector<int64_t> channel_expand_dim(llvm::ArrayRef<int64_t> shape,
                                         int dims) {
@@ -985,6 +1004,26 @@ std::vector<int64_t> channel_expand_dim(llvm::ArrayRef<int64_t> shape,
   shape_v.resize(dims, 1);
   return shape_v;
 }
+
+template <typename T>
+void tile(T *input, T *output, llvm::ArrayRef<int64_t> in_shape, int axis,
+          int times) {
+  auto outer_count = std::accumulate(in_shape.begin(), in_shape.begin() + axis,
+                                     1, std::multiplies<int64_t>());
+  auto inner_count = std::accumulate(in_shape.begin() + axis, in_shape.end(), 1,
+                                     std::multiplies<int64_t>());
+#pragma omp parallel for schedule(static, omp_schedule(outer_count))
+  for (int out = 0; out < outer_count; ++out) {
+    auto start = input + out * inner_count;
+    auto end = start + inner_count;
+    for (int t = 0; t < times; ++t) {
+      std::copy(start, end,
+                output + out * times * inner_count + t * inner_count);
+    }
+  }
+}
+template void tile(float *input, float *output,
+                   llvm::ArrayRef<int64_t> in_shape, int axis, int times);
 
 template <typename T> static int remove_value(std::vector<T> &v, int value) {
   int idx = 0;

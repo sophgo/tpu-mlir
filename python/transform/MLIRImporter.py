@@ -99,7 +99,7 @@ class Top:
     SqrtOp = 'top.Sqrt'
     ShuffleChannelOp = 'top.ShuffleChannel'
     TileOp = 'top.Tile'
-    TileExOp = 'top.TileEx'
+    RepeatOp = 'top.Repeat'
     TanOp = 'top.Tan'
     TanhOp = 'top.Tanh'
     TopKOp = 'top.TopK'
@@ -115,6 +115,7 @@ class Top:
     YoloDetection = 'top.YoloDetection'
     ZerosOp = 'top.Zeros'
     IfOp = 'top.If'
+    LoopOp = 'top.Loop'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -283,8 +284,8 @@ class MLIRImporter(object):
         else:
             return op.result
 
-    def buildBlock(self, region, **kargs):
-        block = Block.create_at_start(region)
+    def buildBlock(self, region, arg_types, **kargs):
+        block = Block.create_at_start(region, arg_types)
 
     def reconfig_insert_point(self, block):
         self.insert_point_back = self.insert_point \
@@ -919,18 +920,10 @@ class MLIRImporter(object):
         output_type = self.get_tensor_type(output_shape)
         param = {
             'name': kargs['name'],
-            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+            'axis': IntegerAttr.get(self.mlir_type['INT32'], kargs['axis']),
             'tile': IntegerAttr.get(self.mlir_type['INT64'], kargs['tile']),
         }
         return self.buildOp(Top.TileOp, operands, [output_type], **param)
-
-    def create_tile_ex_op(self, operands, output_shape, **kargs):
-        output_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-            'repeats': self.ArrayAttr(kargs['repeats']),
-        }
-        return self.buildOp(Top.TileExOp, operands, [output_type], **param)
 
     def create_max_op(self, operands, output_shape, **kargs):
         if len(operands) != 2:
@@ -987,6 +980,7 @@ class MLIRImporter(object):
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
             'keepdims': BoolAttr.get(kargs['keepdims']),
             'mode': StringAttr.get(kargs['mode']),
+            'select_last_index': BoolAttr.get(kargs['select_last_index']),
         }
         return self.buildOp(Top.ArgOp, operands, out_types, **param)
 
@@ -1291,6 +1285,22 @@ class MLIRImporter(object):
         param = {'name': kargs['name']}
         region = IntegerAttr.get(self.mlir_type['INT64'], kargs["region"]).value
         return self.buildOp(Top.IfOp, operands, [output_type], region, **param)
+
+    def create_loop_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name']}
+        region = IntegerAttr.get(self.mlir_type['INT64'], kargs["region"]).value
+        return self.buildOp(Top.LoopOp, operands, output_type, region, **param)
+
+    def create_subgraph_input_op(self, name, type, val, **kargs):
+        param = {}
+        op = Operation.create(Top.InputOp,
+                              results=[type],
+                              operands=[val],
+                              loc=Location.fused([Location.name(name)]),
+                              attributes=param)
+        self.insert_point.insert(op)
+        return op.results[0]
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

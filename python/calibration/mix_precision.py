@@ -100,10 +100,10 @@ class MixQuantModel:
         outputs = {}
         if global_compare_layers is None:
             for name in self.module.output_names:
-                outputs[name] = self.module.get_tensor(name)
+                outputs[name] = self.module.get_tensor(name).copy()
         else:
             for name in global_compare_layers:
-                outputs[name] = self.module.get_tensor(name)
+                outputs[name] = self.module.get_tensor(name).copy()
         return outputs
 
     def infer_from(self, top_op_name, input_data_dict: dict, extra_input_data_dict: dict, global_compare_layers:list = None):

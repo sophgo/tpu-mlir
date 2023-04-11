@@ -96,7 +96,7 @@ class DeployTool:
         file_mark(self.tpu_mlir)
         self.final_mlir = "{}_final.mlir".format(self.prefix)
         mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
-                      self.asymmetric, self.quantize_table, False, self.customization_format,
+                      self.asymmetric, self.quantize_table, self.customization_format,
                       self.fuse_preprocess, self.aligned_input)
         if self.do_validate:
             tool.validate_tpu_mlir()
@@ -182,7 +182,7 @@ class DeployTool:
                 x = np.squeeze(data, 0)
                 if self.customization_format == "GRAYSCALE":
                     x = ppa.align_gray_frame(x, self.aligned_input)
-                elif self.customization_format.endswith("_PLANAR") >= 0:
+                elif self.customization_format.endswith("_PLANAR"):
                     x = ppa.align_planar_frame(x, self.aligned_input)
                 else:
                     x = ppa.align_packed_frame(x, self.aligned_input)
@@ -246,7 +246,7 @@ if __name__ == '__main__':
                         help="calibration table for int8 quantization")
     parser.add_argument("--quantize_table",
                         help="table of OPs that quantized to specific mode")
-    parser.add_argument("--quantize", default="F32", type=str.upper, choices=['F32', 'BF16', 'F16', 'INT8', 'QDQ'],
+    parser.add_argument("--quantize", default="F32", type=str.upper, choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'QDQ'],
                         help="set default qauntization type: F32/BF16/F16/INT8")
     parser.add_argument("--asymmetric", action='store_true',
                         help="do INT8 asymmetric quantization")
@@ -292,7 +292,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
-
+    if not args.fuse_preprocess and args.customization_format:
+        assert(0 and "Error! If not fuse_preprocess, customization_format shouldn't be set.")
     tool = DeployTool(args)
     # lowering to tpu
     tool.lowering()

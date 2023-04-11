@@ -75,12 +75,12 @@ class BmodelReader:
         to_DType = {
             0: opparam_1684x.DType.f32,
             1: opparam_1684x.DType.f16,
-            2: opparam_1684x.DType.s8,
-            3: opparam_1684x.DType.u8,
-            4: opparam_1684x.DType.s16,
-            5: opparam_1684x.DType.u16,
-            6: opparam_1684x.DType.s32,
-            7: opparam_1684x.DType.u32,
+            2: opparam_1684x.DType.si8,
+            3: opparam_1684x.DType.ui8,
+            4: opparam_1684x.DType.si16,
+            5: opparam_1684x.DType.ui16,
+            6: opparam_1684x.DType.si32,
+            7: opparam_1684x.DType.ui32,
         }
 
         def __init__(self, fbs: bmodel_fbs.Tensor, buffer):
@@ -141,6 +141,7 @@ class BmodelReader:
                     "OutputTensor": self.tensor_cls,
                     "SubNet": {  # block
                         "CmdGroup": self.cmd_group_cls,
+                        "Id": lambda x, _: x,  # label
                         "InputTensor": self.tensor_cls,  # block-arg
                         "OutputTensor": self.tensor_cls,  # terminator
                         "NextSubnetIds": lambda x, _: x,  # successor
@@ -153,17 +154,96 @@ class BmodelReader:
         self.nets = fbs_adaptor(bmodel, fields)
 
 
+# ==============================================================================
+# decode the command buffer to operations.
+
+
+def _decode_base(cmd_buf, cmd_bits, cmd_set, sys_end):
+    code = None
+    cur = 0
+    l, h = cmd_bits
+    while cmd_buf.size > 0:
+        cmd_key = opdef_1684x.packbits(cmd_buf[l:h])
+        if cmd_key in cmd_set:
+            recognize = False
+            for op in cmd_set[cmd_key]:
+                if op.is_comp(cmd_buf):
+                    # check whether this command is recognized by the operation
+                    code = op.decode(cmd_buf)
+                    yield code
+                    # consume this command_code
+                    cmd_buf = cmd_buf[op.len :]
+                    cur += op.len
+                    recognize = True
+                    break
+            is_sys = isinstance(code, sys_end)
+            is_less_1024 = cmd_buf.size < 1025
+            is_all_zeros = np.all(cmd_buf == 0)
+            if is_sys and is_less_1024 and is_all_zeros:
+                break  # all the BDC have been processed
+            if not recognize:
+                raise ValueError(
+                    "Can not decode cmd, with opcode: {}, at {}.".format(cmd_key, cur)
+                )
+        else:
+            raise ValueError(
+                "Can not decode cmd, with opcode: {}, at {}.".format(cmd_key, cur)
+            )
+
+
+def _decode_bdc(cmd_buf):
+    return _decode_base(
+        cmd_buf,
+        opdef_1684x.bdc_base.cmd_bits,
+        opdef_1684x.bdc_cmd,
+        opdef_1684x.sysid_op,
+    )
+
+
+def _decode_gdma(cmd_buf):
+    return _decode_base(
+        cmd_buf,
+        opdef_1684x.dma_base.cmd_bits,
+        opdef_1684x.dma_cmd,
+        opdef_1684x.sdma_sys,
+    )
+
+
 # BModel to MLIR
 # ==============================================================================
-def decode_cmd(cmd):
+
+
+def merge_cmd(bdc, dma, _id=None):
+    main_cmd, inserted_cmd = dma, bdc
+    # remove the system command
+    def get_end(cmd):
+        if isinstance(main_cmd[-1], (opdef_1684x.sysid_op, opdef_1684x.sdma_sys)):
+            return -1
+        else:
+            return len(main_cmd)
+
+    main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
+    inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
+    # "sorted" is stable, which keeps the inserted commands
+    # after the main instructions.
+    cmd = main_id + inserted_id
+    cmd_sorted = sorted(cmd, key=lambda x: x[0])
+    return [x[1] for x in cmd_sorted]
+
+
+MERGE_CMD_FUN = merge_cmd
+
+
+def decode_cmd(cmd, _id=0):
     CMD = namedtuple("cmd", ["bdc", "gdma", "all"])
     bdc_cmd = read_buf(cmd.bdc_cmd)
     gdma_cmd = read_buf(cmd.gdma_cmd)
-    bdc = itertools.islice(Bmodel2MLIR.decode_bdc(bdc_cmd), cmd.bdc_num)
-    gdma = itertools.islice(Bmodel2MLIR.decode_gdma(gdma_cmd), cmd.gdma_num)
+    # remove system instruction
+    bdc = itertools.islice(_decode_bdc(bdc_cmd), cmd.bdc_num)
+    gdma = itertools.islice(_decode_gdma(gdma_cmd), cmd.gdma_num)
     bdc = list(bdc)
     gdma = list(gdma)
-    return CMD(bdc, gdma, Bmodel2MLIR.merge_cmd(gdma, bdc))
+    return CMD(bdc, gdma, MERGE_CMD_FUN(bdc, gdma, _id))
 
 
 def tensor2memref(tensor: BmodelReader.tensor_cls):
@@ -172,10 +252,15 @@ def tensor2memref(tensor: BmodelReader.tensor_cls):
     )
 
 
+IndentSize = 2
+
+
 class Block:
-    def __init__(self, id, subnet):
-        self.label = id
-        self.cmds = [decode_cmd(x) for x in subnet["CmdGroup"]]
+    def __init__(self, subnet, indent=0):
+        assert subnet["Id"] != []
+        self.label = subnet["Id"][0]
+        self.indent = indent
+        self.cmds = [decode_cmd(x, self.label) for x in subnet["CmdGroup"]]
         self.operations = []
         for x in self.cmds:
             self.operations.extend(x.all)
@@ -184,7 +269,8 @@ class Block:
         self.successor = subnet["NextSubnetIds"]
 
     def __repr__(self):
-        ops = "\n  ".join((f"{x}" for x in self.operations))
+        indent = " " * IndentSize * (self.indent + 1)
+        ops = "\n".join((indent + f"{x}" for x in self.operations))
         args = [f"%{a.name}: {tensor2memref(a).type_str}" for a in self.args]
         args = ", ".join(args)
         if all((x == -1 for x in self.successor)):
@@ -197,28 +283,32 @@ class Block:
             )
         else:
             rets = f"Successor {self.successor}"  # TODO
-        return f"^bb{self.label}({args})\n  {ops}\n  {rets}"
+        rets = indent + rets
+        return f"^bb{self.label}({args})\n{ops}\n{rets}"
 
 
 class Region:
-    def __init__(self, net_stage):
-        self.blocks = [Block(id, x) for id, x in enumerate(net_stage["SubNet"])]
+    def __init__(self, net_stage, indent=0):
+        self.indent = indent
+        self.blocks = [Block(x, indent) for x in net_stage["SubNet"]]
         self.signature = (net_stage["InputTensor"], net_stage["OutputTensor"])
         self.data = net_stage["CoeffMem"][0] if net_stage["CoeffMem"] else None
 
     def __repr__(self):
-        blocks = "\n".join([f"{b}" for b in self.blocks])
-        return f"{{\n{blocks}\n}}"
+        blocks = "\n".join((f"{b}" for b in self.blocks))
+        return f"{blocks}"
 
 
 class Function:
-    def __init__(self, net):
+    def __init__(self, net, indent=0):
+        self.indent = indent
         self.name = net["Name"][0]
-        self.regions = [Region(x) for x in net["Parameter"]]
+        self.regions = [Region(x, indent) for x in net["Parameter"]]
         self.signature = self.regions[0].signature
 
     def __repr__(self):
-        regions = "\n}, {\n".join([f"{r}"[2:-2] for r in self.regions])
+        indent = " " * IndentSize * self.indent
+        regions = (indent + "\n}, {\n").join((indent + f"{r}" for r in self.regions))
 
         def fmt_names(x):
             names = (f'"{n.name}"' for n in x)
@@ -229,101 +319,51 @@ class Function:
         attr = f"{{function_type = {{{arg}, {ret}}}}}"
         operands = ", ".join((str(tensor2memref(x)) for x in self.signature[0]))
         returns = ", ".join((tensor2memref(x).type_str for x in self.signature[1]))
-        return f"func.func @{self.name}({operands}) -> ({returns}) ({{\n{regions}\n}}) {attr}"
+        return (
+            indent
+            + f"func.func @{self.name}({operands}) -> ({returns}) ({{\n{regions}\n"
+            + indent
+            + f"}}) {attr}"
+        )
 
 
 class Module:
     def __init__(self, nets):
-        self.functions = [Function(x) for x in nets["Net"]]
+        self.functions = [Function(x, 1) for x in nets["Net"]]
         self.chip = nets["Chip"][0]
         self.version = nets["Version"][0]
         self.type = nets["Type"][0]
 
     def __repr__(self):
         funs = "\n".join((f"{x}" for x in self.functions))
-        funs = "\n  ".join(funs.split("\n"))
         attrs = f"attributes {{chip = {self.chip}, version= {self.version}}}"
-        return f"module {attrs} {{\n  {funs}\n}}"
+        return f"module {attrs} {{\n{funs}\n}}"
 
 
-class Bmodel2MLIR:
-    def __init__(self, bmodel_file):
-        self.bmodel = BmodelReader(bmodel_file)
-        self.module = Module(self.bmodel.nets)
+def Bmodel2Raw(bmodel_file):
+    bmodel = BmodelReader(bmodel_file)
+    for net in bmodel.nets["Net"]:
+        for param in net["Parameter"]:
+            for subnet in param["SubNet"]:
+                _id = subnet["Id"]
+                for _net in subnet["CmdGroup"]:
+                    for op in decode_cmd(_net, _id).all:
+                        yield op
 
-    @staticmethod
-    def __decode(cmd_buf, cmd_bits, cmd_set, sys_end):
-        code = None
-        cur = 0
-        l, h = cmd_bits
-        while cmd_buf.size > 0:
-            cmd_key = opdef_1684x.packbits(cmd_buf[l:h])
-            if cmd_key in cmd_set:
-                recognize = False
-                for op in cmd_set[cmd_key]:
-                    if op.is_comp(cmd_buf):
-                        # check whether this command is recognized by the operation
-                        code = op.decode(cmd_buf)
-                        yield code
-                        # consume this command_code
-                        cmd_buf = cmd_buf[op.len :]
-                        cur += op.len
-                        recognize = True
-                        break
-                is_sys = isinstance(code, sys_end)
-                is_less_1024 = cmd_buf.size < 1025
-                is_all_zeros = np.all(cmd_buf == 0)
-                if is_sys and is_less_1024 and is_all_zeros:
-                    break  # all the BDC have been processed
-                if not recognize:
-                    raise ValueError(
-                        "Can not decode cmd, with opcode: {}, at {}.".format(
-                            cmd_key, cur
-                        )
-                    )
-            else:
-                raise ValueError(
-                    "Can not decode cmd, with opcode: {}, at {}.".format(cmd_key, cur)
-                )
 
-    @staticmethod
-    def decode_bdc(cmd_buf):
-        return Bmodel2MLIR.__decode(
-            cmd_buf,
-            opdef_1684x.bdc_base.cmd_bits,
-            opdef_1684x.bdc_cmd,
-            opdef_1684x.sysid_op,
-        )
-
-    @staticmethod
-    def decode_gdma(cmd_buf):
-        return Bmodel2MLIR.__decode(
-            cmd_buf,
-            opdef_1684x.dma_base.cmd_bits,
-            opdef_1684x.dma_cmd,
-            opdef_1684x.sdma_sys,
-        )
-
-    @staticmethod
-    def merge_cmd(main_cmd, inserted_cmd):
-        # remove the system command
-        main_id = [(m.cmd_id, m) for m in main_cmd[:-1]]
-        inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[:-1]]
-        # "sorted" is stable, which keeps the inserted commands
-        # after the main instructions.
-        cmd = main_id + inserted_id
-        cmd_sorted = sorted(cmd, key=lambda x: x[0])
-        return [x[1] for x in cmd_sorted]
+def Bmodel2MLIR(bmodel_file):
+    bmodel = BmodelReader(bmodel_file)
+    return Module(bmodel.nets)
 
 
 def decode_bdc(file_name):
     a = read_file(file_name)
-    return [x for x in Bmodel2MLIR.decode_bdc(a)]
+    return [x for x in _decode_bdc(a)]
 
 
 def decode_gdma(file_name):
     a = read_file(file_name)
-    return [x for x in Bmodel2MLIR.decode_gdma(a)]
+    return [x for x in _decode_gdma(a)]
 
 
 def unified_diff(a, b, fromfile="", tofile="", n=3, format="mlir"):
@@ -396,10 +436,22 @@ def __main():
     )
     args = parser.parse_args()
     if len(args.bmodels) == 1:
-        tpu_cmd = Bmodel2MLIR(args.bmodels[0])
-        print(tpu_cmd.module, flush=True)
+        if args.format == "mlir":
+            module = Bmodel2MLIR(args.bmodels[0])
+            print(module, flush=True)
+        elif args.format == "raw":
+            module = Bmodel2Raw(args.bmodels[0])
+            for op in module:
+                if isinstance(op, opdef_1684x.bdc_base):
+                    name = f"tiu_{op.cmd_id}"
+                else:
+                    name = f"dma_{op.cmd_id}"
+                print(f"'{name}': {str(op.attr)}", flush=True)
+        else:
+            raise NotImplementedError("Not supports bits mode.")
         exit(0)
 
+    # FIX ME: the code below doe not compatible with the new Module.
     if len(args.bmodels) == 2:
         tpu_cmd_a = Bmodel2MLIR(args.bmodels[0])
         tpu_cmd_b = Bmodel2MLIR(args.bmodels[1])

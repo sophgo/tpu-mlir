@@ -296,7 +296,7 @@ class SimpleTuner:
             else:
                 self.layer_cos_sim[input_tensor_of_evaled_op] = cos_sim
             count = self.parser.get_use_count_by_op_name(input_tensor_of_evaled_op)
-            self.dq_activations[i][input_tensor_of_evaled_op] = [value, count]
+            self.dq_activations[i][input_tensor_of_evaled_op] = [value.copy(), count]
             if i == 0:
                 tmp += '\nrun it, refcount:{}, cos:{}\n'.format(count, cos_sim)
         if i == 0:
@@ -327,7 +327,7 @@ class SimpleTuner:
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
             count = self.parser.get_use_count_by_op_name(op_name)
-            self.ref_activations[i][op_name] = [value, count]
+            self.ref_activations[i][op_name] = [value.copy(), count]
             if i == 0:
                 tmp += '\ninvoke_at:{}, refcount:{}'.format(op_name, count)
                 #self.print_dbg('have {} users as refcount'.format(count))
@@ -674,7 +674,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
             count = self.parser.get_use_count_by_op_name(op_name)
-            self.ref_activations[i][op_name] = [value, count]
+            self.ref_activations[i][op_name] = [value.copy(), count]
             outputs = self.parser.get_outputs_by_op_name(op_name)
             if outputs is not None:
                 for output in outputs:

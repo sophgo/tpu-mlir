@@ -85,6 +85,7 @@ struct TopTransposeArg : public OpRewritePattern<ArgOp> {
     auto permute_order = module::getI64Array(permuteOp.getOrder());
     auto permute_order_len = permute_order->size();
     int  order_mask[permute_order_len-1];
+    auto Keepdim = op.getKeepdims();
     memset(order_mask, 0, sizeof(int) * (permute_order_len-1));
     int  order_dim = 0;
     for(int i=0; i<permute_order_len; i++){
@@ -99,11 +100,16 @@ struct TopTransposeArg : public OpRewritePattern<ArgOp> {
     op->setAttr("axis", rewriter.getI64IntegerAttr(arg_axis));
     op->setOperand(0, permuteOp.getInput());
     std::vector<int64_t> out_shape(output_shape.size(), 0);
-    for(int i=0; i<output_shape.size(); i++){
+    int out_dim_count =0;
+    for(int i=0; i<input_shape.size(); i++){
       if(i == old_axis) {
-        out_shape[i] = 1;
-      }else{
-        out_shape[i] = input_shape[i];
+        if (!Keepdim) continue;
+        out_shape[out_dim_count] = 1;
+        out_dim_count +=1;
+      }
+      else{
+        out_shape[out_dim_count] = input_shape[i];
+        out_dim_count +=1;
       }
     }
     // reshape of arg.indices

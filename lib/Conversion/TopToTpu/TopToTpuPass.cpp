@@ -6,10 +6,10 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
+#include "tpu_mlir/Conversion/Conversion.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include "tpu_mlir/Conversion/Conversion.h"
 #include "tpu_mlir/Support/Module.h"
 #include <fstream>
 #include <regex>
@@ -346,6 +346,37 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   }
 };
 
+struct CastInputPattern : public OpRewritePattern<tpu::CastOp> {
+  using OpRewritePattern<tpu::CastOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::CastOp op,
+                                PatternRewriter &rewriter) const override {
+    auto setOpResultType = [](Value value, Type eltType) {
+      auto shape = module::getShape(value);
+      auto type = RankedTensorType::get(shape, eltType);
+      value.setType(type);
+    };
+
+    auto prevOp = op->getOperand(0).getDefiningOp();
+    if (isa<tpu::ReshapeOp>(prevOp)) {
+      prevOp = prevOp->getOperand(0).getDefiningOp();
+    }
+    if (!isa<top::InputOp>(prevOp)) {
+      return failure();
+    }
+    auto storage_type = module::getStorageType(op->getResult(0));
+    if (storage_type.isIntOrIndex() &&
+        storage_type.getIntOrFloatBitWidth() == 16) {
+      // setOpResultType(prevOp->getOperand(0), storage_type);
+      setOpResultType(prevOp->getResult(0), storage_type);
+      setOpResultType(op->getOperand(0), storage_type);
+      rewriter.replaceOp(op, {op->getOperand(0)});
+      return success();
+    }
+    return failure();
+  }
+};
+
 struct ConvertTopToTpu : public ::impl::ConvertTopToTpuBase<ConvertTopToTpu> {
 public:
   void runOnOperation() override {
@@ -353,13 +384,9 @@ public:
     ctx_ = &getContext();
     mainFunc_ = module::getMainFuncOp();
     LoweringConfig::isQuantized = false;
-    auto chip_ = StringRef(chip).lower();
     auto mode_ = StringRef(mode).upper();
-    auto chip = module::symbolizeChip(chip_);
-    assert(chip.has_value());
     auto mode = module::symbolizeMode(mode_);
     assert(mode.has_value());
-    module::setChip(chip.value());
     module::setMode(mode.value());
     if (weightFileName != "") {
       module::setWeightFileName(weightFileName);
@@ -370,10 +397,6 @@ public:
     } else {
       LoweringConfig::isQuantized = false;
       module::setAsymmetric(isAsymmetric);
-      if (module::isCV18xx()) {
-        all_int8_process();
-        module::updateModuleTypes();
-      }
       calibration_process();
     }
     init_qtable();
@@ -396,6 +419,11 @@ public:
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     cast_process();
     relu_process();
+    if (module::isCV18xx()) {
+      patterns.clear();
+      patterns.add<CastInputPattern>(ctx_);
+      applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    }
     module::updateModuleTypes();
     module::setState(module::State::TPU_LOWERED);
   }
@@ -470,27 +498,6 @@ protected:
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
   }
 
-  void all_int8_process() {
-    mainFunc_.walk([&](Operation *op) {
-      if (isa<tpu_mlir::InferenceInterface>(op) || isa<top::InputOp>(op)) {
-        for (auto value : op->getResults()) {
-          if (module::isNone(value) || !module::isCalibratedType(value)) {
-            continue;
-          }
-          auto out_qtype = module::getCalibratedType(value);
-          if (out_qtype.getMin() != -out_qtype.getMax()) {
-            auto max = out_qtype.getMax();
-            auto quant_type = quant::CalibratedQuantizedType::get(
-                out_qtype.getExpressedType(), -max, max);
-            auto new_type =
-                RankedTensorType::get(module::getShape(value), quant_type);
-            value.setType(new_type);
-          }
-        }
-      }
-    });
-  }
-
   void relu_process() {
     Builder builder(ctx_);
     mainFunc_.walk([&](Operation *op) {
@@ -513,6 +520,9 @@ protected:
       if (is_tpu || isa<ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
+          if (module::isWeight(opd) || module::isNone(opd)) {
+            continue;
+          }
           TypeCastMode mode = TypeCastMode::DO_NOTHING;
           mlir::Type target_type;
           if (auto typeIf = dyn_cast<TypeInterface>(op)) {
@@ -559,7 +569,7 @@ protected:
         } else if (isa<tpu::Conv2DOp>(user)) {
           auto conv = dyn_cast<tpu::Conv2DOp>(user);
           auto conv_attr = getConv2DParam(conv);
-          if (conv_attr.is_dw) {
+          if (conv_attr.is_dw /*|| conv_attr.sw > 1*/) {
             all_next_layer_is_int4 = false;
           }
         }
