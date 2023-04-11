@@ -125,6 +125,8 @@ class MODEL_RUN(object):
             cmd += ["--input_shapes {}".format(self.ini_content["dynamic_shapes"])]
         elif "input_shapes" in self.ini_content:
             cmd += ["--input_shapes {}".format(self.ini_content["input_shapes"])]
+        if "input_types" in self.ini_content:
+            cmd += ["--input_types {}".format(self.ini_content["input_types"])]
         if "resize_dims" in self.ini_content:
             cmd += ["--resize_dims {}".format(self.ini_content["resize_dims"])]
         if "keep_aspect_ratio" in self.ini_content and int(self.ini_content["keep_aspect_ratio"]):
