@@ -89,6 +89,9 @@ ONNX转MLIR
    * - input_shapes
      - 否
      - 指定输入的shape, 例如[[1,3,640,640]]; 二维数组, 可以支持多输入情况
+   * - input_types
+     - 否
+     - 指定输入的类型, 例如int32; 多输入用,隔开; 不指定情况下默认处理为float32
    * - resize_dims
      - 否
      - 原始图片需要resize之后的尺寸; 如果不指定, 则resize成模型的输入尺寸

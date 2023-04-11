@@ -43,6 +43,7 @@ class TorchConverter(BaseConverter):
                  model_name: str,
                  torch_file,
                  input_shapes: list,
+                 input_types: list,
                  output_names: list,
                  preprocess_args=None):
         super().__init__()
@@ -51,7 +52,7 @@ class TorchConverter(BaseConverter):
         self.model = None
         self.mlir = None
         self.node_name_mapping = {}  # used in torch opt
-        self.load_torch_model(torch_file, input_shapes, output_names)
+        self.load_torch_model(torch_file, input_shapes, input_types, output_names)
         self.init_MLIRImporter()
         self.unranked_type = self.mlir.get_tensor_type([])
         self.preprocess_args = preprocess_args
@@ -202,7 +203,8 @@ class TorchConverter(BaseConverter):
             raise RuntimeError(
                 "The following operators are not implemented: {}".format(unknown_ops))
 
-    def load_torch_model(self, torch_file, input_shapes: list, output_names: list):
+    def load_torch_model(self, torch_file, input_shapes: list, input_types: list,
+                         output_names: list):
         if isinstance(torch_file, str):
             self.model = torch.jit.load(torch_file, map_location=torch.device('cpu'))
         else:
@@ -214,9 +216,11 @@ class TorchConverter(BaseConverter):
         inputs = list(self.graph.inputs())
         inputs = inputs[1:] if is_module else inputs
         self.input_names = []
-        for idx, inp in enumerate(inputs):
+        if len(input_shapes) != len(inputs):
+            raise RuntimeError(f"Input shape not match inputs: {input_shapes}")
+        for s, inp in zip(input_shapes, inputs):
             self.input_names.append(inp.debugName())
-            self.addShape(inp.debugName(), input_shapes[idx])
+            self.addShape(inp.debugName(), s)
         self.output_names = []
         if output_names:
             self.output_names = output_names
@@ -232,14 +236,17 @@ class TorchConverter(BaseConverter):
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
         self.input_shapes = input_shapes
+        self.input_types = []
+        for t in input_types:
+            if t.lower() not in self.TypeMap:
+                raise RuntimeError(f"Unknown type {t}")
+            self.input_types.append(self.TypeMap[t.lower()])
         self.output_shapes = [[]] * self.num_output
 
     def init_MLIRImporter(self):
-        input_shapes = list()
-        for _name in self.input_names:
-            input_shapes.append(self.getShape(_name))
         # init importer
-        self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name, Platform.TORCH)
+        self.mlir = MLIRImporter(self.input_shapes, self.output_shapes, self.model_name,
+                                 Platform.TORCH, self.input_types)
         self.weight_file = self.mlir.weight_file
 
     def generate_list_map(self):
@@ -857,7 +864,7 @@ class TorchConverter(BaseConverter):
                              op0,
                              axis,
                              num,
-                             split_size = split_size,
+                             split_size=split_size,
                              loc=self.get_loc(torch_node.name),
                              ip=self.mlir.insert_point).outputs
         for i in range(num):

@@ -88,7 +88,10 @@ The main parameters of ``model_transform.py`` are described as follows (for a co
      - Model definition file (e.g., '.onnx', '.tflite' or '.prototxt' files)
    * - input_shapes
      - N
-     - The shape of the input, such as [[1,3,640,640]] (a two-dimensional array), which can support multiple inputs
+     - Shape of the inputs, such as [[1,3,640,640]] (a two-dimensional array), which can support multiple inputs
+   * - input_types
+     - N
+     - Type of the inputs, such int32; separate by ',' for multi inputs; float32 as default
    * - resize_dims
      - N
      - The size of the original image to be adjusted to. If not specified, it will be resized to the input size of the model
