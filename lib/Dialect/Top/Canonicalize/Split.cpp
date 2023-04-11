@@ -27,6 +27,7 @@ struct SplitToSlice : public OpRewritePattern<SplitOp> {
     auto axis = op.getAxis();
     std::vector<int64_t> offset(dims, 0);
     std::vector<int64_t> steps(dims, 1);
+    std::vector<int64_t> ends(dims, -1);
     auto name = module::getName(op.getResult(0)).str();
     rewriter.setInsertionPointAfter(op);
     for (int i = 0; i < num; i++) {
@@ -39,8 +40,17 @@ struct SplitToSlice : public OpRewritePattern<SplitOp> {
           rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(offset)));
       attrs.push_back(
           rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(steps)));
+      attrs.push_back(
+          rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(ends)));
+      auto none = module::getNoneOp(op);
+      std::vector<Value> operands;
+      const auto& opd = op->getOperand(0);
+      operands.push_back(opd);
+      operands.push_back(none);
+      operands.push_back(none);
+      operands.push_back(none);
       auto s_op = rewriter.create<SliceOp>(name_loc, out.getType(),
-                                           op.getInput(), attrs);
+                                           operands, attrs);
       out.replaceAllUsesWith(s_op.getOutput());
       offset[axis] += out_shape[axis];
     }

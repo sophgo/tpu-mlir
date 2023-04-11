@@ -1426,11 +1426,40 @@ def Tpu_SliceOp: Tpu_Op<"Slice", [
     Slice Operation on input.
   }];
 
-  let arguments = (
-    ins AnyRankedTensor:$input,
-    AnyTensorOrNone:$buffer,
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyTensorOrNone:$offsetT,
+    AnyTensorOrNone:$endsT,
+    AnyTensorOrNone:$stepsT,
+    AnyTensorOrNone:$buffer, // only used in BM1684
     I64ArrayAttr:$offset,
-    I64ArrayAttr:$steps
+    I64ArrayAttr:$steps,
+    I64ArrayAttr:$ends
+  );
+  let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    slice_attr_t parseParam();
+    void assign_fw_param(void *param);
+  }];
+}
+
+def Tpu_ShapeSliceOp: Tpu_Op<"ShapeSlice", [
+  ShapeProducer, ShapeConsumer,
+  DeclareOpInterfaceMethods<TypeInterface>
+  ]> {
+  let summary = "ShapeSlice operator";
+  let description = [{
+    Slice Operation on shape-type tensor.
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyTensorOrNone:$offsetT,
+    AnyTensorOrNone:$endsT,
+    AnyTensorOrNone:$stepsT,
+    I64ArrayAttr:$offset,
+    I64ArrayAttr:$steps,
+    I64ArrayAttr:$ends
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{

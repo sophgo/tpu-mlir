@@ -15,7 +15,7 @@ namespace tpu_mlir {
 namespace cv18xx {
 void SliceLowering::LoweringINT8(PatternRewriter &rewriter, top::SliceOp op,
                                  bool asymmetric) const {
-  lowering_common_int8<tpu::SliceOp>(rewriter, op, asymmetric, 2);
+  lowering_common_int8<tpu::SliceOp>(rewriter, op, asymmetric, 5);
 }
 
 void SliceLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -27,11 +27,11 @@ void SliceLowering::LoweringBF16(PatternRewriter &rewriter,
     auto max = qtype.getMax();
     auto min = qtype.getMin();
     if (min == 0 && max == 255) {
-      lowering_common_int8<tpu::SliceOp>(rewriter, op, false, 2);
+      lowering_common_int8<tpu::SliceOp>(rewriter, op, false, 5);
       return;
     }
   }
-  lowering_common_bf16<tpu::SliceOp>(rewriter, op, 2);
+  lowering_common_bf16<tpu::SliceOp>(rewriter, op, 5);
 }
 
 } // namespace cv18xx

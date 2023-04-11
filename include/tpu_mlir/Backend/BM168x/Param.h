@@ -1144,6 +1144,18 @@ typedef struct squeeze_dims_common_spec {
 typedef struct squeeze_dims_global_spec {
     squeeze_dims_common_spec_t common;
 } squeeze_dims_global_spec_t;
+typedef struct shape_slice_param {
+  int begin_index[MAX_SHAPE_DIMS];
+  int end_index[MAX_SHAPE_DIMS];
+  int stride[MAX_SHAPE_DIMS];
+  int shape_size;
+  int begin_mask;
+  int end_mask;
+  int shrink_axis_mask;
+  int new_axis_mask;
+  int ellipsis_mask;
+  int is_dynamic;
+} shape_slice_param_t;
 
 typedef struct {
   /*common param*/

@@ -64,13 +64,22 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       NamedAttrList attrs;
       auto input_shape = module::getShape(op.getInput());
       std::vector<int64_t> offsets(input_shape.size(), 0);
+      std::vector<int64_t> ends(input_shape.size(), -1);
       std::vector<int64_t> steps(input_shape.size(), 1);
       offsets[ax] = (int64_t)inds_f32->at(0);
+      ends[ax] = offsets[ax] + 1;
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
+      attrs.set("ends", rewriter.getI64ArrayAttr(ends));
+      auto none = module::getNoneOp(op);
+      std::vector<Value> operands;
+      operands.push_back(op.getInput());
+      operands.push_back(none);
+      operands.push_back(none);
+      operands.push_back(none);
       op.getOperation()->setLoc(reshape_op.getLoc());
       rewriter.replaceOpWithNewOp<SliceOp>(op, reshape_op.getOutput().getType(),
-                                           ValueRange{op.getInput()}, attrs);
+                                           operands, attrs);
       rewriter.replaceOp(reshape_op, {reshape_op.getInput()});
       return success();
     } else if (inds_shape.size() == 1) {
@@ -89,13 +98,22 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       NamedAttrList attrs;
       auto input_shape = module::getShape(op.getInput());
       std::vector<int64_t> offsets(input_shape.size(), 0);
+      std::vector<int64_t> ends(input_shape.size(), -1);
       std::vector<int64_t> steps(input_shape.size(), 1);
       offsets[ax] = (int64_t)inds_f32->at(0);
       steps[ax] = step;
+      ends[ax] = offsets[ax] + steps[ax] * (inds_shape[0] - 1);
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
+      attrs.set("ends", rewriter.getI64ArrayAttr(ends));
+      auto none = module::getNoneOp(op);
+      std::vector<Value> operands;
+      operands.push_back(op.getInput());
+      operands.push_back(none);
+      operands.push_back(none);
+      operands.push_back(none);
       rewriter.replaceOpWithNewOp<SliceOp>(op, op.getOutput().getType(),
-                                           ValueRange{op.getInput()}, attrs);
+                                           operands, attrs);
       return success();
     }
 

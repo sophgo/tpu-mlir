@@ -135,11 +135,17 @@ public:
     for (auto &slice : h_slices) {
       std::vector<Value> slice_operands;
       slice_operands.emplace_back(input_val);
+      auto none = module::getNoneOp(op);
+      slice_operands.push_back(none);
+      slice_operands.push_back(none);
+      slice_operands.push_back(none);
       std::vector<NamedAttribute> slice_attrs;
       slice_attrs.emplace_back(rewriter.getNamedAttr(
           "offset", rewriter.getI64ArrayAttr({0, 0, offset, 0})));
       slice_attrs.emplace_back(rewriter.getNamedAttr(
           "steps", rewriter.getI64ArrayAttr({1, 1, 1, 1})));
+      slice_attrs.emplace_back(rewriter.getNamedAttr(
+          "ends", rewriter.getI64ArrayAttr({-1, -1, -1, -1})));
       offset += slice;
       std::string slice_name = "slice_" + name + std::to_string(offset);
       auto slice_loc = NameLoc::get(rewriter.getStringAttr(slice_name));
@@ -579,12 +585,19 @@ public:
         }
         std::vector<int64_t> slice_offsets(input_shape.size(), 0);
         std::vector<int64_t> slice_steps(input_shape.size(), 1);
+        std::vector<int64_t> slice_ends(input_shape.size(), -1);
         slice_offsets[axis] = offset;
         operands.emplace_back(input);
+        auto none = module::getNoneOp(op);
+        operands.push_back(none);
+        operands.push_back(none);
+        operands.push_back(none);
         attrs.emplace_back(rewriter.getNamedAttr(
             "offset", rewriter.getI64ArrayAttr(slice_offsets)));
         attrs.emplace_back(rewriter.getNamedAttr(
             "steps", rewriter.getI64ArrayAttr(slice_steps)));
+        attrs.emplace_back(rewriter.getNamedAttr(
+            "ends", rewriter.getI64ArrayAttr(slice_ends)));
         rewriter.replaceOpWithNewOp<top::SliceOp>(op, ori_out.getType(),
                                                   operands, attrs);
         return success();
@@ -609,15 +622,22 @@ public:
           int _axis = axis >= 0 ? axis : axis + input_shape.size();
           std::vector<int64_t> slice_offsets(input_shape.size(), 0);
           std::vector<int64_t> slice_steps(input_shape.size(), 1);
+          std::vector<int64_t> slice_ends(input_shape.size(), -1);
           slice_offsets[_axis] = diff > 0
                                      ? static_cast<int>(*weight_data->begin())
                                      : static_cast<int>(*weight_data->rbegin());
           slice_steps[_axis] = std::abs(diff);
           operands.emplace_back(input);
+          auto none = module::getNoneOp(op);
+          operands.push_back(none);
+          operands.push_back(none);
+          operands.push_back(none);
           attrs.emplace_back(rewriter.getNamedAttr(
               "offset", rewriter.getI64ArrayAttr(slice_offsets)));
           attrs.emplace_back(rewriter.getNamedAttr(
               "steps", rewriter.getI64ArrayAttr(slice_steps)));
+          attrs.emplace_back(rewriter.getNamedAttr(
+              "ends", rewriter.getI64ArrayAttr(slice_ends)));
           rewriter.replaceOpWithNewOp<top::SliceOp>(op, ori_out.getType(),
                                                     operands, attrs);
           return success();
@@ -1161,12 +1181,19 @@ public:
       loc = NameLoc::get(rewriter.getStringAttr(name));
       std::vector<int64_t> crop_offset(4, 0);
       std::vector<int64_t> steps(4, 1);
+      std::vector<int64_t> ends(4, -1);
       attrs.emplace_back(rewriter.getNamedAttr(
           "offset",
           rewriter.getI64ArrayAttr(ArrayRef<int64_t>({crop_offset}))));
       attrs.emplace_back(rewriter.getNamedAttr(
           "steps", rewriter.getI64ArrayAttr(ArrayRef<int64_t>({steps}))));
+      attrs.emplace_back(rewriter.getNamedAttr(
+          "ends", rewriter.getI64ArrayAttr(ArrayRef<int64_t>({ends}))));
       operands.emplace_back(mul_op);
+      auto none = module::getNoneOp(mul_op);
+      operands.push_back(none);
+      operands.push_back(none);
+      operands.push_back(none);
       auto crop_op = rewriter.create<top::SliceOp>(
           loc, op.getOutput().getType().cast<RankedTensorType>(), operands,
           attrs);

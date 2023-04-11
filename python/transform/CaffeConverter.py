@@ -677,6 +677,7 @@ class CaffeConverter(BaseConverter):
         offset_size = len(p.offset)
         crop_offset = [0] * input_dim
         crop_step = [1] * input_dim
+        crop_ends = [-1] * input_dim
         if offset_size > 1:
             assert (offset_size + axis_index <= input_dim)
         for i in range(input_dim):
@@ -694,7 +695,8 @@ class CaffeConverter(BaseConverter):
         attrs = {
             'loc': self.get_loc(layer.top[0]),
             'offset': list(crop_offset),
-            'steps': list(crop_step)
+            'steps': list(crop_step),
+            'ends': list(crop_ends)
         }
         output_shape = self.getShape(layer.top[0])
         new_op = top.SliceOp(self.mlir.get_tensor_type(output_shape),
@@ -1470,10 +1472,12 @@ class CaffeConverter(BaseConverter):
             crop_offset = [0] * len(input_shape)
             crop_offset[axis] = offset
             steps = [1] * len(input_shape)
+            ends = [-1] * len(input_shape)
             param = {
                 'loc': self.get_loc(layer.top[i]),
                 'offset': crop_offset,
                 'steps': steps,
+                'ends': ends
             }
             new_op = top.SliceOp(self.mlir.get_tensor_type(output_shape),
                                  *operands,

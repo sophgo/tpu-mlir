@@ -33,6 +33,7 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
     const auto& res = op->getResult(0);
     const auto& offset = op->getAttr("offset");
     const auto& steps = op->getAttr("steps");
+    const auto& ends = op->getAttr("ends");
     rewriter.setInsertionPointAfterValue(opd);
     for (const auto user: users) {
       const std::string name_slice = module::getName(user->getOperand(0)).str() + "_slice";
@@ -40,7 +41,14 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
       std::vector<NamedAttribute> attrs;
       attrs.push_back(rewriter.getNamedAttr("offset", offset));
       attrs.push_back(rewriter.getNamedAttr("steps", steps));
-      auto slice_op = rewriter.create<SliceOp>(loc_slice, res.getType(), ValueRange(opd), attrs);
+      attrs.push_back(rewriter.getNamedAttr("ends", ends));
+      auto none = module::getNoneOp(op);
+      std::vector<Value> operands;
+      operands.push_back(opd);
+      operands.push_back(none);
+      operands.push_back(none);
+      operands.push_back(none);
+      auto slice_op = rewriter.create<SliceOp>(loc_slice, res.getType(), operands, attrs);
       auto slice_result_var = slice_op.getResult();
       user->eraseOperand(0);
       user->insertOperands(0, slice_result_var);
@@ -49,6 +57,7 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
   }
 };
 
+// slice + slice => slice
 struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
   using OpRewritePattern::OpRewritePattern;
 

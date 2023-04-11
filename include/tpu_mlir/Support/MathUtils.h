@@ -43,6 +43,10 @@ typedef enum {
 // =======================
 // alignment function
 // =======================
+template <typename T> static inline T abs_ceiling_func(T numerator, T denominator) {
+  return (abs(numerator + denominator) - 1) / abs(denominator);
+}
+
 template <typename T> static inline T ceiling_func(T numerator, T denominator) {
   return (numerator + denominator - 1) / denominator;
 }

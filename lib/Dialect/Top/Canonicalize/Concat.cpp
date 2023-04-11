@@ -349,18 +349,20 @@ struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
     // check param
     int64_t start = -1;
     int64_t end = 0;
-    i64_array_t steps0, offset0;
+    i64_array_t steps0, offset0, ends0;
     const auto axis = concat_op.getAxis();
     for (int i = 0; i < num_inputs; i++) {
       auto in_op = inputs[i].getDefiningOp();
       auto slice_op = dyn_cast<SliceOp>(in_op);
       const auto steps = module::getI64Array(slice_op.getSteps());
       const auto offset = module::getI64Array(slice_op.getOffset());
+      const auto ends = module::getI64Array(slice_op.getEnds());
       if (steps->at(axis) != 1) {
         return failure();
       }
       if (i == 0) {
         start = offset->at(axis);
+        end = ends->at(axis);
       } else {
         if (offset->at(axis) != end) {
           return failure();
@@ -369,6 +371,7 @@ struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
       if (i == 0) {
         steps0 = steps;
         offset0 = offset;
+        ends0 = ends;
       } else {
         for (size_t i = 0; i < steps->size(); ++i) {
           if (i == axis) continue;
@@ -385,13 +388,22 @@ struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
     }
     // rewrite now !
     offset0->at(axis) = start;
+    ends0->at(axis) = end;
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(*offset0)));
     attrs.push_back(
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(*steps0)));
+    attrs.push_back(
+        rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(*ends0)));
+    auto none = module::getNoneOp(concat_op);
+    std::vector<Value> operands;
+    operands.push_back(from);
+    operands.push_back(none);
+    operands.push_back(none);
+    operands.push_back(none);
     rewriter.replaceOpWithNewOp<SliceOp>(
-        concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
+        concat_op, concat_op.getResult().getType(), operands, attrs);
     return success();
   }
 };
