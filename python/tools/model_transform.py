@@ -213,8 +213,8 @@ if __name__ == '__main__':
     parser.add_argument("--tolerance", default='0.99,0.99',
                         help="minimum similarity tolerance to model transform")
     parser.add_argument("--excepts", default='-', help="excepts")
-    parser.add_argument("--post_handle_type", default="", type=str,
-                         help="post handle type, such as yolo,ssd etc")
+    parser.add_argument("--post_handle_type", default="", type=str.lower,
+                        choices=['','yolo', 'ssd'], help="post handle type, such as yolo,ssd etc")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
     # yapf: enable
