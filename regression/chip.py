@@ -148,7 +148,7 @@ bm1686_model_list = {
     "pp_liteseg":          (N, N),
     "pp_picodet":          (N, Y),
     "pp_yoloe":            (N, N),
-    "pp_yolox":            (N, Y),
+    "pp_yolox":            (N, N),
     "pp_yolov3":           (N, N),
     "pp_ocr_det":          (N, N),
     "pp_ocr_cls":          (N, N),
@@ -159,32 +159,32 @@ cv180x_model_list = {
     # _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
     # model_name:      (basic, all)
     "mobilenet_v2_cvi":    (Y, Y),
-    "retinaface_mnet_cvi": (Y, Y),
+    "retinaface_mnet_cvi": (N, Y),
   }
 
 cv181x_model_list = {
     # _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
     # model_name:      (basic, all)
-    "mobilenet_v2_cvi":    (Y, Y),
-    "mobilenet_v2_cvi_bs4":(Y, Y),
-    "retinaface_mnet_cvi": (Y, Y),
-    "yolox_s_cvi":         (Y, Y),
+    "mobilenet_v2_cvi":    (N, Y),
+    "mobilenet_v2_cvi_bs4":(N, Y),
+    "retinaface_mnet_cvi": (N, Y),
+    "yolox_s_cvi":         (N, Y),
     "yolov5s_cvi":         (Y, Y),
-    "alphapose_res50_cvi": (Y, Y),
-    "arcface_res50_cvi":   (Y, Y),
+    "alphapose_res50_cvi": (N, Y),
+    "arcface_res50_cvi":   (N, Y),
 }
 
 cv182x_model_list = {
     # _pt = pytorch, _cf = caffe, _tf = tflite, default is onnx
     # model_name:      (basic, all)
-    "mobilenet_v2_cvi":    (Y, Y),
-    "mobilenet_v2_cvi_bs4":(Y, Y),
-    "retinaface_mnet_cvi": (Y, Y),
-    "yolov3_416_cvi":      (Y, Y),
-    "yolox_s_cvi":         (Y, Y),
+    "mobilenet_v2_cvi":    (N, Y),
+    "mobilenet_v2_cvi_bs4":(N, Y),
+    "retinaface_mnet_cvi": (N, Y),
+    "yolov3_416_cvi":      (N, Y),
+    "yolox_s_cvi":         (N, Y),
     "yolov5s_cvi":         (Y, Y),
-    "alphapose_res50_cvi": (Y, Y),
-    "arcface_res50_cvi":   (Y, Y),
+    "alphapose_res50_cvi": (N, Y),
+    "arcface_res50_cvi":   (N, Y),
 }
 
 cv183x_model_list = {
@@ -212,12 +212,12 @@ cv183x_model_list = {
     "yolov5s":             (Y, Y),
     "yolov3_tiny":         (N, Y),
     # cvimodel samples
-    "mobilenet_v2_cvi":    (Y, Y),
-    "mobilenet_v2_cvi_bs4":(Y, Y),
-    "retinaface_mnet_cvi": (Y, Y),
-    "yolov3_416_cvi":      (Y, Y),
-    "yolox_s_cvi":         (Y, Y),
-    "yolov5s_cvi":         (Y, Y),
-    "alphapose_res50_cvi": (Y, Y),
-    "arcface_res50_cvi":   (Y, Y),
+    "mobilenet_v2_cvi":    (N, Y),
+    "mobilenet_v2_cvi_bs4":(N, Y),
+    "retinaface_mnet_cvi": (N, Y),
+    "yolov3_416_cvi":      (N, Y),
+    "yolox_s_cvi":         (N, Y),
+    "yolov5s_cvi":         (N, Y),
+    "alphapose_res50_cvi": (N, Y),
+    "arcface_res50_cvi":   (N, Y),
 }
