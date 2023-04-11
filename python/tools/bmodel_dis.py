@@ -340,20 +340,33 @@ class Module:
         return f"module {attrs} {{\n{funs}\n}}"
 
 
+def Bmodel2MLIR(bmodel_file):
+    bmodel = BmodelReader(bmodel_file)
+    return Module(bmodel.nets)
+
+
 def Bmodel2Raw(bmodel_file):
     bmodel = BmodelReader(bmodel_file)
     for net in bmodel.nets["Net"]:
         for param in net["Parameter"]:
             for subnet in param["SubNet"]:
-                _id = subnet["Id"]
+                _id = subnet["Id"][0]
                 for _net in subnet["CmdGroup"]:
-                    for op in decode_cmd(_net, _id).all:
+                    for op in decode_cmd(_net, _id[0]).all:
                         yield op
 
 
-def Bmodel2MLIR(bmodel_file):
+def Bmodel2Bin(bmodel_file):
     bmodel = BmodelReader(bmodel_file)
-    return Module(bmodel.nets)
+    for net in bmodel.nets["Net"]:
+        for param in net["Parameter"]:
+            for subnet in param["SubNet"]:
+                _id = subnet["Id"][0]
+                for _net in subnet["CmdGroup"]:
+                    with open(bmodel_file + f".{_id}.tiu.bin", "wb") as f:
+                        f.write(_net.bdc_cmd)
+                    with open(bmodel_file + f".{_id}.dma.bin", "wb") as f:
+                        f.write(_net.gdma_cmd)
 
 
 def decode_bdc(file_name):
@@ -423,7 +436,7 @@ def __main():
     parser.add_argument(
         "--fmt",
         dest="format",
-        choices=["mlir", "raw", "bits"],
+        choices=["mlir", "raw", "bits", "bin"],
         default="mlir",
         help="The format of format operations.",
     )
@@ -447,6 +460,8 @@ def __main():
                 else:
                     name = f"dma_{op.cmd_id}"
                 print(f"'{name}': {str(op.attr)}", flush=True)
+        elif args.format == "bin":
+            Bmodel2Bin(args.bmodels[0])
         else:
             raise NotImplementedError("Not supports bits mode.")
         exit(0)
