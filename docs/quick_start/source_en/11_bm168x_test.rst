@@ -79,8 +79,8 @@ Execute the following command in the ``tpu-mlir_xxxx.tar.gz`` directory (note th
    :linenos:
 
    $ tar zxf tpu-mlir_xxxx.tar.gz
-   $ docker pull sophgo/tpuc_dev:latest
-   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:latest
+   $ docker pull sophgo/tpuc_dev:v2.2
+   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v2.2
 
 After running the command, it will be in a Docker container.
 
@@ -238,3 +238,31 @@ Download the latest ``tpu-perf``, ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch6
 
 
 After that, performance data is available in ``output/stats.csv``, in which the running time, computing resource utilization, and bandwidth utilization of the relevant models are recorded.
+
+Precision test
++++++++++++++++
+
+Precision test shall be carried out in the running environment beyond docker. It is optional to exit docker environment:
+
+.. code :: shell
+
+   exit
+
+Run the following commands under the PCIE board to test the precision of the generated ``bmodel``.
+
+.. code-block:: shell
+   :linenos:
+
+   $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
+   $ cd model-zoo
+   $ python3 -m tpu_perf.precision_benchmark --mlir -l full_cases.txt
+
+Various types of precision data are available in individual csv files in the output directory.
+
+Note: If multiple SOPHGO accelerator cards are installed on the host, you can
+specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
+``tpu_perf``. Such as:
+
+.. code-block:: shell
+
+   $ python3 -m tpu_perf.precision_benchmark --devices 2 --mlir -l full_cases.txt
