@@ -81,7 +81,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   }
 
   // bias op
-  if (attr.with_bias) {
+  if (module::isWeight(op.getBias())) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     auto bias_type = module::getStorageType(op.getBias());
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
