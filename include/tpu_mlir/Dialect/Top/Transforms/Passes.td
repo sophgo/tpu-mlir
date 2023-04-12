@@ -46,6 +46,12 @@ def QDQConvert : Pass<"convert-qdq-to-calibrated-dialect", "ModuleOp"> {
   let dependentDialects = ["top::TopDialect", "mlir::quant::QuantizationDialect"];
 }
 
+def BertInfTo10k : Pass<"bert-inf-to-10k", "ModuleOp"> {
+  let summary = "replace -inf multi param to -10k for easy calibration and quant";
+  let constructor = "createBertInfTo10kPass()";
+  let dependentDialects = ["TopDialect"];
+}
+
 def AfterOptimize : Pass<"after-optimize", "ModuleOp"> {
   let summary = "after top optimize in mlir by tpuc-opt";
   let constructor = "createAfterOptimizePass()";
