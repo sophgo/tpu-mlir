@@ -105,6 +105,7 @@ class ONNX_IR_TESTER(object):
             "Max":          (self.test_Max,           Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, N),
             "Mul":          (self.test_Mul,           Y, Y, Y),
+            "MulMerge":     (self.test_MulMerge,      Y, N, N),
             "MulBcast":     (self.test_MulBcast,      Y, Y, N),
             "MulBcast2":    (self.test_MulBcast2,     Y, Y, N),
             "Min":          (self.test_Min,           Y, Y, Y),
@@ -1300,6 +1301,40 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([const_mul_def],
                                       case_name, [input], [output],
                                       initializer=[mul_const])
+        self.onnx_and_test(graph_def)
+
+    def test_MulMerge(self, case_name):
+        input_shape = [1, 3, 24, 24]
+        output_shape = [1, 3, 24, 24]
+
+        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input_shape)
+        output1 = helper.make_tensor_value_info('output1', TensorProto.FLOAT, output_shape)
+        output2 = helper.make_tensor_value_info('output2', TensorProto.FLOAT, output_shape)
+        w_data = np.random.rand(*input_shape).astype(np.float32)
+        w_value = helper.make_tensor(
+            name='w',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=w_data.shape,
+            vals=w_data.flatten(),
+        )
+
+        mul_node1 = helper.make_node(
+            'Mul',  # node name
+            ['input1', 'w'],  # inputs
+            ['output1'],  # outputs
+        )
+        mul_node2 = helper.make_node(
+            'Mul',  # node name
+            ['output1', 'w'],  # inputs
+            ['output2'],  # outputs
+        )
+
+        graph_def = helper.make_graph([mul_node1, mul_node2],
+                                      case_name, [input1], [output2],
+                                      initializer=[w_value])
+        #model_def = helper.make_model(graph_def, producer_name="onnx-example")
+        #onnx.checker.check_model(model_def)
+        #onnx.save(model_def, 'mulmerge.onnx')
         self.onnx_and_test(graph_def)
 
     def test_Gemm(self, case_name):

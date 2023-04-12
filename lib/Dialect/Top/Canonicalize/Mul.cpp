@@ -11,6 +11,7 @@
 #include "mlir/Pass/Pass.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::top;
 
@@ -178,7 +179,66 @@ struct MulToScale : public OpRewritePattern<MulOp> {
   }
 };
 
+//Mul + Mul
+struct MulMerge : public OpRewritePattern<MulOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MulOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op.getInputs().size() != 2) {
+      return failure();
+    }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32())
+      return failure();
+    auto a = op.getInputs()[0];
+    auto b = op.getInputs()[1];
+    if (module::isWeight(a)) {
+      std::swap(a, b);
+    } else if (module::isWeight(b)) {
+      // do nothing
+    } else {
+      return failure();
+    }
+    auto mul = dyn_cast<MulOp>(a.getDefiningOp());
+    if (!mul || mul.getInputs().size() != 2 || mul.getDoRelu()) {
+      return failure();
+    }
+    auto c = mul.getInputs()[0];
+    auto d = mul.getInputs()[1];
+    if (module::isWeight(c)) {
+      std::swap(c, d);
+    } else if (module::isWeight(d)) {
+      // do nothing
+    } else {
+      return failure();
+    }
+    auto b_op = b.getDefiningOp<WeightOp>();
+    auto d_op = d.getDefiningOp<WeightOp>();
+    auto b_data = b_op.read<float>();
+    auto d_data = d_op.read<float>();
+    auto b_shape = module::getShape(b);
+    auto d_shape = module::getShape(d);
+    std::vector<int64_t> o_shape;
+    auto output =
+        binary_mul(b_data->data(), d_data->data(), b_shape, d_shape, o_shape);
+    auto type = RankedTensorType::get(o_shape, rewriter.getF32Type());
+    rewriter.setInsertionPointAfter(op);
+    auto weight = WeightOp::create<float>(op, "merged", *output, type);
+    std::vector<NamedAttribute> attrs;
+    if (op.getDoRelu()) {
+      attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+      attrs.push_back(
+          rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
+    }
+    rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), ValueRange{c, weight},
+                                       attrs);
+    rewriter.eraseOp(mul);
+    return success();
+  }
+};
+
 void MulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<MulToSiLU, MulToMulConst, MulToScale>(context);
+  results.insert<MulToSiLU, MulToMulConst, MulToScale, MulMerge>(context);
 }
