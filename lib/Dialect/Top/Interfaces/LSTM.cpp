@@ -56,6 +56,7 @@ lstm_attr_t top::LSTMOp::parseParam() {
   attr.have_bias = !getBias().getType().isa<NoneType>();
   attr.have_h0 = !getInitialH().getType().isa<NoneType>();
   attr.have_c0 = !getInitialC().getType().isa<NoneType>();
+  attr.have_cont = !getCont().getType().isa<NoneType>();
   attr.output_y = !getY().getType().isa<NoneType>();
   attr.output_yh = !getYH().getType().isa<NoneType>();
   attr.output_yc = !getYC().getType().isa<NoneType>();
@@ -103,6 +104,7 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
   float *x_bi = bias;
   float *last_h = p.outputs[1]; // Y_h
   float *last_c = p.outputs[2]; // Y_c
+  float *conts = p.inputs[6];
 
   if (!forward) {
     x_wi += 4 * attr.input_size * attr.hidden_size;
@@ -171,6 +173,10 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
             attr.hidden_size, false);
 
     for (int batch = 0; batch < attr.batch_size; batch++) {
+      float cont = 1.0f;
+      if (attr.have_cont) {
+        cont = conts[s * attr.batch_size + batch];
+      }
       float *xi = x_i.data() + batch * attr.hidden_size;
       float *xo = x_o.data() + batch * attr.hidden_size;
       float *xf = x_f.data() + batch * attr.hidden_size;
@@ -187,11 +193,11 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
                          attr.hidden_size;
       }
       for (int i = 0; i < attr.hidden_size; i++) {
-        gi[i] = sigmoid_(xi[i] + hi[i]);
-        go[i] = sigmoid_(xo[i] + ho[i]);
-        gf[i] = sigmoid_(xf[i] + hf[i]);
-        gc[i] = tanh_(xc[i] + hc[i]);
-        cell_state[i] = gf[i] * cell_state[i] + gi[i] * gc[i];
+        gi[i] = sigmoid_(xi[i] + cont *hi[i]);
+        go[i] = sigmoid_(xo[i] + cont * ho[i]);
+        gf[i] = sigmoid_(xf[i] + cont * hf[i]);
+        gc[i] = tanh_(xc[i] + cont * hc[i]);
+        cell_state[i] = cont * gf[i] * cell_state[i] + gi[i] * gc[i];
         hidden_state[i] = go[i] * tanh_(cell_state[i]);
       }
     }

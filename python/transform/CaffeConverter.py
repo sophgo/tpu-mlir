@@ -223,7 +223,7 @@ class CaffeConverter(BaseConverter):
         print("Save mlir file: {}".format(mlir_file))
 
     def blob_to_weight_op(self, layer, index, shape: list = [], permute_order=[]):
-        name = layer.name + "_{}".format(index)
+        name = layer.name + "_weight_{}".format(index)
         blob = self.layer_dict[layer.name].blobs[index]
         if permute_order != None and len(permute_order) != 0:
             value = blob.data
@@ -853,7 +853,7 @@ class CaffeConverter(BaseConverter):
         operands = list()
         operands.append(op)
         # weight
-        wname = layer.name + "_0"
+        wname = layer.name + "_weight__0"
         weight = self.layer_dict[layer.name].blobs[0].data
         weight = weight.reshape([4, hidden_size * input_size])
         weight[[1, 2], :] = weight[[2, 1], :]  # ifoc =>iofc
@@ -861,7 +861,7 @@ class CaffeConverter(BaseConverter):
         weight_op = self.create_weight_op(wname, weight)
         operands.append(weight_op)
         # recurrence
-        rname = layer.name + "_1"
+        rname = layer.name + "_weight_1"
         r = self.layer_dict[layer.name].blobs[2].data
         r = r.reshape([4, hidden_size * hidden_size])
         r[[1, 2], :] = r[[2, 1], :]  # ifoc =>iofc
@@ -869,7 +869,7 @@ class CaffeConverter(BaseConverter):
         recurrence_op = self.create_weight_op(rname, r)
         operands.append(recurrence_op)
         # bias
-        bname = layer.name + "_2"
+        bname = layer.name + "_weight_2"
         bias = self.layer_dict[layer.name].blobs[1].data
         bias = bias.reshape([4, hidden_size])
         bias[[1, 2], :] = bias[[2, 1], :]  # ifoc =>iofc
@@ -880,6 +880,12 @@ class CaffeConverter(BaseConverter):
         operands.append(bias_op)
         operands.append(self.mlir.none_op)  # initial_h
         operands.append(self.mlir.none_op)  # initial_c
+        if len(layer.bottom) > 1:
+            cont_op = self.getOperand(layer.bottom[1])
+            operands.append(cont_op)
+        else:
+            operands.append(self.mlir.none_op)  # cont
+
         name = self.get_loc(layer.top[0])
         param = {
             "name": [name + '_lstm', name + '_H', name + '_C'],

@@ -127,11 +127,14 @@ void tpu::LSTMCVIOp::codegen_global_cv18xx(int64_t layer_id) {
   if (attr.output_yc) {
     ga_last_c = module::getAddress(getResults()[2]);
   }
+  if (attr.have_cont) {
+    ga_cont = module::getAddress(getCont());
+  }
   cvi_backend_tg_bf16_lstm_kernel(
       layer_id, ga_input, ga_recurrence, ga_bias, ga_initial_h, ga_initial_c,
       ga_cont, ga_sigmoid_table, ga_sigmoid_slope, ga_tanh_table, ga_tanh_slope,
       ga_output, ga_last_h, ga_last_c, attr.seq_len, attr.num_direction,
       attr.batch_size, attr.hidden_size, attr.have_bias, attr.have_h0,
-      attr.have_c0, false, getBidirectional(), attr.output_yh, attr.output_yc,
+      attr.have_c0, attr.have_cont, getBidirectional(), attr.output_yh, attr.output_yc,
       output_y);
 }

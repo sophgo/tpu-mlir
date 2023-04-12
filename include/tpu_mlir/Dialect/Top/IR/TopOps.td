@@ -1405,6 +1405,7 @@ def Top_LSTMOp: Top_Op<"LSTM"> {
     AnyTensorOrNone:$bias,
     AnyTensorOrNone:$initial_h,
     AnyTensorOrNone:$initial_c,
+    AnyTensorOrNone:$cont,
     I64Attr: $hidden_size,
     BoolAttr: $bidirectional,
     DefaultValuedAttr<BoolAttr, "false">:$batch_first

@@ -1842,7 +1842,7 @@ class OnnxConverter(BaseConverter):
         if num_inputs > 3:
             bias_op = self.getWeightOp(onnx_node.inputs[3])
         if num_inputs > 4 and len(onnx_node.inputs[4]) != 0:
-            raise RuntimeError("LSTM does not test the case of specify the sequence_lens.")
+            raise RuntimeError("GRU does not test the case of specify the sequence_lens.")
         if num_inputs > 5 and len(onnx_node.inputs[5]) != 0:
             init_h_op = self.getOp(onnx_node.inputs[5])
         operands.extend([bias_op, init_h_op])
@@ -1889,6 +1889,7 @@ class OnnxConverter(BaseConverter):
             init_c_op = self.getOp(onnx_node.inputs[6])
         operands.extend([bias_op, init_h_op, init_c_op])
         loc_names = [onnx_node.name + '_LSTM', onnx_node.name + '_H', onnx_node.name + '_C']
+        operands.append(self.mlir.none_op)
         out_shapes = [None, None, None]
         out_needs = [False, False, False]
         for idx, out in enumerate(onnx_node.outputs):
