@@ -175,10 +175,10 @@ class TORCH_IR_TESTER(object):
         return False
 
     def square_rooted(self, x):
-        return np.sqrt(sum([a * a for a in x]))
+        return np.sqrt(np.sum(np.power(x, 2)))
 
     def cosine_similarity(self, x, y):
-        numerator = sum(a * b for a, b in zip(x, y))
+        numerator = np.sum(x * y)
         denominator = self.square_rooted(x) * self.square_rooted(y)
         return round(numerator / float(denominator), 3)
 
@@ -793,7 +793,6 @@ class TORCH_IR_TESTER(object):
         _test_embedding((2, 3, 64), 512, 768)
         _test_embedding((2, 64), 20, 30)
         _test_embedding((1, 384), 30522, 1024)
-
 
     #######################################################################
     # To

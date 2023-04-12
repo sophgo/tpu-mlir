@@ -16,6 +16,7 @@ import struct
 from .tensor_compare import TensorCompare, TensorCompareStats
 import multiprocessing
 from tqdm import tqdm
+import gc
 
 
 def parse_args(args_list):
@@ -110,8 +111,8 @@ def dequantize(d1, threshold):
 def compare_one_array(tc, npz1, npz2, name, verbose, lock, dic, int8_tensor_close,
                       per_axis_compare):
     lock.acquire()
-    d1 = npz1[name]
-    d2 = npz2[name]
+    d1 = npz1.get(name)
+    d2 = npz2.get(name)
     lock.release()
     try:
         d1, d2 = align_type_and_shape(d1, d2)
@@ -155,7 +156,6 @@ def npz_compare(args_list):
     int8_tensor_close = args.int8_tensor_close
     npz1 = np.load(f1)
     npz2 = np.load(f2)
-
     tc = TensorCompare(close_order_tol=3,
                        cosine_similarity_tol=tolerance[0],
                        euclidean_similarity_tol=tolerance[1],
@@ -177,11 +177,18 @@ def npz_compare(args_list):
     stats = TensorCompareStats()
 
     names_list = list(names)  # deep copy
-    process_number = multiprocessing.cpu_count() // 2 + 1
+    if len(names_list) > 200:
+        step = len(names_list) // 200
+        if step > 1:
+            names_list = names_list[::step]
+        if names[-1] not in names_list:
+            # last compare is very important
+            names_list.append(names[-1])
+    process_number = min(multiprocessing.cpu_count(), 8)
     if args.per_axis_compare >= 0:
         process_number = 1
 
-    pbar = tqdm(names, total=len(names), position=0, leave=True)
+    pbar = tqdm(names, total=len(names_list), position=0, leave=True)
     while (len(names_list) > 0):
         compare_process_name_list = names_list[:process_number]
         names_list = names_list[process_number:]  # remove done name
@@ -205,6 +212,7 @@ def npz_compare(args_list):
 
         for j in processes:
             j.join()
+        gc.collect()
 
     for name in names:
         if dic.get(name) == None:

@@ -51,38 +51,30 @@ class TensorCompare():
         return
 
     def square_rooted(self, x):
-        return sqrt(sum([a * a for a in x]))
+        return sqrt(np.sum(np.power(x, 2)))
 
     def cosine_similarity(self, x, y):
-        numerator = sum(a * b for a, b in zip(x, y))
+        numerator = np.sum(x, y)
         denominator = self.square_rooted(x) * self.square_rooted(y)
         return round(numerator / float(denominator), 3)
 
     def euclidean_distance(self, x, y):
-        return sqrt(sum(pow(a - b, 2) for a, b in zip(x, y)))
+        return sqrt(np.sum(np.power(x - y, 2)))
 
-    def sqnr_similarity(self, signal_raw, signal_dequant, remove_zero=False):
+    def sqnr_similarity(self, signal_raw, signal_dequant):
         # SQNR is non-commutative
         # Unlike other distance function
         # Cannot change the order of signal_raw and signal_dequant
-        raw = signal_raw.flatten()
-        dequant = signal_dequant.flatten()
-
-        if remove_zero is True:
-            idx = raw != 0
-            raw = raw[idx]
-            dequant = dequant[idx]
+        raw = signal_raw.ravel()
+        dequant = signal_dequant.ravel()
 
         noise = raw - dequant
 
         avg_raw = np.sum(raw) / raw.size
         avg_noise = np.sum(noise) / noise.size
 
-        raw_zero_mean = raw - avg_raw
-        noise_zero_mean = noise - avg_noise
-
-        var_raw_zero_mean = np.sum(np.square(raw_zero_mean))
-        var_noise_zero_mean = np.sum(np.square(noise_zero_mean))
+        var_raw_zero_mean = np.sum(np.square(raw - avg_raw))
+        var_noise_zero_mean = np.sum(np.square(noise - avg_noise))
         if var_noise_zero_mean == 0 or var_raw_zero_mean == 0:
             return float('inf')
         sqnr = 10 * np.log10(var_raw_zero_mean / var_noise_zero_mean)
@@ -91,8 +83,8 @@ class TensorCompare():
 
     def all_diffs(self, d1, d2):
         diffs = list()
-        d1f = d1.flatten()
-        d2f = d2.flatten()
+        d1f = d1.ravel()
+        d2f = d2.ravel()
         if d1f.dtype == np.int8:
             assert (d2f.dtype == np.int8)
             for i in range(len(d1f)):
@@ -143,8 +135,12 @@ class TensorCompare():
 
         channel_simi = {}
         for loop in np.arange(outer_dim):
-            d1_loop = d1.flatten()[loop * inner_dim:(loop + 1) * inner_dim]
-            d2_loop = d2.flatten()[loop * inner_dim:(loop + 1) * inner_dim]
+            if outer_dim > 1:
+                d1_loop = d1.ravel()[loop * inner_dim:(loop + 1) * inner_dim]
+                d2_loop = d2.ravel()[loop * inner_dim:(loop + 1) * inner_dim]
+            else:
+                d1_loop = d1.ravel()
+                d2_loop = d2.ravel()
             simi = {}
             # check allclose
             for order in range((self.close_order_tol + 2), 1, -1):
@@ -162,14 +158,14 @@ class TensorCompare():
             # cosine similarity
             # cosine_similarity_my = self.cosine_similarity(d1.flatten(), d2.flatten())
             if np.sum(np.abs(d1_loop)) != 0 and np.sum(np.abs(d2_loop) != 0):
-                cosine_similarity = 1 - spatial.distance.cosine(d1_loop.astype(np.float32),
-                                                                d2_loop.astype(np.float32))
+                a = d1_loop if d1_loop.dtype == np.float32 else d1_loop.astype(np.float32)
+                b = d2_loop if d2_loop.dtype == np.float32 else d2_loop.astype(np.float32)
+                cosine_similarity = 1 - spatial.distance.cosine(a, b)
             else:
                 cosine_similarity = 0.0
             # measure euclidean similarity
-            m = (d1_loop + d2_loop) / 2
             ed = self.euclidean_distance(d1_loop, d2_loop)
-            sr = self.square_rooted(m)
+            sr = self.square_rooted((d1_loop + d2_loop) / 2)
             if (np.isinf(ed) or np.isinf(sr)):
                 euclidean_similarity = 0.0
             else:

@@ -126,14 +126,28 @@ class TorchInterpreter():
                 self.const_val[node.outputs[i]] = out
 
     def run_model(self, inputs: dict):
+        from tqdm import tqdm
         for key, value in inputs.items():
             if isinstance(value, torch.Tensor):
                 self.ref_tensor[key] = value
             else:
                 self.ref_tensor[key] = torch.tensor(value)
-
-        for node in self.graph.nodes():
+        nodes = list(self.graph.nodes())
+        pbar = tqdm(nodes, total=len(nodes), position=0, leave=True)
+        for node in nodes:
+            n = TorchNode(node)
+            pbar.set_description(n.name)
+            pbar.update(1)
             if node.kind().startswith('aten'):
-                self.run_aten(TorchNode(node))
+                self.run_aten(n)
             else:
-                self.run_prim(TorchNode(node))
+                self.run_prim(n)
+        pbar.close()
+        to_remove = []
+        for k, v in self.ref_tensor.items():
+            if isinstance(v, torch.Tensor):
+                self.ref_tensor[k] = v.numpy()
+            else:
+                to_remove.append(k)
+        for r in to_remove:
+            del self.ref_tensor[r]
