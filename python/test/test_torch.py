@@ -99,7 +99,7 @@ class TORCH_IR_TESTER(object):
             "Slice":            (self.test_Slice,             Y, N, N),
             "Softmax":          (self.test_Softmax,           Y, N, N),
             "Softmin":          (self.test_Softmin,           Y, N, N),
-            "Split":            (self.test_Split,               Y, N, N),
+            "Split":            (self.test_Split,             Y, N, N),
             "Squeeze":          (self.test_Squeeze,           Y, N, N),
             "Sub":              (self.test_Sub,               Y, N, N),
             "T":                (self.test_T,                 Y, N, N),
@@ -116,8 +116,9 @@ class TORCH_IR_TESTER(object):
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16"]
-        #self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
+        # self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
         self.support_asym = [True, False]
+
         self.model_file = ".bmodel"
         self.is_cv18xx = False
         self.chip = chip.lower()
@@ -144,6 +145,7 @@ class TORCH_IR_TESTER(object):
             self.quant_modes = [self.mode]
 
     class Desc():
+
         def __init__(self, dtype, min=-10, max=10) -> None:
             self.dtype = dtype
             self.min = min
@@ -201,18 +203,19 @@ class TORCH_IR_TESTER(object):
 
     def generate_random(self, shape, dtype='float32', min=-10, max=10):
         scale = max - min
-        return (np.random.rand(*shape)*scale+min).astype(dtype)
+        return (np.random.rand(*shape) * scale + min).astype(dtype)
 
-    def create_random_input(self, shapes, descs:List[Desc]):
+    def create_random_input(self, shapes, descs: List[Desc]):
         if len(descs) == 0:
             inputs = [self.generate_random(s) for s in shapes]
         else:
             inputs = list()
             for i in range(len(shapes)):
-                inputs.append(self.generate_random(shapes[i], descs[i].dtype, descs[i].min, descs[i].max))
+                inputs.append(
+                    self.generate_random(shapes[i], descs[i].dtype, descs[i].min, descs[i].max))
         return [torch.from_numpy(inp) for inp in inputs]
 
-    def torch_convert(self, in_shapes, torch_model, model_name: str, descs:List[Desc]):
+    def torch_convert(self, in_shapes, torch_model, model_name: str, descs: List[Desc]):
         # torch --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
 
@@ -231,7 +234,8 @@ class TORCH_IR_TESTER(object):
             if len(descs) == 0:
                 input_data[name] = self.generate_random(in_shapes[idx])
             else:
-                input_data[name] = self.generate_random(in_shapes[idx], descs[idx].dtype, descs[idx].min, descs[idx].max)
+                input_data[name] = self.generate_random(in_shapes[idx], descs[idx].dtype,
+                                                        descs[idx].min, descs[idx].max)
         np.savez(input_npz, **input_data)
         file_mark(input_npz)
         # # top mlir outputs will be inferenced first in case the quant mode is int8
@@ -299,12 +303,7 @@ class TORCH_IR_TESTER(object):
             msg += ", Asymmetric: {}".format(isAsym)
         print("[Success] test {} {}".format(model_name, msg))
 
-    def trace_and_test(
-        self,
-        in_shapes,
-        torch_model: nn.Module,
-        descs:List[Desc] = []
-    ):
+    def trace_and_test(self, in_shapes, torch_model: nn.Module, descs: List[Desc] = []):
         """Generic function to generate and compare torch and Tpu-Mlir output"""
         model_name = "{}_{}".format(self.CURRENT_CASE, TORCH_IR_TESTER.ID)
         TORCH_IR_TESTER.ID += 1
@@ -772,13 +771,13 @@ class TORCH_IR_TESTER(object):
         _test_constant_fill(torch.ones, (1, 3, 64, 64), torch.float32)
         _test_constant_fill(torch.ones, (3, 64, 64))
 
-
     #######################################################################
     # Embedding
     # ------------
     def test_Embedding(self):
 
         def _test_embedding(shape, n, d):
+
             class Model(torch.nn.Module):
 
                 def __init__(self):
@@ -802,6 +801,7 @@ class TORCH_IR_TESTER(object):
     def test_To(self):
 
         def _test_to(shape, dtype):
+
             class Model(torch.nn.Module):
 
                 def __init__(self):
@@ -1422,7 +1422,7 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in0_shape], Model())
 
         _test_split((1, 3, 32, 32), 2, 8)
-        _test_split((3, 32, 16), 0, (1,2))
+        _test_split((3, 32, 16), 0, (1, 2))
         _test_split((32, 15), 1, 4)
 
     #######################################################################
@@ -1663,7 +1663,7 @@ class TORCH_IR_TESTER(object):
     def test_Unary(self):
         """Unary Functions"""
 
-        def _test_unary(op_type, in_shape):
+        def _test_unary(op_type, in_shape, min=0):
 
             class Model(nn.Module):
 
@@ -1673,7 +1673,7 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x):
                     return op_type(x)
 
-            self.trace_and_test([in_shape], Model())
+            self.trace_and_test([in_shape], Model(), [self.Desc('float32', min)])
 
         for op_type in [torch.sqrt]:
             _test_unary(op_type, (1, 3, 32, 32))

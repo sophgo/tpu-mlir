@@ -25,12 +25,10 @@ void TanLowering::LoweringF32(PatternRewriter &rewriter, top::TanOp op) const {
 
 void TanLowering::LoweringINT8(PatternRewriter &rewriter, top::TanOp op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
-  Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
-                                    [](double val) { return std::tan(val); });
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.getInput(), table});
+  // this op not suitable for int8 quant cuz slight deviation in the former op
+  // would result in great difference in tan
+  set_tan_attr(rewriter, op);
+  lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
 void TanLowering::LoweringINT4(PatternRewriter &rewriter, top::TanOp op,
