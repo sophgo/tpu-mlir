@@ -31,6 +31,7 @@ void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
       ConvertUpsampleOp,
       ConvertWhereOp,
       ConvertMatMulWithRightTranspose,
+      ConvertPixelNormOp,
       convertMaxPool3D,
       ConvertSqrtOp,
       ConvertAvgPoolOp

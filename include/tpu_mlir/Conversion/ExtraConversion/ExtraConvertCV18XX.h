@@ -146,6 +146,13 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
+class ConvertPixelNormOp : public OpRewritePattern<top::PixelNormOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::PixelNormOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns);
 } // namespace cv18xx
 } // namespace tpu_mlir

@@ -1016,6 +1016,7 @@ class OnnxConverter(BaseConverter):
     def convert_maxpool_op(self, onnx_node):
         assert (onnx_node.op_type == "MaxPool")
         op = self.getOperand(onnx_node.inputs[0])
+        ceil_mode = onnx_node.attrs.get("ceil_mode", False)
         kernel_shape = onnx_node.attrs['kernel_shape']
         count_include_pad = onnx_node.attrs.get('count_include_pad', False)
         dim = len(kernel_shape)
@@ -1027,6 +1028,14 @@ class OnnxConverter(BaseConverter):
             pads = set_auto_pad(auto_pad, input_shape, kernel_shape, strides)
         if len(pads) == 0:
             pads = onnx_node.attrs.get("pads", dim * 2 * [0])
+        if ceil_mode:
+            for i in [0, 1]:
+                remain_pixel = (input_shape[i+2] + 2 * pads[i] - kernel_shape[i]) % strides[i]
+                if remain_pixel > 0:
+                    if ceil_mode:
+                        pads[i+2] += (strides[i] - remain_pixel)
+                    else:
+                        pads[i+2] -= remain_pixel
         output_shape = self.getShape(onnx_node.name)
         new_op = top.MaxPoolOp(self.mlir.get_tensor_type(output_shape),
                                op,
@@ -1648,7 +1657,7 @@ class OnnxConverter(BaseConverter):
             strides = [1, strides[0]]
             pads = [0, 0, pads[0], pads[1]]
             kernel_shape = [1, kernel_shape[0]]
-            output_padding = [0, 0, output_padding[0], output_padding[1]]
+            output_padding = [output_padding[0], output_padding[1]]
 
             input_shape = [input_shape[0], input_shape[1], 1, input_shape[2]]
             reshape0_op = top.ReshapeOp(self.mlir.get_tensor_type(input_shape),
