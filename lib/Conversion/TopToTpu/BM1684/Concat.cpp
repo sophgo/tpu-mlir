@@ -19,7 +19,10 @@ void ConcatLowering::LoweringF32(PatternRewriter &rewriter,
 
 void ConcatLowering::LoweringINT8(PatternRewriter &rewriter, top::ConcatOp op,
                                   bool asymmetric) const {
-  lowering_common_int8<tpu::ConcatOp>(rewriter, op, false);
+  //lowering_common_int8<tpu::ConcatOp>(rewriter, op, false);
+  //TODO: Int8 Concat OP has error, please fixed it.
+  //and now, lowerring f32 temporarily.
+  lowering_common_f32<tpu::ConcatOp>(rewriter, op);
 }
 
 } // namespace bm1684
