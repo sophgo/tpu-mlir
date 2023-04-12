@@ -106,7 +106,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
       bias_int32->data()[c] = std::round(-bias_w_xz);
     }
   }
-  bool with_bias = (bias_int32 != nullptr);
+  // bool with_bias = (bias_int32 != nullptr);
 
   auto filter_type = op.getFilter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
@@ -137,7 +137,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   std::string deconv_name = module::getName(op.getOperation()).str() + "_i32";
   auto name = rewriter.getStringAttr(deconv_name);
   attrs.push_back(
-      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(param.with_bias)));
   auto deconvType = RankedTensorType::get(
       {param.n, param.oc, param.oh, param.ow}, rewriter.getI32Type());
   auto deconvOp = rewriter.create<tpu::DeconvOp>(NameLoc::get(name), deconvType,

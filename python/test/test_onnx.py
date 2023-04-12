@@ -6,7 +6,6 @@
 #
 # ==============================================================================
 
-import pdb
 from copy import deepcopy
 import numpy as np
 import onnx
@@ -39,125 +38,125 @@ class ONNX_IR_TESTER(object):
             #########################################
             # ONNX Test Case, Alphabetically
             #########################################
-            # case: (test, bm1684x_support, bm1686_support, cv183x_support)
-            "Abs":          (self.test_Abs,         Y, N, Y),
-            "Add":          (self.test_Add,         Y, N, Y),
-            "AddBcast":     (self.test_AddBcast,    Y, N, N),
-            "AddBcast2":    (self.test_AddBcast2,   Y, N, N),
-            "AddBcast3":    (self.test_AddBcast3,   N, N, N),  # failed cases
-            "Arg":          (self.test_Arg,         Y, N, Y),
-            "AddWeight":     (self.test_AddWeight,  Y, N, Y),
-            "AvgPool1d":    (self.test_AvgPool1d,   Y, N, Y),
-            "AvgPool2d":    (self.test_AvgPool2d,   Y, N, Y),
-            "AvgPool3d":    (self.test_AvgPool3d,   Y, N, Y),
-            "AvgPoolOdd":   (self.test_AvgPoolOdd,  Y, N, Y),
-            "PadAvgPool2d": (self.test_PadAvgPool2d,Y, N, Y),
-            "BatchMatMul":  (self.test_BatchMatMul, Y, N, Y),
-            "BCastAdd":     (self.test_BCastAdd,    Y, N, Y),
-            "BCastMul":     (self.test_BCastMul,    Y, N, Y),
-            "BCastMulCst":  (self.test_BCastMulCst, Y, N, Y),
-            "CompareCst":   (self.test_CompareCst,  Y, N, N),
-            "Compare":      (self.test_Compare,     Y, N, N),
-            "Compare2":     (self.test_Compare2,    N, N, N),
-            "Concat":       (self.test_Concat,      Y, N, Y),
-            "Concat2":      (self.test_Concat2,     Y, N, Y),
-            "ConstOfShape": (self.test_ConstOfShape, Y, N, N),
-            "Conv1d":       (self.test_Conv1d,      Y, N, Y),
-            "Conv2d":       (self.test_Conv2d,      Y, N, Y),
-            "Conv3d":       (self.test_Conv3d,      Y, N, Y),
-            "ConvStride":   (self.test_ConvStride,  Y, N, Y),
-            "ConvDw":       (self.test_ConvDw,      Y, N, Y),
-            "ConvTrans":    (self.test_ConvTrans,   Y, N, Y),
-            "ConvTrans2":   (self.test_ConvTrans2,  Y, N, Y),  #no pad
-            "Clip":         (self.test_Clip,        Y, N, Y),
-            "DepthToSpace": (self.test_DepthToSpace,Y, N, Y),
-            "Deconv":       (self.test_Deconv,      N, Y, N),
-            "Div":          (self.test_Div,         Y, N, Y),
-            "DivBcast":     (self.test_DivBcast,    Y, N, N),
-            "DivBcast2":    (self.test_DivBcast2,   Y, N, N),
-            "Einsum":       (self.test_Einsum,      Y, N, Y),
-            "Einsum2":      (self.test_Einsum2,     Y, N, Y),
-            "Elu":          (self.test_Elu,         Y, N, N),
-            "Erf":          (self.test_Erf,         Y, N, N),
-            "Exp":          (self.test_Exp,         Y, N, Y),
-            "Expand":       (self.test_Expand,      Y, N, Y),
-            "Expand2":      (self.test_Expand2,     Y, N, Y),
-            "Floor":        (self.test_floor,       Y, N, N),
-            "Gather":       (self.test_Gather,      Y, N, Y),
+            # case: (test,   bm1684x_support, bm1686_support, cv183x_support)
+            "Abs":          (self.test_Abs,           Y, N, Y),
+            "Add":          (self.test_Add,           Y, N, Y),
+            "AddBcast":     (self.test_AddBcast,      Y, N, N),
+            "AddBcast2":    (self.test_AddBcast2,     Y, N, N),
+            "AddBcast3":    (self.test_AddBcast3,     N, N, N),  # failed cases
+            "Arg":          (self.test_Arg,           Y, N, Y),
+            "AddWeight":     (self.test_AddWeight,    Y, N, Y),
+            "AvgPool1d":    (self.test_AvgPool1d,     Y, N, Y),
+            "AvgPool2d":    (self.test_AvgPool2d,     Y, N, Y),
+            "AvgPool3d":    (self.test_AvgPool3d,     Y, N, Y),
+            "AvgPoolOdd":   (self.test_AvgPoolOdd,    Y, N, Y),
+            "PadAvgPool2d": (self.test_PadAvgPool2d,  Y, N, Y),
+            "BatchMatMul":  (self.test_BatchMatMul,   Y, N, Y),
+            "BCastAdd":     (self.test_BCastAdd,      Y, N, Y),
+            "BCastMul":     (self.test_BCastMul,      Y, N, Y),
+            "BCastMulCst":  (self.test_BCastMulCst,   Y, N, Y),
+            "CompareCst":   (self.test_CompareCst,    Y, N, N),
+            "Compare":      (self.test_Compare,       Y, N, N),
+            "Compare2":     (self.test_Compare2,      N, N, N),
+            "Concat":       (self.test_Concat,        Y, N, Y),
+            "Concat2":      (self.test_Concat2,       Y, N, Y),
+            "ConstOfShape": (self.test_ConstOfShape,  Y, N, N),
+            "Conv1d":       (self.test_Conv1d,        Y, N, Y),
+            "Conv2d":       (self.test_Conv2d,        Y, N, Y),
+            "Conv3d":       (self.test_Conv3d,        Y, N, Y),
+            "ConvStride":   (self.test_ConvStride,    Y, N, Y),
+            "ConvDw":       (self.test_ConvDw,        Y, N, Y),
+            "ConvTrans":    (self.test_ConvTrans,     Y, N, Y),
+            "ConvTrans2":   (self.test_ConvTrans2,    Y, N, Y),  #no pad
+            "Clip":         (self.test_Clip,          Y, N, Y),
+            "DepthToSpace": (self.test_DepthToSpace,  Y, N, Y),
+            "Deconv":       (self.test_Deconv,        Y, N, N),
+            "Div":          (self.test_Div,           Y, N, Y),
+            "DivBcast":     (self.test_DivBcast,      Y, N, N),
+            "DivBcast2":    (self.test_DivBcast2,     Y, N, N),
+            "Einsum":       (self.test_Einsum,        Y, N, Y),
+            "Einsum2":      (self.test_Einsum2,       Y, N, Y),
+            "Elu":          (self.test_Elu,           Y, N, N),
+            "Erf":          (self.test_Erf,           Y, N, N),
+            "Exp":          (self.test_Exp,           Y, N, Y),
+            "Expand":       (self.test_Expand,        Y, N, Y),
+            "Expand2":      (self.test_Expand2,       Y, N, Y),
+            "Floor":        (self.test_floor,         Y, N, N),
+            "Gather":       (self.test_Gather,        Y, N, Y),
             # "Gather2":      (self.test_Gather2,     Y, N, Y),
-            "Gemm":         (self.test_Gemm,        Y, N, Y),
-            "GroupFC":      (self.test_GroupFC,     Y, N, Y),
-            "GRU":          (self.test_GRU,         Y, N, Y),  # test gru output Y
-            "GRU2":         (self.test_GRU2,        Y, N, Y),  # test gru output Yh
-            "GRU3":         (self.test_GRU3,        Y, N, Y),  # test gru output Y and Yh
-            "LeakyRelu":    (self.test_LeakyRelu,   Y, N, Y),
-            "Log":          (self.test_Log,         Y, N, Y),
-            "LogSoftmax":   (self.test_LogSoftmax,  Y, N, Y),
-            "LRN":          (self.test_LRN,         Y, N, Y),
-            "LSTM":         (self.test_LSTM,        Y, N, Y),  # output_y
-            "LSTM2":        (self.test_LSTM2,       Y, N, Y),  # output all
-            "LSTM3":        (self.test_LSTM3,       Y, N, Y),  # output_yh and output_yc
-            "MaxPool1d":    (self.test_MaxPool1d,   Y, N, Y),
-            "MaxPool2d":    (self.test_MaxPool2d,   Y, N, Y),
-            "MaxPool3d":    (self.test_MaxPool3d,   N, N, Y),
-            "MatMul":       (self.test_MatMul,      Y, N, Y),
-            "MatMul2":      (self.test_MatMul2,     Y, N, Y),
-            "Max":          (self.test_Max,         Y, N, Y),
-            "MaxBcast":     (self.test_MaxBcast,    Y, N, N),
-            "Mul":          (self.test_Mul,         Y, N, Y),
-            "MulBcast":     (self.test_MulBcast,    Y, N, N),
-            "MulBcast2":    (self.test_MulBcast2,   Y, N, N),
-            "Min":          (self.test_Min,         Y, N, Y),
-            "MinBcast":     (self.test_MinBcast,    Y, N, N),
-            "MulConst":     (self.test_MulConst,    Y, N, Y),
-            "Neg":          (self.test_Neg,         Y, N, Y),
-            "Pad":          (self.test_Pad,         Y, N, Y),  # zero pad
-            "Pad1":         (self.test_Pad1,        Y, N, Y),  # pad val
-            "PadEdge":      (self.test_PadEdge,     Y, N, Y),
-            "PadReflect":   (self.test_PadReflect,  Y, N, Y),
-            "Pow1":         (self.test_Pow1,        Y, N, Y),  # y = x ^ n
-            "Pow2":         (self.test_Pow2,        N, N, N),  # y = n ^ x
-            "PRelu":        (self.test_PRelu,       Y, N, Y),
+            "Gemm":         (self.test_Gemm,          Y, N, Y),
+            "GroupFC":      (self.test_GroupFC,       Y, N, Y),
+            "GRU":          (self.test_GRU,           Y, N, Y),  # test gru output Y
+            "GRU2":         (self.test_GRU2,          Y, N, Y),  # test gru output Yh
+            "GRU3":         (self.test_GRU3,          Y, N, Y),  # test gru output Y and Yh
+            "LeakyRelu":    (self.test_LeakyRelu,     Y, N, Y),
+            "Log":          (self.test_Log,           Y, N, Y),
+            "LogSoftmax":   (self.test_LogSoftmax,    Y, N, Y),
+            "LRN":          (self.test_LRN,           Y, N, Y),
+            "LSTM":         (self.test_LSTM,          Y, N, Y),  # output_y
+            "LSTM2":        (self.test_LSTM2,         Y, N, Y),  # output all
+            "LSTM3":        (self.test_LSTM3,         Y, N, Y),  # output_yh and output_yc
+            "MaxPool1d":    (self.test_MaxPool1d,     Y, N, Y),
+            "MaxPool2d":    (self.test_MaxPool2d,     Y, N, Y),
+            "MaxPool3d":    (self.test_MaxPool3d,     N, N, Y),
+            "MatMul":       (self.test_MatMul,        Y, N, Y),
+            "MatMul2":      (self.test_MatMul2,       Y, N, Y),
+            "Max":          (self.test_Max,           Y, N, Y),
+            "MaxBcast":     (self.test_MaxBcast,      Y, N, N),
+            "Mul":          (self.test_Mul,           Y, N, Y),
+            "MulBcast":     (self.test_MulBcast,      Y, N, N),
+            "MulBcast2":    (self.test_MulBcast2,     Y, N, N),
+            "Min":          (self.test_Min,           Y, N, Y),
+            "MinBcast":     (self.test_MinBcast,      Y, N, N),
+            "MulConst":     (self.test_MulConst,      Y, N, Y),
+            "Neg":          (self.test_Neg,           Y, N, Y),
+            "Pad":          (self.test_Pad,           Y, N, Y),  # zero pad
+            "Pad1":         (self.test_Pad1,          Y, N, Y),  # pad val
+            "PadEdge":      (self.test_PadEdge,       Y, N, Y),
+            "PadReflect":   (self.test_PadReflect,    Y, N, Y),
+            "Pow1":         (self.test_Pow1,          Y, N, Y),  # y = x ^ n
+            "Pow2":         (self.test_Pow2,          N, N, N),  # y = n ^ x
+            "PRelu":        (self.test_PRelu,         Y, N, Y),
             # "Range":        (self.test_Range,       Y, N, N),
-            "Resize":       (self.test_Resize,      Y, N, Y),
-            "Resize2":      (self.test_Resize2,     Y, N, Y),
-            "Reshape":      (self.test_Reshape,     Y, N, N),
-            "Reduce":       (self.test_Reduce,      Y, N, Y),
-            "Reduce2":      (self.test_Reduce2,     Y, N, Y),
-            "ReduceL2":     (self.test_ReduceL2,    Y, N, Y),
-            "ReduceMean":   (self.test_ReduceMean,  Y, N, Y),
-            "ReduceSum":    (self.test_ReduceSum,   Y, N, Y),
-            "ReduceProd":   (self.test_ReduceProd,  Y, N, N),
-            "Reciprocal":   (self.test_Reciprocal,  Y, N, Y),
-            "Relu":         (self.test_Relu,        Y, N, Y),
-            "PermuteMove":  (self.test_PermuteMove, Y, N, Y),
-            "ScatterND":    (self.test_ScatterND,   Y, N, N),
-            "Shape":        (self.test_Shape,       Y, N, N),
-            "SiLU":         (self.test_SiLU,        Y, N, Y),
-            "Softmax":      (self.test_Softmax,     Y, N, Y),
-            "Softplus":     (self.test_Softplus,    Y, N, Y),
-            "Squeeze":      (self.test_Squeeze,     Y, N, Y),
-            "Sigmoid":      (self.test_Sigmoid,     Y, N, Y),
-            "Slice":        (self.test_Slice,       Y, N, Y),
-            "Slice2":       (self.test_Slice2,      Y, N, Y),
-            "Slice3":       (self.test_Slice3,      Y, N, Y),
-            "Split":        (self.test_Split,       Y, N, Y),
-            "Scale":        (self.test_Scale,       Y, N, Y),
-            "Sqrt":         (self.test_Sqrt,        Y, N, Y),
-            "Sub":          (self.test_Sub,         Y, N, Y),
-            "Sub2":         (self.test_Sub2,        Y, N, Y),
-            "SubBcast":     (self.test_SubBcast,    Y, N, N),
-            "SubBcast2":    (self.test_SubBcast2,   Y, N, N),
-            "SubConst":     (self.test_SubConst,    Y, N, N),
-            "SubConst2":    (self.test_SubConst2,   Y, N, Y),
-            "Sum":          (self.test_Sum,         Y, N, Y),
-            "Tanh":         (self.test_Tanh,        Y, N, Y),
-            "Tile":         (self.test_Tile,        Y, N, Y),
-            "Transpose":    (self.test_Transpose,   Y, N, Y),
-            "Transpose2":   (self.test_Transpose2,  Y, N, Y),
-            "TopK":         (self.test_TopK,        Y, N, N),
-            "Upsample":     (self.test_Upsample,    Y, N, N),
-            "Where":        (self.test_Where,       Y, N, Y),
+            "Resize":       (self.test_Resize,        Y, N, Y),
+            "Resize2":      (self.test_Resize2,       Y, N, Y),
+            "Reshape":      (self.test_Reshape,       Y, N, N),
+            "Reduce":       (self.test_Reduce,        Y, N, Y),
+            "Reduce2":      (self.test_Reduce2,       Y, N, Y),
+            "ReduceL2":     (self.test_ReduceL2,      Y, N, Y),
+            "ReduceMean":   (self.test_ReduceMean,    Y, N, Y),
+            "ReduceSum":    (self.test_ReduceSum,     Y, N, Y),
+            "ReduceProd":   (self.test_ReduceProd,    Y, N, N),
+            "Reciprocal":   (self.test_Reciprocal,    Y, N, Y),
+            "Relu":         (self.test_Relu,          Y, N, Y),
+            "PermuteMove":  (self.test_PermuteMove,   Y, N, Y),
+            "ScatterND":    (self.test_ScatterND,     Y, N, N),
+            "Shape":        (self.test_Shape,         Y, N, N),
+            "SiLU":         (self.test_SiLU,          Y, N, Y),
+            "Softmax":      (self.test_Softmax,       Y, N, Y),
+            "Softplus":     (self.test_Softplus,      Y, N, Y),
+            "Squeeze":      (self.test_Squeeze,       Y, N, Y),
+            "Sigmoid":      (self.test_Sigmoid,       Y, N, Y),
+            "Slice":        (self.test_Slice,         Y, N, Y),
+            "Slice2":       (self.test_Slice2,        Y, N, Y),
+            "Slice3":       (self.test_Slice3,        Y, N, Y),
+            "Split":        (self.test_Split,         Y, N, Y),
+            "Scale":        (self.test_Scale,         Y, N, Y),
+            "Sqrt":         (self.test_Sqrt,          Y, N, Y),
+            "Sub":          (self.test_Sub,           Y, N, Y),
+            "Sub2":         (self.test_Sub2,          Y, N, Y),
+            "SubBcast":     (self.test_SubBcast,      Y, N, N),
+            "SubBcast2":    (self.test_SubBcast2,     Y, N, N),
+            "SubConst":     (self.test_SubConst,      Y, N, N),
+            "SubConst2":    (self.test_SubConst2,     Y, N, Y),
+            "Sum":          (self.test_Sum,           Y, N, Y),
+            "Tanh":         (self.test_Tanh,          Y, N, Y),
+            "Tile":         (self.test_Tile,          Y, N, Y),
+            "Transpose":    (self.test_Transpose,     Y, N, Y),
+            "Transpose2":   (self.test_Transpose2,    Y, N, Y),
+            "TopK":         (self.test_TopK,          Y, N, N),
+            "Upsample":     (self.test_Upsample,      Y, N, N),
+            "Where":        (self.test_Where,         Y, N, Y),
             #####################################
             # Torch Test Case, Alphabetically
             #####################################
@@ -2017,8 +2016,8 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Model, self).__init__()
-                self.deconv = nn.ConvTranspose2d(in_channels=64,
-                                                 out_channels=64,
+                self.deconv = nn.ConvTranspose2d(in_channels=8,
+                                                 out_channels=8,
                                                  kernel_size=2,
                                                  stride=2,
                                                  padding=0,
@@ -2031,7 +2030,7 @@ class ONNX_IR_TESTER(object):
                 y = self.deconv(x)
                 return y
 
-        x = torch.randn(3, 64, 184, 320).float()
+        x = torch.randn(3, 8, 16, 32).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_Slice3(self, case_name):
