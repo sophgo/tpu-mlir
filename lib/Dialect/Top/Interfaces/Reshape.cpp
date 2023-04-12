@@ -18,8 +18,10 @@ LogicalResult top::ReshapeOp::init(InferenceParameter &p) { return success(); }
 void top::ReshapeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ReshapeOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(getOutput());
-  memcpy(p.outputs[0], p.inputs[0], num_elem * sizeof(float));
+  if (p.inputs[0] != p.outputs[0]) {
+    auto num_elem = module::getNumElements(getOutput());
+    memcpy(p.outputs[0], p.inputs[0], num_elem * sizeof(float));
+  }
   return success();
 }
 

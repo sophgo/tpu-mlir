@@ -46,6 +46,7 @@ public:
   std::shared_ptr<std::vector<float>> getTensor(const std::string &name, bool express_type = false);
   bool getTensorQuantInfo(const std::string name, std::string &dtype, float &scale, int &zp);
   llvm::ArrayRef<int64_t> getTensorShape(const std::string &name);
+  bool is_no_mem_op(Operation*op);
 
 public:
   std::vector<std::string> input_names;

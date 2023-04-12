@@ -17,8 +17,10 @@ LogicalResult tpu::ReshapeOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReshapeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReshapeOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(getOutput());
-  memcpy(p.outputs[0], p.inputs[0], sizeof(float) * num_elem);
+  if (p.inputs[0] != p.outputs[0]) {
+    auto num_elem = module::getNumElements(getOutput());
+    memcpy(p.outputs[0], p.inputs[0], sizeof(float) * num_elem);
+  }
   return success();
 }
 

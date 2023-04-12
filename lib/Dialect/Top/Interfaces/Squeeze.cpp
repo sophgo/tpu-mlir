@@ -18,8 +18,10 @@ LogicalResult top::SqueezeOp::init(InferenceParameter &p) { return success(); }
 void top::SqueezeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SqueezeOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(getOutput());
-  memcpy(p.outputs[0], p.inputs[0], num_elem * sizeof(float));
+  if (p.inputs[0] != p.outputs[0]) {
+    auto num_elem = module::getNumElements(getOutput());
+    memcpy(p.outputs[0], p.inputs[0], num_elem * sizeof(float));
+  }
   return success();
 }
 

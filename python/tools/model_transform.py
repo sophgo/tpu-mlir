@@ -23,8 +23,9 @@ import pymlir
 
 class ModelTransformer(object):
 
-    def __init__(self, model_name):
+    def __init__(self, model_name, model_def):
         self.model_name = model_name
+        self.model_def = model_def
         self.converter = BaseConverter()
         self.do_mlir_infer = True
 
@@ -43,6 +44,8 @@ class ModelTransformer(object):
         self.input_num = self.module_parsered.get_input_num()
 
     def model_validate(self, file_list: str, tolerance, excepts, test_result):
+        from tools.model_runner import mlir_inference, show_fake_cmd
+        import gc
         in_f32_npz = self.model_name + '_in_f32.npz'
         inputs = dict()
         if len(file_list) == 1 and file_list[0].endswith('.npz'):
@@ -63,23 +66,27 @@ class ModelTransformer(object):
                 assert (file.endswith('.npy'))
                 inputs[name] = np.load(file)
         np.savez(in_f32_npz, **inputs)
-
         # original model inference to get blobs of all layer
+        ref_npz = self.model_name + '_ref_outputs.npz'
+        show_fake_cmd(in_f32_npz, self.model_def, ref_npz)
         ref_outputs = self.origin_inference(inputs)
-        if self.do_mlir_infer:
-            ref_npz = self.model_name + '_ref_outputs.npz'
-            np.savez(ref_npz, **ref_outputs)
-
-            # inference of mlir model
-            from tools.model_runner import mlir_inference, show_fake_cmd
-            show_fake_cmd(in_f32_npz, self.mlir_file, test_result)
-            f32_outputs = mlir_inference(inputs, self.mlir_file)
-            np.savez(test_result, **f32_outputs)
-            # compare all blobs layer by layers
-            f32_blobs_compare(test_result, ref_npz, tolerance, excepts=excepts)
-            file_mark(ref_npz)
-        else:
+        if not self.do_mlir_infer:
             np.savez(test_result, **ref_outputs)
+            return
+        np.savez(ref_npz, **ref_outputs)
+        del self.converter #save memory
+        del ref_outputs
+        gc.collect()
+
+        # inference of mlir model
+        show_fake_cmd(in_f32_npz, self.mlir_file, test_result)
+        f32_outputs = mlir_inference(inputs, self.mlir_file)
+        np.savez(test_result, **f32_outputs)
+        del f32_outputs
+        gc.collect()
+        # compare all blobs layer by layers
+        f32_blobs_compare(test_result, ref_npz, tolerance, excepts=excepts)
+        file_mark(ref_npz)
 
     @abc.abstractmethod
     def origin_inference(self, inputs: dict) -> dict:
@@ -95,8 +102,7 @@ class OnnxTransformer(ModelTransformer):
                  output_names=[],
                  preprocessor=None,
                  use_onnxsim=True):
-        super().__init__(model_name)
-        self.model_def = model_def
+        super().__init__(model_name, model_def)
         from transform.OnnxConverter import OnnxConverter
         self.converter = OnnxConverter(self.model_name, self.model_def, input_shapes, output_names,
                                        preprocessor, use_onnxsim)
@@ -115,8 +121,7 @@ class CaffeTransformer(ModelTransformer):
                  input_shapes: list = [],
                  output_names=[],
                  preprocessor=None):
-        super().__init__(model_name)
-        self.model_def = model_def
+        super().__init__(model_name, model_def)
         self.model_data = model_data
         from transform.CaffeConverter import CaffeConverter
         self.converter = CaffeConverter(self.model_name, self.model_def, model_data, input_shapes,
@@ -135,8 +140,7 @@ class TFLiteTransformer(ModelTransformer):
                  input_shapes: list = [],
                  output_names=[],
                  preprocessor=None):
-        super().__init__(model_name)
-        self.model_def = model_def
+        super().__init__(model_name, model_def)
         self.do_mlir_infer = False
         from transform.TFLiteConverter import TFLiteConverter
         self.converter = TFLiteConverter(self.model_name, self.model_def, input_shapes,
@@ -161,8 +165,7 @@ class TorchTransformer(ModelTransformer):
                  input_types: list = [],
                  output_names=[],
                  preprocessor=None):
-        super().__init__(model_name)
-        self.model_def = model_def
+        super().__init__(model_name, model_def)
         from transform.TorchConverter import TorchConverter
         self.converter = TorchConverter(self.model_name, self.model_def, input_shapes, input_types,
                                         output_names, preprocessor)

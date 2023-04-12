@@ -383,21 +383,7 @@ def tflite_inference(
 
 def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
     import torch
-    idx = 0
 
-    def torch_outputs(outputs: dict, names: list, tensors):
-        nonlocal idx
-        if isinstance(tensors, torch.Tensor):
-            outputs[names[idx]] = tensors.numpy()
-            idx += 1
-            return
-        if isinstance(tensors, tuple) or isinstance(tensors, list):
-            for t in tensors:
-                torch_outputs(outputs, names, t)
-        else:
-            raise RuntimeError("Not Implemented")
-
-    outputs = {}
     if dump_all:
         from transform.TorchInterpreter import TorchInterpreter
         net = TorchInterpreter(model)
@@ -418,6 +404,22 @@ def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
             names.extend([i.debugName() for i in ins])
         else:
             names.append(out.debugName())
+
+    idx = 0
+
+    def torch_outputs(outputs: dict, names: list, tensors):
+        nonlocal idx
+        if isinstance(tensors, torch.Tensor):
+            outputs[names[idx]] = tensors.numpy()
+            idx += 1
+            return
+        if isinstance(tensors, tuple) or isinstance(tensors, list):
+            for t in tensors:
+                torch_outputs(outputs, names, t)
+        else:
+            raise RuntimeError("Not Implemented")
+
+    outputs = {}
     torch_outputs(outputs, names, out_tensors)
     return outputs
 
@@ -453,5 +455,6 @@ if __name__ == '__main__':
         output = model_inference(data, args.model)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
+    print("\nSaving ...")
     np.savez(args.output, **output)
     print("\nResult saved to:{}".format(args.output))

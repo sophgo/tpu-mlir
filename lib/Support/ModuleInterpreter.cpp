@@ -42,6 +42,14 @@ ModuleInterpreter::~ModuleInterpreter() {
   }
 }
 
+bool ModuleInterpreter::is_no_mem_op(Operation *op) {
+  if (op == nullptr) {
+    return false;
+  }
+  return isa<top::ReshapeOp, tpu::ReshapeOp, top::UnsqueezeOp, top::SqueezeOp>(
+      op);
+}
+
 void ModuleInterpreter::allocate_resources() {
   all_tensor_names.clear();
   value_map.clear();
@@ -63,10 +71,10 @@ void ModuleInterpreter::allocate_resources() {
         }
       } else {
         for (auto result : op->getResults()) {
-          if (result.getType().isa<NoneType>()) {
+          auto type = result.getType().dyn_cast<RankedTensorType>();
+          if (!type) {
             continue;
           }
-          auto type = result.getType().cast<RankedTensorType>();
           auto count = type.getNumElements();
           total_count += count;
           auto name = module::getName(result).str();
@@ -74,6 +82,10 @@ void ModuleInterpreter::allocate_resources() {
           if (auto wOp = llvm::dyn_cast<top::WeightOp>(op)) {
             mem_map[name] = wOp.read_as_float();
             all_weight_names.push_back(name);
+          } else if (is_no_mem_op(op)) {
+            // output with the same memory of input
+            auto in = module::getName(op->getOperand(0));
+            mem_map[name] = mem_map[in.str()];
           } else {
             mem_map[name] = std::make_shared<std::vector<float>>(count);
             all_tensor_names.push_back(name);
@@ -84,7 +96,7 @@ void ModuleInterpreter::allocate_resources() {
         }
       }
     });
-    module::detachWeightFile();
+    module::detachWeightFile(); // to free weight memory
     for (auto &name : output_names) {
       if (std::find(all_tensor_names.begin(), all_tensor_names.end(), name) ==
           all_tensor_names.end()) {
@@ -178,10 +190,14 @@ void ModuleInterpreter::invoke(bool express_type) {
       }
     });
   }
+  llvm::errs() << "\n";
   if (express_type && module::isState(module::State::TPU_LOWERED)) {
     for (auto &name : all_tensor_names) {
-      auto mem = mem_map.at(name);
       auto value = value_map.at(name);
+      if (is_no_mem_op(value.getDefiningOp())) {
+        continue;
+      }
+      auto mem = mem_map.at(name);
       if (module::isUniformQuantized(value)) {
         auto qtype = module::getUniformQuantizedType(value);
         for (auto &data : *mem) {

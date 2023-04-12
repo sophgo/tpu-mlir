@@ -14,12 +14,16 @@
 
 int64_t top::UnsqueezeOp::getFLOPs() { return 0; }
 
-LogicalResult top::UnsqueezeOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::UnsqueezeOp::init(InferenceParameter &p) {
+  return success();
+}
 void top::UnsqueezeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::UnsqueezeOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(getOutput());
-  memcpy(p.outputs[0], p.inputs[0], num_elem * sizeof(float));
+  if (p.inputs[0] != p.outputs[0]) {
+    auto num_elem = module::getNumElements(getOutput());
+    memcpy(p.outputs[0], p.inputs[0], num_elem * sizeof(float));
+  }
   return success();
 }
 
