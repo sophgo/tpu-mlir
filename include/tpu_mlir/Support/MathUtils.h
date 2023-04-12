@@ -148,7 +148,10 @@ std::shared_ptr<std::vector<float>>
 binary_add(float *a, float *b, const llvm::ArrayRef<int64_t> &a_shape,
            const llvm::ArrayRef<int64_t> &b_shape,
            std::vector<int64_t> &o_shape);
-
+std::shared_ptr<std::vector<float>>
+binary_mul(float *a, float *b, const llvm::ArrayRef<int64_t> &a_shape,
+           const llvm::ArrayRef<int64_t> &b_shape,
+           std::vector<int64_t> &o_shape);
 int8_t quantizeFilterRShift(float w, float threshold_y, float threshold_x,
                             uint32_t rshift);
 
