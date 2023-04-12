@@ -33,7 +33,7 @@ SplitReluLimitPattern::matchAndRewrite(Operation *op,
   if (op->hasTrait<trait::SupportFuseRelu>() &&
       module::getStorageType(op->getResult(0)).isBF16()) {
     auto max = op->getAttr("relu_limit").cast<FloatAttr>().getValueAsDouble();
-    if (max == -1) {
+    if (max == -1 || !op->getAttr("do_relu")) {
       return failure();
     }
     auto op_name = module::getName(op).str();
