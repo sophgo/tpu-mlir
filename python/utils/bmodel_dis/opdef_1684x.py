@@ -41,7 +41,7 @@ def packbits(arr):
 # ------------------------------------------------------------
 # registry function
 # ------------------------------------------------------------
-def registry_base(cmd_type, sheet_name, cls):
+def base_registry(cmd_type, sheet_name, cls):
     attr = regdef_1684x.reg_def[sheet_name]
     fields = [x[0] for x in attr]
     bits = [x[1] for x in attr]
@@ -53,16 +53,16 @@ def registry_base(cmd_type, sheet_name, cls):
     return cls
 
 
-def registry_bdc(sheet_name):
+def bdc_registry(sheet_name):
     def decorate(cls):
-        return registry_base(bdc_cmd, sheet_name, cls)
+        return base_registry(bdc_cmd, sheet_name, cls)
 
     return decorate
 
 
-def registry_dma(sheet_name):
+def dma_registry(sheet_name):
     def decorate(cls):
-        return registry_base(dma_cmd, sheet_name, cls)
+        return base_registry(dma_cmd, sheet_name, cls)
 
     return decorate
 
@@ -150,46 +150,46 @@ class bdc_base:
         )
 
 
-@registry_bdc("CONV")
+@bdc_registry("CONV")
 class conv_op(bdc_base):
     opcode = 0
     eu_type = {0: "conv.normal", 1: "conv.wrq", 2: "conv.wrqrelu"}
     description = "convolution"
 
 
-@registry_bdc("sCONV")
+@bdc_registry("sCONV")
 class sconv_op(conv_op):
     short_cmd = True
     description = "short convolution"
 
 
-@registry_bdc("MM")
+@bdc_registry("MM")
 class mm_op(bdc_base):
     opcode = 2
     eu_type = {1: "mm.normal", 2: "mm.wrq", 3: "mm.wrqrelu"}
     description = "matrix multiply"
 
 
-@registry_bdc("sMM")
+@bdc_registry("sMM")
 class smm_op(mm_op):
     short_cmd = True
     description = "short matrix multiply"
 
 
-@registry_bdc("MM2")
+@bdc_registry("MM2")
 class mm2_op(bdc_base):
     opcode = 2
     eu_type = {4: "mm2.nn", 5: "mm2.nt", 6: "mm2.tt"}
     description = "matrix multiply2"
 
 
-@registry_bdc("sMM2")
+@bdc_registry("sMM2")
 class smm2_op(mm2_op):
     short_cmd = True
     description = "short matrix multiply2"
 
 
-@registry_bdc("CMP")
+@bdc_registry("CMP")
 class cmp_op(bdc_base):
     opcode = 13
     eu_type = {
@@ -202,13 +202,13 @@ class cmp_op(bdc_base):
     description = "fused_cmpare"
 
 
-@registry_bdc("sCMP")
+@bdc_registry("sCMP")
 class scmp_op(cmp_op):
     short_cmd = True
     description = "short fused_cmpare"
 
 
-@registry_bdc("SFU")
+@bdc_registry("SFU")
 class sfu_op(bdc_base):
     opcode = 9
     eu_type = {
@@ -220,13 +220,13 @@ class sfu_op(bdc_base):
     description = "special_function"
 
 
-@registry_bdc("sSFU")
+@bdc_registry("sSFU")
 class ssfu_op(sfu_op):
     short_cmd = True
     description = "short special_function"
 
 
-@registry_bdc("VC")
+@bdc_registry("VC")
 class vc_op(bdc_base):
     opcode = 14
     eu_type = {
@@ -250,26 +250,26 @@ class vc_op(bdc_base):
     description = "vector correlation"
 
 
-@registry_bdc("sVC")
+@bdc_registry("sVC")
 class svc_op(vc_op):
     short_cmd = True
     description = "short vector correlation"
 
 
-@registry_bdc("LIN")
+@bdc_registry("LIN")
 class lin_op(bdc_base):
     opcode = 10
     eu_type = {1: "lin.mac", 20: "lin.square_sum", 21: "lin.square_diff"}
     description = "fused_linear"
 
 
-@registry_bdc("sLIN")
+@bdc_registry("sLIN")
 class slin_op(lin_op):
     short_cmd = True
     description = "short fused_linear"
 
 
-@registry_bdc("AR")
+@bdc_registry("AR")
 class ar_op(bdc_base):
     opcode = 3
     eu_type = {
@@ -307,26 +307,26 @@ class ar_op(bdc_base):
     description = "arithmetic"
 
 
-@registry_bdc("sAR")
+@bdc_registry("sAR")
 class sar_op(ar_op):
     short_cmd = True
     description = "short arithmetic"
 
 
-# @registry_bdc("SEG")
+# @bdc_registry("SEG")
 # class seg_op(bdc_base):
 #     opcode = 3
 #     eu_type = [17, 24, 25]
 #     description = "arithmetic"
 
 
-# @registry_bdc("sSEG")
+# @bdc_registry("sSEG")
 # class sseg_op(seg_op):
 #     short_cmd = True
 #     description = "short arithmetic"
 
 
-@registry_bdc("PorD")
+@bdc_registry("PorD")
 class pord_op(bdc_base):
     opcode = 1
     eu_type = {
@@ -341,13 +341,13 @@ class pord_op(bdc_base):
     description = "depthwise or pooling"
 
 
-@registry_bdc("sPorD")
+@bdc_registry("sPorD")
 class spord_op(pord_op):
     short_cmd = True
     description = "short depthwise or pooling"
 
 
-@registry_bdc("RQ&DQ")
+@bdc_registry("RQ&DQ")
 class rqdq_op(bdc_base):
     opcode = 4
     eu_type = {
@@ -361,13 +361,13 @@ class rqdq_op(bdc_base):
     description = "RQ && DQ"
 
 
-@registry_bdc("sRQ&sDQ")
+@bdc_registry("sRQ&sDQ")
 class srqdq_op(rqdq_op):
     short_cmd = True
     description = "short RQ && DQ"
 
 
-@registry_bdc("SG")
+@bdc_registry("SG")
 class sg_op(bdc_base):
     opcode = 6
     eu_type = {
@@ -392,26 +392,26 @@ class sg_op(bdc_base):
     description = "scatter_gather"
 
 
-@registry_bdc("sSG")
+@bdc_registry("sSG")
 class ssg_op(sg_op):
     short_cmd = True
     description = "short scatter_gather"
 
 
-@registry_bdc("SGL")
+@bdc_registry("SGL")
 class sgl_op(bdc_base):
     opcode = 6
     eu_type = {17: "sgl.pe_s_gather_line", 18: "sgl.pe_s_scatter_line"}
     description = "scatter_gather_line"
 
 
-@registry_bdc("sSGL")
+@bdc_registry("sSGL")
 class ssgl_op(sgl_op):
     short_cmd = True
     description = "short scatter_gather_line"
 
 
-@registry_bdc("TRANS&BC")
+@bdc_registry("TRANS&BC")
 class transbc_op(bdc_base):
     opcode = 5
     eu_type = {
@@ -425,13 +425,13 @@ class transbc_op(bdc_base):
     description = "TRANS && BC"
 
 
-@registry_bdc("sTRANS&sBC")
+@bdc_registry("sTRANS&sBC")
 class stransbc_op(transbc_op):
     short_cmd = True
     description = "short TRANS && BC"
 
 
-@registry_bdc("LAR")
+@bdc_registry("LAR")
 class lar_op(bdc_base):
     opcode = 7
     short_cmd = None
@@ -439,7 +439,7 @@ class lar_op(bdc_base):
     description = "linear_arithmetic"
 
 
-# @registry_bdc("SYS")
+# @bdc_registry("SYS")
 # class sys_op(bdc_base):
 #     opcode = 15
 #     short_cmd = None
@@ -447,7 +447,7 @@ class lar_op(bdc_base):
 #     description = "system"
 
 
-@registry_bdc("SYSID")
+@bdc_registry("SYSID")
 class sysid_op(bdc_base):
     opcode = 15
     short_cmd = None
@@ -541,7 +541,7 @@ class dma_base:
         )
 
 
-@registry_dma("DMA_tensor（0x000）")
+@dma_registry("DMA_tensor（0x000）")
 class dma_tensor(dma_base):
     opcode = 0
     op_name = "dma.tensor"
@@ -557,7 +557,7 @@ class dma_tensor(dma_base):
     description = "DMA tensor"
 
 
-@registry_dma("DMA_matrix")
+@dma_registry("DMA_matrix")
 class dma_matrix(dma_base):
     opcode = 1
     op_name = "dma.matrix"
@@ -568,27 +568,27 @@ class dma_matrix(dma_base):
     description = "DMA matrix"
 
 
-@registry_dma("sDMA_matrix")
+@dma_registry("sDMA_matrix")
 class sdma_matrix(dma_matrix):
     opcode = 1
     short_cmd = True
     description = "short DMA matrix"
 
 
-@registry_dma("DMA_masked_select")
+@dma_registry("DMA_masked_select")
 class dma_masked_select(dma_base):
     opcode = 2
     op_name = "dma.masked_select"
     description = "DMA masked select"
 
 
-@registry_dma("sDMA_masked_select ")
+@dma_registry("sDMA_masked_select ")
 class sdma_masked_select(dma_masked_select):
     short_cmd = True
     description = "short DMA masked select"
 
 
-@registry_dma("DMA_general")
+@dma_registry("DMA_general")
 class dma_general(dma_base):
     opcode = 3
     op_name = "dma.general"
@@ -599,33 +599,33 @@ class dma_general(dma_base):
     description = "DMA general"
 
 
-@registry_dma("sDMA_general")
+@dma_registry("sDMA_general")
 class sdma_general(dma_general):
     short_cmd = True
     description = "short DMA general"
 
 
-@registry_dma("DMA_cw_transpose")
+@dma_registry("DMA_cw_transpose")
 class dma_cw_transpose(dma_base):
     opcode = 4
     op_name = "dma.cw_transpose"
     description = "DMA CW Transpose"
 
 
-@registry_dma("DMA_nonzero")
+@dma_registry("DMA_nonzero")
 class dma_nonzero(dma_base):
     opcode = 5
     op_name = "dma.nonzero"
     description = "DMA nonzero"
 
 
-@registry_dma("sDMA_nonzero")
+@dma_registry("sDMA_nonzero")
 class sdma_nonzero(dma_nonzero):
     short_cmd = True
     description = "short DMA nonzero"
 
 
-@registry_dma("sDMA_sys")
+@dma_registry("sDMA_sys")
 class sdma_sys(dma_base):
     opcode = 6
     short_cmd = True
@@ -637,14 +637,14 @@ class sdma_sys(dma_base):
     description = "short DMA sys"
 
 
-@registry_dma("DMA_gather")
+@dma_registry("DMA_gather")
 class dma_gather(dma_base):
     opcode = 7
     op_name = "gdma.gather"
     description = "DMA gather"
 
 
-@registry_dma("DMA_scatter")
+@dma_registry("DMA_scatter")
 class dma_scatter(dma_base):
     opcode = 8
     op_name = "gdma.scatter"
