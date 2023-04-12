@@ -586,8 +586,8 @@ class TORCH_IR_TESTER(object):
         """Add"""
 
         self._test_binary(torch.add, (1, 3, 32, 32), (1, 3, 32, 32), 3)
-        # self._test_binary(torch.add, (2, 32, 16), (2, 1, 16), 3)
-        # self._test_binary(torch.add, (32, 32), (32))
+        self._test_binary(torch.add, (2, 32, 16), (2, 1, 16), 3)
+        self._test_binary(torch.add, (32, 32), (32))
 
     #######################################################################
     # Sub
@@ -793,6 +793,8 @@ class TORCH_IR_TESTER(object):
 
         _test_embedding((2, 3, 64), 512, 768)
         _test_embedding((2, 64), 20, 30)
+        _test_embedding((1, 384), 30522, 1024)
+
 
     #######################################################################
     # To

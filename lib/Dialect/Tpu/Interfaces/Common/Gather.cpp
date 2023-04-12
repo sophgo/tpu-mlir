@@ -37,7 +37,7 @@ LogicalResult tpu::GatherOp::inference(InferenceParameter &p) {
   for (int64_t i = 0; i < outer_dims; ++i) {
     for (int64_t j = 0; j < num_indices; ++j) {
       for (int64_t k = 0; k < inner_dims; ++k) {
-        int64_t src_idx = (i * input_shape[ax] + inds[j]) * inner_dims + k;
+        int64_t src_idx = (i * input_shape[ax] + (int64_t)inds[j]) * inner_dims + k;
         int64_t dst_idx = (i * num_indices + j) * inner_dims + k;
         dst[dst_idx] = src[src_idx];
       }
