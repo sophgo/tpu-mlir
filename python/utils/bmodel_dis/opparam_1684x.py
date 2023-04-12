@@ -25,7 +25,7 @@ LANE_SIZE = BANK_SIZE * 16
 opparam_converter = {}
 
 
-def regitstry_opparam_converter(sheet_name):
+def opparam_converter_regitstry(sheet_name):
     def add_converter(fun):
         if sheet_name in opparam_converter:
             raise KeyError(f"{sheet_name} have already registered.")
@@ -418,7 +418,7 @@ class Memory:
             n, c, h, w = memref.shape
             shape = ((n + 63) // 64, 64, (c + 32) // 32, 32, h, w)
             stride = (
-                (c + 63) // 64 * 64 * h * w,
+                (c + 32) // 32 * 32 * h * w,
                 LANE_SIZE // itemsize,
                 32 * h * w,
                 1,
@@ -572,7 +572,7 @@ def get_value(
         return MemRef(address + offset, shape, _dtype, stride, _layout)
 
 
-@regitstry_opparam_converter("sCONV")
+@opparam_converter_regitstry("sCONV")
 def _converter(reg):
     opd0 = dict(
         address=reg.opd0_addr,
@@ -649,7 +649,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("sMM")
+@opparam_converter_regitstry("sMM")
 def _converter(reg):
     L_row = reg.opd0_n
     L_col = reg.opd0_w * (reg.opd0_c - 1) + reg.opd1_w
@@ -707,7 +707,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("sMM2")
+@opparam_converter_regitstry("sMM2")
 def _converter(reg):
     L_row = reg.res0_c
     L_col = reg.opd1_c
@@ -766,7 +766,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("sCMP")
+@opparam_converter_regitstry("sCMP")
 def _converter(reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
@@ -828,7 +828,7 @@ def _converter(reg):
     return (results, {}, operands)
 
 
-@regitstry_opparam_converter("sSFU")
+@opparam_converter_regitstry("sSFU")
 def _converter(reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
@@ -865,7 +865,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("sLIN")
+@opparam_converter_regitstry("sLIN")
 def _converter(reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     c = shape[1]
@@ -908,7 +908,7 @@ def _converter(reg):
     return (results, {}, operands)
 
 
-@regitstry_opparam_converter("sVC")
+@opparam_converter_regitstry("sVC")
 def _converter(reg):
     n = (reg.opd0_c - 1) * reg.opd0_w + reg.opd1_w
     opd0 = dict(
@@ -951,7 +951,7 @@ def restore_org_shape(operand_def):
     return shape
 
 
-@regitstry_opparam_converter("sAR")
+@opparam_converter_regitstry("sAR")
 def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     # round mm
@@ -1011,7 +1011,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("sPorD")
+@opparam_converter_regitstry("sPorD")
 def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     # round mm
@@ -1114,7 +1114,7 @@ def cw_tans_reg_format(reg):
     return (results, {}, operands)
 
 
-@regitstry_opparam_converter("sRQ&sDQ")
+@opparam_converter_regitstry("sRQ&sDQ")
 def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
@@ -1194,7 +1194,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("sSG")
+@opparam_converter_regitstry("sSG")
 def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
@@ -1285,7 +1285,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("SGL")
+@opparam_converter_regitstry("SGL")
 def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
@@ -1370,7 +1370,7 @@ def bc_reg_format(reg):
     return (results, {}, operands)
 
 
-@regitstry_opparam_converter("sTRANS&sBC")
+@opparam_converter_regitstry("sTRANS&sBC")
 def _converter(reg):
     if reg.tsk_eu_typ in (0, 1):
         return cw_tans_reg_format(reg)
@@ -1416,7 +1416,7 @@ def dma_reg_fmt_base(reg):
     return res0, attr, opd0
 
 
-@regitstry_opparam_converter("DMA_tensor（0x000）")
+@opparam_converter_regitstry("DMA_tensor（0x000）")
 def _converter(reg):
     NONE = 0
     TRANS = 1  # NC Transpose or Matrix Transpose
@@ -1461,7 +1461,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("DMA_matrix")
+@opparam_converter_regitstry("DMA_matrix")
 def _converter(reg):
     """
     |--------+--------------+--------------|
@@ -1515,7 +1515,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("DMA_masked_select")
+@opparam_converter_regitstry("DMA_masked_select")
 def _converter(reg):
     shape = tuple(reg[f"src_{d}size"] for d in "nchw")
     opd0 = dict(
@@ -1544,7 +1544,7 @@ def _converter(reg):
     return (results, {}, operands)
 
 
-@regitstry_opparam_converter("DMA_general")
+@opparam_converter_regitstry("DMA_general")
 def _converter(reg):
     copy_len = reg.src_cstride
     opd0 = dict(
@@ -1581,7 +1581,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("DMA_cw_transpose")
+@opparam_converter_regitstry("DMA_cw_transpose")
 def _converter(reg):
     lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
     n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
@@ -1595,7 +1595,7 @@ def _converter(reg):
     res0 = dict(
         address=dma_addr(reg.dst_start_addr_h8, reg.dst_start_addr_l32),
         dtype=DType(reg.src_data_format),
-        shape=(n, h, w, c),
+        shape=(n, w, h, c),
         stride=(*(reg[f"dst_{d}stride"] for d in "nch"), 1),
         layout=Layout.DMAstride(lane_mask),
     )
@@ -1617,7 +1617,7 @@ def _converter(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("DMA_nonzero")
+@opparam_converter_regitstry("DMA_nonzero")
 def _converter(reg):
     n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
     stride = (c * h * w, h * w, w, 1)
@@ -1683,12 +1683,12 @@ def dma_gather_base(reg):
     return (results, attr, operands)
 
 
-@regitstry_opparam_converter("DMA_gather")
+@opparam_converter_regitstry("DMA_gather")
 def _converter(reg):
     return dma_gather_base(reg)
 
 
-@regitstry_opparam_converter("DMA_scatter")
+@opparam_converter_regitstry("DMA_scatter")
 def _converter(reg):
     results, _, operands = dma_gather_base(reg)
 

@@ -9,6 +9,7 @@
 # ==============================================================================
 
 import json, re
+from enum import Enum
 from dataclasses import dataclass
 from collections import namedtuple, OrderedDict
 import argparse
@@ -49,6 +50,8 @@ class TensorLoc:
     TR = namedtuple("TensorRecord", ["tensor", "record"])
 
     def __init__(self, ts_des_file):
+        self.cmd_index = {}
+
         def tuples_hook(pairs):
             """
             Convert lists to tuples in JSON objects. Not works in root object.
@@ -62,7 +65,7 @@ class TensorLoc:
         self.breakpoint_loc = OrderedDict()
         for loc in self.tensor_loc:
             loc_s = {k: v for k, v in loc.items() if k not in ("operands", "results")}
-            # before this nodechip commands, we can check the input data.
+            # before this nodechip command, we can check the input data.
             key = self.ID(loc["subnet_id"], *loc["bdc_gdma_id(before)"])
             self.breakpoint_loc.setdefault(key, []).extend(
                 self.TR(Operand(v, i), loc_s)
@@ -70,7 +73,7 @@ class TensorLoc:
                 if v != {}
             )
 
-            # after this nodechip commands, we can check the output data.
+            # after this nodechip command, we can check the output data.
             key = self.ID(loc["subnet_id"], *loc["bdc_gdma_id(after)"])
             self.breakpoint_loc.setdefault(key, []).extend(
                 self.TR(Result(v, i), loc_s)
@@ -80,7 +83,6 @@ class TensorLoc:
 
     def merge_cmd(self, bdc, gdma, subnet_id):
         cmd = bmodel_dis.merge_cmd(bdc, gdma)
-        self.cmd_index = {}
         for i, x in enumerate(cmd):
             if isinstance(x, bdc_base):
                 k = self.ID(subnet_id, x.cmd_id, None)
@@ -161,8 +163,8 @@ def get_mlir_type_info(mlir_type: str):
     storage_type = r"(?P<storage_type>\w+)"
     express_type = r"(?P<express_type>\w+)"
     scale = r"(?P<scale>[-+]?\d*\.\d+(e[-+]?\d+)?|\d+)"
-    min_r = r"(?P<min>[-+]?\d*\.\d+(e[-+]?\d+)?|\d+)"
-    max_r = r"(?P<max>[-+]?\d*\.\d+(e[-+]?\d+)?|\d+)"
+    min_r = r"(?P<min>[-+]?\d*\.\d+([eE][-+]?\d+)?|\d+)"
+    max_r = r"(?P<max>[-+]?\d*\.\d+([eE][-+]?\d+)?|\d+)"
     zero_point = r"(?P<zero_point>[-+]?\d+)"
     address = r"(?P<address>\d+)\ :\ \w+"
 
@@ -218,26 +220,36 @@ class TensorBuilder:
         layout = tensor_des["layout"]
         layout = {
             "eu_align": opparam.Layout.alignEU,
+            "eu_align_group3d": opparam.Layout.alignEU,
             "compact": opparam.Layout.compact,
+            "compact_group3d": opparam.Layout.compact,
+            "continuous_transposed": None,
             "continuous": None,
         }[layout]
+
+        # local memory
         if address < int("0x1000000", 16):
             address += opparam.memmap[opparam.MType.R][0]
         self.name = tensor_des["name"]
+        stride = None
+
+        # global memory
         if layout == None:
+            # lib/Dialect/Tpu/Interfaces/BM1684X/Load.cpp
+            # load/store case
             reshape = tensor_des["reshape"]
             if reshape:
-                n, c, d, h, w = [int(x) for x in tensor_des["reshape"][1:-1].split("x")]
-                if d == 1 and len(shape) == 4:
-                    reshape = [n, c, h, w]
+                _, c, d, h, w = [int(x) for x in tensor_des["reshape"][1:-1].split("x")]
+                _layout = tensor_des["layout"]
+                if _layout == "continuous":
+                    stride = (c * d * h * w, h * w, w, 1)
+                elif _layout == "continuous_transposed":
+                    stride = (h * w, d * h * w, w, 1)
                 else:
-                    assert len(shape) == 5
-                    reshape = [n, c, d, h, w]
+                    raise ValueError(f"Not supported layout: {_layout}")
             else:
-                reshape = shape
-            stride = tuple(np.cumprod([1] + reshape[-1:0:-1])[::-1])
-        else:
-            stride = None
+                # global layer
+                stride = tuple(np.cumprod([1] + shape[-1:0:-1])[::-1])
 
         self.memref = opparam.MemRef(
             address, shape, dtype, layout=layout, stride=stride
@@ -257,10 +269,20 @@ class TensorBuilder:
             reshape = reshape[1:-1].replace("x", ",")
             ref_data = eval(f"ref_data.reshape({reshape})")
         _slice = self.tensor_des["slice"]
-        return eval(f"ref_data{_slice}")
+        data = eval(f"ref_data{_slice}")
+        # The data in HW has a transposed collapsed shape.
+        # To align the Bmodel with TPU.mlir, we need to transpose the reference data.
+        if self.tensor_des["layout"] in (
+            "continuous_transposed",
+            "eu_align_group3d",
+            "compact_group3d",
+        ):
+            n, c, d, h, w = 0, 1, 2, 3, 4
+            data = data.transpose((d, n, c, h, w))
+        return data
 
 
-class State:
+class StateMsg:
     __solts__ = ("msg", "state")
 
     def __init__(self, state=None, msg=None):
@@ -271,7 +293,7 @@ class State:
         return bool(self.state)
 
     def __eq__(self, other):
-        if isinstance(other, State):
+        if isinstance(other, StateMsg):
             return self.state == other.state
         if other not in (None, False, True):
             return False
@@ -431,21 +453,27 @@ def check_data(tdb, tensors, ref_data):
                 name = f"{t.name}_asm_{tdb.current_line}"
                 DATA_CHECKER.assert_allclose(actual, desired, name)
             except AssertionError as e:
-                result.append(State(False, get_line_info(e, tensor_des)))
+                result.append(StateMsg(False, get_line_info(e, tensor_des)))
             else:
-                result.append(State(True))
+                result.append(StateMsg(True))
         else:
-            result.append(State(None))
+            result.append(StateMsg(None))
 
     return result
+
+
+class State(Enum):
+    Pass = 0
+    Fail = 1
+    Unknown = 2
 
 
 class Checker:
     _bmodel_file = "compilation.bmodel"
     _input_data_file = "input_ref_data.dat"
     _tensor_loc_file = "tensor_location.json"
-    markers = {"pass": "✓", "unknown": "?", "fail": "✗"}
-    colors = {"pass": "green", "unknown": "white", "fail": "red"}
+    markers = {State.Pass: "✓", State.Unknown: "?", State.Fail: "✗"}
+    colors = {State.Pass: "green", State.Unknown: "white", State.Fail: "red"}
     SI = namedtuple("SubNetInstruction", ["subnet_id", "instruction_id"])
     LS = namedtuple("LineState", ["line", "operands", "results"])
 
@@ -455,7 +483,7 @@ class Checker:
         self.input_data_file = f"{folder}/{self._input_data_file}"
         bmodel_dis.MERGE_CMD_FUN = self.tensor_loc.merge_cmd
         self.ref_data = np.load(ref_data_npz)
-        self.state = "unknown"
+        self.state = State.Unknown
 
         # run checker
         self.check_data(fail_fast)
@@ -511,11 +539,11 @@ class Checker:
                     self.results.setdefault(key, OPS([], [])).results_state.append(st)
 
             if False in vf:
-                self.state = "fail"
-            if self.state == "unknown" and True in vf:
-                self.state = "pass"
+                self.state = State.Fail
+            if self.state == State.Unknown and True in vf:
+                self.state = State.Pass
 
-            if fail_fast and self.state == "fail":
+            if fail_fast and self.state == State.Fail:
                 return
 
     def get_failed_tensor(self):
@@ -530,11 +558,13 @@ class Checker:
         self.ins_state = {}
 
         def state_aggragate(state):
+            if state == []:
+                return State.Unknown
             if False in state:
-                return "fail"
+                return State.Fail
             if None in state:
-                return "unknown"
-            return "pass"
+                return State.Unknown
+            return State.Pass
 
         for k, v in self.results.items():
             bdc_x, gdma_x = k.ins_before
@@ -561,8 +591,11 @@ class Checker:
         from rich import box
 
         # support partial check
-        ins_num = max(x.instruction_id for x in self.ins_state) + 1
-        ins_state = [self.LS("?", "unknown", "unknown")] * ins_num
+        ins_num = 0
+        if self.ins_state:
+            ins_num = max(x.instruction_id for x in self.ins_state) + 1
+
+        ins_state = [self.LS("?", State.Unknown, State.Unknown)] * ins_num
         for si, s in self.ins_state.items():
             ins_state[si.instruction_id] = s
 
@@ -610,10 +643,10 @@ class Checker:
                 func, f"Check-Line-Operand-Result[{state}] Summary", 10
             )
 
-        return [simple, full, line, line_full][style.count("v")]()
+        return [simple, full, line, line_full][style.lower().count("v")]()
 
     def __bool__(self):
-        return self.state == "pass"
+        return self.state == State.Pass
 
 
 def interactive_mode(checker):
@@ -651,7 +684,7 @@ def interactive_mode(checker):
                 user_input = get_char()
                 if user_input.lower() == "l":
                     action = input(
-                        f"Enter a line number in {line_num} (or 'q' to finish): "
+                        f"Enter a line number in:\n {line_num}\n(or 'q' to finish): "
                     )
                     if action.lower() == "q":
                         continue
@@ -681,7 +714,7 @@ def interactive_mode(checker):
                         index += len(tensor_msg)
                     console.print(tensor_msg[index])
                     console.print(f"{index+1}/{len(tensor_msg)}")
-                elif user_input.lower() == "s":
+                elif user_input.lower() == "r":
                     console.print(checker.get_summary(verbose))
                 elif user_input.lower() == "v":
                     action = input(f"Enter verbose level (or 'q' to finish): ")
@@ -703,7 +736,7 @@ def interactive_mode(checker):
     if inter.lower() in ("y", "yes"):
         with console.screen():
             console.print(checker.get_summary("vvv"))
-            console.print("n(ext), p(revious), l(ine), v(erbose), q(uit)")
+            console.print("n(ext), p(revious), l(ine), v(erbose), r(eport), q(uit)")
             main_loop()
 
 
@@ -738,6 +771,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--fail_fast", action="store_true", help="Stop if there is a check failure."
     )
+    parser.add_argument(
+        "--verbose",
+        type=str,
+        default="",
+        help="Control the report information.",
+    )
     parser.add_argument("--no_interactive", action="store_true")
 
     args = parser.parse_args()
@@ -749,7 +788,10 @@ if __name__ == "__main__":
     checker = Checker(args.context_dir, args.reference_data, args.fail_fast)
 
     if not args.no_interactive:
-        console.print(checker.get_summary())
+        console.print(checker.get_summary(args.verbose))
+
+    if checker.state == State.Unknown:
+        exit(1)
 
     if not checker:
         if not args.no_interactive:
@@ -757,6 +799,5 @@ if __name__ == "__main__":
         if args.report:
             save_to_file(checker, args.report)
             DATA_CHECKER.save(args.report + ".err.npz")
-
         exit(1)
     exit(0)
