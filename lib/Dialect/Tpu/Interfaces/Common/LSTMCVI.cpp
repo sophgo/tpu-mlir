@@ -19,13 +19,13 @@
 
 static float sigmoid_(float data, InferenceParameter &p) {
   float var = BF16(data);
-  bf16_lut_slope(&var, &var, 1, p.inputs[5], p.inputs[6], -12, 12);
+  bf16_lut_slope(&var, &var, 1, p.inputs[6], p.inputs[7], -12, 12);
   return var;
 }
 
 static float tanh_(float data, InferenceParameter &p) {
   float var = BF16(data);
-  bf16_lut_slope(&var, &var, 1, p.inputs[7], p.inputs[8], -15, 15);
+  bf16_lut_slope(&var, &var, 1, p.inputs[8], p.inputs[9], -15, 15);
   return var;
 }
 
@@ -43,6 +43,7 @@ lstm_attr_t tpu::LSTMCVIOp::parseParam() {
   attr.have_bias = !module::isNone(getBias());
   attr.have_h0 = !module::isNone(getInitialH());
   attr.have_c0 = !module::isNone(getInitialC());
+  attr.have_cont = !module::isNone(getCont());
   attr.output_y = !module::isNone(getY());
   attr.output_yh = !module::isNone(getYH());
   attr.output_yc = !module::isNone(getYC());
@@ -60,6 +61,7 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
 
   float *input = p.inputs[0];
   float *r_wi = p.inputs[1];
+  float *conts = p.inputs[5];
   float *r_bi = bias;
 
   if (!forward) {
@@ -105,6 +107,10 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
     BF16(gate_c.data(), gate_c.data(), gate_c.size());
 
     for (int batch = 0; batch < attr.batch_size; batch++) {
+      float cont = 1.0f;
+      if (attr.have_cont) {
+        cont = conts[s * attr.batch_size + batch];
+      }
       float *xi = x + batch * attr.input_size;
       float *xo = xi + attr.hidden_size;
       float *xf = xo + attr.hidden_size;
@@ -122,11 +128,11 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
       }
 #pragma omp parallel for schedule(static, omp_schedule(attr.hidden_size))
       for (int i = 0; i < attr.hidden_size; i++) {
-        gi[i] = sigmoid_(xi[i] + gi[i], p);
-        go[i] = sigmoid_(xo[i] + go[i], p);
-        gf[i] = sigmoid_(xf[i] + gf[i], p);
-        gc[i] = tanh_(xc[i] + gc[i], p);
-        cell_state[i] = BF16(BF16(gf[i] * cell_state[i]) + BF16(gi[i] * gc[i]));
+        gi[i] = sigmoid_(xi[i] + cont * gi[i], p);
+        go[i] = sigmoid_(xo[i] + cont * go[i], p);
+        gf[i] = sigmoid_(xf[i] + cont * gf[i], p);
+        gc[i] = tanh_(xc[i] + cont * gc[i], p);
+        cell_state[i] = BF16(BF16(cont * gf[i] * cell_state[i]) + BF16(gi[i] * gc[i]));
         hidden_state[i] = BF16(go[i] * tanh_(cell_state[i], p));
       }
     }

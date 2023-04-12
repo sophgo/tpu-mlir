@@ -120,6 +120,11 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   } else {
     operands.push_back(op.getInitialC());
   }
+  if (auto castOp = dyn_cast<top::WeightOp>(op.getCont().getDefiningOp())) {
+    operands.push_back(castOp.clone_bf16(op));
+  } else {
+    operands.push_back(op.getCont());
+  }
   // insert table
   int table_h = 32;
   int table_w = 8;

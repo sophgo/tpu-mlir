@@ -1241,7 +1241,7 @@ class TorchConverter(BaseConverter):
             "bidirectional": bidirectional,
             "batch_first": batch_first,
         }
-        operands = [in_op, filter_op, recurrence_op, bias_op, h0_op, c0_op]
+        operands = [in_op, filter_op, recurrence_op, bias_op, h0_op, c0_op, self.mlir.none_op]
         new_op, h_op, c_op = self.mlir.create_lstm_op(operands, [[], [], []], **p)
         self.addOperand(torch_node.outputs[0], new_op)
         self.addOperand(torch_node.outputs[1], h_op)

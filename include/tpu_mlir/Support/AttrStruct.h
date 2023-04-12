@@ -130,6 +130,7 @@ typedef struct {
   bool have_bias;
   bool have_h0;
   bool have_c0;
+  bool have_cont;
   bool output_y;
   bool output_yh;
   bool output_yc;
