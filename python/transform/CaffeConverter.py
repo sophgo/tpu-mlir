@@ -479,7 +479,7 @@ class CaffeConverter(BaseConverter):
             attrs['coeff'] = coeff
             new_op = self.mlir.create_add_op(operands, output_shape, **attrs)
         elif p.operation == 2:  # max
-            raise RuntimeError("Max not support now")
+            new_op = self.mlir.create_max_op(operands, output_shape, **attrs)
         elif p.operation == 3:  # min
             raise RuntimeError("Min not support now")
         self.addOperand(layer.top[0], new_op)
@@ -1290,7 +1290,6 @@ class CaffeConverter(BaseConverter):
         input_shape = self.getShape(layer.bottom[0])
         operands = list()
         operands.append(op)
-        assert (len(input_shape) == 4)
         p = layer.slice_param
         axis = p.axis
         bottom_slice_axis = input_shape[axis]
