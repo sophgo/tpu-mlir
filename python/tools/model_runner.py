@@ -221,13 +221,17 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
     outputs = dict()
     for name in g_mlir_module.output_names:
         outputs[name] = tensors[name]
-    for name in g_mlir_module.output_names:
         # assume output of op has the same name
         op_type = parser.get_op_type_by_op_name(name)
         if op_type == "tpu.Cast":
             pre_op = parser.get_pre_op_by_op_name(name)[0]
-            outputs[pre_op] = tensors[pre_op]
+            if pre_op in tensors:
+                outputs[pre_op] = tensors[pre_op]
     return outputs
+
+def free_mlir_module():
+    global g_mlir_module
+    g_mlir_module = None
 
 
 def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:

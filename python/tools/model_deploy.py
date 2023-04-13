@@ -223,6 +223,12 @@ class DeployTool:
             tool.validate_model()
 
     def validate_model(self):
+        size = os.path.getsize(self.model)
+        if size > 0x10000000:
+            print(
+                "Warning: {} is too large, run by cmodel will cost a long time. Please run in board"
+                .format(self.model))
+            return
         self.model_npz = "{}_model_outputs.npz".format(self.prefix)
         file_mark(self.model_npz)
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
@@ -293,7 +299,7 @@ if __name__ == '__main__':
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
     if not args.fuse_preprocess and args.customization_format:
-        assert(0 and "Error! If not fuse_preprocess, customization_format shouldn't be set.")
+        assert (0 and "Error! If not fuse_preprocess, customization_format shouldn't be set.")
     tool = DeployTool(args)
     # lowering to tpu
     tool.lowering()

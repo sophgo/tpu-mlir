@@ -44,7 +44,7 @@ class ModelTransformer(object):
         self.input_num = self.module_parsered.get_input_num()
 
     def model_validate(self, file_list: str, tolerance, excepts, test_result):
-        from tools.model_runner import mlir_inference, show_fake_cmd
+        from tools.model_runner import mlir_inference, free_mlir_module, show_fake_cmd
         import gc
         in_f32_npz = self.model_name + '_in_f32.npz'
         inputs = dict()
@@ -71,18 +71,22 @@ class ModelTransformer(object):
         show_fake_cmd(in_f32_npz, self.model_def, ref_npz)
         ref_outputs = self.origin_inference(inputs)
         if not self.do_mlir_infer:
+            print("Saving {}".format(test_result))
             np.savez(test_result, **ref_outputs)
             return
+        print("Saving {}".format(ref_npz))
         np.savez(ref_npz, **ref_outputs)
-        del self.converter #save memory
+        del self.converter  #save memory
         del ref_outputs
         gc.collect()
 
         # inference of mlir model
         show_fake_cmd(in_f32_npz, self.mlir_file, test_result)
         f32_outputs = mlir_inference(inputs, self.mlir_file)
+        print("Saving {}".format(test_result))
         np.savez(test_result, **f32_outputs)
         del f32_outputs
+        free_mlir_module()
         gc.collect()
         # compare all blobs layer by layers
         f32_blobs_compare(test_result, ref_npz, tolerance, excepts=excepts)

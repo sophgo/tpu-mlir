@@ -264,6 +264,9 @@ double getDtypeSize(Value v) {
 }
 
 int64_t getNumElements(Value v) {
+  if (v.getType().isa<RankedTensorType>() == false) {
+    return 0;
+  }
   auto type = v.getType().cast<RankedTensorType>();
   return type.getNumElements();
 }
@@ -526,8 +529,8 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
       }
     }
     module::getNCHW(shape_vec, n, c, h, w, false);
-  } else if(GROUP_MM_INT4 == group_type) {
-    assert (shape.size() == 2);
+  } else if (GROUP_MM_INT4 == group_type) {
+    assert(shape.size() == 2);
     n = shape[0];
     c = 1;
     h = shape[1];
@@ -557,8 +560,8 @@ void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
       w *= shape[i];
     }
     return;
-  } else if(GROUP_MM_INT4 == group_type) {
-    assert (num_dims == 2);
+  } else if (GROUP_MM_INT4 == group_type) {
+    assert(num_dims == 2);
     n = shape[0];
     c = 1;
     d = 1;
@@ -759,14 +762,14 @@ bool isTpuOp(Operation *op) {
 }
 
 bool isInt4Op(Operation *op) {
-  //if (isa<top::ConvOp, tpu::Conv2DOp>(op)) {
-   if (isa<top::ConvOp, top::MatMulOp, tpu::Conv2DOp, tpu::MatMulOp>(op)) {
+  // if (isa<top::ConvOp, tpu::Conv2DOp>(op)) {
+  if (isa<top::ConvOp, top::MatMulOp, tpu::Conv2DOp, tpu::MatMulOp>(op)) {
     if (auto convOp = dyn_cast<top::ConvOp>(op)) {
-      if(convOp.parseParam().is_dw)
+      if (convOp.parseParam().is_dw)
         return false;
     }
     if (auto convOp = dyn_cast<tpu::Conv2DOp>(op)) {
-      if(convOp.parseParam().is_dw)
+      if (convOp.parseParam().is_dw)
         return false;
     }
     return true;
@@ -987,20 +990,23 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
       if (module::isInt4Op(pre_op)) {
         if (auto convOp = dyn_cast<top::ConvOp>(pre_op)) {
           if (convOp.getOutInt8Scale().has_value()) {
-            scale =
-                convOp.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
-            zeropoint =
-                int64_t(convOp.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble());
+            scale = convOp.getOutInt8Scale()
+                        .value_or(APFloat(1.0))
+                        .convertToDouble();
+            zeropoint = int64_t(
+                convOp.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble());
             return;
           }
         } else {
           if (auto matmulOp = dyn_cast<top::MatMulOp>(pre_op)) {
             // break; //todo matmul need support int4
             if (matmulOp.getOutInt8Scale().has_value()) {
-              scale =
-                  matmulOp.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
-              zeropoint =
-                  int64_t(matmulOp.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble());
+              scale = matmulOp.getOutInt8Scale()
+                          .value_or(APFloat(1.0))
+                          .convertToDouble();
+              zeropoint = int64_t(matmulOp.getOutInt8Zp()
+                                      .value_or(APFloat(0.0))
+                                      .convertToDouble());
               return;
             }
           }
