@@ -225,9 +225,13 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
         # assume output of op has the same name
         op_type = parser.get_op_type_by_op_name(name)
         if op_type == "tpu.Cast":
-            pre_op = parser.get_pre_op_by_op_name(name)
-            for op in pre_op:
-                outputs[op] = tensors[op]
+            pre_op = parser.get_pre_op_by_op_name(name)[0]
+            pre_type = parser.get_op_type_by_op_name(pre_op)
+            if pre_type != "tpu.Reshape":
+                outputs[pre_op] = tensors[pre_op]
+            else:
+                pre_pre_op = parser.get_pre_op_by_op_name(pre_op)[0]
+                outputs[pre_pre_op] = tensors[pre_pre_op]
     return outputs
 
 
