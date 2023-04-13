@@ -10,9 +10,9 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 LogicalResult tpu::SubConstOp::init(InferenceParameter &p) { return success(); }
 
@@ -22,15 +22,24 @@ LogicalResult tpu::SubConstOp::inference(InferenceParameter &p) {
   auto num_elem = module::getNumElements(getOutput());
   auto out_type = module::getStorageType(getOutput());
   auto asym = module::isAsymmetric();
+
   if (getIsReverse()) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = getConstVal().convertToDouble() - p.inputs[0][i];
+      auto tmp_input =
+          module::isUniformQuantized(getOutput())
+              ? applyMultiplierAndRShift(p.inputs[0][i], getMultiplier(), 0)
+              : p.inputs[0][i];
+      p.outputs[0][i] = getConstVal().convertToDouble() - tmp_input;
     }
   } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = p.inputs[0][i] - getConstVal().convertToDouble();
+      auto tmp_input =
+          module::isUniformQuantized(getOutput())
+              ? applyMultiplierAndRShift(p.inputs[0][i], getMultiplier(), 0)
+              : p.inputs[0][i];
+      p.outputs[0][i] = tmp_input - getConstVal().convertToDouble();
     }
   }
   if (out_type.isa<FloatType>()) {
@@ -44,8 +53,7 @@ LogicalResult tpu::SubConstOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         // coeff has been merge in multiplier&&rshift
-        double sum = applyMultiplierAndRShift(p.outputs[0][i], getMultiplier(),
-                                              getRshift());
+        double sum = applyMultiplierAndRShift(p.outputs[0][i], 1, getRshift());
         if (getDoRelu() && sum < 0) {
           sum = 0;
         }
