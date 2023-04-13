@@ -54,7 +54,7 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
   std::vector<Value> operands;
   std::vector<int64_t> pads = {0, 0, 1, 1, 0, 0, 1, 1};
   double const_val = 0.0;
-  int64_t mode = 0;
+  int64_t mode = 3;
 
   std::vector<int64_t> shape_after_pad;
   auto input_shape = module::getShape(op.getInput());
