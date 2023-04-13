@@ -197,7 +197,7 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(sliceOp, buffer_type);
     sliceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == sliceOp.getBuffer();
+      return operand.get() == sliceOp.getBuffer() && operand.getOwner() == sliceOp;
     });
     return success();
   }

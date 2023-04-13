@@ -62,7 +62,7 @@ void tpu::UpsampleOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   uint32_t top_local_offset = out_gi.out_addr;
   if (module::isUniformQuantized(getInput())) {
     BM1684::instance().dl_nodechip_upsample_fix8b_forward_local(
-      module::getAddress(getInput()), module::getAddress(getOutput()),
+      bottom_local_offset, top_local_offset,
       bottom_dim, top_dim, scale, 0, 1, 1, 1, 1,
       (CMD_ID_NODE *)BM1684::instance().bdc_node, getDoRelu() ? 1 : 0);
   }
