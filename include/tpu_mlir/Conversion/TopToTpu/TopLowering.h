@@ -279,4 +279,10 @@ Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,
                         int64_t shift, int64_t lshift);
 int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
                          int64_t lshift);
+
+// try to insert tpu.Host2DeviceOp at input #idx
+void try_insert_host2device(Operation* op, uint32_t idx);
+// try to insert tpu.Device2HostOp at input #idx
+void try_insert_device2host(Operation* op, uint32_t idx);
+
 } // namespace tpu_mlir

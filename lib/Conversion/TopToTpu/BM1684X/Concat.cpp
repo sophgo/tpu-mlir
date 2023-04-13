@@ -12,6 +12,28 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+void ConcatTryLowering::Lowering(PatternRewriter &rewriter,
+                                 top::ConcatOp op) const {
+  const auto opds = op.getOperands();
+  bool success = std::any_of(opds.begin(), opds.end(), [](Value opd) {
+    return opd.getDefiningOp()->hasTrait<trait::ShapeProducer>();
+  });
+  if (!success)
+    return;
+  assert(!op.getDoRelu());
+  for (int idx = 0; idx < op.getNumOperands(); ++idx) {
+    try_insert_device2host(op.getOperation(), idx);
+  }
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(
+      rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(op.getAxis())));
+  auto v = op.getResult();
+  auto shape = module::getShape(v);
+  auto ctx = v.getContext();
+  Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
+  rewriter.replaceOpWithNewOp<tpu::ShapePackOp>(op, new_type, op.getOperands(), attrs);
+}
+
 void ConcatLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::ConcatOp op) const {
   lowering_common_f32<tpu::ConcatOp>(rewriter, op);

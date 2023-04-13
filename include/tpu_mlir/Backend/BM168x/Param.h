@@ -1490,9 +1490,18 @@ typedef struct {
 } dyn_pooling3d_global_spec_t;
 
 typedef struct {
-    unsigned int        filled_value;
-    int                 dtype;
+  unsigned int filled_value;
+  int          dtype;
 } constantfill_common_spec_t;
+
+typedef struct shape_pack_param {
+  int num_inputs;
+  int axis;
+} shape_pack_param_t;
+
+typedef struct shape_cast_param {
+  int output_is_shape;
+} shape_cast_param_t;
 
 #ifdef __cplusplus
 }
