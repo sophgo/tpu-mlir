@@ -147,9 +147,6 @@ json::Object record_tensor(const std::variant<Value, OpOperand *> val_or_opd,
                           {ginfo.w_idx, ginfo.w_slice}});
 
   std::string layout = ginfo.eu_align ? "eu_align" : "compact";
-  if (group_type == GROUP_3D) {
-    layout += "_group3d"; // {d * n, c, h, w}
-  }
 
   { // global memory Load operand/Store result
     auto offset = [&]() -> int64_t {
@@ -159,29 +156,26 @@ json::Object record_tensor(const std::variant<Value, OpOperand *> val_or_opd,
       for (auto i : llvm::reverse(re_shape)) {
         stride.push_back(i * stride.back());
       }
-      SmallVector<int64_t> idx{ginfo.w_idx, ginfo.h_idx, ginfo.d_idx, 0,
-                               ginfo.n_idx};
+      int64_t idx[] = {ginfo.w_idx, ginfo.h_idx, ginfo.d_idx, 0, ginfo.n_idx};
       int64_t offset = 0;
       for (int i = 0; i < 5; i++) {
         offset += stride[i] * idx[i];
       }
       return offset * fmt_bytes;
     };
-    auto layout_str = [&]() {
-      bool is_depth_or_3d = (ginfo.d_slice > ginfo.n_slice);
-      if (is_depth_or_3d)
-        return "continuous_transposed";
-      return "continuous";
-    };
 
     auto op = val.getDefiningOp();
     if (op == nullptr || !op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) {
       address += offset();
-      layout = layout_str();
+      layout = "continuous";
     } else if (isa_and_nonnull<tpu::StoreOp>(op)) {
       address = module::getAddress(val) + offset();
-      layout = layout_str();
+      layout = "continuous";
     }
+  }
+
+  if (group_type == GROUP_3D) {
+    layout += "_group3d"; // {d * n, c, h, w}
   }
 
   return json::Object{

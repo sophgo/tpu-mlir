@@ -162,7 +162,7 @@ def get_mlir_type_info(mlir_type: str):
     quant = r"!quant\.uniform"
     storage_type = r"(?P<storage_type>\w+)"
     express_type = r"(?P<express_type>\w+)"
-    scale = r"(?P<scale>[-+]?\d*\.\d+(e[-+]?\d+)?|\d+)"
+    scale = r"(?P<scale>[-+]?\d*\.\d+([eE][-+]?\d+)?|\d+)"
     min_r = r"(?P<min>[-+]?\d*\.\d+([eE][-+]?\d+)?|\d+)"
     max_r = r"(?P<max>[-+]?\d*\.\d+([eE][-+]?\d+)?|\d+)"
     zero_point = r"(?P<zero_point>[-+]?\d+)"
@@ -223,7 +223,7 @@ class TensorBuilder:
             "eu_align_group3d": opparam.Layout.alignEU,
             "compact": opparam.Layout.compact,
             "compact_group3d": opparam.Layout.compact,
-            "continuous_transposed": None,
+            "continuous_group3d": None,
             "continuous": None,
         }[layout]
 
@@ -243,7 +243,7 @@ class TensorBuilder:
                 _layout = tensor_des["layout"]
                 if _layout == "continuous":
                     stride = (c * d * h * w, h * w, w, 1)
-                elif _layout == "continuous_transposed":
+                elif _layout == "continuous_group3d":
                     stride = (h * w, d * h * w, w, 1)
                 else:
                     raise ValueError(f"Not supported layout: {_layout}")
@@ -273,7 +273,7 @@ class TensorBuilder:
         # The data in HW has a transposed collapsed shape.
         # To align the Bmodel with TPU.mlir, we need to transpose the reference data.
         if self.tensor_des["layout"] in (
-            "continuous_transposed",
+            "continuous_group3d",
             "eu_align_group3d",
             "compact_group3d",
         ):
@@ -423,6 +423,7 @@ class DataChecker(TensorCompare):
 
 
 DATA_CHECKER = DataChecker()
+ASM_CONTEXT_LENGTH = 2
 
 
 def check_data(tdb, tensors, ref_data):
@@ -437,7 +438,7 @@ def check_data(tdb, tensors, ref_data):
             ErrorMsg.Info(
                 str(e),
                 json.dumps(t_info),
-                tdb.get_context(2),
+                tdb.get_context(ASM_CONTEXT_LENGTH),
                 *(tensor_des.record[x] for x in info),
             ),
         )
@@ -643,7 +644,7 @@ class Checker:
                 func, f"Check-Line-Operand-Result[{state}] Summary", 10
             )
 
-        return [simple, full, line, line_full][style.lower().count("v")]()
+        return [simple, line, full, line_full][style.lower().count("v")]()
 
     def __bool__(self):
         return self.state == State.Pass
@@ -695,11 +696,11 @@ def interactive_mode(checker):
                                 index = lines[line]
                                 console.print(tensor_msg[index])
                             else:
-                                console.print(f"Wrong line number: {line}.")
+                                console.print(f"Invalid line number: {line}.")
                                 console.print(f"Only supports {line_num}")
                         except:
                             console.print(
-                                f"Wrong inputs {action}, only supports number."
+                                f"Invalid inputs {action}, only supports number."
                             )
                 elif user_input.lower() == "n" or user_input.lower() == "p":
                     if user_input.lower() == "n":
@@ -766,6 +767,9 @@ if __name__ == "__main__":
         help="The reference data used for checking this BModel.",
     )
     parser.add_argument(
+        "--tolerance", default="0.99,0.90", help="tolerance for compare."
+    )
+    parser.add_argument(
         "--report", type=str, help="The report file for saving state and internal data."
     )
     parser.add_argument(
@@ -774,24 +778,26 @@ if __name__ == "__main__":
     parser.add_argument(
         "--verbose",
         type=str,
-        default="",
+        nargs="?",
+        const="",
         help="Control the report information.",
     )
     parser.add_argument("--no_interactive", action="store_true")
 
     args = parser.parse_args()
 
-    DATA_CHECKER.cosine_similarity_tol = 0.99
-    DATA_CHECKER.euclidean_similarity_tol = 0.90
+    cos_t, euc_t = eval(args.tolerance)
+    DATA_CHECKER.cosine_similarity_tol = cos_t
+    DATA_CHECKER.euclidean_similarity_tol = euc_t
     DATA_CHECKER.signal_to_quantization_noise_tol = float("-inf")
 
     checker = Checker(args.context_dir, args.reference_data, args.fail_fast)
 
-    if not args.no_interactive:
-        console.print(checker.get_summary(args.verbose))
+    if not args.no_interactive or args.verbose is not None:
+        console.print(checker.get_summary("" if args.verbose is None else args.verbose))
 
     if checker.state == State.Unknown:
-        exit(1)
+        exit(2)
 
     if not checker:
         if not args.no_interactive:

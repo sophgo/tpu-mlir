@@ -53,13 +53,15 @@ PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
     rewriter.setInsertionPointAfter(mulconst_op);
     newType = RankedTensorType::get(
         out_shape, module::getElementType(mulconst_op.getOutput()));
+    auto out_loc = mulconst_op.getLoc(); // keep out location unchanged.
     auto name = module::getName(mulconst_op.getOutput());
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
+    mulconst_op->setLoc(loc);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
     auto new_op = rewriter.create<tpu::PermuteOp>(
-        loc, newType,
+        out_loc, newType,
         ValueRange{mulconst_op.getOutput(), module::getNoneOp(mulconst_op)},
         attrs);
     mulconst_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
@@ -72,15 +74,16 @@ PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
     rewriter.setInsertionPointAfter(cast_op);
     newType = RankedTensorType::get(
         out_shape, module::getElementType(cast_op.getOutput()));
+    auto out_loc = cast_op.getLoc(); // keep out location unchanged.
     auto name = module::getName(cast_op.getOutput());
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
+    cast_op->setLoc(loc);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
     auto new_op = rewriter.create<tpu::PermuteOp>(
-        loc, newType,
-        ValueRange{cast_op.getOutput(), module::getNoneOp(cast_op)},
-        attrs);
+        out_loc, newType,
+        ValueRange{cast_op.getOutput(), module::getNoneOp(cast_op)}, attrs);
     cast_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
     return success();
   } else if (auto softmax_op = dyn_cast<tpu::SoftmaxOp>(nextOp)) {
@@ -95,13 +98,15 @@ PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
     rewriter.setInsertionPointAfter(softmax_op);
     newType = RankedTensorType::get(
         out_shape, module::getElementType(softmax_op.getOutput()));
+    auto out_loc = cast_op.getLoc(); // keep out location unchanged.
     auto name = module::getName(softmax_op.getOutput());
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
+    softmax_op->setLoc(loc);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
     auto new_op = rewriter.create<tpu::PermuteOp>(
-        loc, newType,
+        out_loc, newType,
         ValueRange{softmax_op.getOutput(), module::getNoneOp(softmax_op)},
         attrs);
     softmax_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
