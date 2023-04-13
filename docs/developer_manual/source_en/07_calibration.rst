@@ -164,6 +164,25 @@ when starting the docker, and the tool must be start in the same directory where
    :width: 800px
    :align: center
 
+
+.. list-table:: visual tool parameters
+   :widths: 18 60
+   :header-rows: 1
+
+   * - Param
+     - Description
+   * - --port
+     - the TCP port used to listen to browser as server, default value is 10000
+   * - --f32_mlir
+     - the float mlir net to compare to
+   * - --quant_mlir
+     - the quantized mlir net to compare with float net
+   * - --input
+     - input data to run the float net and quantized net for data compare, can be image or npy/npz file, can be the test_input when graph_transform
+   * - --manual_run
+     - if run the nets when browser connected to server, default is true, if set false, only the net structure will be displayed
+
+
 Open browser in host computer and input localhost:9999, the tool UI will be displayed. The float and quantized net will automatically inference
 to get output of every layer, if the nets are huge, it would took a long time to wait! UI is as following:
 
