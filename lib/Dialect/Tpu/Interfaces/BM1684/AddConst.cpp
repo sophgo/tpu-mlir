@@ -42,7 +42,14 @@ void tpu::AddConstOp::codegen_global_bm1684() {
 int64_t tpu::AddConstOp::getBufferSize_bm1684(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  return 0;
+  int64_t buffer_size = 0;
+  auto dtype_i = BM168x::getDataType(getInput());
+  if (dtype_i == DTYPE_INT8 || dtype_i == DTYPE_UINT8) {
+    if (getMultiplier() != 1 || getRshift() != 0) {
+      buffer_size = in_lmem_bytes * 2;
+    }
+  }
+  return buffer_size;
 }
 
 void tpu::AddConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
@@ -63,7 +70,7 @@ void tpu::AddConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                        module::isSign(getOutput())};
     int is_int8s[3] = {1, 0, 1};
     BM1684::instance().dl_nodechip_const_binary_fix8b_forward_local(
-        in_g_info.out_addr, out_g_info.out_addr, 0, b1_val, b0_shape, 4,
+        in_g_info.out_addr, out_g_info.out_addr, out_g_info.buffer_addr, b1_val, b0_shape, 4,
         BINARY_ADD, b0_mul, 0, b0_rshift, 0, 0, getDoRelu(), is_int8s, is_signs,
         BM1684::instance().bdc_node);
   } else {

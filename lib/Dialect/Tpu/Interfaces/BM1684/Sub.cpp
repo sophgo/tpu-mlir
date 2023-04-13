@@ -80,13 +80,13 @@ int64_t tpu::SubOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   auto rshift_v = module::getI64Array(getRshifts(), input_num, 0);
   if (dtype_A == DTYPE_INT8 || dtype_A == DTYPE_UINT8) {
     if ((int)multiplier_v->at(0) != 1 || (uint8_t)rshift_v->at(0) != 0) {
-      buffer_size = in_lmem_bytes * 2;
+      buffer_size = out_lmem_bytes * 2;
     }
   } else if ((BM168x::getFmtBytes(dtype_A) > BM168x::getFmtBytes(dtype_O)) &&
              (module::isSign(getInputs()[0]) ||
               module::isSign(getInputs()[1])) &&
              (!module::isSign(getOutput()))) {
-    buffer_size = in_lmem_bytes;
+    buffer_size = out_lmem_bytes;
   }
   return buffer_size;
 }
