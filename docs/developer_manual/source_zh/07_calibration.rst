@@ -192,6 +192,25 @@ auto-tune算法
    :width: 800px
    :align: center
 
+
+.. list-table:: 可视化工具命令行参数
+   :widths: 18 60
+   :header-rows: 1
+
+   * - 参数
+     - 描述
+   * - --port
+     - 服务程序的TCP监听端口，默认值为10000
+   * - --f32_mlir
+     - 量化前的浮点mlir网络的文件名
+   * - --quant_mlir
+     - 量化后的定点mlir网络的文件名
+   * - --input
+     - 运行网络比较的输入样本数据，可以是jpeg图片文件或者npy/npz数据文件，一般可使用网络转换时的test_input
+   * - --manual_run
+     - 浏览器客户端打开时是否自动运行网络进行数据比较，默认为true，使用此参数则只显示网络结构
+
+
 在浏览器地址栏输入localhost:9999可以打开程序界面，启动时候会自动进行浮点网络和量化后网络的推理，所以可能会有一定时间的等待。如下图所示：
 
 .. figure:: ../assets/visual_interface1.png
