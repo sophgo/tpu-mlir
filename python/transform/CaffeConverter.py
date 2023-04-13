@@ -15,7 +15,8 @@ import torch
 from caffe.proto import caffe_pb2
 from google.protobuf import text_format
 from utils.pad_setting import set_caffe_pad
-
+import mlir.dialects.top as top
+from mlir.ir import *
 
 class CaffeConverter(BaseConverter):
 
@@ -150,6 +151,14 @@ class CaffeConverter(BaseConverter):
         assert len(self.location[name]) > 0
         return self.location[name].pop()
 
+    def str_to_loc(self, names):
+        if isinstance(names, str):
+            return Location.fused([Location.name(names)], context=self.mlir.ctx)
+        elif isinstance(names, list):
+            return Location.fused([Location.name(n) for n in names], context=self.mlir.ctx)
+        else:
+            raise RuntimeError("Unknown names:{}".format(names))
+
     def init_MLIRImporter(self):
         input_shapes = list()
         for _name in self.input_names:
@@ -182,9 +191,17 @@ class CaffeConverter(BaseConverter):
             image = (len(input_shape) == 4 and input_shape[channel_axis] <=4) or \
                     (len(input_shape) == 3) # gray
             if not self.preprocess_args or not image:
-                input_op = self.mlir.create_input_op(_name, idx, **{})
+                input_op = top.InputOp(self.mlir.input_types[idx],
+                                       self.mlir.func_args[idx],
+                                       loc=Location.fused([Location.name(_name)]),
+                                       ip=self.mlir.insert_point)
             else:
-                input_op = self.mlir.create_input_op(_name, idx, **self.preprocess_args)
+                init_args = {k: StringAttr.get(v) if isinstance(v, str) else v for k, v in self.preprocess_args.items() if k != 'model_format'}
+                input_op = top.InputOp(self.mlir.input_types[idx],
+                                       self.mlir.func_args[idx],
+                                       loc=Location.fused([Location.name(_name)]),
+                                       ip=self.mlir.insert_point,
+                                       **init_args)
             self.addOperand(_name, input_op)
 
         def NoneAndRaise(layer):
@@ -259,11 +276,15 @@ class CaffeConverter(BaseConverter):
         tmp_shape = input_shape
         tmp_shape[axis] = top_k
         assert (tmp_shape == out_shape and "Must provide axis")
-        attrs = {'mode': layer_type, 'axis': axis, 'keepdims': True}
-        attrs['name'] = [name + "_indices", name] if out_max_val else [name, name + "_values"]
+        attrs = {'mode': StringAttr.get(layer_type), 'axis': axis, 'keepdims': True}
+        attrs['loc'] = self.str_to_loc([name + "_indices", name] if out_max_val else [name, name + "_values"])
         output_shapes = [out_shape]
         output_shapes += [out_shape] if out_max_val else [None]
-        out_ops = self.mlir.create_arg_op([in_op], output_shapes, **attrs)
+        out_op = top.ArgOp(*self.mlir.get_tensor_type(output_shapes),
+                           in_op,
+                           **attrs,
+                           ip=self.mlir.insert_point)
+        out_ops = [out_op.indices, out_op.values]
         self.addOperand(layer.top[0], out_ops[1] if out_max_val else out_ops[0])
 
     def convert_convolution_op(self, layer):
@@ -312,17 +333,20 @@ class CaffeConverter(BaseConverter):
         if p.bias_term:
             bias_op = self.blob_to_weight_op(layer, 1)
         attrs = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'kernel_shape': kernel,
             'strides': stride,
             'dilations': dilation,
             'pads': padding * dim,
             'group': g,
             'do_relu': False,
-            'ins': [],
+            # 'ins': [], # unexpected params ignored
         }
         output_shape = self.getShape(layer.top[0])
-        new_op = self.mlir.create_conv_op([in_op, filter_op, bias_op], output_shape, **attrs)
+        new_op = top.ConvOp(self.mlir.get_tensor_type(output_shape),
+                            in_op, filter_op, bias_op,
+                            **attrs,
+                            ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_batchnorm_op(self, layer):
@@ -344,13 +368,15 @@ class CaffeConverter(BaseConverter):
         var_op = self.create_weight_op(layer.name + "_var", variance)
         output_shape = self.getShape(layer.top[0])
         attrs = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             "epsilon": eps,
         }
         gamma_op = self.mlir.none_op
         beta_op = self.mlir.none_op
-        new_op = self.mlir.create_batchnorm_op([in_op, mean_op, var_op, gamma_op, beta_op],
-                                               output_shape, **attrs)
+        new_op = top.BatchNormOp(self.mlir.get_tensor_type(output_shape),
+                                 in_op, mean_op, var_op, gamma_op, beta_op,
+                                 **attrs,
+                                 ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_scale_op(self, layer):
@@ -359,16 +385,21 @@ class CaffeConverter(BaseConverter):
         input_shape = self.getShape(layer.bottom[0])
         num_dims = len(input_shape)
         output_shape = input_shape
-        attrs = {'name': self.get_loc(layer.top[0])}
+        attrs = {'loc': self.str_to_loc(self.get_loc(layer.top[0]))}
         assert (num_dims == 4 or num_dims == 2)
         if len(layer.bottom) == 2:
             op1 = self.getOperand(layer.bottom[1])
             input_shape1 = self.getShape(layer.bottom[1])
             if len(input_shape1) < len(input_shape):
                 output_shape1 = list(input_shape1) + [1] * (len(input_shape) - len(input_shape1))
-                op1 = self.mlir.create_reshape_op([op1], output_shape1,
-                                                  **{'name': layer.bottom[1] + "_reshape"})
-            new_op = self.mlir.create_mul_op([in_op, op1], output_shape, **attrs)
+                op1 = top.ReshapeOp(self.mlir.get_tensor_type(output_shape1),
+                                    op1,
+                                    loc=Location.fused([Location.name(layer.bottom[1] + "_reshape")], context=self.mlir.ctx),
+                                    ip=self.mlir.insert_point).output
+            new_op = top.MulOp(self.mlir.get_tensor_type(output_shape),
+                               [in_op, op1],
+                               **attrs,
+                               ip=self.mlir.insert_point).output
             self.addOperand(layer.top[0], new_op)
         else:
             scale_op = self.blob_to_weight_op(layer, 0)
@@ -382,7 +413,10 @@ class CaffeConverter(BaseConverter):
                     bias_op = self.create_weight_op(layer.name + "_1",
                                                     np.zeros(input_shape[1], np.float32))
 
-            new_op = self.mlir.create_scale_op([in_op, scale_op, bias_op], output_shape, **attrs)
+            new_op = top.ScaleOp(self.mlir.get_tensor_type(output_shape),
+                                 in_op, scale_op, bias_op,
+                                 **attrs,
+                                 ip=self.mlir.insert_point).output
             self.addOperand(layer.top[0], new_op)
 
     def convert_relu_op(self, layer):
@@ -390,12 +424,18 @@ class CaffeConverter(BaseConverter):
         op = self.getOperand(layer.bottom[0])
         input_shape = self.getShape(layer.bottom[0])
         output_shape = input_shape
-        attrs = {'name': self.get_loc(layer.top[0])}
+        attrs = {'loc': self.str_to_loc(self.get_loc(layer.top[0]))}
         if layer.relu_param.HasField('negative_slope'):
             attrs['alpha'] = layer.relu_param.negative_slope
-            new_op = self.mlir.create_leaky_relu_op([op], output_shape, **attrs)
+            new_op = top.LeakyReluOp(self.mlir.get_tensor_type(output_shape),
+                                     op,
+                                     **attrs,
+                                     ip=self.mlir.insert_point).output
         else:
-            new_op = self.mlir.create_relu_op([op], output_shape, **attrs)
+            new_op = top.ReluOp(self.mlir.get_tensor_type(output_shape),
+                                op,
+                                **attrs,
+                                ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_pooling_op(self, layer):
@@ -435,23 +475,34 @@ class CaffeConverter(BaseConverter):
             'do_relu': False,
         }
         if len(layer.top) == 1:
-            attrs["name"] = self.get_loc(layer.top[0])
+            attrs["loc"] = self.str_to_loc(self.get_loc(layer.top[0]))
         else:
-            attrs["name"] = [self.get_loc(x) for x in layer.top]
+            attrs["loc"] = self.str_to_loc([self.get_loc(x) for x in layer.top])
 
         if method == 0:  # MAX
             if len(layer.top) == 1:
-                new_op = self.mlir.create_maxpool_op([op], output_shape, **attrs)
+                new_op = top.MaxPoolOp(self.mlir.get_tensor_type(output_shape),
+                                       op,
+                                       **attrs,
+                                       ip=self.mlir.insert_point).output
                 self.addOperand(layer.top[0], new_op)
                 return
             else:
-                new_op, mask_op = self.mlir.create_maxpool_with_mask_op([op], output_shape, **attrs)
+                output_shape2 = self.getShape(layer.top[1])
+                maskp_op = top.MaxPoolWithMaskOp(*self.mlir.get_tensor_type([output_shape, output_shape2]),
+                                                 op,
+                                                 **attrs,
+                                                 ip=self.mlir.insert_point)
+                new_op, mask_op = maskp_op.output, maskp_op.mask
                 self.addOperand(layer.top[0], new_op)
                 self.addOperand(layer.top[1], mask_op)
                 return
         elif method == 1:  # AVE
             attrs['keepdims'] = len(output_shape) == len(input_shape)
-            new_op = self.mlir.create_avgpool_op([op], output_shape, **attrs)
+            new_op = top.AvgPoolOp(self.mlir.get_tensor_type(output_shape),
+                                   op,
+                                   **attrs,
+                                   ip=self.mlir.insert_point).output
             self.addOperand(layer.top[0], new_op)
             return
         else:
@@ -465,10 +516,13 @@ class CaffeConverter(BaseConverter):
             operands.append(op)
         num_input = len(layer.bottom)
         p = layer.eltwise_param
-        attrs = {'name': self.get_loc(layer.top[0])}
+        attrs = {'loc': self.str_to_loc(self.get_loc(layer.top[0]))}
         output_shape = self.getShape(layer.top[0])
         if p.operation == 0:  # mul
-            new_op = self.mlir.create_mul_op(operands, output_shape, **attrs)
+            new_op = top.MulOp(self.mlir.get_tensor_type(output_shape),
+                               operands,
+                               **attrs,
+                               ip=self.mlir.insert_point).output
         elif p.operation == 1:  # add
             coeff = None
             if (len(p.coeff) != 0):
@@ -477,9 +531,15 @@ class CaffeConverter(BaseConverter):
             else:
                 coeff = [1] * num_input
             attrs['coeff'] = coeff
-            new_op = self.mlir.create_add_op(operands, output_shape, **attrs)
+            new_op = top.AddOp(self.mlir.get_tensor_type(output_shape),
+                               operands,
+                               **attrs,
+                               ip=self.mlir.insert_point).output
         elif p.operation == 2:  # max
-            new_op = self.mlir.create_max_op(operands, output_shape, **attrs)
+            new_op = top.MaxOp(self.mlir.get_tensor_type(output_shape),
+                               operands,
+                               **attrs,
+                               ip=self.mlir.insert_point).output
         elif p.operation == 3:  # min
             raise RuntimeError("Min not support now")
         self.addOperand(layer.top[0], new_op)
@@ -496,12 +556,15 @@ class CaffeConverter(BaseConverter):
             filter = self.layer_dict[layer.name].blobs[0].data
             new_filter = np.ascontiguousarray(np.transpose(filter, (1, 0)))
             filter_op = self.create_weight_op(layer.name + "_filter", new_filter)
-        attrs = {'name': self.get_loc(layer.top[0]), "do_relu": False}
+        attrs = {'loc': self.str_to_loc(self.get_loc(layer.top[0])), "do_relu": False}
         bias_op = self.mlir.none_op
         if with_bias:
             bias_op = self.blob_to_weight_op(layer, 1)
         output_shape = self.getShape(layer.top[0])
-        new_op = self.mlir.create_matmul_op([in_op, filter_op, bias_op], output_shape, **attrs)
+        new_op = top.MatMulOp(self.mlir.get_tensor_type(output_shape),
+                              in_op, filter_op, bias_op,
+                              **attrs,
+                              ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_softmax_op(self, layer):
@@ -513,8 +576,11 @@ class CaffeConverter(BaseConverter):
             axis = layer.softmax_param.axis
         if axis < 0:
             axis += len(output_shape)
-        attrs = {'name': self.get_loc(layer.top[0]), 'axis': axis}
-        new_op = self.mlir.create_softmax_op([in_op], output_shape, **attrs)
+        attrs = {'loc': self.str_to_loc(self.get_loc(layer.top[0])), 'axis': axis}
+        new_op = top.SoftmaxOp(self.mlir.get_tensor_type(output_shape),
+                               in_op,
+                               **attrs,
+                               ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_bn_op(self, layer):
@@ -533,7 +599,7 @@ class CaffeConverter(BaseConverter):
             'variance_epsilon': 1e-5,
             'epsilon': 1e-5,
             'frozen': False,
-            'name': self.get_loc(layer.top[0])
+            'loc': self.str_to_loc(self.get_loc(layer.top[0]))
         }
 
         if layer.HasField('bn_param'):
@@ -553,13 +619,20 @@ class CaffeConverter(BaseConverter):
 
         output_shape = input_shape
         if bn_mode == 1:
-            new_op = self.mlir.create_scale_op(operands, output_shape, **attrs)
+            new_op = top.ScaleOp(self.mlir.get_tensor_type(output_shape),
+                                 *operands,
+                                 loc=attrs['loc'], # unexpected params ignored
+                                 ip=self.mlir.insert_point).output
             self.addOperand(layer.top[0], new_op)
         else:
             if len(operands) == 5:
                 operands[1], operands[3] = operands[3], operands[1]
                 operands[2], operands[4] = operands[4], operands[2]
-            new_op = self.mlir.create_batchnorm_op(operands, output_shape, **attrs)
+            new_op = top.BatchNormOp(self.mlir.get_tensor_type(output_shape),
+                                     *operands,
+                                     loc=attrs['loc'],
+                                     epsilon=attrs['epsilon'], # unexpected params ignored
+                                     ip=self.mlir.insert_point).output
             self.addOperand(layer.top[0], new_op)
 
     def convert_concat_op(self, layer):
@@ -580,8 +653,11 @@ class CaffeConverter(BaseConverter):
             operands.append(bottom_op)
         output_shape = list(input_shape)
         output_shape[axis] = concat_axis_dim
-        attrs = {'axis': axis, 'name': self.get_loc(layer.top[0])}
-        new_op = self.mlir.create_concat_op(operands, output_shape, **attrs)
+        attrs = {'axis': axis, 'loc': self.str_to_loc(self.get_loc(layer.top[0]))}
+        new_op = top.ConcatOp(self.mlir.get_tensor_type(output_shape),
+                              operands,
+                              **attrs,
+                              ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_continuation_indicator_op(self, layer):
@@ -614,12 +690,15 @@ class CaffeConverter(BaseConverter):
             crop_offset[i] = offset
 
         attrs = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'offset': list(crop_offset),
             'steps': list(crop_step)
         }
         output_shape = self.getShape(layer.top[0])
-        new_op = self.mlir.create_slice_op([in_op], output_shape, **attrs)
+        new_op = top.SliceOp(self.mlir.get_tensor_type(output_shape),
+                             in_op,
+                             **attrs,
+                             ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_deconvolution_op(self, layer):
@@ -664,7 +743,7 @@ class CaffeConverter(BaseConverter):
         if p.bias_term:
             bias_op = self.blob_to_weight_op(layer, 1)
         attrs = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'kernel_shape': kernel,
             'strides': stride,
             'dilations': dilation,
@@ -673,8 +752,10 @@ class CaffeConverter(BaseConverter):
             'do_relu': False,
         }
         output_shape = self.getShape(layer.top[0])
-        new_op = self.mlir.create_conv_transpose_op([in_op, filter_op, bias_op], output_shape,
-                                                    **attrs)
+        new_op = top.DeconvOp(self.mlir.get_tensor_type(output_shape),
+                              in_op, filter_op, bias_op,
+                              **attrs,
+                              ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_detection_output_op(self, layer):
@@ -692,7 +773,7 @@ class CaffeConverter(BaseConverter):
         elif p.code_type == 3:
             code_type = "CORNER_SIZE"
         param = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'num_classes': p.num_classes,
             'share_location': p.share_location,
             'background_label_id': p.background_label_id,
@@ -705,7 +786,10 @@ class CaffeConverter(BaseConverter):
         assert (1.0 == p.nms_param.eta)
         assert (False == p.variance_encoded_in_target)
         output_shape = [input_shape[0], 1, p.keep_top_k, 7]
-        new_op = self.mlir.create_detection_output_op(operands, output_shape, **param)
+        new_op = top.DetectionOutputOp(self.mlir.get_tensor_type(output_shape),
+                                       operands,
+                                       **param,
+                                       ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_dropout_op(self, layer):
@@ -730,8 +814,11 @@ class CaffeConverter(BaseConverter):
         output_shape = [input_shape[0], 1]
         for i in range(1, num_dims):
             output_shape[1] *= input_shape[i]
-        param = {'name': self.get_loc(layer.top[0])}
-        new_op = self.mlir.create_reshape_op([in_op], output_shape, **param)
+        param = {'loc': self.str_to_loc(self.get_loc(layer.top[0]))}
+        new_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
+                               in_op,
+                               **param,
+                               ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_frcn_detection_op(self, layer):
@@ -811,20 +898,23 @@ class CaffeConverter(BaseConverter):
         output_shape[3] = after_w
 
         param = {
-            'name': self.get_loc(layer.top[0]),
-            'height': p.height,
-            'pad_beg': p.pad_beg,
-            'pad_end': p.pad_end,
-            'shrink_factor': p.shrink_factor,
-            'width': p.width,
-            'zoom_factor': p.zoom_factor,
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
+            # 'height': p.height,  # unexpected params ignored
+            # 'pad_beg': p.pad_beg,
+            # 'pad_end': p.pad_end,
+            # 'shrink_factor': p.shrink_factor,
+            # 'width': p.width,
+            # 'zoom_factor': p.zoom_factor,
             'scale_h': float(input_shape[2] - 1) / (output_shape[2] - 1),
             'scale_w': float(input_shape[3] - 1) / (output_shape[3] - 1),
-            'coordinate_transformation_mode': 'align_corners',
-            'mode': 'linear',
+            'coord_mode': StringAttr.get('align_corners'),
+            'mode': StringAttr.get('linear'),
         }
 
-        new_op = self.mlir.create_interp_op([in_op], output_shape, **param)
+        new_op = top.InterpOp(self.mlir.get_tensor_type(output_shape),
+                              in_op,
+                              **param,
+                              ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_lrn_op(self, layer):
@@ -832,14 +922,17 @@ class CaffeConverter(BaseConverter):
         in_op = self.getOperand(layer.bottom[0])
         p = layer.lrn_param
         param = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'alpha': p.alpha,
             'beta': p.beta,
             'bias': p.k,
             'size': p.local_size,
         }
         output_shape = self.getShape(layer.top[0])
-        new_op = self.mlir.create_lrn_op([in_op], output_shape, **param)
+        new_op = top.LRNOp(self.mlir.get_tensor_type(output_shape),
+                           in_op,
+                           **param,
+                           ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_lstm_op(self, layer):
@@ -888,18 +981,24 @@ class CaffeConverter(BaseConverter):
 
         name = self.get_loc(layer.top[0])
         param = {
-            "name": [name + '_lstm', name + '_H', name + '_C'],
+            "loc": self.str_to_loc([name + '_lstm', name + '_H', name + '_C']),
             "hidden_size": hidden_size,
             "bidirectional": bool(False),
             "batch_first": bool(False),
         }
         out_shape = [seq_length, 1, batch_size, hidden_size]
         out_shapes = [out_shape, None, None]
-        new_op, _, _ = self.mlir.create_lstm_op(operands, out_shapes, **param)
+        new_op = top.LSTMOp(*self.mlir.get_tensor_type(out_shapes),
+                            *operands,
+                            **param,
+                            ip=self.mlir.insert_point).Y
         # reshape back
-        attrs = {'name': name}
+        attrs = {'loc': self.str_to_loc(name)}
         output_shape = self.getShape(layer.top[0])
-        new_reshape_op = self.mlir.create_reshape_op([new_op], output_shape, **attrs)
+        new_reshape_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
+                                       new_op,
+                                       **attrs,
+                                       ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_reshape_op)
 
     def convert_lstm_jun_op(self, layer):
@@ -942,18 +1041,24 @@ class CaffeConverter(BaseConverter):
         operands.append(self.mlir.none_op)  # initial_c
         name = self.get_loc(layer.top[0])
         param = {
-            "name": [name + '_lstm', name + '_H', name + '_C'],
+            "loc": self.str_to_loc([name + '_lstm', name + '_H', name + '_C']),
             "hidden_size": hidden_size,
             "bidirectional": bool(False),
             "batch_first": bool(False),
         }
         out_shape = [seq_length, 1, batch_size, hidden_size]
         out_shapes = [out_shape, None, None]
-        new_op, _, _ = self.mlir.create_lstm_op(operands, out_shapes, **param)
+        new_op = top.LSTMOp(*self.mlir.get_tensor_type(out_shapes),
+                            *operands,
+                            **param,
+                            ip=self.mlir.insert_point).Y
         # reshape back
-        attrs = {'name': name}
+        attrs = {'loc': self.str_to_loc(name)}
         output_shape = self.getShape(layer.top[0])
-        new_reshape_op = self.mlir.create_reshape_op([new_op], output_shape, **attrs)
+        new_reshape_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
+                                       new_op,
+                                       **attrs,
+                                       ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_reshape_op)
 
     def convert_matmul_op(self, layer):
@@ -968,7 +1073,7 @@ class CaffeConverter(BaseConverter):
         operands.append(in_op)
         p = layer.norm_param
         param = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'across_spatial': p.across_spatial,
             'channel_shared': p.channel_shared,
         }
@@ -990,7 +1095,10 @@ class CaffeConverter(BaseConverter):
         scale_op = self.create_weight_op(scale_name, scale_data)
         operands.append(scale_op)
         output_shape = self.getShape(layer.top[0])
-        new_op = self.mlir.create_normalize_op(operands, output_shape, **param)
+        new_op = top.NormalizeOp(self.mlir.get_tensor_type(output_shape),
+                                 *operands,
+                                 **param,
+                                 ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_mish_op(self, layer):
@@ -998,8 +1106,11 @@ class CaffeConverter(BaseConverter):
         op = self.getOperand(layer.bottom[0])
         input_shape = self.getShape(layer.bottom[0])
         output_shape = input_shape
-        attrs = {'name': self.get_loc(layer.top[0])}
-        new_op = self.mlir.create_mish_op([op], output_shape, **attrs)
+        attrs = {'loc': self.str_to_loc(self.get_loc(layer.top[0]))}
+        new_op = top.MishOp(self.mlir.get_tensor_type(output_shape),
+                            op,
+                            **attrs,
+                            ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_padding_op(self, layer):
@@ -1018,8 +1129,11 @@ class CaffeConverter(BaseConverter):
         output_shape = list(input_shape)
         for i in range(len(p.order)):
             output_shape[i] = input_shape[p.order[i]]
-        attrs = {'order': p.order, 'name': self.get_loc(layer.top[0])}
-        new_op = self.mlir.create_permute_op([in_op], output_shape, **attrs)
+        attrs = {'order': p.order, 'loc': self.str_to_loc(self.get_loc(layer.top[0]))}
+        new_op = top.PermuteOp(self.mlir.get_tensor_type(output_shape),
+                               in_op,
+                               **attrs,
+                               ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_power_op(self, layer):
@@ -1040,10 +1154,13 @@ class CaffeConverter(BaseConverter):
         slope_op = self.blob_to_weight_op(layer, 0, slope_shape)
         operands.append(slope_op)
         param = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
         }
         output_shape = input_shape
-        new_op = self.mlir.create_prelu_op(operands, output_shape, **param)
+        new_op = top.PReluOp(self.mlir.get_tensor_type(output_shape),
+                             *operands,
+                             **param,
+                             ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_priorbox_op(self, layer):
@@ -1071,7 +1188,7 @@ class CaffeConverter(BaseConverter):
             'variance': variance,
             'clip': p.clip,
             'offset': p.offset,
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
         }
 
         if p.HasField('step_h') and p.HasField('step_w'):
@@ -1117,7 +1234,10 @@ class CaffeConverter(BaseConverter):
         param['aspect_ratios'] = aspect_ratios_
         param['use_default_aspect_ratio'] = use_default_aspect_ratio
         output_shape = [1, 2, int(h * w * num_priors * 4)]
-        new_op = self.mlir.create_priorbox_op(operands, output_shape, **param)
+        new_op = top.PriorBoxOp(self.mlir.get_tensor_type(output_shape),
+                                operands,
+                                **param,
+                                ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_proposal_op(self, layer):
@@ -1136,7 +1256,7 @@ class CaffeConverter(BaseConverter):
         net_input_h = p.net_input_h
         net_input_w = p.net_input_w
         param = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'net_input_h': net_input_h,
             'net_input_w': net_input_w,
             'feat_stride': feat_stride,
@@ -1146,7 +1266,10 @@ class CaffeConverter(BaseConverter):
             'rpn_nms_post_top_n': rpn_nms_post_top_n
         }
         output_shape = [input_shape[0], 1, rpn_nms_post_top_n, 5]
-        new_op = self.mlir.create_proposal_op(operands, output_shape, **param)
+        new_op = top.ProposalOp(self.mlir.get_tensor_type(output_shape),
+                                operands,
+                                **param,
+                                ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_relu6_op(self, layer):
@@ -1171,26 +1294,35 @@ class CaffeConverter(BaseConverter):
             "block_w": stride,
             "is_CRD": False,
             "is_inversed": True,
-            'name': self.get_loc(layer.top[0])
+            "loc": self.str_to_loc(self.get_loc(layer.top[0]))
         }
-        new_op = self.mlir.create_depth2space_op([in_op], output_shape, **attrs)
+        new_op = top.Depth2SpaceOp(self.mlir.get_tensor_type(output_shape),
+                                   in_op,
+                                   **attrs,
+                                   ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_reshape_op(self, layer):
         assert (self.layerType(layer) == 'Reshape')
         op = self.getOperand(layer.bottom[0])
-        attrs = {'name': self.get_loc(layer.top[0])}
+        attrs = {'loc': self.str_to_loc(self.get_loc(layer.top[0]))}
         output_shape = self.getShape(layer.top[0])
-        new_op = self.mlir.create_reshape_op([op], output_shape, **attrs)
+        new_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
+                               op,
+                               **attrs,
+                               ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_reverse_op(self, layer):
         assert (self.layerType(layer) == 'Reverse')
         op = self.getOperand(layer.bottom[0])
         axis = layer.reverse_param.axis
-        attrs = {'name': self.get_loc(layer.top[0]), 'axis': axis}
+        attrs = {'loc': self.str_to_loc(self.get_loc(layer.top[0])), 'axis': axis}
         output_shape = self.getShape(layer.top[0])
-        new_op = self.mlir.create_reverse_op([op], output_shape, **attrs)
+        new_op = top.ReverseOp(self.mlir.get_tensor_type(output_shape),
+                               op,
+                               **attrs,
+                               ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_retinaface_detection_op(self, layer):
@@ -1207,12 +1339,15 @@ class CaffeConverter(BaseConverter):
         keep_topk = p.keep_topk
         output_shape = [input_shape[0], 1, keep_topk, 15]
         param = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'nms_threshold': nms_threshold,
             'confidence_threshold': confidence_threshold,
             'keep_topk': keep_topk,
         }
-        new_op = self.mlir.create_retinaface_detection_op(operands, output_shape, **param)
+        new_op = top.RetinaFaceDetectionOp(self.mlir.get_tensor_type(output_shape),
+                                           operands,
+                                           **param,
+                                           ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_roipooling_op(self, layer):
@@ -1230,13 +1365,16 @@ class CaffeConverter(BaseConverter):
         pooled_w = p.pooled_w
         spatial_scale = p.spatial_scale
         param = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'pooled_h': pooled_h,
             'pooled_w': pooled_w,
             'spatial_scale': spatial_scale
         }
         output_shape = [bottom1_shape[0] * bottom1_shape[2], bottom0_shape[1], pooled_h, pooled_w]
-        new_op = self.mlir.create_roipooling_op(operands, output_shape, **param)
+        new_op = top.ROIPoolingOp(self.mlir.get_tensor_type(output_shape),
+                                  operands,
+                                  **param,
+                                  ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_frcn_detection_op(self, layer):
@@ -1252,7 +1390,7 @@ class CaffeConverter(BaseConverter):
         nms_threshold = p.nms_threshold
         keep_topk = p.keep_topk
         param = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'class_num': class_num,
             'obj_threshold': obj_threshold,
             'nms_threshold': nms_threshold,
@@ -1260,7 +1398,10 @@ class CaffeConverter(BaseConverter):
         }
 
         output_shape = [input_shape[0], 1, keep_topk, 6]
-        new_op = self.mlir.create_frcn_detection_op(operands, output_shape, **param)
+        new_op = top.FrcnDetectionOp(self.mlir.get_tensor_type(output_shape),
+                                     operands,
+                                     **param,
+                                     ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_shufflechannel_op(self, layer):
@@ -1271,8 +1412,11 @@ class CaffeConverter(BaseConverter):
         operands = list()
         operands.append(in_op)
         output_shape = input_shape
-        attrs = {'name': self.get_loc(layer.top[0]), 'group': group}
-        new_op = self.mlir.create_shuffle_channel_op(operands, output_shape, **attrs)
+        attrs = {'loc': self.str_to_loc(self.get_loc(layer.top[0])), 'group': group}
+        new_op = top.ShuffleChannelOp(self.mlir.get_tensor_type(output_shape),
+                                      *operands,
+                                      **attrs,
+                                      ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_sigmoid_op(self, layer):
@@ -1280,8 +1424,11 @@ class CaffeConverter(BaseConverter):
         in_op = self.getOperand(layer.bottom[0])
         input_shape = self.getShape(layer.bottom[0])
         output_shape = input_shape
-        attrs = {'scale': 1, 'bias': 0, 'name': self.get_loc(layer.top[0])}
-        new_op = self.mlir.create_sigmoid_op([in_op], output_shape, **attrs)
+        attrs = {'scale': 1, 'bias': 0, 'loc': self.str_to_loc(self.get_loc(layer.top[0]))}
+        new_op = top.SigmoidOp(self.mlir.get_tensor_type(output_shape),
+                               in_op,
+                               **attrs,
+                               ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_slice_op(self, layer):
@@ -1317,11 +1464,14 @@ class CaffeConverter(BaseConverter):
             crop_offset[axis] = offset
             steps = [1] * len(input_shape)
             param = {
-                'name': self.get_loc(layer.top[i]),
+                'loc': self.str_to_loc(self.get_loc(layer.top[i])),
                 'offset': crop_offset,
                 'steps': steps,
             }
-            new_op = self.mlir.create_slice_op(operands, output_shape, **param)
+            new_op = top.SliceOp(self.mlir.get_tensor_type(output_shape),
+                                 *operands,
+                                 **param,
+                                 ip=self.mlir.insert_point).output
             self.addOperand(layer.top[i], new_op)
             offset += slices[i]
         #raise RuntimeError("not implemented")
@@ -1352,12 +1502,18 @@ class CaffeConverter(BaseConverter):
             output_shape[3] = p.upsample_w
         if p.HasField('upsample_h'):
             output_shape[2] = p.upsample_h
-        attrs = {'scale_h': scale, 'scale_w': scale, 'name': self.get_loc(layer.top[0])}
+        attrs = {'scale_h': scale, 'scale_w': scale, 'loc': self.str_to_loc(self.get_loc(layer.top[0]))}
         if len(layer.bottom) == 1:
-            new_op = self.mlir.create_upsample_op([in_op], output_shape, **attrs)
+            new_op = top.UpsampleOp(self.mlir.get_tensor_type(output_shape),
+                                    in_op,
+                                    **attrs,
+                                    ip=self.mlir.insert_point).output
         else:
             mask_op = self.getOperand(layer.bottom[1])
-            new_op = self.mlir.create_maxunpool_op([in_op, mask_op], output_shape, **attrs)
+            new_op = top.MaxUnpoolOp(self.mlir.get_tensor_type(output_shape),
+                                     in_op, mask_op,
+                                     **attrs,
+                                     ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_yolo_detection_op(self, layer):
@@ -1380,7 +1536,7 @@ class CaffeConverter(BaseConverter):
                 p.anchors = "10,13,16,30,33,23,30,61,62,45,59,119,116,90,156,198,373,326"
 
         param = {
-            'name': self.get_loc(layer.top[0]),
+            'loc': self.str_to_loc(self.get_loc(layer.top[0])),
             'net_input_h': p.net_input_h,
             "net_input_w": p.net_input_w,
             "nms_threshold": p.nms_threshold,
@@ -1393,5 +1549,8 @@ class CaffeConverter(BaseConverter):
             "anchors": p.anchors
         }
         output_shape = [input_shape[0], 1, p.keep_topk, 6]
-        new_op = self.mlir.create_yolo_detection_op(operands, output_shape, **param)
+        new_op = top.YoloDetectionOp(self.mlir.get_tensor_type(output_shape),
+                                     operands,
+                                     **param,
+                                     ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
