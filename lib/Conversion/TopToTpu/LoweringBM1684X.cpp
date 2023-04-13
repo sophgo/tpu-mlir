@@ -16,7 +16,8 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
   patterns->add<
       // clang-format off
       ShapeTryLowering,
-      ConstantFillTryLowering
+      ConstantFillTryLowering,
+      ConcatTryLowering
       // clang-format on
       >(patterns->getContext());
 }

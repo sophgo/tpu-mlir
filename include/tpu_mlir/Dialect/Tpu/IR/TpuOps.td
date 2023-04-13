@@ -923,6 +923,16 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
   let hasCanonicalizer = 1;
 }
 
+def Tpu_ShapeCastOp:Tpu_Op<"ShapeCast", [
+    ShapeProducer, ShapeConsumer,
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Shape Cast operation";
+  let description = [{
+  }];
+  let arguments = (ins AnyRankedTensor:$input);
+  let results = (outs AnyRankedTensor:$output);
+}
+
 def Tpu_LoadOp:Tpu_Op<"Load",
   [DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
@@ -1173,6 +1183,20 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // for group
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_ShapePackOp:Tpu_Op<"ShapePack", [
+    ShapeProducer, ShapeConsumer]> {
+  let summary = "Shape Concatate operation";
+  let description = [{
+  Concatenates the given sequence of seq tensors in the given dimension.
+  All tensors must either have the same shape (except in the concatenating dimension) or be empty.
+  }];
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs,
+    SI32Attr:$axis
   );
   let results = (outs AnyRankedTensor:$output);
 }

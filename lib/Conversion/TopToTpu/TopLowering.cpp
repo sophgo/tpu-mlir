@@ -385,4 +385,46 @@ Value do_transpose(Location name_loc, Value input,
   return newOp.getOutput();
 }
 
+Value insert_host2device(Value v, Type to) {
+  auto ctx = v.getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPointAfterValue(v);
+  auto name = module::getName(v).str();
+  name += "_host2device";
+  auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
+  auto loc = NameLoc::get(builder.getStringAttr(name));
+  auto hdOp = builder.create<tpu::Host2DeviceOp>(loc, newType, ValueRange{v});
+  return hdOp.getOutput();
+}
+
+Value insert_device2host(Value v, Type to) {
+  auto ctx = v.getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPointAfterValue(v);
+  auto name = module::getName(v).str();
+  name += "_device2host";
+  auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
+  auto loc = NameLoc::get(builder.getStringAttr(name));
+  auto hdOp = builder.create<tpu::Device2HostOp>(loc, newType, ValueRange{v});
+  return hdOp.getOutput();
+}
+
+void try_insert_host2device(Operation* op, uint32_t idx) {
+  auto opd = op->getOperand(idx);
+  auto def_op = opd.getDefiningOp();
+  if (def_op->hasTrait<trait::ShapeProducer>()) {
+    auto hdOp = insert_host2device(opd, opd.getType());
+    op->setOperand(idx, hdOp);
+  }
+}
+
+void try_insert_device2host(Operation* op, uint32_t idx) {
+  auto opd = op->getOperand(idx);
+  auto def_op = opd.getDefiningOp();
+  if (!def_op->hasTrait<trait::ShapeProducer>()) {
+    auto hdOp = insert_device2host(opd, opd.getType());
+    op->setOperand(idx, hdOp);
+  }
+}
+
 } // namespace tpu_mlir

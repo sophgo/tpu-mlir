@@ -58,9 +58,10 @@ class ONNX_IR_TESTER(object):
             "CompareCst":   (self.test_CompareCst,    Y, Y, N),
             "Compare":      (self.test_Compare,       Y, Y, N),
             "Compare2":     (self.test_Compare2,      N, N, N),
-            "Concat":       (self.test_Concat,        Y, Y, Y),
-            "Concat2":      (self.test_Concat2,       Y, Y, Y),
-            "ConstOfShape": (self.test_ConstOfShape,  Y, Y, N),
+            "Concat":       (self.test_Concat,        Y, N, Y),
+            "Concat2":      (self.test_Concat2,       Y, N, Y),
+            "Concat3":      (self.test_Concat3,       Y, N, N),
+            "ConstOfShape": (self.test_ConstOfShape,  Y, N, N),
             "Conv1d":       (self.test_Conv1d,        Y, N, Y),
             "Conv2d":       (self.test_Conv2d,        Y, Y, Y),
             "Conv3d":       (self.test_Conv3d,        Y, N, Y),
@@ -4951,6 +4952,34 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([shape_node, gather_node],
                                       case_name, [input], [output],
                                       initializer=[indices])
+        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
+    def test_Concat3(self, case_name):
+        input_shape = [2, 3]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.INT64, [])
+        input2 = helper.make_tensor(name='input2',
+                                    data_type=TensorProto.INT64,
+                                    dims=[2],
+                                    vals=[1, 2])
+        shape_node = helper.make_node(
+                'Shape',   # node name
+                ['input'],   # inputs
+                ['shapeinfo'],   # outputs
+        )
+        concat_node = helper.make_node(
+                'Concat',   # node name
+                ['shapeinfo','input2'],   # inputs
+                ['output'],   # outputs
+                axis=0
+        )
+        graph_def = helper.make_graph(
+                [shape_node, concat_node],
+                case_name,
+                [input],
+                [output],
+                initializer=[input2]
+        )
         self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
 
     def test_Range(self, case_name):

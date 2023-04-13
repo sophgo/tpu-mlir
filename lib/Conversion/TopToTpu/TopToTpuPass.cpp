@@ -518,12 +518,7 @@ protected:
       if (!isa<ReturnOp>(op))
         return;
       for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
-        auto opd = op->getOperand(idx);
-        auto def_op = opd.getDefiningOp();
-        if (def_op->hasTrait<trait::ShapeProducer>()) {
-          auto hdOp = insert_host2device(opd, opd.getType());
-          op->setOperand(idx, hdOp);
-        }
+        try_insert_host2device(op, idx);
       }
     });
   }
@@ -616,8 +611,13 @@ protected:
       name += "_" + type_string(to_stype);
       auto newType = RankedTensorType::get(module::getShape(v), to_stype);
       auto loc = NameLoc::get(builder.getStringAttr(name));
-      auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
-      return castOp.getOutput();
+      if (v.getDefiningOp()->hasTrait<trait::ShapeProducer>()) {
+        auto castOp = builder.create<tpu::ShapeCastOp>(loc, newType, ValueRange{v});
+        return castOp.getOutput();
+      } else {
+        auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
+        return castOp.getOutput();
+      }
     }
     case TypeCastMode::DO_QUANTIZE: {
       if (module::isCalibratedType(v) == false) {
@@ -643,18 +643,6 @@ protected:
       break;
     }
     return v;
-  }
-
-  Value insert_host2device(Value v, Type to) {
-    auto ctx = v.getContext();
-    OpBuilder builder(ctx);
-    builder.setInsertionPointAfterValue(v);
-    auto name = module::getName(v).str();
-    name += "_host2device";
-    auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
-    auto loc = NameLoc::get(builder.getStringAttr(name));
-    auto hdOp = builder.create<tpu::Host2DeviceOp>(loc, newType, ValueRange{v});
-    return hdOp.getOutput();
   }
 
   Value insert_18xx_cpu_cast(OpBuilder &builder, Value &v, NameLoc &loc,
