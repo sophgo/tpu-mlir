@@ -162,9 +162,11 @@ class MODEL_RUN(object):
 
     def make_calibration_table(self):
         '''generate calibration when there is no existing one'''
-
-        self.cali_table = os.path.expandvars(
-            f"$REGRESSION_PATH/cali_tables/{self.model_name}_cali_table")
+        if "specified_cali_table" in self.ini_content.keys():
+            self.cali_table = self.ini_content["specified_cali_table"]
+        else:
+            self.cali_table = os.path.expandvars(
+                f"$REGRESSION_PATH/cali_tables/{self.model_name}_cali_table")
         if os.path.exists(self.cali_table):
             return
         if "dataset" not in self.ini_content:
