@@ -21,6 +21,8 @@ class BaseConverter(object):
         raise NotImplementedError('generate_mlir')
 
     def addShape(self, name, shape):
+        if len(shape) == 0:
+            shape = [1]
         if isinstance(shape, tuple):
             shape = list(shape)
         elif not isinstance(shape, list):

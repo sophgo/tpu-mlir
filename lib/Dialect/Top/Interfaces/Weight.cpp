@@ -181,7 +181,7 @@ template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<uint32_t> &data,
                                 RankedTensorType &type);
 
-Value WeightOp::clone_bf16(Operation *OwnerOp) {
+Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();
   assert(dtype.isF32());
@@ -197,8 +197,8 @@ Value WeightOp::clone_bf16(Operation *OwnerOp) {
   OpBuilder builder(ctx);
   builder.setInsertionPoint(OwnerOp);
   // if the weightop will be used by 2 ops, it need to create a new WeightOp
-  std::string new_name = module::getName(OwnerOp).str() +
-                         module::getName(getOperation()).str() + "_bf16";
+  std::string new_name = name.empty() ? module::getName(OwnerOp).str() +
+                         module::getName(getOperation()).str() + "_bf16" : name;
   auto new_type = RankedTensorType::get(type.getShape(), builder.getBF16Type());
   auto ret =
       module::weightFile().addTensor(new_name, data_bf16->data(), new_type);

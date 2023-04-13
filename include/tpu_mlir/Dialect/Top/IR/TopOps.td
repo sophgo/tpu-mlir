@@ -119,7 +119,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
                             mlir::RankedTensorType& type);
   template<typename T>
   mlir::LogicalResult update(const std::vector<T>& data, size_t count);
-  mlir::Value clone_bf16(mlir::Operation * OwnerOp);
+  mlir::Value clone_bf16(mlir::Operation * OwnerOp, std::string name = "");
   mlir::Value clone_f16(mlir::Operation * OwnerOp);
   mlir::Value clone_int(mlir::Operation *OwnerOp);
   }];
