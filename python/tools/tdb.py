@@ -114,9 +114,6 @@ class Tdb(cmd.Cmd):
         self.temporary_breakpoint = False
 
     def __del__(self):
-        self.close()
-
-    def close(self):
         lib.cmodel_deinit(0)
 
     def reset(self):
@@ -294,7 +291,6 @@ class Tdb(cmd.Cmd):
         """q(uit)\nexit
         Quit from the debugger. The program being executed is aborted.
         """
-        self.close()
         return True
 
     do_q = do_quit

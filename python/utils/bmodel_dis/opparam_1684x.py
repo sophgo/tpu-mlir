@@ -12,7 +12,7 @@
 
 from enum import Enum, IntEnum
 import numpy as np
-import copy
+import copy, functools
 
 # Value: MemRef | Const
 # Const: Number
@@ -84,6 +84,28 @@ class MType(Enum):
 
     def __call__(self, *args, **kargs):
         return ExtEnum(self, *args, **kargs)
+
+
+def get_mtype(address):
+    # R : "npu_offset", "bank_index", "bank_offset", "r_addr"
+    # G/S/L : "r_addr"
+    for k, v in memmap.items():
+        if address >= v[0] and address < v[1]:
+            if k == MType.R:
+                r_addr = address - v[0]
+                npu_offset = r_addr // LANE_SIZE
+                addr_len = r_addr - npu_offset * LANE_SIZE
+                bank_index = addr_len // BANK_SIZE
+                bank_offset = addr_len % BANK_SIZE
+                # Local memory Type
+                return MType.R(
+                    npu_offset=npu_offset,
+                    bank_index=bank_index,
+                    bank_offset=bank_offset,
+                    r_addr=r_addr,
+                )
+            return k(r_addr=address - v[0])
+    return MType.UNKNOWN
 
 
 class Layout(Enum):
@@ -261,7 +283,7 @@ class MemRef:
 
     def __init__(self, address, shape, dtype: DType, stride=None, layout=None):
         self.address = address
-        self.mtype = MemRef.get_mtype(address)  # extended enumerate type
+        self.mtype = get_mtype(address)  # extended enumerate type
         self.shape = shape
         self.dtype = dtype
         self.layout = layout
@@ -273,32 +295,9 @@ class MemRef:
         if self.mtype == MType.R and layout != Layout.stride:
             self.stride = local_layout_to_stride(self)
 
-        # print information
-        self.name = self.__name()
-        self.type_str = self.__type_str()
-
-    @staticmethod
-    def get_mtype(address):
-        # R : "npu_offset", "bank_index", "bank_offset", "r_addr"
-        # G/S/L : "r_addr"
-        for k, v in memmap.items():
-            if address >= v[0] and address < v[1]:
-                if k == MType.R:
-                    r_addr = address - v[0]
-                    npu_offset = r_addr // LANE_SIZE
-                    addr_len = r_addr - npu_offset * LANE_SIZE
-                    bank_index = addr_len // BANK_SIZE
-                    bank_offset = addr_len % BANK_SIZE
-                    return MType.R(
-                        npu_offset=npu_offset,
-                        bank_index=bank_index,
-                        bank_offset=bank_offset,
-                        r_addr=r_addr,
-                    )
-                return k(r_addr=address - v[0])
-        return MType.UNKNOWN
-
-    def __name(self):
+    @property
+    @functools.lru_cache()
+    def name(self):
         k = self.mtype
         if k == MType.UNKNOWN:
             return f"%?.{self.address}"
@@ -313,7 +312,9 @@ class MemRef:
             return mem_str
         return f"%{k.name}{k.r_addr}"
 
-    def __type_str(self):
+    @property
+    @functools.lru_cache()
+    def type_str(self):
         s = [str(x) for x in self.shape]
         if self.stride is not None and any((x != 0 for x in self.stride)):
             return f"memref<{'x'.join(s)}x{self.dtype.name}, strides: [{str(self.stride)[1:-1]}]>"
