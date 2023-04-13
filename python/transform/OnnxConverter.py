@@ -1205,6 +1205,9 @@ class OnnxConverter(BaseConverter):
         if len(onnx_node.inputs) > 2:
             # onnx opset 11
             scale_factor = self.getWeight(onnx_node.inputs[2])
+            if len(scale_factor.shape) == 2 and scale_factor.shape[1] == 1:
+                dims = scale_factor.shape[0]
+                scale_factor = scale_factor.reshape(dims)
             if len(scale_factor) == 0:
                 sizes = self.getWeight(onnx_node.inputs[3])
                 scale_factor = sizes / input_shape
@@ -1217,7 +1220,6 @@ class OnnxConverter(BaseConverter):
 
         if scale_factor[0] != 1.0 or scale_factor[1] != 1.0:
             raise RuntimeError("Resize only support h/w")
-
         output_shape = [int(i) for i in sizes]
         scale_h = scale_factor[2]
         scale_w = scale_factor[3]
@@ -1656,11 +1658,27 @@ class OnnxConverter(BaseConverter):
         operands = list()
         input_opd = self.getOperand(onnx_node.inputs[0])
         weight_name = onnx_node.inputs[1]
-        # (ic, oc, kh, kw) --> (oc, ic, kh, kw)
-        old_weight = self.tensors[weight_name]
-        order = [1, 0] + list(range(len(old_weight.shape))[2:])
-        self.tensors[weight_name] = np.ascontiguousarray(np.transpose(old_weight, order))
+        is_shape_3 = len(input_shape) == 3
+        old_weight = np.ascontiguousarray(self.tensors[weight_name])
+        if group != 1:
+            # (ic, oc / g, kh, kw) --> (g, oc/g, ic / g, kh, kw) --> (oc / g, ic, kh, kw)
+            _shape = list(old_weight.shape)
+            old_shape = [group, int(_shape[0] / group), _shape[1]] + _shape[2:]
+            new_shape = [_shape[1], _shape[0]] + _shape[2:]
+            old_weight = old_weight.reshape(old_shape)
+            order = [0, 2, 1] + list(range(len(_shape) + 1)[3:])
+            new_weight = np.transpose(old_weight, order).reshape(new_shape)
+            self.tensors[weight_name] = new_weight
+        else:
+            # (ic, oc, kh, kw) --> (oc, ic, kh, kw)
+            order = [1, 0] + list(range(len(old_weight.shape))[2:])
+            self.tensors[weight_name] = np.transpose(old_weight, order)
+
         self.shapes[weight_name] = self.tensors[weight_name].shape
+        if is_shape_3:
+            _shape = self.shapes[weight_name]
+            self.shapes[weight_name] = np.insert(_shape, -1, 1)
+
         filter_opd = self.getWeightOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
             bias_opd = self.getWeightOp(onnx_node.inputs[2])
@@ -1672,22 +1690,22 @@ class OnnxConverter(BaseConverter):
 
         # handle ConvTranspose1d case
         new_name = onnx_node.name
-        is_shape_3 = len(input_shape) == 3
         if is_shape_3:
             assert (dim == 1)
             strides = [1, strides[0]]
-            pads = [0, 0, pads[0], pads[1]]
+            pads = [0, pads[0], 0, pads[1]]
+            dilations = [1, dilations[0]]
             kernel_shape = [1, kernel_shape[0]]
-            output_padding = [output_padding[0], output_padding[1]]
+            output_padding = [0, output_padding[0]]
 
             input_shape = [input_shape[0], input_shape[1], 1, input_shape[2]]
+            output_shape.insert(-1, 1)
             reshape0_op = top.ReshapeOp(self.mlir.get_tensor_type(input_shape),
                                         input_opd,
                                         loc=self.get_loc('{}_to4dim'.format(onnx_node.name)),
                                         ip=self.mlir.insert_point).output
             operands[0] = reshape0_op
             new_name += "_reshape"
-
         new_op = top.DeconvOp(self.mlir.get_tensor_type(output_shape),
                               *operands,
                               kernel_shape=kernel_shape,
@@ -1704,7 +1722,7 @@ class OnnxConverter(BaseConverter):
             output_shape = [output_shape[0], output_shape[1], output_shape[3]]
             reshape1_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
                                         new_op,
-                                        loc=self.get_loc(onnx_node.name),
+                                        loc=self.get_loc('{}_{}'.format(onnx_node.name, onnx_node.op_type)),
                                         ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, reshape1_op)
         else:
