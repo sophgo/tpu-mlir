@@ -281,6 +281,12 @@ class TORCH_IR_TESTER(object):
                               model_name: str,
                               isAsym: bool = False):
         ref_tpu_tolerance = "0.9,0.9"
+        if quant_mode == "int8":
+            ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
+        elif quant_mode == "int4":
+            ref_tpu_tolerance = "0.90,0.60"
+        elif quant_mode == "bf16":
+            ref_tpu_tolerance = "0.95,0.85"
         input_data = np.load(input_npz)
         # tpu mlir inference and compare
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
