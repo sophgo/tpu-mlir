@@ -111,12 +111,14 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
 
   // convert intit_h intit_c
   if (auto castOp = dyn_cast<top::WeightOp>(op.getInitialH().getDefiningOp())) {
-    operands.push_back(castOp.clone_bf16(op));
+    auto new_weight = castOp.clone_bf16(op, op_name + "_init_h_bf16");
+    operands.push_back(new_weight);
   } else {
     operands.push_back(op.getInitialH());
   }
   if (auto castOp = dyn_cast<top::WeightOp>(op.getInitialC().getDefiningOp())) {
-    operands.push_back(castOp.clone_bf16(op));
+    auto new_weight = castOp.clone_bf16(op, op_name + "_init_c_bf16");
+    operands.push_back(new_weight);
   } else {
     operands.push_back(op.getInitialC());
   }

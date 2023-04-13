@@ -574,7 +574,10 @@ class OnnxConverter(BaseConverter):
                                        ip=self.mlir.insert_point)
             else:
                 # self.preprocess_args['model_format'] # ????????????? no such param
-                init_args = {k: StringAttr.get(v) if isinstance(v, str) else v for k, v in self.preprocess_args.items() if k != 'model_format'}
+                init_args = {
+                    k: StringAttr.get(v) if isinstance(v, str) else v
+                    for k, v in self.preprocess_args.items() if k != 'model_format'
+                }
                 input_op = top.InputOp(self.mlir.input_types[idx],
                                        self.mlir.func_args[idx],
                                        loc=self.get_loc(_name),
@@ -629,21 +632,22 @@ class OnnxConverter(BaseConverter):
             return
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         if not self.isWeight(lhs) and self.isWeight(rhs):
-            opd1_num_elem = np.prod(self.getShape(rhs))
-            channel = output_shape[1]
             is_scale = False
-            if opd1_num_elem == channel:
-                rhs_shape = self.getShape(rhs)
-                axis = len(output_shape) - len(rhs_shape)
-                if axis > 1:
-                    # the second dim (channel) need broadcast
-                    is_scale = False
-                elif rhs_shape[1 - axis] == channel:
-                    # all dim except channel is 1 need broadcast, use scaleop
-                    is_scale = True
-                else:
-                    # channel need broadcast, use addop
-                    is_scale = False
+            if len(output_shape) > 1:
+                opd1_num_elem = np.prod(self.getShape(rhs))
+                channel = output_shape[1]
+                if opd1_num_elem == channel:
+                    rhs_shape = self.getShape(rhs)
+                    axis = len(output_shape) - len(rhs_shape)
+                    if axis > 1:
+                        # the second dim (channel) need broadcast
+                        is_scale = False
+                    elif rhs_shape[1 - axis] == channel:
+                        # all dim except channel is 1 need broadcast, use scaleop
+                        is_scale = True
+                    else:
+                        # channel need broadcast, use addop
+                        is_scale = False
             lhs_op = self.getOp(lhs)
             if self.isScalar(rhs):
                 new_op = top.AddConstOp(self.mlir.get_tensor_type(output_shape),
@@ -659,20 +663,20 @@ class OnnxConverter(BaseConverter):
                 weight_op = self.getWeightOp(name + '_scale')
                 bias_op = self.getWeightOp(rhs)
                 new_op = top.ScaleOp(self.mlir.get_tensor_type(output_shape),
-                                     lhs_op, weight_op, bias_op,
+                                     lhs_op,
+                                     weight_op,
+                                     bias_op,
                                      loc=self.get_loc(name),
                                      ip=self.mlir.insert_point).output
             else:
                 rhs_op = self.getOp(rhs)
-                new_op = top.AddOp(self.mlir.get_tensor_type(output_shape),
-                                   [lhs_op, rhs_op],
+                new_op = top.AddOp(self.mlir.get_tensor_type(output_shape), [lhs_op, rhs_op],
                                    loc=self.get_loc(name),
                                    ip=self.mlir.insert_point).output
         else:
             lhs_op = self.getOp(lhs)
             rhs_op = self.getOp(rhs)
-            new_op = top.AddOp(self.mlir.get_tensor_type(output_shape),
-                               [lhs_op, rhs_op],
+            new_op = top.AddOp(self.mlir.get_tensor_type(output_shape), [lhs_op, rhs_op],
                                loc=self.get_loc(name),
                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
@@ -710,8 +714,7 @@ class OnnxConverter(BaseConverter):
         else:
             lhs_op = self.getOp(lhs)
             rhs_op = self.getOp(rhs)
-            new_op = top.SubOp(self.mlir.get_tensor_type(output_shape),
-                               [lhs_op, rhs_op],
+            new_op = top.SubOp(self.mlir.get_tensor_type(output_shape), [lhs_op, rhs_op],
                                loc=self.get_loc(name),
                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
@@ -726,9 +729,14 @@ class OnnxConverter(BaseConverter):
         epsilon = onnx_node.attrs.get("epsilon")
         output_shape = self.getShape(onnx_node.name)
         new_op = top.BatchNormOp(self.mlir.get_tensor_type(output_shape),
-                                 op, mean, variance, gamma, beta,
+                                 op,
+                                 mean,
+                                 variance,
+                                 gamma,
+                                 beta,
                                  epsilon=epsilon,
-                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                 loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                 onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -819,7 +827,8 @@ class OnnxConverter(BaseConverter):
         new_op = top.ConstantFillOp(self.mlir.get_tensor_type(output_shape),
                                     op,
                                     value=value,
-                                    loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                    loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                    onnx_node.op_type)),
                                     ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -873,7 +882,8 @@ class OnnxConverter(BaseConverter):
                                    block_w=blocksize,
                                    is_CRD=(mode != b"DCR"),
                                    is_inversed=False,
-                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                   onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -1030,12 +1040,12 @@ class OnnxConverter(BaseConverter):
             pads = onnx_node.attrs.get("pads", dim * 2 * [0])
         if ceil_mode:
             for i in [0, 1]:
-                remain_pixel = (input_shape[i+2] + 2 * pads[i] - kernel_shape[i]) % strides[i]
+                remain_pixel = (input_shape[i + 2] + 2 * pads[i] - kernel_shape[i]) % strides[i]
                 if remain_pixel > 0:
                     if ceil_mode:
-                        pads[i+2] += (strides[i] - remain_pixel)
+                        pads[i + 2] += (strides[i] - remain_pixel)
                     else:
-                        pads[i+2] -= remain_pixel
+                        pads[i + 2] -= remain_pixel
         output_shape = self.getShape(onnx_node.name)
         new_op = top.MaxPoolOp(self.mlir.get_tensor_type(output_shape),
                                op,
@@ -1079,14 +1089,15 @@ class OnnxConverter(BaseConverter):
                 weight_op = self.getWeightOp(rhs)
                 offset_op = self.getWeightOp(name + '_bias')
                 scale_op = top.ScaleOp(self.mlir.get_tensor_type(output_shape),
-                                       op0, weight_op, offset_op,
+                                       op0,
+                                       weight_op,
+                                       offset_op,
                                        loc=self.get_loc(name),
                                        ip=self.mlir.insert_point).output
                 self.addOperand(onnx_node.name, scale_op)
                 return
             const_op = self.getWeightOp(rhs)
-            scale_op = top.MulOp(self.mlir.get_tensor_type(output_shape),
-                                 [op0, const_op],
+            scale_op = top.MulOp(self.mlir.get_tensor_type(output_shape), [op0, const_op],
                                  loc=self.get_loc(name),
                                  ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, scale_op)
@@ -1095,8 +1106,7 @@ class OnnxConverter(BaseConverter):
             op0 = self.getOperand(lhs)
             op1 = self.getOperand(rhs)
             output_shape = self.getShape(onnx_node.name)
-            mul_op = top.MulOp(self.mlir.get_tensor_type(output_shape),
-                               [op0, op1],
+            mul_op = top.MulOp(self.mlir.get_tensor_type(output_shape), [op0, op1],
                                loc=self.get_loc(name),
                                ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, mul_op)
@@ -1124,7 +1134,8 @@ class OnnxConverter(BaseConverter):
         new_op = top.LeakyReluOp(self.mlir.get_tensor_type(output_shape),
                                  op,
                                  alpha=onnx_node.attrs.get("alpha", 0.),
-                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                 loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                 onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -1245,7 +1256,8 @@ class OnnxConverter(BaseConverter):
                                  new_op,
                                  offset=[start],
                                  steps=[1],
-                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                 loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                 onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -1425,23 +1437,29 @@ class OnnxConverter(BaseConverter):
                 lhs_reshape_rst = [lhs_shape[0] * lhs_shape[1], lhs_shape[2] * lhs_shape[3]]
                 lhs_reshape_op = top.ReshapeOp(self.mlir.get_tensor_type(lhs_reshape_rst),
                                                lhs,
-                                               loc=self.get_loc("{}_{}".format(onnx_node.name, "lhs_reshape")),
+                                               loc=self.get_loc("{}_{}".format(
+                                                   onnx_node.name, "lhs_reshape")),
                                                ip=self.mlir.insert_point).output
                 if not self.isWeight(rhs):
                     rhs_reshape_rst = [rhs_shape[0] * rhs_shape[1], rhs_shape[2]]
                     rhs_reshape_op = top.ReshapeOp(self.mlir.get_tensor_type(rhs_reshape_rst),
                                                    rhs,
-                                                   loc=self.get_loc("{}_{}".format(onnx_node.name, "rhs_reshape")),
+                                                   loc=self.get_loc("{}_{}".format(
+                                                       onnx_node.name, "rhs_reshape")),
                                                    ip=self.mlir.insert_point).output
                     matmul_shape = [lhs_shape[0] * lhs_shape[1], rhs_shape[2]]
                     matmul_op = top.MatMulOp(self.mlir.get_tensor_type(matmul_shape),
-                                             lhs_reshape_op, rhs_reshape_op, self.mlir.none_op,
+                                             lhs_reshape_op,
+                                             rhs_reshape_op,
+                                             self.mlir.none_op,
                                              do_relu=False,
-                                             loc=self.get_loc("{}_{}".format(onnx_node.name, "matmul")),
+                                             loc=self.get_loc("{}_{}".format(
+                                                 onnx_node.name, "matmul")),
                                              ip=self.mlir.insert_point).output
                     output_reshape_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
                                                       matmul_op,
-                                                      loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                                      loc=self.get_loc("{}_{}".format(
+                                                          onnx_node.name, onnx_node.op_type)),
                                                       ip=self.mlir.insert_point).output
                     self.addOperand(onnx_node.name, output_reshape_op)
                     return
@@ -1450,9 +1468,12 @@ class OnnxConverter(BaseConverter):
                     weight_op = self.getWeightOp(onnx_node.inputs[1], weight_shape)
                     matmul_shape = [lhs_shape[0] * lhs_shape[1], rhs_shape[2]]
                     matmul_op = top.MatMulOp(self.mlir.get_tensor_type(matmul_shape),
-                                             lhs_reshape_op, weight_op, self.mlir.none_op,
+                                             lhs_reshape_op,
+                                             weight_op,
+                                             self.mlir.none_op,
                                              do_relu=False,
-                                             loc=self.get_loc("{}_{}".format(onnx_node.name, "matmul")),
+                                             loc=self.get_loc("{}_{}".format(
+                                                 onnx_node.name, "matmul")),
                                              ip=self.mlir.insert_point).output
                     self.addOperand(onnx_node.name, matmul_op)
                     return
@@ -1556,8 +1577,7 @@ class OnnxConverter(BaseConverter):
         else:
             lhs_op = self.getOp(lhs)
             rhs_op = self.getOp(rhs)
-            new_op = top.DivOp(self.mlir.get_tensor_type(output_shape),
-                               [lhs_op, rhs_op],
+            new_op = top.DivOp(self.mlir.get_tensor_type(output_shape), [lhs_op, rhs_op],
                                loc=self.get_loc(name),
                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
@@ -1570,7 +1590,8 @@ class OnnxConverter(BaseConverter):
         div_op = top.ReciprocalOp(self.mlir.get_tensor_type(output_shape),
                                   op0,
                                   const_val=1,
-                                  loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                  loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                  onnx_node.op_type)),
                                   ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, div_op)
 
@@ -1735,7 +1756,8 @@ class OnnxConverter(BaseConverter):
         if (np.prod(input_shape) == np.prod(output_shape)):
             new_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
                                    op,
-                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                   onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, new_op)
             return
@@ -1757,7 +1779,8 @@ class OnnxConverter(BaseConverter):
                                        count_include_pad=True,
                                        do_relu=False,
                                        keepdims=len(input_shape) == len(output_shape),
-                                       loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                       loc=self.get_loc("{}_{}".format(
+                                           onnx_node.name, onnx_node.op_type)),
                                        ip=self.mlir.insert_point).output
             else:
                 new_op = top.MaxPoolOp(self.mlir.get_tensor_type(output_shape),
@@ -1768,7 +1791,8 @@ class OnnxConverter(BaseConverter):
                                        count_include_pad=True,
                                        do_relu=False,
                                        keepdims=len(input_shape) == len(output_shape),
-                                       loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                       loc=self.get_loc("{}_{}".format(
+                                           onnx_node.name, onnx_node.op_type)),
                                        ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, new_op)
             return
@@ -1796,13 +1820,13 @@ class OnnxConverter(BaseConverter):
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
         out_op = top.ArgOp(*self.mlir.get_tensor_type(out_shapes),
-                            op,
-                            axis=axis,
-                            keepdims=keepdims,
-                            mode=StringAttr.get(onnx_node.op_type),
-                            select_last_index=select_last_index,
-                            loc=self.get_loc(loc_names),
-                            ip=self.mlir.insert_point)
+                           op,
+                           axis=axis,
+                           keepdims=keepdims,
+                           mode=StringAttr.get(onnx_node.op_type),
+                           select_last_index=select_last_index,
+                           loc=self.get_loc(loc_names),
+                           ip=self.mlir.insert_point)
         out_ops = [out_op.indices, out_op.values]
         for idx, need in enumerate(out_needs):
             if not need: continue
@@ -1856,12 +1880,12 @@ class OnnxConverter(BaseConverter):
                 out_shapes[idx] = self.getShape(out)
 
         out_op = top.GRUOp(*self.mlir.get_tensor_type(out_shapes),
-                            *operands,
-                            hidden_size=hidden_size,
-                            bidirectional=direction == b'bidirectional',
-                            batch_first=batch_first,
-                            loc=self.get_loc(loc_names),
-                            ip=self.mlir.insert_point)
+                           *operands,
+                           hidden_size=hidden_size,
+                           bidirectional=direction == b'bidirectional',
+                           batch_first=batch_first,
+                           loc=self.get_loc(loc_names),
+                           ip=self.mlir.insert_point)
         out_ops = [out_op.Y, out_op.Y_h]
         for idx, need in enumerate(out_needs):
             if need:
@@ -1898,12 +1922,12 @@ class OnnxConverter(BaseConverter):
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
         out_op = top.LSTMOp(*self.mlir.get_tensor_type(out_shapes),
-                             *operands,
-                             hidden_size=hidden_size,
-                             bidirectional=direction == b'bidirectional',
-                             batch_first=batch_first,
-                             loc=self.get_loc(loc_names),
-                             ip=self.mlir.insert_point)
+                            *operands,
+                            hidden_size=hidden_size,
+                            bidirectional=direction == b'bidirectional',
+                            batch_first=batch_first,
+                            loc=self.get_loc(loc_names),
+                            ip=self.mlir.insert_point)
         out_ops = [out_op.Y, out_op.Y_h, out_op.Y_c]
         for idx, need in enumerate(out_needs):
             if need:
@@ -1948,7 +1972,8 @@ class OnnxConverter(BaseConverter):
             return
         indices = self.getOp(onnx_node.inputs[1])
         new_op = top.GatherOp(self.mlir.get_tensor_type(out_shape),
-                              in0, indices,
+                              in0,
+                              indices,
                               axis=axis,
                               loc=self.get_loc(name),
                               ip=self.mlir.insert_point).output
@@ -1971,7 +1996,8 @@ class OnnxConverter(BaseConverter):
                 input_shape_ex.append(s)
             new_op = top.ReshapeOp(self.mlir.get_tensor_type(input_shape_ex),
                                    new_op,
-                                   loc=self.get_loc('{}_{}_reshape'.format(onnx_node.name, onnx_node.op_type)),
+                                   loc=self.get_loc('{}_{}_reshape'.format(
+                                       onnx_node.name, onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
             out_shape = input_shape_ex
         # tile one axis each time to avoid gmem buffer
@@ -2053,42 +2079,40 @@ class OnnxConverter(BaseConverter):
                 out_shapes[idx] = self.getShape(out)
 
         out_op = top.TopKOp(*self.mlir.get_tensor_type(out_shapes),
-                             in_op,
-                             axis=axis,
-                             K=K,
-                             largest=largest,
-                             sorted=sorted,
-                             loc=self.get_loc(loc_names),
-                             ip=self.mlir.insert_point)
+                            in_op,
+                            axis=axis,
+                            K=K,
+                            largest=largest,
+                            sorted=sorted,
+                            loc=self.get_loc(loc_names),
+                            ip=self.mlir.insert_point)
         out_ops = [out_op.values, out_op.indices]
         for idx, need in enumerate(out_needs):
             if need:
                 self.addOperand(onnx_node.outputs[idx], out_ops[idx])
 
     def convert_max_op(self, onnx_node):
-        assert(onnx_node.op_type == 'Max')
-        assert(len(onnx_node.inputs) == 2)
+        assert (onnx_node.op_type == 'Max')
+        assert (len(onnx_node.inputs) == 2)
         output_shape = self.getShape(onnx_node.name)
         lhs = onnx_node.inputs[0]
         rhs = onnx_node.inputs[1]
         lhs_op = self.getWeightOp(lhs) if self.isWeight(lhs) else self.getOp(lhs)
         rhs_op = self.getWeightOp(rhs) if self.isWeight(rhs) else self.getOp(rhs)
-        new_op = top.MaxOp(self.mlir.get_tensor_type(output_shape),
-                           [lhs_op, rhs_op],
+        new_op = top.MaxOp(self.mlir.get_tensor_type(output_shape), [lhs_op, rhs_op],
                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_min_op(self, onnx_node):
         assert (onnx_node.op_type == "Min")
-        assert(len(onnx_node.inputs) == 2)
+        assert (len(onnx_node.inputs) == 2)
         output_shape = self.getShape(onnx_node.name)
         lhs = onnx_node.inputs[0]
         rhs = onnx_node.inputs[1]
         lhs_op = self.getWeightOp(lhs) if self.isWeight(lhs) else self.getOp(lhs)
         rhs_op = self.getWeightOp(rhs) if self.isWeight(rhs) else self.getOp(rhs)
-        new_op = top.MinOp(self.mlir.get_tensor_type(output_shape),
-                           [lhs_op, rhs_op],
+        new_op = top.MinOp(self.mlir.get_tensor_type(output_shape), [lhs_op, rhs_op],
                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
@@ -2125,13 +2149,15 @@ class OnnxConverter(BaseConverter):
             new_op = top.LeakyReluOp(self.mlir.get_tensor_type(output_shape),
                                      in_op,
                                      alpha=self.getScalar(rhs),
-                                     loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                     loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                     onnx_node.op_type)),
                                      ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, new_op)
             return
         slope = self.getOp(rhs)
         prelu_op = top.PReluOp(self.mlir.get_tensor_type(output_shape),
-                               in_op, slope,
+                               in_op,
+                               slope,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, prelu_op)
@@ -2146,8 +2172,7 @@ class OnnxConverter(BaseConverter):
             last_name = onnx_node.name
             if i != num_inputs - 1:
                 last_name += "_{}".format(str(i))
-            opd0 = top.AddOp(self.mlir.get_tensor_type(output_shape),
-                             [opd0, opd1],
+            opd0 = top.AddOp(self.mlir.get_tensor_type(output_shape), [opd0, opd1],
                              do_relu=False,
                              loc=self.get_loc("{}_{}".format(last_name, onnx_node.op_type)),
                              ip=self.mlir.insert_point).output
@@ -2186,9 +2211,9 @@ class OnnxConverter(BaseConverter):
                 self.addOperand(onnx_node.name, base_op)
                 return
             if expn_const == 2.0:
-                mul_op = top.MulOp(self.mlir.get_tensor_type(output_shape),
-                                   [base_op, base_op],
-                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                mul_op = top.MulOp(self.mlir.get_tensor_type(output_shape), [base_op, base_op],
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                   onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
                 self.addOperand(onnx_node.name, mul_op)
                 return
@@ -2196,7 +2221,8 @@ class OnnxConverter(BaseConverter):
                 pow_op = top.PowOp(self.mlir.get_tensor_type(output_shape),
                                    base_op,
                                    exponent=expn_const,
-                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                   onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
                 self.addOperand(onnx_node.name, pow_op)
         else:
@@ -2225,12 +2251,15 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         if num_const == 0:
             new_op = top.WhereOp(self.mlir.get_tensor_type(output_shape),
-                                 cond_opd, tbrn_opd, fbrn_opd,
+                                 cond_opd,
+                                 tbrn_opd,
+                                 fbrn_opd,
                                  x_is_const=False,
                                  y_is_const=False,
                                  x_const_val=0,
                                  y_const_val=0,
-                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                 loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                 onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
         elif num_const == 1:
             brn_opd = fbrn_opd if self.isScalar(tbrn) else tbrn_opd
@@ -2241,10 +2270,12 @@ class OnnxConverter(BaseConverter):
                 inversed = False
                 const_val = self.getScalar(fbrn)
             new_op = top.MaskedFillOp(self.mlir.get_tensor_type(output_shape),
-                                      cond_opd, brn_opd,
+                                      cond_opd,
+                                      brn_opd,
                                       inversed=inversed,
                                       const_val=const_val,
-                                      loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                      loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                      onnx_node.op_type)),
                                       ip=self.mlir.insert_point).output
         else:
             assert (0)  # TODO: to be implement
@@ -2264,7 +2295,8 @@ class OnnxConverter(BaseConverter):
                                         mode=StringAttr.get(onnx_node.op_type),
                                         const_val=self.getScalar(lhs),
                                         inversed=True,
-                                        loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                        loc=self.get_loc("{}_{}".format(
+                                            onnx_node.name, onnx_node.op_type)),
                                         ip=self.mlir.insert_point).output
         elif self.isScalar(rhs):
             lhs_opd = self.getOp(lhs)
@@ -2273,15 +2305,18 @@ class OnnxConverter(BaseConverter):
                                         mode=StringAttr.get(onnx_node.op_type),
                                         const_val=self.getScalar(rhs),
                                         inversed=False,
-                                        loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                        loc=self.get_loc("{}_{}".format(
+                                            onnx_node.name, onnx_node.op_type)),
                                         ip=self.mlir.insert_point).output
         else:
             rhs_opd = self.getOp(rhs)
             lhs_opd = self.getOp(lhs)
             cmp_op = top.CompareOp(self.mlir.get_tensor_type(output_shape),
-                                   lhs_opd, rhs_opd,
+                                   lhs_opd,
+                                   rhs_opd,
                                    mode=StringAttr.get(onnx_node.op_type),
-                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                   onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, cmp_op)
 
@@ -2297,7 +2332,8 @@ class OnnxConverter(BaseConverter):
                                    operand,
                                    alpha=alpha,
                                    beta=beta,
-                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                   onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -2309,7 +2345,8 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         new_op = top.HardSwishOp(self.mlir.get_tensor_type(output_shape),
                                  operand,
-                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                 loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                 onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -2340,7 +2377,8 @@ class OnnxConverter(BaseConverter):
                                       y_scale=y_scale,
                                       y_zero_point=y_zero_point,
                                       axis=axis,
-                                      loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                      loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                      onnx_node.op_type)),
                                       ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -2361,7 +2399,8 @@ class OnnxConverter(BaseConverter):
                                         x_scale=x_scale,
                                         x_zero_point=x_zero_point,
                                         axis=axis,
-                                        loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                        loc=self.get_loc("{}_{}".format(
+                                            onnx_node.name, onnx_node.op_type)),
                                         ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -2376,7 +2415,9 @@ class OnnxConverter(BaseConverter):
         normalized_shape = input_shape[axis:]
         eps = onnx_node.attrs.get("epsilon", 1e-05)
         # stash_type is not important
-        loc_names = [onnx_node.name + '_LayerNorm', onnx_node.name + '_Mean', onnx_node.name + '_Rstd']
+        loc_names = [
+            onnx_node.name + '_LayerNorm', onnx_node.name + '_Mean', onnx_node.name + '_Rstd'
+        ]
         wb_shape = [1 if i < axis else input_shape[i] for i in range(num_dims)]
         input_opd = self.getOperand(onnx_node.inputs[0])
         scale_opd = self.mlir.none_op
@@ -2396,12 +2437,14 @@ class OnnxConverter(BaseConverter):
                 out_shapes[idx] = self.getShape(out)
 
         out_op = top.LayerNormOp(*self.mlir.get_tensor_type(out_shapes),
-                                  input_opd, scale_opd, bias_opd,
-                                  normalized_shape=normalized_shape,
-                                  axis=axis,
-                                  eps=eps,
-                                  loc=self.get_loc(loc_names),
-                                  ip=self.mlir.insert_point)
+                                 input_opd,
+                                 scale_opd,
+                                 bias_opd,
+                                 normalized_shape=normalized_shape,
+                                 axis=axis,
+                                 eps=eps,
+                                 loc=self.get_loc(loc_names),
+                                 ip=self.mlir.insert_point)
         out_ops = [out_op.output, out_op.mean, out_op.rstd]
         for idx, need in enumerate(out_needs):
             if need:
@@ -2427,9 +2470,12 @@ class OnnxConverter(BaseConverter):
                 bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
         output_shape = self.getShape(onnx_node.name)
         new_op = top.PixelNormOp(self.mlir.get_tensor_type(output_shape),
-                                 input_opd, scale_opd, bias_opd,
+                                 input_opd,
+                                 scale_opd,
+                                 bias_opd,
                                  eps=eps,
-                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                 loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                 onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -2453,9 +2499,12 @@ class OnnxConverter(BaseConverter):
                 bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
         output_shape = self.getShape(onnx_node.name)
         new_op = top.InstanceNormOp(self.mlir.get_tensor_type(output_shape),
-                                    input_opd, scale_opd, bias_opd,
+                                    input_opd,
+                                    scale_opd,
+                                    bias_opd,
                                     eps=eps,
-                                    loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                    loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                    onnx_node.op_type)),
                                     ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -2480,10 +2529,13 @@ class OnnxConverter(BaseConverter):
                 bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
         output_shape = self.getShape(onnx_node.name)
         new_op = top.GroupNormOp(self.mlir.get_tensor_type(output_shape),
-                                 input_opd, scale_opd, bias_opd,
+                                 input_opd,
+                                 scale_opd,
+                                 bias_opd,
                                  num_groups=num_groups,
                                  eps=eps,
-                                 loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                 loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                 onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
@@ -2496,12 +2548,15 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         axis = onnx_node.attrs.get("axis", 0)
         reduction = onnx_node.attrs.get("reduction", None)
-        new_op = top.ScatterElementsOp(self.mlir.get_tensor_type(output_shape),
-                                       input, indices, updates,
-                                       axis=axis,
-                                       # reduction=reduction, # ??????????? no such param
-                                       loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                                       ip=self.mlir.insert_point).output
+        new_op = top.ScatterElementsOp(
+            self.mlir.get_tensor_type(output_shape),
+            input,
+            indices,
+            updates,
+            axis=axis,
+            # reduction=reduction, # ??????????? no such param
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_scatternd_op(self, onnx_node):
@@ -2512,11 +2567,14 @@ class OnnxConverter(BaseConverter):
         updates = self.getOp(onnx_node.inputs[2])
         output_shape = self.getShape(onnx_node.name)
         reduction = onnx_node.attrs.get("reduction", None)
-        scatternd_op = top.ScatterNDOp(self.mlir.get_tensor_type(output_shape),
-                                       input_data, indices, updates,
-                                       # reduction=reduction, # ??????????? no such param
-                                       loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                                       ip=self.mlir.insert_point).output
+        scatternd_op = top.ScatterNDOp(
+            self.mlir.get_tensor_type(output_shape),
+            input_data,
+            indices,
+            updates,
+            # reduction=reduction, # ??????????? no such param
+            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, scatternd_op)
 
     def convert_roi_align_op(self, onnx_node: OnnxNode):
@@ -2548,13 +2606,13 @@ class OnnxConverter(BaseConverter):
                                             ip=self.mlir.insert_point).output
         concat_shape = rois_shape
         concat_shape[-1] = 5
-        rois_xpd = top.ConcatOp(self.mlir.get_tensor_type(concat_shape),
-                                [batch_indices_xpd, rois],
+        rois_xpd = top.ConcatOp(self.mlir.get_tensor_type(concat_shape), [batch_indices_xpd, rois],
                                 axis=1,
                                 loc=self.get_loc(output_name + "_concat"),
                                 ip=self.mlir.insert_point).output
         new_op = top.RoiAlignOp(self.mlir.get_tensor_type(output_shape),
-                                input, rois_xpd,
+                                input,
+                                rois_xpd,
                                 mode=StringAttr.get(mode),
                                 output_height=output_height,
                                 output_width=output_width,
