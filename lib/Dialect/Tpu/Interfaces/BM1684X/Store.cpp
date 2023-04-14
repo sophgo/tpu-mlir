@@ -51,13 +51,13 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t
     } else {
       module::getNCDHW(getOutput(), N, C, D, H, W, group_type);
       if (gi.h_slice == H) {
-        if (W * H & 0x1 == 1) {
+        if ((W * H & 0x1) == 1) {
           W = align_up(W * H, (int64_t)2) / 2;
           real_wslice = align_up(real_wslice*real_hslice, (int64_t)2) / 2;
           H = 1;
           real_hslice = 1;
         } else {
-          if (W & 0x1 == 1) {
+          if ((W & 0x1) == 1) {
             real_hslice >>= 1;
             H >>= 1;
           } else {

@@ -43,8 +43,10 @@ void tpu::AddOp::codegen_global_bm1684() {
         getDoRelu(), getReluLimit().convertToDouble(), gdma_format,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node, src_int32);
   } else {
-    int is_sign[input_num + 1] = {0};
-    int is_int8[input_num + 1] = {0};
+    int is_sign[input_num + 1];
+		memset(is_sign, 0, sizeof(int) * (input_num + 1));
+    int is_int8[input_num + 1];
+		memset(is_sign, 0, sizeof(int) * (input_num + 1));
     for (int i = 0; i < input_num; ++i) {
       is_int8[i] = module::getDtypeSize(getInputs()[i]) == 1;
       is_sign[i] = module::isSign(getInputs()[i]);
@@ -102,8 +104,10 @@ void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   if (module::isUniformQuantized(getOutput())) {
     auto muls = module::getI32Array(getMultipliers(), num_inputs, 1);
     auto rs = module::getI32Array(getRshifts(), num_inputs, 0);
-    int is_sign[num_inputs + 1] = {0};
-    int is_int8[num_inputs + 1] = {0};
+    int is_sign[num_inputs + 1];
+		memset(is_sign, 0, sizeof(int) * (num_inputs + 1));
+    int is_int8[num_inputs + 1];
+		memset(is_int8, 0, sizeof(int) * (num_inputs + 1));
     for (int i = 0; i < num_inputs; ++i) {
       is_int8[i] = module::getDtypeSize(getInputs()[i]) == 1;
       is_sign[i] = module::isSign(getInputs()[i]);

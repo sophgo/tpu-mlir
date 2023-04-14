@@ -25,7 +25,7 @@ class InternalLgOptimizer : public LgOptimizer {
   void manage_post_passes(std::shared_ptr<LgPassManager> pm,
                           const LgOptions& options);
 
-  virtual std::string brief()
+  virtual std::string brief() override
     { return "This is the internal optimizer of layer group"; }
 };
 

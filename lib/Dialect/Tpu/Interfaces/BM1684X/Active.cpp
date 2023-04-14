@@ -52,9 +52,9 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
     buffer_size = 3 * tensor_size;
     // 32 exp coeff, 192 exp table, 10 erf coeff, all memory need align to
     // 64byte
-    buffer_size += align_up(32 * dtype_len, 64l) +
-                   align_up(192 * dtype_len, 64l) +
-                   align_up(10 * dtype_len, 64l);
+    buffer_size += align_up(32 * dtype_len, 64ll) +
+                   align_up(192 * dtype_len, 64ll) +
+                   align_up(10 * dtype_len, 64ll);
     break;
   case ActiveMode::TANH:
   case ActiveMode::MISH:
@@ -66,17 +66,17 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
   case ActiveMode::SIGMOID:
     // |    work1    |    work0    | exp coeff  | exp_table |
     // | tensor_size | tensor_size |     32     |    192    |
-    buffer_size = 2 * align_up(tensor_size, 64l);
+    buffer_size = 2 * align_up(tensor_size, 64ll);
     buffer_size +=
-        align_up(32 * dtype_len, 64l) + align_up(192 * dtype_len, 64l);
+        align_up(32 * dtype_len, 64ll) + align_up(192 * dtype_len, 64ll);
     break;
   case ActiveMode::GELU:
     buffer_size = 4 * tensor_size;
     // 32 exp coeff, 192 exp table, 10 erf coeff, all memory need align to
     // 64byte
-    buffer_size += align_up(32 * dtype_len, 64l) +
-                   align_up(192 * dtype_len, 64l) +
-                   align_up(10 * dtype_len, 64l);
+    buffer_size += align_up(32 * dtype_len, 64ll) +
+                   align_up(192 * dtype_len, 64ll) +
+                   align_up(10 * dtype_len, 64ll);
     break;
   case ActiveMode::LN:
   case ActiveMode::TAN:
@@ -84,7 +84,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
   case ActiveMode::COS:
   case ActiveMode::ARCSIN:
   case ActiveMode::ARCCOS:
-    buffer_size = tensor_size + align_up(32 * dtype_len, 64l);
+    buffer_size = tensor_size + align_up(32 * dtype_len, 64ll);
     break;
   case ActiveMode::HSWISH:
   case ActiveMode::HSIGMOID:

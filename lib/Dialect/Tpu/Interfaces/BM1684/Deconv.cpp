@@ -65,22 +65,22 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   auto attr = op.parseParam();
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
-  int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
+  int new_size = attr.oc * (align_up(attr.ic, 4ll)) * attr.kh * attr.kw;
   auto filter_new = std::make_shared<std::vector<int8_t>>(new_size, 0);
   for (int oc_idx = 0; oc_idx < attr.oc; oc_idx++) {
     for (int ic_idx = 0; ic_idx < attr.ic; ic_idx++) {
       for (int k_idx = 0; k_idx < attr.kh * attr.kw; k_idx++) {
         int orig_offset = ic_idx * attr.kh * attr.kw + k_idx +
                           oc_idx * attr.kh * attr.kw * attr.ic;
-        int trans_offset = ic_idx + k_idx * align_up(attr.ic, 4l) +
-                           oc_idx * (attr.kh * attr.kw * align_up(attr.ic, 4l));
+        int trans_offset = ic_idx + k_idx * align_up(attr.ic, 4ll) +
+                           oc_idx * (attr.kh * attr.kw * align_up(attr.ic, 4ll));
         filter_new->at(trans_offset) = filter_int8->at(orig_offset);
       }
     }
   }
   auto filter_type = filterOp.getType().cast<RankedTensorType>();
   std::vector<int64_t> new_shape = {
-      1, attr.oc, attr.kh * attr.kw * align_up(attr.ic, 4l), 1};
+      1, attr.oc, attr.kh * attr.kw * align_up(attr.ic, 4ll), 1};
   auto new_type =
       RankedTensorType::get(new_shape, filter_type.getElementType());
   auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
@@ -101,10 +101,10 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto weight_data = filterOp.read_as_byte();
   if (attr.is_dw == false) {
-    std::vector<int64_t> new_shape = {1, attr.oc * attr.g, align_up(attr.ic, 2l)/2,
+    std::vector<int64_t> new_shape = {1, attr.oc * attr.g, align_up(attr.ic, 2ll)/2,
                         attr.kh * attr.kw *2};
     int new_count =
-        align_up(attr.ic, 2l) * attr.oc * attr.g * attr.kh * attr.kw;
+        align_up(attr.ic, 2ll) * attr.oc * attr.g * attr.kh * attr.kw;
     auto filter_new = std::make_shared<std::vector<float>>(new_count, 0);
     deconv_weight_transform( attr.ic, attr.oc * attr.g,attr.kh, attr.kw,
                           weight_data->data(), filter_new->data(), type_bytes);
@@ -117,7 +117,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
     int64_t filter_shape[4];
     filter_shape[0] = 1;
     filter_shape[1] = attr.oc * attr.g;
-    filter_shape[2] = align_up(attr.ic, 2l)/2 ;
+    filter_shape[2] = align_up(attr.ic, 2ll)/2 ;
     filter_shape[3] = attr.kh * attr.kw *2;
     auto new_type = RankedTensorType::get(filter_shape, out_type);
     op.getFilter().setType(new_type);
