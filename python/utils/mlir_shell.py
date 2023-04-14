@@ -21,7 +21,7 @@ def _os_system(cmd: list):
 
 
 def mlir_opt_for_top(mlirfile, opt_mlirfile, post_handle_type=""):
-    cmd = ["tpuc-opt", mlirfile, "--shape-infer", "--canonicalize"]
+    cmd = ["tpuc-opt", mlirfile, "--shape-infer", "--canonicalize", "--bert-inf-to-10k" ]
     if len(post_handle_type) > 0:
         cmd.extend([f"--post-handle=\"type={post_handle_type}\""])
     cmd.extend(["--after-optimize", "-o", opt_mlirfile])
