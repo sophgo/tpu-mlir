@@ -98,7 +98,7 @@ PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
     rewriter.setInsertionPointAfter(softmax_op);
     newType = RankedTensorType::get(
         out_shape, module::getElementType(softmax_op.getOutput()));
-    auto out_loc = cast_op.getLoc(); // keep out location unchanged.
+    auto out_loc = softmax_op.getLoc(); // keep out location unchanged.
     auto name = module::getName(softmax_op.getOutput());
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
     softmax_op->setLoc(loc);
