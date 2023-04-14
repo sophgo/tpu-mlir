@@ -73,10 +73,10 @@ LogicalResult tpu::ArgOp::inference(InferenceParameter &p) {
         for (int t = 0; t < tile_num; ++t) {
           int remain = axis_dims - tile_size * t;
           float target_val = input_v[o * axis_dims * inner_dims +
-                                     t * tile_num * inner_dims + i];
+                                     t * tile_size * inner_dims + i];
           for (int k = 1; k < tile_size && k < remain; ++k) {
             auto v = input_v[o * axis_dims * inner_dims +
-                             (t * tile_num + k) * inner_dims + i];
+                             (t * tile_size + k) * inner_dims + i];
             if (cmp_op(v, target_val)) {
               target_val = v;
             }
