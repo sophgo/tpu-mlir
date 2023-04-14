@@ -755,16 +755,22 @@ def save_to_file(checker, report_file):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Verify the correctness of BModel using reference data."
+    )
     parser.add_argument(
-        "--context_dir",
-        required=True,
+        "context_dir",
         help="The folder should contain the BModel, its input_data, and tensor_location files.",
     )
     parser.add_argument(
-        "--reference_data",
-        required=True,
+        "reference_data",
         help="The reference data used for checking this BModel.",
+    )
+    parser.add_argument(
+        "--mem_size",
+        type=int,
+        default=Tdb.ddr_size,
+        help="The device memory used for cmodel.",
     )
     parser.add_argument(
         "--tolerance", default="0.99,0.90", help="tolerance for compare."
@@ -791,6 +797,7 @@ if __name__ == "__main__":
     DATA_CHECKER.euclidean_similarity_tol = euc_t
     DATA_CHECKER.signal_to_quantization_noise_tol = float("-inf")
 
+    Tdb.ddr_size = args.mem_size
     checker = Checker(args.context_dir, args.reference_data, args.fail_fast)
 
     if not args.no_interactive or args.verbose is not None:
