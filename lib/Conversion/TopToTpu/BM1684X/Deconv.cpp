@@ -51,7 +51,8 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   auto filter_f32 = filterOp.read<float>();
   float fmax, fmin;
   findMinMax(filter_f32->data(), filter_f32->size(), &fmin, &fmax);
-  bool fsign = (fmin < 0 || param.with_bias == true);
+  bool with_bias = !module::isNone(op.getBias());
+  bool fsign = (fmin < 0 || with_bias == true);
   float fqmax = fsign ? 127 : 255;
   f64_array_t weight_scale_v;
   if (filterOp.getScale().has_value() && weight_scale_v->size()) {
@@ -62,7 +63,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   std::shared_ptr<std::vector<float>> bias_fp32;
   auto filter_i8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   auto filter_u8 = std::make_shared<std::vector<uint8_t>>(filter_f32->size());
-  if (param.with_bias) {
+  if (with_bias) {
     auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
     bias_fp32 = biasOp.read<float>();
     bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
@@ -99,14 +100,14 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
       }
     }
 
-    if (param.with_bias) {
+    if (with_bias) {
       bias_int32->data()[c] =
           std::round(bias_fp32->data()[c] / (scale_w * in_scale) - bias_w_xz);
     } else if (in_zp) {
       bias_int32->data()[c] = std::round(-bias_w_xz);
     }
   }
-  // bool with_bias = (bias_int32 != nullptr);
+  with_bias = (bias_int32 != nullptr);
 
   auto filter_type = op.getFilter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
@@ -120,7 +121,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
         top::WeightOp::create(op, "filter_u8", *filter_u8, new_type);
     operands.push_back(new_filter);
   }
-  if (param.with_bias) {
+  if (with_bias) {
     auto new_type =
         RankedTensorType::get({1, param.oc, 1, 1}, rewriter.getI32Type());
     auto new_bias =
