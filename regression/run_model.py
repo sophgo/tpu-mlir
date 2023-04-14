@@ -174,8 +174,19 @@ class MODEL_RUN(object):
         cmd = ["run_calibration.py"]
         cmd.extend([
             f"{self.model_name}.mlir", "--dataset {}".format(self.ini_content["dataset"]),
-            "--input_num 100", f"-o {self.cali_table}"
+            f"-o {self.cali_table}"
         ])
+        if "tune_num" in self.ini_content:
+            t_num = self.ini_content["tune_num"]
+            cmd.extend([f"--tune_num {t_num}"])
+        if "input_num" in self.ini_content:
+            i_num = self.ini_content["input_num"]
+            cmd.extend([f"--input_num {i_num}"])
+        if "debug_cmd" in self.ini_content:
+            d_cmd = self.ini_content["debug_cmd"]
+            cmd.extend([f"--debug_cmd {d_cmd}"])
+        else:
+            cmd.extend(["--input_num 100"])
         _os_system(cmd)
 
     def int4_tmp_test(self):
