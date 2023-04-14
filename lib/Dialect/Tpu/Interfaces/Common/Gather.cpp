@@ -8,10 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
-
+#include "tpu_mlir/Support/Module.h"
 
 LogicalResult tpu::GatherOp::init(InferenceParameter &p) { return success(); }
 void tpu::GatherOp::deinit(InferenceParameter &p) {}
@@ -61,8 +59,8 @@ mlir::Type tpu::GatherOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
       return do_nothing(mode);
     }
     mode = TypeCastMode::DO_CAST;
-    auto bitwith = stype.getIntOrFloatBitWidth();
-    return Builder(op).getIntegerType(bitwith);
+    auto bitwidth = stype.getIntOrFloatBitWidth();
+    return Builder(op).getIntegerType(bitwidth);
   }
   return type_verify_case_same(op, opd_idx, mode);
 }

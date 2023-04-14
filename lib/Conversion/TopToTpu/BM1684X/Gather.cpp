@@ -19,7 +19,7 @@ void GatherLowering::LoweringF32(PatternRewriter &rewriter,
 
 void GatherLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherOp op,
                                   bool asymmetric) const {
-  lowering_common_f32<tpu::GatherOp>(rewriter, op);
+  lowering_common_f32<tpu::GatherOp>(rewriter, op, 0, 1);
 }
 void GatherLowering::LoweringINT4(PatternRewriter &rewriter, top::GatherOp op,
                                    bool asymmetric) const {
