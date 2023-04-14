@@ -85,6 +85,7 @@ class TORCH_IR_TESTER(object):
             "MaxPool3d":        (self.test_MaxPool3d,         Y, N, N),
             "MM":               (self.test_MM,                Y, N, N),
             "Mul":              (self.test_Mul,               Y, N, N),
+            "NewZeros":         (self.test_NewZeros,          Y, N, N),
             "Reduce":           (self.test_Reduce,            Y, N, N),
             "Repeat":           (self.test_Repeat,            Y, N, N),
             "Reshape":          (self.test_Reshape,           Y, N, N),
@@ -101,6 +102,7 @@ class TORCH_IR_TESTER(object):
             "Softmin":          (self.test_Softmin,           Y, N, N),
             "Split":            (self.test_Split,             Y, N, N),
             "Squeeze":          (self.test_Squeeze,           Y, N, N),
+            "Stack":            (self.test_Stack,             Y, N, N),
             "Sub":              (self.test_Sub,               Y, N, N),
             "T":                (self.test_T,                 Y, N, N),
             "Tile":             (self.test_Tile,              Y, N, N),
@@ -869,6 +871,30 @@ class TORCH_IR_TESTER(object):
         _test_pow((64, 64), 0.5)
 
     #######################################################################
+    # NewZeros
+    # ------------
+    def test_NewZeros(self):
+
+        def _test_newzeros(shape, dtype=None):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.coeff = torch.randn(1,3)
+
+                def forward(self, x):
+                    y = self.coeff.new_zeros(shape, dtype=dtype)
+                    y = y.to(torch.float32) + x
+                    return y
+
+            self.trace_and_test([shape], Model())
+
+        _test_newzeros((2, 3, 64, 64), torch.float32)
+        _test_newzeros((3, 64, 64), torch.int32)
+        _test_newzeros((64, 64))
+
+    #######################################################################
     # Reshape
     # ------------
     def test_Reshape(self):
@@ -1485,6 +1511,29 @@ class TORCH_IR_TESTER(object):
         _test_squeeze((1, 3, 1, 32), 0)
         _test_squeeze((1, 3, 1, 16))
         _test_squeeze((32, 1))
+
+    #######################################################################
+    # Stack
+    # ------------
+    def test_Stack(self):
+        """Stack"""
+
+        def _test_stack(in0_shape, num, dim=None):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y1 = torch.stack([x] * num, dim)
+                    return y1
+
+            self.trace_and_test([in0_shape], Model())
+
+        _test_stack((1, 3, 16, 32), 2, 0)
+        _test_stack((2, 3, 16), 3, 1)
+        _test_stack((32, 16), 2, 2)
 
     #######################################################################
     # Upsample
