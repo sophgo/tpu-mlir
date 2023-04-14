@@ -86,6 +86,7 @@ void ModuleInterpreter::allocate_resources() {
             // output with the same memory of input
             auto in = module::getName(op->getOperand(0));
             mem_map[name] = mem_map[in.str()];
+            all_tensor_names.push_back(name);
           } else {
             mem_map[name] = std::make_shared<std::vector<float>>(count);
             all_tensor_names.push_back(name);
