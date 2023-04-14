@@ -5045,25 +5045,24 @@ def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_case
 
 def test_int4(tester: ONNX_IR_TESTER):
     tester.chip = "bm1686"
-    tester.mode = "basic"
+    tester.mode = "int4"
     tester.dynamic = False
     tester.simple = False
-    tester.disable_thread = False
-    tester.multithread = not tester.disable_thread
+    tester.quant_modes = ["int4"]
+    tester.support_asym = [False]
+    Y, N = True, False
+    test_cases = {
+        "Conv2d": (tester.test_Conv2d, N, Y, N),
+        "MatMul": (tester.test_MatMul, N, Y, N),
+        "MatMul2": (tester.test_MatMul2, N, Y, N),
+    }
     if tester.multithread:
         import multiprocessing
         process_number = multiprocessing.cpu_count() // 2 + 1
         processes = []
         error_cases = multiprocessing.Manager().list()
         success_cases = multiprocessing.Manager().list()
-        Y, N = True, False
-        test_cases = {
-            "Conv2d": (tester.test_Conv2d, Y, Y, Y),
-            "MatMul": (tester.test_MatMul, Y, Y, Y),
-            "MatMul2": (tester.test_MatMul2, Y, Y, Y),
-        }
-        tester.quant_modes = ["int4"]
-        tester.support_asym = [False]
+
         for case in test_cases:
             if tester.check_support(case):
                 p = multiprocessing.Process(target=test_one_case_in_all,
@@ -5083,7 +5082,7 @@ def test_int4(tester: ONNX_IR_TESTER):
     else:
         error_cases = []
         success_cases = []
-        for case in tester.test_cases:
+        for case in test_cases:
             if tester.check_support(case):
                 test_one_case_in_all(tester, case, error_cases, success_cases)
     print("Success: {}".format(success_cases))
