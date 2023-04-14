@@ -114,10 +114,7 @@ def mlir_to_model(tpu_mlir: str,
     _os_system(cmd)
 
     # codegen based on final mlir
-    if model.endswith(".bmodel"):
-        codegen_param = '--codegen="model_file={}"'.format(model)
-    elif model.endswith(".cvimodel"):
-        codegen_param = '--cv-codegen="model_file={}"'.format(model)
+    codegen_param = '--codegen="model_file={}"'.format(model)
     cmd = [
         "tpuc-opt",
         final_mlir,

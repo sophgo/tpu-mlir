@@ -7,10 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BMCodegen.hpp"
 #include "bmcpu_common.h"
 #include "mlir/IR/BlockAndValueMapping.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
@@ -29,7 +28,7 @@
 #include <set>
 #include <sstream>
 
-#define DEBUG_TYPE "codegen"
+#define DEBUG_TYPE "bm_codegen"
 
 using namespace llvm;
 using namespace mlir;
@@ -39,182 +38,128 @@ using namespace flatbuffers;
 namespace tpu_mlir {
 namespace tpu {
 
-class CodegenPass : public CodegenBase<CodegenPass> {
-public:
-  CodegenPass() {}
-  void runOnOperation() override {
-    module = getOperation();
-    assert(module::isState(module::State::TPU_ADDRESSED));
-    auto chip_ = module::getChip();
-    chip = module::stringifyChip(chip_).upper();
-    std::string filename = this->model_file;
-    if (filename.empty()) {
-      llvm_unreachable("output filename is empty");
-    }
-    tensor_loc = TensorLocation(module, filename + ".json");
-    profile_ctx = ProfileCtx(module, true);
-    bm168x = BM168x::instance();
-    DynCodegenInit();
-    std::vector<top::WeightOp> weights;
-    for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](top::WeightOp op) {
-        // TODO: store all weight to gmem for compare
-        // bm168x->value_s2d(op.getOutput(), op.read_as_byte()->data());
-        weights.push_back(op);
-      });
-    }
-    std::vector<Value> inputs;
-    std::vector<Value> outputs;
-    module::getInputsOutputs(inputs, outputs);
-    SetNetIO(inputs, outputs);
-
-    auto coeff_addr = module::getCoeffAddr();
-    auto coeff_size = module::getCoeffSize();
-    auto neuron_addr = module::getNeuronAddr();
-    auto neuron_size = module::getNeuronSize();
-    model_gen = std::make_shared<bmodel::ModelGen>();
-    // add chip name
-    model_gen->AddChip(chip);
-    auto &builder = model_gen->Builder();
-    auto input_tensor = CreateTensorVector(inputs);
-    auto output_tensor = CreateTensorVector(outputs);
-    auto coeff_mem = CreateCoeffMem(weights, coeff_addr, coeff_size);
-    std::vector<uint64_t> neuron_sizes = {(uint64_t)neuron_size};
-    auto neuron_sizes_fb = builder.CreateVector(neuron_sizes);
-    // codegen all subnet
-    cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
-    auto main_func = module::getMainFuncOp();
-    std::vector<Offset<bmodel::SubNet>> subnet_v;
-    auto context = std::make_unique<Context>();
-    bool first_dynamic = false;
-    bool is_first = true;
-    int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;
-
-    main_func.walk([&](func::CallOp call) {
-      auto func = module::getFuncOp(call.getCallee());
-      auto mode = getRunMode(func);
-      switch (mode) {
-      case RunMode::TPU_STATIC: {
-        profile_ctx.set_profile_start();
-        auto subnet = CreateSubNet(call);
-        subnet_v.push_back(subnet);
-        profile_ctx.set_profile_end();
-      } break;
-      case RunMode::TPU_DYNAMIC: {
-        auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
-        auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
-        subnet_v.push_back(subnet);
-      } break;
-      case RunMode::CPU: {
-        auto subnet = CreateCPUSubNet(call);
-        subnet_v.push_back(subnet);
-      } break;
-      default:
-        llvm_unreachable("Not Implemented");
-        break;
-      }
-      if (is_first) {
-        is_first = false;
-        if (mode == RunMode::TPU_DYNAMIC) {
-          first_dynamic = true;
-        }
-      }
+void BMCodegen::run(ModuleOp &module, std::string &filename) {
+  auto chip_ = module::getChip();
+  chip = module::stringifyChip(chip_).upper();
+  tensor_loc = TensorLocation(module, filename + ".json");
+  profile_ctx = ProfileCtx(module, true);
+  bm168x = BM168x::instance();
+  DynCodegenInit();
+  std::vector<top::WeightOp> weights;
+  for (auto func : module.getOps<FuncOp>()) {
+    func.walk([&](top::WeightOp op) {
+      // TODO: store all weight to gmem for compare
+      // bm168x->value_s2d(op.getOutput(), op.read_as_byte()->data());
+      weights.push_back(op);
     });
-    auto subnets = builder.CreateVector(subnet_v);
-    auto cmd_group = model_gen->Builder().CreateVector(*cmd_group_all);
-    bmodel::Binary binary_ir;
-    uint32_t ir_info_len = context->get_cur_net_ir_len();
-    uint32_t ir_info_len_word =
-        (ir_info_len + sizeof(uint32_t) - 1) / sizeof(uint32_t);
-    stage_param_t stage_param = {ir_info_len_word, 0, 0, 0, 0};
-    context->set_stage_param(stage_param);
-    auto stage_ir = CreateStageIRVector(
-        context->get_stage_param(context->get_cur_net_idx()),
-        context->get_binary_ir(),
-        context->get_cur_net_offset() * sizeof(uint32_t), binary_ir);
-    bmodel::NetParameterBuilder npb(builder);
-    npb.add_input_tensor(input_tensor);
-    npb.add_output_tensor(output_tensor);
-    npb.add_ctx_addr(neuron_addr);
-    npb.add_ctx_size(neuron_size);
-    npb.add_ctx_sizes(std::move(neuron_sizes_fb));
-    npb.add_coeff_mem(coeff_mem);
-    npb.add_is_dynamic(first_dynamic);
-    npb.add_n_dynamic(first_dynamic);
-    npb.add_h_w_dynamic(first_dynamic);
-    npb.add_cmd_group(cmd_group);
-    npb.add_stage_ir(stage_ir);
-    npb.add_binary_ir(&binary_ir);
-    // create subnet
-    npb.add_sub_net(subnets);
-    npb.add_cpu_mem_size(max_cpu_mem_size);
-    if (true) {
-      std::vector<uint8_t> data;
-      auto fp = fopen("net_0.profile", "rb");
-      if (fp) {
-        fseek(fp, 0, SEEK_END);
-        uint32_t size = ftell(fp);
-        data.resize(size);
-        fseek(fp, 0, SEEK_SET);
-        fread(data.data(), 1, size, fp);
-        fclose(fp);
-        auto profile_data = model_gen->WriteBinary(data.size(), data.data());
-        npb.add_net_profile(&profile_data);
+  }
+  std::vector<Value> inputs;
+  std::vector<Value> outputs;
+  module::getInputsOutputs(inputs, outputs);
+  SetNetIO(inputs, outputs);
+
+  auto coeff_addr = module::getCoeffAddr();
+  auto coeff_size = module::getCoeffSize();
+  auto neuron_addr = module::getNeuronAddr();
+  auto neuron_size = module::getNeuronSize();
+  model_gen = std::make_shared<bmodel::ModelGen>();
+  // add chip name
+  model_gen->AddChip(chip);
+  auto &builder = model_gen->Builder();
+  auto input_tensor = CreateTensorVector(inputs);
+  auto output_tensor = CreateTensorVector(outputs);
+  auto coeff_mem = CreateCoeffMem(weights, coeff_addr, coeff_size);
+  std::vector<uint64_t> neuron_sizes = {(uint64_t)neuron_size};
+  auto neuron_sizes_fb = builder.CreateVector(neuron_sizes);
+  // codegen all subnet
+  cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
+  auto main_func = module::getMainFuncOp();
+  std::vector<Offset<bmodel::SubNet>> subnet_v;
+  auto context = std::make_unique<Context>();
+  bool first_dynamic = false;
+  bool is_first = true;
+  int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;
+
+  main_func.walk([&](func::CallOp call) {
+    auto func = module::getFuncOp(call.getCallee());
+    auto mode = getRunMode(func);
+    switch (mode) {
+    case RunMode::TPU_STATIC: {
+      profile_ctx.set_profile_start();
+      auto subnet = CreateSubNet(call);
+      subnet_v.push_back(subnet);
+      profile_ctx.set_profile_end();
+    } break;
+    case RunMode::TPU_DYNAMIC: {
+      auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
+      auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
+      subnet_v.push_back(subnet);
+    } break;
+    case RunMode::CPU: {
+      auto subnet = CreateCPUSubNet(call);
+      subnet_v.push_back(subnet);
+    } break;
+    default:
+      llvm_unreachable("Not Implemented");
+      break;
+    }
+    if (is_first) {
+      is_first = false;
+      if (mode == RunMode::TPU_DYNAMIC) {
+        first_dynamic = true;
       }
     }
-
-    model_gen->AddNet(module::getModuleName().str(), npb.Finish());
-    model_gen->Finish();
-    model_gen->Save(filename);
+  });
+  auto subnets = builder.CreateVector(subnet_v);
+  auto cmd_group = model_gen->Builder().CreateVector(*cmd_group_all);
+  bmodel::Binary binary_ir;
+  uint32_t ir_info_len = context->get_cur_net_ir_len();
+  uint32_t ir_info_len_word =
+      (ir_info_len + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+  stage_param_t stage_param = {ir_info_len_word, 0, 0, 0, 0};
+  context->set_stage_param(stage_param);
+  auto stage_ir = CreateStageIRVector(
+      context->get_stage_param(context->get_cur_net_idx()),
+      context->get_binary_ir(),
+      context->get_cur_net_offset() * sizeof(uint32_t), binary_ir);
+  bmodel::NetParameterBuilder npb(builder);
+  npb.add_input_tensor(input_tensor);
+  npb.add_output_tensor(output_tensor);
+  npb.add_ctx_addr(neuron_addr);
+  npb.add_ctx_size(neuron_size);
+  npb.add_ctx_sizes(std::move(neuron_sizes_fb));
+  npb.add_coeff_mem(coeff_mem);
+  npb.add_is_dynamic(first_dynamic);
+  npb.add_n_dynamic(first_dynamic);
+  npb.add_h_w_dynamic(first_dynamic);
+  npb.add_cmd_group(cmd_group);
+  npb.add_stage_ir(stage_ir);
+  npb.add_binary_ir(&binary_ir);
+  // create subnet
+  npb.add_sub_net(subnets);
+  npb.add_cpu_mem_size(max_cpu_mem_size);
+  if (true) {
+    std::vector<uint8_t> data;
+    auto fp = fopen("net_0.profile", "rb");
+    if (fp) {
+      fseek(fp, 0, SEEK_END);
+      uint32_t size = ftell(fp);
+      data.resize(size);
+      fseek(fp, 0, SEEK_SET);
+      fread(data.data(), 1, size, fp);
+      fclose(fp);
+      auto profile_data = model_gen->WriteBinary(data.size(), data.data());
+      npb.add_net_profile(&profile_data);
+    }
   }
 
-private:
-  u32 max_cpu_mem_size = 0;
-  Offset<Vector<Offset<bmodel::Shape>>>
-  CreateShapeVector(const ArrayRef<int64_t> &shape);
-  Offset<Vector<Offset<bmodel::Tensor>>>
-  CreateTensorVector(const std::vector<Value> &values,
-                     std::vector<bool> cpu_type = {},
-                     std::vector<uint32_t> cpu_addr = {});
-  Offset<bmodel::SubNet> CreateSubNet(func::CallOp call);
-  Offset<bmodel::SubNet> CreateSubNet(func::CallOp call,
-                                      std::unique_ptr<SubnetIr> subnet_ir_,
-                                      std::unique_ptr<Context> &context);
-  Offset<bmodel::SubNet> CreateCPUSubNet(func::CallOp call);
-  std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
-  Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
-                                          uint64_t coeff_addr,
-                                          uint64_t coeff_size);
-  Offset<Vector<Offset<bmodel::StageIR>>>
-  CreateStageIRVector(const vector<stage_param_t> &stage_param_v,
-                      const vector<u32> &binary_ir_v, u32 ir_offset,
-                      bmodel::Binary &binary_ir);
-  void codegen(Operation *op);
-  void codegen_for_group(GroupOp gOP, Operation *prev_op, Operation *next_op);
-  void codegen_for_overlap_ops(
-      std::map<int64_t, std::vector<Operation *>> cur_other_downs,
-      std::map<int64_t, std::vector<Operation *>> cur_other_ups,
-      Operation *prev_op, Operation *next_op, int64_t cur_ts,
-      bool first_compute_loop, bool last_compute_loop);
-  void codegen_ir(Operation *op, SubnetIr *subnet_ir_);
-
-private:
-  ModuleOp module;
-  StringRef state;
-  std::string chip;
-  BM168x *bm168x;
-  std::shared_ptr<bmodel::ModelGen> model_gen;
-  std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> cmd_group_all;
-  TensorLocation tensor_loc;
-  ProfileCtx profile_ctx;
-};
-
-std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass() {
-  return std::make_unique<CodegenPass>();
+  model_gen->AddNet(module::getModuleName().str(), npb.Finish());
+  model_gen->Finish();
+  model_gen->Save(filename);
 }
 
 Offset<Vector<Offset<bmodel::Shape>>>
-CodegenPass::CreateShapeVector(const ArrayRef<int64_t> &shape) {
+BMCodegen::CreateShapeVector(const ArrayRef<int64_t> &shape) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Shape>> stage_shape_v;
   std::vector<uint64_t> dims;
@@ -228,9 +173,9 @@ CodegenPass::CreateShapeVector(const ArrayRef<int64_t> &shape) {
 }
 
 Offset<Vector<Offset<bmodel::Tensor>>>
-CodegenPass::CreateTensorVector(const std::vector<Value> &values,
-                                std::vector<bool> is_cpu,
-                                std::vector<uint32_t> cpu_addr) {
+BMCodegen::CreateTensorVector(const std::vector<Value> &values,
+                              std::vector<bool> is_cpu,
+                              std::vector<uint32_t> cpu_addr) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   int index = 0;
@@ -302,8 +247,8 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values,
 }
 
 Offset<bmodel::CoeffMem>
-CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
-                            uint64_t coeff_addr, uint64_t coeff_size) {
+BMCodegen::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
+                          uint64_t coeff_addr, uint64_t coeff_size) {
   if (coeff_size == 0) {
     return 0;
   }
@@ -329,7 +274,7 @@ CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
 }
 
 std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>>
-CodegenPass::CreateCmdGroupVector() {
+BMCodegen::CreateCmdGroupVector() {
   auto cmd_group_v = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
   auto gdma_ptr = (uint8_t *)bm168x->gdma_buffer.data();
   auto bdc_ptr = (uint8_t *)bm168x->bdc_buffer.data();
@@ -368,7 +313,7 @@ CodegenPass::CreateCmdGroupVector() {
   return std::move(cmd_group_v);
 }
 
-void CodegenPass::codegen_for_overlap_ops(
+void BMCodegen::codegen_for_overlap_ops(
     std::map<int64_t, std::vector<Operation *>> cur_other_downs,
     std::map<int64_t, std::vector<Operation *>> cur_other_ups,
     Operation *prev_op, Operation *next_op, int64_t cur_ts,
@@ -433,8 +378,8 @@ void CodegenPass::codegen_for_overlap_ops(
   }
 }
 
-void CodegenPass::codegen_for_group(GroupOp gOp, Operation *prev_op,
-                                    Operation *next_op) {
+void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
+                                  Operation *next_op) {
   auto nsecs = gOp.getNsecs();
   auto hsecs = gOp.getHsecs();
   auto dsecs = gOp.getDsecs();
@@ -629,7 +574,7 @@ void CodegenPass::codegen_for_group(GroupOp gOp, Operation *prev_op,
   }
 }
 
-void CodegenPass::codegen(Operation *op) {
+void BMCodegen::codegen(Operation *op) {
   if (auto castOp = dyn_cast<GroupOp>(op)) {
     Operation *prev_op = op->getPrevNode();
     while (prev_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(prev_op)) {
@@ -653,7 +598,7 @@ void CodegenPass::codegen(Operation *op) {
   }
 }
 
-Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
+Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
   bm168x->before_codegen();
   auto func = module::getFuncOp(call.getCallee());
   std::vector<bool> input_is_cpu = {};
@@ -724,7 +669,7 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   return snb.Finish();
 }
 
-Offset<bmodel::SubNet> CodegenPass::CreateCPUSubNet(func::CallOp call) {
+Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
   bm168x->before_codegen();
   auto func = module::getFuncOp(call.getCallee());
   bm168x->after_codegen(module::getFLOPs());
@@ -822,7 +767,7 @@ Offset<bmodel::SubNet> CodegenPass::CreateCPUSubNet(func::CallOp call) {
   return snb.Finish();
 }
 
-void CodegenPass::codegen_ir(Operation *op, SubnetIr *subnet_ir_) {
+void BMCodegen::codegen_ir(Operation *op, SubnetIr *subnet_ir_) {
   if (module::isOpInGroup(op) || isa_and_nonnull<top::WeightOp>(op)) {
     return;
   } else if (dyn_cast<GroupOp>(op) || dyn_cast<DynGlobalGenInterface>(op)) {
@@ -832,16 +777,15 @@ void CodegenPass::codegen_ir(Operation *op, SubnetIr *subnet_ir_) {
 }
 
 Offset<bmodel::SubNet>
-CodegenPass::CreateSubNet(func::CallOp call,
-                          std::unique_ptr<SubnetIr> subnet_ir_,
-                          std::unique_ptr<Context> &context) {
+BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
+                        std::unique_ptr<Context> &context) {
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);
   std::function<void(Operation *, SubnetIr *)> task =
-      std::bind(&CodegenPass::codegen_ir, this, std::placeholders::_1,
+      std::bind(&BMCodegen::codegen_ir, this, std::placeholders::_1,
                 std::placeholders::_2);
   subnet_ir_->generate_compiler_ir(module, call, task);
   subnet_ir_->write_binary_ir_to_buffer(context);
@@ -882,10 +826,9 @@ CodegenPass::CreateSubNet(func::CallOp call,
 }
 
 Offset<Vector<Offset<bmodel::StageIR>>>
-CodegenPass::CreateStageIRVector(const vector<stage_param_t> &stage_param_v,
-                                 const vector<uint32_t> &binary_ir_v,
-                                 uint32_t ir_offset,
-                                 bmodel::Binary &binary_ir) {
+BMCodegen::CreateStageIRVector(const vector<stage_param_t> &stage_param_v,
+                               const vector<uint32_t> &binary_ir_v,
+                               uint32_t ir_offset, bmodel::Binary &binary_ir) {
   auto &builder = model_gen->Builder();
   vector<Offset<bmodel::StageIR>> stage_ir_v;
   u32 ir_len = 0;

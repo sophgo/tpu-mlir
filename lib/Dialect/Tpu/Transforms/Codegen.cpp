@@ -7,41 +7,43 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/MlirToCvimodel.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Module.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/MlirToCvimodel.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BMCodegen.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Support/Module.h"
 #include <fstream>
 #include <set>
 #include <sstream>
 
 using namespace llvm;
-using namespace tpu_mlir::backend;
 
-using namespace flatbuffers;
 namespace tpu_mlir {
 namespace tpu {
 
-class CVCodegenPass : public CVCodegenBase<CVCodegenPass> {
+class CodegenPass : public CodegenBase<CodegenPass> {
 public:
-  CVCodegenPass() {}
+  CodegenPass() {}
   void runOnOperation() override {
     auto module = getOperation();
     assert(module::isState(module::State::TPU_ADDRESSED));
-    assert(module::isCV18xx());
     std::string filename = this->model_file;
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
-    CviModelBuilder builder(module);
-    builder.storeModel(filename);
+    if (module::isCV18xx()) {
+      CviModelBuilder builder(module);
+      builder.storeModel(filename);
+    } else {
+      BMCodegen bm_codegen;
+      bm_codegen.run(module, filename);
+    }
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createCVCodegenPass() {
-  return std::make_unique<CVCodegenPass>();
+std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass() {
+  return std::make_unique<CodegenPass>();
 }
 
 } // namespace tpu

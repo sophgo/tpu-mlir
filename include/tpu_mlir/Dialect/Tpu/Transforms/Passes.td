@@ -39,7 +39,7 @@ def LayerGroup : Pass<"layer-group", "FuncOp"> {
 }
 
 def AddressAssign : Pass<"address-assign", "ModuleOp"> {
-  let summary = "assign address for BM168x in tpu by tpuc-opt";
+  let summary = "assign address in tpu by tpuc-opt";
   let constructor = "createAddressAssignPass()";
   let dependentDialects = ["TpuDialect"];
   let options = [
@@ -55,22 +55,12 @@ def AddressAssign : Pass<"address-assign", "ModuleOp"> {
 }
 
 def Codegen : Pass<"codegen", "ModuleOp"> {
-  let summary = "codegen for BM168x in tpu by tpuc-opt";
+  let summary = "codegen in tpu by tpuc-opt";
   let constructor = "createCodegenPass()";
   let dependentDialects = ["TpuDialect"];
   let options = [
     Option<"model_file", "model_file", "std::string", /*default=*/"",
            "save to model file">
-  ];
-}
-
-def CVCodegen : Pass<"cv-codegen", "ModuleOp"> {
-  let summary = "codegen for CV18xx in tpu by tpuc-opt";
-  let constructor = "createCVCodegenPass()";
-  let dependentDialects = ["TpuDialect"];
-  let options = [
-    Option<"model_file", "model_file", "std::string", /*default=*/"",
-           "save to model file">,
   ];
 }
 

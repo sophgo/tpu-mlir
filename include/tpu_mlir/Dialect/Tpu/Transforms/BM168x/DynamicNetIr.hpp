@@ -85,7 +85,7 @@ public:
   uint32_t get_ir_len() { return ir_len; }
   void clear_all();
   int get_dynamic_version();
-  friend class CodegenPass;
+  friend class BMCodegen;
 
 protected:
   //=========================
