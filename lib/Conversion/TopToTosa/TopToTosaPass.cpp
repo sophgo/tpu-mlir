@@ -90,9 +90,15 @@ public:
                                 PatternRewriter &rewriter) const override {
     assert(op->getNumResults() == 1);
     auto outType = change_dataformat(op->getResult(0).getType());
-    if (include_weight) {
+    auto has_weight = include_weight;
+    for (auto user : op.getOutput().getUsers()) {
+      if (isa<tosa::TransposeOp>(user)) {
+        has_weight = true;
+      }
+    }
+    if (has_weight) {
       auto valptr = op.read_as_float();
-      auto new_val = change_weight(valptr, outType);
+      auto new_val = change_weight(valptr, op->getResult(0).getType());
       auto attr = DenseElementsAttr::get(
           outType, llvm::makeArrayRef(new_val, valptr->size()));
       rewriter.replaceOpWithNewOp<mlir::tosa::ConstOp>(op, outType, attr);

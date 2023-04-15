@@ -51,19 +51,19 @@ static Type change_dataformat(Type ty_){
 }
 
 
-static float* change_weight(std::shared_ptr<std::vector<float>> valptr, 
+static float* change_weight(std::shared_ptr<std::vector<float>> valptr,
                                     Type ty_) {
   auto ty = ty_.cast<RankedTensorType>();
   if (ty.getShape().size() != 4) return valptr->data();
-  auto n = ty.getShape()[0]; 
-  auto h = ty.getShape()[2]; 
-  auto w = ty.getShape()[3]; 
-  auto c = ty.getShape()[1]; 
+  auto n = ty.getShape()[0];
+  auto h = ty.getShape()[2];
+  auto w = ty.getShape()[3];
+  auto c = ty.getShape()[1];
   float* new_val = new float[valptr->size()];
   int dst, src, ds_1, d_2, d_3, s_3;
   int a_ds = h*w*c, b_d = w*c, b_s = h*w;
   for (int i = 0; i < n; i++) {
-    ds_1 = i * a_ds; 
+    ds_1 = i * a_ds;
     for (int j = 0; j < h; j++) {
       d_2 = j * b_d;
       s_3 = j * w;
@@ -78,6 +78,26 @@ static float* change_weight(std::shared_ptr<std::vector<float>> valptr,
     }
   }
   return new_val;
+}
+
+
+static std::vector<NamedAttribute> gen_clamp_attr(PatternRewriter &rewriter,
+                      Type newType, ::llvm::APFloat relu_limit) {
+  std::vector<NamedAttribute> clamp_attr;
+  clamp_attr.push_back(rewriter.getNamedAttr("min_int", rewriter.getI64IntegerAttr(0)));
+  clamp_attr.push_back(rewriter.getNamedAttr("max_int", rewriter.getI64IntegerAttr(0)));
+  clamp_attr.push_back(rewriter.getNamedAttr("min_fp", rewriter.getF32FloatAttr(0)));
+  auto floatType = newType.cast<RankedTensorType>().getElementType().cast<FloatType>();
+  const llvm::fltSemantics &semantic = floatType.getFloatSemantics();
+  auto zero = llvm::APFloat::getZero(relu_limit.getSemantics());   // Negative = false
+  if (relu_limit < zero) {
+    clamp_attr.push_back(rewriter.getNamedAttr("max_fp",
+        rewriter.getFloatAttr(floatType, APFloat::getInf(semantic)))); // Negative = false
+  } else {
+    clamp_attr.push_back(rewriter.getNamedAttr("max_fp",
+        rewriter.getFloatAttr(floatType, relu_limit)));
+  }
+  return clamp_attr;
 }
 
 } // namespace tpu_mlir
