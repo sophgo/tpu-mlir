@@ -10,17 +10,22 @@
 # This file contains some functions to convert the reg information to MLIR IR
 # It is dirty and heavy.
 
-from enum import Enum, IntEnum
 import numpy as np
-import copy, functools
+import copy
+from . import op_support
+from .op_support import MType, DType, Scalar, ExtEnum, Layout
+from .op_support import get_dtype, bf16_to_fp32
 
-# Value: MemRef | Const
-# Const: Number
+
+# Value: MemRef | Scalar
+# Scalar: Number
 # Number: int | float
 # MemRef: address, shape, Dtype, stride, offset?
 
+NPU_NUM = 64
 BANK_SIZE = 2**14
 LANE_SIZE = BANK_SIZE * 16
+LMEM_SIZE = LANE_SIZE * NPU_NUM
 
 opparam_converter = {}
 
@@ -35,178 +40,12 @@ def opparam_converter_regitstry(sheet_name):
     return add_converter
 
 
-class ExtEnum:
-    """
-    Add additional information to Enumerate.
-    Enumerate is a constant type and a singleton.
-    """
-
-    def __init__(self, enum, *args, **kargs) -> None:
-        assert isinstance(enum, Enum)
-        self.eunm = enum
-        self.args = args
-        for k, v in kargs.items():
-            if k not in ("name", "value"):
-                self.__dict__[k] = v
-            else:
-                raise KeyError(f"{k} is a reserved key.")
-        self._member_ = kargs.keys()
-
-    @property
-    def name(self):
-        return self.eunm.name
-
-    @property
-    def value(self):
-        return self.eunm.value
-
-    def __hash__(self):
-        return hash(self.eunm)
-
-    def __eq__(self, other):
-        return self.eunm == other
-
-    def __repr__(self) -> str:
-        kargs = {k: self.__dict__[k] for k in self._member_}
-        return repr(self.eunm) + f"{self.args}{kargs}"
-
-
-class MType(Enum):
-    """
-    The type of memory.
-    """
-
-    R = 0  # local memory
-    S = 1  # static memory
-    L = 2  # L2 SRAM
-    G = 3  # DDR
-    UNKNOWN = 7
-
-    def __call__(self, *args, **kargs):
-        return ExtEnum(self, *args, **kargs)
-
-
-def get_mtype(address):
-    # R : "npu_offset", "bank_index", "bank_offset", "r_addr"
-    # G/S/L : "r_addr"
-    for k, v in memmap.items():
-        if address >= v[0] and address < v[1]:
-            if k == MType.R:
-                r_addr = address - v[0]
-                npu_offset = r_addr // LANE_SIZE
-                addr_len = r_addr - npu_offset * LANE_SIZE
-                bank_index = addr_len // BANK_SIZE
-                bank_offset = addr_len % BANK_SIZE
-                # Local memory Type
-                return MType.R(
-                    npu_offset=npu_offset,
-                    bank_index=bank_index,
-                    bank_offset=bank_offset,
-                    r_addr=r_addr,
-                )
-            return k(r_addr=address - v[0])
-    return MType.UNKNOWN
-
-
-class Layout(Enum):
-    """
-    Data layout type in Local memory.
-    """
-
-    # Tensor alignment
-    alignEU = 0
-    compact = 1
-    offset = 2
-    stride = 3
-    # Matrix alignment
-    matrix = 10
-    matrix2 = 11
-    # Weight alignment
-    _64IC = 20
-    _32IC = 21
-    _1IC = 22
-    # special alignment. TODO: give it a better name
-    T3 = 30
-    T4 = 31
-    T5 = 32
-    # GDMA special layout
-    DMAstride = 40  # contains lane mask
-    DMA4Bank = 41
-    DMAmatrix = 42
-    DMAlinear = 43
-
-    def __call__(self, *args, **kargs):
-        return ExtEnum(self, *args, **kargs)
-
-
 # TPU1686/common/include/memmap.h
 memmap = {
     MType.R: (int("0x8000000", 16), int("0x9000000", 16)),  # lmen_base 16M
     MType.S: (int("0x9000000", 16), int("0x9004000", 16)),  # static memory 16KB
     MType.L: (int("0x10000000", 16), int("0x10200000", 16)),  # L2 SRAM  2M
     MType.G: (int("0x100000000", 16), int("0x300000000", 16)),  # global memory
-}
-
-
-class DType(IntEnum):
-    """
-    The numeric type of the data.
-    """
-
-    # Signless
-    # Only the bits width is correct.
-    i8 = 0
-    f16 = 1
-    f32 = 2
-    i16 = 3
-    i32 = 4
-    bf16 = 5
-    i64 = 6
-    # unsign integer
-    ui8 = i8 + 8  # type: ignore
-    ui16 = i16 + 8  # type: ignore
-    ui32 = i32 + 8  # type: ignore
-    # sign integer
-    si8 = i8 + 16  # type: ignore
-    si16 = i16 + 16  # type: ignore
-    si32 = i32 + 16  # type: ignore
-
-    def is_float(self):
-        return self in (DType.f32, DType.f16, DType.bf16)
-
-    def is_int(self):
-        return not self.is_float()
-
-
-def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
-    if prec in (DType.f32, DType.bf16, DType.f16):
-        return DType(prec)
-    return DType(prec + 8 + (sign == 1) * 8)
-
-
-def bf16_to_fp32(d_bf16):
-    assert d_bf16.dtype == np.uint16
-    s = d_bf16.shape
-    d_bf16 = d_bf16.ravel()
-    d_fp32 = np.empty_like(d_bf16, dtype=np.float32)
-    v_ui16 = d_fp32.view(np.uint16)
-    v_ui16[1::2] = d_bf16
-    return d_fp32.reshape(s)
-
-
-to_np_dtype = {
-    DType.si8: np.int8,
-    DType.ui8: np.uint8,
-    DType.f16: np.float16,
-    DType.f32: np.float32,
-    DType.si16: np.int16,
-    DType.ui16: np.uint16,
-    DType.si32: np.int32,
-    DType.ui32: np.uint32,
-    DType.i8: np.uint8,
-    DType.i16: np.uint16,
-    DType.i32: np.uint32,
-    DType.bf16: np.uint16,
 }
 
 
@@ -276,94 +115,36 @@ def local_layout_to_stride(memref):
     return None
 
 
-class MemRef:
+class MemRef(op_support.MemRef):
     """
     A description of tensor in memory.
     """
 
     def __init__(self, address, shape, dtype: DType, stride=None, layout=None):
-        self.address = address
-        self.mtype = get_mtype(address)  # extended enumerate type
-        self.shape = shape
-        self.dtype = dtype
-        self.layout = layout
-
-        self.np_dtype = to_np_dtype[dtype]
-        self.itemsize = self.np_dtype().itemsize
-        self.stride = stride
-
+        super().__init__(address, shape, dtype, stride, layout)
         if self.mtype == MType.R and layout != Layout.stride:
             self.stride = local_layout_to_stride(self)
 
-    @property
-    @functools.lru_cache()
-    def name(self):
-        k = self.mtype
-        if k == MType.UNKNOWN:
-            return f"%?.{self.address}"
-        if k == MType.R:
-            # R{bank_index}.{bank_offset}.L{NPU_OFFSET}
-            # R0.123.L0
-            mem_str = f"%{k.name}{k.bank_index}"
-            if k.bank_offset:
-                mem_str += f".{k.bank_offset}"
-            if k.npu_offset:
-                mem_str += f".L{k.npu_offset}"
-            return mem_str
-        return f"%{k.name}{k.r_addr}"
-
-    @property
-    @functools.lru_cache()
-    def type_str(self):
-        s = [str(x) for x in self.shape]
-        if self.stride is not None and any((x != 0 for x in self.stride)):
-            return f"memref<{'x'.join(s)}x{self.dtype.name}, strides: [{str(self.stride)[1:-1]}]>"
-        return f"memref<{'x'.join(s)}x{self.dtype.name}>"
-
-    def __repr__(self):
-        return f"{self.name}: {self.type_str}"
-
-
-class Const:
-    def __init__(self, value, dtype: DType):
-        data = np.uint32([value])
-        self.dtype = dtype
-        if dtype != DType.bf16:
-            np_dtype = to_np_dtype[dtype]
-            self.data = data.view(np_dtype)[0]
-        else:
-            self.data = data.view(np.float32)[0]
-        self.name = f"%C{self.data}"
-        self.type_str = f"{self.dtype.name}"
-
-    def __repr__(self):
-        return f"{self.name}: {self.type_str}"
-
-
-class NamedDict(dict):
-    def __init__(self, dic, del_prefix=[]):
-        self.__dict__.update(dic)
-        if isinstance(del_prefix, str):
-            del_prefix = [del_prefix]
-        for prefix in del_prefix:
-            for k in list(self.__dict__.keys()):
-                if k[: len(prefix)] == prefix:
-                    self.__dict__[k[len(prefix) :]] = self.__dict__.pop(k)
-
-    def __getitem__(self, key):
-        if key in self.__dict__:
-            return self.__dict__[key]
-        else:
-            raise KeyError(f"invalid key: {key}")
-
-    def __setitem__(self, key, value):
-        if key in self.__dict__:
-            self.__dict__[key] = value
-        else:
-            raise KeyError(f"invalid key: {key}")
-
-    def __repr__(self):
-        return str(self.__dict__)
+    def get_mtype(self, address):
+        # R : "npu_offset", "bank_index", "bank_offset", "r_addr"
+        # G/S/L : "r_addr"
+        for k, v in memmap.items():
+            if address >= v[0] and address < v[1]:
+                if k == MType.R:
+                    r_addr = address - v[0]
+                    npu_offset = r_addr // LANE_SIZE
+                    addr_len = r_addr - npu_offset * LANE_SIZE
+                    bank_index = addr_len // BANK_SIZE
+                    bank_offset = addr_len % BANK_SIZE
+                    # Local memory Type
+                    return MType.R(
+                        npu_offset=npu_offset,
+                        bank_index=bank_index,
+                        bank_offset=bank_offset,
+                        r_addr=r_addr,
+                    )
+                return k(r_addr=address - v[0])
+        return MType.UNKNOWN
 
 
 class Memory:
@@ -540,7 +321,7 @@ class Memory:
         return data
 
     def get_data(self, value):
-        if isinstance(value, Const):
+        if isinstance(value, Scalar):
             return value.data
         assert isinstance(value, MemRef)
         if value.mtype == MType.G:
@@ -551,8 +332,7 @@ class Memory:
 
 
 def get_value(
-    address=None,
-    offset=0,
+    address=-1,
     shape=None,
     stride=None,
     dtype=None,
@@ -565,12 +345,14 @@ def get_value(
     if not isinstance(dtype, DType):
         _dtype = get_dtype(*dtype)
     if is_const:
-        return Const(address, _dtype)
+        return Scalar(address, _dtype)
     else:
         _layout = layout
         if not isinstance(layout, ExtEnum):
             _layout = Layout(layout)
-        return MemRef(address + offset, shape, _dtype, stride, _layout)
+        if address < LMEM_SIZE:
+            address += memmap[MType.R][0]
+        return MemRef(address, shape, _dtype, stride, _layout)
 
 
 @opparam_converter_regitstry("sCONV")
@@ -632,10 +414,8 @@ def _converter(reg):
         assert self.opd2["is_const"] > 0
         assert self.opd3["is_const"] > 0
 
-    operands = [
-        get_value(**x, offset=memmap[MType.R][0]) for x in (opd0, opd1, opd2, opd3)
-    ]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**x) for x in (opd0, opd1, opd2, opd3)]
+    results = [get_value(**res0)]
 
     attr = dict(
         kernel=[reg.opd1_h, reg.opd1_w],
@@ -700,10 +480,8 @@ def _converter(reg):
         opd2["dtype"] = (DType.i16, 1)  # bias
         attr["shift"] = reg.opd3_addr  # shift
 
-    operands = [
-        get_value(**x, offset=memmap[MType.R][0]) for x in (opd0, opd1, opd2)[:opd_num]
-    ]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**x) for x in (opd0, opd1, opd2)[:opd_num]]
+    results = [get_value(**res0)]
 
     return (results, attr, operands)
 
@@ -759,10 +537,8 @@ def _converter(reg):
             opd2["shape"] = (1, reg.res0_c, 1, 1)
             opd2["layout"] = Layout.compact
 
-    operands = [
-        get_value(**x, offset=memmap[MType.R][0]) for x in (opd0, opd1, opd2)[:opd_num]
-    ]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**x) for x in (opd0, opd1, opd2)[:opd_num]]
+    results = [get_value(**res0)]
 
     return (results, attr, operands)
 
@@ -821,10 +597,8 @@ def _converter(reg):
         res0["dtype"] = res1["dtype"]
         rets = [res0]
 
-    operands = [
-        get_value(**x, offset=memmap[MType.R][0]) for x in (opd0, opd1, opd2, opd3)
-    ]
-    results = [get_value(**x, offset=memmap[MType.R][0]) for x in rets]
+    operands = [get_value(**x) for x in (opd0, opd1, opd2, opd3)]
+    results = [get_value(**x) for x in rets]
 
     return (results, {}, operands)
 
@@ -858,10 +632,8 @@ def _converter(reg):
     elif reg.tsk_eu_typ in [12, 13]:
         opd_num = 2
 
-    operands = [
-        get_value(**x, offset=memmap[MType.R][0]) for x in (opd0, opd1)[:opd_num]
-    ]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**x) for x in (opd0, opd1)[:opd_num]]
+    results = [get_value(**res0)]
 
     return (results, attr, operands)
 
@@ -901,10 +673,8 @@ def _converter(reg):
     if reg.tsk_eu_typ == 1:
         opd_num = 3
 
-    operands = [
-        get_value(**x, offset=memmap[MType.R][0]) for x in (opd0, opd1, opd2)[:opd_num]
-    ]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**x) for x in (opd0, opd1, opd2)[:opd_num]]
+    results = [get_value(**res0)]
 
     return (results, {}, operands)
 
@@ -935,8 +705,8 @@ def _converter(reg):
     if reg.tsk_eu_typ == 23:
         attr = dict(round_mode=reg.opd2_n_str)
 
-    operands = [get_value(**x, offset=memmap[MType.R][0]) for x in (opd0, opd1)]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**x) for x in (opd0, opd1)]
+    results = [get_value(**res0)]
 
     return (results, attr, operands)
 
@@ -1004,10 +774,8 @@ def _converter(reg):
     opd1["shape"] = restore_org_shape(opd1)
 
     opd_num = reg.tsk_opd_num
-    operands = [
-        get_value(**x, offset=memmap[MType.R][0]) for x in (opd0, opd1, opd2)[:opd_num]
-    ]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**x) for x in (opd0, opd1, opd2)[:opd_num]]
+    results = [get_value(**res0)]
 
     return (results, attr, operands)
 
@@ -1085,13 +853,13 @@ def _converter(reg):
         shift=np.uint32([reg.res1_addr]).view(np.int8)[0],
     )
 
-    operands = [get_value(**x, offset=memmap[MType.R][0]) for x in opds]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**x) for x in opds]
+    results = [get_value(**res0)]
 
     return (results, attr, operands)
 
 
-def cw_tans_reg_format(reg):
+def cw_trans_reg_format(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -1109,8 +877,8 @@ def cw_tans_reg_format(reg):
     if reg.tsk_eu_typ == 0:  # cw_ts
         opd0["layout"] = Layout.T3
 
-    operands = [get_value(**opd0, offset=memmap[MType.R][0])]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**opd0)]
+    results = [get_value(**res0)]
 
     return (results, {}, operands)
 
@@ -1189,8 +957,8 @@ def _converter(reg):
         raise KeyError("Should not be here.")
 
     attr = dict(round_mode=reg.opd2_n_str)
-    operands = [get_value(**x, offset=memmap[MType.R][0]) for x in opds]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**x) for x in opds]
+    results = [get_value(**res0)]
 
     return (results, attr, operands)
 
@@ -1280,8 +1048,8 @@ def _converter(reg):
         fill_const=bool(reg.opd2_const),
         const_value=reg.opd2_addr,
     )
-    operands = [get_value(**x, offset=memmap[MType.R][0]) for x in opds]
-    results = [get_value(**x, offset=memmap[MType.R][0]) for x in rets]
+    operands = [get_value(**x) for x in opds]
+    results = [get_value(**x) for x in rets]
 
     return (results, attr, operands)
 
@@ -1336,8 +1104,8 @@ def _converter(reg):
         const_value=reg.opd2_addr,
     )
 
-    operands = [get_value(**x, offset=memmap[MType.R][0]) for x in (opd0, opd1)]
-    results = [get_value(**x, offset=memmap[MType.R][0]) for x in rets]
+    operands = [get_value(**x) for x in (opd0, opd1)]
+    results = [get_value(**x) for x in rets]
 
     return (results, attr, operands)
 
@@ -1365,8 +1133,8 @@ def bc_reg_format(reg):
         res0["shape"] = (1, c, 1, 1)
         res0["layout"] = Layout.compact
 
-    operands = [get_value(**opd0, offset=memmap[MType.R][0])]
-    results = [get_value(**res0, offset=memmap[MType.R][0])]
+    operands = [get_value(**opd0)]
+    results = [get_value(**res0)]
 
     return (results, {}, operands)
 
@@ -1374,7 +1142,7 @@ def bc_reg_format(reg):
 @opparam_converter_regitstry("sTRANS&sBC")
 def _converter(reg):
     if reg.tsk_eu_typ in (0, 1):
-        return cw_tans_reg_format(reg)
+        return cw_trans_reg_format(reg)
     else:
         return bc_reg_format(reg)
 

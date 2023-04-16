@@ -172,8 +172,8 @@ def _decode_base(cmd_buf, cmd_bits, cmd_set, sys_end):
                     code = op.decode(cmd_buf)
                     yield code
                     # consume this command_code
-                    cmd_buf = cmd_buf[op.len :]
-                    cur += op.len
+                    cmd_buf = cmd_buf[op.length :]
+                    cur += op.length
                     recognize = True
                     break
             is_sys = isinstance(code, sys_end)
@@ -194,7 +194,7 @@ def _decode_base(cmd_buf, cmd_bits, cmd_set, sys_end):
 def _decode_bdc(cmd_buf):
     return _decode_base(
         cmd_buf,
-        opdef_1684x.bdc_base.cmd_bits,
+        opdef_1684x.bdc_base.opcode_bits,
         opdef_1684x.bdc_cmd,
         opdef_1684x.sysid_op,
     )
@@ -203,7 +203,7 @@ def _decode_bdc(cmd_buf):
 def _decode_gdma(cmd_buf):
     return _decode_base(
         cmd_buf,
-        opdef_1684x.dma_base.cmd_bits,
+        opdef_1684x.dma_base.opcode_bits,
         opdef_1684x.dma_cmd,
         opdef_1684x.sdma_sys,
     )
@@ -222,6 +222,7 @@ def merge_cmd(bdc, dma, _id=None):
         else:
             return len(main_cmd)
 
+    # remove system instruction
     main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
     inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
     # "sorted" is stable, which keeps the inserted commands
@@ -238,7 +239,6 @@ def decode_cmd(cmd, _id=0):
     CMD = namedtuple("cmd", ["bdc", "gdma", "all"])
     bdc_cmd = read_buf(cmd.bdc_cmd)
     gdma_cmd = read_buf(cmd.gdma_cmd)
-    # remove system instruction
     bdc = itertools.islice(_decode_bdc(bdc_cmd), cmd.bdc_num)
     gdma = itertools.islice(_decode_gdma(gdma_cmd), cmd.gdma_num)
     bdc = list(bdc)
@@ -345,15 +345,14 @@ def Bmodel2MLIR(bmodel_file):
     return Module(bmodel.nets)
 
 
-def Bmodel2Raw(bmodel_file):
+def Bmodel2Reg(bmodel_file):
     bmodel = BmodelReader(bmodel_file)
     for net in bmodel.nets["Net"]:
         for param in net["Parameter"]:
             for subnet in param["SubNet"]:
                 _id = subnet["Id"][0]
                 for _net in subnet["CmdGroup"]:
-                    for op in decode_cmd(_net, _id[0]).all:
-                        yield op
+                    yield _id, decode_cmd(_net, _id)
 
 
 def Bmodel2Bin(bmodel_file):
@@ -436,7 +435,7 @@ def __main():
     parser.add_argument(
         "--fmt",
         dest="format",
-        choices=["mlir", "raw", "bits", "bin"],
+        choices=["mlir", "reg", "bits", "bin"],
         default="mlir",
         help="The format of format operations.",
     )
@@ -452,14 +451,19 @@ def __main():
         if args.format == "mlir":
             module = Bmodel2MLIR(args.bmodels[0])
             print(module, flush=True)
-        elif args.format == "raw":
-            module = Bmodel2Raw(args.bmodels[0])
-            for op in module:
-                if isinstance(op, opdef_1684x.bdc_base):
-                    name = f"tiu_{op.cmd_id}"
-                else:
-                    name = f"dma_{op.cmd_id}"
-                print(f"'{name}': {str(op.attr)}", flush=True)
+        elif args.format == "reg":
+            import json
+
+            module = Bmodel2Reg(args.bmodels[0])
+            outs = {
+                _id: {
+                    "tiu": [x.reg for x in ops.bdc],
+                    "dma": [x.reg for x in ops.gdma],
+                }
+                for _id, ops in module
+            }
+            print(json.dumps(outs, indent=2), flush=True)
+
         elif args.format == "bin":
             Bmodel2Bin(args.bmodels[0])
         else:
