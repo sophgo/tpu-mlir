@@ -24,7 +24,7 @@ In the same directory of ``tpu-mlir_xxxx.tar.gz`` (tpu-mlir's release package), 
 
    $ git clone --depth=1 https://github.com/sophgo/model-zoo
    $ cd model-zoo
-   $ git lfs pull --include "*.onnx,*.jpg,*.JPEG" --exclude=""
+   $ git lfs pull --include "*.onnx,*.jpg,*.JPEG,*.npz" --exclude=""
    $ cd ../
 
 If you have cloned ``model-zoo``, you can execute the following command to synchronize the model to the latest state:
@@ -121,7 +121,10 @@ Execute the following command to run all test samples:
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --mlir -l full_cases.txt
 
-The following models are compiled:
+The following models are compiled (Due to continuous additions of models in the
+model-zoo, only a partial list of models is provided here; at the same time,
+this process also compiles models for accuracy testing, and subsequent accuracy
+testing sections do not require recompilation of models.):
 
 ::
 
@@ -133,6 +136,7 @@ The following models are compiled:
    * squeezenet1.0
    * vgg16
    * yolov5s
+   * ...
 
 
 After the command is finished, you will see the newly generated ``output`` folder (where the test output is located).

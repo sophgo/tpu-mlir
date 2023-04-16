@@ -36,7 +36,7 @@ BM168x测试指南
 
    $ cd model-zoo
    $ git pull
-   $ git lfs pull --include "*.onnx,*.jpg,*.JPEG" --exclude=""
+   $ git lfs pull --include "*.onnx,*.jpg,*.JPEG,*.npz" --exclude=""
    $ cd ../
 
 此过程会从 ``GitHub`` 上下载大量数据。由于具体网络环境的差异, 此过程可能耗时较长。
@@ -125,7 +125,8 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --mlir -l full_cases.txt
 
-此时会编译以下模型:
+此时会编译以下模型（由于model-zoo的模型在持续添加中，这里只列出部分模型；同时该
+过程也编译了用于测试精度的模型，后续精度测试部分无需再编译模型。）:
 
 ::
 
@@ -137,6 +138,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
    * squeezenet1.0
    * vgg16
    * yolov5s
+   * ...
 
 
 命令正常结束后, 会看到新生成的 ``output`` 文件夹(测试输出内容都在该文件夹中)。
