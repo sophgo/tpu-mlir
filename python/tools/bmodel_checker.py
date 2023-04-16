@@ -503,8 +503,7 @@ class Checker:
         from rich.progress import track
 
         tdb = Tdb()
-        # disable message
-        tdb.enable_message = False
+        tdb.enable_message = False  # disable message
         tdb.load_file(self.bmodel_file)
         tdb.start()
         tdb.load_data(self.input_data_file)

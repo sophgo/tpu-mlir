@@ -10,7 +10,8 @@
 
 import numpy as np
 from . import regdef_1684x
-from .opparam_1684x import NamedDict, opparam_converter
+from .opparam_1684x import opparam_converter
+from .op_support import packbits, TIUBase, DMABase, NamedDict
 
 # global data and type
 # ------------------------------------------------------------
@@ -19,37 +20,18 @@ dma_cmd = dict()
 
 bank_size = 2**14
 
-# cache for convert binary to unsigned integer.
-table = 2 ** np.arange(64, dtype=np.uint64)
-
-
-def attribute_builder(attr, reg_field):
-    for key, value in reg_field.items():  # type: ignore
-        if isinstance(value, str):
-            yield key, attr[value]
-        else:
-            yield key, [attr[x] for x in value]
-
-
-# ------------------------------------------------------------
-# utility function
-# ------------------------------------------------------------
-def packbits(arr):
-    return int(arr.dot(table[: arr.size]))
-
-
 # ------------------------------------------------------------
 # registry function
 # ------------------------------------------------------------
 def base_registry(cmd_type, sheet_name, cls):
     attr = regdef_1684x.reg_def[sheet_name]
-    fields = [x[0] for x in attr]
-    bits = [x[1] for x in attr]
-    setattr(cls, "des_reg", {"fields": fields, "bits": bits})
-    setattr(cls, "len", bits[-1])
+    fields, bits = zip(*attr)
+    # high bit is the upper bit (open interval).
+    setattr(cls, "des_reg", {"fields": fields, "high_bit": bits})
+    setattr(cls, "length", bits[-1])
     cmd_type.setdefault(cls.opcode, set()).add(cls)
     if sheet_name in opparam_converter:
-        setattr(cls, "set_elt", staticmethod(opparam_converter[sheet_name]))
+        setattr(cls, "_set_op", staticmethod(opparam_converter[sheet_name]))
     return cls
 
 
@@ -68,7 +50,7 @@ def dma_registry(sheet_name):
 
 
 def decode_reg(buffer, des_reg):
-    bits_sec = np.split(buffer, des_reg["bits"][:-1])
+    bits_sec = np.split(buffer, des_reg["high_bit"][:-1])
     value = (packbits(x) for x in bits_sec)
     return dict(zip(des_reg["fields"], value))
 
@@ -76,74 +58,41 @@ def decode_reg(buffer, des_reg):
 # ------------------------------------------------------------
 # BDC definition
 # ------------------------------------------------------------
-class bdc_base:
-    len = 0
-    description = "This is a base op."
-    des_reg = None
-    opcode = None
+class bdc_base(TIUBase):
+    opcode_bits = (41, 45)
+    # extension
     eu_type = ()
-    cmd_bits = (41, 45)
     eu_bits = (45, 50)
     short_cmd = False  # long_code by default
-    __slots__ = (
-        "results",
-        "operands",
-        "attribute",
-        "cmd",
-        "attr",
-        "cmd_id",
-        "cmd_id_dep",
-    )
 
-    def __eq__(self, other):
-        if len(self.cmd) != len(other.cmd):
-            return False
-        return (self.cmd == other.cmd).all()
+    def _decode(self):
+        self.reg = NamedDict(decode_reg(self.cmd, self.des_reg))
+        self.cmd_id = self.reg.cmd_id
+        self.cmd_id_dep = self.reg.cmd_id_dep
+        self.op_name = self.eu_type[self.reg.tsk_eu_typ]
 
-    def __hash__(self):
-        return hash(str(self.cmd))
-
-    @classmethod
-    def decode(cls, cmd_reg):
-        cls = cls()
-        cls.cmd = cmd_reg[: cls.len]
-        attr = NamedDict(decode_reg(cls.cmd, cls.des_reg), ("des_", "short_", "opt_"))
-        cls.cmd_id = attr.cmd_id
-        cls.cmd_id_dep = attr.cmd_id_dep
-        cls.attr = attr
-        cls.results, cls.attribute, cls.operands = cls.set_elt(attr)
-        return cls
-
-    def __is_comp_base(self, cmd_reg):
-        if cmd_reg.size < self.len:
+    def _is_comp(self, cmd_reg):
+        if cmd_reg.size < self.length:
             return False
         if self.short_cmd is not None and bool(cmd_reg[0]) != self.short_cmd:
             return False
-        if packbits(cmd_reg[self.cmd_bits[0] : self.cmd_bits[1]]) != self.opcode:
+        if packbits(cmd_reg[self.opcode_bits[0] : self.opcode_bits[1]]) != self.opcode:
             return False
         if packbits(cmd_reg[self.eu_bits[0] : self.eu_bits[1]]) not in self.eu_type:
             return False
         return True
-
-    @classmethod
-    def is_comp(cls, cmd_reg):
-        return cls.__is_comp_base(cls, cmd_reg)
-
-    def set_elt(self, _):
-        return ([],) * 3
 
     def __repr__(self):
         if self.operands == []:
             return self.description
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
-        op_name = self.eu_type[self.attr.tsk_eu_typ]
         attribute = ""
         if self.attribute:
             attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
 
         return (
-            f"{', '.join(res_name)}, %B{self.cmd_id} = \"{op_name}\""
+            f"{', '.join(res_name)}, %B{self.cmd_id} = \"{self.op_name}\""
             + f"({', '.join(opd_name)}, %D{self.cmd_id_dep})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
@@ -451,90 +400,65 @@ class lar_op(bdc_base):
 class sysid_op(bdc_base):
     opcode = 15
     short_cmd = None
-    eu_type = (0, 1, 2, 3, 4, 5, 30, 31)
+    eu_type = {
+        0: "sys.intr_barrier",
+        1: "sys.spb",
+        2: "sys.swr",
+        3: "sys.swr_from_lmem",
+        4: "sys.swr_collect_from_lmem",
+        5: "sys.data_barrier",
+        30: "sys.nop",
+        31: "sys.end",
+    }
     description = "system"
 
+    def _set_op(self):
+        return ([],) * 3
+
     def __repr__(self):
-        return "syncID"
+        return self.op_name
 
 
 # ------------------------------------------------------------
 # GDMA definition
 # ------------------------------------------------------------
-class dma_base:
-    len = 0
-    description = "This is a base op."
-    des_reg = None
-    opcode = None
-    cmd_bits = (32, 36)
+class dma_base(DMABase):
+    description = "GDMA Operation."
+    opcode_bits = (32, 36)
     fun_bits = (36, 39)
     sp_fun = ()
-    op_name = "GDMA"
     short_cmd = False  # long_code by default
-    __slots__ = (
-        "results",
-        "operands",
-        "attribute",
-        "cmd",
-        "attr",
-        "cmd_id",
-        "cmd_id_dep",
-    )
 
-    def __eq__(self, other):
-        if len(self.cmd) != len(other.cmd):
-            return False
-        return (self.cmd == other.cmd).all()
+    def _decode(self):
+        self.reg = NamedDict(decode_reg(self.cmd, self.des_reg))
+        self.cmd_id = self.reg.cmd_id
+        self.cmd_id_dep = self.reg.cmd_id_dep
+        if self.sp_fun:
+            self.op_name = self.sp_fun[self.reg.cmd_special_function]
 
-    def __hash__(self):
-        return hash(str(self.cmd))
-
-    @classmethod
-    def decode(cls, cmd_reg):
-        cls = cls()
-        cmd = cmd_reg[: cls.len]
-        cls.cmd = cmd
-        attr = NamedDict(decode_reg(cmd, cls.des_reg))
-        cls.cmd_id = attr.cmd_id
-        cls.cmd_id_dep = attr.cmd_id_dep
-        cls.attr = attr
-        cls.results, cls.attribute, cls.operands = cls.set_elt(attr)
-        return cls
-
-    def __is_comp_base(self, cmd_reg):
-        if cmd_reg.size < self.len:
+    def _is_comp(self, cmd_reg):
+        if cmd_reg.size < self.length:
             return False
         if self.short_cmd is not None and bool(cmd_reg[3]) != self.short_cmd:
             return False
-        if packbits(cmd_reg[self.cmd_bits[0] : self.cmd_bits[1]]) != self.opcode:
+        if packbits(cmd_reg[self.opcode_bits[0] : self.opcode_bits[1]]) != self.opcode:
             return False
         sp_fun_id = packbits(cmd_reg[self.fun_bits[0] : self.fun_bits[1]])
         if self.sp_fun and (sp_fun_id not in self.sp_fun):
             return False
         return True
 
-    @classmethod
-    def is_comp(cls, cmd_reg):
-        return cls.__is_comp_base(cls, cmd_reg)
-
-    def set_elt(self, _):
-        return ([],) * 3
-
     def __repr__(self):
         if self.operands == []:
             return self.description
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
-        if self.sp_fun:
-            op_name = self.sp_fun[self.attr.cmd_special_function]
-        else:
-            op_name = self.op_name
         attribute = ""
         if self.attribute:
             attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
 
         return (
-            f"{', '.join(res_name)}, %D{self.cmd_id} = \"{op_name}\""
+            f"{', '.join(res_name)}, %D{self.cmd_id} = \"{self.op_name}\""
             + f"({', '.join(opd_name)}, %B{self.cmd_id_dep})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
@@ -544,7 +468,6 @@ class dma_base:
 @dma_registry("DMA_tensor（0x000）")
 class dma_tensor(dma_base):
     opcode = 0
-    op_name = "dma.tensor"
     sp_fun = {
         0: "dma.tensor",
         1: "dma.tensor.transpose",
@@ -560,7 +483,6 @@ class dma_tensor(dma_base):
 @dma_registry("DMA_matrix")
 class dma_matrix(dma_base):
     opcode = 1
-    op_name = "dma.matrix"
     sp_fun = {
         0: "dma.matrix",
         1: "dma.matrix.transpose",
@@ -591,7 +513,6 @@ class sdma_masked_select(dma_masked_select):
 @dma_registry("DMA_general")
 class dma_general(dma_base):
     opcode = 3
-    op_name = "dma.general"
     sp_fun = {
         0: "dma.general",
         1: "dma.general.broadcast",
@@ -629,12 +550,17 @@ class sdma_nonzero(dma_nonzero):
 class sdma_sys(dma_base):
     opcode = 6
     short_cmd = True
-    op_name = "dma.sys"
     sp_fun = {
         0: "dma.sys",
         1: "dma.sys.nop",
     }
     description = "short DMA sys"
+
+    def _set_op(self):
+        return ([],) * 3
+
+    def __repr__(self):
+        return self.op_name
 
 
 @dma_registry("DMA_gather")
