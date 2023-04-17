@@ -12,10 +12,43 @@ CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工�
 算平台。公司具备全球领先的先进制程设计能力，现已成功量产云端、边端人工智能芯片并
 规模化商业落地。
 
-本项目的技术细节可以参考：[TPU-MLIR开发参考手册](https://tpumlir.org/docs/developer_manual/index.html)。
-同时也有论文，介绍整体的设计思路：<https://arxiv.org/abs/2210.15016>
-
 目前该工程直接支持的AI框架包括PyTorch、ONNX、TFLite和Caffe，其他框架模型需要转成ONNX。
+
+# 资源
+
+以下资源可以帮助你更好地了解TPU-MLIR：
+
+| 文档 |
+| --- |
+| [TPU-MLIR 论文](https://arxiv.org/abs/2210.15016) |
+| [TPU-MLIR 开发参考手册](https://tpumlir.org/docs/developer_manual/index.html) |
+| [TPU-MLIR 快速入门指南](https://tpumlir.org/docs/quick_start/index.html) |
+
+| 分享会 |
+| --- |
+| [TPU-MLIR 论文讲解](https://www.bilibili.com/video/BV1My4y1o73Q/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+| [LayerGroup 讲解](https://www.bilibili.com/video/BV1wo4y1z7AG/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+
+| 教学视频 | |
+| --- | --- |
+| 什么是AI编译器？ | [AI编译器简介](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
+| MLIR 简介 | [基本语法(一)](https://www.bilibili.com/video/BV1CP411n7fj/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [基本语法(二)](https://www.bilibili.com/video/BV1Gt4y1F7mt/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [基本语法(三)](https://www.bilibili.com/video/BV1UN4y1w72r/?share_source=copy_web&vd_source=90fd7c624ed0c40dbaf08684), [Dialect Conversion](https://www.bilibili.com/video/BV1UG411c7nm/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Pattern Rewriting](https://www.bilibili.com/video/BV1R44y1d7xv/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+| TPU-MLIR 介绍 | [概述](https://www.bilibili.com/video/BV19d4y1B7eR/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [前端转换](https://www.bilibili.com/video/BV1yv4y1S7WT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Lowering](https://www.bilibili.com/video/BV1gg411z7mC/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+| 量化 | [概述](https://www.bilibili.com/video/BV1d8411j7t4/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [公式推导](https://www.bilibili.com/video/BV1SW4y1H7Uu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [校准](https://www.bilibili.com/video/BV1qK411R75k/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [QAT](https://www.bilibili.com/video/BV12g411J7WQ/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
+| TPU 内存 | [Ep1](https://www.bilibili.com/video/BV1T24y1G7pu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Ep2](https://www.bilibili.com/video/BV1VY4y1y7ET/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+| TPU-MLIR 实践 | [转Onnx格式](https://www.bilibili.com/video/BV1FD4y1H7pT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [图优化](https://www.bilibili.com/video/BV1AR4y1U7D6/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [算子支持](https://www.bilibili.com/video/BV1tL411r71p/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [模型支持](https://www.bilibili.com/video/BV1mM411y7Ep/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [融合预处理](https://www.bilibili.com/video/BV1ao4y1H7m8/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8ddhttpe8), [精度验证](https://www.bilibili.com/video/BV14e4y1M79d/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
+
+此外，我们还为任何对我们的项目感兴趣并愿意与我们一同参与开发工作的朋友发布了一系列任务：
+
+| 任务列表 |
+| --- |
+| [Rewrite Patterns for PermuteOp](https://github.com/sophgo/tpu-mlir/issues/93) |
+| [Shape Inference Implement](https://github.com/sophgo/tpu-mlir/issues/81) |
+| [mlir2onnx tool Optimize](https://github.com/sophgo/tpu-mlir/issues/80) |
+
+更多任务请查看[Issue](https://github.com/sophgo/tpu-mlir/issues)。
+
+如果你在完成上述任务时有任何疑问，可以在我们的[问答平台](https://ask.tpumlir.org/questions)中提问或查看现有答案。
 
 # 编译工程
 
