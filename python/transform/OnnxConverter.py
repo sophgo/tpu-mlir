@@ -1187,6 +1187,9 @@ class OnnxConverter(BaseConverter):
         scale_factor = []
         sizes = []
         scale_factor = self.getWeight(onnx_node.inputs[1])
+        if (type(scale_factor) == np.ndarray and len(scale_factor.shape) == 2
+            and scale_factor.shape[1] == 1):
+            scale_factor = scale_factor.reshape(-1)
         sizes = input_shape * scale_factor
         output_shape = [int(i) for i in sizes]
         scale_h = scale_factor[2]  # scale [n, c, h, w]
@@ -1211,8 +1214,12 @@ class OnnxConverter(BaseConverter):
 
         if len(onnx_node.inputs) > 2:
             # onnx opset 11
-            scale_factor = self.getWeight(onnx_node.inputs[2])
-            if len(scale_factor.shape) == 2 and scale_factor.shape[1] == 1:
+            try:
+                scale_factor = self.getWeight(onnx_node.inputs[2])
+            except KeyError:
+                scale_factor = []
+            if (type(scale_factor) == np.ndarray and len(scale_factor.shape) == 2
+                and scale_factor.shape[1] == 1):
                 dims = scale_factor.shape[0]
                 scale_factor = scale_factor.reshape(dims)
             if len(scale_factor) == 0:
@@ -1833,7 +1840,10 @@ class OnnxConverter(BaseConverter):
     def convert_arg_op(self, onnx_node):
         assert (onnx_node.op_type in ["ArgMin", "ArgMax"])
         op = self.getOperand(onnx_node.inputs[0])
+        num_dims = len(self.getShape(onnx_node.inputs[0]))
         axis = onnx_node.attrs.get('axis', 0)
+        if axis < 0:
+            axis += num_dims
         keepdims = onnx_node.attrs.get('keepdims', 1) != 0
         select_last_index = onnx_node.attrs.get('select_last_index', 0) != 0
         loc_names = [onnx_node.name + '_indices', onnx_node.name + '_values']
@@ -2439,6 +2449,8 @@ class OnnxConverter(BaseConverter):
             axis += num_dims
         normalized_shape = input_shape[axis:]
         eps = onnx_node.attrs.get("epsilon", 1e-05)
+        if type(eps) == list and len(eps) == 1:
+            eps = eps[0]
         # stash_type is not important
         loc_names = [
             onnx_node.name + '_LayerNorm', onnx_node.name + '_Mean', onnx_node.name + '_Rstd'
