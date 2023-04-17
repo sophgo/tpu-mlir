@@ -8,10 +8,17 @@
 # ==============================================================================
 # keep This file clean and neat.
 
+from collections import OrderedDict
 import numpy as np
-from . import regdef_1684x
-from .opparam_1684x import opparam_converter
-from .op_support import packbits, TIUBase, DMABase, NamedDict
+
+try:
+    from . import regdef_1684x
+    from .opparam_1684x import opparam_converter
+    from .op_support import packbits, TIUBase, DMABase, NamedDict
+except:
+    import regdef_1684x
+    from opparam_1684x import opparam_converter
+    from op_support import packbits, TIUBase, DMABase, NamedDict
 
 # global data and type
 # ------------------------------------------------------------
@@ -52,7 +59,7 @@ def dma_registry(sheet_name):
 def decode_reg(buffer, des_reg):
     bits_sec = np.split(buffer, des_reg["high_bit"][:-1])
     value = (packbits(x) for x in bits_sec)
-    return dict(zip(des_reg["fields"], value))
+    return OrderedDict(zip(des_reg["fields"], value))
 
 
 # ------------------------------------------------------------
