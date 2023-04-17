@@ -430,9 +430,16 @@ class OnnxConverter(BaseConverter):
     def add_shape_info(self, graph, flag=True):
         unk_op = []
         nodes_with_shape = []
+        constants = []
+        for n in graph.node:
+            if n.op_type == "Constant":
+                constants.append(n.name)
         for info in graph.value_info:
             shape = [i.dim_value for i in info.type.tensor_type.shape.dim]
             if np.any(np.array(shape) <= 0):
+                unk_op.append(info.name)
+            elif shape == [] and info.name not in constants:
+                # infer incomplete shape information
                 unk_op.append(info.name)
             else:
                 self.addShape(info.name, shape)

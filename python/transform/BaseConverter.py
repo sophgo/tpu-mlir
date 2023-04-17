@@ -29,7 +29,7 @@ class BaseConverter(object):
             raise KeyError("{}:{} unknown shape".format(name, shape))
         if name in self.shapes:
             if self.shapes[name] != shape:
-                raise KeyError("shape {} conflict".format(name))
+                raise KeyError("shape {} conflict {} vs {}".format(name, self.shapes[name], shape))
         self.shapes[name] = shape
 
     def getShape(self, name):
