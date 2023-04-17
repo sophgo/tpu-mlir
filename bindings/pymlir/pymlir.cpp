@@ -46,38 +46,10 @@ typedef std::map<std::string, std::vector<int64_t>> shape_map_t;
 
 namespace py = pybind11;
 
-template <typename Dtype>
-static py::array getPythonArray(std::vector<Dtype> *vec,
-                                const std::vector<int64_t> &shape) {
-  std::vector<unsigned> stride_v(shape.size(), sizeof(Dtype));
-  for (int i = shape.size() - 1; i > 0; i--) {
-    for (int j = 0; j < i; j++) {
-      stride_v[j] *= shape[i];
-    }
-  }
-
-  return py::array(
-      py::buffer_info(vec->data(),   /* data as contiguous array  */
-                      sizeof(Dtype), /* size of one scalar        */
-                      py::format_descriptor<Dtype>::format(), /* data type */
-                      shape.size(),                           // ndim/
-                      shape,                                  // shape
-                      stride_v                                // strides
-                      ));
-}
-
-static py::dict getTensorDict(tensor_map_t &tensorMap, shape_map_t &shapeMap,
-                              std::vector<std::string> &ordered_names) {
-  py::dict py_ret;
-  for (auto &name : ordered_names) {
-    py::str py_s(name);
-
-    assert(shapeMap.end() != shapeMap.find(name));
-    py_ret[py_s] =
-        getPythonArray(tensorMap.find(name)->second.get(), shapeMap[name]);
-  }
-
-  return py_ret;
+// Warning: buffer in C++. New inference will erase old output
+static py::array getPyArray(float *ptr, const std::vector<int64_t> &shape) {
+  py::capsule do_nothing((void *)ptr, [](void *f) {});
+  return py::array_t<float>(shape, ptr, do_nothing);
 }
 
 struct quant_brief_info {
@@ -129,17 +101,14 @@ public:
   }
 
   py::dict getAllTensor() {
-    tensor_map_t tensorMap_;
-    shape_map_t shapeMap_;
-    std::vector<std::string> ordered_names;
-    auto &all_tensor_names = interpreter_->all_tensor_names;
-    for (auto &tensor_name : all_tensor_names) {
-      ordered_names.emplace_back(tensor_name);
-      tensorMap_[tensor_name] = interpreter_->getTensor(tensor_name);
-      shapeMap_[tensor_name] = interpreter_->getTensorShape(tensor_name);
+    py::dict py_ret;
+    for (auto &name : interpreter_->all_tensor_names) {
+      auto tensor = interpreter_->getTensor(name);
+      auto shape = interpreter_->getTensorShape(name);
+      py::str py_s(name);
+      py_ret[py_s] = getPyArray(tensor->data(), shape);
     }
-
-    return getTensorDict(tensorMap_, shapeMap_, ordered_names);
+    return py_ret;
   }
 
   void set_tensor(
@@ -158,14 +127,14 @@ public:
 
   py::array get_tensor(std::string name) {
     auto tensor = interpreter_->getTensor(name);
-    std::vector<int64_t> shape = interpreter_->getTensorShape(name);
-    return getPythonArray(tensor.get(), shape);
+    auto shape = interpreter_->getTensorShape(name);
+    return getPyArray(tensor->data(), shape);
   }
 
   py::array get_fp32_tensor(std::string name) {
     auto tensor = interpreter_->getTensor(name, true);
-    std::vector<int64_t> shape = interpreter_->getTensorShape(name);
-    return getPythonArray(tensor.get(), shape);
+    auto shape = interpreter_->getTensorShape(name);
+    return getPyArray(tensor->data(), shape);
   }
 
   struct quant_brief_info format_tensor_qinfo(std::string name) {
@@ -194,8 +163,8 @@ public:
 
   py::array invoke_at(const std::string name) {
     auto tensor = interpreter_->invoke_at(name);
-    std::vector<int64_t> shape = interpreter_->getTensorShape(name);
-    return getPythonArray(tensor.get(), shape);
+    auto shape = interpreter_->getTensorShape(name);
+    return getPyArray(tensor->data(), shape);
   }
 
   void invoke_from(const std::string name) { interpreter_->invoke_from(name); }
@@ -243,6 +212,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def_readwrite("scale", &quant_brief_info::scale)
       .def_readwrite("zp", &quant_brief_info::zp);
 
+  // clang-format off
   py::class_<py_module>(m, "module", "MLIR Module")
       .def(py::init<>())
       .def("load", &py_module::load, "load module from IR")
@@ -260,4 +230,5 @@ PYBIND11_MODULE(pymlir, m) {
       .def_readonly("output_names", &py_module::output_names)
       .def_readonly("all_tensor_names", &py_module::all_tensor_names)
       .def_readonly_static("version", &py_module::version);
+  // clang-format on
 }

@@ -111,19 +111,17 @@ void cvi_backend_bf16_tl_lut(uint32_t layer_id, laddr_t la_input,
 void cvi_backend_bf16_tl_lut_mantissa_method(
     uint32_t layer_id, laddr_t la_input, laddr_t la_output, laddr_t la_working,
     laddr_t la_exponential_table, laddr_t la_mantissa_lut, int n, int c, int h,
-    int w);
+    int w, bool enable_parallel);
 
 void cvi_backend_bf16_tl_log_lut_mantissa_method(
     uint32_t layer_id, laddr_t la_input, laddr_t la_output, laddr_t la_working,
     laddr_t la_exponential_table, laddr_t la_mantissa_lut, int n, int c, int h,
-    int w);
+    int w, bool enable_parallel);
 
-void cvi_backend_bf16_tl_lut_slope_method(uint32_t layer_id, laddr_t la_input,
-                                          laddr_t la_output, laddr_t la_working,
-                                          laddr_t la_y_table,
-                                          laddr_t la_slope_table,
-                                          int thresh_min, int thresh_max, int n,
-                                          int c, int h, int w);
+void cvi_backend_bf16_tl_lut_slope_method(
+    uint32_t layer_id, laddr_t la_input, laddr_t la_output, laddr_t la_working,
+    laddr_t la_y_table, laddr_t la_slope_table, int thresh_min, int thresh_max,
+    int n, int c, int h, int w, bool enable_parallel);
 
 void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c, int input_size,
                            int *output_dim, laddr_t *la_input,
@@ -280,5 +278,12 @@ void cvi_backend_tl_pad(uint32_t layer_id, int64_t *input_dim,
 void cvi_backend_tl_bf16_pad(uint32_t layer_id, int64_t *input_dim,
                              int64_t *output_dim, laddr_t la_input,
                              laddr_t la_output, float const_val, int32_t *pads);
+
+void cvi_backend_bf16_tl_lrn(uint32_t layer_id, laddr_t ifmap_laddr,
+                             laddr_t ofmap_laddr, laddr_t power_exp_table,
+                             laddr_t power_mantissa_table,
+                             laddr_t working_laddr, int input_n, int input_c,
+                             int input_h, int input_w, int size, float alpha,
+                             float k);
 } // namespace backend
 } // namespace tpu_mlir

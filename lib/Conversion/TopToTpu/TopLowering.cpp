@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
+#include "tpu_mlir/Conversion/Conversion.h"
 
 namespace tpu_mlir {
 
@@ -273,6 +273,9 @@ Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,
 }
 
 Type getQuantInt8Type(Value v, bool asymmetric) {
+  if (module::isNone(v)) {
+    return v.getType();
+  }
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto cali_type = module::getCalibratedType(v);

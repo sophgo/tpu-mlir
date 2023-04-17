@@ -27,12 +27,39 @@ def _i32Attr(x, context):
   return IntegerAttr.get(
       IntegerType.get_signless(32, context=context), x)
 
+@register_attribute_builder("SI32Attr")
+def _si32Attr(x, context):
+  return IntegerAttr.get(
+      IntegerType.get_signed(32, context=context), x)
+
 @register_attribute_builder("I64Attr")
 def _i64Attr(x, context):
   return IntegerAttr.get(
       IntegerType.get_signless(64, context=context), x)
 
+@register_attribute_builder("I64ArrayAttr")
+def _i64ArrayAttr(x, context):
+  return ArrayAttr.get([IntegerAttr.get(
+      IntegerType.get_signless(64, context=context), v) for v in x])
+
+@register_attribute_builder("F64Attr")
+def _f64Attr(x, context):
+  return FloatAttr.get_f64(x, context=context)
+
+@register_attribute_builder("F32Attr")
+def _f32Attr(x, context):
+  return FloatAttr.get_f32(x, context=context)
+
+@register_attribute_builder("F64ArrayAttr")
+def _f64ArrayAttr(x, context):
+  return ArrayAttr.get([FloatAttr.get_f64(v, context=context) for v in x])
+
+@register_attribute_builder("F32ArrayAttr")
+def _f32ArrayAttr(x, context):
+  return ArrayAttr.get([FloatAttr.get_f32(v, context=context) for v in x])
+
 @register_attribute_builder("StrAttr")
+@register_attribute_builder("ReduceModeAttr")
 def _stringAttr(x, context):
   return StringAttr.get(x, context=context)
 

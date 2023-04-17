@@ -28,6 +28,7 @@ typedef void (*set_cmd_buffer_ptr)(void *gdma_buffer_ptr, void *bdc_buffer_ptr);
 typedef void (*set_cmd_id_prefix)(void *pid_node, const char *name_prefix);
 typedef void (*allow_atomic_cmodel_assert)();
 typedef void (*forbid_atomic_cmodel_assert)();
+typedef void (*enable_profile)(bool enable, FILE *fp);
 
 typedef void (*tensor_stride_move_gen_cmd)(
     int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr,
@@ -99,6 +100,11 @@ public:
   static void call_local_func(const char *symbolName, void *params,
                               int param_size, void *info, void *input,
                               void *output);
+  static int64_t call_global_bfsz_func(const char *symbolName, void *params,
+                                       int param_size, void *input, void *output);
+  static int call_local_bfsz_func(const char *symbolName, void *params,
+                                  int param_size, void *info, void *input,
+                                  void *output);
   static DATA_TYPE_T getDataType(Type type);
   static DATA_TYPE_T getDataType(Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
@@ -162,6 +168,7 @@ public:
   forbid_store_cmd dl_forbid_store_cmd;
   use_atomic_cmodel dl_use_atomic_cmodel;
   forbid_atomic_cmodel dl_forbid_atomic_cmodel;
+  enable_profile dl_enable_profile;
   get_global_memaddr dl_get_global_memaddr;
   set_cmd_buffer_ptr dl_set_cmd_buffer_ptr;
   set_cmd_id_prefix dl_set_cmd_id_prefix;

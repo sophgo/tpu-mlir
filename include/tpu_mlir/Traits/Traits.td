@@ -16,6 +16,8 @@ class TPUMLIROpTrait<string name> : NativeOpTrait<name> {
   let cppNamespace = "::tpu_mlir::trait";
 }
 
+
+def SupportPermuteMove : TPUMLIROpTrait<"SupportPermuteMove">;
 def SupportFuseRelu : TPUMLIROpTrait<"SupportFuseRelu">;
 def SupportEarlyStride : TPUMLIROpTrait<"SupportEarlyStride">;
 def TpuTypeRestrict: TPUMLIROpTrait<"TpuTypeRestrict">;

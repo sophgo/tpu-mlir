@@ -250,7 +250,7 @@ void CviTpuRoutine::codegen_for_group(GroupOp gOp) {
   for (int64_t id = 0; id < max_id;) {
     body.walk([&](Operation *op) {
       if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
-        auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0);
+        auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0, (int64_t)0);
         if (ginfo.id == id) {
           group_ops.push_back(op);
           id++;
@@ -265,13 +265,13 @@ void CviTpuRoutine::codegen_for_group(GroupOp gOp) {
   SoftwarePipeline timestep_swpipl;
   for (uint64_t nstep = 0, hstep = 0; nstep < nsecs || draining_period;) {
     /* add for software pipeline */
-    timestep_swpipl.write_swloop_buffer(nstep, hstep, swpipl_stage_num);
+    timestep_swpipl.write_swloop_buffer(nstep, hstep, 0, 0, swpipl_stage_num);
     for (uint32_t ts = 0; ts < timestep_num; ++ts) {
       CV18xx::parallel_enable();
       auto cur_op_ids = timestep_table[ts];
       for (auto id : cur_op_ids) {
         auto lgOp = cast<LocalGenInterface>(group_ops[id]);
-        auto ginfo = lgOp.getGroupInfo(nstep, hstep);
+        auto ginfo = lgOp.getGroupInfo(nstep, hstep, 0, 0);
         if ((!draining_period && ginfo.stage > stage_idx) ||
             (draining_period &&
              (ginfo.stage < draining_idx || ginfo.stage > stage_idx))) {
@@ -279,7 +279,7 @@ void CviTpuRoutine::codegen_for_group(GroupOp gOp) {
         }
         const tensor_step_t *tensor_step =
             timestep_swpipl.read_swloop_buffer(ginfo.stage);
-        ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep);
+        ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep, tensor_step->dstep, tensor_step->wstep);
 
         // add prefix to each cmd in profile.txt
         std::string prefix = module::getName(group_ops[id]).str();

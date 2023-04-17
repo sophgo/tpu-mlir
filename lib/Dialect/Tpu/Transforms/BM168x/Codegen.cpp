@@ -13,15 +13,16 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicNetIr.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/ProfileCtx.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/TensorLocation.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicNetIr.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
 #include <llvm/Support/Debug.h>
 
 #include <fstream>
@@ -50,6 +51,8 @@ public:
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
+    tensor_loc = TensorLocation(module, filename + ".json");
+    profile_ctx = ProfileCtx(module, true);
     bm168x = BM168x::instance();
     DynCodegenInit();
     std::vector<top::WeightOp> weights;
@@ -86,13 +89,16 @@ public:
     bool first_dynamic = false;
     bool is_first = true;
     int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;
+
     main_func.walk([&](func::CallOp call) {
       auto func = module::getFuncOp(call.getCallee());
       auto mode = getRunMode(func);
       switch (mode) {
       case RunMode::TPU_STATIC: {
+        profile_ctx.set_profile_start();
         auto subnet = CreateSubNet(call);
         subnet_v.push_back(subnet);
+        profile_ctx.set_profile_end();
       } break;
       case RunMode::TPU_DYNAMIC: {
         auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
@@ -142,6 +148,21 @@ public:
     // create subnet
     npb.add_sub_net(subnets);
     npb.add_cpu_mem_size(max_cpu_mem_size);
+    if (true) {
+      std::vector<uint8_t> data;
+      auto fp = fopen("net_0.profile", "rb");
+      if (fp) {
+        fseek(fp, 0, SEEK_END);
+        uint32_t size = ftell(fp);
+        data.resize(size);
+        fseek(fp, 0, SEEK_SET);
+        fread(data.data(), 1, size, fp);
+        fclose(fp);
+        auto profile_data = model_gen->WriteBinary(data.size(), data.data());
+        npb.add_net_profile(&profile_data);
+      }
+    }
+
     model_gen->AddNet(module::getModuleName().str(), npb.Finish());
     model_gen->Finish();
     model_gen->Save(filename);
@@ -169,7 +190,12 @@ private:
                       const vector<u32> &binary_ir_v, u32 ir_offset,
                       bmodel::Binary &binary_ir);
   void codegen(Operation *op);
-  void codegen_for_group(GroupOp gOP);
+  void codegen_for_group(GroupOp gOP, Operation *prev_op, Operation *next_op);
+  void codegen_for_overlap_ops(
+      std::map<int64_t, std::vector<Operation *>> cur_other_downs,
+      std::map<int64_t, std::vector<Operation *>> cur_other_ups,
+      Operation *prev_op, Operation *next_op, int64_t cur_ts,
+      bool first_compute_loop, bool last_compute_loop);
   void codegen_ir(Operation *op, SubnetIr *subnet_ir_);
 
 private:
@@ -179,6 +205,8 @@ private:
   BM168x *bm168x;
   std::shared_ptr<bmodel::ModelGen> model_gen;
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> cmd_group_all;
+  TensorLocation tensor_loc;
+  ProfileCtx profile_ctx;
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass() {
@@ -201,7 +229,8 @@ CodegenPass::CreateShapeVector(const ArrayRef<int64_t> &shape) {
 
 Offset<Vector<Offset<bmodel::Tensor>>>
 CodegenPass::CreateTensorVector(const std::vector<Value> &values,
-                                std::vector<bool> is_cpu, std::vector<uint32_t> cpu_addr) {
+                                std::vector<bool> is_cpu,
+                                std::vector<uint32_t> cpu_addr) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   int index = 0;
@@ -264,7 +293,7 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values,
     }
     tb.add_device_addr(module::getAddress(v));
     tb.add_size(Arch::get_gmem_bytes(v));
-    if(!cpu_addr.empty())
+    if (!cpu_addr.empty())
       tb.add_cpu_addr(cpu_addr[index]);
     tensor_v.push_back(tb.Finish());
     ++index;
@@ -339,9 +368,77 @@ CodegenPass::CreateCmdGroupVector() {
   return std::move(cmd_group_v);
 }
 
-void CodegenPass::codegen_for_group(GroupOp gOp) {
+void CodegenPass::codegen_for_overlap_ops(
+    std::map<int64_t, std::vector<Operation *>> cur_other_downs,
+    std::map<int64_t, std::vector<Operation *>> cur_other_ups,
+    Operation *prev_op, Operation *next_op, int64_t cur_ts,
+    bool first_compute_loop, bool last_compute_loop) {
+
+  local_sec_info_t sec_info;
+  if (last_compute_loop) {
+    auto iter = cur_other_ups.find(cur_ts);
+    if (iter != cur_other_ups.end()) {
+      auto castOp = cast<GroupOp>(next_op);
+      auto next_group_type = static_cast<group_type_t>(castOp.getGroupType());
+      auto &cur_ops = iter->second;
+      for (auto op : cur_ops) {
+        auto lgOp = cast<LocalGenInterfaceDecorator>(op);
+        auto ginfo = lgOp.getGroupInfo(0l, 0l, 0l, 0l);
+        // add prefix to each cmd in profile.txt
+        std::string prefix = op->getName().getStringRef().str().substr(4);
+        auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
+        if (isa<LoadOp, StoreOp>(op)) {
+          pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
+        }
+        BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
+        lgOp.assign_sec_info(0l, 0l, 0l, 0l, next_group_type, sec_info);
+        LLVM_DEBUG(llvm::dbgs()
+                   << "codegen op: '" << module::getName(lgOp) << "'\n");
+        profile_ctx.log_local_layer(op, 0, 0);
+        lgOp.codegen_local_bm168x(0l, 0l, 0l, 0l, next_group_type, sec_info);
+      }
+    }
+  }
+
+  if (first_compute_loop) {
+    auto iter = cur_other_downs.find(cur_ts);
+    if (iter != cur_other_downs.end()) {
+      auto castOp = cast<GroupOp>(prev_op);
+      auto prev_group_type = static_cast<group_type_t>(castOp.getGroupType());
+      auto nsecs = castOp.getNsecs();
+      auto hsecs = castOp.getHsecs();
+      auto dsecs = castOp.getDsecs();
+      auto wsecs = castOp.getWsecs();
+      auto &cur_ops = iter->second;
+      for (auto op : cur_ops) {
+        auto lgOp = cast<LocalGenInterfaceDecorator>(op);
+        auto ginfo =
+            lgOp.getGroupInfo(nsecs - 1, hsecs - 1, dsecs - 1, wsecs - 1);
+        // add prefix to each cmd in profile.txt
+        std::string prefix = op->getName().getStringRef().str().substr(4);
+        auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
+        if (isa<LoadOp, StoreOp>(op)) {
+          pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
+        }
+        BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
+        lgOp.assign_sec_info(nsecs - 1, hsecs - 1, dsecs - 1, wsecs - 1,
+                             prev_group_type, sec_info);
+        LLVM_DEBUG(llvm::dbgs()
+                   << "codegen op: '" << module::getName(lgOp) << "'\n");
+        profile_ctx.log_local_layer(op, nsecs - 1, hsecs - 1);
+        lgOp.codegen_local_bm168x(nsecs - 1, hsecs - 1, dsecs - 1, wsecs - 1,
+                                  prev_group_type, sec_info);
+      }
+    }
+  }
+}
+
+void CodegenPass::codegen_for_group(GroupOp gOp, Operation *prev_op,
+                                    Operation *next_op) {
   auto nsecs = gOp.getNsecs();
   auto hsecs = gOp.getHsecs();
+  auto dsecs = gOp.getDsecs();
+  auto wsecs = gOp.getWsecs();
   auto swpipl_stage_num = gOp.getSwpiplStageNum();
   auto &body = gOp.getBody().front();
   auto flow = module::getI64Array(gOp.getFlow());
@@ -360,13 +457,13 @@ void CodegenPass::codegen_for_group(GroupOp gOp) {
     max_id = std::max(max_id, flow->at(i));
   }
   timestep_table.push_back(ts_row);
-  int timestep_num = timestep_table.size();
   // 2. create a vector to map id to op
   std::vector<Operation *> group_ops;
   for (int64_t id = 0; id < max_id;) {
     body.walk([&](Operation *op) {
       if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
-        auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0);
+        auto ginfo =
+            lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0, (int64_t)0);
         if (ginfo.id == id) {
           group_ops.push_back(op);
           id++;
@@ -374,22 +471,79 @@ void CodegenPass::codegen_for_group(GroupOp gOp) {
       }
     });
   }
-  // 3. codegen for group
+  // 3. recover overlap ops that will be executed in this group
+  int64_t tmp_ts = 0;
+  // <timestep_idx, prev_group_op>
+  std::map<int64_t, std::vector<Operation *>> cur_other_downs;
+  if (auto castOp = dyn_cast_or_null<GroupOp>(prev_op)) {
+    auto other_down_overlap_op =
+        module::getI64Array(gOp.getOtherDownOverlapOp());
+
+    auto &prev_body = castOp.getBody().front();
+    for (size_t i = 0; i < other_down_overlap_op->size(); ++i) {
+      if (other_down_overlap_op->at(i) < 0) {
+        tmp_ts = -other_down_overlap_op->at(i) - 1;
+        cur_other_downs[tmp_ts] = std::vector<Operation *>();
+      } else {
+        int64_t id = other_down_overlap_op->at(i);
+        prev_body.walk([&](Operation *op) {
+          if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
+            auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
+                                           (int64_t)0);
+            if (ginfo.id == id) {
+              cur_other_downs[tmp_ts].push_back(op);
+            }
+          }
+        });
+      }
+    }
+  }
+  // <timestep_idx, next_group_op>
+  std::map<int64_t, std::vector<Operation *>> cur_other_ups;
+  if (auto castOp = dyn_cast_or_null<GroupOp>(next_op)) {
+    auto other_up_overlap_op = module::getI64Array(gOp.getOtherUpOverlapOp());
+    auto &next_body = castOp.getBody().front();
+    for (size_t i = 0; i < other_up_overlap_op->size(); ++i) {
+      if (other_up_overlap_op->at(i) < 0) {
+        tmp_ts = -other_up_overlap_op->at(i) - 1;
+        cur_other_ups[tmp_ts] = std::vector<Operation *>();
+      } else {
+        int64_t id = other_up_overlap_op->at(i);
+        next_body.walk([&](Operation *op) {
+          if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
+            auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
+                                           (int64_t)0);
+            if (ginfo.id == id) {
+              cur_other_ups[tmp_ts].push_back(op);
+            }
+          }
+        });
+      }
+    }
+  }
+
+  auto self_up_overlap_op = module::getI64Array(gOp.getSelfUpOverlapOp());
+  auto self_down_overlap_op = module::getI64Array(gOp.getSelfDownOverlapOp());
+
+  // 4. codegen for group
   int64_t stage_idx = 0;
   int64_t draining_idx = 0;
   bool draining_period = false;
   SoftwarePipeline timestep_swpipl;
   local_sec_info_t sec_info;
-  for (uint64_t nstep = 0, hstep = 0; nstep < nsecs || draining_period;) {
+  int64_t timestep_num = timestep_table.size();
+  for (uint64_t nstep = 0, hstep = 0, dstep = 0, wstep = 0;
+       nstep < nsecs || draining_period;) {
     /* add for software pipeline */
-    timestep_swpipl.write_swloop_buffer(nstep, hstep, swpipl_stage_num);
-    for (uint32_t ts = 0; ts < timestep_num; ++ts) {
+    timestep_swpipl.write_swloop_buffer(nstep, hstep, dstep, wstep,
+                                        swpipl_stage_num);
+    for (int64_t ts = 0; ts < timestep_num; ++ts) {
       bm168x->divide_sync_id();
 
       auto cur_op_ids = timestep_table[ts];
       for (auto id : cur_op_ids) {
-        auto lgOp = cast<LocalGenInterface>(group_ops[id]);
-        auto ginfo = lgOp.getGroupInfo(nstep, hstep);
+        auto lgOp = cast<LocalGenInterfaceDecorator>(group_ops[id]);
+        auto ginfo = lgOp.getGroupInfo(nstep, hstep, dstep, wstep);
         if ((!draining_period && ginfo.stage > stage_idx) ||
             (draining_period &&
              (ginfo.stage < draining_idx || ginfo.stage > stage_idx))) {
@@ -397,10 +551,27 @@ void CodegenPass::codegen_for_group(GroupOp gOp) {
         }
         const tensor_step_t *tensor_step =
             timestep_swpipl.read_swloop_buffer(ginfo.stage);
-        ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep);
 
+        // only consider first loop load
+        if (stage_idx == 0 &&
+            std::find(self_up_overlap_op->begin(), self_up_overlap_op->end(),
+                      id) != self_up_overlap_op->end()) {
+          continue;
+        }
+        // only consider last loop store
+        if (draining_period && draining_idx == 2 &&
+            std::find(self_down_overlap_op->begin(),
+                      self_down_overlap_op->end(),
+                      id) != self_down_overlap_op->end()) {
+          continue;
+        }
+
+        ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep,
+                                  tensor_step->dstep, tensor_step->wstep);
         // add prefix to each cmd in profile.txt
-        std::string prefix = group_ops[id]->getName().getStringRef().str();
+        std::string prefix =
+            group_ops[id]->getName().getStringRef().str().substr(4);
+
         if (ginfo.overstepped == false) {
           auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
           if (isa<LoadOp, StoreOp>(*group_ops[id])) {
@@ -408,23 +579,42 @@ void CodegenPass::codegen_for_group(GroupOp gOp) {
           }
           BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
           lgOp.assign_sec_info(tensor_step->nstep, tensor_step->hstep,
+                               tensor_step->dstep, tensor_step->wstep,
                                group_type, sec_info);
           LLVM_DEBUG(llvm::dbgs()
                      << "codegen op: '" << module::getName(lgOp) << "'\n");
+          auto op = group_ops[id];
+          profile_ctx.log_local_layer(op, tensor_step->nstep,
+                                      tensor_step->hstep);
           lgOp.codegen_local_bm168x(tensor_step->nstep, tensor_step->hstep,
+                                    tensor_step->dstep, tensor_step->wstep,
                                     group_type, sec_info);
         }
       } // ops, include Load/Store op
+
+      // process overlap ops
+      bool first_compute_loop = stage_idx == 1;
+      bool last_compute_loop = (draining_period && draining_idx == 1);
+      codegen_for_overlap_ops(cur_other_downs, cur_other_ups, prev_op, next_op,
+                              ts, first_compute_loop, last_compute_loop);
 
       bm168x->merge_sync_id();
     } // timestep
 
     if (!draining_period) {
-      hstep++;
+      wstep++;
+      if (wstep >= wsecs) {
+        wstep = 0;
+        hstep++;
+      }
       if (hstep >= hsecs) {
         hstep = 0;
+        dstep++;
+      }
+      if (dstep >= dsecs) {
+        dstep = 0;
         nstep++;
-        if (nstep >= nsecs) {
+        if (nstep >= nsecs) { // && swpipl_stage_num > 1
           draining_period = true;
         }
       }
@@ -441,14 +631,24 @@ void CodegenPass::codegen_for_group(GroupOp gOp) {
 
 void CodegenPass::codegen(Operation *op) {
   if (auto castOp = dyn_cast<GroupOp>(op)) {
-    codegen_for_group(castOp);
+    Operation *prev_op = op->getPrevNode();
+    while (prev_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(prev_op)) {
+      prev_op = prev_op->getPrevNode();
+    }
+    Operation *next_op = op->getNextNode();
+    while (next_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(next_op)) {
+      next_op = next_op->getNextNode();
+    }
+
+    codegen_for_group(castOp, prev_op, next_op);
   } else if (module::isOpInGroup(op)) {
     return;
-  } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    std::string prefix = op->getName().getStringRef().str();
+  } else if (auto castOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
+    std::string prefix = op->getName().getStringRef().str().substr(4);
     auto pid_node = (CMD_ID_NODE *)BM168x::instance()->cmdid_node;
     BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
     LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(op) << "'\n");
+    profile_ctx.log_global_layer(op);
     castOp.codegen_global_bm168x();
   }
 }
@@ -463,10 +663,11 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
     if (first) {
       first = false;
       auto prevs = op->getOperands();
-      if(!prevs.empty()){
+      if (!prevs.empty()) {
         for (auto prev : prevs) {
           if (prev.getDefiningOp() != nullptr) {
-            input_is_cpu.push_back(isa<tpu::GenericCpuOp>(prev.getDefiningOp()));
+            input_is_cpu.push_back(
+                isa<tpu::GenericCpuOp>(prev.getDefiningOp()));
           } else {
             input_is_cpu.push_back(false);
           }
@@ -538,18 +739,18 @@ Offset<bmodel::SubNet> CodegenPass::CreateCPUSubNet(func::CallOp call) {
   std::vector<uint32_t> out_cpu_addr = {};
   uint32_t cpu_addr = 0;
   in_cpu_addr.push_back(0);
-  if(inputs.size() > 1) {
-    for(int i = 1; i<inputs.size();++i) {
+  if (inputs.size() > 1) {
+    for (int i = 1; i < inputs.size(); ++i) {
       // cpu input is always float
-      cpu_addr += module::getNumElements(inputs[i-1]) * sizeof(float);
+      cpu_addr += module::getNumElements(inputs[i - 1]) * sizeof(float);
       in_cpu_addr.push_back(cpu_addr);
     }
   }
-  cpu_addr += module::getNumElements(inputs[inputs.size()-1]) * sizeof(float);
+  cpu_addr += module::getNumElements(inputs[inputs.size() - 1]) * sizeof(float);
   out_cpu_addr.push_back(cpu_addr);
-  if(outputs.size() > 1) {
-    for(int i = 1; i<outputs.size();++i) {
-      cpu_addr += module::getNumElements(outputs[i-1]) * sizeof(float);
+  if (outputs.size() > 1) {
+    for (int i = 1; i < outputs.size(); ++i) {
+      cpu_addr += module::getNumElements(outputs[i - 1]) * sizeof(float);
       out_cpu_addr.push_back(cpu_addr);
     }
   }
@@ -709,7 +910,6 @@ CodegenPass::CreateStageIRVector(const vector<stage_param_t> &stage_param_v,
   u8 *buffer = (u8 *)binary_ir_v.data();
   binary_ir = model_gen->WriteBinary(ir_size, buffer + ir_offset);
   return stage_ir;
-
 }
 } // namespace tpu
 } // namespace tpu_mlir

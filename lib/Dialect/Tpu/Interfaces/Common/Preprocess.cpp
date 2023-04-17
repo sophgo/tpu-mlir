@@ -114,16 +114,20 @@ public:
     if (!castOp0) { // INT8 quant mode
       auto uniform_type = module::getUniformQuantizedType(op.getResult());
       qscale = uniform_type.getScale();
-    } else if (castOp0 && this->isInt8) { // FP --> INT8 mix precision case
+    } else { // FP mode, insert permute and slice before castOp
       currentOut = castOp0.getInput();
+      auto castOut = castOp0.getOutput();
+      castOut.setType(
+          RankedTensorType::get({n, c, h, w}, module::getStorageType(castOut)));
     }
+    rewriter.setInsertionPointAfterValue(currentOut);
 
     std::map<std::string, std::pair<std::string, std::string>> attributes_map =
-        {{"RGB_PLANAR", {"rgb", "nchw"}},
-         {"RGB_PACKED", {"rgb", "nhwc"}},
-         {"BGR_PLANAR", {"bgr", "nchw"}},
-         {"BGR_PACKED", {"bgr", "nhwc"}},
-         {"GRAYSCALE", {"bgr", "nchw"}}};
+        {{"RGB_PLANAR", {"rgb", "nchw"}},  {"RGB_PACKED", {"rgb", "nhwc"}},
+         {"BGR_PLANAR", {"bgr", "nchw"}},  {"BGR_PACKED", {"bgr", "nhwc"}},
+         {"GRAYSCALE", {"bgr", "nchw"}},   {"YUV420_PLANAR", {"bgr", "nchw"}},
+         {"YUV_NV21", {"bgr", "nchw"}},    {"YUV_NV12", {"bgr", "nchw"}},
+         {"RGBA_PLANAR", {"rgba", "nchw"}}};
     if (attributes_map.find(pixel_format) == attributes_map.end())
       llvm_unreachable("customization format is not supported yet.");
     auto color = std::get<0>(attributes_map[pixel_format]);
@@ -133,7 +137,6 @@ public:
                  << ", layout:" << layout << ", swap_channel:" << swap_channel
                  << "\n";
 
-    rewriter.setInsertionPointAfterValue(currentOut);
     // insert permuteOp
     if (layout == "nhwc") {
       currentOut = this->insertTransposeOp(rewriter, name, currentOut);
@@ -146,6 +149,13 @@ public:
       rewriter.setInsertionPointAfterValue(currentOut);
     }
 
+    // FP mode, insert permute and slice before castOp
+    if (castOp0 && !this->isInt8) {
+      castOp0.setOperand(currentOut);
+      currentOut = castOp0.getOutput();
+      rewriter.setInsertionPointAfterValue(currentOut);
+    }
+
     // insert ScaleLutOp (INT8) or ScaleOp (FP)
     if (this->isInt8 || castOp1) {
       quant::UniformQuantizedType qtype;
@@ -153,26 +163,23 @@ public:
         auto cali_type = module::getCalibratedType(op.getOutput());
         int64_t zeropoint = 0;
         module::getScaleAndZeroPoint(op.getOutput(), qscale, zeropoint,
-                                     this->sign, module::isAsymmetric);
+                                     this->sign, module::isAsymmetric());
         int64_t qmin = this->sign ? -128 : 0, qmax = this->sign ? 127 : 255;
         auto ctx = op.getOutput().getContext();
         qtype = quant::UniformQuantizedType::get(
             (uint32_t)this->sign, IntegerType::get(ctx, 8),
             rewriter.getF32Type(), qscale, zeropoint, qmin, qmax);
-
-      } else { // INT8 quant mode
+      } else { // pure INT8 quant mode
         qtype = module::getUniformQuantizedType(op.getResult());
       }
       currentOut = this->insertScaleLutOp(rewriter, name, currentOut, op,
                                           qscale, qtype, swap_channel);
-    } else if (eleType.isBF16() || eleType.isF16()) {
-      currentOut = this->insertScaleOp<uint16_t>(rewriter, name, currentOut,
-                                                 eleType, swap_channel);
     } else if (eleType.isF32()) {
-      currentOut = this->insertScaleOp<float>(rewriter, name, currentOut,
-                                              eleType, swap_channel);
+      currentOut = this->insertDWConv<float>(rewriter, name, currentOut,
+                                             eleType, swap_channel);
     } else {
-      llvm_unreachable("Not Implemented");
+      currentOut = this->insertDWConv<uint16_t>(rewriter, name, currentOut,
+                                                eleType, swap_channel);
     }
     rewriter.setInsertionPointAfterValue(currentOut);
 
@@ -234,13 +241,8 @@ private:
     attrs.emplace_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
     RankedTensorType type;
-    if (this->isInt8) {
-      type = RankedTensorType::get({n, c, resize_h, resize_w},
-                                   module::getUniformQuantizedType(opd));
-    } else {
-      type = RankedTensorType::get({n, c, resize_h, resize_w},
-                                   module::getElementType(opd));
-    }
+    type = RankedTensorType::get({n, c, resize_h, resize_w},
+                                 module::getUniformQuantizedType(opd));
     auto newOp = rewriter.create<tpu::PermuteOp>(
         loc, type, ArrayRef<Value>{opd, none}, attrs);
     return newOp.getOutput();
@@ -260,12 +262,8 @@ private:
     attrs.emplace_back(
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(slice_step)));
     RankedTensorType type;
-    if (this->isInt8) {
-      type = RankedTensorType::get({n, c, h, w},
-                                   module::getUniformQuantizedType(opd));
-    } else {
-      type = RankedTensorType::get({n, c, h, w}, module::getElementType(opd));
-    }
+    type = RankedTensorType::get({n, c, h, w},
+                                 module::getUniformQuantizedType(opd));
     auto newOp = rewriter.create<tpu::SliceOp>(
         loc, type, ArrayRef<Value>{opd, none}, attrs);
     return newOp.getOutput();
@@ -324,7 +322,7 @@ private:
     auto newOp = rewriter.create<tpu::ScaleLutOp>(
         loc, type, ArrayRef<Value>{opd, none}, attrs);
 
-    if (!this->sign) {
+    if (!this->sign && !module::isCV18xx()) {
       std::vector<uint8_t> table(table_size, 0);
       auto table_type =
           RankedTensorType::get(table_shape, rewriter.getIntegerType(8, false));
@@ -355,52 +353,46 @@ private:
   }
 
   template <typename T>
-  Value insertScaleOp(PatternRewriter &rewriter, std::string &name, Value opd,
-                      Type eleType, bool swap_channel) {
-    llvm::errs() << "Inserting ScaleOp.\n";
-    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_scale"));
+  Value insertDWConv(PatternRewriter &rewriter, std::string &name, Value opd,
+                     Type eleType, bool swap_channel) {
+    llvm::errs() << "Inserting DWConvOp.\n";
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_dwconv"));
     auto none = module::getNoneOp(opd.getDefiningOp());
     std::vector<T> scales;
-    std::vector<T> bias;
+    std::vector<float> bias;
     for (int i = 0; i < c; i++) {
       if (eleType.isBF16()) {
         scales.push_back(f32_to_bf16(this->scale[i]));
-        bias.push_back(f32_to_bf16(-1 * this->scale[i] * this->mean[i]));
       } else if (eleType.isF16()) {
         scales.push_back(f32_to_f16(this->scale[i]));
-        bias.push_back(f32_to_f16(-1 * this->scale[i] * this->mean[i]));
       } else {
         scales.push_back(this->scale[i]);
-        bias.push_back(-1 * this->scale[i] * this->mean[i]);
       }
+      bias.push_back(-1 * this->scale[i] * this->mean[i]);
     }
-
-    llvm::errs() << "scale:";
-    for (auto s : scales)
-      llvm::errs() << " " << s;
-    llvm::errs() << "\n";
-    llvm::errs() << "bias:";
-    for (auto b : bias)
-      llvm::errs() << " " << b;
-    llvm::errs() << "\n";
 
     if (c == 3 && swap_channel) {
       std::swap(scales[0], scales[2]);
       std::swap(bias[0], bias[2]);
     }
 
-    auto scale_type = RankedTensorType::get({1, c, 1, 1}, eleType);
-    auto bias_type = RankedTensorType::get({1, c, 1, 1}, eleType);
-    std::vector<NamedAttribute> attrs;
-    attrs.emplace_back(
-        rewriter.getNamedAttr("do_relu", rewriter.getBoolAttr(false)));
+    NamedAttrList attrs;
+    attrs.set("kernel_shape", rewriter.getI64ArrayAttr({1, 1}));
+    attrs.set("strides", rewriter.getI64ArrayAttr({1, 1}));
+    attrs.set("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0}));
+    attrs.set("group", rewriter.getI64IntegerAttr(c));
+    attrs.set("with_bias", rewriter.getBoolAttr(true));
+
     auto type = RankedTensorType::get({n, c, h, w}, eleType);
-    auto newOp = rewriter.create<tpu::ScaleOp>(
-        loc, type, ValueRange{opd, none, none, none}, attrs);
+    auto newOp = rewriter.create<tpu::Conv2DOp>(
+        loc, type, ValueRange{opd, none, none}, attrs);
+
+    auto filter_type = RankedTensorType::get({c, 1, 1, 1}, eleType);
     auto scale_weight =
-        top::WeightOp::create(newOp, name + "_scale_0", scales, scale_type);
-    auto bias_weight =
-        top::WeightOp::create(newOp, name + "_scale_1", bias, bias_type);
+        top::WeightOp::create(newOp, "weight", scales, filter_type);
+    auto bias_type = RankedTensorType::get({c}, rewriter.getF32Type());
+    auto bias_weight = top::WeightOp::create(newOp, "bias", bias, bias_type);
+
     newOp.setOperand(1, scale_weight);
     newOp.setOperand(2, bias_weight);
 
@@ -424,10 +416,6 @@ private:
 
 LogicalResult tpu::PreprocessOp::canonicalize(PreprocessOp op,
                                               PatternRewriter &rewriter) {
-  // only support BM1684x for now
-  if (module::getChip() != module::Chip::BM1684X) {
-    return failure();
-  }
   ReplacePreprocess replacer = ReplacePreprocess();
   replacer.replacePreprocess(rewriter, op);
   return success();

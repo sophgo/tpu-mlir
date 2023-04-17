@@ -27,22 +27,22 @@ LogicalResult WeightReorder<tpu::Conv1DOp, int8_t>::matchAndRewrite(
   auto attr = op.parseParam();
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
-  int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
+  int new_size = attr.oc * (align_up(attr.ic, 4ll)) * attr.kh * attr.kw;
   auto filter_new = std::make_shared<std::vector<int8_t>>(new_size, 0);
   for (int oc_idx = 0; oc_idx < attr.oc; oc_idx++) {
     for (int ic_idx = 0; ic_idx < attr.ic; ic_idx++) {
       for (int k_idx = 0; k_idx < attr.kh * attr.kw; k_idx++) {
         int orig_offset = ic_idx * attr.kh * attr.kw + k_idx +
                           oc_idx * attr.kh * attr.kw * attr.ic;
-        int trans_offset = ic_idx + k_idx * align_up(attr.ic, 4l) +
-                           oc_idx * (attr.kh * attr.kw * align_up(attr.ic, 4l));
+        int trans_offset = ic_idx + k_idx * align_up(attr.ic, 4ll) +
+                           oc_idx * (attr.kh * attr.kw * align_up(attr.ic, 4ll));
         filter_new->at(trans_offset) = filter_int8->at(orig_offset);
       }
     }
   }
   auto filter_type = filterOp.getType().cast<RankedTensorType>();
   std::vector<int64_t> new_shape = {1, attr.oc,
-                                    attr.kh * attr.kw * align_up(attr.ic, 4l)};
+                                    attr.kh * attr.kw * align_up(attr.ic, 4ll)};
   auto new_type =
       RankedTensorType::get(new_shape, filter_type.getElementType());
   auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),

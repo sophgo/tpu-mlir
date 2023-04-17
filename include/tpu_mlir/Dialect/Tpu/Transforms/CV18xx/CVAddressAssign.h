@@ -13,6 +13,7 @@
 
 #include <map>
 #include <vector>
+#include <unordered_map>
 namespace tpu_mlir {
 namespace tpu {
 

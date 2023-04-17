@@ -12,7 +12,7 @@
 
 namespace tpu_mlir {
 namespace cv18xx {
-mlir::Type createQuantInt8Type(mlir::Type &t) {
+static mlir::Type createQuantInt8Type(mlir::Type &t) {
   // TODO refine
   auto type = t.cast<RankedTensorType>();
   auto ctx = t.getContext();

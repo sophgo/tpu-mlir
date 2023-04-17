@@ -9,7 +9,8 @@
                 "${workspaceFolder}/third_party/oneDNN/include",
                 "${workspaceFolder}/third_party/cnpy",
                 "${workspaceFolder}/third_party/flatbuffers/include",
-                "${workspaceFolder}/third_party/nntoolchain/include"
+                "${workspaceFolder}/third_party/nntoolchain/include",
+                "${workspaceFolder}/third_party/progressbar/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

@@ -180,8 +180,8 @@ typedef enum {
 } sg_reduce_method_t;
 
 typedef enum {
-  ARG_MAX = 0,
-  ARG_MIN = 1,
+  ARG_MAXT = 0,
+  ARG_MINT = 1,
 } arg_method_t;
 // -------------------------------------------------------------------
 // Struct Definition
@@ -983,6 +983,7 @@ typedef struct batch_matmul_common_spec {
   int shift_val;
   int offset_val;
   int round_mode;
+  int left_reuse;
 } batch_matmul_common_spec_t;
 
 typedef struct batch_matmul_global_spec {
@@ -1072,6 +1073,11 @@ typedef struct {
   int indices_dims;
   int updates_dims;
 } scatter_nd_global_param_t;
+
+typedef struct {
+  int group;
+}
+shuffle_channel_param_t;
 
 typedef struct strideslice_common_spec {
   int begin_mask;

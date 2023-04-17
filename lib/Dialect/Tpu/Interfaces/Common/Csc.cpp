@@ -139,7 +139,7 @@ inline int copy_offset(const int *indices, int32_t * stride) {
 }
 
 void crop(float *input, float *output, const int64_t *input_shape,
-          long int *output_shape, int cur_dim, int *offsets, int *indices) {
+          long long int *output_shape, int cur_dim, int *offsets, int *indices) {
   // for loop if dim is not last
   if (cur_dim + 1 < 4) {
     for (int i = 0; i < output_shape[cur_dim]; ++i) {

@@ -23,6 +23,8 @@ namespace tpu {
 typedef struct {
   int64_t nstep;
   int64_t hstep;
+  int64_t dstep;
+  int64_t wstep;
 } tensor_step_t;
 
 typedef enum ld_st_type {
@@ -48,6 +50,8 @@ typedef std::pair<int64_t, int64_t> slice_pair_t; // idx and slice
 struct slice_info_t {
   std::vector<slice_pair_t> h; // h_idx and h_slice
   std::vector<slice_pair_t> n; // n_idx and n_slice
+  std::vector<slice_pair_t> w; // w_idx and w_slice
+  std::vector<slice_pair_t> d; // d_idx and d_slice
 };
 
 typedef struct mem_buffer_key {
@@ -101,7 +105,7 @@ struct tensor_info_t {
       : mode(mode), stage(0), use_3ic_opt(0), eu_align(false),
         need_bcast(false) {}
   tensor_info_t(slice_info_t slice_info)
-      : slice_info(slice_info), mode(mode), stage(0), use_3ic_opt(0),
+      : slice_info(slice_info), mode(TIMESTEP_LDST_UNKNOWN), stage(0), use_3ic_opt(0),
         eu_align(false), need_bcast(false) {}
 };
 
@@ -113,6 +117,7 @@ using MemBuffElt = std::pair<mem_buffer_key_t, mem_buffer_value_t>;
 using TpuTsField = std::vector<Operation *>;
 using GdmaElt = std::pair<Value, tensor_info_t>;
 using GdmaTsField = std::vector<GdmaElt>;
+using MemBlock = std::pair<int64_t, int64_t>; // <addr, size>
 
 typedef struct {
   TpuTsField tpu0_ts_field;
@@ -122,6 +127,8 @@ typedef struct {
 typedef struct {
   int64_t nsecs;
   int64_t hsecs;
+  int64_t dsecs;
+  int64_t wsecs;
 } shape_secs_t;
 
 struct LgInfo {

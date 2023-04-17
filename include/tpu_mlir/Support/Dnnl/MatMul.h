@@ -15,32 +15,36 @@ class MatMul {
 public:
   MatMul();
 
-  void right_init(float *right, int64_t right_zp, int64_t batch, int64_t K,
-                  int64_t N, bool right_transpose, bool hdim_is_batch,
-                  int64_t batch_low);
-  void input_init(float *input, int64_t input_zp, int64_t batch, int64_t M,
-                  int64_t K);
+  void right_init(float *right, int64_t right_zp, int64_t batch,
+                  int64_t batch_low, int64_t K, int64_t N,
+                  bool right_transpose);
+  void input_init(float *input, int64_t input_zp, int64_t batch,
+                  int64_t batch_low, int64_t M, int64_t K,
+                  bool input_transpose);
+  void output_init(float *output, int64_t batch, int64_t batch_low, int64_t M,
+                   int64_t N, bool output_transpose);
   void setup(float *left, float *right, float *bias, float *output,
-             int64_t batch, int64_t M, int64_t K, int64_t N, bool do_relu,
-             double relu_limit, int64_t right_zp, bool right_transpose,
-             int64_t input_zp, bool hdim_is_batch = false,
-             int64_t batch_low = 1);
-
+             int64_t batch, int64_t batch_low, int64_t M, int64_t K, int64_t N,
+             bool do_relu, double relu_limit, int64_t right_zp,
+             int64_t input_zp, bool right_transpose, bool input_transpose,
+             bool output_transpose, bool hdim_is_batch);
   void run();
 
 private:
   engine eng;
   stream engine_stream;
-  std::vector<primitive> net;
-  std::vector<std::unordered_map<int, memory>> net_args;
+  primitive prim;
+  dnnl::memory src_mem, weight_mem, bias_mem, dst_mem;
   std::shared_ptr<std::vector<float>> bias0;
   float *p_right, *p_input;
-  float *origin_input, *origin_right;
+  float *origin_input, *origin_right, *origin_output;
   std::shared_ptr<std::vector<float>> right_after_init;
   std::shared_ptr<std::vector<float>> input_after_init;
+  std::shared_ptr<std::vector<float>> output_after_trans;
   int64_t batch_, M_, N_, K_, right_zp_, input_zp_;
-  bool right_has_zp_ = 0, input_has_zp_ = 0, has_transpose_ = 0;
-  bool hdim_is_batch_;
-  int64_t batch_low_;
+  bool right_has_zp_ = 0, input_has_zp_ = 0;
+  bool right_transpose_ = 0, input_transpose_ = 0, output_transpose_ = 0;
+  bool hdim_is_batch_ = 0;
+  int64_t batch_low_ = 1;
 };
 } // namespace tpu_mlir

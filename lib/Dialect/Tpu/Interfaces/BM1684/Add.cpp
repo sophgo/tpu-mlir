@@ -20,9 +20,7 @@ void tpu::AddOp::codegen_global_bm1684() {
   assert(input_num == 2);
   auto a_dims = module::getShape(getInputs()[0]).size();
   auto b_dims = module::getShape(getInputs()[1]).size();
-  if (a_dims > 4 || b_dims > 4) {
-    llvm_unreachable("unsupport tensor-dim > 4 now");
-  }
+  auto out_dims = module::getShape(getOutput()).size();
   auto a_addr = module::getAddress(getInputs()[0]);
   auto b_addr = module::getAddress(getInputs()[1]);
   auto o_addr = module::getAddress(getOutput());
@@ -30,14 +28,25 @@ void tpu::AddOp::codegen_global_bm1684() {
   module::getGlobalShape(getInputs()[0], a_shape);
   module::getGlobalShape(getInputs()[1], b_shape);
   if (!module::isUniformQuantized(getOutput())) {
+    auto dtype = BM1684::getDataType(getOutput());
+    int src_int32 = dtype == DTYPE_FP32 ? 0 : 1;
+    auto gdma_format = BM1684::GDMA_VALUE_FORMAT_FLOAT32;
+    auto buffer_size = BM1684::instance().dl_get_broadcast_binary_buffer_size(
+        (uint32_t *)a_shape, a_dims, (uint32_t *)b_shape, b_dims,
+        sizeof(float));
+    if (buffer_size) {
+      llvm_unreachable("Need Create Global Buffer");
+    }
     BM1684::instance().dl_nodechip_broadcast_binary_full(
         a_addr, (uint32_t *)a_shape, a_dims, b_addr, (uint32_t *)b_shape,
-        b_dims, o_addr, 0, BINARY_ADD, getDoRelu(),
-        getReluLimit().convertToDouble(), 0,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
+        b_dims, o_addr, 0 /*buffer_addr, special case may use*/, BINARY_ADD,
+        getDoRelu(), getReluLimit().convertToDouble(), gdma_format,
+        (CMD_ID_NODE *)BM1684::instance().cmdid_node, src_int32);
   } else {
-    int is_sign[input_num + 1] = {0};
-    int is_int8[input_num + 1] = {0};
+    int is_sign[input_num + 1];
+		memset(is_sign, 0, sizeof(int) * (input_num + 1));
+    int is_int8[input_num + 1];
+		memset(is_sign, 0, sizeof(int) * (input_num + 1));
     for (int i = 0; i < input_num; ++i) {
       is_int8[i] = module::getDtypeSize(getInputs()[i]) == 1;
       is_sign[i] = module::isSign(getInputs()[i]);
@@ -47,7 +56,7 @@ void tpu::AddOp::codegen_global_bm1684() {
     auto muls = module::getI32Array(getMultipliers(), input_num, 1);
     auto rs = module::getI32Array(getRshifts(), input_num, 0);
     BM1684::instance().dl_nodechip_broadcast_binary_fix8b_forward_parallel(
-        a_addr, b_addr, o_addr, a_shape, b_shape, std::max(a_dims, b_dims),
+        a_addr, b_addr, o_addr, a_shape, b_shape, out_dims,
         module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
         BINARY_ADD, muls->at(0), muls->at(1), rs->at(0), rs->at(1), is_int8,
         is_sign, getDoRelu(), (CMD_ID_NODE *)BM1684::instance().cmdid_node);
@@ -84,7 +93,7 @@ void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int num_inputs = getInputs().size();
   assert(num_inputs == 2);
   int shape_dim = module::getShape(getOutput()).size();
-  auto out_gi = getGroupInfo(n_step, h_step);
+  auto out_gi = getGroupInfo(n_step, h_step, 0, 0);
   auto in0_g_info =
       LocalGenInterface::getGroupInfo(getInputs()[0], n_step, h_step);
   auto in1_g_info =
@@ -95,8 +104,10 @@ void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   if (module::isUniformQuantized(getOutput())) {
     auto muls = module::getI32Array(getMultipliers(), num_inputs, 1);
     auto rs = module::getI32Array(getRshifts(), num_inputs, 0);
-    int is_sign[num_inputs + 1] = {0};
-    int is_int8[num_inputs + 1] = {0};
+    int is_sign[num_inputs + 1];
+		memset(is_sign, 0, sizeof(int) * (num_inputs + 1));
+    int is_int8[num_inputs + 1];
+		memset(is_int8, 0, sizeof(int) * (num_inputs + 1));
     for (int i = 0; i < num_inputs; ++i) {
       is_int8[i] = module::getDtypeSize(getInputs()[i]) == 1;
       is_sign[i] = module::isSign(getInputs()[i]);
@@ -131,7 +142,7 @@ void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         in0_g_info.out_addr, b0_shape, b0_stride, in1_g_info.out_addr, b1_shape,
         b1_stride, out_gi.out_addr, top_stride, BINARY_ADD, getDoRelu(),
         getReluLimit().convertToDouble(),
-        b0_shape[1] > b1_shape[1] ? in0_g_info.out_addr : in1_g_info.out_addr,
+        b0_shape[1] > b1_shape[1] ? in1_g_info.out_addr : in0_g_info.out_addr,
         BM1684::instance().bdc_node);
   }
 }

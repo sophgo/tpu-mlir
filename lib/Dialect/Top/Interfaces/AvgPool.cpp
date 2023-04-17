@@ -15,7 +15,7 @@
 int64_t top::AvgPoolOp::getFLOPs() {
   auto attr = parseParam();
   return module::getNumElements(getOutput()) *
-         (attr.kd * attr.kh * attr.kw + attr.do_relu ? 1 : 0);
+         (attr.kd * attr.kh * attr.kw + (attr.do_relu ? 1 : 0));
 }
 
 pool_attr_t top::AvgPoolOp::parseParam() {

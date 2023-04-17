@@ -21,10 +21,11 @@ void populateTopToTosaConversionPatterns(RewritePatternSet *patterns);
     void Lowering(PatternRewriter &rewriter, top::OP##Op op) const override;   \
   };
 // clang-format off
-OpLowering(Weight)
+OpLowering(Input)
 OpLowering(Add)
 OpLowering(Conv)
 OpLowering(AvgPool)
 OpLowering(MaxPool)
+OpLowering(Softmax)
 // clang-format on
 } // namespace tpu_mlir

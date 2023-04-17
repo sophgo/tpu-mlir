@@ -193,7 +193,7 @@ mlir::Type tpu::SoftmaxOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 }
 
 LogicalResult tpu::SoftmaxOp::LocalGenSupport() {
-  if (module::isCV18xx()) {
+  if (module::isCV18xx() || module::isBM1684Family()) {
     return failure();
   }
   int axis = getAxis();

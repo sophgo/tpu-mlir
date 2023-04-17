@@ -134,8 +134,6 @@ static void conv_la_oc_step(uint32_t layer_id, gaddr_t ga_ifmap,
                                 CVK_FMT_U8, /*eu_align=*/0);
   assert(tl_filter[0] && tl_filter[1] && tl_ifmap && tl_ofmap && tl_perchannel);
 
-  CV18xx::parallel_disable();
-
   // bmk does not keep eu-align info, user need to update stride if shape
   // changed
   tl_ifmap->shape = CV18xx::tl_shape_t4(n, ic, ih, iw);
@@ -146,7 +144,9 @@ static void conv_la_oc_step(uint32_t layer_id, gaddr_t ga_ifmap,
   tl_perchannel->shape = CV18xx::tl_shape_t4(1, oc, 1, perchannel_size);
   tl_perchannel->stride = CV18xx::tl_default_stride(tl_perchannel->shape,
                                                     CVK_FMT_I8, /*eu_aign=*/0);
+  CV18xx::parallel_disable();
   CV18xx::tdma_load(tl_perchannel, ga_perchannel);
+  CV18xx::parallel_enable();
 
   tl_ofmap->stride = CV18xx::tl_default_stride(tl_ofmap->shape, CVK_FMT_I8, 1);
   // split oc
@@ -170,9 +170,8 @@ static void conv_la_oc_step(uint32_t layer_id, gaddr_t ga_ifmap,
       tl_tmp.shape = CV18xx::tl_shape_t4(1, cur_oc, kh * kw, ic / g);
       tl_tmp.stride =
           CV18xx::tl_default_stride(tl_tmp.shape, CVK_FMT_I8, /*eu_align=*/0);
-      CV18xx::tdma_load_stride(&tl_tmp, ga_filter_oc_pos, filter_gstride);
-
       CV18xx::parallel_disable();
+      CV18xx::tdma_load_stride(&tl_tmp, ga_filter_oc_pos, filter_gstride);
       CV18xx::parallel_enable();
 
       // TODO: this looks weird
@@ -289,12 +288,12 @@ static void conv_la_oc_step(uint32_t layer_id, gaddr_t ga_ifmap,
     }
   }
 
-  CV18xx::parallel_disable();
-
   tl_ofmap->shape = CV18xx::tl_shape_t4(n, oc, oh, ow);
   tl_ofmap->stride =
       CV18xx::tl_default_stride(tl_ofmap->shape, CVK_FMT_I8, /*eu_align=*/1);
+  CV18xx::parallel_disable();
   CV18xx::tdma_store_stride(tl_ofmap, ga_ofmap, ofmap_gstride);
+  CV18xx::parallel_enable();
 
   //
   // Release resource in reverse order
@@ -498,8 +497,6 @@ static void conv_lw_oc_step(uint32_t layer_id, laddr_t la_ifmap,
   la_filter[0] = align_up(la_working + 2 * ls_perChannel, CV18xx::EU_BYTES);
   la_filter[1] = align_up(la_filter[0] + ls_filter, CV18xx::EU_BYTES);
 
-  CV18xx::parallel_disable();
-
   // prepare tl_ifmap from la_ifmap
   cvk_tl_t tl_ifmap;
   tl_ifmap.start_address = la_ifmap;
@@ -540,6 +537,7 @@ static void conv_lw_oc_step(uint32_t layer_id, laddr_t la_ifmap,
     // ic / g)
     cvk_tg_stride_t filter_gstride = {oc * kh * kw * ic / g, kh * kw * ic / g,
                                       ic / g};
+    CV18xx::parallel_disable();
     if (!compressed_weight) {
       // Normal weight
       CV18xx::tdma_load_stride(&tl_filter, ga_filter_oc_pos, filter_gstride);
@@ -568,9 +566,8 @@ static void conv_lw_oc_step(uint32_t layer_id, laddr_t la_ifmap,
     tl_perchannel.stride = CV18xx::tl_default_stride(tl_perchannel.shape,
                                                      CVK_FMT_I8, /*eu_aign=*/0);
     CV18xx::tdma_load(&tl_perchannel, ga_perChannel_oc_pos);
-
-    CV18xx::parallel_disable();
     CV18xx::parallel_enable();
+
     // TODO: this looks weird
     // Reshape per channel quantization data for TIU
     // tl_perchannel->shape = CV18xx::tl_shape_t4(1, cur_oc, 1, 1);
@@ -726,16 +723,16 @@ static void conv_lw_oc_step(uint32_t layer_id, laddr_t la_ifmap,
         gaddr_t ga_ofmap_oc_pos_flip_back =
             ga_ofmap + oc_pos_flip_back * oh * ow;
         cvk_tg_stride_t ofmap_gstride = {oc * oh * ow, oh * ow, ow};
+        CV18xx::parallel_disable();
         CV18xx::tdma_store_stride(&tl_ofmap_oc_pos_flip_back,
                                   ga_ofmap_oc_pos_flip_back, ofmap_gstride);
+        CV18xx::parallel_enable();
       }
       oc_pos_flip_back = oc_pos;
       cur_oc_flip_back = cur_oc;
     }
     flip = 1 - flip;
   }
-
-  CV18xx::parallel_disable();
 
   if (do_store) {
     // do the last flip
@@ -755,8 +752,10 @@ static void conv_lw_oc_step(uint32_t layer_id, laddr_t la_ifmap,
     gaddr_t ga_ofmap_oc_pos_flip_back = ga_ofmap + oc_pos_flip_back * oh * ow;
 
     cvk_tg_stride_t ofmap_gstride = {oc * oh * ow, oh * ow, ow};
+    CV18xx::parallel_disable();
     CV18xx::tdma_store_stride(&tl_ofmap_oc_pos_flip_back,
                               ga_ofmap_oc_pos_flip_back, ofmap_gstride);
+    CV18xx::parallel_enable();
   }
 }
 

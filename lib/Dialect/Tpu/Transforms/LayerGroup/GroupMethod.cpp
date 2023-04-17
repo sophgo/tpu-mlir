@@ -52,8 +52,8 @@ static void set_group_type(LgInfo &lg_info) {
     }
   }
 
-  if (module::isCV18xx()) {
-    //cv18xx only support GROUP_NORMAL
+  if (module::isCV18xx() || module::isBM1684Family()) {
+    // cv18xx only support GROUP_NORMAL
     lg_info.type = GROUP_NORMAL;
     return;
   }
@@ -61,9 +61,11 @@ static void set_group_type(LgInfo &lg_info) {
   // set GROUP_NORMAL if not all ops should meet the conditions
   // 1. op is eltwise-op or only the last dim cannot split
   // 2. C is too small to fully utilize NPU and H is better
+  //    or N*C*H could be divided by NPU_NUM
   lg_info.type = GROUP_SMALL_C;
   for (auto op : lg_info.group_ops) {
-    if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MatMulOp, SoftmaxOp>(op)) {
+    if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp,
+             SoftmaxOp>(op)) {
       lg_info.type = GROUP_NORMAL;
       return;
     }
@@ -84,6 +86,13 @@ static void set_group_type(LgInfo &lg_info) {
         lg_info.type = GROUP_NORMAL;
         return;
       }
+    }
+
+    if ((shape.size() == 4 &&
+         shape[0] * shape[1] * shape[2] % Arch::NPU_NUM == 0) ||
+        (shape.size() == 5 &&
+         shape[0] * shape[1] * shape[2] * shape[3] % Arch::NPU_NUM == 0)) {
+      continue;
     }
 
     if (!(((shape.size() == 5 && shape[3] > shape[1]) ||
@@ -338,7 +347,6 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
                << "=======================================================\n"
                << "***** Dynamic Programming layer group with cluster ****\n"
                << "=======================================================\n";
-  cut_results_.clear();
   LgInfo sub_group;
   std::vector<std::vector<Operation *>> base_groups;
   get_base_groups(base_groups, subnet_ops);
@@ -462,6 +470,8 @@ bool GroupMethod::update_sequence_group_cost(
     if (group_one_layer_proc(*groups[i], true, &group_costs[i])) {
       shape_secs[i].nsecs = 1;
       shape_secs[i].hsecs = 1;
+      shape_secs[i].dsecs = 1;
+      shape_secs[i].wsecs = 1;
       continue;
     }
 

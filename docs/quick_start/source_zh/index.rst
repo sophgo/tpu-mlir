@@ -13,10 +13,12 @@ TPU-MLIR快速入门手册
    01_introduction
    02_env
    03_onnx
-   04_tflite
-   05_caffe
-   06_mix_precision
-   07_fuse_preprocess
-   08_to_onnx_convert
-   09_cv18xx_guide
-   10_bm168x_test
+   04_torch
+   05_tflite
+   06_caffe
+   07_mix_precision
+   08_fuse_preprocess
+   09_to_onnx_convert
+   10_cv18xx_guide
+   11_bm168x_test
+   12_fuse_post_handle_op

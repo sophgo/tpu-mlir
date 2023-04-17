@@ -139,10 +139,6 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     attrs.emplace_back(attr);
   }
   auto ctx = op->getContext();
-  if (op.getRightTranspose()) {
-    attrs.push_back(
-        rewriter.getNamedAttr("hdim_is_batch", rewriter.getBoolAttr(true)));
-  }
   attrs.push_back(rewriter.getNamedAttr(
       "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::QDM)));
   attrs.push_back(rewriter.getNamedAttr(
@@ -172,10 +168,6 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   auto newType = getQuantBF16Type(op.getOutput());
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
-  }
-  if (op.getRightTranspose()) {
-    attrs.push_back(
-        rewriter.getNamedAttr("hdim_is_batch", rewriter.getBoolAttr(true)));
   }
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }

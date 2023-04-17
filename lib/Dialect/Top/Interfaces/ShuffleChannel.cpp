@@ -52,4 +52,6 @@ LogicalResult top::ShuffleChannelOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::ShuffleChannelOp::shape_inference() {}
+void top::ShuffleChannelOp::shape_inference() {
+  common_shape_inference(getOperation());
+}

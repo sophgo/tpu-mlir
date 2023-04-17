@@ -97,7 +97,9 @@ void cvi_backend_tl_lut_LA(uint32_t layer_id, laddr_t la_input,
   sg_lut_table->shape = CV18xx::lut_table_shape(CVK_FMT_I8);
   sg_lut_table->stride = CV18xx::tl_default_stride(sg_lut_table->shape,
                                                    CVK_FMT_I8, /*eu_align=*/1);
+  CV18xx::parallel_disable();
   CV18xx::tdma_load(sg_lut_table, sg_lut_gaddr);
+  CV18xx::parallel_enable();
 
   // global memory stride from global memory shape
   cvk_tg_stride_t gstride = {(uint32_t)(c * h * w), (uint32_t)(h * w),
@@ -107,7 +109,9 @@ void cvi_backend_tl_lut_LA(uint32_t layer_id, laddr_t la_input,
                                     (uint32_t)ow}; // outputStride
   // load input
   if (do_load) {
+    CV18xx::parallel_disable();
     CV18xx::tdma_load_stride(tl_input, ga_input, gstride);
+    CV18xx::parallel_enable();
   }
 
   // compute
@@ -120,7 +124,9 @@ void cvi_backend_tl_lut_LA(uint32_t layer_id, laddr_t la_input,
 
   // store output
   if (do_store) {
+    CV18xx::parallel_disable();
     CV18xx::tdma_store_stride(tl_output, ga_output, gstride_output);
+    CV18xx::parallel_enable();
   }
 
   //
@@ -208,35 +214,32 @@ void cvi_backend_bf16_tl_lut(uint32_t layer_id, laddr_t la_input,
                              laddr_t la_y_table, laddr_t la_slope_table,
                              int thresh_min, int thresh_max, int n, int c,
                              int h, int w, int method) {
-  CV18xx::parallel_disable();
   if (method == METHOD_MANTISSA) {
     // for reciprocal/sqrt/power
     laddr_t la_exponential_table = la_y_table;
     laddr_t la_mantissa_lut = la_slope_table;
     cvi_backend_bf16_tl_lut_mantissa_method(layer_id, la_input, la_output,
                                             la_working, la_exponential_table,
-                                            la_mantissa_lut, n, c, h, w);
+                                            la_mantissa_lut, n, c, h, w, true);
   } else if (method == METHOD_LOG) {
     // for log mantissa
     laddr_t la_exponential_table = la_y_table;
     laddr_t la_mantissa_lut = la_slope_table;
     cvi_backend_bf16_tl_log_lut_mantissa_method(
         layer_id, la_input, la_output, la_working, la_exponential_table,
-        la_mantissa_lut, n, c, h, w);
+        la_mantissa_lut, n, c, h, w, true);
   } else if (method == METHOD_SLOPE) {
     cvi_backend_bf16_tl_lut_slope_method(layer_id, la_input, la_output,
                                          la_working, la_y_table, la_slope_table,
-                                         thresh_min, thresh_max, n, c, h, w);
+                                         thresh_min, thresh_max, n, c, h, w, true);
   }
 }
 
 // for tanh/sigmoid
-void cvi_backend_bf16_tl_lut_slope_method(uint32_t layer_id, laddr_t la_input,
-                                          laddr_t la_output, laddr_t la_working,
-                                          laddr_t la_y_table,
-                                          laddr_t la_slope_table,
-                                          int thresh_min, int thresh_max, int n,
-                                          int c, int h, int w) {
+void cvi_backend_bf16_tl_lut_slope_method(
+    uint32_t layer_id, laddr_t la_input, laddr_t la_output, laddr_t la_working,
+    laddr_t la_y_table, laddr_t la_slope_table, int thresh_min, int thresh_max,
+    int n, int c, int h, int w, bool enable_parallel) {
 
   CV18xx::set_layer_id(layer_id);
   LLVM_DEBUG(llvm::errs() << "cvi_backend_bf16_tl_lut_slope_method: nchw = ("
@@ -329,6 +332,9 @@ void cvi_backend_bf16_tl_lut_slope_method(uint32_t layer_id, laddr_t la_input,
   input_i8.int8_rnd_mode = 1;
   p3.dst = &input_i8;
   p3.src = tl_tmp;
+  if (enable_parallel) {
+    CV18xx::parallel_disable();
+  }
   CV18xx::tdma_l2l_tensor_copy(&p3);
   input_i8.int8_rnd_mode = 0; // reset
 
@@ -338,6 +344,9 @@ void cvi_backend_bf16_tl_lut_slope_method(uint32_t layer_id, laddr_t la_input,
   p3.dst = tl_ofmap_slope;
   p3.src = &input_i8;
   CV18xx::tdma_l2l_tensor_copy(&p3);
+  if (enable_parallel) {
+    CV18xx::parallel_enable();
+  }
 
   // (x - x0)
   // input = input - input_i8_bf16
@@ -410,7 +419,7 @@ void cvi_backend_bf16_tl_lut_slope_method(uint32_t layer_id, laddr_t la_input,
 void cvi_backend_bf16_tl_lut_mantissa_method(
     uint32_t layer_id, laddr_t la_input, laddr_t la_output, laddr_t la_working,
     laddr_t la_exponential_table, laddr_t la_mantissa_lut, int n, int c, int h,
-    int w) {
+    int w, bool enable_parallel) {
   CV18xx::set_layer_id(layer_id);
   auto shape = CV18xx::tl_shape_t4(n, c, h, w);
   auto table_shape = CV18xx::lut_table_shape(CVK_FMT_BF16);
@@ -426,7 +435,6 @@ void cvi_backend_bf16_tl_lut_mantissa_method(
   tl_working.start_address = la_working;
   tl_table.start_address = la_exponential_table;
   tl_mantissa.start_address = la_mantissa_lut;
-  CV18xx::parallel_disable();
   cvk_tiu_bf16_lookup_interp_table_param_t p = {0};
   p.ifmap = &tl_ifmap;
   p.buf = &tl_working;
@@ -434,14 +442,20 @@ void cvi_backend_bf16_tl_lut_mantissa_method(
   p.tbl_answer_mantissa = &tl_mantissa;
   p.ofmap = &tl_ofmap;
   p.is_scientific = 1;
+  if (enable_parallel) {
+    CV18xx::parallel_disable();
+  }
   CV18xx::tiu_bf16_lookup_interp_table(&p);
+  if (enable_parallel) {
+    CV18xx::parallel_enable();
+  }
 }
 
 // for log
 void cvi_backend_bf16_tl_log_lut_mantissa_method(
     uint32_t layer_id, laddr_t la_input, laddr_t la_output, laddr_t la_working,
     laddr_t la_exponential_table, laddr_t la_mantissa_lut, int n, int c, int h,
-    int w) {
+    int w, bool enable_parallel) {
   cvk_fmt_t fmt = CVK_FMT_BF16;
   cvk_tl_shape_t shape = CV18xx::tl_shape_t4(n, c, h, w);
   cvk_tl_shape_t table_shape = CV18xx::lut_table_shape(fmt);
@@ -459,7 +473,6 @@ void cvi_backend_bf16_tl_log_lut_mantissa_method(
   tl_working.start_address = la_working;
   tl_table.start_address = la_exponential_table;
   tl_mantissa.start_address = la_mantissa_lut;
-  CV18xx::parallel_disable();
   // copy from cvikernel_1822.c
   // issue lut cmd
   cvk_tdma_l2l_tensor_copy_param_t p10;
@@ -472,7 +485,13 @@ void cvi_backend_bf16_tl_log_lut_mantissa_method(
   p10.mv_lut_idx = true;   // Get exponent index,
                            // set low and height bits with idx at same time
   p10.layer_id = layer_id;
+  if (enable_parallel) {
+    CV18xx::parallel_disable();
+  }
   CV18xx::tdma_l2l_tensor_copy(&p10);
+  if (enable_parallel) {
+    CV18xx::parallel_enable();
+  }
   p10.mv_lut_idx = false;
   // get exponent value
   cvk_tiu_lookup_table_param_t p12;

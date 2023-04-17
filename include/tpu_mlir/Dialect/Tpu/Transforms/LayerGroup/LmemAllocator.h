@@ -30,7 +30,6 @@ typedef struct membuf_sort_standard {
 } membuf_sort_std_t;
 
 using MemBufSortStd = std::pair<mem_buffer_key_t, membuf_sort_std_t>;
-using MemBlock = std::pair<int64_t, int64_t>; // <addr, size>
 
 typedef struct {
   std::list<MemBlock> avail_lmems;

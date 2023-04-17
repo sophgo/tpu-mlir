@@ -14,7 +14,7 @@ The overall architecture of TPU-MLIR is shown in the figure (:ref:`framework`).
    TPU-MLIR overall architecture
 
 
-The current directly supported frameworks are tflite, onnx and caffe. Models from other frameworks need to be converted to onnx models. The method of converting models from other frameworks to onnx can be found on the onnx official website:
+The current directly supported frameworks are pytorch, onnx, tflite and caffe. Models from other frameworks need to be converted to onnx models. The method of converting models from other frameworks to onnx can be found on the onnx official website:
 https://github.com/onnx/tutorials.
 
 

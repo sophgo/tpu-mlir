@@ -65,17 +65,31 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
       auto filterOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
 
       auto filter_i8 = filterOp.read<int8_t>();
-      std::vector<int64_t> filter_shape; // = {1, p.K, 1, p.N};
+      std::vector<int64_t> coeff_shape; // = {1, p.K, 1, p.N};
       auto shape = module::getShape(op.getRight());
       for (int i = 0; i < shape.size(); ++i) {
-        filter_shape[i] = shape[i];
+        coeff_shape.push_back(shape[i]);
       }
 
-      tpu::compact_coeff_for_int4(filter_i8, filter_shape, false);
+      tpu::compact_coeff_for_int4(filter_i8, coeff_shape, false);
       bool sign = true;
-      auto new_type =
-          RankedTensorType::get(filter_shape, rewriter.getIntegerType(4, sign));
+      //auto stype = module::getStorageType(op.getRight());
+      //auto new_type = RankedTensorType::get(coeff_shape, stype);
+      auto new_type = RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
+      auto new_op =
+          top::WeightOp::create(op, "filter_reorderd", *filter_i8, new_type);
+      op->setOperand(1, new_op);
       op.getRight().setType(new_type);
+    } else {
+      return failure();
+    }
+  }
+  i32_array_t bias_quant;
+  if (isa<top::WeightOp>(op.getBias().getDefiningOp())) {
+    bias_quant =
+        cast<top::WeightOp>(op.getBias().getDefiningOp()).read<int32_t>();
+    for (size_t i = 0; i < p.N; ++i) {
+      bias_quant->data()[i] += p.input_zp * p.right_zp * p.K;
     }
   } else {
     i32_array_t bias_quant;
@@ -161,11 +175,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     return;
   }
   BM168x::fix_shape(input_spec->at(0), {p.M, p.K});
-  if (p.right_transpose == false) {
-    BM168x::fix_shape(input_spec->at(1), {p.K, p.N});
-  } else {
-    BM168x::fix_shape(input_spec->at(1), {p.N, p.K});
-  }
+  BM168x::fix_shape(input_spec->at(1), {p.K, p.N});
   BM168x::fix_shape(output_spec->at(0), {p.M, p.N});
   fc_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
@@ -199,10 +209,10 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
 
 // =========================================
 // LocalGenInterface
-// =========================================
+// ======q======================
 int64_t tpu::MatMulOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
     group_type_t group_type) {
   auto p = parseParam();
   int64_t n0, c0, h0, w0, n1, c1, h1, w1;
@@ -294,14 +304,14 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
   return buffer_size;
 }
 
-void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto p = parseParam();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
-  const auto &gi = getGroupInfo(n_step, h_step);
+  const auto &gi = getGroupInfo(n_step, h_step, d_step, w_step);
 
   batch_matmul_local_spec_t param{0};
   param.buffer_addr = gi.buffer_addr;
@@ -311,6 +321,7 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   common.R_trans = p.right_transpose;
   common.has_bias = p.with_bias;
   common.hdim_is_batch = p.hdim_is_batch;
+  common.left_reuse = p.left_reuse;
   common.requant_mode = -1;
   if (module::isUniformQuantized(getInput())) {
     common.R_zp_is_const = true;

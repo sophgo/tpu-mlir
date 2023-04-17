@@ -73,9 +73,10 @@ class mlir_inference(object):
             ratio_list = self.img_proc.get_config('ratio')
             self.module.set_tensor(self.img_proc.input_name, x)
         self.module.invoke()
+        all_tensors = self.module.get_all_tensor()
         outputs = []
         for i in self.module.output_names:
-            outputs.append(self.module.get_all_tensor()[i])
+            outputs.append(all_tensors[i])
         if len(self.batched_labels) > 0:
             self.score.update(self.idx, outputs, labels = self.batched_labels, ratios = ratio_list)
         else:

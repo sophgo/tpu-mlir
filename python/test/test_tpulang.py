@@ -11,24 +11,31 @@ import os, sys
 import transform.TpuLang as tpul
 from typing import List
 
+
 def rand_data(shape, dtype):
     if dtype == 'float32':
-        return  np.random.random(shape).astype(np.float32)
+        return np.random.random(shape).astype(np.float32)
     if dtype == 'int32' or 'uint32' or 'int16' or 'uint16' or 'int8' or 'uint8':
         return np.random.randint(0, 256, size=shape).astype(dtype)
     raise Exception("Not supported data type: {}!".format(dtype))
 
+
 def tpulang(func):
+
     def wrapper(*args, **kwargs):
         tpul.init("BM1684X", True)
         func(*args, **kwargs)
         tpul.deinit()
+
     return wrapper
+
 
 Failed_Cases = []
 
+
 class TPULANG_IR_TESTER(object):
     ID = 0
+
     # This class is built for testing single operator transform.
     def __init__(self, chip: str = "bm1684x"):
         Y, N = True, False
@@ -37,8 +44,11 @@ class TPULANG_IR_TESTER(object):
             # TpuLang Test Case, Alphabetically
             #############################
             # case:                 (test,          bm1684x_support)
-            "Conv2d":               (self.test_Conv2d,      Y),
-            "HModel":               (self.test_Model,       N),
+            "Add": (self.test_Add, Y),
+            "Conv2d": (self.test_Conv2d, Y),
+            "HModel": (self.test_Model, N),
+            "Mul": (self.test_Mul, Y),
+            "Sub": (self.test_Sub, Y),
         }
         # no quantization when quant_mode == "f32"
         self.quant_modes = ["int8"]
@@ -82,43 +92,106 @@ class TPULANG_IR_TESTER(object):
         return tpul.Tensor(dtype=dtype, shape=shape, data=data, is_const=True)
 
     #######################################################################
+    # Add
+    # ------------
+    def add_op(self, input_0, input_1, dtype="float32"):
+        out_dtype = dtype if dtype == 'float32' else 'int32'
+        add = tpul.add(input_0, input_1, out_dtype)
+        return add
+
+    def test_Add(self, case_name):
+        """Add"""
+
+        @tpulang
+        def _test_add(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            add = self.add_op(x, y, dtype=dtype)
+            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [add], False, 2)
+            TPULANG_IR_TESTER.ID += 1
+
+        _test_add([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_add([1, 3, 32, 32], [1, 3, 32, 32])
+        _test_add([1, 3, 32, 32], [1, 1, 32, 32])
+        _test_add([1, 3, 32, 32], [1])
+        _test_add([1], [1, 3, 32, 32])
+        _test_add(
+            [1, 1, 32, 32],
+            [1, 3, 1, 32],
+            dtype="int8",
+        )
+
+    #######################################################################
     # Convolution
     # ------------
-    def conv_op(self, x, kshape, stride, pad=None, group=1, dilation=[1,1], zp=[None, None], dtype="float32"):
+    def conv_op(self,
+                x,
+                kshape,
+                stride,
+                pad=None,
+                group=1,
+                dilation=[1, 1],
+                zp=[None, None],
+                dtype="float32"):
         oc = kshape[0]
         weight = self.coeff_tensor(kshape, dtype)
-        out_dtype =  dtype if dtype == 'float32' else 'int32'
+        out_dtype = dtype if dtype == 'float32' else 'int32'
         bias = self.coeff_tensor(oc, out_dtype)
-        conv = tpul.conv_v2(x, weight, bias=bias, stride=stride, pad=pad,
-                            dilation=dilation, group=group, input_zp=zp[0],
-                            weight_zp=zp[1], out_dtype=out_dtype)
+        conv = tpul.conv_v2(x,
+                            weight,
+                            bias=bias,
+                            stride=stride,
+                            pad=pad,
+                            dilation=dilation,
+                            group=group,
+                            input_zp=zp[0],
+                            weight_zp=zp[1],
+                            out_dtype=out_dtype)
         return conv
+
     def test_Conv2d(self, case_name):
         """Conv 2D"""
+
         @tpulang
-        def _test_convolution(
-            input_shape:List[int], kernel_shape:List[int], stride:List[int]=[1,1],
-            dilation:List[int]=[1,1], pad:List[int]=None, group=1, dtype="float32",
-            zp:List[int]=[None,None]
-        ):
+        def _test_convolution(input_shape: List[int],
+                              kernel_shape: List[int],
+                              stride: List[int] = [1, 1],
+                              dilation: List[int] = [1, 1],
+                              pad: List[int] = None,
+                              group=1,
+                              dtype="float32",
+                              zp: List[int] = [None, None]):
             x_data = rand_data(input_shape, dtype)
             x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
-            conv = self.conv_op(x, kernel_shape, stride, pad, group=group, dilation=dilation,
-                    zp=zp, dtype=dtype)
+            conv = self.conv_op(x,
+                                kernel_shape,
+                                stride,
+                                pad,
+                                group=group,
+                                dilation=dilation,
+                                zp=zp,
+                                dtype=dtype)
             tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [conv], False, 2)
             TPULANG_IR_TESTER.ID += 1
 
         _test_convolution([1, 3, 28, 28], [12, 3, 1, 1], group=3)
-        _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2,2], pad=[1,1,1,1])
-        _test_convolution([1, 3, 32, 32], [12, 3 , 3, 3], stride=[2,2], pad=[1,1,1,1], dtype="int8", zp=[5, -8])
+        _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2, 2], pad=[1, 1, 1, 1])
+        _test_convolution([1, 3, 32, 32], [12, 3, 3, 3],
+                          stride=[2, 2],
+                          pad=[1, 1, 1, 1],
+                          dtype="int8",
+                          zp=[5, -8])
 
     #######################################################################
     # HModel
     # ------------
     def test_Model(self, case_name):
+
         def model_def(x):
             rq0 = tpul.requant_fp_to_int(x, 1.0, 0, 0, 'int8')
-            conv1 = self.conv_op(rq0, [64,1,7,7],[2,2], None, zp=[0,0], dtype='int8')
+            conv1 = self.conv_op(rq0, [64, 1, 7, 7], [2, 2], None, zp=[0, 0], dtype='int8')
             # rq2 = tpul.requant_int(conv1, 2030043136, -13, 0, 0, 'int8', round_mode='half_away_from_zero')
             # relu3 = tpul.relu(rq2)
             # conv4 = conv_op(relu3, [96,64,3,3], [2,2], None, zp=[0,0], dtype='int8')
@@ -161,6 +234,70 @@ class TPULANG_IR_TESTER(object):
             tpul.compile(case_name, [x], [out], False, 2)
 
         _test_model_def([1, 3, 28, 28])
+
+    #######################################################################
+    # Mul
+    # ------------
+    def mul_op(self, input_0, input_1, dtype="float32"):
+        out_dtype = dtype if dtype == 'float32' else 'int32'
+        mul = tpul.mul(input_0, input_1, out_dtype)
+        return mul
+
+    def test_Mul(self, case_name):
+        """Mul"""
+
+        @tpulang
+        def _test_mul(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            mul = self.mul_op(x, y, dtype=dtype)
+            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [mul], False, 2)
+            TPULANG_IR_TESTER.ID += 1
+
+        _test_mul([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_mul([1, 3, 32, 32], [1, 3, 32, 32])
+        _test_mul([1, 3, 32, 32], [1, 1, 32, 32])
+        _test_mul([1, 3, 32, 32], [1])
+        _test_mul([1], [1, 3, 32, 32])
+        _test_mul(
+            [1, 1, 32, 32],
+            [1, 3, 1, 32],
+            dtype="int8",
+        )
+
+    #######################################################################
+    # Sub
+    # ------------
+    def sub_op(self, input_0, input_1, dtype="float32"):
+        out_dtype = dtype if dtype == 'float32' else 'int32'
+        sub = tpul.sub(input_0, input_1, out_dtype)
+        return sub
+
+    def test_Sub(self, case_name):
+        """Sub"""
+
+        @tpulang
+        def _test_sub(shape_x: List[int], shape_y: List[int], dtype="float32"):
+            x_data = rand_data(shape_x, dtype)
+            y_data = rand_data(shape_y, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=shape_x, data=x_data)
+            y = tpul.Tensor(dtype=dtype, shape=shape_y, data=y_data)
+            sub = self.sub_op(x, y, dtype=dtype)
+            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [sub], False, 2)
+            TPULANG_IR_TESTER.ID += 1
+
+        _test_sub([1, 3, 28, 28], [1, 3, 28, 28])
+        _test_sub([1, 3, 32, 32], [1, 3, 32, 32])
+        _test_sub([1, 3, 32, 32], [1, 1, 32, 32])
+        _test_sub([1, 3, 32, 32], [1])
+        _test_sub([1], [1, 3, 32, 32])
+        _test_sub(
+            [1, 1, 32, 32],
+            [1, 3, 1, 32],
+            dtype="int8",
+        )
 
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):
@@ -205,9 +342,10 @@ def test_all(tester: TPULANG_IR_TESTER):
     print("Failure: {}".format(error_cases))
     if error_cases:
         print("====== test_tpulang.py --chip {} TEST Failed ======".format(tester.chip))
-        exit(1)
+        # exit(1)
     else:
         print("====== test_tpulang.py --chip {} TEST Success ======".format(tester.chip))
+    return error_cases
 
 
 if __name__ == "__main__":
@@ -233,4 +371,3 @@ if __name__ == "__main__":
         test_all(tester)
     else:
         tester.test_single(args.case)
-

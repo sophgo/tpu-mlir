@@ -28,6 +28,10 @@ void setPixelAlign(std::string &pixel_format,
                    int64_t &y_align, int64_t &w_align,
                    int64_t &channel_align);
 
+void setPixelAlign(std::string &pixel_format, std::string chip,
+                   int64_t &y_align, int64_t &w_align,
+                   int64_t &channel_align);
+
 int aligned_image_size(int n, int c, int h, int w, std::string &pixel_format,
                int y_align, int w_align, int channel_align);
 

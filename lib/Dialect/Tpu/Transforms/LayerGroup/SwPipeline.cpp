@@ -22,10 +22,10 @@ void SoftwarePipeline::clear_all() { tensor_swloop_buffer_.clear(); }
 
 void SoftwarePipeline::clear_swloop_buffer() { tensor_swloop_buffer_.clear(); }
 
-void SoftwarePipeline::write_swloop_buffer(int64_t nstep, int64_t hstep,
+void SoftwarePipeline::write_swloop_buffer(int64_t nstep, int64_t hstep, int64_t dstep, int64_t wstep,
                                            int64_t stage_num) {
   // add swloop buffer
-  tensor_step_t tensor_step = {nstep, hstep};
+  tensor_step_t tensor_step = {nstep, hstep, dstep, wstep};
   tensor_swloop_buffer_.push_front(tensor_step);
   while (tensor_swloop_buffer_.size() > (uint32_t)stage_num) {
     tensor_swloop_buffer_.pop_back();

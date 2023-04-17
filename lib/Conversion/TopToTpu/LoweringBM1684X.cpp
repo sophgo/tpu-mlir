@@ -70,7 +70,6 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SoftmaxLowering,
       SoftplusLowering,
       SoftsignLowering,
-      SqueezeLowering,
       SwapChannelLowering,
       TileLowering,
       UpsampleLowering,
@@ -78,9 +77,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       StridedSliceLowering,
       ReduceLowering,
       PackLowering,
-      UnpackLowering,
-      SplitLowering,
       SubLowering,
+      SubConstLowering,
       SqrtLowering,
       SwapDimInnerLowering,
       WhereLowering,
@@ -99,7 +97,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       YoloDetectionLowering,
       InstanceNormLowering,
       GroupNormLowering,
-      DetectionOutputLowering
+      DetectionOutputLowering,
+      ShuffleChannelLowering
       // clang-format on
       >(patterns->getContext());
 }

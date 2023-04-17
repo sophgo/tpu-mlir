@@ -43,12 +43,15 @@ static ModuleOp m = nullptr;
 static MLIRContext *ctx = nullptr;
 static Chip chip = Chip::ALL;
 static Platform platform = Platform::ONNX;
+static std::unique_ptr<mlir::TensorFile> wFile = nullptr;
+static std::string weightFileName = "";
 
 void init(ModuleOp module) {
   m = module;
   ctx = m.getContext();
   auto chip_ = m->getAttrOfType<StringAttr>(Attr::CHIP);
   chip = symbolizeChip(chip_).value_or(Chip::ALL);
+  wFile = nullptr;
   if (m->hasAttrOfType<StringAttr>(Attr::PLATFORM)) {
     auto p = m->getAttrOfType<StringAttr>(Attr::PLATFORM);
     platform = symbolizePlatform(p).value_or(Platform::ONNX);
@@ -118,14 +121,19 @@ Value getOriValue(Value v) {
   llvm_unreachable("Failed to get preOperation.FIx me");
 }
 
-Operation *getNextOp(Operation *op) {
+Operation *getNextOp(Operation *op, int i) {
   Operation *nextOp = nullptr;
-  if (op->getResult(0).hasOneUse()) {
-    for (auto &use : op->getResult(0).getUses()) {
+  if (op->getResult(i).hasOneUse()) {
+    for (auto &use : op->getResult(i).getUses()) {
       nextOp = use.getOwner();
       break;
     }
     assert(nextOp && "nextOp is nullptr");
+  } else {
+    auto users = op->getUsers();
+    if (1 == std::distance(users.begin(), users.end())) {
+      nextOp = *users.begin();
+    }
   }
   // if not found, will return NULL
   return nextOp;
@@ -205,32 +213,6 @@ void removeUnusedOp() {
       (*iter)->erase();
     }
   }
-}
-
-std::string genWeightFileName(bool &same_name) {
-  auto name = getModuleName();
-  auto state = getState();
-  auto chip_ = getChip();
-  auto chip = stringifyChip(chip_);
-  auto old_name = getWeightFile();
-  std::string file_name = name.lower() + std::string("_") +
-                          stringifyState(state).lower() + std::string("_") +
-                          chip.lower();
-  if (!isChip(Chip::ALL)) {
-    auto mode = getMode();
-    std::string sym = "";
-    if (mode == Mode::INT8) {
-      sym = isAsymmetric() ? "_asym" : "_sym";
-    }
-    auto mode_ = stringifyMode(mode);
-    file_name += std::string("_") + mode_.lower() + sym;
-  }
-  auto new_name = file_name + "_weight.npz";
-  same_name = (old_name == new_name);
-  if (same_name) {
-    new_name = file_name + "_weight_fix.npz";
-  }
-  return new_name;
 }
 
 int64_t getAddress(Value v) {
@@ -544,6 +526,12 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
       }
     }
     module::getNCHW(shape_vec, n, c, h, w, false);
+  } else if(GROUP_MM_INT4 == group_type) {
+    assert (shape.size() == 2);
+    n = shape[0];
+    c = 1;
+    h = shape[1];
+    w = 1;
   } else {
     module::getNCHW(shape, n, c, h, w, true);
   }
@@ -559,7 +547,7 @@ void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
               int64_t &w, group_type_t group_type) {
   auto shape = v.getType().cast<RankedTensorType>().getShape();
   int num_dims = shape.size();
-  if (GROUP_3D == group_type && isBM1684XFamily()) {
+  if (GROUP_3D == group_type) {
     n = num_dims > 0 ? shape[0] : 1;
     c = num_dims > 1 ? shape[1] : 1;
     d = num_dims > 2 ? shape[2] : 1;
@@ -569,6 +557,13 @@ void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
       w *= shape[i];
     }
     return;
+  } else if(GROUP_MM_INT4 == group_type) {
+    assert (num_dims == 2);
+    n = shape[0];
+    c = 1;
+    d = 1;
+    h = shape[1];
+    w = 1;
   } else {
     d = 1;
     getNCHW(shape, n, c, h, w, group_type);
@@ -724,12 +719,6 @@ void setMode(Mode mode) {
   m->setAttr(Attr::MODE, StringAttr::get(ctx, s));
 }
 
-StringRef getWeightFile() {
-  return m->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
-}
-void setWeightFile(StringRef weight_file) {
-  m->setAttr(Attr::WEIGHT_FILE, StringAttr::get(ctx, weight_file));
-}
 int64_t getFLOPs() {
   return m->getAttrOfType<IntegerAttr>(Attr::FLOPS).getInt();
 }
@@ -767,6 +756,23 @@ bool isState(State state) { return state == getState(); }
 
 bool isTpuOp(Operation *op) {
   return (op->getDialect()->getNamespace() == "tpu");
+}
+
+bool isInt4Op(Operation *op) {
+  //if (isa<top::ConvOp, tpu::Conv2DOp>(op)) {
+   if (isa<top::ConvOp, top::MatMulOp, tpu::Conv2DOp, tpu::MatMulOp>(op)) {
+    if (auto convOp = dyn_cast<top::ConvOp>(op)) {
+      if(convOp.parseParam().is_dw)
+        return false;
+    }
+    if (auto convOp = dyn_cast<tpu::Conv2DOp>(op)) {
+      if(convOp.parseParam().is_dw)
+        return false;
+    }
+    return true;
+  }
+
+  return false;
 }
 
 bool isCV18xx() {
@@ -976,6 +982,32 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
 void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                           bool &sign, bool asymmetric, int bitwidth) {
   if (isCalibratedType(v)) {
+    if (bitwidth == 8) {
+      auto pre_op = v.getDefiningOp();
+      if (module::isInt4Op(pre_op)) {
+        if (auto convOp = dyn_cast<top::ConvOp>(pre_op)) {
+          if (convOp.getOutInt8Scale().has_value()) {
+            scale =
+                convOp.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
+            zeropoint =
+                int64_t(convOp.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble());
+            return;
+          }
+        } else {
+          if (auto matmulOp = dyn_cast<top::MatMulOp>(pre_op)) {
+            // break; //todo matmul need support int4
+            if (matmulOp.getOutInt8Scale().has_value()) {
+              scale =
+                  matmulOp.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
+              zeropoint =
+                  int64_t(matmulOp.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble());
+              return;
+            }
+          }
+        }
+      }
+    }
+
     auto qtype = getCalibratedType(v);
     auto max = qtype.getMax();
     auto min = qtype.getMin();
@@ -1040,6 +1072,104 @@ quant::UniformQuantizedType getUniformQuantizedType(Type t) {
   return t.cast<RankedTensorType>()
       .getElementType()
       .cast<quant::UniformQuantizedType>();
+}
+
+//-----------------------------------------------------------------
+// Helper Functions for weight
+//-----------------------------------------------------------------
+static std::string genWeightFileName(bool &same_name) {
+  auto name = getModuleName();
+  auto state = getState();
+  auto chip_ = getChip();
+  auto chip = stringifyChip(chip_);
+  auto old_name = m->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
+  std::string file_name = name.lower() + std::string("_") +
+                          stringifyState(state).lower() + std::string("_") +
+                          chip.lower();
+  if (!isChip(Chip::ALL)) {
+    auto mode = getMode();
+    std::string sym = "";
+    if (mode == Mode::INT8) {
+      sym = isAsymmetric() ? "_asym" : "_sym";
+    }
+    auto mode_ = stringifyMode(mode);
+    file_name += std::string("_") + mode_.lower() + sym;
+  }
+  auto new_name = file_name + "_weight.npz";
+  same_name = (old_name == new_name);
+  if (same_name) {
+    new_name = file_name + "_weight_fix.npz";
+  }
+  return new_name;
+}
+
+void saveWeight() {
+  // check name conflict
+  std::set<StringRef> all_names;
+  for (auto func : m.getOps<FuncOp>()) {
+    func.walk([&](Operation *op) {
+      if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
+        auto name = module::getName(op);
+        if (all_names.find(name) != all_names.end()) {
+          op->dump();
+          llvm_unreachable("op name conflict");
+        }
+        all_names.insert(name);
+      }
+    });
+  }
+  bool same_name = true;
+  std::string filename_;
+  if (weightFileName == "") {
+    filename_ = module::genWeightFileName(same_name);
+  } else {
+    same_name = false;
+    filename_ = weightFileName;
+  }
+  // weight remove unused in npz
+  if (wFile == nullptr) {
+    if (!same_name) {
+      weightFile().save(filename_);
+      m->setAttr(Attr::WEIGHT_FILE, StringAttr::get(ctx, filename_));
+    }
+    return;
+  }
+  if (wFile->changed() == false && same_name) {
+    return;
+  }
+  std::set<StringRef> weight_names;
+  for (auto func : m.getOps<FuncOp>()) {
+    func.walk([&](top::WeightOp op) {
+      weight_names.insert(module::getName(op.getOperation()));
+    });
+  }
+  std::set<StringRef> npz_names;
+  wFile->getAllNames(npz_names);
+  std::set<StringRef> dif_names;
+  for (auto name : npz_names) {
+    if (weight_names.find(name) == weight_names.end()) {
+      dif_names.insert(name);
+    }
+  }
+  for (auto &name : dif_names) {
+    wFile->deleteTensor(name);
+  }
+  if (wFile->changed() == false && same_name) {
+    return;
+  }
+  wFile->save(filename_);
+  m->setAttr(Attr::WEIGHT_FILE, StringAttr::get(ctx, filename_));
+}
+
+void setWeightFileName(const std::string &name) { weightFileName = name; }
+void detachWeightFile() { wFile = nullptr; }
+
+mlir::TensorFile &weightFile() {
+  if (wFile == nullptr) {
+    auto name = m->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
+    wFile = std::make_unique<mlir::TensorFile>(name, false);
+  }
+  return *wFile;
 }
 
 } // namespace module

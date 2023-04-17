@@ -285,6 +285,23 @@ void BM168x::call_local_func(const char *symbolName, void *params,
   func(params, param_size, info, input, output, instance()->bdc_node);
 }
 
+typedef int64_t (*global_bfsz_backend_api_t)(void *params, int param_size, void *input,
+                                             void *output);
+int64_t BM168x::call_global_bfsz_func(const char *symbolName, void *params,
+                                      int param_size, void *input, void *output) {
+  auto func = instance()->CastToFPtr<global_bfsz_backend_api_t>(symbolName);
+  return func(params, param_size, input, output);
+}
+
+typedef int (*local_bfsz_backend_api_t)(void *params, int param_size, void *input,
+                                        void *info, void *output);
+int BM168x::call_local_bfsz_func(const char *symbolName, void *params,
+                                 int param_size, void *info, void *input,
+                                 void *output) {
+  auto func = instance()->CastToFPtr<local_bfsz_backend_api_t>(symbolName);
+  return func(params, param_size, info, input, output);
+}
+
 uint64_t BM168x::CTX_START_ADDR = 0;
 int64_t BM168x::IC_PARALLEL = 0;
 uint64_t BM168x::GMEM_START_ADDR = 0;
@@ -315,6 +332,7 @@ void BM168x::load_functions() {
   CAST_FUNCTION(get_global_memaddr);
   CAST_FUNCTION(set_cmd_buffer_ptr);
   CAST_FUNCTION(set_cmd_id_prefix);
+  CAST_FUNCTION(enable_profile);
   CAST_FUNCTION(allow_atomic_cmodel_assert);
   CAST_FUNCTION(forbid_atomic_cmodel_assert);
   CAST_FUNCTION(tensor_stride_move_gen_cmd);
@@ -390,6 +408,9 @@ int BM168x::compare_mode(StringRef mode) {
   }
   if (mode == "LessOrEqual") {
     return BINARY_LE;
+  }
+  if (mode == "NotEqual") {
+    return BINARY_NE;
   }
   llvm_unreachable("Not Implemented");
 }

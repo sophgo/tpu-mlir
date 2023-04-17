@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
+#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
 
 #include "tpu_mlir/Support/MathUtils.h"
@@ -1844,9 +1845,7 @@ void Yolo_v2_DetectionFunc::invoke() {
   }
 }
 
-
-
-BMCpuOp::BMCpuOp(tpu::GenericCpuOp &op): op_(op) {
+BMCpuOp::BMCpuOp(tpu::GenericCpuOp &op) : op_(op) {
   this->op_name = op.getCpuOpName().str();
   this->op_type = this->getCpuOpType();
   this->getCpuParam();
@@ -1865,21 +1864,19 @@ void BMCpuOp::get_topk_param() {
   cpu_param.axis = paramDic.get("axis").cast<IntegerAttr>().getInt();
   cpu_param.sorted = paramDic.get("sorted").cast<BoolAttr>().getValue();
   cpu_param.descending = paramDic.get("largest").cast<BoolAttr>().getValue();
-  this->param_size = sizeof (cpu_topk_param_t);
+  this->param_size = sizeof(cpu_topk_param_t);
   this->param = (void *)&cpu_param;
 }
-
 
 void BMCpuOp::getCpuParam() {
   switch (this->op_type) {
   case CPU_TOPK:
     get_topk_param();
-    break ;
+    break;
   case CPU_LAYER_UNKNOW:
     llvm_unreachable("wrong cpu layer type");
   }
 }
-
 
 InstanceNormFunc::InstanceNormFunc(InstanceNormParam &param) : param_(param) {}
 
@@ -2384,4 +2381,54 @@ void EmbeddingFunc::invoke() {
   }
 }
 
+ArgMaxFunc::ArgMaxFunc(ArgMaxParam &param) : param_(param) {}
+
+void ArgMaxFunc::invoke() {
+  auto data = param_.inputs[0].ptr;
+  auto map = param_.inputs[1].ptr;
+  auto indices = param_.outputs[0].ptr;
+  float *values = nullptr;
+  if (param_.outputs.size() > 1) {
+    values = param_.outputs[1].ptr;
+  }
+
+  int outer_dim = std::accumulate(param_.inputs[0].shape.begin(),
+                                  param_.inputs[0].shape.begin() + param_.axis,
+                                  1, std::multiplies<int64_t>());
+  int inner_dim = param_.inputs[0].shape[param_.axis];
+  int tile_size = 256;
+  int tile_num = (inner_dim + tile_size - 1) / tile_size;
+  float max_val_fp32 = 0;
+  for (int i = 0; i < outer_dim; ++i) {
+    auto map_ptr = map + i * tile_num;
+    float max_val = map_ptr[0];
+    int idx = 0;
+    // find max_val
+    for (int j = 1; j < tile_num; j++) {
+      if (map_ptr[j] > max_val) {
+        max_val = map_ptr[j];
+        idx = j;
+      }
+    }
+    int offset = idx * tile_size;
+    int len = std::min(inner_dim - offset, tile_size);
+    auto ptr = data + i * inner_dim + offset;
+    idx = 0;
+    for (int j = 0; j < len; ++j) {
+      if (ptr[j] == max_val) {
+        idx = j;
+        break;
+      }
+    }
+    indices[i] = (float)(idx + offset);
+    if (values) {
+      if (!param_.fmt_i8) {
+        max_val_fp32 = max_val;
+      } else {
+        max_val_fp32 = max_val * param_.scale;
+      }
+      values[i] = max_val_fp32;
+    }
+  }
+}
 } // namespace tpu_mlir

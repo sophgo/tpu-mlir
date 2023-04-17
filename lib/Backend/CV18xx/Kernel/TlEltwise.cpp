@@ -175,7 +175,6 @@ void cvi_backend_tl_eltwise_op(
       CV18xx::tl_shape_t4(n, c, oh, ow), CVK_FMT_I8, 1);
   uint32_t n_stride = default_stride.n;
 
-  CV18xx::parallel_disable();
   CV18xx::set_layer_id(layer_id);
 
   if (do_load) {
@@ -184,7 +183,9 @@ void cvi_backend_tl_eltwise_op(
     tl_input->shape = CV18xx::tl_shape_t4(n, c, h, w);
     tl_input->stride =
         CV18xx::tl_default_stride(tl_input->shape, CVK_FMT_I8, /*eu_align=*/1);
+    CV18xx::parallel_disable();
     CV18xx::tdma_load_stride(tl_input, ga_input, gstride);
+    CV18xx::parallel_enable();
   }
 
   int flip = 0;
@@ -209,9 +210,8 @@ void cvi_backend_tl_eltwise_op(
         gstride = {
             (uint32_t)(c * h * w), (uint32_t)(h * w),
             (uint32_t)inputTileShapeW}; // cstride/nstride is same as original
-        CV18xx::tdma_load_stride(&tl_addend_tmp, ga_addend_pos, gstride);
-
         CV18xx::parallel_disable();
+        CV18xx::tdma_load_stride(&tl_addend_tmp, ga_addend_pos, gstride);
         CV18xx::parallel_enable();
 
         // form input tl tensor on position
@@ -357,15 +357,15 @@ void cvi_backend_tl_eltwise_op(
     }
   }
 
-  CV18xx::parallel_disable();
-
   if (do_store) {
     // store output
     tl_output->fmt = CVK_FMT_I8;
     tl_output->shape = CV18xx::tl_shape_t4(n, c, oh, ow);
     tl_output->stride =
         CV18xx::tl_default_stride(tl_output->shape, CVK_FMT_I8, /*eu_align=*/1);
+    CV18xx::parallel_disable();
     CV18xx::tdma_store_stride(tl_output, ga_output, gstride_output);
+    CV18xx::parallel_enable();
   }
 
   //
@@ -560,12 +560,13 @@ void cvi_backend_tl_eltwise(uint32_t layer_id, laddr_t *la_input,
         CV18xx::tiu_mac(&p3);
 
         if (out_is_higher_addr) {
-          CV18xx::parallel_disable();
           cvk_tdma_l2l_tensor_copy_param_t p10 = {0};
           p10.dst = &output;
           p10.src = res_low;
           p10.layer_id = layer_id;
+          CV18xx::parallel_disable();
           CV18xx::tdma_l2l_tensor_copy(&p10);
+          CV18xx::parallel_enable();
         }
       } else {
         // Not support

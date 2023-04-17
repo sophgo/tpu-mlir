@@ -299,7 +299,7 @@ void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
   mem_buffer_key_t buffer_key1;
   buffer_key0.type = LMEM_ACTIVATION;
   buffer_key1.type = LMEM_ACTIVATION;
-  int64_t in_nslice, in_hslice, out_nslice, out_hslice;
+  int64_t in_nslice, in_hslice, in_dslice, in_wslice, out_nslice, out_hslice, out_dslice, out_wslice;
   for (auto iter = lmem_buffer_.begin(); iter != lmem_buffer_.end(); ++iter) {
     if (iter->first.type == LMEM_OPERATION) {
       auto op = iter->first.op;
@@ -308,15 +308,17 @@ void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
       auto &in_ti = tensor_infos[in];
       auto &out_ti = tensor_infos[out];
 
-      get_max_slice_nh(in_ti.slice_info, in_nslice, in_hslice);
-      get_max_slice_nh(out_ti.slice_info, out_nslice, out_hslice);
+      get_max_slice_nhdw(in_ti.slice_info, in_nslice, in_hslice, in_dslice, in_wslice);
+      get_max_slice_nhdw(out_ti.slice_info, out_nslice, out_hslice, out_dslice, out_wslice);
       buffer_key0.value = in;
       buffer_key1.value = out;
 
       auto lg_op = cast<LocalGenInterface>(op);
       iter->second.size = lg_op.getBufferSize(
           lmem_buffer_[buffer_key0].size, lmem_buffer_[buffer_key1].size,
-          in_nslice, in_hslice, out_nslice, out_hslice, lg_info.type);
+          in_nslice, in_hslice, in_dslice, in_wslice,
+          out_nslice, out_hslice, out_dslice, out_wslice,
+          lg_info.type);
     }
   }
 
@@ -343,6 +345,33 @@ int64_t BasicTimeStep::get_lmem_addr(const mem_buffer_key_t &buffer_key) {
 }
 int64_t BasicTimeStep::get_lmem_size(const mem_buffer_key_t &buffer_key) {
   return lmem_buffer_[buffer_key].size;
+}
+
+MemBlock BasicTimeStep::find_buffer_locate(Value value, int64_t ts,
+                                           const MemBuff &buffer) {
+  MemBlock lmem_locate(-1, -1);
+  mem_buffer_key_t buffer_key;
+  buffer_key.value = value;
+  buffer_key.type = module::isWeight(value) ? LMEM_WEIGHT : LMEM_ACTIVATION;
+  auto iter = buffer.find(buffer_key);
+  assert(iter != buffer.end());
+  auto &buffer_value = iter->second;
+  int64_t start_ts = buffer_value.start_ts;
+  int64_t end_ts = buffer_value.end_ts;
+  if ((start_ts <= end_ts && ts >= start_ts && ts <= end_ts) ||
+      (start_ts > end_ts && (ts >= start_ts || ts <= end_ts))) {
+    lmem_locate.first = buffer_value.addr;
+    lmem_locate.second = buffer_value.size;
+  }
+  return lmem_locate;
+}
+
+MemBlock BasicTimeStep::get_lmem_locate(Value value, int64_t ts) {
+  MemBlock buffer_locate = find_buffer_locate(value, ts, this->lmem_buffer_);
+  if (buffer_locate.first == -1) {
+    llvm_unreachable("cannot find local memory for this tensor.");
+  }
+  return buffer_locate;
 }
 
 bool BasicTimeStep::is_tensor_hold_in_lmem(Value v) {
@@ -622,6 +651,38 @@ bool BasicTimeStep::layer_can_merge_backward(int64_t ts,
   }
 
   return true;
+}
+
+//==============================================
+// functions for group overlap
+//==============================================
+
+// down_to_up overlap, update cur_time_step overlap info
+void BasicTimeStep::insert_self_up_op(Value value) {
+  self_up_overlap_ops_.insert(value);
+}
+
+// up_to_down overlap, update cur_time_step overlap info
+void BasicTimeStep::insert_self_down_op(Value value) {
+  self_down_overlap_ops_.insert(value);
+}
+
+// down_to_up overlap, update dst_time_step overlap info
+void BasicTimeStep::insert_other_up_op(Value value, int64_t dst_ts) {
+  if (other_up_overlap_ops_.find(dst_ts) == other_up_overlap_ops_.end()) {
+    std::vector<Value> values;
+    other_up_overlap_ops_.insert(std::make_pair(dst_ts, values));
+  }
+  other_up_overlap_ops_[dst_ts].push_back(value);
+}
+
+// up_to_group overlap, update dst_time_step overlap info
+void BasicTimeStep::insert_other_down_op(Value value, int64_t dst_ts) {
+  if (other_down_overlap_ops_.find(dst_ts) == other_down_overlap_ops_.end()) {
+    std::vector<Value> values;
+    other_down_overlap_ops_.insert(std::make_pair(dst_ts, values));
+  }
+  other_down_overlap_ops_[dst_ts].push_back(value);
 }
 
 } // namespace tpu

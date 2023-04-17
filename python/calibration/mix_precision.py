@@ -42,6 +42,15 @@ FLOAT_MAP = {
     "cv180x": "BF16"
 }
 
+chip_support_mix_fp_type = {
+    "bm1684x": ["F16", "F32"],
+    "bm1684": ["F32"],
+    "cv183x": ["BF16"],
+    "cv182x": ["BF16"],
+    "cv181x": ["BF16"],
+    "cv180x": ["BF16"]
+}
+
 def find_all_pre_layers(all_pre_layers, op_name, parser, exist_ref_layers = None):
     pre_layers = parser.get_pre_op_by_op_name(op_name)
     if len(pre_layers) > 0:
@@ -58,7 +67,7 @@ def find_all_pre_layers(all_pre_layers, op_name, parser, exist_ref_layers = None
             all_pre_layers.append(op_name)
 
 class MixQuantModel:
-    def __init__(self, fp32_mlir, chip: str, calib_table: str = None, mix_table: str = None):
+    def __init__(self, fp32_mlir, chip: str, calib_table: str = None, mix_table: str = None, fp_type: str = 'auto'):
         self.fp32_mlir = fp32_mlir
         self.chip = chip
         self.calib_table = None
@@ -68,7 +77,13 @@ class MixQuantModel:
             self.calib_table = calib_table
             self.mix_table = mix_table
         else:
-            self.mode = FLOAT_MAP[chip]
+            if fp_type == 'auto':
+                self.mode = FLOAT_MAP[chip]
+            else:
+                self.mode = fp_type
+                if fp_type not in chip_support_mix_fp_type[self.chip]:
+                    print('parameter error, fp_type:{fp_type} not support by {chip}')
+                    exit(1)
 
         self.quanted_mlir_file = '{}.{}.tune.mlir'.format(fp32_mlir, 'mix' if mix_table else self.mode)
         mlir_lowering(self.fp32_mlir, self.quanted_mlir_file, self.mode, self.chip,
@@ -85,10 +100,10 @@ class MixQuantModel:
         outputs = {}
         if global_compare_layers is None:
             for name in self.module.output_names:
-                outputs[name] = self.module.get_tensor(name)
+                outputs[name] = self.module.get_tensor(name).copy()
         else:
             for name in global_compare_layers:
-                outputs[name] = self.module.get_tensor(name)
+                outputs[name] = self.module.get_tensor(name).copy()
         return outputs
 
     def infer_from(self, top_op_name, input_data_dict: dict, extra_input_data_dict: dict, global_compare_layers:list = None):
@@ -141,7 +156,14 @@ class MixPrecSearcher:
         self.loss_table = args.loss_table
         self.quantize_table = args.quantize_table
         self.chip = args.chip
-        self.mix_mode = FLOAT_MAP[self.chip]
+        if args.fp_type == 'auto':
+            self.mix_mode = FLOAT_MAP[self.chip]
+        else:
+            self.mix_mode = args.fp_type
+            if args.fp_type not in chip_support_mix_fp_type[self.chip]:
+                print('parameter error, fp_type:{args.fp_type} not support by {self.chip}')
+                exit(1)
+
         self.parser = MlirParser(args.mlir_file)
         self.batch_size = self.parser.get_batch_size()
         self.input_num = self.parser.get_input_num()
@@ -642,7 +664,7 @@ class MixPrecSearcher:
                     self.dot_log.add_node_label(op.name, f'cos too low, set {self.mix_mode} to {op.name} and next_top_ops:{tmp}')
                     fp_layer_list.extend(next_top_ops)
                     mix_table = self._gen_mix_table(fp_layer_list)
-                    mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table, mix_table)
+                    mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table, mix_table, self.args.fp_type)
                     extra_input = self.get_extra_input_tensor(op.name, self.parser)
                     for idx in range(self.num_sample):
                         input_data_dict, extra_input_data_dict = self.collect_op_input_tensor(idx, op.name, extra_input, fp_layer_list)

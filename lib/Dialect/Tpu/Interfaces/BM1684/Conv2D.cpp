@@ -62,7 +62,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   auto filter_int8 = filterOp.read<int8_t>();
   auto filter_type = module::getElementType(op.getFilter());
   if (attr.is_dw == false) {
-    int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
+    int new_size = attr.oc * (align_up(attr.ic, 4ll)) * attr.kh * attr.kw;
     auto filter_new = std::make_shared<std::vector<int8_t>>(new_size, 0);
     for (int oc_idx = 0; oc_idx < attr.oc; oc_idx++) {
       for (int ic_idx = 0; ic_idx < attr.ic; ic_idx++) {
@@ -70,14 +70,14 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
           int orig_offset = ic_idx * attr.kh * attr.kw + k_idx +
                             oc_idx * attr.kh * attr.kw * attr.ic;
           int trans_offset =
-              ic_idx + k_idx * align_up(attr.ic, 4l) +
-              oc_idx * (attr.kh * attr.kw * align_up(attr.ic, 4l));
+              ic_idx + k_idx * align_up(attr.ic, 4ll) +
+              oc_idx * (attr.kh * attr.kw * align_up(attr.ic, 4ll));
           filter_new->at(trans_offset) = filter_int8->at(orig_offset);
         }
       }
     }
     std::vector<int64_t> new_shape = {
-        1, attr.oc, attr.kh * attr.kw * align_up(attr.ic, 4l), 1};
+        1, attr.oc, attr.kh * attr.kw * align_up(attr.ic, 4ll), 1};
     auto new_type = RankedTensorType::get(new_shape, filter_type);
     auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
                                             "reorderd", *filter_new, new_type);
@@ -116,9 +116,9 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
   auto weight_data = filterOp.read_as_byte();
   if (attr.is_dw == false) {
     std::vector<int64_t> new_shape = {1, attr.oc, attr.kh * attr.kw,
-                                      align_up(attr.ic / attr.groups, 2l)};
+                                      align_up(attr.ic / attr.groups, 2ll)};
     int new_count =
-        align_up(attr.ic / attr.groups, 2l) * attr.oc * attr.kh * attr.kw;
+        align_up(attr.ic / attr.groups, 2ll) * attr.oc * attr.kh * attr.kw;
     auto filter_new = std::make_shared<std::vector<float>>(new_count, 0);
     conv_weight_transform(attr.ic / attr.groups, attr.oc, attr.kh, attr.kw,
                           weight_data->data(), filter_new->data(), type_bytes);
@@ -208,7 +208,7 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto f_gi = LocalGenInterface::getGroupInfo(getFilter());
   auto b_gi = LocalGenInterface::getGroupInfo(getBias());
-  auto gi = getGroupInfo(n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0);
   auto p = parseParam();
   int bottom_dim[4] = {(int)in_gi.n_slice, (int)p.ic, (int)in_gi.h_slice,
                        (int)p.iw};

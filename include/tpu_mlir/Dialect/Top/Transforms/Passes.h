@@ -19,10 +19,10 @@ namespace tpu_mlir {
 namespace top {
 
 std::unique_ptr<OperationPass<ModuleOp>> createInitPass();
+std::unique_ptr<OperationPass<ModuleOp>> createDeinitPass();
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
 std::unique_ptr<OperationPass<ModuleOp>> createQDQConvertPass();
 std::unique_ptr<OperationPass<ModuleOp>> createAfterOptimizePass();
-std::unique_ptr<OperationPass<ModuleOp>> createSaveWeightPass();
 std::unique_ptr<OperationPass<ModuleOp>> createFusePreprocessPass();
 std::unique_ptr<OperationPass<ModuleOp>> createAlignInputPass();
 std::unique_ptr<OperationPass<ModuleOp>> createPostHandlePass();

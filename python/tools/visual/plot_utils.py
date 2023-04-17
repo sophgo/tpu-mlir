@@ -9,6 +9,17 @@ def plot(x, y, **keywords):
     fig.show()
 
 
+def plot_hist(index, data, **keywords):
+    import numpy as np
+    fp_data, int_data = data
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=index, y=fp_data, fill='tonexty', name='float'))
+    fig.add_trace(go.Scatter(x=index, y=int_data,
+                  fill='tonexty', name='quant'))
+    fig.show()
+    return fig
+
+
 def fig_sub_plot(shape, **keywords):
     assert (len(shape) == 2)
     rows = shape[0]
@@ -61,4 +72,21 @@ def plot_float_vs_fixpoint(index, data, **keywords):
                  line={"width": 1})
     plot(index, (fp_data, int_data), **style)
     plot(index, fp_data - int_data, **dict(name='diff', line={"width": 1}))
+    return fig
+
+
+def plot_dist_fp_fixpoint(index, data, **keywords):
+    fp_data, int_data = data
+    style = dict(name=('float32', 'int8'),
+                 mode='lines+markers',
+                 marker=({
+                     "size": 6,
+                     "symbol": 300
+                 }, {
+                     "size": 6,
+                     "symbol": 304,
+                     "opacity": 0.8
+                 }),
+                 line={"width": 1})
+    fig = plot_hist(index, (fp_data, int_data), **style)
     return fig

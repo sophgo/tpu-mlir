@@ -91,7 +91,6 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             lib_so = 'libcmodel_1684.so'
         cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
         os.system(cmd)
-
     elif model_file.endswith(".cvimodel"):
         pyruntime = pyruntime + "cvi"
         is_cv18xx = True
@@ -101,14 +100,20 @@ def model_inference(inputs: dict, model_file: str) -> dict:
 
     outputs = dict()
     model = pyruntime.Model(model_file)
-    try:
+    if not is_cv18xx:
         net = model.Net(model.networks[0])
-    except AttributeError:
+    else:
         net = model
     dyn_input_shapes = []
+    only_one = len(inputs) == 1
+    if only_one and len(net.inputs) != 1:
+        raise RuntimeError("Input num not the same")
     for i in net.inputs:
-        assert i.name in inputs
-        input = inputs[i.name]
+        if not only_one:
+            assert i.name in inputs
+            input = inputs[i.name]
+        else:
+            input = list(inputs.values())[0]
         overflow = np.prod(i.data.shape) - np.prod(input.shape)
         if is_cv18xx and i.aligned:
             overflow = i.size - np.prod(input.shape)
@@ -132,21 +137,22 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         elif i.dtype == "u8" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8).reshape(i.data.shape)
+        elif i.dtype == "u16" and (input.dtype == np.float32 or input.dtype == np.int32):
+            i.data[:] = input.astype(np.uint16).reshape(i.data.shape)
         elif i.dtype == "f16" and input.dtype == np.float32:
             i.data[:] = input.astype(np.float16)
         elif i.dtype == "bf16" and input.dtype == np.float32:
-            i.data[:] = fp32_to_bf16(input)
-        elif i.dtype == "i32" and input.dtype == np.float32:
+            i.data[:] = fp32_to_bf16(input).reshape(i.data.shape)
+        elif i.dtype == "i32" and (input.dtype == np.float32 or input.dtype == np.int64):
             i.data[:] = input.astype(np.int32).reshape(i.data.shape)
-        elif i.dtype == "i32" and input.dtype == np.int64:
-            i.data[:] = input.astype(np.int32)
         elif i.dtype == "i4" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, -8, 7).astype(np.int8).reshape(i.data.shape)
         elif i.dtype == "u4" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, 0, 15).astype(np.uint8).reshape(i.data.shape)
-
+        elif i.dtype == "f32":
+            i.data[:] = input.astype(np.float32)
         else:
             raise ValueError(f"unknown type: form {input.dtype} to {i.data.dtype}")
     if not is_dynamic:
@@ -163,6 +169,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
                 zp = i.qzero_point
                 outputs[i.name] = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
                                            dtype=np.float32)
+        elif (i.dtype == 'u16'):
+            outputs[i.name] = np.array(i.data.astype(np.float32))
         elif (i.dtype == "f16"):
             outputs[i.name] = np.array(i.data.astype(np.float32))
         elif (i.dtype == "bf16"):
@@ -180,34 +188,39 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     return outputs
 
 
-def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=None) -> dict:
+g_mlir_module = None
 
+
+def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=None) -> dict:
     import pymlir
     from utils.mlir_parser import MlirParser
-
-    if debug == "":
-        pymlir.debug()
-    elif debug:
-        pymlir.debug(debug.split(","))
-
-    module = pymlir.module()
-    module.load(mlir_file)
+    global g_mlir_module
+    if g_mlir_module != None:
+        g_mlir_module = None
+    g_mlir_module = pymlir.module()
+    g_mlir_module.load(mlir_file)
     parser = MlirParser(mlir_file)
-    for name in module.input_names:
-        assert (name in inputs)
-        input = inputs[name]
-        if input.dtype == np.int8 or input.dtype == np.uint8:
-            module.set_tensor_from_int(name, input.astype(np.float32))
+    only_one = len(inputs) == 1
+    if only_one:
+        assert (len(g_mlir_module.input_names) == 1)
+    for name in g_mlir_module.input_names:
+        if not only_one:
+            assert (name in inputs)
+            input = inputs[name]
         else:
-            module.set_tensor(name, input.astype(np.float32))
-    module.invoke()
-    tensors = module.get_all_tensor()
+            input = list(inputs.values())[0]
+        if input.dtype == np.int8 or input.dtype == np.uint8:
+            g_mlir_module.set_tensor_from_int(name, input.astype(np.float32))
+        else:
+            g_mlir_module.set_tensor(name, input.astype(np.float32))
+    g_mlir_module.invoke()
+    tensors = g_mlir_module.get_all_tensor()
     if dump_all:
         return tensors
     outputs = dict()
-    for name in module.output_names:
+    for name in g_mlir_module.output_names:
         outputs[name] = tensors[name]
-    for name in module.output_names:
+    for name in g_mlir_module.output_names:
         # assume output of op has the same name
         op_type = parser.get_op_type_by_op_name(name)
         if op_type == "tpu.Cast":
@@ -248,6 +261,9 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         output_keys, onnx_file = generate_onnx_with_all(onnx_file)
     session = onnxruntime.InferenceSession(onnx_file, providers=['CPUExecutionProvider'])
     inodes = session.get_inputs()
+    only_one = len(inputs) == 1
+    if only_one:
+        assert (len(inodes) == 1)
     data = {}
     for node in inodes:
         name = node.name
@@ -258,7 +274,11 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
             dtype = np.bool
         elif node.type == 'tensor(int32)':
             dtype = np.int32
-        data[name] = inputs[name].astype(dtype)
+        if not only_one:
+            assert (name in inputs)
+            data[name] = inputs[name].astype(dtype)
+        else:
+            data[name] = list(inputs.values())[0].astype(dtype)
     outs = session.run(None, data)
     outputs = dict()
     if not dump_all:
@@ -276,12 +296,17 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
 def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool = True) -> dict:
     import caffe
     net = caffe.Net(prototxt, caffemodel, caffe.TEST)
+    only_one = len(inputs) == 1
+    if only_one:
+        assert (len(net.inputs) == 1)
     for in_ in net.inputs:
-        if in_ not in inputs:
-            raise RuntimeError("inputs have no name [{}]".format(in_))
-        net.blobs[in_].reshape(*inputs[in_].shape)
-        net.blobs[in_].data[...] = inputs[in_]
-    top_map = {}
+        if not only_one:
+            assert (in_ in inputs)
+            input = inputs[in_]
+        else:
+            input = list(inputs.values())[0]
+        net.blobs[in_].reshape(*input.shape)
+        net.blobs[in_].data[...] = input
     out = net.forward()
     if dump_all:
         blobs_dict = dict(inputs)
@@ -324,12 +349,18 @@ def tflite_inference(
         return tensor
 
     data = {}
+    only_one = len(inputs) == 1
+    if only_one:
+        assert (len(session.inputs) == 1)
     for input in session.inputs:
         name = input["name"]
         t = input["dtype"]
         is_quant = 'quantization' in input
-        assert (name in inputs)
-        d = inputs[name]
+        if not only_one:
+            assert (name in inputs)
+            d = inputs[name]
+        else:
+            d = list(inputs.values())[0]
         if d.dtype == t:
             data[name] = d
         elif d.dtype == np.float32 and is_quant:
@@ -348,10 +379,12 @@ def tflite_inference(
     else:
         return {k["name"]: out_tensor_process((k, v)) for k, v in outputs}
 
+
 def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
     import torch
     idx = 0
-    def torch_outputs(outputs:dict, names:list, tensors):
+
+    def torch_outputs(outputs: dict, names: list, tensors):
         nonlocal idx
         if isinstance(tensors, torch.Tensor):
             outputs[names[idx]] = tensors.numpy()
@@ -363,15 +396,23 @@ def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
         else:
             raise RuntimeError("Not Implemented")
 
+    outputs = {}
+    if dump_all:
+        from transform.TorchInterpreter import TorchInterpreter
+        net = TorchInterpreter(model)
+        net.run_model(inputs)
+        return net.ref_tensor
     net = torch.jit.load(model, map_location=torch.device('cpu'))
     net.eval()
     in_tensors = [torch.from_numpy(v) for k, v in inputs.items()]
     with torch.no_grad():
         out_tensors = net(*in_tensors)
-    outputs = {}
+
     names = []
-    for out in net.inlined_graph.outputs():
-        if out.node().kind() == 'prim::TupleConstruct':
+    graph_alive = net.inlined_graph
+    for out in graph_alive.outputs():
+        if out.node().kind() == 'prim::TupleConstruct' or out.node().kind(
+        ) == 'prim::ListConstruct':
             ins = out.node().inputs()
             names.extend([i.debugName() for i in ins])
         else:
@@ -385,7 +426,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="input npz file")
     parser.add_argument("--model", type=str, required=True,
-                        help="mlir/onnx/tflie/bmodel/prototxt file.")
+                        help="mlir/pytorch/onnx/tflie/bmodel/prototxt file.")
     parser.add_argument("--weight", type=str, default="", help="caffemodel for caffe")
     parser.add_argument("--output", default='_output.npz', help="output npz file")
     parser.add_argument("--dump_all_tensors", action='store_true',
@@ -412,4 +453,4 @@ if __name__ == '__main__':
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     np.savez(args.output, **output)
-    print("Result saved to:{}".format(args.output))
+    print("\nResult saved to:{}".format(args.output))

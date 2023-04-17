@@ -16,7 +16,8 @@ namespace bm1684x {
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
-      ConvertMatMulWithRightTranspose
+      ConvertMatMulWithRightTranspose,
+      ReshapeReorderPattern
   >(patterns->getContext());
   // clang-format on
 }

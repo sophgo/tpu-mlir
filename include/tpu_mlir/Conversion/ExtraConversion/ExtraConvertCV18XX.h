@@ -132,6 +132,20 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
+class ConvertArgmaxOp : public OpRewritePattern<top::ArgOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ArgOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
+class ConvertAvgPoolOp : public OpRewritePattern<top::AvgPoolOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::AvgPoolOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns);
 } // namespace cv18xx
 } // namespace tpu_mlir

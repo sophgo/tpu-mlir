@@ -27,7 +27,7 @@
 .. code-block:: shell
    :linenos:
 
-   $ mkdir model_yolov5s && cd model_yolov5s
+   $ mkdir yolov5s_onnx && cd yolov5s_onnx
    $ cp $TPUC_ROOT/regression/model/yolov5s.onnx .
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
@@ -67,10 +67,10 @@ ONNX转MLIR
        --output_names 350,498,646 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
-       --mlir yolov5s.mlir \
-       --post_handle_type yolo
+       --mlir yolov5s.mlir
 
-``model_transform.py`` 支持的参数如下:
+
+``model_transform.py`` 主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
 
 
 .. list-table:: model_transform 参数功能
@@ -119,31 +119,29 @@ ONNX转MLIR
    * - mlir
      - 是
      - 指定输出的mlir文件名称和路径
-   * - post_handle_type
-     - 否
-     - 将后处理融合到模型中，指定后处理类型， 比如yolo、ssd
+
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是模型的输入文件。
 
 
-MLIR转F32模型
+MLIR转F16模型
 ------------------
 
-将mlir文件转换成f32的bmodel, 操作方法如下:
+将mlir文件转换成f16的bmodel, 操作方法如下:
 
 .. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
-       --quantize F32 \
+       --quantize F16 \
        --chip bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.99,0.99 \
-       --model yolov5s_1684x_f32.bmodel
+       --model yolov5s_1684x_f16.bmodel
 
 
-``model_deploy.py`` 的相关参数说明如下:
+``model_deploy.py`` 的主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
 
 
 .. list-table:: model_deploy 参数功能
@@ -180,21 +178,12 @@ MLIR转F32模型
    * - excepts
      - 否
      - 指定需要排除验证的网络层的名称, 多个用,隔开
-   * - fuse_preprocess
-     - 否
-     - 是否将预处理放入模型中做,目前只支持CV18xx系列的芯片,后面的章节会进行介绍
-   * - customization_format
-     - 否
-     - 指定输入到模型的图像格式,与预处理有关,一般不需要指定
-   * - aligned_input
-     - 否
-     - 是否将对输入数据做对齐,只支持CV18xx系列的芯片,后面的章节会进行介绍
    * - model
      - 是
      - 指定输出的model文件名称和路径
 
 
-编译完成后, 会生成名为 ``${model_name}_1684x_f32.bmodel`` 的文件。
+编译完成后, 会生成名为 ``yolov5s_1684x_f16.bmodel`` 的文件。
 
 
 MLIR转INT8模型
@@ -218,7 +207,7 @@ MLIR转INT8模型
        --input_num 100 \
        -o yolov5s_cali_table
 
-运行完成后会生成名为 ``${model_name}_cali_table`` 的文件, 该文件用于后续编译INT8
+运行完成后会生成名为 ``yolov5s_cali_table`` 的文件, 该文件用于后续编译INT8
 模型的输入文件。
 
 
@@ -239,29 +228,7 @@ MLIR转INT8模型
        --tolerance 0.85,0.45 \
        --model yolov5s_1684x_int8_sym.bmodel
 
-编译完成后, 会生成名为 ``${model_name}_1684x_int8_sym.bmodel`` 的文件。
-
-
-编译为INT8非对称量化模型
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-转成INT8非对称量化模型, 执行如下命令:
-
-.. code-block:: shell
-
-   $ model_deploy.py \
-       --mlir yolov5s.mlir \
-       --quantize INT8 \
-       --asymmetric \
-       --calibration_table yolov5s_cali_table \
-       --chip bm1684x \
-       --test_input yolov5s_in_f32.npz \
-       --test_reference yolov5s_top_outputs.npz \
-       --tolerance 0.90,0.55 \
-       --model yolov5s_1684x_int8_asym.bmodel
-
-
-编译完成后, 会生成名为 ``${model_name}_1684x_int8_asym.bmodel`` 的文件。
+编译完成后, 会生成名为 ``yolov5s_1684x_int8_sym.bmodel`` 的文件。
 
 
 效果对比
@@ -270,7 +237,7 @@ MLIR转INT8模型
 在本发布包中有用python写好的yolov5用例, 源码路径
 ``$TPUC_ROOT/python/samples/detect_yolov5.py`` , 用于对图片进行目标检测。阅读该
 代码可以了解模型是如何使用的: 先预处理得到模型的输入, 然后推理得到输出, 最后做后处理。
-用以下代码分别来验证onnx/f32/int8的执行结果。
+用以下代码分别来验证onnx/f16/int8的执行结果。
 
 
 onnx模型的执行方式如下, 得到 ``dog_onnx.jpg`` :
@@ -283,14 +250,14 @@ onnx模型的执行方式如下, 得到 ``dog_onnx.jpg`` :
        --output dog_onnx.jpg
 
 
-f32 bmodel的执行方式如下, 得到 ``dog_f32.jpg`` :
+f16 bmodel的执行方式如下, 得到 ``dog_f16.jpg`` :
 
 .. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
-       --model yolov5s_1684x_f32.bmodel \
-       --output dog_f32.jpg
+       --model yolov5s_1684x_f16.bmodel \
+       --output dog_f16.jpg
 
 
 
@@ -304,17 +271,7 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
        --output dog_int8_sym.jpg
 
 
-int8非对称bmodel的执行方式如下, 得到 ``dog_int8_asym.jpg`` :
-
-.. code-block:: shell
-
-   $ detect_yolov5.py \
-       --input ../image/dog.jpg \
-       --model yolov5s_1684x_int8_asym.bmodel \
-       --output dog_int8_asym.jpg
-
-
-四张图片对比如下:
+对比结果如下:
 
 .. _yolov5s_result:
 .. figure:: ../assets/yolov5s.png
@@ -349,8 +306,7 @@ int8非对称bmodel的执行方式如下, 得到 ``dog_int8_asym.jpg`` :
    # --bmodel参数后面接bmodel文件,
 
    $ cd $TPUC_ROOT/../model_yolov5s/workspace
-   $ bmrt_test --bmodel yolov5s_1684x_f32.bmodel
-   $ bmrt_test --bmodel yolov5s_1684x_int8_asym.bmodel
+   $ bmrt_test --bmodel yolov5s_1684x_f16.bmodel
    $ bmrt_test --bmodel yolov5s_1684x_int8_sym.bmodel
 
 

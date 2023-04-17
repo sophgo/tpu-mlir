@@ -434,9 +434,6 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
   } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
     auto operand = module::getOperand(op, 0);
     module::setAddress(reshapeOp.getOutput(), module::getAddress(operand));
-  } else if (auto reshapeOp = dyn_cast<tpu::SqueezeOp>(op)) {
-    auto operand = module::getOperand(op, 0);
-    module::setAddress(reshapeOp.getOutput(), module::getAddress(operand));
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
     auto p = sliceOp.parseParam();
     int axis;
@@ -459,7 +456,7 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
 }
 
 bool CVAddressAssign::isInPlaceOp(Operation *op) {
-  if (isa<tpu::ReshapeOp, tpu::SqueezeOp>(op)) {
+  if (isa<tpu::ReshapeOp>(op)) {
     return true;
   } else if (auto concat_op = dyn_cast<tpu::ConcatOp>(op)) {
     if (concat_op.getOnlyMerge()) {

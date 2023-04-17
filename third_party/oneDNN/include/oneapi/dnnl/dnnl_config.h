@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright 2019-2022 Intel Corporation
+* Copyright 2019-2023 Intel Corporation
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #ifndef ONEAPI_DNNL_DNNL_CONFIG_H
 #define ONEAPI_DNNL_DNNL_CONFIG_H
 
-#include "oneapi/dnnl/dnnl_types.h"
+#include "oneapi/dnnl/dnnl_common_types.h"
 
 /// @cond DO_NOT_DOCUMENT_THIS
 
@@ -95,7 +95,7 @@
 #endif
 
 // When defined, primitive cache stores runtime objects.
-#define DNNL_USE_RT_OBJECTS_IN_PRIMITIVE_CACHE
+/* #undef DNNL_USE_RT_OBJECTS_IN_PRIMITIVE_CACHE */
 
 // When defined, DPCPP is supported.
 /* #undef DNNL_WITH_SYCL */
@@ -106,11 +106,17 @@
 // When defined, SYCL CUDA backend is used.
 /* #undef DNNL_SYCL_CUDA */
 
+// When defined, SYCL HIP backend is used.
+/* #undef DNNL_SYCL_HIP */
+
 // When defined, stack checker is enabled.
 /* #undef DNNL_ENABLE_STACK_CHECKER */
 
 // When defined, experimental features are enabled.
 /* #undef DNNL_EXPERIMENTAL */
+
+// When defined, experimental functionality for sparse domain is enabled.
+/* #undef DNNL_EXPERIMENTAL_SPARSE */
 
 // List of configurating build controls
 // Workload controls

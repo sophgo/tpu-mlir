@@ -39,7 +39,7 @@ void Concat::setup(std::vector<float *> inputs, float *output,
     src_mems.push_back(src_mem);
   }
 
-  auto concat_pd = concat::primitive_desc(attr_.axis, src_mds, eng);
+  auto concat_pd = concat::primitive_desc(eng, attr_.axis, src_mds);
   auto dst_mem = memory(concat_pd.dst_desc(), eng, p_output);
   concat_prim = concat(concat_pd);
 

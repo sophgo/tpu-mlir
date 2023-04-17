@@ -810,7 +810,7 @@ class TFLiteConverter(BaseConverter):
         axis = op.inputs[0].buffer.tolist()
         op.inputs.pop(0)
         attr = {
-            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT32], axis),
             "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.NumSplits()),
         }
         return Top.SplitOp, attr, False
@@ -833,8 +833,7 @@ class TFLiteConverter(BaseConverter):
         param = UnpackOptions()
         param.Init(op_options.Bytes, op_options.Pos)
         attr = {
-            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
-            "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Num()),
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT32], param.Axis())
         }
         return Top.UnpackOp, attr, False
 

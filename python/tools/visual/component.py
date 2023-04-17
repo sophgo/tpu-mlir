@@ -4,6 +4,7 @@ import dash_draggable as ddrage
 from dash import dcc
 import dash_split_pane as dsp
 from dash import dash_table as dtb
+import numpy as np
 
 draggable_layout = dict(width=2400, gridCols=24)
 
@@ -98,6 +99,7 @@ def cyto_graph(id):
                           },
                           responsive=False)
 
+
 top_lable_style = {
     "fontSize": "16px",
     "fontWeight": "bold",
@@ -110,11 +112,12 @@ top_lable_style = {
 def top_label(id):
     return dbc.Label("Model Path", id=id, style=top_lable_style)
 
+
 def auto_load():
     return dcc.Interval(
         id="auto_load",
         n_intervals=0,
-        max_intervals=0, #<-- only run once
+        max_intervals=0,  # <-- only run once
         interval=1
     )
 
@@ -153,96 +156,80 @@ def forward_buttom(*id):
 
 
 def mini_menu(*ids):
-    id_m, id_layout, id_card, id_toolbox, id_figure, id_split = ids
+    id_m, id_layout, id_toolbox, id_figure, id_split = ids
     return dbc.DropdownMenu([
         dbc.DropdownMenuItem("Graph Layout", header=True),
         graph_layout_dropdown(id=id_layout),
         dbc.DropdownMenuItem(divider=True),
-        dbc.DropdownMenuItem("hide card", id=id_card, n_clicks=1),
         dbc.DropdownMenuItem(
             "hide toolbox", id=id_toolbox, n_clicks=1, disabled=True),
         dbc.DropdownMenuItem("hide figure", id=id_figure, n_clicks=1),
         dbc.DropdownMenuItem("split Vertical", id=id_split, n_clicks=1),
     ],
-                            label="Display",
-                            color="primary",
-                            className="m-1",
-                            size="sm",
-                            group=True,
-                            id=id_m)
+        label="Display",
+        color="primary",
+        className="m-1",
+        size="sm",
+        group=True,
+        id=id_m)
 
 
-def draggalbe_card(*ids):
-    return ddrage.GridLayout(
-        id=ids[0],
-        clearSavedLayout=True,
-        children=[
-            dbc.Card(
-                [
-                    dbc.CardBody([
-                        html.H4("Layer Information"),
-                        html.P("Hover the cursor to a node of the graph."),
-                    ],
-                                 id=ids[2]),
-                ],
-                id=ids[1],
-                style={"width": "18rem"},
-            ),
-        ],
-        verticalCompact=False,
-        style={
-            'position': 'absolute',
-        },
-        layout=[{
-            'i': 'info-card',
-            'x': 0,
-            'y': 5,
-            'w': 3,
-            'h': 13,
-            'resizeHandles': ['s']
-        }],
-        **draggable_layout)
+def layer_info_card(*ids):
+    return dbc.Table(id=ids[0])
 
 
 def layer_info(layer):
-    def io(blobs):
-        for blob in blobs:
-            yield html.H6(["name: ", html.Code(blob)])
-
-    def param(attrs):
-        for att in attrs:
-            if att == "multiplier" or att == "rshift" or att == "quant_mode":
-                continue
-            att_ = "{} :".format(att)
-            yield html.H6([att_, html.Code(attrs[att])])
-
     def shape():
         shape = list(layer.shape)
         shape_ = "["
         for s in shape:
             shape_ = shape_ + " " + str(s)
         shape_ = shape_ + "]"
-        shape_ = shape_.replace("[ ","[")
-        shape_ = shape_.replace(" ",",")
-        return html.H6(["shapes: ", html.Code(shape_)])
+        shape_ = shape_.replace("[ ", "[")
+        shape_ = shape_.replace(" ", ",")
+        return shape_
 
+    max_inout = np.maximum(len(layer.opds), len(layer.outputs))
+    ins = [' ']*max_inout
+    outs = [' ']*max_inout
+    ins[0:len(layer.opds)] = layer.opds
+    outs[0:len(layer.outputs)] = layer.outputs
 
-    return [
-        html.H5("Layer Information"),
-        html.Div([
-            html.H6(["name: ", html.Code(layer.name)]),
-            html.H6(["type: ", html.Code(layer.type)])
+    tmp_attrs = {x: layer.attrs[x] for x in layer.attrs if x !=
+                 "multiplier" and x != "rshift" and x != "quant_mode"}
+    max_att = (len(tmp_attrs) + 1)//2 * 2
+    k = [x for x in tmp_attrs]
+    v = [tmp_attrs[x] for x in tmp_attrs]
+    if len(tmp_attrs) % 2 == 1:
+        k.extend(' ')
+        v.extend(' ')
+    att = []
+    for i in np.arange(max_att//2):
+        att.append([k[i], v[i], k[i+max_att//2], v[i+max_att//2]])
+
+    table_style = {
+        'border': '1px solid',
+        'border-color': '#92a8d1',
+        'stripped': 'True',
+        'border-collapse': 'collapse',
+        'word-wrap': 'break-word',
+        'white-space': 'nowrap',
+        'font-size': '14px'
+    }
+
+    return html.Div(dbc.Table([
+        html.Thead([
+            html.Tr([html.Th("Layer Name", style=table_style), html.Th(layer.name, style=table_style), html.Th(
+                "Layer Type", style=table_style), html.Th(layer.type, style=table_style)], style=table_style),
         ]),
-        html.H5("Attributes"),
-        html.Div(list(param(layer.attrs))),
-        html.H5("Inputs"),
-        html.Div(list(io(layer.opds))),
-        html.H5("Outputs"),
-        html.Div(list(io(layer.outputs))),
-        #html.H5("OutShapes"),
-        html.Div(shape()),
-
-    ]
+        html.Tbody([
+            html.Tr([html.Td('Inputs', style=table_style), html.Td(f'{in_}', style=table_style), html.Td('Outputs', style=table_style), html.Td(f'{out_}', style=table_style)]) for in_, out_ in zip(ins, outs)
+        ]),
+        html.Tbody([
+            html.Tr([html.Td(f'{x[0]}', style=table_style), html.Td(f'{x[1]}', style=table_style), html.Td(f'{x[2]}', style=table_style), html.Td(f'{x[3]}', style=table_style)]) for x in list(att)
+        ]),
+    ], style=table_style),
+        style={'overflow-y': 'scroll'})
 
 
 def draggable_toolbox(*ids):
@@ -268,6 +255,70 @@ def draggable_toolbox(*ids):
             'display': 'none'
         },
     )
+
+
+def info_tab(*ids):
+    tabs_styles = {'zIndex': 99, 'display': 'inlineBlock', 'height': '3vh', 'width': '20vw',
+                   "background": "#323130", 'border': 'grey', 'border-radius': '4px'}
+    tab_style = {
+        "background": "#92a8d1",
+        'text-transform': 'uppercase',
+        'color': 'white',
+        'border': 'gray',
+        'font-size': '11px',
+        'font-weight': 600,
+        'align-items': 'center',
+        'justify-content': 'center',
+        'border-radius': '4px',
+        'padding': '4px',
+    }
+
+    tab_selected_style = {
+        "background": "Blue",
+        'text-transform': 'uppercase',
+        'color': 'white',
+        'font-size': '11px',
+        'font-weight': 600,
+        'align-items': 'center',
+        'justify-content': 'center',
+        'border-radius': '4px',
+        'padding': '6px'
+    }
+
+    return html.Div([
+        dcc.Tabs(
+            id=ids[0],
+            value='tab0',
+            children=[
+                dcc.Tab(label='Layer/Tensor Info', value='tab0',
+                        id=ids[1],
+                        children=[
+                            html.Div([
+                                tensor_figure(
+                                    'figure-graph', 'figure-sample',
+                                    'figure-sample-display',
+                                    'figure-store'),
+                            ], style={'width': '100%', 'height': '45vh'}),
+                            html.Div(
+                                dbc.Table(id='layer-info-card0',),
+                                style={'position': 'absolute', 'top': '51vh',  'height': '100%', 'width': '100%'}),
+                        ], style=tab_style, selected_style=tab_selected_style),
+                dcc.Tab(label='Distribution Info', value='tab1',
+                        id=ids[2],
+                        children=[
+                            html.Div(
+                                dist_figure('dist-graph', 'dist-store'),
+                                style={'height': '100vh'}),
+                        ], style=tab_style, selected_style=tab_selected_style),
+                dcc.Tab(label='Summary Info', value='tab2',
+                        id=ids[3],
+                        children=[
+                            html.Div(
+                                info_tabulator('info-tabulator'),
+                                style={'height': '100vh'}),
+                        ], style=tab_style, selected_style=tab_selected_style),
+            ], style=tabs_styles),
+    ], style={'height': '100vh'})
 
 
 def draggable_figure(*ids):
@@ -304,13 +355,29 @@ def tensor_figure(*ids):
                              ),
                     align="center")
         ],
-                ),
+        ),
         dcc.Store(id=id_fig_store, data=""),
         dcc.Graph(id=id_figure,
                   responsive=True,
                   style={
                       "width": "100%",
                       "height": "100%",
+                  },
+                  config={'displayModeBar': False})
+    ], style={"width": "100%",
+              "height": "100%",
+              })
+
+
+def dist_figure(*ids):
+    id_figure, id_fig_store = ids
+    return html.Div([
+        dcc.Store(id=id_fig_store, data=""),
+        dcc.Graph(id=id_figure,
+                  responsive=True,
+                  style={
+                      "width": "100%",
+                      "height": "60%",
                   },
                   config={'displayModeBar': False})
     ], style={"width": "100%",
@@ -338,7 +405,7 @@ def split_panel(*ids, **kwargs):
                         'position': 'relative',
                         'width': '100%',
                         'height': '100%',
-                    })
+    })
 
 
 def update_edge_info(tensor_info):
@@ -360,44 +427,46 @@ def update_edge_info(tensor_info):
 def info_tabulator(*ids):
     id_tab, *_ = ids
     return html.Div([
-        dtb.DataTable(
-            id=id_tab,
-            # columns=columns,
-            # data=data,
-            virtualization=True,
-            editable=False,
-            filter_action="native",
-            sort_action="native",
-            sort_mode="multi",
-            fixed_rows={'headers': True},
-            style_cell={
-                'minWidth': 10,
-                'maxWidth': 200,
-                'width': 95,
-                'textAlign': 'left'
-            },
-            style_table={
-                'height': 800,
-                'overflowY': 'auto'
-            },
-            style_data={
-                'color': 'black',
-                'backgroundColor': 'white'
-            },
-            style_data_conditional=[{
-                'if': {
-                    'row_index': 'odd'
+        html.Div(
+            dtb.DataTable(
+                id=id_tab,
+                # columns=columns,
+                # data=data,
+                virtualization=True,
+                editable=False,
+                filter_action="native",
+                sort_action="native",
+                sort_mode="multi",
+                fixed_rows={'headers': True, 'data': 0},
+                style_cell={
+                    'minWidth': 10,
+                    'maxWidth': 200,
+                    'width': 95,
+                    'textAlign': 'left'
                 },
-                'backgroundColor': 'rgb(240, 240, 240)',
-            }],
-            style_header={
-                'backgroundColor': 'rgb(210, 210, 210)',
-                'color': 'black',
-                'fontWeight': 'bold'
-            }),
+                style_table={
+                    'height': '100vh',
+                    'overflowY': 'scroll',
+                },
+                style_data={
+                    'color': 'black',
+                    'backgroundColor': 'white'
+                },
+                style_data_conditional=[{
+                    'if': {
+                        'row_index': 'odd'
+                    },
+                    'backgroundColor': 'rgb(240, 240, 240)',
+                }],
+                style_header={
+                    'backgroundColor': 'rgb(210, 210, 210)',
+                    'color': 'black',
+                    'fontWeight': 'bold'
+                }),
+        ),
         html.Div(id="test-output",
-                 style={'display': 'none'})
-    ])
+                 style={'display': 'none', 'height': '1%'}),
+    ], style={'height': '100vh'})
 
 
 def update_tab_info(tensor_info):

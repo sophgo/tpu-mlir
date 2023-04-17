@@ -54,16 +54,16 @@ matmul_attr_t top::MatMulOp::parseParam() {
 
 int64_t top::MatMulOp::getFLOPs() {
   auto p = parseParam();
-  auto extra = p.with_bias ? 1 : 0 + p.do_relu ? 1 : 0;
+  auto extra = (p.with_bias ? 1 : 0) + (p.do_relu ? 1 : 0);
   return p.batch * (2 * p.K + extra) * p.N * p.M;
 }
 
 LogicalResult top::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
   auto a = parseParam();
-  matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
-                a.M, a.K, a.N, a.do_relu, a.relu_limit, 0, a.right_transpose,
-                0);
+  matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch, 1,
+                a.M, a.K, a.N, a.do_relu, a.relu_limit, 0, 0, a.right_transpose,
+                0, 0, 0);
   p.handle = (void *)matmul;
   return success();
 }
@@ -101,8 +101,8 @@ void top::MatMulOp::shape_inference() {
   int in1_dims = in1_shape.size();
   bool r_transpose = getRightTranspose();
   bool keep_dims_ = getKeepDims();
-  int k_idx = in1_dims -  (r_transpose ? 1 : 2);
-  int n_idx = in1_dims -  (r_transpose ? 2 : 1);
+  int k_idx = in1_dims - (r_transpose ? 1 : 2);
+  int n_idx = in1_dims - (r_transpose ? 2 : 1);
   auto n = in1_shape[n_idx];
   std::vector<int64_t> out_shape = in0_shape;
   if (in1_dims == 1) {
@@ -125,9 +125,8 @@ void top::MatMulOp::shape_inference() {
     out_shape[in0_dims - 1] = n;
   }
   if (!keep_dims_) {
-    int64_t batch_size =
-        std::accumulate(out_shape.begin(), out_shape.end() - 1, 1,
-                        std::multiplies<int64_t>());
+    int64_t batch_size = std::accumulate(out_shape.begin(), out_shape.end() - 1,
+                                         1, std::multiplies<int64_t>());
     out_shape.resize(2);
     out_shape[0] = batch_size;
     out_shape[1] = n;

@@ -27,19 +27,40 @@ void loweringInstanceNorm(PatternRewriter &rewriter, top::InstanceNormOp op) {
       rewriter.getF32FloatAttr(op.getEps().convertToDouble())));
   attrs.emplace_back(
       rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(param)));
-  std::vector<Value> operands(op.getOperands().begin(), op.getOperands().end());
+  std::vector<Value> operands;
+  operands.emplace_back(op.getInput());
+  Value weight = op.getWeight();
+  if (isa<top::NoneOp>(op.getWeight().getDefiningOp())) {
+    auto shape = module::getShape(op.getInput());
+    assert(shape.size() > 1);
+    auto weight_type = RankedTensorType::get({shape[1]}, rewriter.getF32Type());
+    weight = top::WeightOp::create(
+        op, module::getName(op.getOutput()).str() + "_weight",
+        std::vector<float>(shape[1], 1), weight_type);
+  }
+  operands.emplace_back(weight);
+  Value bias = op.getBias();
+  if (isa<top::NoneOp>(op.getBias().getDefiningOp())) {
+    auto shape = module::getShape(op.getInput());
+    assert(shape.size() > 1);
+    auto bias_type = RankedTensorType::get({shape[1]}, rewriter.getF32Type());
+    bias = top::WeightOp::create(
+        op, module::getName(op.getOutput()).str() + "_bias",
+        std::vector<float>(shape[1], 0), bias_type);
+  }
+  operands.emplace_back(bias);
   mlir::Type new_type = getQuantFloatType(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, new_type, operands, attrs);
 }
 
 void InstanceNormLowering::LoweringINT8(PatternRewriter &rewriter,
-                                         top::InstanceNormOp op,
-                                         bool asymmetric) const {
+                                        top::InstanceNormOp op,
+                                        bool asymmetric) const {
   loweringInstanceNorm(rewriter, op);
 }
 
 void InstanceNormLowering::LoweringBF16(PatternRewriter &rewriter,
-                                         top::InstanceNormOp op) const {
+                                        top::InstanceNormOp op) const {
   loweringInstanceNorm(rewriter, op);
 }
 

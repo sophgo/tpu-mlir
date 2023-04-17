@@ -101,6 +101,28 @@ def ArrayAttr(data: list, data_type: str = 'int64'):
     return [data, data_type, False]
 
 
+def broadcast_shape_inference(ops: list):
+    assert len(ops) > 0
+    op: Tensor = ops[0]
+    out_shape = op.shape
+    for i in ops[1:]:
+        hs_shape = i.shape
+        tmp_shape = []
+        for idx in range(max(len(hs_shape), len(out_shape)) - 1, -1, -1):
+            try:
+                if out_shape[idx] != 1:
+                    tmp_shape.append(out_shape[idx])
+                else:
+                    raise
+            except:
+                if idx < len(hs_shape):
+                    tmp_shape.append(hs_shape[idx])
+                else:
+                    tmp_shape.append(out_shape[idx])
+        out_shape = [i for i in reversed(tmp_shape)]
+    return out_shape
+
+
 # data_type must be in ["float32", "float16", "int64" "int32", "int16". "int8", "uint8", "bool"]
 def Attr(data, data_type: str = 'int64'):
     assert data_type.find("int") >= 0 or data_type in ["float32", "float64", "bool"]
@@ -120,6 +142,22 @@ def Attr(data, data_type: str = 'int64'):
     TpuLang.insert_op(op_type, inputs=[in_tensor], outputs=[output], params=attr)
     return output
 '''
+
+
+def add(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
+    o_dtype = "int32"
+    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16":
+        o_dtype = out_dtype
+    elif out_dtype is not None:
+        o_dtype = tensor_i0.dtype
+
+    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+
+    output = Tensor(shape, dtype=o_dtype, name=out_name)
+
+    TpuLang.insert_op(Top.AddOp, [tensor_i0, tensor_i1], [output])
+
+    return output
 
 
 def conv_v2(input: Tensor,
@@ -162,6 +200,38 @@ def conv_v2(input: Tensor,
     output = Tensor(_shape_inference(), dtype=o_dtype, name=out_name)
     inputs = [input, weight, bias]
     TpuLang.insert_op(Top.ConvOp, inputs=inputs, outputs=[output], params=attr)
+    return output
+
+
+def mul(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
+    o_dtype = "int32"
+    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16":
+        o_dtype = out_dtype
+    elif out_dtype is not None:
+        o_dtype = tensor_i0.dtype
+
+    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+
+    output = Tensor(shape, dtype=o_dtype, name=out_name)
+
+    TpuLang.insert_op(Top.MulOp, [tensor_i0, tensor_i1], [output])
+
+    return output
+
+
+def sub(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
+    o_dtype = "int32"
+    if tensor_i0.dtype == "float32" or tensor_i0.dtype == "float16":
+        o_dtype = out_dtype
+    elif out_dtype is not None:
+        o_dtype = tensor_i0.dtype
+
+    shape = broadcast_shape_inference([tensor_i0, tensor_i1])
+
+    output = Tensor(shape, dtype=o_dtype, name=out_name)
+
+    TpuLang.insert_op(Top.SubOp, [tensor_i0, tensor_i1], [output])
+
     return output
 
 

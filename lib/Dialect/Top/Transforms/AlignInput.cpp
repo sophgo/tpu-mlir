@@ -32,8 +32,7 @@ public:
     auto fn = module::getMainFuncOp();
     auto builder = OpBuilder(ctx_);
     std::string pixel_format = this->customization_format;
-    std::string chip = this->chip;
-    assert(chip.find("cv18") != std::string::npos && "AlignInput only support cv18xx chip.");
+    assert(module::isCV18xx() && "AlignInput only support cv18xx chip.");
     std::map<std::string,
              std::pair<std::string, std::string>> attributes_map = {
       {"RGB_PLANAR",    {"rgb", "nchw"}},

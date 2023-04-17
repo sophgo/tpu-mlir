@@ -2,7 +2,7 @@
 
 # TPU-MLIR
 
-For Chinese version: [README_cn.md](https://github.com/sophgo/tpu-mlir/blob/master/README_cn.md).
+For Chinese version: [README](https://github.com/sophgo/tpu-mlir/blob/master/README_cn.md).
 
 TPU-MLIR is an open-source machine-learning compiler based on MLIR for TPU. This project provides a complete toolchain, which can convert pre-trained neural networks from different frameworks into binary files `bmodel` that can be efficiently operated on TPUs.
 
@@ -10,7 +10,7 @@ TPU-MLIR is originally developed by SOPHGO. This company is committed to becomin
 
 For technical details of this project, please refer to: [TPU-MLIR Technical Reference Manual](https://tpumlir.org/en/docs/developer_manual/index.html). We also have a paper introducing the design, <https://arxiv.org/abs/2210.15016>.
 
-Currently, the project supports BM1684X. BM1684, CV183x, CV182x, Mars, and other chips will be supported in the future.
+Currently, supported AI frameworks are PyTorch, ONNX, TFLite and Caffe. Models from other frameworks need to be converted to ONNX models.
 
 # How to Build
 
@@ -21,7 +21,7 @@ After cloning the code of this project, it needs to be compiled in docker.
 ``` shell
 docker pull sophgo/tpuc_dev:latest
 
-# myname1234 just a example, you can set your own name
+# myname1234 is just an example, you can set your own name
 docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest
 ```
 
@@ -35,28 +35,6 @@ Run the following command in the project directory:
 cd tpu-mlir
 source ./envsetup.sh
 ./build.sh
-```
-
-# How to Test
-
-``` shell
-# This project contains the yolov5s.onnx model, which can be used directly for verification
-pushd regression
-./run_model.sh yolov5s
-popd
-```
-
-**Options:**
-
-If you want to verify more networks, you need to clone them first. Please refer to <https://github.com/sophgo/model-zoo>.
-
-After cloning, the model path should be `/workspace/model-zoo`, and then use the following command to verify:
-
-``` shell
-# This step can also be skipped since its execution time is quite long
-pushd regression
-./run_all.sh
-popd
 ```
 
 # Usage
@@ -107,7 +85,6 @@ model_transform.py \
     --test_input ../image/dog.jpg \
     --test_result yolov5s_top_outputs.npz \
     --mlir yolov5s.mlir
-    --post_handle_type yolo
 ```
 
 The arguments of `model_transform.py`:
@@ -115,9 +92,9 @@ The arguments of `model_transform.py`:
 | **Argument**           | Required？ | **Description**            |
 | ------------------- |  :-:  | ------------------- |
 | model_name          | Yes    | Model name          |
-| model_def           | Yes    | Model definition file (e.g., `.onnx`, `.tflite` or `.prototxt` files) |
+| model_def           | Yes    | Model definition file (`.onnx`,`.pt`,`.tflite` or `.prototxt`) |
 | model_data          | No    | Specify the model weight file, required when it is caffe model (corresponding to the '.caffemodel' file) |
-| input_shapes        | No    | The shape of the input, such as [[1,3,640,640]] (a two-dimensional array), which can support multiple inputs |
+| input_shapes        | No    | The shape of the input, such as `[[1,3,640,640]]` (a two-dimensional array), which can support multiple inputs |
 | resize_dims         | No    | The size of the original image to be adjusted to. If not specified, it will be resized to the input size of the model |
 | keep_aspect_ratio   | No    | Whether to maintain the aspect ratio when resize. False by default. It will pad 0 to the insufficient part when setting |
 | mean                | No    | The mean of each channel of the image. The default is 0.0,0.0,0.0                    |
@@ -127,23 +104,25 @@ The arguments of `model_transform.py`:
 | test_input          | No    | The input file for validation, which can be an image, npy or npz. No validation will be carried out if it is not specified |
 | test_result         | No    | Output file to save validation result                                         |
 | excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma                      |
+| debug               | No    | if open debug, immediate model file will keep; or will remove after conversion done |
 | mlir                | Yes    | The output mlir file name (including path)                                       |
-| post_handle_type    | No     | fuse the post handle op into bmodel, set the type of post handle op such as yolo、ssd |
+
+
 After converting to mlir file, a `${model_name}_in_f32.npz` file containing preprocessed input will be generated.
 
 
-## MLIR to F32 bmodel
+## MLIR to F16 bmodel
 
-Convert the mlir file to the F32 bmodel by the following command:
+Convert the mlir file to the F16 bmodel by the following command:
 
 ``` shell
 model_deploy.py \
   --mlir yolov5s.mlir \
-  --quantize F32 \
+  --quantize F16 \
   --chip bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
-  --model yolov5s_1684x_f32.bmodel
+  --model yolov5s_1684x_f16.bmodel
 ```
 
 The arguments of `model_deploy.py`:
@@ -157,6 +136,7 @@ The arguments of `model_deploy.py`:
 | tolerance           | No    | Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results |
 | correctnetss        | No    | Tolerance for the minimum similarity between simulator and MLIR quantized inference results. 0.99,0.90 by default |
 | excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma |
+| debug               | No    | if open debug, immediate model file will keep; or will remove after conversion done |
 | model               | Yes    | Name of output model file (including path)                                  |
 
 
@@ -164,7 +144,7 @@ The arguments of `model_deploy.py`:
 
 Before converting to the INT8 model, you need to run calibration to get the calibration table. The number of input data is about 100 to 1000 according to the situation.
 
-Then use the calibration table to generate a symmetric or asymmetric bmodel. It is generally not recommended to use the asymmetric one if the symmetric one already meets the requirements, because
+Then use the calibration table to generate a symmetric int8 bmodel. It is generally not recommended to use the asymmetric one if the symmetric one already meets the requirements, because
 the performance of the asymmetric model will be slightly worse than the symmetric model.
 
 Here is an example of the existing 100 images from COCO2017 to perform calibration:
@@ -188,22 +168,7 @@ model_deploy.py \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --tolerance 0.85,0.45 \
-  --model yolov5s_1684x_int8_sym.bmodel
-```
-
-To the INT8 asymmetric quantized model:
-
-``` shell
-model_deploy.py \
-  --mlir yolov5s.mlir \
-  --quantize INT8 \
-  --asymmetric \
-  --calibration_table yolov5s_cali_table \
-  --chip bm1684x \
-  --test_input yolov5s_in_f32.npz \
-  --test_reference yolov5s_top_outputs.npz \
-  --tolerance 0.90,0.55 \
-  --model yolov5s_1684x_int8_asym.bmodel
+  --model yolov5s_1684x_int8.bmodel
 ```
 
 ## Results Comparison
@@ -221,53 +186,40 @@ The following code is used to verify the output of onnx/f32/int8 model respectiv
 detect_yolov5.py \
   --input ../image/dog.jpg \
   --model ../yolov5s.onnx \
-  --output dog_onnx.jpg
+  --output dog_origin.jpg
 ```
 
 
-* F32 bmodel:
+* F16 bmodel:
 
 ``` shell
 detect_yolov5.py \
   --input ../image/dog.jpg \
-  --model yolov5s_1684x_f32.bmodel \
-  --output dog_f32.jpg
+  --model yolov5s_1684x_f16.bmodel \
+  --output dog_f16.jpg
 ```
-
-
 
 * INT8 **symmetric quantized** bmodel:
 
 ``` shell
 detect_yolov5.py \
   --input ../image/dog.jpg \
-  --model yolov5s_1684x_int8_sym.bmodel \
-  --output dog_int8_sym.jpg
+  --model yolov5s_1684x_int8.bmodel \
+  --output dog_int8.jpg
 ```
 
 
-
-* INT8 **asymmetric quantized** bmodel:
-
-``` shell
-detect_yolov5.py \
-  --input ../image/dog.jpg \
-  --model yolov5s_1684x_int8_asym.bmodel \
-  --output dog_int8_asym.jpg
-```
-
-
-
-Outputs of four different models are compared below:
+Outputs of different models are compared below:
 
 ![](./docs/quick_start/assets/yolov5s.png)
+
 
 
 # Auxiliary Tools
 
 ## Model Inference Tool `model_runner.py`
 
-Supports bmodel/mlir/onnx/tflite.
+Supports bmodel/mlir/pytorch/onnx/tflite/caffe.
 
 ``` shell
 model_runner.py \
@@ -295,3 +247,11 @@ For example, to get basic information of `bmodel`:
 ``` shell
 model_tool --info resnet18_1684x_f32.bmodel
 ```
+
+
+
+# Related Links
+
+* [Official Network](https://tpumlir.org)
+* [Discourse](https://ask.tpumlir.org)
+* [Videos](https://space.bilibili.com/1829795304/channel/collectiondetail?sid=734875)

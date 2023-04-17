@@ -39,7 +39,40 @@ struct PReluToLeakRelu : public OpRewritePattern<PReluOp> {
   }
 };
 
+// [4, 3, 24, 24] * [3] => [4, 3, 24, 24] * [1, 3, 1, 1]
+struct PReluReshape : public OpRewritePattern<PReluOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(PReluOp op,
+                                PatternRewriter &rewriter) const override {
+    if (module::isWeight(op.getSlope()) == false) {
+      return failure();
+    }
+    auto slope = op.getSlope();
+    auto num = module::getNumElements(slope);
+    if (num == 1) {
+      // to leakyrelu
+      return failure();
+    }
+    auto in_shape = module::getShape(op.getInput());
+    auto num_dims = in_shape.size();
+    if (num_dims == 1 || num != in_shape[1]) {
+      return failure();
+    }
+    auto slope_shape = module::getShape(slope);
+    if (num_dims == slope_shape.size()) {
+      return failure();
+    }
+    std::vector<int64_t> new_shape(num_dims, 1);
+    new_shape[1] = num;
+    auto new_type =
+        RankedTensorType::get(new_shape, module::getElementType(slope));
+    op.getSlope().setType(new_type);
+    return success();
+  }
+};
+
 void PReluOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<PReluToLeakRelu>(context);
+  results.insert<PReluToLeakRelu, PReluReshape>(context);
 }

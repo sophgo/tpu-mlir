@@ -579,4 +579,22 @@ private:
   EmbeddingParam param_;
 };
 
+struct ArgMaxParam {
+  std::vector<tensor_list_t> inputs;
+  std::vector<tensor_list_t> outputs;
+  int64_t axis;
+  float scale;
+  bool fmt_i8;
+  bool with_conf;
+};
+
+class ArgMaxFunc {
+public:
+  ArgMaxFunc(ArgMaxParam &param);
+  void invoke();
+
+private:
+  ArgMaxParam param_;
+};
+
 } // namespace tpu_mlir

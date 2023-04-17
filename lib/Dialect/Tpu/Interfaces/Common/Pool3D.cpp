@@ -142,26 +142,48 @@ LogicalResult tpu::Pool3DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
-void tpu::Pool3DOp::assign_sec_info(int64_t n_step, int64_t h_step,
+LogicalResult tpu::Pool3DOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
+                                       int64_t out_idx, int64_t out_slice) {
+  auto attr = parseParam();
+  in_slice = (out_slice - 1) * attr.sw + attr.kw;
+  in_idx = out_idx * attr.sw - attr.pad_w;
+  bool is_last = (out_idx + out_slice == attr.ow);
+  LocalGenInterface::fixSlice(in_idx, in_slice, attr.iw, is_last);
+  return success();
+}
+
+LogicalResult tpu::Pool3DOp::BackwardD(int64_t &in_idx, int64_t &in_slice,
+                                       int64_t out_idx, int64_t out_slice) {
+  auto attr = parseParam();
+  in_slice = (out_slice - 1) * attr.sd + attr.kd;
+  in_idx = out_idx * attr.sd - attr.pad_d;
+  bool is_last = (out_idx + out_slice == attr.od);
+  LocalGenInterface::fixSlice(in_idx, in_slice, attr.id, is_last);
+  return success();
+}
+
+void tpu::Pool3DOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                     group_type_t group_type,
                                     local_sec_info_t &sec_info) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
   sec_info.group_type = group_type;
 
-  int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w, group_type);
-  auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto attr = parseParam();
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
   sec_info.n_slice = in_gi.n_slice;
-  sec_info.d_slice = 1;
+  sec_info.d_slice = in_gi.d_slice;
   sec_info.h_slice = in_gi.h_slice;
+  sec_info.w_slice = in_gi.w_slice;
   sec_info.h_idx = in_gi.h_idx;
-  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
-  sec_info.w_slice = w;
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attr.ih);
+  sec_info.w_idx = in_gi.w_idx;
+  sec_info.is_w_split = !(in_gi.w_idx == 0 && in_gi.w_slice == attr.iw);
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
-  sec_info.out_w_slice = w;
+  sec_info.out_w_idx = gi.w_idx;
+  sec_info.out_w_slice = gi.w_slice;
 }
 
 LogicalResult tpu::Pool3DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,

@@ -28,6 +28,22 @@ void setPixelAlign(std::string &pixel_format, int64_t &y_align,
   }
 }
 
+void setPixelAlign(std::string &pixel_format, std::string chip_name, int64_t &y_align,
+                   int64_t &w_align, int64_t &channel_align) {
+  if ("cv183x" == chip_name || "CV183X" == chip_name) {
+    y_align = 32;
+    w_align = 32;
+    channel_align = 0x1000;
+  } else {
+    y_align = 64;
+    w_align = 64;
+    channel_align = 64;
+  }
+  if ("YUV420_PLANAR" == pixel_format) {
+    y_align = w_align * 2;
+  }
+}
+
 int aligned_image_size(int n, int c, int h, int w, std::string &pixel_format,
                        int y_align, int w_align, int channel_align) {
   if ("YUV420_PLANAR" == pixel_format) {

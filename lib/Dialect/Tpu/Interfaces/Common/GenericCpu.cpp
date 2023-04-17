@@ -144,9 +144,10 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     det_param.loc_shape = module::getShape(getInputs()[0]);
     det_param.conf_shape = module::getShape(getInputs()[1]);
     det_param.prior_shape = module::getShape(getInputs()[2]);
+    det_param.onnx_nms = p.inputs.size() >= 3 ? 0 : 1;
     det_param.loc_data = p.inputs[0];
     det_param.conf_data = p.inputs[1];
-    det_param.prior_data = p.inputs[2];
+    det_param.prior_data = det_param.onnx_nms ? nullptr : p.inputs[2];
     det_param.output_data = p.outputs[0];
     mlir::DictionaryAttr param = this->getParam().value();
     det_param.keep_top_k = param.get("keep_top_k").cast<IntegerAttr>().getInt();
@@ -314,6 +315,34 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     inst_param.output.shape = module::getShape(getOutputs()[0]);
     InstanceNormFunc inst_func(inst_param);
     inst_func.invoke();
+  } else if (func_name == "argmax_v3") {
+    ArgMaxParam argmax_param;
+    mlir::DictionaryAttr param = this->getParam().value();
+    argmax_param.axis = param.get("axis").cast<IntegerAttr>().getInt();
+    argmax_param.fmt_i8 = false;
+    argmax_param.scale = 1.0;
+    auto in_type = module::getStorageType(getInputs()[0]);
+    if (in_type.isSignedInteger()) {
+      argmax_param.fmt_i8 = true;
+    }
+    argmax_param.scale =
+        param.get("scale").cast<FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < getInputs().size(); ++i) {
+      tensor_list_t tensor_list;
+      tensor_list.ptr = p.inputs[i];
+      tensor_list.size = module::getNumElements(getInputs()[i]);
+      tensor_list.shape = module::getShape(getInputs()[i]);
+      argmax_param.inputs.emplace_back(std::move(tensor_list));
+    }
+    for (size_t i = 0; i < getOutputs().size(); ++i) {
+      tensor_list_t tensor_list;
+      tensor_list.ptr = p.outputs[i];
+      tensor_list.size = module::getNumElements(getOutputs()[i]);
+      tensor_list.shape = module::getShape(getOutputs()[i]);
+      argmax_param.outputs.emplace_back(std::move(tensor_list));
+    }
+    ArgMaxFunc argmax_func(argmax_param);
+    argmax_func.invoke();
   } else {
     llvm_unreachable("generic cpu func not supported!\n");
   }
@@ -324,8 +353,20 @@ mlir::Type tpu::GenericCpuOp::type_verify(uint64_t opd_idx,
                                           TypeCastMode &mode) {
   std::string func_name = getCpuOpName().str();
   auto op = getOperation();
-  if (func_name == "embedding" && opd_idx == 0) {
-    return do_nothing(mode);
+  if (func_name == "embedding") {
+    if (opd_idx == 0) {
+      return type_verify_case_type(op, opd_idx, Builder(op).getIntegerType(16, false), mode);
+    }
+    return type_verify_case_same(op, opd_idx, mode);
+  }
+  if (func_name == "argmax_v3") {
+    if (opd_idx == 0) {
+      return type_verify_case_type(op, opd_idx, op->getOperand(1).getType(),
+                                   mode);
+    }
+    if (opd_idx == 1) {
+      return do_nothing(mode);
+    }
   }
   return type_verify_case_same(op, opd_idx, mode);
 }

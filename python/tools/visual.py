@@ -19,6 +19,7 @@ app = dash.Dash(__name__,
                 external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--debug',
@@ -58,11 +59,13 @@ def parse_args():
 
     return parser
 
+
 class global_state():
     def __init__(self):
         self.graph = None
         self.analysis_data = None
         self.figure_cache = None
+        self.dist_cache = None
         self.draggable = None
         self.zIndex = 50
         self.f32_mlir = ""
@@ -94,7 +97,6 @@ app.layout = html.Div(
                             component.mini_menu(
                                 "mini-menu",
                                 "select-layout",
-                                "show-card",
                                 "show-toolbox",
                                 "show-figure",
                                 "split-HW",
@@ -108,7 +110,7 @@ app.layout = html.Div(
                 align="center",
             )
         ],
-                justify="between"),
+            justify="between"),
         dcc.Store(id='forward-state',
                   data="Inactive"),  # state machine: Idle, Forward, Metrics
         dcc.Interval(id='forward-interval', interval=800, disabled=True),
@@ -128,24 +130,18 @@ app.layout = html.Div(
                 component.split_panel(
                     "split-figure",
                     split='vertical',
-                    size="60%",
+                    size="40%",
                     children=[
-                        component.cyto_graph('cytoscape-responsive-layout'),
-                        component.split_panel(
-                            "split-figure-2",
-                            split='horizontal',
-                            size="50%",
-                            children=[
-                                component.tensor_figure(
-                                    'figure-graph', 'figure-sample',
-                                    'figure-sample-display',
-                                    'figure-store'),
-                                component.info_tabulator('info-tabulator')
-                            ])
-                    ])
+                        html.Div(
+                            component.cyto_graph(
+                                'cytoscape-responsive-layout'),
+                        ),
+                        html.Div(
+                            component.info_tab(
+                                'info-tab', 'info-tab0', 'info-tab1', 'info-tab2'),
+                            style={'height': '100vh'}),
+                    ]),
             ]),
-        component.draggalbe_card('draggable-card', 'info-card',
-                                 'info-card-body'),
         component.draggable_toolbox('draggable-toolbox', 'toolbox'),
         dcc.Location(id='url'),
         html.Div(id='viewport-container',
@@ -173,4 +169,3 @@ if __name__ == '__main__':
     else:
         app.run_server(host=args.host, port=args.port, debug=False,
                        dev_tools_silence_routes_logging=True, dev_tools_serve_dev_bundles=False)
-

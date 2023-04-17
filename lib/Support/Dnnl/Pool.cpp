@@ -52,47 +52,25 @@ void Pooling::setup(float *input, float *output, pool_attr_t attr, bool is_avg,
   memory::dims dst_shape = {attr.n, attr.c, attr.od, attr.oh, attr.ow};
   memory::dims strides = {attr.sd, attr.sh, attr.sw};
   memory::dims kernel = {attr.kd, attr.kh, attr.kw};
+  memory::dims dilation = {0, 0, 0};
   memory::dims padding_tl = {attr.pad_d, attr.pad_h, attr.pad_w};
   memory::dims padding_br = {attr.pad_d_after, attr.pad_h_after,
                              attr.pad_w_after};
-  auto src_md = memory::desc({src_shape}, memory::data_type::f32,
-                             memory::format_tag::ncdhw);
-  auto dst_md = memory::desc({dst_shape}, memory::data_type::f32,
-                             memory::format_tag::ncdhw);
+  src_mem =
+      memory({{src_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
+             eng, p_input);
+  dst_mem =
+      memory({{dst_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
+             eng, output);
   auto pool_avg_algo = attr.count_include_pad
                            ? algorithm::pooling_avg_include_padding
                            : algorithm::pooling_avg_exclude_padding;
   // pool desc
-  auto pool_desc = pooling_forward::desc(
-      prop_kind::forward_inference,
-      is_avg ? pool_avg_algo : algorithm::pooling_max, src_md, dst_md, strides,
-      kernel, padding_tl, padding_br);
-
-  prim_desc = pooling_forward::primitive_desc(pool_desc, eng);
-  memory src_memory =
-      memory({{src_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
-             eng, p_input);
-  memory dst_memory =
-      memory({{dst_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
-             eng, output);
-  net.clear();
-  net_args.clear();
-  auto prim_src_memory = src_memory;
-  if (prim_desc.src_desc() != src_memory.get_desc()) {
-    prim_src_memory = memory(prim_desc.src_desc(), eng);
-    net.push_back(reorder(src_memory, prim_src_memory));
-    net_args.push_back(
-        {{DNNL_ARG_FROM, src_memory}, {DNNL_ARG_TO, prim_src_memory}});
-  }
-  auto prim_dst_memory = memory(prim_desc.dst_desc(), eng);
-  net.push_back(pooling_forward(prim_desc));
-  net_args.push_back(
-      {{DNNL_ARG_SRC, prim_src_memory}, {DNNL_ARG_DST, prim_dst_memory}});
-  if (prim_dst_memory != dst_memory) {
-    net.push_back(reorder(prim_dst_memory, dst_memory));
-    net_args.push_back(
-        {{DNNL_ARG_FROM, prim_dst_memory}, {DNNL_ARG_TO, dst_memory}});
-  }
+  auto prim_desc = pooling_forward::primitive_desc(
+      eng, prop_kind::forward_inference,
+      is_avg ? pool_avg_algo : algorithm::pooling_max, src_mem.get_desc(),
+      dst_mem.get_desc(), strides, kernel, dilation, padding_tl, padding_br);
+  prim = pooling_forward(prim_desc);
 }
 
 void Pooling::run() {
@@ -102,7 +80,6 @@ void Pooling::run() {
                _attrs.pad_d_after, _attrs.pad_h, _attrs.pad_h_after,
                _attrs.pad_w, _attrs.pad_w_after, _izp);
   }
-  for (size_t i = 0; i < net.size(); ++i)
-    net.at(i).execute(eng_stream, net_args.at(i));
+  prim.execute(eng_stream, {{DNNL_ARG_FROM, src_mem}, {DNNL_ARG_TO, dst_mem}});
   eng_stream.wait();
 }
