@@ -513,6 +513,15 @@ void dynamic_push_back_local_tensor(vector<ir_tensor_info_t> &ir_tensor_info_v,
   ir_tensor_info_v.push_back(ir_tensor_info);
 }
 
+void dynamic_push_back_local_buffer(vector<ir_tensor_info_t> &ir_tensor_info_v,
+                                    int tensor_id, Value output) {
+  ir_tensor_info_t ir_tensor_info = TENSOR_INFO_INIT_VALUE;
+  auto g_info = LocalGenInterface::getGroupInfo(output);
+  ir_tensor_info.tensor_id = tensor_id;
+  ir_tensor_info.local_mem_offset = g_info.buffer_addr;
+  ir_tensor_info_v.push_back(ir_tensor_info);
+}
+
 void dynamic_common_ir_layer_info(ir_layer_info_t *ir_layer_info, Value input,
                                   Value output) {
   ir_layer_info->data_size = get_dynamic_compiler_tensor_datasize(input);

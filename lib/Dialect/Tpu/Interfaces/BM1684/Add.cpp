@@ -44,9 +44,9 @@ void tpu::AddOp::codegen_global_bm1684() {
         (CMD_ID_NODE *)BM1684::instance().cmdid_node, src_int32);
   } else {
     int is_sign[input_num + 1];
-		memset(is_sign, 0, sizeof(int) * (input_num + 1));
+    memset(is_sign, 0, sizeof(int) * (input_num + 1));
     int is_int8[input_num + 1];
-		memset(is_sign, 0, sizeof(int) * (input_num + 1));
+    memset(is_sign, 0, sizeof(int) * (input_num + 1));
     for (int i = 0; i < input_num; ++i) {
       is_int8[i] = module::getDtypeSize(getInputs()[i]) == 1;
       is_sign[i] = module::isSign(getInputs()[i]);
@@ -105,9 +105,9 @@ void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     auto muls = module::getI32Array(getMultipliers(), num_inputs, 1);
     auto rs = module::getI32Array(getRshifts(), num_inputs, 0);
     int is_sign[num_inputs + 1];
-		memset(is_sign, 0, sizeof(int) * (num_inputs + 1));
+    memset(is_sign, 0, sizeof(int) * (num_inputs + 1));
     int is_int8[num_inputs + 1];
-		memset(is_int8, 0, sizeof(int) * (num_inputs + 1));
+    memset(is_int8, 0, sizeof(int) * (num_inputs + 1));
     for (int i = 0; i < num_inputs; ++i) {
       is_int8[i] = module::getDtypeSize(getInputs()[i]) == 1;
       is_sign[i] = module::isSign(getInputs()[i]);
@@ -195,11 +195,8 @@ int32_t tpu::AddOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   dynamic_push_back_local_tensor(add_layer_info->ir_tensor_info_v, getOutput());
 
   if (add_layer_info->data_size != DSIZE_FP32) {
-    ir_tensor_info_t ir_tensor_info = TENSOR_INFO_INIT_VALUE;
-    auto g_info = getGroupInfo(0, 0, 0, 0);
-    ir_tensor_info.tensor_id = get_tensor_id(getInputs()[0]);
-    ir_tensor_info.local_mem_offset = g_info.buffer_addr;
-    add_layer_info->ir_tensor_info_v.push_back(ir_tensor_info);
+    dynamic_push_back_local_buffer(add_layer_info->ir_tensor_info_v,
+                                   get_tensor_id(getInputs()[0]), getOutput());
   }
 
   // compute fw ir info length for input and output

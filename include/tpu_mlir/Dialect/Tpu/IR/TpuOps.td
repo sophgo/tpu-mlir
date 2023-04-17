@@ -733,6 +733,9 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [SupportFuseRelu, InOutSameShape,
@@ -924,10 +927,14 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
   let arguments = (ins
     AnyRankedTensor:$input,
     OptionalAttr<BoolAttr>:$extra_input,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    DefaultValuedAttr<BoolAttr, "true">:$with_scale //for BM1684
   );
   let results = (outs AnyRankedTensor:$output);
   let hasCanonicalizer = 1;
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_ShapeCastOp:Tpu_Op<"ShapeCast", [

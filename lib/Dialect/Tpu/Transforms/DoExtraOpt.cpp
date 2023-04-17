@@ -41,6 +41,8 @@ public:
       bm1684x::populateDoExtraOptPatterns(&patterns);
     } else if (module::isCV18xx()) {
       cv18xx::populateDoExtraOptPatterns(&patterns);
+    } else if (module::isBM1684Family()) {
+      bm1684::populateDoExtraOptPatterns(&patterns);
     }
     auto config = GreedyRewriteConfig();
     config.maxIterations = 5; // apply each pattern only once.

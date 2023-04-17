@@ -26,6 +26,17 @@ void populateDoExtraOptPatterns(RewritePatternSet *patterns) {
   >(patterns->getContext());
   // clang-format on
 };
-
 } // namespace bm1684x
+
+namespace bm1684 {
+
+void populateDoExtraOptPatterns(RewritePatternSet *patterns) {
+  // clang-format off
+  patterns->add<
+    CastWithoutScalePattern
+  >(patterns->getContext());
+  // clang-format on
+};
+} // namespace bm1684
+
 } // namespace tpu_mlir

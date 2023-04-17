@@ -10,6 +10,7 @@
 #pragma once
 
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
 
 using namespace tpu_mlir::backend;
 
