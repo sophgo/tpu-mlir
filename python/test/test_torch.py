@@ -270,7 +270,7 @@ class TORCH_IR_TESTER(object):
 
         # transform
         tpu_final = tpu_mlir + "_final.mlir"
-        bmodel = tpu_mlir + ".bmodel"
+        bmodel = tpu_mlir + self.model_file
         mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final)
 
         return (tpu_mlir + ".mlir", bmodel)
