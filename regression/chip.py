@@ -48,7 +48,7 @@ basic_model_list = {
 full_model_list = {
     # model_name:                (bm1684, bm1684x, bm1686, cv180x, cv181x, cv182x, cv183x)
     ######## onnx ###############
-    "bert-tiny_from_pt":          (N,      Y,       N,      N,      N,      N,      N),
+    "bert-tiny_from_pt":          (N,      Y,       N,      N,      N,      N,      Y),
     "densenet121-12":             (N,      Y,       Y,      N,      N,      N,      Y),
     "efficientnet":               (N,      Y,       Y,      N,      N,      N,      Y),
     "inception_v3":               (N,      Y,       Y,      N,      N,      N,      Y),
@@ -58,7 +58,7 @@ full_model_list = {
     "resnet18_v2":                (N,      Y,       Y,      N,      N,      N,      Y),
     "resnet50_v1":                (N,      Y,       Y,      N,      N,      N,      Y),
     "resnet50_v2":                (Y,      Y,       Y,      N,      N,      N,      Y),
-    "retinaface":                 (N,      Y,       Y,      N,      N,      N,      N),
+    "retinaface":                 (N,      Y,       Y,      N,      N,      N,      Y),
     "se-resnet50":                (N,      Y,       Y,      N,      N,      N,      Y),
     "shufflenet_v2":              (N,      Y,       Y,      N,      N,      N,      Y),
     "squeezenet1.0":              (N,      Y,       Y,      N,      N,      N,      Y),
@@ -72,21 +72,21 @@ full_model_list = {
     "alphapose_res50":            (N,      N,       N,      N,      Y,      Y,      Y),
     ######## Pytorch #######      ######
     "bert_pt":                    (N,      Y,       N,      N,      N,      N,      N),
-    "resnet50_pt":                (N,      Y,       N,      N,      N,      N,      N),
+    "resnet50_pt":                (N,      Y,       N,      N,      N,      N,      Y),
     "sd_encoder_pt":              (N,      Y,       N,      N,      N,      N,      N),
     "sd_decoder_pt":              (N,      Y,       N,      N,      N,      N,      N),
     "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      N),
     ######## caffe #########      #####
-    "mobilenet_v2_cf":            (N,      Y,       Y,      N,      N,      N,      N),
+    "mobilenet_v2_cf":            (N,      Y,       Y,      N,      N,      N,      Y),
     "resnet18_cf":                (N,      Y,       Y,      N,      N,      N,      Y),
-    "segnet_cf":                  (N,      Y,       N,      N,      N,      N,      N),
+    "segnet_cf":                  (N,      Y,       N,      N,      N,      N,      Y),
     "mobilenet_v2_cf_bs4":        (N,      N,       N,      N,      Y,      Y,      Y),
     "retinaface_mnet_with_det":   (N,      N,       N,      Y,      Y,      Y,      Y),
     "arcface_res50":              (N,      Y,       N,      N,      Y,      Y,      Y),
     "yolov3_416_with_det":        (N,      N,       N,      N,      N,      Y,      Y),
     # ----- cvs20-test -----      -------
-    "feature_extract_cf":         (N,      Y,       Y,      N,      N,      N,      N),
-    "squeezenet_v1.1_cf":         (N,      Y,       Y,      N,      N,      N,      N),
+    "feature_extract_cf":         (N,      Y,       Y,      N,      N,      N,      Y),
+    "squeezenet_v1.1_cf":         (N,      Y,       Y,      N,      N,      N,      Y),
     ######## tflite ########      ########
     "inception_v4_tf":            (N,      Y,       N,      N,      N,      N,      N),
     "mobilenet_v2_tf":            (N,      Y,       N,      N,      N,      N,      N),
@@ -97,12 +97,12 @@ full_model_list = {
     ######## PaddlePaddle ##      ##############
     "pp_humanseg":                (N,      Y,       N,      N,      N,      N,      N),
     "pp_liteseg":                 (N,      Y,       N,      N,      N,      N,      N),
-    "pp_picodet":                 (N,      Y,       Y,      N,      N,      N,      N),
-    "pp_yoloe":                   (N,      Y,       N,      N,      N,      N,      N),
-    "pp_yolox":                   (N,      Y,       N,      N,      N,      N,      N),
-    "pp_yolov3":                  (N,      Y,       N,      N,      N,      N,      N),
-    "pp_ocr_det":                 (N,      Y,       N,      N,      N,      N,      N),
-    "pp_ocr_cls":                 (N,      Y,       N,      N,      N,      N,      N),
+    "pp_picodet":                 (N,      Y,       Y,      N,      N,      N,      Y),
+    "pp_yoloe":                   (N,      Y,       N,      N,      N,      N,      Y),
+    "pp_yolox":                   (N,      Y,       N,      N,      N,      N,      Y),
+    "pp_yolov3":                  (N,      Y,       N,      N,      N,      N,      Y),
+    "pp_ocr_det":                 (N,      Y,       N,      N,      N,      N,      Y),
+    "pp_ocr_cls":                 (N,      Y,       N,      N,      N,      N,      Y),
     "pp_ocr_rec":                 (N,      Y,       Y,      N,      N,      N,      N),
     "pp_hgnet":                   (N,      Y,       N,      N,      N,      N,      N),
 }
