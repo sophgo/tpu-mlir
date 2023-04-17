@@ -51,7 +51,7 @@ class InsBase:
     def _decode(self):
         raise NotImplementedError()
 
-    def _set_op(self):
+    def _set_op(self, reg):
         raise NotImplementedError()
 
     def __set_cache(self):

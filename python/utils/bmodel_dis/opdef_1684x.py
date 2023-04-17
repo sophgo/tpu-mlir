@@ -419,7 +419,7 @@ class sysid_op(bdc_base):
     }
     description = "system"
 
-    def _set_op(self):
+    def _set_op(self, reg):
         return ([],) * 3
 
     def __repr__(self):
@@ -563,7 +563,7 @@ class sdma_sys(dma_base):
     }
     description = "short DMA sys"
 
-    def _set_op(self):
+    def _set_op(self, reg):
         return ([],) * 3
 
     def __repr__(self):
