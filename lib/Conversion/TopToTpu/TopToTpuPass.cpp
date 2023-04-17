@@ -708,6 +708,10 @@ protected:
       if (std::regex_match(line, map_pattern)) {
         iss >> name;
         iss >> mode;
+        if (module::isCV18xx()) {
+          if (StringRef(mode).upper() == "F32" || StringRef(mode).upper() == "F16")
+          mode = "BF16";
+        }
         LoweringConfig::quantize_map[name] = qmode(mode);
         continue;
       }

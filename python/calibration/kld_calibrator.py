@@ -365,7 +365,8 @@ class SimpleTuner:
         threshold = self.initial_threshold[tuned_op][0]
         # abs_max = max(map(abs, self.initial_threshold[tuned_op][1:]))
         abs_max = self.abs_max_dict[tuned_op]
-        op_no = self.module.all_tensor_names.index(tuned_op)
+        #op_no = self.module.all_tensor_names.index(tuned_op)
+        op_no = self.parser.get_op_name_list().index(tuned_op)
         self.print_dbg('>>>tuned_op_idx:', op_no, ', tuned_op:', tuned_op, ', threshold:',
                        threshold, 'abs_max:', abs_max, ', evaled_op:', evaled_op)
         if threshold > abs_max:
@@ -457,7 +458,7 @@ class SimpleTuner:
     def run(self):
         #pdb.set_trace()
         self.layer_cos_sim = {}
-        all_tensors = self.module.all_tensor_names
+        all_tensors = self.parser.get_op_name_list()
         self.initial_threshold = copy.deepcopy(self.threshold_table.thresholds_map)
         pbar = tqdm(all_tensors, total=len(all_tensors), position=0, leave=True)
         for i, evaled_op in enumerate(all_tensors):
