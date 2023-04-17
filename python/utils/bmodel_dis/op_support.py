@@ -10,6 +10,7 @@
 from enum import Enum, IntEnum
 import functools
 import numpy as np
+from collections import OrderedDict
 
 __all__ = ["InsBase", "TIUBase", "DMABase", "NamedDict", "MType", "DType", "Scalar"]
 
@@ -329,7 +330,7 @@ class Scalar:
         return f"{self.name}: {self.type_str}"
 
 
-class NamedDict(dict):
+class NamedDict(OrderedDict):
     def __init__(self, _dict):
         super().__init__()
         super().update(_dict)

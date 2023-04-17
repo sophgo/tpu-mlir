@@ -12,9 +12,15 @@
 
 import numpy as np
 import copy
-from . import op_support
-from .op_support import MType, DType, Scalar, ExtEnum, Layout
-from .op_support import get_dtype, bf16_to_fp32
+
+try:
+    from . import op_support
+    from .op_support import MType, DType, Scalar, ExtEnum, Layout
+    from .op_support import get_dtype, bf16_to_fp32
+except:
+    import op_support
+    from op_support import MType, DType, Scalar, ExtEnum, Layout
+    from op_support import get_dtype, bf16_to_fp32
 
 
 # Value: MemRef | Scalar
