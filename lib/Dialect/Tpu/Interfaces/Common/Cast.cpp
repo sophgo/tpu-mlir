@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -190,4 +191,14 @@ LogicalResult tpu::CastOp::LocalGenSupport() {
     return failure();
   }
   return success();
+}
+
+void tpu::CastOp::assign_fw_param(void *param) {
+  fw_dtype_convert_layer_param_t fw_param = {0};
+  fw_param.src_type = BM168x::getDataType(getInput());
+  fw_param.dst_type = BM168x::getDataType(getOutput());
+  fw_param.src_stmode = BM1684::getStoreMode(getInput());
+  fw_param.dst_stmode = BM1684::getStoreMode(getOutput());
+  fw_param.round_mode = ROUND_INF; // if support other round_mode, change here
+  memcpy(param, &fw_param, sizeof(fw_dtype_convert_layer_param_t));
 }

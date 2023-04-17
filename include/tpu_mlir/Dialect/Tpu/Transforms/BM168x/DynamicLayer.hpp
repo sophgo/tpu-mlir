@@ -36,6 +36,7 @@ extern bool is_net_output(Value v);
 extern vector<Value>& get_net_output();
 uint32_t push_back_layer_global_tensor(Value v, vector<ir_tensor_info_t>& ir_tensor_info_v, bool is_layer_in);
 void dynamic_push_back_local_tensor(vector<ir_tensor_info_t> &ir_tensor_info_v, Value v);
+void dynamic_push_back_local_buffer(vector<ir_tensor_info_t> &ir_tensor_info_v, int tensor_id, Value output);
 void dynamic_common_ir_layer_info(ir_layer_info_t* ir_layer_info, Value input, Value output);
 enum DynamicTensorType
 {

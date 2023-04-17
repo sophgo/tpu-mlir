@@ -42,4 +42,16 @@ public:
 
 void populateDoExtraOptPatterns(RewritePatternSet *patterns);
 } // namespace bm1684x
+
+namespace bm1684 {
+class CastWithoutScalePattern : public OpRewritePattern<tpu::CastOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::CastOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
+void populateDoExtraOptPatterns(RewritePatternSet *patterns);
+} // namespace bm1684
+
 } // namespace tpu_mlir
