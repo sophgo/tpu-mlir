@@ -183,7 +183,7 @@ mlir::Type tpu::SoftmaxOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto i_stype = module::getStorageType(getInput());
   auto o_stype = module::getStorageType(getOutput());
   if (opd_idx == 0) {
-    if (o_stype.isF32() && (i_stype.isInteger(8) || i_stype.isF32())) {
+    if (o_stype.isF32() && i_stype.isF32()) {
       if (module::isAsymmetric() == false) {
         return do_nothing(mode);
       }

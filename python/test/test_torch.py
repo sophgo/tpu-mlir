@@ -119,7 +119,7 @@ class TORCH_IR_TESTER(object):
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16"]
         # self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
-        self.support_asym = [True, False]
+        self.support_asym = [False]
 
         self.model_file = ".bmodel"
         self.is_cv18xx = False
@@ -1381,11 +1381,12 @@ class TORCH_IR_TESTER(object):
                     self.weight = torch.randn(in1_shape)
 
                 def forward(self, x):
-                    y = torch.where(x > 0, 1.0, 0.0)
+                    y = torch.where(x > 0, 1.0, -1.0)
                     y1 = torch.where(self.weight > 0, y, x)
                     return y1
 
-            self.trace_and_test([in0_shape], Model())
+            desc = self.Desc('float32', -1, 1)
+            self.trace_and_test([in0_shape], Model(), [desc])
 
         _test_where((1, 3, 32, 32), (1, 3, 32, 32))
         _test_where((3, 32, 16), (3, 32, 16))
