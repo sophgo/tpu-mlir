@@ -19,12 +19,15 @@ using namespace bm1684;
 void populateWeightReorderBM1684Patterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
+    WeightReorder<tpu::AddOp, int8_t>,
     WeightReorder<tpu::Conv2DOp, int8_t>,
     WeightReorder<tpu::Conv2DOp, Float32Type>,
     WeightReorder<tpu::DeconvOp, int8_t>,
     WeightReorder<tpu::DeconvOp, Float32Type>,
     WeightReorder<tpu::LSTMOp, Float32Type>,
-    WeightReorder<tpu::PReluOp, int8_t>>(patterns->getContext());
+    WeightReorder<tpu::MulOp, int8_t>,
+    WeightReorder<tpu::PReluOp, int8_t>,
+    WeightReorder<tpu::SubOp, int8_t>>(patterns->getContext());
   // clang-format on
 };
 

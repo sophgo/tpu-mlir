@@ -14,15 +14,6 @@
 
 using namespace tpu_mlir::backend;
 
-int v_is_int8(Value v) {
-  auto d = BM168x::getDataType(v);
-  return d == DTYPE_INT8 || d == DTYPE_UINT8;
-}
-
-static int ceiling_func(int numerator, int denominator) {
-  return (numerator + denominator - 1) / denominator;
-}
-
 void tpu::MulOp::codegen_global_bm1684() {
   int input_num = getInputs().size();
   assert(input_num == 2);
@@ -56,15 +47,24 @@ void tpu::MulOp::codegen_global_bm1684() {
     int sign[3] = {0};
     int is_int8[3] = {0};
     for (int i = 0; i < input_num; ++i) {
-      is_int8[i] = v_is_int8(getInputs()[i]);
+      is_int8[i] = module::getStorageType(getInputs()[i]).isInteger(8);
       sign[i] = module::isSign(getInputs()[i]) ? 1 : 0;
     }
-    is_int8[2] = v_is_int8(getOutput());
+    is_int8[2] = module::getStorageType(getOutput()).isInteger(8);
     sign[2] = module::isSign(getOutput()) ? 1 : 0;
+    /// storage mode: it converts 1N to 4N in backend if input is coeff
+    /// so if storage of the input is 4N, just set the flag of coeff is false
+    bool is_coeff[2] = {0};
+    for (int i = 0; i < getNumOperands(); i++) {
+      if (auto castOp =
+              dyn_cast<top::WeightOp>(getInputs()[i].getDefiningOp())) {
+        is_coeff[i] =
+            castOp.getStoreMode().has_value() && castOp.getStoreMode() != "4N";
+      }
+    }
     BM1684::instance().dl_nodechip_broadcast_binary_fix8b_forward_parallel(
-        a_addr, b_addr, o_addr, a_shape, b_shape, out_dims,
-        module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
-        op_code, getMultiplier(), 1, getRshift(), 0, is_int8, sign,
+        a_addr, b_addr, o_addr, a_shape, b_shape, out_dims, is_coeff[0],
+        is_coeff[1], op_code, getMultiplier(), 1, getRshift(), 0, is_int8, sign,
         getDoRelu() ? 1 : 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
 }
@@ -119,10 +119,10 @@ void tpu::MulOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     int sign[3] = {0};
     int is_int8[3] = {0};
     for (int i = 0; i < num_inputs; ++i) {
-      is_int8[i] = v_is_int8(getInputs()[i]);
+      is_int8[i] = module::getStorageType(getInputs()[i]).isInteger(8);
       sign[i] = module::isSign(getInputs()[i]) ? 1 : 0;
     }
-    is_int8[2] = v_is_int8(getOutput());
+    is_int8[2] = module::getStorageType(getOutput()).isInteger(8);
     sign[2] = module::isSign(getOutput()) ? 1 : 0;
     BM1684::instance().dl_nodechip_broadcast_binary_fix8b_forward_local(
         input_addrs[0], input_addrs[1], out_gi.out_addr, out_gi.buffer_addr,
