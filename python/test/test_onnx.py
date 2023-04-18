@@ -91,7 +91,7 @@ class ONNX_IR_TESTER(object):
             "GRU2":         (self.test_GRU2,          N, Y, Y, Y),  # test gru output Yh
             "GRU3":         (self.test_GRU3,          N, Y, Y, Y),  # test gru output Y and Yh
             "LeakyRelu":    (self.test_LeakyRelu,     N, Y, Y, Y),
-            "Log":          (self.test_Log,           N, Y, Y, Y),
+            "Log":          (self.test_Log,           Y, Y, Y, Y),
             "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y),
             "LRN":          (self.test_LRN,           Y, Y, Y, Y),
             "LSTM":         (self.test_LSTM,          N, Y, Y, Y),  # output_y
