@@ -55,11 +55,21 @@ void tpu::AddOp::codegen_global_bm1684() {
     is_sign[input_num] = module::isSign(getOutput());
     auto muls = module::getI32Array(getMultipliers(), input_num, 1);
     auto rs = module::getI32Array(getRshifts(), input_num, 0);
+    /// storage mode: it converts 1N to 4N in backend if input is coeff
+    /// so if storage of the input is 4N, just set the flag of coeff is false
+    bool is_coeff[2] = {0};
+    for (int i = 0; i < getNumOperands(); i++) {
+      if (auto castOp =
+              dyn_cast<top::WeightOp>(getInputs()[i].getDefiningOp())) {
+        is_coeff[i] =
+            castOp.getStoreMode().has_value() && castOp.getStoreMode() != "4N";
+      }
+    }
     BM1684::instance().dl_nodechip_broadcast_binary_fix8b_forward_parallel(
-        a_addr, b_addr, o_addr, a_shape, b_shape, out_dims,
-        module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
-        BINARY_ADD, muls->at(0), muls->at(1), rs->at(0), rs->at(1), is_int8,
-        is_sign, getDoRelu(), (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        a_addr, b_addr, o_addr, a_shape, b_shape, out_dims, is_coeff[0],
+        is_coeff[1], BINARY_ADD, muls->at(0), muls->at(1), rs->at(0), rs->at(1),
+        is_int8, is_sign, getDoRelu(),
+        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
 }
 
