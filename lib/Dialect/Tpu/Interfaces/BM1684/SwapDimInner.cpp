@@ -15,7 +15,35 @@
 using namespace tpu_mlir::backend;
 
 void tpu::SwapDimInnerOp::codegen_global_bm1684() {
-  llvm_unreachable("Not Implemented");
+  auto in_addr = module::getAddress(getInput());
+  auto out_addr = module::getAddress(getOutput());
+  auto in_dims = module::getShape(getInput()).size();
+  assert(in_dims == 4);
+  auto offset = module::getI64Array(getOffset());
+  int in_shape[MAX_SHAPE_DIMS];
+  int axis_list[MAX_SHAPE_DIMS];
+  int offset_list[MAX_SHAPE_DIMS];
+  module::getGlobalShape(getInput(), in_shape, in_dims);
+  int axis_num=0;
+  for (int i = 0; i < offset->size(); ++i) {
+    if (offset->at(i) != 0) {
+      axis_list[axis_num] = i;
+      offset_list[axis_num] = offset->at(i);
+      axis_num += 1;
+    }
+  }
+
+  if (module::isUniformQuantized(getInput())) {
+    BM1684::instance().dl_nodechip_swap_dim_fix8b(
+      in_addr, out_addr, in_shape, in_dims,
+      axis_num, axis_list, offset_list,
+      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  } else {//FP32
+    BM1684::instance().dl_nodechip_swap_dim(
+      in_addr, out_addr, in_shape, in_dims,
+      axis_num, axis_list, offset_list,
+      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  }
 }
 
 // =========================================
