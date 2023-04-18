@@ -41,15 +41,15 @@ class TORCH_IR_TESTER(object):
             "Abs":              (self.test_Abs,               Y, N, N),
             "Activation":       (self.test_Activation,        Y, N, N),
             "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, Y, N, N),
-            "Add":              (self.test_Add,               Y, N, N),
+            "Add":              (self.test_Add,               Y, N, Y),
             "Addmm":            (self.test_Addmm,             Y, N, N),
             "Arange":           (self.test_Arange,            Y, N, N),
             "Attention":        (self.test_Attention,         Y, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,         Y, N, N),
-            "AvgPool2d":        (self.test_AvgPool2d,         Y, N, N),
+            "AvgPool2d":        (self.test_AvgPool2d,         Y, N, Y),
             "AvgPool3d":        (self.test_AvgPool3d,         Y, N, N),
-            "BatchNorm":        (self.test_BatchNorm,         Y, N, N),
-            "BMM":              (self.test_BatchMatMul,       Y, N, N),
+            "BatchNorm":        (self.test_BatchNorm,         Y, N, Y),
+            "BMM":              (self.test_BatchMatMul,       Y, N, Y),
             "ChannelShuffle":   (self.test_ChannelShuffle,    Y, N, N),
             "Chunk":            (self.test_Chunk,             Y, N, N),
             "Compare":          (self.test_Compare,           Y, N, N),
@@ -251,7 +251,7 @@ class TORCH_IR_TESTER(object):
         self.make_test_calibration_table(top_mlir_outs, self.table_name)
         return (torch_outs, top_mlir_outs, input_npz)
 
-    def bmodel_generate(self, model_name: str, quant_mode: str, isAsym: bool = False):
+    def model_generate(self, model_name: str, quant_mode: str, isAsym: bool = False):
         top_mlir = "{}.mlir".format(model_name)
         tpu_mlir = "{}_{}".format(model_name, quant_mode)
         table = None
@@ -334,12 +334,12 @@ class TORCH_IR_TESTER(object):
         for quant_mode in self.quant_modes:
             if quant_mode == "int8" or quant_mode == "int4":
                 for isAsym in self.support_asym:
-                    tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode, isAsym)
-                    self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name,
+                    tpu_mlir, model = self.model_generate(model_name, quant_mode, isAsym)
+                    self.inference_and_compare(tpu_mlir, model, input_npz, quant_mode, model_name,
                                                isAsym)
             else:
-                tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode)
-                self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name)
+                tpu_mlir, model = self.model_generate(model_name, quant_mode)
+                self.inference_and_compare(tpu_mlir, model, input_npz, quant_mode, model_name)
 
     #######################################################################
     # Convolution
@@ -507,7 +507,8 @@ class TORCH_IR_TESTER(object):
         test = self._test_AvgPool()
         test((nn.AvgPool2d, F.avg_pool2d), (4, 8, 40, 30), 4, 3, 2)
         test((nn.AvgPool2d, F.avg_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (0, 1))
-        test((nn.AvgPool2d, F.avg_pool2d), (1, 64, 32, 32), (3, 2), (2, 3), (1, 1), False)
+        if not self.is_cv18xx:
+            test((nn.AvgPool2d, F.avg_pool2d), (1, 64, 32, 32), (3, 2), (2, 3), (1, 1), False)
 
     def test_AvgPool3d(self):
         test = self._test_AvgPool()
@@ -970,8 +971,9 @@ class TORCH_IR_TESTER(object):
         _test_batchnorm(nn.BatchNorm2d, (2, 32, 16, 16), affine=False)
         _test_batchnorm(nn.BatchNorm1d, (3, 32), 3e-5)
         _test_batchnorm(nn.BatchNorm1d, (3, 32, 32), affine=False)
-        _test_batchnorm(nn.BatchNorm3d, (3, 4, 5, 32, 32), 3e-5)
-        _test_batchnorm(nn.BatchNorm3d, (2, 32, 16, 16, 3), affine=False)
+        if not self.is_cv18xx:
+            _test_batchnorm(nn.BatchNorm3d, (3, 4, 5, 32, 32), 3e-5)
+            _test_batchnorm(nn.BatchNorm3d, (2, 32, 16, 16, 3), affine=False)
 
     #######################################################################
     # InstanceNorm
@@ -1031,7 +1033,7 @@ class TORCH_IR_TESTER(object):
     def test_BatchMatMul(self):
         """BatchMatMul"""
 
-        def _test_batchmatmul(input_shape, right_shape):
+        def _test_batchmatmul(input_shape, right_shape, is_cv18xx):
 
             class Model(nn.Module):
 
@@ -1042,15 +1044,18 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x, y):
                     z1 = torch.bmm(x, self.weight1)
-                    z2 = torch.bmm(self.weight0, y)
+                    if is_cv18xx:
+                        z2 = torch.bmm(x, y)
+                    else:
+                        z2 = torch.bmm(self.weight0, y)
                     z3 = torch.transpose(z2, 1, 2)
                     z4 = torch.bmm(z1, z3)
                     return z4
 
             self.trace_and_test([input_shape, right_shape], Model())
 
-        _test_batchmatmul((3, 32, 32), (3, 32, 64))
-        _test_batchmatmul((2, 32, 16), (2, 16, 34))
+        _test_batchmatmul((3, 32, 32), (3, 32, 64), self.is_cv18xx)
+        _test_batchmatmul((2, 32, 16), (2, 16, 34), self.is_cv18xx)
 
     #######################################################################
     # MM
@@ -1058,7 +1063,7 @@ class TORCH_IR_TESTER(object):
     def test_MM(self):
         """MM"""
 
-        def _test_mm(input_shape, right_shape):
+        def _test_mm(input_shape, right_shape, is_cv18xx):
 
             class Model(nn.Module):
 
@@ -1070,15 +1075,18 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x, y):
                     z1 = torch.mm(x, self.weight1)
-                    z2 = torch.mm(self.weight0, y)
+                    if is_cv18xx:
+                        z2 = torch.mm(x, y)
+                    else:
+                        z2 = torch.mm(self.weight0, y)
                     z3 = torch.transpose(z2, 1, 0)
                     z4 = torch.mm(z1, z3)
                     return z4
 
             self.trace_and_test([input_shape, right_shape], Model())
 
-        _test_mm((32, 32), (32, 64))
-        _test_mm((32, 16), (16, 34))
+        _test_mm((32, 32), (32, 64), self.is_cv18xx)
+        _test_mm((32, 16), (16, 34), self.is_cv18xx)
 
     #######################################################################
     # Addmm
