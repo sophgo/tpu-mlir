@@ -445,6 +445,7 @@ def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_AddOp: Top_Op<"Add", [SupportFuseRelu]> {
