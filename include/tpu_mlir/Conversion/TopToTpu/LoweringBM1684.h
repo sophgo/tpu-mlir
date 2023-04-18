@@ -63,5 +63,6 @@ LOWERING_BM1684(Deconv)
 LOWERING_BM1684(Exp)
 LOWERING_BM1684(PRelu)
 LOWERING_BM1684(LSTM)
+LOWERING_BM1684(LeakyRelu)
 } // namespace bm1684
 } // namespace tpu_mlir
