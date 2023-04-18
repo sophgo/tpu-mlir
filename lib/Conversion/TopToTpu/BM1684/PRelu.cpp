@@ -49,7 +49,6 @@ void PReluLowering::LoweringF32(PatternRewriter &rewriter,
 
 void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
                                  bool asymmetric) const {
-  // lowering_common_int8<tpu::PReluOp>(rewriter, op, false);
   if (asymmetric == false) {
     int64_t N, C, H, W;
     module::getNCHW(op.getOutput(), N, C, H, W);
