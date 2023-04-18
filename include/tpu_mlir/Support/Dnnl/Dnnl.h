@@ -17,6 +17,7 @@
 #include "tpu_mlir/Support/Dnnl/MatMul.h"
 #include "tpu_mlir/Support/Dnnl/PRelu.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
+#include "tpu_mlir/Support/Dnnl/Attention.h"
 
 namespace tpu_mlir {
 

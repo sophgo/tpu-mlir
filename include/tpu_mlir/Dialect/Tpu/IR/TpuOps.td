@@ -885,6 +885,39 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
   }];
 }
 
+def Tpu_TransformerOp: Tpu_Op<"Transformer", [
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>,
+    SupportFuseRelu]> {
+  let summary = "Transformer operator";
+
+  let description = [{
+    Performs a two dimensional matrix multiplication. This allows both inputs to
+    be activations, rather than reserving weights as an attribute in the
+    FULLY_CONNECTED operator.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$keys,
+    AnyTensor:$values,
+    AnyTensor:$queries_weight,
+    AnyTensorOrNone:$queries_bias,
+    AnyTensor:$keys_weight,
+    AnyTensorOrNone:$keys_bias,
+    AnyTensor:$values_weight,
+    AnyTensorOrNone:$values_bias,
+    AnyTensor:$out_weight,
+    AnyTensorOrNone:$out_bias,
+    AnyTensorOrNone:$musk,
+    F64Attr:$scale,
+    I64Attr:$head
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_ReluOp: Tpu_Op<"Relu",
   [DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,

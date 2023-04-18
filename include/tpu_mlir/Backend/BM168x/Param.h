@@ -1176,6 +1176,22 @@ typedef struct {
   int descending;
 } topk_spec_t;
 
+typedef struct attention_common_spec {
+    int head;
+    float scale;
+    int hasbias;
+    int hasmusk;
+} attention_common_spec_t;
+
+typedef struct attention_global_spec {
+    attention_common_spec_t common;
+} attention_global_spec_t;
+
+typedef struct attention_local_spec {
+    attention_common_spec_t common;
+    uint32_t buffer_addr;
+} attention_local_spec_t;
+
 typedef struct {
   uint64_t input_addr;
   uint64_t output_addr;
