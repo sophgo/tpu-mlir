@@ -661,6 +661,36 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
   }];
 }
 
+def Top_TransformerOp: Top_Op<"Transformer"> {
+  let summary = "Transformer operator";
+
+  let description = [{
+    Performs a two dimensional matrix multiplication. This allows both inputs to
+    be activations, rather than reserving weights as an attribute in the
+    FULLY_CONNECTED operator.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$keys,
+    AnyTensor:$values,
+    AnyTensor:$queries_weight,
+    AnyTensorOrNone:$queries_bias,
+    AnyTensor:$keys_weight,
+    AnyTensorOrNone:$keys_bias,
+    AnyTensor:$values_weight,
+    AnyTensorOrNone:$values_bias,
+    AnyTensor:$out_weight,
+    AnyTensorOrNone:$out_bias,
+    AnyTensorOrNone:$musk,
+    F64Attr:$scale,
+    I64Attr:$head
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 def Top_PadOp:Top_Op<"Pad"> {
   let summary = "Pad operation";
   let description = [{
