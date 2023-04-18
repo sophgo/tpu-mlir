@@ -44,7 +44,7 @@ LogicalResult WeightReorder<tpu::Conv1DOp, int8_t>::matchAndRewrite(
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh};
   int IC_PARALLEL = BM168x::ic_num(1);
   int use_3ic_optimize = 0;
-  if (attr.ic * attr.kh <= IC_PARALLEL && attr.kh > 1) {
+  if (attr.ic * attr.kh <= IC_PARALLEL && attr.kh > 1 && attr.iw > 1) {
     use_3ic_optimize = 1; // merge kh to ic
   } else {
     use_3ic_optimize = 0;
@@ -300,7 +300,7 @@ int64_t tpu::Conv1DOp::getBufferSize_bm1684x(
     sz += int32_size;
   }
   if (p.groups > 1) {
-    sz += in_nslice * ic_per_npu * align_up(in_hslice * in_wslice, eu_num) * 
+    sz += in_nslice * ic_per_npu * align_up(in_hslice * in_wslice, eu_num) *
           in_type_len;
     sz += ic_per_npu * 2 * in_type_len;
   }
