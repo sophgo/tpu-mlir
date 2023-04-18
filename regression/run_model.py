@@ -184,19 +184,22 @@ class MODEL_RUN(object):
         # generate tpu mlir
         tpu_mlir = f"{self.model_name}_bm1686_tpu_int4_sym.mlir"
         cmd = [
-            "tpuc-opt", f"{self.model_name}.mlir", "--chip=\"type=bm1686\""
+            "tpuc-opt", f"{self.model_name}.mlir",
+            "--do-extra-converison",
+            "--chip=\"type=bm1686\"",
             f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
             "--convert-top-to-tpu=\"mode=INT4 asymmetric=false\"", "--canonicalize",
-            "--save-weight", "--mlir-print-debuginfo", f"-o {tpu_mlir}"
+            f"-o {tpu_mlir}"
         ]
         _os_system(cmd)
 
         # inference and compare
         output_npz = tpu_mlir.replace(".mlir", "_outputs.npz")
         cmd = [
-            "model_runner.py", f"--model {tpu_mlir}",
-            "--input {}".format(self.ini_content["test_input"]), "--dump_all_tensors",
-            f"--output {self.model_name}"
+            "model_runner.py",
+            "--input {}_in_f32.npz".format(self.model_name),
+            f"--model {tpu_mlir}",
+            f"--output {output_npz}"
         ]
         _os_system(cmd)
         cmd = ["npz_tool.py", "compare", output_npz, self.ini_content["test_reference"], "-v"]
@@ -229,7 +232,7 @@ class MODEL_RUN(object):
         if to_test:
             new_test_input = self.test_input_copy(quant_mode)
 
-        if quant_mode == "int4_sym":
+        if quant_mode == "int4_sym" :
             self.int4_tmp_test()
             return
 
@@ -252,7 +255,7 @@ class MODEL_RUN(object):
             model_file += "_merge_weight"
 
         # add for int8 mode
-        if quant_mode.startswith("int8"):
+        if (quant_mode.startswith("int8") or quant_mode.startswith("int4")) :
             if self.do_cali:
                 cmd += [f"--calibration_table {self.cali_table}"]
                 if "use_quantize_table" in self.ini_content and int(
@@ -276,7 +279,7 @@ class MODEL_RUN(object):
             f"--chip {self.chip}",
             "--compare_all",
             f"--model {model_file}",
-            "--quantize {}".format(quant_mode.replace("_sym", "").replace("_asym", "")),
+            "--quantize {}".format(quant_mode.replace("_sym", "").replace("_asym", "").upper()),
             "--tolerance {}".format(self.tolerance[quant_mode]),
         ])
         if to_test:

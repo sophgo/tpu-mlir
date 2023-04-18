@@ -24,6 +24,9 @@ bool type_need_cast(Type from, Type to) {
     if (f_sType.getIntOrFloatBitWidth() == t_sType.getIntOrFloatBitWidth()) {
       return false;
     }
+    if (f_sType.isInteger(4) && t_sType.isInteger(8)) {
+      return false;
+    }
   }
   return true;
 }
