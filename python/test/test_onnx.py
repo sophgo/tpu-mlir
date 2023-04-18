@@ -203,6 +203,7 @@ class ONNX_IR_TESTER(object):
             "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y),
             "ConcatToSpace":    (self.test_ConcatToSpace,   N, Y, Y, N),
             "Conv3dTo2d":       (self.test_Conv3dTo2d,      N, Y, Y, Y),
+            "Depth2SpaceWithPermute": (self.test_Depth2SpaceWithPermute, Y, Y, Y, N),
             "Div2Mul":          (self.test_Div2Mul,         Y, Y, Y, Y),
             "ConvSlice":        (self.test_ConvSlice,       Y, Y, Y, N),
             "GaToSlice":        (self.test_GaToSlice,       N, Y, Y, Y),
@@ -2804,6 +2805,36 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(1, 3, 10, 320, 320).float()
         self.torch_and_test(x, Model(), case_name)
+    def test_Depth2SpaceWithPermute(self, case_name):
+        input_shape = [1, 108, 192, 32]
+        transpose_order = [0, 3, 1, 2]
+        block_size = 2
+        mode = 'DCR'
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        permute_output_shape = [input_shape[transpose_order[j]] for j in range(len(transpose_order))]
+        permute_output = helper.make_tensor_value_info('permute_output', TensorProto.FLOAT, permute_output_shape)
+        transpose_def = helper.make_node("Transpose",
+                                        inputs=['input'],
+                                        outputs=['permute_output'],
+                                        perm=transpose_order)
+
+        depth2space_input_shape = permute_output_shape
+        depth2space_output_shape = [depth2space_input_shape[0],
+                                    depth2space_input_shape[1] // (block_size * block_size),
+                                    depth2space_input_shape[2] * block_size,
+                                    depth2space_input_shape[3] * block_size]
+
+        depth2space_output = helper.make_tensor_value_info('depth2space_output', TensorProto.FLOAT, depth2space_output_shape)
+        depth2space_def = helper.make_node("DepthToSpace",
+                                        inputs=['permute_output'],
+                                        outputs=['depth2space_output'],
+                                        blocksize=block_size,
+                                        mode=mode)
+
+        graph_def = helper.make_graph([transpose_def, depth2space_def], "{}_{}".format(case_name, 0), [input],
+                                    [depth2space_output])
+        self.onnx_and_test(graph_def)
 
     def test_GaToSlice(self, case_name):
 
