@@ -400,6 +400,7 @@ public:
       calibration_process();
     }
     init_qtable();
+
     RewritePatternSet patterns(ctx_);
 
     // process shape related ops
@@ -509,6 +510,11 @@ protected:
     patterns.clear();
     patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepAddSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
+
+    if (module::isBM1684XFamily()) {
+      subconst_sign_process();
+      module::updateModuleTypes();
+    }
   }
 
   void hd_convert_process() {
@@ -570,6 +576,41 @@ protected:
     });
   }
 
+  void subconst_sign_process() {
+    auto mOp = getOperation();
+    for (auto func : mOp.getOps<FuncOp>()) {
+      if (module::isAsymmetric())
+        return;
+      func.walk([&](Operation *op) {
+        if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
+          if (auto subcop = dyn_cast<top::SubConstOp>(op)) {
+            auto in = subcop.getInput();
+            auto out = subcop.getOutput();
+            auto in_stype = module::getStorageType(in);
+            auto out_stype = module::getStorageType(out);
+            auto in_ctype = module::getCalibratedType(in);
+            auto out_ctype = module::getCalibratedType(out);
+            auto in_min = in_ctype.getMin();
+            auto out_min = out_ctype.getMin();
+            auto out_max = out_ctype.getMax();
+            if (in_min >= 0 && out_min <= 0) {
+              if (module::getMode() ==
+                  module::Mode::INT8) { // should check the op not the module
+                auto new_out_type = quant::CalibratedQuantizedType::get(
+                    out_stype, -out_max * 128.0 / 127.0, out_max);
+                auto new_outr_type =
+                    RankedTensorType::get(module::getShape(out), new_out_type);
+                out.setType(new_outr_type);
+              } else {
+                llvm_unreachable("un-supported calibrated type for subconst!");
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
   Value do_cast(Value v, Type to, TypeCastMode mode) {
     auto from_stype = module::getStorageType(v);
     auto to_stype = module::getStorageType(to);
@@ -612,7 +653,8 @@ protected:
       auto newType = RankedTensorType::get(module::getShape(v), to_stype);
       auto loc = NameLoc::get(builder.getStringAttr(name));
       if (v.getDefiningOp()->hasTrait<trait::ShapeProducer>()) {
-        auto castOp = builder.create<tpu::ShapeCastOp>(loc, newType, ValueRange{v});
+        auto castOp =
+            builder.create<tpu::ShapeCastOp>(loc, newType, ValueRange{v});
         return castOp.getOutput();
       } else {
         auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
@@ -709,8 +751,9 @@ protected:
         iss >> name;
         iss >> mode;
         if (module::isCV18xx()) {
-          if (StringRef(mode).upper() == "F32" || StringRef(mode).upper() == "F16")
-          mode = "BF16";
+          if (StringRef(mode).upper() == "F32" ||
+              StringRef(mode).upper() == "F16")
+            mode = "BF16";
         }
         LoweringConfig::quantize_map[name] = qmode(mode);
         continue;
