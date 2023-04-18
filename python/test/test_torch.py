@@ -5,9 +5,6 @@
 # third-party components.
 #
 # ==============================================================================
-
-from copy import deepcopy
-from re import T
 import numpy as np
 from typing import List, Union
 
@@ -60,6 +57,7 @@ class TORCH_IR_TESTER(object):
             "Conv1d":           (self.test_Conv1d,            Y, N, N),
             "Conv2d":           (self.test_Conv2d,            Y, N, N),
             "Conv3d":           (self.test_Conv3d,            Y, N, N),
+            "ConvGroup":        (self.test_ConvGroup,         N, N, N),
             "ConvTrans":        (self.test_ConvTrans,         Y, N, N),
             "ConstantFill":     (self.test_ConstantFill,      Y, N, N),
             "Div":              (self.test_Div,               Y, N, N),
@@ -118,7 +116,7 @@ class TORCH_IR_TESTER(object):
             "SplitReshape":     (self.test_SplitReshape,      Y, N, N),
         }
         # yapf: enable
-        self.support_quant_modes = ["f32", "f16", "bf16"]
+        self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
         # self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
         self.support_asym = [False]
 
@@ -128,7 +126,7 @@ class TORCH_IR_TESTER(object):
         self.simple = simple
         self.multithread = not disable_thread
         if self.simple:
-            self.support_quant_modes = ["f16"]
+            self.support_quant_modes = ["f16", "int8"]
             self.support_asym = [False]
         # self.dynamic = dynamic
         if self.chip.startswith("cv18"):
@@ -413,7 +411,10 @@ class TORCH_IR_TESTER(object):
         test["case1"](nn.Conv2d, (4, 8, 28, 28))
         test["case2"](F.conv2d, (1, 3, 32, 32), (3, 3), 12, has_bias=True, group=1, padding="same")
         test["case2"](F.conv2d, (2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1)
-        test["case2"](F.conv2d, (1, 3, 32, 32), (3, 3), 12, group=3, padding=(1, 1), stride=(2, 1))
+
+    def test_ConvGroup(self):
+        test = self._test_Conv()
+        test["case2"](F.conv2d, (1, 8, 32, 32), (3, 3), 24, group=4, padding=(1, 1))
 
     def test_Conv3d(self):
         """Conv 3D"""
@@ -882,7 +883,7 @@ class TORCH_IR_TESTER(object):
 
                 def __init__(self):
                     super(Model, self).__init__()
-                    self.coeff = torch.randn(1,3)
+                    self.coeff = torch.randn(1, 3)
 
                 def forward(self, x):
                     y = self.coeff.new_zeros(shape, dtype=dtype)

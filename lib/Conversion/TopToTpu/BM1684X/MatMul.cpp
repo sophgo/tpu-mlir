@@ -30,6 +30,10 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       llvm_unreachable("BatchMatMul does not support batch-bias yet.");
   }
   int64_t left_num_dims = module::getShape(op.getInput()).size();
+  if (module::isWeight(op.getInput())) {
+      LoweringF16(rewriter, op);
+      return;
+  }
   if (auto filterOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
     auto filter_f32 = filterOp.read<float>();
     int64_t in_zp = 0, out_zp = 0;
