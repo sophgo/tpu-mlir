@@ -73,6 +73,7 @@ class TORCH_IR_TESTER(object):
             "GRU":              (self.test_GRU,               Y, N, N),
             "IndexSelect":      (self.test_IndexSelect,       Y, N, N),
             "InstanceNorm":     (self.test_InstanceNorm,      Y, N, N),
+            "Interp":           (self.test_Interp,            Y, N, N),
             "LayerNorm":        (self.test_LayerNorm,         Y, N, N),
             "LeakyRelu":        (self.test_LeakyRelu,         Y, N, N),
             "Linear":           (self.test_Linear,            Y, N, N),
@@ -999,6 +1000,29 @@ class TORCH_IR_TESTER(object):
         _test_instancenorm(nn.InstanceNorm1d, (3, 32, 32), 32, affine=False)
         # _test_instancenorm(nn.InstanceNorm3d, (4, 5, 32, 32), 4, 3e-5)
         _test_instancenorm(nn.InstanceNorm3d, (2, 32, 16, 16, 3), 32, affine=False)
+
+    #######################################################################
+    # Interp
+    # ------------
+    def test_Interp(self):
+        """Interp"""
+
+        def _test_interp(input_shape, scale):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = nn.functional.interpolate(x, None, scale, mode='bilinear', align_corners=False)
+                    return y
+
+            self.trace_and_test([input_shape], Model())
+
+        _test_interp((1, 3, 100, 100), 4)
+        _test_interp((1, 1, 32, 32), 10)
+        _test_interp((2, 32, 16, 16), 16)
 
     #######################################################################
     # BMM

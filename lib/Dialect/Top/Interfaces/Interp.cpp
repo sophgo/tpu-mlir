@@ -298,7 +298,7 @@ void top::InterpOp::shape_inference() {
     auto scale_h_ = getScaleH().convertToDouble();
     auto scale_w_ = getScaleW().convertToDouble();
     std::vector<int64_t> out_shape(in_shape);
-    if (getMode() == "nearest") {
+    if (getMode() == "nearest" || getMode() == "linear") {
         out_shape[2] = round(out_shape[2] * scale_h_);
         out_shape[3] = round(out_shape[3] * scale_w_);
         module::setShapeOrVerify(getOutput(), out_shape);
