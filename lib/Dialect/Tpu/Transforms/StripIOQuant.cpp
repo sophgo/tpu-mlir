@@ -42,6 +42,7 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
       inputOp.getResult().setType(new_type);
       reshapeOp.getResult().setType(new_type);
       rewriter.replaceOp(op, reshapeOp.getResult());
+      return success();
     }
     return failure();
   };
