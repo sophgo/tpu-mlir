@@ -81,7 +81,7 @@ class DeployTool:
         self.dynamic = args.dynamic
         self.compare_all = args.compare_all
         self.post_op = args.post_op
-        if self.quantize == "int8":
+        if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
                 self.prefix += "_asym"
             else:

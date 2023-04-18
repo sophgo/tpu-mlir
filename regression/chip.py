@@ -16,7 +16,7 @@ chip_support = {
     # chip_name: (F32, F16, BF16, INT8_sym, INT8_asym, INT4_sym, dynamic, model_type)
     "bm1684":    (Y,   N,   N,    Y,        N,         N,        N,       "bmodel"),
     "bm1684x":   (Y,   Y,   Y,    Y,        Y,         N,        N,       "bmodel"),
-    "bm1686":    (Y,   Y,   Y,    Y,        N,         N,        N,       "bmodel"),
+    "bm1686":    (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
     "cv180x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
     "cv181x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
     "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
