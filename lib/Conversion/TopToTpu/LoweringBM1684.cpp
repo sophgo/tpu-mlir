@@ -47,6 +47,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       MulConstLowering,
       SubLowering,
       LayerNormLowering,
+      SwapDimInnerLowering,
       LRNLowering,
       MinLowering,
       MaxLowering,
