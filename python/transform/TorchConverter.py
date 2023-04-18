@@ -160,6 +160,7 @@ class TorchConverter(BaseConverter):
             "aten::transpose": lambda node: self.convert_transpose_op(node),
             "aten::to": lambda node: self.convert_to_op(node),
             "aten::unsqueeze": lambda node: self.convert_unsqueeze_op(node),
+            "aten::upsample_bilinear2d": lambda node: self.convert_upsample_op(node, mode='bilinear'),
             "aten::upsample_nearest2d": lambda node: self.convert_upsample_op(node, mode='nearest'),
             "aten::view": lambda node: self.convert_reshape_op(node),
             "aten::where": lambda node: self.convert_where_op(node),
@@ -974,11 +975,18 @@ class TorchConverter(BaseConverter):
         self.tensor_list[torch_node.outputs[0]] = output_names
 
     def convert_upsample_op(self, torch_node: TorchNode, mode: str):
-        assert mode == "nearest"
-        op0 = self.getOp(torch_node.inputs[0])
-        has_out_size = torch_node.inputs[1] in self.const_val.keys()
-        out_size = self.const_val[torch_node.inputs[1]] if has_out_size else None
-        scale = self.const_val[torch_node.inputs[2]] if not has_out_size else None
+        if mode == "nearest":
+            op0 = self.getOp(torch_node.inputs[0])
+            has_out_size = torch_node.inputs[1] in self.const_val.keys()
+            out_size = self.const_val[torch_node.inputs[1]] if has_out_size else None
+            scale = self.const_val[torch_node.inputs[2]] if not has_out_size else None
+        elif mode == "bilinear":
+            mode = "linear"
+            op0 = self.getOp(torch_node.inputs[0])
+            has_out_size = torch_node.inputs[1] in self.const_val.keys()
+            out_size = self.const_val[torch_node.inputs[1]] if has_out_size else None
+            align_corners = self.const_val[torch_node.inputs[2]]
+            scale = self.const_val[torch_node.inputs[3]] if not has_out_size else None
         assert out_size == None
         new_op = top.InterpOp(self.unranked_type,
                               op0,
