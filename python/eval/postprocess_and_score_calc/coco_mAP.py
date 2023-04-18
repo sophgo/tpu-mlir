@@ -384,7 +384,12 @@ def postproc(outputs, imsize, anchors = ANCHORS):
     z = []
     for out in  outputs:
         # bs, 3, 20, 20, 85
-        bs, _, ny, nx,  _ = out.shape
+        if len(out.shape) == 5:
+            bs, _, ny, nx,  _ = out.shape
+        else:
+            bs, _, ny, nx = out.shape
+            out = out.reshape(bs, -1, 85, ny, nx)
+            out = np.transpose(out, (0, 1,3,4,2))
         stride = imsize[0] / ny
         assert(stride == imsize[1] / nx)
         anchor = anchors[stride]
