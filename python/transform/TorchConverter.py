@@ -499,6 +499,8 @@ class TorchConverter(BaseConverter):
         scale = self.const_val[torch_node.inputs[2]]
         op1 = self.getOp(torch_node.inputs[1]) if scale == 1 else \
               self._mul_scale(torch_node.inputs[1], scale)
+        if self.isWeight(torch_node.inputs[0]):
+            op0, op1 = op1, op0
         new_op = top.AddOp(self.unranked_type, [op0, op1],
                            do_relu=False,
                            loc=self.get_loc(torch_node.name),
@@ -878,9 +880,8 @@ class TorchConverter(BaseConverter):
         for idx, ins in enumerate(inputs):
             input = self.getOp(ins)
             new_op = top.UnsqueezeOp(self.unranked_type,
-                                     input,
-                                     [axis],
-                                     loc=self.get_loc(torch_node.name+"_expand_"+str(idx)),
+                                     input, [axis],
+                                     loc=self.get_loc(torch_node.name + "_expand_" + str(idx)),
                                      ip=self.mlir.insert_point).output
             inputs_new.append(new_op)
         new_op = top.ConcatOp(self.unranked_type,
