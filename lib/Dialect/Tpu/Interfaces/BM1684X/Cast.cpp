@@ -99,7 +99,9 @@ int64_t tpu::CastOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   if (getInput().hasOneUse()) {
     return 0;
   }
-  if (module::isUniformQuantized(getInput())) {
+  bool qInput = module::isUniformQuantized(getInput());
+  bool qOutput = module::isUniformQuantized(getOutput());
+  if (qInput || (!qInput && !qOutput)) {
     return 0;
   }
   return in_lmem_bytes;
