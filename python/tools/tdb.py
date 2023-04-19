@@ -7,73 +7,13 @@
 # third-party components.
 #
 # ==============================================================================
-from bmodel_dis import Bmodel2MLIR, opdef_1684x, tensor2memref
-from utils.bmodel_dis.opparam_1684x import MType, Memory, memmap
-from utils.cmodel import lib, gen_lookup_table
-import cmd, sys, pprint, code, traceback, ctypes
+from utils.debugger.op_support import MType
+from utils.debugger.disassembler import BModelReader, BModel2MLIR
+from utils.debugger.context import Context
+import cmd, sys, pprint, code, traceback
 import numpy as np
 from rich import print
 from os import path
-
-# common cases
-def bind_compute():
-    """
-    ENGINE_BD   = 0,
-    ENGINE_GDMA = 1,
-    ENGINE_GDE  = 2,
-    ENGINE_SORT = 3,
-    ENGINE_NMS  = 4,
-    ENGINE_CDMA = 5,
-    """
-    # TODO
-    # atomic_sort
-    # atomic_gde
-    # atomic_nms
-    def call_ins(command, engine_type):
-        return lib.execute_command(
-            0,
-            np.packbits(
-                command.reshape(-1, 8),
-                axis=-1,
-                bitorder="little",
-            ).ctypes.data,
-            engine_type,
-        )
-
-    def bdc_compute(cls):
-        return call_ins(cls.cmd, 0)
-
-    def gdma_compute(cls):
-        return call_ins(cls.cmd, 1)
-
-    for _, v in opdef_1684x.bdc_cmd.items():
-        for op in v:
-            setattr(op, "compute", bdc_compute)
-
-    for _, v in opdef_1684x.dma_cmd.items():
-        for op in v:
-            setattr(op, "compute", gdma_compute)
-
-
-# provide load input and bmodel to Global memory
-# input should support assignment
-
-
-# lib.cmodel_multi_thread_cxt_deinit(0)
-# breakpoint
-
-
-def c_array_to_ndarray(x, shape):
-    if isinstance(x, int):
-        x = ctypes.c_void_p(x)
-    if isinstance(shape, int):
-        shape = (shape,)
-    try:
-        p = ctypes.cast(x, ctypes.POINTER(ctypes.c_uint8))
-    except:
-        raise Exception(f"unsupported memory access: {x}")
-    finally:
-        return np.ctypeslib.as_array(p, shape=shape)
 
 
 class Tdb(cmd.Cmd):
@@ -88,7 +28,7 @@ class Tdb(cmd.Cmd):
     2. Use as a package:
     from tdb import Tdb
     tdb = Tdb()
-    tdb.load_file("./onnx_test/AddConst_f32.bmodel")
+    tdb.load_bmodel("./onnx_test/AddConst_f32.bmodel")
     tdb.start()
     input = np.arange(1 * 16 * 28 * 28, dtype=np.float32)[::-1].reshape([1, 16, 28, 28])
     tdb.set_inputs(input)
@@ -98,46 +38,38 @@ class Tdb(cmd.Cmd):
 
     def __init__(self, completekey="tab", stdin=None, stdout=None):
         cmd.Cmd.__init__(self, completekey, stdin, stdout)
-        self.ddr = np.ndarray([])
-        self.lmem = np.ndarray([])
+        self.disassembler = None
         self.record_status = False
         self.module = None
         self.current_function = None
         self.status = {}
-        self.file = None
+        self.bmodel = None
         self.inputs = None
         self.enable_message = True
         self.current_line = -1
         self.breakpoint = []
-        self.inital_runtime()
         # The temporary breakpoint must be hit and then destroyed after it is used.
         self.temporary_breakpoint = False
 
-    def __del__(self):
-        lib.cmodel_deinit(0)
-
-    def reset(self):
-        self.ddr.fill(0)
-        self.lmem.fill(0)
+    def __reset(self):
+        self.runner.clear_memory()
         self.status = {}
         self.current_line = -1
         self.current_function = None
         self._make_continue_iter()
-        # self.breakpoint = []
 
-    def inital_runtime(self):
-        bind_compute()
-        lib.cmodel_init(0, Tdb.ddr_size)
-        self.ddr = c_array_to_ndarray(lib.get_global_memaddr(0), Tdb.ddr_size)
-        self.lmem = c_array_to_ndarray(
-            lib.get_local_mem(0).contents.raw_ptr, (64, 16, 1024 * 16)
-        )
-        self.smem = c_array_to_ndarray(lib.get_static_memaddr_by_node(0), (16 * 1024,))
-        self.ddr.fill(0)
-        self.lmem.fill(0)
-        lut = np.array(gen_lookup_table(), np.uint32).view(np.uint8)
-        self.smem[: len(lut)] = lut[...]
-        self.mem_manager = Memory(self.lmem, self.ddr)
+    def load_bmodel(self, bmodel_file: str = ""):
+        if bmodel_file == None:
+            raise Exception("Nothing to debug.")
+        bmodel = BModelReader(bmodel_file)
+        chip = bmodel.nets["Chip"][0]
+        context = Context(chip)
+        decoder = context.disassembler
+        self.module = BModel2MLIR(bmodel, decoder)
+        self.runner = context.get_runner(Tdb.ddr_size)
+        self.LMEM = self.runner.LMEM
+        self.DDR = self.runner.DDR
+        self.CONTEXT = context
 
     def message(self, msg):
         if self.enable_message:
@@ -361,11 +293,6 @@ class Tdb(cmd.Cmd):
 
     do_h = do_help
 
-    def load_file(self, file: str = ""):
-        if file == None:
-            raise Exception("Nothing to debug.")
-        self.file = file
-
     def load_data(self, file: str = ""):
         if file:
             self.inputs = file
@@ -373,11 +300,9 @@ class Tdb(cmd.Cmd):
             inputs = np.fromfile(file, dtype=np.uint8)
             _offset = 0
             for arg in self.current_function.signature[0]:
-                mem = tensor2memref(arg)
-                assert mem.mtype == MType.G
-                offset = mem.mtype.r_addr
+                mem = self.CONTEXT.tensor2memref(arg)
                 size = int(np.prod(mem.shape) * mem.itemsize)
-                self.ddr[offset : offset + size] = inputs[_offset : _offset + size]
+                mem.data = inputs[_offset : _offset + size].view(mem.np_dtype)
                 _offset += size
         elif file.endswith(".npz"):
             inputs = np.load(file)
@@ -392,26 +317,13 @@ class Tdb(cmd.Cmd):
 
     def set_input(self, id, input):
         args = self.current_function.signature[0]
-        mem = tensor2memref(args[id])
-        self.set_data(mem, input)
-
-    def set_data(self, des, src: np.ndarray):
-        m_type = des.mtype
-        if m_type == MType.G:
-            offset = m_type.r_addr
-            assert src.dtype == des.np_dtype
-            src_u8 = np.ascontiguousarray(src.flatten()).view(np.uint8)
-            self.ddr[offset : offset + src_u8.size] = src_u8.flatten()
-        if m_type == "L":
-            raise Exception("Not implemented.")
-
-    def get_data(self, mem):
-        return self.mem_manager.get_data(mem)
+        mem = self.CONTEXT.tensor2memref(args[id])
+        mem.data = input
 
     def get_return(self):
         outputs = self.current_function.signature[1]
-        mems = [tensor2memref(x) for x in outputs]
-        return [self.get_data(mem) for mem in mems]
+        mems = [self.CONTEXT.tensor2memref(x) for x in outputs]
+        return [mem.data for mem in mems]
 
     def get_op(self, offset=0):
         ops = self.current_function.regions[0].blocks[0].operations
@@ -426,7 +338,7 @@ class Tdb(cmd.Cmd):
         if not self.record_status:
             return
         op = self.get_op()
-        self.status[self.current_line] = self.get_data(op.results[0])
+        self.status[self.current_line] = [x.data for x in op.results[0]]
 
     def pop_status(self):
         if not self.record_status:
@@ -435,21 +347,18 @@ class Tdb(cmd.Cmd):
         op = self.get_op()
         if self.current_line not in self.status:
             raise Exception("can not go back.")
-        status = self.status[self.current_line]
-        if isinstance(op, opdef_1684x.dma_base):
-            self.set_data(op.results[0], status)
-        elif isinstance(op, opdef_1684x.bdc_base):
-            self.lmem[...] = status[...]
+        data = self.status[self.current_line]
+        for k, v in zip(op.results, data):
+            k.data = v
         del self.status[self.current_line]
 
     def start(self):
-        self.reset()
-        self.module = Bmodel2MLIR(self.file)
+        self.__reset()
         coeff = self.module.functions[0].regions[0].data
         if coeff:
-            addr = coeff.address - memmap[MType.G][0]
+            addr = coeff.address - self.CONTEXT.memmap[MType.G][0]
             # load constant data
-            self.ddr[addr : addr + len(coeff.data)] = memoryview(coeff.data)
+            self.DDR[addr : addr + len(coeff.data)] = memoryview(coeff.data)
         if self.module is None:
             raise Exception("please load one file.")
         self.current_function = self.module.functions[0]
@@ -514,7 +423,7 @@ if __name__ == "__main__":
     if args.bmodel:
         if path.isfile(args.bmodel):
             print(f"load bmodel: {args.inputs}")
-            tdb.load_file(args.bmodel)
+            tdb.load_bmodel(args.bmodel)
             tdb.start()
         elif path.isdir(args.bmodel):
             inputs = path.join(args.bmodel, "input_ref_data.dat")
@@ -524,7 +433,7 @@ if __name__ == "__main__":
             assert args.inputs == None
             args.inputs = inputs
             print(f"load bmodel: {bmodel}")
-            tdb.load_file(bmodel)
+            tdb.load_bmodel(bmodel)
             tdb.start()
     if args.inputs:
         print(f"load input: {args.inputs}")
@@ -538,7 +447,7 @@ if __name__ == "__main__":
         op = tdb.get_op()
         value = op.operands[index]
         print(value)
-        return tdb.get_data(value)
+        return value.data
 
     def outs(index):
         """
@@ -547,7 +456,7 @@ if __name__ == "__main__":
         op = tdb.get_op()
         value = op.results[index]
         print(value)
-        return tdb.get_data(value)
+        return value.data
 
     class op:
         def __init__(self, index=0) -> None:
@@ -560,12 +469,12 @@ if __name__ == "__main__":
             op = tdb.get_op(self.index)
             value = op.operands[index]
             print(value)
-            return tdb.get_data(value)
+            return value.data
 
         def outs(self, index):
             op = tdb.get_op(self.index)
             value = op.results[index]
             print(value)
-            return tdb.get_data(value)
+            return value.data
 
     tdb.cmdloop()

@@ -118,7 +118,7 @@ def local_layout_to_stride(memref):
     if memref.layout == Layout.DMAstride:
         return dma_nolane_mask_to_stride()
 
-    return None
+    return memref.stride
 
 
 class MemRef(op_support.MemRef):
@@ -335,6 +335,16 @@ class Memory:
         if value.mtype == MType.R:
             return self._local_mem_to_numpy(value)
         raise ValueError(f"unsupported memory view: {value}")
+
+    def set_data(self, value, data: np.ndarray):
+        m_type = value.mtype
+        if m_type == MType.G:
+            offset = m_type.r_addr
+            assert data.dtype == value.np_dtype
+            src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
+            self.DDR[offset : offset + src_u8.size] = src_u8.flatten()
+            return
+        raise NotImplementedError(f"Not support setting {m_type} memory data.")
 
 
 def get_value(
