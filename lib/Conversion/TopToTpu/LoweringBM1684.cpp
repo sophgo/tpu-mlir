@@ -54,7 +54,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ExpLowering,
       PReluLowering,
       LSTMLowering,
-      LeakyReluLowering
+      LeakyReluLowering,
+      GELULowering
       // clang-format on
       >(patterns->getContext());
 }
