@@ -41,6 +41,7 @@ class ONNX_IR_TESTER(object):
             # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
             "Abs":          (self.test_Abs,           Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y),
+            "And":          (self.test_And,           N, Y, N, N),
             "AddBcast":     (self.test_AddBcast,      Y, Y, Y, N),
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N),
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N),  # failed cases
@@ -105,6 +106,7 @@ class ONNX_IR_TESTER(object):
             "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y),
             "Max":          (self.test_Max,           Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N),
+            "Not":          (self.test_Not,           N, Y, N, N),
             "Mul":          (self.test_Mul,           Y, Y, Y, Y),
             "MulMerge":     (self.test_MulMerge,      Y, Y, Y, N),
             "MulBcast":     (self.test_MulBcast,      Y, Y, Y, N),
@@ -296,11 +298,13 @@ class ONNX_IR_TESTER(object):
     def create_random_input(self, graph_def: onnx.GraphProto):
         inputs = {}
         for i in graph_def.input:
-            # only float input can use this
-            assert (i.type.tensor_type.elem_type == onnx.TensorProto.FLOAT)
             name = i.name
             shape = [s.dim_value for s in i.type.tensor_type.shape.dim]
-            inputs[name] = np.clip(np.random.randn(*shape).astype(np.float32), -10, 10)
+            if i.type.tensor_type.elem_type == onnx.TensorProto.FLOAT:
+                inputs[name] = np.clip(np.random.randn(*shape).astype(np.float32), -10, 10)
+            elif i.type.tensor_type.elem_type == onnx.TensorProto.BOOL:
+                # create random input data for bool type
+                inputs[name] = np.random.randint(0, 2, shape).astype(np.bool_)
         return inputs
 
     def onnx_convert(self, input_data: dict, graph_def, model_name: str, use_onnxsim=True):
@@ -4012,6 +4016,15 @@ class ONNX_IR_TESTER(object):
                                       initializer=[constant])
         self.onnx_and_test(graph_def)
 
+    def test_Not(self, case_name):
+        shape = [1, 3, 27, 27]
+        input = helper.make_tensor_value_info("input", TensorProto.BOOL, shape)
+        output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
+        cmp_def = helper.make_node("Not", inputs=["input"], outputs=["output"])
+        graph_def = helper.make_graph([cmp_def],
+                                        case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
     def test_CompareCst(self, case_name):
         shape = [1, 3, 27, 27]
         input = helper.make_tensor_value_info("input", TensorProto.FLOAT, shape)
@@ -4026,6 +4039,18 @@ class ONNX_IR_TESTER(object):
                                           initializer=[constant])
             self.onnx_and_test(graph_def)
             print("====== TEST {} Success ======".format(cmp_type))
+
+    def test_And(self, case_name):
+        shape = [1, 3, 27, 27]
+        input = helper.make_tensor_value_info("input", TensorProto.BOOL, shape)
+        constant = helper.make_tensor("constant", TensorProto.BOOL, [1],
+                                      np.array([1]).astype(np.bool_))
+        output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
+        cmp_def = helper.make_node("And", inputs=["input", "constant"], outputs=["output"])
+        graph_def = helper.make_graph([cmp_def],
+                                        case_name, [input], [output],
+                                        initializer=[constant])
+        self.onnx_and_test(graph_def)
 
     def test_Compare(self, case_name):
         shape = [1, 3, 27, 27]

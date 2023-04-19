@@ -1186,7 +1186,7 @@ void function_permute(float *from, float *to, const std::vector<int64_t> &shape_
                       const std::vector<int64_t> &order_5);
 
 bool compare(float a, float b, llvm::StringRef mode) {
-  if (mode == "Equal") {
+  if (mode == "Equal" || mode == "Not") {
     return a == b;
   }
   if (mode == "Greater") {
@@ -1203,6 +1203,9 @@ bool compare(float a, float b, llvm::StringRef mode) {
   }
   if (mode == "NotEqual") {
     return a != b;
+  }
+  if (mode == "And") {
+    return a && b;
   }
   llvm_unreachable("Not Implemented");
   return false;
