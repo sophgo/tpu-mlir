@@ -6,7 +6,6 @@
 # ==============================================================================
 
 from typing import List, Union
-from .MLIRImporter import Top
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator
 # from deprecated.sphinx import deprecated
 from utils.mlir_shell import *
@@ -155,7 +154,7 @@ def add(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: s
 
     output = Tensor(shape, dtype=o_dtype, name=out_name)
 
-    TpuLang.insert_op(Top.AddOp, [tensor_i0, tensor_i1], [output])
+    TpuLang.insert_op("top.Add", [tensor_i0, tensor_i1], [output])
 
     return output
 
@@ -199,7 +198,7 @@ def conv_v2(input: Tensor,
     weight.quantization(zero_point=weight_zp)
     output = Tensor(_shape_inference(), dtype=o_dtype, name=out_name)
     inputs = [input, weight, bias]
-    TpuLang.insert_op(Top.ConvOp, inputs=inputs, outputs=[output], params=attr)
+    TpuLang.insert_op("top.Conv", inputs=inputs, outputs=[output], params=attr)
     return output
 
 
@@ -214,7 +213,7 @@ def mul(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: s
 
     output = Tensor(shape, dtype=o_dtype, name=out_name)
 
-    TpuLang.insert_op(Top.MulOp, [tensor_i0, tensor_i1], [output])
+    TpuLang.insert_op("top.Mul", [tensor_i0, tensor_i1], [output])
 
     return output
 
@@ -230,7 +229,7 @@ def sub(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: s
 
     output = Tensor(shape, dtype=o_dtype, name=out_name)
 
-    TpuLang.insert_op(Top.SubOp, [tensor_i0, tensor_i1], [output])
+    TpuLang.insert_op("top.Sub", [tensor_i0, tensor_i1], [output])
 
     return output
 
