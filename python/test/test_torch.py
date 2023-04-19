@@ -106,6 +106,7 @@ class TORCH_IR_TESTER(object):
             "T":                (self.test_T,                 Y, N, N),
             "Tile":             (self.test_Tile,              Y, N, N),
             "To":               (self.test_To,                N, N, N),
+            "Type_as":          (self.test_Type_as,           N, N, N),
             "Transpose":        (self.test_Transpose,         Y, N, N),
             "Upsample":         (self.test_Upsample,          Y, N, N),
             "Unary":            (self.test_Unary,             Y, N, N),
@@ -825,6 +826,28 @@ class TORCH_IR_TESTER(object):
 
         for dtype in [torch.long, torch.int64, torch.float16]:
             _test_to((2, 3, 64), dtype)
+
+    #######################################################################
+    # Type_as
+    # ------------
+    def test_Type_as(self):
+
+        def _test_type_as(shape, dtype):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.other = torch.tensor(-10, dtype=dtype)
+
+                def forward(self, x):
+                    y = x.type_as(self.other) + 1
+                    return y
+
+            self.trace_and_test([shape], Model())
+
+        for dtype in [torch.long, torch.int64, torch.float16]:
+            _test_type_as((4, 3, 100, 100), dtype)
 
     #######################################################################
     # Reduce
