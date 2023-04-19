@@ -32,7 +32,7 @@ using namespace std;
 
 static const char *type_name_array[] = {"float32", "float16", "int8",
                                         "uint8",   "int16",   "uint16",
-                                        "int32",   "uint32"};
+                                        "int32",   "uint32", "bfloat16", "int4", "uint4"};
 static const int type_size_array[] = {4, 2, 1, 1, 2, 2, 4, 4};
 static const int DATA_TYPE_NUM = sizeof(type_name_array) / sizeof(char *);
 
