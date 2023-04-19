@@ -1287,7 +1287,7 @@ typedef struct clip_spec {
 } clip_spec_t;
 
 typedef struct where_spec {
-  // int order;
+  int order;
   uint64_t buffer_addr;
 } where_spec_t;
 
