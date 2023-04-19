@@ -150,7 +150,7 @@ class ONNX_IR_TESTER(object):
             "Sub2":         (self.test_Sub2,          Y, Y, Y, Y),
             "SubBcast":     (self.test_SubBcast,      Y, Y, Y, N),
             "SubBcast2":    (self.test_SubBcast2,     Y, Y, Y, N),
-            "SubConst":     (self.test_SubConst,      Y, Y, Y, N),
+            "SubConst":     (self.test_SubConst,      Y, Y, Y, Y),
             "SubConst2":    (self.test_SubConst2,     Y, Y, Y, Y),
             "Sum":          (self.test_Sum,           Y, Y, Y, Y),
             "Tanh":         (self.test_Tanh,          N, Y, Y, Y),
