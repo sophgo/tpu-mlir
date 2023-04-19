@@ -392,14 +392,14 @@ void TgLstmKernel::compute(int idx, bool forward) {
     eltwise_mul(ml_result, ml_xo);
     if (with_final_y) {
       CV18xx::tdma_store_stride(&ml_result, ga_store + s_offset + goffset,
-                                h_gstride);
+                                oh_gstride);
     }
     if (idx == seq_length - 1) {
       if (with_final_h) {
-        CV18xx::tdma_store_stride(&ml_result, ga_store_h, h_gstride);
+        CV18xx::tdma_store_stride(&ml_result, ga_store_h + goffset, h_gstride);
       }
       if (with_final_c) {
-        CV18xx::tdma_store_stride(&ml_cell, ga_store_c, h_gstride);
+        CV18xx::tdma_store_stride(&ml_cell, ga_store_c + goffset, h_gstride);
       }
     }
   }
@@ -546,7 +546,7 @@ void TgLstmKernel::compute_without_tiling(bool forward) {
 
     int s_offset = seq_idx * num_dir * x_bytes;
     if (with_final_y) {
-      CV18xx::tdma_store_stride(&ml_hidden, ga_store + s_offset, h_gstride);
+      CV18xx::tdma_store_stride(&ml_hidden, ga_store + s_offset, oh_gstride);
     }
     if (i == seq_length - 1) {
       if (with_final_h) {
@@ -574,7 +574,11 @@ void TgLstmKernel::init_gaddr(bool forward) {
     ga_xi = ga_input + hidden_bytes * 4;
     ga_ri = ga_recurrence + recurrence_bytes * 4;
     ga_rbi = ga_bias + hidden_bytes * 4;
-    ga_store = ga_output + x_bytes;
+    if (is_torch_bidir) {
+      ga_store = ga_output + hidden_bytes;
+    } else {
+      ga_store = ga_output + x_bytes;
+    }
     ga_store_h = ga_last_h + x_bytes;
     ga_store_c = ga_last_c + x_bytes;
     ga_h0 = ga_init_h + x_bytes;
@@ -600,7 +604,8 @@ void TgLstmKernel::init(uint32_t layer_id, gaddr_t ga_input,
                         int seq_length, int num_dir, int batch_size,
                         int hidden_size, bool do_bias, bool with_initial_h,
                         bool with_initial_c, bool with_cont, bool bidirectional,
-                        bool with_final_h, bool with_final_c, bool with_final_y) {
+                        bool with_final_h, bool with_final_c,
+                        bool with_final_y, bool is_torch) {
   this->layer_id = layer_id;
   this->ga_input = ga_input;
   this->ga_recurrence = ga_recurrence;
@@ -636,6 +641,11 @@ void TgLstmKernel::init(uint32_t layer_id, gaddr_t ga_input,
   this->x_bytes = batch_size * hidden_bytes;
   this->x_gstride.row = input_bytes;
   this->h_gstride.row = hidden_bytes;
+  this->oh_gstride.row = hidden_bytes;
+  this->is_torch_bidir = is_torch && bidirectional;
+  if (is_torch_bidir) {
+    this->oh_gstride.row = 2 * hidden_bytes;
+  }
   if (with_cont && bidirectional) {
     llvm_unreachable("cont not support bidirectional!");
   }
@@ -672,14 +682,15 @@ void cvi_backend_tg_bf16_lstm_kernel(
     gaddr_t ga_tanh_slope_lut, gaddr_t ga_output, gaddr_t ga_last_h,
     gaddr_t ga_last_c, int seq_len, int num_dir, int batch_size,
     int hidden_size, bool do_bias, bool with_initial_h, bool with_initial_c,
-    bool with_cont, bool is_bidirectional, bool with_final_h,
-    bool with_final_c, bool output_y) {
+    bool with_cont, bool is_bidirectional, bool with_final_h, bool with_final_c,
+    bool output_y, bool is_torch) {
   TgLstmKernel kernel;
   kernel.init(layer_id, ga_input, ga_recurrence, ga_bias, ga_initial_h,
               ga_initial_c, ga_cont, ga_sigmoid_lut, ga_sigmoid_slope_lut,
-              ga_tanh_lut, ga_tanh_slope_lut, ga_output, ga_last_h, ga_last_c,seq_len, num_dir,
-              batch_size, hidden_size, do_bias, with_initial_h, with_initial_c,
-              with_cont, is_bidirectional, with_final_h, with_final_c, output_y);
+              ga_tanh_lut, ga_tanh_slope_lut, ga_output, ga_last_h, ga_last_c,
+              seq_len, num_dir, batch_size, hidden_size, do_bias,
+              with_initial_h, with_initial_c, with_cont, is_bidirectional,
+              with_final_h, with_final_c, output_y, is_torch);
   kernel.schedule();
 }
 

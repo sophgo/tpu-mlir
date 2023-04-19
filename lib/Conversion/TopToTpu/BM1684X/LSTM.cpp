@@ -37,6 +37,10 @@ static void LoweringLSTM(PatternRewriter &rewriter, top::LSTMOp op, Type type) {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
+  auto noneOp = module::getNoneOp(op);
+  for (int32_t i = 0; i < 4; i++) {
+    operands.push_back(noneOp);
+  }
   if (type.isF32()) {
     rewriter.replaceOpWithNewOp<tpu::LSTMOp>(op, op.getResultTypes(), operands,
                                              attrs);

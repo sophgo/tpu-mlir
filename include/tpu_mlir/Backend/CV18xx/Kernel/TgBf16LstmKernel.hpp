@@ -29,7 +29,8 @@ public:
             gaddr_t ga_last_c, int seq_length, int num_dir, int batch_size,
             int hidden_size, bool do_bias, bool with_initial_h,
             bool with_initial_c, bool with_cont, bool bidirectional,
-            bool with_final_h, bool with_final_c, bool with_final_y);
+            bool with_final_h, bool with_final_c, bool with_final_y,
+            bool is_torch);
 
   void schedule();
 
@@ -98,6 +99,7 @@ protected:
   uint32_t recurrence_bytes;
   uint32_t hidden_bytes;
   uint32_t x_bytes;
+  bool is_torch_bidir;
   bool do_bias;
   bool with_initial_h;
   bool with_initial_c;
@@ -133,6 +135,7 @@ protected:
   uint32_t addr_work2; // for gate buffer
   cvk_mg_stride_t x_gstride;
   cvk_mg_stride_t h_gstride;
+  cvk_mg_stride_t oh_gstride;
 };
 } // namespace backend
 } // namespace tpu_mlir
