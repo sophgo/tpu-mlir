@@ -112,8 +112,8 @@ class ONNX_IR_TESTER(object):
             "MinBcast":     (self.test_MinBcast,      Y, Y, Y, N),
             "MulConst":     (self.test_MulConst,      Y, Y, Y, Y),
             "Neg":          (self.test_Neg,           N, Y, Y, Y),
-            "Pad":          (self.test_Pad,           N, Y, N, Y),  # zero pad
-            "Pad1":         (self.test_Pad1,          N, Y, N, Y),  # pad val
+            "Pad":          (self.test_Pad,           N, Y, Y, Y),  # zero pad
+            "Pad1":         (self.test_Pad1,          N, Y, Y, Y),  # pad val
             "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y),
             "PadReflect":   (self.test_PadReflect,    N, Y, Y, Y),
             "Pow1":         (self.test_Pow1,          N, Y, Y, Y),  # y = x ^ n
@@ -192,7 +192,7 @@ class ONNX_IR_TESTER(object):
             "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y),
             "TorchStd":             (self.test_TorchStd,            N, Y, Y, Y),
             "TorchWhere":           (self.test_TorchWhere,          N, Y, Y, N),
-            "TorchZeroPad":         (self.test_TorchZeroPad,        N, Y, N, Y),
+            "TorchZeroPad":         (self.test_TorchZeroPad,        N, Y, Y, Y),
             #########################################
             # Special Pass test case, Alphabetically
             #########################################
@@ -219,7 +219,7 @@ class ONNX_IR_TESTER(object):
             "PixelNorm2":       (self.test_PixelNorm2,      N, Y, Y, N),
             "PermuteBinary":    (self.test_PermuteBinary,   N, Y, Y, Y),
             "PermuteFuse":      (self.test_PermuteFuse,     N, Y, Y, Y),
-            "PermutePad":       (self.test_PermutePad,      N, Y, N, N),
+            "PermutePad":       (self.test_PermutePad,      N, Y, Y, N),
             "PermuteToReorg":   (self.test_PermuteToReorg,  N, Y, Y, Y),
             "PermuteToReorg2":  (self.test_PermuteToReorg2, N, Y, Y, Y),
             "PermuteToReshape": (self.test_PermuteToReshape,Y, Y, Y, N),
