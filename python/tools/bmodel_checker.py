@@ -17,9 +17,7 @@ import numpy as np
 from rich.console import Console
 
 from numpy_helper.tensor_compare import TensorCompare
-from utils.bmodel_dis.opdef_1684x import bdc_base, dma_base
-import utils.bmodel_dis.opparam_1684x as opparam
-import bmodel_dis
+from utils.debugger import op_support
 from tdb import Tdb
 
 
@@ -81,33 +79,18 @@ class TensorLoc:
                 if v != {}
             )
 
-    def merge_cmd(self, bdc, gdma, subnet_id):
-        cmd = bmodel_dis.merge_cmd(bdc, gdma)
-        for i, x in enumerate(cmd):
-            if isinstance(x, bdc_base):
-                k = self.ID(subnet_id, x.cmd_id, None)
-            else:
-                k = self.ID(subnet_id, None, x.cmd_id)
-            self.cmd_index[k] = i
-        return cmd
+    def merge_cmd(self, org_func):
+        def record_index(*args):
+            cmd = org_func(*args)
+            for i, x in enumerate(cmd):
+                if isinstance(x, op_support.TIUBase):
+                    k = self.ID(args[-1], x.cmd_id, None)
+                else:
+                    k = self.ID(args[-1], None, x.cmd_id)
+                self.cmd_index[k] = i
+            return cmd
 
-    def merge_cmd_1(self, bdc, gdma, subnet_id):
-        """sort commands as nodechip"""
-        from itertools import tee
-
-        bp = filter(lambda x: x[0] == subnet_id, self.breakpoint_loc.keys())
-        cmd = []
-
-        def pairwise(iterable):
-            # pairwise('ABCDEFG') --> AB BC CD DE EF FG
-            a, b = tee(iterable)
-            next(b, None)
-            return zip(a, b)
-
-        for a, b in pairwise(bp):
-            nc_cmd = bmodel_dis.merge_cmd(bdc[a.bdc : b.bdc], gdma[a.gdma : b.gdma])
-            cmd.extend(nc_cmd)
-        return cmd
+        return record_index
 
     def set_breakpoint(self, tdb: Tdb, subnet_id: int = 0):
         bp = filter(lambda x: x[0] == subnet_id, self.breakpoint_loc.keys())
@@ -124,21 +107,21 @@ class TensorLoc:
 
 
 to_dtype = {
-    "f32": opparam.DType.f32,
-    "f16": opparam.DType.f16,
-    "bf16": opparam.DType.bf16,
-    "i8": opparam.DType.i8,
-    "si8": opparam.DType.si8,
-    "ui8": opparam.DType.ui8,
-    "u8": opparam.DType.ui8,
-    "i16": opparam.DType.i16,
-    "si16": opparam.DType.si16,
-    "ui16": opparam.DType.ui16,
-    "u16": opparam.DType.ui16,
-    "i32": opparam.DType.i32,
-    "si32": opparam.DType.si32,
-    "ui32": opparam.DType.ui32,
-    "u32": opparam.DType.ui32,
+    "f32": op_support.DType.f32,
+    "f16": op_support.DType.f16,
+    "bf16": op_support.DType.bf16,
+    "i8": op_support.DType.i8,
+    "si8": op_support.DType.si8,
+    "ui8": op_support.DType.ui8,
+    "u8": op_support.DType.ui8,
+    "i16": op_support.DType.i16,
+    "si16": op_support.DType.si16,
+    "ui16": op_support.DType.ui16,
+    "u16": op_support.DType.ui16,
+    "i32": op_support.DType.i32,
+    "si32": op_support.DType.si32,
+    "ui32": op_support.DType.ui32,
+    "u32": op_support.DType.ui32,
 }
 
 
@@ -155,7 +138,7 @@ def get_shape_and_dtype(input_string: str):
     return shape, dtype
 
 
-def get_mlir_type_info(mlir_type: str):
+def _get_mlir_type_info():
     ut = namedtuple("TensorType", ["shape", "type", "scale", "zero_point"])
 
     shape = r"(?P<shape>\d+(x\d+)*)"
@@ -168,68 +151,72 @@ def get_mlir_type_info(mlir_type: str):
     zero_point = r"(?P<zero_point>[-+]?\d+)"
     address = r"(?P<address>\d+)\ :\ \w+"
 
-    def match_type():
-        pattern = rf"tensor<{shape}x{storage_type}(, {address})?>"
-        match = re.search(pattern, mlir_type)
-        if match:
-            return match
-        pattern = rf"tensor<{shape}x{quant}<{storage_type}:{express_type},\ {scale}(:{zero_point})?>(,\ {address})?>"
-        match = re.search(pattern, mlir_type)
-        if match:
-            return match
-        cali = r"!quant.calibrated"
-        pattern = (
-            rf"tensor<{shape}x{cali}<{storage_type}<{min_r}:{max_r}>>(, {address})?>"
-        )
-        match = re.search(pattern, mlir_type)
-        if match:
-            return match
-        raise ValueError(f"Do not recognize type: {mlir_type}")
-
-    match = match_type()
-    zp = 0
-    if "zero_point" in match.groupdict():
-        zp = match.group("zero_point")
-        if zp != None:
-            zp = int(zp)
-        else:
-            zp = 0
-    sc = 1
-    if "scale" in match.groupdict():
-        sc = match.group("scale")
-        if sc != None:
-            sc = float(sc)
-        else:
-            sc = 1
-
-    return ut(
-        [int(x) for x in match.group("shape").split("x")],
-        to_dtype[match.group("storage_type")],
-        sc,
-        zp,
+    tensor_re = re.compile(rf"tensor<{shape}x{storage_type}(, {address})?>")
+    quant_re = re.compile(
+        rf"tensor<{shape}x{quant}<{storage_type}:{express_type},\ {scale}(:{zero_point})?>(,\ {address})?>"
     )
+    cali = r"!quant.calibrated"
+    cali_re = re.compile(
+        rf"tensor<{shape}x{cali}<{storage_type}<{min_r}:{max_r}>>(, {address})?>"
+    )
+
+    def func(mlir_type: str):
+        match = tensor_re.search(mlir_type)
+        if match is None:
+            match = quant_re.search(mlir_type)
+            if match is None:
+                match = cali_re.search(mlir_type)
+                if match is None:
+                    raise ValueError(f"Do not recognize type: {mlir_type}")
+
+        zp = 0
+        if "zero_point" in match.groupdict():
+            zp = match.group("zero_point")
+            if zp != None:
+                zp = int(zp)
+            else:
+                zp = 0
+        sc = 1
+        if "scale" in match.groupdict():
+            sc = match.group("scale")
+            if sc != None:
+                sc = float(sc)
+            else:
+                sc = 1
+
+        return ut(
+            [int(x) for x in match.group("shape").split("x")],
+            to_dtype[match.group("storage_type")],
+            sc,
+            zp,
+        )
+
+    return func
+
+
+get_mlir_type_info = _get_mlir_type_info()
 
 
 class TensorBuilder:
     _slot_ = "tensor_des"
 
-    def __init__(self, tensor_des):
+    def __init__(self, tensor_des, context):
         address = tensor_des["address"]
 
         shape, dtype = get_shape_and_dtype(tensor_des["memory_type"])
         layout = tensor_des["layout"]
         layout = {
-            "eu_align": opparam.Layout.alignEU,
-            "eu_align_group3d": opparam.Layout.alignEU,
-            "compact": opparam.Layout.compact,
-            "compact_group3d": opparam.Layout.compact,
+            "eu_align": op_support.Layout.alignEU,
+            "eu_align_group3d": op_support.Layout.alignEU,
+            "compact": op_support.Layout.compact,
+            "compact_group3d": op_support.Layout.compact,
             "continuous_group3d": None,
             "continuous": None,
         }[layout]
 
         # local memory
         if address < int("0x1000000", 16):
-            address += opparam.memmap[opparam.MType.R][0]
+            address += context.memmap[op_support.MType.R][0]
         self.name = tensor_des["name"]
         stride = None
 
@@ -251,7 +238,7 @@ class TensorBuilder:
                 # global layer
                 stride = tuple(np.cumprod([1] + shape[-1:0:-1])[::-1])
 
-        self.memref = opparam.MemRef(
+        self.memref = context.MemRef(
             address, shape, dtype, layout=layout, stride=stride
         )
         self.tensor_des = tensor_des
@@ -426,7 +413,7 @@ DATA_CHECKER = DataChecker()
 ASM_CONTEXT_LENGTH = 2
 
 
-def check_data(tdb, tensors, ref_data):
+def check_data(tdb, tensors, ref_data, context):
     # multiple tensors
     def get_line_info(e, tensor_des):
         info = ("opcode", "bdc_gdma_id(before)", "bdc_gdma_id(after)")
@@ -445,9 +432,9 @@ def check_data(tdb, tensors, ref_data):
 
     result = []
     for tensor_des in tensors:
-        t = TensorBuilder(tensor_des.tensor.value)
+        t = TensorBuilder(tensor_des.tensor.value, context)
         if t.name in ref_data:
-            actual = t.to_f32data(tdb.get_data(t.memref))
+            actual = t.to_f32data(t.memref.data)
             desired = t.get_ref_data(ref_data[t.name])
             try:
                 actual = actual.reshape(desired.shape)
@@ -482,7 +469,6 @@ class Checker:
         self.tensor_loc = TensorLoc(f"{folder}/{self._tensor_loc_file}")
         self.bmodel_file = f"{folder}/{self._bmodel_file}"
         self.input_data_file = f"{folder}/{self._input_data_file}"
-        bmodel_dis.MERGE_CMD_FUN = self.tensor_loc.merge_cmd
         self.ref_data = np.load(ref_data_npz)
         self.state = State.Unknown
 
@@ -504,7 +490,13 @@ class Checker:
 
         tdb = Tdb()
         tdb.enable_message = False  # disable message
-        tdb.load_file(self.bmodel_file)
+        tdb.load_bmodel(self.bmodel_file)
+        merge_instruction = tdb.CONTEXT.disassembler.merge_instruction
+        # improve this code
+        tdb.CONTEXT.disassembler.merge_instruction = self.tensor_loc.merge_cmd(
+            merge_instruction
+        )
+
         tdb.start()
         tdb.load_data(self.input_data_file)
         self.tensor_loc.set_breakpoint(tdb)
@@ -514,6 +506,7 @@ class Checker:
             zip(self.tensor_loc.breakpoint_loc.items(), tdb.continues),
             description="Checking...",
             total=len(self.tensor_loc.breakpoint_loc),
+            transient=True,
         ):
             # The instruction recorded in TensorLoc represents the
             # data checkpoint after that instruction is executed.
@@ -522,7 +515,7 @@ class Checker:
             tdb.next()
 
             _, tensor_record = bp
-            vf = check_data(tdb, tensor_record, self.ref_data)
+            vf = check_data(tdb, tensor_record, self.ref_data, tdb.CONTEXT)
 
             for st, tr in zip(vf, tensor_record):
                 info = (

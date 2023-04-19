@@ -22,6 +22,8 @@ _TABLE = 2 ** np.arange(64, dtype=np.uint64)
 
 
 def packbits(arr):
+    if arr.size > 64:
+        return 0
     return int(arr.dot(_TABLE[: arr.size]))
 
 
@@ -33,7 +35,7 @@ class InsBase:
     description = "This is a base op."
     opcode_bits = (0, 0)  # [opcode position)
     # register description
-    des_reg = None
+    reg_def = None
     # object information
     __slots__ = (
         "_cache",  # lazy compute: results, attribute, operands,
@@ -46,13 +48,13 @@ class InsBase:
     )
 
     def _is_comp(self, cmd_bits):
-        raise NotImplementedError()
+        raise NotImplementedError(self.__class__)
 
     def _decode(self):
-        raise NotImplementedError()
+        raise NotImplementedError(self.__class__)
 
     def _set_op(self, reg):
-        raise NotImplementedError()
+        raise NotImplementedError(self.__class__)
 
     def __set_cache(self):
         self._cache = {
@@ -271,7 +273,7 @@ class MemRef:
 
     def __init__(self, address, shape, dtype: DType, stride=None, layout=None):
         self.address = address
-        self.mtype = self.get_mtype(address)  # extended enumerate type
+        self.mtype = self.get_mtype(address)  # memory type with extended enumerate
         self.shape = shape
         self.dtype = dtype
         self.layout = layout

@@ -25,8 +25,6 @@ except:
 bdc_cmd = dict()
 dma_cmd = dict()
 
-bank_size = 2**14
-
 # ------------------------------------------------------------
 # registry function
 # ------------------------------------------------------------
@@ -34,7 +32,7 @@ def base_registry(cmd_type, sheet_name, cls):
     attr = regdef_1684x.reg_def[sheet_name]
     fields, bits = zip(*attr)
     # high bit is the upper bit (open interval).
-    setattr(cls, "des_reg", {"fields": fields, "high_bit": bits})
+    setattr(cls, "reg_def", {"fields": fields, "high_bit": bits})
     setattr(cls, "length", bits[-1])
     cmd_type.setdefault(cls.opcode, set()).add(cls)
     if sheet_name in opparam_converter:
@@ -56,10 +54,10 @@ def dma_registry(sheet_name):
     return decorate
 
 
-def decode_reg(buffer, des_reg):
-    bits_sec = np.split(buffer, des_reg["high_bit"][:-1])
+def decode_reg(buffer, reg_def):
+    bits_sec = np.split(buffer, reg_def["high_bit"][:-1])
     value = (packbits(x) for x in bits_sec)
-    return OrderedDict(zip(des_reg["fields"], value))
+    return OrderedDict(zip(reg_def["fields"], value))
 
 
 # ------------------------------------------------------------
@@ -73,7 +71,7 @@ class bdc_base(TIUBase):
     short_cmd = False  # long_code by default
 
     def _decode(self):
-        self.reg = NamedDict(decode_reg(self.cmd, self.des_reg))
+        self.reg = NamedDict(decode_reg(self.cmd, self.reg_def))
         self.cmd_id = self.reg.cmd_id
         self.cmd_id_dep = self.reg.cmd_id_dep
         self.op_name = self.eu_type[self.reg.tsk_eu_typ]
@@ -316,6 +314,10 @@ class rqdq_op(bdc_base):
     }
     description = "RQ && DQ"
 
+    # TODO
+    def _set_op(self, reg):
+        return ([],) * 3
+
 
 @bdc_registry("sRQ&sDQ")
 class srqdq_op(rqdq_op):
@@ -404,7 +406,7 @@ class lar_op(bdc_base):
 
 
 @bdc_registry("SYSID")
-class sysid_op(bdc_base):
+class bdc_sys(bdc_base):
     opcode = 15
     short_cmd = None
     eu_type = {
@@ -437,7 +439,7 @@ class dma_base(DMABase):
     short_cmd = False  # long_code by default
 
     def _decode(self):
-        self.reg = NamedDict(decode_reg(self.cmd, self.des_reg))
+        self.reg = NamedDict(decode_reg(self.cmd, self.reg_def))
         self.cmd_id = self.reg.cmd_id
         self.cmd_id_dep = self.reg.cmd_id_dep
         if self.sp_fun:
@@ -554,7 +556,7 @@ class sdma_nonzero(dma_nonzero):
 
 
 @dma_registry("sDMA_sys")
-class sdma_sys(dma_base):
+class dma_sys(dma_base):
     opcode = 6
     short_cmd = True
     sp_fun = {
