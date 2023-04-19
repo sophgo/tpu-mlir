@@ -19,10 +19,29 @@ void ConcatLowering::LoweringF32(PatternRewriter &rewriter,
 
 void ConcatLowering::LoweringINT8(PatternRewriter &rewriter, top::ConcatOp op,
                                   bool asymmetric) const {
-  //lowering_common_int8<tpu::ConcatOp>(rewriter, op, false);
-  //TODO: Int8 Concat OP has error, please fixed it.
-  //and now, lowerring f32 temporarily.
-  lowering_common_f32<tpu::ConcatOp>(rewriter, op);
+  // lowering_common_int8<tpu::ConcatOp>(rewriter, op, false);
+
+  // checkout whether weight exist
+  for (auto in : op.getInputs()) {
+    if (isa<top::WeightOp>(in.getDefiningOp())) {
+      LoweringF32(rewriter, op);
+      return;
+    }
+  }
+  auto op_c = op.getOperation();
+  std::vector<Value> operands;
+  for (auto in : op.getInputs()) {
+    auto new_in = do_transfer(in, op.getOutput(), asymmetric);
+    operands.push_back(new_in);
+  }
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op_c->getAttrs()) {
+        attrs.push_back(attr);
+    }
+  attrs.push_back(rewriter.getNamedAttr("only_merge", rewriter.getBoolAttr(false)));
+  rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op_c, newType, operands,
+                                             attrs);
 }
 
 } // namespace bm1684

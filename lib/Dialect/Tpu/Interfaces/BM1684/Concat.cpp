@@ -32,10 +32,18 @@ void tpu::ConcatOp::codegen_global_bm1684() {
   }
   int out_shape[MAX_SHAPE_DIMS] = {0};
   module::getGlobalShape(getOutput(), out_shape);
-  BM1684::instance().dl_nodechip_concat_md(
-      getAxis(), module::getShape(getInputs()[0]).size(), getInputs().size(),
-      in_addr, out_addr, bottomtensor_shape, out_shape, is_st_concat_way,
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  if (false == module::isUniformQuantized(getOutput())) {
+    BM1684::instance().dl_nodechip_concat_md(
+        getAxis(), module::getShape(getInputs()[0]).size(), getInputs().size(),
+        in_addr, out_addr, bottomtensor_shape, out_shape, is_st_concat_way,
+        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  } else {
+    BM1684::instance().dl_nodechip_concat_md_fix8b(
+        getAxis(), module::getShape(getInputs()[0]).size(), getInputs().size(),
+        in_addr, out_addr, bottomtensor_shape, out_shape, is_st_concat_way,
+        2 /* in_stmode == out_stmode */, 2,
+        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  }
   delete[] bottomtensor_shape;
 }
 
@@ -69,11 +77,17 @@ void tpu::ConcatOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   }
   int out_shape[MAX_SHAPE_DIMS] = {0};
   module::getLocalShape(getOutput(), n_step, h_step, out_shape);
-  BM1684::instance().dl_nodechip_concat_local_v2(
-      in_addr, gi.out_addr, bottomtensor_shape,
-      num_inputs, is_st_concat_way, out_shape,
-      getAxis(), (CMD_ID_NODE *)BM1684::instance().bdc_node,
-      (CMD_ID_NODE *)BM1684::instance().gdma_node);
+  if (false == module::isUniformQuantized(getOutput())) {
+    BM1684::instance().dl_nodechip_concat_local_v2(
+        in_addr, gi.out_addr, bottomtensor_shape, num_inputs, is_st_concat_way,
+        out_shape, getAxis(), (CMD_ID_NODE *)BM1684::instance().bdc_node,
+        (CMD_ID_NODE *)BM1684::instance().gdma_node);
+  } else {
+    BM1684::instance().dl_nodechip_concat_fix8b_local_v2(
+        in_addr, gi.out_addr, bottomtensor_shape, num_inputs, is_st_concat_way,
+        out_shape, getAxis(), (CMD_ID_NODE *)BM1684::instance().bdc_node,
+        (CMD_ID_NODE *)BM1684::instance().gdma_node);
+  }
   for (int i = 0; i < num_inputs; ++i) {
     delete[] bottomtensor_shape[i];
   }
