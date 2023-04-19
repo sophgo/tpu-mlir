@@ -125,6 +125,7 @@ class OnnxConverter(BaseConverter):
             "Add": lambda node: self.convert_add_op(node),
             "ArgMax": lambda node: self.convert_arg_op(node),
             "ArgMin": lambda node: self.convert_arg_op(node),
+            "And": lambda node: self.convert_cmp_op(node),
             "Sub": lambda node: self.convert_sub_op(node),
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
@@ -178,6 +179,7 @@ class OnnxConverter(BaseConverter):
             "Mul": lambda node: self.convert_mul_op(node),
             "Neg": lambda node: self.convert_neg_op(node),
             "NonMaxSuppression": lambda node: self.convert_nms_op(node),
+            "Not": lambda node: self.convert_not_op(node),
             "NonZero": lambda node: self.convert_nonzero_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
             "PixelNormalization": lambda node: self.convert_pixel_norm_op(node),
@@ -2379,8 +2381,22 @@ class OnnxConverter(BaseConverter):
             assert (0)  # TODO: to be implement
         self.addOperand(onnx_node.name, new_op)
 
+    def convert_not_op(self, onnx_node):
+        assert (onnx_node.op_type == "Not")
+        opd = onnx_node.inputs[0]
+        output_shape = self.getShape(onnx_node.name)
+        not_op = top.CompareConstOp(self.mlir.get_tensor_type(output_shape),
+                                        self.getOp(opd),
+                                        mode=StringAttr.get(onnx_node.op_type),
+                                        const_val=np.array([0]).astype(np.bool_),
+                                        inversed=False,
+                                        loc=self.get_loc("{}_{}".format(
+                                            onnx_node.name, onnx_node.op_type)),
+                                        ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, not_op)
+
     def convert_cmp_op(self, onnx_node):
-        supports = {"Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual"}
+        supports = {"Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual", "And"}
         assert (onnx_node.op_type in supports)
         assert (len(onnx_node.inputs) == 2)
         lhs = onnx_node.inputs[0]

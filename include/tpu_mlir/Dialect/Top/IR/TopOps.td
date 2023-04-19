@@ -56,7 +56,7 @@ class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
     !foldl(/*init*/!head(cases), /*list*/!tail(cases),
            prev, cur, prev # ", or " # cur)>;
 def ArgModeAttr: AnyStrAttrOf<["ArgMin","ArgMax"]>;
-def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual", "NotEqual"]>;
+def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual", "NotEqual", "And", "Not"]>;
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
 def InterpModeAttr: AnyStrAttrOf<["nearest","linear"]>;
 def InterpCoordModeAttr: AnyStrAttrOf<["align_corners", "half_pixel", "pytorch_half_pixel"]>;
