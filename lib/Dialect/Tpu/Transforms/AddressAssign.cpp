@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BMAddressAssign.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/CVAddressAssign.h"
@@ -63,7 +64,10 @@ public:
         }
       }
     }
-    op.setOnlyMerge(true);
+    if (!(module::isBM1684Family() &&
+        BM1684::getDataType(op.getOutput()) == DTYPE_INT8)) {
+      op.setOnlyMerge(true);
+    }
     return success();
   }
 };
@@ -79,7 +83,8 @@ public:
     module::removeUnusedOp();
     if (module::isCV18xx()) {
       CVAddressAssign addr_assign;
-      addr_assign.assign(mOp, reuse_addr, merge_weight, compress_weight, weight_map_file);
+      addr_assign.assign(mOp, reuse_addr, merge_weight, compress_weight,
+                         weight_map_file);
     } else {
       RewritePatternSet patterns(mOp.getContext());
       bm168x::populateGlobalBufferPatterns(&patterns);
