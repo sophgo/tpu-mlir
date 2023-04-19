@@ -6,7 +6,7 @@
 # ==============================================================================
 
 from typing import Union, Iterable, List
-from .MLIRImporter import MLIRImporter, Top, State, Platform
+from .MLIRImporter import MLIRImporter, State, Platform
 from .BaseConverter import BaseConverter
 from mlir.ir import *
 import mlir.dialects.quant as quant
@@ -437,7 +437,7 @@ class TFLiteConverter(BaseConverter):
         # constant variable/op
         tensor_type = self.__get_tensor_type(tensor)
         name_loc = Location.name(tensor.name)
-        op = Operation.create(Top.WeightOp, results=[tensor_type], loc=name_loc)
+        op = Operation.create("top.Weight", results=[tensor_type], loc=name_loc)
         self.mlir.insert_point.insert(op)
         if len(tensor.shape) == 0:
             self.constant[tensor.name] = tensor.buffer.reshape(1)
@@ -463,7 +463,7 @@ class TFLiteConverter(BaseConverter):
             "order": self.mlir.ArrayAttr(order),
         }
         op = Operation.create(
-            Top.PermuteOp,
+            "top.Permute",
             results=[tensor_type],
             operands=[operand],
             attributes=attr,
@@ -517,7 +517,7 @@ class TFLiteConverter(BaseConverter):
         if fused_active not in [0, 1]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
-        return Top.AddOp, attr, False
+        return "top.Add", attr, False
 
     def sub_op(self, op):
         from .tflite.SubOptions import SubOptions
@@ -529,7 +529,7 @@ class TFLiteConverter(BaseConverter):
         if fused_active not in [0, 1]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
-        return Top.SubOp, attr, False
+        return "top.Sub", attr, False
 
     def mul_op(self, op):
         from .tflite.AddOptions import AddOptions
@@ -541,7 +541,7 @@ class TFLiteConverter(BaseConverter):
         if fused_active not in [0, 1]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
-        return Top.MulOp, attr, False
+        return "top.Mul", attr, False
 
     def pool_attr(self, op):
         from .tflite.Pool2DOptions import Pool2DOptions
@@ -564,10 +564,10 @@ class TFLiteConverter(BaseConverter):
         return attr
 
     def maxpool_op(self, op):
-        return Top.MaxPoolOp, self.pool_attr(op), True
+        return "top.MaxPool", self.pool_attr(op), True
 
     def avgpool_op(self, op):
-        return Top.AvgPoolOp, self.pool_attr(op), True
+        return "top.AvgPool", self.pool_attr(op), True
 
     def conv_2d_op(self, op):
         from .tflite.Conv2DOptions import Conv2DOptions
@@ -612,7 +612,7 @@ class TFLiteConverter(BaseConverter):
             "pads": self.mlir.ArrayAttr(padding),
             "do_relu": BoolAttr.get(fused_active == 1 or fused_active == 3),  # relu6 to relu
         }
-        return Top.ConvOp, attr, True
+        return "top.Conv", attr, True
 
     def depthwise_2d_op(self, op):
         from .tflite.DepthwiseConv2DOptions import DepthwiseConv2DOptions
@@ -652,7 +652,7 @@ class TFLiteConverter(BaseConverter):
             "group":
             IntegerAttr.get(self.type_to_mlir[TensorType.INT64], in_shape[3] // kernel_shape[0]),
         }
-        return Top.ConvOp, attr, True
+        return "top.Conv", attr, True
 
     def fully_connected_op(self, op):
         from .tflite.FullyConnectedOptions import FullyConnectedOptions
@@ -681,7 +681,7 @@ class TFLiteConverter(BaseConverter):
             op.inputs[1].layout = "NCHW"
         else:
             attr["right_transpose"] = BoolAttr.get(True)
-        return Top.MatMulOp, attr, False
+        return "top.MatMul", attr, False
 
     def mean_op(self, op):
         args = op.inputs[1].buffer
@@ -694,7 +694,7 @@ class TFLiteConverter(BaseConverter):
                 "pads": self.mlir.ArrayAttr([0, 0, 0, 0]),
                 "keepdims": BoolAttr.get(len(op.inputs[0].shape) == len(op.outputs[0].shape)),
             }
-            return Top.AvgPoolOp, attr, True
+            return "top.AvgPool", attr, True
         else:
             raise ValueError("Only support reduction in H and W dimensions.")
 
@@ -712,7 +712,7 @@ class TFLiteConverter(BaseConverter):
             "keepdims": BoolAttr.get(param.KeepDims()),
             "mode": StringAttr.get(mode),
         }
-        return Top.ReduceOp, attr, True
+        return "top.Reduce", attr, True
 
     # def mean_op(self, op):
     #     return self.reduce_op(op, "ReduceMean")
@@ -776,10 +776,14 @@ class TFLiteConverter(BaseConverter):
         else:
             raise Exception("Not supported : Param {} {}!".format(align_corner, half_piexl))
         return "top.Interp", {
-            "coord_mode": StringAttr.get(coord_mode),
-            "mode": StringAttr.get("nearest"),
-            "scale_h": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[0] / op.inputs[0].shape[1]),
-            "scale_w": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[1] / op.inputs[0].shape[2]),
+            "coord_mode":
+            StringAttr.get(coord_mode),
+            "mode":
+            StringAttr.get("nearest"),
+            "scale_h":
+            FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[0] / op.inputs[0].shape[1]),
+            "scale_w":
+            FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[1] / op.inputs[0].shape[2]),
         }, False
 
     def stride_slice_op(self, op):
@@ -813,7 +817,7 @@ class TFLiteConverter(BaseConverter):
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT32], axis),
             "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.NumSplits()),
         }
-        return Top.SplitOp, attr, False
+        return "top.Split", attr, False
 
     def pack_op(self, op):
         from .tflite.PackOptions import PackOptions
@@ -825,17 +829,15 @@ class TFLiteConverter(BaseConverter):
             "values_count": IntegerAttr.get(self.type_to_mlir[TensorType.INT64],
                                             param.ValuesCount()),
         }
-        return Top.PackOp, attr, False
+        return "top.Pack", attr, False
 
     def unpack_op(self, op):
         from .tflite.UnpackOptions import UnpackOptions
         op_options = op.builtin_options
         param = UnpackOptions()
         param.Init(op_options.Bytes, op_options.Pos)
-        attr = {
-            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT32], param.Axis())
-        }
-        return Top.UnpackOp, attr, False
+        attr = {"axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT32], param.Axis())}
+        return "top.Unpack", attr, False
 
     def gather_op(self, op):
         from .tflite.GatherOptions import GatherOptions
@@ -846,7 +848,7 @@ class TFLiteConverter(BaseConverter):
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
             # "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.BatchDims()),
         }
-        return Top.GatherOp, attr, False
+        return "top.Gather", attr, False
 
     def transpose_op(self, op):
         assert op.inputs[1].buffer is not None
@@ -860,7 +862,7 @@ class TFLiteConverter(BaseConverter):
             "order": self.mlir.ArrayAttr(axes),
             # "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.BatchDims()),
         }
-        return Top.PermuteOp, attr, False
+        return "top.Permute", attr, False
 
     def convert_subgraph(self, subgraph):
 

@@ -6,119 +6,7 @@
 # ==============================================================================
 
 from mlir.ir import *
-from typing import List
 
-
-class Top:
-    # NOTICE: Please add the Op alphabetically !!!
-    AbsOp = 'top.Abs'
-    AdaptiveAvgPoolOp = 'top.AdaptiveAvgPool'
-    AddOp = 'top.Add'
-    ArgOp = 'top.Arg'
-    AddConstOp = 'top.AddConst'
-    AvgPoolOp = 'top.AvgPool'
-    BatchNormOp = 'top.BatchNorm'
-    ClipOp = 'top.Clip'
-    ConcatOp = 'top.Concat'
-    ConvOp = 'top.Conv'
-    CompareOp = 'top.Compare'
-    CompareConstOp = 'top.CompareConst'
-    ConstantFillOp = 'top.ConstantFill'
-    CosOp = 'top.Cos'
-    CoshOp = 'top.Cosh'
-    Depth2SpaceOp = 'top.Depth2Space'
-    DequantizeLinearOp = 'top.DequantizeLinear'
-    DeconvOp = 'top.Deconv'
-    DetectionOutputOp = 'top.DetectionOutput'
-    DivOp = 'top.Div'
-    EluOp = 'top.Elu'
-    ErfOp = 'top.Erf'
-    ExpOp = 'top.Exp'
-    FlattenOp = 'top.Flatten'
-    FloorOp = 'top.Floor'
-    FrcnDetection = 'top.FrcnDetection'
-    GatherOp = 'top.Gather'
-    GELUOp = 'top.GELU'
-    GroupNormOp = 'top.GroupNorm'
-    GRUOp = 'top.GRU'
-    HardSigmoidOp = 'top.HardSigmoid'
-    HardSwishOp = 'top.HardSwish'
-    InputOp = 'top.Input'
-    InstanceNormOp = 'top.InstanceNorm'
-    InterpOp = 'top.Interp'
-    LayerNormOp = 'top.LayerNorm'
-    LeakyReluOp = 'top.LeakyRelu'
-    ListOp = 'top.List'
-    LRNOp = 'top.LRN'
-    LSTMOp = 'top.LSTM'
-    LogOp = 'top.Log'
-    MaskedFillOp = 'top.MaskedFill'
-    MatMulOp = 'top.MatMul'
-    MaxPoolOp = 'top.MaxPool'
-    MaxPoolWithMaskOp = 'top.MaxPoolWithMask'
-    MaxUnpoolOp = 'top.MaxUnpool'
-    MaxOp = 'top.Max'
-    MinOp = 'top.Min'
-    MishOp = 'top.Mish'
-    MulOp = 'top.Mul'
-    MulConstOp = 'top.MulConst'
-    NmsOp = 'top.Nms'
-    NonZeroOp = 'top.NonZero'
-    NormalizeOp = 'top.Normalize'
-    PermuteOp = 'top.Permute'
-    PadOp = 'top.Pad'
-    PackOp = 'top.Pack'
-    PixelNormOp = 'top.PixelNorm'
-    PowOp = 'top.Pow'
-    PriorBoxOp = 'top.PriorBox'
-    PReluOp = 'top.PRelu'
-    Proposal = 'top.Proposal'
-    QuantizeLinearOp = 'top.QuantizeLinear'
-    Reciprocal = 'top.Reciprocal'
-    ReshapeOp = 'top.Reshape'
-    ReluOp = 'top.Relu'
-    ReduceOp = 'top.Reduce'
-    ReverseOp = 'top.Reverse'
-    RoiAlignOp = 'top.RoiAlign'
-    ROIPooling = 'top.ROIPooling'
-    RetinaFaceDetection = 'top.RetinaFaceDetection'
-    ScatterElementsOp = 'top.ScatterElements'
-    ScatterNDOp = 'top.ScatterND'
-    SubOp = 'top.Sub'
-    SliceOp = 'top.Slice'
-    SliceAxisOp = 'top.SliceAxis'
-    ShapeOp = 'top.Shape'
-    SigmoidOp = 'top.Sigmoid'
-    SiLUOp = 'top.SiLU'
-    SizeOp = 'top.Size'
-    SinOp = 'top.Sin'
-    SinhOp = 'top.Sinh'
-    SoftmaxOp = 'top.Softmax'
-    SoftplusOp = 'top.Softplus'
-    SqueezeOp = 'top.Squeeze'
-    ScaleOp = 'top.Scale'
-    SubOp = 'top.Sub'
-    SplitOp = 'top.Split'
-    SqrtOp = 'top.Sqrt'
-    ShuffleChannelOp = 'top.ShuffleChannel'
-    TileOp = 'top.Tile'
-    RepeatOp = 'top.Repeat'
-    TanOp = 'top.Tan'
-    TanhOp = 'top.Tanh'
-    TopKOp = 'top.TopK'
-    TransposeOp = 'top.Transpose'
-    TupleOp = 'top.Tuple'
-    UnTupleOp = 'top.UnTuple'
-    UnpackOp = 'top.Unpack'
-    UnsqueezeOp = 'top.Unsqueeze'
-    UpsampleOp = 'top.Upsample'
-    ViewOp = 'top.View'
-    WeightOp = 'top.Weight'
-    WhereOp = 'top.Where'
-    YoloDetection = 'top.YoloDetection'
-    ZerosOp = 'top.Zeros'
-    IfOp = 'top.If'
-    LoopOp = 'top.Loop'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -136,11 +24,6 @@ class Platform:
 def get_weight_file(model_name: str, state: str, chip: str):
     name = "{}_{}_{}_origin_weight.npz".format(model_name, state, chip)
     return name.lower()
-
-
-def checkType(obj, type):
-    if not isinstance(obj, type):
-        raise AttributeError('{} is not {}'.format(obj, type))
 
 
 class MLIRImporter(object):
@@ -255,38 +138,6 @@ class MLIRImporter(object):
         else:
             raise RuntimeError("No support {}".format(_type))
 
-    def buildOp(self, op_type, operands, output_types: list, region_num = 0, **kargs):
-        """
-            op_type: String
-            inputOpreands: List[pybind.op]
-            output_types: List[pybind.op]
-            kargs: Dict
-        """
-        num_output = len(output_types)
-        names = kargs['name']
-        if isinstance(names, str):
-            loc = Location.fused([Location.name(names)])
-        elif isinstance(names, list):
-            loc = Location.fused([Location.name(n) for n in names])
-        else:
-            raise RuntimeError("Unknown names:{}".format(names))
-        del kargs["name"]
-        op = Operation.create(
-            op_type,
-            results=output_types,
-            operands=operands,
-            loc=loc,
-            attributes=kargs,
-            regions=region_num,
-        )
-        self.insert_point.insert(op)
-
-        assert (num_output == len(output_types))
-        if num_output > 1:
-            return tuple(op.results)
-        else:
-            return op.result
-
     def buildBlock(self, region, arg_types, **kargs):
         block = Block.create_at_start(region, arg_types)
 
@@ -320,9 +171,7 @@ class MLIRImporter(object):
             param['pixel_format'] = StringAttr.get(kargs['pixel_format'])
         if 'channel_format' in kargs:
             param['channel_format'] = StringAttr.get(kargs['channel_format'])
-        if 'model_format' in kargs:
-            param['model_format'] = StringAttr.get(kargs['model_format'])
-        op = Operation.create(Top.InputOp,
+        op = Operation.create("top.Input",
                               results=[self.input_types[index]],
                               operands=[self.func_args[index]],
                               loc=Location.fused([Location.name(name)]),
@@ -337,7 +186,7 @@ class MLIRImporter(object):
                 raise RuntimeError("{} weight conflict".format(name))
             return _op
         tensor_type = RankedTensorType.get(output_shape, self.mlir_type[data_type])
-        op = Operation.create(Top.WeightOp,
+        op = Operation.create("top.Weight",
                               results=[tensor_type],
                               loc=Location.fused([Location.name(name)]))
         self.insert_point.insert(op)
@@ -351,25 +200,35 @@ class MLIRImporter(object):
         return return_op
 
     def create_yield_op(self, Operands):
-        yield_op = Operation.create("Top.YieldOp", operands=Operands, results=[])
+        yield_op = Operation.create("top.Yield", operands=Operands, results=[])
         self.insert_point.insert(yield_op)
         return yield_op
 
     def create_if_op(self, operands, output_shape, **kargs):
-        output_type = self.get_tensor_type(output_shape)
-        param = {'name': kargs['name']}
         region = IntegerAttr.get(self.mlir_type['INT64'], kargs["region"]).value
-        return self.buildOp(Top.IfOp, operands, [output_type], region, **param)
+        op = Operation.create("top.If",
+                              results=self.get_tensor_type(output_shape),
+                              operands=operands,
+                              loc=Location.fused([Location.name(kargs['name'])]),
+                              attributes=kargs,
+                              regions=region)
+        self.insert_point.insert(op)
+        return op.result
 
     def create_loop_op(self, operands, output_shape, **kargs):
-        output_type = self.get_tensor_type(output_shape)
-        param = {'name': kargs['name']}
         region = IntegerAttr.get(self.mlir_type['INT64'], kargs["region"]).value
-        return self.buildOp(Top.LoopOp, operands, output_type, region, **param)
+        op = Operation.create("top.Loop",
+                              results=self.get_tensor_type(output_shape),
+                              operands=operands,
+                              loc=Location.fused([Location.name(kargs['name'])]),
+                              attributes=kargs,
+                              regions=region)
+        self.insert_point.insert(op)
+        return op.result
 
     def create_subgraph_input_op(self, name, type, val, **kargs):
         param = {}
-        op = Operation.create(Top.InputOp,
+        op = Operation.create("top.Input",
                               results=[type],
                               operands=[val],
                               loc=Location.fused([Location.name(name)]),

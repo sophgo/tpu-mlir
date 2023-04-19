@@ -6,7 +6,7 @@
 # ==============================================================================
 
 from typing import Union, Iterable, List
-from .MLIRImporter import MLIRImporter, Top, State, Platform
+from .MLIRImporter import MLIRImporter, State, Platform
 from .BaseConverter import BaseConverter
 from mlir.ir import *
 import mlir.dialects.quant as quant
@@ -202,7 +202,7 @@ class TpuLangConverter(BaseConverter):
         # constant variable/op
         tensor_type = self.__get_tensor_type(tensor)
         name_loc = Location.name(tensor.name)
-        op = Operation.create(Top.WeightOp, results=[tensor_type], loc=name_loc)
+        op = Operation.create("top.Weight", results=[tensor_type], loc=name_loc)
         self.mlir.insert_point.insert(op)
         self.constant[tensor.name] = tensor.buffer
         return op.results[0]
