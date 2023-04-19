@@ -1556,45 +1556,18 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM"> {
 
   let arguments = (ins
     AnyRankedTensor:$input,
-    AnyRankedTensor:$filter,
+    AnyTensorOrNone:$filter,
     AnyTensorOrNone:$recurrence,
     AnyTensorOrNone:$bias,
     AnyTensorOrNone:$initial_h,
     AnyTensorOrNone:$initial_c,
     AnyTensorOrNone:$cont,
     AnyTensorOrNone:$buffer,
-    I64Attr: $hidden_size,
-    BoolAttr: $bidirectional,
-    DefaultValuedAttr<BoolAttr, "false">:$batch_first
-  );
-
-  let results = (outs
-    AnyTensorOrNone:$Y,
-    AnyTensorOrNone:$Y_h,
-    AnyTensorOrNone:$Y_c);
-  let extraClassDeclaration = [{
-    lstm_attr_t parseParam();
-  }];
-}
-
-def Tpu_LSTMCVIOp: Tpu_Op<"LSTMCVI"> {
-  let summary = "LSTM operator for cv18xx";
-
-  let description = [{
-    Perform RNN LSTM operation.
-  }];
-
-  let arguments = (ins
-    AnyRankedTensor:$input,
-    AnyTensorOrNone:$recurrence,
-    AnyTensorOrNone:$bias,
-    AnyTensorOrNone:$initial_h,
-    AnyTensorOrNone:$initial_c,
-    AnyTensorOrNone:$cont,
     AnyTensorOrNone:$sigmoid_table,
     AnyTensorOrNone:$sigmoid_slope_table,
     AnyTensorOrNone:$tanh_table,
     AnyTensorOrNone:$tanh_slope_table,
+    I64Attr: $hidden_size,
     BoolAttr: $bidirectional,
     DefaultValuedAttr<BoolAttr, "false">:$batch_first
   );
