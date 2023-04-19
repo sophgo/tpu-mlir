@@ -38,9 +38,15 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
       if (!inputOp) {
         return failure();
       }
-      auto new_type = op.getResult().getType();
-      inputOp.getResult().setType(new_type);
-      reshapeOp.getResult().setType(new_type);
+      auto new_ele_type = module::getElementType(op.getResult());
+      auto input_new_type =
+        RankedTensorType::get(
+          inputOp.getResult().getType().cast<RankedTensorType>().getShape(), new_ele_type);
+      inputOp.getResult().setType(input_new_type);
+      auto reshape_new_type =
+        RankedTensorType::get(
+          reshapeOp.getResult().getType().cast<RankedTensorType>().getShape(), new_ele_type);
+      reshapeOp.getResult().setType(reshape_new_type);
       rewriter.replaceOp(op, reshapeOp.getResult());
       return success();
     }
@@ -73,9 +79,15 @@ struct StripInputQuantCpuCastPattern
       if (!inputOp) {
         return failure();
       }
-      auto new_type = op.getResults()[0].getType();
-      inputOp.getResult().setType(new_type);
-      reshapeOp.getResult().setType(new_type);
+      auto new_ele_type = module::getElementType(op.getResults()[0]);
+      auto input_new_type =
+        RankedTensorType::get(
+          inputOp.getResult().getType().cast<RankedTensorType>().getShape(), new_ele_type);
+      inputOp.getResult().setType(input_new_type);
+      auto reshape_new_type =
+        RankedTensorType::get(
+          reshapeOp.getResult().getType().cast<RankedTensorType>().getShape(), new_ele_type);
+      reshapeOp.getResult().setType(reshape_new_type);
       rewriter.replaceOp(op, reshapeOp.getResult());
       return success();
     }
