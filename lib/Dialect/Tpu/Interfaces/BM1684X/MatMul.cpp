@@ -73,9 +73,10 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
 
       tpu::compact_coeff_for_int4(filter_i8, coeff_shape, false);
       bool sign = true;
-      //auto stype = module::getStorageType(op.getRight());
-      //auto new_type = RankedTensorType::get(coeff_shape, stype);
-      auto new_type = RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
+      // auto stype = module::getStorageType(op.getRight());
+      // auto new_type = RankedTensorType::get(coeff_shape, stype);
+      auto new_type =
+          RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
       auto new_op =
           top::WeightOp::create(op, "filter_reorderd", *filter_i8, new_type);
       op->setOperand(1, new_op);
@@ -211,8 +212,9 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
 // LocalGenInterface
 // ======q======================
 int64_t tpu::MatMulOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
-    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t in_dslice, int64_t in_wslice, int64_t out_nslice,
+    int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
     group_type_t group_type) {
   auto p = parseParam();
   int64_t n0, c0, h0, w0, n1, c1, h1, w1;
@@ -249,11 +251,12 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
   auto out_type = BM168x::getDataType(getOutput());
   int in_type_len = BM168x::getFmtBytes(in_type);
   int out_type_len = BM168x::getFmtBytes(out_type);
-  if (p.hdim_is_batch && h0 != 1) {
+  if (p.hdim_is_batch && h0 > 1) {
     /// if use buffer optimize, L_row_slice == NPU_NUM
-    bool buffer_optimize =
+    int64_t mm2_cycle =
         (ceiling_func(p.left_transpose ? c0 : w0, BM168x::eu_num(in_type_len)) *
-         ceiling_func(oshape[3], (int64_t)4)) > 200;
+         ceiling_func(oshape[3], (int64_t)4));
+    bool buffer_optimize = mm2_cycle > (int64_t)200;
     // arrange left
     int64_t shape[4] = {1, c0, 1, w0};
     if (w0 % 64 != 0 ||
@@ -284,8 +287,8 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
                      align_up(oshape[3], BM168x::eu_num(out_type_len));
     }
   } else if (in_type_len == 1 && out_type_len != 4) {
-    if(!p.left_transpose && !p.hdim_is_batch){
-      if (n0 != n1){
+    if (!p.left_transpose && !p.hdim_is_batch) {
+      if (n0 != n1) {
         // need broadcast, if n1 = 1, move n0 to c0; else n0 = 1, keep oshape[1]
         oshape[1] *= n0;
       }
@@ -310,7 +313,8 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
   return buffer_size;
 }
 
-void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          int64_t d_step, int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto p = parseParam();
