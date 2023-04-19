@@ -9,40 +9,28 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include "llvm/Support/Debug.h"
 
-#define DEBUG_TYPE "lowering-Sigmoid"
+#define DEBUG_TYPE "lowering-Softsign"
 namespace tpu_mlir {
 namespace cv18xx {
-static double active_sigmoid(double val) { return 1 / (1 + std::exp(-val)); }
-static double active_logsigmoid(double val) {
-  return std::log(1 / (1 + std::exp(-val)));
-}
+static double active_softsign(double val) { return val / (1 + std::abs(val)); }
 
-void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
+void SoftsignLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftsignOp op,
                                    bool asymmetric) const {
   auto stype = module::getStorageType(op.getOutput());
   Value table =
       create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
-                          op.getLog() ? active_logsigmoid : active_sigmoid);
+                          active_softsign);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }
 
-void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
-                                   top::SigmoidOp op) const {
+void SoftsignLowering::LoweringBF16(PatternRewriter &rewriter,
+                                   top::SoftsignOp op) const {
   Value table_weight, slope_weight;
-  float range_start = -12, range_end = 12;
-  if (op.getLog()) {
-    range_start = -3;
-    range_end = 3;
-    createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start,
-                    range_end, active_logsigmoid, table_weight, slope_weight);
-  } else {
-    range_start = -12;
-    range_end = 12;
-    createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start,
-                    range_end, active_sigmoid, table_weight, slope_weight);
-  }
+  float range_start = -6, range_end = 6;
+  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start,
+                  range_end, active_softsign, table_weight, slope_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
