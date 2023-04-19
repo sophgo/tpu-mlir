@@ -159,6 +159,7 @@ class TorchConverter(BaseConverter):
             "aten::tile": lambda node: self.convert_repeat_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
             "aten::to": lambda node: self.convert_to_op(node),
+            "aten::type_as": lambda node:  self.convert_to_op(node),
             "aten::unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "aten::upsample_bilinear2d": lambda node: self.convert_upsample_op(node, mode='bilinear'),
             "aten::upsample_nearest2d": lambda node: self.convert_upsample_op(node, mode='nearest'),
