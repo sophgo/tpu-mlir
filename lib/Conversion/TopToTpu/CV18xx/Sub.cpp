@@ -14,36 +14,6 @@
 
 namespace tpu_mlir {
 namespace cv18xx {
-static int is_bcast(top::SubOp op) {
-  int bcast = 0;
-  auto shape0 = module::getShape(op.getInputs()[0]);
-  auto shape1 = module::getShape(op.getInputs()[1]);
-  auto prod0 = std::accumulate(shape0.begin(), shape0.end(), 1,
-                               std::multiplies<int64_t>());
-  auto prod1 = std::accumulate(shape1.begin(), shape1.end(), 1,
-                               std::multiplies<int64_t>());
-  auto sub = prod0 - prod1;
-  if (shape0.size() == shape1.size() && sub != 0) {
-    for (int i = 0; i < shape0.size(); i++) {
-      if (shape0[i] != shape1[i]) {
-        bcast = 1;
-        break;
-      }
-    }
-  }
-  if (bcast) {
-    auto len = std::min(shape0.size(), shape1.size());
-    for (int i = 0; i < len; i++) {
-      int dim_a = shape0[shape0.size() - 1 - i];
-      int dim_b = shape1[shape1.size() - 1 - i];
-      if (dim_a != dim_b &&
-          ((sub > 0 && dim_b != 1) || (sub < 0 && dim_a != 1))) {
-        llvm_unreachable("Only broadcast right operand supported.");
-      }
-    }
-  }
-  return bcast;
-}
 
 void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
                                bool asymmetric) const {
@@ -60,12 +30,8 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
   std::vector<float> qscale(nInputs, 1.0);
   float max_qscale = 0.0;
   assert(nInputs == 2);
-  auto bcast = is_bcast(op);
   auto coeff_v = module::getF64Array(op.getCoeff(), 2, 1.0);
   assert(coeff_v->at(0) == 1 && coeff_v->at(1) == 1);
-  if (!bcast) {
-    coeff_v->at(1) = -1;
-  }
   double o_scale = module::getThreshold(op.getOutput());
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
@@ -99,31 +65,15 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
   attrs.push_back(
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift_v)));
   auto newType = getQuantInt8Type(op.getOutput());
-  if (!bcast) {
-    rewriter.replaceOpWithNewOp<tpu::AddOp>(op.getOperation(), newType,
-                                            operands, attrs);
-  } else {
-    // todo  if prod(shape0) < prod(shape1) result mul -1 here
-    attrs.push_back(rewriter.getNamedAttr("is_reverse", op.getIsReverseAttr()));
-    rewriter.replaceOpWithNewOp<tpu::SubOp>(op.getOperation(), newType,
-                                            operands, attrs);
-  }
+  // todo  if prod(shape0) < prod(shape1) result mul -1 here
+  attrs.push_back(rewriter.getNamedAttr("is_reverse", op.getIsReverseAttr()));
+  rewriter.replaceOpWithNewOp<tpu::SubOp>(op.getOperation(), newType,
+                                          operands, attrs);
   return;
 }
 
 void SubLowering::LoweringBF16(PatternRewriter &rewriter, top::SubOp op) const {
-  if (!is_bcast(op)) {
-    std::vector<NamedAttribute> attrs;
-    attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
-    attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
-    attrs.push_back(
-        rewriter.getNamedAttr("coeff", rewriter.getF64ArrayAttr({1., -1.})));
-    auto newType = getQuantBF16Type(op.getOutput());
-    rewriter.replaceOpWithNewOp<tpu::AddOp>(op, newType, op->getOperands(),
-                                            attrs);
-  } else {
-    lowering_common_bf16<tpu::SubOp>(rewriter, op);
-  }
+  lowering_common_bf16<tpu::SubOp>(rewriter, op);
 }
 
 } // namespace cv18xx
