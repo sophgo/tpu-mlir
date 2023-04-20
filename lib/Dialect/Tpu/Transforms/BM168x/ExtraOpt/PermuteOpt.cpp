@@ -26,9 +26,9 @@ namespace bm1684x {
 LogicalResult
 PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
                                        PatternRewriter &rewriter) const {
-//  if (module::isAsymmetric()) {
-//    return failure();
-//  }
+  //  if (module::isAsymmetric()) {
+  //    return failure();
+  //  }
 
   if (op->hasOneUse() == false) {
     return failure();
@@ -86,6 +86,75 @@ PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
         ValueRange{cast_op.getOutput(), module::getNoneOp(cast_op)}, attrs);
     cast_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
     return success();
+  } else if (auto add_op = dyn_cast<tpu::AddOp>(nextOp)) {
+    auto inB = add_op.getInputs()[1];
+    if (!module::isWeight(inB)) {
+      return failure();
+    }
+    auto inB_shape = module::getShape(inB);
+    if (inB_shape[1] != 1) {
+      return failure();
+    }
+    std::vector<int64_t> new_inB_shape = {inB_shape[0], inB_shape[2],
+                                          inB_shape[1], inB_shape[3]};
+    auto newType =
+        RankedTensorType::get(new_inB_shape, module::getElementType(inB));
+    inB.setType(newType);
+
+    newType = RankedTensorType::get(
+        in_shape, module::getElementType(add_op.getOutput()));
+    add_op.getOutput().setType(newType);
+    op.replaceAllUsesWith(op.getInput());
+    rewriter.setInsertionPointAfter(add_op);
+    newType = RankedTensorType::get(out_shape,
+                                    module::getElementType(add_op.getOutput()));
+    auto out_loc = add_op.getLoc(); // keep out location unchanged.
+    auto name = module::getName(add_op.getOutput());
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
+    add_op->setLoc(loc);
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
+    auto new_op = rewriter.create<tpu::PermuteOp>(
+        out_loc, newType,
+        ValueRange{add_op.getOutput(), module::getNoneOp(add_op)}, attrs);
+    add_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
+    return success();
+  } else if (auto mul_op = dyn_cast<tpu::MulOp>(nextOp)) {
+    auto inB = mul_op.getInputs()[1];
+    if (!module::isWeight(inB)) {
+      return failure();
+    }
+    auto inB_shape = module::getShape(inB);
+    if (inB_shape[1] != 1) {
+      return failure();
+    }
+    std::vector<int64_t> new_inB_shape = {inB_shape[0], inB_shape[2],
+                                          inB_shape[1], inB_shape[3]};
+    auto newType =
+        RankedTensorType::get(new_inB_shape, module::getElementType(inB));
+    inB.setType(newType);
+
+    newType = RankedTensorType::get(
+        in_shape, module::getElementType(mul_op.getOutput()));
+    mul_op.getOutput().setType(newType);
+    op.replaceAllUsesWith(op.getInput());
+    rewriter.setInsertionPointAfter(mul_op);
+    newType = RankedTensorType::get(out_shape,
+                                    module::getElementType(mul_op.getOutput()));
+    auto out_loc = mul_op.getLoc(); // keep out location unchanged.
+    auto name = module::getName(mul_op.getOutput());
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
+    mul_op->setLoc(loc);
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
+    auto new_op = rewriter.create<tpu::PermuteOp>(
+        out_loc, newType,
+        ValueRange{mul_op.getOutput(), module::getNoneOp(mul_op)}, attrs);
+    mul_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
+    return success();
+
   } else if (auto softmax_op = dyn_cast<tpu::SoftmaxOp>(nextOp)) {
     int64_t axis = softmax_op.getAxis();
     if (!(axis == -1 || axis == out_shape.size() - 1)) {

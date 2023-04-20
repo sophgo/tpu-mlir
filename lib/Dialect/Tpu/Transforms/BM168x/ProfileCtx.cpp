@@ -52,12 +52,37 @@ template string array_to_string<int64_t>(const int64_t *data, size_t len,
                                          const string &suffix, size_t max_len);
 
 ProfileCtx::ProfileCtx(Operation *moduleOp, bool enable_profile) {
+  fake_tensor_id = -1;
   net_num = 0;
   cur_net_idx = 0;
   enable_profile_ = enable_profile;
   llvm::raw_null_ostream os;
   AsmState state(moduleOp, OpPrintingFlags(), &opToLineCol);
   moduleOp->print(os, state);
+}
+
+int64_t ProfileCtx::get_tensor_id(Value value) {
+  int64_t tensor_id = 0;
+  auto src_op = value.getDefiningOp();
+  if (src_op != nullptr) {
+    if (isa<GroupOp>(src_op)) {
+      auto groupOp = cast<GroupOp>(src_op);
+      groupOp.walk([&](Operation *op) {
+        if (isa<YieldOp>(op)) {
+          int32_t pos = dyn_cast<OpResult>(value).getResultNumber();
+          auto real_tensor = op->getOperand(pos);
+          src_op = real_tensor.getDefiningOp();
+        }
+      });
+    }
+    auto it = opToLineCol.find(src_op);
+    if (it != opToLineCol.end()) {
+      tensor_id = it->second.first;
+    }
+  } else {
+    tensor_id = (fake_tensor_id--);
+  }
+  return tensor_id;
 }
 
 void ProfileCtx::log_str(const char *fmt, ...) {
@@ -82,15 +107,8 @@ void ProfileCtx::log_tensor(Value value, bool is_in, int64_t n_step,
   // uint32_t d_slice = 0;
   // uint32_t w_slice = 0;
 
-  int64_t tensor_id = 0;
+  int64_t tensor_id = get_tensor_id(value);
   auto op = value.getDefiningOp();
-  if (op != nullptr) {
-    auto it = opToLineCol.find(op);
-    if (it != opToLineCol.end()) {
-      tensor_id = it->second.first;
-    }
-  }
-
   if (op != nullptr && op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) {
     auto g_param = op->getAttr(LocalGenInterface::kLayerGroupAttrName)
                        .cast<tpu::LayerGroupAttr>();
