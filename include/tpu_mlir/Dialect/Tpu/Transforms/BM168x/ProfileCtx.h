@@ -32,12 +32,14 @@ public:
   };
 
   int32_t get_cur_net_idx() { return cur_net_idx; }
+  int64_t get_tensor_id(Value value);
 
   void set_profile_start();
   void set_profile_end();
   FILE *get_fp_profile() { return fp_profile[cur_net_idx]; }
 
 private:
+  int64_t fake_tensor_id; // id for tensor that has no DefiningOp
   int32_t net_num;
   int32_t cur_net_idx;
   bool enable_profile_;
