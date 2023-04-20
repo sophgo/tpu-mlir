@@ -83,13 +83,11 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
     }
     if (fsign) {
       for (int t = 0; t < inner_dim; t++) {
-        filter_i8->data()[c * inner_dim + t] =
-            to_int8(p_filter[t] / scale_w);
+        filter_i8->data()[c * inner_dim + t] = to_int8(p_filter[t] / scale_w);
       }
     } else {
       for (int t = 0; t < inner_dim; t++) {
-        filter_u8->data()[c * inner_dim + t] =
-            to_uint8(p_filter[t] / scale_w);
+        filter_u8->data()[c * inner_dim + t] = to_uint8(p_filter[t] / scale_w);
       }
     }
 
@@ -146,7 +144,9 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
 
   auto rqType = getQuantInt8Type(op.getOutput(), asymmetric);
 
-  auto quant_int32 = std::make_shared<std::vector<int32_t>>(param.oc * 3, 0);
+  int q_size = module::isBM1686() ? 2 : 3;
+  auto quant_int32 =
+      std::make_shared<std::vector<int32_t>>(param.oc * q_size, 0);
   int int32_multiplier, rshift;
   for (int c = 0; c < param.oc; c++) { // per-channel quant
     float *p_filter = filter_f32->data() + c * inner_dim;
@@ -154,19 +154,27 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
     double scale_w = std::max(w_max / fqmax, 1e-5f);
     double scale_f = scale_w * in_scale / out_scale;
     get_scale_and_shift(scale_f, int32_multiplier, rshift, 32);
-    quant_int32->data()[3 * c] = int32_multiplier;
-    quant_int32->data()[3 * c + 1] = -rshift;
-    quant_int32->data()[3 * c + 2] = out_zp;
+    if (module::isBM1686()) {
+      quant_int32->data()[2 * c] = int32_multiplier;
+      quant_int32->data()[2 * c + 1] =
+          ((-(int32_t)rshift) & 0xff) | (((int32_t)out_zp & 0xffff) << 16);
+
+    } else {
+      quant_int32->data()[3 * c] = int32_multiplier;
+      quant_int32->data()[3 * c + 1] = -rshift;
+      quant_int32->data()[3 * c + 2] = out_zp;
+    }
   }
   auto new_quant_type =
-      RankedTensorType::get({1, param.oc, 1, 3}, rewriter.getI32Type());
+      RankedTensorType::get({1, param.oc, 1, q_size}, rewriter.getI32Type());
   auto new_quant =
       top::WeightOp::create(op, "quant_int32", *quant_int32, new_quant_type);
 
   attrs.clear();
   auto ctx = op->getContext();
   attrs.push_back(rewriter.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
+      "quant_mode",
+      tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
   operands.clear();
   operands.push_back(deconvOp.getOutput());
   operands.push_back(new_quant);

@@ -40,7 +40,7 @@ public:
   void runOnOperation() override {
     auto mOp = getOperation();
     RewritePatternSet patterns(mOp.getContext());
-    if (module::isBM1684XFamily() || module::isBM1686()) {
+    if (module::isBM1684XFamily()) {
       bm1684x::populateDoExtraConversionPatterns(&patterns);
     } else if (module::isBM1684Family()) {
       bm1684::populateDoExtraConversionPatterns(&patterns);

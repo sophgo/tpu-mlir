@@ -165,7 +165,7 @@ void tpu::Conv3DOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_st
 }
 
 LogicalResult tpu::Conv3DOp::LocalGenSupport() {
-  if (module::isBM1684X()) {
+  if (module::isBM1684XFamily()) {
       return success();
   } else {
     return failure();

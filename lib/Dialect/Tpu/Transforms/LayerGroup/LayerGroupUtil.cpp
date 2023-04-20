@@ -20,11 +20,12 @@ namespace tpu {
 shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
   int64_t n, c, d, h, w;
   module::getNCDHW(lg_info.group_ops[0]->getOperand(0), n, c, d, h, w,
-                  lg_info.type);
+                   lg_info.type);
   int64_t max_nsecs = n;
-  if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp, tpu::MinOp>(lg_info.group_ops[0])) {
+  if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp,
+          tpu::MinOp>(lg_info.group_ops[0])) {
     module::getNCDHW(lg_info.group_ops[0]->getOperand(1), n, c, d, h, w,
-                    lg_info.type);
+                     lg_info.type);
     max_nsecs = std::max(n, max_nsecs);
   }
   int64_t max_hsecs = llvm::maxIntN(64);
@@ -45,23 +46,24 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
       max_nsecs = std::min(max_nsecs, ceiling_func(n, n_align));
 
       // split d now only supports BM1684X and not int4, not dynamic
-      if (module::isBM1684X() && (!stype.isInteger(4)) &&
-          lg_info.type == GROUP_3D &&
-          mode != RunMode::TPU_DYNAMIC &&
+      if (module::isBM1684XFamily() && (!stype.isInteger(4)) &&
+          lg_info.type == GROUP_3D && mode != RunMode::TPU_DYNAMIC &&
           succeeded(lgOp.AllowDataSplit(2, lg_info.type))) {
         max_dsecs = std::min(max_dsecs, d);
       } else {
         max_dsecs = 1;
       }
-      if (succeeded(lgOp.AllowDataSplit(2 + (lg_info.type == GROUP_3D ? 1 : 0), lg_info.type))) {
+      if (succeeded(lgOp.AllowDataSplit(2 + (lg_info.type == GROUP_3D ? 1 : 0),
+                                        lg_info.type))) {
         max_hsecs = std::min(max_hsecs, h);
       } else {
         max_hsecs = 1;
       }
       // split w now only supports BM1684X and not int4, not dynamic
-      if (module::isBM1684X() && (!stype.isInteger(4)) &&
+      if (module::isBM1684XFamily() && (!stype.isInteger(4)) &&
           mode != RunMode::TPU_DYNAMIC &&
-          succeeded(lgOp.AllowDataSplit(3 + (lg_info.type == GROUP_3D ? 1 : 0), lg_info.type))) {
+          succeeded(lgOp.AllowDataSplit(3 + (lg_info.type == GROUP_3D ? 1 : 0),
+                                        lg_info.type))) {
         max_wsecs = std::min(max_wsecs, w);
       } else {
         max_wsecs = 1;
@@ -69,7 +71,10 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
     }
   }
 
-  return shape_secs_t{.nsecs = max_nsecs, .hsecs = max_hsecs, .dsecs = max_dsecs, .wsecs = max_wsecs};
+  return shape_secs_t{.nsecs = max_nsecs,
+                      .hsecs = max_hsecs,
+                      .dsecs = max_dsecs,
+                      .wsecs = max_wsecs};
 }
 
 shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
@@ -95,20 +100,24 @@ shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
 
     int64_t total_size = in0_lmem_bytes + out0_lmem_bytes;
     auto lg_op = cast<LocalGenInterface>(op);
-    total_size += lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, in_n, in_h, in_d, in_w,
-                                      out_n, out_h, out_d, out_w, lg_info.type);
+    total_size +=
+        lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, in_n, in_h, in_d,
+                            in_w, out_n, out_h, out_d, out_w, lg_info.type);
     for (size_t i = 1; i < ins.size(); ++i) {
-      if(module::isWeight(ins[i])){
-        total_size += Arch::get_weight_lmem_bytes(ins[i], lg_info.type, is_eu_align(ins[i]));
+      if (module::isWeight(ins[i])) {
+        total_size += Arch::get_weight_lmem_bytes(ins[i], lg_info.type,
+                                                  is_eu_align(ins[i]));
       } else {
         module::getNCDHW(ins[i], in_n, in_c, in_d, in_h, in_w, lg_info.type);
-        total_size += Arch::get_tensor_lmem_bytes(ins[i], in_n, in_c, in_d, in_h, in_w);
+        total_size +=
+            Arch::get_tensor_lmem_bytes(ins[i], in_n, in_c, in_d, in_h, in_w);
       }
     }
     for (size_t i = 1; i < outs.size(); ++i) {
-      module::getNCDHW(outs[i], out_n, out_c, out_d, out_h, out_w, lg_info.type);
-      total_size +=
-          Arch::get_tensor_lmem_bytes(outs[i], out_n, out_c, out_d, out_h, out_w);
+      module::getNCDHW(outs[i], out_n, out_c, out_d, out_h, out_w,
+                       lg_info.type);
+      total_size += Arch::get_tensor_lmem_bytes(outs[i], out_n, out_c, out_d,
+                                                out_h, out_w);
     }
 
     // Need consider different backends
@@ -116,11 +125,14 @@ shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
     shape_secs.nsecs =
         std::max(std::min(total_secs, max_shape_secs.nsecs), shape_secs.nsecs);
     total_secs = ceiling_func(total_secs, shape_secs.nsecs);
-    shape_secs.dsecs = std::max(std::min(total_secs, max_shape_secs.dsecs), shape_secs.dsecs);
+    shape_secs.dsecs =
+        std::max(std::min(total_secs, max_shape_secs.dsecs), shape_secs.dsecs);
     total_secs = ceiling_func(total_secs, shape_secs.dsecs);
     shape_secs.hsecs = std::max(total_secs, shape_secs.hsecs);
     if (shape_secs.hsecs > max_shape_secs.hsecs) {
-      shape_secs.wsecs = std::min(ceiling_func(shape_secs.hsecs, max_shape_secs.hsecs), max_shape_secs.wsecs);
+      shape_secs.wsecs =
+          std::min(ceiling_func(shape_secs.hsecs, max_shape_secs.hsecs),
+                   max_shape_secs.wsecs);
       shape_secs.hsecs = max_shape_secs.hsecs;
     }
   }
@@ -191,7 +203,8 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos) {
   }
 }
 
-bool can_split_w(const LgInfo & lg_info, int64_t dhw_secs, int64_t height_min, int64_t wsecs) {
+bool can_split_w(const LgInfo &lg_info, int64_t dhw_secs, int64_t height_min,
+                 int64_t wsecs) {
   if (dhw_secs < height_min && wsecs > 1) {
     for (auto out : lg_info.group_outs) {
       int64_t n, c, d, h, w;
@@ -205,13 +218,13 @@ bool can_split_w(const LgInfo & lg_info, int64_t dhw_secs, int64_t height_min, i
   return true;
 }
 
-void assign_dhwsecs(const LgInfo & lg_info, shape_secs_t &shape_secs,
+void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
                     int64_t &dhw_secs, const shape_secs_t &max_shape_secs) {
   shape_secs.dsecs = 1;
   shape_secs.hsecs = dhw_secs;
   shape_secs.wsecs = 1;
   ValueSet group_out_tensors;
-  for (auto op: lg_info.group_ops) {
+  for (auto op : lg_info.group_ops) {
     auto outs = get_output_values(op);
     group_out_tensors.insert(outs.begin(), outs.end());
   }
@@ -221,7 +234,7 @@ void assign_dhwsecs(const LgInfo & lg_info, shape_secs_t &shape_secs,
     shape_secs.wsecs = 1;
     // split height and width
     float h_len = 0.f, w_len = 0.f;
-    for (auto out: group_out_tensors) {
+    for (auto out : group_out_tensors) {
       if (out.use_empty()) {
         continue;
       }
@@ -237,7 +250,8 @@ void assign_dhwsecs(const LgInfo & lg_info, shape_secs_t &shape_secs,
       int64_t wsecs = ceiling_func(dhw_secs, i);
 
       int cur_len = (hsecs - 1) + (wsecs - 1) * (h_len / w_len);
-      bool split_w = can_split_w(lg_info, dhw_secs, max_shape_secs.hsecs, wsecs);
+      bool split_w =
+          can_split_w(lg_info, dhw_secs, max_shape_secs.hsecs, wsecs);
 
       if (cur_len < min_len && split_w && wsecs <= max_shape_secs.wsecs) {
         min_len = cur_len;
@@ -248,7 +262,7 @@ void assign_dhwsecs(const LgInfo & lg_info, shape_secs_t &shape_secs,
   } else {
     // split depth and height
     float d_len = 0.f, h_len = 0.f;
-    for (auto out: group_out_tensors) {
+    for (auto out : group_out_tensors) {
       int64_t n, c, d, h, w;
       module::getNCDHW(out, n, c, d, h, w, lg_info.type);
       d_len += (float)d;
@@ -276,7 +290,6 @@ void assign_dhwsecs(const LgInfo & lg_info, shape_secs_t &shape_secs,
   dhw_secs = shape_secs.dsecs * shape_secs.hsecs * shape_secs.wsecs;
 }
 
-
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
                        shape_secs_t &shape_secs) {
   shape_secs.nsecs = 1;
@@ -297,7 +310,7 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
     int64_t total_secs = get_split_max_secs(time_step);
     shape_secs.nsecs =
         std::max(shape_secs.nsecs, std::min(max_shape_secs.nsecs, total_secs));
-    int64_t dhw_secs  = ceiling_func(total_secs, shape_secs.nsecs);
+    int64_t dhw_secs = ceiling_func(total_secs, shape_secs.nsecs);
     if (dhw_secs > 1) {
       if (shape_secs.nsecs == max_shape_secs.nsecs) {
         assign_dhwsecs(lg_info, shape_secs, dhw_secs, max_shape_secs);
@@ -345,7 +358,8 @@ inline bool is_same_slice(const slice_pair_t &a, const slice_pair_t &b) {
 }
 
 bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
-  if (si0.n.size() != si1.n.size() || si0.h.size() != si1.h.size() || si0.d.size() != si1.d.size() || si0.w.size() != si1.w.size()) {
+  if (si0.n.size() != si1.n.size() || si0.h.size() != si1.h.size() ||
+      si0.d.size() != si1.d.size() || si0.w.size() != si1.w.size()) {
     return false;
   }
   // check n
@@ -384,10 +398,11 @@ bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
 }
 
 bool is_broadcast_binary(Operation *op, Value in) {
-  if (!isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp, tpu::MinOp>(op)) {
+  if (!isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp,
+           tpu::MinOp>(op)) {
     return false;
   }
-  auto other = in == op->getOperand(0) ? op->getOperand(1): op->getOperand(0);
+  auto other = in == op->getOperand(0) ? op->getOperand(1) : op->getOperand(0);
   auto in_shape = in.getType().cast<RankedTensorType>().getShape();
   auto other_shape = other.getType().cast<RankedTensorType>().getShape();
   if (in_shape.size() != other_shape.size()) {
@@ -401,8 +416,8 @@ bool is_broadcast_binary(Operation *op, Value in) {
   return false;
 }
 
-slice_info_t get_out_slice_info(const shape_secs_t &shape_secs,
-                                int64_t n, int64_t h, int64_t d, int64_t w) {
+slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
+                                int64_t h, int64_t d, int64_t w) {
   slice_info_t slice_info;
   int64_t secs, idx, slice, step;
   // n slice info
@@ -694,8 +709,9 @@ bool stripe_mine_idx_slice(const LgInfo &lg_info,
   return true;
 }
 
-void get_max_slice_nhdw(const slice_info_t &slice_info,
-                        int64_t &max_nslice, int64_t &max_hslice, int64_t &max_dslice, int64_t &max_wslice) {
+void get_max_slice_nhdw(const slice_info_t &slice_info, int64_t &max_nslice,
+                        int64_t &max_hslice, int64_t &max_dslice,
+                        int64_t &max_wslice) {
   max_nslice = 0;
   max_hslice = 0;
   max_dslice = 0;
@@ -729,24 +745,21 @@ int64_t get_buffer_size(Value v, const tensor_info_t &ti,
     int64_t nslice, hslice, dslice, wslice;
     auto &si = ti.slice_info;
     get_max_slice_nhdw(si, nslice, hslice, dslice, wslice);
-    buf_size =
-        Arch::get_tensor_lmem_bytes(v, nslice, hslice, dslice, wslice, group_type, ti.eu_align);
+    buf_size = Arch::get_tensor_lmem_bytes(v, nslice, hslice, dslice, wslice,
+                                           group_type, ti.eu_align);
   }
   return buf_size;
 }
 
-void set_fake_local_layer_param(Operation *op,
-                                int64_t nidx, int64_t nslice,
-                                int64_t hidx, int64_t hslice,
-                                int64_t didx, int64_t dslice,
-                                int64_t widx, int64_t wslice) {
+void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
+                                int64_t hidx, int64_t hslice, int64_t didx,
+                                int64_t dslice, int64_t widx, int64_t wslice) {
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
   int64_t group_type = 0;
   module::isOpInGroup(op, &group_type);
   auto lg_attr = LayerGroupAttr::get(
-      ctx, 0, 0, 0, 0, true,
-      builder.getDenseI64ArrayAttr({nidx}),
+      ctx, 0, 0, 0, 0, true, builder.getDenseI64ArrayAttr({nidx}),
       builder.getDenseI64ArrayAttr({nslice}),
       builder.getDenseI64ArrayAttr({didx}),
       builder.getDenseI64ArrayAttr({dslice}),
@@ -846,37 +859,22 @@ bool is_eu_align_cv18xx(Value opd) {
   return true;
 }
 
-bool is_eu_align_bm1686(Value opd) {
+bool is_eu_align_bm168x(Value opd) {
   auto op = *opd.getUsers().begin();
   if (module::isWeight(opd)) {
-    if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op)) {
-      if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
-        return false;
-      }
-    } else if (isa<tpu::RequantIntAxisOp>(op)) {
-      if ((opd == op->getOperand(1))) {
-        return false;
-      }
-    } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
-      return false;
-    } else {
-      return true;
-    }
-  }
-  return true;
-}
-
-bool is_eu_align_common(Value opd) {
-  auto op = *opd.getUsers().begin();
-  if (module::isWeight(opd)) {
-    if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp, tpu::LayerNormOp>(op)) {
+    if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp,
+            tpu::LayerNormOp>(op)) {
       if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
         return false;
       }
     } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
       return false;
-    } else {
-      return true;
+    } else if (module::isBM1686()) {
+      if (isa<tpu::RequantIntAxisOp>(op)) {
+        if ((opd == op->getOperand(1))) {
+          return false;
+        }
+      }
     }
   }
   return true;
@@ -884,12 +882,10 @@ bool is_eu_align_common(Value opd) {
 
 bool is_eu_align(Value opd) {
   // Eu align rule may be different in different platforms
-  if (module::isBM1686()) {
-    return is_eu_align_bm1686(opd);
-  } else if (module::isCV18xx()) {
+  if (module::isCV18xx()) {
     return is_eu_align_cv18xx(opd);
   } else {
-    return is_eu_align_common(opd);
+    return is_eu_align_bm168x(opd);
   }
 }
 
