@@ -849,7 +849,7 @@ bool is_eu_align_cv18xx(Value opd) {
 bool is_eu_align_bm1686(Value opd) {
   auto op = *opd.getUsers().begin();
   if (module::isWeight(opd)) {
-    if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op)) {
+    if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op)) {
       if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
         return false;
       }
@@ -869,7 +869,7 @@ bool is_eu_align_bm1686(Value opd) {
 bool is_eu_align_common(Value opd) {
   auto op = *opd.getUsers().begin();
   if (module::isWeight(opd)) {
-    if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp, tpu::LayerNormOp>(op)) {
+    if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp, tpu::LayerNormOp>(op)) {
       if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
         return false;
       }

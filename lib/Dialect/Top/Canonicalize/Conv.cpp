@@ -15,6 +15,42 @@
 
 using namespace tpu_mlir::top;
 
+struct Conv1dTo2d : public OpRewritePattern<ConvOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ConvOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto kernel = module::getI64Array(op.getKernelShape());
+    if (kernel->size() != 1) {
+      return failure();
+    }
+    std::vector<int64_t> vfilterShape = module::getShape(op.getFilter());
+    vfilterShape.push_back(1);
+    auto new_type = RankedTensorType::get(vfilterShape, rewriter.getF32Type());
+    op.getFilter().setType(new_type);
+
+    // update kernel_shape
+    std::vector<int64_t> kernel_shape =
+        *module::getI64Array(op.getKernelShape());
+    kernel_shape.push_back(1);
+    op.setKernelShapeAttr(rewriter.getI64ArrayAttr(kernel_shape));
+    std::vector<int64_t> strides = *module::getI64Array(op.getStrides());
+    strides.push_back(1);
+    op.setStridesAttr(rewriter.getI64ArrayAttr(strides));
+    // update pads
+    auto pads_v = module::getI64Array(op.getPads());
+    std::vector<int64_t> pads = {pads_v->at(0), 0, pads_v->at(1), 0};
+    op.setPadsAttr(rewriter.getI64ArrayAttr(pads));
+    // update dilations
+    std::vector<int64_t> dilations =
+        *module::getI64Array(op.getDilations(), 1, 1);
+    dilations.push_back(1);
+    op.setDilationsAttr(rewriter.getI64ArrayAttr(dilations));
+    return success();
+  }
+};
+
 struct Conv3dTo2d : public OpRewritePattern<ConvOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -87,18 +123,26 @@ struct Conv3dTranspose : public OpRewritePattern<ConvOp> {
     /* transpose the filter */
     auto filter_op = filter.getDefiningOp<top::WeightOp>();
     auto filter_data = filter_op.read<float>();
-    auto filter_tp = std::make_shared<std::vector<float>>(filter_data->size(), 0);
+    auto filter_tp =
+        std::make_shared<std::vector<float>>(filter_data->size(), 0);
     function_permute(filter_data->data(), filter_tp->data(), f_shape, ps);
-    std::vector<int64_t> f_shape_tp = {f_shape[0], f_shape[2], f_shape[1], f_shape[3], f_shape[4]};
+    std::vector<int64_t> f_shape_tp = {f_shape[0], f_shape[2], f_shape[1],
+                                       f_shape[3], f_shape[4]};
     /* get rid of PermuteOp */
-    tp.getOutput().replaceAllUsesWith(tp.getInput()); // this replaces op.getInput() with tp.getInput().
+    tp.getOutput().replaceAllUsesWith(
+        tp.getInput()); // this replaces op.getInput() with tp.getInput().
     rewriter.eraseOp(tp);
     /* create a new weight for the transposed filter */
     rewriter.setInsertionPointAfter(op);
     auto type = RankedTensorType::get(f_shape_tp, rewriter.getF32Type());
-    auto weight = WeightOp::create<float>(op, "transposed_weight", *filter_tp, type); // this is Weight itself, not WeightOp
+    auto weight =
+        WeightOp::create<float>(op, "transposed_weight", *filter_tp,
+                                type); // this is Weight itself, not WeightOp
     /* change the attr of conv3d op */
-    op.setOperand(1, weight); // op.setOperand vs op->setOperand: in this case both OK. This replaces op.getFilter() with the transposed filter $weight.
+    op.setOperand(
+        1,
+        weight); // op.setOperand vs op->setOperand: in this case both OK. This
+                 // replaces op.getFilter() with the transposed filter $weight.
     rewriter.eraseOp(filter_op); // remove unused WeightOp manually, optional
     op.setKernelShapeAttr(rewriter.getI64ArrayAttr({p.ic, p.kh, p.kw}));
     return success();
@@ -107,5 +151,5 @@ struct Conv3dTranspose : public OpRewritePattern<ConvOp> {
 
 void ConvOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                          MLIRContext *context) {
-  results.insert<Conv3dTranspose, Conv3dTo2d>(context);
+  results.insert<Conv3dTranspose, Conv3dTo2d, Conv1dTo2d>(context);
 }

@@ -302,7 +302,8 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   auto coeff_type = RankedTensorType::get(coeff_shape, elem_type);
   bool sign = coeff_type.getElementType().isSignedInteger();
   if (isINT4Conv) {
-    coeff_type = RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
+    coeff_type =
+        RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
   }
   auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
   op->removeAttr("rshift");
@@ -743,6 +744,10 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
+  if (attr.dims == 1) {
+    BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.ih, attr.iw});
+    BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
+  }
   conv_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   auto &common = spec.common;
@@ -849,6 +854,10 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
+  if (attr.dims == 1) {
+    BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.ih, attr.iw});
+    BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
+  }
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
                                                d_step, w_step);
@@ -907,6 +916,10 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
+  if (attr.dims == 1) {
+    BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.ih, attr.iw});
+    BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
+  }
   auto gi = getGroupInfo(0, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
 

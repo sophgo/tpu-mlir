@@ -81,15 +81,7 @@ int static_ld_coeff_irgen_ctrl(Operation *op, int tensor_id,
     layer_type = castOp.get_fw_type_bm1684x();
   }
   assert(layer_type >= 0);
-  if (auto conv_op = dyn_cast<tpu::Conv1DOp>(use_op)) {
-    if (module::isUniformQuantized(conv_op.getInput())) {
-      if (conv_op.getCoeffMerged()) {
-        fw_gdma_coeff.winograd_coeff = 2;
-      }
-    }
-    fw_gdma_coeff.groups = conv_op.getGroup();
-    fw_gdma_coeff.layer_type = (FW_LAYER_TYPE_T)layer_type;
-  } else if (auto conv_op = dyn_cast<tpu::Conv1DOp>(use_op)) {
+  if (auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op)) {
     if (module::isUniformQuantized(conv_op.getInput())) {
       if (conv_op.getCoeffMerged()) {
         fw_gdma_coeff.winograd_coeff = 2;
@@ -147,7 +139,8 @@ int static_ld_neuron_irgen_ctrl(Operation *op, int tensor_id,
           BM168x::getDataType(op->getOperand(0));
     }
 
-    fw_gdma_ld_itm_extend_neuron.store_mode = BM168x::getStoreMode(op->getOperand(0));
+    fw_gdma_ld_itm_extend_neuron.store_mode =
+        BM168x::getStoreMode(op->getOperand(0));
     fw_gdma_ld_itm_extend_neuron.consumer_num = consumer_num;
     if (auto cast_op = dyn_cast<tpu::LoadOp>(*op)) {
       int64_t use_3ic = cast_op.getUse_3icOptimize();
@@ -184,7 +177,8 @@ int static_ld_neuron_irgen_ctrl(Operation *op, int tensor_id,
       fw_gdma_ld_in_neuron.dtype = BM168x::getDataType(op->getOperand(0));
     }
 
-    fw_gdma_ld_in_neuron.store_mode = BM168x::getStoreMode(op->getOperand(0));;
+    fw_gdma_ld_in_neuron.store_mode = BM168x::getStoreMode(op->getOperand(0));
+    ;
     fw_gdma_ld_in_neuron.consumer_num = consumer_num;
     if (auto cast_op = dyn_cast<tpu::LoadOp>(*op)) {
       int64_t use_3ic = cast_op.getUse_3icOptimize();
@@ -263,7 +257,8 @@ int static_st_neuron_irgen_ctrl(Operation *op, int tensor_id,
             BM168x::getDataType(op->getResult(0));
       }
 
-      fw_gdma_st_itm_extend_neuron.store_mode = BM168x::getStoreMode(op->getResult(0));
+      fw_gdma_st_itm_extend_neuron.store_mode =
+          BM168x::getStoreMode(op->getResult(0));
       ir_tensor_gdma_info.fw_tensor_gdma_param_u.fw_gdma_st_itm_extend_neuron =
           fw_gdma_st_itm_extend_neuron;
       fw_ir_length += sizeof(fw_gdma_st_itm_extend_neuron_t);
@@ -313,7 +308,8 @@ int static_st_neuron_irgen_ctrl(Operation *op, int tensor_id,
         fw_gdma_st_out_extend_neuron.dtype =
             BM168x::getDataType(op->getResult(0));
       }
-      fw_gdma_st_out_extend_neuron.store_mode = BM168x::getStoreMode(op->getResult(0));
+      fw_gdma_st_out_extend_neuron.store_mode =
+          BM168x::getStoreMode(op->getResult(0));
       ir_tensor_gdma_info.fw_tensor_gdma_param_u.fw_gdma_st_out_extend_neuron =
           fw_gdma_st_out_extend_neuron;
       fw_ir_length += sizeof(fw_gdma_st_out_extend_neuron_t);

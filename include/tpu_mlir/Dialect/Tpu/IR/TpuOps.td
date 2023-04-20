@@ -319,7 +319,6 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
   }];
 }
 
-def Tpu_Conv1DOp : Tpu_ConvOp<"Conv1D">;
 def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D">;
 def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardD", "assign_sec_info"]>]> {

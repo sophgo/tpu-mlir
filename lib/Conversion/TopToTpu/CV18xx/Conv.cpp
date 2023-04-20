@@ -23,7 +23,6 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     LoweringBF16(rewriter, op);
     return;
   }
-  rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
   auto attr = op.parseParam();
@@ -128,18 +127,14 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
-  auto newOp = rewriter.create<tpu::Conv2DOp>(op->getLoc(), newType,
-                                              ArrayRef<Value>{operands},
-                                              ArrayRef<NamedAttribute>{attrs});
-  Value newValue = newOp.getOutput();
-  rewriter.replaceOp(op, {newValue});
+  rewriter.replaceOpWithNewOp<tpu::Conv2DOp>(
+      op, newType, ArrayRef<Value>{operands}, ArrayRef<NamedAttribute>{attrs});
 }
 
 void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ConvOp op) const {
-  rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  auto attr = op.parseParam();
+  auto p = op.parseParam();
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   operands.push_back(op.getInput());
   operands.push_back(filterOp.clone_bf16(op));
@@ -153,21 +148,11 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantBF16Type(op.getOutput());
-  Value newValue;
-  if (op.getKernelShape().size() == 1) {
-    auto newOp =
-        rewriter.create<tpu::Conv1DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.getOutput();
-  } else if (op.getKernelShape().size() == 2) {
-    auto newOp =
-        rewriter.create<tpu::Conv2DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.getOutput();
+  if (p.dims == 3) {
+    rewriter.replaceOpWithNewOp<tpu::Conv3DOp>(op, newType, operands, attrs);
   } else {
-    auto newOp =
-        rewriter.create<tpu::Conv3DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.getOutput();
+    rewriter.replaceOpWithNewOp<tpu::Conv2DOp>(op, newType, operands, attrs);
   }
-  rewriter.replaceOp(op, {newValue});
 }
 
 } // namespace cv18xx

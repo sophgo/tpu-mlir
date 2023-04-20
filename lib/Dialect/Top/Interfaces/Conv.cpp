@@ -11,7 +11,6 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
-
 conv_attr_t top::ConvOp::parseParam() {
   conv_attr_t p = {0};
   auto i_s = getInput().getType().cast<RankedTensorType>().getShape();
@@ -27,7 +26,9 @@ conv_attr_t top::ConvOp::parseParam() {
   p.n = i_s[0];
   p.ic = i_s[1];
   p.oc = o_s[1];
-  if (kernel->size() == 3) {
+  p.dims = i_s.size() - 2;
+  if (p.dims == 3) {
+    // 3d conv
     p.id = i_s[2];
     p.ih = i_s[3];
     p.iw = i_s[4];
@@ -52,12 +53,13 @@ conv_attr_t top::ConvOp::parseParam() {
     p.ins_d = ins->at(0);
     p.ins_h = ins->at(1);
     p.ins_w = ins->at(2);
-  } else if (kernel->size() == 2) {
+  } else if (p.dims == 2) {
+    // 2d conv
     p.id = p.od = p.kd = p.dd = p.sd = 1;
-    p.ih = i_s.size() > 2 ? i_s[2] : 1;
-    p.iw = i_s.size() > 3 ? i_s[3] : 1;
-    p.oh = o_s.size() > 2 ? o_s[2] : 1;
-    p.ow = o_s.size() > 3 ? o_s[3] : 1;
+    p.ih = i_s[2];
+    p.iw = i_s[3];
+    p.oh = o_s[2];
+    p.ow = o_s[3];
     p.kh = kernel->at(0);
     p.kw = kernel->at(1);
     p.pht = pads_v->at(0);
@@ -70,14 +72,14 @@ conv_attr_t top::ConvOp::parseParam() {
     p.dw = dilation->at(1);
     p.ins_h = ins->at(0);
     p.ins_w = ins->at(1);
-  } else if (kernel->size() == 1) {
+  } else if (p.dims == 1) {
     p.id = p.od = p.kd = p.dd = p.sd = 1;
     p.iw = p.ow = p.kw = p.dw = p.sw = 1;
     p.ih = i_s[2];
     p.oh = o_s[2];
     p.kh = kernel->at(0);
     p.pht = pads_v->at(0);
-    p.phb = pads_v->at(1);
+    p.phb = pads_v->size() > 2 ? pads_v->at(2) : pads_v->at(1);
     p.sh = strides_v->at(0);
     p.dh = dilation->at(0);
     p.ins_h = ins->at(0);
@@ -126,7 +128,11 @@ void top::ConvOp::shape_inference() {
   assert(input_shape.size() == filter_shape.size());
   assert(input_shape.size() > 2);
   int spacial_rank = input_shape.size() - 2;
-  assert(spacial_rank == getKernelShape().size());
+  if (spacial_rank != getKernelShape().size()) {
+    // have 1d to 2d
+    assert(module::isUnranked(getOutput()) == false);
+    return;
+  }
   assert(getPads().size() == spacial_rank * 2);
   llvm::SmallVector<int64_t> out_shape;
   out_shape.push_back(input_shape[0]);
