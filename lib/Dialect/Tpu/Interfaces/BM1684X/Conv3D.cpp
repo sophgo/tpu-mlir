@@ -62,6 +62,7 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
     return failure();
 
   auto attr = op.parseParam();
+  #if 0
   // filter reorder
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_type = module::getStorageType(op.getFilter());
@@ -78,7 +79,7 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
   filter_shape[4] = attr.kh * attr.kw * IC_PARALLEL;
   auto new_type = RankedTensorType::get(filter_shape, filter_type);
   op.getFilter().setType(new_type);
-
+  #endif
   // bias op
   if (attr.has_bias) {
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
@@ -95,6 +96,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
   if (attr.is_dw || attr.groups > 1) {
     llvm_unreachable("depthwise should support !!");
   }
+  #if 0
   // filter reorder
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_type = module::getStorageType(op.getFilter());
@@ -116,7 +118,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
     op.dump();
     llvm_unreachable("op type not support");
   }
-
+  #endif
   // bias op
   if (attr.has_bias) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
