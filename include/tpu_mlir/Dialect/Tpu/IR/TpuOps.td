@@ -522,7 +522,7 @@ def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
 def Tpu_SubOp: Tpu_Op<"Sub",
     [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
-     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub operator";
 
   let description = [{
@@ -543,6 +543,9 @@ def Tpu_SubOp: Tpu_Op<"Sub",
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_SubConstOp: Tpu_Op<"SubConst",
