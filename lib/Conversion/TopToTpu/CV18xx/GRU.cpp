@@ -28,14 +28,22 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
   auto filter_op = dyn_cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_data = filter_op.read<float>();
   auto filter_name = module::getName(op.getFilter()).str();
-  int64_t N = filter_shape[0] * filter_shape[1];
-  int64_t K = filter_shape[2];
+  auto is_torch = module::isPlatform(module::Platform::TORCH);
+  assert((filter_shape.size() == 3 && !is_torch) ||
+         (filter_shape.size() == 2 && is_torch) &&
+             "please check filter shape.");
+
+  int64_t N = filter_shape[0];
+  int64_t K = filter_shape[1];
+  if (!is_torch) {
+    N = filter_shape[0] * filter_shape[1];
+    K = filter_shape[2];
+  }
 
   int64_t num_dir = op.getBidirectional() ? 2 : 1;
-  int64_t hidden_size = filter_shape[1] / 3;
+  int64_t hidden_size = op.getHiddenSize();
   int64_t seq_length = input_shape[0];
   int64_t batch_size = input_shape[1];
-  // int64_t input_size = input_shape[2];
 
   // create fc weight
   std::vector<int64_t> fc_weight_shape = {K, N};
@@ -48,7 +56,9 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
       op, filter_name + "_FC", fc_filter_data, fc_weight_type);
 
   // create fc bias
-  std::vector<int64_t> bias_shape = module::getShape(op.getBias());
+  // std::vector<int64_t> bias_shape = module::getShape(op.getBias());
+  auto bLastDim = module::getShape(op.getBias()).back();
+  std::vector<int64_t> bias_shape{num_dir, bLastDim};
   auto bias_op = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
   auto bias_data = bias_op.read<float>();
   auto bias_name = module::getName(op.getBias()).str();
@@ -82,6 +92,15 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
   auto none_op = module::getNoneOp(op);
   auto gru_r_weight_op =
       dyn_cast<top::WeightOp>(op.getRecurrence().getDefiningOp());
+  if (is_torch) {
+    auto r_shape = module::getShape(op.getRecurrence());
+    std::vector<int64_t> new_r_shape = {num_dir, r_shape[0] / num_dir,
+                                        hidden_size};
+    auto gru_r_weight_type = RankedTensorType::get(
+        new_r_shape, module::getElementType(op.getRecurrence()));
+    gru_r_weight_op.getResult().setType(gru_r_weight_type);
+  }
+
   auto gru_h_weight_op =
       dyn_cast<top::WeightOp>(op.getInitialH().getDefiningOp());
 
@@ -89,7 +108,8 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
   gru_operands.emplace_back(none_op);
   gru_operands.emplace_back(gru_r_weight_op.clone_bf16(op));
   gru_operands.emplace_back(gru_bias_operand);
-  gru_operands.emplace_back(gru_h_weight_op ? gru_h_weight_op.clone_bf16(op) : op.getInitialH());
+  gru_operands.emplace_back(gru_h_weight_op ? gru_h_weight_op.clone_bf16(op)
+                                            : op.getInitialH());
   gru_operands.emplace_back(none_op);
 
   // create lut

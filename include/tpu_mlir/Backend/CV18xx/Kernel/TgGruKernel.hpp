@@ -27,7 +27,7 @@ public:
             gaddr_t ga_output_yh, int seq_length, int num_dir, int batch_size,
             int hidden_size, bool do_bias, bool with_initial_h,
             bool linear_before_reset, bool bidirectional, bool has_y,
-            bool has_yh);
+            bool has_yh, bool is_torch);
 
   void schedule();
 
@@ -97,6 +97,7 @@ protected:
   bool bidirectional;
   bool has_y;
   bool has_yh;
+  bool is_torch_bidir;
   cvk_fmt_t fmt;
   int fmt_size;
 
@@ -122,6 +123,7 @@ protected:
   uint32_t addr_xh;    // for r/h
   cvk_mg_stride_t x_gstride;
   cvk_mg_stride_t h_gstride;
+  cvk_mg_stride_t oh_gstride;
 };
 } // namespace backend
 } // namespace tpu_mlir

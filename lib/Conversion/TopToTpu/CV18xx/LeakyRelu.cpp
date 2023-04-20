@@ -34,7 +34,7 @@ void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
     getRShiftAndMultiplierFromQScale(qscale_pos, &multiplier_pos, &rshift_pos,
                                      false);
   }
-  float qscale_neg = std::fabs(qscale_pos * negative_slope);
+  float qscale_neg = qscale_pos * negative_slope;
   getRShiftAndMultiplierFromQScale(qscale_neg, &multiplier_neg, &rshift_neg,
                                    false);
 

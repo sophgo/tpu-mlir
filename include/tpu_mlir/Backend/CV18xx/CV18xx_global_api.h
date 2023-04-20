@@ -381,7 +381,7 @@ void cvi_backend_tg_bf16_gru_kernel(
     gaddr_t ga_output_yh, int seq_len, int num_dir, int batch_size,
     int hidden_size, bool do_bias, bool with_initial_h,
     bool is_linear_before_reset, bool is_bidirectional, bool with_y,
-    bool with_yh);
+    bool with_yh, bool is_torch);
 
 void cvi_backend_tg_reverse_kernel(uint32_t layer_id, gaddr_t ga_input,
                                    gaddr_t ga_output, int n, int c, int h,

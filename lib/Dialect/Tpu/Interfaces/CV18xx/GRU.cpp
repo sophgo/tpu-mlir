@@ -143,6 +143,7 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
   gaddr_t ga_sigmoid_slope = module::getAddress(getSigmoidSlopeTable());
   gaddr_t ga_tanh_table = module::getAddress(getTanhTable());
   gaddr_t ga_tanh_slope = module::getAddress(getTanhSlopeTable());
+  auto is_torch = module::isPlatform(module::Platform::TORCH);
 
   bool is_linear_before_reset = getLinearBeforeReset();
   bool is_bidirectional = getBidirectional();
@@ -155,6 +156,6 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
         ga_sigmoid_table, ga_sigmoid_slope, ga_tanh_table, ga_tanh_slope,
         ga_output_y, ga_output_yh, attr.seq_len, attr.num_direction, attr.batch_size, attr.hidden_size,
         attr.have_bias, attr.have_h0, is_linear_before_reset, is_bidirectional, attr.output_y,
-        attr.output_yh);
+        attr.output_yh, is_torch);
   }
 }
