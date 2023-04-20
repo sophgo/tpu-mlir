@@ -284,6 +284,12 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
       // ins mode cant slice h/w
       return failure();
     }
+  } else if (module::isBM1684Family()) {
+    auto attr = parseParam();
+    if (attr.sh > 15 || attr.sw > 15 || attr.dh > 15 || attr.dw > 15 ||
+        attr.ic >= (1 << 12) || attr.oc >= (1 << 12)) {
+      return failure();
+    }
   }
   if (module::isWeight(getFilter()) == false) {
     return failure();

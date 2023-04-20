@@ -56,9 +56,6 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     LoweringF32(rewriter, op);
   } else {
     // lowring as quant
-    if (op.getKernelShape().size() != 2) {
-      llvm_unreachable("Not Implemented");
-    }
     std::shared_ptr<std::vector<int16_t>> bias_int16;
     if (attr.has_bias) {
       auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
@@ -112,7 +109,11 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     attrs.push_back(rewriter.getNamedAttr("with_bias",
                                           rewriter.getBoolAttr(attr.has_bias)));
     auto newType = getQuantInt8Type(op.getOutput());
-    rewriter.replaceOpWithNewOp<tpu::Conv2DOp>(op, newType, operands, attrs);
+    if (op.getKernelShape().size() == 3) {
+      rewriter.replaceOpWithNewOp<tpu::Conv3DOp>(op, newType, operands, attrs);
+    } else {
+      rewriter.replaceOpWithNewOp<tpu::Conv2DOp>(op, newType, operands, attrs);
+    }
   }
 }
 
