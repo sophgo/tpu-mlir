@@ -272,12 +272,13 @@ def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
   }];
 }
 
-class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
-    !listconcat(traits, [SupportFuseRelu,
+def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport", "assign_sec_info"]>,
-    DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>])> {
-  let summary = "convolution operator";
+    DeclareOpInterfaceMethods<LocalGenInterface,
+      ["BackwardH", "BackwardW", "LocalGenSupport", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface,
+      ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
+  let summary = "convolution 2d operator";
 
   let description = [{
   }];
@@ -319,9 +320,16 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
   }];
 }
 
-def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D">;
-def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardD", "assign_sec_info"]>]> {
+def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
+    DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<LocalGenInterface,
+      ["LocalGenSupport", "BackwardH", "BackwardW", "BackwardD", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface,
+      ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
+  let summary = "convolution 2d operator";
+
+  let description = [{}];
+
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$filter,
@@ -342,6 +350,11 @@ def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
     // Tpu_RequantModeAttr:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
+  let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    conv_attr_t parseParam();
+    void assign_fw_param(void *param);
+  }];
 }
 
 class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
