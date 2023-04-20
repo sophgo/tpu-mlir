@@ -181,8 +181,6 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  // attrs.push_back(
-  //     rewriter.getNamedAttr("bidirectional", op.getBidirectionalAttr()));
   std::vector<Type> new_types;
   for (auto out : op.getResults()) {
     new_types.push_back(getQuantBF16Type(out));

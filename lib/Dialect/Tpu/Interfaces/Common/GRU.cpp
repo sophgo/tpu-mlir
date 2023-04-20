@@ -219,7 +219,8 @@ public:
     if (attr.output_y) {
       gp.has_y = attr.output_y;
       gp.out_y_idx = 0;
-      gp.output_y = p.outputs[gp.out_y_idx];
+      gp.output_y =
+          p.handle != nullptr ? (float *)p.handle : p.outputs[gp.out_y_idx];
     }
     if (attr.output_yh) {
       gp.has_yh = attr.output_yh;
@@ -236,6 +237,13 @@ public:
     }
     if (is_bf16) {
       if (gp.has_y) {
+        if (p.handle) {
+          float *buffer = (float *)p.handle;
+          function_permute(buffer, p.outputs[gp.out_y_idx],
+                           {1, attr.seq_len, attr.num_direction,
+                            attr.batch_size, attr.hidden_size},
+                           {0, 1, 3, 2, 4});
+        }
         auto ele_num = module::getNumElements(op->getY());
         BF16(p.outputs[gp.out_y_idx], p.outputs[gp.out_y_idx], ele_num, false);
       }
@@ -269,10 +277,12 @@ private:
   }
   static void update_addr(bool forward, InferenceParameter &p,
                           cv_gru_param_t &gp) {
+    gp.output_y = gp.has_y ? p.handle != nullptr ? (float *)p.handle
+                                                 : p.outputs[gp.out_y_idx]
+                           : 0;
     if (forward) {
       gp.r_z = p.inputs[2];
       gp.r_bz = p.inputs[3];
-      gp.output_y = gp.has_y ? p.outputs[gp.out_y_idx] : 0;
       gp.output_yh = gp.has_yh ? p.outputs[gp.out_yh_idx] : 0;
       gp.prev_hidden_state = p.inputs[4];
       gp.input = p.inputs[0];
@@ -280,7 +290,7 @@ private:
       gp.r_z = p.inputs[2] + 3 * gp.hidden_size * gp.hidden_size;
       gp.r_bz = p.inputs[3] + 3 * gp.hidden_size;
       gp.output_y =
-          gp.has_y ? p.outputs[gp.out_y_idx] + gp.batch_size * gp.hidden_size
+          gp.has_y ? gp.output_y + gp.batch_size * gp.hidden_size
                    : 0;
       gp.output_yh =
           gp.has_yh ? p.outputs[gp.out_yh_idx] + gp.batch_size * gp.hidden_size

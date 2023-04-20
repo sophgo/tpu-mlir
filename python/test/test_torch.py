@@ -2114,7 +2114,10 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([input_shape], Model())
 
         for op_type in [nn.ReflectionPad2d, nn.ReplicationPad2d, nn.ZeroPad2d, nn.ConstantPad2d]:
-            _test_pad2d(op_type, (1, 16, 32), 7, 0.6)
+            if self.is_cv18xx and op_type == nn.ReplicationPad2d:
+                _test_pad2d(op_type, (1, 16, 32, 32), 7, 0.6)
+            else:
+                _test_pad2d(op_type, (1, 16, 32), 7, 0.6)
             _test_pad2d(op_type, (3, 16, 32), (4, 6, 7, 8))
             _test_pad2d(op_type, (1, 3, 16, 32), 3, 0.5)
             _test_pad2d(op_type, (2, 4, 16, 32), (3, 4, 5, 6), 0.4)

@@ -347,7 +347,7 @@ void TgGruKernel::compute(int idx, bool forward) {
     eltwise_sub(ml_result, ml_work1, ml_xz);
     if (has_y) {
       CV18xx::tdma_store_stride(&ml_result, ga_store_y + s_offset + goffset,
-                                h_gstride);
+                                oh_gstride);
     }
     if (has_yh && idx == seq_length - 1) {
       CV18xx::tdma_store_stride(&ml_result, ga_store_yh + goffset, h_gstride);
@@ -422,7 +422,7 @@ void TgGruKernel::compute_without_tiling(bool forward) {
     eltwise_sub(ml_hidden, ml_xz);
     if (has_y) {
       int s_offset = seq_idx * num_dir * x_bytes;
-      CV18xx::tdma_store_stride(&ml_hidden, ga_store_y + s_offset, h_gstride);
+      CV18xx::tdma_store_stride(&ml_hidden, ga_store_y + s_offset, oh_gstride);
     }
   }
   if (has_yh) {
@@ -448,7 +448,11 @@ void TgGruKernel::init_gaddr(bool forward) {
     ga_rz = ga_recurrence + recurrence_bytes * 3;
     ga_rbz = ga_bias + hidden_bytes * 3;
     if (has_y) {
-      ga_store_y = ga_output_y + x_bytes;
+      if (is_torch_bidir) {
+        ga_store_y = ga_store_y + hidden_bytes;
+      } else {
+        ga_store_y = ga_store_y + x_bytes;
+      }
     }
     if (has_yh) {
       ga_store_yh = ga_output_yh + x_bytes;
@@ -471,7 +475,8 @@ void TgGruKernel::init(uint32_t layer_id, gaddr_t ga_input,
                        gaddr_t ga_output_yh, int seq_length, int num_dir,
                        int batch_size, int hidden_size, bool do_bias,
                        bool with_initial_h, bool linear_before_reset,
-                       bool bidirectional, bool has_y, bool has_yh) {
+                       bool bidirectional, bool has_y, bool has_yh,
+                       bool is_torch) {
   this->layer_id = layer_id;
   this->ga_input = ga_input;
   this->ga_recurrence = ga_recurrence;
@@ -502,6 +507,11 @@ void TgGruKernel::init(uint32_t layer_id, gaddr_t ga_input,
   this->x_bytes = batch_size * hidden_bytes;
   this->x_gstride.row = input_bytes;
   this->h_gstride.row = hidden_bytes;
+  this->oh_gstride.row = hidden_bytes;
+  this->is_torch_bidir = is_torch && bidirectional;
+  if (is_torch_bidir) {
+    this->oh_gstride.row = 2 * hidden_bytes;
+  }
   assert(linear_before_reset == true); // support later
   init_table();
 }
@@ -535,14 +545,15 @@ void cvi_backend_tg_bf16_gru_kernel(
     gaddr_t ga_tanh_lut, gaddr_t ga_tanh_slope_lut, gaddr_t ga_output_y,
     gaddr_t ga_output_yh, int seq_len, int num_dir, int batch_size,
     int hidden_size, bool do_bias, bool with_initial_h,
-    bool is_linear_before_reset, bool is_bidirectional, bool has_y,
-    bool has_yh) {
+    bool is_linear_before_reset, bool is_bidirectional, bool has_y, bool has_yh,
+    bool is_torch) {
   TgGruKernel kernel;
   kernel.init(layer_id, ga_input, ga_recurrence, ga_bias, ga_initial_h,
               ga_sigmoid_lut, ga_sigmoid_slope_lut, ga_tanh_lut,
               ga_tanh_slope_lut, ga_output_y, ga_output_yh, seq_len, num_dir,
               batch_size, hidden_size, do_bias, with_initial_h,
-              is_linear_before_reset, is_bidirectional, has_y, has_yh);
+              is_linear_before_reset, is_bidirectional, has_y, has_yh,
+              is_torch);
   kernel.schedule();
 }
 } // namespace backend
