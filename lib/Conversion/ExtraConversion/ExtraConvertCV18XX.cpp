@@ -17,7 +17,6 @@ void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
       ConvertArgmaxOp,
-      ConvertConv1dOp,
       ConvertConvPading,
       ConvertConvDilation,
       ConvertConv2dToMatMul,

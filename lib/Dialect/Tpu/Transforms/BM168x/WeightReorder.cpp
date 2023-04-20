@@ -21,10 +21,6 @@ namespace bm1684x {
 void populateWeightReorderPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
-    WeightReorder<tpu::Conv1DOp, int8_t>,
-    WeightReorder<tpu::Conv1DOp, BFloat16Type>,
-    WeightReorder<tpu::Conv1DOp, Float16Type>,
-    WeightReorder<tpu::Conv1DOp, Float32Type>,
     WeightReorder<tpu::Conv2DOp, int8_t>,
     WeightReorder<tpu::Conv2DOp, BFloat16Type>,
     WeightReorder<tpu::Conv2DOp, Float16Type>,
@@ -53,7 +49,6 @@ namespace bm1684 {
 void populateWeightReorderPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
-    WeightReorder<tpu::Conv1DOp, int8_t>,
     WeightReorder<tpu::Conv2DOp, int8_t>,
     WeightReorder<tpu::DeconvOp, int8_t>,
     WeightReorder<tpu::DeconvOp, Float32Type>,

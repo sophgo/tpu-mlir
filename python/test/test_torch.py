@@ -54,7 +54,7 @@ class TORCH_IR_TESTER(object):
             "Chunk":            (self.test_Chunk,             Y, N, N),
             "Compare":          (self.test_Compare,           Y, N, N),
             "Concat":           (self.test_Concat,            Y, N, N),
-            "Conv1d":           (self.test_Conv1d,            Y, N, N),
+            "Conv1d":           (self.test_Conv1d,            Y, Y, Y),
             "Conv2d":           (self.test_Conv2d,            Y, N, N),
             "Conv3d":           (self.test_Conv3d,            Y, N, N),
             "ConvGroup":        (self.test_ConvGroup,         N, N, N),

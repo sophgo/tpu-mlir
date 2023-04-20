@@ -27,13 +27,6 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
-class ConvertConv1dOp : public OpRewritePattern<top::ConvOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::ConvOp op,
-                                PatternRewriter &rewriter) const override;
-};
-
 class ConvertConvPading : public OpRewritePattern<top::ConvOp> {
 public:
   using OpRewritePattern::OpRewritePattern;

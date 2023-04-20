@@ -13,45 +13,6 @@ namespace tpu_mlir {
 namespace cv18xx {
 
 LogicalResult
-ConvertConv1dOp::matchAndRewrite(top::ConvOp op,
-                                 PatternRewriter &rewriter) const {
-
-  auto kernel = module::getI64Array(op.getKernelShape());
-  if (kernel->size() != 1) {
-    return failure();
-  }
-  std::vector<int64_t> vfilterShape = module::getShape(op.getFilter());
-  vfilterShape.push_back(1);
-  auto new_type = RankedTensorType::get(vfilterShape, rewriter.getF32Type());
-  op.getFilter().setType(new_type);
-
-  // update kernel_shape
-  auto kernel_shape = module::getI64Array(op.getKernelShape());
-  std::vector<int64_t> vAttr = {kernel_shape->at(0), 1};
-  op->setAttr("kernel_shape", rewriter.getI64ArrayAttr(vAttr));
-  // update strides
-  vAttr.clear();
-  auto strides = module::getI64Array(op.getStrides());
-  vAttr = {strides->at(0), 1};
-  op->setAttr("strides", rewriter.getI64ArrayAttr(vAttr));
-  // update pads
-  vAttr.clear();
-  auto pads_v = module::getI64Array(op.getPads());
-  vAttr = {pads_v->at(0), 0, pads_v->at(1), 0};
-  op->setAttr("pads", rewriter.getI64ArrayAttr(vAttr));
-  // update dilations
-  vAttr.clear();
-  auto dilations =
-      module::getI64Array(op.getDilations(), kernel_shape->size(), 1);
-  vAttr = {dilations->at(0), 1};
-  op->setAttr("dilations", rewriter.getI64ArrayAttr(vAttr));
-  auto convOp = rewriter.create<top::ConvOp>(op->getLoc(), op->getResultTypes(),
-                                             op->getOperands(), op->getAttrs());
-  rewriter.replaceOp(op, {convOp.getOutput()});
-  return success();
-}
-
-LogicalResult
 ConvertConvDilation::matchAndRewrite(top::ConvOp op,
                                      PatternRewriter &rewriter) const {
 

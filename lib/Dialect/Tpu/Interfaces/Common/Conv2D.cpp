@@ -27,6 +27,7 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.has_bias = getWithBias();
+  p.dims = i_s.size() - 2;
   p.n = i_s[0];
   p.ic = i_s[1];
   p.ih = i_s.size() > 2 ? i_s[2] : 1;
@@ -161,6 +162,14 @@ LogicalResult tpu::Conv2DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 LogicalResult tpu::Conv2DOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
   auto &attr = getConv2DParam(*this);
+  if (attr.dims == 1) {
+    if (out_idx != 0 || out_slice != 1) {
+      return failure();
+    }
+    in_idx = 0;
+    in_slice = 1;
+    return success();
+  }
   int kw_with_dw = (attr.kw - 1) * attr.dw + 1;
   in_slice = (out_slice - 1) * attr.sw +
              (kw_with_dw >= attr.sw ? kw_with_dw : attr.sw);
