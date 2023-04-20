@@ -54,15 +54,6 @@ def get_chip_from_model(model_file: str) -> str:
     return chip
 
 
-def is_dynamic_model(model_file: str) -> str:
-    fd = os.popen("model_tool --is_dynamic {}".format(model_file))
-    dynamic = fd.read()
-    fd.close()
-    if dynamic == 'true':
-        return True
-    return False
-
-
 def pack_bmodel_context(model_file, net):
     out_dir = model_file.rsplit(".", maxsplit=1)[0]
     os.makedirs(out_dir, exist_ok=True)
@@ -79,10 +70,8 @@ def pack_bmodel_context(model_file, net):
 def model_inference(inputs: dict, model_file: str) -> dict:
     pyruntime = "pyruntime_"
     is_cv18xx = False
-    is_dynamic = False
     if model_file.endswith(".bmodel"):
         pyruntime = pyruntime + "bm"
-        is_dynamic = is_dynamic_model(model_file)
         chip = get_chip_from_model(model_file)
         # trick for runtime link chip cmodel
         lib_so = 'libcmodel_1684x.so'
@@ -105,7 +94,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         net = model.Net(model.networks[0])
     else:
         net = model
-    dyn_input_shapes = []
+    input_shapes = []
     only_one = len(inputs) == 1
     if only_one and len(net.inputs) != 1:
         raise RuntimeError("Input num not the same")
@@ -115,21 +104,16 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             input = inputs[i.name]
         else:
             input = list(inputs.values())[0]
-        overflow = np.prod(i.data.shape) - np.prod(input.shape)
-        if is_cv18xx and i.aligned:
-            overflow = i.size - np.prod(input.shape)
         if not is_cv18xx:
-            assert (len(i.data.shape) == len(input.shape))
-            for max, dim in zip(i.data.shape, input.shape):
-                if dim > max:
-                    raise RuntimeError("Error shape: form {} to {}".format(
-                        i.data.shape, input.shape))
-            dyn_input_shapes.append(input.shape)
-        if is_dynamic:
-            input = np.concatenate([input.flatten(),
-                                    np.zeros([overflow]).astype(input.dtype)]).reshape(i.data.shape)
-        elif overflow != 0:
-            raise RuntimeError("Error shape: form {} to {}".format(i.data.shape, input.shape))
+            overflow = np.prod(i.data.shape) - np.prod(input.shape)
+            assert (overflow >= 0)
+            if overflow > 0:
+                input = np.concatenate([input.flatten(),
+                                        np.zeros([overflow]).astype(input.dtype)
+                                        ]).reshape(i.data.shape)
+                input_shapes.append(input.shape)
+            else:
+                input_shapes.append(i.data.shape)
         zp = i.qzero_point
         if i.data.dtype == input.dtype:
             i.data[:] = input.reshape(i.data.shape)
@@ -162,7 +146,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     else:
         # always use forward_dynamic to get output shape, because some static model may have dynamic output
         # for example: last layer is NonMaxSuppression, NonZero, etc.
-        dyn_output_shapes = net.forward_dynamic(dyn_input_shapes)
+        dyn_output_shapes = net.forward_dynamic(input_shapes)
     dyn_idx = 0
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
@@ -231,6 +215,7 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
             if pre_op in tensors:
                 outputs[pre_op] = tensors[pre_op]
     return outputs
+
 
 def free_mlir_module():
     global g_mlir_module
