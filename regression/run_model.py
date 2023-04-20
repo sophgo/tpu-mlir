@@ -87,9 +87,9 @@ class MODEL_RUN(object):
             if self.mode != "all" and self.mode != "basic":
                 self.quant_modes[self.mode] = 1
             else:
-                self.quant_modes["f16"] = 1
                 self.quant_modes["int8_sym"] = 1
                 if self.mode == "all":
+                    self.quant_modes["f16"] = 1
                     self.quant_modes["bf16"] = 1
                     self.quant_modes["f32"] = 1
                     self.quant_modes["int8_asym"] = 1

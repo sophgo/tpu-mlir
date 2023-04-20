@@ -62,7 +62,7 @@ class ONNX_IR_TESTER(object):
             "Concat2":      (self.test_Concat2,       Y, Y, Y, Y),
             "Concat3":      (self.test_Concat3,       Y, Y, Y, N),
             "ConstOfShape": (self.test_ConstOfShape,  N, Y, Y, N),
-            "Conv1d":       (self.test_Conv1d,        N, Y, Y, Y),
+            "Conv1d":       (self.test_Conv1d,        Y, Y, Y, Y),
             "Conv2d":       (self.test_Conv2d,        Y, Y, Y, Y),
             "Conv3d":       (self.test_Conv3d,        N, Y, N, Y),
             "ConvStride":   (self.test_ConvStride,    Y, Y, Y, Y),
