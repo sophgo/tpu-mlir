@@ -1451,6 +1451,22 @@ def Top_GatherOp: Top_Op<"Gather"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_GatherElementsOp: Top_Op<"GatherElements"> {
+  let summary = "GatherElements operator";
+  let description = [{
+    Perform GatherElements operation on the given axis.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$indices,
+
+    DefaultValuedAttr<I64Attr, "2">:$axis
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_TileOp: Top_Op<"Tile"> {
   let summary = "Tile operator";
   let description = [{

@@ -1630,6 +1630,23 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_GatherElementsOp: Tpu_Op<"GatherElements", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "GatherElements operator";
+  let description = [{
+    Perform GatherElements operation on the given axis.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$indices,
+
+    DefaultValuedAttr<I64Attr, "2">:$axis
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_PReluOp : Tpu_Op<"PReluOp", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,

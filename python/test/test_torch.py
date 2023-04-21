@@ -1227,25 +1227,20 @@ class TORCH_IR_TESTER(object):
     def test_Gather(self):
         """Gather"""
 
-        def _test_gather(in0_shape, in1_shape, dim=None):
+        def _test_gather(in0_shape, in1_shape):
+            input_1 = self.Desc(np.float32)
+            input_2 = self.Desc(np.int64, 0, 5538)
 
             class Model(nn.Module):
 
                 def __init__(self):
                     super(Model, self).__init__()
 
-                def forward(self, x):
-                    # if dim is None:
-                    #   y1 = torch.concat((x, self.weight))
-                    # else:
-                    #   y1 = torch.concat((x, self.weight), dim=dim)
-                    return
+                def forward(self, x, y):
+                    return torch.gather(x, 2, y)
+            self.trace_and_test([in0_shape, in1_shape], Model(), [input_1, input_2])
 
-            self.trace_and_test([in0_shape], Model())
-
-        _test_gather((1, 3, 32, 32), (1, 6, 32, 32), 1)
-        _test_gather((2, 32, 16), (3, 32, 16))
-        _test_gather((32, 32), (1, 32), 0)
+        _test_gather((10, 349, 5538), (10, 349, 1))
 
     #######################################################################
     # GroupNorm
