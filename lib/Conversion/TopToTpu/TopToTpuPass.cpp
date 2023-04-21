@@ -401,6 +401,11 @@ public:
     }
     init_qtable();
 
+    if (module::isBM1684XFamily() && is_bert_model() && !LoweringConfig::isQuantized) {
+      set_bert_mix_precision_process();
+      module::updateModuleTypes();
+    }
+
     RewritePatternSet patterns(ctx_);
 
     // process shape related ops
@@ -526,6 +531,7 @@ protected:
 
     if (module::isBM1684XFamily()) {
       subconst_sign_process();
+      mulconst_scale_process();
       module::updateModuleTypes();
     }
   }
@@ -589,6 +595,53 @@ protected:
     });
   }
 
+  bool is_bert_model() {
+    auto mOp = getOperation();
+    bool bert = false;
+    auto getUserCnt = [](Operation *op) {
+      auto out = op->getResult(0);
+      if (out.getUsers().empty())
+        return 0;
+      else {
+        int cnt = 0;
+        auto x = out.user_begin();
+        while (x != out.user_end()) {
+          cnt++;
+          x = std::next(x);
+        }
+        return cnt;
+      }
+    };
+    for (auto func : mOp.getOps<FuncOp>()) {
+      func.walk([&](Operation *op) {
+        if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
+          if (auto mulconstop = dyn_cast<top::MulConstOp>(op)) {
+            if (getUserCnt(mulconstop) == 12 || getUserCnt(mulconstop) == 24) {
+              for (auto nopmc : mulconstop->getResult(0).getUsers()) {
+                if (auto addop = dyn_cast<top::AddOp>(nopmc)) {
+                  if (getUserCnt(addop) != 1) {
+                    return;
+                  }
+                  for (auto nopadd : addop->getResult(0).getUsers()) {
+                    if (auto softmaxop = dyn_cast<top::SoftmaxOp>(nopadd)) {
+                      continue;
+                    } else {
+                      return;
+                    }
+                  }
+                } else {
+                  return;
+                }
+              }
+              bert = true;
+            }
+          }
+        }
+      });
+    }
+    return bert;
+  }
+
   void subconst_sign_process() {
     auto mOp = getOperation();
     for (auto func : mOp.getOps<FuncOp>()) {
@@ -617,6 +670,90 @@ protected:
               } else {
                 llvm_unreachable("un-supported calibrated type for subconst!");
               }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  void mulconst_scale_process() {
+    auto mOp = getOperation();
+    for (auto func : mOp.getOps<FuncOp>()) {
+      if (module::isAsymmetric())
+        return;
+      func.walk([&](Operation *op) {
+        if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
+          if (auto mulcop = dyn_cast<top::MulConstOp>(op)) {
+            auto in = mulcop.getInput();
+            auto out = mulcop.getOutput();
+            auto out_stype = module::getStorageType(out);
+            auto in_ctype = module::getCalibratedType(in);
+            auto out_ctype = module::getCalibratedType(out);
+            auto in_min = in_ctype.getMin();
+            auto in_max = in_ctype.getMax();
+            auto const_v = std::abs(mulcop.getConstVal().convertToDouble());
+            if (module::getMode() ==
+                module::Mode::INT8) { // should check the op not the module
+              auto new_out_type = quant::CalibratedQuantizedType::get(
+                  out_stype, in_min * const_v, in_max * const_v);
+              auto new_outr_type =
+                  RankedTensorType::get(module::getShape(out), new_out_type);
+              out.setType(new_outr_type);
+            } else {
+              llvm_unreachable("un-supported calibrated type for subconst!");
+            }
+          }
+        }
+      });
+    }
+  }
+
+  void set_bert_mix_precision_process() {
+    auto mOp = getOperation();
+    for (auto func : mOp.getOps<FuncOp>()) {
+      if (module::isAsymmetric())
+        return;
+      func.walk([&](Operation *op) {
+        if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
+          if (auto addop = dyn_cast<top::AddOp>(op)) {
+            if (isa<top::InputOp>(addop)) {
+              return;
+            }
+            int input_ok = 0;
+            for (auto opd : addop.getOperands()) {
+              if (auto layernormop =
+                      dyn_cast<top::LayerNormOp>(opd.getDefiningOp())) {
+                input_ok++;
+              } else if (auto matmulop =
+                             dyn_cast<top::MatMulOp>(opd.getDefiningOp())) {
+                if (LoweringConfig::quantize_map.find(
+                        module::getName(opd.getDefiningOp()).str()) ==
+                    LoweringConfig::quantize_map.end()) {
+                  LoweringConfig::quantize_map.insert(
+                      {module::getName(opd.getDefiningOp()).str(),
+                       module::Mode::F16});
+                }
+                input_ok++;
+              } else {
+                input_ok = 0;
+                return;
+              }
+            }
+            for (auto re : addop.getResult().getUsers()) {
+              if (auto layernormop = dyn_cast<top::LayerNormOp>(re)) {
+                if (input_ok == 2)
+                  input_ok++;
+              } else {
+                input_ok = 0;
+                return;
+              }
+            }
+
+            if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
+                LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(op).str(), module::Mode::F16});
             }
           }
         }
