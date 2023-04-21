@@ -165,7 +165,7 @@ class ONNX_IR_TESTER(object):
             #####################################
             # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
             "TorchActivation":      (self.test_TorchActivation,     N, Y, Y, Y),
-            "TorchArgmax":          (self.test_TorchArgmax,         N, N, N, N),
+            "TorchArg":             (self.test_TorchArg,            N, Y, Y, N),
             "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N, N),
             "TorchChunk":           (self.test_TorchChunk,          N, Y, Y, Y),
             "TorchConv2d":          (self.test_TorchConv2d,         N, N, N, Y),
@@ -3026,7 +3026,7 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(3, 100, 100).float()
         self.torch_and_test(x, Model(), case_name)
 
-    def test_TorchArgmax(self, case_name):
+    def test_TorchArg(self, case_name):
 
         class Model(torch.nn.Module):
 
@@ -3036,11 +3036,11 @@ class ONNX_IR_TESTER(object):
             def forward(self, x):
                 a = torch.argmax(x, -1)
                 b = torch.argmin(x, -1)
-                return a + b
+                return a, b
 
-        x = np.arange(0, 128000, step=1, dtype=np.float32)
-        np.random.shuffle(x)
-        x = torch.from_numpy(x.reshape(40, 40, 80))
+        # generate data with duplicate values
+        x = np.random.randint(-666, 666, size=(2, 32, 40, 80)).astype(np.float32)
+        x = torch.from_numpy(x)
         self.torch_and_test(x, Model(), case_name)
 
     def test_TorchZeroPad(self, case_name):
