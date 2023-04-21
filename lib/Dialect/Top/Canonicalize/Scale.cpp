@@ -271,7 +271,7 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
 
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
-    auto input_shape =module::getShape(op.getInput());
+    auto input_shape = module::getShape(op.getInput());
     if (input_shape.size() > 4) {
       return failure();
     }
@@ -342,9 +342,76 @@ struct ScaleShapeAlign : public OpRewritePattern<ScaleOp> {
   }
 };
 
+struct TopScaleMergeToMatMul : public OpRewritePattern<ScaleOp> {
+  using OpRewritePattern::OpRewritePattern;
+  TopScaleMergeToMatMul(MLIRContext *context, PatternBenefit benefit = 1)
+      : OpRewritePattern<ScaleOp>(context, benefit) {}
+  LogicalResult matchAndRewrite(ScaleOp op,
+                                PatternRewriter &rewriter) const override {
+    auto preOp = op.getInput().getDefiningOp();
+    if (!preOp->hasOneUse() || !isa<MatMulOp>(preOp)) {
+      return failure();
+    }
+    auto matmulOp = cast<MatMulOp>(preOp);
+    auto weight = dyn_cast<WeightOp>(matmulOp.getRight().getDefiningOp());
+    auto scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
+    auto bias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
+    auto input_shape = module::getShape(op.getInput());
+    if (!weight || !scale || !bias || input_shape.size() != 2) {
+      return failure();
+    }
+
+    // merge scale into matmul's right weight
+    auto weight_data = weight.read<float>();
+    auto scale_data = scale.read<float>();
+    auto right_shape = module::getShape(matmulOp.getRight());
+    auto N = scale.getType().cast<RankedTensorType>().getNumElements();
+    assert(right_shape[1] == N);
+    for (int k = 0; k < right_shape[0]; ++k) {
+      for (int n = 0; n < right_shape[1]; ++n) {
+        weight_data->at(k * right_shape[1] + n) *= scale_data->at(n);
+      }
+    }
+    auto weight_type = RankedTensorType::get({right_shape[0], right_shape[1]},
+                                             rewriter.getF32Type());
+    auto new_weight = WeightOp::create(matmulOp, "merged_scale_to_matmul",
+                                       *weight_data, weight_type);
+    matmulOp.setOperand(1, new_weight);
+
+    // merge bias into matmul's bias
+    auto bias_data = bias.read<float>();
+    std::vector<float> new_bias_v(N, 0);
+    new_bias_v.assign(bias_data->begin(), bias_data->end());
+    auto bias_type = RankedTensorType::get({N}, rewriter.getF32Type());
+    if (!module::isNone(matmulOp.getBias())) {
+      auto matmul_bias_data =
+          dyn_cast<WeightOp>(matmulOp.getBias().getDefiningOp()).read<float>();
+      for (int n = 0; n < N; ++n) {
+        new_bias_v[n] += matmul_bias_data->at(n) * scale_data->at(n);
+      }
+    }
+    bool bias_all_zeros = std::all_of(new_bias_v.begin(), new_bias_v.end(),
+                                      [](float i) { return i == 0.f; });
+    if (!bias_all_zeros || !module::isNone(matmulOp.getBias())) {
+      auto new_bias = WeightOp::create(matmulOp, "merged_bias_to_matmul",
+                                       new_bias_v, bias_type);
+      matmulOp.setOperand(2, new_bias);
+    }
+
+    // update attrs
+    preOp->setLoc(op.getLoc());
+    preOp->setAttr("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
+    preOp->setAttr("relu_limit", rewriter.getF64FloatAttr(
+                                     op.getReluLimit().convertToDouble()));
+    // remove scale Op
+    rewriter.replaceOp(op, {op.getInput()});
+    return success();
+  }
+};
+
 void ScaleOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
   results.insert<TopScaleToDwConv, TopScaleMergeToConv, TopMultiScaleMergeToOne,
                  TopScaleMergeToBatchNorm, ScaleShapeAlign,
-                 ConstbinaryMergeToTopScale>(context);
+                 ConstbinaryMergeToTopScale, TopScaleMergeToMatMul>(context);
 }
