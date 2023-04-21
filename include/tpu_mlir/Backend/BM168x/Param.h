@@ -1270,10 +1270,11 @@ typedef struct pooling3d_spec {
 } pooling3d_spec_t;
 
 typedef struct arg_common_spec {
-  int axis;
-  int method;
-  int is_index_int32;
-  int need_val;
+  int  axis;
+  int  method;
+  int  is_index_int32;
+  int  select_last_index;
+  int  need_val;
 } arg_common_spec_t;
 
 typedef struct arg_global_spec {
