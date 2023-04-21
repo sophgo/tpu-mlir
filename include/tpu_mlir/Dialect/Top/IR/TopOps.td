@@ -1524,6 +1524,20 @@ def Top_InterpOp : Top_Op<"Interp"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_MeshGridOp : Top_Op<"MeshGrid"> {
+  let summary = "MeshGrid operation";
+  let description = [{
+     torch mesh grid operation
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    BoolAttr:$is_reverse
+  );
+
+  let results = (outs Variadic<AnyTensor>:$outputs);
+  let hasCanonicalizer = 1;
+}
+
 def Top_ReduceOp : Top_Op<"Reduce"> {
   let summary = "Reduce operation";
   let description = [{
