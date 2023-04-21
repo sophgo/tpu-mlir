@@ -81,6 +81,7 @@ class TorchInterpreter():
             ['dtype', 'layout', 'device', 'pin_memory', 'non_blocking', 'copy', 'memory_format'],
             "aten::new_zeros": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::new_ones": ['dtype', 'layout', 'device', 'pin_memory'],
+            "aten::meshgrid": ['indexing'],
         }
         assert node.op_type.split('::')[0] == 'aten'
         # get input list
@@ -107,8 +108,9 @@ class TorchInterpreter():
                 mode = input_list[2]
                 input_list = input_list[:-1]
                 output = func(*input_list, rounding_mode=mode)
-        elif node.op_type in ParamMap.keys() and (node.op_type != "aten::to"
-                                                  or len(node.inputs) > 6):
+        elif node.op_type in ParamMap.keys() and \
+             (node.op_type != "aten::to" or len(node.inputs) > 6) and \
+             (node.op_type != "aten::meshgrid" or len(node.inputs) == 2):
             end_param = ParamMap[node.op_type]
             param_len = len(end_param)
             param_dict = {}

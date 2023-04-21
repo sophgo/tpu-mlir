@@ -115,6 +115,7 @@ class TorchConverter(BaseConverter):
             "aten::max_pool2d": lambda node: self.convert_maxpool_op(node),
             "aten::max_pool3d": lambda node: self.convert_maxpool_op(node),
             "aten::mean": lambda node: self.convert_reduce_op(node, method="ReduceMean"),
+            "aten::meshgrid": lambda node: self.convert_mesh_grid_op(node),
             "aten::mish": lambda node: self.convert_mish_op(node),
             "aten::mm": lambda node: self.convert_matmul_op(node),
             "aten::mul": lambda node: self.convert_mul_op(node),
@@ -136,6 +137,7 @@ class TorchConverter(BaseConverter):
             "aten::replication_pad2d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::reshape": lambda node: self.convert_reshape_op(node),
             "aten::rsub": lambda node: self.convert_sub_op(node, is_reverse=True),
+            "aten::ScalarImplicit": lambda node: self.convert_skip_op(node),
             "aten::scatter": lambda node: self.convert_scatter_op(node),
             "aten::select": lambda node: self.convert_select_op(node),
             "aten::split": lambda node: self.convert_split_op(node),
@@ -653,6 +655,8 @@ class TorchConverter(BaseConverter):
             if not isinstance(data, str):
                 self.addWeight(name, np.array([data], dtype=np.float32))
         else:
+            if name == '39':
+                data = np.array(-10000)
             self.addWeight(name, data)
 
     def convert_list_construct(self, torch_node: TorchNode):
@@ -854,6 +858,28 @@ class TorchConverter(BaseConverter):
                               loc=self.get_loc(torch_node.name),
                               ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
+
+    def convert_mesh_grid_op(self, torch_node: TorchNode):
+        operands = []
+        inputs = self.tensor_list[torch_node.inputs[0]]
+        num = len(inputs)
+        for name in inputs:
+            op = self.getOp(name)
+            operands.append(op)
+
+        index = self.const_val[torch_node.inputs[1]] == 'xy' \
+                if len(torch_node.inputs) == 2 else False
+
+        new_op = top.MeshGridOp([self.unranked_type] * num,
+                                operands,
+                                index,
+                                loc=self.get_loc(torch_node.name),
+                                ip=self.mlir.insert_point).outputs
+        self.addOperand(torch_node.name, new_op)
+        output_names = self.list_map[torch_node.outputs[0]]
+        for i, out in enumerate(output_names):
+            self.addOperand(out, new_op[i])
+        self.tensor_list[torch_node.outputs[0]] = output_names
 
     def convert_reshape_op(self, torch_node: TorchNode):
         in_op = self.getOp(torch_node.inputs[0])

@@ -82,6 +82,7 @@ class TORCH_IR_TESTER(object):
             "MaxPool1d":        (self.test_MaxPool1d,         Y, Y, Y),
             "MaxPool2d":        (self.test_MaxPool2d,         Y, Y, Y),
             "MaxPool3d":        (self.test_MaxPool3d,         Y, Y, Y),
+            "MeshGrid":         (self.test_MeshGrid,          N, N, N),
             "MM":               (self.test_MM,                Y, Y, Y),
             "Mul":              (self.test_Mul,               Y, Y, Y),
             "NewZeros":         (self.test_NewZeros,          Y, Y, Y),
@@ -894,6 +895,37 @@ class TORCH_IR_TESTER(object):
         _test_pow((2, 3, 64, 64), 2, -10)
         _test_pow((3, 64, 64), 3)
         _test_pow((64, 64), 0.5)
+
+    #######################################################################
+    # MeshGrid
+    # ------------
+    def test_MeshGrid(self):
+
+        def _test_mesh_grid(shape, indexing=None):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    dim2 = x.size(dim=2)
+                    dim3 = x.size(dim=3)
+                    in0 = torch.arange(0,dim2,1)
+                    in1 = torch.arange(0,dim3*2,2)
+                    y0, y1 = torch.meshgrid(in0, in1, indexing=indexing)
+                    if indexing == 'xy':
+                        y0 = y0.transpose(0,1)
+                        y1 = y1.transpose(0,1)
+                    y = torch.stack([y0 + x, y1 - x], dim=0)
+                    return y
+
+            self.trace_and_test([shape], Model())
+
+        _test_mesh_grid((1, 3, 64, 32), 'ij')
+        _test_mesh_grid((1, 3, 32, 64))
+        _test_mesh_grid((1, 3, 64, 4), 'xy')
+
 
     #######################################################################
     # NewZeros
