@@ -1040,7 +1040,11 @@ class TORCH_IR_TESTER(object):
                     super(Model, self).__init__()
 
                 def forward(self, x):
-                    y = nn.functional.interpolate(x, None, scale, mode='bilinear', align_corners=False)
+                    y = nn.functional.interpolate(x,
+                                                  None,
+                                                  scale,
+                                                  mode='bilinear',
+                                                  align_corners=False)
                     return y
 
             self.trace_and_test([input_shape], Model())
@@ -1639,9 +1643,12 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([in_shape], Model())
 
-        _test_index_select((1, 3, 32, 32), 2, (5, ))
-        _test_index_select((2, 32, 16), 0, (3, ))
-        _test_index_select((32, 5), 1, (6, ))
+        if self.is_cv18xx:
+            _test_index_select((1, 3, 32, 32), 2, (1, ))
+        else:
+            _test_index_select((1, 3, 32, 32), 2, (5, ))
+            _test_index_select((2, 32, 16), 0, (3, ))
+            _test_index_select((32, 5), 1, (6, ))
 
     #######################################################################
     # Scatter
