@@ -1383,9 +1383,9 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
   let summary = "Pad operation";
   let description = [{
     This operation pads a tensor according to the paddings you specify.
-    paddings is an integer tensor with shape [n, 2], where n is the rank of tensor.
-    For each dimension D of input, paddings[D, 0] indicates how many values to add
-    before the contents of tensor in that dimension, and paddings[D, 1] indicates
+    paddings is an integer tensor with shape [2, n], where n is the rank of tensor.
+    For each dimension D of input, paddings[0, D] indicates how many values to add
+    before the contents of tensor in that dimension, and paddings[1, D] indicates
     how many values to add after the contents of tensor in that dimension.
   }];
   let arguments = (ins
@@ -2489,6 +2489,56 @@ def Tpu_Weight2ActivationOp: Tpu_Op<"Weight2Activation"> {
 
   let arguments = (ins AnyRankedTensor:$input);
   let results = (outs AnyTensor:$output);
+}
+
+def Tpu_Space2BatchOp: Tpu_Op<"Space2Batch"> {
+
+  let summary = "Space2Batch operator";
+
+  let description = [{
+    Refer to `https://www.tensorflow.org/api_docs/python/tf/space_to_batch`
+    h_padding = h + pad_top + pad_bottom,
+    w_padding = w + pad_left + pad_right,
+    [n, c, h, w] => [n, c, h_padding, w_padding]
+      =>[n * block_h * block_w, c, h_padding / block_h, w / block_w];
+    h_padding and w_padding should satisfy:
+    h_padding % block_h = 0, w_padding % block_w = 0
+    The format of input or output is NCHW.
+  }];
+
+  let arguments = (
+    ins AnyRankedTensor:$input,
+    I64Attr:$block_h,
+    I64Attr:$block_w,
+    I64ArrayAttr:$pads, // top, bottom, left, right
+    AnyTensorOrNone:$buffer
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_Batch2SpaceOp: Tpu_Op<"Batch2Space"> {
+
+  let summary = "Batch2Space operator";
+
+  let description = [{
+    Refer to `https://www.tensorflow.org/api_docs/python/tf/batch_to_space`
+    h_croping = h * block_h - crop_top - crop_bottom,
+    w_croping = w * block_w - crop_left - crop_right,
+    [n, c, h, w] => [n / (block_h * block_w), c, h * block_h, w * block_w]
+      => [n / (block_h * block_w), c, h_croping, w_croping];
+    The format of input or output is NCHW.
+  }];
+
+  let arguments = (
+    ins AnyRankedTensor:$input,
+    I64Attr:$block_h,
+    I64Attr:$block_w,
+    I64ArrayAttr:$crops, // top, bottom, left, right
+    AnyTensorOrNone:$buffer
+  );
+
+  let results = (outs AnyRankedTensor:$output);
 }
 
 #endif // TPU_OPS

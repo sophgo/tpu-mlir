@@ -21,6 +21,7 @@ namespace tpu {
 extern void populateOptimizeBM1684Patterns(RewritePatternSet *patterns);
 extern void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns);
 extern void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns);
+extern void populateOptimizeBM168xPatterns(RewritePatternSet *patterns);
 
 class ChipOptimizePass : public ChipOptimizeBase<ChipOptimizePass> {
 public:
@@ -29,10 +30,12 @@ public:
     auto mOp = getOperation();
     RewritePatternSet patterns(mOp.getContext());
     if (module::isBM1684XFamily()) {
+      populateOptimizeBM168xPatterns(&patterns);
       populateOptimizeBM1684XPatterns(&patterns);
     } else if (module::isCV18xx()) {
       populateOptimizeCV18XXPatterns(&patterns);
     } else if (module::isBM1684Family()) {
+      populateOptimizeBM168xPatterns(&patterns);
       populateOptimizeBM1684Patterns(&patterns);
     }
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));

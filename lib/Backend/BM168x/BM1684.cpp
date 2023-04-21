@@ -238,5 +238,9 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_tile_full_fix8b);
   CAST_FUNCTION(nodechip_tile_local);
   CAST_FUNCTION(nodechip_tile_fix8b_local);
+  CAST_FUNCTION(nodechip_space2batch);
+  CAST_FUNCTION(nodechip_space2batch_fix8b);
+  CAST_FUNCTION(nodechip_batch2space);
+  CAST_FUNCTION(nodechip_batch2space_fix8b);
   // clang-format on
 }
