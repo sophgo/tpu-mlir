@@ -146,6 +146,7 @@ class OnnxConverter(BaseConverter):
             "Flatten": lambda node: self.convert_flatten_op(node),
             "Floor": lambda node: self.convert_floor_op(node),
             "Gather": lambda node: self.convert_gather_op(node),
+            "GatherElements": lambda node: self.convert_gather_elements_op(node),
             "GELU": lambda node: self.convert_gelu_op(node),
             "Gemm": lambda node: self.convert_gemm_op(node),
             "GlobalAveragePool": lambda node: self.convert_global_avgpool_op(node),
@@ -2016,6 +2017,21 @@ class OnnxConverter(BaseConverter):
             return
         indices = self.getOp(onnx_node.inputs[1])
         new_op = top.GatherOp(self.mlir.get_tensor_type(out_shape),
+                              in0,
+                              indices,
+                              axis=axis,
+                              loc=self.get_loc(name),
+                              ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_gather_elements_op(self, onnx_node):
+        assert (onnx_node.op_type == "GatherElements")
+        in0 = self.getOp(onnx_node.inputs[0])
+        out_shape = self.getShape(onnx_node.name)
+        axis = onnx_node.attrs.get('axis', 0)
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        indices = self.getOp(onnx_node.inputs[1])
+        new_op = top.GatherElementsOp(self.mlir.get_tensor_type(out_shape),
                               in0,
                               indices,
                               axis=axis,

@@ -92,6 +92,7 @@ class TorchConverter(BaseConverter):
             "aten::floor": lambda node: self.convert_floor_op(node),
             "aten::floor_divide": lambda node: self.convert_floor_divide_op(node),
             "aten::flatten": lambda node: self.convert_flatten_op(node),
+            "aten::gather": lambda node: self.convert_gather_op(node),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
             "aten::group_norm": lambda node: self.convert_group_norm_op(node),
@@ -763,6 +764,16 @@ class TorchConverter(BaseConverter):
     def convert_to_op(self, torch_node: TorchNode):
         in_op = self.getOp(torch_node.inputs[0])
         self.addOperand(torch_node.name, in_op)
+
+    def convert_gather_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        axis = self.const_val[torch_node.inputs[1]]
+        op1 = self.getOp(torch_node.inputs[2])
+        new_op = top.GatherElementsOp(self.unranked_type, op0, op1,
+                              axis=axis,
+                              loc=self.get_loc(torch_node.name),
+                              ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
 
     def convert_compare_op(self, torch_node: TorchNode, mode):
         assert mode in ("Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual", "NotEqual")
