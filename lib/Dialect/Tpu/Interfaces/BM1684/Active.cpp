@@ -38,6 +38,7 @@ void tpu::ActiveOp::codegen_global_bm1684() {
        case ActiveMode::FLOOR:
        case ActiveMode::LN:
        case ActiveMode::GELU:
+       case ActiveMode::SQRT:
        case ActiveMode::SIGMOID: break;
        case ActiveMode::SILU:
            activate_type = (int)ActiveMode::SWISH;
@@ -67,6 +68,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684(
         switch(getMode()){
             case ActiveMode::EXP:
             case ActiveMode::LN:
+            case ActiveMode::SQRT:
             case ActiveMode::SIGMOID: buffer_size = tensor_size; break;
             case ActiveMode::FLOOR:
             case ActiveMode::GELU:
@@ -114,6 +116,7 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
         case ActiveMode::FLOOR:
         case ActiveMode::LN:
         case ActiveMode::GELU:
+        case ActiveMode::SQRT:
         case ActiveMode::SIGMOID: break;
         case ActiveMode::SILU: activate_type = (int)ActiveMode::SWISH; prelu_slope = 1.0; break;
         default:
