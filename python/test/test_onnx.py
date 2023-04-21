@@ -70,7 +70,7 @@ class ONNX_IR_TESTER(object):
             "ConvTrans":    (self.test_ConvTrans,     N, Y, N, Y),
             "ConvTrans2":   (self.test_ConvTrans2,    N, Y, N, Y),  #no pad
             "Clip":         (self.test_Clip,          N, Y, Y, Y),
-            "DepthToSpace": (self.test_DepthToSpace,  N, Y, Y, Y),
+            "DepthToSpace": (self.test_DepthToSpace,  Y, Y, Y, Y),
             "Deconv":       (self.test_Deconv,        N, Y, Y, Y),
             "Div":          (self.test_Div,           N, Y, Y, Y),
             "DivBcast":     (self.test_DivBcast,      N, Y, Y, N),

@@ -207,5 +207,6 @@ void BM1684::load_functions() {
   CAST_FUNCTION(get_broadcast_binary_buffer_size);
   CAST_FUNCTION(nodechip_group_norm);
   CAST_FUNCTION(nodechip_group_norm_local);
+  CAST_FUNCTION(nodechip_depth2space);
   // clang-format on
 }
