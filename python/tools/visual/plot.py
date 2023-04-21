@@ -43,28 +43,85 @@ def linear_plot(data, name=None, max_sampling=1000):
 def dist_plot(data, name=None, scale=1.0, dtype='I8'):
     import numpy as np
     from . import plot_utils as plt
+    import matplotlib.pyplot as pyplt
     blob_fp, blob_int = data.tensor(name)
+    d_max = np.maximum(np.max(blob_fp), 0)
+    d_min = np.minimum(np.min(blob_fp), 0)
+    fig = make_subplots(rows=1,cols=1,shared_xaxes=True)
+    _,ax = pyplt.subplots()
     if dtype == 'I8':
         min_ = -128*scale
         max_ = 127*scale
+        max = np.maximum(max_,d_max)
+        min = np.minimum(min_,d_min)
+        min_bin = int(np.abs(np.floor(min/scale)))
+        max_bin = int(np.ceil(max/scale))
+        bins = min_bin+max_bin
+        xticklabels=['']*bins
+        xticklabels[min_bin-128] = '-128/{:.4f}'.format(-128.0*scale)
+        xticklabels[min_bin] = '0/0.0'
+        xticklabels[min_bin+126] = '127/{:.4f}'.format(127.0*scale)
+
+        hist = np.histogram(blob_fp, bins=bins,
+                        range=(-min_bin*scale, max_bin*scale))
+        hist_fp = hist[0]
+        hist = np.histogram(blob_int, bins=bins,
+                        range=(-min_bin*scale, max_bin*scale))
+        hist_quant = hist[0]
+        q_range = np.zeros(bins)
+        q_range[min_bin-128:min_bin+127] = np.ones(255)*np.maximum(np.max(hist_fp),np.max(hist_quant))
+        index = np.arange(bins)
+        fig = plt.plot_dist_fp_fixpoint( fig,
+            index, (hist_fp, hist_quant, q_range),
+            subplot_titles=(name, "dist fp vs int8\t "))
     elif dtype == 'U8':
         min_ = 0
         max_ = 255*scale
-    max_f = np.max(np.max(blob_fp), 0)
-    min_f = np.min(np.min(blob_fp), 0)
-    max_bin = np.ceil(max_f/scale)
-    min_bin = np.abs(np.floor(min_f/scale))
-    bins = int(max_bin+min_bin)
-    hist = np.histogram(blob_fp, bins=bins,
+        max = np.maximum(max_,d_max)
+        min = np.minimum(min_,d_min)
+        min_bin = int(np.abs(np.floor(min/scale)))
+        max_bin =int(np.ceil(max/scale))
+        bins = min_bin+max_bin
+        xticks = [min_bin, min_bin+255]
+        xticklabels=['']*bins
+        xticklabels[min_bin] = '0/0.0'
+        xticklabels[min_bin+254] = '255/{:.4f}'.format(255.0*scale)
+        hist = np.histogram(blob_fp, bins=bins,
                         range=(-min_bin*scale, max_bin*scale))
-    hist_fp = hist[0]
-    hist = np.histogram(blob_int, bins=bins,
+        hist_fp = hist[0]
+        hist = np.histogram(blob_int, bins=bins,
                         range=(-min_bin*scale, max_bin*scale))
-    hist_quant = hist[0]
-    index = np.arange(bins)
-    fig = plt.plot_dist_fp_fixpoint(
-        index, (hist_fp, hist_quant),
-        subplot_titles=(name, "dist fp vs int8\t "))
+        hist_quant = hist[0]
+        q_range = np.zeros(bins)
+        q_range[min_bin:min_bin+255] = np.ones(255)*np.maximum(np.max(hist_fp),np.max(hist_quant))
+        index = np.arange(bins)
+        fig = plt.plot_dist_fp_fixpoint( fig,
+            index, (hist_fp, hist_quant, q_range),
+            subplot_titles=(name, "dist fp vs uint8\t "))
+    else:
+        index = np.arange(255)
+        hist = np.histogram(blob_fp, bins=255,
+                        range=(np.min(blob_fp), np.max(blob_fp)))
+        hist_fp = hist[0]
+        fig = plt.plot_dist_fp_fixpoint( fig,
+            index, (hist_fp, [], []),
+            subplot_titles=(name, "dist fp\t "))
+        xticklabels = ['']*255
+        bins=255
+        xticklabels[0] = '{:.4f}'.format(np.min(blob_fp))
+        xticklabels[254] = '{:.4f}'.format(np.max(blob_fp))
+        xticklabels[int(np.abs(np.min(blob_fp))/(np.max(blob_fp)-np.min(blob_fp)+1e-4)*255)] = '0.0'
+
+    fig.update_xaxes(tickmode='array', tickvals=np.arange(bins), ticktext=xticklabels, type='linear')
+    fig.update_layout(margin=dict(l=20, r=20, t=5, b=5),
+                      xaxis_visible=True,
+                      xaxis_title=None,
+                      xaxis_showticklabels=True,
+                      xaxis_showgrid=True,
+                      xaxis_showline=True,
+                      yaxis_showgrid=True,
+                      yaxis_title=None,
+                      hovermode='x unified')
     return fig
 
 
