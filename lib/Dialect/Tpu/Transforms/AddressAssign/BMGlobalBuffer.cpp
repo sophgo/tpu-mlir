@@ -437,6 +437,147 @@ public:
     return success();
   }
 };
+class Space2BatchGlobalBuffer : public OpRewritePattern<tpu::Space2BatchOp> {
+public:
+  using OpRewritePattern<tpu::Space2BatchOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::Space2BatchOp space2batchOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(space2batchOp.getBuffer())) {
+      return failure();
+    }
+    uint64_t buffer_size = 0;
+    if (module::isBM1684XFamily()) {
+      llvm_unreachable("Not supported now");
+      return failure();
+    } else if (module::isBM1684Family()) {
+      // melloc
+      uint32_t *input_shape = new uint32_t[MAX_SHAPE_DIMS];
+
+      auto input = space2batchOp.getInput();
+      auto output = space2batchOp.getOutput();
+      auto pads_v = module::getI64Array(space2batchOp.getPads());
+      int64_t pad_top = pads_v->at(0);
+      int64_t pad_bottom = pads_v->at(1);
+      int64_t pad_left = pads_v->at(2);
+      int64_t pad_right = pads_v->at(3);
+
+      int input_dims = module::getShape(input).size();
+      auto input_dtype = BM1684::getDataType(input);
+      auto output_dtype = BM1684::getDataType(output);
+      int type_len = BM1684::getFmtBytes(input_dtype);
+      int store_mode;
+      for (auto v : llvm::enumerate(module::getShape(input)))
+        input_shape[v.index()] = (uint32_t)v.value();
+      if (input_dtype == DTYPE_FP32 || input_dtype == DTYPE_INT32 ||
+          input_dtype == DTYPE_UINT32) {
+        int height_pad = input_shape[2] + pad_top + pad_bottom;
+        int width_pad = input_shape[3] + pad_left + pad_right;
+        buffer_size =
+            input_shape[0] * input_shape[1] * height_pad * width_pad * type_len;
+      } else if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
+        store_mode = STORE_MODE_4N;
+        assert(output_dtype == DTYPE_INT8 || output_dtype == DTYPE_UINT8);
+        int block_h = (int)space2batchOp.getBlockH();
+        int block_w = (int)space2batchOp.getBlockW();
+        int block_size[2] = {block_h, block_w};
+        int pad_sizes[4] = {(int)pad_top, (int)pad_bottom, (int)pad_left,
+                            (int)pad_right};
+        BM1684::instance().dl_nodechip_space2batch_fix8b(
+            0, 0, 0, &buffer_size, (int *)input_shape, input_dims, store_mode,
+            store_mode, block_size, pad_sizes, NULL, NULL);
+      } else {
+        llvm_unreachable("Not Implemented");
+        return failure();
+      }
+      // release
+      delete[] input_shape;
+      ;
+    } else {
+      llvm_unreachable("Not Implemented");
+      return failure();
+    }
+    auto type = module::getStorageType(space2batchOp.getInput());
+    // add buffer
+    if (buffer_size > 0) {
+      auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
+      auto buffer = tpu::BufferOp::create(space2batchOp, buffer_type);
+      space2batchOp.setOperand(1, buffer);
+      return success();
+    }
+    return failure();
+  }
+};
+
+class Batch2SpaceGlobalBuffer : public OpRewritePattern<tpu::Batch2SpaceOp> {
+public:
+  using OpRewritePattern<tpu::Batch2SpaceOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::Batch2SpaceOp batch2spaceOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(batch2spaceOp.getBuffer())) {
+      return failure();
+    }
+    uint64_t buffer_size = 0;
+    if (module::isBM1684XFamily()) {
+      llvm_unreachable("Not supported now");
+      return failure();
+    } else if (module::isBM1684Family()) {
+      // melloc
+      uint32_t *input_shape = new uint32_t[MAX_SHAPE_DIMS];
+
+      auto input = batch2spaceOp.getInput();
+      auto output = batch2spaceOp.getOutput();
+      auto crops_v = module::getI64Array(batch2spaceOp.getCrops());
+      int64_t crop_top = crops_v->at(0);
+      int64_t crop_bottom = crops_v->at(1);
+      int64_t crop_left = crops_v->at(2);
+      int64_t crop_right = crops_v->at(3);
+
+      int input_dims = module::getShape(input).size();
+      auto input_dtype = BM1684::getDataType(input);
+      auto output_dtype = BM1684::getDataType(output);
+      int type_len = BM1684::getFmtBytes(input_dtype);
+      int store_mode;
+      for (auto v : llvm::enumerate(module::getShape(input)))
+        input_shape[v.index()] = (uint32_t)v.value();
+      if (input_dtype == DTYPE_FP32 || input_dtype == DTYPE_INT32 ||
+          input_dtype == DTYPE_UINT32) {
+        buffer_size = input_shape[0] * input_shape[1] * input_shape[2] *
+                      input_shape[3] * type_len;
+      } else if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
+        store_mode = STORE_MODE_4N;
+        assert(output_dtype == DTYPE_INT8 || output_dtype == DTYPE_UINT8);
+        int block_h = (int)batch2spaceOp.getBlockH();
+        int block_w = (int)batch2spaceOp.getBlockW();
+        int block_size[2] = {block_h, block_w};
+        int pad_sizes[4] = {(int)crop_top, (int)crop_bottom, (int)crop_left,
+                            (int)crop_right};
+        BM1684::instance().dl_nodechip_batch2space_fix8b(
+            0, 0, 0, 0, &buffer_size, (int *)input_shape, input_dims,
+            store_mode, store_mode, block_size, pad_sizes, NULL, NULL);
+      } else {
+        llvm_unreachable("Not Implemented");
+        return failure();
+      }
+      // release
+      delete[] input_shape;
+      ;
+    } else {
+      llvm_unreachable("Not Implemented");
+      return failure();
+    }
+    auto type = module::getStorageType(batch2spaceOp.getInput());
+    // add buffer
+    if (buffer_size > 0) {
+      auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
+      auto buffer = tpu::BufferOp::create(batch2spaceOp, buffer_type);
+      batch2spaceOp.setOperand(1, buffer);
+      return success();
+    }
+    return failure();
+  }
+};
 
 class TileGlobalBuffer : public OpRewritePattern<tpu::TileOp> {
 public:
@@ -597,6 +738,7 @@ public:
 };
 
 } // namespace bm168x
+
 namespace tpu {
 using namespace bm168x;
 void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
@@ -614,7 +756,9 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       NonZeroGlobalBuffer,
       DeformGatherGlobalBuffer,
       TileGlobalBuffer,
-      PadGlobalBuffer
+      PadGlobalBuffer,
+      Space2BatchGlobalBuffer,
+      Batch2SpaceGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }

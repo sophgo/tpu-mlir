@@ -198,6 +198,11 @@ typedef void (*nodechip_tile_full)(uint64_t input_global_addr,uint64_t buffer_gl
 typedef void (*nodechip_tile_full_fix8b)(uint64_t input_global_addr,uint64_t output_global_addr,uint64_t buffer_global_addr,uint64_t *buffer_size,const uint32_t *input_shape,const int *tile_coeff,int input_dim,int in_store_mode,int out_store_mode,int type,void *pid_node);
 typedef void (*nodechip_tile_local)(int input_local_offset,int output_local_offset,const int *input_shape,const int *tile_coef,int input_dim,int input_format,int output_format,int type,void *pid_node);
 typedef void (*nodechip_tile_fix8b_local)(int input_local_offset,int output_local_offset,int buffer_offset,const int *input_shape,const int *tile_coef,int input_dim,int input_format,int output_format,int type,void *pid_node,void* gdma_node);
+typedef void (*nodechip_space2batch)(uint64_t input_global_addr, uint64_t output_global_addr, uint64_t buffer_global_addr, const int* input_shape, const int input_dim, const int* block_sizes, const int* pad_sizes, int* output_shape, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_space2batch_fix8b)(uint64_t input_global_addr, uint64_t output_global_addr, uint64_t buffer_global_addr, uint64_t *buffer_size, const int* input_shape, const int input_dim, int  in_store_mode, int  out_store_mode, const int* block_sizes, const int* pad_sizes, int* output_shape, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_batch2space)(uint64_t input_global_addr, uint64_t output_global_addr, uint64_t buffer_global_addr, const int* input_shape, const int input_dim, const int* block_sizes, const int* pad_sizes, int* output_shape, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_batch2space_fix8b)(uint64_t input_global_addr, uint64_t output_global_addr, uint64_t buffer_global_addr, uint64_t imm_global_addr, uint64_t *buffer_size, const int* input_shape, const int input_dim, int  in_store_mode, int  out_store_mode, const int* block_sizes, const int* crops_sizes, int* output_shape, CMD_ID_NODE *pid_node);
+
 // clang-format on
 namespace tpu_mlir {
 namespace backend {
@@ -403,7 +408,10 @@ public:
   nodechip_tile_full_fix8b dl_nodechip_tile_full_fix8b;
   nodechip_tile_local dl_nodechip_tile_local;
   nodechip_tile_fix8b_local dl_nodechip_tile_fix8b_local;
-
+  nodechip_space2batch dl_nodechip_space2batch;
+  nodechip_space2batch_fix8b dl_nodechip_space2batch_fix8b;
+  nodechip_batch2space dl_nodechip_batch2space;
+  nodechip_batch2space_fix8b dl_nodechip_batch2space_fix8b;
   // clang-format on
 public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;

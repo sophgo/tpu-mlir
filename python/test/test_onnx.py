@@ -66,6 +66,7 @@ class ONNX_IR_TESTER(object):
             "ConstOfShape": (self.test_ConstOfShape,  N, Y, Y, N),
             "Conv1d":       (self.test_Conv1d,        Y, Y, Y, Y),
             "Conv2d":       (self.test_Conv2d,        Y, Y, Y, Y),
+            "Conv2dbigd":   (self.test_Conv2d_bigd,   Y, N, N, N),
             "Conv3d":       (self.test_Conv3d,        N, Y, Y, Y),
             "ConvStride":   (self.test_ConvStride,    Y, Y, Y, Y),
             "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y),
@@ -959,6 +960,22 @@ class ONNX_IR_TESTER(object):
                           stride=[1, 1],
                           dilation=[1, 1],
                           groups=1)
+
+    def test_Conv2d_bigd(self, case_name):
+        batchs = [1]
+        for idx, batch in enumerate(batchs):
+            input_shape = [batch, 2048, 80, 40]
+            filter_shape = [2048, 1, 3, 3]
+            output_shape = [batch, 2048, 80, 40]
+            self.ConvBase("{}_{}".format(case_name, idx),
+                          input_shape,
+                          filter_shape,
+                          output_shape,
+                          kernel=[3, 3],
+                          padding=[24, 24, 24, 24],
+                          stride=[1, 1],
+                          dilation=[24, 24],
+                          groups=2048)
 
     def test_ConvDw(self, case_name):
         input_shape = [1, 16, 100, 100]
