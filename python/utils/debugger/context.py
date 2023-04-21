@@ -12,10 +12,10 @@ import functools
 
 try:
     from . import op_support
-    from .disassembler import Disassembler
+    from . import disassembler
 except:
     import op_support
-    from disassembler import Disassembler
+    import disassembler
 
 
 class Device(Enum):
@@ -44,32 +44,15 @@ class Context:
         else:
             raise ValueError(f"Unknown device: {device}")
 
-    def __prepare_bm1684x_resource(self, cmodel):
+    def __bind_resource(self, cmodel):
         # bind compute
-        def call_ins(command, engine_type):
-            return cmodel.lib.execute_command(
-                0,
-                np.packbits(
-                    command.reshape(-1, 8),
-                    axis=-1,
-                    bitorder="little",
-                ).ctypes.data,
-                engine_type,
-            )
-
-        def bdc_compute(cls):
-            return call_ins(cls.cmd, 0)
-
-        def gdma_compute(cls):
-            return call_ins(cls.cmd, 1)
-
         for _, v in self.opdef.bdc_cmd.items():
             for op in v:
-                setattr(op, "compute", bdc_compute)
+                setattr(op, "compute", lambda c: cmodel.bdc_compute(c.cmd))
 
         for _, v in self.opdef.dma_cmd.items():
             for op in v:
-                setattr(op, "compute", gdma_compute)
+                setattr(op, "compute", lambda c: cmodel.dma_compute(c.cmd))
 
         # bind memory operation
         memory = self.opparam.Memory(cmodel.LMEM, cmodel.DDR)
@@ -84,9 +67,6 @@ class Context:
 
         setattr(self.MemRef, "data", data)
 
-    def __prepare_bm1684_resource(self, cmodel):
-        pass
-
     def get_runner(self, memory_size):
         try:
             from . import cmodel
@@ -95,13 +75,13 @@ class Context:
 
         if self.device == Device.BM1684X:
             _cmodel = cmodel.BM1684X(memory_size)
-            self.__prepare_bm1684x_resource(_cmodel)
-            return _cmodel
-
-        if self.device == Device.BM1684:
+        elif self.device == Device.BM1684:
             _cmodel = cmodel.BM1684(memory_size)
-            self.__prepare_bm1684_resource(_cmodel)
-            return _cmodel
+        else:
+            raise ValueError(f"device: {self.device} is not supported.")
+
+        self.__bind_resource(_cmodel)
+        return _cmodel
 
     @property
     def memmap(self):
@@ -113,8 +93,11 @@ class Context:
 
     @property
     @functools.lru_cache()
-    def disassembler(self):
-        return Disassembler(self)
+    def decoder(self):
+        return disassembler.Decoder(self)
+
+    def BModel2MLIR(self, bmodel):
+        return disassembler.BModel2MLIR(bmodel, self.decoder)
 
     def tensor2memref(self, tensor):
         return self.MemRef(

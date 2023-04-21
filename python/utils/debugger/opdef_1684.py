@@ -8,18 +8,14 @@
 # ==============================================================================
 # keep This file clean and neat.
 
-from collections import OrderedDict
-import numpy as np
-
-
 try:
     from .regdef_1684 import bdc_reg_def, dma_reg_def
     from .opparam_1684 import opparam_converter
-    from .op_support import packbits, TIUBase, DMABase, NamedDict
+    from .op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg
 except:
     from regdef_1684 import bdc_reg_def, dma_reg_def
     from opparam_1684x import opparam_converter
-    from op_support import packbits, TIUBase, DMABase, NamedDict
+    from op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg
 
 # global data and type
 # ------------------------------------------------------------
@@ -50,17 +46,11 @@ def dma_registry(cls):
     return base_registry(dma_cmd, dma_reg_def, cls)
 
 
-def decode_reg(buffer, des_reg):
-    bits_sec = np.split(buffer, des_reg["high_bit"][:-1])
-    value = (packbits(x) for x in bits_sec)
-    return OrderedDict(zip(des_reg["fields"], value))
-
-
 # ------------------------------------------------------------
 # BDC definition
 # ------------------------------------------------------------
 class bdc_base(TIUBase):
-    lenght = 1024
+    length = 1024
     opcode_bits = (37, 41)
     # extension
     eu_type = ()
@@ -114,7 +104,7 @@ class pord_op(bdc_base):
     def _decode(self):
         super()._decode()
         if self.reg.tsk_eu_typ == 1:
-            if self.reg.opt_dp1_const == 0:
+            if self.reg.opt_opd1_const == 0:
                 self.op_name = "pord.depthwise"
             else:
                 self.op_name = "pord.avgpooling"

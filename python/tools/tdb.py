@@ -64,12 +64,11 @@ class Tdb(cmd.Cmd):
         bmodel = BModelReader(bmodel_file)
         chip = bmodel.nets["Chip"][0]
         context = Context(chip)
-        decoder = context.disassembler
-        self.module = BModel2MLIR(bmodel, decoder)
+        self.module = context.BModel2MLIR(bmodel)
         self.runner = context.get_runner(Tdb.ddr_size)
         self.LMEM = self.runner.LMEM
         self.DDR = self.runner.DDR
-        self.CONTEXT = context
+        self.context = context
 
     def message(self, msg):
         if self.enable_message:
@@ -119,7 +118,7 @@ class Tdb(cmd.Cmd):
             f"[bold green]{line_num:{padding}} [/bold green] {self.get_op(offset)}"
         )
 
-    def get_context(self, offset=5):
+    def get_asm_context(self, offset=5):
         op_len = len(self.current_function.regions[0].blocks[0].operations)
         lines = self.current_line + np.arange(-offset, offset + 1)
         lines = lines[lines >= 0]
@@ -141,7 +140,7 @@ class Tdb(cmd.Cmd):
         return "\n".join(msg)
 
     def print_context(self, offset=5):
-        self.message(self.get_context(offset))
+        self.message(self.get_asm_context(offset))
 
     def do_l(self, arg):
         """l(list)
@@ -300,7 +299,7 @@ class Tdb(cmd.Cmd):
             inputs = np.fromfile(file, dtype=np.uint8)
             _offset = 0
             for arg in self.current_function.signature[0]:
-                mem = self.CONTEXT.tensor2memref(arg)
+                mem = self.context.tensor2memref(arg)
                 size = int(np.prod(mem.shape) * mem.itemsize)
                 mem.data = inputs[_offset : _offset + size].view(mem.np_dtype)
                 _offset += size
@@ -317,12 +316,12 @@ class Tdb(cmd.Cmd):
 
     def set_input(self, id, input):
         args = self.current_function.signature[0]
-        mem = self.CONTEXT.tensor2memref(args[id])
+        mem = self.context.tensor2memref(args[id])
         mem.data = input
 
     def get_return(self):
         outputs = self.current_function.signature[1]
-        mems = [self.CONTEXT.tensor2memref(x) for x in outputs]
+        mems = [self.context.tensor2memref(x) for x in outputs]
         return [mem.data for mem in mems]
 
     def get_op(self, offset=0):
@@ -356,7 +355,7 @@ class Tdb(cmd.Cmd):
         self.__reset()
         coeff = self.module.functions[0].regions[0].data
         if coeff:
-            addr = coeff.address - self.CONTEXT.memmap[MType.G][0]
+            addr = coeff.address - self.context.memmap[MType.G][0]
             # load constant data
             self.DDR[addr : addr + len(coeff.data)] = memoryview(coeff.data)
         if self.module is None:

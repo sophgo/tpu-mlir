@@ -13,18 +13,16 @@ import utils.debugger.disassembler as dis
 
 def BModel2MLIR(bmodel_file):
     bmodel = dis.BModelReader(bmodel_file)
-
     chip = bmodel.nets["Chip"][0]
     context = Context(chip)
-    decoder = context.disassembler
-    return dis.BModel2MLIR(bmodel, decoder)
+    return context.BModel2MLIR(bmodel)
 
 
 def BModel2Reg(bmodel_file):
     bmodel = dis.BModelReader(bmodel_file)
     chip = bmodel.nets["Chip"][0]
     context = Context(chip)
-    decoder = context.disassembler
+    decoder = context.decoder
     for net in bmodel.nets["Net"]:
         for param in net["Parameter"]:
             for subnet in param["SubNet"]:

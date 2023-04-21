@@ -24,7 +24,7 @@ def buffer_to_bits(buffer):
     return np.unpackbits(cmmand_buf, bitorder="little")
 
 
-class Disassembler:
+class Decoder:
     CMD = namedtuple("cmd", ["bdc", "dma", "all"])
 
     def __init__(self, context):
@@ -48,14 +48,10 @@ class Disassembler:
                         cur += op.length
                         recognize = True
                         break
-                if sys_end is None:
-                    is_sys = True
-                else:
-                    is_sys = isinstance(operation, sys_end)
+                is_sys = sys_end is None or isinstance(operation, sys_end)
                 is_less_1024 = cmd_buf_bits.size < 1025
-                is_all_zeros = np.all(cmd_buf_bits == 0)
-                if is_sys and is_less_1024 and is_all_zeros:
-                    break  # all the BDC have been processed
+                if is_sys and is_less_1024 and not np.any(cmd_buf_bits):
+                    break  # all the code have been processed
                 if not recognize:
                     raise ValueError(
                         "Can not decode cmd, with opcode: {}, at {}.".format(
@@ -243,11 +239,11 @@ class BModelReader:
         self.nets = fbs_adaptor(bmodel, fields)
 
 
-def BModel2MLIR(bmodel_net, dis: Disassembler, indenr_size=2):
+def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
 
     chip = bmodel_net.nets["Chip"][0]
-    assert chip.upper() == dis.context.device.name
-    context = dis.context
+    assert chip.upper() == decoder.context.device.name
+    context = decoder.context
 
     class Block:
         def __init__(self, subnet, indent=0):
@@ -255,7 +251,7 @@ def BModel2MLIR(bmodel_net, dis: Disassembler, indenr_size=2):
             self.label = subnet["Id"][0]
             self.indent = indent
             self.cmds = [
-                dis.decode_bmodel_cmd(x, self.label) for x in subnet["CmdGroup"]
+                decoder.decode_bmodel_cmd(x, self.label) for x in subnet["CmdGroup"]
             ]
             self.operations = []
             for x in self.cmds:
@@ -342,7 +338,7 @@ def BModel2MLIR(bmodel_net, dis: Disassembler, indenr_size=2):
 
         def __repr__(self):
             funs = "\n".join((f"{x}" for x in self.functions))
-            attrs = f"attributes {{chip = {self.chip}, version= {self.version}}}"
+            attrs = f'attributes {{chip = "{self.chip}", version = {self.version}}}'
             return f"module {attrs} {{\n{funs}\n}}"
 
     return Module(bmodel_net.nets)

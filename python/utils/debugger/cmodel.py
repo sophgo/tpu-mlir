@@ -167,6 +167,25 @@ class BM1684X:
     def __del__(self):
         self.lib.cmodel_deinit(0)
 
+    def compute(self, command, engine_type):
+        assert isinstance(command, np.ndarray)
+        assert command.dtype == np.uint8
+        return self.lib.execute_command(
+            0,
+            np.packbits(
+                command.reshape(-1, 8),
+                axis=-1,
+                bitorder="little",
+            ).ctypes.data,
+            engine_type,
+        )
+
+    def bdc_compute(self, command):
+        return self.compute(command, 0)
+
+    def dma_compute(self, command):
+        return self.compute(command, 1)
+
     @staticmethod
     def gen_lookup_table():
         # firmware_runtime.c:340
@@ -350,6 +369,25 @@ class BM1684:
 
     def __del__(self):
         self.lib.cmodel_deinit(0)
+
+    def compute(self, command, engine_type):
+        assert isinstance(command, np.ndarray)
+        assert command.dtype == np.uint8
+        return self.lib.cmodel_call_atomic(
+            0,
+            np.packbits(
+                command.reshape(-1, 8),
+                axis=-1,
+                bitorder="little",
+            ).ctypes.data,
+            engine_type,
+        )
+
+    def bdc_compute(self, command):
+        return self.compute(command, 0)
+
+    def dma_compute(self, command):
+        return self.compute(command, 1)
 
     @staticmethod
     def gen_lookup_table():

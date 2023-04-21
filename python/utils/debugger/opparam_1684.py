@@ -29,8 +29,8 @@ __all__ = ["opparam_converter"]
 # MemRef: address, shape, Dtype, stride, offset?
 
 NPU_NUM = 64
-BANK_SIZE = 2**14
-LANE_SIZE = BANK_SIZE * 32
+BANK_SIZE = 4 * 2**14
+LANE_SIZE = BANK_SIZE * 8
 LMEM_SIZE = LANE_SIZE * NPU_NUM
 
 opparam_converter = {}
