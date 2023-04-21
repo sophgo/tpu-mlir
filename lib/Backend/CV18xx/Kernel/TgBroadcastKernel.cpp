@@ -14,7 +14,6 @@
 
 #define DEBUG_TYPE "cvi_backend_broadcast_kernel"
 
-
 namespace tpu_mlir {
 namespace backend {
 void TgBcastKernel::convert_shape(int an, int ac, int ah, int aw, int bn,
@@ -50,7 +49,8 @@ void TgBcastKernel::convert_shape(int an, int ac, int ah, int aw, int bn,
       a_ins *= a_s[i];
       b_ins *= b_s[i];
       i++;
-    } while (i < num_dims && a_s[i] != b_s[i]);
+    } while (i < num_dims &&
+             (a_s[i] != b_s[i] || (a_s[i] == 1 && b_s[i] == 1)));
     a_v.push_back(a_ins);
     b_v.push_back(b_ins);
   }

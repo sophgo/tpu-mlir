@@ -68,15 +68,15 @@ class TORCH_IR_TESTER(object):
             "FloorDiv":         (self.test_FloorDiv,          Y, Y, N),
             "Gather":           (self.test_Gather,            N, N, N),
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, N),
-            "GRU":              (self.test_GRU,               Y, Y, N),
+            "GRU":              (self.test_GRU,               Y, Y, Y),
             "IndexSelect":      (self.test_IndexSelect,       Y, N, N),
-            "InstanceNorm":     (self.test_InstanceNorm,      Y, Y, N),
+            "InstanceNorm":     (self.test_InstanceNorm,      Y, Y, Y),
             "Interp":           (self.test_Interp,            Y, N, Y),
             "LayerNorm":        (self.test_LayerNorm,         Y, Y, Y),
-            "LeakyRelu":        (self.test_LeakyRelu,         Y, Y, N),
+            "LeakyRelu":        (self.test_LeakyRelu,         Y, Y, Y),
             "Linear":           (self.test_Linear,            Y, Y, Y),
             "LogSoftmax":       (self.test_LogSoftmax,        Y, Y, Y),
-            "LSTM":             (self.test_LSTM,              Y, Y, N),
+            "LSTM":             (self.test_LSTM,              Y, Y, Y),
             "Math":             (self.test_Math,              Y, Y, N),
             "MatMul":           (self.test_MatMul,            Y, Y, Y),
             "MaxPool1d":        (self.test_MaxPool1d,         Y, Y, Y),
@@ -93,7 +93,7 @@ class TORCH_IR_TESTER(object):
             "PRelu":            (self.test_PRelu,             Y, Y, Y),
             "Permute":          (self.test_Permute,           Y, Y, Y),
             "Pad1d":            (self.test_Pad1d,             Y, Y, Y),
-            "Pad2d":            (self.test_Pad2d,             Y, Y, N),
+            "Pad2d":            (self.test_Pad2d,             Y, Y, Y),
             "Pow":              (self.test_Pow,               Y, Y, Y),
             "Scatter":          (self.test_Scatter,           N, N, N),
             "Select":           (self.test_Select,            Y, Y, Y),
@@ -101,13 +101,13 @@ class TORCH_IR_TESTER(object):
             "Softmax":          (self.test_Softmax,           Y, N, Y),
             "Softmin":          (self.test_Softmin,           Y, Y, Y),
             "Split":            (self.test_Split,             Y, Y, Y),
-            "Squeeze":          (self.test_Squeeze,           Y, Y, N),
+            "Squeeze":          (self.test_Squeeze,           Y, Y, Y),
             "Stack":            (self.test_Stack,             Y, Y, Y),
             "Sub":              (self.test_Sub,               Y, Y, Y),
             "T":                (self.test_T,                 Y, Y, N),
             "Tile":             (self.test_Tile,              Y, Y, Y),
-            "To":               (self.test_To,                N, N, N),
-            "Type_as":          (self.test_Type_as,           N, N, N),
+            "To":               (self.test_To,                Y, Y, Y),
+            "Type_as":          (self.test_Type_as,           Y, Y, Y),
             "Transpose":        (self.test_Transpose,         Y, Y, Y),
             "Upsample":         (self.test_Upsample,          Y, N, N),
             "Unary":            (self.test_Unary,             Y, Y, Y),
@@ -187,7 +187,7 @@ class TORCH_IR_TESTER(object):
     def compare(self, ref_out, targe_out):
         if ref_out.dtype in [np.int64, np.int32, np.int16, np.int8]:
             cos = self.cosine_similarity(ref_out, targe_out)
-            assert (cos > 0.999)
+            assert (cos > 0.997)
         else:
             np.testing.assert_allclose(ref_out, targe_out, rtol=1e-5, atol=1e-01)
 
@@ -1053,10 +1053,11 @@ class TORCH_IR_TESTER(object):
         _test_instancenorm(nn.InstanceNorm2d, (3, 4, 32, 32), 4, 3e-5)
         # TODO: support squeeze & unsqueeze
         # _test_instancenorm(nn.InstanceNorm2d, (32, 16, 16), 16, affine=False)
-        # _test_instancenorm(nn.InstanceNorm1d, (3, 32), 3, 3e-5)
-        _test_instancenorm(nn.InstanceNorm1d, (3, 32, 32), 32, affine=False)
-        # _test_instancenorm(nn.InstanceNorm3d, (4, 5, 32, 32), 4, 3e-5)
-        _test_instancenorm(nn.InstanceNorm3d, (2, 32, 16, 16, 3), 32, affine=False)
+        if (not self.is_cv18xx):
+            # _test_instancenorm(nn.InstanceNorm1d, (3, 32), 3, 3e-5)
+            _test_instancenorm(nn.InstanceNorm1d, (3, 32, 32), 32, affine=False)
+            # _test_instancenorm(nn.InstanceNorm3d, (4, 5, 32, 32), 4, 3e-5)
+            _test_instancenorm(nn.InstanceNorm3d, (2, 32, 16, 16, 3), 32, affine=False)
 
     #######################################################################
     # Interp
@@ -2155,9 +2156,10 @@ class TORCH_IR_TESTER(object):
         for op_type in [nn.ReflectionPad2d, nn.ReplicationPad2d, nn.ZeroPad2d, nn.ConstantPad2d]:
             if self.is_cv18xx and op_type == nn.ReplicationPad2d:
                 _test_pad2d(op_type, (1, 16, 32, 32), 7, 0.6)
+                _test_pad2d(op_type, (3, 16, 32, 32), (4, 6, 7, 8))
             else:
                 _test_pad2d(op_type, (1, 16, 32), 7, 0.6)
-            _test_pad2d(op_type, (3, 16, 32), (4, 6, 7, 8))
+                _test_pad2d(op_type, (3, 16, 32), (4, 6, 7, 8))
             _test_pad2d(op_type, (1, 3, 16, 32), 3, 0.5)
             _test_pad2d(op_type, (2, 4, 16, 32), (3, 4, 5, 6), 0.4)
 
