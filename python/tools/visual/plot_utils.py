@@ -9,14 +9,17 @@ def plot(x, y, **keywords):
     fig.show()
 
 
-def plot_hist(index, data, **keywords):
+def plot_hist(fig, index, data, **keywords):
     import numpy as np
-    fp_data, int_data = data
-    fig = go.Figure()
+    fp_data, int_data, q_range = data
+    #fig = go.Figure()
     fig.add_trace(go.Scatter(x=index, y=fp_data, fill='tonexty', name='float'))
-    fig.add_trace(go.Scatter(x=index, y=int_data,
+    if len(int_data )!= 0:
+        fig.add_trace(go.Scatter(x=index, y=int_data,
                   fill='tonexty', name='quant'))
-    fig.show()
+    if len(q_range) != 0:
+        fig.add_trace(go.Scatter(x=index, y=q_range,
+                  fill='tonexty', name='quant_range', line=dict(width=0)))
     return fig
 
 
@@ -75,9 +78,9 @@ def plot_float_vs_fixpoint(index, data, **keywords):
     return fig
 
 
-def plot_dist_fp_fixpoint(index, data, **keywords):
-    fp_data, int_data = data
-    style = dict(name=('float32', 'int8'),
+def plot_dist_fp_fixpoint(fig, index, data, **keywords):
+    fp_data, int_data, q_range = data
+    style = dict(name=('float32', 'int8', 'quant_range'),
                  mode='lines+markers',
                  marker=({
                      "size": 6,
@@ -88,5 +91,5 @@ def plot_dist_fp_fixpoint(index, data, **keywords):
                      "opacity": 0.8
                  }),
                  line={"width": 1})
-    fig = plot_hist(index, (fp_data, int_data), **style)
+    fig = plot_hist(fig, index, (fp_data, int_data, q_range), **style)
     return fig
