@@ -45,8 +45,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
 
   bool strideh_gt_15 = stride_h > 15;
   bool stridew_gt_15 = stride_w > 15;
-
-  // auto out_type = BM168x::getDataType(op.getOutput());
+  bool stride_hw_gt_15 = strideh_gt_15 || stridew_gt_15;
   int cell_h = kh, cell_w = kw;
   int IC_PARALLEL = BM168x::ic_num(1);
 
@@ -69,9 +68,11 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   }
 
   bool merge = true;
+  bool merge_with_requant = true;
   auto out_stype = module::getStorageType(op.getOutput());
   if (out_stype.isInteger(32)) {
-    merge = false;
+    merge_with_requant = false;
+    if (attr.has_bias == false) merge = false;
   }
   bool isINT4Conv = false;
   auto in_stype = module::getStorageType(op.getInput());
@@ -118,7 +119,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   }
 
   if (attr.is_dw == false) {
-    if (strideh_gt_15 || stridew_gt_15) {
+    if (stride_hw_gt_15) {
       filter_shape[0] = 1;
       filter_shape[1] = output_c;
       filter_shape[2] = ceiling_func(gic, IC_PARALLEL);
@@ -152,25 +153,6 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
           }
         }
       }
-
-      auto stype = module::getStorageType(op.getFilter());
-      auto new_type = RankedTensorType::get(filter_shape, stype);
-      auto new_op =
-          top::WeightOp::create(op, "filter_reorderd", *data_i8, new_type);
-      op->setOperand(1, new_op);
-      if (merge == false) {
-        if (attr.has_bias) {
-          auto elem_type = module::getStorageType(op.getBias());
-          auto bias_type = RankedTensorType::get({1, attr.oc, 1, 1}, elem_type);
-          op.getBias().setType(bias_type);
-        }
-        return success();
-      }
-      tpu::reshape_coeff_for_broadcast_channel(data_i8, filter_shape, false,
-                                               isINT4Conv);
-      if (isINT4Conv) {
-        tpu::compact_coeff_for_int4(data_i8, filter_shape);
-      }
     } else {
       tpu::reshape_coeff_for_3ic(filter_i8, filter_shape, use_3ic_optimize,
                                  isINT4Conv);
@@ -181,27 +163,11 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     filter_shape = {1, attr.oc, 1, attr.kh * attr.kw};
   }
 
-  if (merge == false) {
-    auto stype = module::getStorageType(op.getFilter());
-    auto new_type = RankedTensorType::get(filter_shape, stype);
-    auto new_op =
-        top::WeightOp::create(op, "filter_reorderd", *filter_i8, new_type);
-    op->setOperand(1, new_op);
-    if (attr.has_bias) {
-      auto elem_type = module::getStorageType(op.getBias());
-      auto bias_type = RankedTensorType::get({1, attr.oc, 1, 1}, elem_type);
-      op.getBias().setType(bias_type);
-    }
-    return success();
-  }
-  // auto filter_data = (strideh_gt_15 || stridew_gt_15) == true ? data_i8 :
-  // filter_i8;
-  if (!(strideh_gt_15 || stridew_gt_15)) {
-    tpu::reshape_coeff_for_broadcast_channel(filter_i8, filter_shape, false,
-                                             isINT4Conv);
-    if (isINT4Conv) {
-      tpu::compact_coeff_for_int4(filter_i8, filter_shape);
-    }
+  auto filter_data = (stride_hw_gt_15 == true) ? data_i8 : filter_i8;
+  tpu::reshape_coeff_for_broadcast_channel(filter_data, filter_shape, false,
+                                           isINT4Conv);
+  if (isINT4Conv) {
+    tpu::compact_coeff_for_int4(filter_data, filter_shape);
   }
 
   int64_t new_oc = filter_shape[1];
@@ -221,36 +187,40 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   }
 
   // requant
-  auto qtype = module::getUniformQuantizedType(op.getOutput());
-  int32_t out_zp = qtype.getZeroPoint();
-  auto quant_data = std::make_shared<std::vector<int32_t>>(attr.oc * 3, 0);
-  auto m_data = module::getI64Array(op.getMultiplier(), attr.oc, 1);
-  auto r_data = module::getI64Array(op.getRshift(), attr.oc, 0);
-  int64_t quant_w_size = 0;
-  bool align = true;
-  if (module::isBM1686()) {
-    align = false;
-    quant_w_size = 2;
-    for (int i = 0; i < attr.oc; i++) {
-      quant_data->at(i * 2) = m_data->at(i);
-      quant_data->at(i * 2 + 1) =
-          (int32_t)(((-(int32_t)r_data->at(i)) & 0x000000ff) |
-                    ((out_zp & 0x0000ffff) << 16));
+  int64_t quant_w_bytes = 0;
+  std::vector<int64_t> quant_shape;
+  std::shared_ptr<std::vector<int32_t>> quant_data = nullptr;
+  if(merge_with_requant){
+    auto qtype = module::getUniformQuantizedType(op.getOutput());
+    int32_t out_zp = qtype.getZeroPoint();
+    quant_data = std::make_shared<std::vector<int32_t>>(attr.oc * 3, 0);
+    auto m_data = module::getI64Array(op.getMultiplier(), attr.oc, 1);
+    auto r_data = module::getI64Array(op.getRshift(), attr.oc, 0);
+    int64_t quant_w_size = 0;
+    bool align = true;
+    if (module::isBM1686()) {
+      align = false;
+      quant_w_size = 2;
+      for (int i = 0; i < attr.oc; i++) {
+        quant_data->at(i * 2) = m_data->at(i);
+        quant_data->at(i * 2 + 1) =
+            (int32_t)(((-(int32_t)r_data->at(i)) & 0x000000ff) |
+                      ((out_zp & 0x0000ffff) << 16));
+      }
+    } else {
+      quant_w_size = 3;
+      for (int i = 0; i < attr.oc; i++) {
+        quant_data->at(i * 3) = m_data->at(i);
+        quant_data->at(i * 3 + 1) = -r_data->at(i);
+        quant_data->at(i * 3 + 2) = out_zp;
+      }
     }
-  } else {
-    quant_w_size = 3;
-    for (int i = 0; i < attr.oc; i++) {
-      quant_data->at(i * 3) = m_data->at(i);
-      quant_data->at(i * 3 + 1) = -r_data->at(i);
-      quant_data->at(i * 3 + 2) = out_zp;
-    }
+    quant_shape = {1, attr.oc, 1, quant_w_size};
+    tpu::reshape_coeff_for_broadcast_channel(quant_data, quant_shape, align,
+                                             isINT4Conv);
+    assert(new_oc == quant_shape[1]);
+    quant_w_bytes = quant_shape[3] * sizeof(int32_t);
   }
-
-  std::vector<int64_t> quant_shape = {1, attr.oc, 1, quant_w_size};
-  tpu::reshape_coeff_for_broadcast_channel(quant_data, quant_shape, align,
-                                           isINT4Conv);
-  assert(new_oc == quant_shape[1]);
-  int64_t quant_w_bytes = quant_shape[3] * sizeof(int32_t);
 
   // merge
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
@@ -276,14 +246,14 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     coeff_shape[3] <<= 1;
   for (int i = 0; i < new_oc; i++) {
     auto coeff_ptr = new_coeff->data() + i * merge_w;
-    auto quant_ptr = quant_data->data() + i * quant_shape[3];
     auto bias_ptr =
         attr.has_bias ? (bias_new->data() + i * bias_shape[3]) : nullptr;
-    auto filter_ptr = (strideh_gt_15 || stridew_gt_15) == true
-                          ? data_i8->data() + i * filter_shape[3]
-                          : filter_i8->data() + i * filter_shape[3];
+    auto filter_ptr = filter_data->data() + i * filter_shape[3];
     // copy quant
-    memcpy(coeff_ptr + quant_offset, quant_ptr, quant_w_bytes);
+    if(merge_with_requant) {
+      auto quant_ptr = quant_data->data() + i * quant_shape[3];
+      memcpy(coeff_ptr + quant_offset, quant_ptr, quant_w_bytes);
+    }
     if (attr.has_bias) {
       memcpy(coeff_ptr + bias_offset, bias_ptr, bias_w_bytes);
     }
@@ -308,7 +278,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
   op->removeAttr("rshift");
   op->removeAttr("multiplier");
-  op->setAttr("coeff_merged", rewriter.getBoolAttr(true));
+  op->setAttr("coeff_merged", rewriter.getBoolAttr(merge));
   op->setOperand(1, coeff_op);
   auto none = module::getNoneOp(op);
   op->setOperand(2, none.getResult());
@@ -775,12 +745,15 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   common.use_3ic_optimize = getUse_3icOptimize();
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
-    if (getCoeffMerged()) {
+    auto out_etype = module::getStorageType(getOutput());
+    if (out_etype.isUnsignedInteger()) {
+      common.if_relu = true;
+    }
+    if (out_etype.isInteger(32)){
+      bool coeff_merge = getCoeffMerged();
+      spec.merge_coeff = coeff_merge ? 1 : 0;
+    } else {
       spec.merge_coeff = 2;
-      auto out_etype = module::getStorageType(getOutput());
-      if (out_etype.isUnsignedInteger()) {
-        common.if_relu = true;
-      }
     }
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
@@ -890,18 +863,19 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   common.use_3ic_optimize = getUse_3icOptimize();
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
-    if (getCoeffMerged()) {
+    common.ipad_value = in_qtype.getZeroPoint();
+    common.is_asym = true;
+    auto out_etype = module::getStorageType(getOutput());
+    common.if_relu = out_etype.isUnsignedInteger();
+    if (out_etype.isInteger(32)){
+      bool coeff_merge = getCoeffMerged();
+      p.spec.merge_coeff = coeff_merge ? 1 : 0;
+      p.spec.with_requant = 0;
+    } else {
       p.spec.merge_coeff = 2;
       p.spec.with_requant = 1;
-      auto out_etype = module::getStorageType(getOutput());
-      if (out_etype.isUnsignedInteger()) {
-        common.if_relu = true;
-      }
     }
-    common.is_asym = true;
-    common.ipad_value = in_qtype.getZeroPoint();
   }
-
   BM168x::call_local_func("backend_api_conv_local", &p, sizeof(p), &sec_info,
                           input_spec->data(), output_spec->data());
 }
@@ -949,16 +923,19 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   common.use_3ic_optimize = getUse_3icOptimize();
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
-    if (getCoeffMerged()) {
+    common.ipad_value = in_qtype.getZeroPoint();
+    common.is_asym = true;
+    auto out_etype = module::getStorageType(getOutput());
+    common.if_relu = out_etype.isUnsignedInteger();
+    if (out_etype.isInteger(32)){
+      bool coeff_merge = getCoeffMerged();
+      param.spec.merge_coeff = coeff_merge ? 1 : 0;
+      param.spec.with_requant = 0;
+    } else {
       param.spec.merge_coeff = 2;
       param.spec.with_requant = 1;
-      auto out_etype = module::getStorageType(getOutput());
-      common.if_relu = out_etype.isUnsignedInteger();
     }
-    common.is_asym = true;
-    common.ipad_value = in_qtype.getZeroPoint();
   }
-
   param.spec.reference_id = get_tensor_id(op->getResult(0));
   param.spec.concat_c = attr.oc;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
@@ -998,15 +975,17 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
   common.use_3ic_optimize = getUse_3icOptimize();
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
-    if (getCoeffMerged()) {
-      spec.merge_coeff = 2;
-      auto out_etype = module::getStorageType(getOutput());
-      common.if_relu = out_etype.isUnsignedInteger();
-    }
-    common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
+    common.is_asym = true;
+    auto out_etype = module::getStorageType(getOutput());
+    common.if_relu = out_etype.isUnsignedInteger();
+    if (out_etype.isInteger(32)){
+      bool coeff_merge = getCoeffMerged();
+      spec.merge_coeff = coeff_merge ? 1 : 0;
+    } else {
+      spec.merge_coeff = 2;
+    }
   }
-
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
