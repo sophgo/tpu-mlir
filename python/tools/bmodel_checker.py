@@ -425,7 +425,7 @@ def check_data(tdb, tensors, ref_data, context):
             ErrorMsg.Info(
                 str(e),
                 json.dumps(t_info),
-                tdb.get_context(ASM_CONTEXT_LENGTH),
+                tdb.get_asm_context(ASM_CONTEXT_LENGTH),
                 *(tensor_des.record[x] for x in info),
             ),
         )
@@ -491,10 +491,10 @@ class Checker:
         tdb = Tdb()
         tdb.enable_message = False  # disable message
         tdb.load_bmodel(self.bmodel_file)
-        merge_instruction = tdb.CONTEXT.disassembler.merge_instruction
+
         # improve this code
-        tdb.CONTEXT.disassembler.merge_instruction = self.tensor_loc.merge_cmd(
-            merge_instruction
+        tdb.context.decoder.merge_instruction = self.tensor_loc.merge_cmd(
+            tdb.context.decoder.merge_instruction
         )
 
         tdb.start()
@@ -515,7 +515,7 @@ class Checker:
             tdb.next()
 
             _, tensor_record = bp
-            vf = check_data(tdb, tensor_record, self.ref_data, tdb.CONTEXT)
+            vf = check_data(tdb, tensor_record, self.ref_data, tdb.context)
 
             for st, tr in zip(vf, tensor_record):
                 info = (

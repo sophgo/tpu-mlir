@@ -21,10 +21,26 @@ __all__ = ["InsBase", "TIUBase", "DMABase", "NamedDict", "MType", "DType", "Scal
 _TABLE = 2 ** np.arange(64, dtype=np.uint64)
 
 
-def packbits(arr):
+def packbits1(arr):
     if arr.size > 64:
         return 0
     return int(arr.dot(_TABLE[: arr.size]))
+
+
+def packbits2(arr):
+    if arr.size > 64:
+        return 0
+    return np.bitwise_or.reduce(np.left_shift(arr, np.arange(arr.size)))
+
+
+packbits = packbits1
+
+# Please improve this function.
+# It is called many times and it should be super fast.
+def decode_reg(buffer, des_reg):
+    bits_sec = np.split(buffer, des_reg["high_bit"])  # slow
+    value = (packbits(x) for x in bits_sec)  # slow
+    return OrderedDict(zip(des_reg["fields"], value))
 
 
 # ------------------------------------------------------------
