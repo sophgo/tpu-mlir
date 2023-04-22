@@ -38,7 +38,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # ONNX Test Case, Alphabetically
             #########################################
-            # case: (test,   bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
+            # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
             "Abs":          (self.test_Abs,           N, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y),
             "AddBcast":     (self.test_AddBcast,      Y, Y, Y, N),
@@ -83,7 +83,7 @@ class ONNX_IR_TESTER(object):
             "Expand":       (self.test_Expand,        N, Y, Y, Y),
             "Expand2":      (self.test_Expand2,       N, Y, Y, Y),
             "Floor":        (self.test_floor,         Y, Y, Y, N),
-            "Gather":       (self.test_Gather,        N, Y, N, Y),
+            "Gather":       (self.test_Gather,        N, Y, Y, Y),
             # "Gather2":      (self.test_Gather2,     N, Y, N, Y),
             "Gemm":         (self.test_Gemm,          Y, Y, Y, Y),
             "GroupFC":      (self.test_GroupFC,       N, Y, Y, Y),
