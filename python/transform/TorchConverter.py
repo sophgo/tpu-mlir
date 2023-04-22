@@ -655,8 +655,6 @@ class TorchConverter(BaseConverter):
             if not isinstance(data, str):
                 self.addWeight(name, np.array([data], dtype=np.float32))
         else:
-            if name == '39':
-                data = np.array(-10000)
             self.addWeight(name, data)
 
     def convert_list_construct(self, torch_node: TorchNode):
