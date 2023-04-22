@@ -35,6 +35,7 @@ if [ "$1" = "RELEASE" ]; then
   # strip mlir tools
   pushd $INSTALL_PATH
   find ./ -name "*.so" | xargs strip
+  ls bin/* | xargs strip
   find ./ -name "*.a" | xargs rm
   popd
 fi

@@ -35,6 +35,7 @@ export PATH=${TPUC_ROOT}/python/samples:$PATH
 export LD_LIBRARY_PATH=$TPUC_ROOT/lib:$LD_LIBRARY_PATH
 export PYTHONPATH=${TPUC_ROOT}/python:$PYTHONPATH
 export MODEL_ZOO_PATH=${TPUC_ROOT}/../model-zoo
+export REGRESSION_PATH=${TPUC_ROOT}/regression
 //MY_CODE_STREAM
 # ------------------------------------------------------------------------------
 
