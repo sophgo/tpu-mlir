@@ -6,6 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
+#ifdef GET_INTRINSIC_ENUM_VALUES
 // Enum values for intrinsics
     abs = 1,                                       // llvm.abs
     addressofreturnaddress,                    // llvm.addressofreturnaddress
@@ -19,6 +20,7 @@
     call_preallocated_arg,                     // llvm.call.preallocated.arg
     call_preallocated_setup,                   // llvm.call.preallocated.setup
     call_preallocated_teardown,                // llvm.call.preallocated.teardown
+    callbr_landingpad,                         // llvm.callbr.landingpad
     canonicalize,                              // llvm.canonicalize
     ceil,                                      // llvm.ceil
     clear_cache,                               // llvm.clear_cache
@@ -61,7 +63,6 @@
     ctlz,                                      // llvm.ctlz
     ctpop,                                     // llvm.ctpop
     cttz,                                      // llvm.cttz
-    dbg_addr,                                  // llvm.dbg.addr
     dbg_assign,                                // llvm.dbg.assign
     dbg_declare,                               // llvm.dbg.declare
     dbg_label,                                 // llvm.dbg.label
@@ -138,6 +139,8 @@
     experimental_patchpoint_void,              // llvm.experimental.patchpoint.void
     experimental_stackmap,                     // llvm.experimental.stackmap
     experimental_stepvector,                   // llvm.experimental.stepvector
+    experimental_vector_deinterleave2,         // llvm.experimental.vector.deinterleave2
+    experimental_vector_interleave2,           // llvm.experimental.vector.interleave2
     experimental_vector_reverse,               // llvm.experimental.vector.reverse
     experimental_vector_splice,                // llvm.experimental.vector.splice
     experimental_vp_splice,                    // llvm.experimental.vp.splice
@@ -167,6 +170,7 @@
     instrprof_cover,                           // llvm.instrprof.cover
     instrprof_increment,                       // llvm.instrprof.increment
     instrprof_increment_step,                  // llvm.instrprof.increment.step
+    instrprof_timestamp,                       // llvm.instrprof.timestamp
     instrprof_value_profile,                   // llvm.instrprof.value.profile
     invariant_end,                             // llvm.invariant.end
     invariant_start,                           // llvm.invariant.start
@@ -337,6 +341,7 @@
     vector_reduce_umax,                        // llvm.vector.reduce.umax
     vector_reduce_umin,                        // llvm.vector.reduce.umin
     vector_reduce_xor,                         // llvm.vector.reduce.xor
+    vp_abs,                                    // llvm.vp.abs
     vp_add,                                    // llvm.vp.add
     vp_and,                                    // llvm.vp.and
     vp_ashr,                                   // llvm.vp.ashr
@@ -344,7 +349,9 @@
     vp_bswap,                                  // llvm.vp.bswap
     vp_ceil,                                   // llvm.vp.ceil
     vp_copysign,                               // llvm.vp.copysign
+    vp_ctlz,                                   // llvm.vp.ctlz
     vp_ctpop,                                  // llvm.vp.ctpop
+    vp_cttz,                                   // llvm.vp.cttz
     vp_fabs,                                   // llvm.vp.fabs
     vp_fadd,                                   // llvm.vp.fadd
     vp_fcmp,                                   // llvm.vp.fcmp
@@ -415,4 +422,16 @@
     write_register,                            // llvm.write_register
     xray_customevent,                          // llvm.xray.customevent
     xray_typedevent,                           // llvm.xray.typedevent
-    num_intrinsics = 11213
+    num_intrinsics = 11645
+#endif
+
+// llvm::Intrinsic::IITDescriptor::ArgKind
+#ifdef GET_INTRINSIC_ARGKIND
+    AK_Any = 0,
+    AK_AnyInteger = 1,
+    AK_AnyFloat = 2,
+    AK_AnyVector = 3,
+    AK_AnyPointer = 4,
+    AK_MatchType = 7,
+#endif
+

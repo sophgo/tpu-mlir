@@ -11,6 +11,7 @@ class FunctionOpInterface;
 namespace detail {
 struct FunctionOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::Type (*getFunctionType)(const Concept *impl, ::mlir::Operation *);
     void (*setFunctionTypeAttr)(const Concept *impl, ::mlir::Operation *, ::mlir::TypeAttr);
     ::mlir::ArrayAttr (*getArgAttrsAttr)(const Concept *impl, ::mlir::Operation *);
@@ -24,6 +25,13 @@ struct FunctionOpInterfaceInterfaceTraits {
     ::mlir::Type (*cloneTypeWith)(const Concept *impl, ::mlir::Operation *, ::mlir::TypeRange, ::mlir::TypeRange);
     ::mlir::LogicalResult (*verifyBody)(const Concept *impl, ::mlir::Operation *);
     ::mlir::LogicalResult (*verifyType)(const Concept *impl, ::mlir::Operation *);
+    /// The base classes of this interface.
+    const ::mlir::SymbolOpInterface::Concept *implSymbolOpInterface = nullptr;
+
+    void initializeInterfaceConcept(::mlir::detail::InterfaceMap &interfaceMap) {
+      implSymbolOpInterface = interfaceMap.lookup<::mlir::SymbolOpInterface>();
+      assert(implSymbolOpInterface && "`::mlir::FunctionOpInterface` expected its base interface `::mlir::SymbolOpInterface` to be registered");
+    }
   };
   template<typename ConcreteOp>
   class Model : public Concept {
@@ -133,14 +141,6 @@ public:
   /// Verify the type attribute of the function for derived op-specific
   /// invariants.
   ::mlir::LogicalResult verifyType();
-
-    //===------------------------------------------------------------------===//
-    // Name
-    //===------------------------------------------------------------------===//
-
-    /// Return the name of the function.
-    StringRef getName() { return SymbolTable::getSymbolName(*this); }
-  
 
     /// Block list iterator types.
     using BlockListType = Region::BlockListType;
@@ -551,7 +551,68 @@ public:
       assert(index < (*this).getNumResults() && "invalid result number");
       return function_interface_impl::getResultAttrDict(this->getOperation(), index);
     }
-  };
+  //===----------------------------------------------------------------===//
+  // Inherited from ::mlir::SymbolOpInterface
+  //===----------------------------------------------------------------===//
+
+  operator ::mlir::SymbolOpInterface () const {
+    return ::mlir::SymbolOpInterface(*this, getImpl()->implSymbolOpInterface);
+  }
+
+  /// Returns the name of this symbol.
+  StringAttr getNameAttr();
+  /// Sets the name of this symbol.
+  void setName(::mlir::StringAttr name);
+  /// Gets the visibility of this symbol.
+  mlir::SymbolTable::Visibility getVisibility();
+  /// Returns true if this symbol has nested visibility.
+  bool isNested();
+  /// Returns true if this symbol has private visibility.
+  bool isPrivate();
+  /// Returns true if this symbol has public visibility.
+  bool isPublic();
+  /// Sets the visibility of this symbol.
+  void setVisibility(mlir::SymbolTable::Visibility vis);
+  /// Sets the visibility of this symbol to be nested.
+  void setNested();
+  /// Sets the visibility of this symbol to be private.
+  void setPrivate();
+  /// Sets the visibility of this symbol to be public.
+  void setPublic();
+  /// Get all of the uses of the current symbol that are nested within the
+  /// given operation 'from'.
+  /// Note: See mlir::SymbolTable::getSymbolUses for more details.
+  ::std::optional<::mlir::SymbolTable::UseRange> getSymbolUses(::mlir::Operation * from);
+  /// Return if the current symbol is known to have no uses that are nested
+  /// within the given operation 'from'.
+  /// Note: See mlir::SymbolTable::symbolKnownUseEmpty for more details.
+  bool symbolKnownUseEmpty(::mlir::Operation * from);
+  /// Attempt to replace all uses of the current symbol with the provided
+  /// symbol 'newSymbol' that are nested within the given operation 'from'.
+  /// Note: See mlir::SymbolTable::replaceAllSymbolUses for more details.
+  ::mlir::LogicalResult replaceAllSymbolUses(::mlir::StringAttr newSymbol, ::mlir::Operation * from);
+  /// Returns true if this operation optionally defines a symbol based on the
+  /// presence of the symbol name.
+  bool isOptionalSymbol();
+  /// Returns true if this operation can be discarded if it has no remaining
+  /// symbol uses.
+  bool canDiscardOnUseEmpty();
+  /// Returns true if this operation is a declaration of a symbol (as opposed
+  /// to a definition).
+  bool isDeclaration();
+
+    using Visibility = mlir::SymbolTable::Visibility;
+
+    /// Convenience version of `getNameAttr` that returns a StringRef.
+    StringRef getName() {
+      return getNameAttr().getValue();
+    }
+
+    /// Convenience version of `setName` that take a StringRef.
+    void setName(StringRef name) {
+      setName(StringAttr::get((*this)->getContext(), name));
+    }
+};
 namespace detail {
   template <typename ConcreteOp>
   struct FunctionOpInterfaceTrait : public ::mlir::OpInterface<FunctionOpInterface, detail::FunctionOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {

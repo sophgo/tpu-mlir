@@ -100,35 +100,67 @@ namespace pdl {
 // ::mlir::pdl::ApplyNativeConstraintOp declarations
 //===----------------------------------------------------------------------===//
 
-class ApplyNativeConstraintOpAdaptor {
-public:
-  ApplyNativeConstraintOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  ApplyNativeConstraintOpAdaptor(ApplyNativeConstraintOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange getArgs();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::StringAttr getNameAttr();
-  ::llvm::StringRef getName();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class ApplyNativeConstraintOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  ApplyNativeConstraintOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
+};
+} // namespace detail
+template <typename RangeT>
+class ApplyNativeConstraintOpGenericAdaptor : public detail::ApplyNativeConstraintOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::ApplyNativeConstraintOpGenericAdaptorBase;
+public:
+  ApplyNativeConstraintOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  RangeT getArgs() {
+    return getODSOperands(0);
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class ApplyNativeConstraintOpAdaptor : public ApplyNativeConstraintOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using ApplyNativeConstraintOpGenericAdaptor::ApplyNativeConstraintOpGenericAdaptor;
+  ApplyNativeConstraintOpAdaptor(ApplyNativeConstraintOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class ApplyNativeConstraintOp : public ::mlir::Op<ApplyNativeConstraintOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::HasParent<pdl::PatternOp>::Impl, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = ApplyNativeConstraintOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = ApplyNativeConstraintOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getNameAttrName() {
@@ -171,7 +203,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 1 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:
@@ -187,35 +219,67 @@ namespace pdl {
 // ::mlir::pdl::ApplyNativeRewriteOp declarations
 //===----------------------------------------------------------------------===//
 
-class ApplyNativeRewriteOpAdaptor {
-public:
-  ApplyNativeRewriteOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  ApplyNativeRewriteOpAdaptor(ApplyNativeRewriteOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange getArgs();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::StringAttr getNameAttr();
-  ::llvm::StringRef getName();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class ApplyNativeRewriteOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  ApplyNativeRewriteOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
+};
+} // namespace detail
+template <typename RangeT>
+class ApplyNativeRewriteOpGenericAdaptor : public detail::ApplyNativeRewriteOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::ApplyNativeRewriteOpGenericAdaptorBase;
+public:
+  ApplyNativeRewriteOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  RangeT getArgs() {
+    return getODSOperands(0);
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class ApplyNativeRewriteOpAdaptor : public ApplyNativeRewriteOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using ApplyNativeRewriteOpGenericAdaptor::ApplyNativeRewriteOpGenericAdaptor;
+  ApplyNativeRewriteOpAdaptor(ApplyNativeRewriteOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class ApplyNativeRewriteOp : public ::mlir::Op<ApplyNativeRewriteOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::HasParent<pdl::RewriteOp>::Impl, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = ApplyNativeRewriteOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = ApplyNativeRewriteOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getNameAttrName() {
@@ -257,7 +321,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 1 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:
@@ -273,35 +337,68 @@ namespace pdl {
 // ::mlir::pdl::AttributeOp declarations
 //===----------------------------------------------------------------------===//
 
-class AttributeOpAdaptor {
-public:
-  AttributeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  AttributeOpAdaptor(AttributeOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getValueType();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::Attribute getValueAttr();
-  ::std::optional<::mlir::Attribute> getValue();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class AttributeOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  AttributeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::Attribute getValueAttr();
+  ::std::optional<::mlir::Attribute> getValue();
+};
+} // namespace detail
+template <typename RangeT>
+class AttributeOpGenericAdaptor : public detail::AttributeOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::AttributeOpGenericAdaptorBase;
+public:
+  AttributeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getValueType() {
+    auto operands = getODSOperands(0);
+    return operands.empty() ? ValueT{} : (*operands.begin());
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class AttributeOpAdaptor : public AttributeOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using AttributeOpGenericAdaptor::AttributeOpGenericAdaptor;
+  AttributeOpAdaptor(AttributeOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class AttributeOp : public ::mlir::Op<AttributeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::pdl::AttributeType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = AttributeOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = AttributeOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("value")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getValueAttrName() {
@@ -345,7 +442,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 1 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:
@@ -361,30 +458,62 @@ namespace pdl {
 // ::mlir::pdl::EraseOp declarations
 //===----------------------------------------------------------------------===//
 
-class EraseOpAdaptor {
-public:
-  EraseOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  EraseOpAdaptor(EraseOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getOpValue();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class EraseOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  EraseOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+};
+} // namespace detail
+template <typename RangeT>
+class EraseOpGenericAdaptor : public detail::EraseOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::EraseOpGenericAdaptorBase;
+public:
+  EraseOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getOpValue() {
+    return (*getODSOperands(0).begin());
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class EraseOpAdaptor : public EraseOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using EraseOpGenericAdaptor::EraseOpGenericAdaptor;
+  EraseOpAdaptor(EraseOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class EraseOp : public ::mlir::Op<EraseOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::HasParent<pdl::RewriteOp>::Impl, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = EraseOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = EraseOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     return {};
   }
@@ -419,30 +548,63 @@ namespace pdl {
 // ::mlir::pdl::OperandOp declarations
 //===----------------------------------------------------------------------===//
 
-class OperandOpAdaptor {
-public:
-  OperandOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  OperandOpAdaptor(OperandOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getValueType();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class OperandOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  OperandOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+};
+} // namespace detail
+template <typename RangeT>
+class OperandOpGenericAdaptor : public detail::OperandOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::OperandOpGenericAdaptorBase;
+public:
+  OperandOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getValueType() {
+    auto operands = getODSOperands(0);
+    return operands.empty() ? ValueT{} : (*operands.begin());
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class OperandOpAdaptor : public OperandOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using OperandOpGenericAdaptor::OperandOpGenericAdaptor;
+  OperandOpAdaptor(OperandOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class OperandOp : public ::mlir::Op<OperandOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::pdl::ValueType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::HasParent<pdl::PatternOp>::Impl, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = OperandOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = OperandOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     return {};
   }
@@ -480,30 +642,63 @@ namespace pdl {
 // ::mlir::pdl::OperandsOp declarations
 //===----------------------------------------------------------------------===//
 
-class OperandsOpAdaptor {
-public:
-  OperandsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  OperandsOpAdaptor(OperandsOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getValueType();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class OperandsOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  OperandsOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+};
+} // namespace detail
+template <typename RangeT>
+class OperandsOpGenericAdaptor : public detail::OperandsOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::OperandsOpGenericAdaptorBase;
+public:
+  OperandsOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getValueType() {
+    auto operands = getODSOperands(0);
+    return operands.empty() ? ValueT{} : (*operands.begin());
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class OperandsOpAdaptor : public OperandsOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using OperandsOpGenericAdaptor::OperandsOpGenericAdaptor;
+  OperandsOpAdaptor(OperandsOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class OperandsOp : public ::mlir::Op<OperandsOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::pdl::RangeType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::HasParent<pdl::PatternOp>::Impl, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = OperandsOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = OperandsOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     return {};
   }
@@ -541,39 +736,77 @@ namespace pdl {
 // ::mlir::pdl::OperationOp declarations
 //===----------------------------------------------------------------------===//
 
-class OperationOpAdaptor {
+namespace detail {
+class OperationOpGenericAdaptorBase {
+protected:
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::std::optional<::mlir::OperationName> odsOpName;
 public:
-  OperationOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  OperationOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions = {});
 
-  OperationOpAdaptor(OperationOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange getOperandValues();
-  ::mlir::ValueRange getAttributeValues();
-  ::mlir::ValueRange getTypeValues();
-  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::StringAttr getOpNameAttr();
   ::std::optional< ::llvm::StringRef > getOpName();
   ::mlir::ArrayAttr getAttributeValueNamesAttr();
   ::mlir::ArrayAttr getAttributeValueNames();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
+};
+} // namespace detail
+template <typename RangeT>
+class OperationOpGenericAdaptor : public detail::OperationOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::OperationOpGenericAdaptorBase;
+public:
+  OperationOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  RangeT getOperandValues() {
+    return getODSOperands(0);
+  }
+
+  RangeT getAttributeValues() {
+    return getODSOperands(1);
+  }
+
+  RangeT getTypeValues() {
+    return getODSOperands(2);
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
 private:
-  ::mlir::ValueRange odsOperands;
-  ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
-  ::std::optional<::mlir::OperationName> odsOpName;
+  RangeT odsOperands;
+};
+class OperationOpAdaptor : public OperationOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using OperationOpGenericAdaptor::OperationOpGenericAdaptor;
+  OperationOpAdaptor(OperationOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class OperationOp : public ::mlir::Op<OperationOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::pdl::OperationType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = OperationOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = OperationOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("attributeValueNames"), ::llvm::StringRef("opName"), ::llvm::StringRef("operand_segment_sizes")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getAttributeValueNamesAttrName() {
@@ -623,7 +856,7 @@ public:
   void setOpName(::std::optional<::llvm::StringRef> attrValue);
   void setAttributeValueNamesAttr(::mlir::ArrayAttr attr);
   ::mlir::Attribute removeOpNameAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Optional<StringRef> name = std::nullopt, ValueRange operandValues = std::nullopt, ArrayRef<StringRef> attrNames = std::nullopt, ValueRange attrValues = std::nullopt, ValueRange resultTypes = std::nullopt);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, std::optional<StringRef> name = std::nullopt, ValueRange operandValues = std::nullopt, ArrayRef<StringRef> attrNames = std::nullopt, ValueRange attrValues = std::nullopt, ValueRange resultTypes = std::nullopt);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type op, /*optional*/::mlir::StringAttr opName, ::mlir::ValueRange operandValues, ::mlir::ValueRange attributeValues, ::mlir::ArrayAttr attributeValueNames, ::mlir::ValueRange typeValues);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::StringAttr opName, ::mlir::ValueRange operandValues, ::mlir::ValueRange attributeValues, ::mlir::ArrayAttr attributeValueNames, ::mlir::ValueRange typeValues);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -640,7 +873,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 3 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:
@@ -665,15 +898,16 @@ namespace pdl {
 // ::mlir::pdl::PatternOp declarations
 //===----------------------------------------------------------------------===//
 
-class PatternOpAdaptor {
+namespace detail {
+class PatternOpGenericAdaptorBase {
+protected:
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::std::optional<::mlir::OperationName> odsOpName;
 public:
-  PatternOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  PatternOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  PatternOpAdaptor(PatternOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getBenefitAttr();
   uint16_t getBenefit();
@@ -681,22 +915,50 @@ public:
   ::std::optional< ::llvm::StringRef > getSymName();
   ::mlir::Region &getBodyRegion();
   ::mlir::RegionRange getRegions();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
+};
+} // namespace detail
+template <typename RangeT>
+class PatternOpGenericAdaptor : public detail::PatternOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::PatternOpGenericAdaptorBase;
+public:
+  PatternOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
 private:
-  ::mlir::ValueRange odsOperands;
-  ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
-  ::std::optional<::mlir::OperationName> odsOpName;
+  RangeT odsOperands;
+};
+class PatternOpAdaptor : public PatternOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using PatternOpGenericAdaptor::PatternOpGenericAdaptor;
+  PatternOpAdaptor(PatternOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class PatternOp : public ::mlir::Op<PatternOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::SingleBlock, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsIsolatedFromAbove, ::mlir::SymbolOpInterface::Trait, ::mlir::OpAsmOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = PatternOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = PatternOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("benefit"), ::llvm::StringRef("sym_name")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getBenefitAttrName() {
@@ -733,7 +995,7 @@ public:
   void setSymNameAttr(::mlir::StringAttr attr);
   void setSymName(::std::optional<::llvm::StringRef> attrValue);
   ::mlir::Attribute removeSymNameAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Optional<uint16_t> benefit = 1, Optional<StringRef> name = std::nullopt);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, std::optional<uint16_t> benefit = 1, std::optional<StringRef> name = std::nullopt);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::IntegerAttr benefit, /*optional*/::mlir::StringAttr sym_name);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::IntegerAttr benefit, /*optional*/::mlir::StringAttr sym_name);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, uint16_t benefit, /*optional*/::mlir::StringAttr sym_name);
@@ -753,7 +1015,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 2 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:
@@ -778,30 +1040,62 @@ namespace pdl {
 // ::mlir::pdl::RangeOp declarations
 //===----------------------------------------------------------------------===//
 
-class RangeOpAdaptor {
-public:
-  RangeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  RangeOpAdaptor(RangeOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange getArguments();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class RangeOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  RangeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+};
+} // namespace detail
+template <typename RangeT>
+class RangeOpGenericAdaptor : public detail::RangeOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::RangeOpGenericAdaptorBase;
+public:
+  RangeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  RangeT getArguments() {
+    return getODSOperands(0);
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class RangeOpAdaptor : public RangeOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using RangeOpGenericAdaptor::RangeOpGenericAdaptor;
+  RangeOpAdaptor(RangeOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class RangeOp : public ::mlir::Op<RangeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::pdl::RangeType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::HasParent<pdl::RewriteOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::ConditionallySpeculatable::Trait, ::mlir::OpTrait::AlwaysSpeculatableImplTrait, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = RangeOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = RangeOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     return {};
   }
@@ -838,35 +1132,74 @@ namespace pdl {
 // ::mlir::pdl::ReplaceOp declarations
 //===----------------------------------------------------------------------===//
 
-class ReplaceOpAdaptor {
-public:
-  ReplaceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  ReplaceOpAdaptor(ReplaceOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getOpValue();
-  ::mlir::Value getReplOperation();
-  ::mlir::ValueRange getReplValues();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class ReplaceOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  ReplaceOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+};
+} // namespace detail
+template <typename RangeT>
+class ReplaceOpGenericAdaptor : public detail::ReplaceOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::ReplaceOpGenericAdaptorBase;
+public:
+  ReplaceOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getOpValue() {
+    return (*getODSOperands(0).begin());
+  }
+
+  ValueT getReplOperation() {
+    auto operands = getODSOperands(1);
+    return operands.empty() ? ValueT{} : (*operands.begin());
+  }
+
+  RangeT getReplValues() {
+    return getODSOperands(2);
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class ReplaceOpAdaptor : public ReplaceOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using ReplaceOpGenericAdaptor::ReplaceOpGenericAdaptor;
+  ReplaceOpAdaptor(ReplaceOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class ReplaceOp : public ::mlir::Op<ReplaceOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::HasParent<pdl::RewriteOp>::Impl, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = ReplaceOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = ReplaceOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getOperandSegmentSizesAttrName() {
@@ -907,7 +1240,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 1 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:
@@ -923,35 +1256,67 @@ namespace pdl {
 // ::mlir::pdl::ResultOp declarations
 //===----------------------------------------------------------------------===//
 
-class ResultOpAdaptor {
-public:
-  ResultOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  ResultOpAdaptor(ResultOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getParent();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr getIndexAttr();
-  uint32_t getIndex();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class ResultOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  ResultOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::IntegerAttr getIndexAttr();
+  uint32_t getIndex();
+};
+} // namespace detail
+template <typename RangeT>
+class ResultOpGenericAdaptor : public detail::ResultOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::ResultOpGenericAdaptorBase;
+public:
+  ResultOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getParent() {
+    return (*getODSOperands(0).begin());
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class ResultOpAdaptor : public ResultOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using ResultOpGenericAdaptor::ResultOpGenericAdaptor;
+  ResultOpAdaptor(ResultOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class ResultOp : public ::mlir::Op<ResultOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::pdl::ValueType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::ConditionallySpeculatable::Trait, ::mlir::OpTrait::AlwaysSpeculatableImplTrait, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = ResultOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = ResultOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("index")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getIndexAttrName() {
@@ -995,7 +1360,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 1 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:
@@ -1011,35 +1376,67 @@ namespace pdl {
 // ::mlir::pdl::ResultsOp declarations
 //===----------------------------------------------------------------------===//
 
-class ResultsOpAdaptor {
-public:
-  ResultsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  ResultsOpAdaptor(ResultsOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getParent();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr getIndexAttr();
-  ::std::optional<uint32_t> getIndex();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class ResultsOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  ResultsOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::IntegerAttr getIndexAttr();
+  ::std::optional<uint32_t> getIndex();
+};
+} // namespace detail
+template <typename RangeT>
+class ResultsOpGenericAdaptor : public detail::ResultsOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::ResultsOpGenericAdaptorBase;
+public:
+  ResultsOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getParent() {
+    return (*getODSOperands(0).begin());
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class ResultsOpAdaptor : public ResultsOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using ResultsOpGenericAdaptor::ResultsOpGenericAdaptor;
+  ResultsOpAdaptor(ResultsOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class ResultsOp : public ::mlir::Op<ResultsOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::pdl::PDLType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::ConditionallySpeculatable::Trait, ::mlir::OpTrait::AlwaysSpeculatableImplTrait, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = ResultsOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = ResultsOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("index")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getIndexAttrName() {
@@ -1083,7 +1480,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 1 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:
@@ -1099,38 +1496,74 @@ namespace pdl {
 // ::mlir::pdl::RewriteOp declarations
 //===----------------------------------------------------------------------===//
 
-class RewriteOpAdaptor {
+namespace detail {
+class RewriteOpGenericAdaptorBase {
+protected:
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::std::optional<::mlir::OperationName> odsOpName;
 public:
-  RewriteOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  RewriteOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions = {});
 
-  RewriteOpAdaptor(RewriteOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getRoot();
-  ::mlir::ValueRange getExternalArgs();
-  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::StringAttr getNameAttr();
   ::std::optional< ::llvm::StringRef > getName();
   ::mlir::Region &getBodyRegion();
   ::mlir::RegionRange getRegions();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
+};
+} // namespace detail
+template <typename RangeT>
+class RewriteOpGenericAdaptor : public detail::RewriteOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::RewriteOpGenericAdaptorBase;
+public:
+  RewriteOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getRoot() {
+    auto operands = getODSOperands(0);
+    return operands.empty() ? ValueT{} : (*operands.begin());
+  }
+
+  RangeT getExternalArgs() {
+    return getODSOperands(1);
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
 private:
-  ::mlir::ValueRange odsOperands;
-  ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
-  ::std::optional<::mlir::OperationName> odsOpName;
+  RangeT odsOperands;
+};
+class RewriteOpAdaptor : public RewriteOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using RewriteOpGenericAdaptor::RewriteOpGenericAdaptor;
+  RewriteOpAdaptor(RewriteOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class RewriteOp : public ::mlir::Op<RewriteOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::HasParent<pdl::PatternOp>::Impl, ::mlir::OpTrait::NoTerminator, ::mlir::OpTrait::NoRegionArguments, ::mlir::OpTrait::SingleBlock, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsTerminator, ::mlir::OpAsmOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = RewriteOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = RewriteOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name"), ::llvm::StringRef("operand_segment_sizes")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getNameAttrName() {
@@ -1184,7 +1617,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 2 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:
@@ -1200,34 +1633,63 @@ namespace pdl {
 // ::mlir::pdl::TypeOp declarations
 //===----------------------------------------------------------------------===//
 
-class TypeOpAdaptor {
-public:
-  TypeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  TypeOpAdaptor(TypeOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::TypeAttr getConstantTypeAttr();
-  ::std::optional<::mlir::Type> getConstantType();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class TypeOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  TypeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::TypeAttr getConstantTypeAttr();
+  ::std::optional<::mlir::Type> getConstantType();
+};
+} // namespace detail
+template <typename RangeT>
+class TypeOpGenericAdaptor : public detail::TypeOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::TypeOpGenericAdaptorBase;
+public:
+  TypeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class TypeOpAdaptor : public TypeOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using TypeOpGenericAdaptor::TypeOpGenericAdaptor;
+  TypeOpAdaptor(TypeOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class TypeOp : public ::mlir::Op<TypeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::pdl::TypeType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = TypeOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = TypeOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("constantType")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getConstantTypeAttrName() {
@@ -1268,7 +1730,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 1 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:
@@ -1284,34 +1746,63 @@ namespace pdl {
 // ::mlir::pdl::TypesOp declarations
 //===----------------------------------------------------------------------===//
 
-class TypesOpAdaptor {
-public:
-  TypesOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  TypesOpAdaptor(TypesOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::ArrayAttr getConstantTypesAttr();
-  ::std::optional< ::mlir::ArrayAttr > getConstantTypes();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class TypesOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  TypesOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::ArrayAttr getConstantTypesAttr();
+  ::std::optional< ::mlir::ArrayAttr > getConstantTypes();
+};
+} // namespace detail
+template <typename RangeT>
+class TypesOpGenericAdaptor : public detail::TypesOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::TypesOpGenericAdaptorBase;
+public:
+  TypesOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class TypesOpAdaptor : public TypesOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using TypesOpGenericAdaptor::TypesOpGenericAdaptor;
+  TypesOpAdaptor(TypesOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class TypesOp : public ::mlir::Op<TypesOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::pdl::RangeType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = TypesOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = TypesOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("constantTypes")};
-    return ::llvm::makeArrayRef(attrNames);
+    return ::llvm::ArrayRef(attrNames);
   }
 
   ::mlir::StringAttr getConstantTypesAttrName() {
@@ -1351,7 +1842,7 @@ private:
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 1 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
+    return name.getAttributeNames()[index];
   }
 
 public:

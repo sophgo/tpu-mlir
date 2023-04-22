@@ -26,7 +26,6 @@ struct ConvOpQuantizationAttrStorage;
 class ConvOpQuantizationAttr : public ::mlir::Attribute::AttrBase<ConvOpQuantizationAttr, ::mlir::Attribute, detail::ConvOpQuantizationAttrStorage> {
 public:
   using Base::Base;
-public:
   static ConvOpQuantizationAttr get(::mlir::MLIRContext *context, int64_t input_zp, int64_t weight_zp);
   static constexpr ::llvm::StringLiteral getMnemonic() {
     return {"conv_quant"};
@@ -43,7 +42,6 @@ struct MatMulOpQuantizationAttrStorage;
 class MatMulOpQuantizationAttr : public ::mlir::Attribute::AttrBase<MatMulOpQuantizationAttr, ::mlir::Attribute, detail::MatMulOpQuantizationAttrStorage> {
 public:
   using Base::Base;
-public:
   static MatMulOpQuantizationAttr get(::mlir::MLIRContext *context, int64_t a_zp, int64_t b_zp);
   static constexpr ::llvm::StringLiteral getMnemonic() {
     return {"matmul_quant"};
@@ -60,7 +58,6 @@ struct PadOpQuantizationAttrStorage;
 class PadOpQuantizationAttr : public ::mlir::Attribute::AttrBase<PadOpQuantizationAttr, ::mlir::Attribute, detail::PadOpQuantizationAttrStorage> {
 public:
   using Base::Base;
-public:
   static PadOpQuantizationAttr get(::mlir::MLIRContext *context, int64_t input_zp);
   static constexpr ::llvm::StringLiteral getMnemonic() {
     return {"pad_quant"};
@@ -76,7 +73,6 @@ struct UnaryOpQuantizationAttrStorage;
 class UnaryOpQuantizationAttr : public ::mlir::Attribute::AttrBase<UnaryOpQuantizationAttr, ::mlir::Attribute, detail::UnaryOpQuantizationAttrStorage> {
 public:
   using Base::Base;
-public:
   static UnaryOpQuantizationAttr get(::mlir::MLIRContext *context, int64_t input_zp, int64_t output_zp);
   static constexpr ::llvm::StringLiteral getMnemonic() {
     return {"unary_quant"};

@@ -26,3 +26,11 @@ unsigned mlir::DataLayoutOpInterface::getTypeABIAlignment(::mlir::Type type, con
 unsigned mlir::DataLayoutOpInterface::getTypePreferredAlignment(::mlir::Type type, const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) {
       return getImpl()->getTypePreferredAlignment(type, dataLayout, params);
   }
+/// Returns the memory space used by the ABI computed using the relevant entries. The data layout object can be used for recursive queries.
+::mlir::Attribute mlir::DataLayoutOpInterface::getAllocaMemorySpace(::mlir::DataLayoutEntryInterface entry) {
+      return getImpl()->getAllocaMemorySpace(entry);
+  }
+/// Returns the natural stack alignment in bits computed using the relevant entries. The data layout object can be used for recursive queries.
+unsigned mlir::DataLayoutOpInterface::getStackAlignment(::mlir::DataLayoutEntryInterface entry) {
+      return getImpl()->getStackAlignment(entry);
+  }

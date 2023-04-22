@@ -26,6 +26,14 @@
 ::mlir::DataLayoutEntryListRef mlir::DataLayoutSpecInterface::getEntries() const {
       return getImpl()->getEntries(getImpl(), *this);
   }
+/// Returns the alloca memory space identifier.
+::mlir::StringAttr mlir::DataLayoutSpecInterface::getAllocaMemorySpaceIdentifier(::mlir::MLIRContext * context) const {
+      return getImpl()->getAllocaMemorySpaceIdentifier(getImpl(), *this, context);
+  }
+/// Returns the stack alignment identifier.
+::mlir::StringAttr mlir::DataLayoutSpecInterface::getStackAlignmentIdentifier(::mlir::MLIRContext * context) const {
+      return getImpl()->getStackAlignmentIdentifier(getImpl(), *this, context);
+  }
 /// Returns a copy of the entries related to a specific type class regardles of type parameters.
 ::mlir::DataLayoutEntryList mlir::DataLayoutSpecInterface::getSpecForType(::mlir::TypeID type) const {
       return getImpl()->getSpecForType(getImpl(), *this, type);

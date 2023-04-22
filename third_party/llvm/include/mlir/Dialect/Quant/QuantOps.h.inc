@@ -40,30 +40,62 @@ namespace quant {
 // ::mlir::quant::DequantizeCastOp declarations
 //===----------------------------------------------------------------------===//
 
-class DequantizeCastOpAdaptor {
-public:
-  DequantizeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  DequantizeCastOpAdaptor(DequantizeCastOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getArg();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class DequantizeCastOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  DequantizeCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+};
+} // namespace detail
+template <typename RangeT>
+class DequantizeCastOpGenericAdaptor : public detail::DequantizeCastOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::DequantizeCastOpGenericAdaptorBase;
+public:
+  DequantizeCastOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getArg() {
+    return (*getODSOperands(0).begin());
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class DequantizeCastOpAdaptor : public DequantizeCastOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using DequantizeCastOpGenericAdaptor::DequantizeCastOpGenericAdaptor;
+  DequantizeCastOpAdaptor(DequantizeCastOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class DequantizeCastOp : public ::mlir::Op<DequantizeCastOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::ConditionallySpeculatable::Trait, ::mlir::OpTrait::AlwaysSpeculatableImplTrait, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = DequantizeCastOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = DequantizeCastOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     return {};
   }
@@ -97,30 +129,62 @@ namespace quant {
 // ::mlir::quant::QuantizeCastOp declarations
 //===----------------------------------------------------------------------===//
 
-class QuantizeCastOpAdaptor {
-public:
-  QuantizeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  QuantizeCastOpAdaptor(QuantizeCastOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getArg();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class QuantizeCastOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  QuantizeCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+};
+} // namespace detail
+template <typename RangeT>
+class QuantizeCastOpGenericAdaptor : public detail::QuantizeCastOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::QuantizeCastOpGenericAdaptorBase;
+public:
+  QuantizeCastOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getArg() {
+    return (*getODSOperands(0).begin());
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class QuantizeCastOpAdaptor : public QuantizeCastOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using QuantizeCastOpGenericAdaptor::QuantizeCastOpGenericAdaptor;
+  QuantizeCastOpAdaptor(QuantizeCastOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class QuantizeCastOp : public ::mlir::Op<QuantizeCastOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::ConditionallySpeculatable::Trait, ::mlir::OpTrait::AlwaysSpeculatableImplTrait, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = QuantizeCastOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = QuantizeCastOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     return {};
   }
@@ -154,30 +218,62 @@ namespace quant {
 // ::mlir::quant::StorageCastOp declarations
 //===----------------------------------------------------------------------===//
 
-class StorageCastOpAdaptor {
-public:
-  StorageCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  StorageCastOpAdaptor(StorageCastOp op);
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value getArg();
-  ::mlir::ValueRange getOperands();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
+namespace detail {
+class StorageCastOpGenericAdaptorBase {
+protected:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+public:
+  StorageCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  ::mlir::DictionaryAttr getAttributes();
+};
+} // namespace detail
+template <typename RangeT>
+class StorageCastOpGenericAdaptor : public detail::StorageCastOpGenericAdaptorBase {
+  using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
+  using Base = detail::StorageCastOpGenericAdaptorBase;
+public:
+  StorageCastOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
+    return Base::getODSOperandIndexAndLength(index, odsOperands.size());
+  }
+
+  RangeT getODSOperands(unsigned index) {
+    auto valueRange = getODSOperandIndexAndLength(index);
+    return {std::next(odsOperands.begin(), valueRange.first),
+             std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+  }
+
+  ValueT getArg() {
+    return (*getODSOperands(0).begin());
+  }
+
+  RangeT getOperands() {
+    return odsOperands;
+  }
+
+private:
+  RangeT odsOperands;
+};
+class StorageCastOpAdaptor : public StorageCastOpGenericAdaptor<::mlir::ValueRange> {
+public:
+  using StorageCastOpGenericAdaptor::StorageCastOpGenericAdaptor;
+  StorageCastOpAdaptor(StorageCastOp op);
+
+  ::mlir::LogicalResult verify(::mlir::Location loc);
 };
 class StorageCastOp : public ::mlir::Op<StorageCastOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::ConditionallySpeculatable::Trait, ::mlir::OpTrait::AlwaysSpeculatableImplTrait, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = StorageCastOpAdaptor;
-public:
+  template <typename RangeT>
+  using GenericAdaptor = StorageCastOpGenericAdaptor<RangeT>;
+  using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     return {};
   }
@@ -197,7 +293,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
+  ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };

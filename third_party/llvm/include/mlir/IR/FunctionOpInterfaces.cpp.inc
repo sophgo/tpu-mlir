@@ -83,3 +83,76 @@ void mlir::FunctionOpInterface::setResAttrsAttr(::mlir::ArrayAttr attrs) {
 ::mlir::LogicalResult mlir::FunctionOpInterface::verifyType() {
       return getImpl()->verifyType(getImpl(), getOperation());
   }
+/// Returns the name of this symbol.
+StringAttr mlir::FunctionOpInterface::getNameAttr() {
+      return getImpl()->implSymbolOpInterface->getNameAttr(getImpl()->implSymbolOpInterface, getOperation());
+  }
+/// Sets the name of this symbol.
+void mlir::FunctionOpInterface::setName(::mlir::StringAttr name) {
+      return getImpl()->implSymbolOpInterface->setName(getImpl()->implSymbolOpInterface, getOperation(), name);
+  }
+/// Gets the visibility of this symbol.
+mlir::SymbolTable::Visibility mlir::FunctionOpInterface::getVisibility() {
+      return getImpl()->implSymbolOpInterface->getVisibility(getImpl()->implSymbolOpInterface, getOperation());
+  }
+/// Returns true if this symbol has nested visibility.
+bool mlir::FunctionOpInterface::isNested() {
+      return getImpl()->implSymbolOpInterface->isNested(getImpl()->implSymbolOpInterface, getOperation());
+  }
+/// Returns true if this symbol has private visibility.
+bool mlir::FunctionOpInterface::isPrivate() {
+      return getImpl()->implSymbolOpInterface->isPrivate(getImpl()->implSymbolOpInterface, getOperation());
+  }
+/// Returns true if this symbol has public visibility.
+bool mlir::FunctionOpInterface::isPublic() {
+      return getImpl()->implSymbolOpInterface->isPublic(getImpl()->implSymbolOpInterface, getOperation());
+  }
+/// Sets the visibility of this symbol.
+void mlir::FunctionOpInterface::setVisibility(mlir::SymbolTable::Visibility vis) {
+      return getImpl()->implSymbolOpInterface->setVisibility(getImpl()->implSymbolOpInterface, getOperation(), vis);
+  }
+/// Sets the visibility of this symbol to be nested.
+void mlir::FunctionOpInterface::setNested() {
+      return getImpl()->implSymbolOpInterface->setNested(getImpl()->implSymbolOpInterface, getOperation());
+  }
+/// Sets the visibility of this symbol to be private.
+void mlir::FunctionOpInterface::setPrivate() {
+      return getImpl()->implSymbolOpInterface->setPrivate(getImpl()->implSymbolOpInterface, getOperation());
+  }
+/// Sets the visibility of this symbol to be public.
+void mlir::FunctionOpInterface::setPublic() {
+      return getImpl()->implSymbolOpInterface->setPublic(getImpl()->implSymbolOpInterface, getOperation());
+  }
+/// Get all of the uses of the current symbol that are nested within the
+/// given operation 'from'.
+/// Note: See mlir::SymbolTable::getSymbolUses for more details.
+::std::optional<::mlir::SymbolTable::UseRange> mlir::FunctionOpInterface::getSymbolUses(::mlir::Operation * from) {
+      return getImpl()->implSymbolOpInterface->getSymbolUses(getImpl()->implSymbolOpInterface, getOperation(), from);
+  }
+/// Return if the current symbol is known to have no uses that are nested
+/// within the given operation 'from'.
+/// Note: See mlir::SymbolTable::symbolKnownUseEmpty for more details.
+bool mlir::FunctionOpInterface::symbolKnownUseEmpty(::mlir::Operation * from) {
+      return getImpl()->implSymbolOpInterface->symbolKnownUseEmpty(getImpl()->implSymbolOpInterface, getOperation(), from);
+  }
+/// Attempt to replace all uses of the current symbol with the provided
+/// symbol 'newSymbol' that are nested within the given operation 'from'.
+/// Note: See mlir::SymbolTable::replaceAllSymbolUses for more details.
+::mlir::LogicalResult mlir::FunctionOpInterface::replaceAllSymbolUses(::mlir::StringAttr newSymbol, ::mlir::Operation * from) {
+      return getImpl()->implSymbolOpInterface->replaceAllSymbolUses(getImpl()->implSymbolOpInterface, getOperation(), newSymbol, from);
+  }
+/// Returns true if this operation optionally defines a symbol based on the
+/// presence of the symbol name.
+bool mlir::FunctionOpInterface::isOptionalSymbol() {
+      return getImpl()->implSymbolOpInterface->isOptionalSymbol(getImpl()->implSymbolOpInterface, getOperation());
+  }
+/// Returns true if this operation can be discarded if it has no remaining
+/// symbol uses.
+bool mlir::FunctionOpInterface::canDiscardOnUseEmpty() {
+      return getImpl()->implSymbolOpInterface->canDiscardOnUseEmpty(getImpl()->implSymbolOpInterface, getOperation());
+  }
+/// Returns true if this operation is a declaration of a symbol (as opposed
+/// to a definition).
+bool mlir::FunctionOpInterface::isDeclaration() {
+      return getImpl()->implSymbolOpInterface->isDeclaration(getImpl()->implSymbolOpInterface, getOperation());
+  }

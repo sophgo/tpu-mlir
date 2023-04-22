@@ -15,12 +15,9 @@
 
 #include "mlir/Dialect/Affine/Analysis/AffineAnalysis.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
+#include <optional>
 
 namespace mlir {
-
-class AffineForOp;
-class AffineIfOp;
-class AffineParallelOp;
 class DominanceInfo;
 class Operation;
 class PostDominanceInfo;
@@ -34,6 +31,11 @@ class AllocOp;
 } // namespace memref
 
 struct LogicalResult;
+
+namespace affine {
+class AffineForOp;
+class AffineIfOp;
+class AffineParallelOp;
 
 using ReductionLoopMap = DenseMap<Operation *, SmallVector<LoopReduction, 2>>;
 
@@ -300,10 +302,10 @@ Value expandAffineExpr(OpBuilder &builder, Location loc, AffineExpr expr,
 
 /// Create a sequence of operations that implement the `affineMap` applied to
 /// the given `operands` (as it it were an AffineApplyOp).
-Optional<SmallVector<Value, 8>> expandAffineMap(OpBuilder &builder,
-                                                Location loc,
-                                                AffineMap affineMap,
-                                                ValueRange operands);
+std::optional<SmallVector<Value, 8>> expandAffineMap(OpBuilder &builder,
+                                                     Location loc,
+                                                     AffineMap affineMap,
+                                                     ValueRange operands);
 
 /// Holds the result of (div a, b)  and (mod a, b).
 struct DivModValue {
@@ -383,6 +385,7 @@ private:
   Location loc;
 };
 
+} // namespace affine
 } // namespace mlir
 
 #endif // MLIR_DIALECT_AFFINE_UTILS_H

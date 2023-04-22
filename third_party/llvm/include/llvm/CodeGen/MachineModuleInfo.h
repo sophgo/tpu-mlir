@@ -84,7 +84,7 @@ class MachineModuleInfo {
   MCContext *ExternalContext = nullptr;
 
   /// This is the LLVM Module being worked on.
-  const Module *TheModule;
+  const Module *TheModule = nullptr;
 
   /// This is the object-file-format-specific implementation of
   /// MachineModuleInfoImpl, which lets targets accumulate whatever info they
@@ -93,10 +93,6 @@ class MachineModuleInfo {
 
   /// \name Exception Handling
   /// \{
-
-  /// Vector of all personality functions ever seen. Used to emit common EH
-  /// frames.
-  std::vector<const Function *> Personalities;
 
   /// The current call site index being processed, if any. 0 if none.
   unsigned CurCallSite;
@@ -195,13 +191,6 @@ public:
   /// none.
   unsigned getCurrentCallSite() { return CurCallSite; }
 
-  /// Provide the personality function for the exception information.
-  void addPersonality(const Function *Personality);
-
-  /// Return array of personality functions ever seen.
-  const std::vector<const Function *>& getPersonalities() const {
-    return Personalities;
-  }
   /// \}
 
   // MMI owes MCContext. It should never be invalidated.

@@ -13,9 +13,11 @@ namespace llvm {
 namespace Intrinsic {
 enum LOONGARCHIntrinsics : unsigned {
 // Enum values for intrinsics
-    loongarch_asrtgt_d = 4654,                        // llvm.loongarch.asrtgt.d
+    loongarch_asrtgt_d = 5061,                        // llvm.loongarch.asrtgt.d
     loongarch_asrtle_d,                        // llvm.loongarch.asrtle.d
     loongarch_break,                           // llvm.loongarch.break
+    loongarch_cacop_d,                         // llvm.loongarch.cacop.d
+    loongarch_cacop_w,                         // llvm.loongarch.cacop.w
     loongarch_cpucfg,                          // llvm.loongarch.cpucfg
     loongarch_crc_w_b_w,                       // llvm.loongarch.crc.w.b.w
     loongarch_crc_w_d_w,                       // llvm.loongarch.crc.w.d.w
@@ -58,6 +60,8 @@ enum LOONGARCHIntrinsics : unsigned {
     loongarch_masked_atomicrmw_xchg_i32,       // llvm.loongarch.masked.atomicrmw.xchg.i32
     loongarch_masked_atomicrmw_xchg_i64,       // llvm.loongarch.masked.atomicrmw.xchg.i64
     loongarch_masked_cmpxchg_i64,              // llvm.loongarch.masked.cmpxchg.i64
+    loongarch_movfcsr2gr,                      // llvm.loongarch.movfcsr2gr
+    loongarch_movgr2fcsr,                      // llvm.loongarch.movgr2fcsr
     loongarch_syscall,                         // llvm.loongarch.syscall
 }; // enum
 } // namespace Intrinsic

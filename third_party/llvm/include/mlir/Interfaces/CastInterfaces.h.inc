@@ -11,6 +11,7 @@ class CastOpInterface;
 namespace detail {
 struct CastOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     bool (*areCastCompatible)(::mlir::TypeRange, ::mlir::TypeRange);
   };
   template<typename ConcreteOp>

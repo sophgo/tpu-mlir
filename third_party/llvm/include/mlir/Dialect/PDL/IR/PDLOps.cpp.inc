@@ -184,7 +184,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps4(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps5(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())))) {
+  if (attr && !(((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())) && ((true)))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: any type attribute";
   }
@@ -193,7 +193,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps5(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps6(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())) && ((true))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: type array attribute";
   }
@@ -230,13 +230,12 @@ namespace pdl {
 // ::mlir::pdl::ApplyNativeConstraintOp definitions
 //===----------------------------------------------------------------------===//
 
-ApplyNativeConstraintOpAdaptor::ApplyNativeConstraintOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+ApplyNativeConstraintOpGenericAdaptorBase::ApplyNativeConstraintOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.apply_native_constraint", odsAttrs.getContext());
 }
 
-ApplyNativeConstraintOpAdaptor::ApplyNativeConstraintOpAdaptor(ApplyNativeConstraintOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> ApplyNativeConstraintOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> ApplyNativeConstraintOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   bool isVariadic[] = {true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
@@ -244,7 +243,7 @@ std::pair<unsigned, unsigned> ApplyNativeConstraintOpAdaptor::getODSOperandIndex
 
   // Calculate how many dynamic values a static variadic operand corresponds to.
   // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (odsOperands.size() - 0) / 1;
+  int variadicSize = (odsOperandsSize - 0) / 1;
   // `index` passed in as the parameter is the static index which counts each
   // operand (variadic or not) as size 1. So here for each previous static variadic
   // operand, we need to offset by (variadicSize - 1) to get where the dynamic
@@ -254,34 +253,23 @@ std::pair<unsigned, unsigned> ApplyNativeConstraintOpAdaptor::getODSOperandIndex
   return {start, size};
 }
 
-::mlir::ValueRange ApplyNativeConstraintOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::ValueRange ApplyNativeConstraintOpAdaptor::getArgs() {
-  return getODSOperands(0);
-}
-
-::mlir::ValueRange ApplyNativeConstraintOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr ApplyNativeConstraintOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr ApplyNativeConstraintOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::StringAttr ApplyNativeConstraintOpAdaptor::getNameAttr() {
+::mlir::StringAttr ApplyNativeConstraintOpGenericAdaptorBase::getNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ApplyNativeConstraintOp::getNameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
   return attr;
 }
 
-::llvm::StringRef ApplyNativeConstraintOpAdaptor::getName() {
+::llvm::StringRef ApplyNativeConstraintOpGenericAdaptorBase::getName() {
   auto attr = getNameAttr();
   return attr.getValue();
 }
+
+} // namespace detail
+ApplyNativeConstraintOpAdaptor::ApplyNativeConstraintOpAdaptor(ApplyNativeConstraintOp op) : ApplyNativeConstraintOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult ApplyNativeConstraintOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -484,13 +472,12 @@ namespace pdl {
 // ::mlir::pdl::ApplyNativeRewriteOp definitions
 //===----------------------------------------------------------------------===//
 
-ApplyNativeRewriteOpAdaptor::ApplyNativeRewriteOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+ApplyNativeRewriteOpGenericAdaptorBase::ApplyNativeRewriteOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.apply_native_rewrite", odsAttrs.getContext());
 }
 
-ApplyNativeRewriteOpAdaptor::ApplyNativeRewriteOpAdaptor(ApplyNativeRewriteOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> ApplyNativeRewriteOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> ApplyNativeRewriteOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   bool isVariadic[] = {true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
@@ -498,7 +485,7 @@ std::pair<unsigned, unsigned> ApplyNativeRewriteOpAdaptor::getODSOperandIndexAnd
 
   // Calculate how many dynamic values a static variadic operand corresponds to.
   // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (odsOperands.size() - 0) / 1;
+  int variadicSize = (odsOperandsSize - 0) / 1;
   // `index` passed in as the parameter is the static index which counts each
   // operand (variadic or not) as size 1. So here for each previous static variadic
   // operand, we need to offset by (variadicSize - 1) to get where the dynamic
@@ -508,34 +495,23 @@ std::pair<unsigned, unsigned> ApplyNativeRewriteOpAdaptor::getODSOperandIndexAnd
   return {start, size};
 }
 
-::mlir::ValueRange ApplyNativeRewriteOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::ValueRange ApplyNativeRewriteOpAdaptor::getArgs() {
-  return getODSOperands(0);
-}
-
-::mlir::ValueRange ApplyNativeRewriteOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr ApplyNativeRewriteOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr ApplyNativeRewriteOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::StringAttr ApplyNativeRewriteOpAdaptor::getNameAttr() {
+::mlir::StringAttr ApplyNativeRewriteOpGenericAdaptorBase::getNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ApplyNativeRewriteOp::getNameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
   return attr;
 }
 
-::llvm::StringRef ApplyNativeRewriteOpAdaptor::getName() {
+::llvm::StringRef ApplyNativeRewriteOpGenericAdaptorBase::getName() {
   auto attr = getNameAttr();
   return attr.getValue();
 }
+
+} // namespace detail
+ApplyNativeRewriteOpAdaptor::ApplyNativeRewriteOpAdaptor(ApplyNativeRewriteOp op) : ApplyNativeRewriteOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult ApplyNativeRewriteOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -766,13 +742,12 @@ namespace pdl {
 // ::mlir::pdl::AttributeOp definitions
 //===----------------------------------------------------------------------===//
 
-AttributeOpAdaptor::AttributeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+AttributeOpGenericAdaptorBase::AttributeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.attribute", odsAttrs.getContext());
 }
 
-AttributeOpAdaptor::AttributeOpAdaptor(AttributeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> AttributeOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> AttributeOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   bool isVariadic[] = {true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
@@ -780,7 +755,7 @@ std::pair<unsigned, unsigned> AttributeOpAdaptor::getODSOperandIndexAndLength(un
 
   // Calculate how many dynamic values a static variadic operand corresponds to.
   // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (odsOperands.size() - 0) / 1;
+  int variadicSize = (odsOperandsSize - 0) / 1;
   // `index` passed in as the parameter is the static index which counts each
   // operand (variadic or not) as size 1. So here for each previous static variadic
   // operand, we need to offset by (variadicSize - 1) to get where the dynamic
@@ -790,35 +765,23 @@ std::pair<unsigned, unsigned> AttributeOpAdaptor::getODSOperandIndexAndLength(un
   return {start, size};
 }
 
-::mlir::ValueRange AttributeOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value AttributeOpAdaptor::getValueType() {
-  auto operands = getODSOperands(0);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
-}
-
-::mlir::ValueRange AttributeOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr AttributeOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr AttributeOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::Attribute AttributeOpAdaptor::getValueAttr() {
+::mlir::Attribute AttributeOpGenericAdaptorBase::getValueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AttributeOp::getValueAttrName(*odsOpName)).dyn_cast_or_null<::mlir::Attribute>();
   return attr;
 }
 
-::std::optional<::mlir::Attribute> AttributeOpAdaptor::getValue() {
+::std::optional<::mlir::Attribute> AttributeOpGenericAdaptorBase::getValue() {
   auto attr = getValueAttr();
   return attr ? ::std::optional<::mlir::Attribute>(attr) : (::std::nullopt);
 }
+
+} // namespace detail
+AttributeOpAdaptor::AttributeOpAdaptor(AttributeOp op) : AttributeOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult AttributeOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -865,7 +828,7 @@ std::pair<unsigned, unsigned> AttributeOp::getODSOperandIndexAndLength(unsigned 
 
 ::mlir::Value AttributeOp::getValueType() {
   auto operands = getODSOperands(0);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
+  return operands.empty() ? ::mlir::Value{} : ::llvm::cast<::mlir::Value>(*operands.begin());
 }
 
 ::mlir::MutableOperandRange AttributeOp::getValueTypeMutable() {
@@ -885,7 +848,7 @@ std::pair<unsigned, unsigned> AttributeOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::TypedValue<::mlir::pdl::AttributeType> AttributeOp::getAttr() {
-  return *getODSResults(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::AttributeType>>(*getODSResults(0).begin());
 }
 
 ::mlir::Attribute AttributeOp::getValueAttr() {
@@ -1052,33 +1015,21 @@ namespace pdl {
 // ::mlir::pdl::EraseOp definitions
 //===----------------------------------------------------------------------===//
 
-EraseOpAdaptor::EraseOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+EraseOpGenericAdaptorBase::EraseOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.erase", odsAttrs.getContext());
 }
 
-EraseOpAdaptor::EraseOpAdaptor(EraseOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> EraseOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> EraseOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   return {index, 1};
 }
 
-::mlir::ValueRange EraseOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value EraseOpAdaptor::getOpValue() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::ValueRange EraseOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr EraseOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr EraseOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
+
+} // namespace detail
+EraseOpAdaptor::EraseOpAdaptor(EraseOp op) : EraseOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult EraseOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();
@@ -1095,7 +1046,7 @@ std::pair<unsigned, unsigned> EraseOp::getODSOperandIndexAndLength(unsigned inde
 }
 
 ::mlir::TypedValue<::mlir::pdl::OperationType> EraseOp::getOpValue() {
-  return *getODSOperands(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::OperationType>>(*getODSOperands(0).begin());
 }
 
 ::mlir::MutableOperandRange EraseOp::getOpValueMutable() {
@@ -1183,13 +1134,12 @@ namespace pdl {
 // ::mlir::pdl::OperandOp definitions
 //===----------------------------------------------------------------------===//
 
-OperandOpAdaptor::OperandOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+OperandOpGenericAdaptorBase::OperandOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.operand", odsAttrs.getContext());
 }
 
-OperandOpAdaptor::OperandOpAdaptor(OperandOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> OperandOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> OperandOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   bool isVariadic[] = {true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
@@ -1197,7 +1147,7 @@ std::pair<unsigned, unsigned> OperandOpAdaptor::getODSOperandIndexAndLength(unsi
 
   // Calculate how many dynamic values a static variadic operand corresponds to.
   // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (odsOperands.size() - 0) / 1;
+  int variadicSize = (odsOperandsSize - 0) / 1;
   // `index` passed in as the parameter is the static index which counts each
   // operand (variadic or not) as size 1. So here for each previous static variadic
   // operand, we need to offset by (variadicSize - 1) to get where the dynamic
@@ -1207,24 +1157,12 @@ std::pair<unsigned, unsigned> OperandOpAdaptor::getODSOperandIndexAndLength(unsi
   return {start, size};
 }
 
-::mlir::ValueRange OperandOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value OperandOpAdaptor::getValueType() {
-  auto operands = getODSOperands(0);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
-}
-
-::mlir::ValueRange OperandOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr OperandOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr OperandOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
+
+} // namespace detail
+OperandOpAdaptor::OperandOpAdaptor(OperandOp op) : OperandOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult OperandOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();
@@ -1256,7 +1194,7 @@ std::pair<unsigned, unsigned> OperandOp::getODSOperandIndexAndLength(unsigned in
 
 ::mlir::Value OperandOp::getValueType() {
   auto operands = getODSOperands(0);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
+  return operands.empty() ? ::mlir::Value{} : ::llvm::cast<::mlir::Value>(*operands.begin());
 }
 
 ::mlir::MutableOperandRange OperandOp::getValueTypeMutable() {
@@ -1276,7 +1214,7 @@ std::pair<unsigned, unsigned> OperandOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::TypedValue<::mlir::pdl::ValueType> OperandOp::getValue() {
-  return *getODSResults(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::ValueType>>(*getODSResults(0).begin());
 }
 
 void OperandOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState) {
@@ -1387,13 +1325,12 @@ namespace pdl {
 // ::mlir::pdl::OperandsOp definitions
 //===----------------------------------------------------------------------===//
 
-OperandsOpAdaptor::OperandsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+OperandsOpGenericAdaptorBase::OperandsOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.operands", odsAttrs.getContext());
 }
 
-OperandsOpAdaptor::OperandsOpAdaptor(OperandsOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> OperandsOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> OperandsOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   bool isVariadic[] = {true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
@@ -1401,7 +1338,7 @@ std::pair<unsigned, unsigned> OperandsOpAdaptor::getODSOperandIndexAndLength(uns
 
   // Calculate how many dynamic values a static variadic operand corresponds to.
   // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (odsOperands.size() - 0) / 1;
+  int variadicSize = (odsOperandsSize - 0) / 1;
   // `index` passed in as the parameter is the static index which counts each
   // operand (variadic or not) as size 1. So here for each previous static variadic
   // operand, we need to offset by (variadicSize - 1) to get where the dynamic
@@ -1411,24 +1348,12 @@ std::pair<unsigned, unsigned> OperandsOpAdaptor::getODSOperandIndexAndLength(uns
   return {start, size};
 }
 
-::mlir::ValueRange OperandsOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value OperandsOpAdaptor::getValueType() {
-  auto operands = getODSOperands(0);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
-}
-
-::mlir::ValueRange OperandsOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr OperandsOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr OperandsOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
+
+} // namespace detail
+OperandsOpAdaptor::OperandsOpAdaptor(OperandsOp op) : OperandsOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult OperandsOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();
@@ -1460,7 +1385,7 @@ std::pair<unsigned, unsigned> OperandsOp::getODSOperandIndexAndLength(unsigned i
 
 ::mlir::TypedValue<::mlir::pdl::RangeType> OperandsOp::getValueType() {
   auto operands = getODSOperands(0);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
+  return operands.empty() ? ::mlir::TypedValue<::mlir::pdl::RangeType>{} : ::llvm::cast<::mlir::TypedValue<::mlir::pdl::RangeType>>(*operands.begin());
 }
 
 ::mlir::MutableOperandRange OperandsOp::getValueTypeMutable() {
@@ -1480,7 +1405,7 @@ std::pair<unsigned, unsigned> OperandsOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::TypedValue<::mlir::pdl::RangeType> OperandsOp::getValue() {
-  return *getODSResults(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::RangeType>>(*getODSResults(0).begin());
 }
 
 void OperandsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState) {
@@ -1592,13 +1517,12 @@ namespace pdl {
 // ::mlir::pdl::OperationOp definitions
 //===----------------------------------------------------------------------===//
 
-OperationOpAdaptor::OperationOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+OperationOpGenericAdaptorBase::OperationOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.operation", odsAttrs.getContext());
 }
 
-OperationOpAdaptor::OperationOpAdaptor(OperationOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> OperationOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> OperationOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   assert(odsAttrs && "missing segment size attribute for op");
   auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, OperationOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
@@ -1608,53 +1532,34 @@ std::pair<unsigned, unsigned> OperationOpAdaptor::getODSOperandIndexAndLength(un
   return {start, sizeAttr[index]};
 }
 
-::mlir::ValueRange OperationOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::ValueRange OperationOpAdaptor::getOperandValues() {
-  return getODSOperands(0);
-}
-
-::mlir::ValueRange OperationOpAdaptor::getAttributeValues() {
-  return getODSOperands(1);
-}
-
-::mlir::ValueRange OperationOpAdaptor::getTypeValues() {
-  return getODSOperands(2);
-}
-
-::mlir::ValueRange OperationOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr OperationOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr OperationOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::StringAttr OperationOpAdaptor::getOpNameAttr() {
+::mlir::StringAttr OperationOpGenericAdaptorBase::getOpNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, OperationOp::getOpNameAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
   return attr;
 }
 
-::std::optional< ::llvm::StringRef > OperationOpAdaptor::getOpName() {
+::std::optional< ::llvm::StringRef > OperationOpGenericAdaptorBase::getOpName() {
   auto attr = getOpNameAttr();
   return attr ? ::std::optional< ::llvm::StringRef >(attr.getValue()) : (::std::nullopt);
 }
 
-::mlir::ArrayAttr OperationOpAdaptor::getAttributeValueNamesAttr() {
+::mlir::ArrayAttr OperationOpGenericAdaptorBase::getAttributeValueNamesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, OperationOp::getAttributeValueNamesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr OperationOpAdaptor::getAttributeValueNames() {
+::mlir::ArrayAttr OperationOpGenericAdaptorBase::getAttributeValueNames() {
   auto attr = getAttributeValueNamesAttr();
   return attr;
 }
+
+} // namespace detail
+OperationOpAdaptor::OperationOpAdaptor(OperationOp op) : OperationOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult OperationOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -1756,7 +1661,7 @@ std::pair<unsigned, unsigned> OperationOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::TypedValue<::mlir::pdl::OperationType> OperationOp::getOp() {
-  return *getODSResults(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::OperationType>>(*getODSResults(0).begin());
 }
 
 ::mlir::StringAttr OperationOp::getOpNameAttr() {
@@ -1795,7 +1700,7 @@ void OperationOp::setAttributeValueNamesAttr(::mlir::ArrayAttr attr) {
   return (*this)->removeAttr(getOpNameAttrName());
 }
 
-void OperationOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Optional<StringRef> name, ValueRange operandValues, ArrayRef<StringRef> attrNames, ValueRange attrValues, ValueRange resultTypes) {
+void OperationOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, std::optional<StringRef> name, ValueRange operandValues, ArrayRef<StringRef> attrNames, ValueRange attrValues, ValueRange resultTypes) {
       auto nameAttr = name ? odsBuilder.getStringAttr(*name) : StringAttr();
       build(odsBuilder, odsState, odsBuilder.getType<OperationType>(), nameAttr,
             operandValues, attrValues, odsBuilder.getStrArrayAttr(attrNames),
@@ -2029,59 +1934,51 @@ namespace pdl {
 // ::mlir::pdl::PatternOp definitions
 //===----------------------------------------------------------------------===//
 
-PatternOpAdaptor::PatternOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+PatternOpGenericAdaptorBase::PatternOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.pattern", odsAttrs.getContext());
 }
 
-PatternOpAdaptor::PatternOpAdaptor(PatternOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> PatternOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> PatternOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   return {index, 1};
 }
 
-::mlir::ValueRange PatternOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::ValueRange PatternOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr PatternOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr PatternOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::IntegerAttr PatternOpAdaptor::getBenefitAttr() {
+::mlir::IntegerAttr PatternOpGenericAdaptorBase::getBenefitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, PatternOp::getBenefitAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
   return attr;
 }
 
-uint16_t PatternOpAdaptor::getBenefit() {
+uint16_t PatternOpGenericAdaptorBase::getBenefit() {
   auto attr = getBenefitAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::StringAttr PatternOpAdaptor::getSymNameAttr() {
+::mlir::StringAttr PatternOpGenericAdaptorBase::getSymNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, PatternOp::getSymNameAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
   return attr;
 }
 
-::std::optional< ::llvm::StringRef > PatternOpAdaptor::getSymName() {
+::std::optional< ::llvm::StringRef > PatternOpGenericAdaptorBase::getSymName() {
   auto attr = getSymNameAttr();
   return attr ? ::std::optional< ::llvm::StringRef >(attr.getValue()) : (::std::nullopt);
 }
 
-::mlir::Region &PatternOpAdaptor::getBodyRegion() {
+::mlir::Region &PatternOpGenericAdaptorBase::getBodyRegion() {
   return *odsRegions[0];
 }
 
-::mlir::RegionRange PatternOpAdaptor::getRegions() {
+::mlir::RegionRange PatternOpGenericAdaptorBase::getRegions() {
   return odsRegions;
 }
+
+} // namespace detail
+PatternOpAdaptor::PatternOpAdaptor(PatternOp op) : PatternOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult PatternOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -2257,7 +2154,7 @@ void PatternOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   {
     unsigned index = 0; (void)index;
 
-    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+    for (auto &region : ::llvm::MutableArrayRef((*this)->getRegion(0)))
       if (::mlir::failed(__mlir_ods_local_region_constraint_PDLOps0(*this, region, "bodyRegion", index++)))
         return ::mlir::failure();
   }
@@ -2331,13 +2228,12 @@ namespace pdl {
 // ::mlir::pdl::RangeOp definitions
 //===----------------------------------------------------------------------===//
 
-RangeOpAdaptor::RangeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+RangeOpGenericAdaptorBase::RangeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.range", odsAttrs.getContext());
 }
 
-RangeOpAdaptor::RangeOpAdaptor(RangeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> RangeOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> RangeOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   bool isVariadic[] = {true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
@@ -2345,7 +2241,7 @@ std::pair<unsigned, unsigned> RangeOpAdaptor::getODSOperandIndexAndLength(unsign
 
   // Calculate how many dynamic values a static variadic operand corresponds to.
   // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (odsOperands.size() - 0) / 1;
+  int variadicSize = (odsOperandsSize - 0) / 1;
   // `index` passed in as the parameter is the static index which counts each
   // operand (variadic or not) as size 1. So here for each previous static variadic
   // operand, we need to offset by (variadicSize - 1) to get where the dynamic
@@ -2355,23 +2251,12 @@ std::pair<unsigned, unsigned> RangeOpAdaptor::getODSOperandIndexAndLength(unsign
   return {start, size};
 }
 
-::mlir::ValueRange RangeOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::ValueRange RangeOpAdaptor::getArguments() {
-  return getODSOperands(0);
-}
-
-::mlir::ValueRange RangeOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr RangeOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr RangeOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
+
+} // namespace detail
+RangeOpAdaptor::RangeOpAdaptor(RangeOp op) : RangeOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult RangeOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();
@@ -2422,7 +2307,7 @@ std::pair<unsigned, unsigned> RangeOp::getODSResultIndexAndLength(unsigned index
 }
 
 ::mlir::TypedValue<::mlir::pdl::RangeType> RangeOp::getResult() {
-  return *getODSResults(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::RangeType>>(*getODSResults(0).begin());
 }
 
 void RangeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::ValueRange arguments) {
@@ -2523,13 +2408,12 @@ namespace pdl {
 // ::mlir::pdl::ReplaceOp definitions
 //===----------------------------------------------------------------------===//
 
-ReplaceOpAdaptor::ReplaceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+ReplaceOpGenericAdaptorBase::ReplaceOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.replace", odsAttrs.getContext());
 }
 
-ReplaceOpAdaptor::ReplaceOpAdaptor(ReplaceOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> ReplaceOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> ReplaceOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   assert(odsAttrs && "missing segment size attribute for op");
   auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReplaceOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
@@ -2539,32 +2423,12 @@ std::pair<unsigned, unsigned> ReplaceOpAdaptor::getODSOperandIndexAndLength(unsi
   return {start, sizeAttr[index]};
 }
 
-::mlir::ValueRange ReplaceOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value ReplaceOpAdaptor::getOpValue() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::Value ReplaceOpAdaptor::getReplOperation() {
-  auto operands = getODSOperands(1);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
-}
-
-::mlir::ValueRange ReplaceOpAdaptor::getReplValues() {
-  return getODSOperands(2);
-}
-
-::mlir::ValueRange ReplaceOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr ReplaceOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr ReplaceOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
+
+} // namespace detail
+ReplaceOpAdaptor::ReplaceOpAdaptor(ReplaceOp op) : ReplaceOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult ReplaceOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -2606,12 +2470,12 @@ std::pair<unsigned, unsigned> ReplaceOp::getODSOperandIndexAndLength(unsigned in
 }
 
 ::mlir::TypedValue<::mlir::pdl::OperationType> ReplaceOp::getOpValue() {
-  return *getODSOperands(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::OperationType>>(*getODSOperands(0).begin());
 }
 
 ::mlir::Value ReplaceOp::getReplOperation() {
   auto operands = getODSOperands(1);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
+  return operands.empty() ? ::mlir::Value{} : ::llvm::cast<::mlir::Value>(*operands.begin());
 }
 
 ::mlir::Operation::operand_range ReplaceOp::getReplValues() {
@@ -2818,44 +2682,32 @@ namespace pdl {
 // ::mlir::pdl::ResultOp definitions
 //===----------------------------------------------------------------------===//
 
-ResultOpAdaptor::ResultOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+ResultOpGenericAdaptorBase::ResultOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.result", odsAttrs.getContext());
 }
 
-ResultOpAdaptor::ResultOpAdaptor(ResultOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> ResultOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> ResultOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   return {index, 1};
 }
 
-::mlir::ValueRange ResultOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value ResultOpAdaptor::getParent() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::ValueRange ResultOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr ResultOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr ResultOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ResultOpAdaptor::getIndexAttr() {
+::mlir::IntegerAttr ResultOpGenericAdaptorBase::getIndexAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ResultOp::getIndexAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
   return attr;
 }
 
-uint32_t ResultOpAdaptor::getIndex() {
+uint32_t ResultOpGenericAdaptorBase::getIndex() {
   auto attr = getIndexAttr();
   return attr.getValue().getZExtValue();
 }
+
+} // namespace detail
+ResultOpAdaptor::ResultOpAdaptor(ResultOp op) : ResultOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult ResultOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -2887,7 +2739,7 @@ std::pair<unsigned, unsigned> ResultOp::getODSOperandIndexAndLength(unsigned ind
 }
 
 ::mlir::TypedValue<::mlir::pdl::OperationType> ResultOp::getParent() {
-  return *getODSOperands(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::OperationType>>(*getODSOperands(0).begin());
 }
 
 ::mlir::MutableOperandRange ResultOp::getParentMutable() {
@@ -2907,7 +2759,7 @@ std::pair<unsigned, unsigned> ResultOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::TypedValue<::mlir::pdl::ValueType> ResultOp::getVal() {
-  return *getODSResults(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::ValueType>>(*getODSResults(0).begin());
 }
 
 ::mlir::IntegerAttr ResultOp::getIndexAttr() {
@@ -3053,44 +2905,32 @@ namespace pdl {
 // ::mlir::pdl::ResultsOp definitions
 //===----------------------------------------------------------------------===//
 
-ResultsOpAdaptor::ResultsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+ResultsOpGenericAdaptorBase::ResultsOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.results", odsAttrs.getContext());
 }
 
-ResultsOpAdaptor::ResultsOpAdaptor(ResultsOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> ResultsOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> ResultsOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   return {index, 1};
 }
 
-::mlir::ValueRange ResultsOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value ResultsOpAdaptor::getParent() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::ValueRange ResultsOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr ResultsOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr ResultsOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ResultsOpAdaptor::getIndexAttr() {
+::mlir::IntegerAttr ResultsOpGenericAdaptorBase::getIndexAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ResultsOp::getIndexAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
   return attr;
 }
 
-::std::optional<uint32_t> ResultsOpAdaptor::getIndex() {
+::std::optional<uint32_t> ResultsOpGenericAdaptorBase::getIndex() {
   auto attr = getIndexAttr();
   return attr ? ::std::optional<uint32_t>(attr.getValue().getZExtValue()) : (::std::nullopt);
 }
+
+} // namespace detail
+ResultsOpAdaptor::ResultsOpAdaptor(ResultsOp op) : ResultsOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult ResultsOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -3122,7 +2962,7 @@ std::pair<unsigned, unsigned> ResultsOp::getODSOperandIndexAndLength(unsigned in
 }
 
 ::mlir::TypedValue<::mlir::pdl::OperationType> ResultsOp::getParent() {
-  return *getODSOperands(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::OperationType>>(*getODSOperands(0).begin());
 }
 
 ::mlir::MutableOperandRange ResultsOp::getParentMutable() {
@@ -3142,7 +2982,7 @@ std::pair<unsigned, unsigned> ResultsOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::TypedValue<::mlir::pdl::PDLType> ResultsOp::getVal() {
-  return *getODSResults(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::PDLType>>(*getODSResults(0).begin());
 }
 
 ::mlir::IntegerAttr ResultsOp::getIndexAttr() {
@@ -3300,13 +3140,12 @@ namespace pdl {
 // ::mlir::pdl::RewriteOp definitions
 //===----------------------------------------------------------------------===//
 
-RewriteOpAdaptor::RewriteOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+RewriteOpGenericAdaptorBase::RewriteOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.rewrite", odsAttrs.getContext());
 }
 
-RewriteOpAdaptor::RewriteOpAdaptor(RewriteOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> RewriteOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> RewriteOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   assert(odsAttrs && "missing segment size attribute for op");
   auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, RewriteOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
@@ -3316,47 +3155,31 @@ std::pair<unsigned, unsigned> RewriteOpAdaptor::getODSOperandIndexAndLength(unsi
   return {start, sizeAttr[index]};
 }
 
-::mlir::ValueRange RewriteOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value RewriteOpAdaptor::getRoot() {
-  auto operands = getODSOperands(0);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
-}
-
-::mlir::ValueRange RewriteOpAdaptor::getExternalArgs() {
-  return getODSOperands(1);
-}
-
-::mlir::ValueRange RewriteOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr RewriteOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr RewriteOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::StringAttr RewriteOpAdaptor::getNameAttr() {
+::mlir::StringAttr RewriteOpGenericAdaptorBase::getNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, RewriteOp::getNameAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
   return attr;
 }
 
-::std::optional< ::llvm::StringRef > RewriteOpAdaptor::getName() {
+::std::optional< ::llvm::StringRef > RewriteOpGenericAdaptorBase::getName() {
   auto attr = getNameAttr();
   return attr ? ::std::optional< ::llvm::StringRef >(attr.getValue()) : (::std::nullopt);
 }
 
-::mlir::Region &RewriteOpAdaptor::getBodyRegion() {
+::mlir::Region &RewriteOpGenericAdaptorBase::getBodyRegion() {
   return *odsRegions[0];
 }
 
-::mlir::RegionRange RewriteOpAdaptor::getRegions() {
+::mlir::RegionRange RewriteOpGenericAdaptorBase::getRegions() {
   return odsRegions;
 }
+
+} // namespace detail
+RewriteOpAdaptor::RewriteOpAdaptor(RewriteOp op) : RewriteOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult RewriteOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -3406,7 +3229,7 @@ std::pair<unsigned, unsigned> RewriteOp::getODSOperandIndexAndLength(unsigned in
 
 ::mlir::Value RewriteOp::getRoot() {
   auto operands = getODSOperands(0);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
+  return operands.empty() ? ::mlir::Value{} : ::llvm::cast<::mlir::Value>(*operands.begin());
 }
 
 ::mlir::Operation::operand_range RewriteOp::getExternalArgs() {
@@ -3546,7 +3369,7 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   {
     unsigned index = 0; (void)index;
 
-    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+    for (auto &region : ::llvm::MutableArrayRef((*this)->getRegion(0)))
       if (::mlir::failed(__mlir_ods_local_region_constraint_PDLOps1(*this, region, "bodyRegion", index++)))
         return ::mlir::failure();
   }
@@ -3663,40 +3486,32 @@ namespace pdl {
 // ::mlir::pdl::TypeOp definitions
 //===----------------------------------------------------------------------===//
 
-TypeOpAdaptor::TypeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+TypeOpGenericAdaptorBase::TypeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.type", odsAttrs.getContext());
 }
 
-TypeOpAdaptor::TypeOpAdaptor(TypeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> TypeOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> TypeOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   return {index, 1};
 }
 
-::mlir::ValueRange TypeOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::ValueRange TypeOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr TypeOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr TypeOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::TypeAttr TypeOpAdaptor::getConstantTypeAttr() {
+::mlir::TypeAttr TypeOpGenericAdaptorBase::getConstantTypeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TypeOp::getConstantTypeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::TypeAttr>();
   return attr;
 }
 
-::std::optional<::mlir::Type> TypeOpAdaptor::getConstantType() {
+::std::optional<::mlir::Type> TypeOpGenericAdaptorBase::getConstantType() {
   auto attr = getConstantTypeAttr();
   return attr ? ::std::optional<::mlir::Type>(attr.getValue().cast<::mlir::Type>()) : (::std::nullopt);
 }
+
+} // namespace detail
+TypeOpAdaptor::TypeOpAdaptor(TypeOp op) : TypeOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult TypeOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -3712,7 +3527,7 @@ std::pair<unsigned, unsigned> TypeOpAdaptor::getODSOperandIndexAndLength(unsigne
     ++namedAttrIt;
   }
 
-  if (tblgen_constantType && !(((tblgen_constantType.isa<::mlir::TypeAttr>())) && ((tblgen_constantType.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))))
+  if (tblgen_constantType && !(((tblgen_constantType.isa<::mlir::TypeAttr>())) && ((tblgen_constantType.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())) && ((true))))
     return emitError(loc, "'pdl.type' op ""attribute 'constantType' failed to satisfy constraint: any type attribute");
   return ::mlir::success();
 }
@@ -3738,7 +3553,7 @@ std::pair<unsigned, unsigned> TypeOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::TypedValue<::mlir::pdl::TypeType> TypeOp::getResult() {
-  return *getODSResults(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::TypeType>>(*getODSResults(0).begin());
 }
 
 ::mlir::TypeAttr TypeOp::getConstantTypeAttr() {
@@ -3859,40 +3674,32 @@ namespace pdl {
 // ::mlir::pdl::TypesOp definitions
 //===----------------------------------------------------------------------===//
 
-TypesOpAdaptor::TypesOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+TypesOpGenericAdaptorBase::TypesOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("pdl.types", odsAttrs.getContext());
 }
 
-TypesOpAdaptor::TypesOpAdaptor(TypesOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> TypesOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> TypesOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   return {index, 1};
 }
 
-::mlir::ValueRange TypesOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::ValueRange TypesOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr TypesOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr TypesOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::ArrayAttr TypesOpAdaptor::getConstantTypesAttr() {
+::mlir::ArrayAttr TypesOpGenericAdaptorBase::getConstantTypesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TypesOp::getConstantTypesAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
   return attr;
 }
 
-::std::optional< ::mlir::ArrayAttr > TypesOpAdaptor::getConstantTypes() {
+::std::optional< ::mlir::ArrayAttr > TypesOpGenericAdaptorBase::getConstantTypes() {
   auto attr = getConstantTypesAttr();
   return attr ? ::std::optional< ::mlir::ArrayAttr >(attr) : (::std::nullopt);
 }
+
+} // namespace detail
+TypesOpAdaptor::TypesOpAdaptor(TypesOp op) : TypesOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult TypesOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -3908,7 +3715,7 @@ std::pair<unsigned, unsigned> TypesOpAdaptor::getODSOperandIndexAndLength(unsign
     ++namedAttrIt;
   }
 
-  if (tblgen_constantTypes && !(((tblgen_constantTypes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_constantTypes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); }))))
+  if (tblgen_constantTypes && !(((tblgen_constantTypes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_constantTypes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())) && ((true))); }))))
     return emitError(loc, "'pdl.types' op ""attribute 'constantTypes' failed to satisfy constraint: type array attribute");
   return ::mlir::success();
 }
@@ -3934,7 +3741,7 @@ std::pair<unsigned, unsigned> TypesOp::getODSResultIndexAndLength(unsigned index
 }
 
 ::mlir::TypedValue<::mlir::pdl::RangeType> TypesOp::getResult() {
-  return *getODSResults(0).begin();
+  return ::llvm::cast<::mlir::TypedValue<::mlir::pdl::RangeType>>(*getODSResults(0).begin());
 }
 
 ::mlir::ArrayAttr TypesOp::getConstantTypesAttr() {

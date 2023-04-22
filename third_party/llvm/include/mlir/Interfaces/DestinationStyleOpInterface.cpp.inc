@@ -15,15 +15,15 @@ int64_t mlir::DestinationStyleOpInterface::getNumDpsInits() {
       return getImpl()->getNumDpsInits(getImpl(), getOperation());
   }
 /// Return the init operands.
-OpOperandVector mlir::DestinationStyleOpInterface::getDpsInitOperands() {
+::mlir::OpOperandVector mlir::DestinationStyleOpInterface::getDpsInitOperands() {
       return getImpl()->getDpsInitOperands(getImpl(), getOperation());
   }
 /// Return the `i`-th init operand.
-OpOperand *mlir::DestinationStyleOpInterface::getDpsInitOperand(int64_t i) {
+::mlir::OpOperand *mlir::DestinationStyleOpInterface::getDpsInitOperand(int64_t i) {
       return getImpl()->getDpsInitOperand(getImpl(), getOperation(), i);
   }
 /// Set the `i`-th init operand.
-void mlir::DestinationStyleOpInterface::setDpsInitOperand(int64_t i, Value value) {
+void mlir::DestinationStyleOpInterface::setDpsInitOperand(int64_t i, ::mlir::Value value) {
       return getImpl()->setDpsInitOperand(getImpl(), getOperation(), i, value);
   }
 /// Return the number of inputs.
@@ -31,31 +31,31 @@ int64_t mlir::DestinationStyleOpInterface::getNumDpsInputs() {
       return getImpl()->getNumDpsInputs(getImpl(), getOperation());
   }
 /// Return the input operands.
-OpOperandVector mlir::DestinationStyleOpInterface::getDpsInputOperands() {
+::mlir::OpOperandVector mlir::DestinationStyleOpInterface::getDpsInputOperands() {
       return getImpl()->getDpsInputOperands(getImpl(), getOperation());
   }
 /// Return the `i`-th input operand.
-OpOperand *mlir::DestinationStyleOpInterface::getDpsInputOperand(int64_t i) {
+::mlir::OpOperand *mlir::DestinationStyleOpInterface::getDpsInputOperand(int64_t i) {
       return getImpl()->getDpsInputOperand(getImpl(), getOperation(), i);
   }
 /// Return true if `opOperand` is an input.
-bool mlir::DestinationStyleOpInterface::isDpsInput(OpOperand * opOperand) {
+bool mlir::DestinationStyleOpInterface::isDpsInput(::mlir::OpOperand * opOperand) {
       return getImpl()->isDpsInput(getImpl(), getOperation(), opOperand);
   }
 /// Return true if `opOperand` is an init.
-bool mlir::DestinationStyleOpInterface::isDpsInit(OpOperand * opOperand) {
+bool mlir::DestinationStyleOpInterface::isDpsInit(::mlir::OpOperand * opOperand) {
       return getImpl()->isDpsInit(getImpl(), getOperation(), opOperand);
   }
 /// Return true if the `opOperand` is a scalar value.
-bool mlir::DestinationStyleOpInterface::isScalar(OpOperand * opOperand) {
+bool mlir::DestinationStyleOpInterface::isScalar(::mlir::OpOperand * opOperand) {
       return getImpl()->isScalar(getImpl(), getOperation(), opOperand);
   }
 /// Return the OpResult that is tied to the given OpOperand.
-OpResult mlir::DestinationStyleOpInterface::getTiedOpResult(OpOperand * opOperand) {
+::mlir::OpResult mlir::DestinationStyleOpInterface::getTiedOpResult(::mlir::OpOperand * opOperand) {
       return getImpl()->getTiedOpResult(getImpl(), getOperation(), opOperand);
   }
 /// Return the OpOperand that is tied to the given OpResult.
-OpOperand *mlir::DestinationStyleOpInterface::getTiedOpOperand(OpResult opResult) {
+::mlir::OpOperand *mlir::DestinationStyleOpInterface::getTiedOpOperand(::mlir::OpResult opResult) {
       return getImpl()->getTiedOpOperand(getImpl(), getOperation(), opResult);
   }
 /// Return whether the op has only ranked MemRef input/inits.

@@ -75,15 +75,16 @@
 bool mlir::InferTypeOpInterface::isCompatibleReturnTypes(::mlir::TypeRange lhs, ::mlir::TypeRange rhs) {
       return getImpl()->isCompatibleReturnTypes(lhs, rhs);
   }
-/// Reify the shape of the result of an operation (typically in
-/// terms of shape of its operands)
+/// Reify the shape of the result of an operation (typically in terms of the
+/// shape of its operands).
 /// 
-/// Insert operations using the given `OpBuilder` that computes
-/// the result shape. The `reifiedReturnShapes` is expected to be
-/// populated with as many vectors as the number of results of the
-/// op. Each of these vectors is expected to be of size equal to
-/// rank of the corresponding result. If the shape of a particular
-/// result cannot be computed it must be empty.
+/// `reifiedReturnShapes` is populated with one vector per op result. Each
+/// of those vectors contains an OpFoldResult for each dimension of the
+/// shaped type. In case a dimension in the type is static, the
+/// corresponding entry is an IntegerAttr. Otherwise, it is a Value. The
+/// given builder may be used to insert ops that compute result shapes.
+/// 
+/// If the shape of a particular result cannot be computed it must be empty.
 ::mlir::LogicalResult mlir::ReifyRankedShapedTypeOpInterface::reifyResultShapes(::mlir::OpBuilder & builder, ::mlir::ReifiedRankedShapedTypeDims & reifiedReturnShapes) {
       return getImpl()->reifyResultShapes(getImpl(), getOperation(), builder, reifiedReturnShapes);
   }

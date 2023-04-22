@@ -11,6 +11,7 @@ class RegionKindInterface;
 namespace detail {
 struct RegionKindInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::RegionKind (*getRegionKind)(unsigned);
     bool (*hasSSADominance)(unsigned);
   };

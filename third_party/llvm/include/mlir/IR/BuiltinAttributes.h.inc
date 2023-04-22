@@ -40,14 +40,13 @@ public:
   using Base::Base;
   using ValueType = AffineMap;
   AffineMap getAffineMap() const { return getValue(); }
-public:
   static AffineMapAttr get(AffineMap value);
   AffineMap getValue() const;
 };
 namespace detail {
 struct ArrayAttrStorage;
 } // namespace detail
-class ArrayAttr : public ::mlir::Attribute::AttrBase<ArrayAttr, ::mlir::Attribute, detail::ArrayAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
+class ArrayAttr : public ::mlir::Attribute::AttrBase<ArrayAttr, ::mlir::Attribute, detail::ArrayAttrStorage> {
 public:
   using Base::Base;
     using ValueType = ArrayRef<Attribute>;
@@ -91,7 +90,6 @@ public:
         return static_cast<UnderlyingTy>(attr.getValue());
       });
     }
-public:
   static ArrayAttr get(::mlir::MLIRContext *context, ::llvm::ArrayRef<Attribute> value);
   ::llvm::ArrayRef<Attribute> getValue() const;
 };
@@ -106,7 +104,6 @@ public:
   /// Return true if there are no elements in the dense array.
   bool empty() const { return !size(); }
   using Base::getChecked;
-public:
   static DenseArrayAttr get(::mlir::MLIRContext *context, Type elementType, int64_t size, ::llvm::ArrayRef<char> rawData);
   static DenseArrayAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::mlir::MLIRContext *context, Type elementType, int64_t size, ::llvm::ArrayRef<char> rawData);
   static DenseArrayAttr get(Type elementType, unsigned size, ArrayRef<char> rawData);
@@ -239,7 +236,6 @@ public:
     );
 
   public:
-public:
   static DenseResourceElementsAttr get(ShapedType type, DenseResourceElementsHandle handle);
   ShapedType getType() const;
   DenseResourceElementsHandle getRawHandle() const;
@@ -273,13 +269,12 @@ public:
     friend DenseElementsAttr;
 
   public:
-public:
   static DenseStringElementsAttr get(ShapedType type, ArrayRef<StringRef> values);
 };
 namespace detail {
 struct DictionaryAttrStorage;
 } // namespace detail
-class DictionaryAttr : public ::mlir::Attribute::AttrBase<DictionaryAttr, ::mlir::Attribute, detail::DictionaryAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
+class DictionaryAttr : public ::mlir::Attribute::AttrBase<DictionaryAttr, ::mlir::Attribute, detail::DictionaryAttrStorage> {
 public:
   using Base::Base;
     using ValueType = ArrayRef<NamedAttribute>;
@@ -294,8 +289,8 @@ public:
     Attribute get(StringAttr name) const;
 
     /// Return the specified named attribute if present, std::nullopt otherwise.
-    Optional<NamedAttribute> getNamed(StringRef name) const;
-    Optional<NamedAttribute> getNamed(StringAttr name) const;
+    std::optional<NamedAttribute> getNamed(StringRef name) const;
+    std::optional<NamedAttribute> getNamed(StringAttr name) const;
 
     /// Return whether the specified attribute is present.
     bool contains(StringRef name) const;
@@ -323,7 +318,7 @@ public:
     /// Returns an entry with a duplicate name in `array`, if it exists, else
     /// returns std::nullopt. If `isSorted` is true, the array is assumed to be
     /// sorted else it will be sorted in place before finding the duplicate entry.
-    static Optional<NamedAttribute>
+    static std::optional<NamedAttribute>
     findDuplicate(SmallVectorImpl<NamedAttribute> &array, bool isSorted);
 
     /// Return the specified attribute if present and is an instance of
@@ -346,7 +341,6 @@ public:
     friend MLIRContext;
 
   public:
-public:
   static DictionaryAttr get(::mlir::MLIRContext *context, ArrayRef<NamedAttribute> value = std::nullopt);
   ::llvm::ArrayRef<NamedAttribute> getValue() const;
 };
@@ -363,7 +357,6 @@ public:
   double getValueAsDouble() const;
   static double getValueAsDouble(APFloat val);
   using Base::getChecked;
-public:
   static FloatAttr get(Type type, const APFloat &value);
   static FloatAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type type, const APFloat &value);
   static FloatAttr get(Type type, double value);
@@ -406,7 +399,6 @@ public:
 
   public:
   using Base::getChecked;
-public:
   static IntegerAttr get(Type type, const APInt &value);
   static IntegerAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type type, const APInt &value);
   static IntegerAttr get(::mlir::MLIRContext *context, const APSInt &value);
@@ -423,8 +415,7 @@ struct IntegerSetAttrStorage;
 class IntegerSetAttr : public ::mlir::Attribute::AttrBase<IntegerSetAttr, ::mlir::Attribute, detail::IntegerSetAttrStorage> {
 public:
   using Base::Base;
-  using ValueType = IntegerSet;public:
-  static IntegerSetAttr get(IntegerSet value);
+  using ValueType = IntegerSet;static IntegerSetAttr get(IntegerSet value);
   IntegerSet getValue() const;
 };
 namespace detail {
@@ -434,7 +425,6 @@ class OpaqueAttr : public ::mlir::Attribute::AttrBase<OpaqueAttr, ::mlir::Attrib
 public:
   using Base::Base;
   using Base::getChecked;
-public:
   static OpaqueAttr get(StringAttr dialect, StringRef attrData, Type type);
   static OpaqueAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, StringAttr dialect, StringRef attrData, Type type);
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, StringAttr dialectNamespace, ::llvm::StringRef attrData, ::mlir::Type type);
@@ -543,7 +533,6 @@ public:
 
   public:
   using Base::getChecked;
-public:
   static SparseElementsAttr get(ShapedType type, DenseElementsAttr indices, DenseElementsAttr values);
   static SparseElementsAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ShapedType type, DenseElementsAttr indices, DenseElementsAttr values);
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ShapedType type, DenseIntElementsAttr indices, DenseElementsAttr values);
@@ -598,7 +587,6 @@ public:
     static StringAttr getEmptyStringAttrUnchecked(MLIRContext *context);
     friend MLIRContext;
   public:
-public:
   static StringAttr get(const Twine &bytes, Type type);
   static StringAttr get(::mlir::MLIRContext *context, const Twine &bytes);
   static StringAttr get(::mlir::MLIRContext *context);
@@ -608,7 +596,7 @@ public:
 namespace detail {
 struct SymbolRefAttrStorage;
 } // namespace detail
-class SymbolRefAttr : public ::mlir::Attribute::AttrBase<SymbolRefAttr, ::mlir::Attribute, detail::SymbolRefAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
+class SymbolRefAttr : public ::mlir::Attribute::AttrBase<SymbolRefAttr, ::mlir::Attribute, detail::SymbolRefAttrStorage> {
 public:
   using Base::Base;
   static SymbolRefAttr get(MLIRContext *ctx, StringRef value,
@@ -625,7 +613,6 @@ public:
   /// Returns the name of the fully resolved symbol, i.e. the leaf of the
   /// reference path.
   StringAttr getLeafReference() const;
-public:
   static SymbolRefAttr get(StringAttr rootReference, ArrayRef<FlatSymbolRefAttr> nestedReferences);
   StringAttr getRootReference() const;
   ::llvm::ArrayRef<FlatSymbolRefAttr> getNestedReferences() const;
@@ -633,11 +620,10 @@ public:
 namespace detail {
 struct TypeAttrStorage;
 } // namespace detail
-class TypeAttr : public ::mlir::Attribute::AttrBase<TypeAttr, ::mlir::Attribute, detail::TypeAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
+class TypeAttr : public ::mlir::Attribute::AttrBase<TypeAttr, ::mlir::Attribute, detail::TypeAttrStorage> {
 public:
   using Base::Base;
-  using ValueType = Type;public:
-  static TypeAttr get(Type type);
+  using ValueType = Type;static TypeAttr get(Type type);
   Type getValue() const;
 };
 class UnitAttr : public ::mlir::Attribute::AttrBase<UnitAttr, ::mlir::Attribute, ::mlir::AttributeStorage> {
@@ -654,7 +640,6 @@ public:
   /// Print the attribute to the given output stream.
   void print(raw_ostream &os) const;
   using Base::getChecked;
-public:
   static StridedLayoutAttr get(::mlir::MLIRContext *context, int64_t offset, ::llvm::ArrayRef<int64_t> strides);
   static StridedLayoutAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::mlir::MLIRContext *context, int64_t offset, ::llvm::ArrayRef<int64_t> strides);
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, int64_t offset, ::llvm::ArrayRef<int64_t> strides);

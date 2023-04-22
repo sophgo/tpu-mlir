@@ -13,8 +13,11 @@
 #ifndef DIALECT_TOSA_UTILS_COVERSION_UTILS_H_
 #define DIALECT_TOSA_UTILS_COVERSION_UTILS_H_
 
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Utils/StructuredOpsUtils.h"
 #include "mlir/IR/PatternMatch.h"
+#include <optional>
 
 namespace mlir {
 namespace tosa {
@@ -39,13 +42,34 @@ Value clampIntHelper(Location loc, Value arg, Value min, Value max,
 // Determines whether the integer value falls witin the range of integer type.
 bool validIntegerRange(IntegerType ty, int64_t value);
 
-// Returns the values in an attribute as an array of values.
-template <typename T>
-void getValuesFromIntArrayAttribute(ArrayAttr attr,
-                                    SmallVector<T> &arrayValues) {
-  for (Attribute val : attr.getValue()) {
-    arrayValues.push_back(val.cast<IntegerAttr>().getValue().getSExtValue());
+// Checks for a dynamic batch dim in any of the passed parameters of an op.
+// The batch dimention must be #0 and the rest of the dimensions must be static.
+template <typename Op>
+std::optional<SmallVector<Value>>
+checkHasDynamicBatchDims(PatternRewriter &rewriter, Op op,
+                         ArrayRef<Value> params) {
+  SmallVector<ShapedType> dynTypes;
+  SmallVector<Value> dynamicDims;
+  for (const Value &param : params) {
+    auto paramTy = param.getType().cast<ShapedType>();
+    if (!paramTy.hasStaticShape())
+      dynTypes.push_back(paramTy);
   }
+
+  if (dynTypes.empty())
+    return dynamicDims;
+
+  for (const ShapedType &dynTy : dynTypes) {
+    if (llvm::any_of(dynTy.getShape().drop_front(), ShapedType::isDynamic)) {
+      (void)rewriter.notifyMatchFailure(
+          op, "input can only be dynamic for batch size");
+      return std::nullopt;
+    }
+  }
+
+  dynamicDims.push_back(
+      rewriter.create<tensor::DimOp>(op->getLoc(), params[0], 0));
+  return dynamicDims;
 }
 
 } // namespace tosa

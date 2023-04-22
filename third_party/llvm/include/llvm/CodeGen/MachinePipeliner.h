@@ -69,7 +69,7 @@ public:
   MachineOptimizationRemarkEmitter *ORE = nullptr;
   const MachineLoopInfo *MLI = nullptr;
   const MachineDominatorTree *MDT = nullptr;
-  const InstrItineraryData *InstrItins;
+  const InstrItineraryData *InstrItins = nullptr;
   const TargetInstrInfo *TII = nullptr;
   RegisterClassInfo RegClassInfo;
   bool disabledByPragma = false;
@@ -310,7 +310,7 @@ private:
   bool canUseLastOffsetValue(MachineInstr *MI, unsigned &BasePos,
                              unsigned &OffsetPos, unsigned &NewBase,
                              int64_t &NewOffset);
-  void postprocessDAG();
+  void postProcessDAG();
   /// Set the Minimum Initiation Interval for this schedule attempt.
   void setMII(unsigned ResMII, unsigned RecMII);
   /// Set the Maximum Initiation Interval for this schedule attempt.

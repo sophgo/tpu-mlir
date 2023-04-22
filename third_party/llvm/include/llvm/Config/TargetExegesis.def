@@ -24,7 +24,6 @@
 #  error Please define the macro LLVM_EXEGESIS(TargetName)
 #endif
 
-LLVM_EXEGESIS(X86)
 
 
 #undef LLVM_EXEGESIS

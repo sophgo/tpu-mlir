@@ -63,6 +63,14 @@ void mlirRegisterTransformsLoopInvariantCodeMotion(void) {
 }
 
 
+MlirPass mlirCreateTransformsPrintIRPass(void) {
+  return wrap(mlir::createPrintIRPass().release());
+}
+void mlirRegisterTransformsPrintIRPass(void) {
+  registerPrintIRPass();
+}
+
+
 MlirPass mlirCreateTransformsPrintOpStats(void) {
   return wrap(mlir::createPrintOpStatsPass().release());
 }

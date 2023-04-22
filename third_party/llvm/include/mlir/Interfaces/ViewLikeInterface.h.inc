@@ -7,10 +7,58 @@
 \*===----------------------------------------------------------------------===*/
 
 namespace mlir {
+class ViewLikeOpInterface;
+namespace detail {
+struct ViewLikeOpInterfaceInterfaceTraits {
+  struct Concept {
+    /// The methods defined by the interface.
+    ::mlir::Value (*getViewSource)(const Concept *impl, ::mlir::Operation *);
+  };
+  template<typename ConcreteOp>
+  class Model : public Concept {
+  public:
+    using Interface = ::mlir::ViewLikeOpInterface;
+    Model() : Concept{getViewSource} {}
+
+    static inline ::mlir::Value getViewSource(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+  };
+  template<typename ConcreteOp>
+  class FallbackModel : public Concept {
+  public:
+    using Interface = ::mlir::ViewLikeOpInterface;
+    FallbackModel() : Concept{getViewSource} {}
+
+    static inline ::mlir::Value getViewSource(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+  };
+  template<typename ConcreteModel, typename ConcreteOp>
+  class ExternalModel : public FallbackModel<ConcreteModel> {
+  public:
+    using ConcreteEntity = ConcreteOp;
+  };
+};template <typename ConcreteOp>
+struct ViewLikeOpInterfaceTrait;
+
+} // namespace detail
+class ViewLikeOpInterface : public ::mlir::OpInterface<ViewLikeOpInterface, detail::ViewLikeOpInterfaceInterfaceTraits> {
+public:
+  using ::mlir::OpInterface<ViewLikeOpInterface, detail::ViewLikeOpInterfaceInterfaceTraits>::OpInterface;
+  template <typename ConcreteOp>
+  struct Trait : public detail::ViewLikeOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the source buffer from which the view is created.
+  ::mlir::Value getViewSource();
+};
+namespace detail {
+  template <typename ConcreteOp>
+  struct ViewLikeOpInterfaceTrait : public ::mlir::OpInterface<ViewLikeOpInterface, detail::ViewLikeOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+  };
+}// namespace detail
+} // namespace mlir
+namespace mlir {
 class OffsetSizeAndStrideOpInterface;
 namespace detail {
 struct OffsetSizeAndStrideOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     unsigned (*getOffsetSizeAndStrideStartOperandIndex)();
     std::array<unsigned, 3> (*getArrayAttrMaxRanks)(const Concept *impl, ::mlir::Operation *);
     ::mlir::OperandRange (*offsets)(const Concept *impl, ::mlir::Operation *);
@@ -229,7 +277,6 @@ public:
         ::mlir::OpTrait::AttrSizedOperandSegments<void>::getOperandSegmentSizeAttr()};
       return names;
     }
-  
 };
 namespace detail {
   template <typename ConcreteOp>
@@ -381,50 +428,14 @@ namespace detail {
 }// namespace detail
 } // namespace mlir
 namespace mlir {
-class ViewLikeOpInterface;
-namespace detail {
-struct ViewLikeOpInterfaceInterfaceTraits {
-  struct Concept {
-    ::mlir::Value (*getViewSource)(const Concept *impl, ::mlir::Operation *);
-  };
-  template<typename ConcreteOp>
-  class Model : public Concept {
-  public:
-    using Interface = ::mlir::ViewLikeOpInterface;
-    Model() : Concept{getViewSource} {}
-
-    static inline ::mlir::Value getViewSource(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-  };
-  template<typename ConcreteOp>
-  class FallbackModel : public Concept {
-  public:
-    using Interface = ::mlir::ViewLikeOpInterface;
-    FallbackModel() : Concept{getViewSource} {}
-
-    static inline ::mlir::Value getViewSource(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-  };
-  template<typename ConcreteModel, typename ConcreteOp>
-  class ExternalModel : public FallbackModel<ConcreteModel> {
-  public:
-    using ConcreteEntity = ConcreteOp;
-  };
-};template <typename ConcreteOp>
-struct ViewLikeOpInterfaceTrait;
-
-} // namespace detail
-class ViewLikeOpInterface : public ::mlir::OpInterface<ViewLikeOpInterface, detail::ViewLikeOpInterfaceInterfaceTraits> {
-public:
-  using ::mlir::OpInterface<ViewLikeOpInterface, detail::ViewLikeOpInterfaceInterfaceTraits>::OpInterface;
-  template <typename ConcreteOp>
-  struct Trait : public detail::ViewLikeOpInterfaceTrait<ConcreteOp> {};
-  /// Returns the source buffer from which the view is created.
-  ::mlir::Value getViewSource();
-};
-namespace detail {
-  template <typename ConcreteOp>
-  struct ViewLikeOpInterfaceTrait : public ::mlir::OpInterface<ViewLikeOpInterface, detail::ViewLikeOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
-  };
-}// namespace detail
+template<typename ConcreteOp>
+::mlir::Value detail::ViewLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getViewSource(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getViewSource();
+}
+template<typename ConcreteOp>
+::mlir::Value detail::ViewLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getViewSource(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getViewSource(tablegen_opaque_val);
+}
 } // namespace mlir
 namespace mlir {
 template<typename ConcreteOp>
@@ -775,15 +786,5 @@ bool detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<Concre
 return ::llvm::all_of(getMixedOffsets(), [](::mlir::OpFoldResult ofr) {
           return ::mlir::getConstantIntValue(ofr) == static_cast<int64_t>(0);
         });
-}
-} // namespace mlir
-namespace mlir {
-template<typename ConcreteOp>
-::mlir::Value detail::ViewLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getViewSource(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getViewSource();
-}
-template<typename ConcreteOp>
-::mlir::Value detail::ViewLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getViewSource(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getViewSource(tablegen_opaque_val);
 }
 } // namespace mlir

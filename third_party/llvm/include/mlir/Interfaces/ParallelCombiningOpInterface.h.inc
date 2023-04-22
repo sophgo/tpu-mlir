@@ -11,6 +11,7 @@ class ParallelCombiningOpInterface;
 namespace detail {
 struct ParallelCombiningOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::OpResult (*getParentResult)(const Concept *impl, ::mlir::Operation *, int64_t);
     ::llvm::iterator_range<Block::iterator> (*getYieldingOps)(const Concept *impl, ::mlir::Operation *);
   };

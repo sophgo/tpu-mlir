@@ -11,6 +11,7 @@ class InferIntRangeInterface;
 namespace detail {
 struct InferIntRangeInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     void (*inferResultRanges)(const Concept *impl, ::mlir::Operation *, ::llvm::ArrayRef<::mlir::ConstantIntRanges>, ::mlir::SetIntRangeFn);
   };
   template<typename ConcreteOp>

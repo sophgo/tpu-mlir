@@ -68,7 +68,7 @@ class LLVMContext {
 public:
   LLVMContextImpl *const pImpl;
   LLVMContext();
-  LLVMContext(LLVMContext &) = delete;
+  LLVMContext(const LLVMContext &) = delete;
   LLVMContext &operator=(const LLVMContext &) = delete;
   ~LLVMContext();
 
@@ -310,9 +310,6 @@ public:
   /// The lifetime of the object must be guaranteed to extend as long as the
   /// LLVMContext is used by compilation.
   void setOptPassGate(OptPassGate&);
-
-  /// Whether we've decided on using opaque pointers or typed pointers yet.
-  bool hasSetOpaquePointersValue() const;
 
   /// Set whether opaque pointers are enabled. The method may be called multiple
   /// times, but only with the same value. Note that creating a pointer type or

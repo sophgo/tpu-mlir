@@ -11,6 +11,7 @@ class OpAsmOpInterface;
 namespace detail {
 struct OpAsmOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     void (*getAsmResultNames)(const Concept *impl, ::mlir::Operation *, ::mlir::OpAsmSetValueNameFn);
     void (*getAsmBlockArgumentNames)(const Concept *impl, ::mlir::Operation *, ::mlir::Region&, ::mlir::OpAsmSetValueNameFn);
     void (*getAsmBlockNames)(const Concept *impl, ::mlir::Operation *, ::mlir::OpAsmSetBlockNameFn);

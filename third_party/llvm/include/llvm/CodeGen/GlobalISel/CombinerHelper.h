@@ -79,14 +79,6 @@ struct ShiftOfShiftedLogic {
 
 using BuildFnTy = std::function<void(MachineIRBuilder &)>;
 
-struct MergeTruncStoresInfo {
-  SmallVector<GStore *> FoundStores;
-  GStore *LowestIdxStore = nullptr;
-  Register WideSrcVal;
-  bool NeedBSwap = false;
-  bool NeedRotate = false;
-};
-
 using OperandBuildSteps =
     SmallVector<std::function<void(MachineInstrBuilder &)>, 4>;
 struct InstructionBuildSteps {
@@ -577,9 +569,6 @@ public:
   /// bswap.
   bool matchLoadOrCombine(MachineInstr &MI, BuildFnTy &MatchInfo);
 
-  bool matchTruncStoreMerge(MachineInstr &MI, MergeTruncStoresInfo &MatchInfo);
-  void applyTruncStoreMerge(MachineInstr &MI, MergeTruncStoresInfo &MatchInfo);
-
   bool matchExtendThroughPhis(MachineInstr &MI, MachineInstr *&ExtMI);
   void applyExtendThroughPhis(MachineInstr &MI, MachineInstr *&ExtMI);
 
@@ -788,6 +777,9 @@ public:
   ///   (X - Y) != X -> Y != 0
   ///   (X ^ Y) != X -> Y != 0
   bool matchRedundantBinOpInEquality(MachineInstr &MI, BuildFnTy &MatchInfo);
+
+  /// Match shifts greater or equal to the bitwidth of the operation.
+  bool matchShiftsTooBig(MachineInstr &MI);
 
 private:
   /// Given a non-indexed load or store instruction \p MI, find an offset that

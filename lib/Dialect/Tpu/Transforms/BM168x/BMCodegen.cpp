@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BMCodegen.hpp"
 #include "bmcpu_common.h"
-#include "mlir/IR/BlockAndValueMapping.h"
+
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"

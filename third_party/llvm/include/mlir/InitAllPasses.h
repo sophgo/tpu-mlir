@@ -14,7 +14,6 @@
 #ifndef MLIR_INITALLPASSES_H_
 #define MLIR_INITALLPASSES_H_
 
-
 namespace mlir {
 
 // This function may be called to register the MLIR passes with the

@@ -11,6 +11,7 @@ class ElementsAttr;
 namespace detail {
 struct ElementsAttrInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> (*getValuesImpl)(const Concept *impl, ::mlir::Attribute , ::mlir::TypeID);
     bool (*isSplat)(const Concept *impl, ::mlir::Attribute );
     ::mlir::ShapedType (*getType)(const Concept *impl, ::mlir::Attribute );
@@ -161,18 +162,18 @@ public:
     /// If this attribute supports iterating over element values of type `T`,
     /// return the iterable range. Otherwise, return std::nullopt.
     template <typename T>
-    DefaultValueCheckT<T, Optional<iterator_range<T>>> tryGetValues() const {
-      if (Optional<iterator<T>> beginIt = try_value_begin<T>())
+    DefaultValueCheckT<T, std::optional<iterator_range<T>>> tryGetValues() const {
+      if (std::optional<iterator<T>> beginIt = try_value_begin<T>())
         return iterator_range<T>(getType(), *beginIt, value_end<T>());
       return std::nullopt;
     }
     template <typename T>
-    DefaultValueCheckT<T, Optional<iterator<T>>> try_value_begin() const;
+    DefaultValueCheckT<T, std::optional<iterator<T>>> try_value_begin() const;
 
     /// If this attribute supports iterating over element values of type `T`,
     /// return the iterable range. Otherwise, return std::nullopt.
     template <typename T, typename = DerivedAttrValueCheckT<T>>
-    Optional<DerivedAttrValueIteratorRange<T>> tryGetValues() const {
+    std::optional<DerivedAttrValueIteratorRange<T>> tryGetValues() const {
       auto values = tryGetValues<Attribute>();
       if (!values)
         return std::nullopt;
@@ -184,7 +185,7 @@ public:
       );
     }
     template <typename T, typename = DerivedAttrValueCheckT<T>>
-    Optional<DerivedAttrValueIterator<T>> try_value_begin() const {
+    std::optional<DerivedAttrValueIterator<T>> try_value_begin() const {
       if (auto values = tryGetValues<T>())
         return values->begin();
       return std::nullopt;
@@ -195,7 +196,6 @@ public:
 
     /// Return if the attribute holds no elements.
     bool empty() const { return size() == 0; }
-  
 };
 namespace detail {
   template <typename ConcreteAttr>
@@ -356,6 +356,7 @@ class MemRefLayoutAttrInterface;
 namespace detail {
 struct MemRefLayoutAttrInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::AffineMap (*getAffineMap)(const Concept *impl, ::mlir::Attribute );
     bool (*isIdentity)(const Concept *impl, ::mlir::Attribute );
     ::mlir::LogicalResult (*verifyLayout)(const Concept *impl, ::mlir::Attribute , ::llvm::ArrayRef<int64_t>, ::llvm::function_ref<::mlir::InFlightDiagnostic()>);
@@ -423,6 +424,7 @@ class TypedAttr;
 namespace detail {
 struct TypedAttrInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::Type (*getType)(const Concept *impl, ::mlir::Attribute );
   };
   template<typename ConcreteAttr>

@@ -11,6 +11,7 @@ class VerifiableTensorEncoding;
 namespace detail {
 struct VerifiableTensorEncodingInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::LogicalResult (*verifyEncoding)(const Concept *impl, ::mlir::Attribute , ArrayRef<int64_t>, Type, ::llvm::function_ref<::mlir::InFlightDiagnostic()>);
   };
   template<typename ConcreteAttr>

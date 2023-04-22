@@ -9,6 +9,7 @@
 #define GEN_PASS_DECL_INLINER
 #define GEN_PASS_DECL_LOCATIONSNAPSHOT
 #define GEN_PASS_DECL_LOOPINVARIANTCODEMOTION
+#define GEN_PASS_DECL_PRINTIRPASS
 #define GEN_PASS_DECL_PRINTOPSTATS
 #define GEN_PASS_DECL_SCCP
 #define GEN_PASS_DECL_STRIPDEBUGINFO
@@ -88,6 +89,7 @@ struct CanonicalizerOptions {
   bool enableRegionSimplification = true;
   int64_t maxIterations = 10;
   int64_t maxNumRewrites = -1;
+  bool testConvergence = false;
   ::llvm::ArrayRef<std::string> disabledPatterns;
   ::llvm::ArrayRef<std::string> enabledPatterns;
 };
@@ -143,6 +145,7 @@ public:
     enableRegionSimplification = options.enableRegionSimplification;
     maxIterations = options.maxIterations;
     maxNumRewrites = options.maxNumRewrites;
+    testConvergence = options.testConvergence;
     disabledPatterns = options.disabledPatterns;
     enabledPatterns = options.enabledPatterns;
   }
@@ -151,6 +154,7 @@ protected:
   ::mlir::Pass::Option<bool> enableRegionSimplification{*this, "region-simplify", ::llvm::cl::desc("Perform control flow optimizations to the region tree"), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<int64_t> maxIterations{*this, "max-iterations", ::llvm::cl::desc("Max. iterations between applying patterns / simplifying regions"), ::llvm::cl::init(10)};
   ::mlir::Pass::Option<int64_t> maxNumRewrites{*this, "max-num-rewrites", ::llvm::cl::desc("Max. number of pattern rewrites within an iteration"), ::llvm::cl::init(-1)};
+  ::mlir::Pass::Option<bool> testConvergence{*this, "test-convergence", ::llvm::cl::desc("Test only: Fail pass on non-convergence to detect cyclic pattern"), ::llvm::cl::init(false)};
   ::mlir::Pass::ListOption<std::string> disabledPatterns{*this, "disable-patterns", ::llvm::cl::desc("Labels of patterns that should be filtered out during application")};
   ::mlir::Pass::ListOption<std::string> enabledPatterns{*this, "enable-patterns", ::llvm::cl::desc("Labels of patterns that should be used during application, all other patterns are filtered out")};
 private:
@@ -281,7 +285,7 @@ private:
 //===----------------------------------------------------------------------===//
 #ifdef GEN_PASS_DECL_INLINER
 struct InlinerOptions {
-  std::string defaultPipelineStr;
+  std::string defaultPipelineStr = "canonicalize";
   ::llvm::ArrayRef<OpPassManager> opPipelineList;
   unsigned maxInliningIterations = 4;
 };
@@ -338,7 +342,7 @@ public:
     maxInliningIterations = options.maxInliningIterations;
   }
 protected:
-  ::mlir::Pass::Option<std::string> defaultPipelineStr{*this, "default-pipeline", ::llvm::cl::desc("The default optimizer pipeline used for callables")};
+  ::mlir::Pass::Option<std::string> defaultPipelineStr{*this, "default-pipeline", ::llvm::cl::desc("The default optimizer pipeline used for callables"), ::llvm::cl::init("canonicalize")};
   ::mlir::Pass::ListOption<OpPassManager> opPipelineList{*this, "op-pipelines", ::llvm::cl::desc("Callable operation specific optimizer pipelines (in the form of `dialect.op(pipeline)`)")};
   ::mlir::Pass::Option<unsigned> maxInliningIterations{*this, "max-iterations", ::llvm::cl::desc("Maximum number of iterations when inlining within an SCC"), ::llvm::cl::init(4)};
 private:
@@ -472,6 +476,71 @@ private:
 } // namespace impl
 #undef GEN_PASS_DEF_LOOPINVARIANTCODEMOTION
 #endif // GEN_PASS_DEF_LOOPINVARIANTCODEMOTION
+
+//===----------------------------------------------------------------------===//
+// PrintIRPass
+//===----------------------------------------------------------------------===//
+#ifdef GEN_PASS_DECL_PRINTIRPASS
+struct PrintIRPassOptions {
+  std::string label;
+};
+#undef GEN_PASS_DECL_PRINTIRPASS
+#endif // GEN_PASS_DECL_PRINTIRPASS
+#ifdef GEN_PASS_DEF_PRINTIRPASS
+namespace impl {
+
+template <typename DerivedT>
+class PrintIRPassBase : public ::mlir::OperationPass<> {
+public:
+  using Base = PrintIRPassBase;
+
+  PrintIRPassBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  PrintIRPassBase(const PrintIRPassBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("print-ir");
+  }
+  ::llvm::StringRef getArgument() const override { return "print-ir"; }
+
+  ::llvm::StringRef getDescription() const override { return "Print IR on the debug stream"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("PrintIRPass");
+  }
+  ::llvm::StringRef getName() const override { return "PrintIRPass"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(PrintIRPassBase<DerivedT>)
+
+  PrintIRPassBase(const PrintIRPassOptions &options) : PrintIRPassBase() {
+    label = options.label;
+  }
+protected:
+  ::mlir::Pass::Option<std::string> label{*this, "label", ::llvm::cl::desc("Label")};
+private:
+};
+} // namespace impl
+#undef GEN_PASS_DEF_PRINTIRPASS
+#endif // GEN_PASS_DEF_PRINTIRPASS
 
 //===----------------------------------------------------------------------===//
 // PrintOpStats
@@ -1034,6 +1103,23 @@ inline void registerLoopInvariantCodeMotionPass() {
 }
 
 //===----------------------------------------------------------------------===//
+// PrintIRPass Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerPrintIRPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createPrintIRPass();
+  });
+}
+
+// Old registration code, kept for temporary backwards compatibility.
+inline void registerPrintIRPassPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createPrintIRPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // PrintOpStats Registration
 //===----------------------------------------------------------------------===//
 
@@ -1164,6 +1250,7 @@ inline void registerTransformsPasses() {
   registerInliner();
   registerLocationSnapshot();
   registerLoopInvariantCodeMotion();
+  registerPrintIRPass();
   registerPrintOpStats();
   registerSCCP();
   registerStripDebugInfo();
@@ -1271,6 +1358,7 @@ protected:
   ::mlir::Pass::Option<bool> enableRegionSimplification{*this, "region-simplify", ::llvm::cl::desc("Perform control flow optimizations to the region tree"), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<int64_t> maxIterations{*this, "max-iterations", ::llvm::cl::desc("Max. iterations between applying patterns / simplifying regions"), ::llvm::cl::init(10)};
   ::mlir::Pass::Option<int64_t> maxNumRewrites{*this, "max-num-rewrites", ::llvm::cl::desc("Max. number of pattern rewrites within an iteration"), ::llvm::cl::init(-1)};
+  ::mlir::Pass::Option<bool> testConvergence{*this, "test-convergence", ::llvm::cl::desc("Test only: Fail pass on non-convergence to detect cyclic pattern"), ::llvm::cl::init(false)};
   ::mlir::Pass::ListOption<std::string> disabledPatterns{*this, "disable-patterns", ::llvm::cl::desc("Labels of patterns that should be filtered out during application")};
   ::mlir::Pass::ListOption<std::string> enabledPatterns{*this, "enable-patterns", ::llvm::cl::desc("Labels of patterns that should be used during application, all other patterns are filtered out")};
 };
@@ -1409,7 +1497,7 @@ public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(InlinerBase<DerivedT>)
 
 protected:
-  ::mlir::Pass::Option<std::string> defaultPipelineStr{*this, "default-pipeline", ::llvm::cl::desc("The default optimizer pipeline used for callables")};
+  ::mlir::Pass::Option<std::string> defaultPipelineStr{*this, "default-pipeline", ::llvm::cl::desc("The default optimizer pipeline used for callables"), ::llvm::cl::init("canonicalize")};
   ::mlir::Pass::ListOption<OpPassManager> opPipelineList{*this, "op-pipelines", ::llvm::cl::desc("Callable operation specific optimizer pipelines (in the form of `dialect.op(pipeline)`)")};
   ::mlir::Pass::Option<unsigned> maxInliningIterations{*this, "max-iterations", ::llvm::cl::desc("Maximum number of iterations when inlining within an SCC"), ::llvm::cl::init(4)};
 };
@@ -1504,6 +1592,52 @@ public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LoopInvariantCodeMotionBase<DerivedT>)
 
 protected:
+};
+
+template <typename DerivedT>
+class PrintIRPassBase : public ::mlir::OperationPass<> {
+public:
+  using Base = PrintIRPassBase;
+
+  PrintIRPassBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  PrintIRPassBase(const PrintIRPassBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("print-ir");
+  }
+  ::llvm::StringRef getArgument() const override { return "print-ir"; }
+
+  ::llvm::StringRef getDescription() const override { return "Print IR on the debug stream"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("PrintIRPass");
+  }
+  ::llvm::StringRef getName() const override { return "PrintIRPass"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(PrintIRPassBase<DerivedT>)
+
+protected:
+  ::mlir::Pass::Option<std::string> label{*this, "label", ::llvm::cl::desc("Label")};
 };
 
 template <typename DerivedT>

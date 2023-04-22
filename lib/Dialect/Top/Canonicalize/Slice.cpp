@@ -30,7 +30,7 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
       }
     }
     const auto& opd = op->getOperand(0);
-    const auto& res = op.getResult();
+    const auto& res = op->getResult(0);
     const auto& offset = op->getAttr("offset");
     const auto& steps = op->getAttr("steps");
     rewriter.setInsertionPointAfterValue(opd);
@@ -163,17 +163,17 @@ struct ConvSlice: public OpRewritePattern<SliceOp>{
     auto conv_oshape = module::getShape(conv_out);
     if ( in_shape.size() != 4) return failure();
     if (Steps->at(2) != 1 || Steps->at(3) != 1) return failure();
-    
+
     int crop_h = Offsets->at(2);
     int crop_w = Offsets->at(3);
     if (crop_h > 0 && conv_param.pht < crop_h) return failure();
     if (crop_w > 0 && conv_param.pwl < crop_w) return failure();
 
-    int crop_h_after = conv_oshape[2] - ( out_shape[2] + Offsets->at(2)); 
+    int crop_h_after = conv_oshape[2] - ( out_shape[2] + Offsets->at(2));
     int crop_w_after = conv_oshape[3] - ( out_shape[3] + Offsets->at(3));
     if (crop_h_after>0 && conv_param.phb < crop_h_after) return failure();
     if (crop_w_after>0 && conv_param.pwr < crop_w_after) return failure();
- 
+
     // replace pre op's attr
     conv_param.pht -= crop_h;
     conv_param.phb -= crop_h_after;
@@ -186,8 +186,8 @@ struct ConvSlice: public OpRewritePattern<SliceOp>{
     in_op->setLoc(op.getLoc());
     op.getOutput().replaceAllUsesWith(op.getInput());
     rewriter.eraseOp(op);
-    return success(); 
-  } 
+    return success();
+  }
 };
 
 

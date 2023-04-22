@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum AMDGCNIntrinsics : unsigned {
 // Enum values for intrinsics
-    amdgcn_alignbyte = 1339,                          // llvm.amdgcn.alignbyte
+    amdgcn_alignbyte = 1745,                          // llvm.amdgcn.alignbyte
     amdgcn_atomic_dec,                         // llvm.amdgcn.atomic.dec
     amdgcn_atomic_inc,                         // llvm.amdgcn.atomic.inc
     amdgcn_ballot,                             // llvm.amdgcn.ballot
@@ -608,6 +608,7 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_interp_p1_f16,                      // llvm.amdgcn.interp.p1.f16
     amdgcn_interp_p2,                          // llvm.amdgcn.interp.p2
     amdgcn_interp_p2_f16,                      // llvm.amdgcn.interp.p2.f16
+    amdgcn_inverse_ballot,                     // llvm.amdgcn.inverse.ballot
     amdgcn_is_private,                         // llvm.amdgcn.is.private
     amdgcn_is_shared,                          // llvm.amdgcn.is.shared
     amdgcn_kernarg_segment_ptr,                // llvm.amdgcn.kernarg.segment.ptr

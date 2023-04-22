@@ -11,7 +11,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/PixelHelper.h"
 
-#include "mlir/IR/BlockAndValueMapping.h"
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"

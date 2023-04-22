@@ -13,6 +13,8 @@ namespace tosa {
 TosaDialect::TosaDialect(::mlir::MLIRContext *context)
     : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<TosaDialect>()) {
   
+    getContext()->loadDialect<tensor::TensorDialect>();
+
   initialize();
 }
 

@@ -14,7 +14,7 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-#include "mlir/IR/BlockAndValueMapping.h"
+
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 

@@ -11,6 +11,7 @@ class BranchOpInterface;
 namespace detail {
 struct BranchOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::SuccessorOperands (*getSuccessorOperands)(const Concept *impl, ::mlir::Operation *, unsigned);
     ::std::optional<::mlir::BlockArgument> (*getSuccessorBlockArgument)(const Concept *impl, ::mlir::Operation *, unsigned);
     ::mlir::Block *(*getSuccessorForOperands)(const Concept *impl, ::mlir::Operation *, ::llvm::ArrayRef<::mlir::Attribute>);
@@ -121,6 +122,7 @@ class RegionBranchOpInterface;
 namespace detail {
 struct RegionBranchOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::OperandRange (*getSuccessorEntryOperands)(const Concept *impl, ::mlir::Operation *, ::std::optional<unsigned>);
     void (*getSuccessorRegions)(const Concept *impl, ::mlir::Operation *, ::std::optional<unsigned>, ::llvm::ArrayRef<::mlir::Attribute>, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> &);
     void (*getRegionInvocationBounds)(const Concept *impl, ::mlir::Operation *, ::llvm::ArrayRef<::mlir::Attribute>, ::llvm::SmallVectorImpl<::mlir::InvocationBounds> &);
@@ -213,7 +215,6 @@ public:
     /// eventually branch back to the same region. (Maybe after passing through
     /// other regions.)
     bool isRepetitiveRegion(unsigned index);
-  
 };
 namespace detail {
   template <typename ConcreteOp>
@@ -265,6 +266,7 @@ class RegionBranchTerminatorOpInterface;
 namespace detail {
 struct RegionBranchTerminatorOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::MutableOperandRange (*getMutableSuccessorOperands)(const Concept *impl, ::mlir::Operation *, ::std::optional<unsigned>);
     ::mlir::OperandRange (*getSuccessorOperands)(const Concept *impl, ::mlir::Operation *, ::std::optional<unsigned>);
   };

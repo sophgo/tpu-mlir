@@ -49,7 +49,7 @@ SmallVector<Range> mlir::TilingInterface::getIterationDomain(OpBuilder & b) {
 /// 
 /// The method returns the operation that is the tiled
 /// implementation.
-SmallVector<Operation *> mlir::TilingInterface::getTiledImplementation(OpBuilder & b, ArrayRef<OpFoldResult>  offsets, ArrayRef<OpFoldResult>  sizes) {
+FailureOr<TilingResult> mlir::TilingInterface::getTiledImplementation(OpBuilder & b, ArrayRef<OpFoldResult>  offsets, ArrayRef<OpFoldResult>  sizes) {
       return getImpl()->getTiledImplementation(getImpl(), getOperation(), b, offsets, sizes);
   }
 /// Method to return the position of the result tile computed by the tiled operation.
@@ -80,7 +80,7 @@ LogicalResult mlir::TilingInterface::getResultTilePosition(OpBuilder & b, unsign
 ///   provided here (as opposed to zero-based offset "relative" to the
 ///   iteration space).
 /// - `sizes` provides the size of the tile.
-FailureOr<Value> mlir::TilingInterface::generateResultTileValue(OpBuilder & b, unsigned resultNumber, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes) {
+FailureOr<TilingResult> mlir::TilingInterface::generateResultTileValue(OpBuilder & b, unsigned resultNumber, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes) {
       return getImpl()->generateResultTileValue(getImpl(), getOperation(), b, resultNumber, offsets, sizes);
   }
 /// Generates the scalar implementation of the operation.

@@ -11,6 +11,7 @@ class RuntimeVerifiableOpInterface;
 namespace detail {
 struct RuntimeVerifiableOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     void (*generateRuntimeVerification)(const Concept *impl, ::mlir::Operation *, ::mlir::OpBuilder &, ::mlir::Location);
   };
   template<typename ConcreteOp>

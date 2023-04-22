@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum RISCVIntrinsics : unsigned {
 // Enum values for intrinsics
-    riscv_aes32dsi = 7610,                            // llvm.riscv.aes32dsi
+    riscv_aes32dsi = 8021,                            // llvm.riscv.aes32dsi
     riscv_aes32dsmi,                           // llvm.riscv.aes32dsmi
     riscv_aes32esi,                            // llvm.riscv.aes32esi
     riscv_aes32esmi,                           // llvm.riscv.aes32esmi
@@ -50,12 +50,19 @@ enum RISCVIntrinsics : unsigned {
     riscv_masked_strided_store,                // llvm.riscv.masked.strided.store
     riscv_orc_b,                               // llvm.riscv.orc.b
     riscv_seg2_load,                           // llvm.riscv.seg2.load
+    riscv_seg2_store,                          // llvm.riscv.seg2.store
     riscv_seg3_load,                           // llvm.riscv.seg3.load
+    riscv_seg3_store,                          // llvm.riscv.seg3.store
     riscv_seg4_load,                           // llvm.riscv.seg4.load
+    riscv_seg4_store,                          // llvm.riscv.seg4.store
     riscv_seg5_load,                           // llvm.riscv.seg5.load
+    riscv_seg5_store,                          // llvm.riscv.seg5.store
     riscv_seg6_load,                           // llvm.riscv.seg6.load
+    riscv_seg6_store,                          // llvm.riscv.seg6.store
     riscv_seg7_load,                           // llvm.riscv.seg7.load
+    riscv_seg7_store,                          // llvm.riscv.seg7.store
     riscv_seg8_load,                           // llvm.riscv.seg8.load
+    riscv_seg8_store,                          // llvm.riscv.seg8.store
     riscv_sha256sig0,                          // llvm.riscv.sha256sig0
     riscv_sha256sig1,                          // llvm.riscv.sha256sig1
     riscv_sha256sum0,                          // llvm.riscv.sha256sum0
@@ -74,6 +81,14 @@ enum RISCVIntrinsics : unsigned {
     riscv_sm3p1,                               // llvm.riscv.sm3p1
     riscv_sm4ed,                               // llvm.riscv.sm4ed
     riscv_sm4ks,                               // llvm.riscv.sm4ks
+    riscv_th_vmaqa,                            // llvm.riscv.th.vmaqa
+    riscv_th_vmaqa_mask,                       // llvm.riscv.th.vmaqa.mask
+    riscv_th_vmaqasu,                          // llvm.riscv.th.vmaqasu
+    riscv_th_vmaqasu_mask,                     // llvm.riscv.th.vmaqasu.mask
+    riscv_th_vmaqau,                           // llvm.riscv.th.vmaqau
+    riscv_th_vmaqau_mask,                      // llvm.riscv.th.vmaqau.mask
+    riscv_th_vmaqaus,                          // llvm.riscv.th.vmaqaus
+    riscv_th_vmaqaus_mask,                     // llvm.riscv.th.vmaqaus.mask
     riscv_unzip,                               // llvm.riscv.unzip
     riscv_vaadd,                               // llvm.riscv.vaadd
     riscv_vaadd_mask,                          // llvm.riscv.vaadd.mask
@@ -435,9 +450,7 @@ enum RISCVIntrinsics : unsigned {
     riscv_vse,                                 // llvm.riscv.vse
     riscv_vse_mask,                            // llvm.riscv.vse.mask
     riscv_vsetvli,                             // llvm.riscv.vsetvli
-    riscv_vsetvli_opt,                         // llvm.riscv.vsetvli.opt
     riscv_vsetvlimax,                          // llvm.riscv.vsetvlimax
-    riscv_vsetvlimax_opt,                      // llvm.riscv.vsetvlimax.opt
     riscv_vsext,                               // llvm.riscv.vsext
     riscv_vsext_mask,                          // llvm.riscv.vsext.mask
     riscv_vslide1down,                         // llvm.riscv.vslide1down

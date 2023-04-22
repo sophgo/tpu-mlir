@@ -15,6 +15,7 @@
 #ifndef LLVM_ADT_FLOATINGPOINTMODE_H
 #define LLVM_ADT_FLOATINGPOINTMODE_H
 
+#include "llvm/ADT/BitmaskEnum.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -131,6 +132,18 @@ struct DenormalMode {
            Input != DenormalModeKind::Invalid;
   }
 
+  /// Return true if input denormals must be implicitly treated as 0.
+  constexpr bool inputsAreZero() const {
+    return Input == DenormalModeKind::PreserveSign ||
+           Input == DenormalModeKind::PositiveZero;
+  }
+
+  /// Return true if output denormals should be flushed to 0.
+  constexpr bool outputsAreZero() const {
+    return Output == DenormalModeKind::PreserveSign ||
+           Output == DenormalModeKind::PositiveZero;
+  }
+
   inline void print(raw_ostream &OS) const;
 
   inline std::string str() const {
@@ -192,11 +205,11 @@ void DenormalMode::print(raw_ostream &OS) const {
   OS << denormalModeKindName(Output) << ',' << denormalModeKindName(Input);
 }
 
-}
-
 /// Floating-point class tests, supported by 'is_fpclass' intrinsic. Actual
 /// test may be an OR combination of basic tests.
-enum FPClassTest {
+enum FPClassTest : unsigned {
+  fcNone = 0,
+
   fcSNan = 0x0001,
   fcQNan = 0x0002,
   fcNegInf = 0x0004,
@@ -216,7 +229,23 @@ enum FPClassTest {
   fcPosFinite = fcPosNormal | fcPosSubnormal | fcPosZero,
   fcNegFinite = fcNegNormal | fcNegSubnormal | fcNegZero,
   fcFinite = fcPosFinite | fcNegFinite,
-  fcAllFlags = fcNan | fcInf | fcFinite
+  fcPositive = fcPosFinite | fcPosInf,
+  fcNegative = fcNegFinite | fcNegInf,
+
+  fcAllFlags = fcNan | fcInf | fcFinite,
 };
+
+LLVM_DECLARE_ENUM_AS_BITMASK(FPClassTest, /* LargestValue */ fcPosInf);
+
+/// Return the test mask which returns true if the value's sign bit is flipped.
+FPClassTest fneg(FPClassTest Mask);
+
+/// Return the test mask which returns true if the value's sign bit is cleared.
+FPClassTest fabs(FPClassTest Mask);
+
+/// Write a human readable form of \p Mask to \p OS
+raw_ostream &operator<<(raw_ostream &OS, FPClassTest Mask);
+
+} // namespace llvm
 
 #endif // LLVM_ADT_FLOATINGPOINTMODE_H

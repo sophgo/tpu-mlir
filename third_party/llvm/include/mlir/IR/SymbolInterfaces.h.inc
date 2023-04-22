@@ -11,6 +11,7 @@ class SymbolOpInterface;
 namespace detail {
 struct SymbolOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     StringAttr (*getNameAttr)(const Concept *impl, ::mlir::Operation *);
     void (*setName)(const Concept *impl, ::mlir::Operation *, ::mlir::StringAttr);
     mlir::SymbolTable::Visibility (*getVisibility)(const Concept *impl, ::mlir::Operation *);
@@ -146,6 +147,8 @@ public:
   /// to a definition).
   bool isDeclaration();
 
+    using Visibility = mlir::SymbolTable::Visibility;
+
     /// Convenience version of `getNameAttr` that returns a StringRef.
     StringRef getName() {
       return getNameAttr().getValue();
@@ -153,18 +156,13 @@ public:
 
     /// Convenience version of `setName` that take a StringRef.
     void setName(StringRef name) {
-      setName(StringAttr::get(this->getContext(), name));
+      setName(StringAttr::get((*this)->getContext(), name));
     }
-
-    /// Custom classof that handles the case where the symbol is optional.
-    static bool classof(Operation *op) {
-      auto *opConcept = getInterfaceFor(op);
-      if (!opConcept)
-        return false;
-      return !opConcept->isOptionalSymbol(opConcept, op) ||
-             op->getAttr(::mlir::SymbolTable::getSymbolAttrName());
-    }
-  
+  static bool classof(::mlir::Operation * base) {
+    if (!getInterfaceFor(base))
+      return false;
+    return base->hasAttr(::mlir::SymbolTable::getSymbolAttrName());
+  }
 };
 namespace detail {
   template <typename ConcreteOp>
@@ -284,6 +282,7 @@ class SymbolUserOpInterface;
 namespace detail {
 struct SymbolUserOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::LogicalResult (*verifySymbolUses)(const Concept *impl, ::mlir::Operation *, ::mlir::SymbolTableCollection &);
   };
   template<typename ConcreteOp>

@@ -24,7 +24,6 @@ class ValueType;
 class AttributeType : public ::mlir::Type::TypeBase<AttributeType, ::mlir::pdl::PDLType, ::mlir::TypeStorage> {
 public:
   using Base::Base;
-public:
   static constexpr ::llvm::StringLiteral getMnemonic() {
     return {"attribute"};
   }
@@ -33,7 +32,6 @@ public:
 class OperationType : public ::mlir::Type::TypeBase<OperationType, ::mlir::pdl::PDLType, ::mlir::TypeStorage> {
 public:
   using Base::Base;
-public:
   static constexpr ::llvm::StringLiteral getMnemonic() {
     return {"operation"};
   }
@@ -46,7 +44,6 @@ class RangeType : public ::mlir::Type::TypeBase<RangeType, ::mlir::pdl::PDLType,
 public:
   using Base::Base;
   using Base::getChecked;
-public:
   static RangeType get(Type elementType);
   static RangeType getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType);
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType);
@@ -61,7 +58,6 @@ public:
 class TypeType : public ::mlir::Type::TypeBase<TypeType, ::mlir::pdl::PDLType, ::mlir::TypeStorage> {
 public:
   using Base::Base;
-public:
   static constexpr ::llvm::StringLiteral getMnemonic() {
     return {"type"};
   }
@@ -70,7 +66,6 @@ public:
 class ValueType : public ::mlir::Type::TypeBase<ValueType, ::mlir::pdl::PDLType, ::mlir::TypeStorage> {
 public:
   using Base::Base;
-public:
   static constexpr ::llvm::StringLiteral getMnemonic() {
     return {"value"};
   }

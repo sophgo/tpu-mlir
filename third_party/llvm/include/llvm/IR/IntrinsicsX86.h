@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum X86Intrinsics : unsigned {
 // Enum values for intrinsics
-    x86_3dnow_pavgusb = 9745,                         // llvm.x86.3dnow.pavgusb
+    x86_3dnow_pavgusb = 10170,                         // llvm.x86.3dnow.pavgusb
     x86_3dnow_pf2id,                           // llvm.x86.3dnow.pf2id
     x86_3dnow_pfacc,                           // llvm.x86.3dnow.pfacc
     x86_3dnow_pfadd,                           // llvm.x86.3dnow.pfadd
@@ -70,8 +70,11 @@ enum X86Intrinsics : unsigned {
     x86_atomic_add_cc,                         // llvm.x86.atomic.add.cc
     x86_atomic_and_cc,                         // llvm.x86.atomic.and.cc
     x86_atomic_btc,                            // llvm.x86.atomic.btc
+    x86_atomic_btc_rm,                         // llvm.x86.atomic.btc.rm
     x86_atomic_btr,                            // llvm.x86.atomic.btr
+    x86_atomic_btr_rm,                         // llvm.x86.atomic.btr.rm
     x86_atomic_bts,                            // llvm.x86.atomic.bts
+    x86_atomic_bts_rm,                         // llvm.x86.atomic.bts.rm
     x86_atomic_or_cc,                          // llvm.x86.atomic.or.cc
     x86_atomic_sub_cc,                         // llvm.x86.atomic.sub.cc
     x86_atomic_xor_cc,                         // llvm.x86.atomic.xor.cc
@@ -1301,6 +1304,10 @@ enum X86Intrinsics : unsigned {
     x86_subborrow_64,                          // llvm.x86.subborrow.64
     x86_tbm_bextri_u32,                        // llvm.x86.tbm.bextri.u32
     x86_tbm_bextri_u64,                        // llvm.x86.tbm.bextri.u64
+    x86_tcmmimfp16ps,                          // llvm.x86.tcmmimfp16ps
+    x86_tcmmimfp16ps_internal,                 // llvm.x86.tcmmimfp16ps.internal
+    x86_tcmmrlfp16ps,                          // llvm.x86.tcmmrlfp16ps
+    x86_tcmmrlfp16ps_internal,                 // llvm.x86.tcmmrlfp16ps.internal
     x86_tdpbf16ps,                             // llvm.x86.tdpbf16ps
     x86_tdpbf16ps_internal,                    // llvm.x86.tdpbf16ps.internal
     x86_tdpbssd,                               // llvm.x86.tdpbssd

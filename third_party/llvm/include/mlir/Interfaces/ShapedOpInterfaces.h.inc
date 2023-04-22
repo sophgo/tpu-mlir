@@ -11,6 +11,7 @@ class ShapedDimOpInterface;
 namespace detail {
 struct ShapedDimOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::Value (*getShapedValue)(const Concept *impl, ::mlir::Operation *);
     ::mlir::OpFoldResult (*getDimension)(const Concept *impl, ::mlir::Operation *);
   };

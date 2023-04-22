@@ -861,18 +861,18 @@ public:
 
   /// Whether this contains RAUW support.
   bool hasReplaceableUses() const {
-    return Ptr.is<ReplaceableMetadataImpl *>();
+    return isa<ReplaceableMetadataImpl *>(Ptr);
   }
 
   LLVMContext &getContext() const {
     if (hasReplaceableUses())
       return getReplaceableUses()->getContext();
-    return *Ptr.get<LLVMContext *>();
+    return *cast<LLVMContext *>(Ptr);
   }
 
   ReplaceableMetadataImpl *getReplaceableUses() const {
     if (hasReplaceableUses())
-      return Ptr.get<ReplaceableMetadataImpl *>();
+      return cast<ReplaceableMetadataImpl *>(Ptr);
     return nullptr;
   }
 
@@ -1027,15 +1027,15 @@ class MDNode : public Metadata {
     MutableArrayRef<MDOperand> operands() {
       if (IsLarge)
         return getLarge();
-      return makeMutableArrayRef(
+      return MutableArrayRef(
           reinterpret_cast<MDOperand *>(this) - SmallSize, SmallNumOps);
     }
 
     ArrayRef<MDOperand> operands() const {
       if (IsLarge)
         return getLarge();
-      return makeArrayRef(reinterpret_cast<const MDOperand *>(this) - SmallSize,
-                          SmallNumOps);
+      return ArrayRef(reinterpret_cast<const MDOperand *>(this) - SmallSize,
+                      SmallNumOps);
     }
 
     unsigned getNumOperands() const {

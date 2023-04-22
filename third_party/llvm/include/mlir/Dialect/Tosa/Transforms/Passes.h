@@ -13,6 +13,7 @@
 #ifndef MLIR_DIALECT_TOSA_TRANSFORMS_PASSES_H
 #define MLIR_DIALECT_TOSA_TRANSFORMS_PASSES_H
 
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Tosa/Transforms/PassesEnums.h.inc"
 #include "mlir/Pass/Pass.h"
 

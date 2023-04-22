@@ -13,6 +13,8 @@ namespace func {
 FuncDialect::FuncDialect(::mlir::MLIRContext *context)
     : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<FuncDialect>()) {
   
+    getContext()->loadDialect<cf::ControlFlowDialect>();
+
   initialize();
 }
 

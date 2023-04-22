@@ -88,6 +88,7 @@ ATTRIBUTE_ENUM(AllocSize,allocsize)
 ATTRIBUTE_ENUM(Dereferenceable,dereferenceable)
 ATTRIBUTE_ENUM(DereferenceableOrNull,dereferenceable_or_null)
 ATTRIBUTE_ENUM(Memory,memory)
+ATTRIBUTE_ENUM(NoFPClass,nofpclass)
 ATTRIBUTE_ENUM(StackAlignment,alignstack)
 ATTRIBUTE_ENUM(UWTable,uwtable)
 ATTRIBUTE_ENUM(VScaleRange,vscale_range)
@@ -199,10 +200,11 @@ AllocSize = 77,
 Dereferenceable = 78,
 DereferenceableOrNull = 79,
 Memory = 80,
-StackAlignment = 81,
-UWTable = 82,
-VScaleRange = 83,
-LastIntAttr = 83,
+NoFPClass = 81,
+StackAlignment = 82,
+UWTable = 83,
+VScaleRange = 84,
+LastIntAttr = 84,
 #endif
 
 #ifdef GET_ATTR_COMPAT_FUNC
@@ -226,6 +228,7 @@ static inline bool hasCompatibleFnAttrs(const Function &Caller,
 
 static inline void mergeFnAttrs(Function &Caller,
                                 const Function &Callee) {
+  setAND<LessPreciseFPMADAttr>(Caller, Callee);
   setAND<NoInfsFPMathAttr>(Caller, Callee);
   setAND<NoNansFPMathAttr>(Caller, Callee);
   setAND<ApproxFuncFPMathAttr>(Caller, Callee);
@@ -241,7 +244,6 @@ static inline void mergeFnAttrs(Function &Caller,
   adjustMinLegalVectorWidth(Caller, Callee);
   adjustNullPointerValidAttr(Caller, Callee);
   setAND<MustProgressAttr>(Caller, Callee);
-  setAND<LessPreciseFPMADAttr>(Caller, Callee);
 }
 
 #endif
@@ -328,6 +330,7 @@ static const uint8_t AttrPropTable[] = {
 0 | AttributeProperty::ParamAttr | AttributeProperty::RetAttr,
 0 | AttributeProperty::ParamAttr | AttributeProperty::RetAttr,
 0 | AttributeProperty::FnAttr,
+0 | AttributeProperty::ParamAttr | AttributeProperty::RetAttr,
 0 | AttributeProperty::FnAttr | AttributeProperty::ParamAttr,
 0 | AttributeProperty::FnAttr,
 0 | AttributeProperty::FnAttr,

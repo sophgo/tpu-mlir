@@ -53,33 +53,21 @@ namespace quant {
 // ::mlir::quant::DequantizeCastOp definitions
 //===----------------------------------------------------------------------===//
 
-DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+DequantizeCastOpGenericAdaptorBase::DequantizeCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("quant.dcast", odsAttrs.getContext());
 }
 
-DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(DequantizeCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> DequantizeCastOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> DequantizeCastOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   return {index, 1};
 }
 
-::mlir::ValueRange DequantizeCastOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value DequantizeCastOpAdaptor::getArg() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::ValueRange DequantizeCastOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr DequantizeCastOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr DequantizeCastOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
+
+} // namespace detail
+DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(DequantizeCastOp op) : DequantizeCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult DequantizeCastOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();
@@ -96,7 +84,7 @@ std::pair<unsigned, unsigned> DequantizeCastOp::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::Value DequantizeCastOp::getArg() {
-  return *getODSOperands(0).begin();
+  return ::llvm::cast<::mlir::Value>(*getODSOperands(0).begin());
 }
 
 ::mlir::MutableOperandRange DequantizeCastOp::getArgMutable() {
@@ -174,33 +162,21 @@ namespace quant {
 // ::mlir::quant::QuantizeCastOp definitions
 //===----------------------------------------------------------------------===//
 
-QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+QuantizeCastOpGenericAdaptorBase::QuantizeCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("quant.qcast", odsAttrs.getContext());
 }
 
-QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(QuantizeCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> QuantizeCastOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> QuantizeCastOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   return {index, 1};
 }
 
-::mlir::ValueRange QuantizeCastOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value QuantizeCastOpAdaptor::getArg() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::ValueRange QuantizeCastOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr QuantizeCastOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr QuantizeCastOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
+
+} // namespace detail
+QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(QuantizeCastOp op) : QuantizeCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult QuantizeCastOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();
@@ -217,7 +193,7 @@ std::pair<unsigned, unsigned> QuantizeCastOp::getODSOperandIndexAndLength(unsign
 }
 
 ::mlir::Value QuantizeCastOp::getArg() {
-  return *getODSOperands(0).begin();
+  return ::llvm::cast<::mlir::Value>(*getODSOperands(0).begin());
 }
 
 ::mlir::MutableOperandRange QuantizeCastOp::getArgMutable() {
@@ -295,33 +271,21 @@ namespace quant {
 // ::mlir::quant::StorageCastOp definitions
 //===----------------------------------------------------------------------===//
 
-StorageCastOpAdaptor::StorageCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+namespace detail {
+StorageCastOpGenericAdaptorBase::StorageCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("quant.scast", odsAttrs.getContext());
 }
 
-StorageCastOpAdaptor::StorageCastOpAdaptor(StorageCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-std::pair<unsigned, unsigned> StorageCastOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> StorageCastOpGenericAdaptorBase::getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize) {
   return {index, 1};
 }
 
-::mlir::ValueRange StorageCastOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value StorageCastOpAdaptor::getArg() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::ValueRange StorageCastOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-::mlir::DictionaryAttr StorageCastOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr StorageCastOpGenericAdaptorBase::getAttributes() {
   return odsAttrs;
 }
+
+} // namespace detail
+StorageCastOpAdaptor::StorageCastOpAdaptor(StorageCastOp op) : StorageCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
 
 ::mlir::LogicalResult StorageCastOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();
@@ -338,7 +302,7 @@ std::pair<unsigned, unsigned> StorageCastOp::getODSOperandIndexAndLength(unsigne
 }
 
 ::mlir::Value StorageCastOp::getArg() {
-  return *getODSOperands(0).begin();
+  return ::llvm::cast<::mlir::Value>(*getODSOperands(0).begin());
 }
 
 ::mlir::MutableOperandRange StorageCastOp::getArgMutable() {

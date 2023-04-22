@@ -18,9 +18,9 @@
 #ifndef LLVM_FUZZMUTATE_IRMUTATOR_H
 #define LLVM_FUZZMUTATE_IRMUTATOR_H
 
-#include "llvm/ADT/Optional.h"
 #include "llvm/FuzzMutate/OpDescriptor.h"
 #include "llvm/Support/ErrorHandling.h"
+#include <optional>
 
 namespace llvm {
 class BasicBlock;
@@ -116,6 +116,20 @@ public:
 
   using IRMutationStrategy::mutate;
   void mutate(Instruction &Inst, RandomIRBuilder &IB) override;
+};
+
+/// Strategy that generates new function calls and inserts function signatures
+/// to the modules. If any signatures are present in the module it will be
+/// called.
+class InsertFunctionStrategy : public IRMutationStrategy {
+public:
+  uint64_t getWeight(size_t CurrentSize, size_t MaxSize,
+                     uint64_t CurrentWeight) override {
+    return 10;
+  }
+
+  using IRMutationStrategy::mutate;
+  void mutate(BasicBlock &BB, RandomIRBuilder &IB) override;
 };
 
 /// Strategy to split a random block and insert a random CFG in between.

@@ -11,6 +11,7 @@ class DataLayoutTypeInterface;
 namespace detail {
 struct DataLayoutTypeInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     unsigned (*getTypeSize)(const Concept *impl, ::mlir::Type , const ::mlir::DataLayout &, ::mlir::DataLayoutEntryListRef);
     unsigned (*getTypeSizeInBits)(const Concept *impl, ::mlir::Type , const ::mlir::DataLayout &, ::mlir::DataLayoutEntryListRef);
     unsigned (*getABIAlignment)(const Concept *impl, ::mlir::Type , const ::mlir::DataLayout &, ::mlir::DataLayoutEntryListRef);

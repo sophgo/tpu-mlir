@@ -7,6 +7,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir-c/RegisterEverything.h"
+// #include "mlir-c/Conversion.h"
+// #include "mlir-c/Transforms.h"
 
 #include "mlir/Bindings/Python/PybindAdaptors.h"
 
@@ -16,4 +18,9 @@ PYBIND11_MODULE(_mlirRegisterEverything, m) {
   m.def("register_dialects", [](MlirDialectRegistry registry) {
     mlirRegisterAllDialects(registry);
   });
+
+  // Register all passes on load.
+  // mlirRegisterAllPasses();
+  // mlirRegisterConversionPasses();
+  // mlirRegisterTransformsPasses();
 }

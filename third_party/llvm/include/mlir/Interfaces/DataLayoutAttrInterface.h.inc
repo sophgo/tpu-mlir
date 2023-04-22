@@ -11,6 +11,7 @@ class DataLayoutEntryInterface;
 namespace detail {
 struct DataLayoutEntryInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::DataLayoutEntryKey (*getKey)(const Concept *impl, ::mlir::Attribute );
     ::mlir::Attribute (*getValue)(const Concept *impl, ::mlir::Attribute );
     ::mlir::LogicalResult (*verifyEntry)(const Concept *impl, ::mlir::Attribute , ::mlir::Location);
@@ -61,7 +62,6 @@ public:
     bool isTypeEntry() {
       return getKey().is<::mlir::Type>();
     }
-  
 };
 namespace detail {
   template <typename ConcreteAttr>
@@ -78,8 +78,11 @@ class DataLayoutSpecInterface;
 namespace detail {
 struct DataLayoutSpecInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::DataLayoutSpecInterface (*combineWith)(const Concept *impl, ::mlir::Attribute , ::llvm::ArrayRef<::mlir::DataLayoutSpecInterface>);
     ::mlir::DataLayoutEntryListRef (*getEntries)(const Concept *impl, ::mlir::Attribute );
+    ::mlir::StringAttr (*getAllocaMemorySpaceIdentifier)(const Concept *impl, ::mlir::Attribute , ::mlir::MLIRContext *);
+    ::mlir::StringAttr (*getStackAlignmentIdentifier)(const Concept *impl, ::mlir::Attribute , ::mlir::MLIRContext *);
     ::mlir::DataLayoutEntryList (*getSpecForType)(const Concept *impl, ::mlir::Attribute , ::mlir::TypeID);
     ::mlir::DataLayoutEntryInterface (*getSpecForIdentifier)(const Concept *impl, ::mlir::Attribute , ::mlir::StringAttr);
     ::mlir::LogicalResult (*verifySpec)(const Concept *impl, ::mlir::Attribute , ::mlir::Location);
@@ -88,10 +91,12 @@ struct DataLayoutSpecInterfaceInterfaceTraits {
   class Model : public Concept {
   public:
     using Interface = ::mlir::DataLayoutSpecInterface;
-    Model() : Concept{combineWith, getEntries, getSpecForType, getSpecForIdentifier, verifySpec} {}
+    Model() : Concept{combineWith, getEntries, getAllocaMemorySpaceIdentifier, getStackAlignmentIdentifier, getSpecForType, getSpecForIdentifier, verifySpec} {}
 
     static inline ::mlir::DataLayoutSpecInterface combineWith(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<::mlir::DataLayoutSpecInterface> specs);
     static inline ::mlir::DataLayoutEntryListRef getEntries(const Concept *impl, ::mlir::Attribute tablegen_opaque_val);
+    static inline ::mlir::StringAttr getAllocaMemorySpaceIdentifier(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::MLIRContext * context);
+    static inline ::mlir::StringAttr getStackAlignmentIdentifier(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::MLIRContext * context);
     static inline ::mlir::DataLayoutEntryList getSpecForType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID type);
     static inline ::mlir::DataLayoutEntryInterface getSpecForIdentifier(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::StringAttr identifier);
     static inline ::mlir::LogicalResult verifySpec(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::Location loc);
@@ -100,10 +105,12 @@ struct DataLayoutSpecInterfaceInterfaceTraits {
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::DataLayoutSpecInterface;
-    FallbackModel() : Concept{combineWith, getEntries, getSpecForType, getSpecForIdentifier, verifySpec} {}
+    FallbackModel() : Concept{combineWith, getEntries, getAllocaMemorySpaceIdentifier, getStackAlignmentIdentifier, getSpecForType, getSpecForIdentifier, verifySpec} {}
 
     static inline ::mlir::DataLayoutSpecInterface combineWith(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<::mlir::DataLayoutSpecInterface> specs);
     static inline ::mlir::DataLayoutEntryListRef getEntries(const Concept *impl, ::mlir::Attribute tablegen_opaque_val);
+    static inline ::mlir::StringAttr getAllocaMemorySpaceIdentifier(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::MLIRContext * context);
+    static inline ::mlir::StringAttr getStackAlignmentIdentifier(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::MLIRContext * context);
     static inline ::mlir::DataLayoutEntryList getSpecForType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID type);
     static inline ::mlir::DataLayoutEntryInterface getSpecForIdentifier(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::StringAttr identifier);
     static inline ::mlir::LogicalResult verifySpec(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::Location loc);
@@ -129,6 +136,10 @@ public:
   ::mlir::DataLayoutSpecInterface combineWith(::llvm::ArrayRef<::mlir::DataLayoutSpecInterface> specs) const;
   /// Returns the list of layout entries.
   ::mlir::DataLayoutEntryListRef getEntries() const;
+  /// Returns the alloca memory space identifier.
+  ::mlir::StringAttr getAllocaMemorySpaceIdentifier(::mlir::MLIRContext * context) const;
+  /// Returns the stack alignment identifier.
+  ::mlir::StringAttr getStackAlignmentIdentifier(::mlir::MLIRContext * context) const;
   /// Returns a copy of the entries related to a specific type class regardles of type parameters.
   ::mlir::DataLayoutEntryList getSpecForType(::mlir::TypeID type) const;
   /// Returns the entry related to the given identifier, if present.
@@ -150,7 +161,6 @@ public:
         ::llvm::DenseMap<::mlir::TypeID, ::mlir::DataLayoutEntryList> &types,
         ::llvm::DenseMap<::mlir::StringAttr,
                          ::mlir::DataLayoutEntryInterface> &ids);
-  
 };
 namespace detail {
   template <typename ConcreteAttr>
@@ -211,6 +221,14 @@ template<typename ConcreteAttr>
   return (tablegen_opaque_val.cast<ConcreteAttr>()).getEntries();
 }
 template<typename ConcreteAttr>
+::mlir::StringAttr detail::DataLayoutSpecInterfaceInterfaceTraits::Model<ConcreteAttr>::getAllocaMemorySpaceIdentifier(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::MLIRContext * context) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).getAllocaMemorySpaceIdentifier(context);
+}
+template<typename ConcreteAttr>
+::mlir::StringAttr detail::DataLayoutSpecInterfaceInterfaceTraits::Model<ConcreteAttr>::getStackAlignmentIdentifier(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::MLIRContext * context) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).getStackAlignmentIdentifier(context);
+}
+template<typename ConcreteAttr>
 ::mlir::DataLayoutEntryList detail::DataLayoutSpecInterfaceInterfaceTraits::Model<ConcreteAttr>::getSpecForType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID type) {
   return (tablegen_opaque_val.cast<ConcreteAttr>()).getSpecForType(type);
 }
@@ -229,6 +247,14 @@ template<typename ConcreteAttr>
 template<typename ConcreteAttr>
 ::mlir::DataLayoutEntryListRef detail::DataLayoutSpecInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::getEntries(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
   return static_cast<const ConcreteAttr *>(impl)->getEntries(tablegen_opaque_val);
+}
+template<typename ConcreteAttr>
+::mlir::StringAttr detail::DataLayoutSpecInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::getAllocaMemorySpaceIdentifier(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::MLIRContext * context) {
+  return static_cast<const ConcreteAttr *>(impl)->getAllocaMemorySpaceIdentifier(tablegen_opaque_val, context);
+}
+template<typename ConcreteAttr>
+::mlir::StringAttr detail::DataLayoutSpecInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::getStackAlignmentIdentifier(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::MLIRContext * context) {
+  return static_cast<const ConcreteAttr *>(impl)->getStackAlignmentIdentifier(tablegen_opaque_val, context);
 }
 template<typename ConcreteAttr>
 ::mlir::DataLayoutEntryList detail::DataLayoutSpecInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::getSpecForType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID type) {

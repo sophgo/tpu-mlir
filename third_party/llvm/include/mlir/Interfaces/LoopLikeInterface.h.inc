@@ -11,6 +11,7 @@ class LoopLikeOpInterface;
 namespace detail {
 struct LoopLikeOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     bool (*isDefinedOutsideOfLoop)(const Concept *impl, ::mlir::Operation *, ::mlir::Value );
     ::mlir::Region &(*getLoopBody)(const Concept *impl, ::mlir::Operation *);
     void (*moveOutOfLoop)(const Concept *impl, ::mlir::Operation *, ::mlir::Operation *);
@@ -90,6 +91,11 @@ public:
   /// Return the single upper bound value or attribute if it exists, otherwise
   /// return std::nullopt.
   ::std::optional<::mlir::OpFoldResult> getSingleUpperBound();
+
+    /// Returns if a block is inside a loop (within the current function). This
+    /// can either be because the block is nested inside a LoopLikeInterface, or
+    /// because the control flow graph is cyclic
+    static bool blockIsInLoop(Block *block);
 };
 namespace detail {
   template <typename ConcreteOp>

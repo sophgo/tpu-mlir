@@ -24,10 +24,9 @@ class UnknownLoc;
 namespace detail {
 struct CallSiteLocAttrStorage;
 } // namespace detail
-class CallSiteLoc : public ::mlir::Attribute::AttrBase<CallSiteLoc, ::mlir::LocationAttr, detail::CallSiteLocAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
+class CallSiteLoc : public ::mlir::Attribute::AttrBase<CallSiteLoc, ::mlir::LocationAttr, detail::CallSiteLocAttrStorage> {
 public:
   using Base::Base;
-public:
   static CallSiteLoc get(Location callee, Location caller);
   static CallSiteLoc get(Location name, ArrayRef<Location> frames);
   Location getCallee() const;
@@ -39,7 +38,6 @@ struct FileLineColLocAttrStorage;
 class FileLineColLoc : public ::mlir::Attribute::AttrBase<FileLineColLoc, ::mlir::LocationAttr, detail::FileLineColLocAttrStorage> {
 public:
   using Base::Base;
-public:
   static FileLineColLoc get(StringAttr filename, unsigned line, unsigned column);
   static FileLineColLoc get(::mlir::MLIRContext *context, StringRef filename, unsigned line, unsigned column);
   StringAttr getFilename() const;
@@ -49,7 +47,7 @@ public:
 namespace detail {
 struct FusedLocAttrStorage;
 } // namespace detail
-class FusedLoc : public ::mlir::Attribute::AttrBase<FusedLoc, ::mlir::LocationAttr, detail::FusedLocAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
+class FusedLoc : public ::mlir::Attribute::AttrBase<FusedLoc, ::mlir::LocationAttr, detail::FusedLocAttrStorage> {
 public:
   using Base::Base;
   static Location get(ArrayRef<Location> locs, Attribute metadata,
@@ -57,7 +55,6 @@ public:
   static Location get(MLIRContext *context, ArrayRef<Location> locs) {
     return get(locs, Attribute(), context);
   }
-public:
   static FusedLoc get(::mlir::MLIRContext *context, ::llvm::ArrayRef<Location> locations, Attribute metadata);
   ::llvm::ArrayRef<Location> getLocations() const;
   Attribute getMetadata() const;
@@ -65,10 +62,9 @@ public:
 namespace detail {
 struct NameLocAttrStorage;
 } // namespace detail
-class NameLoc : public ::mlir::Attribute::AttrBase<NameLoc, ::mlir::LocationAttr, detail::NameLocAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
+class NameLoc : public ::mlir::Attribute::AttrBase<NameLoc, ::mlir::LocationAttr, detail::NameLocAttrStorage> {
 public:
   using Base::Base;
-public:
   static NameLoc get(StringAttr name, Location childLoc);
   static NameLoc get(StringAttr name);
   StringAttr getName() const;
@@ -77,7 +73,7 @@ public:
 namespace detail {
 struct OpaqueLocAttrStorage;
 } // namespace detail
-class OpaqueLoc : public ::mlir::Attribute::AttrBase<OpaqueLoc, ::mlir::LocationAttr, detail::OpaqueLocAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
+class OpaqueLoc : public ::mlir::Attribute::AttrBase<OpaqueLoc, ::mlir::LocationAttr, detail::OpaqueLocAttrStorage> {
 public:
   using Base::Base;
   /// Returns an instance of opaque location which contains a given pointer to
@@ -117,7 +113,6 @@ public:
     auto opaque_loc = location.dyn_cast<OpaqueLoc>();
     return opaque_loc && opaque_loc.getUnderlyingTypeID() == TypeID::get<T>();
   }
-public:
   static OpaqueLoc get(uintptr_t underlyingLocation, TypeID underlyingTypeID, Location fallbackLocation);
   uintptr_t getUnderlyingLocation() const;
   TypeID getUnderlyingTypeID() const;

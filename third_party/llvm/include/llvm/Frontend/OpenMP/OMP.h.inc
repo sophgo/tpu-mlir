@@ -292,6 +292,7 @@ enum class Clause {
   OMPC_num_tasks,
   OMPC_num_teams,
   OMPC_num_threads,
+  OMPC_ompx_dyn_cgroup_mem,
   OMPC_order,
   OMPC_ordered,
   OMPC_partial,
@@ -330,7 +331,7 @@ enum class Clause {
   OMPC_write,
 };
 
-static constexpr std::size_t Clause_enumSize = 98;
+static constexpr std::size_t Clause_enumSize = 99;
 
 constexpr auto OMPC_acq_rel = llvm::omp::Clause::OMPC_acq_rel;
 constexpr auto OMPC_acquire = llvm::omp::Clause::OMPC_acquire;
@@ -394,6 +395,7 @@ constexpr auto OMPC_novariants = llvm::omp::Clause::OMPC_novariants;
 constexpr auto OMPC_num_tasks = llvm::omp::Clause::OMPC_num_tasks;
 constexpr auto OMPC_num_teams = llvm::omp::Clause::OMPC_num_teams;
 constexpr auto OMPC_num_threads = llvm::omp::Clause::OMPC_num_threads;
+constexpr auto OMPC_ompx_dyn_cgroup_mem = llvm::omp::Clause::OMPC_ompx_dyn_cgroup_mem;
 constexpr auto OMPC_order = llvm::omp::Clause::OMPC_order;
 constexpr auto OMPC_ordered = llvm::omp::Clause::OMPC_ordered;
 constexpr auto OMPC_partial = llvm::omp::Clause::OMPC_partial;

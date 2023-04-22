@@ -10,6 +10,7 @@ class TosaOp;
 namespace detail {
 struct TosaOpInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
   };
   template<typename ConcreteOp>
   class Model : public Concept {

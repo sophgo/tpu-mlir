@@ -25,6 +25,21 @@ def TosaLayerwiseConstantFoldPass : Pass<"tosa-layerwise-constant-fold", "func::
   let constructor = "createTosaLayerwiseConstantFoldPass()";
 }
 
+def TosaInferShapes : Pass<"tosa-infer-shapes", "func::FuncOp"> {
+  let summary = "Propagate shapes across TOSA operations";
+  let description = [{
+    Pass that uses operand types and propagates shapes to TOSA operations.
+    This includes legalizing rankless and dynamic shapes towards static.
+  }];
+
+  let constructor = "createTosaInferShapesPass()";
+  let dependentDialects = [
+    "func::FuncDialect",
+    "tensor::TensorDialect",
+    "tosa::TosaDialect",
+  ];
+}
+
 def TosaMakeBroadcastable : Pass<"tosa-make-broadcastable", "func::FuncOp"> {
   let summary = "TOSA rank Reshape to enable Broadcasting";
   let description = [{
@@ -69,8 +84,12 @@ def TosaValidation : Pass<"tosa-validate", "func::FuncOp"> {
 
   let options = [
       Option<"profileName", "profile", "std::string",
-      /*default=*/"\"undefined\"",
-      "Validation if ops match for given profile">];
+             /*default=*/"\"undefined\"",
+             "Validate if operations match for the given profile">,
+      Option<"StrictOperationSpecAlignment", "strict-op-spec-alignment", "bool",
+             /*default=*/"false",
+             "Verify if the properties of certain operations align the spec requirement">,
+   ];
 }
 
 #endif // MLIR_DIALECT_TOSA_TRANSFORMS_PASSES

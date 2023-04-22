@@ -17,13 +17,16 @@ class AsmPrinter;
 namespace mlir {
 class BFloat16Type;
 class ComplexType;
-class Float128Type;
+class Float8E4M3B11FNUZType;
+class Float8E4M3FNType;
+class Float8E4M3FNUZType;
+class Float8E5M2Type;
+class Float8E5M2FNUZType;
 class Float16Type;
 class Float32Type;
 class Float64Type;
 class Float80Type;
-class Float8E4M3FNType;
-class Float8E5M2Type;
+class Float128Type;
 class FunctionType;
 class IndexType;
 class IntegerType;
@@ -47,16 +50,35 @@ class ComplexType : public ::mlir::Type::TypeBase<ComplexType, ::mlir::Type, det
 public:
   using Base::Base;
   using Base::getChecked;
-public:
   static ComplexType get(Type elementType);
   static ComplexType getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType);
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType);
   Type getElementType() const;
 };
-class Float128Type : public ::mlir::Type::TypeBase<Float128Type, ::mlir::FloatType, ::mlir::TypeStorage> {
+class Float8E4M3B11FNUZType : public ::mlir::Type::TypeBase<Float8E4M3B11FNUZType, ::mlir::FloatType, ::mlir::TypeStorage> {
 public:
   using Base::Base;
-  static Float128Type get(MLIRContext *context);
+  static Float8E4M3B11FNUZType get(MLIRContext *context);
+};
+class Float8E4M3FNType : public ::mlir::Type::TypeBase<Float8E4M3FNType, ::mlir::FloatType, ::mlir::TypeStorage> {
+public:
+  using Base::Base;
+  static Float8E4M3FNType get(MLIRContext *context);
+};
+class Float8E4M3FNUZType : public ::mlir::Type::TypeBase<Float8E4M3FNUZType, ::mlir::FloatType, ::mlir::TypeStorage> {
+public:
+  using Base::Base;
+  static Float8E4M3FNUZType get(MLIRContext *context);
+};
+class Float8E5M2Type : public ::mlir::Type::TypeBase<Float8E5M2Type, ::mlir::FloatType, ::mlir::TypeStorage> {
+public:
+  using Base::Base;
+  static Float8E5M2Type get(MLIRContext *context);
+};
+class Float8E5M2FNUZType : public ::mlir::Type::TypeBase<Float8E5M2FNUZType, ::mlir::FloatType, ::mlir::TypeStorage> {
+public:
+  using Base::Base;
+  static Float8E5M2FNUZType get(MLIRContext *context);
 };
 class Float16Type : public ::mlir::Type::TypeBase<Float16Type, ::mlir::FloatType, ::mlir::TypeStorage> {
 public:
@@ -78,20 +100,15 @@ public:
   using Base::Base;
   static Float80Type get(MLIRContext *context);
 };
-class Float8E4M3FNType : public ::mlir::Type::TypeBase<Float8E4M3FNType, ::mlir::FloatType, ::mlir::TypeStorage> {
+class Float128Type : public ::mlir::Type::TypeBase<Float128Type, ::mlir::FloatType, ::mlir::TypeStorage> {
 public:
   using Base::Base;
-  static Float8E4M3FNType get(MLIRContext *context);
-};
-class Float8E5M2Type : public ::mlir::Type::TypeBase<Float8E5M2Type, ::mlir::FloatType, ::mlir::TypeStorage> {
-public:
-  using Base::Base;
-  static Float8E5M2Type get(MLIRContext *context);
+  static Float128Type get(MLIRContext *context);
 };
 namespace detail {
 struct FunctionTypeStorage;
 } // namespace detail
-class FunctionType : public ::mlir::Type::TypeBase<FunctionType, ::mlir::Type, detail::FunctionTypeStorage, ::mlir::SubElementTypeInterface::Trait> {
+class FunctionType : public ::mlir::Type::TypeBase<FunctionType, ::mlir::Type, detail::FunctionTypeStorage> {
 public:
   using Base::Base;
   /// Input types.
@@ -116,7 +133,6 @@ public:
   /// Returns a new function type without the specified arguments and results.
   FunctionType getWithoutArgsAndResults(const BitVector &argIndices,
                                         const BitVector &resultIndices);
-public:
   static FunctionType get(::mlir::MLIRContext *context, TypeRange inputs, TypeRange results);
   ArrayRef<Type> getInputs() const;
   ArrayRef<Type> getResults() const;
@@ -159,7 +175,6 @@ public:
   /// Note: This is aligned with the maximum width of llvm::IntegerType.
   static constexpr unsigned kMaxWidth = (1 << 24) - 1;
   using Base::getChecked;
-public:
   static IntegerType get(::mlir::MLIRContext *context, unsigned width, SignednessSemantics signedness = Signless);
   static IntegerType getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::mlir::MLIRContext *context, unsigned width, SignednessSemantics signedness = Signless);
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, unsigned width, SignednessSemantics signedness);
@@ -169,7 +184,7 @@ public:
 namespace detail {
 struct MemRefTypeStorage;
 } // namespace detail
-class MemRefType : public ::mlir::Type::TypeBase<MemRefType, BaseMemRefType, detail::MemRefTypeStorage, ::mlir::SubElementTypeInterface::Trait, ::mlir::ShapedType::Trait> {
+class MemRefType : public ::mlir::Type::TypeBase<MemRefType, BaseMemRefType, detail::MemRefTypeStorage, ::mlir::ShapedType::Trait> {
 public:
   using Base::Base;
   using ShapedType::Trait<MemRefType>::clone;
@@ -191,7 +206,6 @@ public:
   unsigned getMemorySpaceAsInt() const;
 
   using Base::getChecked;
-public:
   static MemRefType get(ArrayRef<int64_t> shape, Type elementType, MemRefLayoutAttrInterface layout = {}, Attribute memorySpace = {});
   static MemRefType getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ArrayRef<int64_t> shape, Type elementType, MemRefLayoutAttrInterface layout = {}, Attribute memorySpace = {});
   static MemRefType get(ArrayRef<int64_t> shape, Type elementType, AffineMap map, Attribute memorySpace = {});
@@ -216,7 +230,6 @@ class OpaqueType : public ::mlir::Type::TypeBase<OpaqueType, ::mlir::Type, detai
 public:
   using Base::Base;
   using Base::getChecked;
-public:
   static OpaqueType get(StringAttr dialectNamespace, StringRef typeData = {});
   static OpaqueType getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, StringAttr dialectNamespace, StringRef typeData = {});
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, StringAttr dialectNamespace, ::llvm::StringRef typeData);
@@ -226,7 +239,7 @@ public:
 namespace detail {
 struct RankedTensorTypeStorage;
 } // namespace detail
-class RankedTensorType : public ::mlir::Type::TypeBase<RankedTensorType, TensorType, detail::RankedTensorTypeStorage, ::mlir::SubElementTypeInterface::Trait, ::mlir::ShapedType::Trait> {
+class RankedTensorType : public ::mlir::Type::TypeBase<RankedTensorType, TensorType, detail::RankedTensorTypeStorage, ::mlir::ShapedType::Trait> {
 public:
   using Base::Base;
   using ShapedType::Trait<RankedTensorType>::clone;
@@ -243,7 +256,6 @@ public:
   /// Arguments that are passed into the builder must outlive the builder.
   class Builder;
   using Base::getChecked;
-public:
   static RankedTensorType get(ArrayRef<int64_t> shape, Type elementType, Attribute encoding = {});
   static RankedTensorType getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ArrayRef<int64_t> shape, Type elementType, Attribute encoding = {});
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::llvm::ArrayRef<int64_t> shape, Type elementType, Attribute encoding);
@@ -254,7 +266,7 @@ public:
 namespace detail {
 struct TupleTypeStorage;
 } // namespace detail
-class TupleType : public ::mlir::Type::TypeBase<TupleType, ::mlir::Type, detail::TupleTypeStorage, ::mlir::SubElementTypeInterface::Trait> {
+class TupleType : public ::mlir::Type::TypeBase<TupleType, ::mlir::Type, detail::TupleTypeStorage> {
 public:
   using Base::Base;
   /// Accumulate the types contained in this tuple and tuples nested within
@@ -276,7 +288,6 @@ public:
     assert(index < size() && "invalid index for tuple type");
     return getTypes()[index];
   }
-public:
   static TupleType get(::mlir::MLIRContext *context, TypeRange elementTypes);
   static TupleType get(::mlir::MLIRContext *context);
   ArrayRef<Type> getTypes() const;
@@ -284,7 +295,7 @@ public:
 namespace detail {
 struct UnrankedMemRefTypeStorage;
 } // namespace detail
-class UnrankedMemRefType : public ::mlir::Type::TypeBase<UnrankedMemRefType, BaseMemRefType, detail::UnrankedMemRefTypeStorage, ::mlir::SubElementTypeInterface::Trait, ::mlir::ShapedType::Trait> {
+class UnrankedMemRefType : public ::mlir::Type::TypeBase<UnrankedMemRefType, BaseMemRefType, detail::UnrankedMemRefTypeStorage, ::mlir::ShapedType::Trait> {
 public:
   using Base::Base;
   using ShapedType::Trait<UnrankedMemRefType>::clone;
@@ -303,7 +314,6 @@ public:
   /// New `Attribute getMemorySpace()` method should be used instead.
   unsigned getMemorySpaceAsInt() const;
   using Base::getChecked;
-public:
   static UnrankedMemRefType get(Type elementType, Attribute memorySpace);
   static UnrankedMemRefType getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType, Attribute memorySpace);
   static UnrankedMemRefType get(Type elementType, unsigned memorySpace);
@@ -315,7 +325,7 @@ public:
 namespace detail {
 struct UnrankedTensorTypeStorage;
 } // namespace detail
-class UnrankedTensorType : public ::mlir::Type::TypeBase<UnrankedTensorType, TensorType, detail::UnrankedTensorTypeStorage, ::mlir::SubElementTypeInterface::Trait, ::mlir::ShapedType::Trait> {
+class UnrankedTensorType : public ::mlir::Type::TypeBase<UnrankedTensorType, TensorType, detail::UnrankedTensorTypeStorage, ::mlir::ShapedType::Trait> {
 public:
   using Base::Base;
   using ShapedType::Trait<UnrankedTensorType>::clone;
@@ -330,7 +340,6 @@ public:
 
   ArrayRef<int64_t> getShape() const { return std::nullopt; }
   using Base::getChecked;
-public:
   static UnrankedTensorType get(Type elementType);
   static UnrankedTensorType getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType);
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType);
@@ -339,7 +348,7 @@ public:
 namespace detail {
 struct VectorTypeStorage;
 } // namespace detail
-class VectorType : public ::mlir::Type::TypeBase<VectorType, Type, detail::VectorTypeStorage, ::mlir::SubElementTypeInterface::Trait, ::mlir::ShapedType::Trait> {
+class VectorType : public ::mlir::Type::TypeBase<VectorType, Type, detail::VectorTypeStorage, ::mlir::ShapedType::Trait> {
 public:
   using Base::Base;
   /// This is a builder type that keeps local references to arguments.
@@ -371,7 +380,6 @@ public:
   VectorType cloneWith(std::optional<ArrayRef<int64_t>> shape,
                        Type elementType) const;
   using Base::getChecked;
-public:
   static VectorType get(ArrayRef<int64_t> shape, Type elementType, unsigned numScalableDims = 0);
   static VectorType getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ArrayRef<int64_t> shape, Type elementType, unsigned numScalableDims = 0);
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::llvm::ArrayRef<int64_t> shape, Type elementType, unsigned numScalableDims);
@@ -382,13 +390,16 @@ public:
 } // namespace mlir
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::BFloat16Type)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ComplexType)
-MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float128Type)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float8E4M3B11FNUZType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float8E4M3FNType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float8E4M3FNUZType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float8E5M2Type)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float8E5M2FNUZType)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float16Type)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float32Type)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float64Type)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float80Type)
-MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float8E4M3FNType)
-MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float8E5M2Type)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float128Type)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::FunctionType)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::IndexType)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::IntegerType)

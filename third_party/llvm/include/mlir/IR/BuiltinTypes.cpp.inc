@@ -11,13 +11,16 @@
 
 ::mlir::BFloat16Type,
 ::mlir::ComplexType,
-::mlir::Float128Type,
+::mlir::Float8E4M3B11FNUZType,
+::mlir::Float8E4M3FNType,
+::mlir::Float8E4M3FNUZType,
+::mlir::Float8E5M2Type,
+::mlir::Float8E5M2FNUZType,
 ::mlir::Float16Type,
 ::mlir::Float32Type,
 ::mlir::Float64Type,
 ::mlir::Float80Type,
-::mlir::Float8E4M3FNType,
-::mlir::Float8E5M2Type,
+::mlir::Float128Type,
 ::mlir::FunctionType,
 ::mlir::IndexType,
 ::mlir::IntegerType,
@@ -80,7 +83,19 @@ Type ComplexType::getElementType() const {
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ComplexType)
 namespace mlir {
 } // namespace mlir
-MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float128Type)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float8E4M3B11FNUZType)
+namespace mlir {
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float8E4M3FNType)
+namespace mlir {
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float8E4M3FNUZType)
+namespace mlir {
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float8E5M2Type)
+namespace mlir {
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float8E5M2FNUZType)
 namespace mlir {
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float16Type)
@@ -95,10 +110,7 @@ namespace mlir {
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float80Type)
 namespace mlir {
 } // namespace mlir
-MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float8E4M3FNType)
-namespace mlir {
-} // namespace mlir
-MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float8E5M2Type)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float128Type)
 namespace mlir {
 FunctionType FunctionType::get(::mlir::MLIRContext *context, TypeRange inputs, TypeRange results) {
   return Base::get(context, inputs, results);

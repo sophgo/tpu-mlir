@@ -11,6 +11,7 @@ class DerivedAttributeOpInterface;
 namespace detail {
 struct DerivedAttributeOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     bool (*isDerivedAttribute)(::mlir::StringRef);
     ::mlir::DictionaryAttr (*materializeDerivedAttributes)(const Concept *impl, ::mlir::Operation *);
   };

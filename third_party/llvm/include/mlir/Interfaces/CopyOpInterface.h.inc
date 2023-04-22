@@ -11,6 +11,7 @@ class CopyOpInterface;
 namespace detail {
 struct CopyOpInterfaceInterfaceTraits {
   struct Concept {
+    /// The methods defined by the interface.
     ::mlir::Value (*getSource)(const Concept *impl, ::mlir::Operation *);
     ::mlir::Value (*getTarget)(const Concept *impl, ::mlir::Operation *);
   };

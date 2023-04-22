@@ -29,3 +29,13 @@
 ::llvm::ArrayRef<::mlir::Type> mlir::CallableOpInterface::getCallableResults() {
       return getImpl()->getCallableResults(getImpl(), getOperation());
   }
+/// Returns the argument attributes for all callable region arguments or
+/// null if there are none.
+::mlir::ArrayAttr mlir::CallableOpInterface::getCallableArgAttrs() {
+      return getImpl()->getCallableArgAttrs(getImpl(), getOperation());
+  }
+/// Returns the result attributes for all callable region results or null
+/// if there are none.
+::mlir::ArrayAttr mlir::CallableOpInterface::getCallableResAttrs() {
+      return getImpl()->getCallableResAttrs(getImpl(), getOperation());
+  }
