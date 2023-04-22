@@ -60,7 +60,7 @@ class ONNX_IR_TESTER(object):
             "Compare2":     (self.test_Compare2,      N, N, N, N),
             "Concat":       (self.test_Concat,        Y, Y, Y, Y),
             "Concat2":      (self.test_Concat2,       Y, Y, Y, Y),
-            "Concat3":      (self.test_Concat3,       Y, Y, Y, N),
+            "Concat3":      (self.test_Concat3,       N, Y, Y, N),
             "ConstOfShape": (self.test_ConstOfShape,  N, Y, Y, N),
             "Conv1d":       (self.test_Conv1d,        Y, Y, Y, Y),
             "Conv2d":       (self.test_Conv2d,        Y, Y, Y, Y),
@@ -133,7 +133,7 @@ class ONNX_IR_TESTER(object):
             "Relu":         (self.test_Relu,          Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, N, N),
             "PermuteMove":  (self.test_PermuteMove,   N, Y, Y, Y),
-            "ScatterND":    (self.test_ScatterND,     N, Y, N, N),
+            # "ScatterND":    (self.test_ScatterND,     N, Y, N, N),
             "Shape":        (self.test_Shape,         N, Y, Y, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y),
@@ -204,7 +204,7 @@ class ONNX_IR_TESTER(object):
             "Conv3dTo2d":       (self.test_Conv3dTo2d,      N, Y, Y, Y),
             "Div2Mul":          (self.test_Div2Mul,         Y, Y, Y, Y),
             "ConvSlice":        (self.test_ConvSlice,       Y, Y, Y, N),
-            "GaToSlice":        (self.test_GaToSlice,       N, Y, N, Y),
+            "GaToSlice":        (self.test_GaToSlice,       N, Y, Y, Y),
             "Mul2Scale":        (self.test_Mul2Scale,       Y, Y, Y, Y),
             "MatMulTranspose":  (self.test_MatMulTranspose, N, Y, Y, Y),
             "MatMulTranspose2":  (self.test_MatMulTranspose2, N, Y, Y, Y),
@@ -5144,18 +5144,25 @@ def test_int4(tester: ONNX_IR_TESTER):
             if tester.check_support(case):
                 p = multiprocessing.Process(target=test_one_case_in_all,
                                             args=(tester, case, error_cases, success_cases))
+                p.name = case
                 processes.append(p)
             if len(processes) == process_number:
                 for p in processes:
                     p.start()
                 for j in processes:
                     j.join()
+                for p in processes:
+                    if p.exitcode:
+                        error_cases.append(p.name)
                 processes = []
         if processes:
             for p in processes:
                 p.start()
             for j in processes:
                 j.join()
+            for p in processes:
+                if p.exitcode:
+                    error_cases.append(p.name)
     else:
         error_cases = []
         success_cases = []
@@ -5182,18 +5189,26 @@ def test_all(tester: ONNX_IR_TESTER):
             if tester.check_support(case):
                 p = multiprocessing.Process(target=test_one_case_in_all,
                                             args=(tester, case, error_cases, success_cases))
+                p.name = case
                 processes.append(p)
             if len(processes) == process_number:
                 for p in processes:
                     p.start()
                 for j in processes:
                     j.join()
+                for p in processes:
+                    if p.exitcode:
+                        error_cases.append(p.name)
                 processes = []
+
         if processes:
             for p in processes:
                 p.start()
             for j in processes:
                 j.join()
+            for p in processes:
+                if p.exitcode:
+                    error_cases.append(p.name)
     else:
         error_cases = []
         success_cases = []

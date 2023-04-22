@@ -321,18 +321,25 @@ def test_all(tester: TPULANG_IR_TESTER):
         if tester.check_support(case):
             p = multiprocessing.Process(target=test_one_case_in_all,
                                         args=(tester, case, error_cases, success_cases))
+            p.name = case
             processes.append(p)
         if len(processes) == process_number:
             for p in processes:
                 p.start()
             for j in processes:
                 j.join()
+            for p in processes:
+                if p.exitcode:
+                    error_cases.append(p.name)
             processes = []
     if processes:
         for p in processes:
             p.start()
         for j in processes:
             j.join()
+        for p in processes:
+            if p.exitcode:
+                error_cases.append(p.name)
     # error_cases = []
     # success_cases = []
     # for case in tester.test_cases:
