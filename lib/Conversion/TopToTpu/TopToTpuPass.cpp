@@ -425,7 +425,7 @@ public:
       llvm_unreachable("Not Implemented");
     }
     auto config = GreedyRewriteConfig();
-    config.maxIterations = 0; // apply each pattern only once.
+    config.maxIterations = 1; // apply each pattern only once.
     applyPatternsAndFoldGreedily(module_, std::move(patterns), config);
     // adjust reshape
     patterns.clear();

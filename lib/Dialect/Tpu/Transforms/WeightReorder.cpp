@@ -12,7 +12,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/WeightReorder.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
-#include "mlir/IR/BlockAndValueMapping.h"
+
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
@@ -47,7 +47,7 @@ public:
       cv18xx::populateWeightReorderPatterns(&patterns);
     }
     auto config = GreedyRewriteConfig();
-    config.maxIterations = 0; // apply each pattern only once.
+    config.maxIterations = 1; // apply each pattern only once.
     applyPatternsAndFoldGreedily(mOp, std::move(patterns), config);
     module::updateModuleTypes();
     module::setState(module::State::TPU_REORDERED);

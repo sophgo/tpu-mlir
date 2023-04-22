@@ -66,7 +66,7 @@ struct StripInputQuantCpuCastPattern
     if (auto inputOp = op.getInputs()[0].getDefiningOp<top::InputOp>()) {
       if (!inputOp.getResult().hasOneUse())
         return failure();
-      inputOp.getResult().setType(op.getResults()[0].getType());
+      inputOp->getResult(0).setType(op.getResults()[0].getType());
       rewriter.replaceOp(op, inputOp.getResult());
       return success();
     }

@@ -56,9 +56,9 @@ struct ModifyFuncOp : public OpRewritePattern<mlir::func::FuncOp> {
     }
 
     auto new_funcType = funcType.clone(
-                          llvm::makeArrayRef(
+                          llvm::ArrayRef(
                               new_ins.data(), new_ins.size()),
-                          llvm::makeArrayRef(
+                          llvm::ArrayRef(
                               new_outs.data(), new_outs.size()));
     //op.setFunctionType(new_funcType);
     //rewriter.replaceOpWithNewOp<mlir::func::FuncOp>(op, sym_name,
@@ -100,7 +100,7 @@ public:
       auto valptr = op.read_as_float();
       auto new_val = change_weight(valptr, op->getResult(0).getType());
       auto attr = DenseElementsAttr::get(
-          outType, llvm::makeArrayRef(new_val, valptr->size()));
+          outType, llvm::ArrayRef(new_val, valptr->size()));
       rewriter.replaceOpWithNewOp<mlir::tosa::ConstOp>(op, outType, attr);
     } else {
       // auto out_shape = outType.cast<RankedTensorType>().getShape();
@@ -138,7 +138,7 @@ public:
     patterns.add<LowerTopWeightOp>(patterns.getContext(), includeWeight);
     populateTopToTosaConversionPatterns(&patterns);
     auto config = GreedyRewriteConfig();
-    config.maxIterations = 0;
+    config.maxIterations = 1;
     applyPatternsAndFoldGreedily(module_, std::move(patterns), config);
 
     // Erase TOP::InputOp
