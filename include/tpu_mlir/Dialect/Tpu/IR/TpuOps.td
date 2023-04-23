@@ -1132,12 +1132,12 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
   let regions = (region SizedRegion<1>:$body);
 }
 
-def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp">]> {
+def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp, IfOp">]> {
   let summary = "Yield values to parent operation";
   let description = [{
   }];
 
-  let arguments = (ins Variadic<AnyType>:$operands);
+  let arguments = (ins Variadic<AnyTensor>:$operands);
 
   let builders = [
     OpBuilder<(ins), [{ build($_builder, $_state, std::nullopt); }]>
@@ -2213,4 +2213,30 @@ def Tpu_Device2HostOp : Tpu_Op<"Device2Host", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_IfOp : Tpu_Op<"If"> {
+  let summary = "if operation";
+  let description = [{
+    If conditional
+  }];
+  let arguments = (ins AnyTensor:$cond);
+  let results = (outs Variadic<AnyRankedTensor>:$output);
+  let regions = (region SizedRegion<1>:$then_branch,
+    SizedRegion<1>:$else_branch);
+  let extraClassDeclaration = [{
+    static int getNumberOfOperands() {
+      return 1;
+    }
+    static int getNumberOfResults() {
+      return -1;
+    }
+    static std::vector<int> getTypeMap() {
+      return {-1};
+    }
+  int64_t getSubgraphRegionIdx(const std::string& name) {
+    if (name == "then_branch") return 0;
+    if (name == "else_branch") return 1;
+    llvm_unreachable("region with the specified name does not exist");
+  }
+  }];
+}
 #endif // TPU_OPS

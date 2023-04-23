@@ -13,7 +13,9 @@
 
 namespace tpu_mlir {
 namespace bm1684x {
-
+void populateTopCfOpToTpuConversionPatterns(RewritePatternSet &patterns,
+                                           TypeConverter &typeConverter,
+                                           MLIRContext *ctx);
 void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns);
 
 #define SHAPE_LOWERING_BM1684X(OP)                                             \

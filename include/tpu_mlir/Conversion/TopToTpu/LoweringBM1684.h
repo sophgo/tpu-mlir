@@ -13,7 +13,6 @@
 
 namespace tpu_mlir {
 namespace bm1684 {
-
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
 #define LOWERING_BM1684(OP)                                                    \

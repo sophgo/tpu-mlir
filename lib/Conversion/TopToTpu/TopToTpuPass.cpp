@@ -411,7 +411,20 @@ public:
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
 
     patterns.clear();
+    if (module::isBM1684XFamily()) {
+      ConversionTarget target(*ctx_);
+      ScfTypeConverter typeConverter;
+      target.addLegalDialect<mlir::func::FuncDialect, top::TopDialect, tpu::TpuDialect>();
+      target.addIllegalOp<top::IfOp>();
 
+      target.addDynamicallyLegalOp<mlir::func::CallOp>([&](mlir::func::CallOp op){
+        return typeConverter.isLegal(op);
+      });
+      bm1684x::populateTopCfOpToTpuConversionPatterns(patterns, typeConverter, ctx_);
+      if (failed(applyPartialConversion(module_, target, std::move(patterns))))
+        signalPassFailure();
+      patterns.clear();
+    }
     hd_convert_process();
 
     // process other ops
@@ -548,7 +561,7 @@ protected:
     auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
       bool is_tpu = module::isTpuOp(op);
-      if (is_tpu || isa<ReturnOp>(op)) {
+      if ((is_tpu || isa<ReturnOp>(op)) && !isa<tpu::YieldOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
           if (module::isWeight(opd) || module::isNone(opd)) {

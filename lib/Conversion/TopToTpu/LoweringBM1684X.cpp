@@ -11,6 +11,11 @@
 
 namespace tpu_mlir {
 namespace bm1684x {
+void populateTopCfOpToTpuConversionPatterns(RewritePatternSet &patterns,
+                                            TypeConverter &typeConverter,
+                                            MLIRContext *ctx) {
+  patterns.insert<IfOpLowering>(typeConverter, ctx);
+}
 
 void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
   patterns->add<
