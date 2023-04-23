@@ -82,12 +82,14 @@ class TorchConverter(BaseConverter):
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
             "aten::constant_pad_nd": lambda node: self.convert_pad_op(node, mode='constant'),
             "aten::contiguous": lambda node: self.convert_skip_op(node),
+            "aten::detach": lambda node: self.convert_detach_op(node),
             "aten::div": lambda node: self.convert_div_op(node),
             "aten::dropout": lambda node: self.convert_skip_op(node),
             "aten::elu": lambda node: self.convert_elu_op(node),
             "aten::embedding": lambda node: self.convert_embedding_op(node),
             "aten::exp": lambda node: self.convert_math_op(node, "exp"),
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
+            "aten::floor": lambda node: self.convert_floor_op(node),
             "aten::floor_divide": lambda node: self.convert_floor_divide_op(node),
             "aten::flatten": lambda node: self.convert_flatten_op(node),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
@@ -720,6 +722,18 @@ class TorchConverter(BaseConverter):
                            loc=self.get_loc(torch_node.name),
                            ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
+
+    def convert_detach_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        self.addOperand(torch_node.name, op0)
+
+    def convert_floor_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        floor_op = top.FloorOp(self.unranked_type,
+                               op0,
+                               loc=self.get_loc(torch_node.name),
+                               ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, floor_op)
 
     def convert_floor_divide_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
