@@ -43,7 +43,7 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
     attrs.push_back(rewriter.getNamedAttr(
         "multiplier", rewriter.getSI32IntegerAttr((int32_t)multiplier)));
     attrs.push_back(
-        rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
+        rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift)));
   } else {
     llvm_unreachable("Not support 3d avg pool now.");
   }

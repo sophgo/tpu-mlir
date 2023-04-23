@@ -309,8 +309,8 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     OptionalAttr<F64Attr>:$neg_slope,
     OptionalAttr<SI32Attr>:$multiplier_pos,
     OptionalAttr<SI32Attr>:$multiplier_neg,
-    OptionalAttr<I64Attr>:$rshift_pos,
-    OptionalAttr<I64Attr>:$rshift_neg
+    OptionalAttr<SI32Attr>:$rshift_pos,
+    OptionalAttr<SI32Attr>:$rshift_neg
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -380,7 +380,7 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     /// symmetric quantize param
     OptionalAttr<SI32Attr>:$multiplier,
-    OptionalAttr<I64Attr>:$rshift,
+    OptionalAttr<SI32Attr>:$rshift,
     /// asymmetric quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
@@ -492,7 +492,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -567,7 +567,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst",
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -590,7 +590,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<SI32Attr, "0">:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
@@ -660,7 +660,7 @@ def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -683,7 +683,7 @@ def Tpu_MinConstOp: Tpu_Op<"MinConst", [
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -743,7 +743,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -1004,7 +1004,7 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
   let arguments = (ins
     AnyRankedTensor:$input,
     SI32Attr:$multiplier,
-    I64Attr:$rshift,
+    SI32Attr:$rshift,
     Tpu_RequantModeAttr:$quant_mode,
     DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
@@ -1186,8 +1186,8 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu",
     // quantize param
     OptionalAttr<SI32Attr>:$multiplier,
     OptionalAttr<SI32Attr>:$multiplier_neg,
-    OptionalAttr<I64Attr>:$rshift,
-    OptionalAttr<I64Attr>:$rshift_neg,
+    OptionalAttr<SI32Attr>:$rshift,
+    OptionalAttr<SI32Attr>:$rshift_neg,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyRankedTensor:$output);
@@ -1243,7 +1243,7 @@ def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
   let arguments = (
     ins AnyRankedTensor:$input,
     SI32Attr:$multiplier,
-    I64Attr:$rshift,
+    SI32Attr:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -1362,7 +1362,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 

@@ -18,7 +18,7 @@ void CastLowering::LoweringF32(PatternRewriter &rewriter,
                                op.getOutput().getType());
 }
 void CastLowering::LoweringINT4(PatternRewriter &rewriter, top::CastOp op,
-                                   bool asymmetric) const {
+                                bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void CastLowering::LoweringINT8(PatternRewriter &rewriter, top::CastOp op,
@@ -53,16 +53,17 @@ void CastLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::vector<NamedAttribute> attrs;
   if (i_scale == o_scale) {
     int zero_diff = i_zeropoint - o_zeropoint;
-    attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(-zero_diff)));
-    rewriter.replaceOpWithNewOp<tpu::AddConstOp>(op.getOperation(), op.getOutput().getType(),
-                                                 op.getInput(), attrs);
+    attrs.push_back(rewriter.getNamedAttr(
+        "const_val", rewriter.getF64FloatAttr(-zero_diff)));
+    rewriter.replaceOpWithNewOp<tpu::AddConstOp>(
+        op.getOperation(), op.getOutput().getType(), op.getInput(), attrs);
     return;
   }
 
   std::vector<Value> operands;
   if (i_zeropoint != 0) {
     auto sub_zp = do_binary_saclar<tpu::AddConstOp>(
-                    op.getInput(), rewriter.getI32Type(), -i_zeropoint);
+        op.getInput(), rewriter.getI32Type(), -i_zeropoint);
     operands.push_back(sub_zp);
   } else {
     operands.push_back(op.getInput());
@@ -72,15 +73,16 @@ void CastLowering::LoweringQuantized(PatternRewriter &rewriter,
   int64_t shift;
   QuantizeMultiplier(o_scale, &multiplier, &shift);
   auto ctx = op.getContext();
-  attrs.push_back(rewriter.getNamedAttr("multiplier",
-                                        rewriter.getSI32IntegerAttr(multiplier)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
-      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(-shift)));
-  attrs.push_back(
-      rewriter.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFLite_LShift)));
+      rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(-shift)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "quant_mode",
+      tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFLite_LShift)));
 
-  rewriter.replaceOpWithNewOp<tpu::RequantIntOp>(op.getOperation(), op.getOutput().getType(),
-                                                 operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::RequantIntOp>(
+      op.getOperation(), op.getOutput().getType(), operands, attrs);
 }
 
 } // namespace bm1684x

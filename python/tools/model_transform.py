@@ -50,9 +50,15 @@ class ModelTransformer(object):
         inputs = dict()
         if len(file_list) == 1 and file_list[0].endswith('.npz'):
             npz_in = np.load(file_list[0])
-            for name in self.converter.input_names:
-                assert (name in npz_in.files)
-                inputs[name] = npz_in[name]
+            only_one = len(npz_in.files) == 1
+            if only_one:
+                assert(len(self.converter.input_names) == 1)
+                name = self.converter.input_names[0]
+                inputs[name] = npz_in[npz_in.files[0]]
+            else:
+                for name in self.converter.input_names:
+                    assert (name in npz_in.files)
+                    inputs[name] = npz_in[name]
         elif file_list[0].endswith(('.jpg', '.jpeg', '.png')):  #todo add isPicture in util
             ppa = preprocess()
             for i in range(self.input_num):

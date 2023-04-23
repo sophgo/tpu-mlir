@@ -125,6 +125,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8).reshape(i.data.shape)
         elif i.dtype == "u16" and (input.dtype == np.float32 or input.dtype == np.int32):
             i.data[:] = input.astype(np.uint16).reshape(i.data.shape)
+        elif i.dtype == "i16" and (input.dtype == np.float32 or input.dtype == np.int32):
+            i.data[:] = input.astype(np.int16).reshape(i.data.shape)
         elif i.dtype == "f16" and input.dtype == np.float32:
             i.data[:] = input.astype(np.float16)
         elif i.dtype == "bf16" and input.dtype == np.float32:

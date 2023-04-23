@@ -45,9 +45,9 @@ void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
   attrs.push_back(rewriter.getNamedAttr(
       "multiplier_neg", rewriter.getSI32IntegerAttr(multiplier_neg)));
   attrs.push_back(
-      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift_pos)));
+      rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshift_pos)));
   attrs.push_back(rewriter.getNamedAttr(
-      "rshift_neg", rewriter.getI64IntegerAttr(rshift_neg)));
+      "rshift_neg", rewriter.getSI32IntegerAttr(rshift_neg)));
 
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, newType,

@@ -38,7 +38,7 @@ void ReluLowering::LoweringINT8(PatternRewriter &rewriter, top::ReluOp op,
   attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
   attrs.push_back(rewriter.getNamedAttr(
       "multiplier", rewriter.getSI32IntegerAttr(multiplier_int8)));
-  attrs.push_back(rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(re_rshift)));
+  attrs.push_back(rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(re_rshift)));
   auto newType = getQuantInt8Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::ReluOp>(op, newType, operands, attrs);
 }

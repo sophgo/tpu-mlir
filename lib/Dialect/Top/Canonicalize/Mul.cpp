@@ -58,12 +58,6 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
     if (module::isUniformQuantized(op.getOutput())) {
       return failure();
     }
-    auto multiplier = op.getMultiplier();
-    if (multiplier != 1)
-      return failure();
-    auto rshift = op.getRshift();
-    if (rshift != 0)
-      return failure();
 
     int left_elt_num = module::getNumElements(op.getInputs()[0]);
     int right_elt_num = module::getNumElements(op.getInputs()[1]);
@@ -118,12 +112,6 @@ struct MulToScale : public OpRewritePattern<MulOp> {
     if (op.getInputs().size() != 2) {
       return failure();
     }
-    auto multiplier = op.getMultiplier();
-    if (multiplier != 1)
-      return failure();
-    auto rshift = op.getRshift();
-    if (rshift != 0)
-      return failure();
 
     // check shape
     auto left_shape =

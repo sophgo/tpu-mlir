@@ -495,10 +495,7 @@ def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu]> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    // quant param
-    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );
 
   let results = (outs AnyTensor:$output);
@@ -1256,10 +1253,7 @@ def Top_DivOp: Top_Op<"Div"> {
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    // quant param
-    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );
 
   let results = (outs AnyTensor:$output);

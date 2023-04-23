@@ -24,12 +24,6 @@ struct DivToMul : public OpRewritePattern<DivOp> {
     if (op.getInputs().size() != 2) {
       return failure();
     }
-    auto multiplier = op.getMultiplier();
-    if (multiplier != 1)
-      return failure();
-    auto rshift = op.getRshift();
-    if (rshift != 0)
-      return failure();
 
     auto left = op.getInputs()[0];
     auto right = op.getInputs()[1];
