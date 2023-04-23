@@ -344,6 +344,11 @@ class BM1684:
         lib.cmodel_get_global_mem_size.restype = ctypes.c_ulonglong
 
         # computing function
+        atomic_func_t = ctypes.CFUNCTYPE(ctypes.c_int32, ctypes.c_void_p)
+        lib.get_atomic_function.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+        lib.get_atomic_function.restype = atomic_func_t
+
+        # async function
         lib.cmodel_call_atomic.argtypes = [
             ctypes.c_int32,
             ctypes.c_void_p,
@@ -373,15 +378,12 @@ class BM1684:
     def compute(self, command, engine_type):
         assert isinstance(command, np.ndarray)
         assert command.dtype == np.uint8
-        return self.lib.cmodel_call_atomic(
-            0,
-            np.packbits(
-                command.reshape(-1, 8),
-                axis=-1,
-                bitorder="little",
-            ).ctypes.data,
-            engine_type,
-        )
+        cmd = np.packbits(
+            command.reshape(-1, 8),
+            axis=-1,
+            bitorder="little",
+        ).ctypes.data
+        return self.lib.get_atomic_function(cmd, engine_type)(0, cmd)
 
     def bdc_compute(self, command):
         return self.compute(command, 0)

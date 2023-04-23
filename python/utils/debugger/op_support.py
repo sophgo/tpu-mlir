@@ -256,6 +256,7 @@ class Layout(Enum):
     Data layout type in Local memory.
     """
 
+    # BM168X
     # Tensor alignment
     alignEU = 0
     compact = 1
@@ -277,6 +278,9 @@ class Layout(Enum):
     DMA4Bank = 41
     DMAmatrix = 42
     DMAlinear = 43
+    # BM1684
+    alignEU_N = 50
+    compact_N = 51
 
     def __call__(self, *args, **kargs):
         return ExtEnum(self, *args, **kargs)

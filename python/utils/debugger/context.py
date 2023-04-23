@@ -100,6 +100,7 @@ class Context:
         return disassembler.BModel2MLIR(bmodel, self.decoder)
 
     def tensor2memref(self, tensor):
+        stride = tuple(np.cumprod([1] + tensor.shape[0][-1:0:-1], dtype=int)[::-1])
         return self.MemRef(
-            tensor.device_addr, tensor.shape[0], op_support.DType(tensor.dtype)
+            tensor.device_addr, tensor.shape[0], op_support.DType(tensor.dtype), stride
         )

@@ -215,8 +215,9 @@ class TensorBuilder:
         }[layout]
 
         # local memory
-        if address < int("0x1000000", 16):
-            address += context.memmap[op_support.MType.R][0]
+        lmem_start_addr = context.memmap[op_support.MType.R][0]
+        if address < lmem_start_addr:
+            address += lmem_start_addr
         self.name = tensor_des["name"]
         stride = None
 
@@ -492,7 +493,8 @@ class Checker:
         tdb.enable_message = False  # disable message
         tdb.load_bmodel(self.bmodel_file)
 
-        # improve this code
+        # Please improve this code, it want to read the sorted instruction.
+        # This implement like a decorator but it is not clean.
         tdb.context.decoder.merge_instruction = self.tensor_loc.merge_cmd(
             tdb.context.decoder.merge_instruction
         )
@@ -508,9 +510,9 @@ class Checker:
             total=len(self.tensor_loc.breakpoint_loc),
             transient=True,
         ):
-            # The instruction recorded in TensorLoc represents the
-            # data checkpoint after that instruction is executed.
-            # At the breakpoint, the current instruction has not yet been executed.
+            # The instruction stored in TensorLoc represents the data checkpoint
+            # that occurs after that instruction is executed. When a breakpoint
+            # is reached, the current instruction has not yet been executed.
             # To make it take effect, we need to run it explicitly.
             tdb.next()
 

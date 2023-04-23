@@ -64,12 +64,16 @@ class Decoder:
                 )
 
     def decode_bdc_buf(self, cmd_buf):
-        # input is a buffer
-        return self.decode_bdc_bits(buffer_to_bits(cmd_buf))
+        if cmd_buf:
+            # input is a buffer
+            return self.decode_bdc_bits(buffer_to_bits(cmd_buf))
+        return cmd_buf
 
     def decode_dma_buf(self, cmd_buf):
-        # input is a buffer
-        return self.decode_dma_bits(buffer_to_bits(cmd_buf))
+        if cmd_buf:
+            # input is a buffer
+            return self.decode_dma_bits(buffer_to_bits(cmd_buf))
+        return cmd_buf
 
     def decode_bdc_bits(self, cmd_buf_bits):
         # input is a bits vector
@@ -95,10 +99,10 @@ class Decoder:
         def get_end(cmd):
             sys = (self.context.opdef.bdc_sys, self.context.opdef.dma_sys)
             if all(sys):
-                if isinstance(main_cmd[-1], sys):
+                if isinstance(cmd[-1], sys):
                     return -1
             else:
-                return len(main_cmd)
+                return len(cmd)
 
         # remove system instruction
         main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
@@ -136,10 +140,16 @@ class BModelReader:
         def __init__(self, fbs: bmodel_fbs.CmdGroup, cmd_buf_bits):
             self.bdc_num = fbs.BdcNum()
             self.dma_num = fbs.GdmaNum()
-            binary_bdc = (fbs.BinaryBdc().Start(), fbs.BinaryBdc().Size())
-            binary_dma = (fbs.BinaryGdma().Start(), fbs.BinaryGdma().Size())
-            self.bdc_cmd = cmd_buf_bits[binary_bdc[0] : sum(binary_bdc)]
-            self.dma_cmd = cmd_buf_bits[binary_dma[0] : sum(binary_dma)]
+            if fbs.BinaryBdc():
+                binary_bdc = (fbs.BinaryBdc().Start(), fbs.BinaryBdc().Size())
+                self.bdc_cmd = cmd_buf_bits[binary_bdc[0] : sum(binary_bdc)]
+            else:
+                self.bdc_cmd = []
+            if fbs.BinaryGdma():
+                binary_dma = (fbs.BinaryGdma().Start(), fbs.BinaryGdma().Size())
+                self.dma_cmd = cmd_buf_bits[binary_dma[0] : sum(binary_dma)]
+            else:
+                self.dma_cmd = []
 
         def __repr__(self):
             return f"bdc_num: {self.bdc_num}\ndma_num: {self.dma_num}"

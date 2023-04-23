@@ -106,19 +106,20 @@ group_info_t getGroupInfo(const OpOperand &v, const slice_index &slice_i) {
   return ginfo;
 }
 
-json::Object record_tensor(const std::variant<Value, OpOperand *> val_or_opd,
-                           const slice_index &slice_i,
+template <typename T>
+json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
                            group_type_t group_type) {
 
   group_info_t ginfo;
   Value val;
-  if (auto v = std::get_if<Value>(&val_or_opd)) {
-    val = *v;
-    ginfo = getGroupInfo(*v, slice_i);
+  if constexpr (std::is_same<T, OpOperand *>::value) {
+    val = val_or_opd->get();
+    ginfo = getGroupInfo(*val_or_opd, slice_i);
   } else {
-    auto o = std::get<OpOperand *>(val_or_opd);
-    val = o->get();
-    ginfo = getGroupInfo(*o, slice_i);
+    static_assert(std::is_same<T, OpResult>::value,
+                  "Wrong Type! only supports OpOperand and OpResult.");
+    val = val_or_opd;
+    ginfo = getGroupInfo(val, slice_i);
   };
 
   auto v_spc = BM168x::value_to_spec(val, group_type);
