@@ -92,7 +92,7 @@ class bdc_base(TIUBase):
 class conv_op(bdc_base):
     description = "convolution neuron"
     opcode = 0
-    eu_type = {1: "conv"}
+    eu_type = {0: "conv", 1: "conv"}
 
 
 @bdc_registry
@@ -194,7 +194,7 @@ class cc_op(bdc_base):
 class lut_op(bdc_base):
     description = "table lookup"
     opcode = 6
-    eu_type = {19: "lut"}
+    eu_type = {0: "lut", 19: "lut"}
 
 
 @bdc_registry
@@ -334,7 +334,7 @@ class dma_base(DMABase):
     length = 1024
     description = "GDMA Operation."
     opcode_bits = (0, 1)
-    fun_bits = (17, 33)
+    fun_bits = (32, 35)
     sp_fun = ()
 
     def _decode(self):

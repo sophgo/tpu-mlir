@@ -12,6 +12,7 @@
 
 import numpy as np
 import copy
+import functools
 
 try:
     from . import op_support
@@ -60,7 +61,7 @@ def local_layout_to_stride(memref):
     Layout Canonicalize. Convert special layout to stride layout.
     """
 
-    def aligenEU_stride():
+    def alignEU_stride():
         _, c, h, w = memref.shape
         align_type = 64 // memref.itemsize
         c_stride = (w * h + align_type - 1) // align_type * align_type
@@ -104,7 +105,7 @@ def local_layout_to_stride(memref):
         return memref.stride
 
     if memref.layout == Layout.alignEU:
-        return aligenEU_stride()
+        return alignEU_stride()
     if memref.layout == Layout.compact:
         return compact_stride()
     if memref.layout == Layout.offset:
@@ -151,6 +152,80 @@ class MemRef(op_support.MemRef):
                     )
                 return k(r_addr=address - v[0])
         return MType.UNKNOWN
+
+    @property
+    @functools.lru_cache()
+    def local_shape(self):
+        NPU_OFFSET = self.mtype.npu_offset
+        n, c, h, w, *_ = *self.shape, 1, 1
+
+        def get_cnum(c):
+            return (c + NPU_OFFSET + NPU_NUM - 1) // NPU_NUM
+
+        if self.layout == Layout._64IC:
+            return (c + 63) // 64, get_cnum(n), h, w * 64
+
+        if self.layout == Layout._32IC:
+            return (c + 32) // 32, get_cnum(n), h, w * 32
+
+        if self.layout == Layout._1IC:
+            return c, get_cnum(n), h, w
+
+        if self.layout == Layout.matrix:
+            w = self.layout.args[0]
+            return n, get_cnum((c + w - 1) // w), 1, w
+
+        if self.layout == Layout.matrix2:
+            return 1, get_cnum(n), 1, c
+
+        if self.layout == Layout.DMA4Bank:
+            # FIX ME
+            return n, get_cnum(c), h, w
+
+        if self.layout == Layout.DMAstride:
+            return n, get_cnum(c), h, w
+
+        if self.layout == Layout.DMAmatrix:
+            w = self.layout.args[1]
+            return n, get_cnum((c + w - 1) // w), 1, w
+
+        if self.layout == Layout.DMAlinear:
+            return self.shape
+
+        return n, get_cnum(c), h, w
+
+    @property
+    @functools.lru_cache()
+    def local_stride(self):
+        n, c, h, w, *_ = *self.shape, 1, 1
+        NPU_OFFSET = self.mtype.npu_offset
+
+        def get_eu_align_stride(shape):
+            _, _c, _h, _w = shape
+            align_type = 64 // self.itemsize
+            c_stride = (_w * _h + align_type - 1) // align_type * align_type
+            n_stride = (_c + NPU_OFFSET + NPU_NUM - 1) // NPU_NUM * c_stride
+            return n_stride, c_stride, _w, 1
+
+        if self.layout == Layout._64IC:
+            return 64 * h * w, (c + 63) // 64 * 64 * h * w, 64 * w, 1
+
+        if self.layout == Layout._32IC:
+            return 32 * h * w, (c + 32) // 32 * 32 * h * w, 32 * w, 1
+
+        if self.layout == Layout._1IC:
+            return h * w, c * h * w, w, 1
+
+        if self.layout == Layout.matrix:
+            w = self.layout.args[0]
+            shape = (n, (c + w - 1) // w, 1, w)
+            return get_eu_align_stride(shape)
+
+        if self.layout == Layout.matrix2:
+            shape = (1, n, 1, c)
+            return get_eu_align_stride(shape)
+
+        return self.stride
 
 
 class Memory:
