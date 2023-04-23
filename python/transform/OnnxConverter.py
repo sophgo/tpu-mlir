@@ -585,17 +585,16 @@ class OnnxConverter(BaseConverter):
             image = (len(input_shape) == 4 and input_shape[channel_axis] <= 4) or \
                     (len(input_shape) == 3)  # gray
             if not self.preprocess_args or not image:
-                input_op = top.InputOp(self.mlir.input_types[idx],
+                input_op = top.InputOp(self.mlir.input_op_types[idx],
                                        self.mlir.func_args[idx],
                                        loc=self.get_loc(_name),
                                        ip=self.mlir.insert_point)
             else:
-                # self.preprocess_args['model_format'] # ????????????? no such param
                 init_args = {
                     k: StringAttr.get(v) if isinstance(v, str) else v
                     for k, v in self.preprocess_args.items() if k != 'model_format'
                 }
-                input_op = top.InputOp(self.mlir.input_types[idx],
+                input_op = top.InputOp(self.mlir.input_op_types[idx],
                                        self.mlir.func_args[idx],
                                        loc=self.get_loc(_name),
                                        ip=self.mlir.insert_point,

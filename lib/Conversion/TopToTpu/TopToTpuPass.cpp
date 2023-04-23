@@ -346,7 +346,7 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   }
 };
 
-struct CastInputPattern : public OpRewritePattern<tpu::CastOp> {
+struct CastInputCV18xxPattern : public OpRewritePattern<tpu::CastOp> {
   using OpRewritePattern<tpu::CastOp>::OpRewritePattern;
 
   LogicalResult matchAndRewrite(tpu::CastOp op,
@@ -401,7 +401,8 @@ public:
     }
     init_qtable();
 
-    if (module::isBM1684XFamily() && is_bert_model() && !LoweringConfig::isQuantized) {
+    if (module::isBM1684XFamily() && is_bert_model() &&
+        !LoweringConfig::isQuantized) {
       set_bert_mix_precision_process();
       module::updateModuleTypes();
     }
@@ -419,13 +420,14 @@ public:
     if (module::isBM1684XFamily()) {
       ConversionTarget target(*ctx_);
       ScfTypeConverter typeConverter;
-      target.addLegalDialect<mlir::func::FuncDialect, top::TopDialect, tpu::TpuDialect>();
+      target.addLegalDialect<mlir::func::FuncDialect, top::TopDialect,
+                             tpu::TpuDialect>();
       target.addIllegalOp<top::IfOp>();
 
-      target.addDynamicallyLegalOp<mlir::func::CallOp>([&](mlir::func::CallOp op){
-        return typeConverter.isLegal(op);
-      });
-      bm1684x::populateTopCfOpToTpuConversionPatterns(patterns, typeConverter, ctx_);
+      target.addDynamicallyLegalOp<mlir::func::CallOp>(
+          [&](mlir::func::CallOp op) { return typeConverter.isLegal(op); });
+      bm1684x::populateTopCfOpToTpuConversionPatterns(patterns, typeConverter,
+                                                      ctx_);
       if (failed(applyPartialConversion(module_, target, std::move(patterns))))
         signalPassFailure();
       patterns.clear();
@@ -453,7 +455,7 @@ public:
     relu_process();
     if (module::isCV18xx()) {
       patterns.clear();
-      patterns.add<CastInputPattern>(ctx_);
+      patterns.add<CastInputCV18xxPattern>(ctx_);
       applyPatternsAndFoldGreedily(module_, std::move(patterns));
     }
     module::updateModuleTypes();
@@ -529,11 +531,11 @@ protected:
     patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepAddSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
 
-    if (module::isBM1684XFamily()) {
-      subconst_sign_process();
-      mulconst_scale_process();
-      module::updateModuleTypes();
-    }
+    // if (module::isBM1684XFamily()) {
+    //   subconst_sign_process();
+    //   mulconst_scale_process();
+    //   module::updateModuleTypes();
+    // }
   }
 
   void hd_convert_process() {
@@ -567,13 +569,30 @@ protected:
     auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
       bool is_tpu = module::isTpuOp(op);
-      if ((is_tpu || isa<ReturnOp>(op)) && !isa<tpu::YieldOp>(op)) {
+      if (isa<tpu::YieldOp>(op)) {
+        // do nothing
+      } else if (auto in_op = dyn_cast<top::InputOp>(op)) {
+        auto mode = TypeCastMode::DO_NOTHING;
+        mlir::Type target_type;
+        if (module::isCV18xx() == false) {
+          target_type = type_verify_case_same(op, 0, mode);
+        }
+        if (mode != TypeCastMode::DO_NOTHING) {
+          auto in = in_op.getInput();
+          Value out = in_op.getOutput();
+          auto out_type = out.getType();
+          out.setType(in.getType());
+          auto castOp = do_cast(out, target_type, mode);
+          castOp.setType(out_type);
+          out.replaceAllUsesExcept(castOp, castOp.getDefiningOp());
+        }
+      } else if (is_tpu || isa<ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
           if (module::isWeight(opd) || module::isNone(opd)) {
             continue;
           }
-          TypeCastMode mode = TypeCastMode::DO_NOTHING;
+          auto mode = TypeCastMode::DO_NOTHING;
           mlir::Type target_type;
           if (auto typeIf = dyn_cast<TypeInterface>(op)) {
             target_type = typeIf.type_verify(idx, mode);

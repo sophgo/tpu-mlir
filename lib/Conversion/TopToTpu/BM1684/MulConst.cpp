@@ -42,7 +42,7 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
   attrs.push_back(rewriter.getNamedAttr(
       "multiplier", rewriter.getSI32IntegerAttr(multiplier_int8)));
   attrs.push_back(
-      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(b0_rshift)));
+      rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(b0_rshift)));
   auto newType = getQuantInt8Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::MulConstOp>(op, newType, operands, attrs);
 }

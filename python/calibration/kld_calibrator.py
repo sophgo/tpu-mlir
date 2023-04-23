@@ -184,15 +184,21 @@ class SimpleTuner:
         idx, tune_idx = 0, 0
         self.dq_activations[tune_idx] = {}
         self.ref_activations[tune_idx] = {}
+        only_one = len(self.module.input_names) == 1
         for data in self.data_list:
             if self.ds.all_npz:
                 x = np.load(data)
-                for input in self.module.input_names:
-                    assert (input in x)
-                    #maybe have more than two input tensors, and have different user_count
-                    count = self.parser.get_use_count_by_op_name(input)
-                    self.dq_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
-                    self.ref_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                if only_one:
+                    assert(len(x.files) == 1)
+                    n0 = self.module.input_names[0]
+                    n1 = x.files[0]
+                    self.dq_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
+                    self.ref_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
+                else:
+                    for input in self.module.input_names:
+                        assert (input in x)
+                        self.dq_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                        self.ref_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
             elif self.ds.all_image:
                 idx += 1
                 inputs = data.split(',')
@@ -610,13 +616,21 @@ class ActivationCalibrator2(BaseKldCalibrator):
         idx, tune_idx = 0, 0
         self.dq_activations[tune_idx] = {}
         self.ref_activations[tune_idx] = {}
+        only_one = len(self.module.input_names) == 1
         for data in self.data_list:
             if self.ds.all_npz:
                 x = np.load(data)
-                for input in self.module.input_names:
-                    assert (input in x)
-                    self.dq_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
-                    self.ref_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                if only_one:
+                    assert(len(x.files) == 1)
+                    n0 = self.module.input_names[0]
+                    n1 = x.files[0]
+                    self.dq_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
+                    self.ref_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
+                else:
+                    for input in self.module.input_names:
+                        assert (input in x)
+                        self.dq_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                        self.ref_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
             elif self.ds.all_image:
                 idx += 1
                 inputs = data.split(',')

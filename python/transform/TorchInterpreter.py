@@ -94,7 +94,6 @@ class TorchInterpreter():
         if node.op_type == "aten::Int":
             self.const_val[node.outputs[0]] = int(self.get_input(node.inputs[0]))
             return
-
         # get function
         func = getattr(torch.ops.aten, node.op_type.split('::')[1])
         if node.op_type == "aten::view":

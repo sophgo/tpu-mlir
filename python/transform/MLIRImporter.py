@@ -60,14 +60,14 @@ class MLIRImporter(object):
         self.F32Type = F32Type.get()
         self.insert_point_save_flag = False
         self.mlir_type = {
-            "INT8": IntegerType.get_signless(8),
+            "INT8": IntegerType.get_signed(8),
             "UINT8": IntegerType.get_unsigned(8),
             "SINT8": IntegerType.get_signed(8),
-            "INT16": IntegerType.get_signless(16),
+            "INT16": IntegerType.get_signed(16),
             "UINT16": IntegerType.get_unsigned(16),
             "INT32": IntegerType.get_signed(32),
             "UINT32": IntegerType.get_unsigned(32),
-            "INT64": IntegerType.get_signless(64),
+            "INT64": IntegerType.get_signless(64), #special
             "UINT64": IntegerType.get_unsigned(64),
             "BOOL": IntegerType.get_signless(1),
             "F64": F64Type.get(),
@@ -253,8 +253,10 @@ class MLIRImporter(object):
             output_types = self.num_output * ['F32']
 
         self.input_types = list()
+        self.input_op_types = list()
         self.output_types = list()
         for _shape, _type in zip(self.input_shapes, input_types):
+            self.input_op_types.append(RankedTensorType.get(_shape, self.F32Type))
             if isinstance(_type, str):
                 self.input_types.append(RankedTensorType.get(_shape, self.mlir_type[_type]))
             else:

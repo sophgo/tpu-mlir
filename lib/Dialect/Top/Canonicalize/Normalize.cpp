@@ -96,7 +96,7 @@ struct NormalizeConvert : public OpRewritePattern<NormalizeOp> {
     operands_mul.push_back(recip_result_var);
     std::vector<NamedAttribute> attrs_mul;
     attrs_mul.push_back(rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(1)));
-    attrs_mul.push_back(rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(0)));
+    attrs_mul.push_back(rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(0)));
     auto mul_op = rewriter.create<MulOp>(loc_mul, result_type, operands_mul, attrs_mul);
     auto mul_result_var = mul_op.getResult();
 

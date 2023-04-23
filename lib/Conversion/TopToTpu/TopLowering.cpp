@@ -41,7 +41,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     attrs.push_back(builder.getNamedAttr(
         "multiplier", builder.getSI32IntegerAttr(multiplier)));
     attrs.push_back(
-        builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+        builder.getNamedAttr("rshift", builder.getSI32IntegerAttr(rshift)));
     auto in_type = in.getType().cast<RankedTensorType>();
     auto in_shape = in_type.getShape();
     builder.setInsertionPointAfterValue(in);
@@ -54,7 +54,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     attrs.push_back(builder.getNamedAttr(
         "multiplier", builder.getSI32IntegerAttr(multiplier)));
     attrs.push_back(
-        builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+        builder.getNamedAttr("rshift", builder.getSI32IntegerAttr(rshift)));
     attrs.push_back(builder.getNamedAttr(
         "quant_mode",
         tpu::RequantModeAttr::get(op->getContext(),
@@ -162,7 +162,7 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
   attrs.push_back(builder.getNamedAttr("multiplier",
                                        builder.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(-shift)));
+      builder.getNamedAttr("rshift", builder.getSI32IntegerAttr(-shift)));
   attrs.push_back(
       builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
 
@@ -391,7 +391,8 @@ Value insert_host2device(Value v, Type to) {
   builder.setInsertionPointAfterValue(v);
   auto name = module::getName(v).str();
   name += "_host2device";
-  auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
+  auto newType =
+      RankedTensorType::get(module::getShape(v), module::getStorageType(v));
   auto loc = NameLoc::get(builder.getStringAttr(name));
   auto hdOp = builder.create<tpu::Host2DeviceOp>(loc, newType, ValueRange{v});
   return hdOp.getOutput();
@@ -403,13 +404,14 @@ Value insert_device2host(Value v, Type to) {
   builder.setInsertionPointAfterValue(v);
   auto name = module::getName(v).str();
   name += "_device2host";
-  auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
+  auto newType =
+      RankedTensorType::get(module::getShape(v), module::getStorageType(v));
   auto loc = NameLoc::get(builder.getStringAttr(name));
   auto hdOp = builder.create<tpu::Device2HostOp>(loc, newType, ValueRange{v});
   return hdOp.getOutput();
 }
 
-void try_insert_host2device(Operation* op, uint32_t idx) {
+void try_insert_host2device(Operation *op, uint32_t idx) {
   auto opd = op->getOperand(idx);
   auto def_op = opd.getDefiningOp();
   if (def_op->hasTrait<trait::ShapeProducer>()) {
@@ -418,7 +420,7 @@ void try_insert_host2device(Operation* op, uint32_t idx) {
   }
 }
 
-void try_insert_device2host(Operation* op, uint32_t idx) {
+void try_insert_device2host(Operation *op, uint32_t idx) {
   auto opd = op->getOperand(idx);
   auto def_op = opd.getDefiningOp();
   if (!def_op->hasTrait<trait::ShapeProducer>()) {
