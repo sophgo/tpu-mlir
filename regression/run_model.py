@@ -276,8 +276,10 @@ class MODEL_RUN(object):
             if quant_mode == "int8_asym":
                 cmd += ["--asymmetric"]
             else:
-                cmd += ["--quant_input"]
-                cmd += ["--quant_output"] if self.model_type == "bmodel" else [""]
+                if not ("quant_input" in self.ini_content and int(self.ini_content["quant_input"]) == 0):
+                    cmd += ["--quant_input"]
+                if not ("quant_output" in self.ini_content and int(self.ini_content["quant_output"]) == 0):
+                    cmd += ["--quant_output"] if self.model_type == "bmodel" else [""]
 
         # add for dynamic mode
         if dynamic:
