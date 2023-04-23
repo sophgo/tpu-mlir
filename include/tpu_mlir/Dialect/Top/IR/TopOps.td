@@ -2228,13 +2228,13 @@ def Top_EluOp : Top_Op<"Elu"> {
 def Top_YieldOp : Top_Op<"Yield", [Pure, Terminator]> {
   let summary = "top return operation";
   let description = [{
-    The `Top.Yield` operation represents a return operation within an subgraph.
+    The `top.Yield` operation represents a return operation within an subgraph.
     The operation takes variable number of operands and produces no results.
 
     This operation is not part of the standard and was added to assist tpu-mlr.
   }];
 
-  let arguments = (ins Variadic<AnyType>:$operands);
+  let arguments = (ins Variadic<AnyTensor>:$operands);
 
   let builders = [
     OpBuilder<(ins),
@@ -2248,8 +2248,8 @@ def Top_IfOp : Top_Op<"If"> {
   let description = [{
     If conditional
   }];
-  let arguments = (ins TensorOf<[I1]>:$cond);
-  let results = (outs Variadic<AnyTensor>:$output);
+  let arguments = (ins AnyTensor:$cond);
+  let results = (outs Variadic<AnyRankedTensor>:$output);
   let regions = (region SizedRegion<1>:$then_branch,
     SizedRegion<1>:$else_branch);
   let extraClassDeclaration = [{
@@ -2410,7 +2410,7 @@ def Top_LoopOp : Top_Op<"Loop"> {
   The input/output of subgraph (produced by loop node) matching is based on order instead of name. The implementation will figure out the names based on this order.
   }];
   let arguments = (ins AnyTypeOf<[TensorOf<[I64]>, NoneType]>:$M,
-    AnyTypeOf<[TensorOf<[I1]>, NoneType]>:$cond,
+    AnyTypeOf<[AnyTensor, NoneType]>:$cond,
     Variadic<AnyTypeOf<[TensorOf<[UI8]>, TensorOf<[UI16]>, TensorOf<[UI32]>, TensorOf<[UI64]>, TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>, TensorOf<[F64]>, TensorOf<[I1]>, TensorOf<[Complex<F32>]>, TensorOf<[Complex<F64>]>]>>:$v_initial);
   let results = (outs Variadic<AnyTypeOf<[TensorOf<[UI8]>, TensorOf<[UI16]>, TensorOf<[UI32]>, TensorOf<[UI64]>, TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>, TensorOf<[F64]>, TensorOf<[I1]>, TensorOf<[Complex<F32>]>, TensorOf<[Complex<F64>]>]>>:$v_final_and_scan_outputs);
   let regions = (region SizedRegion<1>:$body);

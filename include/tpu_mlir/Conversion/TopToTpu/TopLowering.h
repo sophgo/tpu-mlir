@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
-
+#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
@@ -24,8 +24,81 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 using namespace llvm;
-
+using namespace mlir;
 namespace tpu_mlir {
+class ScfTypeConverter: public TypeConverter {
+public:
+  ScfTypeConverter() {
+    // The order of type conversion is important: later ones are tried earlier.
+    addConversion([](Type type) { return type; });
+    addConversion([](TensorType tensorType) {
+      assert(tensorType.hasRank() && "expected only ranked shapes");
+      return MemRefType::get(tensorType.getShape(), tensorType.getElementType());
+    });
+
+    addSourceMaterialization([&](OpBuilder &builder, Type resultType,
+                                ValueRange inputs,
+                                Location loc) -> Optional<Value> {
+      if (inputs.size() != 1)
+        return std::nullopt;
+
+      return builder.create<UnrealizedConversionCastOp>(loc, resultType, inputs)
+          .getResult(0);
+    });
+
+    addTargetMaterialization([&](OpBuilder &builder, Type resultType,
+                                ValueRange inputs,
+                                Location loc) -> Optional<Value> {
+      if (inputs.size() != 1)
+        return std::nullopt;
+
+      return builder.create<UnrealizedConversionCastOp>(loc, resultType, inputs)
+          .getResult(0);
+    });
+  }
+
+  bool isSignatureLegal(mlir::FunctionType funcType){
+    return llvm::all_of(llvm::concat<const mlir::Type>(funcType.getInputs(), funcType.getResults()),
+      [this](mlir::Type type) {return isLegal(type);});
+  }
+
+  bool isSignatureLegal(mlir::func::CallOp call){
+    auto f = [this](mlir::Type type) {return isLegal(type);};
+    return llvm::all_of(call.getOperandTypes(), f) &&
+           llvm::all_of(call.getResultTypes(), f);
+  }
+
+};
+
+class IfOpLowering : public ConversionPattern {
+public:
+  explicit IfOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
+            : ConversionPattern(typeConverter, top::IfOp::getOperationName(), 1, ctx) {}
+  LogicalResult matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                                ConversionPatternRewriter &rewriter) const final {
+    auto tpuIfOp = rewriter.create<tpu::IfOp>(op->getLoc(), op->getResultTypes(),
+                                             op->getOperands(), op->getAttrs());
+    rewriter.createBlock(&(tpuIfOp.getThenBranch()));
+    rewriter.createBlock(&(tpuIfOp.getElseBranch()));
+    auto ifOp = dyn_cast<top::IfOp>(op);
+    graphToTpuBranch(rewriter, op->getLoc(), ifOp.getThenBranch(), tpuIfOp.getThenBranch());
+    graphToTpuBranch(rewriter, op->getLoc(), ifOp.getElseBranch(), tpuIfOp.getElseBranch());
+    rewriter.replaceOp(op, tpuIfOp->getResults());
+    return success();
+  }
+private:
+  void graphToTpuBranch(PatternRewriter &rewriter, Location loc,
+                        Region &graph, Region &tpuBranch) const {
+    OpBuilder::InsertionGuard insertGuard(rewriter);
+
+    rewriter.eraseBlock(&tpuBranch.back());
+    tpuBranch.takeBody(graph);
+    rewriter.setInsertionPointToEnd(&tpuBranch.back());
+
+    Operation *returnOp = tpuBranch.back().getTerminator();
+    rewriter.replaceOpWithNewOp<tpu::YieldOp>(returnOp, returnOp->getOperands());
+  }
+};
 
 struct LoweringConfig {
   static bool isQuantized;
