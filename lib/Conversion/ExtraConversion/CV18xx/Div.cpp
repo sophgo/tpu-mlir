@@ -52,6 +52,7 @@ LogicalResult ConvertDivOp::matchAndRewrite(top::DivOp op,
         loc, reciprocal_type, ValueRange{op.getInputs()[1]}, reci_attrs);
 
     operands.emplace_back(reciprocal_op.getOutput());
+    rewriter.setInsertionPoint(op);
     rewriter.replaceOpWithNewOp<top::MulOp>(
         op.getOperation(),
         op.getOutput().getType().cast<RankedTensorType>(), operands, attrs);

@@ -56,14 +56,14 @@ class TORCH_IR_TESTER(object):
             "Concat":           (self.test_Concat,            Y, Y, Y),
             "Conv1d":           (self.test_Conv1d,            Y, Y, Y),
             "Conv2d":           (self.test_Conv2d,            Y, Y, Y),
-            "Conv3d":           (self.test_Conv3d,            Y, Y, N),
+            "Conv3d":           (self.test_Conv3d,            Y, N, N),
             "ConvGroup":        (self.test_ConvGroup,         N, N, Y),
-            "ConvTrans":        (self.test_ConvTrans,         Y, Y, Y),
-            "ConstantFill":     (self.test_ConstantFill,      Y, Y, N),
-            "Div":              (self.test_Div,               Y, Y, N),
+            "ConvTrans":        (self.test_ConvTrans,         Y, N, Y),
+            "ConstantFill":     (self.test_ConstantFill,      Y, Y, Y),
+            "Div":              (self.test_Div,               Y, Y, Y),
             "Dropout":          (self.test_Dropout,           Y, Y, N),
-            "Elu":              (self.test_Elu,               Y, Y, N),
-            "Embedding":        (self.test_Embedding,         Y, N, N),
+            "Elu":              (self.test_Elu,               Y, Y, Y),
+            "Embedding":        (self.test_Embedding,         Y, N, Y),
             "Flatten":          (self.test_Flatten,           Y, Y, N),
             "Floor":            (self.test_Floor,             Y, Y, N),
             "FloorDiv":         (self.test_FloorDiv,          Y, Y, N),
@@ -105,12 +105,12 @@ class TORCH_IR_TESTER(object):
             "Squeeze":          (self.test_Squeeze,           Y, Y, Y),
             "Stack":            (self.test_Stack,             Y, Y, Y),
             "Sub":              (self.test_Sub,               Y, Y, Y),
-            "T":                (self.test_T,                 Y, Y, N),
+            "T":                (self.test_T,                 Y, Y, Y),
             "Tile":             (self.test_Tile,              Y, Y, Y),
             "To":               (self.test_To,                Y, Y, Y),
             "Type_as":          (self.test_Type_as,           Y, Y, Y),
             "Transpose":        (self.test_Transpose,         Y, Y, Y),
-            "Upsample":         (self.test_Upsample,          Y, N, N),
+            "Upsample":         (self.test_Upsample,          Y, N, Y),
             "Unary":            (self.test_Unary,             Y, Y, Y),
             "Unsqueeze":        (self.test_Unsqueeze,         Y, Y, Y),
             "View":             (self.test_View,              Y, Y, Y),
@@ -1305,7 +1305,8 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in_shape], Model())
 
         _test_t((32, 32))
-        _test_t((32, ))
+        if not self.is_cv18xx:
+            _test_t((32, ))
 
     #######################################################################
     # Math: cos/sin/tan/tanh

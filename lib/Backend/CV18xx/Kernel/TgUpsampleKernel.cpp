@@ -23,11 +23,12 @@ static void upsample_split(uint32_t input_n, uint32_t input_c, uint32_t input_h,
                            int eu_align, uint32_t &c_step, uint32_t &h_step) {
 
   h_step = input_h;
+  c_step = std::max(input_c, (uint32_t)CV18xx::NPU_NUM);
   uint32_t h_factor = output_h / input_h;
 
   for (; h_step > 0; --h_step) {
     uint32_t total_size;
-    for (c_step = input_c; c_step >= (uint32_t)CV18xx::NPU_NUM;
+    for (; c_step >= (uint32_t)CV18xx::NPU_NUM;
          --c_step) { // at least c = CV18xx::NPU_NUM
       cvk_tl_shape_t tiled_ifmap_shape = {1, c_step, h_step, input_w};
       uint32_t tiled_ifmap_size =
