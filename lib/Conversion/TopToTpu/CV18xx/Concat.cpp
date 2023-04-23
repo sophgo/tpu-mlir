@@ -73,6 +73,20 @@ static bool fusible(top::ConcatOp concatOp) {
       }
     }
   }
+
+  //if has same input, only_merge should be false
+  if (only_merge) {
+    llvm::DenseSet<Value> s;
+    for (int i = 0; i < nInputs; i++) {
+      auto opd = concatOp.getOperand(i);
+      if (s.count(opd) == 1) {
+        only_merge = false;
+        break;
+      } else {
+        s.insert(opd);
+      }
+    }
+  }
   return only_merge;
 }
 

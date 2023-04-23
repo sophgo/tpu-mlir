@@ -857,10 +857,23 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   } else if (mode.value() == tpu::ResizeMode::nearest) {
     if (std::ceil(scale_h) == std::floor(scale_h) &&
         std::ceil(scale_w) == std::floor(scale_w)) {
-      assert(0 && "already converted in onnx_convert\n");
-      //  from caffe
+      llvm::errs()<<"Warning, if model is onnx format, it should be already converted in onnx_convert\n";
+      //from torch
+      std::vector<NamedAttribute> attrs;
+      attrs.emplace_back(rewriter.getNamedAttr("scale_h", rewriter.getI64IntegerAttr((int64_t)scale_h)));
+      attrs.emplace_back(rewriter.getNamedAttr("scale_w", rewriter.getI64IntegerAttr((int64_t)scale_w)));
+      std::vector<Value> operands;
+      operands.emplace_back(op.getInput());
+      rewriter.replaceOpWithNewOp<top::UpsampleOp>(op, op.getType(), operands, attrs);
+      return;
     }
-    coordinate_transformation_mode = "nearest_half_pixel";
+    if (coordinate_transformation_mode == "pytorch_half_pixel") {
+      //when pytorch use nearest method, coordinate_transformation_mode is actually nearest.
+      coordinate_transformation_mode = "nearest";
+    } else {
+      coordinate_transformation_mode = "nearest_half_pixel";
+    }
+
   } else {
     llvm_unreachable("Unsupport interp mode type \n");
   }

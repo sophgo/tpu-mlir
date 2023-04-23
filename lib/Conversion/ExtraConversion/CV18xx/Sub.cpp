@@ -56,7 +56,6 @@ LogicalResult ConvertSubOp::matchAndRewrite(top::SubOp op,
         rewriter.getNamedAttr("coeff", rewriter.getF64ArrayAttr({1., -1.})));
     rewriter.replaceOpWithNewOp<top::AddOp>(op, op.getOutput().getType().cast<RankedTensorType>(),
                                             op.getOperands(), attrs);
-    fn.dump();
     return success();
   } else if (bcast == 1) {
     auto left_operand = op.getOperands()[0];
