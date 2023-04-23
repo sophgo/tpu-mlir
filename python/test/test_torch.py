@@ -65,6 +65,7 @@ class TORCH_IR_TESTER(object):
             "Elu":              (self.test_Elu,               Y, Y, N),
             "Embedding":        (self.test_Embedding,         Y, N, N),
             "Flatten":          (self.test_Flatten,           Y, Y, N),
+            "Floor":            (self.test_Floor,             Y, Y, N),
             "FloorDiv":         (self.test_FloorDiv,          Y, Y, N),
             "Gather":           (self.test_Gather,            N, N, N),
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, N),
@@ -1779,6 +1780,24 @@ class TORCH_IR_TESTER(object):
         _test_elu((1, 3, 32, 32), 2.0)
         _test_elu((3, 16, 32), 3.5)
         _test_elu((64, 32))
+
+    #######################################################################
+    # Floor
+    # ------------
+    def test_Floor(self):
+        """Floor"""
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                o = torch.floor(x)
+                return o
+
+        self.trace_and_test([(4, 3, 32, 32)], Model())
+        self.trace_and_test([(1, 65, 4, 4)], Model())
 
     #######################################################################
     # FloorDiv
