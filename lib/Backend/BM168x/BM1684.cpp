@@ -149,6 +149,8 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_stride_slice_fix8b);
   CAST_FUNCTION(nodechip_split_tf_md);
   CAST_FUNCTION(nodechip_split_tf_fix8b_md);
+  CAST_FUNCTION(nodechip_swap_dim);
+  CAST_FUNCTION(nodechip_swap_dim_fix8b);
   CAST_FUNCTION(nodechip_interp_forward_parallel);
   CAST_FUNCTION(nodechip_interp_forward_fix8b_parallel);
   CAST_FUNCTION(nodechip_reverse_forward_v2);
