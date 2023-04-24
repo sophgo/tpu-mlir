@@ -52,7 +52,7 @@ class ModelTransformer(object):
             npz_in = np.load(file_list[0])
             only_one = len(npz_in.files) == 1
             if only_one:
-                assert(len(self.converter.input_names) == 1)
+                assert (len(self.converter.input_names) == 1)
                 name = self.converter.input_names[0]
                 inputs[name] = npz_in[npz_in.files[0]]
             else:
@@ -109,8 +109,8 @@ class OnnxTransformer(ModelTransformer):
                  model_name,
                  model_def,
                  input_shapes: list = [],
-                 output_names=[],
-                 preprocessor=None,
+                 output_names: list = [],
+                 preprocessor: dict = {},
                  use_onnxsim=True):
         super().__init__(model_name, model_def)
         from transform.OnnxConverter import OnnxConverter
@@ -129,8 +129,8 @@ class CaffeTransformer(ModelTransformer):
                  model_def,
                  model_data,
                  input_shapes: list = [],
-                 output_names=[],
-                 preprocessor=None):
+                 output_names: list = [],
+                 preprocessor: dict = {}):
         super().__init__(model_name, model_def)
         self.model_data = model_data
         from transform.CaffeConverter import CaffeConverter
@@ -148,8 +148,8 @@ class TFLiteTransformer(ModelTransformer):
                  model_name,
                  model_def,
                  input_shapes: list = [],
-                 output_names=[],
-                 preprocessor=None):
+                 output_names: list = [],
+                 preprocessor: dict = {}):
         super().__init__(model_name, model_def)
         self.do_mlir_infer = False
         from transform.TFLiteConverter import TFLiteConverter
@@ -158,8 +158,12 @@ class TFLiteTransformer(ModelTransformer):
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import tflite_inference
-        is_nchw = self.converter.preprocess_args['channel_format'] == 'nchw'
-        tf_layout = self.converter.preprocess_args['model_format'] == 'nlp'
+        is_nchw = True
+        tf_layout = 1
+        if 'channel_format' in self.converter.preprocess_args:
+            cf = self.converter.preprocess_args['channel_format']
+            is_nchw = cf == 'nchw'
+            tf_layout = 0
         return tflite_inference(inputs,
                                 self.converter.tflite_file,
                                 input_is_nchw=is_nchw,
@@ -173,8 +177,8 @@ class TorchTransformer(ModelTransformer):
                  model_def,
                  input_shapes: list = [],
                  input_types: list = [],
-                 output_names=[],
-                 preprocessor=None):
+                 output_names: list = [],
+                 preprocessor: dict = {}):
         super().__init__(model_name, model_def)
         from transform.TorchConverter import TorchConverter
         self.converter = TorchConverter(self.model_name, self.model_def, input_shapes, input_types,

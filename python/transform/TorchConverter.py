@@ -45,7 +45,7 @@ class TorchConverter(BaseConverter):
                  input_shapes: list,
                  input_types: list,
                  output_names: list,
-                 preprocess_args=None):
+                 preprocess_args: dict = {}):
         super().__init__()
         self.model_name = model_name
         self.weight_file = "{}_top_origin_weight.npz".format(model_name)
@@ -55,7 +55,10 @@ class TorchConverter(BaseConverter):
         self.load_torch_model(torch_file, input_shapes, input_types, output_names)
         self.init_MLIRImporter()
         self.unranked_type = self.mlir.get_tensor_type([])
-        self.preprocess_args = preprocess_args
+        self.preprocess_args = {}
+        if 'channel_format' in preprocess_args:
+            if preprocess_args['channel_format'] != "none":
+                self.preprocess_args = preprocess_args
         self.converted_nodes = list()
         self.const_val = dict()
         # yapf: disable
@@ -269,29 +272,8 @@ class TorchConverter(BaseConverter):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
-            input_shape = self.getShape(_name)
-            channel_axis = 1
-            if self.preprocess_args and self.preprocess_args['channel_format'] == 'nhwc':
-                channel_axis = -1
-            image = (len(input_shape) == 4 and input_shape[channel_axis] <= 4) or \
-                    (len(input_shape) == 3)  # gray
-            if not self.preprocess_args or not image:
-                input_op = top.InputOp(self.mlir.input_op_types[idx],
-                                       self.mlir.func_args[idx],
-                                       loc=self.get_loc(_name),
-                                       ip=self.mlir.insert_point)
-            else:
-                # self.preprocess_args['model_format'] # no such param
-                init_args = {
-                    k: StringAttr.get(v) if isinstance(v, str) else v
-                    for k, v in self.preprocess_args.items() if k != 'model_format'
-                }
-                input_op = top.InputOp(self.mlir.input_op_types[idx],
-                                       self.mlir.func_args[idx],
-                                       loc=self.get_loc(_name),
-                                       ip=self.mlir.insert_point,
-                                       **init_args)
-            self.addOperand(_name, input_op)
+            input_ = self.mlir.create_input_op(self.get_loc(_name), idx, self.preprocess_args)
+            self.addOperand(_name, input_)
 
         def NoneAndRaise(node):
             raise RuntimeError("{} Op not support now".format(node.op_type))
@@ -769,10 +751,12 @@ class TorchConverter(BaseConverter):
         op0 = self.getOp(torch_node.inputs[0])
         axis = self.const_val[torch_node.inputs[1]]
         op1 = self.getOp(torch_node.inputs[2])
-        new_op = top.GatherElementsOp(self.unranked_type, op0, op1,
-                              axis=axis,
-                              loc=self.get_loc(torch_node.name),
-                              ip=self.mlir.insert_point).output
+        new_op = top.GatherElementsOp(self.unranked_type,
+                                      op0,
+                                      op1,
+                                      axis=axis,
+                                      loc=self.get_loc(torch_node.name),
+                                      ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
 
     def convert_compare_op(self, torch_node: TorchNode, mode):
