@@ -159,6 +159,7 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_adaptive_pooling_forward);
   CAST_FUNCTION(nodechip_yolo);
   CAST_FUNCTION(nodechip_memset);
+  CAST_FUNCTION(nodechip_batch_matmul_forward_parallel_v2);
   CAST_FUNCTION(nodechip_channel_shift_forward);
   CAST_FUNCTION(nodechip_channel_shift_forward_fix8b);
   CAST_FUNCTION(nodechip_interleave);

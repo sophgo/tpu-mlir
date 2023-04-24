@@ -137,6 +137,7 @@ typedef void (*nodechip_reorg_forward_fix8b)(uint64_t bottom_global_offset, uint
 typedef void (*nodechip_adaptive_pooling_forward)(uint64_t ifmap_offset_global, uint64_t ofmap_offset_global, int input_n, int input_c, int input_h, int input_w, int pooled_h, int pooled_w, int is_avg_pooling, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_yolo)(uint64_t input_offset_global, uint64_t value_offset_global, int input_n, int input_c, int input_h, int input_w, int n, int classes, int coords, int background, int softmax, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_memset)(uint64_t global_offset, int input_n, int input_c, int input_h, int input_w, int stride_n, int stride_c, int stride_h, float const_val, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_batch_matmul_forward_parallel_v2)(uint64_t input0_addr, const int* input0_shape, int input0_dim, uint64_t input1_addr, const int* input1_shape, int input1_dim, uint64_t output_addr, uint64_t bias_addr, int has_bias, int if_relu, float relu_upper_limit, int* output_shape, int* output_dim, void* pid_node);
 typedef void (*nodechip_channel_shift_forward)(uint64_t A_global_offset, uint64_t R_global_offset, int n, int c, int h, int w, uint32_t shift_dir, uint32_t shift_num, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_channel_shift_forward_fix8b)(uint64_t A_global_offset, uint64_t R_global_offset, int n, int c, int h, int w, uint32_t shift_dir, uint32_t shift_num, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_interleave)(uint64_t A_global_offset, uint64_t B_global_offset, uint64_t R_global_offset, int input_n, int input_c, int input_h, int input_w, int axis, int step, CMD_ID_NODE *pid_node);
@@ -332,6 +333,7 @@ public:
   nodechip_adaptive_pooling_forward dl_nodechip_adaptive_pooling_forward;
   nodechip_yolo dl_nodechip_yolo;
   nodechip_memset dl_nodechip_memset;
+  nodechip_batch_matmul_forward_parallel_v2 dl_nodechip_batch_matmul_forward_parallel_v2;
   nodechip_channel_shift_forward dl_nodechip_channel_shift_forward;
   nodechip_channel_shift_forward_fix8b dl_nodechip_channel_shift_forward_fix8b;
   nodechip_interleave dl_nodechip_interleave;
