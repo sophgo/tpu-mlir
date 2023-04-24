@@ -6,6 +6,7 @@
 # ==============================================================================
 
 from mlir.ir import *
+import mlir.dialects.top as top
 
 
 class State:
@@ -67,7 +68,7 @@ class MLIRImporter(object):
             "UINT16": IntegerType.get_unsigned(16),
             "INT32": IntegerType.get_signed(32),
             "UINT32": IntegerType.get_unsigned(32),
-            "INT64": IntegerType.get_signless(64), #special
+            "INT64": IntegerType.get_signless(64),  #special
             "UINT64": IntegerType.get_unsigned(64),
             "BOOL": IntegerType.get_signless(1),
             "F64": F64Type.get(),
@@ -151,33 +152,26 @@ class MLIRImporter(object):
         self.insert_point = self.insert_point_back
         self.insert_point_save_flag = False
 
-    def create_input_op(self, name, index, **kargs):
+    def create_input_op(self, loc, index, kargs: dict = {}):
         assert (index < len(self.func_args))
-        param = {}
-        if 'scale' in kargs:
-            param['scale'] = ArrayAttr.get([FloatAttr.get_f64(x) for x in kargs['scale']])
-        if 'mean' in kargs:
-            param['mean'] = ArrayAttr.get([FloatAttr.get_f64(x) for x in kargs['mean']])
-        if 'resize_dims' in kargs:
-            param['resize_dims'] = ArrayAttr.get(
-                [IntegerAttr.get(self.mlir_type['INT64'], x) for x in kargs['resize_dims']])
-        if 'keep_aspect_ratio' in kargs:
-            param['keep_aspect_ratio'] = BoolAttr.get(kargs['keep_aspect_ratio'])
-        if 'pad_type' in kargs:
-            param['pad_type'] = StringAttr.get(kargs['pad_type'])
-        if 'pad_value' in kargs:
-            param['pad_value'] = IntegerAttr.get(self.mlir_type['INT64'], kargs['pad_value'])
-        if 'pixel_format' in kargs:
-            param['pixel_format'] = StringAttr.get(kargs['pixel_format'])
+        init_args = {}
+        channel_axis = 1
+        shape = self.input_shapes[index]
         if 'channel_format' in kargs:
-            param['channel_format'] = StringAttr.get(kargs['channel_format'])
-        op = Operation.create("top.Input",
-                              results=[self.input_types[index]],
-                              operands=[self.func_args[index]],
-                              loc=Location.fused([Location.name(name)]),
-                              attributes=param)
-        self.insert_point.insert(op)
-        return op.results[0]
+            if kargs['channel_format'] == 'nhwc':
+                channel_axis = -1
+            if (len(shape) == 4 and shape[channel_axis] <= 4) or len(shape) == 3:
+                init_args = {
+                    k: StringAttr.get(v) if isinstance(v, str) else v
+                    for k, v in kargs.items()
+                }
+        init_args["loc"] = loc
+        init_args["ip"] = self.insert_point
+        init_args["input"] = self.func_args[index]
+        init_args["output"] = self.input_types[
+            index] if self.platform == Platform.TFLITE else self.input_op_types[index]
+        input_op = top.InputOp(**init_args)
+        return input_op.output
 
     def create_weight_op(self, name, output_shape, data_type="F32"):
         if name in self.load_weight:

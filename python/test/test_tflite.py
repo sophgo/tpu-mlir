@@ -150,18 +150,10 @@ class TFLITE_IR_TESTER(object):
                 return x.transpose([0, 3, 1, 2])
             return x
         fp32_mlir = "{}.mlir".format(model_name)
-        if need_transpose:
-          preprocessor = {
-            'channel_format': 'nhwc',
-            'model_format': 'image'
-          }
-        else :
-          preprocessor = {
-            'channel_format': 'nchw',
-            'model_format': 'nlp'
-          }
-        input_is_nchw = preprocessor["channel_format"] == "nchw"
-        layout = preprocessor["model_format"] == "nlp"
+        preprocessor = {}
+        preprocessor['channel_format'] = 'nhwc' if need_transpose else "none"
+        input_is_nchw = not need_transpose
+        layout = not need_transpose
         tool = TFLiteTransformer(model_name, tflite_model, preprocessor=preprocessor)
         tool.model_transform(fp32_mlir)
 

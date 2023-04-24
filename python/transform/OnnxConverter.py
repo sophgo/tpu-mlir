@@ -101,7 +101,7 @@ class OnnxConverter(BaseConverter):
                  onnx_file,
                  input_shapes: list,
                  output_names: list,
-                 preprocess_args=None,
+                 preprocess_args: dict = {},
                  use_onnxsim=True):
         super().__init__()
 
@@ -113,7 +113,10 @@ class OnnxConverter(BaseConverter):
         self.load_onnx_model(onnx_file, input_shapes, output_names, use_onnxsim)
         self.init_MLIRImporter()
         self.opset = self.model.opset_import[-1].version
-        self.preprocess_args = preprocess_args
+        self.preprocess_args = {}
+        if 'channel_format' in preprocess_args:
+            if preprocess_args['channel_format'] != "none":
+                self.preprocess_args = preprocess_args
         self.converted_nodes = list()
 
         self.onnxop_factory = {
@@ -519,7 +522,7 @@ class OnnxConverter(BaseConverter):
                     if n.op_type == "NonMaxSuppression":
                         node = OnnxNode(n)
                         max_output_size = self.getWeight(node.inputs[2]).astype(np.int64)
-                        outs_shape[i] = [max_output_size[0]*self.getShape(node.inputs[1])[1], 3]
+                        outs_shape[i] = [max_output_size[0] * self.getShape(node.inputs[1])[1], 3]
         assert (len(outs_shape) == len(unk_op))
         return zip(unk_op, outs_shape)
 
@@ -579,28 +582,8 @@ class OnnxConverter(BaseConverter):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
-            input_shape = self.getShape(_name)
-            channel_axis = 1
-            if self.preprocess_args and self.preprocess_args['channel_format'] == 'nhwc':
-                channel_axis = -1
-            image = (len(input_shape) == 4 and input_shape[channel_axis] <= 4) or \
-                    (len(input_shape) == 3)  # gray
-            if not self.preprocess_args or not image:
-                input_op = top.InputOp(self.mlir.input_op_types[idx],
-                                       self.mlir.func_args[idx],
-                                       loc=self.get_loc(_name),
-                                       ip=self.mlir.insert_point)
-            else:
-                init_args = {
-                    k: StringAttr.get(v) if isinstance(v, str) else v
-                    for k, v in self.preprocess_args.items() if k != 'model_format'
-                }
-                input_op = top.InputOp(self.mlir.input_op_types[idx],
-                                       self.mlir.func_args[idx],
-                                       loc=self.get_loc(_name),
-                                       ip=self.mlir.insert_point,
-                                       **init_args)
-            self.addOperand(_name, input_op)
+            input_ = self.mlir.create_input_op(self.get_loc(_name), idx, self.preprocess_args)
+            self.addOperand(_name, input_)
 
         def NoneAndRaise(node):
             raise RuntimeError("{} Op not support now".format(node.op_type))
@@ -1198,7 +1181,7 @@ class OnnxConverter(BaseConverter):
         sizes = []
         scale_factor = self.getWeight(onnx_node.inputs[1])
         if (type(scale_factor) == np.ndarray and len(scale_factor.shape) == 2
-            and scale_factor.shape[1] == 1):
+                and scale_factor.shape[1] == 1):
             scale_factor = scale_factor.reshape(-1)
         sizes = input_shape * scale_factor
         output_shape = [int(i) for i in sizes]
@@ -1229,7 +1212,7 @@ class OnnxConverter(BaseConverter):
             except KeyError:
                 scale_factor = []
             if (type(scale_factor) == np.ndarray and len(scale_factor.shape) == 2
-                and scale_factor.shape[1] == 1):
+                    and scale_factor.shape[1] == 1):
                 dims = scale_factor.shape[0]
                 scale_factor = scale_factor.reshape(dims)
             if len(scale_factor) == 0:
@@ -1746,7 +1729,8 @@ class OnnxConverter(BaseConverter):
             output_shape = [output_shape[0], output_shape[1], output_shape[3]]
             reshape1_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
                                         new_op,
-                                        loc=self.get_loc('{}_{}'.format(onnx_node.name, onnx_node.op_type)),
+                                        loc=self.get_loc('{}_{}'.format(
+                                            onnx_node.name, onnx_node.op_type)),
                                         ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, reshape1_op)
         else:
@@ -2032,11 +2016,11 @@ class OnnxConverter(BaseConverter):
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         indices = self.getOp(onnx_node.inputs[1])
         new_op = top.GatherElementsOp(self.mlir.get_tensor_type(out_shape),
-                              in0,
-                              indices,
-                              axis=axis,
-                              loc=self.get_loc(name),
-                              ip=self.mlir.insert_point).output
+                                      in0,
+                                      indices,
+                                      axis=axis,
+                                      loc=self.get_loc(name),
+                                      ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_gathernd_op(self, onnx_node):
@@ -2233,20 +2217,20 @@ class OnnxConverter(BaseConverter):
             else:
                 operands.append(self.getOperand(x))
         classes = self.getShape(onnx_node.inputs[1])[1]
-        tmp = [max_output_size[0]*classes, 3]
+        tmp = [max_output_size[0] * classes, 3]
         self.setShape(onnx_node.name, tmp)
         output_shape = self.getShape(onnx_node.name)
         p = {'name': name, 'center_point_box': 0}
         if len(onnx_node.inputs) < 3:
             p['max_output_size'] = 0
         else:
-            p['max_output_size'] =self.getWeight(onnx_node.inputs[2]).astype(np.int64)
+            p['max_output_size'] = self.getWeight(onnx_node.inputs[2]).astype(np.int64)
         nms_op = top.NmsOp(self.mlir.get_tensor_type(output_shape),
-                                         operands,
-                                         center_point_box = 0,
-                                         max_output_size = self.getWeight(onnx_node.inputs[2]).astype(np.int64),
-                                         loc=self.get_loc(name),
-                                         ip=self.mlir.insert_point).output
+                           operands,
+                           center_point_box=0,
+                           max_output_size=self.getWeight(onnx_node.inputs[2]).astype(np.int64),
+                           loc=self.get_loc(name),
+                           ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, nms_op)
 
     def convert_prelu_op(self, onnx_node):

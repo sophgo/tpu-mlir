@@ -216,14 +216,19 @@ class TFLiteConverter(BaseConverter):
                  tflite_file: str,
                  input_shapes=None,
                  output_names: list = [],
-                 preprocess_args=None):
+                 preprocess_args: dict = {}):
         super().__init__()
         self.model_name = model_name
         self.tflite_file = tflite_file
         self.tflie = TFLiteReader(tflite_file)
         self.graph = next(self.tflie.subgraph)
-        self.preprocess_args = preprocess_args
-        self.need_transpose = preprocess_args['model_format'] == 'image'
+        self.preprocess_args = {}
+
+        self.need_transpose = False
+        if 'channel_format' in preprocess_args:
+            if preprocess_args['channel_format'] != "none":
+                self.need_transpose = True
+                self.preprocess_args = preprocess_args
         self.shape_infer = self.__shape_infer(input_shapes)
 
         for x in self.graph.inputs:
@@ -890,14 +895,8 @@ class TFLiteConverter(BaseConverter):
 
         symbol_table = symbolTable(self.__create_weight_op)
         for idx, input in enumerate(subgraph.inputs):
-            input_shape = self.input_shapes[idx]
-            channel_axis = -1 if self.preprocess_args['channel_format'] == 'nhwc' else 1
-            image = (len(input_shape) == 4 and input_shape[channel_axis] <=4) or \
-                    (len(input_shape) == 3) # gray
-            if not self.preprocess_args or not image:
-                input_op = self.mlir.create_input_op(input.name, idx, **{})
-            else:
-                input_op = self.mlir.create_input_op(input.name, idx, **self.preprocess_args)
+            loc = Location.fused([Location.name(input.name)])
+            input_op = self.mlir.create_input_op(loc, idx, self.preprocess_args)
             symbol_table.update({input.id: input_op})
 
         def add_operation(operation):

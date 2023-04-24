@@ -148,8 +148,6 @@ class MODEL_RUN(object):
             cmd += ["--pad_value {}".format(self.ini_content["pad_value"])]
         if "pad_type" in self.ini_content:
             cmd += ["--pad_type {}".format(self.ini_content["pad_type"])]
-        if "model_format" in self.ini_content:
-            cmd += ["--model_format {}".format(self.ini_content["model_format"])]
 
         # add others
         if "output_names" in self.ini_content:
