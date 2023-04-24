@@ -248,6 +248,7 @@ class Memory:
                 self.LMEM[offset : offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
+                writeable=False,
             )
 
         def get_stride_data_base(shape, stride):
@@ -387,8 +388,8 @@ class Memory:
         return data
 
     def _ddr_to_numpy(self, memref):
-        assert memref.shape != None
-        assert memref.stride != None
+        assert memref.shape is not None
+        assert memref.stride is not None
         assert all(memref.shape)
         assert any(memref.stride)
         offset = memref.mtype.r_addr
@@ -396,6 +397,7 @@ class Memory:
             self.DDR[offset : offset + 4].view(memref.np_dtype),
             np.ctypeslib.as_array(memref.shape),
             np.ctypeslib.as_array(memref.stride) * memref.itemsize,
+            writeable=False,
         )
         if memref.dtype == DType.bf16:
             return bf16_to_fp32(data)

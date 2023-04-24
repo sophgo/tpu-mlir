@@ -15,11 +15,10 @@ import numpy as np
 try:
     from . import op_support
     from .op_support import MType, DType, Scalar, ExtEnum, Layout
-    from .op_support import get_dtype
 except:
     import op_support
     from op_support import MType, DType, Scalar, ExtEnum, Layout
-    from op_support import get_dtype
+
 
 __all__ = ["opparam_converter"]
 
@@ -85,8 +84,12 @@ class MemRef(op_support.MemRef):
         return MType.UNKNOWN
 
 
-def ALIGN(x, y):
-    return (x + y - 1) // y * y
+def Ceil(x, y):
+    return (x + y - 1) // y
+
+
+def AlignY(x, y):
+    return Ceil(x, y) * y
 
 
 def local_layout_to_stride(memref):
@@ -94,31 +97,28 @@ def local_layout_to_stride(memref):
     Layout Canonicalize. Convert special layout to stride layout.
     """
 
-    def alignEU_stride():
-        # The original formula is:
-        # align_num = EU_NUM * (32 / bitsWidth)
-        # c_stride = ceil(w * h / align_num)
-        # EU_NUM = 32, and with different bitsWidth, we can build a table like this:
-        # 8bits  -> algin_num = 128
-        # 16bits -> algin_num = 64
-        # 32bits -> algin_num = 32
-        # after apply the byte size, we can conclude that using 128 bytes is fine.
+    def compute_stride(is_aligned=False):
         _, c, h, w = memref.shape
-        align_type = 128 // memref.itemsize
-        c_stride = ALIGN(w * h, align_type)
-        n_stride = ALIGN(c + memref.mtype.npu_offset, NPU_NUM) * c_stride
-        return (n_stride, c_stride, w, 1)
-
-    def compact_stride():
-        _, c, h, w = memref.shape
-        c_stride = w * h
-        n_stride = ALIGN(c + memref.mtype.npu_offset, NPU_NUM) * c_stride
+        if is_aligned:
+            # The original formula is:
+            # align_num = EU_NUM * (32 / bitsWidth)
+            # c_stride = ceil(w * h / align_num)
+            # EU_NUM = 32, and with different bitsWidth, we can build a table like this:
+            # 8bits  -> algin_num = 128
+            # 16bits -> algin_num = 64
+            # 32bits -> algin_num = 32
+            # after apply the byte size, we can conclude that using 128 bytes is fine.
+            align_type = 128 // memref.itemsize
+            c_stride = AlignY(w * h, align_type)
+        else:
+            c_stride = w * h
+        n_stride = Ceil(c + memref.mtype.npu_offset, NPU_NUM) * c_stride
         return (n_stride, c_stride, w, 1)
 
     if memref.layout == Layout.alignEU:
-        return alignEU_stride()
+        return compute_stride(True)
     if memref.layout == Layout.compact:
-        return compact_stride()
+        return compute_stride(False)
 
     return memref.stride
 
@@ -143,12 +143,13 @@ class Memory:
                 self.LMEM[offset : offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
+                writeable=False,
             )
 
         def get_stride_data_base(shape, stride):
             n, c, h, w = shape
             n_s, c_s, h_s, w_s = stride
-            _shape = [n, ALIGN(NPU_OFFSET + c, NPU_NUM), NPU_NUM, h, w]
+            _shape = [n, Ceil(NPU_OFFSET + c, NPU_NUM), NPU_NUM, h, w]
             _stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
             return data_view(_shape, _stride).reshape(n, -1, h, w)[
                 :n, NPU_OFFSET : NPU_OFFSET + c, :, :
@@ -157,48 +158,65 @@ class Memory:
         def get_stride_data():
             return get_stride_data_base(memref.shape, memref.stride)
 
-        def get_4n_2n_data():
-            assert itemsize in (2, 4)
-            xn = 4 // itemsize
-            n, c, h, w = memref.shape
-            shape = (
-                ALIGN(n, xn),
-                xn,
-                ALIGN(c + NPU_OFFSET, NPU_NUM),
-                NPU_NUM,
-                h,
-                w,
-            )
-            stride = (
-                ALIGN(c + NPU_OFFSET, NPU_NUM) * xn * h * w,
-                1,
-                xn * h * w,
-                LANE_SIZE // itemsize,
-                xn * w,
-                xn,
-            )
-            return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
-            ]
+        def get_4n_2n_data(is_aligned=False):
+            def func():
+                assert itemsize in (1, 2)
+                xn = 4 // itemsize
+                n, c, h, w = memref.shape
+                if is_aligned:
+                    align_type = 128 // memref.itemsize
+                    c_stride = AlignY(xn * h * w, align_type)
+                else:
+                    c_stride = xn * h * w
+                lc = Ceil(c + NPU_OFFSET, NPU_NUM)
+                shape = (Ceil(n, xn), xn, lc, NPU_NUM, h, w)
+                stride = (lc * c_stride, 1, c_stride, LANE_SIZE // itemsize, xn * w, xn)
+                return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
+                    :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+                ]
+
+            return func
 
         get_data = {
             Layout.alignEU: get_stride_data,
             Layout.compact: get_stride_data,
             Layout.stride: get_stride_data,
-            Layout.alignEU_N: get_4n_2n_data,
+            Layout.alignEU_XN: get_4n_2n_data(True),
+            Layout.compact_XN: get_4n_2n_data(False),
         }
         return get_data[memref.layout]()
 
+    def _get_xn_shape_stride(self, memref):
+        assert memref.itemsize in (1, 2)
+        xn = 4 // memref.itemsize
+        n, *dims = memref.shape
+        shape = (Ceil(n, xn), xn, *dims)
+        stride = memref.stride
+        stride = (stride[0], 1, *stride[1:])
+        return np.uint64(shape), np.uint64(stride)
+
     def _ddr_to_numpy(self, memref):
-        assert memref.shape != None
-        assert memref.stride != None
+        assert memref.shape is not None
+        assert memref.stride is not None
         assert all(memref.shape)
         assert any(memref.stride)
         offset = memref.mtype.r_addr
+
+        if memref.layout == Layout.continuous_XN:
+            n, *dims = memref.shape
+            shape, stride = self._get_xn_shape_stride(memref)
+            return np.lib.stride_tricks.as_strided(
+                self.DDR[offset : offset + 4].view(memref.np_dtype),
+                np.ctypeslib.as_array(shape),
+                np.ctypeslib.as_array(stride) * memref.itemsize,
+                writeable=False,
+            ).reshape((-1, *dims))[:n]
+
         return np.lib.stride_tricks.as_strided(
             self.DDR[offset : offset + 4].view(memref.np_dtype),
             np.ctypeslib.as_array(memref.shape),
             np.ctypeslib.as_array(memref.stride) * memref.itemsize,
+            writeable=False,
         )
 
     def get_data(self, value):
@@ -214,10 +232,25 @@ class Memory:
     def set_data(self, value, data: np.ndarray):
         m_type = value.mtype
         if m_type == MType.G:
-            offset = m_type.r_addr
             assert data.dtype == value.np_dtype
+            offset = m_type.r_addr
+            if value.layout == Layout.continuous_XN:
+                assert value.stride is not None
+                shape, stride = self._get_xn_shape_stride(value)
+                ddr_view = np.lib.stride_tricks.as_strided(
+                    self.DDR[offset : offset + 4].view(value.np_dtype),
+                    np.ctypeslib.as_array(shape),
+                    np.ctypeslib.as_array(stride) * value.itemsize,
+                    writeable=True,
+                )
+                data = data.copy()
+                data.resize(shape)
+                ddr_view[...] = data
+                return
+
+            # continuous memory
             src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
-            self.DDR[offset : offset + src_u8.size] = src_u8.flatten()
+            self.DDR[offset : offset + src_u8.size] = src_u8.ravel()
         if m_type == "L":
             raise Exception("Not implemented.")
 

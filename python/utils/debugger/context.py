@@ -100,7 +100,21 @@ class Context:
         return disassembler.BModel2MLIR(bmodel, self.decoder)
 
     def tensor2memref(self, tensor):
-        stride = tuple(np.cumprod([1] + tensor.shape[0][-1:0:-1], dtype=int)[::-1])
+        assert tensor.pad_h == 0, "Not supports pad_h."
+        dtype = op_support.DType(tensor.dtype)
+        if tensor.st_mode in (1, 2):  # 2N/4N
+            assert self.device == Device.BM1684
+            # The type should be declared explicitly.
+            layout = op_support.Layout.continuous_XN
+            xn = 4 // dtype.itemsize
+            stride = op_support.get_continuous_stride(tensor.shape[0]) * xn
+        else:
+            stride = op_support.get_continuous_stride(tensor.shape[0])
+            layout = None  # global is continuous
         return self.MemRef(
-            tensor.device_addr, tensor.shape[0], op_support.DType(tensor.dtype), stride
+            tensor.device_addr,
+            tensor.shape[0],
+            dtype,
+            stride=stride,
+            layout=layout,
         )
