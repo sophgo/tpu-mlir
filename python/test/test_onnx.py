@@ -84,6 +84,7 @@ class ONNX_IR_TESTER(object):
             "Expand2":      (self.test_Expand2,       N, Y, Y, Y),
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        N, Y, Y, Y),
+            "GatherND":     (self.test_GatherND,      Y, N, N, N),
             # "Gather2":      (self.test_Gather2,     N, Y, N, Y),
             "Gemm":         (self.test_Gemm,          Y, Y, Y, Y),
             "GroupFC":      (self.test_GroupFC,       N, Y, Y, Y),
@@ -3513,6 +3514,56 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input1, input2], [output],
                                       initializer=[token_data])
         self.onnx_and_test(graph_def, input_data=input_data)
+
+    def test_GatherND(self, case_name):
+        input_datas = [{
+            "data": np.array([[0, 1], [2, 3]], dtype=np.float32)
+        }, {
+            "data": np.array([[0, 1], [2, 3]], dtype=np.float32)
+        }, {
+            "data": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dtype=np.float32)
+        }, {
+            "data": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dtype=np.float32)
+        }, {
+            "data": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dtype=np.float32)
+        }]
+        indices_datas = [
+            np.array([[0, 0], [1, 1]], dtype=np.int64),
+            np.array([[1], [0]], dtype=np.int64),
+            np.array([[0, 1], [1, 0]], dtype=np.int64),
+            np.array([[[0, 1]], [[1, 0]]], dtype=np.int64),
+            np.array([[1], [0]], dtype=np.int64)
+        ]
+        output_shapes = [[2], [2, 2], [2, 2], [2, 1, 2], [2, 2]]
+        batch_dims = [0, 0, 0, 0, 1]
+        for i in range(len(input_datas)):
+            input_shape = input_datas[i]["data"].shape
+            output_shape = output_shapes[i]
+            indices_data = indices_datas[i]
+            input_data = input_datas[i]
+            input = helper.make_tensor_value_info('data', TensorProto.FLOAT, input_shape)
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+            add_const = helper.make_tensor(name='const_add',
+                                           data_type=TensorProto.FLOAT,
+                                           dims=[],
+                                           vals=[2.0])
+            indices = helper.make_tensor(
+                "indices",
+                TensorProto.INT64,
+                indices_data.shape,
+                indices_data,
+            )
+            gatehr_node = onnx.helper.make_node("GatherND",
+                                                inputs=["data", "indices"],
+                                                outputs=["gather_output"],
+                                                batch_dims=batch_dims[i])
+            add_node = onnx.helper.make_node("Add",
+                                             inputs=["gather_output", "const_add"],
+                                             outputs=["output"])
+            graph_def = helper.make_graph([gatehr_node, add_node],
+                                          case_name, [input], [output],
+                                          initializer=[indices, add_const])
+            self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_Sum(self, case_name):
         input_shape = [1, 3, 27, 27]

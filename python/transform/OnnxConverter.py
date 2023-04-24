@@ -147,6 +147,7 @@ class OnnxConverter(BaseConverter):
             "Floor": lambda node: self.convert_floor_op(node),
             "Gather": lambda node: self.convert_gather_op(node),
             "GatherElements": lambda node: self.convert_gather_elements_op(node),
+            "GatherND": lambda node: self.convert_gathernd_op(node),
             "GELU": lambda node: self.convert_gelu_op(node),
             "Gemm": lambda node: self.convert_gemm_op(node),
             "GlobalAveragePool": lambda node: self.convert_global_avgpool_op(node),
@@ -2036,6 +2037,21 @@ class OnnxConverter(BaseConverter):
                               axis=axis,
                               loc=self.get_loc(name),
                               ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_gathernd_op(self, onnx_node):
+        assert (onnx_node.op_type == "GatherND")
+        input = self.getOp(onnx_node.inputs[0])
+        indices = self.getOp(onnx_node.inputs[1])
+        batch_dims = onnx_node.attrs.get('batch_dims', 0)
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        out_shape = self.getShape(onnx_node.name)
+        new_op = top.GatherNDOp(self.mlir.get_tensor_type(out_shape),
+                                input,
+                                indices,
+                                batch_dims=batch_dims,
+                                loc=self.get_loc(name),
+                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_expand_op(self, onnx_node):

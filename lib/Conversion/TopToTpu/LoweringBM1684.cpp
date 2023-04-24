@@ -23,6 +23,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ConvLowering,
       Depth2SpaceLowering,
       FloorLowering,
+      GatherNDLowering,
       GroupNormLowering,
       MatMulLowering,
       MaxPoolLowering,
