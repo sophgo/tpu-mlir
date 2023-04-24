@@ -199,6 +199,37 @@ struct KeepAddSignPattern : public OpRewritePattern<top::AddOp> {
   }
 };
 
+struct SetSubConstSignPattern : public OpRewritePattern<top::SubConstOp> {
+  using OpRewritePattern<top::SubConstOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::SubConstOp op,
+                                PatternRewriter &rewriter) const override {
+    Value in = op.getInput();
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(in) || !module::isCalibratedType(out)) {
+      return failure();
+    }
+    auto in_qtype = module::getCalibratedType(in);
+    if (module::isCalibratedType(out)) {
+      auto out_qtype = module::getCalibratedType(out);
+      auto out_type = out.getType().cast<RankedTensorType>();
+      if (in_qtype.getMin() >= 0 && out_qtype.getMin() >= 0) {
+        auto new_out_type = quant::CalibratedQuantizedType::get(
+            module::getStorageType(out), out_qtype.getMax() * (-0.1),
+            out_qtype.getMax());
+        auto new_type =
+            RankedTensorType::get(out_type.getShape(), new_out_type);
+        out.setType(new_type);
+        Forward(out);
+        return success();
+      } else {
+        return failure();
+      }
+    }
+    return failure();
+  }
+};
+
 template <typename TyOp, bool KeepMin = false>
 struct BackwardCalibartion : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
@@ -528,11 +559,10 @@ protected:
     // keep sign for some ops
     // backend not support in out not the same sign
     patterns.clear();
-    patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepAddSignPattern>(ctx_);
+    patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepAddSignPattern, SetSubConstSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
 
     // if (module::isBM1684XFamily()) {
-    //   subconst_sign_process();
     //   mulconst_scale_process();
     //   module::updateModuleTypes();
     // }
@@ -661,40 +691,6 @@ protected:
     return bert;
   }
 
-  void subconst_sign_process() {
-    auto mOp = getOperation();
-    for (auto func : mOp.getOps<FuncOp>()) {
-      if (module::isAsymmetric())
-        return;
-      func.walk([&](Operation *op) {
-        if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
-          if (auto subcop = dyn_cast<top::SubConstOp>(op)) {
-            auto in = subcop.getInput();
-            auto out = subcop.getOutput();
-            auto in_stype = module::getStorageType(in);
-            auto out_stype = module::getStorageType(out);
-            auto in_ctype = module::getCalibratedType(in);
-            auto out_ctype = module::getCalibratedType(out);
-            auto in_min = in_ctype.getMin();
-            auto out_min = out_ctype.getMin();
-            auto out_max = out_ctype.getMax();
-            if (in_min >= 0 && out_min <= 0) {
-              if (module::getMode() ==
-                  module::Mode::INT8) { // should check the op not the module
-                auto new_out_type = quant::CalibratedQuantizedType::get(
-                    out_stype, -out_max * 128.0 / 127.0, out_max);
-                auto new_outr_type =
-                    RankedTensorType::get(module::getShape(out), new_out_type);
-                out.setType(new_outr_type);
-              } else {
-                llvm_unreachable("un-supported calibrated type for subconst!");
-              }
-            }
-          }
-        }
-      });
-    }
-  }
 
   void mulconst_scale_process() {
     auto mOp = getOperation();
