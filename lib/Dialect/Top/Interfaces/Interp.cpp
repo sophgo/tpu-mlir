@@ -295,12 +295,24 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
 
 void top::InterpOp::shape_inference() {
     auto in_shape = module::getShape(getInput());
+    auto target_shape_ = getTargetShape();
     auto scale_h_ = getScaleH().convertToDouble();
     auto scale_w_ = getScaleW().convertToDouble();
     std::vector<int64_t> out_shape(in_shape);
     if (getMode() == "nearest" || getMode() == "linear") {
-        out_shape[2] = round(out_shape[2] * scale_h_);
-        out_shape[3] = round(out_shape[3] * scale_w_);
+        if (!module::isNone(target_shape_)) {
+            auto target_shape = target_shape_.getDefiningOp<top::WeightOp>().read<float>();
+            out_shape[2] = (int)target_shape->at(0);
+            out_shape[3] = (int)target_shape->at(1);
+            setScaleH(APFloat((double) out_shape[2] / in_shape[2]));
+            setScaleW(APFloat((double) out_shape[3] / in_shape[3]));
+        } else if (scale_h_ > 0 && scale_h_ > 0) {
+            out_shape[2] = round(out_shape[2] * scale_h_);
+            out_shape[3] = round(out_shape[3] * scale_w_);
+        } else {
+            llvm::errs() << "You must specify either target shape or scale.\n";
+            llvm_unreachable("You must specify either target shape or scale.\n");
+        }
         module::setShapeOrVerify(getOutput(), out_shape);
     }
 }

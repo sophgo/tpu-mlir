@@ -206,7 +206,11 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
                             int idx_operands = -1) {
   auto stype = module::getStorageType(newType);
   std::vector<Value> operands;
-  for (int i = 0; i < from->getNumOperands(); ++i) {
+  int in_num_ops = from->getNumOperands();
+  if (num_operands > 0) {
+    in_num_ops = std::min(num_operands, in_num_ops);
+  }
+  for (int i = 0; i < in_num_ops; ++i) {
     auto in = from->getOperand(i);
     if (isa<top::WeightOp>(in.getDefiningOp())) {
       auto wOp = in.getDefiningOp<top::WeightOp>();

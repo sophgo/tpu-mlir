@@ -25,7 +25,7 @@ void InterpLowering::LoweringF32(PatternRewriter &rewriter,
     op_->setAttr("coord_mode",
                 tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
   }
-  lowering_common_f32<tpu::InterpOp>(rewriter, op);
+  lowering_common_f32<tpu::InterpOp>(rewriter, op, 1);
 }
 
 void InterpLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -43,7 +43,7 @@ void InterpLowering::LoweringINT8(PatternRewriter &rewriter,
   }
   // seems like NNTC's interp only support F32
   // bmcompiler/src/interface/bmcompiler_if.cpp :813
-  lowering_common_f32<tpu::InterpOp>(rewriter, op);
+  lowering_common_f32<tpu::InterpOp>(rewriter, op, 1);
 }
 
 } // namespace bm1684

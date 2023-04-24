@@ -63,7 +63,7 @@ class TORCH_IR_TESTER(object):
             "Div":              (self.test_Div,               Y, Y, Y),
             "Dropout":          (self.test_Dropout,           Y, Y, N),
             "Elu":              (self.test_Elu,               Y, Y, Y),
-            "Embedding":        (self.test_Embedding,         Y, N, Y),
+            "Embedding":        (self.test_Embedding,         Y, Y, Y),
             "Flatten":          (self.test_Flatten,           Y, Y, N),
             "Floor":            (self.test_Floor,             Y, Y, N),
             "FloorDiv":         (self.test_FloorDiv,          Y, Y, N),
@@ -99,7 +99,7 @@ class TORCH_IR_TESTER(object):
             "Scatter":          (self.test_Scatter,           N, N, N),
             "Select":           (self.test_Select,            Y, Y, Y),
             "Slice":            (self.test_Slice,             Y, Y, Y),
-            "Softmax":          (self.test_Softmax,           Y, N, Y),
+            "Softmax":          (self.test_Softmax,           Y, Y, Y),
             "Softmin":          (self.test_Softmin,           Y, Y, Y),
             "Split":            (self.test_Split,             Y, Y, Y),
             "Squeeze":          (self.test_Squeeze,           Y, Y, Y),
@@ -1633,24 +1633,30 @@ class TORCH_IR_TESTER(object):
 
         def _test_upsample(in0_shape, size=None, scale=None, mode='nearest'):
 
+            # If given scale, torch implementation will not recompute scale by default.
+            # But mlir and backend will do, so this param is needed.
+            args = {}
+            if size is None and not scale is None:
+                args["recompute_scale_factor"] = True
+
             class Model(nn.Module):
 
                 def __init__(self):
                     super(Model, self).__init__()
+                    self.layer = nn.Upsample(size=size, scale_factor=scale, mode=mode, **args)
 
                 def forward(self, x):
-                    y1 = F.upsample(x, size=size, scale_factor=scale, mode=mode)
+                    y1 = self.layer(x)
                     return y1
 
             self.trace_and_test([in0_shape], Model())
 
-        _test_upsample((1, 3, 36, 36), None, 2.2)
+        _test_upsample((1, 3, 33, 33), None, 2.2)
         _test_upsample((1, 1, 32, 32), None, (2.5))
-        _test_upsample((1, 3, 32, 32), None, (2.0, 2.0))
-        # TODO: out size is given
-        # _test_upsample((1, 3, 32, 32), 64, None)
-        # _test_upsample((1, 3, 32, 32), (80), None)
-        # _test_upsample((1, 3, 32, 32), (64, 64), None)
+        _test_upsample((1, 3, 32, 32), None, (2.0, 2.2))
+        _test_upsample((1, 3, 32, 32), 64, None)
+        _test_upsample((1, 3, 32, 32), (81), None)
+        _test_upsample((1, 3, 32, 32), (64, 65), None)
 
     #######################################################################
     # IndexSelect
