@@ -26,7 +26,7 @@ void InterpLowering::LoweringF32(PatternRewriter &rewriter,
                 tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
   }
 
-  lowering_common_f32<tpu::InterpOp>(rewriter, op);
+  lowering_common_f32<tpu::InterpOp>(rewriter, op, 1);
 }
 void InterpLowering::LoweringINT4(PatternRewriter &rewriter, top::InterpOp op,
                                    bool asymmetric) const {
@@ -45,7 +45,7 @@ void InterpLowering::LoweringINT8(PatternRewriter &rewriter,
     op_->setAttr("coord_mode",
                 tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
   }
-  lowering_common_f16<tpu::InterpOp>(rewriter, op);
+  lowering_common_f16<tpu::InterpOp>(rewriter, op, 1);
 }
 
 void InterpLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -61,7 +61,7 @@ void InterpLowering::LoweringBF16(PatternRewriter &rewriter,
     op_->setAttr("coord_mode",
                 tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
   }
-  lowering_common_bf16<tpu::InterpOp>(rewriter, op);
+  lowering_common_bf16<tpu::InterpOp>(rewriter, op, 1);
 }
 
 void InterpLowering::LoweringF16(PatternRewriter &rewriter,
@@ -77,7 +77,7 @@ void InterpLowering::LoweringF16(PatternRewriter &rewriter,
     op_->setAttr("coord_mode",
                 tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
   }
-  lowering_common_f16<tpu::InterpOp>(rewriter, op);
+  lowering_common_f16<tpu::InterpOp>(rewriter, op, 1);
 }
 
 void InterpLowering::LoweringQuantized(PatternRewriter &rewriter,
@@ -93,7 +93,7 @@ void InterpLowering::LoweringQuantized(PatternRewriter &rewriter,
     op_->setAttr("coord_mode",
                 tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
   }
-  lowering_common<tpu::InterpOp>(rewriter, op, op.getOutput().getType());
+  lowering_common<tpu::InterpOp>(rewriter, op, op.getOutput().getType(), 1);
 }
 
 } // namespace bm1684x

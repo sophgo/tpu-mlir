@@ -1525,10 +1525,11 @@ def Top_InterpOp : Top_Op<"Interp"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    F64Attr:$scale_h,
-    F64Attr:$scale_w,
+    AnyTensorOrNone:$target_shape,
     InterpModeAttr:$mode,
-    InterpCoordModeAttr:$coord_mode
+    InterpCoordModeAttr:$coord_mode,
+    DefaultValuedAttr<F64Attr, "-1.0">:$scale_h,
+    DefaultValuedAttr<F64Attr, "-1.0">:$scale_w
   );
 
   let results = (outs AnyTensor:$output);

@@ -1164,6 +1164,7 @@ class OnnxConverter(BaseConverter):
                          coordinate_transformation_mode):
         new_op = top.InterpOp(self.mlir.get_tensor_type(output_shape),
                               op,
+                              self.mlir.none_op,
                               scale_h=float(scale_h),
                               scale_w=float(scale_w),
                               mode=StringAttr.get(mode),

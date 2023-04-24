@@ -1010,25 +1010,32 @@ class TorchConverter(BaseConverter):
         self.tensor_list[torch_node.outputs[0]] = output_names
 
     def convert_upsample_op(self, torch_node: TorchNode, mode: str):
+        op0 = self.getOp(torch_node.inputs[0])
+        out_size_is_const = torch_node.inputs[1] in self.const_val.keys()
+        out_size_is_tensor = torch_node.inputs[1] in self.tensor_list
+        has_out_size = out_size_is_const or out_size_is_tensor
+        out_size = None
+        if has_out_size:
+            if out_size_is_tensor:
+                out_size = self.getOperand(torch_node.inputs[1])
+            else:
+                self.addWeight(torch_node.name + "_target_shape",
+                               np.array(self.const_val[torch_node.inputs[1]], dtype=np.int64))
+                out_size = self.getWeightOp(torch_node.name + "_target_shape")
+
         if mode == "nearest":
-            op0 = self.getOp(torch_node.inputs[0])
-            has_out_size = torch_node.inputs[1] in self.const_val.keys()
-            out_size = self.const_val[torch_node.inputs[1]] if has_out_size else None
-            scale = self.const_val[torch_node.inputs[2]] if not has_out_size else None
+            scale = self.const_val[torch_node.inputs[2]] if not has_out_size else [-1, -1]
         elif mode == "bilinear":
             mode = "linear"
-            op0 = self.getOp(torch_node.inputs[0])
-            has_out_size = torch_node.inputs[1] in self.const_val.keys()
-            out_size = self.const_val[torch_node.inputs[1]] if has_out_size else None
             align_corners = self.const_val[torch_node.inputs[2]]
-            scale = self.const_val[torch_node.inputs[3]] if not has_out_size else None
-        assert out_size == None
+            scale = self.const_val[torch_node.inputs[3]] if not has_out_size else [-1, -1]
         new_op = top.InterpOp(self.unranked_type,
                               op0,
-                              scale_h=scale[0],
-                              scale_w=scale[1],
+                              out_size if has_out_size else self.mlir.none_op,
                               mode=StringAttr.get(mode),
                               coord_mode=StringAttr.get("pytorch_half_pixel"),
+                              scale_h=scale[0],
+                              scale_w=scale[1],
                               loc=self.get_loc(torch_node.name),
                               ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)

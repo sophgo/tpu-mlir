@@ -917,6 +917,7 @@ class CaffeConverter(BaseConverter):
 
         new_op = top.InterpOp(self.mlir.get_tensor_type(output_shape),
                               in_op,
+                              self.mlir.none_op,
                               **param,
                               ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)

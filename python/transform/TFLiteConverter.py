@@ -768,7 +768,7 @@ class TFLiteConverter(BaseConverter):
         half_piexl = param.HalfPixelCenters()
         assert op.inputs[1].buffer is not None
         scale = op.inputs[1].buffer
-        op.inputs = [op.inputs[0]]
+        op.inputs = [op.inputs[0], None]
         coord_mode = "asymmetric"
         # round_mode = "down"
         if align_corner is True:
