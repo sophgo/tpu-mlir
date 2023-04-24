@@ -114,7 +114,9 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     // broadcast input using BDC to a buffer
     use_3ic_optimize |= 0x30;
   }
-  if (module::isBM1686()) {
+  if (groups != 1 && !attr.is_dw) {
+    use_3ic_optimize = 0;
+  } else if (module::isBM1686()) {
     use_3ic_optimize = 0;
   }
 
