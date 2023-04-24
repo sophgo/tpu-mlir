@@ -63,6 +63,11 @@ inline std::string get_dtype_str(int dtype) {
   return dtype_str[dtype];
 }
 
+inline bool is_xn(Value v) {
+  auto stmode = BM168x::getStoreMode(v);
+  return stmode == STORE_MODE_4N || stmode == STORE_MODE_2N;
+}
+
 struct slice_index {
   int64_t n_step;
   int64_t h_step;
@@ -158,11 +163,18 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
         stride.push_back(i * stride.back());
       }
       int64_t idx[] = {ginfo.w_idx, ginfo.h_idx, ginfo.d_idx, 0, ginfo.n_idx};
+      int64_t xn_offset = 0; // 2N/4N patch
+      if (is_xn(val)) {      // 2N/4N patch
+        int xn = 4 / fmt_bytes;
+        idx[4] = idx[4] / xn;
+        fmt_bytes *= xn;
+        xn_offset = ginfo.n_idx % xn;
+      }
       int64_t offset = 0;
       for (int i = 0; i < 5; i++) {
         offset += stride[i] * idx[i];
       }
-      return offset * fmt_bytes;
+      return offset * fmt_bytes + xn_offset;
     };
 
     auto op = val.getDefiningOp();
@@ -174,6 +186,8 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
       layout = "continuous";
     }
   }
+  if (is_xn(val))
+    layout += "_xn";
 
   if (group_type == GROUP_3D) {
     layout += "_group3d"; // {d * n, c, h, w}
@@ -197,10 +211,14 @@ json::Object record_tensor(Value v, const group_type_t group_type) {
 
   uint64_t address = v_spc.addr;
 
+  std::string layout = "continuous";
+  if (is_xn(v))
+    layout += "_xn";
+
   return json::Object{{"name", module::getName(v).str()},
                       {"address", address},
                       {"memory_type", memory_type},
-                      {"layout", "continuous"},
+                      {"layout", layout},
                       {"type", type},
                       {"reshape", ""},
                       {"slice", "[...]"}};

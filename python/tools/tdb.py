@@ -114,9 +114,12 @@ class Tdb(cmd.Cmd):
 
     def print_line(self, offset=0, padding=0):
         line_num = self.current_line + offset
-        self.message(
-            f"[bold green]{line_num:{padding}} [/bold green] {self.get_op(offset)}"
-        )
+        try:
+            self.message(
+                f"[bold green]{line_num:{padding}} [/bold green] {self.get_op(offset)}"
+            )
+        except ValueError:
+            self.message("Start.")
 
     def get_asm_context(self, offset=5):
         op_len = len(self.current_function.regions[0].blocks[0].operations)

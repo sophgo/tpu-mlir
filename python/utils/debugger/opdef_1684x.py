@@ -157,8 +157,8 @@ class scmp_op(cmp_op):
 class sfu_op(bdc_base):
     opcode = 9
     eu_type = {
-        12: "sfu.tailor_4x",
-        13: "sfu.tailor",
+        12: "sfu.taylor_4x",
+        13: "sfu.taylor",
         15: "sfu.normalize",
         17: "sfu.rsqrt",
     }

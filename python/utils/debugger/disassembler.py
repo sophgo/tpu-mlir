@@ -181,6 +181,8 @@ class BModelReader:
             self.name = fbs.Name().decode()
             self.dtype = self.to_DType[fbs.DataType()]
             self.device_addr = fbs.DeviceAddr()
+            self.st_mode = fbs.GmemStmode()  # 0->1N, 1->2N, 2->4N
+            self.pad_h = fbs.PadH()  # 1684
             self.shape = [
                 list(fbs.Shape(i).DimAsNumpy()) for i in range(fbs.ShapeLength())
             ]

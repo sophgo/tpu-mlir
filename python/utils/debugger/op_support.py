@@ -8,7 +8,7 @@
 # ==============================================================================
 
 from enum import Enum, IntEnum
-import functools
+import functools, ctypes
 import numpy as np
 from collections import OrderedDict
 
@@ -35,12 +35,35 @@ def packbits2(arr):
 
 packbits = packbits1
 
+
 # Please improve this function.
 # It is called many times and it should be super fast.
 def decode_reg(buffer, des_reg):
     bits_sec = np.split(buffer, des_reg["high_bit"])  # slow
     value = (packbits(x) for x in bits_sec)  # slow
-    return OrderedDict(zip(des_reg["fields"], value))
+    return dict(zip(des_reg["fields"], value))
+
+
+def decoder_factory(fileds_def):
+    key, high_bits = zip(*fileds_def)
+    # check register definition is 64bits aligned.
+    assert all(64 * x in high_bits for x in range(1, high_bits[-1] // 64 + 1))
+    bits_width = np.diff(high_bits, prepend=0)
+
+    class REG(ctypes.Structure):
+        _fields_ = [(k, ctypes.c_uint64, v) for k, v in zip(key, bits_width)]
+
+        def asdict(self):
+            return {field[0]: getattr(self, field[0]) for field in self._fields_}
+
+        def __repr__(self):
+            return str(self.asdict())
+
+    return REG
+
+
+def get_continuous_stride(shape):
+    return np.cumprod([1] + list(shape[-1:0:-1]), dtype=int)[::-1]
 
 
 # ------------------------------------------------------------
@@ -167,6 +190,10 @@ class DType(IntEnum):
     def is_int(self):
         return not self.is_float()
 
+    @property
+    def itemsize(self):
+        return to_np_dtype[self]().itemsize
+
 
 class ExtEnum:
     """
@@ -278,9 +305,11 @@ class Layout(Enum):
     DMA4Bank = 41
     DMAmatrix = 42
     DMAlinear = 43
+
     # BM1684
-    alignEU_N = 50
-    compact_N = 51
+    alignEU_XN = 50
+    compact_XN = 51
+    continuous_XN = 60
 
     def __call__(self, *args, **kargs):
         return ExtEnum(self, *args, **kargs)

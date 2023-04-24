@@ -208,10 +208,16 @@ class TensorBuilder:
         layout = {
             "eu_align": op_support.Layout.alignEU,
             "eu_align_group3d": op_support.Layout.alignEU,
+            "eu_align_xn": op_support.Layout.alignEU_XN,
+            "eu_align_xn_group3d": op_support.Layout.alignEU_XN,
             "compact": op_support.Layout.compact,
             "compact_group3d": op_support.Layout.compact,
-            "continuous_group3d": None,
+            "compact_xn": op_support.Layout.compact_XN,
+            "compact_xn_group3d": op_support.Layout.compact_XN,
             "continuous": None,
+            "continuous_xn": None,  # 4N/2N
+            "continuous_group3d": None,
+            # "continuous_xn_group3d": None,
         }[layout]
 
         # local memory
@@ -229,7 +235,7 @@ class TensorBuilder:
             if reshape:
                 _, c, d, h, w = [int(x) for x in tensor_des["reshape"][1:-1].split("x")]
                 _layout = tensor_des["layout"]
-                if _layout == "continuous":
+                if _layout in ("continuous", "continuous_xn"):
                     stride = (c * d * h * w, h * w, w, 1)
                 elif _layout == "continuous_group3d":
                     stride = (h * w, d * h * w, w, 1)
@@ -237,7 +243,11 @@ class TensorBuilder:
                     raise ValueError(f"Not supported layout: {_layout}")
             else:
                 # global layer
-                stride = tuple(np.cumprod([1] + shape[-1:0:-1])[::-1])
+                stride = op_support.get_continuous_stride(shape)
+
+        if tensor_des["layout"] == "continuous_xn":  # fix 2N/4N
+            stride = np.int64(stride) * 4 // dtype.itemsize
+            layout = op_support.Layout.continuous_XN
 
         self.memref = context.MemRef(
             address, shape, dtype, layout=layout, stride=stride
@@ -264,17 +274,31 @@ class TensorBuilder:
             "continuous_group3d",
             "eu_align_group3d",
             "compact_group3d",
+            "eu_align_xn_group3d",
+            "compact_xn_group3d",
         ):
             n, c, d, h, w = 0, 1, 2, 3, 4
             data = data.transpose((d, n, c, h, w))
         return data
 
 
+class State(Enum):
+    Pass = 0
+    Fail = 1
+    Unknown = 2
+
+
 class StateMsg:
+    _state = {True: State.Pass, False: State.Fail, None: State.Unknown}
     __solts__ = ("msg", "state")
 
-    def __init__(self, state=None, msg=None):
-        self.state = state
+    def __init__(self, state: State, msg=None):
+        if isinstance(state, State):
+            self.state = state
+        elif state in (None, False, True):
+            self.state = self._state[state]
+        else:
+            TypeError(f"Unsupported type: {type(state)}!")
         self.msg = msg
 
     def __bool__(self):
@@ -283,9 +307,15 @@ class StateMsg:
     def __eq__(self, other):
         if isinstance(other, StateMsg):
             return self.state == other.state
-        if other not in (None, False, True):
-            return False
-        return self.state == other
+        if isinstance(other, State):
+            return self.state == other
+        if other in (None, False, True):
+            return self.state == self._state[other]
+
+        return False
+
+    def __hash__(self):
+        return hash(self.state)
 
     def __repr__(self):
         if self.msg == None:
@@ -392,10 +422,18 @@ class DataChecker(TensorCompare):
                 f"euclidean similarity: {metric['euclid']:.6f}",
             ]
             msg = ["\n" + header, "", "\n".join(remarks)]
-            r_func = partial(array_repr, precision=6)
+            r_func = partial(array_repr, precision=6, max_line_width=console.size.width)
+            msg.append("top10_diff:")
             msg.extend(
                 f" {n}: {r_func(r.astype(float))[6:-1]}"
                 for n, r in result.details.items()
+            )
+            msg.extend(
+                (
+                    "0:10_data:",
+                    f" x: {r_func(actual.ravel()[:10].astype(float))[6:-1]}",
+                    f" y: {r_func(desired.ravel()[:10].astype(float))[6:-1]}",
+                )
             )
             try:
                 np.testing.assert_allclose(
@@ -442,19 +480,13 @@ def check_data(tdb, tensors, ref_data, context):
                 name = f"{t.name}_asm_{tdb.current_line}"
                 DATA_CHECKER.assert_allclose(actual, desired, name)
             except AssertionError as e:
-                result.append(StateMsg(False, get_line_info(e, tensor_des)))
+                result.append(StateMsg(State.Fail, get_line_info(e, tensor_des)))
             else:
-                result.append(StateMsg(True))
+                result.append(StateMsg(State.Pass))
         else:
-            result.append(StateMsg(None))
+            result.append(StateMsg(State.Unknown))
 
     return result
-
-
-class State(Enum):
-    Pass = 0
-    Fail = 1
-    Unknown = 2
 
 
 class Checker:
@@ -581,22 +613,17 @@ class Checker:
                 }
             )
 
-    def _get_state(self, state_fun, title, columns=10):
+    def _get_state(
+        self, data_source: list, state_fun, title, header_cell="", columns=10
+    ):
         from rich.table import Table
         from rich import box
 
-        # support partial check
-        ins_num = 0
-        if self.ins_state:
-            ins_num = max(x.instruction_id for x in self.ins_state) + 1
-
-        ins_state = [self.LS("?", State.Unknown, State.Unknown)] * ins_num
-        for si, s in self.ins_state.items():
-            ins_state[si.instruction_id] = s
+        items_num = len(data_source)
 
         def gen_state():
-            for x in range(0, ins_num, columns):
-                st = ins_state[x : min(x + columns, ins_num)]
+            for x in range(0, items_num, columns):
+                st = data_source[x : min(x + columns, items_num)]
                 yield [state_fun(s) for s in st]
 
         table = Table(
@@ -606,7 +633,7 @@ class Checker:
             padding=(0, 0, 0, 0),
         )
 
-        table.add_column("INS", justify="right", style="bold")
+        table.add_column(f"{header_cell}", justify="right", style="bold")
         for i in range(columns):
             table.add_column(f"{i:>2}", justify="right", style="bold")
 
@@ -620,25 +647,63 @@ class Checker:
 
         state = com(self.state)
 
-        def simple():
+        def get_ins_state():
+            ins_num = 0
+            if self.ins_state:
+                ins_num = max(x.instruction_id for x in self.ins_state) + 1
+            ins_state = [self.LS("?", State.Unknown, State.Unknown)] * ins_num
+            for si, s in self.ins_state.items():
+                ins_state[si.instruction_id] = s
+            return ins_state
+
+        def ins_simple():
             func = lambda s: com(s.results)
-            return self._get_state(func, f"Check-Result[{state}] Summary", 20)
-
-        def full():
-            func = lambda s: f"({com(s.operands)}{com(s.results)})"
-            return self._get_state(func, f"Check-Operand-Result[{state}] Summary", 10)
-
-        def line():
-            func = lambda s: f"[{self.colors[s.results]}]{s.line}[/]"
-            return self._get_state(func, f"Check-Line[{state}] Summary", 20)
-
-        def line_full():
-            func = lambda s: f"({s.line}{com(s.operands)}{com(s.results)})"
             return self._get_state(
-                func, f"Check-Line-Operand-Result[{state}] Summary", 10
+                get_ins_state(), func, f"Check-Result[{state}] Summary", "INS", 20
             )
 
-        return [simple, line, full, line_full][style.lower().count("v")]()
+        def ins_full():
+            func = lambda s: f"({com(s.operands)}{com(s.results)})"
+            return self._get_state(
+                get_ins_state(),
+                func,
+                f"Check-Operand-Result[{state}] Summary",
+                "INS",
+                10,
+            )
+
+        def ins_line():
+            func = lambda s: f"[{self.colors[s.results]}]{s.line}[/]"
+            return self._get_state(
+                get_ins_state(), func, f"Check-Line[{state}] Summary", "INS", 20
+            )
+
+        def ins_line_full():
+            func = lambda s: f"({s.line}{com(s.operands)}{com(s.results)})"
+            return self._get_state(
+                get_ins_state(),
+                func,
+                f"Check-Line-Operand-Result[{state}] Summary",
+                "INS",
+                10,
+            )
+
+        def line():
+            def func(s):
+                opds = "".join(com(x) for x in s[1].operands_state)
+                rets = "".join(com(x) for x in s[1].results_state)
+                return f"({s[0].line}{opds}|{rets})"
+
+            return self._get_state(
+                list(self.results.items()),
+                func,
+                f"Check-Line-Operand-Result[{state}] Summary",
+                "Index",
+                10,
+            )
+
+        _style = [line, ins_simple, ins_line, ins_full, ins_line_full]
+        return _style[min(style.lower().count("v"), len(_style) - 1)]()
 
     def __bool__(self):
         return self.state == State.Pass
@@ -659,7 +724,7 @@ def interactive_mode(checker):
 
     line_num = list(lines.keys())
     index = -1
-    verbose = "vvv"
+    verbose = ""
 
     def get_char():
         """Get a single character from the user."""
@@ -730,7 +795,7 @@ def interactive_mode(checker):
     inter = input("Run into interactive mode? (y or yes): ")
     if inter.lower() in ("y", "yes"):
         with console.screen():
-            console.print(checker.get_summary("vvv"))
+            console.print(checker.get_summary())
             console.print("n(ext), p(revious), l(ine), v(erbose), r(eport), q(uit)")
             main_loop()
 
@@ -739,9 +804,9 @@ def save_to_file(checker, report_file):
     from datetime import datetime
 
     with open(report_file, "wt") as rf:
-        console = Console(file=rf)
+        console = Console(file=rf, width=100)
         console.rule(f"Report Generated {datetime.now().ctime()}")
-        console.print(checker.get_summary("vvv"))
+        console.print(checker.get_summary())
         for k, v in checker.get_failed_tensor():
             console.rule(f"Line {k.line}")
             for t in v:
@@ -790,6 +855,9 @@ if __name__ == "__main__":
     DATA_CHECKER.cosine_similarity_tol = cos_t
     DATA_CHECKER.euclidean_similarity_tol = euc_t
     DATA_CHECKER.signal_to_quantization_noise_tol = float("-inf")
+
+    if args.verbose is not None:
+        ASM_CONTEXT_LENGTH += args.verbose.count("v")
 
     Tdb.ddr_size = args.mem_size
     checker = Checker(args.context_dir, args.reference_data, args.fail_fast)
