@@ -117,7 +117,7 @@ class ONNX_IR_TESTER(object):
             "Pad1":         (self.test_Pad1,          N, Y, Y, Y),  # pad val
             "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y),
             "PadReflect":   (self.test_PadReflect,    N, Y, Y, Y),
-            "Pow1":         (self.test_Pow1,          N, Y, Y, Y),  # y = x ^ n
+            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y),  # y = x ^ n
             "Pow2":         (self.test_Pow2,          N, N, N, N),  # y = n ^ x
             "PRelu":        (self.test_PRelu,         N, Y, Y, Y),
             # "Range":        (self.test_Range,       N, Y, Y, N),
