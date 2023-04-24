@@ -2645,6 +2645,7 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         axis = onnx_node.attrs.get("axis", 0)
         reduction = onnx_node.attrs.get("reduction", None)
+        assert not reduction
         new_op = top.ScatterElementsOp(
             self.mlir.get_tensor_type(output_shape),
             input,
@@ -2664,6 +2665,7 @@ class OnnxConverter(BaseConverter):
         updates = self.getOp(onnx_node.inputs[2])
         output_shape = self.getShape(onnx_node.name)
         reduction = onnx_node.attrs.get("reduction", None)
+        assert not reduction
         scatternd_op = top.ScatterNDOp(
             self.mlir.get_tensor_type(output_shape),
             input_data,

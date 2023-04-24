@@ -2134,7 +2134,7 @@ def Top_ScatterNDOp: Top_Op<"ScatterND"> {
       `input_data`           : Tensor of rank r >= 1.
       `indices`      : Tensor of rank q >= 1.
       `updates`     : Tensor of rank q + r - indices_shape[-1] - 1.
-
+      `reduction`   : Type of reduction to apply: none (0 default), add(1), sub(2), max(3), min(4), mul(5).
     Outputs:
       `output`       : Tensor of rank r >= 1.
   }];
@@ -2142,7 +2142,8 @@ def Top_ScatterNDOp: Top_Op<"ScatterND"> {
   let arguments = (ins
     AnyTensor:$input_data,
     AnyTensor:$indices,
-    AnyTensor:$updates
+    AnyTensor:$updates,
+    DefaultValuedAttr<I32Attr, "0">:$reduction
   );
 
   let results = (outs AnyTensor:$output);

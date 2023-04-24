@@ -532,6 +532,7 @@ private:
   void get_topk_param();
   void get_onnx_nms_param();
   void get_gather_nd_tf_param();
+  void get_tensor_scatter_param();
 };
 
 struct NmsParam {
@@ -639,6 +640,23 @@ public:
 
 private:
   ArgMaxParam param_;
+};
+
+struct ScatterNDParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  CPU_SCATTER_OP_T op_code;
+};
+
+class ScatterNDFunc {
+public:
+  ScatterNDFunc(ScatterNDParam &param);
+  void invoke();
+
+private:
+  ScatterNDParam param_;
+  void scatternd_update_core(float *data, const float *updates, int len,
+                             CPU_SCATTER_OP_T op);
 };
 
 } // namespace tpu_mlir

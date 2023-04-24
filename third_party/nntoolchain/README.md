@@ -8,3 +8,5 @@ build from tpu-runtime 9e9d9a7d983305cb15c36b5774f9dd3259d6b970
 build from nntoolchain e0309c47ba4957dec9e9a7c108946f7eee943128
 2023-04-12
 build from libsophon   c6a5694943ffdccb717a57a6cc82488345bcd0ab
+2023-04-26
+build from tpu-cpuop   a158817d0260990d7a7aa6486cfacfab552b7ced

@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -21,6 +22,7 @@
 #include <queue>
 #include <sstream>
 
+using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 
 static void sigmoid_batch(float *x, const int n) {
@@ -1967,6 +1969,7 @@ int BMCpuOp::getCpuOpType() {
       .Case("topk", CPU_TOPK)
       .Case("onnx_nms", CPU_ONNX_NMS)
       .Case("gathernd_tf", CPU_GATHERND_TF)
+      .Case("tensor_scatter", CPU_TENSOR_SCATTER_OP)
       .Default(CPU_LAYER_UNKNOW);
 }
 
@@ -2005,6 +2008,18 @@ void BMCpuOp::get_gather_nd_tf_param() {
   memcpy(this->param, &cpu_param, this->param_size);
 }
 
+void BMCpuOp::get_tensor_scatter_param() {
+  cpu_tensor_scatter_op_param_t cpu_param{};
+  mlir::DictionaryAttr paramDic = op_.getParam().value();
+  cpu_param.input_dtype =
+      (CPU_DATA_TYPE_T)BM168x::getDataType(op_.getInputs()[0]);
+  cpu_param.scatter_op =
+      (CPU_SCATTER_OP_T)paramDic.get("reduction").cast<IntegerAttr>().getInt();
+  this->param_size = sizeof(cpu_tensor_scatter_op_param_t);
+  this->param = (void *)malloc(this->param_size);
+  memcpy(this->param, &cpu_param, this->param_size);
+}
+
 void BMCpuOp::getCpuParam() {
   switch (this->op_type) {
   case CPU_TOPK:
@@ -2015,6 +2030,9 @@ void BMCpuOp::getCpuParam() {
     break;
   case CPU_GATHERND_TF:
     get_gather_nd_tf_param();
+    break;
+  case CPU_TENSOR_SCATTER_OP:
+    get_tensor_scatter_param();
     break;
   case CPU_LAYER_UNKNOW:
     llvm_unreachable("Unknow CPU Op");
@@ -2639,6 +2657,95 @@ void GatherndFunc::invoke() {
       memcpy(out + (b * indices_new_shape[1] + c) * gather_eltment,
              input + offset * gather_eltment, gather_eltment * sizeof(float));
     }
+  }
+}
+
+ScatterNDFunc::ScatterNDFunc(ScatterNDParam &param) : param_(param) {}
+
+void ScatterNDFunc::scatternd_update_core(float *data, const float *updates,
+                                          int len, CPU_SCATTER_OP_T op) {
+  if (op == CPU_SCATTER_ASSIGN) {
+    memcpy(data, updates, len * sizeof(float));
+  } else if (op == CPU_SCATTER_ADD) {
+    for (int i = 0; i < len; i++) {
+      data[i] += updates[i];
+    }
+  } else if (op == CPU_SCATTER_SUB) {
+    for (int i = 0; i < len; i++) {
+      data[i] -= updates[i];
+    }
+  } else if (op == CPU_SCATTER_SUB_REVERSE) {
+    for (int i = 0; i < len; i++) {
+      data[i] = updates[i] - data[i];
+    }
+  } else if (op == CPU_SCATTER_MUL) {
+    for (int i = 0; i < len; i++) {
+      data[i] *= updates[i];
+    }
+  } else if (op == CPU_SCATTER_MAX) {
+    for (int i = 0; i < len; i++) {
+      data[i] += std::max(data[i], updates[i]);
+    }
+  } else if (op == CPU_SCATTER_MIN) {
+    for (int i = 0; i < len; i++) {
+      data[i] += std::min(data[i], updates[i]);
+    }
+  } else {
+    llvm_unreachable("error scatter_nd op_type");
+  }
+}
+
+void ScatterNDFunc::invoke() {
+  auto input_info = param_.inputs[0];
+  auto indices_info = param_.inputs[1];
+  auto updates_info = param_.inputs[2];
+
+  const float *input = input_info.ptr;
+  const float *indices = indices_info.ptr;
+  const float *updates = updates_info.ptr;
+  float *out = param_.output.ptr;
+  auto input_shape = input_info.shape;
+  auto index_shape = indices_info.shape;
+  auto updates_shape = updates_info.shape;
+  auto index_depth = index_shape.back();
+
+  auto input_dim = input_shape.size();
+  auto index_dim = index_shape.size();
+  auto updates_dim = updates_shape.size();
+
+  auto updates_elems = 1;
+  auto slice_elems = 1;
+  for (int i = 0; i < index_dim - 1; ++i) {
+    assert(index_shape[i] == updates_shape[i]);
+    updates_elems *= index_shape[i];
+  }
+  for (int i = index_depth; i < input_dim; ++i) {
+    assert(input_shape[i] == updates_shape[i]);
+    slice_elems *= input_shape[i];
+  }
+
+  assert(updates_dim == input_dim + index_dim - index_depth - 1);
+  // outer_shape = input_shape[:index_depth]
+  std::vector<int> outer_shape(input_shape.begin(),
+                               input_shape.begin() + index_depth);
+  auto type_len = sizeof(float);
+  std::vector<int> outer_stride(outer_shape.size(), slice_elems);
+  for (int i = outer_stride.size() - 2; i >= 0; i--) {
+    outer_stride[i] = outer_stride[i + 1] * outer_shape[i + 1];
+  }
+  // init output with input
+  memcpy(out, input, input_info.size * type_len);
+
+  for (int idx = 0; idx < updates_elems; ++idx) {
+    int index_depth_ = outer_stride.size();
+    auto index_data = indices + idx * index_depth_;
+    int out_offset = 0;
+    for (int i = 0; i < outer_stride.size(); ++i) {
+      out_offset += index_data[i] * outer_stride[i];
+    }
+    auto out_ = out + out_offset;
+    auto updates_data = updates + idx * outer_stride.back();
+    scatternd_update_core(out_, updates_data, slice_elems, param_.op_code);
   }
 }
 
