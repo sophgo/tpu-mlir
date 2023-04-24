@@ -1886,7 +1886,7 @@ float NmsFunc::iou(const float *box, const int i, const int j) {
 int NmsFunc::invoke() {
   // boxes: [num_batches, spatial_dimension, 4]
   // scores: [num_batches, num_classes, spatial_dimension]
-  assert(5==param_.inputs.size());
+  assert(5 == param_.inputs.size());
   float *box = param_.box;
   float *score = param_.score;
   const int num_boxes = param_.inputs[0].shape[1];
@@ -1966,6 +1966,7 @@ int BMCpuOp::getCpuOpType() {
   return StringSwitch<int>(op_.getCpuOpName())
       .Case("topk", CPU_TOPK)
       .Case("onnx_nms", CPU_ONNX_NMS)
+      .Case("gathernd_tf", CPU_GATHERND_TF)
       .Default(CPU_LAYER_UNKNOW);
 }
 
@@ -1993,6 +1994,17 @@ void BMCpuOp::get_onnx_nms_param() {
   memcpy(this->param, &cpu_param, this->param_size);
 }
 
+void BMCpuOp::get_gather_nd_tf_param() {
+  cpu_gathernd_t cpu_param{};
+  mlir::DictionaryAttr paramDic = op_.getParam().value();
+  cpu_param.indice_is_int = true;
+  cpu_param.batch_dims =
+      paramDic.get("batch_dims").cast<IntegerAttr>().getInt();
+  this->param_size = sizeof(cpu_gathernd_t);
+  this->param = (void *)malloc(this->param_size);
+  memcpy(this->param, &cpu_param, this->param_size);
+}
+
 void BMCpuOp::getCpuParam() {
   switch (this->op_type) {
   case CPU_TOPK:
@@ -2000,6 +2012,9 @@ void BMCpuOp::getCpuParam() {
     break;
   case CPU_ONNX_NMS:
     get_onnx_nms_param();
+    break;
+  case CPU_GATHERND_TF:
+    get_gather_nd_tf_param();
     break;
   case CPU_LAYER_UNKNOW:
     llvm_unreachable("Unknow CPU Op");
@@ -2559,4 +2574,72 @@ void ArgMaxFunc::invoke() {
     }
   }
 }
+
+GatherndFunc::GatherndFunc(GatherNDParam &param) : param_(param) {}
+
+uint64_t GatherndFunc::gather_offset(std::vector<int64_t> input_shape,
+                                     std::vector<int> gather_index, int cur_dim,
+                                     int offset) {
+  if (cur_dim == gather_index.size() - 1) {
+    return offset + gather_index[cur_dim];
+  }
+  uint64_t cur_offset = gather_index[cur_dim];
+  for (int d = cur_dim + 1; d < gather_index.size(); ++d) {
+    cur_offset *= input_shape[d];
+  }
+  uint64_t new_offset = gather_offset(input_shape, gather_index, cur_dim + 1,
+                                      offset + cur_offset);
+  return new_offset;
+}
+
+void GatherndFunc::invoke() {
+  int batch_dims_size = 1;
+  auto batch_dims = param_.batch_dims;
+  auto input_info = param_.inputs[0];
+  auto indices_info = param_.inputs[1];
+  auto indices_shape = indices_info.shape;
+  auto input_shape = input_info.shape;
+  const float *input = input_info.ptr;
+  const float *indices = indices_info.ptr;
+  std::vector<int> indices_v(indices_info.size);
+  for (int i = 0; i < indices_info.size; ++i) {
+    indices_v[i] = (int)indices[i];
+  }
+  float *out = param_.output.ptr;
+
+  for (int i = 0; i < batch_dims; ++i) {
+    batch_dims_size *= indices_shape[i];
+  }
+
+  int channel = (indices_info.size / batch_dims_size) /
+                indices_shape[indices_shape.size() - 1];
+  assert(channel * indices_shape[indices_shape.size() - 1] * batch_dims_size ==
+         indices_info.size);
+  std::vector<int64_t> indices_new_shape = {
+      batch_dims_size, channel, indices_shape[indices_shape.size() - 1]};
+  std::vector<int64_t> input_new_shape = {batch_dims_size};
+  for (int i = batch_dims; i < input_shape.size(); ++i) {
+    input_new_shape.push_back(input_shape[i]);
+  }
+
+  uint64_t gather_eltment =
+      param_.output.size / (indices_new_shape[0] * indices_new_shape[1]);
+  assert(gather_eltment * indices_new_shape[0] * indices_new_shape[1] ==
+         param_.output.size);
+  for (int b = 0; b < indices_new_shape[0]; ++b) {
+    for (int c = 0; c < indices_new_shape[1]; ++c) {
+      std::vector<int> gather_index(indices_new_shape[2]);
+      memcpy(gather_index.data(),
+             (int *)indices_v.data() +
+                 b * indices_new_shape[1] * indices_new_shape[2] +
+                 c * indices_new_shape[2],
+             indices_new_shape[2] * sizeof(int));
+      gather_index.insert(gather_index.begin(), b);
+      uint64_t offset = gather_offset(input_new_shape, gather_index, 0, 0);
+      memcpy(out + (b * indices_new_shape[1] + c) * gather_eltment,
+             input + offset * gather_eltment, gather_eltment * sizeof(float));
+    }
+  }
+}
+
 } // namespace tpu_mlir

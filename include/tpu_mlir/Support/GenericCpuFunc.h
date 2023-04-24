@@ -531,6 +531,7 @@ private:
   tpu::GenericCpuOp op_;
   void get_topk_param();
   void get_onnx_nms_param();
+  void get_gather_nd_tf_param();
 };
 
 struct NmsParam {
@@ -552,6 +553,24 @@ public:
 
 private:
   NmsParam param_;
+};
+
+struct GatherNDParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  int batch_dims;
+};
+
+class GatherndFunc {
+public:
+  GatherndFunc(GatherNDParam &param);
+  void invoke();
+
+private:
+  uint64_t gather_offset(std::vector<int64_t> input_shape,
+                         std::vector<int> gather_index, int cur_dim,
+                         int offset);
+  GatherNDParam param_;
 };
 
 struct InstanceNormParam {

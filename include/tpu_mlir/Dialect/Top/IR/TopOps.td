@@ -2454,4 +2454,19 @@ def Top_ShapeOp : Top_Op<"Shape"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_GatherNDOp: Top_Op<"GatherND"> {
+  let summary = "GatherND operator";
+  let description = [{
+    This operator is the inverse of ScatterND.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$indices,
+    DefaultValuedAttr<I64Attr, "0">:$batch_dims
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS

@@ -340,6 +340,24 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
         *values_ptr = result[k].second;
       }
     }
+  } else if (func_name == "gathernd_tf") {
+    mlir::DictionaryAttr dic_param = this->getParam().value();
+    GatherNDParam param;
+    param.batch_dims = dic_param.get("batch_dims").cast<IntegerAttr>().getInt();
+    for (int i = 0; i < getInputs().size(); ++i) {
+      tensor_list_t input;
+      input.ptr = p.inputs[i];
+      input.size = module::getNumElements(getInputs()[i]);
+      input.shape = module::getShape(getInputs()[i]);
+      param.inputs.push_back(input);
+    }
+    tensor_list_t output;
+    output.ptr = p.outputs[0];
+    output.size = module::getNumElements(getOutputs()[0]);
+    output.shape = module::getShape(getOutputs()[0]);
+    param.output = output;
+    GatherndFunc func(param);
+    func.invoke();
   } else {
     llvm_unreachable("generic cpu func not supported!\n");
   }
@@ -352,7 +370,8 @@ mlir::Type tpu::GenericCpuOp::type_verify(uint64_t opd_idx,
   auto op = getOperation();
   if (func_name == "embedding") {
     if (opd_idx == 0) {
-      return type_verify_case_type(op, opd_idx, Builder(op).getIntegerType(16, false), mode);
+      return type_verify_case_type(op, opd_idx,
+                                   Builder(op).getIntegerType(16, false), mode);
     }
     return type_verify_case_same(op, opd_idx, mode);
   }
