@@ -358,6 +358,26 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     param.output = output;
     GatherndFunc func(param);
     func.invoke();
+  } else if (func_name == "tensor_scatter") {
+    ScatterNDParam param;
+    mlir::DictionaryAttr dic_param = this->getParam().value();
+    param.op_code = (CPU_SCATTER_OP_T)dic_param.get("reduction")
+                        .cast<IntegerAttr>()
+                        .getInt();
+    for (int i = 0; i < getInputs().size(); ++i) {
+      tensor_list_t input;
+      input.ptr = p.inputs[i];
+      input.size = module::getNumElements(getInputs()[i]);
+      input.shape = module::getShape(getInputs()[i]);
+      param.inputs.push_back(input);
+    }
+    tensor_list_t output;
+    output.ptr = p.outputs[0];
+    output.size = module::getNumElements(getOutputs()[0]);
+    output.shape = module::getShape(getOutputs()[0]);
+    param.output = output;
+    ScatterNDFunc func(param);
+    func.invoke();
   } else {
     llvm_unreachable("generic cpu func not supported!\n");
   }
@@ -386,6 +406,12 @@ mlir::Type tpu::GenericCpuOp::type_verify(uint64_t opd_idx,
   }
   if (func_name == "onnx_nms") {
     return do_nothing(mode);
+  }
+  if (func_name == "tensor_scatter") {
+    if (opd_idx == 1) {
+      return type_verify_case_type(op, opd_idx,
+                                   Builder(op).getIntegerType(32, true), mode);
+    }
   }
   return type_verify_case_same(op, opd_idx, mode);
 }

@@ -134,7 +134,7 @@ class ONNX_IR_TESTER(object):
             "Relu":         (self.test_Relu,          Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, N, N),
             "PermuteMove":  (self.test_PermuteMove,   N, Y, Y, Y),
-            # "ScatterND":    (self.test_ScatterND,     N, Y, N, N),
+            "ScatterND":    (self.test_ScatterND,     Y, N, N, N),
             "Shape":        (self.test_Shape,         N, Y, Y, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y),
@@ -1229,7 +1229,7 @@ class ONNX_IR_TESTER(object):
             group=1,
         )
 
-        graph_def = helper.make_graph([relu_def,conv_def],
+        graph_def = helper.make_graph([relu_def, conv_def],
                                       case_name, [input], [output],
                                       initializer=[weight, bias])
         self.onnx_and_test(graph_def)
@@ -1732,18 +1732,30 @@ class ONNX_IR_TESTER(object):
         num_classes = 80
         spatial_dimension = 15200
         max_out = 200
-        in_shape = [num_batches,spatial_dimension,4]
+        in_shape = [num_batches, spatial_dimension, 4]
         score_shape = [num_batches, num_classes, spatial_dimension]
         boxes = helper.make_tensor_value_info('boxes', TensorProto.FLOAT, in_shape)
         scores = helper.make_tensor_value_info('scores', TensorProto.FLOAT, score_shape)
-        max_output = helper.make_tensor(name = 'max_output_boxes_per_class', data_type=onnx.TensorProto.INT64, dims = [1],vals= 200*np.ones(1).astype(np.int64))
-        iou_threshold = helper.make_tensor(name = 'iou_threshold',data_type = TensorProto.FLOAT, dims=[1],  vals= 0.5*np.ones(1))
-        score_threshold = helper.make_tensor(name = 'score_threshold',data_type = TensorProto.FLOAT, dims=[1], vals =  0.05*np.ones(1))
-        y_shape = [max_out*num_classes, 3]
-        selected_indices = helper.make_tensor_value_info('selected_indices', TensorProto.INT64, y_shape)
+        max_output = helper.make_tensor(name='max_output_boxes_per_class',
+                                        data_type=onnx.TensorProto.INT64,
+                                        dims=[1],
+                                        vals=200 * np.ones(1).astype(np.int64))
+        iou_threshold = helper.make_tensor(name='iou_threshold',
+                                           data_type=TensorProto.FLOAT,
+                                           dims=[1],
+                                           vals=0.5 * np.ones(1))
+        score_threshold = helper.make_tensor(name='score_threshold',
+                                             data_type=TensorProto.FLOAT,
+                                             dims=[1],
+                                             vals=0.05 * np.ones(1))
+        y_shape = [max_out * num_classes, 3]
+        selected_indices = helper.make_tensor_value_info('selected_indices', TensorProto.INT64,
+                                                         y_shape)
         nms_def = helper.make_node(
             'NonMaxSuppression',
-            inputs=['boxes', 'scores', 'max_output_boxes_per_class', 'iou_threshold', 'score_threshold'],
+            inputs=[
+                'boxes', 'scores', 'max_output_boxes_per_class', 'iou_threshold', 'score_threshold'
+            ],
             outputs=['selected_indices'],
         )
         graph_def = helper.make_graph([nms_def],
@@ -4536,27 +4548,36 @@ class ONNX_IR_TESTER(object):
                 [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
 
     def test_ScatterND(self, case_name):
-        x_shape = [320, 320]
-        idx_shape = [160, 160, 2]
-        update_shape = [160, 160]
-        # indices should not have duplicate entries: that is, if idx1 != idx2, then indices[idx1] != indices[idx2].
-        # This ensures that the output value does not depend on the iteration order.
-        input_data = {
-            # "raw_data": np.random.rand(*input_shape['raw_data']).astype(np.float32),
-            "x_data": np.random.rand(*x_shape).astype(np.float32),
-            "indices": np.random.randint(0, 64, tuple(idx_shape)),
-            "updates": np.random.rand(*update_shape).astype(np.float32)
-        }
-        raw_data = helper.make_tensor_value_info("x_data", TensorProto.FLOAT, x_shape)
-        indices = helper.make_tensor_value_info("indices", TensorProto.INT64, idx_shape)
-        updates = helper.make_tensor_value_info("updates", TensorProto.FLOAT, update_shape)
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, x_shape)
-        scatternd_def = helper.make_node("ScatterND",
-                                         inputs=list(input_data.keys()),
-                                         outputs=["output"])
-        graph_def = helper.make_graph([scatternd_def], case_name, [raw_data, indices, updates],
-                                      [output])
-        self.onnx_and_test(graph_def, input_data=input_data)
+        x_shapes = [[320, 320], [1, 5, 256]]
+        idx_shapes = [[160, 160, 2], [1, 1, 2]]
+        update_shapes = [[160, 160], [1, 1, 256]]
+        index_limits = [64, 1]
+        for i in range(1, len(x_shapes)):
+            x_shape, idx_shape, update_shape, index_limit = x_shapes[i], idx_shapes[
+                i], update_shapes[i], index_limits[i]
+            # indices should not have duplicate entries: that is, if idx1 != idx2, then indices[idx1] != indices[idx2].
+            # This ensures that the output value does not depend on the iteration order.
+            input_data = {
+                # "raw_data": np.random.rand(*input_shape['raw_data']).astype(np.float32),
+                "x_data": np.random.rand(*x_shape).astype(np.float32),
+                "indices": np.random.randint(0, index_limit, tuple(idx_shape)),
+                "updates": np.random.rand(*update_shape).astype(np.float32)
+            }
+            raw_data = helper.make_tensor_value_info("x_data", TensorProto.FLOAT, x_shape)
+            indices = helper.make_tensor_value_info("indices", TensorProto.INT64, idx_shape)
+            updates = helper.make_tensor_value_info("updates", TensorProto.FLOAT, update_shape)
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, x_shape)
+            add_data = helper.make_tensor('add_tensor', TensorProto.FLOAT, x_shape, np.random.rand(*x_shape).astype(np.float32))
+            scatternd_def = helper.make_node("ScatterND",
+                                             inputs=list(input_data.keys()),
+                                             outputs=["scatter_output"])
+            add_def = onnx.helper.make_node("Add",
+                                            inputs=["scatter_output", "add_tensor"],
+                                            outputs=["output"])
+            graph_def = helper.make_graph([scatternd_def, add_def],
+                                          case_name, [raw_data, indices, updates], [output],
+                                          initializer=[add_data])
+            self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_SliceToReverse(self, case_name):
         input_shape = [100, 1, 3]
@@ -5159,23 +5180,18 @@ class ONNX_IR_TESTER(object):
                                     dims=[2],
                                     vals=[1, 2])
         shape_node = helper.make_node(
-                'Shape',   # node name
-                ['input'],   # inputs
-                ['shapeinfo'],   # outputs
+            'Shape',  # node name
+            ['input'],  # inputs
+            ['shapeinfo'],  # outputs
         )
         concat_node = helper.make_node(
-                'Concat',   # node name
-                ['shapeinfo','input2'],   # inputs
-                ['output'],   # outputs
-                axis=0
-        )
-        graph_def = helper.make_graph(
-                [shape_node, concat_node],
-                case_name,
-                [input],
-                [output],
-                initializer=[input2]
-        )
+            'Concat',  # node name
+            ['shapeinfo', 'input2'],  # inputs
+            ['output'],  # outputs
+            axis=0)
+        graph_def = helper.make_graph([shape_node, concat_node],
+                                      case_name, [input], [output],
+                                      initializer=[input2])
         self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
 
     def test_Range(self, case_name):
