@@ -67,8 +67,8 @@ class ONNX_IR_TESTER(object):
             "Conv3d":       (self.test_Conv3d,        N, Y, Y, Y),
             "ConvStride":   (self.test_ConvStride,    Y, Y, Y, Y),
             "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y),
-            "ConvTrans":    (self.test_ConvTrans,     N, Y, N, Y),
-            "ConvTrans2":   (self.test_ConvTrans2,    N, Y, N, Y),  #no pad
+            "ConvTrans":    (self.test_ConvTrans,     N, Y, Y, Y),
+            "ConvTrans2":   (self.test_ConvTrans2,    N, Y, Y, Y),  #no pad
             "Clip":         (self.test_Clip,          N, Y, Y, Y),
             "DepthToSpace": (self.test_DepthToSpace,  Y, Y, Y, Y),
             "Deconv":       (self.test_Deconv,        N, Y, Y, Y),
