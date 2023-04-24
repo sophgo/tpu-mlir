@@ -15,9 +15,9 @@ namespace bm1684 {
 
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
   // clang-format off
-  patterns->add<
-      tpu_mlir::bm1684x::ConvertMatMulWithRightTranspose
-  >(patterns->getContext());
+  // patterns->add<
+  //     tpu_mlir::bm1684x::ConvertMatMulWithRightTranspose
+  // >(patterns->getContext());
   // clang-format on
 }
 

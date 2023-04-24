@@ -33,10 +33,22 @@ void tpu::MatMulOp::codegen_global_bm1684() {
   auto p = parseParam();
   int using_bias = p.with_bias ? 1 : 0;
   int if_relu = p.do_relu ? 1 : 0;
+  double relu_upper_limit = p.do_relu ? p.relu_limit : 0.0; //no working in backend
   auto in_addr = module::getAddress(getInput());
+  auto in_dims = module::getShape(getInput()).size();
+  int  in_shape[MAX_SHAPE_DIMS];
+  module::getGlobalShape(getInput(), in_shape, in_dims);
   auto right_addr = module::getAddress(getRight());
+  auto right_dims = module::getShape(getRight()).size();
+  int  right_shape[MAX_SHAPE_DIMS];
+  module::getGlobalShape(getRight(), right_shape, right_dims);
   auto bias_addr = module::getAddress(getBias());
   auto out_addr = module::getAddress(getOutput());
+  if(using_bias){
+    auto bias_dims = module::getShape(getBias()).size();
+    assert(bias_dims <=1 && "bias only support 1 dim!");
+  }
+
   if (module::isUniformQuantized(getInput())) {
     int in_sign = module::isSign(getInput());
     int right_sign = module::isSign(getRight());
@@ -53,12 +65,21 @@ void tpu::MatMulOp::codegen_global_bm1684() {
         /*out_4N*/ 1, /*perlayer bias*/ 0, FcPerLayerShift, &quant_param,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
-    auto eu_num = Arch::eu_num(4);
-    BM1684::instance().dl_nodechip_fc_forward_parallel(
-        in_addr, right_addr, bias_addr, out_addr,
-        /*slope*/ 0, p.M, p.K, p.N, 0, using_bias, if_relu, 0, 0,
-        (p.M >= 128 && p.N <= eu_num / 2 * Arch::NPU_NUM) ? eu_num / 2 : eu_num,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+    BM1684::instance().dl_nodechip_batch_matmul_forward_parallel_v2(
+        in_addr,
+        (const int*)in_shape,
+        in_dims,
+        right_addr,
+        (const int*)right_shape,
+        right_dims,
+        out_addr,
+        bias_addr,
+        using_bias,
+        if_relu, //relu = 0
+        (float)relu_upper_limit,
+        NULL, NULL,
+        (CMD_ID_NODE *)BM1684::instance().cmdid_node
+    );
   }
 }
 
