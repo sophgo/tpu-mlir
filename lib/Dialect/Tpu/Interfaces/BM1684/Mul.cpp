@@ -94,7 +94,7 @@ void tpu::MulOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                       local_sec_info_t &sec_info) {
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
-  auto out_gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto out_gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   int num_inputs = getInputs().size();
   llvm::SmallVector<int, 8> input_addrs;
   int op_code = 2;

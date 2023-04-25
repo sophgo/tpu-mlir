@@ -249,6 +249,10 @@ LogicalResult tpu::MatMulOp::AllowDataSplit(int64_t axis,
   }
 
   auto lshape = module::getShape(getInput());
+  if (group_type == GROUP_MM && axis == 1 && lshape.size() > 2) {
+    return success();
+  }
+
   if (lshape.size() == 4 && axis == 2 && getHdimIsBatch()) {
     return success();
   }

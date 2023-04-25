@@ -24,6 +24,8 @@ typedef struct {
   int64_t buffer_size;
   int64_t n_idx;
   int64_t n_slice;
+  int64_t c_idx;
+  int64_t c_slice;
   int64_t h_idx;
   int64_t h_slice;
   int64_t d_idx;
@@ -57,6 +59,10 @@ typedef struct local_sec_info {
   int32_t w_slice;
   int32_t out_w_idx;
   int32_t out_w_slice;
+
+  int32_t is_c_split;
+  int32_t c_idx;
+  int32_t c_slice;
 } local_sec_info_t;
 
 #ifdef __cplusplus

@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 
@@ -92,9 +93,10 @@ void tpu::Pool1DOp::codegen_global_bm1684x() {
 // =========================================
 
 int64_t tpu::Pool1DOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
-    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
-    group_type_t group_type) {
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   switch (getPoolMode()) {
   case tpu::PoolMode::Max:
     return 0;
@@ -115,14 +117,17 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684x(
   llvm_unreachable("unimplemented Pooling.");
 }
 
-void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                          int64_t h_step, int64_t d_step,
+                                          int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step, c_step);
 
   auto attr = parseParam();
   pooling_local_spec_t spec = {0};
@@ -161,7 +166,7 @@ void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_
 int64_t tpu::Pool1DOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(pooling_local_spec_t);
-  auto gi = getGroupInfo(0, 0, 0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0, 0);
   auto attr = parseParam();
   pooling_local_spec_t spec = {0};
   auto &common = spec.common;
@@ -195,7 +200,7 @@ int64_t tpu::Pool1DOp::dyn_codegen_local_bm1684x(void *buffer) {
 int64_t tpu::Pool1DOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
-  //now nodechip just support ndims = 4, Todo
+  // now nodechip just support ndims = 4, Todo
   assert((*input_spec)[0].dims == 4);
   if (!buffer)
     return sizeof(pooling_common_spec_t);
@@ -223,6 +228,4 @@ int64_t tpu::Pool1DOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
-int64_t tpu::Pool1DOp::get_fw_type_bm1684x() {
-  return FW_BMNET_POOL;
-}
+int64_t tpu::Pool1DOp::get_fw_type_bm1684x() { return FW_BMNET_POOL; }

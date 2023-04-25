@@ -78,6 +78,8 @@ def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
     "bool":$eu_align,
     "DenseI64ArrayAttr":$n_idx,
     "DenseI64ArrayAttr":$n_slice,
+    "DenseI64ArrayAttr":$c_idx,
+    "DenseI64ArrayAttr":$c_slice,
     "DenseI64ArrayAttr":$d_idx,
     "DenseI64ArrayAttr":$d_slice,
     "DenseI64ArrayAttr":$h_idx,
@@ -1155,6 +1157,7 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
     I64Attr:$hsecs,
     I64Attr:$dsecs,
     I64Attr:$wsecs,
+    I64Attr:$csecs,
     I64Attr:$swpipl_stage_num,
     I64Attr:$group_type,
     // store timestep_idx(negative) and op_id(positive)

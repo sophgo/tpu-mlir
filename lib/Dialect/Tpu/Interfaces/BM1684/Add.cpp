@@ -104,7 +104,7 @@ void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int num_inputs = getInputs().size();
   assert(num_inputs == 2);
   int shape_dim = module::getShape(getOutput()).size();
-  auto out_gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto out_gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   auto in0_g_info =
       LocalGenInterface::getGroupInfo(getInputs()[0], n_step, h_step);
   auto in1_g_info =

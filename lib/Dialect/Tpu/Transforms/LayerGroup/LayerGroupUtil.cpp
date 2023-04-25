@@ -28,6 +28,7 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
                      lg_info.type);
     max_nsecs = std::max(n, max_nsecs);
   }
+  int64_t max_csecs = llvm::maxIntN(64);
   int64_t max_hsecs = llvm::maxIntN(64);
   int64_t max_dsecs = llvm::maxIntN(64);
   int64_t max_wsecs = llvm::maxIntN(64);
@@ -44,6 +45,14 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
         n_align = 32 / stype.getIntOrFloatBitWidth();
       }
       max_nsecs = std::min(max_nsecs, ceiling_func(n, n_align));
+
+      if (lg_info.type == GROUP_MM &&
+          succeeded(lgOp.AllowDataSplit(1, lg_info.type))) {
+        int64_t csecs = ceiling_func(c, Arch::NPU_NUM);
+        max_csecs = std::min(max_csecs, csecs);
+      } else {
+        max_csecs = 1;
+      }
 
       // split d now only supports BM1684X and not int4, not dynamic
       if (module::isBM1684XFamily() && (!stype.isInteger(4)) &&
@@ -74,18 +83,17 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
   return shape_secs_t{.nsecs = max_nsecs,
                       .hsecs = max_hsecs,
                       .dsecs = max_dsecs,
-                      .wsecs = max_wsecs};
+                      .wsecs = max_wsecs,
+                      .csecs = max_csecs};
 }
 
 shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
-  shape_secs_t shape_secs = {1, 1, 1, 1};
+  shape_secs_t shape_secs = {1, 1, 1, 1, 1};
   if (lg_info.group_ops.size() == 1) {
     return shape_secs;
   }
 
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info);
-  // int64_t batch_size =
-  // module::getShape(lg_info.group_ops[0]->getOperand(0))[0];
   int64_t in_n, in_c, in_d, in_h, in_w;
   int64_t out_n, out_c, out_d, out_h, out_w;
   for (auto op : lg_info.group_ops) {
@@ -100,9 +108,9 @@ shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
 
     int64_t total_size = in0_lmem_bytes + out0_lmem_bytes;
     auto lg_op = cast<LocalGenInterface>(op);
-    total_size +=
-        lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, in_n, in_h, in_d,
-                            in_w, out_n, out_h, out_d, out_w, lg_info.type);
+    total_size += lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, in_n,
+                                      in_c, in_h, in_d, in_w, out_n, out_c,
+                                      out_h, out_d, out_w, lg_info.type);
     for (size_t i = 1; i < ins.size(); ++i) {
       if (module::isWeight(ins[i])) {
         total_size += Arch::get_weight_lmem_bytes(ins[i], lg_info.type,
@@ -125,6 +133,17 @@ shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
     shape_secs.nsecs =
         std::max(std::min(total_secs, max_shape_secs.nsecs), shape_secs.nsecs);
     total_secs = ceiling_func(total_secs, shape_secs.nsecs);
+    if (lg_info.type == GROUP_MM) {
+      if (total_secs > max_shape_secs.csecs) {
+        shape_secs.csecs = max_shape_secs.csecs;
+      } else {
+        int64_t cslice_per_npu = ceiling_func(max_shape_secs.csecs, total_secs);
+        shape_secs.csecs =
+            std::max(ceiling_func(max_shape_secs.csecs, cslice_per_npu),
+                     shape_secs.csecs);
+      }
+      total_secs = ceiling_func(total_secs, shape_secs.csecs);
+    }
     shape_secs.dsecs =
         std::max(std::min(total_secs, max_shape_secs.dsecs), shape_secs.dsecs);
     total_secs = ceiling_func(total_secs, shape_secs.dsecs);
@@ -193,10 +212,12 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos) {
         ti.slice_info.h.clear();
         ti.slice_info.d.clear();
         ti.slice_info.w.clear();
+        ti.slice_info.c.clear();
         ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
         ti.slice_info.h.push_back(std::make_pair((int64_t)0, (int64_t)h));
         ti.slice_info.d.push_back(std::make_pair((int64_t)0, (int64_t)d));
         ti.slice_info.w.push_back(std::make_pair((int64_t)0, (int64_t)w));
+        ti.slice_info.c.push_back(std::make_pair((int64_t)0, (int64_t)c));
         tensor_infos[in] = ti;
       }
     }
@@ -296,6 +317,7 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
   shape_secs.hsecs = 1;
   shape_secs.dsecs = 1;
   shape_secs.wsecs = 1;
+  shape_secs.csecs = 1;
   bool status = false;
   auto &tensor_infos = time_step->get_tensor_infos();
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info);
@@ -307,10 +329,16 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
     }
     time_step->update_all_mem_buffer_size(lg_info);
 
+    // update nsecs
     int64_t total_secs = get_split_max_secs(time_step);
     shape_secs.nsecs =
         std::max(shape_secs.nsecs, std::min(max_shape_secs.nsecs, total_secs));
-    int64_t dhw_secs = ceiling_func(total_secs, shape_secs.nsecs);
+    // update csecs
+    int64_t cdhw_secs = ceiling_func(total_secs, shape_secs.nsecs);
+    shape_secs.csecs =
+        std::max(shape_secs.csecs, std::min(max_shape_secs.csecs, cdhw_secs));
+    // update d/h/w secs
+    int64_t dhw_secs = ceiling_func(cdhw_secs, shape_secs.csecs);
     if (dhw_secs > 1) {
       if (shape_secs.nsecs == max_shape_secs.nsecs) {
         assign_dhwsecs(lg_info, shape_secs, dhw_secs, max_shape_secs);
@@ -358,8 +386,9 @@ inline bool is_same_slice(const slice_pair_t &a, const slice_pair_t &b) {
 }
 
 bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
-  if (si0.n.size() != si1.n.size() || si0.h.size() != si1.h.size() ||
-      si0.d.size() != si1.d.size() || si0.w.size() != si1.w.size()) {
+  if (si0.n.size() != si1.n.size() || si0.c.size() != si1.c.size() ||
+      si0.h.size() != si1.h.size() || si0.d.size() != si1.d.size() ||
+      si0.w.size() != si1.w.size()) {
     return false;
   }
   // check n
@@ -368,16 +397,25 @@ bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
       return false;
     }
   }
+  // check c
+  for (size_t i = 0; i < si0.c.size(); ++i) {
+    if (false == is_same_slice(si0.c[i], si1.c[i])) {
+      return false;
+    }
+  }
+  // check h
   for (size_t i = 0; i < si0.h.size(); ++i) {
     if (false == is_same_slice(si0.h[i], si1.h[i])) {
       return false;
     }
   }
+  // check d
   for (size_t i = 0; i < si0.d.size(); ++i) {
     if (false == is_same_slice(si0.d[i], si1.d[i])) {
       return false;
     }
   }
+  // check w
   for (size_t i = 0; i < si0.w.size(); ++i) {
     if (false == is_same_slice(si0.w[i], si1.w[i])) {
       return false;
@@ -416,17 +454,33 @@ bool is_broadcast_binary(Operation *op, Value in) {
   return false;
 }
 
+// if no transpose, split left matrix rows,
+// if left/right are both transposed, split right matrix rows
+bool is_matmul_right_tensor(Operation *op, Value v) {
+  bool res = false;
+  if (auto matmul_op = dyn_cast<tpu::MatMulOp>(op)) {
+    bool left_trans = matmul_op.getLeftTranspose();
+    bool right_trans = matmul_op.getRightTranspose();
+    res = (v == matmul_op.getRight());
+    if (left_trans && right_trans) {
+      res = (v == matmul_op.getInput());
+    }
+  }
+  return res;
+}
+
 slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
-                                int64_t h, int64_t d, int64_t w, int64_t bitwidth) {
+                                int64_t c, int64_t h, int64_t d, int64_t w,
+                                int64_t bitwidth) {
   slice_info_t slice_info;
   int64_t secs, idx, slice, step;
   // n slice info
   secs = shape_secs.nsecs;
-  int64_t n_align = 32/bitwidth;
+  int64_t n_align = 32 / bitwidth;
   if (Arch::ALIGN_4N && n_align != 1) {
     step = align_up(n / secs, n_align);
     for (int64_t i = 0; i < secs; ++i) {
-      idx = i == 0 ? 0 : idx+slice;
+      idx = i == 0 ? 0 : idx + slice;
       slice = (n - idx) > step ? step : (n - idx);
       slice_info.n.emplace_back(slice_pair_t(idx, slice));
     }
@@ -438,6 +492,18 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
       // assert(idx < n);
       slice_info.n.emplace_back(slice_pair_t(idx, slice));
     }
+  }
+  // c slice info
+  secs = shape_secs.csecs;
+  int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
+  for (int64_t i = 0; i < secs; ++i) {
+    step = (c_per_npu / secs + (c_per_npu % secs > i)) * Arch::NPU_NUM;
+    idx =
+        (c_per_npu / secs * i + (c_per_npu % secs > i ? i : c_per_npu % secs)) *
+        Arch::NPU_NUM;
+    slice = (c - idx) > step ? step : (c - idx);
+    // assert(idx < c);
+    slice_info.c.emplace_back(slice_pair_t(idx, slice));
   }
   // h slice_info
   secs = shape_secs.hsecs;
@@ -473,11 +539,13 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
 bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
                              Operation *op, Value in,
                              const shape_secs_t &shape_secs,
-                             group_type_t group_type) {
+                             group_type_t group_type, bool &hold_in_lmem,
+                             bool is_group_in) {
   int64_t n, c, d, h, w;
   module::getNCDHW(in, n, c, d, h, w, group_type);
   auto lg_op = cast<LocalGenInterface>(op);
   bool is_broadcast_tensor = is_broadcast_binary(op, in);
+  bool is_right_matrix = is_matmul_right_tensor(op, in);
 
   int64_t idx = 0, slice = 0;
   if (shape_secs.nsecs == 1) {
@@ -494,6 +562,34 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
         }
       }
       in_si.n.emplace_back(slice_pair_t(idx, slice));
+    }
+  }
+
+  if (shape_secs.csecs == 1) {
+    in_si.c.emplace_back(slice_pair_t(0, c));
+  } else {
+    for (auto &s : out_si.c) {
+      auto ret = lg_op.BackwardC(idx, slice, s.first, s.second);
+      if (is_broadcast_tensor && c == 1) {
+        idx = 0;
+        slice = 1;
+      } else if (is_right_matrix) {
+        idx = 0;
+        slice = c;
+        in_si.c.emplace_back(slice_pair_t(idx, slice));
+        if (is_group_in) {
+          hold_in_lmem = true;
+          break;
+        } else {
+          hold_in_lmem = false;
+          continue;
+        }
+      } else {
+        if (failed(ret) || slice == 0) {
+          return false;
+        }
+      }
+      in_si.c.emplace_back(slice_pair_t(idx, slice));
     }
   }
 
@@ -579,12 +675,12 @@ bool check_hsecs(Value value, slice_info_t &si, group_type_t group_type) {
   return true;
 }
 
-static bool
-backward_update_slice(const LgInfo &lg_info, const shape_secs_t &shape_secs,
-                      Value out, std::list<Value> &tensor_branchs,
-                      TensorInfo &tensor_infos,
-                      std::multiset<Operation *> &op_set,
-                      const std::set<Value, value_compare> &out_tensor_set) {
+static bool backward_update_slice(const LgInfo &lg_info,
+                                  const shape_secs_t &shape_secs, Value out,
+                                  std::list<Value> &tensor_branchs,
+                                  TensorInfo &tensor_infos,
+                                  std::multiset<Operation *> &op_set,
+                                  const ValueSet &out_tensor_set) {
 
   // Don't backward when this out tensor is the input of the group
   if (std::find(lg_info.group_ins.begin(), lg_info.group_ins.end(), out) !=
@@ -596,6 +692,7 @@ backward_update_slice(const LgInfo &lg_info, const shape_secs_t &shape_secs,
   op_set.insert(op);
 
   slice_info_t &out_si = tensor_infos[out].slice_info;
+  auto &group_ins = lg_info.group_ins;
 
   for (auto in : op->getOperands()) {
     auto pre_op = in.getDefiningOp();
@@ -603,8 +700,11 @@ backward_update_slice(const LgInfo &lg_info, const shape_secs_t &shape_secs,
       continue;
     }
     slice_info_t si;
-    auto ret =
-        get_backward_slice_info(si, out_si, op, in, shape_secs, lg_info.type);
+    bool hold_in_lmem = false;
+    bool is_group_in =
+        std::find(group_ins.begin(), group_ins.end(), in) != group_ins.end();
+    auto ret = get_backward_slice_info(si, out_si, op, in, shape_secs,
+                                       lg_info.type, hold_in_lmem, is_group_in);
     if (ret == false) {
       return false;
     }
@@ -615,6 +715,7 @@ backward_update_slice(const LgInfo &lg_info, const shape_secs_t &shape_secs,
       }
     } else {
       tensor_infos[in] = tensor_info_t(si);
+      tensor_infos[in].hold_in_lmem = hold_in_lmem;
     }
     if (strip_back_judge(in, lg_info, op_set, out_tensor_set)) {
       tensor_branchs.push_back(in);
@@ -632,10 +733,11 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
   tensor_infos.clear();
 
   int64_t n, c, d, h, w;
-  int64_t max_nslice = 0, max_dslice = 0, max_hslice = 0, max_wslice = 0;
+  int64_t max_nslice = 0, max_cslice = 0;
+  int64_t max_dslice = 0, max_hslice = 0, max_wslice = 0;
   std::list<Value> tensor_branchs;
   std::multiset<Operation *> op_set;
-  std::set<Value, value_compare> out_tensor_set;
+  ValueSet out_tensor_set;
   slice_info_t si;
   for (auto out : lg_info.group_outs) {
     module::getNCDHW(out, n, c, d, h, w, lg_info.type);
@@ -648,14 +750,17 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
     max_dslice = ceiling_func(d, shape_secs.dsecs); // ?no max?
     max_hslice = ceiling_func(h, shape_secs.hsecs);
     max_wslice = ceiling_func(w, shape_secs.wsecs);
+    max_cslice = align_up(ceiling_func(w, shape_secs.wsecs), Arch::NPU_NUM);
     si.n.clear();
     si.h.clear();
     si.d.clear();
     si.w.clear();
+    si.c.clear();
     si.n.emplace_back(slice_pair_t(0, max_nslice));
     si.h.emplace_back(slice_pair_t(0, max_hslice));
     si.d.emplace_back(slice_pair_t(0, max_dslice));
     si.w.emplace_back(slice_pair_t(0, max_wslice));
+    si.c.emplace_back(slice_pair_t(0, max_cslice));
     tensor_infos[out] = tensor_info_t(si);
 
     out_tensor_set.insert(out);
@@ -698,8 +803,9 @@ bool stripe_mine_idx_slice(const LgInfo &lg_info,
     module::getNCDHW(out, n, c, d, h, w, lg_info.type);
     auto istype = module::getStorageType(lg_info.group_ins[0]);
     auto ostype = module::getStorageType(out);
-    int64_t bitwidth = std::min(istype.getIntOrFloatBitWidth(), ostype.getIntOrFloatBitWidth());
-    auto si = get_out_slice_info(shape_secs, n, h, d, w, bitwidth);
+    int64_t bitwidth = std::min(istype.getIntOrFloatBitWidth(),
+                                ostype.getIntOrFloatBitWidth());
+    auto si = get_out_slice_info(shape_secs, n, c, h, d, w, bitwidth);
 
     tensor_infos[out] = tensor_info_t(si);
     out_tensor_set.insert(out);
@@ -722,15 +828,19 @@ bool stripe_mine_idx_slice(const LgInfo &lg_info,
   return true;
 }
 
-void get_max_slice_nhdw(const slice_info_t &slice_info, int64_t &max_nslice,
-                        int64_t &max_hslice, int64_t &max_dslice,
-                        int64_t &max_wslice) {
+void get_max_slice_nchdw(const slice_info_t &slice_info, int64_t &max_nslice,
+                         int64_t &max_cslice, int64_t &max_hslice,
+                         int64_t &max_dslice, int64_t &max_wslice) {
   max_nslice = 0;
+  max_cslice = 0;
   max_hslice = 0;
   max_dslice = 0;
   max_wslice = 0;
   for (auto &slice : slice_info.n) {
     max_nslice = std::max(max_nslice, slice.second);
+  }
+  for (auto &slice : slice_info.c) {
+    max_cslice = std::max(max_cslice, slice.second);
   }
   for (auto &slice : slice_info.h) {
     max_hslice = std::max(max_hslice, slice.second);
@@ -755,18 +865,19 @@ int64_t get_buffer_size(Value v, const tensor_info_t &ti,
       buf_size = Arch::get_weight_lmem_bytes(v, group_type, ti.eu_align);
     }
   } else {
-    int64_t nslice, hslice, dslice, wslice;
+    int64_t nslice, cslice, hslice, dslice, wslice;
     auto &si = ti.slice_info;
-    get_max_slice_nhdw(si, nslice, hslice, dslice, wslice);
-    buf_size = Arch::get_tensor_lmem_bytes(v, nslice, hslice, dslice, wslice,
-                                           group_type, ti.eu_align);
+    get_max_slice_nchdw(si, nslice, cslice, hslice, dslice, wslice);
+    buf_size = Arch::get_tensor_lmem_bytes(v, nslice, cslice, hslice, dslice,
+                                           wslice, group_type, ti.eu_align);
   }
   return buf_size;
 }
 
 void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
-                                int64_t hidx, int64_t hslice, int64_t didx,
-                                int64_t dslice, int64_t widx, int64_t wslice) {
+                                int64_t cidx, int64_t cslice, int64_t hidx,
+                                int64_t hslice, int64_t didx, int64_t dslice,
+                                int64_t widx, int64_t wslice) {
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
   int64_t group_type = 0;
@@ -774,6 +885,8 @@ void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
   auto lg_attr = LayerGroupAttr::get(
       ctx, 0, 0, 0, 0, true, builder.getDenseI64ArrayAttr({nidx}),
       builder.getDenseI64ArrayAttr({nslice}),
+      builder.getDenseI64ArrayAttr({cidx}),
+      builder.getDenseI64ArrayAttr({cslice}),
       builder.getDenseI64ArrayAttr({didx}),
       builder.getDenseI64ArrayAttr({dslice}),
       builder.getDenseI64ArrayAttr({hidx}),

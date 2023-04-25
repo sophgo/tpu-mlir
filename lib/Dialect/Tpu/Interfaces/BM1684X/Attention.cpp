@@ -69,9 +69,10 @@ int64_t tpu::AttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
 // LocalGenInterface
 // =========================================
 int64_t tpu::AttentionOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
-    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
-    group_type_t group_type) {
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   int64_t batch, M_q, N_q, W;
   module::getNCHW(getInput(), batch, M_q, N_q, W, group_type);
   int64_t M_k = module::isNone(getKeys()) ? M_q : module::getShape(getKeys())[1];
@@ -103,13 +104,15 @@ int64_t tpu::AttentionOp::getBufferSize_bm1684x(
   return buffer_size;
 }
 
-void tpu::AttentionOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
-                                               group_type_t group_type,
-                                               local_sec_info_t &sec_info) {
+void tpu::AttentionOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                            int64_t h_step, int64_t d_step,
+                                            int64_t w_step,
+                                            group_type_t group_type,
+                                            local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
-  const auto &gi = getGroupInfo(n_step, h_step, d_step, w_step);
+  const auto &gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
 
   attention_local_spec_t param = {0};
   auto &common = param.common;

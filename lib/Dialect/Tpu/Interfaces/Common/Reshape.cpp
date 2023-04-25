@@ -40,7 +40,7 @@ LogicalResult tpu::ReshapeOp::LocalGenSupport() {
 
 LogicalResult tpu::ReshapeOp::AllowDataSplit(int64_t axis,
                                              group_type_t group_type) {
-  if (axis == 0) {
+  if (axis == 0 || axis == 1) {
     return success();
   }
 

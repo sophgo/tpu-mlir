@@ -97,12 +97,15 @@ int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t d, in
   }
 }
 
-int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_h, int64_t slice_d, int64_t slice_w,
+int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_c, int64_t slice_h, int64_t slice_d, int64_t slice_w,
                                     group_type_t group_type, bool eu_align) {
   int64_t n, c, d, h, w;
   module::getNCDHW(v, n, c, d, h, w, group_type);
   if (slice_n > 0) {
     n = slice_n;
+  }
+  if (slice_c > 0) {
+    c = slice_c;
   }
   if (slice_h > 0) {
     h = slice_h;

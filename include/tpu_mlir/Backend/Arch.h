@@ -39,7 +39,7 @@ public:
   static size_t get_gmem_bytes(Value v);
   static int64_t get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t d, int64_t h,
                                        int64_t w, bool eu_align = true);
-  static int64_t get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_d, int64_t slice_h,
+  static int64_t get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_c, int64_t slice_d, int64_t slice_h,
                                        int64_t slice_w, group_type_t group_type, bool eu_align = true);
   static int64_t get_weight_lmem_bytes(Value v, group_type_t group_type, bool eu_align = true);
 

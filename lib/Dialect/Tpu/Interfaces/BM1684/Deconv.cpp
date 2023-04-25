@@ -91,7 +91,7 @@ void tpu::DeconvOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto f_gi = LocalGenInterface::getGroupInfo(getFilter());
   auto b_gi = LocalGenInterface::getGroupInfo(getBias());
-  auto gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   auto p = parseParam();
   int bottom_dim[4] = {(int)in_gi.n_slice, (int)p.ic, (int)in_gi.h_slice,
                        (int)p.iw};

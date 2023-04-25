@@ -76,9 +76,9 @@ void tpu::DeconvOp::codegen_global_bm1684x() {
 
 int64_t tpu::DeconvOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t in_dslice, int64_t in_wslice, int64_t out_nslice,
-    int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
-    group_type_t group_type) {
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   int64_t sz = out_lmem_bytes * sizeof(int32_t);
   auto &attr = getDeconvParam(*this);
 
@@ -101,18 +101,19 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   return sz;
 }
 
-void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
-                                          int64_t d_step, int64_t w_step,
+void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                          int64_t h_step, int64_t d_step,
+                                          int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
-                                               d_step, w_step);
+                                               d_step, w_step, c_step);
   auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), n_step, h_step,
-                                                   d_step, w_step);
+                                                   d_step, w_step, c_step);
   auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), n_step, h_step,
-                                                 d_step, w_step);
+                                                 d_step, w_step, c_step);
 
   deconv_local_param_t param = {0};
   param.input_local_addr = (uint32_t)in_gi.out_addr;
@@ -181,7 +182,7 @@ int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(dyn_deconv_local_spec_t);
   auto attr = parseParam();
-  auto gi = getGroupInfo(0, 0, 0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
   auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), 0, 0);
   auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), 0, 0);

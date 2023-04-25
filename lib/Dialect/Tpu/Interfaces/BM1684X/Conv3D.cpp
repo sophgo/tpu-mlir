@@ -73,9 +73,10 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
 // ======================================
 
 int64_t tpu::Conv3DOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
-    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
-    group_type_t group_type) {
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   auto attr = parseParam();
   int64_t sz = 0;
   int64_t npu_num = BM168x::NPU_NUM;
@@ -111,15 +112,18 @@ int64_t tpu::Conv3DOp::getBufferSize_bm1684x(
   return sz;
 }
 
-void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                          int64_t h_step, int64_t d_step,
+                                          int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step, c_step);
 
   conv3d_local_spec_t spec;
   memset(&spec, 0, sizeof(spec));
@@ -176,9 +180,10 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_
 
 // dynamic codegen
 int64_t tpu::Conv3DOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(dyn_conv3d_local_param_t);
+  if (!buffer)
+    return sizeof(dyn_conv3d_local_param_t);
   auto attr = parseParam();
-  auto gi = getGroupInfo(0, 0, 0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
 
   dyn_conv3d_local_param_t param = {0};
@@ -226,7 +231,8 @@ int64_t tpu::Conv3DOp::dyn_codegen_local_bm1684x(void *buffer) {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::Conv3DOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(dyn_conv3d_global_param_t);
+  if (!buffer)
+    return sizeof(dyn_conv3d_global_param_t);
   auto attr = parseParam();
   dyn_conv3d_global_param_t param = {0};
   if (attr.has_bias) {
@@ -269,6 +275,4 @@ int64_t tpu::Conv3DOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::Conv3DOp::get_fw_type_bm1684x() {
-  return FW_BMNET_CONV3D;
-}
+int64_t tpu::Conv3DOp::get_fw_type_bm1684x() { return FW_BMNET_CONV3D; }

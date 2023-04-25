@@ -30,7 +30,7 @@ int64_t tpu::LoadOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
 
 void tpu::LoadOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
                                        int64_t layer_id) {
-  auto gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   assert(false == gi.overstepped);
   int64_t g_n, g_c, g_h, g_w;
   module::getNCHW(getOutput(), g_n, g_c, g_h, g_w);

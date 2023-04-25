@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/Module.h"
@@ -22,19 +21,20 @@ void SoftwarePipeline::clear_all() { tensor_swloop_buffer_.clear(); }
 
 void SoftwarePipeline::clear_swloop_buffer() { tensor_swloop_buffer_.clear(); }
 
-void SoftwarePipeline::write_swloop_buffer(int64_t nstep, int64_t hstep, int64_t dstep, int64_t wstep,
-                                           int64_t stage_num) {
+void SoftwarePipeline::write_swloop_buffer(int64_t nstep, int64_t cstep,
+                                           int64_t hstep, int64_t dstep,
+                                           int64_t wstep, int64_t stage_num) {
   // add swloop buffer
-  tensor_step_t tensor_step = {nstep, hstep, dstep, wstep};
+  tensor_step_t tensor_step = {nstep, cstep, hstep, dstep, wstep};
   tensor_swloop_buffer_.push_front(tensor_step);
   while (tensor_swloop_buffer_.size() > (uint32_t)stage_num) {
     tensor_swloop_buffer_.pop_back();
   }
 }
 
-const tensor_step_t* SoftwarePipeline::read_swloop_buffer(int64_t stage) {
+const tensor_step_t *SoftwarePipeline::read_swloop_buffer(int64_t stage) {
   std::list<tensor_step_t>::iterator iter = tensor_swloop_buffer_.begin();
-  for(int i = 0; i < stage; ++i) {
+  for (int i = 0; i < stage; ++i) {
     iter++;
   }
   return &(*iter);

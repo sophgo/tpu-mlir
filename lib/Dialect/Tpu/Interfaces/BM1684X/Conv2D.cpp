@@ -59,7 +59,7 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
     if (out_etype.isUnsignedInteger()) {
       common.if_relu = true;
     }
-    if (out_etype.isInteger(32)){
+    if (out_etype.isInteger(32)) {
       bool coeff_merge = getCoeffMerged();
       spec.merge_coeff = coeff_merge ? 1 : 0;
     } else {
@@ -78,9 +78,9 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
 
 int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t in_dslice, int64_t in_wslice, int64_t out_nslice,
-    int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
-    group_type_t group_type) {
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   if (module::isBM1686() && getCoeffMerged()) {
     return 0;
   }
@@ -129,8 +129,9 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   return sz;
 }
 
-void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
-                                          int64_t d_step, int64_t w_step,
+void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                          int64_t h_step, int64_t d_step,
+                                          int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
@@ -141,9 +142,9 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.ih, attr.iw});
     BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
   }
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
-                                               d_step, w_step);
+                                               d_step, w_step, c_step);
 
   conv_local_param_t p;
   memset(&p, 0, sizeof(p));
@@ -177,7 +178,7 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     common.is_asym = true;
     auto out_etype = module::getStorageType(getOutput());
     common.if_relu = out_etype.isUnsignedInteger();
-    if (out_etype.isInteger(32)){
+    if (out_etype.isInteger(32)) {
       bool coeff_merge = getCoeffMerged();
       p.spec.merge_coeff = coeff_merge ? 1 : 0;
       p.spec.with_requant = 0;
@@ -204,7 +205,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
     BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.ih, attr.iw});
     BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
   }
-  auto gi = getGroupInfo(0, 0, 0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
 
   param.spec.buffer_local_addr = gi.buffer_addr;
@@ -237,7 +238,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
     common.is_asym = true;
     auto out_etype = module::getStorageType(getOutput());
     common.if_relu = out_etype.isUnsignedInteger();
-    if (out_etype.isInteger(32)){
+    if (out_etype.isInteger(32)) {
       bool coeff_merge = getCoeffMerged();
       param.spec.merge_coeff = coeff_merge ? 1 : 0;
       param.spec.with_requant = 0;
@@ -289,7 +290,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
     common.is_asym = true;
     auto out_etype = module::getStorageType(getOutput());
     common.if_relu = out_etype.isUnsignedInteger();
-    if (out_etype.isInteger(32)){
+    if (out_etype.isInteger(32)) {
       bool coeff_merge = getCoeffMerged();
       spec.merge_coeff = coeff_merge ? 1 : 0;
     } else {

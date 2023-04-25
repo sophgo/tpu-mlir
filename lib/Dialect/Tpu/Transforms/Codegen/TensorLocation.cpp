@@ -73,16 +73,19 @@ struct slice_index {
   int64_t h_step;
   int64_t d_step;
   int64_t w_step;
+  int64_t c_step;
 };
 
 group_info_t getGroupInfo(Value v, const slice_index &slice_i) {
   return LocalGenInterface::getGroupInfo(v, slice_i.n_step, slice_i.h_step,
-                                         slice_i.d_step, slice_i.w_step);
+                                         slice_i.d_step, slice_i.w_step,
+                                         slice_i.c_step);
 }
 
 group_info_t getGroupInfo(Operation *op, const slice_index &slice_i) {
   return LocalGenInterface::getGroupInfo(op, slice_i.n_step, slice_i.h_step,
-                                         slice_i.d_step, slice_i.w_step);
+                                         slice_i.d_step, slice_i.w_step,
+                                         slice_i.c_step);
 }
 
 group_info_t getGroupInfo(const OpOperand &v, const slice_index &slice_i) {
@@ -97,15 +100,18 @@ group_info_t getGroupInfo(const OpOperand &v, const slice_index &slice_i) {
   auto g_param = dst_op->getAttr(LocalGenInterface::kLayerGroupAttrName)
                      .cast<tpu::LayerGroupAttr>();
   int64_t nslice = g_param.getNSlice()[slice_i.n_step];
-  int64_t hslice = g_param.getHSlice()[slice_i.h_step];
+  int64_t cslice = g_param.getCSlice()[slice_i.c_step];
   int64_t dslice = g_param.getDSlice()[slice_i.d_step];
+  int64_t hslice = g_param.getHSlice()[slice_i.h_step];
   int64_t wslice = g_param.getWSlice()[slice_i.w_step];
   int64_t nindex = g_param.getNIdx()[slice_i.n_step];
+  int64_t cindex = g_param.getCIdx()[slice_i.c_step];
   int64_t hindex = g_param.getHIdx()[slice_i.h_step];
   int64_t dindex = g_param.getDIdx()[slice_i.d_step];
   int64_t windex = g_param.getWIdx()[slice_i.w_step];
   dst_lg_op.BackwardN(ginfo.n_idx, ginfo.n_slice, nindex, nslice);
   dst_lg_op.BackwardH(ginfo.h_idx, ginfo.h_slice, hindex, hslice);
+  dst_lg_op.BackwardC(ginfo.c_idx, ginfo.c_slice, cindex, cslice);
   dst_lg_op.BackwardD(ginfo.d_idx, ginfo.d_slice, dindex, dslice);
   dst_lg_op.BackwardW(ginfo.w_idx, ginfo.w_slice, windex, wslice);
   return ginfo;
@@ -139,7 +145,7 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
                    re_shape[4], group_type);
   auto reshape = fmt_shape(ArrayRef(re_shape));
 
-  int64_t mem_shape[] = {ginfo.n_slice * ginfo.d_slice, re_shape[1],
+  int64_t mem_shape[] = {ginfo.n_slice * ginfo.d_slice, ginfo.c_slice,
                          ginfo.h_slice, ginfo.w_slice};
 
   auto memory_type = fmt_shape(ArrayRef(mem_shape), get_dtype_str(v_spc.dtype));
@@ -147,7 +153,7 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
   uint64_t address = v_spc.addr;
 
   auto slice = fmt_slice({{ginfo.n_idx, ginfo.n_slice},
-                          {-1, -1},
+                          {ginfo.c_idx, ginfo.c_slice},
                           {ginfo.d_idx, ginfo.d_slice},
                           {ginfo.h_idx, ginfo.h_slice},
                           {ginfo.w_idx, ginfo.w_slice}});
@@ -162,7 +168,8 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
       for (auto i : llvm::reverse(re_shape)) {
         stride.push_back(i * stride.back());
       }
-      int64_t idx[] = {ginfo.w_idx, ginfo.h_idx, ginfo.d_idx, 0, ginfo.n_idx};
+      int64_t idx[] = {ginfo.w_idx, ginfo.h_idx, ginfo.d_idx, ginfo.c_idx,
+                       ginfo.n_idx};
       int64_t xn_offset = 0; // 2N/4N patch
       if (is_xn(val)) {      // 2N/4N patch
         int xn = 4 / fmt_bytes;
@@ -263,12 +270,13 @@ void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
 }
 
 void TensorLocationImpl::after_codegen_local(Operation *op, int64_t n_step,
-                                             int64_t h_step, int64_t d_step,
-                                             int64_t w_step,
+                                             int64_t c_step, int64_t h_step,
+                                             int64_t d_step, int64_t w_step,
                                              group_type_t group_type,
                                              local_sec_info_t &sec_info) {
   auto slice_i = slice_index{
-      .n_step = n_step, .h_step = h_step, .d_step = d_step, .w_step = w_step};
+      .n_step = n_step, .h_step = h_step, .d_step = d_step,
+      .w_step = w_step, .c_step = c_step};
 
   json::Array operands, results;
 

@@ -10,12 +10,10 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Float16.h"
 #include "float.h"
-
-
+#include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 pool_attr_t tpu::MaxPoolWithMaskOp::parseParam() {
   pool_attr_t p = {0};
@@ -125,17 +123,22 @@ LogicalResult tpu::MaxPoolWithMaskOp::BackwardW(int64_t &in_idx,
   return success();
 }
 
-void tpu::MaxPoolWithMaskOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::MaxPoolWithMaskOp::assign_sec_info(int64_t n_step, int64_t c_step,
+                                             int64_t h_step, int64_t d_step,
+                                             int64_t w_step,
                                              group_type_t group_type,
                                              local_sec_info_t &sec_info) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
   sec_info.group_type = group_type;
 
   auto attr = parseParam();
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
-  int64_t pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
-  int64_t pad_w_r = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pad_w_after : 0);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step, c_step);
+  int64_t pad_h_b =
+      (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
+  int64_t pad_w_r =
+      (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pad_w_after : 0);
   sec_info.n_slice = in_gi.n_slice;
   sec_info.d_slice = in_gi.d_slice;
   sec_info.h_slice = in_gi.h_slice;

@@ -31,12 +31,17 @@ typedef enum {
    *    1) case1: {n, c, h, w} --> {n * c, h, w, 1}
    *    2) case2: {n, c, d, h, w} --> {n * c * d, h, w, 1}
    * 4. GROUP_MM_INT4: for INT4 matrix multiplication
+   * 5. GROUP_MM: split N/C/H in order if this group has  matrix multiplication
+   *    1) for MM2_NN, split left matrix C-dim
+   *    2) for MM2_NT, split left/right matrix C-dim
+   *    3) for MM2_TT, split right matrix C-dim
    * group_type < 8, because 1684 dynamic compile reserved `3bit` for group_type
    */
   GROUP_NORMAL = 0,
   GROUP_3D = 1,
   GROUP_SMALL_C = 2,
   GROUP_MM_INT4 = 3,
+  GROUP_MM = 4,
   GROUP_UNSUPPORT
 } group_type_t;
 

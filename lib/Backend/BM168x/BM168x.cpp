@@ -11,8 +11,8 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/BM168x/BM1686.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -174,7 +174,8 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
   }
   spec.dtype = getDataType(v);
   auto shape = module::getShape(v);
-  if (group_type == GROUP_NORMAL || group_type == GROUP_3D) {
+  if (group_type == GROUP_NORMAL || group_type == GROUP_3D ||
+      group_type == GROUP_MM) {
     spec.dims = shape.size();
     for (int i = 0; i < spec.dims; i++) {
       spec.shape[i] = shape[i];
@@ -301,16 +302,17 @@ void BM168x::call_local_func(const char *symbolName, void *params,
   func(params, param_size, info, input, output, instance()->bdc_node);
 }
 
-typedef int64_t (*global_bfsz_backend_api_t)(void *params, int param_size, void *input,
-                                             void *output);
+typedef int64_t (*global_bfsz_backend_api_t)(void *params, int param_size,
+                                             void *input, void *output);
 int64_t BM168x::call_global_bfsz_func(const char *symbolName, void *params,
-                                      int param_size, void *input, void *output) {
+                                      int param_size, void *input,
+                                      void *output) {
   auto func = instance()->CastToFPtr<global_bfsz_backend_api_t>(symbolName);
   return func(params, param_size, input, output);
 }
 
-typedef int (*local_bfsz_backend_api_t)(void *params, int param_size, void *input,
-                                        void *info, void *output);
+typedef int (*local_bfsz_backend_api_t)(void *params, int param_size,
+                                        void *input, void *info, void *output);
 int BM168x::call_local_bfsz_func(const char *symbolName, void *params,
                                  int param_size, void *info, void *input,
                                  void *output) {
@@ -364,7 +366,7 @@ void BM168x::load_functions() {
 }
 
 BM168x::~BM168x() {
-  if(bmcpu_handle != nullptr) {
+  if (bmcpu_handle != nullptr) {
     dl_bmcpu_uninit(bmcpu_handle);
   }
 }
@@ -376,7 +378,7 @@ void BM168x::start_env() {
   if (0 != dl_cmodel_init(0, CMODEL_GMEM_SIZE)) {
     llvm_unreachable("cmodel init failed");
   }
-  bmcpu_handle  = dl_bmcpu_init();
+  bmcpu_handle = dl_bmcpu_init();
   cmdid_node = dl_create_cmd_id_node();
   bdc_node = dl_create_cmd_id_node();
   gdma_node = dl_create_cmd_id_node();
@@ -404,9 +406,10 @@ void BM168x::end_env() {
 
 void BM168x::bmcpu_setup() {
   std::string Err;
-  cpuopDL = llvm::sys::DynamicLibrary::getPermanentLibrary(libcpuop.data(), &Err);
+  cpuopDL =
+      llvm::sys::DynamicLibrary::getPermanentLibrary(libcpuop.data(), &Err);
   if (cpuopDL.isValid() == false) {
-      llvm_unreachable(Err.c_str());
+    llvm_unreachable(Err.c_str());
   }
 }
 

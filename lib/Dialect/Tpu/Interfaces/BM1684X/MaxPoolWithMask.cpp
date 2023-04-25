@@ -10,11 +10,9 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
-
 
 static void SpecAssign(const pool_attr_t &attr, pooling_common_spec_t &spec) {
   spec.kh = attr.kh;
@@ -57,20 +55,22 @@ void tpu::MaxPoolWithMaskOp::codegen_global_bm1684x() {
 // =========================================
 
 int64_t tpu::MaxPoolWithMaskOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
-    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
-    group_type_t group_type) {
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   return 0;
 }
 
-void tpu::MaxPoolWithMaskOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
-                                                   group_type_t group_type,
-                                                   local_sec_info_t &sec_info) {
+void tpu::MaxPoolWithMaskOp::codegen_local_bm1684x(
+    int64_t n_step, int64_t c_step, int64_t h_step, int64_t d_step,
+    int64_t w_step, group_type_t group_type, local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step, c_step);
 
   auto attr = parseParam();
   pooling_local_spec_t spec = {0};
@@ -90,8 +90,9 @@ void tpu::MaxPoolWithMaskOp::codegen_local_bm1684x(int64_t n_step, int64_t h_ste
 
 // dynamic codegen
 int64_t tpu::MaxPoolWithMaskOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(pooling_local_spec_t);
-  auto gi = getGroupInfo(0, 0, 0, 0);
+  if (!buffer)
+    return sizeof(pooling_local_spec_t);
+  auto gi = getGroupInfo(0, 0, 0, 0, 0);
   auto attr = parseParam();
   pooling_local_spec_t spec = {0};
   auto &common = spec.common;
@@ -106,13 +107,12 @@ int64_t tpu::MaxPoolWithMaskOp::dyn_codegen_local_bm1684x(void *buffer) {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::MaxPoolWithMaskOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(pooling_common_spec_t);
+  if (!buffer)
+    return sizeof(pooling_common_spec_t);
   auto attr = parseParam();
   pooling_common_spec_t spec = {0};
   SpecAssign(attr, spec);
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
-int64_t tpu::MaxPoolWithMaskOp::get_fw_type_bm1684x() {
-  return FW_BMNET_POOL;
-}
+int64_t tpu::MaxPoolWithMaskOp::get_fw_type_bm1684x() { return FW_BMNET_POOL; }

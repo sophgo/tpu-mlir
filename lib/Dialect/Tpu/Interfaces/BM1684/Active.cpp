@@ -91,7 +91,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684(
 }
 
 void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
-    auto out_g_info = getGroupInfo(n_step, h_step, 0, 0);
+    auto out_g_info = getGroupInfo(n_step, h_step, 0, 0, 0);
     auto in_g_info = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
 
     int64_t n=1, c=1, h=1, w=1, depth=1;

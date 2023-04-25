@@ -36,13 +36,16 @@ void tpu::UpsampleOp::codegen_global_bm1684x() {
 // =========================================
 
 int64_t tpu::UpsampleOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
-    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
-    group_type_t group_type) {
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   return 0;
 }
 
-void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                            int64_t h_step, int64_t d_step,
+                                            int64_t w_step,
                                             group_type_t group_type,
                                             local_sec_info_t &sec_info) {
   assert(getScaleH() == getScaleW());
@@ -84,6 +87,4 @@ int64_t tpu::UpsampleOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
-int64_t tpu::UpsampleOp::get_fw_type_bm1684x() {
-  return FW_BMNET_UPSAMPLE;
-}
+int64_t tpu::UpsampleOp::get_fw_type_bm1684x() { return FW_BMNET_UPSAMPLE; }
