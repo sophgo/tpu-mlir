@@ -61,8 +61,8 @@ class MODEL_RUN(object):
         self.arch = chip
         if chip.startswith("cv18"):
             self.arch = "cv18xx"
-        elif chip.startswith("bm1686"):
-            self.arch = "bm1684x"
+        else:
+            self.arch = chip
         self.tolerance = {
             "f32": config.get(self.arch, "f32_tolerance", fallback="0.99,0.99"),
             "f16": config.get(self.arch, "f16_tolerance", fallback="0.95,0.85"),
@@ -193,8 +193,7 @@ class MODEL_RUN(object):
         # generate tpu mlir
         tpu_mlir = f"{self.model_name}_bm1686_tpu_int4_sym.mlir"
         cmd = [
-            "tpuc-opt", f"{self.model_name}.mlir",
-            "--do-extra-converison",
+            "tpuc-opt", f"{self.model_name}.mlir", "--do-extra-converison",
             "--chip=\"type=bm1686\"",
             f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
             "--convert-top-to-tpu=\"mode=INT4 asymmetric=false\"", "--canonicalize",
@@ -205,10 +204,8 @@ class MODEL_RUN(object):
         # inference and compare
         output_npz = tpu_mlir.replace(".mlir", "_outputs.npz")
         cmd = [
-            "model_runner.py",
-            "--input {}_in_f32.npz".format(self.model_name),
-            f"--model {tpu_mlir}",
-            f"--output {output_npz}"
+            "model_runner.py", "--input {}_in_f32.npz".format(self.model_name),
+            f"--model {tpu_mlir}", f"--output {output_npz}"
         ]
         _os_system(cmd)
         cmd = ["npz_tool.py", "compare", output_npz, self.ini_content["test_reference"], "-v"]
@@ -241,7 +238,7 @@ class MODEL_RUN(object):
         if to_test:
             new_test_input = self.test_input_copy(quant_mode)
 
-        if quant_mode == "int4_sym" :
+        if quant_mode == "int4_sym":
             self.int4_tmp_test()
             return
 
@@ -264,7 +261,7 @@ class MODEL_RUN(object):
             model_file += "_merge_weight"
 
         # add for int8 mode
-        if (quant_mode.startswith("int8") or quant_mode.startswith("int4")) :
+        if (quant_mode.startswith("int8") or quant_mode.startswith("int4")):
             if self.do_cali:
                 cmd += [f"--calibration_table {self.cali_table}"]
                 if "use_quantize_table" in self.ini_content and int(
@@ -274,9 +271,11 @@ class MODEL_RUN(object):
             if quant_mode == "int8_asym":
                 cmd += ["--asymmetric"]
             else:
-                if not ("quant_input" in self.ini_content and int(self.ini_content["quant_input"]) == 0):
+                if not ("quant_input" in self.ini_content
+                        and int(self.ini_content["quant_input"]) == 0):
                     cmd += ["--quant_input"]
-                if not ("quant_output" in self.ini_content and int(self.ini_content["quant_output"]) == 0):
+                if not ("quant_output" in self.ini_content
+                        and int(self.ini_content["quant_output"]) == 0):
                     cmd += ["--quant_output"] if self.model_type == "bmodel" else [""]
 
         # add for dynamic mode
