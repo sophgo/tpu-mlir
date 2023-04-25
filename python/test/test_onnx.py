@@ -154,7 +154,7 @@ class ONNX_IR_TESTER(object):
             "SubConst":     (self.test_SubConst,      Y, Y, Y, Y),
             "SubConst2":    (self.test_SubConst2,     Y, Y, Y, Y),
             "Sum":          (self.test_Sum,           Y, Y, Y, Y),
-            "Tanh":         (self.test_Tanh,          N, Y, Y, Y),
+            "Tanh":         (self.test_Tanh,          Y, Y, Y, Y),
             "Tile":         (self.test_Tile,          N, Y, Y, Y),
             "Transpose":    (self.test_Transpose,     Y, Y, Y, Y),
             "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y),
