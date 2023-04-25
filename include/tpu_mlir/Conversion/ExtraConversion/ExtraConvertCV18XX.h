@@ -153,6 +153,13 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
+class ConvertInterpOp : public OpRewritePattern<top::InterpOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::InterpOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns);
 } // namespace cv18xx
 } // namespace tpu_mlir

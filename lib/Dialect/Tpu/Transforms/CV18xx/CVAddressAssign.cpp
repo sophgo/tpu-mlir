@@ -342,7 +342,7 @@ void CVAddressAssign::updateLiveRangeOfInPlaceOp(
       ValueInfo v_info(preOp, operand.cast<OpResult>().getResultNumber());
       op_infos[v_info].live.start =
           std::min(ops_loc[preOp], op_infos[v_info].live.start);
-      max_end = std::max(end, op_infos[v_info].live.end);
+      max_end = std::max(max_end, op_infos[v_info].live.end);
       op_infos[v_info].live.end = max_end;
       op_infos[v_info].live.out_index = v_info.index;
       op_infos[v_info].live.tensor_size = 0;

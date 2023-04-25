@@ -60,11 +60,16 @@ void cvi_backend_tl_upsample(uint32_t layer_id, laddr_t input_laddr,
   param.pad_right = scale_w - 1;
   param.stride_h = 1;
   param.stride_w = 1;
-  param.avg_pooling_const = 1.0;
+  if (fmt == CVIKERNEL_FMT_E::CVK_FMT_BF16) {
+    param.avg_pooling_const = CV18xx::convert_fp32_to_bf16((float)(scale_h * scale_w));
+  } else {
+    //refer it from the result, don't know the reason.
+    param.avg_pooling_const = 1;
+  }
   param.rshift_bits = 0;
   param.layer_id = layer_id;
-  param.ins_val = param.avg_pooling_const;
-  param.ins_fp = CV18xx::convert_fp32_to_bf16(param.avg_pooling_const);
+  param.ins_val = 0;
+  param.ins_fp = CV18xx::convert_fp32_to_bf16(0.0);
   CV18xx::tiu_average_pooling(&param);
 }
 
