@@ -86,12 +86,41 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
           in_qtype.getMin() == out_qtype.getMin()) {
         return failure();
       }
+      if constexpr (std::is_same_v<TyOp, top::MulConstOp>) {
+        auto const_v = op.getConstVal().convertToDouble();
+        auto in_min = in_qtype.getMin();
+        auto in_max = in_qtype.getMax();
+        auto out_min = in_min;
+        auto out_max = in_max;
+        if (const_v >= 0) {
+          out_min = in_min * const_v;
+          out_max = in_max * const_v;
+        }
+        else if (const_v < 0) {
+          out_min = in_max * const_v;
+          out_max = in_min * const_v;
+          bool sign = out_min < 0 || out_max < 0;
+          if (!module::isAsymmetric()) {
+            out_max = std::max(std::abs(out_max),std::abs(out_min));
+            out_min = std::min(out_min, 0.0);
+            out_min = (out_min >= 0 && sign)?(-0.1*out_max):out_min;
+          }
+        }
+        auto new_out_type = quant::CalibratedQuantizedType::get(
+            module::getStorageType(out), out_min, out_max);
+        auto new_type =
+            RankedTensorType::get(module::getShape(out), new_out_type);
+        out.setType(new_type);
+        Forward(out);
+        return success();
+      }
+      auto out_type = out.getType().cast<RankedTensorType>();
+      auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+      out.setType(new_type);
+      Forward(out);
+      return success();
     }
-    auto out_type = out.getType().cast<RankedTensorType>();
-    auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
-    out.setType(new_type);
-    Forward(out);
-    return success();
+    return failure();
   }
 };
 
@@ -542,6 +571,7 @@ protected:
                  ForwardCalibartion<top::LeakyReluOp>,
                 //  ForwardCalibartion<top::PReluOp>,
                  ForwardCalibartion<top::AbsOp>,
+                 ForwardCalibartion<top::MulConstOp>,
                  ForwardArg
                 >(ctx_);
     // clang-format on
@@ -562,10 +592,6 @@ protected:
     patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepAddSignPattern, SetSubConstSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
 
-    // if (module::isBM1684XFamily()) {
-    //   mulconst_scale_process();
-    //   module::updateModuleTypes();
-    // }
   }
 
   void hd_convert_process() {
@@ -689,39 +715,6 @@ protected:
       });
     }
     return bert;
-  }
-
-
-  void mulconst_scale_process() {
-    auto mOp = getOperation();
-    for (auto func : mOp.getOps<FuncOp>()) {
-      if (module::isAsymmetric())
-        return;
-      func.walk([&](Operation *op) {
-        if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
-          if (auto mulcop = dyn_cast<top::MulConstOp>(op)) {
-            auto in = mulcop.getInput();
-            auto out = mulcop.getOutput();
-            auto out_stype = module::getStorageType(out);
-            auto in_ctype = module::getCalibratedType(in);
-            auto out_ctype = module::getCalibratedType(out);
-            auto in_min = in_ctype.getMin();
-            auto in_max = in_ctype.getMax();
-            auto const_v = std::abs(mulcop.getConstVal().convertToDouble());
-            if (module::getMode() ==
-                module::Mode::INT8) { // should check the op not the module
-              auto new_out_type = quant::CalibratedQuantizedType::get(
-                  out_stype, in_min * const_v, in_max * const_v);
-              auto new_outr_type =
-                  RankedTensorType::get(module::getShape(out), new_out_type);
-              out.setType(new_outr_type);
-            } else {
-              llvm_unreachable("un-supported calibrated type for subconst!");
-            }
-          }
-        }
-      });
-    }
   }
 
   void set_bert_mix_precision_process() {
