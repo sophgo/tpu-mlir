@@ -56,7 +56,7 @@ class TORCH_IR_TESTER(object):
             "Concat":           (self.test_Concat,            Y, Y, Y),
             "Conv1d":           (self.test_Conv1d,            Y, Y, Y),
             "Conv2d":           (self.test_Conv2d,            Y, Y, Y),
-            "Conv3d":           (self.test_Conv3d,            Y, N, N),
+            "Conv3d":           (self.test_Conv3d,            Y, Y, N),
             "ConvGroup":        (self.test_ConvGroup,         Y, Y, Y),
             "ConvTrans":        (self.test_ConvTrans,         Y, N, Y),
             "ConstantFill":     (self.test_ConstantFill,      Y, Y, Y),
@@ -1651,6 +1651,7 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([in0_shape], Model())
 
+        _test_upsample((1, 3, 34, 34), None, 2)
         _test_upsample((1, 3, 33, 33), None, 2.2)
         _test_upsample((1, 1, 32, 32), None, (2.5))
         _test_upsample((1, 3, 32, 32), None, (2.0, 2.2))

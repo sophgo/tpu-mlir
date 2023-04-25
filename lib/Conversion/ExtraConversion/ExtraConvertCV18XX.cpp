@@ -28,6 +28,7 @@ void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
       ConvertMaxUnpoolOp,
       ConvertScaleOp,
       ConvertSubOp,
+      ConvertInterpOp,
       ConvertUpsampleOp,
       ConvertWhereOp,
       ConvertMatMulWithRightTranspose,

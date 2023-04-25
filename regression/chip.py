@@ -73,10 +73,10 @@ full_model_list = {
     ######## Pytorch #######      ######
     "bert_pt":                    (N,      Y,       N,      N,      N,      N,      N),
     "bert-base_torch":            (N,      Y,       N,      N,      N,      N,      N),
-    "resnet50_pt":                (N,      Y,       N,      N,      N,      N,      N),
+    "resnet50_pt":                (N,      Y,       N,      N,      N,      N,      Y),
     "sd_encoder_pt":              (N,      Y,       N,      N,      N,      N,      N),
     "sd_decoder_pt":              (N,      Y,       N,      N,      N,      N,      N),
-    "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      N),
+    "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      Y),
     ######## caffe #########      #####
     "mobilenet_v2_cf":            (N,      Y,       Y,      N,      N,      N,      Y),
     "resnet18_cf":                (N,      Y,       Y,      N,      N,      N,      Y),
@@ -105,5 +105,5 @@ full_model_list = {
     "pp_ocr_det":                 (N,      Y,       N,      N,      N,      N,      Y),
     "pp_ocr_cls":                 (N,      Y,       N,      N,      N,      N,      Y),
     "pp_ocr_rec":                 (N,      Y,       Y,      N,      N,      N,      N),
-    "pp_hgnet":                   (N,      Y,       N,      N,      N,      N,      N),
+    "pp_hgnet":                   (N,      Y,       N,      N,      N,      N,      Y),
 }
