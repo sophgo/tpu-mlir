@@ -35,6 +35,7 @@ typedef void (*nodechip_lrn_fix8b_forward_local)(int bottom_local_offset, int to
 typedef void (*nodechip_batchnorm_layer_local)(int bottom_local_offset, int top_local_offset, int mean_local_offset, int variance_local_offset, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, float eps, float scale_ma, int if_relu, float relu_upper_limit, void *id_node);
 typedef void (*nodechip_bnscale_fix8b_forward_local)(int bottom_local_offset, int imm_buffer_local_offset, int scale_local_offset, int bias_local_offset, int rshift_local_offset, int top_local_offset, int tensor_n, int tensor_c, int tensor_h, int tensor_w, int bottom_sign, int scale_sign, int bias_sign, int scale_short_str, int bias_short_str, int rshift_short_str, int if_relu, int relu_upper_limit, void *id_node);
 typedef void (*nodechip_scale_forward_local)(int bottom_local_offset, int scale_local_offset, int bias_local_offset, int top_local_offset, int *tensor_dim, int *scale_dim, int bias_term, int if_relu, float upper_limit, int is_scale_unaligned, int is_bias_unaligned, void *id_node);
+typedef void (*nodechip_depth2space_mlir)(uint64_t input_addr, uint64_t output_addr, const int* input_shape, int input_dims, const int* block_sizes, int in_is_nchw, int out_is_nchw, int is_inversed, int is_crd_mode, int swap_cr, int gdma_format, CMD_ID_NODE* pid_node);
 typedef void (*nodechip_eltwise_forward_local)(int *bottom_local_offset, int top_local_offset, int tensor_n, int tensor_c, int tensor_h, int tensor_w, int *bottom_local_cstride, int bottom_cstride_en, int op_code, float *bottom_coeff, int bottom_num, int if_relu, void *id_node);
 typedef void (*nodechip_eltwise_fix8b_forward_local)(int *bottom_local_offset, int top_local_offset, int imm_buffer_local_offset, int tensor_n, int tensor_c, int tensor_h, int tensor_w, int *bottom_local_cstride, int bottom_cstride_en, int op_code, int *scale_weight, int *rshift_num, int *bottom_sign, int bottom_num, int if_relu, void *id_node);
 typedef void (*nodechip_broadcast_binary_fix8b_forward_parallel)(uint64_t bottom_A_global_addr, uint64_t bottom_B_global_addr, uint64_t top_global_addr, int *b0_shape, int *b1_shape, int tensor_dim, bool a_is_coeff, bool b_is_coeff, int op_code, int scale_A, int scale_B, int rshift_A, int rshift_B, int* is_int8, int* is_sign, int if_relu, void *id_node);
@@ -190,7 +191,7 @@ typedef void (*nodechip_swap_dim)(uint64_t input_global_addr, uint64_t output_gl
 typedef void (*nodechip_swap_dim_fix8b)(uint64_t input_global_addr, uint64_t output_global_addr, const int* input_shape, int shape_dim, int axis_num, int* axis_list, int* offset_list, CMD_ID_NODE* pid_node);
 typedef void (*nodechip_group_norm)(uint64_t input_global_addr, uint64_t weight_global_addr, uint64_t bias_global_addr, uint64_t output_global_addr, int input_n, int input_c, int input_h, int input_w, int group_num, float eps, int affine, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_group_norm_local)(uint64_t input_addr, uint64_t weight_addr, uint64_t bias_addr, uint64_t buffer_addr, uint64_t output_addr, int input_n, int input_c, int input_h, int input_w, int depth, int group_num, float eps, int affine, void *pid_node);
-typedef void (*nodechip_depth2space)(uint64_t input_addr, uint64_t output_addr, const int* input_shape, int input_dims, const int* block_sizes, int in_is_nchw, int out_is_nchw, int is_inversed, int is_crd_mode, int gdma_format, CMD_ID_NODE* pid_node);
+
 
 // clang-format on
 namespace tpu_mlir {
@@ -386,7 +387,7 @@ public:
   nodechip_swap_dim_fix8b dl_nodechip_swap_dim_fix8b;
   nodechip_group_norm dl_nodechip_group_norm;
   nodechip_group_norm_local dl_nodechip_group_norm_local;
-  nodechip_depth2space dl_nodechip_depth2space;
+  nodechip_depth2space_mlir dl_nodechip_depth2space_mlir;
   // clang-format on
 public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;

@@ -28,15 +28,21 @@ void tpu::Depth2SpaceOp::codegen_global_bm1684() {
   int *input_shape = new int[MAX_SHAPE_DIMS];
   int *block_sizes = new int[MAX_SHAPE_DIMS];
   // assign param and call func
-  module::getGlobalShape(input, input_shape);
+  int64_t in, ic, ih, iw;
+  module::getNCHW(getInput(), in, ic, ih, iw, false);
+  input_shape[0] = (int32_t)in;
+  input_shape[1] = (int32_t)ic;
+  input_shape[2] = (int32_t)ih;
+  input_shape[3] = (int32_t)iw;
   block_sizes[0] = getBlockH();
   block_sizes[1] = getBlockW();
-  if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
-    input_shape[0] = (input_shape[0] + 3) >> 2;
-  }
-  BM1684::instance().dl_nodechip_depth2space(
+
+  assert((input_dtype != DTYPE_INT8 && input_dtype != DTYPE_UINT8) && "not support int8");
+
+
+  BM1684::instance().dl_nodechip_depth2space_mlir(
         input_addr, output_addr, input_shape, input_dims, block_sizes,
-        getInIs_NCHW(), getOutIs_NCHW(), getIsInversed(), getIs_CRD(),
+        getInIs_NCHW(), getOutIs_NCHW(), getIsInversed(), getIs_CRD(), getSwapCr(),
         gdma_format, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   // release
   delete[] input_shape;
