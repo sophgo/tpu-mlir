@@ -22,25 +22,27 @@ void tpu::LoadOp::codegen_global_bm1684x() {
 
 int64_t tpu::LoadOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t in_dslice, int64_t in_wslice, int64_t out_nslice,
-    int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
-    group_type_t group_type) {
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   return 0;
 }
 
-void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
-                                        int64_t d_step, int64_t w_step,
-                                        group_type_t group_type,
+void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                        int64_t h_step, int64_t d_step,
+                                        int64_t w_step, group_type_t group_type,
                                         local_sec_info_t &sec_info) {
   auto pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   assert(false == gi.overstepped);
 
-  int64_t N, C, D, H, W, real_hslice, real_wslice, real_dslice;
+  int64_t N, C, D, H, W;
+  int64_t real_cslice, real_hslice, real_wslice, real_dslice;
   int64_t gdma_format;
   module::getNCDHW(getOutput(), N, C, D, H, W, group_type);
   auto data_type = BM168x::getDataType(getOutput());
 
+  real_cslice = gi.c_slice;
   real_hslice = gi.h_slice;
   real_wslice = gi.w_slice;
   real_dslice = gi.d_slice;
@@ -75,15 +77,16 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   if (use_3ic < 4 && use_3ic > 0) {
     auto g_stride = BM168x::getGlobalStride(N, C, H, W);
     if (getDoBcast() == true) {
-      C = BM168x::NPU_NUM;
+      real_cslice = BM168x::NPU_NUM;
       g_stride.N = 0;
       g_stride.C = 0;
       g_stride.H = 0;
     }
-    auto s_stride = BM168x::getLocalStride(gi.n_slice, C, real_hslice,
+    auto s_stride = BM168x::getLocalStride(gi.n_slice, real_cslice, real_hslice,
                                            real_wslice, fmt_bytes, gi.eu_align);
-    int64_t g_offset =
-        (gi.n_idx * g_stride.N + gi.h_idx * g_stride.H + gi.w_idx) * fmt_bytes;
+    int64_t g_offset = (gi.n_idx * g_stride.N + gi.c_idx * g_stride.C +
+                        gi.h_idx * g_stride.H + gi.w_idx) *
+                       fmt_bytes;
     auto use_op = *getOutput().getUsers().begin();
     auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
     auto kernel = module::getI64Array(conv_op.getKernelShape());
@@ -91,7 +94,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
         use_3ic == 1
             ? kernel->at(0)
             : (use_3ic == 2 ? kernel->at(1) : kernel->at(0) * kernel->at(1));
-    for (int64_t i = 0; i < C; ++i) {
+    for (int64_t i = 0; i < real_cslice; ++i) {
       BM168x::instance()->dl_tensor_broadcast_move_gen_cmd(
           g_addr + g_offset + i * W * H * fmt_bytes, 0, gi.out_addr, i * to_ic,
           gi.n_slice, real_hslice, real_wslice, to_ic, g_stride.N, g_stride.H,
@@ -99,23 +102,24 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
           pid_node);
     }
   } else {
-    int64_t c_num_local = ceiling_func(C, Arch::NPU_NUM);
+    int64_t c_num_local = ceiling_func(real_cslice, Arch::NPU_NUM);
     int64_t c_stride = gi.eu_align ? align_up(real_hslice * real_wslice,
                                               Arch::eu_num(fmt_bytes))
                                    : real_hslice * real_wslice;
-    int64_t channel_num = C;
+    int64_t channel_num = real_cslice;
     const int64_t csecs = ceiling_func(channel_num, (int64_t)GDMA_MAX_C);
     if (real_dslice <= gi.n_slice) {
       for (int64_t d = 0; d < real_dslice; d++) {
         int64_t channel_index = 0;
         while (channel_index < csecs) {
-          int64_t real_cslice =
+          int64_t cur_cslice =
               std::min(channel_num - channel_index * (int64_t)GDMA_MAX_C,
                        (int64_t)GDMA_MAX_C);
           int64_t real_c_num_local =
               (channel_index * (int64_t)GDMA_MAX_C) / Arch::NPU_NUM;
           int64_t src_offset_c =
-              channel_index * (int64_t)GDMA_MAX_C * H * W * fmt_bytes;
+              (channel_index * (int64_t)GDMA_MAX_C + gi.c_idx) * H * W *
+              fmt_bytes;
           int64_t dst_offset_c = real_c_num_local * c_stride * fmt_bytes;
           int64_t real_npu_idx =
               (channel_index * (int64_t)GDMA_MAX_C) % Arch::NPU_NUM;
@@ -128,7 +132,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                       gi.w_idx * fmt_bytes + src_offset_c;
           BM168x::instance()->dl_tensor_stride_move_gen_cmd(
               gi.out_addr + cur_local_offset, real_npu_idx,
-              g_addr + cur_global_offset, gi.n_slice, real_cslice, real_hslice,
+              g_addr + cur_global_offset, gi.n_slice, cur_cslice, real_hslice,
               real_wslice, C * D * H * W, D * H * W, W, 1,
               c_num_local * c_stride, c_stride, real_wslice, 1, gdma_format,
               GDMA_VALUE_DIR_S2L, 0, pid_node);
@@ -138,15 +142,15 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     } else { // HAVE DEPTH,3D [N,C,D,H,W]->[d,n_slice,c,h_slice,w]
       for (int64_t i = 0; i < gi.n_slice; i++) {
         int64_t cur_local_offset = i * c_num_local * c_stride * fmt_bytes;
-        int64_t cur_global_offset = (gi.n_idx + i) * C * D * H * W * fmt_bytes +
-                                    gi.d_idx * H * W * fmt_bytes +
-                                    gi.h_idx * W * fmt_bytes +
-                                    gi.w_idx * fmt_bytes;
+        int64_t cur_global_offset =
+            (gi.n_idx + i) * C * D * H * W * fmt_bytes +
+            gi.c_idx * D * H * W * fmt_bytes + gi.d_idx * H * W * fmt_bytes +
+            gi.h_idx * W * fmt_bytes + gi.w_idx * fmt_bytes;
         BM168x::instance()->dl_tensor_stride_move_gen_cmd(
             gi.out_addr + cur_local_offset, 0, g_addr + cur_global_offset,
-            real_dslice, C, real_hslice, real_wslice, H * W, D * H * W, W, 1,
-            gi.n_slice * c_num_local * c_stride, c_stride, real_wslice, 1,
-            gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
+            real_dslice, real_cslice, real_hslice, real_wslice, H * W,
+            D * H * W, W, 1, gi.n_slice * c_num_local * c_stride, c_stride,
+            real_wslice, 1, gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
       } // nslice loop
     }
   }

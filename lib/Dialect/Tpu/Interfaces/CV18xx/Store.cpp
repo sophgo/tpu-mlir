@@ -38,7 +38,7 @@ void tpu::StoreOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   auto ifmt = CV18xx::getDataType(getInput());
   auto ofmt = CV18xx::getDataType(getOutput());
   auto g_stride = CV18xx::tg_default_stride(gshape, ofmt);
-  auto gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   bool transpose = false;
   bool isNeuron = true;
 

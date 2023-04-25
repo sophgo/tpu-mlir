@@ -48,7 +48,7 @@ int64_t tpu::UpsampleOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
 
 void tpu::UpsampleOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                            local_sec_info_t &sec_info) {
-  auto out_gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto out_gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   int scale = getScaleH();
   assert(scale == getScaleW());

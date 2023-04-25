@@ -22,6 +22,7 @@ namespace tpu {
 
 typedef struct {
   int64_t nstep;
+  int64_t cstep;
   int64_t hstep;
   int64_t dstep;
   int64_t wstep;
@@ -52,6 +53,7 @@ struct slice_info_t {
   std::vector<slice_pair_t> n; // n_idx and n_slice
   std::vector<slice_pair_t> w; // w_idx and w_slice
   std::vector<slice_pair_t> d; // d_idx and d_slice
+  std::vector<slice_pair_t> c; // c_idx and c_slice
 };
 
 typedef struct mem_buffer_key {
@@ -97,6 +99,7 @@ struct tensor_info_t {
   int64_t use_3ic_opt;
   bool eu_align;
   bool need_bcast;
+  bool hold_in_lmem;
   // init
   tensor_info_t()
       : mode(TIMESTEP_LOAD), stage(0), use_3ic_opt(0), eu_align(false),
@@ -129,6 +132,7 @@ typedef struct {
   int64_t hsecs;
   int64_t dsecs;
   int64_t wsecs;
+  int64_t csecs;
 } shape_secs_t;
 
 struct LgInfo {

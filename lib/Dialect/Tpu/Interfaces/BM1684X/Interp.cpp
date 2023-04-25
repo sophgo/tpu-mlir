@@ -88,7 +88,7 @@ int64_t tpu::InterpOp::getBufferSize_bm1684x(
 
 void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,) {
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0, 0, 0);
   int64_t n, c, ih, iw, oh, ow;
   module::getNCHW(getInput(), n, c, ih, iw);
   module::getNCHW(getOutput(), n, c, oh, ow);

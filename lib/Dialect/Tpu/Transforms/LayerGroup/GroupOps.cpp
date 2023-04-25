@@ -115,6 +115,7 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
   int64_t hsecs = shape_secs.hsecs;
   int64_t dsecs = shape_secs.dsecs;
   int64_t wsecs = shape_secs.wsecs;
+  int64_t csecs = shape_secs.csecs;
   for (auto in : lg_info.group_ins) {
     in_types.push_back(in.getType());
     // in_locs.push_back(module::getLoc(in));
@@ -135,6 +136,8 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
       builder.getNamedAttr("dsecs", builder.getI64IntegerAttr(dsecs)));
   attrs.push_back(
       builder.getNamedAttr("wsecs", builder.getI64IntegerAttr(wsecs)));
+  attrs.push_back(
+      builder.getNamedAttr("csecs", builder.getI64IntegerAttr(csecs)));
   attrs.push_back(
       builder.getNamedAttr("swpipl_stage_num", builder.getI64IntegerAttr(3)));
   attrs.push_back(builder.getNamedAttr(
@@ -214,8 +217,8 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
     auto cur_ops = time_step->getLayers(ts);
     for (auto op : cur_ops) {
       auto lgOp = dyn_cast<LocalGenInterface>(op);
-      auto ginfo =
-          lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0, (int64_t)0);
+      auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
+                                     (int64_t)0, (int64_t)0);
       flow.push_back(ginfo.id);
     } // cur_ops
     auto cur_tensors = time_step->getTensors(ts);
@@ -239,8 +242,8 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
         }
       }
       auto lgOp = dyn_cast<LocalGenInterface>(op);
-      auto ginfo =
-          lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0, (int64_t)0);
+      auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
+                                     (int64_t)0, (int64_t)0);
       flow.push_back(ginfo.id);
     } // cur_tensors
     timestep--;
@@ -410,6 +413,8 @@ LayerGroupAttr GroupOps::getLgParam(tensor_info_t &tensor_info, int64_t id,
   std::vector<int64_t> d_slices;
   std::vector<int64_t> w_idxs;
   std::vector<int64_t> w_slices;
+  std::vector<int64_t> c_idxs;
+  std::vector<int64_t> c_slices;
   for (auto &h : si.h) {
     h_idxs.push_back(h.first);
     h_slices.push_back(h.second);
@@ -426,6 +431,10 @@ LayerGroupAttr GroupOps::getLgParam(tensor_info_t &tensor_info, int64_t id,
     w_idxs.push_back(w.first);
     w_slices.push_back(w.second);
   }
+  for (auto &c : si.c) {
+    c_idxs.push_back(c.first);
+    c_slices.push_back(c.second);
+  }
 
   if (buffer_size == 0) {
     buffer_addr = 0;
@@ -434,6 +443,8 @@ LayerGroupAttr GroupOps::getLgParam(tensor_info_t &tensor_info, int64_t id,
                              tensor_info.eu_align,
                              builder.getDenseI64ArrayAttr(n_idxs),
                              builder.getDenseI64ArrayAttr(n_slices),
+                             builder.getDenseI64ArrayAttr(c_idxs),
+                             builder.getDenseI64ArrayAttr(c_slices),
                              builder.getDenseI64ArrayAttr(d_idxs),
                              builder.getDenseI64ArrayAttr(d_slices),
                              builder.getDenseI64ArrayAttr(h_idxs),

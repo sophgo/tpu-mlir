@@ -49,7 +49,7 @@ int64_t tpu::MulShiftOp::getBufferSize_bm1684(
 void tpu::MulShiftOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                            local_sec_info_t &sec_info) {
   auto in_g_info = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   // int in_shape[MAX_SHAPE_DIMS];
   // module::getLocalShape(getInput(), n_step, h_step, in_shape);
   int out_shape[MAX_SHAPE_DIMS];

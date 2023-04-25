@@ -66,7 +66,7 @@ void tpu::LeakyReluOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
                                             int64_t layer_id) {
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
-  auto gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
   n = out_gi.n_slice;

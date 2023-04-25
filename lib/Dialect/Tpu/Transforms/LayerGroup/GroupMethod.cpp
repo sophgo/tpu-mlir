@@ -38,59 +38,44 @@ namespace tpu {
     }                                                                          \
   }
 
-static void set_group_type(LgInfo &lg_info) {
-  lg_info.type = GROUP_NORMAL;
-  if (lg_info.group_ops.size() == 1) {
-    return;
-  }
-
-  // set GROUP_3D if there is 3DOp
-  for (auto op : lg_info.group_ops) {
+// set GROUP_3D if there is 3DOp
+static bool can_be_group_3d(std::vector<Operation *> &group_ops) {
+  for (auto op : group_ops) {
     if (isa<Conv3DOp, Pool3DOp>(op)) {
-      lg_info.type = GROUP_3D;
-      return;
+      return true;
     }
   }
+  return false;
+}
 
-  if (module::isCV18xx() || module::isBM1684Family()) {
-    // cv18xx only support GROUP_NORMAL
-    lg_info.type = GROUP_NORMAL;
-    return;
-  }
-
-  // set GROUP_NORMAL if not all ops should meet the conditions
-  // 1. op is eltwise-op or only the last dim cannot split
-  // 2. C is too small to fully utilize NPU and H is better
-  //    or N*C*H could be divided by NPU_NUM
-  lg_info.type = GROUP_SMALL_C;
-  for (auto op : lg_info.group_ops) {
+// set GROUP_NORMAL if not all ops should meet the conditions
+// 1. op is eltwise-op or only the last dim cannot split
+// 2. C is too small to fully utilize NPU and H is better
+//    or N*C*H could be divided by NPU_NUM
+static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
+  for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp,
              SoftmaxOp>(op)) {
-      lg_info.type = GROUP_NORMAL;
-      return;
+      return false;
     }
     auto shape = module::getShape(op->getOperand(0));
     if (auto op_ = dyn_cast<LayerNormOp>(op)) {
       if (op_.getAxis() != shape.size() - 1) {
-        lg_info.type = GROUP_NORMAL;
-        return;
+        return false;
       }
     } else if (isa<AddOp>(op)) {
       auto shapeB = module::getShape(op->getOperand(1));
       if (shape != shapeB) {
-        lg_info.type = GROUP_NORMAL;
-        return;
+        return false;
       }
     } else if (auto op_ = dyn_cast<SoftmaxOp>(op)) {
       if (op_.getAxis() != shape.size() - 1) {
-        lg_info.type = GROUP_NORMAL;
-        return;
+        return false;
       }
     } else if (auto op_ = dyn_cast<MatMulOp>(op)) {
       auto hdim_is_batch = op_.getHdimIsBatch();
       if (hdim_is_batch) {
-        lg_info.type = GROUP_NORMAL;
-        return;
+        return false;
       }
     }
 
@@ -104,9 +89,78 @@ static void set_group_type(LgInfo &lg_info) {
     if (!(((shape.size() == 5 && shape[3] > shape[1]) ||
            (shape.size() == 4 && shape[2] > shape[1])) &&
           shape[1] < Arch::NPU_NUM / 2)) {
-      lg_info.type = GROUP_NORMAL;
-      return;
+      return false;
     }
+  }
+  return true;
+}
+
+static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
+  for (auto op : group_ops) {
+    if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp,
+             ReshapeOp, SoftmaxOp>(op)) {
+      return false;
+    }
+    auto shape = module::getShape(op->getOperand(0));
+    if (auto op_ = dyn_cast<LayerNormOp>(op)) {
+      if (op_.getAxis() != shape.size() - 1) {
+        return false;
+      }
+    } else if (isa<AddOp>(op)) {
+      auto shapeB = module::getShape(op->getOperand(1));
+      if (shape != shapeB) {
+        return false;
+      }
+    } else if (auto op_ = dyn_cast<ReshapeOp>(op)) {
+      auto ishape = module::getShape(op_.getInput());
+      auto oshape = module::getShape(op_.getOutput());
+      if (!(ishape.size() == 3 && oshape.size() == 4 &&
+            ishape[2] == oshape[2] * oshape[3]) &&
+          !(ishape.size() == 4 && oshape.size() == 3 &&
+            oshape[2] == ishape[2] * ishape[3])) {
+        return false;
+      }
+    } else if (auto op_ = dyn_cast<SoftmaxOp>(op)) {
+      if (op_.getAxis() != shape.size() - 1) {
+        return false;
+      }
+    } else if (auto op_ = dyn_cast<MatMulOp>(op)) {
+      auto left_trans = op_.getLeftTranspose();
+      auto right_trans = op_.getRightTranspose();
+      if (left_trans && right_trans) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+static void set_group_type(LgInfo &lg_info) {
+  lg_info.type = GROUP_NORMAL;
+  if (lg_info.group_ops.size() == 1) {
+    return;
+  }
+
+  if (can_be_group_3d(lg_info.group_ops)) {
+    lg_info.type = GROUP_3D;
+    return;
+  }
+
+  if (module::isCV18xx() || module::isBM1684Family()) {
+    // cv18xx only support GROUP_NORMAL
+    lg_info.type = GROUP_NORMAL;
+    return;
+  }
+
+  if (can_be_group_small_c(lg_info.group_ops)) {
+    lg_info.type = GROUP_SMALL_C;
+    return;
+  }
+
+  if (can_be_group_mm(lg_info.group_ops)) {
+    lg_info.type = GROUP_MM;
+    return;
   }
 }
 

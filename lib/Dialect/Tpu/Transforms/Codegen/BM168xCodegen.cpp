@@ -316,7 +316,7 @@ void BMCodegen::codegen_for_overlap_ops(
       auto &cur_ops = iter->second;
       for (auto op : cur_ops) {
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
-        auto ginfo = lgOp.getGroupInfo(0l, 0l, 0l, 0l);
+        auto ginfo = lgOp.getGroupInfo(0l, 0l, 0l, 0l, 0l);
         // add prefix to each cmd in profile.txt
         std::string prefix = op->getName().getStringRef().str().substr(4);
         auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
@@ -324,11 +324,12 @@ void BMCodegen::codegen_for_overlap_ops(
           pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
         }
         BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
-        lgOp.assign_sec_info(0l, 0l, 0l, 0l, next_group_type, sec_info);
+        lgOp.assign_sec_info(0l, 0l, 0l, 0l, 0l, next_group_type, sec_info);
         LLVM_DEBUG(llvm::dbgs()
                    << "codegen op: '" << module::getName(lgOp) << "'\n");
         profile_ctx.log_local_layer(op, 0, 0);
-        lgOp.codegen_local_bm168x(0l, 0l, 0l, 0l, next_group_type, sec_info);
+        lgOp.codegen_local_bm168x(0l, 0l, 0l, 0l, 0l, next_group_type,
+                                  sec_info);
       }
     }
   }
@@ -342,11 +343,12 @@ void BMCodegen::codegen_for_overlap_ops(
       auto hsecs = castOp.getHsecs();
       auto dsecs = castOp.getDsecs();
       auto wsecs = castOp.getWsecs();
+      auto csecs = castOp.getCsecs();
       auto &cur_ops = iter->second;
       for (auto op : cur_ops) {
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
-        auto ginfo =
-            lgOp.getGroupInfo(nsecs - 1, hsecs - 1, dsecs - 1, wsecs - 1);
+        auto ginfo = lgOp.getGroupInfo(nsecs - 1, hsecs - 1, dsecs - 1,
+                                       wsecs - 1, csecs - 1);
         // add prefix to each cmd in profile.txt
         std::string prefix = op->getName().getStringRef().str().substr(4);
         auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
@@ -354,13 +356,13 @@ void BMCodegen::codegen_for_overlap_ops(
           pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
         }
         BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
-        lgOp.assign_sec_info(nsecs - 1, hsecs - 1, dsecs - 1, wsecs - 1,
-                             prev_group_type, sec_info);
+        lgOp.assign_sec_info(nsecs - 1, csecs - 1, hsecs - 1, dsecs - 1,
+                             wsecs - 1, prev_group_type, sec_info);
         LLVM_DEBUG(llvm::dbgs()
                    << "codegen op: '" << module::getName(lgOp) << "'\n");
         profile_ctx.log_local_layer(op, nsecs - 1, hsecs - 1);
-        lgOp.codegen_local_bm168x(nsecs - 1, hsecs - 1, dsecs - 1, wsecs - 1,
-                                  prev_group_type, sec_info);
+        lgOp.codegen_local_bm168x(nsecs - 1, csecs - 1, hsecs - 1, dsecs - 1,
+                                  wsecs - 1, prev_group_type, sec_info);
       }
     }
   }
@@ -372,6 +374,7 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   auto hsecs = gOp.getHsecs();
   auto dsecs = gOp.getDsecs();
   auto wsecs = gOp.getWsecs();
+  auto csecs = gOp.getCsecs();
   auto swpipl_stage_num = gOp.getSwpiplStageNum();
   auto &body = gOp.getBody().front();
   auto flow = module::getI64Array(gOp.getFlow());
@@ -395,8 +398,8 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   for (int64_t id = 0; id < max_id;) {
     body.walk([&](Operation *op) {
       if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
-        auto ginfo =
-            lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0, (int64_t)0);
+        auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
+                                       (int64_t)0, (int64_t)0);
         if (ginfo.id == id) {
           group_ops.push_back(op);
           id++;
@@ -422,7 +425,7 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
         prev_body.walk([&](Operation *op) {
           if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
             auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
-                                           (int64_t)0);
+                                           (int64_t)0, (int64_t)0);
             if (ginfo.id == id) {
               cur_other_downs[tmp_ts].push_back(op);
             }
@@ -445,7 +448,7 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
         next_body.walk([&](Operation *op) {
           if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
             auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0,
-                                           (int64_t)0);
+                                           (int64_t)0, (int64_t)0);
             if (ginfo.id == id) {
               cur_other_ups[tmp_ts].push_back(op);
             }
@@ -465,10 +468,10 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   SoftwarePipeline timestep_swpipl;
   local_sec_info_t sec_info;
   int64_t timestep_num = timestep_table.size();
-  for (uint64_t nstep = 0, hstep = 0, dstep = 0, wstep = 0;
+  for (uint64_t nstep = 0, cstep = 0, hstep = 0, dstep = 0, wstep = 0;
        nstep < nsecs || draining_period;) {
     /* add for software pipeline */
-    timestep_swpipl.write_swloop_buffer(nstep, hstep, dstep, wstep,
+    timestep_swpipl.write_swloop_buffer(nstep, cstep, hstep, dstep, wstep,
                                         swpipl_stage_num);
     for (int64_t ts = 0; ts < timestep_num; ++ts) {
       bm168x->divide_sync_id();
@@ -476,7 +479,7 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
       auto cur_op_ids = timestep_table[ts];
       for (auto id : cur_op_ids) {
         auto lgOp = cast<LocalGenInterfaceDecorator>(group_ops[id]);
-        auto ginfo = lgOp.getGroupInfo(nstep, hstep, dstep, wstep);
+        auto ginfo = lgOp.getGroupInfo(nstep, hstep, dstep, wstep, cstep);
         if ((!draining_period && ginfo.stage > stage_idx) ||
             (draining_period &&
              (ginfo.stage < draining_idx || ginfo.stage > stage_idx))) {
@@ -500,7 +503,8 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
         }
 
         ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep,
-                                  tensor_step->dstep, tensor_step->wstep);
+                                  tensor_step->dstep, tensor_step->wstep,
+                                  tensor_step->cstep);
         // add prefix to each cmd in profile.txt
         std::string prefix =
             group_ops[id]->getName().getStringRef().str().substr(4);
@@ -511,17 +515,17 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
             pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
           }
           BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
-          lgOp.assign_sec_info(tensor_step->nstep, tensor_step->hstep,
-                               tensor_step->dstep, tensor_step->wstep,
-                               group_type, sec_info);
+          lgOp.assign_sec_info(tensor_step->nstep, tensor_step->cstep,
+                               tensor_step->hstep, tensor_step->dstep,
+                               tensor_step->wstep, group_type, sec_info);
           LLVM_DEBUG(llvm::dbgs()
                      << "codegen op: '" << module::getName(lgOp) << "'\n");
           auto op = group_ops[id];
           profile_ctx.log_local_layer(op, tensor_step->nstep,
                                       tensor_step->hstep);
-          lgOp.codegen_local_bm168x(tensor_step->nstep, tensor_step->hstep,
-                                    tensor_step->dstep, tensor_step->wstep,
-                                    group_type, sec_info);
+          lgOp.codegen_local_bm168x(tensor_step->nstep, tensor_step->cstep,
+                                    tensor_step->hstep, tensor_step->dstep,
+                                    tensor_step->wstep, group_type, sec_info);
         }
       } // ops, include Load/Store op
 
@@ -535,7 +539,11 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
     } // timestep
 
     if (!draining_period) {
-      wstep++;
+      cstep++;
+      if (cstep >= csecs) {
+        cstep = 0;
+        wstep++;
+      }
       if (wstep >= wsecs) {
         wstep = 0;
         hstep++;

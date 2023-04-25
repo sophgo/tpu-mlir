@@ -51,7 +51,7 @@ int64_t tpu::LutOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
 
 void tpu::LutOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                       local_sec_info_t &sec_info) {
-  auto out_g_info = getGroupInfo(n_step, h_step, 0, 0);
+  auto out_g_info = getGroupInfo(n_step, h_step, 0, 0, 0);
   auto in_g_info = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto tb_g_info = LocalGenInterface::getGroupInfo(getTable(), n_step, h_step);
   auto dtype_o = BM168x::getDataType(getOutput());

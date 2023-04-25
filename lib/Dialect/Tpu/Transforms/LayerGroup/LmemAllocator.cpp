@@ -139,12 +139,29 @@ static inline int64_t increase_nsecs(int64_t nsecs, int64_t batch_size) {
   return next_nsecs;
 }
 
+static inline int64_t increase_csecs(int64_t csecs, int64_t max_csecs) {
+  if (csecs == max_csecs) {
+    return -1;
+  }
+  int64_t cslice = max_csecs / csecs + (max_csecs % csecs > 0);
+  int64_t new_cslice = cslice;
+  int64_t next_csecs = csecs;
+  do {
+    next_csecs++;
+    new_cslice = max_csecs / next_csecs + (max_csecs % next_csecs > 0);
+  } while (new_cslice >= cslice && next_csecs < max_csecs);
+
+  return next_csecs;
+}
+
 static inline void update_shape_secs(const LgInfo &lg_info,
                                      shape_secs_t &shape_secs,
                                      int64_t &dhw_secs,
                                      const shape_secs_t &max_shape_secs) {
   if (shape_secs.nsecs < max_shape_secs.nsecs) {
     shape_secs.nsecs = increase_nsecs(shape_secs.nsecs, max_shape_secs.nsecs);
+  } else if (shape_secs.csecs < max_shape_secs.csecs) {
+    shape_secs.csecs = increase_csecs(shape_secs.csecs, max_shape_secs.csecs);
   } else {
     assign_dhwsecs(lg_info, shape_secs, ++dhw_secs, max_shape_secs);
   }
@@ -832,7 +849,9 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
   while (shape_secs.nsecs <= max_shape_secs.nsecs &&
          shape_secs.dsecs <= max_shape_secs.dsecs &&
          shape_secs.hsecs <= max_shape_secs.hsecs &&
-         shape_secs.wsecs <= max_shape_secs.wsecs) {
+         shape_secs.wsecs <= max_shape_secs.wsecs &&
+         shape_secs.csecs <= max_shape_secs.csecs) {
+    // if (shape_secs.csecs == 64 && shape_secs.hsecs == 3) shape_secs.hsecs = 4;
     // reassign time step
     status = time_step->assignTimeStep(lg_info, shape_secs, true);
     if (status == false) {

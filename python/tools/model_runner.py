@@ -54,7 +54,7 @@ def get_chip_from_model(model_file: str) -> str:
     return chip
 
 
-def pack_bmodel_context(model_file, net):
+def pack_bmodel_context_generator(model_file, net):
     out_dir = model_file.rsplit(".", maxsplit=1)[0]
     os.makedirs(out_dir, exist_ok=True)
     shutil.copy(model_file, os.path.join(out_dir, "compilation.bmodel"))
@@ -62,6 +62,7 @@ def pack_bmodel_context(model_file, net):
     with open(out_dir + "/input_ref_data.dat", "wb") as f:
         for i in net.inputs:
             i.data.tofile(f)
+    yield
     with open(out_dir + "/output_ref_data.dat", "wb") as f:
         for o in net.outputs:
             o.data.tofile(f)
@@ -143,6 +144,19 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             i.data[:] = input.astype(np.float32)
         else:
             raise ValueError(f"unknown type: form {input.dtype} to {i.data.dtype}")
+
+    size = os.path.getsize(model_file)
+    pack_bmodel_context = (
+        iter([None]) if is_cv18xx else pack_bmodel_context_generator(model_file, net)
+    )
+    next(pack_bmodel_context)
+
+    if size > 0x10000000:
+        print(
+            "Warning: {} is too large, run by cmodel will cost a long time. Please run in board"
+            .format(model_file))
+        return {}
+
     if is_cv18xx:
         net.forward()
     else:
@@ -173,8 +187,11 @@ def model_inference(inputs: dict, model_file: str) -> dict:
                 outputs[i.name] = outputs[i.name].flatten()[:dyn_len].reshape(
                     *dyn_output_shapes[dyn_idx])
                 dyn_idx += 1
-    if not is_cv18xx:
-        pack_bmodel_context(model_file, net)
+    try:
+        next(pack_bmodel_context)
+    except StopIteration:
+        pass
+
     return outputs
 
 
@@ -449,5 +466,6 @@ if __name__ == '__main__':
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     print("\nSaving ...")
-    np.savez(args.output, **output)
-    print("\nResult saved to:{}".format(args.output))
+    if output:
+        np.savez(args.output, **output)
+        print("\nResult saved to:{}".format(args.output))

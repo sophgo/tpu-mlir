@@ -182,17 +182,17 @@ LogicalResult tpu::Pool2DOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
-void tpu::Pool2DOp::assign_sec_info(int64_t n_step, int64_t h_step,
-                                    int64_t d_step, int64_t w_step,
-                                    group_type_t group_type,
+void tpu::Pool2DOp::assign_sec_info(int64_t n_step, int64_t c_step,
+                                    int64_t h_step, int64_t d_step,
+                                    int64_t w_step, group_type_t group_type,
                                     local_sec_info_t &sec_info) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
   sec_info.group_type = group_type;
 
   auto attr = parseParam();
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
-                                               d_step, w_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step,
+                                               h_step, d_step, w_step, c_step);
   int64_t pad_h_b =
       (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
   int64_t pad_w_r =

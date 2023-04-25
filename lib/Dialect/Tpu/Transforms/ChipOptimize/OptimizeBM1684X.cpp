@@ -186,9 +186,9 @@ public:
       return success();
     } else if (auto add_op = dyn_cast<tpu::AddOp>(nextOp)) {
       auto inB = add_op.getInputs()[1];
-      if (!module::isWeight(inB)) {
-        return failure();
-      }
+      // if (!module::isWeight(inB)) {
+      //   return failure();
+      // }
       auto inB_shape = module::getShape(inB);
       if (inB_shape[1] != 1) {
         return failure();

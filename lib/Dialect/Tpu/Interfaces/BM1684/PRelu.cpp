@@ -77,7 +77,7 @@ void tpu::PReluOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   module::getNCHW(getOutput(), n, c, h, w);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto slope_gi = LocalGenInterface::getGroupInfo(getSlope(), n_step, h_step);
-  auto out_gi = getGroupInfo(n_step, h_step, 0, 0);
+  auto out_gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   n = out_gi.n_slice;
   h = out_gi.h_slice;
 

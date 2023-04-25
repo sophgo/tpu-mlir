@@ -15,7 +15,6 @@
 namespace tpu_mlir {
 namespace tpu {
 
-
 using namespace tpu_mlir::tpu;
 using namespace tpu_mlir::backend;
 
@@ -178,7 +177,7 @@ void BasicTimeStep::gen_hold_coeff() {
       v = gdma_field[i].first;
       auto &tensor_info = gdma_field[i].second;
       if (tensor_info.mode == TIMESTEP_LOAD) {
-        if (module::isWeight(v)) {
+        if (module::isWeight(v) || tensor_info.hold_in_lmem) {
           this->hold_coeff_[v] = ts;
         }
       }
@@ -311,8 +310,8 @@ void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
   mem_buffer_key_t buffer_key1;
   buffer_key0.type = LMEM_ACTIVATION;
   buffer_key1.type = LMEM_ACTIVATION;
-  int64_t in_nslice, in_hslice, in_dslice, in_wslice, out_nslice, out_hslice,
-      out_dslice, out_wslice;
+  int64_t in_nslice, in_cslice, in_hslice, in_dslice, in_wslice;
+  int64_t out_nslice, out_cslice, out_hslice, out_dslice, out_wslice;
   for (auto iter = lmem_buffer_.begin(); iter != lmem_buffer_.end(); ++iter) {
     if (iter->first.type == LMEM_OPERATION) {
       auto op = iter->first.op;
@@ -321,18 +320,18 @@ void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
       auto &in_ti = tensor_infos[in];
       auto &out_ti = tensor_infos[out];
 
-      get_max_slice_nhdw(in_ti.slice_info, in_nslice, in_hslice, in_dslice,
-                         in_wslice);
-      get_max_slice_nhdw(out_ti.slice_info, out_nslice, out_hslice, out_dslice,
-                         out_wslice);
+      get_max_slice_nchdw(in_ti.slice_info, in_nslice, in_cslice, in_hslice,
+                          in_dslice, in_wslice);
+      get_max_slice_nchdw(out_ti.slice_info, out_nslice, out_cslice, out_hslice,
+                          out_dslice, out_wslice);
       buffer_key0.value = in;
       buffer_key1.value = out;
 
       auto lg_op = cast<LocalGenInterface>(op);
       iter->second.size = lg_op.getBufferSize(
           lmem_buffer_[buffer_key0].size, lmem_buffer_[buffer_key1].size,
-          in_nslice, in_hslice, in_dslice, in_wslice, out_nslice, out_hslice,
-          out_dslice, out_wslice, lg_info.type);
+          in_nslice, in_cslice, in_hslice, in_dslice, in_wslice, out_nslice,
+          out_cslice, out_hslice, out_dslice, out_wslice, lg_info.type);
     }
   }
 

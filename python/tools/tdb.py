@@ -17,7 +17,7 @@ from os import path
 
 
 class Tdb(cmd.Cmd):
-    ddr_size = 2**30
+    ddr_size = 2**32
     prompt = "(Tdb) "
     """
     TPU debugger.

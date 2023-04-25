@@ -10,12 +10,10 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include <string.h>
 using namespace tpu_mlir::backend;
-
 
 static bool has_pad(const pool_attr_t &attr) {
   if (attr.pad_h != 0 || attr.pad_w != 0 || attr.pad_d != 0)
@@ -101,9 +99,10 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
 // =========================================
 
 int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
-    int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
-    group_type_t group_type) {
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   int64_t buffer_size = 0;
   auto out_dtype = module::getStorageType(getOutput());
   auto attr = parseParam();
@@ -134,12 +133,15 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
   return buffer_size;
 }
 
-void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
+                                          int64_t h_step, int64_t d_step,
+                                          int64_t w_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   // auto op = getOperation();
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step, c_step);
 
   auto attr = parseParam();
   pooling3d_spec_t spec = {0};
@@ -153,7 +155,10 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_
   spec.input_shape[4] = sec_info.w_slice;
   spec.output_shape[0] = sec_info.out_n_slice;
   spec.output_shape[1] = attr.c;
-  spec.output_shape[2] = gi.d_slice; // sec_info.out_d_slice; // <- no such attr; need to change along with backend api_common.h:sec_info, otherwise memcpy will mess up
+  spec.output_shape[2] =
+      gi.d_slice; // sec_info.out_d_slice; // <- no such attr; need to change
+                  // along with backend api_common.h:sec_info, otherwise memcpy
+                  // will mess up
   spec.output_shape[3] = sec_info.out_h_slice;
   spec.output_shape[4] = sec_info.out_w_slice;
   spec.in_dtype = BM168x::getDataType(getInput());
@@ -215,7 +220,7 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_
 int64_t tpu::Pool3DOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(dyn_pooling3d_local_spec_t);
-  auto gi = getGroupInfo(0, 0, 0, 0);
+  auto gi = getGroupInfo(0, 0, 0, 0, 0);
   auto attr = parseParam();
   dyn_pooling3d_local_spec_t spec = {0};
   spec.buffer_addr = gi.buffer_addr;
@@ -250,11 +255,11 @@ int64_t tpu::Pool3DOp::dyn_codegen_local_bm1684x(void *buffer) {
       if (spec.common.avg_pooling_quant_mode == 2) {
         spec.common.merge_requant = true;
         spec.common.rq_scale = getScale().has_value()
-                            ? (getScale().value().convertToDouble())
-                            : 1.;
+                                   ? (getScale().value().convertToDouble())
+                                   : 1.;
         spec.common.rq_offset = getOffset().has_value()
-                             ? (getOffset().value().convertToDouble())
-                             : 0.;
+                                    ? (getOffset().value().convertToDouble())
+                                    : 0.;
       }
     }
   }
@@ -305,17 +310,15 @@ int64_t tpu::Pool3DOp::dyn_codegen_global_bm1684x(void *buffer) {
       if (spec.common.avg_pooling_quant_mode == 2) {
         spec.common.merge_requant = true;
         spec.common.rq_scale = getScale().has_value()
-                            ? (getScale().value().convertToDouble())
-                            : 1.;
+                                   ? (getScale().value().convertToDouble())
+                                   : 1.;
         spec.common.rq_offset = getOffset().has_value()
-                             ? (getOffset().value().convertToDouble())
-                             : 0.;
+                                    ? (getOffset().value().convertToDouble())
+                                    : 0.;
       }
     }
   }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
-int64_t tpu::Pool3DOp::get_fw_type_bm1684x() {
-  return FW_BMNET_POOL3D;
-}
+int64_t tpu::Pool3DOp::get_fw_type_bm1684x() { return FW_BMNET_POOL3D; }

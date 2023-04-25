@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 conv_attr_t tpu::Conv3DOp::parseParam() {
   conv_attr_t p = {0};
   auto i_s = getInput().getType().cast<RankedTensorType>().getShape();
@@ -140,15 +138,17 @@ LogicalResult tpu::Conv3DOp::BackwardD(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
-void tpu::Conv3DOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
-                                    group_type_t group_type,
+void tpu::Conv3DOp::assign_sec_info(int64_t n_step, int64_t c_step,
+                                    int64_t h_step, int64_t d_step,
+                                    int64_t w_step, group_type_t group_type,
                                     local_sec_info_t &sec_info) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
   sec_info.group_type = group_type;
 
   auto attr = parseParam();
-  auto gi = getGroupInfo(n_step, h_step, d_step, w_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step, d_step, w_step);
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
+                                               d_step, w_step, c_step);
   sec_info.n_slice = in_gi.n_slice;
   sec_info.d_slice = in_gi.d_slice;
   sec_info.h_slice = in_gi.h_slice;
@@ -166,7 +166,7 @@ void tpu::Conv3DOp::assign_sec_info(int64_t n_step, int64_t h_step, int64_t d_st
 
 LogicalResult tpu::Conv3DOp::LocalGenSupport() {
   if (module::isBM1684XFamily()) {
-      return success();
+    return success();
   } else {
     return failure();
   }
@@ -177,7 +177,7 @@ mlir::Type tpu::Conv3DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 }
 
 LogicalResult tpu::Conv3DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
-                                       int64_t out_idx, int64_t out_slice) {
+                                          int64_t out_idx, int64_t out_slice) {
   auto attr = parseParam();
   int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
   in_slice = (out_slice - 1) * attr.sh +
@@ -189,30 +189,33 @@ LogicalResult tpu::Conv3DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
 LogicalResult tpu::Conv3DOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
   auto attr = parseParam();
   int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
-  in_kh = (out_kh - 1) * attr.sh + (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);
+  in_kh =
+      (out_kh - 1) * attr.sh + (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);
   return success();
 }
 
-
-LogicalResult tpu::Conv3DOp::DynBackwardStrideH(int64_t &in_stride_h, int64_t out_stride_h) {
+LogicalResult tpu::Conv3DOp::DynBackwardStrideH(int64_t &in_stride_h,
+                                                int64_t out_stride_h) {
   auto attr = parseParam();
   in_stride_h = out_stride_h * attr.sh;
   return success();
 }
 
-LogicalResult tpu::Conv3DOp::DynBackwardUpPadH(int64_t &in_up_pad_h, int64_t out_up_pad_h) {
+LogicalResult tpu::Conv3DOp::DynBackwardUpPadH(int64_t &in_up_pad_h,
+                                               int64_t out_up_pad_h) {
   auto attr = parseParam();
   in_up_pad_h = out_up_pad_h * attr.sh + attr.pht;
   return success();
 }
 
-LogicalResult tpu::Conv3DOp::DynBackwardDownPadH(int64_t &in_down_pad_h, int64_t out_down_pad_h) {
+LogicalResult tpu::Conv3DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
+                                                 int64_t out_down_pad_h) {
   auto attr = parseParam();
   in_down_pad_h = out_down_pad_h * attr.sh + attr.phb;
   return success();
 }
 
 int64_t tpu::Conv3DOp::DynForwardHeight(int64_t in_height) {
-  //Todo
+  // Todo
   return in_height;
 }
