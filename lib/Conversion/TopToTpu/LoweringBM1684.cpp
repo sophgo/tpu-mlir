@@ -40,6 +40,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SigmoidLowering,
       SiLULowering,
       SqrtLowering,
+      TanhLowering,
       TileLowering,
       TopKLowering,
       UpsampleLowering,
