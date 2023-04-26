@@ -1550,6 +1550,35 @@ def Top_MeshGridOp : Top_Op<"MeshGrid"> {
   let hasCanonicalizer = 1;
 }
 
+def GridSamplerPadModeAttr: AnyStrAttrOf<["zeros","border","reflection"]>;
+def Top_GridSamplerOp : Top_Op<"GridSampler"> {
+  let summary = "GridSampler operation";
+  let description = [{
+     Given an input and a flow-field grid, computes the output
+     using input values and pixel locations from grid.
+
+      Attributes:
+        `mode`              : required, interpolation mode to calculate output values, Int attribute [0, 1]
+                                representing 'bilinear' | 'nearest' respectively.
+        `padding_mode`      : required, padding mode for outside grid values, Int attribute [0, 1, 2],
+                                representing 'zero' | 'boundary' | 'reflection' respectively.
+        `align_corners`     : required, Geometrically, we consider the pixels of the input as
+                                squares rather than points. If set to True, the extrema (-1 and 1) are
+                                considered as referring to the center points of the input's corner pixels.
+                                If set to False, they are instead considered as referring to the corner
+                                points of the input's corner pixels, making the sampling more resolution agnostic.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$grid,
+    I64Attr:$mode,
+    I64Attr:$padding_mode,
+    BoolAttr:$align_corners
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ReduceOp : Top_Op<"Reduce"> {
   let summary = "Reduce operation";
   let description = [{

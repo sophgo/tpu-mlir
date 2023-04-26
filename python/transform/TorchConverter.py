@@ -98,6 +98,7 @@ class TorchConverter(BaseConverter):
             "aten::gather": lambda node: self.convert_gather_op(node),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
+            "aten::grid_sampler": lambda node: self.convert_grid_sampler_op(node),
             "aten::group_norm": lambda node: self.convert_group_norm_op(node),
             "aten::gru": lambda node: self.convert_gru_op(node),
             "aten::gt": lambda node: self.convert_compare_op(node, "Greater"),
@@ -1563,4 +1564,20 @@ class TorchConverter(BaseConverter):
                                 const_val=-1,
                                 loc=self.get_loc(torch_node.name),
                                 ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_grid_sampler_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        op1 = self.getOp(torch_node.inputs[1])
+        mode = self.const_val[torch_node.inputs[2]]
+        padding_mode = self.const_val[torch_node.inputs[3]]
+        align_corners = self.const_val[torch_node.inputs[4]]
+        new_op = top.GridSamplerOp(self.unranked_type,
+                                   op0,
+                                   op1,
+                                   mode=mode,
+                                   padding_mode=padding_mode,
+                                   align_corners=align_corners,
+                                   loc=self.get_loc(torch_node.name),
+                                   ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)

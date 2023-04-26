@@ -533,6 +533,7 @@ private:
   void get_onnx_nms_param();
   void get_gather_nd_tf_param();
   void get_tensor_scatter_param();
+  void get_grid_sampler_param();
 };
 
 struct NmsParam {
@@ -572,6 +573,32 @@ private:
                          std::vector<int> gather_index, int cur_dim,
                          int offset);
   GatherNDParam param_;
+};
+
+struct GridSamplerParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  int mode;
+  int padding_mode;
+  bool align_corners;
+};
+
+
+class GridSamplerFunc {
+public:
+  GridSamplerFunc(GridSamplerParam &para);
+  float computeIndex(float coord, int size, int paddingMode, bool alignCorners);
+
+  template <typename scalar_t>
+  scalar_t reflect_coordinates(scalar_t in, int64_t twice_low, int64_t twice_high);
+
+  template <typename scalar_t>
+  scalar_t clip_coordinates(scalar_t in, int64_t clip_limit);
+
+  void invoke();
+
+private:
+  GridSamplerParam param_;
 };
 
 struct InstanceNormParam {
