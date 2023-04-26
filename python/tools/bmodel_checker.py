@@ -12,7 +12,7 @@ import json, re
 from enum import Enum
 from dataclasses import dataclass
 from collections import namedtuple, OrderedDict
-import argparse
+import argparse, itertools
 import numpy as np
 from rich.console import Console
 
@@ -381,6 +381,7 @@ class DataChecker(TensorCompare):
     def __init__(self):
         super().__init__()
         self.failed_tensors = OrderedDict()
+        self.save_failed_tensors = False
 
     def diff_details(self, d1, d2, _):
         # override TensorCompare
@@ -408,8 +409,9 @@ class DataChecker(TensorCompare):
             *self.compare(actual, desired, verbose=2, int8_tensor_close=True)
         )
         if not result.state:
-            self.failed_tensors[name + "_actual"] = actual
-            self.failed_tensors[name + "_desired"] = desired
+            if self.save_failed_tensors:
+                self.failed_tensors[name + "_actual"] = actual
+                self.failed_tensors[name + "_desired"] = desired
 
             metric = result.metric
             header = (
@@ -472,7 +474,7 @@ def check_data(tdb, tensors, ref_data, context):
     result = []
     for tensor_des in tensors:
         t = TensorBuilder(tensor_des.tensor.value, context)
-        if t.name in ref_data and t.name not in excepts:
+        if t.name in ref_data:
             actual = t.to_f32data(t.memref.data)
             desired = t.get_ref_data(ref_data[t.name])
             try:
@@ -502,9 +504,9 @@ class Checker:
         self.tensor_loc = TensorLoc(f"{folder}/{self._tensor_loc_file}")
         self.bmodel_file = f"{folder}/{self._bmodel_file}"
         self.input_data_file = f"{folder}/{self._input_data_file}"
-        self.ref_data = np.load(ref_data_npz)
+        ref_data = np.load(ref_data_npz, mmap_mode="r")
+        self.ref_data = dict(filter(lambda x: x[0] not in excepts, ref_data.items()))
         self.state = State.Unknown
-        self.excepts = excepts
 
         # run checker
         self.check_data(fail_fast)
@@ -614,18 +616,9 @@ class Checker:
                 }
             )
 
-    def _get_state(
-        self, data_source: list, state_fun, title, header_cell="", columns=10
-    ):
+    def _get_state(self, data_iterator, title, header_cell="", columns=10):
         from rich.table import Table
         from rich import box
-
-        items_num = len(data_source)
-
-        def gen_state():
-            for x in range(0, items_num, columns):
-                st = data_source[x : min(x + columns, items_num)]
-                yield [state_fun(s) for s in st]
 
         table = Table(
             title=f"[bold]{title}",
@@ -638,7 +631,13 @@ class Checker:
         for i in range(columns):
             table.add_column(f"{i:>2}", justify="right", style="bold")
 
-        for i, row in enumerate(gen_state()):
+        def gen_group_data(group):
+            while True:
+                yield tuple(itertools.islice(data_iterator, group))
+
+        for i, row in enumerate(gen_group_data(columns)):
+            if row == ():
+                break
             table.add_row(f"[bold]{i*columns}[/bold]", *row)
         return table
 
@@ -660,14 +659,13 @@ class Checker:
         def ins_simple():
             func = lambda s: com(s.results)
             return self._get_state(
-                get_ins_state(), func, f"Check-Result[{state}] Summary", "INS", 20
+                map(func, get_ins_state()), f"Check-Result[{state}] Summary", "INS", 20
             )
 
         def ins_full():
             func = lambda s: f"({com(s.operands)}{com(s.results)})"
             return self._get_state(
-                get_ins_state(),
-                func,
+                map(func, get_ins_state()),
                 f"Check-Operand-Result[{state}] Summary",
                 "INS",
                 10,
@@ -676,14 +674,13 @@ class Checker:
         def ins_line():
             func = lambda s: f"[{self.colors[s.results]}]{s.line}[/]"
             return self._get_state(
-                get_ins_state(), func, f"Check-Line[{state}] Summary", "INS", 20
+                map(func, get_ins_state()), f"Check-Line[{state}] Summary", "INS", 20
             )
 
         def ins_line_full():
             func = lambda s: f"({s.line}{com(s.operands)}{com(s.results)})"
             return self._get_state(
-                get_ins_state(),
-                func,
+                map(func, get_ins_state()),
                 f"Check-Line-Operand-Result[{state}] Summary",
                 "INS",
                 10,
@@ -691,13 +688,13 @@ class Checker:
 
         def line():
             def func(s):
-                opds = "".join(com(x) for x in s[1].operands_state)
-                rets = "".join(com(x) for x in s[1].results_state)
-                return f"({s[0].line}{opds}|{rets})"
+                k, v = s
+                opds = "".join(com(x) for x in v.operands_state)
+                rets = "".join(com(x) for x in v.results_state)
+                return f"({k.line}{opds}|{rets})"
 
             return self._get_state(
-                list(self.results.items()),
-                func,
+                map(func, self.results.items()),
                 f"Check-Line-Operand-Result[{state}] Summary",
                 "Index",
                 10,
@@ -859,12 +856,15 @@ if __name__ == "__main__":
     DATA_CHECKER.cosine_similarity_tol = cos_t
     DATA_CHECKER.euclidean_similarity_tol = euc_t
     DATA_CHECKER.signal_to_quantization_noise_tol = float("-inf")
+    DATA_CHECKER.save_failed_tensors = bool(args.report)
 
     if args.verbose is not None:
         ASM_CONTEXT_LENGTH += args.verbose.count("v")
 
     if args.excepts:
-        excepts = [str(s) for s in args.excepts.split(',')]
+        excepts = [str(s) for s in args.excepts.split(",")]
+    else:
+        excepts = []
 
     Tdb.ddr_size = args.mem_size
     checker = Checker(args.context_dir, args.reference_data, args.fail_fast, excepts)
