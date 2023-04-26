@@ -19,6 +19,11 @@ except:
     import bmodel_fbs
 
 
+def read_file_to_bits(cmd_file):
+    cmmand_buf = np.fromfile(cmd_file, dtype=np.uint8)
+    return np.unpackbits(cmmand_buf, bitorder="little")
+
+
 def buffer_to_bits(buffer):
     cmmand_buf = np.frombuffer(buffer, dtype=np.uint8)
     return np.unpackbits(cmmand_buf, bitorder="little")
