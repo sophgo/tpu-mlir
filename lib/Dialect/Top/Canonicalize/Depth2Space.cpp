@@ -53,6 +53,8 @@ struct Depth2SpaceWithPermuteOpt : public OpRewritePattern<Depth2SpaceOp> {
                 rewriter.getNamedAttr("in_is_NCHW", rewriter.getBoolAttr(!op.getInIs_NCHW())));
         attrs.push_back(
                 rewriter.getNamedAttr("out_is_NCHW", rewriter.getBoolAttr(op.getOutIs_NCHW())));
+        attrs.push_back(
+                rewriter.getNamedAttr("swap_cr", rewriter.getBoolAttr(op.getSwapCr())));
         attrs.push_back(rewriter.getNamedAttr(
                 "block_h", rewriter.getI64IntegerAttr(op.getBlockH())));
         attrs.push_back(rewriter.getNamedAttr(
