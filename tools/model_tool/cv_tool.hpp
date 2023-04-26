@@ -891,6 +891,7 @@ FBWeightVector Model::cloneWeightMap(
         std::vector<std::string> names;
         names.emplace_back(w->name()->str());
         merged_weights[w_offset] = std::make_tuple(md5, w_size, std::move(names));
+        weight_data_map[w_offset].swap(weight_data);
       }
       std::vector<int64_t> dim;
       for (auto s : *w->shape()->dim()) {
@@ -900,9 +901,6 @@ FBWeightVector Model::cloneWeightMap(
       auto weight = cvi::model::CreateWeightDirect(
           fbb, w->name()->c_str(), w->offset(), w->size(), shape, w->type());
       tensor_vec.push_back(weight);
-      if (!has_redundat) {
-        weight_data_map[w_offset].swap(weight_data);
-      }
     }
   }
   if (!has_redundat) {
