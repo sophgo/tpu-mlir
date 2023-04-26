@@ -71,9 +71,9 @@ class TORCH_IR_TESTER(object):
             "GridSampler":      (self.test_GridSampler,       Y, N, N),
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, N),
             "GRU":              (self.test_GRU,               Y, Y, Y),
-            "IndexSelect":      (self.test_IndexSelect,       Y, N, N),
+            "IndexSelect":      (self.test_IndexSelect,       Y, Y, N),
             "InstanceNorm":     (self.test_InstanceNorm,      Y, Y, Y),
-            "Interp":           (self.test_Interp,            Y, N, Y),
+            "Interp":           (self.test_Interp,            Y, Y, Y),
             "LayerNorm":        (self.test_LayerNorm,         Y, Y, Y),
             "LeakyRelu":        (self.test_LeakyRelu,         Y, Y, Y),
             "Linear":           (self.test_Linear,            Y, Y, Y),
@@ -94,6 +94,7 @@ class TORCH_IR_TESTER(object):
             "PixelShuffle":     (self.test_PixelShuffle,      Y, Y, Y),
             "PRelu":            (self.test_PRelu,             Y, Y, Y),
             "Permute":          (self.test_Permute,           Y, Y, Y),
+            "Permute2":         (self.test_Permute2,          Y, Y, N),
             "Pad1d":            (self.test_Pad1d,             Y, Y, Y),
             "Pad2d":            (self.test_Pad2d,             Y, Y, Y),
             "Pow":              (self.test_Pow,               Y, Y, Y),
@@ -111,7 +112,7 @@ class TORCH_IR_TESTER(object):
             "To":               (self.test_To,                Y, Y, Y),
             "Type_as":          (self.test_Type_as,           Y, Y, Y),
             "Transpose":        (self.test_Transpose,         Y, Y, Y),
-            "Upsample":         (self.test_Upsample,          Y, N, Y),
+            "Upsample":         (self.test_Upsample,          Y, Y, Y),
             "Unary":            (self.test_Unary,             Y, Y, Y),
             "Unsqueeze":        (self.test_Unsqueeze,         Y, Y, Y),
             "View":             (self.test_View,              Y, Y, Y),
@@ -1279,11 +1280,30 @@ class TORCH_IR_TESTER(object):
                     return y1
 
             self.trace_and_test([in_shape], Model())
+        # cv183x regression falure
+        #_test_permute((2, 3, 16, 16), (3, 2, 1, 0))
 
         _test_permute((1, 3, 32, 32), (0, 3, 1, 2))
         _test_permute((2, 32, 16), (2, 0, 1))
         _test_permute((32, 32), (1, 0))
 
+    def test_Permute2(self):
+        """Permute"""
+
+        def _test_permute(in_shape, dims):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y1 = torch.permute(x, dims=dims)
+                    return y1
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_permute((2, 3, 16, 16), (3, 2, 1, 0))
     #######################################################################
     # T
     # ------------
@@ -2230,7 +2250,7 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in_shape, grid_shape], Model(), [
                                 self.Desc('float32', -10, 10), self.Desc('float32', -1, 1)])
 
-        # mode_list = [0, 1] 
+        # mode_list = [0, 1]
         mode_list = [0]  # not support bicubic/nearest interp right now
         padding_mode_list = [0, 1]
         align_corners_list = [False, True]

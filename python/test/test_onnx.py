@@ -122,7 +122,7 @@ class ONNX_IR_TESTER(object):
             "PRelu":        (self.test_PRelu,         N, Y, Y, Y),
             # "Range":        (self.test_Range,       N, Y, Y, N),
             "Resize":       (self.test_Resize,        Y, Y, Y, Y),
-            "Resize2":      (self.test_Resize2,       N, Y, N, Y),
+            "Resize2":      (self.test_Resize2,       N, Y, Y, Y),
             "Reshape":      (self.test_Reshape,       Y, Y, Y, N),
             "Reduce":       (self.test_Reduce,        Y, Y, Y, Y),
             "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y),
