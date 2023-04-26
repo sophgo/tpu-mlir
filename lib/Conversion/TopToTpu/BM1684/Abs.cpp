@@ -22,7 +22,12 @@ void AbsLowering::LoweringF32(PatternRewriter &rewriter, top::AbsOp op) const {
 
 void AbsLowering::LoweringINT8(PatternRewriter &rewriter, top::AbsOp op,
                                bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  Value table = create_lookup_table(
+           op.getInput(), op.getOutput(), asymmetric,
+           [](double val){ return std::fabs(val);},
+           32);
+   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType, ValueRange{op.getInput(), table});
 }
 
 } // namespace bm1684

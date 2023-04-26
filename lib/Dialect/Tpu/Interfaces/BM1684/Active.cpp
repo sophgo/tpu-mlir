@@ -35,6 +35,7 @@ void tpu::ActiveOp::codegen_global_bm1684() {
     int activate_type = (int)getMode();
     switch(getMode()){
        case ActiveMode::EXP:
+       case ActiveMode::ABSVAL:
        case ActiveMode::FLOOR:
        case ActiveMode::TANH:
        case ActiveMode::LN:
@@ -68,6 +69,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684(
     if (!module::isUniformQuantized(getOutput())){
         switch(getMode()){
             case ActiveMode::EXP:
+            case ActiveMode::ABSVAL:
             case ActiveMode::LN:
             case ActiveMode::TANH:
             case ActiveMode::SQRT:
@@ -115,6 +117,7 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
     float prelu_slope = 0.0;
     switch(getMode()){
         case ActiveMode::EXP:
+        case ActiveMode::ABSVAL:
         case ActiveMode::FLOOR:
         case ActiveMode::TANH:
         case ActiveMode::LN:
