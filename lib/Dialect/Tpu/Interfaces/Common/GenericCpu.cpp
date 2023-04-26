@@ -378,6 +378,31 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     param.output = output;
     ScatterNDFunc func(param);
     func.invoke();
+  } else if (func_name == "grid_sampler") {
+    mlir::DictionaryAttr dic_param = this->getParam().value();
+    GridSamplerParam param;
+    param.mode = dic_param.get("mode").cast<IntegerAttr>().getInt();
+    param.padding_mode = dic_param.get("padding_mode").cast<IntegerAttr>().getInt();
+    param.align_corners = dic_param.get("align_corners").cast<BoolAttr>().getValue();
+    tensor_list_t input;
+    tensor_list_t grid;
+    input.ptr = p.inputs[0];
+    input.size = module::getNumElements(getInputs()[0]);
+    input.shape = module::getShape(getInputs()[0]);
+    grid.ptr = p.inputs[1];
+    grid.size = module::getNumElements(getInputs()[1]);
+    grid.shape = module::getShape(getInputs()[1]);
+    param.inputs.push_back(input);
+    param.inputs.push_back(grid);
+
+    tensor_list_t output;
+    output.size = module::getNumElements(getOutputs()[0]);
+    output.shape = module::getShape(getOutputs()[0]);
+    output.ptr = p.outputs[0];
+    param.output = output;
+
+    GridSamplerFunc func(param);
+    func.invoke();
   } else {
     llvm_unreachable("generic cpu func not supported!\n");
   }
