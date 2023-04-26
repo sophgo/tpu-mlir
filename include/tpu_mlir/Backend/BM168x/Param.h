@@ -807,7 +807,14 @@ typedef struct interp_global_spec {
   int shape_is_fixed;
   int shape[MAX_SHAPE_DIMS];
   int dims;
+  uint64_t buffer_addr;
 } interp_global_spec_t;
+
+typedef struct interp_global_param {
+    interp_global_spec_t spec;
+    int if_getting_buffer_size;
+    uint64_t* buffer_size_ptr;
+} interp_global_param_t;
 
 typedef struct interp_local_spec {
   interp_common_spec_t common;

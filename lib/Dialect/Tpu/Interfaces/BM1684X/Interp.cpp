@@ -22,8 +22,14 @@ void tpu::InterpOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  interp_global_spec_t param = {0};
-  auto &common = param.common;
+  interp_global_param_t param = {0};
+  param.if_getting_buffer_size = false;
+  if(module::isBM1686()){
+    param.spec.buffer_addr = module::getAddress(getBuffer());
+  } else {
+    param.spec.buffer_addr = BM168x::L2_SRAM_START_ADDR;
+  }
+  auto &common = param.spec.common;
   common.pad_bag = 0;
   common.pad_end = 0;
   int coord = 0;
@@ -127,9 +133,15 @@ void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(interp_global_spec_t);
-  interp_global_spec_t param = {0};
-  auto &common = param.common;
+  if (!buffer) return sizeof(interp_global_param_t);
+  interp_global_param_t param = {0};
+  param.if_getting_buffer_size = false;
+  if(module::isBM1686()){
+    param.spec.buffer_addr = module::getAddress(getBuffer());
+  } else {
+    param.spec.buffer_addr = BM168x::L2_SRAM_START_ADDR;
+  }
+  auto &common = param.spec.common;
   common.pad_bag = 0;
   common.pad_end = 0;
   int coord = 0;
@@ -148,11 +160,11 @@ int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
     common.align_corners = (coord == 2) ? 1 : 0;
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
-  param.shape_is_fixed = true;
+  param.spec.shape_is_fixed = true;
   auto out_shape = module::getShape(getOutput());
-  param.dims = out_shape.size();
-  for (int i=0; i < param.dims; i++)
-    param.shape[i] = out_shape[i];
+  param.spec.dims = out_shape.size();
+  for (int i=0; i < param.spec.dims; i++)
+    param.spec.shape[i] = out_shape[i];
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 

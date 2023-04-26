@@ -334,6 +334,40 @@ public:
   }
 };
 
+class InterpGlobalBuffer : public OpRewritePattern<tpu::InterpOp> {
+public:
+  using OpRewritePattern<tpu::InterpOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::InterpOp interpOp,
+                                PatternRewriter &rewriter) const override {
+    if(!module::isBM1686()) return failure();
+
+    if (!module::isNone(interpOp.getBuffer())) {
+      return failure();
+    }
+
+    interp_global_param_t param = {0};
+    param.if_getting_buffer_size = true;
+    uint64_t buffer_size = 0;
+    param.buffer_size_ptr = &buffer_size;
+    auto input_spec = BM168x::get_input_spec(interpOp);
+    auto output_spec = BM168x::get_output_spec(interpOp);
+    BM168x::call_global_func("backend_api_interp_global", &param,
+                               sizeof(param), input_spec->data(),
+                               output_spec->data());
+    // add buffer
+    if (buffer_size > 0) {
+      auto type = ::mlir::Builder(getContext()).getIntegerType(8);
+      auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
+      auto buffer = tpu::BufferOp::create(interpOp, buffer_type);
+      interpOp.setOperand(1, buffer);
+      return success();
+    }
+
+    return failure();
+  }
+};
+
 void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
@@ -343,6 +377,7 @@ void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
       SliceGlobalBuffer,
       SoftmaxGlobalBuffer,
       PermuteGlobalBuffer,
+      InterpGlobalBuffer,
       NonZeroGlobalBuffer
   >(patterns->getContext());
   // clang-format on

@@ -11,22 +11,56 @@
 
 namespace tpu_mlir {
 namespace bm1684x {
+static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op, Type type) {
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  assert(nInputs == 2);
+  for (auto i = 0; i < nInputs; ++i) {
+    auto opd = op->getOperand(i);
+    if (isa<top::WeightOp>(opd.getDefiningOp())) {
+      opd.dropAllUses();
+      opd.getDefiningOp()->erase();
+      auto v = module::getNoneOp(op);
+      operands.push_back(v);
+    } else {
+      operands.push_back(opd);
+    }
+  }
+
+  if(auto a = tpu::symbolizeResizeMode(op->getAttr("mode").cast<StringAttr>()))
+  {
+    op->setAttr("mode",
+                tpu::ResizeModeAttr::get(op->getContext(), a.value()));
+  }
+
+  if (auto a = tpu::symbolizeResizeCoordMode(op->getAttr("coord_mode").cast<StringAttr>())){
+    op->setAttr("coord_mode",
+                tpu::ResizeCoordModeAttr::get(op->getContext(), a.value()));
+  }
+
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+
+  if (type.isF32()) {
+    rewriter.replaceOpWithNewOp<tpu::InterpOp>(op, op->getResultTypes(), operands,
+                                             attrs);
+    return;
+  }
+  std::vector<Type> new_types;
+  for (auto out : op->getResults()) {
+      new_types.push_back(out.getType());
+  }
+  rewriter.replaceOpWithNewOp<tpu::InterpOp>(op, new_types, operands, attrs);
+  return;
+}
 
 void InterpLowering::LoweringF32(PatternRewriter &rewriter,
                                    top::InterpOp op) const {
-  auto op_ = op.getOperation();
-  if(auto a = tpu::symbolizeResizeMode(op_->getAttr("mode").cast<StringAttr>()))
-  {
-    op_->setAttr("mode",
-                tpu::ResizeModeAttr::get(op_->getContext(), a.value()));
-  }
-
-  if (auto a = tpu::symbolizeResizeCoordMode(op_->getAttr("coord_mode").cast<StringAttr>())){
-    op_->setAttr("coord_mode",
-                tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
-  }
-
-  lowering_common_f32<tpu::InterpOp>(rewriter, op, 1);
+  LoweringInterp(rewriter, op, rewriter.getF32Type());
 }
 void InterpLowering::LoweringINT4(PatternRewriter &rewriter, top::InterpOp op,
                                    bool asymmetric) const {
@@ -34,66 +68,22 @@ void InterpLowering::LoweringINT4(PatternRewriter &rewriter, top::InterpOp op,
 }
 void InterpLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::InterpOp op, bool asymmetric) const {
-  auto op_ = op.getOperation();
-  if(auto a = tpu::symbolizeResizeMode(op_->getAttr("mode").cast<StringAttr>()))
-  {
-    op_->setAttr("mode",
-                tpu::ResizeModeAttr::get(op_->getContext(), a.value()));
-  }
-
-  if (auto a = tpu::symbolizeResizeCoordMode(op_->getAttr("coord_mode").cast<StringAttr>())){
-    op_->setAttr("coord_mode",
-                tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
-  }
-  lowering_common_f16<tpu::InterpOp>(rewriter, op, 1);
+   LoweringInterp(rewriter, op, rewriter.getI8Type());
 }
 
 void InterpLowering::LoweringBF16(PatternRewriter &rewriter,
                                     top::InterpOp op) const {
-  auto op_ = op.getOperation();
-  if(auto a = tpu::symbolizeResizeMode(op_->getAttr("mode").cast<StringAttr>()))
-  {
-    op_->setAttr("mode",
-                tpu::ResizeModeAttr::get(op_->getContext(), a.value()));
-  }
-
-  if (auto a = tpu::symbolizeResizeCoordMode(op_->getAttr("coord_mode").cast<StringAttr>())){
-    op_->setAttr("coord_mode",
-                tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
-  }
-  lowering_common_bf16<tpu::InterpOp>(rewriter, op, 1);
+  LoweringInterp(rewriter, op, rewriter.getBF16Type());
 }
 
 void InterpLowering::LoweringF16(PatternRewriter &rewriter,
                                    top::InterpOp op) const {
-  auto op_ = op.getOperation();
-  if(auto a = tpu::symbolizeResizeMode(op_->getAttr("mode").cast<StringAttr>()))
-  {
-    op_->setAttr("mode",
-                tpu::ResizeModeAttr::get(op_->getContext(), a.value()));
-  }
-
-  if (auto a = tpu::symbolizeResizeCoordMode(op_->getAttr("coord_mode").cast<StringAttr>())){
-    op_->setAttr("coord_mode",
-                tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
-  }
-  lowering_common_f16<tpu::InterpOp>(rewriter, op, 1);
+  LoweringInterp(rewriter, op, rewriter.getF16Type());
 }
 
 void InterpLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::InterpOp op) const {
-  auto op_ = op.getOperation();
-  if(auto a = tpu::symbolizeResizeMode(op_->getAttr("mode").cast<StringAttr>()))
-  {
-    op_->setAttr("mode",
-                tpu::ResizeModeAttr::get(op_->getContext(), a.value()));
-  }
-
-  if (auto a = tpu::symbolizeResizeCoordMode(op_->getAttr("coord_mode").cast<StringAttr>())){
-    op_->setAttr("coord_mode",
-                tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
-  }
-  lowering_common<tpu::InterpOp>(rewriter, op, op.getOutput().getType(), 1);
+  LoweringInterp(rewriter, op, op.getOutput().getType());
 }
 
 } // namespace bm1684x
