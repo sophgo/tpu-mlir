@@ -39,7 +39,7 @@ class ONNX_IR_TESTER(object):
             # ONNX Test Case, Alphabetically
             #########################################
             # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
-            "Abs":          (self.test_Abs,           N, Y, Y, Y),
+            "Abs":          (self.test_Abs,           Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y),
             "AddBcast":     (self.test_AddBcast,      Y, Y, Y, N),
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N),
