@@ -114,7 +114,7 @@ class pord_op(bdc_base):
 class mm_op(bdc_base):
     description = "matrix multiply"
     opcode = 2
-    eu_type = {1: "mm"}
+    eu_type = {0: "mm.mul", 1: "mm.mac"}
 
 
 @bdc_registry

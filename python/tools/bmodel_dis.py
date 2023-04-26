@@ -11,6 +11,18 @@ from utils.debugger.context import Context
 import utils.debugger.disassembler as dis
 
 
+def decode_tiu_file(tiu_file, device):
+    tiu = dis.read_file_to_bits(tiu_file)
+    context = Context(device.upper())
+    return context.decoder.decode_bdc_bits(tiu)
+
+
+def decode_dma_file(dma_file, device):
+    dma = dis.read_file_to_bits(dma_file)
+    context = Context(device.upper())
+    return context.decoder.decode_dma_bits(dma)
+
+
 def BModel2MLIR(bmodel_file):
     bmodel = dis.BModelReader(bmodel_file)
     chip = bmodel.nets["Chip"][0]

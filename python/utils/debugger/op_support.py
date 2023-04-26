@@ -358,7 +358,8 @@ class MemRef:
     def type_str(self):
         s = [str(x) for x in self.shape]
         if self.stride is not None and any((x != 0 for x in self.stride)):
-            return f"memref<{'x'.join(s)}x{self.dtype.name}, strides: [{str(self.stride)[1:-1]}]>"
+            stride = tuple(self.stride)
+            return f"memref<{'x'.join(s)}x{self.dtype.name}, strides: [{str(stride)[1:-1]}]>"
         return f"memref<{'x'.join(s)}x{self.dtype.name}>"
 
     def __repr__(self):
