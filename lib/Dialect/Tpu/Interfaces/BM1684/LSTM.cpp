@@ -151,7 +151,7 @@ LogicalResult WeightReorder<tpu::LSTMOp, Float32Type>::matchAndRewrite(
 
 
 void tpu::LSTMOp::codegen_global_bm1684() {
-  auto attr = parseParam(); 
+  auto attr = parseParam();
   BM1684::instance().dl_nodechip_pytorch_lstm(
     module::getAddress(getInput()) ,//uint64_t xGlobalAddr,
     module::getAddress(getInitialH()), //uint64_t h0GlobalAddr,
@@ -163,6 +163,9 @@ void tpu::LSTMOp::codegen_global_bm1684() {
     module::getAddress(getBias()), //uint64_t bGlobalAddr, getBias
     module::getAddress(getBuffer()),//z
     attr.have_bias, //bool bias,
+    attr.output_y,
+    attr.output_yh,
+    attr.output_yc,
     attr.seq_len, //int sequence,
     attr.batch_size, //int batch,
     attr.input_size  ,//module::getShape(getInput())[2],//int xSize,
