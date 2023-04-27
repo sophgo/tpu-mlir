@@ -192,8 +192,10 @@ typedef void (*nodechip_swap_dim)(uint64_t input_global_addr, uint64_t output_gl
 typedef void (*nodechip_swap_dim_fix8b)(uint64_t input_global_addr, uint64_t output_global_addr, const int* input_shape, int shape_dim, int axis_num, int* axis_list, int* offset_list, CMD_ID_NODE* pid_node);
 typedef void (*nodechip_group_norm)(uint64_t input_global_addr, uint64_t weight_global_addr, uint64_t bias_global_addr, uint64_t output_global_addr, int input_n, int input_c, int input_h, int input_w, int group_num, float eps, int affine, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_group_norm_local)(uint64_t input_addr, uint64_t weight_addr, uint64_t bias_addr, uint64_t buffer_addr, uint64_t output_addr, int input_n, int input_c, int input_h, int input_w, int depth, int group_num, float eps, int affine, void *pid_node);
-
-
+typedef void (*nodechip_tile_full)(uint64_t input_global_addr,uint64_t buffer_global_addr,uint64_t output_global_addr,const uint32_t *input_shape,const int *tile_coeff,int input_dim,int input_format,int output_format,int type,void *pid_node);
+typedef void (*nodechip_tile_full_fix8b)(uint64_t input_global_addr,uint64_t output_global_addr,uint64_t buffer_global_addr,uint64_t *buffer_size,const uint32_t *input_shape,const int *tile_coeff,int input_dim,int in_store_mode,int out_store_mode,int type,void *pid_node);
+typedef void (*nodechip_tile_local)(int input_local_offset,int output_local_offset,const int *input_shape,const int *tile_coef,int input_dim,int input_format,int output_format,int type,void *pid_node);
+typedef void (*nodechip_tile_fix8b_local)(int input_local_offset,int output_local_offset,int buffer_offset,const int *input_shape,const int *tile_coef,int input_dim,int input_format,int output_format,int type,void *pid_node,void* gdma_node);
 // clang-format on
 namespace tpu_mlir {
 namespace backend {
@@ -393,6 +395,11 @@ public:
   nodechip_group_norm dl_nodechip_group_norm;
   nodechip_group_norm_local dl_nodechip_group_norm_local;
   nodechip_depth2space_mlir dl_nodechip_depth2space_mlir;
+  nodechip_tile_full dl_nodechip_tile_full;
+  nodechip_tile_full_fix8b dl_nodechip_tile_full_fix8b;
+  nodechip_tile_local dl_nodechip_tile_local;
+  nodechip_tile_fix8b_local dl_nodechip_tile_fix8b_local;
+
   // clang-format on
 public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;

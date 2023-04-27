@@ -17,12 +17,12 @@ namespace cv18xx {
 void TileLowering::LoweringINT8(PatternRewriter &rewriter, top::TileOp TileOp,
                                 bool asymmetric) const {
   lowering_common_int8<tpu::TileOp>(rewriter, TileOp.getOperation(),
-                                    asymmetric);
+                                    asymmetric, 2);
 }
 
 void TileLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::TileOp TileOp) const {
-  lowering_common_bf16<tpu::TileOp>(rewriter, TileOp.getOperation());
+  lowering_common_bf16<tpu::TileOp>(rewriter, TileOp.getOperation(), 2);
 }
 
 } // namespace cv18xx
