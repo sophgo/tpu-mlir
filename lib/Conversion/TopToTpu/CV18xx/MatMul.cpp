@@ -158,13 +158,11 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::MatMulOp op) const {
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  for (auto opd : op.getOperands()) {
-    if (auto weight_op = dyn_cast<top::WeightOp>(opd.getDefiningOp())) {
-      operands.emplace_back(weight_op.clone_bf16(op));
-    } else {
-      operands.emplace_back(opd);
-    }
-  }
+  auto input_weight_op = dyn_cast<top::WeightOp>(op.getInput().getDefiningOp());
+  auto right_weight_op = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
+  operands.emplace_back(input_weight_op ? input_weight_op.clone_bf16(op) : op.getInput());
+  operands.emplace_back(right_weight_op ? right_weight_op.clone_bf16(op) : op.getRight());
+  operands.emplace_back(op.getBias());
   auto newType = getQuantBF16Type(op.getOutput());
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
