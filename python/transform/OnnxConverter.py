@@ -1337,6 +1337,9 @@ class OnnxConverter(BaseConverter):
             starts = onnx_node.attrs.get('starts')
             ends = onnx_node.attrs.get('ends')
             axes = onnx_node.attrs.get('axes')
+            if axes == None:
+              axes_len = num_dims
+              axes = [i for i in range(axes_len)]
             steps = [1] * len(axes)
         assert (len(starts) == len(ends))
         assert (len(axes) == len(ends))
