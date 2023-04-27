@@ -33,6 +33,10 @@ static inline double gelu(double x) {
   return 0.5 * x * (1.0 + std::erf(x / std::sqrt(2.0)));
 }
 
+static inline double square(double x) {
+  return x * x;
+}
+
 static inline double hswish(double x) {
   if (t.isBF16()) {
     return BF16(x * std::max(0.0f, std::min(1.0f, BF16(BF16(x + 3.0) / 6.0))));
@@ -75,6 +79,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
     break;
   case ActiveMode::SQRT:
     active_func(p, num_element, [](double val) { return std::sqrt(val); });
+    break;
+  case ActiveMode::SQUARE:
+    active_func(p, num_element, [](double val) { return square(val); });
     break;
   case ActiveMode::SILU:
     active_func(p, num_element,
