@@ -7,13 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #include <valarray>
-
 
 using namespace tpu_mlir::backend;
 
@@ -101,8 +101,8 @@ slice_attr_t tpu::SliceOp::parseParam() {
   attr.fusible = false;
   if (attr.no_step && real_axes.size() == 1) {
     int axis = real_axes[0];
-    int outer_dim = std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis, 1,
-                                    std::multiplies<int64_t>());
+    int outer_dim = std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis,
+                                    1, std::multiplies<int64_t>());
     if (outer_dim == 1) {
       attr.fusible = true;
     }
@@ -202,17 +202,58 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
       return failure();
     }
     return (p.offset_4[1] % CV18xx::NPU_NUM == 0) ? success() : failure();
-  } else {
+  } else if (module::isBM1684XFamily()) {
     const auto offset = module::getI64Array(getOffset());
     const auto steps = module::getI64Array(getSteps());
     // TODO: force layer group to allow that offset->at(0) != 0
     if (num_dims > 2) {
       // TODO: force layer group to allow that offset->at(2) != 0
-      if (steps->at(1) != 1) return failure();
+      if (steps->at(1) != 1)
+        return failure();
     }
     if (num_dims > 4) {
       return failure();
     }
-    return success();
+  } else if (module::isBM1684Family()) {
+    auto p = parseParam();
+    auto input_dim = module::getShape(getInput()).size();
+    if (input_dim != 4)
+      return failure();
+    bool neg_stride = false;
+    std::for_each(p.step_4.begin(), p.step_4.begin() + input_dim, [&](auto s) {
+      if (s < 0)
+        neg_stride = true;
+    });
+    if (neg_stride)
+      return failure();
+
+    auto input_shape = module::getShape(getInput());
+    int c_size = align_up(input_shape[2] * input_shape[3], BM1684::eu_num(4));
+    int c_stride = input_shape[1] == 1 ? 1 : c_size * p.step_4[1];
+    int n_stride = input_shape[0] == 1
+                       ? 1
+                       : ceiling_func(input_shape[1], BM1684::NPU_NUM) *
+                             c_size * p.step_4[0];
+    if (c_stride >= (1 << 19) || n_stride >= (1 << 19))
+      return failure();
+
+    if (p.step_4[1] != 1)
+      return failure();
+    if (input_dim > 1 && p.offset_4[1] % BM1684::NPU_NUM != 0)
+      return failure();
+    if (module::isUniformQuantized(getInput())) {
+      int begin_mask = 0, end_mask = 0;
+      auto output_shape = module::getShape(getOutput());
+      auto end_index_n = p.offset_4[0] + output_shape[0] * p.step_4[0];
+      int output_n = ceil((((end_mask & 0x1) ? input_shape[0] : end_index_n) -
+                           ((begin_mask & 0x1) ? 0 : p.offset_4[0])) *
+                          1.0 / p.step_4[0]);
+      if (BM1684::getStoreMode(getInput()) != STORE_MODE_4N ||
+          BM1684::getStoreMode(getOutput()) != STORE_MODE_4N ||
+          output_n != input_shape[0]) {
+        return failure();
+      }
+    }
   }
+  return success();
 }
