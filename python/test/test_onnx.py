@@ -203,7 +203,7 @@ class ONNX_IR_TESTER(object):
             "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y),
             "ConcatToSpace":    (self.test_ConcatToSpace,   N, Y, Y, N),
             "Conv3dTo2d":       (self.test_Conv3dTo2d,      N, Y, Y, Y),
-            "Depth2SpaceWithPermute": (self.test_Depth2SpaceWithPermute, N, Y, Y, N),
+            "Depth2SpaceWithPermute": (self.test_Depth2SpaceWithPermute, Y, Y, Y, N),
             "Div2Mul":          (self.test_Div2Mul,         Y, Y, Y, Y),
             "ConvSlice":        (self.test_ConvSlice,       Y, Y, Y, N),
             "GaToSlice":        (self.test_GaToSlice,       N, Y, Y, Y),
