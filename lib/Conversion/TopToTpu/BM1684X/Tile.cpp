@@ -14,12 +14,12 @@ namespace bm1684x {
 
 void TileLowering::LoweringF32(PatternRewriter &rewriter,
                                top::TileOp op) const {
-  lowering_common_f32<tpu::TileOp>(rewriter, op);
+  lowering_common_f32<tpu::TileOp>(rewriter, op, 2);
 }
 
 void TileLowering::LoweringINT8(PatternRewriter &rewriter, top::TileOp op,
                                 bool asymmetric) const {
-  lowering_common_int8<tpu::TileOp>(rewriter, op, asymmetric);
+  lowering_common_int8<tpu::TileOp>(rewriter, op, asymmetric, 2);
 }
 void TileLowering::LoweringINT4(PatternRewriter &rewriter, top::TileOp op,
                                    bool asymmetric) const {
@@ -27,17 +27,17 @@ void TileLowering::LoweringINT4(PatternRewriter &rewriter, top::TileOp op,
 }
 void TileLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::TileOp op) const {
-  lowering_common_bf16<tpu::TileOp>(rewriter, op);
+  lowering_common_bf16<tpu::TileOp>(rewriter, op, 2);
 }
 
 void TileLowering::LoweringF16(PatternRewriter &rewriter,
                                top::TileOp op) const {
-  lowering_common_f16<tpu::TileOp>(rewriter, op);
+  lowering_common_f16<tpu::TileOp>(rewriter, op, 2);
 }
 
 void TileLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::TileOp op) const {
-  lowering_common<tpu::TileOp>(rewriter, op, op.getOutput().getType());
+  lowering_common<tpu::TileOp>(rewriter, op, op.getOutput().getType(), 2);
 }
 
 } // namespace bm1684x
