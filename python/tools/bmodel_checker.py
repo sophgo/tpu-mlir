@@ -472,7 +472,7 @@ def check_data(tdb, tensors, ref_data, context):
     result = []
     for tensor_des in tensors:
         t = TensorBuilder(tensor_des.tensor.value, context)
-        if t.name in ref_data:
+        if t.name in ref_data and t.name not in excepts:
             actual = t.to_f32data(t.memref.data)
             desired = t.get_ref_data(ref_data[t.name])
             try:
@@ -498,12 +498,13 @@ class Checker:
     SI = namedtuple("SubNetInstruction", ["subnet_id", "instruction_id"])
     LS = namedtuple("LineState", ["line", "operands", "results"])
 
-    def __init__(self, folder, ref_data_npz, fail_fast=False):
+    def __init__(self, folder, ref_data_npz, fail_fast=False, excepts=[]):
         self.tensor_loc = TensorLoc(f"{folder}/{self._tensor_loc_file}")
         self.bmodel_file = f"{folder}/{self._bmodel_file}"
         self.input_data_file = f"{folder}/{self._input_data_file}"
         self.ref_data = np.load(ref_data_npz)
         self.state = State.Unknown
+        self.excepts = excepts
 
         # run checker
         self.check_data(fail_fast)
@@ -841,6 +842,9 @@ if __name__ == "__main__":
         "--fail_fast", action="store_true", help="Stop if there is a check failure."
     )
     parser.add_argument(
+        "--excepts", type=str, help="List of tensors except from comparing"
+    )
+    parser.add_argument(
         "--verbose",
         type=str,
         nargs="?",
@@ -859,8 +863,11 @@ if __name__ == "__main__":
     if args.verbose is not None:
         ASM_CONTEXT_LENGTH += args.verbose.count("v")
 
+    if args.excepts:
+        excepts = [str(s) for s in args.excepts.split(',')]
+
     Tdb.ddr_size = args.mem_size
-    checker = Checker(args.context_dir, args.reference_data, args.fail_fast)
+    checker = Checker(args.context_dir, args.reference_data, args.fail_fast, excepts)
 
     if not args.no_interactive or args.verbose is not None:
         console.print(checker.get_summary("" if args.verbose is None else args.verbose))
