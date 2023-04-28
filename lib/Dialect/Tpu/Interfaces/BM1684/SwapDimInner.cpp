@@ -34,7 +34,8 @@ void tpu::SwapDimInnerOp::codegen_global_bm1684() {
   }
 
   if (module::isUniformQuantized(getInput())) {
-    BM1684::instance().dl_nodechip_swap_dim_fix8b(
+    in_shape[0] = (in_shape[0] + 3) >> 2;
+    BM1684::instance().dl_nodechip_swap_dim(
       in_addr, out_addr, in_shape, in_dims,
       axis_num, axis_list, offset_list,
       (CMD_ID_NODE *)BM1684::instance().cmdid_node);
