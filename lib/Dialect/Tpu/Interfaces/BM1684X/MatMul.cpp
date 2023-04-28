@@ -259,7 +259,7 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
     bool buffer_optimize = mm2_cycle > (int64_t)200;
     // arrange left
     int64_t shape[4] = {1, c0, 1, w0};
-    if (w0 % 64 != 0 ||
+    if ((w0 * in_type_len) % Arch::EU_BYTES != 0 ||
         (c0 > BM168x::NPU_NUM && (p.left_transpose || !buffer_optimize))) {
       buffer_size += in_type_len * ceiling_func(shape[1], BM168x::NPU_NUM) *
                      align_up(shape[3], BM168x::eu_num(in_type_len));
@@ -267,7 +267,7 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
     // arrange right
     shape[1] = c1;
     shape[3] = w1;
-    if (w1 % 64 != 0 ||
+    if ((w1 * in_type_len ) % Arch::EU_BYTES != 0 ||
         (c1 > BM168x::NPU_NUM && (!p.left_transpose || !buffer_optimize))) {
       buffer_size += in_type_len * ceiling_func(shape[1], BM168x::NPU_NUM) *
                      align_up(shape[3], BM168x::eu_num(in_type_len));
@@ -281,7 +281,7 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
                      ceiling_func(oshape[1], BM168x::NPU_NUM) *
                      align_up(oshape[3], BM168x::eu_num(sizeof(int32_t)));
     } else if (oshape[1] > BM168x::NPU_NUM ||
-               (((oshape[3] * out_type_len) & 63) != 0)) {
+               (((oshape[3] * out_type_len) % Arch::EU_BYTES) != 0)) {
       // store output
       buffer_size += out_type_len * ceiling_func(oshape[1], BM168x::NPU_NUM) *
                      align_up(oshape[3], BM168x::eu_num(out_type_len));

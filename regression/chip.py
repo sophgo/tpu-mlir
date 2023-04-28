@@ -71,7 +71,7 @@ full_model_list = {
     "yolov5s_with_trans":         (N,      Y,       Y,      N,      Y,      Y,      Y),
     "alphapose_res50":            (N,      N,       N,      N,      Y,      Y,      Y),
     ######## Pytorch #######      ######
-    "bert_pt":                    (N,      Y,       N,      N,      N,      N,      N),
+    "bert_pt":                    (N,      Y,       Y,      N,      N,      N,      N),
     "bert-base_torch":            (N,      Y,       N,      N,      N,      N,      N),
     "resnet50_pt":                (N,      Y,       Y,      N,      N,      N,      Y),
     "sd_encoder_pt":              (N,      Y,       Y,      N,      N,      N,      N),
