@@ -2340,8 +2340,7 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in_shape, grid_shape], Model(), [
                                 self.Desc('float32', -10, 10), self.Desc('float32', -1, 1)])
 
-        # mode_list = [0, 1]
-        mode_list = [0]  # not support bicubic/nearest interp right now
+        mode_list = [0, 1]
         padding_mode_list = [0, 1]
         align_corners_list = [False, True]
 
