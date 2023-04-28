@@ -738,6 +738,34 @@ typedef struct group_norm_global_param {
     int axis;
 } group_norm_global_param_t;
 
+
+typedef enum {
+    GridSampleNearest = 0,
+    GridSampleBilinear = 1,
+} GridSampleInterpMode;
+
+typedef enum {
+    GridSampleZeros = 0,
+    GridSampleBorder = 1,
+    GridSampleReflection = 2,
+} GridSamplePaddingMode;
+
+typedef struct {
+    unsigned long long input_addr;
+    unsigned long long grid_addr;
+    unsigned long long output_addr;
+    int input_n;
+    int input_c;
+    int input_h;
+    int input_w;
+    int output_h;
+    int output_w;
+    int align_corners;
+    GridSampleInterpMode interp_mode;
+    GridSamplePaddingMode padding_mode;
+    int dtype;
+} grid_sample_global_param_t;
+
 typedef struct tranpose_spec {
   uint64_t buffer_global_addr;
   uint32_t order[MAX_SHAPE_DIMS];

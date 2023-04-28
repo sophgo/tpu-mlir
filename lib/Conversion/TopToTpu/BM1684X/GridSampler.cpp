@@ -13,7 +13,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void GridSamplerLowering::LoweringF32(PatternRewriter &rewriter, top::GridSamplerOp op) const {
+void GridSamplerLowering::LoweringF32(PatternRewriter &rewriter,
+                                      top::GridSamplerOp op) const {
   int mode = op.getMode();
   if (mode == 0) {
     std::vector<NamedAttribute> attrs;
@@ -30,7 +31,8 @@ void GridSamplerLowering::LoweringF32(PatternRewriter &rewriter, top::GridSample
     rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, op.getOutput().getType(),
                                                    op->getOperands(), attrs);
   } else {
-    llvm_unreachable("Not Implemented");
+    rewriter.replaceOpWithNewOp<tpu::GridSamplerOp>(op, op.getOutput().getType(),
+                                                  op->getOperands(), op->getAttrs());
   }
 }
 
