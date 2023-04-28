@@ -61,8 +61,8 @@ class MODEL_RUN(object):
         self.arch = chip
         if chip.startswith("cv18"):
             self.arch = "cv18xx"
-        else:
-            self.arch = chip
+        elif chip == "bm1686":
+            self.arch = "bm1684x"
         self.tolerance = {
             "f32": config.get(self.arch, "f32_tolerance", fallback="0.99,0.99"),
             "f16": config.get(self.arch, "f16_tolerance", fallback="0.95,0.85"),
