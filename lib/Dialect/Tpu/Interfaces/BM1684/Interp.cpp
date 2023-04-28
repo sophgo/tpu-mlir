@@ -49,6 +49,10 @@ void tpu::InterpOp::codegen_global_bm1684() {
             platform_sp = ONNX_NEAREST;
             half_pixel_centers = 1;
             align_corners = 0;
+        } else if (getCoordMode() == tpu::ResizeCoordMode::pytorch_half_pixel){
+            platform_sp = PYTORCH_SUPPORT;
+            half_pixel_centers = 0;
+            align_corners = 0;
         } else{
             llvm_unreachable("BM1684 DO NOT Support Such Attribute.!!!!");
         }
