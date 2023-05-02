@@ -1022,7 +1022,8 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
       getScaleAndZeroPoint(min, max, scale, zeropoint, bitwidth);
     } else {
       zeropoint = 0;
-      scale = getScale(max, sign, bitwidth);
+      auto th = std::max(std::abs(max), std::abs(min));
+      scale = getScale(th, sign, bitwidth);
     }
   } else if (isUniformQuantized(v)) {
     auto qtype = getUniformQuantizedType(v);
