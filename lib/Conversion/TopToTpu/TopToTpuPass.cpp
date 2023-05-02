@@ -110,15 +110,12 @@ struct ForwardMulConst : public OpRewritePattern<top::MulConstOp> {
     auto in_min = in_qtype.getMin();
     auto in_max = in_qtype.getMax();
     auto out_max = (const_v >= 0 ? in_max : in_min) * const_v;
-    double out_min;
+    auto out_min = (const_v >= 0 ? in_min : in_max) * const_v;
     if (module::isCalibratedType(out)) {
       auto out_qtype = module::getCalibratedType(out);
-      out_min = out_qtype.getMin();
-      if (out_max == out_qtype.getMax()) {
+      if (out_max == out_qtype.getMax() && out_min == out_qtype.getMin()) {
         return failure();
       }
-    } else {
-      out_min = (const_v >= 0 ? in_min : in_max) * const_v;
     }
     auto new_out_type = quant::CalibratedQuantizedType::get(
         module::getStorageType(out), out_min, out_max);
