@@ -231,7 +231,9 @@ def Tpu_RunMode: I32EnumAttr<"RunMode",
       I32EnumAttrCase<"TPU_STATIC",  0>,
       I32EnumAttrCase<"TPU_DYNAMIC", 1>,
       I32EnumAttrCase<"CPU",         2>,
-      I32EnumAttrCase<"SCF",         3>
+      I32EnumAttrCase<"SWITCH",      3>,
+      I32EnumAttrCase<"MERGE",       4>,
+      I32EnumAttrCase<"UNKNOW",       5>
     ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";

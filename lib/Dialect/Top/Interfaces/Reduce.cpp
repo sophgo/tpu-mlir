@@ -117,5 +117,9 @@ void top::ReduceOp::shape_inference() {
       out_shape.push_back(in_shape[i]);
     }
   }
+  /* keepdims = false, reduce at all axis,
+    it need to set the shape to [1] */
+  if (!out_shape.size())
+    out_shape.push_back(1);
   module::setShapeOrVerify(getOutput(), out_shape);
 }

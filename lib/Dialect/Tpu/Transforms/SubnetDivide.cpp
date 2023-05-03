@@ -195,6 +195,12 @@ public:
     if (isa<GenericCpuOp>(op)) {
       seperate = true;
       return RunMode::CPU;
+    } else if (isa<tpu::IfOp>(op)) {
+      seperate = true;
+      return RunMode::SWITCH;
+    } else if (isa<tpu::YieldOp>(op)) {
+      seperate = true;
+      return RunMode::UNKNOW;
     } else if (dynamic || force_dynamic_run(op)) {
       return RunMode::TPU_DYNAMIC;
     }
@@ -205,7 +211,8 @@ public:
     auto mainFunc = module::getMainFuncOp();
     std::shared_ptr<SubFunction> subf = nullptr;
     bool seperate;
-    mainFunc.walk([&](Operation *op) {
+    //for to traverse the nested regions, walk by preorder preferred.
+    mainFunc.walk<WalkOrder::PreOrder>([&](Operation *op) {
       if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, ReturnOp,
               func::CallOp>(op)) {
         // do nothing
@@ -215,9 +222,12 @@ public:
           if (subf != nullptr) {
             buildSubFunction(subf);
           }
-          subf = std::make_shared<SubFunction>(mode);
-          insert_subop(subf, op);
-          buildSubFunction(subf);
+
+          if (mode != RunMode::UNKNOW) {
+            subf = std::make_shared<SubFunction>(mode);
+            insert_subop(subf, op);
+            buildSubFunction(subf);
+          }
           subf = nullptr;
         } else if (subf == nullptr) {
           subf = std::make_shared<SubFunction>(mode);

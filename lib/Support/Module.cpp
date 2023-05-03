@@ -601,13 +601,15 @@ FuncOp getFuncOp(StringRef func_name) {
 }
 
 func::CallOp getCallOp(FuncOp func) {
-  auto mainFunc = getMainFuncOp();
   func::CallOp call = nullptr;
-  mainFunc.walk([&](func::CallOp op) {
-    if (!call && op.getCallee() == func.getName()) {
-      call = op;
-    }
-  });
+  for (auto each_func : m.getOps<FuncOp>()) {
+    each_func.walk<WalkOrder::PreOrder>([&](func::CallOp op) {
+      if (!call && op.getCallee() == func.getName()) {
+        call = op;
+        WalkResult::interrupt();
+      }
+    });
+  }
   return call;
 }
 
@@ -1117,7 +1119,8 @@ void saveWeight() {
     func.walk([&](Operation *op) {
       if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
         auto name = module::getName(op);
-        if (all_names.find(name) != all_names.end()) {
+        //if op have more than two regions, it can have the same op Name
+        if (all_names.find(name) != all_names.end() && !isa<tpu::YieldOp, tpu::IfOp>(op)) {
           op->dump();
           llvm_unreachable("op name conflict");
         }
