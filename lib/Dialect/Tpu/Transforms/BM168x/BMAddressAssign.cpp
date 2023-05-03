@@ -79,7 +79,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   std::vector<Operation *> all_ops;
   // 0.update liverange of ops and choose ops to allocate.
   for (auto func : module.getOps<FuncOp>()) {
-    func.walk([&](Operation *op) {
+    func.walk<WalkOrder::PreOrder>([&](Operation *op) {
       ops_loc[op] = loc;
       ++loc;
       if (isa<FuncOp, top::NoneOp, top::WeightOp>(op) ||
@@ -92,7 +92,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   // update liverange from bottom to top.
   for (auto iter = all_ops.rbegin(); iter != all_ops.rend(); ++iter) {
     auto op = *iter;
-    if (isa<ReturnOp>(op)) {
+    if (isa<ReturnOp, tpu::YieldOp>(op)) {
       updateLiveRangeofBMOps(op, 0, ops_loc, liveRange, common_ops, inplace_ops,
                              alignment);
     }
