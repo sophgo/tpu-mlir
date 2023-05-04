@@ -96,8 +96,8 @@ full_model_list = {
     "yolov5s_tf":                 (N,      Y,       N,      N,      N,      N,      N),
     "mobilebert_tf":              (N,      Y,       N,      N,      N,      N,      N),
     ######## PaddlePaddle ##      ##############
-    "pp_humanseg":                (N,      Y,       N,      N,      N,      N,      N),
-    "pp_liteseg":                 (N,      Y,       N,      N,      N,      N,      N),
+    "pp_humanseg":                (N,      Y,       Y,      N,      N,      N,      N),
+    "pp_liteseg":                 (N,      Y,       Y,      N,      N,      N,      N),
     "pp_picodet":                 (N,      Y,       Y,      N,      N,      Y,      Y),
     "pp_yoloe":                   (N,      Y,       Y,      N,      N,      Y,      Y),
     "pp_yolox":                   (N,      Y,       Y,      N,      N,      Y,      Y),
