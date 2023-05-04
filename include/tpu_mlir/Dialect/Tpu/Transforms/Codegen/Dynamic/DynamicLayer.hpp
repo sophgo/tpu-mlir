@@ -12,6 +12,7 @@
 #include <vector>
 #include "string.h"
 #include <map>
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/BM1684DynIrUtils.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynCompileCommon.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynIrInfo.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"

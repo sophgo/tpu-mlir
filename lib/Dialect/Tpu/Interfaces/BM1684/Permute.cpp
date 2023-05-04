@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -61,10 +61,20 @@ void tpu::PermuteOp::codegen_global_bm1684() {
   delete[] order;
 }
 
-uint32_t tpu::PermuteOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+uint32_t tpu::PermuteOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
+  ir_layer_info_t *layer_info = (ir_layer_info_t *)ir_layer_info;
+  dynamic_common_ir_layer_info(layer_info, getInput(), getOutput());
+  fw_transpose_layer_param_t fw_transpose_layer_param = {0};
+  fw_transpose_layer_param.buffer_addr = module::getAddress(getBuffer());
+  i32_array_t in_order = module::getI32Array(getOrder());
+  memset(fw_transpose_layer_param.order, 1,
+         sizeof(fw_transpose_layer_param.order));
+  for (int i = 0; i < in_order->size(); ++i) {
+    fw_transpose_layer_param.order[i] = in_order->at(i);
+  }
+  layer_info->fw_layer_param_u.fw_transpose_layer_param =
+      fw_transpose_layer_param;
+  return sizeof(fw_transpose_layer_param_t);
 }
-int64_t tpu::PermuteOp::get_fw_type_bm1684() {
-  return -1;
-}
+
+int64_t tpu::PermuteOp::get_fw_type_bm1684() { return FW_BMNET_TRANSPOSE; }
