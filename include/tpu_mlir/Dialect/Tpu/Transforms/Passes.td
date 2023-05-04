@@ -82,19 +82,10 @@ def StripIOQuant : Pass<"strip-io-quant", "ModuleOp"> {
   ];
 }
 
-def DoExtraOpt : Pass<"do-extra-opt", "ModuleOp"> {
+def ChipOptimize : Pass<"chip-optimize", "ModuleOp"> {
   let summary = "aplly passes in tpu by tpuc-opt";
-  let constructor = "createDoExtraOptPass()";
+  let constructor = "createChipOptimizePass()";
   let dependentDialects = ["TpuDialect"];
 }
 
-def ChipAssign : Pass<"chip", "ModuleOp"> {
-  let summary = "Assign chip type";
-  let constructor = "createChipAssignPass()";
-  let dependentDialects = ["TpuDialect"];
-  let options = [
-    Option<"type", "type", "std::string", /*default=*/"",
-           "chip type: cv183x/cv182x/bm1684/bm1684x">,
-  ];
-}
 #endif

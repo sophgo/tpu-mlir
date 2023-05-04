@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DoExtraOpt.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/ChipOptimize.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace llvm;

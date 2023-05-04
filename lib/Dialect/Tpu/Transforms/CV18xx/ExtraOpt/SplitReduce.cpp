@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/DoExtraOpt.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/ChipOptimize.h"
 #include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Format.h"

@@ -22,7 +22,7 @@ struct RemoveMulConst : public OpRewritePattern<MulConstOp> {
       : OpRewritePattern<MulConstOp>(context) {}
   LogicalResult matchAndRewrite(MulConstOp op,
                                 PatternRewriter &rewriter) const override {
-    //placeholder
+    // placeholder
     double const_val = op.getConstVal().convertToDouble();
     if (const_val != 1.0) {
       return failure();
@@ -35,8 +35,7 @@ struct RemoveMulConst : public OpRewritePattern<MulConstOp> {
 // merge into conv or matmul
 struct MergeMulConst : public OpRewritePattern<MulConstOp> {
   using OpRewritePattern::OpRewritePattern;
-  MergeMulConst(MLIRContext *context)
-      : OpRewritePattern<MulConstOp>(context) {}
+  MergeMulConst(MLIRContext *context) : OpRewritePattern<MulConstOp>(context) {}
   LogicalResult matchAndRewrite(MulConstOp op,
                                 PatternRewriter &rewriter) const override {
     double const_val = op.getConstVal().convertToDouble();
@@ -52,9 +51,11 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
       if (convOp.getDoRelu() == true && const_val < 0) {
         return failure();
       }
-      auto weightOp = dyn_cast_or_null<top::WeightOp>(convOp.getFilter().getDefiningOp());
-      auto biasOp = dyn_cast_or_null<top::WeightOp>(convOp.getBias().getDefiningOp());
-      //This judge is for fix youdao bert bf16 acc issue.
+      auto weightOp =
+          dyn_cast_or_null<top::WeightOp>(convOp.getFilter().getDefiningOp());
+      auto biasOp =
+          dyn_cast_or_null<top::WeightOp>(convOp.getBias().getDefiningOp());
+      // This judge is for fix youdao bert bf16 acc issue.
       if (weightOp && biasOp) {
         auto weight_f32 = weightOp.read<float>();
         auto bias_f32 = biasOp.read<float>();
@@ -74,7 +75,7 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
     } else if (auto fcOp = dyn_cast_or_null<top::MatMulOp>(formerOp)) {
       if ((fcOp.getDoRelu() && const_val < 0) ||
           !(isa<top::WeightOp>(fcOp.getRight().getDefiningOp()))) {
-            return failure();
+        return failure();
       }
     } else {
       return failure();
@@ -86,14 +87,16 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
         continue;
       }
       auto weight_f32 = weightOp.read<float>();
-      //std::vector<float> new_weight_f32(weight_f32->size());
+      // std::vector<float> new_weight_f32(weight_f32->size());
       for (auto &w : *weight_f32) {
         w *= const_val;
       }
       std::string weight_name = module::getName(value).str();
       auto weight_type = value.getType().cast<RankedTensorType>();
-      auto newType = RankedTensorType::get(weight_type.getShape(), rewriter.getF32Type());
-      auto new_weight = top::WeightOp::create(formerOp, weight_name + "_mergeMulConst", *weight_f32, newType);
+      auto newType =
+          RankedTensorType::get(weight_type.getShape(), rewriter.getF32Type());
+      auto new_weight = top::WeightOp::create(
+          formerOp, weight_name + "_mergeMulConst", *weight_f32, newType);
       formerOp->setOperand(i, new_weight);
     }
     formerOp->setLoc(op.getLoc());
@@ -105,7 +108,27 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
   }
 };
 
+// mul to large, to 10k
+struct MulTooLarge : public OpRewritePattern<MulConstOp> {
+  using OpRewritePattern::OpRewritePattern;
+  MulTooLarge(MLIRContext *context) : OpRewritePattern<MulConstOp>(context) {}
+  LogicalResult matchAndRewrite(MulConstOp op,
+                                PatternRewriter &rewriter) const override {
+    // placeholder
+    double const_val = op.getConstVal().convertToDouble();
+    if (const_val >= 1e10) {
+      const_val = 10000;
+    } else if (const_val <= -1e10) {
+      const_val = -10000;
+    } else {
+      return failure();
+    }
+    op.setConstVal(APFloat(const_val));
+    return success();
+  }
+};
+
 void MulConstOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                              MLIRContext *context) {
-  results.insert<RemoveMulConst, MergeMulConst>(context);
+  results.insert<RemoveMulConst, MergeMulConst, MulTooLarge>(context);
 }

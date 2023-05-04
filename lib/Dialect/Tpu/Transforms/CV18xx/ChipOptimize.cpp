@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DoExtraOpt.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/ChipOptimize.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include <cstdint>
@@ -15,28 +15,18 @@
 using namespace llvm;
 namespace tpu_mlir {
 
-namespace bm1684x {
+namespace cv18xx {
 
-void populateDoExtraOptPatterns(RewritePatternSet *patterns) {
+void populateChipOptimizePatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
-    MatMulHdimBatchPattern,
-    MatMulLeftReusePattern,
-    PermuteReorderPattern
+      FuseLeakReluPattern,
+      MoveConvStrideToEltwiseOpPattern,
+      SplitReluLimitPattern,
+      SplitReducePattern
   >(patterns->getContext());
   // clang-format on
 };
-} // namespace bm1684x
 
-namespace bm1684 {
-
-void populateDoExtraOptPatterns(RewritePatternSet *patterns) {
-  // clang-format off
-  patterns->add<
-    CastWithoutScalePattern
-  >(patterns->getContext());
-  // clang-format on
-};
-} // namespace bm1684
-
+} // namespace cv18xx
 } // namespace tpu_mlir

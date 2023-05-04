@@ -28,6 +28,16 @@ def Deinit : Pass<"deinit", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
 }
 
+def ChipAssign : Pass<"chip-assign", "ModuleOp"> {
+  let summary = "Assign chip type";
+  let constructor = "createChipAssignPass()";
+  let dependentDialects = ["TopDialect"];
+  let options = [
+    Option<"chip", "chip", "std::string", /*default=*/"",
+           "chip: cv183x/cv182x/bm1684/bm1684x/bm1686">,
+  ];
+}
+
 def ImportCalibrationTable : Pass<"import-calibration-table", "ModuleOp"> {
   let summary = "Import calibration table by tpuc-opt";
   let constructor = "createImportCalibrationTablePass()";
@@ -44,12 +54,6 @@ def QDQConvert : Pass<"convert-qdq-to-calibrated-dialect", "ModuleOp"> {
   let summary = "Convert from qdq model to regular quantized model";
   let constructor = "createQDQConvertPass()";
   let dependentDialects = ["top::TopDialect", "mlir::quant::QuantizationDialect"];
-}
-
-def BertInfTo10k : Pass<"bert-inf-to-10k", "ModuleOp"> {
-  let summary = "replace -inf multi param to -10k for easy calibration and quant";
-  let constructor = "createBertInfTo10kPass()";
-  let dependentDialects = ["TopDialect"];
 }
 
 def AfterOptimize : Pass<"after-optimize", "ModuleOp"> {

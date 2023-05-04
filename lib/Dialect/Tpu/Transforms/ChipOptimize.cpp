@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-// #include "tpu_mlir/Dialect/Tpu/Transforms/BM1684/DoExtraOpt.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DoExtraOpt.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/DoExtraOpt.h"
+// #include "tpu_mlir/Dialect/Tpu/Transforms/BM1684/ChipOptimize.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/ChipOptimize.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/ChipOptimize.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -31,28 +31,28 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
-class DoExtraOptPass : public DoExtraOptBase<DoExtraOptPass> {
+class ChipOptimizePass : public ChipOptimizeBase<ChipOptimizePass> {
 public:
-  DoExtraOptPass() {}
+  ChipOptimizePass() {}
   void runOnOperation() override {
     auto mOp = getOperation();
     RewritePatternSet patterns(mOp.getContext());
     if (module::isBM1684XFamily()) {
-      bm1684x::populateDoExtraOptPatterns(&patterns);
+      bm1684x::populateChipOptimizePatterns(&patterns);
     } else if (module::isCV18xx()) {
-      cv18xx::populateDoExtraOptPatterns(&patterns);
+      cv18xx::populateChipOptimizePatterns(&patterns);
     } else if (module::isBM1684Family()) {
-      bm1684::populateDoExtraOptPatterns(&patterns);
+      bm1684::populateChipOptimizePatterns(&patterns);
     }
     auto config = GreedyRewriteConfig();
-    config.maxIterations = 5; // apply each pattern only once.
+    config.maxIterations = 5;
     applyPatternsAndFoldGreedily(mOp, std::move(patterns), config);
     module::updateModuleTypes();
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createDoExtraOptPass() {
-  return std::make_unique<DoExtraOptPass>();
+std::unique_ptr<OperationPass<ModuleOp>> createChipOptimizePass() {
+  return std::make_unique<ChipOptimizePass>();
 }
 } // namespace tpu
 } // namespace tpu_mlir
