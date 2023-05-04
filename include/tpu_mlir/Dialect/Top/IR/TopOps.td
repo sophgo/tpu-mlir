@@ -684,7 +684,8 @@ def Top_TransformerOp: Top_Op<"Transformer"> {
     AnyTensorOrNone:$out_bias,
     AnyTensorOrNone:$musk,
     F64Attr:$scale,
-    I64Attr:$head
+    I64Attr:$head,
+    DefaultValuedAttr<I64Attr, "0">:$has_bias
   );
 
   let results = (outs AnyTensor:$output);

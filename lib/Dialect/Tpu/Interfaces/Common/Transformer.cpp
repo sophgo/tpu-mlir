@@ -20,19 +20,32 @@
 LogicalResult tpu::TransformerOp::init(InferenceParameter &p) {
   auto attention = new Attention();
   auto in_shape = module::getShape(getInput());
-  auto key_shape = module::getShape(getKeys());
+  auto key_shape = module::isNone(getKeys()) ? in_shape : module::getShape(getKeys());
   auto queries_shape = module::getShape(getQueriesWeight());
+  auto out_shape = module::getShape(getOutput());
   int batch = in_shape[0];
   int M_q = in_shape[1];
   int M_k = key_shape[1];
   int K = in_shape[2];
   int64_t d = queries_shape[queries_shape.size() - 1];
   auto scale = getScale().convertToDouble();
+  int has_bias = getHasBias();
 
-  attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.inputs[3], p.inputs[4],
-                   p.inputs[5], p.inputs[6], p.inputs[7], p.inputs[8], p.inputs[9],
-                   p.inputs[10], p.inputs[11], p.outputs[0], batch, M_q, M_k, K,
-                   d, scale, 0);
+  float *q_weight = p.inputs[3];
+  float *k_weight = q_weight + in_shape[2] * d;
+  float *v_weight = k_weight + key_shape[2] * d;
+  float *bias_offset = p.inputs[4];
+  float *q_bias = has_bias&0x01 ? bias_offset : nullptr;
+  int len = has_bias&0x01 ? 1 : 0;
+  float *k_bias = has_bias&0x02 ? bias_offset + d * len : nullptr;
+  len += has_bias&0x02 ? 1 : 0;
+  float *v_bias = has_bias&0x04 ? bias_offset + d * len : nullptr;
+  float *o_bias = has_bias&0x08 ? (p.inputs[9] + d * out_shape[2]) : nullptr;
+
+  attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], q_weight, q_bias,
+                   k_weight, k_bias, v_weight, v_bias, p.inputs[9],
+                   o_bias, p.inputs[11], p.outputs[0], batch, M_q, M_k, K,
+                   d, scale, 0, 1);
   p.handle = (void *)attention;
   return success();
 }

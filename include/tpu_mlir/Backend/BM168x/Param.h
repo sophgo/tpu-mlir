@@ -1188,6 +1188,7 @@ typedef struct attention_common_spec {
     float scale;
     int hasbias;
     int hasmusk;
+    int input_num;
 } attention_common_spec_t;
 
 typedef struct attention_global_spec {
