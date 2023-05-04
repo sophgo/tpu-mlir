@@ -50,6 +50,6 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
-void populateDoExtraOptPatterns(RewritePatternSet *patterns);
+void populateChipOptimizePatterns(RewritePatternSet *patterns);
 } // namespace cv18xx
 } // namespace tpu_mlir

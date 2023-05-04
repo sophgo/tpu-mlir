@@ -21,7 +21,7 @@ def _os_system(cmd: list):
 
 
 def mlir_opt_for_top(mlirfile, opt_mlirfile, post_handle_type=""):
-    cmd = ["tpuc-opt", mlirfile, "--shape-infer", "--canonicalize", "--bert-inf-to-10k"]
+    cmd = ["tpuc-opt", mlirfile, "--shape-infer", "--canonicalize"]
     if len(post_handle_type) > 0:
         cmd.extend([f"--post-handle=\"type={post_handle_type}\""])
     cmd.extend(["--after-optimize", "-o", opt_mlirfile])
@@ -38,7 +38,7 @@ def mlir_lowering(top_mlir: str,
                   customization_format: str = None,
                   fuse_preprocess: bool = False,
                   aligned_input: bool = False):
-    cmd = ["tpuc-opt", top_mlir, "--chip=\"type={}\"".format(chip.lower())]
+    cmd = ["tpuc-opt", top_mlir, "--chip-assign=\"chip={}\"".format(chip.lower())]
     mode = mode.upper()
     if mode != 'INT8':
         asymmetric = True
@@ -101,7 +101,7 @@ def mlir_to_model(tpu_mlir: str,
         tpu_mlir,
         "--mlir-disable-threading",
         strip_io_quant_param,
-        "--do-extra-opt",
+        "--chip-optimize",
         "--weight-reorder",
         subnet_param,
         "--op-reorder",

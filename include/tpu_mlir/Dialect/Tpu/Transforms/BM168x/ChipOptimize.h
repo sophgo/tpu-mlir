@@ -40,7 +40,7 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
-void populateDoExtraOptPatterns(RewritePatternSet *patterns);
+void populateChipOptimizePatterns(RewritePatternSet *patterns);
 } // namespace bm1684x
 
 namespace bm1684 {
@@ -51,7 +51,7 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
-void populateDoExtraOptPatterns(RewritePatternSet *patterns);
+void populateChipOptimizePatterns(RewritePatternSet *patterns);
 } // namespace bm1684
 
 } // namespace tpu_mlir

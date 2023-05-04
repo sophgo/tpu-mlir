@@ -20,6 +20,7 @@ namespace top {
 
 std::unique_ptr<OperationPass<ModuleOp>> createInitPass();
 std::unique_ptr<OperationPass<ModuleOp>> createDeinitPass();
+std::unique_ptr<OperationPass<ModuleOp>> createChipAssignPass();
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
 std::unique_ptr<OperationPass<ModuleOp>> createQDQConvertPass();
 std::unique_ptr<OperationPass<ModuleOp>> createAfterOptimizePass();
@@ -27,7 +28,6 @@ std::unique_ptr<OperationPass<ModuleOp>> createFusePreprocessPass();
 std::unique_ptr<OperationPass<ModuleOp>> createAlignInputPass();
 std::unique_ptr<OperationPass<ModuleOp>> createPostHandlePass();
 std::unique_ptr<OperationPass<ModuleOp>> createShapeInferPass();
-std::unique_ptr<OperationPass<ModuleOp>> createBertInfTo10kPass();
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h.inc"

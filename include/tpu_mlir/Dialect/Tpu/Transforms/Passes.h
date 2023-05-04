@@ -26,8 +26,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass();
 std::unique_ptr<OperationPass<ModuleOp>> createStripIOQuant();
 std::unique_ptr<OperationPass<FuncOp>> createLayerGroupPass();
 std::unique_ptr<OperationPass<ModuleOp>> createDynCodegenPass();
-std::unique_ptr<OperationPass<ModuleOp>> createDoExtraOptPass();
-std::unique_ptr<OperationPass<ModuleOp>> createChipAssignPass();
+std::unique_ptr<OperationPass<ModuleOp>> createChipOptimizePass();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

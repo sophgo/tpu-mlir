@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DoExtraOpt.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/ChipOptimize.h"
 #include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Format.h"

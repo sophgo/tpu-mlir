@@ -7,10 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
@@ -24,13 +23,13 @@ using namespace llvm;
 using namespace mlir;
 
 namespace tpu_mlir {
-namespace tpu {
+namespace top {
 
 class ChipAssignPass : public ChipAssignBase<ChipAssignPass> {
 public:
   ChipAssignPass() {}
   void runOnOperation() override {
-    auto chip_ = StringRef(type).lower();
+    auto chip_ = StringRef(chip).lower();
     auto chip = module::symbolizeChip(chip_);
     assert(chip.has_value());
     module::setChip(chip.value());
@@ -42,6 +41,7 @@ public:
     module::updateModuleTypes();
   }
 
+private:
   void input_type_process() {
     auto mainFunc = module::getMainFuncOp();
     mainFunc.walk([&](Operation *op) {
@@ -61,5 +61,5 @@ public:
 std::unique_ptr<OperationPass<ModuleOp>> createChipAssignPass() {
   return std::make_unique<ChipAssignPass>();
 }
-} // namespace tpu
+} // namespace top
 } // namespace tpu_mlir
