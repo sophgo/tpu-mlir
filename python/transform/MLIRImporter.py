@@ -201,10 +201,10 @@ class MLIRImporter(object):
     def create_if_op(self, operands, output_shape, **kargs):
         region = IntegerAttr.get(self.mlir_type['INT64'], kargs["region"]).value
         op = Operation.create("top.If",
-                              results=self.get_tensor_type(output_shape),
+                              results=[self.get_tensor_type(output_shape)],
                               operands=operands,
                               loc=Location.fused([Location.name(kargs['name'])]),
-                              attributes=kargs,
+                              attributes=dict(),
                               regions=region)
         self.insert_point.insert(op)
         return op.result
