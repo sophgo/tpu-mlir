@@ -21,7 +21,7 @@ def _os_system(cmd: list):
 
 
 def mlir_opt_for_top(mlirfile, opt_mlirfile, post_handle_type=""):
-    cmd = ["tpuc-opt", mlirfile, "--shape-infer", "--canonicalize", "--bert-inf-to-10k" ]
+    cmd = ["tpuc-opt", mlirfile, "--shape-infer", "--canonicalize", "--bert-inf-to-10k"]
     if len(post_handle_type) > 0:
         cmd.extend([f"--post-handle=\"type={post_handle_type}\""])
     cmd.extend(["--after-optimize", "-o", opt_mlirfile])
@@ -56,8 +56,7 @@ def mlir_lowering(top_mlir: str,
             mode, customization_format)
         cmd.extend([fuse_pre_param])
     if aligned_input:
-        aligned_param = "--align-input=\"customization_format={}\"".format(
-            customization_format)
+        aligned_param = "--align-input=\"customization_format={}\"".format(customization_format)
         cmd.extend([aligned_param])
     qtable = ""
     if quantize_table:
@@ -105,6 +104,7 @@ def mlir_to_model(tpu_mlir: str,
         "--do-extra-opt",
         "--weight-reorder",
         subnet_param,
+        "--op-reorder",
         lg_param,
         address_assign_param,
         "-o",
@@ -129,6 +129,7 @@ def mlir_to_model(tpu_mlir: str,
             _os_system(["mv net_0.profile", model + ".net_0.profile"])
     except RuntimeError:
         pass
+
 
 def f32_blobs_compare(a_npz: str,
                       b_npz: str,
