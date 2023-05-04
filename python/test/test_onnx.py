@@ -134,7 +134,7 @@ class ONNX_IR_TESTER(object):
             "ReduceProd":   (self.test_ReduceProd,    Y, Y, Y, N),
             "Reciprocal":   (self.test_Reciprocal,    N, Y, Y, Y),
             "Relu":         (self.test_Relu,          Y, Y, Y, Y),
-            "ReluOnly":     (self.test_ReluOnly,      Y, N, N, N),
+            "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
             "PermuteMove":  (self.test_PermuteMove,   N, Y, Y, Y),
             "ScatterND":    (self.test_ScatterND,     Y, N, N, N),
             "Shape":        (self.test_Shape,         N, Y, Y, N),
