@@ -648,7 +648,7 @@ TPU sdk准备：
 
 需要如下文件：
 
-* cvitek_mlir_ubuntu-18.04.tar.gz
+* cvitek_tpu_sdk_x86_64.tar.gz
 * cvimodel_samples_[cv182x|cv183x|cv181x|cv180x].tar.gz
 * cvitek_tpu_samples.tar.gz
 
@@ -657,8 +657,9 @@ TPU sdk准备：
 
 .. code-block:: shell
 
-   tar zxf cvitek_mlir_ubuntu-18.04.tar.gz
-   source cvitek_mlir/cvitek_envs.sh
+   tar zxf cvitek_tpu_sdk_x86_64.tar.gz
+   export TPU_SDK_PATH=$PWD/cvitek_tpu_sdk
+   cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
 
 编译samples，安装至install_samples目录：
 
@@ -666,15 +667,15 @@ TPU sdk准备：
 
    tar zxf cvitek_tpu_samples.tar.gz
    cd cvitek_tpu_samples
-   mkdir build_soc
-   cd build_soc
+   mkdir build
+   cd build
    cmake -G Ninja \
       -DCMAKE_BUILD_TYPE=RELEASE \
       -DCMAKE_C_FLAGS_RELEASE=-O3 \
       -DCMAKE_CXX_FLAGS_RELEASE=-O3 \
-      -DTPU_SDK_PATH=$MLIR_PATH/tpuc \
-      -DCNPY_PATH=$MLIR_PATH/cnpy \
-      -DOPENCV_PATH=$MLIR_PATH/opencv \
+      -DTPU_SDK_PATH=$TPU_SDK_PATH \
+      -DCNPY_PATH=$TPU_SDK_PATH/cnpy \
+      -DOPENCV_PATH=$TPU_SDK_PATH/opencv \
       -DCMAKE_INSTALL_PREFIX=../install_samples \
       ..
    cmake --build . --target install

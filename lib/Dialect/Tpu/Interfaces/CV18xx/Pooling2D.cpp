@@ -27,6 +27,10 @@ void tpu::Pool2DOp::codegen_global_cv18xx(int64_t layer_id) {
   gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(getOutput());
   if (getPoolMode() == tpu::PoolMode::Avg) {
+    if (attr.pad_h || attr.pad_h_after || attr.pad_w || attr.pad_w_after) {
+      this->getOperation()->dump();
+      assert(attr.count_include_pad && "AvgPooling2d should be count_include_pad=true.");
+    }
     if (module::isUniformQuantized(getOutput())) {
       cvi_backend_tg_fixed_avg_pooling_kernel(
           layer_id,  // layer_id,
