@@ -902,19 +902,20 @@ def Tpu_TransformerOp: Tpu_Op<"Transformer", [
 
   let arguments = (ins
     AnyTensor:$input,
-    AnyTensor:$keys,
-    AnyTensor:$values,
+    AnyTensorOrNone:$keys,
+    AnyTensorOrNone:$values,
     AnyTensor:$queries_weight,
     AnyTensorOrNone:$queries_bias,
-    AnyTensor:$keys_weight,
+    AnyTensorOrNone:$keys_weight,
     AnyTensorOrNone:$keys_bias,
-    AnyTensor:$values_weight,
+    AnyTensorOrNone:$values_weight,
     AnyTensorOrNone:$values_bias,
     AnyTensor:$out_weight,
     AnyTensorOrNone:$out_bias,
     AnyTensorOrNone:$musk,
     F64Attr:$scale,
-    I64Attr:$head
+    I64Attr:$head,
+    DefaultValuedAttr<I64Attr, "0">:$has_bias
   );
 
   let results = (outs AnyTensor:$output);

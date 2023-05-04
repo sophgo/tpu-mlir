@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/Dnnl/MatMul.h"
 #include "tpu_mlir/Support/Dnnl/Softmax.h"
 #include "tpu_mlir/Support/Dnnl/Binary.h"
+#include "tpu_mlir/Support/Float16.h"
 
 using namespace dnnl;
 using tag = memory::format_tag;
@@ -28,10 +29,17 @@ void Attention::setup(float *input, float *keys, float *values,
                       float *keys_bias, float *values_weight, float *values_bias,
                       float *out_weight, float *out_bias, float *musk, float *output,
                       int64_t batch, int64_t M_q, int64_t M_k, int64_t K,
-                      int64_t d, float scale, bool add_result) {
+                      int64_t d, float scale, bool add_result, int dtype) {
   // int64_t d = K / head;
   scale_ = scale;
   add_result_ = add_result;
+  dtype_ = dtype;
+  if (keys == nullptr) {
+    keys = input;
+  }
+  if (values == nullptr) {
+    values = keys;
+  }
   // queries
   matmulq = new MatMul();
   q_data = std::make_shared<std::vector<float>>(batch * M_q * d);
@@ -103,25 +111,43 @@ void Attention::setup(float *input, float *keys, float *values,
                                 M_q, d, K, 0, -1, 0, 0, 0, 0, 0, 0);
 }
 
+void type_cast(float* data, int64_t num, int type) {
+  if (type == 1) {
+    F16(data, data, num);
+  } else if (type == 2) {
+    BF16(data, data, num);
+  }
+  return;
+}
+
 void Attention::run() {
+  int mode = dtype_;
   ((MatMul *)matmulq)->run();
+  type_cast(p_queries, q_data->size(), mode);
   ((MatMul *)matmulk)->run();
+  type_cast(p_keys, k_data->size(), mode);
   ((MatMul *)matmulv)->run();
+  type_cast(p_values, v_data->size(), mode);
   ((MatMul *)matmul0)->run();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
     p_mat0[i] *= scale_;
   }
-  if (binary != nullptr)
+  if (binary != nullptr) {
     ((Binary *)binary)->run();
+  }
   ((Softmax *)softmax)->run();
+  type_cast(p_softmax, data_softmax->size(), mode);
   ((MatMul *)matmul1)->run();
+  type_cast(p_mat1, data_1->size(), mode);
   ((MatMul *)matmul_out)->run();
+  type_cast(p_mat1_out, data_1->size(), mode);
   if (add_result_) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem_out; i++) {
       p_output[i] += p_mat1_out[i];
     }
+    type_cast(p_output, data_1->size(), mode);
   }
 }
 
