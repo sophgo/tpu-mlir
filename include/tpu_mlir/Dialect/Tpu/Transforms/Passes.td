@@ -12,6 +12,12 @@
 
 include "mlir/Pass/PassBase.td"
 
+def OpReorder : Pass<"op-reorder", "FuncOp"> {
+  let summary = "op reorder in tpu by tpuc-opt";
+  let constructor = "createOpReorderPass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 def WeightReorder : Pass<"weight-reorder", "ModuleOp"> {
   let summary = "weight reorder in tpu by tpuc-opt";
   let constructor = "createWeightReorderPass()";
