@@ -11,6 +11,7 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::ConcatOp::init(InferenceParameter &p) { return success(); }
@@ -87,4 +88,15 @@ LogicalResult tpu::ConcatOp::LocalGenSupport() {
     return success();
   }
   return failure();
+}
+
+void tpu::ConcatOp::assign_fw_param(void *param) {
+  fw_concat_layer_param_t concat_param = {0};
+  concat_param.concat_axis = getAxis();
+  concat_param.input_num = getInputs().size();
+  concat_param.base_dims = module::getShape(getInputs()[0]).size();
+  for (int i = 0; i < concat_param.input_num; ++i) {
+    module::getGlobalShape(getInputs()[i], concat_param.base_shape);
+  }
+  memcpy(param, &concat_param, sizeof(fw_concat_layer_param_t));
 }

@@ -11,6 +11,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #include <valarray>
@@ -256,4 +257,30 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
     }
   }
   return success();
+}
+
+void tpu::SliceOp::assign_fw_param(void *param) {
+  fw_stride_slice_layer_param_t slice_param;
+  memset(&slice_param, 0, sizeof(fw_stride_slice_layer_param_t));
+  auto p = parseParam();
+  slice_param.shape_size = module::getShape(getInput()).size();
+  // only StrideSliceOp need mask
+  slice_param.begin_mask = 0;
+  slice_param.end_mask = 0;
+  slice_param.shrink_axis_mask = 0;
+  slice_param.new_axis_mask = 0;
+  slice_param.ellipsis_mask = 0;
+  for (int i = 0; i < slice_param.shape_size; ++i) {
+    slice_param.begin_index[i] = p.offset_4[i];
+    slice_param.end_index[i] = p.os_4[i] * p.step_4[i] + p.offset_4[i];
+    slice_param.stride[i] = p.step_4[i];
+  }
+  if (module::isUniformQuantized(getInput())) {
+    slice_param.buffer_global_addr = module::getAddress(getBuffer());
+    slice_param.imm_global_addr = slice_param.buffer_global_addr +
+                                  ceiling_func(p.is_4[0], (int64_t)4) * 4 *
+                                      p.is_4[1] * p.is_4[2] * p.is_4[3];
+  }
+  slice_param.is_dynamic = false;
+  memcpy(param, &slice_param, sizeof(fw_stride_slice_layer_param_t));
 }

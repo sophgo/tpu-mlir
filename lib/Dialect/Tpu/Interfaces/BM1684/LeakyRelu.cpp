@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -44,7 +45,7 @@ int64_t tpu::LeakyReluOp::getBufferSize_bm1684(
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
   auto NPU_NUM = BM1684::NPU_NUM;
-  auto EU_NUM  = BM1684::eu_num(sizeof(float));
+  auto EU_NUM = BM1684::eu_num(sizeof(float));
   float slope_val = 0;
   int channel_shared = 1;
   int64_t buffer_size = 0;
@@ -109,12 +110,36 @@ void tpu::LeakyReluOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
 }
 
 uint32_t tpu::LeakyReluOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+  llvm_unreachable("need verify");
+  GLOBAL_IR_COMMON(prelu);
 }
-int64_t tpu::LeakyReluOp::get_fw_type_bm1684() { return -1; }
+
+int64_t tpu::LeakyReluOp::get_fw_type_bm1684() { return FW_BMNET_PRELU; }
 
 int32_t tpu::LeakyReluOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+  int fw_ir_length = 0;
+  IR_PARAM_COMMON(prelu);
+  // input tensor
+  dynamic_push_back_local_tensor(layer_info->ir_tensor_info_v, getInput());
+  // weight no use
+  // output
+  dynamic_push_back_local_tensor(layer_info->ir_tensor_info_v, getOutput());
+  // buffer
+  bool need_buffer =
+      !(layer_info->fw_layer_param_u.fw_prelu_layer_param.channel_shared &&
+        layer_info->fw_layer_param_u.fw_prelu_layer_param.shared_slope == 0);
+  int imm_length = 0;
+  if (need_buffer) {
+    dynamic_push_back_local_buffer(layer_info->ir_tensor_info_v, 0,
+                                   getOutput());
+    imm_length = 1;
+  }
+  // compute fw ir info length for lrn input and output
+  if (layer_info->fw_layer_param_u.fw_prelu_layer_param.channel_shared) {
+    fw_ir_length += (sizeof(uint32_t) + (2 + imm_length) * sizeof(uint32_t));
+  } else {
+    llvm_unreachable("not support");
+  }
+  fw_ir_length += sizeof(uint32_t);
+  return fw_ir_length;
 }

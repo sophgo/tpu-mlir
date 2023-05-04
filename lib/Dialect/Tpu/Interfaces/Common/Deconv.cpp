@@ -9,11 +9,11 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 deconv_attr_t tpu::DeconvOp::parseParam() {
   deconv_attr_t p = {0};
@@ -104,11 +104,10 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
       int64_t multi;
       if (c > rshift_v->size()) {
         shift = rshift_v->at(0);
-        multi= multiplier_v->at(0);
-      }
-      else {
+        multi = multiplier_v->at(0);
+      } else {
         shift = rshift_v->at(oc);
-        multi= multiplier_v->at(oc);
+        multi = multiplier_v->at(oc);
       }
       for (int on = 0; on < n; on++) {
         for (int hw = 0; hw < h * w; hw++) {
@@ -174,7 +173,8 @@ LogicalResult tpu::DeconvOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
   auto &attr = getDeconvParam(*this);
   int kw_ext = (attr.kw - 1) * attr.dw + 1;
-  if (auto ret = DeconvSlice(out_idx, out_slice, attr.sw, kw_ext, attr.iw, attr.pad_w)) {
+  if (auto ret = DeconvSlice(out_idx, out_slice, attr.sw, kw_ext, attr.iw,
+                             attr.pad_w)) {
     in_idx = ret.value()[2];
     in_slice = ret.value()[3];
   } else {
@@ -206,4 +206,36 @@ LogicalResult tpu::DeconvOp::LocalGenSupport() {
     }
   }
   return success();
+}
+
+void tpu::DeconvOp::assign_fw_param(void *param) {
+  fw_deconv_layer_param_t fw_deconv_layer_param = {0};
+  auto p = parseParam();
+  fw_deconv_layer_param.output_dtype = BM168x::getDataType(getOutput());
+  fw_deconv_layer_param.ic_oc = ((uint32_t)p.ic << 16) | (uint32_t)p.oc;
+  fw_deconv_layer_param.groups = p.g;
+  fw_deconv_layer_param.kh_kw = ((uint32_t)p.kh << 16) | (uint32_t)p.kw;
+  fw_deconv_layer_param.dh = p.dh;
+  fw_deconv_layer_param.dw = p.dw;
+  fw_deconv_layer_param.pad_h = p.pad_h;
+  fw_deconv_layer_param.pad_h_after = p.pad_h_after;
+  fw_deconv_layer_param.pad_w = p.pad_w;
+  fw_deconv_layer_param.pad_w_after = p.pad_w_after;
+  fw_deconv_layer_param.stride_h = p.sh;
+  fw_deconv_layer_param.stride_w = p.sw;
+  fw_deconv_layer_param.using_bias = p.with_bias;
+  fw_deconv_layer_param.if_relu = p.do_relu;
+  fw_deconv_layer_param.relu_upper_limit = p.relu_limit;
+  if (module::isUniformQuantized(getInput())) {
+    fw_deconv_layer_param.rshift_num =
+        module::getI64Array(getRshift(), 1, 0)->at(0);
+    fw_deconv_layer_param.opd0_sign = module::isSign(getInput());
+    fw_deconv_layer_param.opd1_sign = module::isSign(getFilter());
+    if (p.with_bias)
+      fw_deconv_layer_param.opd2_sign = module::isSign(getBias());
+  }
+  fw_deconv_layer_param.output_padding_h = p.output_pad_h;
+  fw_deconv_layer_param.output_padding_w = p.output_pad_w;
+  fw_deconv_layer_param.using_depthwise = 1;
+  memcpy(param, &fw_deconv_layer_param, sizeof(fw_deconv_layer_param_t));
 }

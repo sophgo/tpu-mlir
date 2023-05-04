@@ -502,6 +502,9 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
 
   let results = (outs AnyRankedTensor:$output);
   let hasCanonicalizeMethod = 1;
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
@@ -1232,6 +1235,9 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu",
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_ConcatOp:Tpu_Op<"Concat", [
@@ -1255,6 +1261,9 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_ShapePackOp:Tpu_Op<"ShapePack", [
@@ -1426,6 +1435,7 @@ def Tpu_SliceOp: Tpu_Op<"Slice", [
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
     slice_attr_t parseParam();
+    void assign_fw_param(void *param);
   }];
 }
 
@@ -1581,6 +1591,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
 
   let extraClassDeclaration = [{
     deconv_attr_t parseParam();
+    void assign_fw_param(void *param);
   }];
 }
 

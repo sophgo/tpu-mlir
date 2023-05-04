@@ -8,11 +8,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 LogicalResult tpu::LeakyReluOp::init(InferenceParameter &p) {
   return success();
@@ -83,4 +83,23 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
     }
   }
   return success();
+}
+
+void tpu::LeakyReluOp::assign_fw_param(void *param) {
+  fw_prelu_layer_param_t prelu_param = {0};
+  int64_t n, c, h, w;
+  module::getNCHW(getInput(), n, c, h, w);
+  prelu_param.ic = (uint32_t)c;
+  prelu_param.channel_shared = 1;
+  prelu_param.relu_upper_limit = -1; // no use
+  if (module::isUniformQuantized(getInput())) {
+    prelu_param.rshift_bit = getRshift().value();
+    prelu_param.in_sign = module::isSign(getInput());
+    prelu_param.out_sign = module::isSign(getOutput());
+    prelu_param.shared_slope = static_cast<float>(getMultiplier().value());
+  } else {
+    prelu_param.shared_slope =
+        static_cast<float>(getAlpha().value().convertToDouble());
+  }
+  memcpy(param, &prelu_param, sizeof(fw_prelu_layer_param_t));
 }

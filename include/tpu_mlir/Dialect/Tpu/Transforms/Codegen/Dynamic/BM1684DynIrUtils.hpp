@@ -94,3 +94,15 @@
   } while (0)
 
 #endif
+
+#define IR_PARAM_COMMON(name)                                                  \
+  ir_layer_info_t *layer_info = (ir_layer_info_t *)ir_layer_info;              \
+  dynamic_common_ir_layer_info(layer_info, getInput(), getOutput());           \
+  assign_fw_param(                                                             \
+      (void *)&layer_info->fw_layer_param_u.fw_##name##_layer_param);          \
+  fw_ir_length += sizeof(fw_##name##_layer_param_t);
+
+#define GLOBAL_IR_COMMON(name)                                                 \
+  uint32_t fw_ir_length = 0;                                                   \
+  IR_PARAM_COMMON(name)                                                        \
+  return fw_ir_length;

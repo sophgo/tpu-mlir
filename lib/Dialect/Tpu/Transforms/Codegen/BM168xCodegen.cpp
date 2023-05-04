@@ -10,12 +10,12 @@
 #include "BM168xCodegen.hpp"
 #include "bmcpu_common.h"
 
+#include "ProfileCtx.h"
+#include "TensorLocation.hpp"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicNetIr.hpp"
-#include "ProfileCtx.h"
-#include "TensorLocation.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
@@ -762,33 +762,58 @@ void BMCodegen::codegen_ir(Operation *op, SubnetIr *subnet_ir_) {
 Offset<bmodel::SubNet>
 BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
                         std::unique_ptr<Context> &context) {
+  auto func = module::getFuncOp(call.getCallee());
+  std::vector<bool> input_is_cpu = {};
+  bool first = true;
+  func.walk([&](Operation *op) {
+    if (first) {
+      first = false;
+      auto prevs = op->getOperands();
+      if (!prevs.empty()) {
+        for (auto prev : prevs) {
+          if (prev.getDefiningOp() != nullptr) {
+            input_is_cpu.push_back(
+                isa<tpu::GenericCpuOp>(prev.getDefiningOp()));
+          } else {
+            input_is_cpu.push_back(false);
+          }
+        }
+      } else {
+        input_is_cpu.push_back(false);
+      }
+    }
+  });
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
-  auto input_tensor = CreateTensorVector(inputs);
-  auto output_tensor = CreateTensorVector(outputs);
-  std::function<void(Operation *, SubnetIr *)> task =
-      std::bind(&BMCodegen::codegen_ir, this, std::placeholders::_1,
-                std::placeholders::_2);
-  subnet_ir_->generate_compiler_ir(module, call, task);
-  subnet_ir_->write_binary_ir_to_buffer(context);
-  auto func = module::getFuncOp(call.getCallee());
-  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
-  LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
   std::vector<int> next_id_v = {};
-  for (auto v : call.getResults()) {
-    for (auto user : v.getUsers()) {
-      if (isa<func::ReturnOp>(user)) {
+  std::vector<bool> next_is_cpu = {};
+  for (auto v : llvm::enumerate(call.getResults())) {
+    for (auto user : v.value().getUsers()) {
+      if (isa<ReturnOp>(user)) {
+        next_is_cpu.push_back(false);
         next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
         auto func = module::getFuncOp(call.getCallee());
         auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
+        auto subnet = getRunMode(func);
+        next_is_cpu.push_back(subnet == RunMode::CPU);
+        // callOp's result maybe have more than two users
         next_id_v.insert(next_id_v.begin(), id);
       } else {
         llvm_unreachable("next op is illegal");
       }
     }
   }
+  auto input_tensor = CreateTensorVector(inputs, input_is_cpu);
+  auto output_tensor = CreateTensorVector(outputs, next_is_cpu);
+  std::function<void(Operation *, SubnetIr *)> task =
+      std::bind(&BMCodegen::codegen_ir, this, std::placeholders::_1,
+                std::placeholders::_2);
+  subnet_ir_->generate_compiler_ir(module, call, task);
+  subnet_ir_->write_binary_ir_to_buffer(context);
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
+  LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
 
   std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
   next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
