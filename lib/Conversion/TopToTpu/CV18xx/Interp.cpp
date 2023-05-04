@@ -86,7 +86,7 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
   int64_t pad_l = int64_t(scale_w / 2) - 1;
   int64_t pad_r = int64_t(scale_w) - pad_l - 2;
   std::vector<int64_t> conv_strides = {1, 1};
-  std::vector<int64_t> conv_pads = {pad_t, pad_b, pad_l, pad_r};
+  std::vector<int64_t> conv_pads = {pad_t, pad_l, pad_b, pad_r};
   std::vector<int64_t> conv_kernel_shape = {static_cast<int64_t>(2 * scale_h),
                                             static_cast<int64_t>(2 * scale_w)};
   std::vector<int64_t> conv_dilation = {1, 1};
