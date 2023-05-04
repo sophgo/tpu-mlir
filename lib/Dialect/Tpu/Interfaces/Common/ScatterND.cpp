@@ -29,7 +29,7 @@ LogicalResult tpu::ScatterNDOp::inference(InferenceParameter &p) {
   int r = data_shape.size();
   int q = indices_shape.size();
   int k = indices_shape[q - 1];
-  int updates_dims = sizeof(updates_shape) / sizeof(updates_shape[0]);
+  int updates_dims = updates_shape.size();
   assert(updates_dims == q + r - k - 1);
   int updates_elems = 1;
   int slice_elems = 1;
@@ -37,9 +37,9 @@ LogicalResult tpu::ScatterNDOp::inference(InferenceParameter &p) {
     assert(updates_shape[i] == indices_shape[i]);
     updates_elems *= indices_shape[i];
   }
-  for (int j = 0; j < r - k; ++j) {
-    assert(updates_shape[q - 1 + j] == data_shape[k - 1 + j]);
-    slice_elems *= updates_shape[q - 1 + j];
+  for (int j = k; j < r; ++j) {
+    assert(updates_shape[j] == data_shape[j]);
+    slice_elems *= updates_shape[j];
   }
   auto data_elems = module::getNumElements(getOutput());
 
@@ -70,13 +70,12 @@ LogicalResult tpu::ScatterNDOp::inference(InferenceParameter &p) {
       for (int64_t i = 0; i < k; ++i) {
         idx += indices[loc * k + i] * data_strides[i];
       }
-      memcpy(dst + idx, updates + loc, slice_elems);
+      memcpy(dst + idx, updates + loc, slice_elems * dtype_size);
     }
   }
 
   return success();
 }
-
 
 mlir::Type tpu::ScatterNDOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto op = getOperation();
