@@ -60,8 +60,34 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   auto addr = start_addr;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
-      module::setAddress(op.getOutput(), addr);
-      int64_t bytes = module::getBytes(op.getOutput());
+      const auto out_value = op.getOutput();
+      auto elm_bits = module::getStorageType(out_value).getIntOrFloatBitWidth();
+      /// consider 4N/2N storage mode
+      /// store_mode, align_num, dtype_size
+      std::map<STORE_MODE_T, std::pair<int64_t, int32_t>> stmode_map = {
+          {STORE_MODE_1N, {1l, elm_bits}},
+          {STORE_MODE_2N, {2l, sizeof(int32_t) * 8}},
+          {STORE_MODE_4N, {4l, sizeof(int32_t) * 8}},
+      };
+      auto stmode = STORE_MODE_1N;
+      if (op.getStoreMode().has_value()) {
+        stmode = llvm::StringSwitch<STORE_MODE_T>(op.getStoreModeAttr())
+                     .Case("1N", STORE_MODE_1N)
+                     .Case("2N", STORE_MODE_2N)
+                     .Case("4N", STORE_MODE_4N)
+                     .Default(STORE_MODE_1N);
+      }
+      assert((stmode == STORE_MODE_1N) ||
+             (stmode == STORE_MODE_2N && elm_bits == 16) ||
+             (stmode == STORE_MODE_4N && elm_bits == 8));
+
+      module::setAddress(out_value, addr);
+      int64_t n, c, h, w;
+      module::getNCHW(out_value, n, c, h, w);
+      int64_t bytes = ceiling_func(n, stmode_map.at(stmode).first) *
+                      stmode_map.at(stmode).second * c * h * w;
+      /// consider int4 storage
+      bytes = ceiling_func(bytes, 8l);
       addr = align_up(addr + bytes, alignment);
     });
   }

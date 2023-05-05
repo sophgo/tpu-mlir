@@ -33,6 +33,8 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   auto filterOp =
       cast<top::WeightOp>(op.getFilter().getDefiningOp()); // transpose later
   auto recurrenceOp = cast<top::WeightOp>(op.getRecurrence().getDefiningOp());
+  auto recurrenceShape = module::getShape(op.getRecurrence());
+  auto hiddenSize = recurrenceShape.back();
   auto biasOp =
       cast<top::WeightOp>(op.getBias().getDefiningOp()); // spilt later
 
@@ -57,18 +59,19 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
     }
   }
   // split bias to filterBias and recurrenceBias
-  auto bLastDim = module::getShape(op.getBias()).back();
+  auto bias_size = 4 * hiddenSize;
   auto nofdir = op.getBidirectional() ? 2 : 1;
   auto biasF32 = biasOp.read<float>();
-  std::vector<int64_t> newBiasShape = {N};
+  std::vector<int64_t> newBiasShape = {nofdir, bias_size};
   std::vector<float_t> filterBias;
   std::vector<float_t> recurrenceBias;
   for (int ndir = 0; ndir < nofdir; ndir++) {
-    filterBias.insert(filterBias.end(), biasF32->begin() + ndir * bLastDim,
-                      biasF32->begin() + ndir * bLastDim + bLastDim / 2);
+    auto offset = ndir * 2 * bias_size;
+    filterBias.insert(filterBias.end(), biasF32->begin() + offset,
+                      biasF32->begin() + offset + bias_size);
     recurrenceBias.insert(recurrenceBias.end(),
-                          biasF32->begin() + ndir * bLastDim + bLastDim / 2,
-                          biasF32->begin() + ndir * bLastDim + bLastDim);
+                          biasF32->begin() + offset + bias_size,
+                          biasF32->begin() + offset + 2 * bias_size);
   }
 
   // for caffe which these is no recurrenceBias
@@ -101,8 +104,6 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   operands.push_back(noneOp);
 
   // trans weight and bias in codegen
-  auto recurrenceShape = module::getShape(op.getRecurrence());
-  auto hiddenSize = recurrenceShape.back();
   if (recurrenceShape.size() == 2) {
     std::vector<int64_t> newRecurrenceShape = {
         nofdir, recurrenceShape[0] / nofdir, hiddenSize};
@@ -112,7 +113,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   }
   operands.push_back(recurrenceOp.clone_bf16(op));
   if (has_rBias) {
-    std::vector<int64_t> newRecurrenceBiasShape = {nofdir, 4 * hiddenSize};
+    std::vector<int64_t> newRecurrenceBiasShape = {nofdir, bias_size};
     new_type =
         RankedTensorType::get(newRecurrenceBiasShape, rewriter.getF32Type());
     newBiasOp = top::WeightOp::create(op, "r_bias", recurrenceBias, new_type);

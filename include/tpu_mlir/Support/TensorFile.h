@@ -131,7 +131,7 @@ public:
   /// if the name is already used, return failure()
   template <typename T>
   LogicalResult addTensor(llvm::StringRef name, const T *data,
-                          RankedTensorType &type, int64_t length=0) {
+                          RankedTensorType &type, int64_t length = 0) {
     assert(!readOnly);
     if(!type.getElementType().isInteger(4))
       assert(check_type<T>(type.getElementType()) == true);
@@ -144,12 +144,12 @@ public:
     }
     std::vector<int64_t> shape = type.getShape();
     std::vector<size_t> shape_npz;
-    if(type.getElementType().isInteger(4)) {
+    if (type.getElementType().isInteger(4) || length != 0) {
       shape_npz.push_back((size_t)length);
     } else {
-    for (auto it = shape.begin(); it != shape.end(); ++it) {
-      shape_npz.push_back((size_t)*it);
-    }
+      for (auto it = shape.begin(); it != shape.end(); ++it) {
+        shape_npz.push_back((size_t)*it);
+      }
     }
     cnpy::npz_add_array(map, name.str(), &data[0], shape_npz);
     cnt_add++;
@@ -226,10 +226,20 @@ public:
 
   template <typename T>
   std::unique_ptr<std::vector<T>> readTensor(llvm::StringRef name,
-                                             RankedTensorType &type) {
-    auto count = type.getNumElements();
+                                             RankedTensorType &type,
+                                             uint32_t store_mode) {
+    /// {STORE_MODE_T, align_num}
+    std::map<uint32_t, int64_t> stmode_map = {
+        {0 /*STORE_MODE_1N*/, 1l},
+        {1 /*STORE_MODE_2N*/, 2l},
+        {2 /*STORE_MODE_4N*/, 4l},
+    };
+    auto n = type.getShape()[0];
+    auto others = type.getNumElements() / n;
+    auto count = (n + stmode_map.at(store_mode) - 1) /
+                 stmode_map.at(store_mode) * stmode_map.at(store_mode) * others;
     bool isINT4 = type.getElementType().isInteger(4);
-    if(!isINT4) {
+    if (!isINT4) {
       assert(check_type<T>(type.getElementType()) == true);
     } else {
       auto dims = type.getShape().size();

@@ -315,14 +315,14 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
         eu_align ? align_up(h_slice * w_slice, Arch::eu_num(fmt_bytes))
                  : h_slice * w_slice;
     int64_t channel_num = c_slice;
-    const int64_t csecs = ceiling_func(channel_num, (int64_t)GDMA_MAX_C);
+    const int64_t csecs = ceiling_func(channel_num, (int64_t)MAX_TPU_DIM);
     if (d_slice <= n_slice) {
       for (int64_t d = 0; d < d_slice; d++) {
         int64_t channel_index = 0;
         while (channel_index < csecs) {
           int64_t cur_cslice =
-              std::min(channel_num - channel_index * (int64_t)GDMA_MAX_C,
-                       (int64_t)GDMA_MAX_C);
+              std::min(channel_num - channel_index * (int64_t)MAX_TPU_DIM,
+                       (int64_t)MAX_TPU_DIM);
           bm168x->dl_tensor_stride_move_gen_cmd(
               l_addr, 0, g_addr, // only simulate for calc cycle
               n_slice, cur_cslice, h_slice, w_slice, C * D * H * W, D * H * W,
@@ -373,13 +373,13 @@ int64_t Bm168xCycleCalculator::getStoreCycle(Value v,
   int64_t channel_num = c_slice;
 
   if (d_slice <= n_slice) {
-    const int64_t csecs = ceiling_func(channel_num, (int64_t)GDMA_MAX_C);
+    const int64_t csecs = ceiling_func(channel_num, (int64_t)MAX_TPU_DIM);
     for (int64_t d = 0; d < d_slice; d++) {
       int64_t channel_index = 0;
       while (channel_index < csecs) {
         int64_t cur_cslice =
-            std::min(channel_num - channel_index * (int64_t)GDMA_MAX_C,
-                     (int64_t)GDMA_MAX_C);
+            std::min(channel_num - channel_index * (int64_t)MAX_TPU_DIM,
+                     (int64_t)MAX_TPU_DIM);
         bm168x->dl_tensor_stride_move_gen_cmd(
             l_addr, 0, g_addr, n_slice, cur_cslice, h_slice, w_slice,
             c_num_local * c_stride, c_stride, w_slice, 1, C * D * H * W,

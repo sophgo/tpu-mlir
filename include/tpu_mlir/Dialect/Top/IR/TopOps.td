@@ -66,6 +66,7 @@ def PadModeAttr: AnyStrAttrOf<["normal","center"]>;
 def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_SIZE"]>;
 def RoiAlignModeAttr: AnyStrAttrOf<["Avg","Max"]>;
 def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
+def StoreModeAttr: AnyStrAttrOf<["1N", "2N", "4N"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -102,7 +103,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
 
   let arguments = (ins
     OptionalAttr<F64ArrayAttr>:$scale,
-    OptionalAttr<BoolAttr>:$do_compress
+    OptionalAttr<BoolAttr>:$do_compress,
+    OptionalAttr<StoreModeAttr>:$store_mode
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -116,7 +118,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   static mlir::Value create(mlir::Operation * OwnerOp,
                             llvm::StringRef suffix,
                             const std::vector<T>& data,
-                            mlir::RankedTensorType& type);
+                            mlir::RankedTensorType& type,
+                            uint32_t store_mode = 0);
   template<typename T>
   mlir::LogicalResult update(const std::vector<T>& data, size_t count);
   mlir::Value clone_bf16(mlir::Operation * OwnerOp, std::string name = "");

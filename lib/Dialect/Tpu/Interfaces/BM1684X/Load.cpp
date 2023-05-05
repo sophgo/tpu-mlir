@@ -107,22 +107,22 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                               Arch::eu_num(fmt_bytes))
                                    : real_hslice * real_wslice;
     int64_t channel_num = real_cslice;
-    const int64_t csecs = ceiling_func(channel_num, (int64_t)GDMA_MAX_C);
+    const int64_t csecs = ceiling_func(channel_num, (int64_t)MAX_TPU_DIM);
     if (real_dslice <= gi.n_slice) {
       for (int64_t d = 0; d < real_dslice; d++) {
         int64_t channel_index = 0;
         while (channel_index < csecs) {
           int64_t cur_cslice =
-              std::min(channel_num - channel_index * (int64_t)GDMA_MAX_C,
-                       (int64_t)GDMA_MAX_C);
+              std::min(channel_num - channel_index * (int64_t)MAX_TPU_DIM,
+                       (int64_t)MAX_TPU_DIM);
           int64_t real_c_num_local =
-              (channel_index * (int64_t)GDMA_MAX_C) / Arch::NPU_NUM;
+              (channel_index * (int64_t)MAX_TPU_DIM) / Arch::NPU_NUM;
           int64_t src_offset_c =
-              (channel_index * (int64_t)GDMA_MAX_C + gi.c_idx) * H * W *
+              (channel_index * (int64_t)MAX_TPU_DIM + gi.c_idx) * H * W *
               fmt_bytes;
           int64_t dst_offset_c = real_c_num_local * c_stride * fmt_bytes;
           int64_t real_npu_idx =
-              (channel_index * (int64_t)GDMA_MAX_C) % Arch::NPU_NUM;
+              (channel_index * (int64_t)MAX_TPU_DIM) % Arch::NPU_NUM;
           int64_t cur_local_offset =
               d * gi.n_slice * c_num_local * c_stride * fmt_bytes +
               dst_offset_c;

@@ -3995,9 +3995,9 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, input_data={"input": input_data})
 
     def test_PRelu(self, case_name):
-        input_shape = [3, 128, 100, 100]
+        input_shape = [2, 128, 100, 100]
         slope_shape = [1, 128, 1, 1]
-        output_shape = [3, 128, 100, 100]
+        output_shape = [2, 128, 100, 100]
         scales0 = np.random.rand(*slope_shape).astype(np.float32)
         scales1 = np.negative(np.abs(scales0))
         scales_case = [scales0, scales1]
@@ -4008,12 +4008,14 @@ class ONNX_IR_TESTER(object):
                 dims=slope_shape,
                 vals=s,
             )
-            inputs = [helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)]
+            inputs = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+            inputs1 = helper.make_tensor_value_info("input1", TensorProto.FLOAT, input_shape)
             outputs = [helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)]
-            prelu_def = helper.make_node("PRelu", ["input", "slope"], ["output"])
-            graph_def = helper.make_graph([prelu_def],
+            prelu_def = helper.make_node("PRelu", ["input", "slope"], ["output0"])
+            add_def = helper.make_node('Add', ['output0', 'input1'], ['output'])
+            graph_def = helper.make_graph([prelu_def, add_def],
                                           "{}_{}".format(case_name, i),
-                                          inputs,
+                                          [inputs, inputs1],
                                           outputs,
                                           initializer=[slope])
             self.onnx_and_test(graph_def)

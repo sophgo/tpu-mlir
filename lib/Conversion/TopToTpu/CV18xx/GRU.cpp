@@ -56,16 +56,14 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
       op, filter_name + "_FC", fc_filter_data, fc_weight_type);
 
   // create fc bias
-  // std::vector<int64_t> bias_shape = module::getShape(op.getBias());
-  auto bLastDim = module::getShape(op.getBias()).back();
-  std::vector<int64_t> bias_shape{num_dir, bLastDim};
+  std::vector<int64_t> bias_shape{num_dir, 6 * hidden_size};
   auto bias_op = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
   auto bias_data = bias_op.read<float>();
   auto bias_name = module::getName(op.getBias()).str();
 
   std::vector<std::vector<float>> bias_split_data;
   tensor_split(bias_data->data(), bias_split_data, bias_shape, 2, 1);
-  std::vector<int64_t> fc_bias_shape = {N};
+  std::vector<int64_t> fc_bias_shape = {num_dir, 3 * hidden_size};
   auto fc_bias_type =
       RankedTensorType::get(fc_bias_shape, rewriter.getF32Type());
   auto fc_bias_operand = top::WeightOp::create(
