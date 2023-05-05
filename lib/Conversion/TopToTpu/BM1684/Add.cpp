@@ -42,7 +42,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
       float fqmax = ConstSign ? 127 :255;
       auto filter_type = input.getType().cast<RankedTensorType>();
       auto new_type = RankedTensorType::get(filter_type.getShape(),rewriter.getIntegerType(8, ConstSign));
-      in_scale = fmax / fqmax;
+      in_scale = (fabs(fmin) > fabs(fmax) ? fabs(fmin) : fabs(fmax)) / fqmax;
       if (ConstSign) {
         auto constI8 = std::make_shared<std::vector<int8_t>>(constF32->size());
         std::transform(constF32->begin(), constF32->end(), constI8->begin(),
