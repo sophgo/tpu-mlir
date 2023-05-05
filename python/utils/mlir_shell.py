@@ -24,7 +24,7 @@ def mlir_opt_for_top(mlirfile, opt_mlirfile, post_handle_type=""):
     cmd = ["tpuc-opt", mlirfile, "--shape-infer", "--canonicalize"]
     if len(post_handle_type) > 0:
         cmd.extend([f"--post-handle=\"type={post_handle_type}\""])
-    cmd.extend(["--after-optimize", "-o", opt_mlirfile])
+    cmd.extend(["--extra-optimize", "-o", opt_mlirfile])
     _os_system(cmd)
 
 
@@ -51,12 +51,9 @@ def mlir_lowering(top_mlir: str,
     #do extra conversion for differnet chips
     cmd.extend(["--chip-top-optimize"])
     if fuse_preprocess:
-        fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={}\"".format(
-            mode, customization_format)
+        fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={} align={}\"".format(
+            mode, customization_format, aligned_input)
         cmd.extend([fuse_pre_param])
-    if aligned_input:
-        aligned_param = "--align-input=\"customization_format={}\"".format(customization_format)
-        cmd.extend([aligned_param])
     qtable = ""
     if quantize_table:
         assert (tpu_mlir.endswith(".mlir"))

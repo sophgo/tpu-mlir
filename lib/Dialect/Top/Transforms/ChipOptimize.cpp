@@ -17,9 +17,9 @@ using namespace mlir;
 
 namespace tpu_mlir {
 namespace top {
-void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns);
-void populateOptimizeBM1684Patterns(RewritePatternSet *patterns);
-void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns);
+extern void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns);
+extern void populateOptimizeBM1684Patterns(RewritePatternSet *patterns);
+extern void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns);
 
 class ChipOptimizePass : public ChipOptimizeBase<ChipOptimizePass> {
 public:
