@@ -62,9 +62,9 @@ def QDQConvert : Pass<"convert-qdq-to-calibrated-dialect", "ModuleOp"> {
   let dependentDialects = ["top::TopDialect", "mlir::quant::QuantizationDialect"];
 }
 
-def AfterOptimize : Pass<"after-optimize", "ModuleOp"> {
+def ExtraOptimize : Pass<"extra-optimize", "ModuleOp"> {
   let summary = "after top optimize in mlir by tpuc-opt";
-  let constructor = "createAfterOptimizePass()";
+  let constructor = "createExtraOptimizePass()";
   let dependentDialects = ["TopDialect"];
 }
 
@@ -81,19 +81,9 @@ def FusePreprocess : Pass<"fuse-preprocess", "ModuleOp"> {
     Option<"mode", "mode", "std::string", /*default=*/"",
         "default quantization mode: INT8/BF16">,
     Option<"customization_format", "customization_format", "std::string", /*default=*/"",
-           "cv18xx pixel_format">,
-  ];
-  let dependentDialects = ["TopDialect", "mlir::quant::QuantizationDialect"];
-}
-
-def AlignInput : Pass<"align-input", "ModuleOp"> {
-  let summary = "Fuse align-input in cvimodels";
-  let constructor = "createAlignInputPass()";
-  let options = [
-    Option<"chip", "chip", "std::string", /*default=*/"",
-           "chip: cv181x/cv182x/cv183x">,
-    Option<"customization_format", "customization_format", "std::string", /*default=*/"",
-           "cv18xx pixel_format">,
+           "set input pixel_format">,
+    Option<"align", "align", "bool", /*default=*/"false",
+           "whether input align, only for cv18xx">,
   ];
   let dependentDialects = ["TopDialect", "mlir::quant::QuantizationDialect"];
 }

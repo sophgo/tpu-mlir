@@ -32,9 +32,9 @@ struct RemoveUnuseOutput : public OpRewritePattern<TyOp> {
   }
 };
 
-class AfterOptimizePass : public AfterOptimizeBase<AfterOptimizePass> {
+class ExtraOptimizePass : public ExtraOptimizeBase<ExtraOptimizePass> {
 public:
-  AfterOptimizePass() {}
+  ExtraOptimizePass() {}
   void runOnOperation() override {
     auto mOp = getOperation();
     MLIRContext *ctx = &getContext();
@@ -52,8 +52,8 @@ public:
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createAfterOptimizePass() {
-  return std::make_unique<AfterOptimizePass>();
+std::unique_ptr<OperationPass<ModuleOp>> createExtraOptimizePass() {
+  return std::make_unique<ExtraOptimizePass>();
 }
 } // namespace top
 } // namespace tpu_mlir
