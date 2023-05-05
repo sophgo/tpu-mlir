@@ -7,17 +7,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef TPU_MLIR_CONVERSION_DOERTRACONVERSION_H
-#define TPU_MLIR_CONVERSION_DOERTRACONVERSION_H
-#include "tpu_mlir/Conversion/TopToTpu/TopLowering.h"
-
-// namespace mlir {
-// #define GEN_PASS_DECL
-// #include "tpu_mlir/Conversion/Passes.h.inc"
-// } // namespace mlir
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "mlir/IR/PatternMatch.h"
 
 namespace tpu_mlir {
 
-std::unique_ptr<Pass> createDoExtraConversion();
+namespace top {
+
+void populateOptimizeBM1684Patterns(RewritePatternSet *patterns) {
+  // add bm1684 optimize here
+}
+
+} // namespace top
 } // namespace tpu_mlir
-#endif // TPU_MLIR_CONVERSION_DOERTRACONVERSION_H
