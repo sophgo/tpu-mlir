@@ -18,7 +18,10 @@ LogicalResult top::IfOp::init(InferenceParameter &p) { return success(); }
 void top::IfOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::IfOp::inference(InferenceParameter &p) {
-  return success();
+  if (p.inputs[0][0] > 0)
+    return success(); //then_branch
+  else
+    return failure(); //else_branch
 }
 
 void top::IfOp::shape_inference() {

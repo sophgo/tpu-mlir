@@ -2298,8 +2298,8 @@ def Top_EluOp : Top_Op<"Elu"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_YieldOp : Top_Op<"Yield", [Pure, Terminator]> {
-  let summary = "top return operation";
+def Top_YieldOp : Top_BaseOp<"Yield", [Terminator, HasParent<"IfOp">]> {
+  let summary = "Yield operation";
   let description = [{
     The `top.Yield` operation represents a return operation within an subgraph.
     The operation takes variable number of operands and produces no results.
@@ -2308,12 +2308,6 @@ def Top_YieldOp : Top_Op<"Yield", [Pure, Terminator]> {
   }];
 
   let arguments = (ins Variadic<AnyTensor>:$operands);
-
-  let builders = [
-    OpBuilder<(ins),
-    [{ build($_builder, $_state, std::nullopt); }]>];
-
-  let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
 def Top_IfOp : Top_Op<"If"> {
