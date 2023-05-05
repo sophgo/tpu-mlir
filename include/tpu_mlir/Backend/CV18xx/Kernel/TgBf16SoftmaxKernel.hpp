@@ -86,6 +86,11 @@ protected:
   int doSplitHeightBf16softmax4D();
 
   /**
+	 * @brief Split width of softmax4D
+	 */
+  int doSplitWidthBf16softmax4D();
+
+  /**
 	 * @brief Do softmax 4D
 	 */
   void bf16_softmax_kernel_4d();

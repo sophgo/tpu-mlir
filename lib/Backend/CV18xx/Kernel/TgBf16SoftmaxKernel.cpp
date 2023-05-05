@@ -910,121 +910,156 @@ int TgSoftmaxKernel::doSplitHeightBf16softmax4D() {
       break;
     }
   }
-  ASSERT(step_h && "Can't fit the constraint!");
+  //ASSERT(step_h && "Can't fit the constraint!");
   return step_h;
+}
+
+int TgSoftmaxKernel::doSplitWidthBf16softmax4D() {
+  uint32_t tableSize = CV18xx::lmem_tensor_to_size(table_shape, fmt, 1) * 4;
+  int step_w = std::min(w, MAX_CHANNEL);
+  for (; step_w > 0; step_w--) {
+    auto shape0 = CV18xx::tl_shape_t4(c, 1 * step_w, 1, 1); // for input/output
+    uint32_t size0 = CV18xx::lmem_tensor_to_size(shape0, fmt, 1);
+
+    auto shape1 = CV18xx::tl_shape_t4(1, 1 * step_w, 1, c); // for transpose
+    uint32_t size1 = CV18xx::lmem_tensor_to_size(shape1, fmt, 1) * 4;
+
+    auto shape2 = CV18xx::tl_shape_t4(1, 1 * step_w, 1, 1);
+    uint32_t size2 = CV18xx::lmem_tensor_to_size(shape2, fmt, 1) * 2;
+
+    uint32_t required = size0 + size1 + size2 + tableSize;
+    if (required <= (uint32_t)CV18xx::LMEM_BYTES) {
+      break;
+    }
+  }
+  ASSERT(step_w && "Can't fit the constraint!");
+  return step_w;
 }
 
 void TgSoftmaxKernel::bf16_softmax_kernel_4d() {
   int step_h = doSplitHeightBf16softmax4D();
-  int num_step = ceiling_func(h, step_h);
+  int step_w = w;
+  if (step_h == 0) {
+    //should split width
+    step_h = 1;
+    step_w = doSplitWidthBf16softmax4D();
+  }
+  int num_step_h = ceiling_func(h, step_h);
+  int num_step_w = ceiling_func(w, step_w);
   auto gstride =
       CV18xx::tg_default_stride(CV18xx::tg_shape_t4(c, h * w, 1, 1), fmt);
 
-  for (int step = 0; step < num_step; step++) {
-    int pos_h = step * step_h;
-    int tile_h = std::min(h - pos_h, step_h) * w;
+  for (int step_i = 0; step_i < num_step_h; step_i++) {
+    int pos_h = step_i * step_h;
+    for (int step_j = 0; step_j < num_step_w; step_j++) {
+      int pos_w = step_j * step_w;
+      //if only tile height, std::min(w - pos_w, step_w) = w
+      //if need tile width, std::min(h - pos_h, step_h) = 1
+      int tile_hw = std::min(h - pos_h, step_h) * std::min(w - pos_w, step_w);
 
-    auto shape0 = CV18xx::tl_shape_t4(c, tile_h, 1, 1);
-    auto tl_origin = CV18xx::lmem_alloc_tensor(shape0, fmt, 1);
-    ASSERT(tl_origin);
+      auto shape0 = CV18xx::tl_shape_t4(c, tile_hw, 1, 1);
+      auto tl_origin = CV18xx::lmem_alloc_tensor(shape0, fmt, 1);
+      ASSERT(tl_origin);
 
-    auto shape1 = CV18xx::tl_shape_t4(1, tile_h, 1, c);
-    auto tl_trans = CV18xx::lmem_alloc_tensor(shape1, fmt, 1);
-    ASSERT(tl_trans);
-    auto tl_lut = CV18xx::lmem_alloc_tensor(shape1, fmt, 1);
-    ASSERT(tl_lut);
+      auto shape1 = CV18xx::tl_shape_t4(1, tile_hw, 1, c);
+      auto tl_trans = CV18xx::lmem_alloc_tensor(shape1, fmt, 1);
+      ASSERT(tl_trans);
+      auto tl_lut = CV18xx::lmem_alloc_tensor(shape1, fmt, 1);
+      ASSERT(tl_lut);
 
-    auto shape2 = CV18xx::tl_shape_t4(1, tile_h, 1, 1);
-    auto tl_max = CV18xx::lmem_alloc_tensor(shape2, fmt, 1);
-    ASSERT(tl_max);
-    auto tl_reciprocal = CV18xx::lmem_alloc_tensor(shape2, fmt, 1);
-    ASSERT(tl_reciprocal);
+      auto shape2 = CV18xx::tl_shape_t4(1, tile_hw, 1, 1);
+      auto tl_max = CV18xx::lmem_alloc_tensor(shape2, fmt, 1);
+      ASSERT(tl_max);
+      auto tl_reciprocal = CV18xx::lmem_alloc_tensor(shape2, fmt, 1);
+      ASSERT(tl_reciprocal);
 
-    auto shape3 = CV18xx::tl_shape_t4(2, tile_h, 1, c);
-    auto tl_working = CV18xx::lmem_alloc_tensor(shape3, fmt, 1);
-    ASSERT(tl_working);
+      auto shape3 = CV18xx::tl_shape_t4(2, tile_hw, 1, c);
+      auto tl_working = CV18xx::lmem_alloc_tensor(shape3, fmt, 1);
+      ASSERT(tl_working);
 
-    for (int n_idx = 0; n_idx < n; n_idx++) {
-      int goffset = (n_idx * c * h + pos_h) * w * gstride.w;
-      CV18xx::tdma_load_stride(tl_origin, ga_input + goffset, gstride);
+      for (int n_idx = 0; n_idx < n; n_idx++) {
+        //int goffset = (n_idx * c * h + pos_h) * w * gstride.w;
+        int goffset = (n_idx * c * h * w + pos_h * w + pos_w) * gstride.w;
+        CV18xx::tdma_load_stride(tl_origin, ga_input + goffset, gstride);
 
-      cvk_tl_t tl_dst = *tl_trans;
-      tl_dst.shape = tl_origin->shape;
-      std::swap(tl_dst.stride.n, tl_dst.stride.w);
-
-      cvk_tiu_copy_param_t p2 = {0};
-      p2.src = tl_origin;
-      p2.dst = &tl_dst;
-      p2.layer_id = layer_id;
-      CV18xx::tiu_copy(&p2);
-
-      max_per_lane_value(tl_trans, tl_max);
-
-      // Input = Input - maxOfInput
-      every_input_operate_one_specific_data(tl_trans, tl_max, Sub, true);
-
-      // lut exponential
-      // tl_lut = exp(tl_origin)
-      exponential(tl_trans, tl_lut, tl_working);
-
-      accumulate_per_lane_value(tl_lut, tl_max);
-
-      // Lut reciprocal value
-      if (do_log == false) {
-        reciprocal(tl_max, tl_reciprocal, tl_working);
-        cvk_tl_t tl_bcast = *tl_reciprocal;
-        tl_bcast.shape.w = tl_lut->shape.w;
-        tl_bcast.stride.w = 0;
-
-        cvk_tiu_mul_param_t p = {0};
-        p.res_high = nullptr;
-        p.res_low = tl_lut;
-        p.a = tl_lut;
-        p.b = &tl_bcast;
-        p.b_is_const = 0;
-        p.rshift_bits = 0;
-        p.layer_id = layer_id;
-        p.relu_enable = false;
-        CV18xx::tiu_mul(&p);
-      } else {
-        log(tl_max, tl_reciprocal, tl_working);
-        cvk_tl_t tl_bcast = *tl_reciprocal;
-        tl_bcast.shape.w = tl_lut->shape.w;
-        tl_bcast.stride.w = 0;
-
-        cvk_tiu_sub_param_t p = {0};
-        p.res_high = 0;
-        p.res_low = tl_lut;
-        p.a_high = 0;
-        p.a_low = tl_trans;
-        p.b_high = 0;
-        p.b_low = &tl_bcast;
-        p.rshift_bits = 0;
-        p.layer_id = layer_id;
-        CV18xx::tiu_sub(&p);
-      }
-
-      {
-        // (1, h*w, 1, c) -> (c, h*w, 1, 1)
-        cvk_tl_t tl_dst = *tl_origin;
-        tl_dst.shape = tl_lut->shape;
+        cvk_tl_t tl_dst = *tl_trans;
+        tl_dst.shape = tl_origin->shape;
         std::swap(tl_dst.stride.n, tl_dst.stride.w);
 
         cvk_tiu_copy_param_t p2 = {0};
-        p2.src = tl_lut;
+        p2.src = tl_origin;
         p2.dst = &tl_dst;
         p2.layer_id = layer_id;
         CV18xx::tiu_copy(&p2);
+
+        max_per_lane_value(tl_trans, tl_max);
+
+        // Input = Input - maxOfInput
+        every_input_operate_one_specific_data(tl_trans, tl_max, Sub, true);
+
+        // lut exponential
+        // tl_lut = exp(tl_origin)
+        exponential(tl_trans, tl_lut, tl_working);
+
+        accumulate_per_lane_value(tl_lut, tl_max);
+
+        // Lut reciprocal value
+        if (do_log == false) {
+          reciprocal(tl_max, tl_reciprocal, tl_working);
+          cvk_tl_t tl_bcast = *tl_reciprocal;
+          tl_bcast.shape.w = tl_lut->shape.w;
+          tl_bcast.stride.w = 0;
+
+          cvk_tiu_mul_param_t p = {0};
+          p.res_high = nullptr;
+          p.res_low = tl_lut;
+          p.a = tl_lut;
+          p.b = &tl_bcast;
+          p.b_is_const = 0;
+          p.rshift_bits = 0;
+          p.layer_id = layer_id;
+          p.relu_enable = false;
+          CV18xx::tiu_mul(&p);
+        } else {
+          log(tl_max, tl_reciprocal, tl_working);
+          cvk_tl_t tl_bcast = *tl_reciprocal;
+          tl_bcast.shape.w = tl_lut->shape.w;
+          tl_bcast.stride.w = 0;
+
+          cvk_tiu_sub_param_t p = {0};
+          p.res_high = 0;
+          p.res_low = tl_lut;
+          p.a_high = 0;
+          p.a_low = tl_trans;
+          p.b_high = 0;
+          p.b_low = &tl_bcast;
+          p.rshift_bits = 0;
+          p.layer_id = layer_id;
+          CV18xx::tiu_sub(&p);
+        }
+
+        {
+          // (1, h*w, 1, c) -> (c, h*w, 1, 1)
+          cvk_tl_t tl_dst = *tl_origin;
+          tl_dst.shape = tl_lut->shape;
+          std::swap(tl_dst.stride.n, tl_dst.stride.w);
+
+          cvk_tiu_copy_param_t p2 = {0};
+          p2.src = tl_lut;
+          p2.dst = &tl_dst;
+          p2.layer_id = layer_id;
+          CV18xx::tiu_copy(&p2);
+        }
+        // store
+        CV18xx::tdma_store_stride(tl_origin, ga_output + goffset, gstride);
       }
-      // store
-      CV18xx::tdma_store_stride(tl_origin, ga_output + goffset, gstride);
+      CV18xx::lmem_free_tensor(tl_working);
+      CV18xx::lmem_free_tensor(tl_reciprocal);
+      CV18xx::lmem_free_tensor(tl_max);
+      CV18xx::lmem_free_tensor(tl_lut);
+      CV18xx::lmem_free_tensor(tl_trans);
+      CV18xx::lmem_free_tensor(tl_origin);
     }
-    CV18xx::lmem_free_tensor(tl_working);
-    CV18xx::lmem_free_tensor(tl_reciprocal);
-    CV18xx::lmem_free_tensor(tl_max);
-    CV18xx::lmem_free_tensor(tl_lut);
-    CV18xx::lmem_free_tensor(tl_trans);
-    CV18xx::lmem_free_tensor(tl_origin);
   }
 }
 
