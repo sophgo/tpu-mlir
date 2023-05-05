@@ -661,8 +661,8 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
   }];
 }
 
-def Top_TransformerOp: Top_Op<"Transformer"> {
-  let summary = "Transformer operator";
+def Top_AttentionOp: Top_Op<"Attention"> {
+  let summary = "Attention operator";
 
   let description = [{
     Performs a two dimensional matrix multiplication. This allows both inputs to

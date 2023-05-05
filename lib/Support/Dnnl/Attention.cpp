@@ -28,7 +28,7 @@ void Attention::setup(float *input, float *keys, float *values,
                       float *queries_weight, float *queries_bias, float *keys_weight,
                       float *keys_bias, float *values_weight, float *values_bias,
                       float *out_weight, float *out_bias, float *musk, float *output,
-                      int64_t batch, int64_t M_q, int64_t M_k, int64_t K,
+                      int64_t batch, int64_t M_q, int64_t M_k, int64_t N_q, int64_t N_k,
                       int64_t d, float scale, bool add_result, int dtype) {
   // int64_t d = K / head;
   scale_ = scale;
@@ -44,20 +44,20 @@ void Attention::setup(float *input, float *keys, float *values,
   matmulq = new MatMul();
   q_data = std::make_shared<std::vector<float>>(batch * M_q * d);
   p_queries = q_data->data();
-  ((MatMul *)matmulq)->setup(input, queries_weight, queries_bias, p_queries, batch, 1,
-                             M_q, K, d, 0, -1, 0, 0, 0, 0, 0, 0);
+  ((MatMul *)matmulq)->setup(input, queries_weight, queries_bias, p_queries, 1, 1,
+                             batch * M_q, N_q, d, 0, -1, 0, 0, 0, 0, 0, 0);
   // keys
   matmulk = new MatMul();
   k_data = std::make_shared<std::vector<float>>(batch * M_k * d);
   p_keys = k_data->data();
-  ((MatMul *)matmulk)->setup(keys, keys_weight, keys_bias, p_keys, batch, 1,
-                             M_k, K, d, 0, -1, 0, 0, 0, 0, 0, 0);
+  ((MatMul *)matmulk)->setup(keys, keys_weight, keys_bias, p_keys, 1, 1,
+                             batch * M_k, N_k, d, 0, -1, 0, 0, 0, 0, 0, 0);
   // values
   matmulv = new MatMul();
   v_data = std::make_shared<std::vector<float>>(batch * M_k * d);
   p_values = v_data->data();
-  ((MatMul *)matmulv)->setup(values, values_weight, values_bias, p_values, batch, 1,
-                             M_k, K, d, 0, -1, 0, 0, 0, 0, 0, 0);
+  ((MatMul *)matmulv)->setup(values, values_weight, values_bias, p_values, 1, 1,
+                             batch * M_k, N_k, d, 0, -1, 0, 0, 0, 0, 0, 0);
   // matmul0
   num_elem = batch * M_q * M_k;
   matmul0 = new MatMul();
@@ -100,15 +100,15 @@ void Attention::setup(float *input, float *keys, float *values,
   if (add_result) {
     data_out = std::make_shared<std::vector<float>>(batch * M_q * d);
     p_mat1_out = data_out->data();
-    num_elem_out = batch * M_q * K;
+    num_elem_out = batch * M_q * N_q;
   } else {
     p_mat1_out = output;
   }
   p_output = output;
   // matmul out
   matmul_out = new MatMul();
-  ((MatMul *)matmul_out)->setup(p_mat1, out_weight, out_bias, p_mat1_out, batch, 1,
-                                M_q, d, K, 0, -1, 0, 0, 0, 0, 0, 0);
+  ((MatMul *)matmul_out)->setup(p_mat1, out_weight, out_bias, p_mat1_out, 1, 1,
+                                batch * M_q, d, N_q, 0, -1, 0, 0, 0, 0, 0, 0);
 }
 
 void type_cast(float* data, int64_t num, int type) {

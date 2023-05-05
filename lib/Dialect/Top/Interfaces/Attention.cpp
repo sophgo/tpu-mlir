@@ -12,9 +12,9 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Dnnl/Attention.h"
 
-int64_t top::TransformerOp::getFLOPs() { return 0; }
+int64_t top::AttentionOp::getFLOPs() { return 0; }
 
-LogicalResult top::TransformerOp::init(InferenceParameter &p) {
+LogicalResult top::AttentionOp::init(InferenceParameter &p) {
   auto attention = new Attention();
   auto in_shape = module::getShape(getInput());
   auto key_shape = module::getShape(getKeys());
@@ -22,19 +22,20 @@ LogicalResult top::TransformerOp::init(InferenceParameter &p) {
   int batch = in_shape[0];
   int M_q = in_shape[1];
   int M_k = key_shape[1];
-  int K = in_shape[2];
+  int N_q = in_shape[2];
+  int N_k = key_shape[2];
   int64_t d = queries_shape[queries_shape.size() - 1] / getHead();
   auto scale = getScale().convertToDouble();
 
   attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.inputs[3], p.inputs[4],
                    p.inputs[5], p.inputs[6], p.inputs[7], p.inputs[8], p.inputs[9],
-                   p.inputs[10], p.inputs[11], p.outputs[0], batch, M_q, M_k, K,
+                   p.inputs[10], p.inputs[11], p.outputs[0], batch, M_q, M_k, N_q, N_k,
                    d, scale, 0);
   p.handle = (void *)attention;
   return success();
 }
 
-void top::TransformerOp::deinit(InferenceParameter &p) {
+void top::AttentionOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
     auto attention = (Attention *)p.handle;
     attention->deinit();
@@ -44,7 +45,7 @@ void top::TransformerOp::deinit(InferenceParameter &p) {
   return;
 }
 
-LogicalResult top::TransformerOp::inference(InferenceParameter &p) {
+LogicalResult top::AttentionOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
@@ -53,4 +54,4 @@ LogicalResult top::TransformerOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::TransformerOp::shape_inference() {}
+void top::AttentionOp::shape_inference() {}

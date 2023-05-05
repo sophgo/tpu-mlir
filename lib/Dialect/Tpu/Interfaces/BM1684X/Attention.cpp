@@ -27,7 +27,7 @@ int64_t data_copy(top::WeightOp weight, bool is_f16, std::shared_ptr<std::vector
   return offset + count;
 }
 
-// void get_param(tpu::TransformerOp op, attention_common_spec_t spec) {
+// void get_param(tpu::AttentionOp op, attention_common_spec_t spec) {
 //   spec.hasbias = module::isNone(op.getQueriesBias()) ? 0 : 1;
 //   spec.hasbias &= module::isNone(op.getKeysBias()) ? 0 : 0x01<<1;
 //   spec.hasbias &= module::isNone(op.getValuesBias()) ? 0 : 0x01<<2;
@@ -40,8 +40,7 @@ int64_t data_copy(top::WeightOp weight, bool is_f16, std::shared_ptr<std::vector
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::TransformerOp::codegen_global_bm1684x() {
-  // llvm_unreachable("Not Implemented");
+void tpu::AttentionOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -63,14 +62,14 @@ void tpu::TransformerOp::codegen_global_bm1684x() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::TransformerOp::dyn_codegen_global_bm1684x(void *buffer) {
+int64_t tpu::AttentionOp::dyn_codegen_global_bm1684x(void *buffer) {
   llvm_unreachable("Not Implemented");
 }
 
 // =========================================
 // LocalGenInterface
 // =========================================
-int64_t tpu::TransformerOp::getBufferSize_bm1684x(
+int64_t tpu::AttentionOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_hslice, int64_t out_dslice, int64_t out_wslice,
     group_type_t group_type) {
@@ -90,7 +89,7 @@ int64_t tpu::TransformerOp::getBufferSize_bm1684x(
   // 32 coeff and 192 table
   softmax_buffer_size += align_up((int64_t)32, eu_num_f32) * sizeof(float);
   softmax_buffer_size += align_up((int64_t)192, eu_num_f32) * sizeof(float);
-  softmax_buffer_size += c_per_npu * align_up(M_k, eu_num_f32) * sizeof(float) * 2;
+  softmax_buffer_size += c_per_npu * align_up(M_k, eu_num_f32) * sizeof(float) * 4;
 
   int64_t d_size = 0;
   if (out_type.isBF16() || out_type.isF16()) {
@@ -98,16 +97,14 @@ int64_t tpu::TransformerOp::getBufferSize_bm1684x(
   } else {
     d_size = align_up(d, eu_num_f32) * sizeof(float);
   }
-  int64_t buffer_in_size = d_size * (c_per_npu + ceiling_func(M_k, BM168x::NPU_NUM));
-  int64_t mat1_buffer_size = d_size * (c_per_npu + ceiling_func(M_v, BM168x::NPU_NUM));
+  int64_t buffer_in_size = d_size * (ceiling_func(M_v, BM168x::NPU_NUM) + ceiling_func(M_k, BM168x::NPU_NUM));
 
-  buffer_size = std::max(std::max(softmax_buffer_size, buffer_in_size), mat1_buffer_size);
-  buffer_size += 2 * c_per_npu * align_up(M_k, eu_num_f32) * sizeof(float);
+  buffer_size = std::min(softmax_buffer_size + buffer_in_size, BM168x::LMEM_BYTES / 3);
 
   return buffer_size;
 }
 
-void tpu::TransformerOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
+void tpu::AttentionOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, int64_t d_step, int64_t w_step,
                                                group_type_t group_type,
                                                local_sec_info_t &sec_info) {
   auto op = getOperation();
@@ -130,10 +127,10 @@ void tpu::TransformerOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, i
                           &sec_info, input_spec->data(), output_spec->data());
 }
 
-int64_t tpu::TransformerOp::dyn_codegen_local_bm1684x(void *buffer) {
+int64_t tpu::AttentionOp::dyn_codegen_local_bm1684x(void *buffer) {
   llvm_unreachable("Not Implemented");
 }
 
-int64_t tpu::TransformerOp::get_fw_type_bm1684x() {
+int64_t tpu::AttentionOp::get_fw_type_bm1684x() {
   return -1;
 }
