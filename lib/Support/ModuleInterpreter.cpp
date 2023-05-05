@@ -370,15 +370,52 @@ void ModuleInterpreter::invoke(bool express_type) {
 void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
   module::init(module);
   progressbar bar(num_infer_op);
+  int flag = 0;
+  std::string if_name;
   for (auto func : module.getOps<FuncOp>()) {
-    func.walk([&](InferenceInterface infer_op) {
+    WalkResult result = func.walk<WalkOrder::PreOrder>([&](Operation *op) {
       bar.update();
-      auto name = module::getName(infer_op.getOperation()).str();
-      LLVM_DEBUG(llvm::dbgs() << "compute: '" << infer_op << "'\n");
-      if (failed(infer_op.inference(*inference_map[name]))) {
-        infer_op.dump();
-        llvm_unreachable("invoke failed!!");
+      if (isa<func::FuncOp>(*op)) {
+        return WalkResult::advance();
       }
+      std::string name;
+      if (op->getLoc().isa<NameLoc>() || op->getLoc().isa<FusedLoc>())
+        name = module::getName(op).str();
+      LLVM_DEBUG(llvm::dbgs() << "compute: '" << op << "'\n");
+      if (flag && isa<func::FuncOp>(*(op->getParentOp())))
+        flag = 0; //clear
+      if (auto ifOp = dyn_cast<top::IfOp>(op)) {
+        if_name = name;
+        if (failed(ifOp.inference(*inference_map[name]))) {
+          flag = 2; //else branch
+        } else {
+          flag = 1;//then branch
+        }
+        return WalkResult::advance();
+      } else if (isa<tpu_mlir::InferenceInterface>(op) && !flag) {
+        auto infer_op = dyn_cast<InferenceInterface>(op);
+        if (failed(infer_op.inference(*inference_map[name]))) {
+          infer_op.dump();
+          llvm_unreachable("invoke failed!!");
+        }
+      } else if (flag && op->getParentRegion()->getRegionNumber() == flag - 1) {
+        if (auto infer_op = dyn_cast<InferenceInterface>(op)) {
+          if (failed(infer_op.inference(*inference_map[name]))) {
+            infer_op.dump();
+            llvm_unreachable("invoke failed!!");
+          }
+        }
+
+        if (auto yieldOp = dyn_cast<top::YieldOp>(op)) {
+          auto num_element = module::getNumElements(op->getOperand(0));
+          name = module::getName(op->getOperand(0).getDefiningOp()).str();
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+          for (int i = 0; i < num_element; i++)
+            inference_map[if_name]->outputs[0][i] = inference_map[name]->outputs[0][i];
+        }
+      }
+
+      return WalkResult::advance();
     });
   }
   llvm::errs() << "\n";

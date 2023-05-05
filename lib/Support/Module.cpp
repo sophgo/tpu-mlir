@@ -603,12 +603,15 @@ FuncOp getFuncOp(StringRef func_name) {
 func::CallOp getCallOp(FuncOp func) {
   func::CallOp call = nullptr;
   for (auto each_func : m.getOps<FuncOp>()) {
-    each_func.walk<WalkOrder::PreOrder>([&](func::CallOp op) {
+    WalkResult result = each_func.walk<WalkOrder::PreOrder>([&](func::CallOp op) {
       if (!call && op.getCallee() == func.getName()) {
         call = op;
-        WalkResult::interrupt();
+        return WalkResult::interrupt();
       }
+      return WalkResult::advance();
     });
+    if (result.wasInterrupted())
+      break;
   }
   return call;
 }
