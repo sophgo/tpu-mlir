@@ -887,12 +887,12 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
   }];
 }
 
-def Tpu_TransformerOp: Tpu_Op<"Transformer", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+def Tpu_AttentionOp: Tpu_Op<"Attention", [
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>,
     SupportFuseRelu]> {
-  let summary = "Transformer operator";
+  let summary = "Attention operator";
 
   let description = [{
     Performs a two dimensional matrix multiplication. This allows both inputs to

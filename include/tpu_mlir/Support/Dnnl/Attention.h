@@ -19,7 +19,7 @@ public:
              float *queries_weight, float *queries_bias, float *keys_weight,
              float *keys_bias, float *values_weight, float *values_bias,
              float *out_weight, float *out_bias, float *musk, float *output,
-             int64_t batch, int64_t M_q, int64_t M_k, int64_t K,
+             int64_t batch, int64_t M_q, int64_t M_k, int64_t N_q, int64_t N_k,
              int64_t d, float scale, bool add_result, int dtype=0);
   void run();
   void deinit();

@@ -18,11 +18,14 @@ using namespace tpu_mlir::bm1684x;
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::TransformerOp::codegen_global_bm1684() {
-  llvm_unreachable("Not Implemented");
+void tpu::AttentionOp::codegen_global_cv18xx(int64_t layer_id) {
+  llvm_unreachable("Not supported now");
 }
 
-int64_t tpu::TransformerOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
+// =========================================
+// LocalGenInterface
+// =========================================
+int64_t tpu::AttentionOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
                                                  int64_t out_lmem_bytes,
                                                  int64_t in_nslice, int64_t in_hslice,
                                                  int64_t out_nslice,
@@ -31,21 +34,7 @@ int64_t tpu::TransformerOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::TransformerOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
-                                              local_sec_info_t &sec_info) {
+void tpu::AttentionOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                              int64_t layer_id) {
   llvm_unreachable("Not supported now");
-}
-
-uint32_t tpu::TransformerOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
-}
-
-int32_t tpu::TransformerOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
-}
-
-int64_t tpu::TransformerOp::get_fw_type_bm1684() {
-  return -1;
 }

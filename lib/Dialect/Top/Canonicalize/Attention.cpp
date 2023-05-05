@@ -71,10 +71,10 @@ Value create_matmul(PatternRewriter &rewriter, Value input, Value weight, Value 
   return rewriter.create<MatMulOp>(name_loc, type_new, operands, attrs);
 }
 
-struct TopFuseTransformer : public OpRewritePattern<TransformerOp> {
+struct TopFuseAttention : public OpRewritePattern<AttentionOp> {
   using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(TransformerOp op,
+  LogicalResult matchAndRewrite(AttentionOp op,
                                 PatternRewriter &rewriter) const override {
 
     if (op.getHead() == 1) {
@@ -205,7 +205,7 @@ struct TopFuseTransformer : public OpRewritePattern<TransformerOp> {
       attrs.push_back(rewriter.getNamedAttr("has_bias", rewriter.getI64IntegerAttr(has_bias)));
       std::string name_new = out_name + "_head_" + std::to_string(i);
       auto name_loc = NameLoc::get(rewriter.getStringAttr(name_new));
-      auto attention = rewriter.create<TransformerOp>(name_loc, op.getOutput().getType(),
+      auto attention = rewriter.create<AttentionOp>(name_loc, op.getOutput().getType(),
                                                 operands_t, attrs);
       // multi head fuse
       operands.push_back(attention);
@@ -230,7 +230,7 @@ struct TopFuseTransformer : public OpRewritePattern<TransformerOp> {
   }
 };
 
-void TransformerOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                                MLIRContext *context) {
-  results.insert<TopFuseTransformer>(context);
+void AttentionOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                              MLIRContext *context) {
+  results.insert<TopFuseAttention>(context);
 }

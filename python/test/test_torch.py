@@ -45,6 +45,7 @@ class TORCH_IR_TESTER(object):
             "Addmm":            (self.test_Addmm,             Y, Y, Y),
             "Arange":           (self.test_Arange,            Y, Y, Y),
             "Attention":        (self.test_Attention,         Y, Y, Y),
+            "AttentionNew":     (self.test_AttentionNew,      N, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,         Y, Y, Y),
             "AvgPool2d":        (self.test_AvgPool2d,         Y, Y, Y),
             "AvgPool3d":        (self.test_AvgPool3d,         Y, Y, Y),
@@ -1520,6 +1521,92 @@ class TORCH_IR_TESTER(object):
                 return out, out_w
 
         self.trace_and_test([(1, 4, 64), (1, 4, 64), (1, 4, 64)], Model())
+
+    def test_AttentionNew(self):
+
+        def _test_attention0(shape, d, head):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.q_w = torch.randn((shape[2], d*head)) / np.sqrt(d)
+                    self.q_b = torch.randn((1, 1, d*head))
+                    self.k_w = torch.randn((shape[2], d*head)) / np.sqrt(d)
+                    self.k_b = torch.randn((1, 1, d*head))
+                    self.v_w = torch.randn((shape[2], d*head)) / np.sqrt(d)
+                    self.v_b = torch.randn((1, 1, d*head))
+                    self.o_w = torch.randn((d*head, shape[2])) / np.sqrt(d)
+                    self.o_b = torch.randn((1, 1, shape[2]))
+                    self.musk = torch.randn((1,1,1,shape[1]))
+
+                def forward(self, x):
+                    q = torch.matmul(x, self.q_w) + self.q_b
+                    q = q.reshape((shape[0], shape[1], head, d))
+                    q = q.transpose(1,2)
+                    k = torch.matmul(x, self.k_w) + self.k_b
+                    k = k.reshape((shape[0], shape[1], head, d))
+                    k = k.transpose(1,2)
+                    k = k.transpose(3,2)
+                    m0 = torch.matmul(q, k)
+                    m0 = m0 / np.sqrt(d)
+                    m0 = m0 + self.musk
+                    m0 = torch.softmax(m0, 3)
+                    v = torch.matmul(x, self.v_w) + self.v_b
+                    v = v.reshape((shape[0], shape[1], head, d))
+                    v = v.transpose(1,2)
+                    m1 = torch.matmul(m0, v)
+                    m1 = m1.transpose(1,2)
+                    m1 = m1.reshape(shape[0], shape[1], head*d)
+                    y = torch.matmul(m1, self.o_w) + self.o_b
+                    y = y + 1
+                    return y
+
+            self.trace_and_test([shape], Model(), [self.Desc('float32', -1, 1)])
+
+        def _test_attention1(shape0, shape1, d, head):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.q_w = torch.randn((shape0[2], d*head)) / np.sqrt(d)
+                    self.q_b = torch.randn((1, 1, d*head))
+                    self.k_w = torch.randn((shape1[2], d*head)) / np.sqrt(d)
+                    self.k_b = torch.randn((1, 1, d*head))
+                    self.v_w = torch.randn((shape1[2], d*head)) / np.sqrt(d)
+                    self.v_b = torch.randn((1, 1, d*head))
+                    self.o_w = torch.randn((d*head, shape0[2])) / np.sqrt(d)
+                    self.o_b = torch.randn((1, 1, shape0[2]))
+
+                def forward(self, x, x1):
+                    q = torch.matmul(x, self.q_w) + self.q_b
+                    q = q.reshape((shape0[0], shape0[1], head, d))
+                    q = q.transpose(1,2)
+                    k = torch.matmul(x1, self.k_w) + self.k_b
+                    k = k.reshape((shape1[0], shape1[1], head, d))
+                    k = k.transpose(1,2)
+                    k = k.transpose(3,2)
+                    m0 = torch.matmul(q, k)
+                    m0 = m0 / np.sqrt(d)
+                    m0 = torch.softmax(m0, 3)
+                    v = torch.matmul(x1, self.v_w) + self.v_b
+                    v = v.reshape((shape1[0], shape1[1], head, d))
+                    v = v.transpose(1,2)
+                    m1 = torch.matmul(m0, v)
+                    m1 = m1.transpose(1,2)
+                    m1 = m1.reshape(shape0[0], shape0[1], head*d)
+                    y = torch.matmul(m1, self.o_w) + self.o_b
+                    y = y + 1
+                    return y
+
+            self.trace_and_test([shape0, shape1], Model(), [self.Desc('float32', -1, 1), self.Desc('float32', -1, 1)])
+
+        _test_attention0((1, 4096, 80), 40, 2)
+        _test_attention0((1, 384, 768), 64, 12)
+        # _test_attention0((2, 384, 80), 40, 2)
+        # _test_attention0((2, 4096, 320), 40, 8)
+        _test_attention1((2, 4096, 320), (2, 77, 768), 40, 2)
 
     #######################################################################
     # Select

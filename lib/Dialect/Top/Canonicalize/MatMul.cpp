@@ -178,7 +178,7 @@ Value is_permute_reshape(Value in) {
   return reshape1.getInput();
 }
 
-struct MatMul2Transformer : public OpRewritePattern<MatMulOp> {
+struct MatMul2Attention : public OpRewritePattern<MatMulOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(MatMulOp op,
@@ -278,10 +278,10 @@ struct MatMul2Transformer : public OpRewritePattern<MatMulOp> {
     operands.push_back(op.getRight());
     operands.push_back(op.getBias());
     operands.push_back(add ? add.getInputs()[1] : none);
-    auto transformer =
-        rewriter.create<TransformerOp>(op.getLoc(), op.getOutput().getType(),
+    auto attention =
+        rewriter.create<AttentionOp>(op.getLoc(), op.getOutput().getType(),
                                        operands, attrs);
-    op.replaceAllUsesWith(transformer.getOperation());
+    op.replaceAllUsesWith(attention.getOperation());
     rewriter.eraseOp(op);
     return success();
   }
@@ -289,5 +289,5 @@ struct MatMul2Transformer : public OpRewritePattern<MatMulOp> {
 
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<MatMulWithBias, MatMul2Transformer>(context);
+  results.insert<MatMulWithBias, MatMul2Attention>(context);
 }

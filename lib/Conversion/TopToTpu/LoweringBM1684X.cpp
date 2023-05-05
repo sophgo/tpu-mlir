@@ -110,7 +110,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       TanLowering,
       TanhLowering,
       TopKLowering,
-      TransformerLowering,
+      AttentionLowering,
       ReverseLowering,
       PixelNormLowering,
       YoloDetectionLowering,
