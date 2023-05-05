@@ -43,6 +43,17 @@ void tpu::AddOp::codegen_global_bm1684() {
         getDoRelu(), getReluLimit().convertToDouble(), gdma_format,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node, src_int32);
   } else {
+
+    if ((a_dims - b_dims) == 1) {
+      int b_shape_tmp[MAX_SHAPE_DIMS];
+      for (int i = 0; i < b_dims; i++) {
+        b_shape_tmp[i] = b_shape[i];
+      }
+      b_shape[0] = 1;
+      for (int i = 1; i < a_dims; i++) {
+        b_shape[i] = b_shape_tmp[i-1];
+      }
+    }
     int is_sign[input_num + 1];
     memset(is_sign, 0, sizeof(int) * (input_num + 1));
     int is_int8[input_num + 1];

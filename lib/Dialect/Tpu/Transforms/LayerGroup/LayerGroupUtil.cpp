@@ -422,12 +422,23 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
   int64_t secs, idx, slice, step;
   // n slice info
   secs = shape_secs.nsecs;
-  for (int64_t i = 0; i < secs; ++i) {
-    step = n / secs + (n % secs > i);
-    idx = n / secs * i + (n % secs > i ? i : n % secs);
-    slice = (n - idx) > step ? step : (n - idx);
-    // assert(idx < n);
-    slice_info.n.emplace_back(slice_pair_t(idx, slice));
+  if (Arch::ALIGN_4N) {
+    int64_t n_align = 4;
+
+    step = align_up(n / secs, n_align);
+    for (int64_t i = 0; i < secs; ++i) {
+      idx = step * i;
+      slice = (n - idx) > step ? step : (n - idx);
+      slice_info.n.emplace_back(slice_pair_t(idx, slice));
+    }
+  } else {
+    for (int64_t i = 0; i < secs; ++i) {
+      step = n / secs + (n % secs > i);
+      idx = n / secs * i + (n % secs > i ? i : n % secs);
+      slice = (n - idx) > step ? step : (n - idx);
+      // assert(idx < n);
+      slice_info.n.emplace_back(slice_pair_t(idx, slice));
+    }
   }
   // h slice_info
   secs = shape_secs.hsecs;
