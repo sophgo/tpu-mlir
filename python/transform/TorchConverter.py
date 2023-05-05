@@ -600,8 +600,9 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.name, new_op)
 
     def convert_new_constant_fill_op(self, torch_node: TorchNode, value):
-        data = np.array(self.const_val[torch_node.inputs[1]], np.int32)
-        self.addWeight(torch_node.inputs[1], data)
+        if torch_node.inputs[1] in self.const_val:
+            data = np.array(self.const_val[torch_node.inputs[1]], np.int32)
+            self.addWeight(torch_node.inputs[1], data)
         op0 = self.getOp(torch_node.inputs[1])
         new_op = top.ConstantFillOp(self.unranked_type,
                                     op0,
