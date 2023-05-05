@@ -771,11 +771,11 @@ class CaffeConverter(BaseConverter):
             op = self.getOperand(bottom)
             operands.append(op)
         p = layer.detection_output_param
-        code_type = "CORNER"
+        code_type = StringAttr.get("CORNER")
         if p.code_type == 2:
-            code_type = "CENTER_SIZE"
+            code_type = StringAttr.get("CENTER_SIZE")
         elif p.code_type == 3:
-            code_type = "CORNER_SIZE"
+            code_type = StringAttr.get("CORNER_SIZE")
         param = {
             'loc': self.get_loc(layer.top[0]),
             'num_classes': p.num_classes,
@@ -915,9 +915,10 @@ class CaffeConverter(BaseConverter):
             'mode': StringAttr.get('linear'),
         }
 
+        target_shape_op = self.create_weight_op(layer.name + "_shape", np.array(output_shape[2:], np.int32))
         new_op = top.InterpOp(self.mlir.get_tensor_type(output_shape),
                               in_op,
-                              self.mlir.none_op,
+                              target_shape_op,
                               **param,
                               ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
@@ -1044,6 +1045,7 @@ class CaffeConverter(BaseConverter):
         operands.append(bias_op)
         operands.append(self.mlir.none_op)  # initial_h
         operands.append(self.mlir.none_op)  # initial_c
+        operands.append(self.mlir.none_op)  # cont
         name = layer.top[0]
         param = {
             "loc": self.get_loc([name + '_lstm', name + '_H', name + '_C']),
