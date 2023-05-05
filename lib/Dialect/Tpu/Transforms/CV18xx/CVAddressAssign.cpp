@@ -183,11 +183,9 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr,
     func.walk([&](Operation *op) {
       ops_loc[op] = loc;
       ++loc;
-      if (isa<FuncOp, top::NoneOp, top::WeightOp, func::CallOp>(op) ||
-          module::isOpInGroup(op)) {
-        return;
+      if ((module::isTpuOp(op) && !module::isOpInGroup(op)) || isa<top::InputOp, ReturnOp>(op)) {
+        ops.emplace_back(op);
       }
-      ops.emplace_back(op);
     });
   }
   std::vector<Value> inputs;
@@ -197,6 +195,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr,
     updateLiveRange(*iter, ops_loc, op_infos, inplace_ops, outputs,
                     neuron_alignment);
   }
+  // make the order of the ops positive
   std::reverse(inplace_ops.begin(), inplace_ops.end());
   updateConcatOpTargetV(inplace_ops, op_infos);
   for (auto iter = ops.begin(); iter != ops.end(); ++iter) {
@@ -385,7 +384,6 @@ void CVAddressAssign::updateLiveRange(Operation *op,
     }
     updateLiveRangeofPreOp(op_infos, op, ops_loc[op] + 1, ops_loc, mem_type,
                            alignment);
-  } else if (module::isOpInGroup(op)) {
   } else if (isInPlaceOp(op)) {
     ValueInfo cur_info(op, 0);
     assert(op_infos.find(cur_info) != op_infos.end());
@@ -394,7 +392,7 @@ void CVAddressAssign::updateLiveRange(Operation *op,
     updateLiveRangeOfInPlaceOp(op_infos, op, op_infos[cur_info].live.end,
                                ops_loc, op_infos[cur_info].mem_type, alignment);
     inplace_ops.emplace_back(cur_info);
-  } else if (op->getDialect()->getNamespace() == "tpu") {
+  } else if (module::isTpuOp(op)) {
     for (int i = 0; i < op->getNumResults(); ++i) {
       ValueInfo cur_info(op, i);
       if (!module::isNone(op->getResult(i))) {
@@ -404,6 +402,7 @@ void CVAddressAssign::updateLiveRange(Operation *op,
     updateLiveRangeofPreOp(op_infos, op, ops_loc[op] + 1, ops_loc, MEM_SHARED,
                            alignment);
   } else {
+    llvm_unreachable("op not supported!");
   }
 }
 
