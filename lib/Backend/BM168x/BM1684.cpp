@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
 
@@ -20,6 +21,25 @@ uint32_t BM1684::get_bdc_len(int bdc_num, int group_id) {
 
 uint32_t BM1684::get_gdma_len(int gdma_num, int group_id) {
   return gdma_num * GDMA_CMD_ALIGNED_NUM * sizeof(uint32_t);
+}
+
+std::shared_ptr<std::vector<int8_t>>
+BM1684::Convert1NTo4N(Value v, std::shared_ptr<std::vector<int8_t>> src) {
+  auto shape = module::getShape(v);
+  const int64_t num_elements = module::getNumElements(v);
+  const int32_t N = shape[0];
+  const int32_t others = num_elements / N;
+  std::shared_ptr<std::vector<int8_t>> dst =
+      std::make_shared<std::vector<int8_t>>(align_up(N, 4) * others, 0);
+  for (int32_t n = 0; n < N; n++) {
+    for (int32_t inner = 0; inner < others; inner++) {
+      const int32_t out_idx =
+          n / 4 * others * sizeof(int32_t) + (n % 4) + inner * sizeof(int32_t);
+      const int32_t in_idx = n * others + inner;
+      dst->at(out_idx) = src->at(in_idx);
+    }
+  }
+  return dst;
 }
 
 void BM1684::load_functions() {

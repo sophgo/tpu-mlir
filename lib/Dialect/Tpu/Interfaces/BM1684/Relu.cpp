@@ -31,7 +31,7 @@ void tpu::ReluOp::codegen_global_bm1684() {
         /*slope addr*/ 0, top_global_offset, /*slop*/ 0, /*channel share*/ 1, n,
         c, h, w, module::isSign(getInput()),
         /*slope sign*/ 1, module::isSign(getOutput()),
-        /*rshift num*/ 0, /*store mode*/ 0,
+        /*rshift num*/ 0, /*store mode*/ 1, 1,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
 }

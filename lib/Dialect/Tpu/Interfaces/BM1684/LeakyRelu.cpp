@@ -30,7 +30,7 @@ void tpu::LeakyReluOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_prelu_forward_fix8b(
         bottom_global_addr, 0, top_global_addr, slope_val, channel_shared, n, c,
         h, w, input_sign, slope_sign, output_sign, rshift_bit,
-        STORAGE_MODE_4N_INT8, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        1, 1, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     slope_val = static_cast<float>(getAlpha().value().convertToDouble());
     BM1684::instance().dl_nodechip_prelu_forward(

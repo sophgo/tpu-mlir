@@ -204,10 +204,11 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                  convType, operands, attrs);
     // requant
     auto output_type = getQuantInt8Type(op.getOutput(), asymmetric);
-    std::vector<int32_t> quant(p.oc * 3, 0);
+    std::vector<int32_t> quant;
     int64_t quant_w_size = 0;
     if (module::isBM1686()) {
       quant_w_size = 2;
+      quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
         quant[i * 2] = multiplier_v[i];
         quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xff) |
@@ -215,6 +216,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       }
     } else {
       quant_w_size = 3;
+      quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
         quant[i * 3] = multiplier_v[i];
         quant[i * 3 + 1] = -rshift_v[i];
@@ -432,10 +434,11 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
                                  convType, operands, attrs);
     // requant
     auto output_type = getQuantInt4Type(op.getOutput(), asymmetric);
-    std::vector<int32_t> quant(p.oc * 3, 0);
+    std::vector<int32_t> quant;
     int64_t quant_w_size = 0;
     if (module::isBM1686()) {
       quant_w_size = 2;
+      quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
         quant[i * 2] = multiplier_v[i];
         quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xff) |
@@ -443,6 +446,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
       }
     } else {
       quant_w_size = 3;
+      quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
         quant[i * 3] = multiplier_v[i];
         quant[i * 3 + 1] = -rshift_v[i];
@@ -517,10 +521,11 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
         rshift_v.push_back(shift);
       }
       // requant
-      std::vector<int32_t> quant(p.oc * 3, 0);
+      std::vector<int32_t> quant;
       int64_t quant_w_size = 0;
       if (module::isBM1686()) {
         quant_w_size = 2;
+        quant.resize(p.oc * quant_w_size, 0);
         for (size_t i = 0; i < p.oc; ++i) {
           quant[i * 2] = multiplier_v[i];
           quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xff) |
@@ -528,6 +533,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
         }
       } else {
         quant_w_size = 3;
+        quant.resize(p.oc * quant_w_size, 0);
         for (size_t i = 0; i < p.oc; ++i) {
           quant[i * 3] = multiplier_v[i];
           quant[i * 3 + 1] = -rshift_v[i];

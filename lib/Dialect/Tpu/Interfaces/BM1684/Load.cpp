@@ -44,7 +44,12 @@ void tpu::LoadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int64_t n_idx = gi.n_idx;
   int64_t local_N = gi.n_slice, local_C = C, local_H = gi.h_slice, local_W = W;
   if (fmt_bytes != 4) {
-    if (!module::isWeight(getInput())) {
+    if (!module::isWeight(getInput()) ||
+        (cast<top::WeightOp>(getInput().getDefiningOp())
+             .getStoreMode()
+             .has_value() &&
+         cast<top::WeightOp>(getInput().getDefiningOp()).getStoreMode() ==
+             "4N")) {
       int64_t N_align = 4 / fmt_bytes;
       fmt_bytes = 4;
       gdma_format = BM168x::GDMA_VALUE_FORMAT_FLOAT32;

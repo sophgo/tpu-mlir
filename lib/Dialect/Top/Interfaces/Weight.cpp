@@ -18,7 +18,16 @@ using namespace tpu_mlir::top;
 template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   auto op = getOperation();
   auto type = getOutput().getType().cast<RankedTensorType>();
-  return module::weightFile().readTensor<T>(module::getName(op).str(), type);
+  uint32_t store_mode = 0;
+  if (getStoreMode().has_value()) {
+    store_mode = StringSwitch<uint32_t>(getStoreModeAttr())
+      .Case("1N", 0)
+      .Case("2N", 1)
+      .Case("4N", 2)
+      .Default(0);
+  }
+  return module::weightFile().readTensor<T>(module::getName(op).str(), type,
+                                            store_mode);
 }
 
 std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
@@ -131,7 +140,8 @@ std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
 
 template <typename T>
 Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
-                       const std::vector<T> &data, RankedTensorType &type) {
+                       const std::vector<T> &data, RankedTensorType &type,
+                       uint32_t store_mode) {
   auto ctx = OwnerOp->getContext();
   OpBuilder builder(ctx);
   builder.setInsertionPoint(OwnerOp);
@@ -150,6 +160,11 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
   auto nameAttr = builder.getStringAttr(new_name);
   auto newOp =
       builder.create<top::WeightOp>(NameLoc::get(nameAttr), type, ValueRange{});
+  auto stmodeAttr = builder.getStringAttr(store_mode == 0   ? "1N"
+                                          : store_mode == 1 ? "2N"
+                                                            : "4N");
+  if (stmodeAttr != "1N")
+    newOp.setStoreModeAttr(stmodeAttr);
   return newOp.getResult();
 }
 
@@ -161,25 +176,25 @@ template std::shared_ptr<std::vector<uint8_t>> WeightOp::read();
 template i32_array_t WeightOp::read();
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<float> &data,
-                                RankedTensorType &type);
+                                RankedTensorType &type, uint32_t store_mode);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int16_t> &data,
-                                RankedTensorType &type);
+                                RankedTensorType &type, uint32_t store_mode);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<uint16_t> &data,
-                                RankedTensorType &type);
+                                RankedTensorType &type, uint32_t store_mode);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int8_t> &data,
-                                RankedTensorType &type);
+                                RankedTensorType &type, uint32_t store_mode);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<uint8_t> &data,
-                                RankedTensorType &type);
+                                RankedTensorType &type, uint32_t store_mode);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int32_t> &data,
-                                RankedTensorType &type);
+                                RankedTensorType &type, uint32_t store_mode);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<uint32_t> &data,
-                                RankedTensorType &type);
+                                RankedTensorType &type, uint32_t store_mode);
 
 Value WeightOp::clone_bf16(Operation *OwnerOp, std::string name) {
   auto type = getType().cast<RankedTensorType>();

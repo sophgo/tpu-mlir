@@ -96,7 +96,7 @@ typedef void (*nodechip_scale_forward)(uint64_t bottom_global_offset, uint64_t s
 typedef void (*nodechip_eltwise_forward)(uint64_t *bottom_global_offset, uint64_t top_global_offset, uint64_t mask_global_offset, uint64_t buffer_offset, int *input1_shape, int *input2_shape, int input_num, int input_dims, int op_code, float *coeff, int need_mask, float *mask_index, int if_relu, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_eltwise_fix8b_forward_parallel)(uint64_t *bottom_global_offset, uint64_t top_global_offset, int tensor_n, int tensor_c, int tensor_h, int tensor_w, int op_code, int *coeff, uint8_t *sign, uint8_t *rshift, int if_relu, int input_num, CMD_ID_NODE *id_node);
 typedef void (*nodechip_prelu_forward)(uint64_t bottom_global_addr, uint64_t slope_global_addr, uint64_t top_global_addr, float slope_val, int channel_shared, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, CMD_ID_NODE *id_node);
-typedef void (*nodechip_prelu_forward_fix8b)(uint64_t bottom_global_addr, uint64_t slope_global_addr, uint64_t top_global_addr, float slope_val, int channel_shared, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, int input_sign, int slope_sign, int output_sign, int rshift_bit, int if_global_4N, CMD_ID_NODE *id_node);
+typedef void (*nodechip_prelu_forward_fix8b)(uint64_t bottom_global_addr, uint64_t slope_global_addr, uint64_t top_global_addr, float slope_val, int channel_shared, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, int input_sign, int slope_sign, int output_sign, int rshift_bit, int bottom_is_4N, int slope_is_4N, CMD_ID_NODE *id_node);
 typedef void (*nodechip_relu_forward_fix16b)(uint64_t bottom_global_addr, uint64_t top_global_addr, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, int input_sign, int output_sign, int if_global_2N, CMD_ID_NODE *id_node);
 typedef void (*nodechip_permute_forward)(uint64_t input_global_offset, uint64_t output_global_offset, int input_n, int input_c, int input_h, int input_w, int *permute_order, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_permute_fix8b_forward)(uint64_t input_global_offset, uint64_t output_global_offset, int input_n, int input_c, int input_h, int input_w, int *permute_order, CMD_ID_NODE *pid_node);
@@ -203,6 +203,9 @@ public:
     static BM1684 bm1684;
     return bm1684;
   }
+
+  std::shared_ptr<std::vector<int8_t>>
+  Convert1NTo4N(Value v, std::shared_ptr<std::vector<int8_t>> data);
 
   // -------------------------------------------------------------------
   // functions from nodechip

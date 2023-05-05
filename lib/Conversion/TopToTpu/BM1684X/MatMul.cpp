@@ -368,15 +368,17 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       }
       auto requant_name_loc = NameLoc::get(builder.getStringAttr(requant_name));
       // requant
-      std::vector<int32_t> quant(3, 0);
+      std::vector<int32_t> quant;
       int64_t quant_w_size = 0;
       if (module::isBM1686()) {
         quant_w_size = 2;
+        quant.resize(quant_w_size, 0);
         quant[i * 2] = scale;
         quant[i * 2 + 1] = ((-(int32_t)shift) & 0xff) |
                           (((int32_t)out_zp & 0xffff) << 16);
       } else {
         quant_w_size = 3;
+        quant.resize(quant_w_size, 0);
         quant[i * 3] = scale;
         quant[i * 3 + 1] = -shift;
         quant[i * 3 + 2] = out_zp;
