@@ -49,8 +49,7 @@ def mlir_lowering(top_mlir: str,
             cali_table, asymmetric)
         cmd.extend([cali_param])
     #do extra conversion for differnet chips
-    extra_conversion_param = "--do-extra-converison"
-    cmd.extend([extra_conversion_param])
+    cmd.extend(["--chip-top-optimize"])
     if fuse_preprocess:
         fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={}\"".format(
             mode, customization_format)
@@ -101,7 +100,7 @@ def mlir_to_model(tpu_mlir: str,
         tpu_mlir,
         "--mlir-disable-threading",
         strip_io_quant_param,
-        "--chip-optimize",
+        "--chip-tpu-optimize",
         "--weight-reorder",
         subnet_param,
         "--op-reorder",

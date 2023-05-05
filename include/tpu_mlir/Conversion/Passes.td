@@ -13,15 +13,6 @@
 include "mlir/Pass/PassBase.td"
 
 //===----------------------------------------------------------------------===//
-// before TopToTpu, do some extra conversion
-//===----------------------------------------------------------------------===//
-def DoExtraConversion : Pass<"do-extra-converison", "ModuleOp"> {
-  let summary = "Before lowering, do some extra Op conversions for different chips";
-  let constructor = "tpu_mlir::createDoExtraConversion()";
-  let dependentDialects = ["tpu_mlir::top::TopDialect", "tpu_mlir::tpu::TpuDialect"];
-}
-
-//===----------------------------------------------------------------------===//
 // TopToTpu
 //===----------------------------------------------------------------------===//
 

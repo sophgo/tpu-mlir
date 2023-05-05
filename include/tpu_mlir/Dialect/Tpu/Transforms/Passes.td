@@ -82,7 +82,7 @@ def StripIOQuant : Pass<"strip-io-quant", "ModuleOp"> {
   ];
 }
 
-def ChipOptimize : Pass<"chip-optimize", "ModuleOp"> {
+def ChipOptimize : Pass<"chip-tpu-optimize", "ModuleOp"> {
   let summary = "aplly passes in tpu by tpuc-opt";
   let constructor = "createChipOptimizePass()";
   let dependentDialects = ["TpuDialect"];

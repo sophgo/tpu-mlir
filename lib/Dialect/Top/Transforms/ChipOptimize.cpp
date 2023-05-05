@@ -7,29 +7,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-// #include "tpu_mlir/Dialect/Tpu/Transforms/BM1684/ChipOptimize.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/ChipOptimize.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/ChipOptimize.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
-#include "tpu_mlir/Backend/Arch.h"
-
-#include <cstdint>
-#include <fstream>
-#include <set>
-#include <sstream>
+#include "tpu_mlir/Support/Module.h"
 
 using namespace llvm;
 using namespace mlir;
 
-using namespace tpu_mlir::backend;
 namespace tpu_mlir {
-namespace tpu {
+namespace top {
+void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns);
+void populateOptimizeBM1684Patterns(RewritePatternSet *patterns);
+void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns);
 
 class ChipOptimizePass : public ChipOptimizeBase<ChipOptimizePass> {
 public:
@@ -38,11 +28,11 @@ public:
     auto mOp = getOperation();
     RewritePatternSet patterns(mOp.getContext());
     if (module::isBM1684XFamily()) {
-      bm1684x::populateChipOptimizePatterns(&patterns);
-    } else if (module::isCV18xx()) {
-      cv18xx::populateChipOptimizePatterns(&patterns);
+      populateOptimizeBM1684XPatterns(&patterns);
     } else if (module::isBM1684Family()) {
-      bm1684::populateChipOptimizePatterns(&patterns);
+      populateOptimizeBM1684Patterns(&patterns);
+    } else if (module::isCV18xx()) {
+      populateOptimizeCV18XXPatterns(&patterns);
     }
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
   }
@@ -51,5 +41,5 @@ public:
 std::unique_ptr<OperationPass<ModuleOp>> createChipOptimizePass() {
   return std::make_unique<ChipOptimizePass>();
 }
-} // namespace tpu
+} // namespace top
 } // namespace tpu_mlir

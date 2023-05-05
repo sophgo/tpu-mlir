@@ -11,13 +11,6 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
-
-#include <cstdint>
-#include <fstream>
-#include <set>
-#include <sstream>
 
 using namespace llvm;
 using namespace mlir;
