@@ -26,6 +26,7 @@
 #include <fstream>
 #include <set>
 #include <sstream>
+#include <unordered_set>
 
 #define DEBUG_TYPE "bm_codegen"
 
@@ -645,9 +646,15 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
   }
   auto input_tensor = CreateTensorVector(inputs, input_is_cpu);
   auto output_tensor = CreateTensorVector(outputs, next_is_cpu);
-  std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
-  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
-                  next_id_v.end());
+  std::unordered_set<int> next_id_set;
+  for (auto it = next_id_v.begin(); it != next_id_v.end();) {
+    if (next_id_set.count(*it)) {
+      it = next_id_v.erase(it);
+    } else {
+      next_id_set.insert(*it);
+      ++it;
+    }
+  }
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
   auto cmd_group_v = CreateCmdGroupVector();
@@ -701,9 +708,15 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
     }
   }
 
-  std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
-  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
-                  next_id_v.end());
+  std::unordered_set<int> next_id_set;
+  for (auto it = next_id_v.begin(); it != next_id_v.end();) {
+    if (next_id_set.count(*it)) {
+      it = next_id_v.erase(it);
+    } else {
+      next_id_set.insert(*it);
+      ++it;
+    }
+  }
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
 
@@ -815,9 +828,15 @@ BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
 
-  std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
-  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
-                  next_id_v.end());
+  std::unordered_set<int> next_id_set;
+  for (auto it = next_id_v.begin(); it != next_id_v.end();) {
+    if (next_id_set.count(*it)) {
+      it = next_id_v.erase(it);
+    } else {
+      next_id_set.insert(*it);
+      ++it;
+    }
+  }
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
 
