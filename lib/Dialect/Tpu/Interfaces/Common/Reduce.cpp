@@ -48,9 +48,11 @@ reduce_attr_t tpu::ReduceOp::parseParam() {
   auto input_shape = module::getShape(getInput());
   int num_dims = input_shape.size();
   int num_axes = axes_->size();
+  bool neighbour = true;
   for (uint i = 1; i < num_axes; i++) {
     if (axes_->at(i) != axes_->at(i - 1) + 1) {
-      llvm_unreachable("Not Implemented");
+      //llvm_unreachable("Not Implemented");
+      neighbour = false;
     }
     if (axes_->at(i) >= num_dims) {
       llvm_unreachable("Not Implemented");
@@ -64,12 +66,29 @@ reduce_attr_t tpu::ReduceOp::parseParam() {
   // TODO: (outer_dims, axis_dims, inner_dims) will failure
   // so use (outer_n, outer_c, axis_dims, inner_dims)
   size_to_2dim(outer_dims, attr.outer_n, attr.outer_c);
-  attr.axis_dims = std::accumulate(input_shape.begin() + start_axis,
+  if (!neighbour) {
+    attr.axis_dims = 1;
+    attr.inner_dims = 1;
+    for (uint i = 0; i < num_axes; i++) {
+      attr.axis_dims *= (*(input_shape.begin() + axes_->at(i)));
+      if ((axes_->at(i) > 0) && (axes_->at(i) + 1 <= num_dims))
+        attr.inner_dims *= std::accumulate(input_shape.begin() + (axes_->at(i) - 1),
+                                           input_shape.begin() + axes_->at(i), 1,
+                                           std::multiplies<int64_t>());
+      else if ((axes_->at(i) == 0) && (axes_->at(i) + 1 <= num_dims) && (i + 1 <= num_axes))
+        attr.inner_dims *= std::accumulate(input_shape.begin() + (axes_->at(i) + 1),
+                                           input_shape.begin() + axes_->at(i + 1), 1,
+                                           std::multiplies<int64_t>());
+    }
+  }
+  else {
+    attr.axis_dims = std::accumulate(input_shape.begin() + start_axis,
                                    input_shape.begin() + end_axis, 1,
                                    std::multiplies<int64_t>());
-  attr.inner_dims =
+    attr.inner_dims =
       std::accumulate(input_shape.begin() + end_axis, input_shape.end(), 1,
                       std::multiplies<int64_t>());
+  }
   attr.simplified = true;
   return attr;
 }
