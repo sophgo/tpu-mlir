@@ -12,7 +12,7 @@
 
 #include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/ErrorHandling.h"
-#include <cstdint>
+
 
 using namespace tpu_mlir::backend;
 

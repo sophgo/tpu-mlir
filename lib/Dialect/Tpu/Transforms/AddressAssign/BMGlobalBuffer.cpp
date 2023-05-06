@@ -131,8 +131,10 @@ public:
             (CMD_ID_NODE *)BM1684::instance().cmdid_node);
       } else {
         int keep_dims = reduceOp.getKeepdims() ? 1 : 0;
-        buffer_size = BM1684::instance().dl_nodechip_reduce_get_buffer_size_fix8b(
-            input_shape, input_dims, axis_list, axis_num, method, keep_dims);
+        buffer_size =
+            BM1684::instance().dl_nodechip_reduce_get_buffer_size_fix8b(
+                input_shape, input_dims, axis_list, axis_num, method,
+                keep_dims);
       }
       if (buffer_size > 0) {
         std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
@@ -195,7 +197,8 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(sliceOp, buffer_type);
     sliceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == sliceOp.getBuffer() && operand.getOwner() == sliceOp;
+      return operand.get() == sliceOp.getBuffer() &&
+             operand.getOwner() == sliceOp;
     });
     return success();
   }
@@ -338,7 +341,8 @@ public:
 
   LogicalResult matchAndRewrite(tpu::InterpOp interpOp,
                                 PatternRewriter &rewriter) const override {
-    if(!module::isBM1686()) return failure();
+    if (!module::isBM1686())
+      return failure();
 
     if (!module::isNone(interpOp.getBuffer())) {
       return failure();
@@ -350,9 +354,8 @@ public:
     param.buffer_size_ptr = &buffer_size;
     auto input_spec = BM168x::get_input_spec(interpOp);
     auto output_spec = BM168x::get_output_spec(interpOp);
-    BM168x::call_global_func("backend_api_interp_global", &param,
-                               sizeof(param), input_spec->data(),
-                               output_spec->data());
+    BM168x::call_global_func("backend_api_interp_global", &param, sizeof(param),
+                             input_spec->data(), output_spec->data());
     // add buffer
     if (buffer_size > 0) {
       auto type = ::mlir::Builder(getContext()).getIntegerType(8);
@@ -394,7 +397,10 @@ public:
   }
 };
 
-void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
+} // namespace bm168x
+namespace tpu {
+using namespace bm168x;
+void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
       GRUGlobalBuffer,
@@ -410,5 +416,5 @@ void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
   // clang-format on
 }
 
-} // namespace bm168x
+} // namespace tpu
 } // namespace tpu_mlir

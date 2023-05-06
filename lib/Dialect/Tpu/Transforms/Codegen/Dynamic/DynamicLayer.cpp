@@ -22,7 +22,7 @@
 #include <sstream>
 #include <vector>
 using namespace llvm;
-using namespace mlir;
+
 using namespace tpu_mlir::backend;
 using namespace std;
 namespace tpu_mlir {

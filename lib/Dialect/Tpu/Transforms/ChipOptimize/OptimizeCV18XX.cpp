@@ -12,7 +12,7 @@
 #include "llvm/Support/Debug.h"
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include <cstdint>
+
 
 #define DEBUG_TYPE "optimize_cv18xx"
 

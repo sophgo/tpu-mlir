@@ -15,7 +15,7 @@
 namespace tpu_mlir {
 namespace tpu {
 
-using namespace mlir;
+
 using namespace tpu_mlir::tpu;
 using namespace tpu_mlir::backend;
 

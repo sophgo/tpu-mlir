@@ -9,6 +9,6 @@
 
 #include "tpu_mlir/Interfaces/FlopsInterface.h"
 
-using namespace mlir;
+
 
 #include "tpu_mlir/Interfaces/FlopsInterface.cpp.inc"

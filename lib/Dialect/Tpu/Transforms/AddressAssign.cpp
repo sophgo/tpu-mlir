@@ -14,9 +14,11 @@
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
-using namespace mlir;
+
 namespace tpu_mlir {
 namespace tpu {
+
+extern void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns);
 
 class ConcatFusePattern : public OpRewritePattern<tpu::ConcatOp> {
 public:
@@ -85,7 +87,7 @@ public:
                          weight_map_file);
     } else {
       RewritePatternSet patterns(mOp.getContext());
-      bm168x::populateGlobalBufferPatterns(&patterns);
+      populateGlobalBufferBM168xPatterns(&patterns);
       patterns.add<ConcatFusePattern>(patterns.getContext());
       applyPatternsAndFoldGreedily(mOp, std::move(patterns));
       BMAddressAssign addr_assign;

@@ -10,7 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Backend/Arch.h"
-#include <cstdint>
+
 
 using namespace llvm;
 namespace tpu_mlir {

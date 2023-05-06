@@ -9,6 +9,6 @@
 
 #include "tpu_mlir/Interfaces/InferenceInterface.h"
 
-using namespace mlir;
+
 
 #include "tpu_mlir/Interfaces/InferenceInterface.cpp.inc"

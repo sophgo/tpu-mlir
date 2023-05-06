@@ -9,6 +9,6 @@
 
 #include "tpu_mlir/Interfaces/GlobalGenInterface.h"
 
-using namespace mlir;
+
 
 #include "tpu_mlir/Interfaces/DynGlobalGenInterface.cpp.inc"

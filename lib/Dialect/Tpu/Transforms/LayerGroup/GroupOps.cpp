@@ -14,7 +14,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/InternalOptimizer.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgPass.h"
 
-using namespace mlir;
+
 using namespace tpu_mlir::tpu;
 using namespace tpu_mlir::backend;
 

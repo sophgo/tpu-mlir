@@ -21,7 +21,6 @@
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "llvm/Support/Format.h"
 #include <llvm/Support/Debug.h>
 
 #include <fstream>
@@ -31,7 +30,7 @@
 #define DEBUG_TYPE "bm_codegen"
 
 using namespace llvm;
-using namespace mlir;
+
 using namespace tpu_mlir::backend;
 
 using namespace flatbuffers;

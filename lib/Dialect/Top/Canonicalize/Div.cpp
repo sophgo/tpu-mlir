@@ -12,7 +12,6 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
 using namespace tpu_mlir::top;
 
 struct DivToMul : public OpRewritePattern<DivOp> {

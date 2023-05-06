@@ -6,18 +6,25 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#pragma once
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-#include <cstdint>
+
 
 using namespace llvm;
-using namespace mlir;
+
 namespace tpu_mlir {
+namespace bm1684 {
+template <class Op, typename T>
+class WeightReorder : public OpRewritePattern<Op> {
+public:
+  using OpRewritePattern<Op>::OpRewritePattern;
+  LogicalResult matchAndRewrite(Op op,
+                                PatternRewriter &rewriter) const override;
+};
+} // namespace bm1684
 
 namespace bm1684x {
-
 template <class Op, typename T>
 class WeightReorder : public OpRewritePattern<Op> {
 public:
@@ -25,12 +32,9 @@ public:
   LogicalResult matchAndRewrite(Op op,
                                 PatternRewriter &rewriter) const override;
 };
-
-void populateWeightReorderPatterns(RewritePatternSet *patterns);
 } // namespace bm1684x
 
-namespace bm1684 {
-
+namespace cv18xx {
 template <class Op, typename T>
 class WeightReorder : public OpRewritePattern<Op> {
 public:
@@ -38,8 +42,6 @@ public:
   LogicalResult matchAndRewrite(Op op,
                                 PatternRewriter &rewriter) const override;
 };
-
-void populateWeightReorderPatterns(RewritePatternSet *patterns);
-} // namespace bm1684
+} // namespace cv18xx
 
 } // namespace tpu_mlir

@@ -10,8 +10,8 @@
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgConcatKernel.hpp"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include <llvm/Support/Debug.h>
-#include <llvm/Support/Format.h>
-#include <llvm/Support/raw_ostream.h>
+
+
 #include <numeric>
 
 #define DEBUG_TYPE "cvi_backend_concat_kernel"

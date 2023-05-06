@@ -7,17 +7,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/WeightReorder.h"
+#include "../WeightReorder.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-#include <cstdint>
 
-using namespace llvm;
+
 namespace tpu_mlir {
+namespace tpu {
 
-namespace cv18xx {
+using namespace cv18xx;
 
-void populateWeightReorderPatterns(RewritePatternSet *patterns) {
+void populateWeightReorderCV18xxPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
     WeightReorder<tpu::Conv2DOp, int8_t>,
@@ -32,5 +32,5 @@ void populateWeightReorderPatterns(RewritePatternSet *patterns) {
   // clang-format on
 };
 
-} // namespace cv18xx
+} // namespace tpu
 } // namespace tpu_mlir

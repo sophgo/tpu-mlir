@@ -11,7 +11,7 @@
 #include "oneapi/dnnl/dnnl.hpp"
 #include "tpu_mlir/Support/Dnnl/common.h"
 #include "llvm/ADT/ArrayRef.h"
-#include <cstdint>
+
 
 using namespace dnnl;
 namespace tpu_mlir {

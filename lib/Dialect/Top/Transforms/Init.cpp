@@ -15,7 +15,7 @@
 #include <set>
 
 using namespace llvm;
-using namespace mlir;
+
 
 namespace tpu_mlir {
 namespace top {

@@ -10,11 +10,8 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Support/Module.h"
-#include <iostream>
 #include <llvm/Support/Debug.h>
-#include <llvm/Support/Format.h>
 #include <llvm/Support/MathExtras.h>
-#include <llvm/Support/raw_ostream.h>
 
 #define DEBUG_TYPE "CviBackendContext"
 

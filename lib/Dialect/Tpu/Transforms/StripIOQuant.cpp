@@ -13,7 +13,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 
-using namespace mlir;
+
 namespace tpu_mlir {
 namespace tpu {
 
