@@ -203,32 +203,28 @@ class ExtEnum:
 
     def __init__(self, enum, *args, **kargs) -> None:
         assert isinstance(enum, Enum)
-        self.eunm = enum
+        self.enum = enum
         self.args = args
-        for k, v in kargs.items():
-            if k not in ("name", "value"):
-                self.__dict__[k] = v
-            else:
-                raise KeyError(f"{k} is a reserved key.")
+        self.__dict__.update(kargs)
         self._member_ = kargs.keys()
 
     @property
     def name(self):
-        return self.eunm.name
+        return self.enum.name
 
     @property
     def value(self):
-        return self.eunm.value
+        return self.enum.value
 
     def __hash__(self):
-        return hash(self.eunm)
+        return hash(self.enum)
 
     def __eq__(self, other):
-        return self.eunm == other
+        return self.enum == other
 
     def __repr__(self) -> str:
         kargs = {k: self.__dict__[k] for k in self._member_}
-        return repr(self.eunm) + f"{self.args}{kargs}"
+        return repr(self.enum) + f"{self.args}{kargs}"
 
 
 class MType(Enum):

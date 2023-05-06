@@ -7,8 +7,8 @@
 # third-party components.
 #
 # ==============================================================================
-from utils.debugger.context import Context
-import utils.debugger.disassembler as dis
+from debugger.context import Context
+import debugger.disassembler as dis
 
 
 def decode_tiu_file(tiu_file, device):

@@ -17,7 +17,7 @@ import numpy as np
 from rich.console import Console
 
 from numpy_helper.tensor_compare import TensorCompare
-from utils.debugger import op_support
+from debugger import op_support
 from tdb import Tdb
 
 
@@ -52,7 +52,7 @@ class TensorLoc:
 
         def tuples_hook(pairs):
             """
-            Convert lists to tuples in JSON objects. Not works in root object.
+            Convert lists to tuples in JSON objects. Do not work in root object.
             """
             return {k: tuple(v) if isinstance(v, list) else v for k, v in pairs}
 
@@ -198,8 +198,6 @@ get_mlir_type_info = _get_mlir_type_info()
 
 
 class TensorBuilder:
-    _slot_ = "tensor_des"
-
     def __init__(self, tensor_des, context):
         address = tensor_des["address"]
 
@@ -245,9 +243,9 @@ class TensorBuilder:
                 # global layer
                 stride = op_support.get_continuous_stride(shape)
 
-        if tensor_des["layout"] == "continuous_xn":  # fix 2N/4N
-            stride = np.int64(stride) * 4 // dtype.itemsize
-            layout = op_support.Layout.continuous_XN
+            if tensor_des["layout"] == "continuous_xn":  # fix 2N/4N
+                stride = np.int64(stride) * 4 // dtype.itemsize
+                layout = op_support.Layout.continuous_XN
 
         self.memref = context.MemRef(
             address, shape, dtype, layout=layout, stride=stride
@@ -648,14 +646,16 @@ class Checker:
 
         state = com(self.state)
 
-        def get_ins_state():
+        def get_ins_state(subnet_id=0):
             ins_num = 0
             if self.ins_state:
                 ins_num = max(x.instruction_id for x in self.ins_state) + 1
-            ins_state = [self.LS("?", State.Unknown, State.Unknown)] * ins_num
-            for si, s in self.ins_state.items():
-                ins_state[si.instruction_id] = s
-            return ins_state
+            for i in range(ins_num):
+                index = (subnet_id, i)
+                if index in self.ins_state:
+                    yield self.ins_state[index]
+                else:
+                    yield [self.LS("?", State.Unknown, State.Unknown)]
 
         def ins_simple():
             func = lambda s: com(s.results)
@@ -806,8 +806,7 @@ def save_to_file(checker, report_file):
         console = Console(file=rf, width=100)
         console.rule(f"Report Generated {datetime.now().ctime()}")
         console.print(checker.get_summary())
-        for k, v in checker.get_failed_tensor():
-            console.rule(f"Line {k.line}")
+        for _, v in checker.get_failed_tensor():
             for t in v:
                 console.print(t)
 

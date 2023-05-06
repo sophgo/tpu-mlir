@@ -7,9 +7,9 @@
 # third-party components.
 #
 # ==============================================================================
-from utils.debugger.op_support import MType
-from utils.debugger.disassembler import BModelReader, BModel2MLIR
-from utils.debugger.context import Context
+from debugger.op_support import MType
+from debugger.disassembler import BModelReader
+from debugger.context import Context
 import cmd, sys, pprint, code, traceback
 import numpy as np
 from rich import print
