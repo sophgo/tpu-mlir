@@ -6,19 +6,15 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BMAddressAssign.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/CVAddressAssign.h"
+#include "AddressAssign/BMAddressAssign.h"
+#include "AddressAssign/CVAddressAssign.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 using namespace mlir;
-
-using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
@@ -32,6 +28,11 @@ public:
       return failure();
     }
     if (op.getDoRelu()) {
+      return failure();
+    }
+    if (module::isBM1684Family() &&
+        module::isUniformQuantized(op.getOutput())) {
+      // 1684 4N mode not support
       return failure();
     }
     auto shape = module::getShape(op.getOutput());
@@ -64,10 +65,7 @@ public:
         }
       }
     }
-    if (!(module::isBM1684Family() &&
-        BM1684::getDataType(op.getOutput()) == DTYPE_INT8)) {
-      op.setOnlyMerge(true);
-    }
+    op.setOnlyMerge(true);
     return success();
   }
 };

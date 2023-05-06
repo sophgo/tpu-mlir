@@ -12,7 +12,7 @@
 #include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -110,7 +110,7 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
         dtype_bytes = sizeof(int);
       }
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
-      size += align_up(out_hslice * out_wslice, eu_num) * ceiling_func(p.c, npu_num) * 
+      size += align_up(out_hslice * out_wslice, eu_num) * ceiling_func(p.c, npu_num) *
               dtype_bytes;
     }
     if (p.is_global) {

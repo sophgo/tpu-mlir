@@ -7,15 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BMCodegen.hpp"
+#include "BM168xCodegen.hpp"
 #include "bmcpu_common.h"
 
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicNetIr.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/ProfileCtx.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/TensorLocation.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicNetIr.hpp"
+#include "ProfileCtx.h"
+#include "TensorLocation.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"

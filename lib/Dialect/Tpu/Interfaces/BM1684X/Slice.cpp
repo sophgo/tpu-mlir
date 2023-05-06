@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 using namespace tpu_mlir::backend;
@@ -57,7 +57,7 @@ int64_t tpu::SliceOp::getBufferSize_bm1684x(
   const int num_dims = output_shape.size();
   output_shape[0] = out_nslice;
   if (num_dims > 2) {
-    output_shape[2] = out_hslice; 
+    output_shape[2] = out_hslice;
   }
   if (num_dims > 3) {
     output_shape[3] = out_wslice;

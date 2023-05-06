@@ -12,7 +12,7 @@
 #include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include <string.h>
 using namespace tpu_mlir::backend;
 
@@ -116,7 +116,7 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
       int64_t dtype_bytes =
           attr.kd * attr.kh * attr.kw > 256 ? sizeof(int) : sizeof(short);
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
-      buffer_size = (1 + attr.od) * align_up(out_hslice * out_wslice, eu_num) * 
+      buffer_size = (1 + attr.od) * align_up(out_hslice * out_wslice, eu_num) *
                     c_per_npu * dtype_bytes;
     } else {
       auto dtype_bytes = BM168x::getFmtBytes(BM168x::getDataType(getOutput()));

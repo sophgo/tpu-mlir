@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/IrInfo.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynIrInfo.hpp"
 
 using namespace std;
 

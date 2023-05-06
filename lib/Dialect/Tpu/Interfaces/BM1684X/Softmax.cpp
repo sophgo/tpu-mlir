@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -73,7 +73,7 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
   if (axis == 2) {
     buffer_size += c_per_npu * align_up(in_wslice, eu_num) * sizeof(float);
   } else if (axis == 3) {
-    buffer_size += c_per_npu * align_up(in_hslice, eu_num) * sizeof(float); 
+    buffer_size += c_per_npu * align_up(in_hslice, eu_num) * sizeof(float);
   }
   // 32 coeff and 192 table
   buffer_size += align_up((int64_t)32, eu_num) * sizeof(float);

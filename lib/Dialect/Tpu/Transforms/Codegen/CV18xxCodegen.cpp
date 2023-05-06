@@ -7,8 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/MlirToCvimodel.hpp"
-#include "mlir/Support/FileUtilities.h"
+#include "CV18xxCodegen.hpp"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -16,6 +15,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/raw_ostream.h"
+#include "mlir/Support/FileUtilities.h"
 #include <elf.h>
 #include <fstream>
 #include <map>

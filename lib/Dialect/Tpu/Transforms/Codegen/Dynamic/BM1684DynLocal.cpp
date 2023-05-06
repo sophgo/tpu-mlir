@@ -6,9 +6,9 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BM1684/DynLocalIrWrite.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/BM1684DynLocal.hpp"
 #define IR_PACKING
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BM1684/IrUtils.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/BM1684DynIrUtils.hpp"
 
 using namespace llvm;
 using namespace mlir;
