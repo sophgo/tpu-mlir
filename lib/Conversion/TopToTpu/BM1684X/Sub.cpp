@@ -37,6 +37,7 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
       auto constF32 = constOp.read<float>();
       float fmax, fmin;
       findMinMax(constF32->data(), constF32->size(), &fmin, &fmax);
+      fmax = std::max(fabs(fmax), fabs(fmin));
       bool cSign = (fmin < 0);
       auto filter_type = input.getType().cast<RankedTensorType>();
       auto new_type = RankedTensorType::get(filter_type.getShape(),
