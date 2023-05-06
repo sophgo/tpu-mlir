@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/GmemAllocatorMethod.h"
+#include "GmemAllocatorMethod.h"
 #include <limits>
 #include <llvm/Support/Debug.h>
 

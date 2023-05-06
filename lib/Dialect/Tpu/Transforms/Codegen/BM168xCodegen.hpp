@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 #pragma once
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicNetIr.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/ProfileCtx.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/TensorLocation.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicNetIr.hpp"
+#include "ProfileCtx.h"
+#include "TensorLocation.hpp"
 
 using namespace llvm;
 using namespace mlir;
@@ -66,4 +66,3 @@ private:
 
 } // namespace tpu
 } // namespace tpu_mlir
-

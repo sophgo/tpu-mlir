@@ -10,9 +10,7 @@
 #include <set>
 #include <sstream>
 #include <vector>
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/GdmaIrgen.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynGdmaIrgen.hpp"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/Module.h"
 

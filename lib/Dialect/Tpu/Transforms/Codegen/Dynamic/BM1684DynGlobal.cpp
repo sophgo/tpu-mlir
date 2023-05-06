@@ -7,9 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BM1684/DynGlobalIrWrite.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/BM1684DynGlobal.hpp"
 #define IR_PACKING
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BM1684/IrUtils.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/BM1684DynIrUtils.hpp"
 
 using namespace std;
 

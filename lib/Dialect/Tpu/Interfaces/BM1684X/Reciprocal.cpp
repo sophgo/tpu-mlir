@@ -11,7 +11,7 @@
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include <cassert>
 
 using namespace tpu_mlir::backend;

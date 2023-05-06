@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
-#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
@@ -18,8 +17,8 @@
 #include "tpu_mlir/Support/Module.h"
 
 #include "mlir/IR/Location.h"
-#include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 

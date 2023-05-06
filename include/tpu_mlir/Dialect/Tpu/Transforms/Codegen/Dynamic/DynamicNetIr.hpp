@@ -7,13 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 #pragma once
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/BM1684DynGlobal.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/BM1684DynLocal.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BM1684/DynGlobalIrWrite.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BM1684/DynLocalIrWrite.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/IrInfo.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/Module.h"
 #include <list>
 #include <map>
