@@ -11,6 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include <queue>
 #include <vector>
 
 using namespace tpu_mlir::backend;
@@ -138,8 +139,10 @@ static inline int64_t increase_nsecs(int64_t nsecs, int64_t batch_size) {
   return next_nsecs;
 }
 
-static inline void update_shape_secs(const LgInfo &lg_info, shape_secs_t &shape_secs,
-                    int64_t &dhw_secs, const shape_secs_t &max_shape_secs) {
+static inline void update_shape_secs(const LgInfo &lg_info,
+                                     shape_secs_t &shape_secs,
+                                     int64_t &dhw_secs,
+                                     const shape_secs_t &max_shape_secs) {
   if (shape_secs.nsecs < max_shape_secs.nsecs) {
     shape_secs.nsecs = increase_nsecs(shape_secs.nsecs, max_shape_secs.nsecs);
   } else {
@@ -196,13 +199,14 @@ bool LmemAllocator::update_avail_lmems(std::list<MemBlock> &avail_lmems,
   return space_split;
 }
 
-static bool can_membuf_inplace_alloc(int pre_start, int pre_end, int post_start, int post_end) {
+static bool can_membuf_inplace_alloc(int pre_start, int pre_end, int post_start,
+                                     int post_end) {
   bool flag = false;
   if (post_start == pre_end) {
     if (pre_end > pre_start && post_end > post_start) {
       flag = true;
-    } else if ( (pre_end < pre_start && post_end > post_start) ||
-                (pre_end > pre_start && post_end < post_start) ) {
+    } else if ((pre_end < pre_start && post_end > post_start) ||
+               (pre_end > pre_start && post_end < post_start)) {
       flag = post_end < pre_start;
     }
   }
@@ -210,15 +214,18 @@ static bool can_membuf_inplace_alloc(int pre_start, int pre_end, int post_start,
 }
 
 static bool isInplaceOp(Operation *op) {
-  if (module::isCV18xx()) return false;
+  if (module::isCV18xx())
+    return false;
   bool flag = false;
   if (isa<tpu::ScaleOp>(op)) {
     flag = module::getStorageType(op->getOperand(0)).isF32();
-  } else if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp, tpu::MaxOp>(op)) {
+  } else if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp,
+                 tpu::MaxOp>(op)) {
     flag = true;
     auto ins = op->getOperands();
     ValueSet ins_set(ins.begin(), ins.end());
-    if (ins.size() > 2 && ins.size() != ins_set.size()) flag = false;
+    if (ins.size() > 2 && ins.size() != ins_set.size())
+      flag = false;
   } else if (isa<tpu::MulShiftOp>(op)) {
     flag = true;
     auto in = op->getOperand(0);
@@ -227,20 +234,24 @@ static bool isInplaceOp(Operation *op) {
       auto out_qtype = module::getUniformQuantizedType(op->getResult(0));
       auto in_zp = in_qtype.getZeroPoint();
       auto out_zp = out_qtype.getZeroPoint();
-      if (in_zp != 0 || out_zp != 0) flag = false;
+      if (in_zp != 0 || out_zp != 0)
+        flag = false;
     }
     flag = flag && !module::getStorageType(in).isF32();
   } else if (isa<tpu::ReshapeOp>(op)) {
     flag = true;
   }
-  return flag && module::getBytes(op->getOperand(0)) >= module::getBytes(op->getResult(0));
+  return flag && module::getBytes(op->getOperand(0)) >=
+                     module::getBytes(op->getResult(0));
 }
 
-static void insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
-                                     const std::vector<mem_buffer_key_t> &ts_overlap_buffer,
-                                     BasicTimeStepPtr &time_step,
-                                     std::list<MemBlock> &avail_lmems) {
-  // llvm::errs() << "-----------------insert_inplace_local_mem "<< buffer_key.type << "----------------------------------\n";
+static void
+insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
+                         const std::vector<mem_buffer_key_t> &ts_overlap_buffer,
+                         BasicTimeStepPtr &time_step,
+                         std::list<MemBlock> &avail_lmems) {
+  // llvm::errs() << "-----------------insert_inplace_local_mem "<<
+  // buffer_key.type << "----------------------------------\n";
   if (buffer_key.type == LMEM_OPERATION)
     return;
   auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
@@ -251,24 +262,33 @@ static void insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
   auto src_layer = value.getDefiningOp();
   if (src_layer) {
     if (isa<top::WeightOp>(src_layer)) {
-      // llvm::errs() << "-----------------Oh no it is a weight----------------------------------\n";
+      // llvm::errs() << "-----------------Oh no it is a
+      // weight----------------------------------\n";
       return;
     }
     if (isInplaceOp(src_layer)) {
-      // llvm::errs() << "-----------------src-" << src_layer->getName() <<"----------------------------------\n";
+      // llvm::errs() << "-----------------src-" << src_layer->getName()
+      // <<"----------------------------------\n";
       auto src_in = src_layer->getOperand(0);
-      for(buffer_idx = 0; buffer_idx < ts_overlap_buffer.size(); ++buffer_idx) {
-        auto &src_buffer_value = time_step->get_lmem_buffer_value(ts_overlap_buffer[buffer_idx]);
+      for (buffer_idx = 0; buffer_idx < ts_overlap_buffer.size();
+           ++buffer_idx) {
+        auto &src_buffer_value =
+            time_step->get_lmem_buffer_value(ts_overlap_buffer[buffer_idx]);
         if (ts_overlap_buffer[buffer_idx].type != LMEM_OPERATION &&
             ts_overlap_buffer[buffer_idx].value == src_in &&
             src_buffer_value.end_ts == buffer_value.start_ts) {
-          // llvm::errs() << "-----------------if-----------------------------------\n";
-          if (can_membuf_inplace_alloc(src_buffer_value.start_ts, src_buffer_value.end_ts, buffer_value.start_ts, buffer_value.end_ts)) {
+          // llvm::errs() <<
+          // "-----------------if-----------------------------------\n";
+          if (can_membuf_inplace_alloc(
+                  src_buffer_value.start_ts, src_buffer_value.end_ts,
+                  buffer_value.start_ts, buffer_value.end_ts)) {
             lmem_locate.first = src_buffer_value.addr;
             lmem_locate.second = src_buffer_value.size;
-            // llvm::errs() << "-----------------can alloc-----------------------------------\n";
+            // llvm::errs() << "-----------------can
+            // alloc-----------------------------------\n";
           } else {
-            // llvm::errs() << "-----------------no can alloc-----------------------------------\n";
+            // llvm::errs() << "-----------------no can
+            // alloc-----------------------------------\n";
             buffer_idx = ts_overlap_buffer.size();
           }
           break;
@@ -277,24 +297,31 @@ static void insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
 
       if (buffer_idx != ts_overlap_buffer.size()) {
         inplace_valid = true;
-        for(int64_t i = 0; i < ts_overlap_buffer.size(); ++i) {
-          if (buffer_idx == i) continue;
-          auto &buffer_value0 = time_step->get_lmem_buffer_value(ts_overlap_buffer[i]);
-          if ( !(buffer_value0.addr >= (lmem_locate.first + lmem_locate.second) ||
-                (buffer_value0.addr + buffer_value0.size) <= lmem_locate.first) ) {
+        for (int64_t i = 0; i < ts_overlap_buffer.size(); ++i) {
+          if (buffer_idx == i)
+            continue;
+          auto &buffer_value0 =
+              time_step->get_lmem_buffer_value(ts_overlap_buffer[i]);
+          if (!(buffer_value0.addr >=
+                    (lmem_locate.first + lmem_locate.second) ||
+                (buffer_value0.addr + buffer_value0.size) <=
+                    lmem_locate.first)) {
             inplace_valid = false;
             break;
-            // llvm::errs() << "-----------------invalid-----------------------------------\n";
+            // llvm::errs() <<
+            // "-----------------invalid-----------------------------------\n";
           }
         }
         if (inplace_valid) {
           auto list_it = avail_lmems.begin();
-          for(; list_it != avail_lmems.end(); ++list_it) {
+          for (; list_it != avail_lmems.end(); ++list_it) {
             if (list_it->first > lmem_locate.first) {
               break;
             }
           }
-          // llvm::errs() << "+++++++++++++++++++++++++" << lmem_locate.first << ", " << lmem_locate.second <<"----------------------------------\n";
+          // llvm::errs() << "+++++++++++++++++++++++++" << lmem_locate.first <<
+          // ", " << lmem_locate.second
+          // <<"----------------------------------\n";
           avail_lmems.insert(list_it, lmem_locate);
         }
       }
@@ -305,20 +332,28 @@ static void insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
   if (!dst_layers.empty()) {
     auto dst_layer = *dst_layers.begin();
     if (isInplaceOp(dst_layer) && value == dst_layer->getOperand(0)) {
-      // llvm::errs() << "-----------------dst-" << dst_layer->getName() <<"----------------------------------\n";
+      // llvm::errs() << "-----------------dst-" << dst_layer->getName()
+      // <<"----------------------------------\n";
       auto dst_out = dst_layer->getResult(0);
-      for (buffer_idx = 0; buffer_idx < ts_overlap_buffer.size(); ++buffer_idx) {
-        auto &dst_buffer_value = time_step->get_lmem_buffer_value(ts_overlap_buffer[buffer_idx]);
+      for (buffer_idx = 0; buffer_idx < ts_overlap_buffer.size();
+           ++buffer_idx) {
+        auto &dst_buffer_value =
+            time_step->get_lmem_buffer_value(ts_overlap_buffer[buffer_idx]);
         if (ts_overlap_buffer[buffer_idx].type != LMEM_OPERATION &&
             ts_overlap_buffer[buffer_idx].value == dst_out &&
             dst_buffer_value.start_ts == buffer_value.end_ts) {
-          // llvm::errs() << "-----------------if-----------------------------------\n";
-          if (can_membuf_inplace_alloc(buffer_value.start_ts, buffer_value.end_ts, dst_buffer_value.start_ts, dst_buffer_value.end_ts)) {
+          // llvm::errs() <<
+          // "-----------------if-----------------------------------\n";
+          if (can_membuf_inplace_alloc(
+                  buffer_value.start_ts, buffer_value.end_ts,
+                  dst_buffer_value.start_ts, dst_buffer_value.end_ts)) {
             lmem_locate.first = dst_buffer_value.addr;
             lmem_locate.second = dst_buffer_value.size;
-            // llvm::errs() << "-----------------can alloc-----------------------------------\n";
+            // llvm::errs() << "-----------------can
+            // alloc-----------------------------------\n";
           } else {
-            // llvm::errs() << "-----------------no can alloc-----------------------------------\n";
+            // llvm::errs() << "-----------------no can
+            // alloc-----------------------------------\n";
             buffer_idx = ts_overlap_buffer.size();
           }
           break;
@@ -327,24 +362,31 @@ static void insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
 
       if (buffer_idx != ts_overlap_buffer.size()) {
         inplace_valid = true;
-        for(int64_t i = 0; i < ts_overlap_buffer.size(); ++i) {
-          if (buffer_idx == i) continue;
-          auto &buffer_value1 = time_step->get_lmem_buffer_value(ts_overlap_buffer[i]);
-          if ( !(buffer_value1.addr >= (lmem_locate.first + lmem_locate.second) ||
-                (buffer_value1.addr + buffer_value1.size) <= lmem_locate.first) ) {
+        for (int64_t i = 0; i < ts_overlap_buffer.size(); ++i) {
+          if (buffer_idx == i)
+            continue;
+          auto &buffer_value1 =
+              time_step->get_lmem_buffer_value(ts_overlap_buffer[i]);
+          if (!(buffer_value1.addr >=
+                    (lmem_locate.first + lmem_locate.second) ||
+                (buffer_value1.addr + buffer_value1.size) <=
+                    lmem_locate.first)) {
             inplace_valid = false;
-            // llvm::errs() << "-----------------invalid-----------------------------------\n";
+            // llvm::errs() <<
+            // "-----------------invalid-----------------------------------\n";
             break;
           }
         }
         if (inplace_valid) {
           auto list_it = avail_lmems.begin();
-          for(; list_it != avail_lmems.end(); ++list_it) {
+          for (; list_it != avail_lmems.end(); ++list_it) {
             if (list_it->first > lmem_locate.first) {
               break;
             }
           }
-          // llvm::errs() << "++++++++++++++++++++++++++" << lmem_locate.first << ", " << lmem_locate.second <<"----------------------------------\n";
+          // llvm::errs() << "++++++++++++++++++++++++++" << lmem_locate.first
+          // << ", " << lmem_locate.second
+          // <<"----------------------------------\n";
           avail_lmems.insert(list_it, lmem_locate);
         }
       }
@@ -389,8 +431,8 @@ void LmemAllocator::update_avail_lmems(
       // comment out the following lines if encounter performance issues
       std::vector<mem_buffer_key_t> ts_overlap_buffer(1,
                                                       recent_buffer_allocated);
-      insert_inplace_local_mem(buffer_key, ts_overlap_buffer,
-                               time_step, avail_lmems);
+      insert_inplace_local_mem(buffer_key, ts_overlap_buffer, time_step,
+                               avail_lmems);
     }
   }
 
@@ -532,6 +574,10 @@ void membuf_heap_create(
       for (size_t i = 0; i < ts_layers.size(); ++i) {
         auto op = ts_layers[i];
         for (auto in : op->getOperands()) {
+          if (module::isBM1684Family() && dyn_cast<tpu::LutOp>(op) &&
+              module::isWeight(in)) {
+            continue;
+          }
           if (in.getType().isa<NoneType>()) {
             continue;
           }
@@ -563,6 +609,11 @@ void membuf_heap_create(
       // gdma
       membuf_heap.clear();
       for (size_t i = 0; i < ts_tensors.size(); ++i) {
+        if (module::isBM1684Family() && module::isWeight(ts_tensors[i].first) &&
+            llvm::any_of(ts_tensors[i].first.getUsers(),
+                         [](Operation *op) { return isa<tpu::LutOp>(op); })) {
+          continue;
+        }
         if (is_lmem_ldst(ts_tensors[i].second.mode)) {
           elt.value = ts_tensors[i].first;
           if (elt.value.getDefiningOp() &&
@@ -667,11 +718,29 @@ void init_buffer_avail_space(BufferAvailSpace &buffer_avail_space,
   }
 }
 
+/*
+  this only for Lut BM1684
+*/
+bool assignL2memAddr(const LgInfo &lg_info, BasicTimeStepPtr &time_step) {
+  auto &l2mem_buffer = time_step->get_l2mem_buffer();
+  int l2mem_start_addr = (0x22000 + 0x80000);
+  int l2mem_pos = l2mem_start_addr;
+  for (auto &buffer : l2mem_buffer) {
+    buffer.second.addr = l2mem_pos;
+    buffer.second.size = get_buffer_size(
+        buffer.first.value, time_step->get_tensor_infos()[buffer.first.value],
+        lg_info.type);
+    l2mem_pos += buffer.second.size;
+  }
+  return true;
+}
+
 bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
                                    BasicTimeStepPtr &time_step,
                                    const shape_secs_t &shape_secs) {
   time_step->update_all_mem_buffer_size(lg_info);
-  bool one_loop = (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 && shape_secs.dsecs == 1 && shape_secs.wsecs == 1);
+  bool one_loop = (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 &&
+                   shape_secs.dsecs == 1 && shape_secs.wsecs == 1);
 
   std::list<MemBufSortStd> membuf_list;
   init_membuf_list(membuf_list, time_step, one_loop);
@@ -741,6 +810,8 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
   }
 
   time_step->set_lmem_occupy(lmem_occupy);
+
+  assignL2memAddr(lg_info, time_step);
   return true;
 }
 
@@ -749,10 +820,10 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
                                            shape_secs_t &shape_secs) {
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info);
   update_data_split(time_step, lg_info, shape_secs);
-//  if (assignLmemAddr(lg_info, time_step, shape_secs)) {
-//    return true;
-//  }
-//  update_shape_secs(shape_secs, max_shape_secs);
+  //  if (assignLmemAddr(lg_info, time_step, shape_secs)) {
+  //    return true;
+  //  }
+  //  update_shape_secs(shape_secs, max_shape_secs);
 
   int64_t try_num = 0;
   bool status = false;

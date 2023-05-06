@@ -7,11 +7,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 
@@ -64,22 +65,32 @@ void tpu::LoadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   auto g_addr = module::getAddress(getInput());
   int64_t g_offset = (n_idx * g_stride.N + gi.h_idx * g_stride.H) * fmt_bytes;
 
-  BM168x::instance()->dl_tensor_stride_move_gen_cmd(
-      gi.out_addr, 0, g_addr + g_offset, local_N, local_C, local_H, local_W,
-      g_stride.N, g_stride.C, g_stride.H, g_stride.W, s_stride.N, s_stride.C,
-      s_stride.H, s_stride.W, gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
+  // table in lut have to be store in L2 SRAM
+  if (module::isBM1684Family() && module::isWeight(getInput()) &&
+      llvm::any_of(getOutput().getUsers(),
+                   [](Operation *op) { return isa<tpu::LutOp>(op); })) {
+    BM1684::instance().dl_tensor_general_move_gen_cmd(
+        g_addr,                         /*local_addr or global_addr*/
+        0, 1, 1, 1, 256, 1, 1, 1, 1, 0, /*GDMA_VALUE_FORMAT_FLOAT32*/
+        gi.out_addr + 0x10000000,       /*0x10000000 is L2SRAM start addr*/
+        0, 1, 1, 1, 256, 1, 1, 1, 1, 0, /*GDMA_VALUE_FORMAT_FLOAT32*/
+        GDMA_VALUE_DIR_S2S, 0, pid_node);
+  } else {
+    BM168x::instance()->dl_tensor_stride_move_gen_cmd(
+        gi.out_addr, 0, g_addr + g_offset, local_N, local_C, local_H, local_W,
+        g_stride.N, g_stride.C, g_stride.H, g_stride.W, s_stride.N, s_stride.C,
+        s_stride.H, s_stride.W, gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
+  }
 }
 
-uint32_t tpu::LoadOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::LoadOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");
   return 0;
 }
 
-int64_t tpu::LoadOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::LoadOp::get_fw_type_bm1684() { return -1; }
 
-int32_t tpu::LoadOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+int32_t tpu::LoadOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");
   return 0;
 }

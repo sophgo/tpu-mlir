@@ -60,14 +60,17 @@ public:
   GdmaTsField &getTensors(int64_t ts) {
     return timestep_table_[ts].gdma0_ts_field;
   }
-  MemBlock find_buffer_locate(Value value, int64_t ts, const MemBuff &buffer);
+  MemBlock find_buffer_locate(Value value, int64_t ts, const MemBuff &buffer, const MemBuff &l2buffer);
   int64_t get_lmem_addr(const mem_buffer_key_t &buffer_key);
   int64_t get_lmem_size(const mem_buffer_key_t &buffer_key);
   MemBlock get_lmem_locate(Value value, int64_t ts);
   MemBuff &get_lmem_buffer() { return lmem_buffer_; }
+  MemBuff &get_l2mem_buffer() { return l2mem_buffer_; }
 
   const mem_buffer_value_t &
   get_lmem_buffer_value(const mem_buffer_key_t &buffer_key);
+  const mem_buffer_value_t &
+  get_l2mem_buffer_value(const mem_buffer_key_t &buffer_key);
   int64_t get_lmem_occupy() const { return lmem_occupy_; }
   std::map<Value, int64_t, value_compare> &get_hold_coeff() {
     return hold_coeff_;
@@ -139,6 +142,7 @@ protected:
 
   int64_t lmem_occupy_;
   MemBuff lmem_buffer_;
+  MemBuff l2mem_buffer_;
 
   // members for timestep combine
   ValueIntMap gdma_cycle_count_;

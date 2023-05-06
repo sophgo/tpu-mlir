@@ -214,7 +214,8 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
     auto cur_ops = time_step->getLayers(ts);
     for (auto op : cur_ops) {
       auto lgOp = dyn_cast<LocalGenInterface>(op);
-      auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0, (int64_t)0);
+      auto ginfo =
+          lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0, (int64_t)0);
       flow.push_back(ginfo.id);
     } // cur_ops
     auto cur_tensors = time_step->getTensors(ts);
@@ -238,7 +239,8 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
         }
       }
       auto lgOp = dyn_cast<LocalGenInterface>(op);
-      auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0, (int64_t)0);
+      auto ginfo =
+          lgOp.getGroupInfo((int64_t)0, (int64_t)0, (int64_t)0, (int64_t)0);
       flow.push_back(ginfo.id);
     } // cur_tensors
     timestep--;
@@ -325,7 +327,15 @@ void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
     attrs.push_back(builder.getNamedAttr(
         "lmem_type", builder.getI64IntegerAttr(LMEM_ACTIVATION)));
   }
-  auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
+  tpu_mlir::tpu::mem_buffer_value_t buffer_value;
+  if (module::isBM1684Family() && module::isWeight(tensor.first) &&
+      llvm::any_of(tensor.first.getUsers(),
+                   [](Operation *op) { return isa<tpu::LutOp>(op); })) {
+    buffer_value = time_step->get_l2mem_buffer_value(buffer_key);
+  } else {
+    buffer_value = time_step->get_lmem_buffer_value(buffer_key);
+  }
+  // auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   attrs.push_back(builder.getNamedAttr(
       LocalGenInterface::kLayerGroupAttrName,
       getLgParam(ti, id, buffer_value.addr, buffer_value.size, group_type)));

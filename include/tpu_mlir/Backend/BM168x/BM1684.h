@@ -13,6 +13,7 @@
 
 // clang-format off
 typedef void (*tensor_align_move_gen_cmd)(int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr, int src_N, int src_C, int src_H, int src_W, int src_format, int direction, int transpose, CMD_ID_NODE *pid_node);
+typedef void (*tensor_general_move_gen_cmd)(uint64_t src_addr, int src_local_idx, int src_N, int src_C, int src_H, int src_W, uint32_t src_N_stride, uint32_t src_C_stride, uint32_t src_H_stride, uint32_t src_W_stride, int src_format,uint64_t dst_addr, int dst_local_idx, int dst_N, int dst_C, int dst_H, int dst_W, uint32_t dst_N_stride, uint32_t dst_C_stride, uint32_t dst_H_stride, uint32_t dst_W_stride, int dst_format, int direction, int transpose, CMD_ID_NODE * pid_node);
 typedef void (*general_matrix_move_gen_cmd)(int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr, int sec_size, int row_num, int col_num, uint32_t row_stride, int src_format, int direction, int transpose, int result_add, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_conv_forward_local)(int bottom_local_offset, int weight_local_offset, int bias_local_offset, int top_local_offset, int imm_local_offset, int *bottom_dim, int *top_dim, int groups, int kh, int kw, int dh, int dw, int up_pad_h, int down_pad_h, int left_pad_w, int right_pad_w, int stride_h, int stride_w, int using_bias, int result_add, int if_relu, float relu_upper_limit, int unused_ht_for_input_tensor, int unused_hb_for_input_tensor, int unused_wl_for_input_tensor, int unused_wr_for_input_tensor, void *id_node);
 typedef void (*nodechip_winograd_forward_local)(int bottom_local_offset, int weight_local_offset, int bias_local_offset, int top_local_offset, int imm_local_offset, int *bottom_dim, int *top_dim, int groups, int up_pad_h, int down_pad_h, int left_pad_w, int right_pad_w, int using_bias, int result_add, int if_relu, float relu_upper_limit, int use_winograd, int unused_ht_for_input_tensor, int unused_hb_for_input_tensor, int unused_wl_for_input_tensor, int unused_wr_for_input_tensor, void *id_node);
@@ -210,6 +211,7 @@ public:
   allow_store_cmd dl_allow_store_cmd;
   forbid_store_cmd dl_forbid_store_cmd;
   tensor_align_move_gen_cmd dl_tensor_align_move_gen_cmd;
+  tensor_general_move_gen_cmd dl_tensor_general_move_gen_cmd;
   general_matrix_move_gen_cmd dl_general_matrix_move_gen_cmd;
   nodechip_conv_forward_local dl_nodechip_conv_forward_local;
   nodechip_winograd_forward_local dl_nodechip_winograd_forward_local;
