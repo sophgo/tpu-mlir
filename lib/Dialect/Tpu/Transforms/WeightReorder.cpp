@@ -8,8 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/WeightReorder.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -18,17 +16,20 @@
 #include "llvm/Support/raw_ostream.h"
 #include "tpu_mlir/Backend/Arch.h"
 
-#include <cstdint>
+
 #include <fstream>
 #include <set>
 #include <sstream>
 
 using namespace llvm;
-using namespace mlir;
+
 
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
+extern void populateWeightReorderCV18xxPatterns(RewritePatternSet *patterns);
+extern void populateWeightReorderBM1684Patterns(RewritePatternSet *patterns);
+extern void populateWeightReorderBM1684XPatterns(RewritePatternSet *patterns);
 
 class WeightReorderPass : public WeightReorderBase<WeightReorderPass> {
 public:
@@ -40,11 +41,11 @@ public:
     }
     RewritePatternSet patterns(mOp.getContext());
     if (module::isBM1684Family()) {
-      bm1684::populateWeightReorderPatterns(&patterns);
+      populateWeightReorderBM1684Patterns(&patterns);
     } else if (module::isBM1684XFamily()) {
-      bm1684x::populateWeightReorderPatterns(&patterns);
+      populateWeightReorderBM1684XPatterns(&patterns);
     } else if (module::isCV18xx()) {
-      cv18xx::populateWeightReorderPatterns(&patterns);
+      populateWeightReorderCV18xxPatterns(&patterns);
     }
     auto config = GreedyRewriteConfig();
     config.maxIterations = 1; // apply each pattern only once.

@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/BM1684DynIrUtils.hpp"
 
 using namespace llvm;
-using namespace mlir;
+
 using namespace tpu_mlir::backend;
 using namespace std;
 

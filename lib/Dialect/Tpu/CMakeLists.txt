@@ -13,6 +13,10 @@ file(GLOB _sources
           Transforms/Codegen/Dynamic/*.cpp
           Transforms/AddressAssign/*.cpp
           Transforms/ChipOptimize/*.cpp
+          Transforms/WeightReorder/*.cpp
+          Transforms/WeightReorder/BM1684/*.cpp
+          Transforms/WeightReorder/BM1684X/*.cpp
+          Transforms/WeightReorder/CV18xx/*.cpp
           Transforms/BM168x/BM1684/*.cpp)
 
 add_llvm_library(TPUMLIRTpu

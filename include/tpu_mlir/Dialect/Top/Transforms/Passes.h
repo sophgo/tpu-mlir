@@ -14,7 +14,7 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-using namespace mlir;
+
 namespace tpu_mlir {
 namespace top {
 

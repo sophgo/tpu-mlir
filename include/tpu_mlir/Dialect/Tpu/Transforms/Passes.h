@@ -14,7 +14,7 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
 
-using namespace mlir;
+
 namespace tpu_mlir {
 namespace tpu {
 

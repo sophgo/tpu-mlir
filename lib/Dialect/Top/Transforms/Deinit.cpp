@@ -12,7 +12,7 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 using namespace llvm;
-using namespace mlir;
+
 
 namespace tpu_mlir {
 namespace top {

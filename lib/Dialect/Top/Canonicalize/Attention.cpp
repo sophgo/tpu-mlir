@@ -12,7 +12,7 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
+
 using namespace tpu_mlir::top;
 
 Value get_weight(Value weight, int head, int idx, int axis, Type to_type, std::string base_name) {

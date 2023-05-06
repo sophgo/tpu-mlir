@@ -13,7 +13,7 @@
 #define DEBUG_TYPE "shape_infer"
 
 using namespace llvm;
-using namespace mlir;
+
 
 namespace tpu_mlir {
 namespace top {

@@ -12,7 +12,7 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 
-using namespace mlir;
+
 
 // upack => slice + reshape
 struct Unpack2Split : public OpRewritePattern<top::UnpackOp> {

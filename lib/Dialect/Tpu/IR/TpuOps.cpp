@@ -16,7 +16,7 @@
 #include "mlir/IR/TypeUtilities.h"
 #include <numeric>
 
-using namespace mlir;
+
 using namespace tpu_mlir::tpu;
 
 //===----------------------------------------------------------------------===//

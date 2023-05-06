@@ -13,7 +13,7 @@
 #include "TensorLocation.hpp"
 
 using namespace llvm;
-using namespace mlir;
+
 
 using namespace flatbuffers;
 namespace tpu_mlir {

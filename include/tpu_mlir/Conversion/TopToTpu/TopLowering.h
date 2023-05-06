@@ -23,7 +23,7 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 using namespace llvm;
-using namespace mlir;
+
 namespace tpu_mlir {
 class ScfTypeConverter: public TypeConverter {
 public:

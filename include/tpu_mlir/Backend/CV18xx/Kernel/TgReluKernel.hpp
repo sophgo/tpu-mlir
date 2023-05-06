@@ -11,10 +11,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include <llvm/Support/Debug.h>
-#include <llvm/Support/Format.h>
-#include <llvm/Support/raw_ostream.h>
-#include <iostream>
-#include <cmath>
+
 namespace tpu_mlir {
 namespace backend {
 class TgReluKernel {

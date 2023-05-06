@@ -20,7 +20,7 @@
 #include <vector>
 
 using namespace llvm;
-using namespace mlir;
+
 
 namespace tpu_mlir {
 namespace tpu {

@@ -14,8 +14,6 @@
 
 using namespace tpu_mlir::backend;
 
-using namespace mlir;
-
 uint32_t BM1684X::get_bdc_len(int bdc_num, int group_id) {
   if (bdc_num == 0) {
     return 0;

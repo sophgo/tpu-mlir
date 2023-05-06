@@ -10,7 +10,7 @@
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-using namespace mlir;
+
 
 namespace tpu_mlir {
 constexpr llvm::StringRef LocalGenInterface::kLayerGroupAttrName;

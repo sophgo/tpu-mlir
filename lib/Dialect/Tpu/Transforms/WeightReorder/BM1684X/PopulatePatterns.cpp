@@ -7,17 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
+#include "../WeightReorder.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-#include <cstdint>
 
-using namespace llvm;
-using namespace mlir;
+
 namespace tpu_mlir {
-namespace bm1684x {
-
-void populateWeightReorderPatterns(RewritePatternSet *patterns) {
+namespace tpu {
+using namespace bm1684x;
+void populateWeightReorderBM1684XPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
     WeightReorder<tpu::Conv2DOp, int8_t>,
@@ -41,21 +39,5 @@ void populateWeightReorderPatterns(RewritePatternSet *patterns) {
   // clang-format on
 };
 
-} // namespace bm1684x
-
-namespace bm1684 {
-
-void populateWeightReorderPatterns(RewritePatternSet *patterns) {
-  // clang-format off
-  patterns->add<
-    WeightReorder<tpu::Conv2DOp, int8_t>,
-    WeightReorder<tpu::DeconvOp, int8_t>,
-    WeightReorder<tpu::DeconvOp, Float32Type>,
-    WeightReorder<tpu::Conv2DOp, Float32Type>,
-    WeightReorder<tpu::LSTMOp, Float32Type>  >(patterns->getContext());
-  // clang-format on
-};
-
-} // namespace bm1684
-
+} // namespace tpu
 } // namespace tpu_mlir

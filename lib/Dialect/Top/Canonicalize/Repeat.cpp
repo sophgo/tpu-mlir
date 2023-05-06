@@ -13,7 +13,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
 using namespace tpu_mlir::top;
 
 struct TopRepeatToTile : public OpRewritePattern<RepeatOp> {

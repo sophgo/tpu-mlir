@@ -9,13 +9,12 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
-using namespace tpu_mlir::bm1684x;
+
 
 int64_t data_copy(top::WeightOp weight, bool is_f16, std::shared_ptr<std::vector<short>> &data_i16, int64_t offset) {
   auto data_fp32 = weight.read<float>();

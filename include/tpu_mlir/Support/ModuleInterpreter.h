@@ -15,10 +15,8 @@
 #define MLIR_MODULEINTERPRETER_H_
 
 #include "tpu_mlir/Interfaces/InferenceInterface.h"
-
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
-
 #include "llvm/Support/Debug.h"
 
 #include <fstream>
