@@ -173,4 +173,51 @@ typedef struct {
   bool fusible;
 } slice_attr_t;
 
+typedef struct {
+  int64_t n;
+  int64_t ic;
+  int64_t id;
+  int64_t ih;
+  int64_t iw;
+  int64_t oc;
+  int64_t od;
+  int64_t oh;
+  int64_t ow;
+  int64_t kd, dd, sd, ins_d;
+  int64_t kh, dh, sh, ins_h;
+  int64_t kw, dw, sw, ins_w;
+  int64_t ofc, ofd, ofh, ofw;
+  int64_t mkc, mkd, mkh, mkw;
+  int64_t pdf, pdb;
+  int64_t pht, phb;
+  int64_t pwl, pwr;
+  int64_t groups;
+  int64_t deform_groups;
+  int64_t pad_value;
+  int64_t kernel_zp;
+  bool use_mask;
+  bool has_bias;
+  bool do_relu;
+  bool is_dw;
+  double relu_limit;
+} deform_conv2d_attr_t;
+
+typedef struct {
+  int64_t n;
+  int64_t ic;
+  int64_t ih;
+  int64_t iw;
+  int64_t oc;
+  int64_t oh;
+  int64_t ow;
+  int64_t kh, dh, sh;
+  int64_t kw, dw, sw;
+  int64_t ofc, ofh, ofw;
+  int64_t mkc, mkh, mkw;
+  int64_t pht, phb;
+  int64_t pwl, pwr;
+  int64_t deform_groups;
+  bool use_mask;
+} deform_gather_attr_t;
+
 } // namespace tpu_mlir

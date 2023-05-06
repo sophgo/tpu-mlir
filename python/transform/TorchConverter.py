@@ -11,7 +11,7 @@ from .TorchHelper import *
 from mlir.ir import *
 import mlir.dialects.top as top
 import numpy as np
-
+import torchvision
 
 class TorchConverter(BaseConverter):
     TypeMap = {
@@ -184,6 +184,8 @@ class TorchConverter(BaseConverter):
             "prim::TupleConstruct": lambda node: self.convert_tuple(node),
             "prim::TupleUnpack": lambda node: self.convert_tuple_unpack(node),
             # "prim::If": lambda node: self.convert_if(node),
+            ###### torchvision ######
+            "torchvision::deform_conv2d": lambda node: self.convert_deform_conv2d_op(node),
         }
         # yapf: enable
         self.check_op_types()
@@ -1580,4 +1582,41 @@ class TorchConverter(BaseConverter):
                                    align_corners=align_corners,
                                    loc=self.get_loc(torch_node.name),
                                    ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_deform_conv2d_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        operands = list()
+        kernel_shape = self.getShape(torch_node.inputs[1])
+        kernel_shape = kernel_shape[2:]
+        weight_op = self.getOp(torch_node.inputs[1])
+        offset_op = self.getOp(torch_node.inputs[2])
+        mask_op = self.getOp(torch_node.inputs[3])
+        bias_op = self.getOp(torch_node.inputs[4])
+        stride_h = self.const_val[torch_node.inputs[5]]
+        stride_w = self.const_val[torch_node.inputs[6]]
+        pad_h = self.const_val[torch_node.inputs[7]]
+        pad_w = self.const_val[torch_node.inputs[8]]
+        dilation_h = self.const_val[torch_node.inputs[9]]
+        dilation_w = self.const_val[torch_node.inputs[10]]
+        n_weight_grps = self.const_val[torch_node.inputs[11]]
+        n_offset_grps = self.const_val[torch_node.inputs[12]]
+        use_mask = self.const_val[torch_node.inputs[13]]
+        if (use_mask == 0):
+            mask_op = self.mlir.none_op;
+        new_op = top.DeformConv2DOp(self.unranked_type,
+                            op,
+                            weight_op,
+                            offset_op,
+                            mask_op,
+                            bias_op,
+                            kernel_shape=kernel_shape,
+                            strides=[stride_h, stride_w],
+                            pads=[pad_h, pad_w, pad_h, pad_w],
+                            group=n_weight_grps,
+                            deform_group=n_offset_grps,
+                            use_mask=use_mask,
+                            do_relu=False,
+                            loc=self.get_loc(torch_node.name),
+                            ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)

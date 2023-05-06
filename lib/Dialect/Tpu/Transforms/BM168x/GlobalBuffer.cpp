@@ -366,6 +366,29 @@ public:
   }
 };
 
+class DeformGatherGlobalBuffer : public OpRewritePattern<tpu::DeformGatherOp> {
+public:
+  using OpRewritePattern<tpu::DeformGatherOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::DeformGatherOp Op,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(Op.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684XFamily()) {
+      return failure();
+    }
+    std::vector<int64_t> buffer_shape = {};
+    auto type = module::getStorageType(Op.getOutput());
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(Op, buffer_type);
+    Op.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == Op.getBuffer();
+    });
+    return success();
+  }
+};
+
 void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
@@ -376,7 +399,8 @@ void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
       SoftmaxGlobalBuffer,
       PermuteGlobalBuffer,
       InterpGlobalBuffer,
-      NonZeroGlobalBuffer
+      NonZeroGlobalBuffer,
+      DeformGatherGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }

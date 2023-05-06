@@ -2293,4 +2293,31 @@ def Tpu_IfOp : Tpu_Op<"If"> {
   }
   }];
 }
+
+def Tpu_DeformGatherOp : Tpu_Op<"DeformGather"> {
+  let summary = "Deform gather operator";
+
+  let description = [{
+     The deform gather operator for deform_conv2d.
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyRankedTensor:$offset,
+    AnyTensorOrNone:$mask,
+    AnyTensorOrNone:$buffer,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$dilations,
+    I64ArrayAttr:$pads, // top,left,bottom,right
+    DefaultValuedAttr<BoolAttr, "false">:$use_mask,
+    DefaultValuedAttr<I64Attr, "1">:$deform_group
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    deform_gather_attr_t parseParam();
+  }];
+}
+
 #endif // TPU_OPS
