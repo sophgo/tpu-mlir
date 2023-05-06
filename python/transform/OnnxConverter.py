@@ -465,7 +465,7 @@ class OnnxConverter(BaseConverter):
                 nodes_with_shape.append(output.name)
         # get unknow shape
         full_nodes = []
-        no_list = ["Cast", "Constant", "Unsqueeze", "Dropout", "Loop", "TopK", "NonMaxSuppression"]
+        no_list = ["Cast", "Constant", "Dropout", "Loop", "TopK", "NonMaxSuppression"]
         for n in graph.node:
             if n.op_type == 'Loop':
                 #special handle: get the shape of loop op
@@ -1614,22 +1614,25 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Squeeze")
         op = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        new_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
+        axes = self.getWeight(onnx_node.inputs[1]).astype(int)
+        new_op = top.SqueezeOp(self.mlir.get_tensor_type(output_shape),
                                op,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                               ip=self.mlir.insert_point).output
+                               ip=self.mlir.insert_point,
+                               axes=axes).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_unsqueeze_op(self, onnx_node):
         assert (onnx_node.op_type == "Unsqueeze")
         op = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        new_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
+        axes = self.getWeight(onnx_node.inputs[1]).astype(int)
+        new_op = top.UnsqueezeOp(self.mlir.get_tensor_type(output_shape),
                                op,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                               ip=self.mlir.insert_point).output
+                               ip=self.mlir.insert_point,
+                               axes=axes).output
         self.addOperand(onnx_node.name, new_op)
-
     def convert_clip_op(self, onnx_node):
         assert (onnx_node.op_type == "Clip")
         input = self.getOperand(onnx_node.inputs[0])

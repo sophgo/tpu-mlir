@@ -162,6 +162,9 @@ class ONNX_IR_TESTER(object):
             "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y),
             "TopK":         (self.test_TopK,          N, Y, Y, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N),
+            "Unsqueeze":    (self.test_Unsqueeze,     N, Y, N, N),
+            "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, N, N),
+            "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, N, N),
             "Where":        (self.test_Where,         N, Y, Y, Y),
             #####################################
             # Torch Test Case, Alphabetically
@@ -544,6 +547,19 @@ class ONNX_IR_TESTER(object):
         )
         graph_def = helper.make_graph([pool_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
+
+    def test_Unsqueeze(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = x.unsqueeze(0)
+                return y
+
+        x = torch.randn(1, 2, 3, 4).float()
+        self.torch_and_test(x, Model(), case_name)
 
     def test_AvgPool1d(self, case_name):
         input_shape = [1, 32, 128]
@@ -5191,6 +5207,78 @@ class ONNX_IR_TESTER(object):
         )
         self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
 
+    def test_ShapeUnsqueeze(self, case_name):
+        from onnx import numpy_helper
+        from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
+        input_shape = [2, 3]
+        output_shape = [len(input_shape)]
+        axes = [0, 2]
+        axes_tensor = numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes")
+        unsqueeze_shape = [1,  output_shape[0],1]
+
+        graph_def = helper.make_graph(
+            name = case_name,
+            inputs=[
+                helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape),
+            ],
+            outputs=[ helper.make_tensor_value_info('unsqueezeinfo', TensorProto.INT64, unsqueeze_shape)],
+            initializer=[
+               numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes")
+            ],
+            nodes=[
+                helper.make_node(
+                    'Shape',  # node name
+                    inputs=['input'],  # inputs
+                    outputs=['shapeinfo'],  # outputs
+                ),
+                helper.make_node(
+                    "Unsqueeze",  # node name
+                    inputs=['shapeinfo', "axes"],  # inputs
+                    outputs=['unsqueezeinfo'],  # outputs
+                )]
+        )
+        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
+
+
+    def test_ShapeSqueeze(self, case_name):
+        from onnx import numpy_helper
+        from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
+        input_shape = [1, 1, 2, 3]
+        output_shape = [2,3]
+        axes = [0, 1]
+        unsqueeze_shape = [1, 1, output_shape[0]]
+        squeeze_shape =  [len(input_shape)]
+        graph_def = helper.make_graph(
+            name = case_name,
+            inputs=[
+                helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape),
+            ],
+            outputs=[ helper.make_tensor_value_info('squeezeinfo', TensorProto.INT64, squeeze_shape)],
+
+            initializer=[
+               numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes_unsqueeze"),
+               numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes_squeeze")
+            ],
+            nodes=[
+                helper.make_node(
+                    'Shape',  # node name
+                    inputs=['input'],  # inputs
+                    outputs=['shapeinfo'],  # outputs
+                ),
+                helper.make_node(
+                    "Unsqueeze",  # node name
+                    inputs=['shapeinfo', "axes_unsqueeze"],  # inputs
+                    outputs=['unsqueezeinfo'],  # outputs
+                ),
+                helper.make_node(
+                    "Squeeze",  # node name
+                    inputs=['unsqueezeinfo', "axes_squeeze"],  # inputs
+                    outputs=['squeezeinfo'],  # outputs
+                )]
+        )
+        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
     def test_Gather2(self, case_name):
         indices_data = [1]
         input_shape = [2, 3]
@@ -5350,6 +5438,7 @@ def test_all(tester: ONNX_IR_TESTER):
         success_cases = multiprocessing.Manager().list()
         for case in tester.test_cases:
             if tester.check_support(case):
+                print("====== test_onnx.py --case {} --chip {} TEST START PROCESSING ======".format(case, tester.chip))
                 p = multiprocessing.Process(target=test_one_case_in_all,
                                             args=(tester, case, error_cases, success_cases))
                 p.name = case

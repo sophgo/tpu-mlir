@@ -28,6 +28,8 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns);
 SHAPE_LOWERING_BM1684X(Shape)
 SHAPE_LOWERING_BM1684X(ConstantFill)
 SHAPE_LOWERING_BM1684X(Concat)
+SHAPE_LOWERING_BM1684X(Unsqueeze)
+SHAPE_LOWERING_BM1684X(Squeeze)
 
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
@@ -137,5 +139,7 @@ LOWERING_BM1684X(Where)
 LOWERING_BM1684X(PixelNorm)
 LOWERING_BM1684X(YoloDetection)
 LOWERING_BM1684X(DetectionOutput)
+LOWERING_BM1684X(Unsqueeze)
+LOWERING_BM1684X(Squeeze)
 } // namespace bm1684x
 } // namespace tpu_mlir
