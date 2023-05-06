@@ -1623,16 +1623,21 @@ class TORCH_IR_TESTER(object):
 
                 def __init__(self):
                     super(Model, self).__init__()
+                    self.const = torch.randn(in0_shape, dtype=torch.float32)
+                    self.shape_checker = torch.select(
+                        self.const, dim=dim, index=index)
 
                 def forward(self, x):
-                    y1 = torch.select(x, dim=dim, index=index)
-                    return y1
+                    y = torch.select(x, dim=dim, index=index)
+                    y += self.shape_checker
+                    return y
 
             self.trace_and_test([in0_shape], Model())
 
         _test_select((1, 3, 32, 32), 2, 13)
         _test_select((3, 32, 16), 0, 2)
         _test_select((32, 16), 1, 4)
+        _test_select((10, 20, 30, 40), 2, 5)
 
     #######################################################################
     # Split

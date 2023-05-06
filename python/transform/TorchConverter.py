@@ -970,14 +970,21 @@ class TorchConverter(BaseConverter):
         assert torch_node.inputs[2] in self.const_val.keys()
         end = self.const_val[torch_node.inputs[2]] + 1
         self.addWeight(end_name, np.array([end], dtype=np.float32))
-        new_op = top.SliceAxisOp(self.unranked_type,
-                                 self.getOp(torch_node.inputs[0]),
-                                 self.getOp(torch_node.inputs[1]),
-                                 self.getOp(torch_node.inputs[2]),
-                                 self.getOp(step_name),
-                                 self.getOp(end_name),
-                                 loc=self.get_loc(torch_node.name),
-                                 ip=self.mlir.insert_point).output
+        slice_op = top.SliceAxisOp(self.unranked_type,
+                                   self.getOp(torch_node.inputs[0]),
+                                   self.getOp(torch_node.inputs[1]),
+                                   self.getOp(torch_node.inputs[2]),
+                                   self.getOp(step_name),
+                                   self.getOp(end_name),
+                                   loc=self.get_loc(
+                                       "{}_SliceAxis".format(torch_node.name)),
+                                   ip=self.mlir.insert_point).output
+        axis = self.const_val[torch_node.inputs[1]]
+        new_op = top.SqueezeOp(self.unranked_type,
+                               slice_op,
+                               axes=[axis],
+                               loc=self.get_loc(torch_node.name),
+                               ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
 
     def convert_slice_op(self, torch_node: TorchNode):
