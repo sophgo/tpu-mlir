@@ -26,7 +26,13 @@ void tpu::ReshapeOp::codegen_global_bm1684() {
   module::getNCHW(getInput(), in, ic, ih, iw);
   module::getNCHW(getOutput(), on, oc, oh, ow);
   if (on != in) {
-    llvm_unreachable("Not Implemented");
+    //4N->1N
+    auto buffer_addr = module::getAddress(getBuffer());
+    BM1684::instance().dl_nodechip_reshape_fix8b(in_addr, buffer_addr,
+    in, ic, ih, iw, in, ic, ih, iw, 2, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+    //1N->4N
+    BM1684::instance().dl_nodechip_reshape_fix8b(buffer_addr, out_addr,
+    on, oc, oh, ow, on, oc, oh, ow, 0, 2, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     int total_num = align_up(on, 4l) * oc * oh * ow;
     BM1684::instance().dl_nodechip_global_memcpy_ex(

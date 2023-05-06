@@ -417,17 +417,16 @@ bool is_broadcast_binary(Operation *op, Value in) {
 }
 
 slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
-                                int64_t h, int64_t d, int64_t w) {
+                                int64_t h, int64_t d, int64_t w, int64_t bitwidth) {
   slice_info_t slice_info;
   int64_t secs, idx, slice, step;
   // n slice info
   secs = shape_secs.nsecs;
-  if (Arch::ALIGN_4N) {
-    int64_t n_align = 4;
-
+  int64_t n_align = 32/bitwidth;
+  if (Arch::ALIGN_4N && n_align != 1) {
     step = align_up(n / secs, n_align);
     for (int64_t i = 0; i < secs; ++i) {
-      idx = step * i;
+      idx = i == 0 ? 0 : idx+slice;
       slice = (n - idx) > step ? step : (n - idx);
       slice_info.n.emplace_back(slice_pair_t(idx, slice));
     }
@@ -697,7 +696,10 @@ bool stripe_mine_idx_slice(const LgInfo &lg_info,
   std::set<Value, value_compare> out_tensor_set;
   for (auto out : lg_info.group_outs) {
     module::getNCDHW(out, n, c, d, h, w, lg_info.type);
-    auto si = get_out_slice_info(shape_secs, n, h, d, w);
+    auto istype = module::getStorageType(lg_info.group_ins[0]);
+    auto ostype = module::getStorageType(out);
+    int64_t bitwidth = std::min(istype.getIntOrFloatBitWidth(), ostype.getIntOrFloatBitWidth());
+    auto si = get_out_slice_info(shape_secs, n, h, d, w, bitwidth);
 
     tensor_infos[out] = tensor_info_t(si);
     out_tensor_set.insert(out);

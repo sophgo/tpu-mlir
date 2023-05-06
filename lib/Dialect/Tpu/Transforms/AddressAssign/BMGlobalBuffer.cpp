@@ -204,6 +204,45 @@ public:
   }
 };
 
+class ReshapeGlobalBuffer : public OpRewritePattern<tpu::ReshapeOp> {
+public:
+  using OpRewritePattern<tpu::ReshapeOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::ReshapeOp reshapeOp,
+                                PatternRewriter &rewriter) const override {
+    //only used for 4N ndim reshape!
+    if (!module::isBM1684Family()) {
+      return failure();
+    }
+    if (!module::isNone(reshapeOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isUniformQuantized(reshapeOp.getInput())) {
+      return failure();
+    }
+    if (!module::isUniformQuantized(reshapeOp.getOutput())) {
+      return failure();
+    }
+    int64_t in, ic, ih, iw, on, oc, oh, ow;
+    module::getNCHW(reshapeOp.getInput(), in, ic, ih, iw);
+    module::getNCHW(reshapeOp.getOutput(), on, oc, oh, ow);
+    if (on == in) {
+      return failure();
+    }
+
+    uint64_t buffer_size = on * oc * oh * ow;;
+
+    // create bufferOp
+    std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+    auto type = module::getStorageType(reshapeOp.getOutput());
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(reshapeOp, buffer_type);
+    reshapeOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == reshapeOp.getBuffer() && operand.getOwner() == reshapeOp;
+    });
+    return success();
+  }
+};
 class SoftmaxGlobalBuffer : public OpRewritePattern<tpu::SoftmaxOp> {
 public:
   using OpRewritePattern<tpu::SoftmaxOp>::OpRewritePattern;
@@ -407,6 +446,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       LSTMGlobalBuffer,
       ReduceGlobalBuffer,
       SliceGlobalBuffer,
+      ReshapeGlobalBuffer,
       SoftmaxGlobalBuffer,
       PermuteGlobalBuffer,
       InterpGlobalBuffer,

@@ -319,7 +319,17 @@ void BMAddressAssign::findInPlaceOpMaxUsePosition(
 }
 
 bool BMAddressAssign::isInPlaceOp(Operation *op) {
-  if (isa<tpu::ReshapeOp>(op)) {
+  if (auto ReshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
+    if (Arch::ALIGN_4N &&
+        module::getStorageType(ReshapeOp.getInput()).getIntOrFloatBitWidth()==8)
+    {
+      int64_t in, ic, ih, iw, on, oc, oh, ow;
+      module::getNCHW(ReshapeOp.getInput(), in, ic, ih, iw);
+      module::getNCHW(ReshapeOp.getOutput(), on, oc, oh, ow);
+      if (on != in) {
+        return false;
+      }
+    }
     return true;
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
     auto p = sliceOp.parseParam();

@@ -950,7 +950,8 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape",
     No data conversion happens during a reshape operation.
   }];
   let arguments = (ins
-    AnyRankedTensor:$input
+    AnyRankedTensor:$input,
+    Optional<AnyTensorOrNone>:$buffer
   );
   let results = (outs AnyRankedTensor:$output);
 }
