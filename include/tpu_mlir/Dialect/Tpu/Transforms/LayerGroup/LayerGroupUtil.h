@@ -34,7 +34,7 @@ bool strip_back_judge(Value v, const LgInfo &lg_info,
                       const std::set<Value, value_compare> &out_tensor_set);
 bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1);
 slice_info_t get_out_slice_info(const shape_secs_t &shape_secs,
-                                int64_t n, int64_t h, int64_t d, int64_t w);
+                                int64_t n, int64_t h, int64_t d, int64_t w, int64_t bitwidth);
 bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
                              Operation *op);
 bool stripe_mine_max_slice(const LgInfo &lg_info,

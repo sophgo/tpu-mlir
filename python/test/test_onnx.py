@@ -231,6 +231,7 @@ class ONNX_IR_TESTER(object):
             "PoolAfterRelu":    (self.test_PoolAfterRelu,   N, Y, Y, Y),
             "PoolSignError":    (self.test_PoolSignError,   N, Y, Y, Y),
             "ReshapeFuse":      (self.test_ReshapeFuse,     Y, Y, Y, Y),
+            "ReshapeN":         (self.test_ReshapeN,     Y, N, N, N),
             "ReduceTranspose":  (self.test_ReduceTranspose, Y, Y, Y, N),
             "ReduceFuse":       (self.test_ReduceFuse,      Y, Y, Y, Y),
             "SwapDimInner":     (self.test_SwapDimInner,    Y, Y, Y, N),
@@ -2971,6 +2972,24 @@ class ONNX_IR_TESTER(object):
                 return e
 
         x = torch.randn(529, 3, 49, 49).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_ReshapeN(self, case_name):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.w0 = torch.randn(1, 1, 3, 49, 49).float()
+                self.w1 = torch.randn(1, 3, 49, 49).float()
+
+            def forward(self, x):
+                a = x + self.w0
+                b = torch.reshape(a, [529, 3, 49, 49])
+                c = b - self.w1
+                return c
+
+        x = torch.randn(1, 529, 3, 49, 49).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_SwapDimInner(self, case_name):
