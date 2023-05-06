@@ -39,6 +39,8 @@ if __name__ == '__main__':
                         help='float type of mix precision')
     parser.add_argument('--loss_table', default='full_loss_table.txt',
                         help="output all loss of layers if each layer is quantized to f16")
+    parser.add_argument('-b', '--base_quantize_table', required=False, type=str, default="",
+                        help=argparse.SUPPRESS)
     parser.add_argument('-o', '--quantize_table', required=True,
                         help='output searched bf16 layer table')
     parser.add_argument('--debug_cmd', type=str, default='', help='debug cmd')
