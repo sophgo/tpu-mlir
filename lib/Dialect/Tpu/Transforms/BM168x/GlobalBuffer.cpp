@@ -378,7 +378,12 @@ public:
     if (!module::isBM1684XFamily()) {
       return failure();
     }
-    std::vector<int64_t> buffer_shape = {};
+    deform_gather_attr_t p = Op.parseParam();
+    uint64_t buffer_size = 0;
+    auto conved_H = ((p.ih - (p.dh * (p.kh - 1) + 1) + p.pht + p.phb) / p.sh + 1);
+    auto conved_W = ((p.iw - (p.dw * (p.kw - 1) + 1) + p.pwl + p.pwr) / p.sw + 1);
+    buffer_size = 2 * p.n * p.deform_groups * p.kh * p.kw * conved_H * conved_W;
+    std::vector<int64_t> buffer_shape = {(int64_t) buffer_size};
     auto type = module::getStorageType(Op.getOutput());
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(Op, buffer_type);
