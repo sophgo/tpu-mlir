@@ -50,6 +50,25 @@ class TorchInterpreter():
         else:
             self.coeff[name] = torch.from_numpy(data)
 
+    def run_torchvision(self, node: TorchNode):
+        assert node.op_type.split('::')[0] == 'torchvision'
+        # get input list
+        input_list = [self.get_input(name) for name in node.inputs]
+
+        # get function
+        func = getattr(torch.ops.torchvision, node.op_type.split('::')[1])
+
+        # run function
+        output = func(*input_list)
+
+        #save output
+        for i in range(len(node.outputs)):
+            out = output if len(node.outputs) == 1 else output[i]
+            if isinstance(output, torch.Tensor):
+                self.ref_tensor[node.outputs[i]] = out
+            else:
+                self.const_val[node.outputs[i]] = out
+    
     def run_prim(self, node: TorchNode):
         assert node.op_type.split('::')[0] == 'prim'
         if node.op_type == "prim::ListConstruct" or node.op_type == "prim::TupleConstruct":
@@ -143,8 +162,10 @@ class TorchInterpreter():
             pbar.update(1)
             if node.kind().startswith('aten'):
                 self.run_aten(n)
-            else:
+            elif node.kind().startswith('prim'):
                 self.run_prim(n)
+            else:
+                self.run_torchvision(n)
         pbar.close()
         to_remove = []
         for k, v in self.ref_tensor.items():

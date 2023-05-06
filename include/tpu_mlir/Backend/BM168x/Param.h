@@ -1528,6 +1528,24 @@ typedef struct shape_cast_param {
   int output_is_shape;
 } shape_cast_param_t;
 
+typedef struct {
+  int modulated;
+  int deform_groups;
+  int kh;
+  int kw;
+  int pad_h;
+  int pad_w;
+  int pad_h_after;
+  int pad_w_after;
+  int stride_h;
+  int stride_w;
+  int dilation_h;
+  int dilation_w;
+  int mode;
+  int offset_interleave;
+  uint64_t buffer_addr;
+} deform_gather_global_spec_t;
+
 #ifdef __cplusplus
 }
 #endif

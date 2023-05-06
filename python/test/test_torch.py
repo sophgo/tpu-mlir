@@ -20,6 +20,8 @@ import torch.nn.functional as F
 import torch.jit as jit
 import traceback
 
+from torchvision.ops import DeformConv2d
+
 
 class TORCH_IR_TESTER(object):
     ID = 0
@@ -61,6 +63,7 @@ class TORCH_IR_TESTER(object):
             "ConvGroup":        (self.test_ConvGroup,         Y, Y, Y),
             "ConvTrans":        (self.test_ConvTrans,         Y, Y, Y),
             "ConstantFill":     (self.test_ConstantFill,      Y, Y, Y),
+            "DeformConv2D":     (self.test_DeformConv2D,      Y, N, N),
             "Div":              (self.test_Div,               Y, Y, Y),
             "Dropout":          (self.test_Dropout,           Y, Y, N),
             "Elu":              (self.test_Elu,               Y, Y, Y),
@@ -2351,6 +2354,46 @@ class TORCH_IR_TESTER(object):
                                        padding_mode, align_corners)
                     _test_grid_sampler((1, 3, 50, 50), (1, 1, 1, 2), mode,
                                        padding_mode, align_corners)
+
+    #######################################################################
+    # Deformable Convolution
+    # ------------
+    def test_DeformConv2D(self):
+        in_channel = 3
+        kernel = [3, 3]
+        deform_groups = 1
+        out_channel = 64
+
+        class Model0(torch.nn.Module):
+
+            def __init__(self):
+                super(Model0, self).__init__()
+                num_filter = kernel[0] * kernel[1] * 2 * deform_groups
+                self.m0 = nn.Conv2d(in_channel, num_filter, kernel[0], 2, 0, 1)
+                self.m1 = DeformConv2d(in_channel, out_channel, kernel[0], 2, 0, 1)
+
+            def forward(self, x):
+                y0 = self.m0(x)
+                y1 = self.m1(x, y0)
+                return y1
+
+        class Model1(torch.nn.Module):
+
+            def __init__(self):
+                super(Model1, self).__init__()
+                num_filter = kernel[0] * kernel[1] * 2 * deform_groups
+                self.m0 = nn.Conv2d(in_channel, num_filter, kernel[0], 2, 0, 1)
+                self.m1 = nn.Conv2d(in_channel, num_filter // 2, kernel[0], 2, 0, 1)
+                self.m2 = DeformConv2d(in_channel, out_channel, kernel[0], 2, 0, 1)
+
+            def forward(self, x):
+                y0 = self.m0(x)
+                y1 = self.m1(x)
+                y2 = self.m2(x, y0, y1)
+                return y2
+
+        self.trace_and_test([(1, 3, 28, 28)], Model0())
+        self.trace_and_test([(1, 3, 28, 28)], Model1())
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     try:

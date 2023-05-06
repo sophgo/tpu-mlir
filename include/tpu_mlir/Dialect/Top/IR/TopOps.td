@@ -2526,4 +2526,82 @@ def Top_GatherNDOp: Top_Op<"GatherND"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_DeformConv2DOp: Top_Op<"DeformConv2D", [SupportFuseRelu]> {
+  let summary = "Deformable Convolution Operator";
+
+  let description = [{
+    In the simplest case, the output value of the layer with input size
+    $$(N, C_{\text{in}}, H, W)$$ and output $$(N, C_{\text{out}}, H_{\text{out}}, W_{\text{out}})$$
+    can be precisely described as:
+
+    weight (Tensor): the learnable weights of the module of shape
+    $$(\text{out\_channels}, \frac{\text{in\_channels}}{\text{groups}},
+    \text{kernel\_size[0]}, \text{kernel\_size[1]})$$
+
+    offset (Tensor): the learnable offsets of the module of shape
+    $$(\text{N}, \times{\text{2}}{\text{offset\_groups}{\text{kernel\_size[0]}}{\text{kernel\_size[1]}}},
+    \text{H_{\text{out}}}, \text{W_{\text{out}}})$$
+
+    mask (Tensor): the learnable masks of the module of shape
+    $$(\text{N}, \times{\text{offset\_groups}{\text{kernel\_size[0]}}{\text{kernel\_size[1]}}},
+    \text{H_{\text{out}}}, \text{W_{\text{out}}})$$
+
+    bias (Tensor optional): the learnable bias of the module of shape (out_channels).
+
+    - **stride**: controls the stride for the cross-correlation, a single
+      number or a tuple.
+
+    - **padding**: controls the amount of padding applied to the input. It
+      contains four ints with top, left, bottom, right respectively.
+
+    - **dilation**: controls the spacing between the kernel points; also
+      known as the à trous algorithm. It is harder to describe, but this
+      [Link](https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md)
+      has a nice visualization of what **dilation** does.
+
+    - **groups**: (optional): Number of blocked connections from input
+            channels to output channels. Default: 1
+
+    - **deform_groups**: (optional): Number of blocked connections from input
+            channels to output channels. Default: 1
+
+
+    Shape:
+        - Input: $$(N, C_{in}, H_{in}, W_{in})$$
+        - Output: $$(N, C_{out}, H_{out}, W_{out})$$ where
+
+          ```math
+              H_{out} = \left\lfloor\frac{H_{in}  + \text{padding}[0] + \text{padding}[2] - \text{dilation}[0]
+                        \times (\text{kernel\_size}[0] - 1) - 1}{\text{stride}[0]} + 1\right\rfloor
+          ```
+          ```math
+              W_{out} = \left\lfloor\frac{W_{in}  + \text{padding}[1] + \text{padding}[3] - \text{dilation}[1]
+                        \times (\text{kernel\_size}[1] - 1) - 1}{\text{stride}[1]} + 1\right\rfloor
+          ```
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$filter,
+    AnyTensor:$offset,
+    AnyTensorOrNone:$mask,
+    AnyTensorOrNone:$bias,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads, // top,left,bottom,right
+    DefaultValuedAttr<I64Attr, "1">:$group,
+    DefaultValuedAttr<I64Attr, "1">:$deform_group,
+    DefaultValuedAttr<BoolAttr, "false">:$use_mask,
+    OptionalAttr<I64ArrayAttr>:$dilations,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 0;
+  let extraClassDeclaration = [{
+    deform_conv2d_attr_t parseParam();
+  }];
+}
+
 #endif // Top_OPS
