@@ -35,6 +35,7 @@ void BM1684::load_functions() {
   CAST_FUNCTION_WITH_SYM(nodechip_depthwise_forward_parallel, nodechip_depthwise_forward_parallel_with_dilation);
   CAST_FUNCTION(tensor_align_move_gen_cmd);
   CAST_FUNCTION(general_matrix_move_gen_cmd);
+  CAST_FUNCTION(tensor_general_move_gen_cmd);
   CAST_FUNCTION(nodechip_conv_forward_local);
   CAST_FUNCTION(nodechip_winograd_forward_local);
   CAST_FUNCTION(nodechip_pooling_fix8b_forward_local);

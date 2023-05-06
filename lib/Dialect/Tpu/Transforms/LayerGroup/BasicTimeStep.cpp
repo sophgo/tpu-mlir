@@ -197,6 +197,7 @@ void BasicTimeStep::gen_hold_coeff() {
 void BasicTimeStep::gen_all_mem_buffer() {
   // input: need_imm_buffers
   lmem_buffer_.clear();
+  l2mem_buffer_.clear();
 
   mem_buffer_key_t lmem_key;
   mem_buffer_value_t lmem_value = {0};
@@ -235,7 +236,12 @@ void BasicTimeStep::gen_all_mem_buffer() {
             }
             lmem_key.value = in;
 
-            lmem_buffer_[lmem_key].end_ts = ts;
+            // lmem_buffer_[lmem_key].end_ts = ts;
+            if (lmem_buffer_.find(lmem_key) != lmem_buffer_.end()) {
+              lmem_buffer_[lmem_key].end_ts = ts;
+            } else {
+              l2mem_buffer_[lmem_key].end_ts = ts;
+            }
           }
 
           // imm buffer
@@ -268,7 +274,13 @@ void BasicTimeStep::gen_all_mem_buffer() {
           lmem_value.start_ts = ts;
           lmem_value.end_ts = -1;
 
-          lmem_buffer_[lmem_key] = lmem_value;
+          if (module::isBM1684Family() && module::isWeight(tensor.first) &&
+              llvm::any_of(tensor.first.getUsers(),
+                           [](Operation *op) { return isa<tpu::LutOp>(op); })) {
+            l2mem_buffer_[lmem_key] = lmem_value;
+          } else {
+            lmem_buffer_[lmem_key] = lmem_value;
+          }
         } else if (tensor_info.mode == TIMESTEP_STORE) {
           lmem_key.value = tensor.first;
           lmem_key.type = LMEM_ACTIVATION;
@@ -299,7 +311,8 @@ void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
   mem_buffer_key_t buffer_key1;
   buffer_key0.type = LMEM_ACTIVATION;
   buffer_key1.type = LMEM_ACTIVATION;
-  int64_t in_nslice, in_hslice, in_dslice, in_wslice, out_nslice, out_hslice, out_dslice, out_wslice;
+  int64_t in_nslice, in_hslice, in_dslice, in_wslice, out_nslice, out_hslice,
+      out_dslice, out_wslice;
   for (auto iter = lmem_buffer_.begin(); iter != lmem_buffer_.end(); ++iter) {
     if (iter->first.type == LMEM_OPERATION) {
       auto op = iter->first.op;
@@ -308,17 +321,18 @@ void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
       auto &in_ti = tensor_infos[in];
       auto &out_ti = tensor_infos[out];
 
-      get_max_slice_nhdw(in_ti.slice_info, in_nslice, in_hslice, in_dslice, in_wslice);
-      get_max_slice_nhdw(out_ti.slice_info, out_nslice, out_hslice, out_dslice, out_wslice);
+      get_max_slice_nhdw(in_ti.slice_info, in_nslice, in_hslice, in_dslice,
+                         in_wslice);
+      get_max_slice_nhdw(out_ti.slice_info, out_nslice, out_hslice, out_dslice,
+                         out_wslice);
       buffer_key0.value = in;
       buffer_key1.value = out;
 
       auto lg_op = cast<LocalGenInterface>(op);
       iter->second.size = lg_op.getBufferSize(
           lmem_buffer_[buffer_key0].size, lmem_buffer_[buffer_key1].size,
-          in_nslice, in_hslice, in_dslice, in_wslice,
-          out_nslice, out_hslice, out_dslice, out_wslice,
-          lg_info.type);
+          in_nslice, in_hslice, in_dslice, in_wslice, out_nslice, out_hslice,
+          out_dslice, out_wslice, lg_info.type);
     }
   }
 
@@ -335,6 +349,12 @@ BasicTimeStep::get_lmem_buffer_value(const mem_buffer_key_t &buffer_key) {
   return lmem_buffer_[buffer_key];
 }
 
+const mem_buffer_value_t &
+BasicTimeStep::get_l2mem_buffer_value(const mem_buffer_key_t &buffer_key) {
+  //
+  return l2mem_buffer_[buffer_key];
+}
+
 void BasicTimeStep::set_lmem_addr(const mem_buffer_key_t &buffer_key,
                                   int64_t lmem_addr) {
   lmem_buffer_[buffer_key].addr = lmem_addr;
@@ -348,26 +368,34 @@ int64_t BasicTimeStep::get_lmem_size(const mem_buffer_key_t &buffer_key) {
 }
 
 MemBlock BasicTimeStep::find_buffer_locate(Value value, int64_t ts,
-                                           const MemBuff &buffer) {
+                                           const MemBuff &buffer,
+                                           const MemBuff &l2buffer) {
   MemBlock lmem_locate(-1, -1);
   mem_buffer_key_t buffer_key;
   buffer_key.value = value;
   buffer_key.type = module::isWeight(value) ? LMEM_WEIGHT : LMEM_ACTIVATION;
   auto iter = buffer.find(buffer_key);
-  assert(iter != buffer.end());
-  auto &buffer_value = iter->second;
-  int64_t start_ts = buffer_value.start_ts;
-  int64_t end_ts = buffer_value.end_ts;
-  if ((start_ts <= end_ts && ts >= start_ts && ts <= end_ts) ||
-      (start_ts > end_ts && (ts >= start_ts || ts <= end_ts))) {
-    lmem_locate.first = buffer_value.addr;
-    lmem_locate.second = buffer_value.size;
+  if (iter == buffer.end()) {
+    iter = l2buffer.find(buffer_key);
+    assert(iter != buffer.end());
+    lmem_locate.first = iter->second.addr;
+    lmem_locate.second = iter->second.size;
+  } else {
+    auto &buffer_value = iter->second;
+    int64_t start_ts = buffer_value.start_ts;
+    int64_t end_ts = buffer_value.end_ts;
+    if ((start_ts <= end_ts && ts >= start_ts && ts <= end_ts) ||
+        (start_ts > end_ts && (ts >= start_ts || ts <= end_ts))) {
+      lmem_locate.first = buffer_value.addr;
+      lmem_locate.second = buffer_value.size;
+    }
   }
   return lmem_locate;
 }
 
 MemBlock BasicTimeStep::get_lmem_locate(Value value, int64_t ts) {
-  MemBlock buffer_locate = find_buffer_locate(value, ts, this->lmem_buffer_);
+  MemBlock buffer_locate =
+      find_buffer_locate(value, ts, this->lmem_buffer_, this->l2mem_buffer_);
   if (buffer_locate.first == -1) {
     llvm_unreachable("cannot find local memory for this tensor.");
   }

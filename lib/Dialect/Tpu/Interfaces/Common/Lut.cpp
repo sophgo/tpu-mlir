@@ -35,6 +35,5 @@ LogicalResult tpu::LutOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::LutOp::LocalGenSupport() {
-  if (module::isBM1684Family()) return failure();
   return success();
 }
