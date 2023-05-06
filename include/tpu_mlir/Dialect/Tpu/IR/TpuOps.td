@@ -941,7 +941,8 @@ def Tpu_ReluOp: Tpu_Op<"Relu",
 }
 
 def Tpu_ReshapeOp:Tpu_Op<"Reshape",
-  [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
+  [DeclareOpInterfaceMethods<LocalGenInterface,
+   ["LocalGenSupport", "AllowDataSplit"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Reshape operation";
   let description = [{
@@ -1423,6 +1424,66 @@ def Tpu_SliceOp: Tpu_Op<"Slice", [
   let extraClassDeclaration = [{
     slice_attr_t parseParam();
   }];
+}
+
+def Tpu_ShapeUnsqueezeOp: Tpu_Op<"ShapeUnsqueeze", [
+    ShapeProducer, ShapeConsumer,
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Onnx-Style ShapeUnsqueeze operator";
+
+  let description = [{
+    ShapeUnsqueeze Operation on input.
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    I64ArrayAttr:$axes
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_ShapeSqueezeOp: Tpu_Op<"ShapeSqueeze", [
+    ShapeProducer, ShapeConsumer,
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Onnx-Style ShapeSqueeze operator";
+
+  let description = [{
+    ShapeSqueeze Operation on input.
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    I64ArrayAttr:$axes
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_UnsqueezeOp: Tpu_Op<"Unsqueeze"> {
+  let summary = "Onnx-Style Unsqueeze operator";
+
+  let description = [{
+    Unsqueeze Operation on input.
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    I64ArrayAttr:$axes
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_SqueezeOp: Tpu_Op<"Squeeze"> {
+  let summary = "Onnx-Style Squeeze operator";
+
+  let description = [{
+    Squeeze Operation on input.
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    I64ArrayAttr:$axes
+  );
+  let results = (outs AnyRankedTensor:$output);
 }
 
 def Tpu_StridedSliceOp: Tpu_Op<"StridedSlice"> {

@@ -1136,6 +1136,15 @@ typedef struct strideslice_local_spec {
   int buffer_addr;
 } strideslice_local_spec_t;
 
+typedef struct squeeze_dims_common_spec {
+  int axis_list[MAX_SHAPE_DIMS];
+  int axis_num;
+} squeeze_dims_common_spec_t;
+
+typedef struct squeeze_dims_global_spec {
+    squeeze_dims_common_spec_t common;
+} squeeze_dims_global_spec_t;
+
 typedef struct {
   /*common param*/
   int if_relu;
@@ -1553,7 +1562,7 @@ typedef struct shape_pack_param {
 } shape_pack_param_t;
 
 typedef struct shape_cast_param {
-  int output_is_shape;
+  int output_dtype;
 } shape_cast_param_t;
 
 typedef struct {

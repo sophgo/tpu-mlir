@@ -22,7 +22,9 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       // clang-format off
       ShapeTryLowering,
       ConstantFillTryLowering,
-      ConcatTryLowering
+      ConcatTryLowering,
+      UnsqueezeTryLowering,
+      SqueezeTryLowering
       // clang-format on
       >(patterns->getContext());
 }
@@ -91,6 +93,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SoftsignLowering,
       SwapChannelLowering,
       TileLowering,
+      UnsqueezeLowering,
       UpsampleLowering,
       InterpLowering,
       StridedSliceLowering,
@@ -99,6 +102,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SubLowering,
       SubConstLowering,
       SqrtLowering,
+      SqueezeLowering,
       SwapDimInnerLowering,
       WhereLowering,
       MaskedFillLowering,

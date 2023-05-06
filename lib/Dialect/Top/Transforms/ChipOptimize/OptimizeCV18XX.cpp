@@ -1638,6 +1638,30 @@ public:
     return success();
   }
 };
+
+class ConvertUnsqueezeOp : public OpRewritePattern<top::UnsqueezeOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::UnsqueezeOp op,
+                                PatternRewriter &rewriter) const override {
+    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, op.getOutput().getType(),
+                                            op->getOperands(),
+                                            std::vector<NamedAttribute>());
+    return success();
+  }
+};
+
+class ConvertSqueezeOp : public OpRewritePattern<top::SqueezeOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::SqueezeOp op,
+                                PatternRewriter &rewriter) const override {
+    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, op.getOutput().getType(),
+                                            op->getOperands(),
+                                            std::vector<NamedAttribute>());
+    return success();
+  }
+};
 } // namespace cv18xx
 
 namespace top {
@@ -1664,7 +1688,9 @@ void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
         ConvertPixelNormOp,
         convertMaxPool3D,
         ConvertSqrtOp,
-        ConvertAvgPoolOp
+        ConvertAvgPoolOp,
+        ConvertSqueezeOp,
+        ConvertUnsqueezeOp
         >(patterns->getContext());
   // clang-format on
 }
