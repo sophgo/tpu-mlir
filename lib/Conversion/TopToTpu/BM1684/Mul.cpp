@@ -33,6 +33,7 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
       auto constF32 = constOp.read<float>();
       float fmax, fmin;
       findMinMax(constF32->data(), constF32->size(), &fmin, &fmax);
+      fmax = std::max(fabs(fmax), fabs(fmin));
       bool cSign = (fmin < 0);
       float fqmax = cSign ? 127 : 255;
       auto filter_type = input.getType().cast<RankedTensorType>();
