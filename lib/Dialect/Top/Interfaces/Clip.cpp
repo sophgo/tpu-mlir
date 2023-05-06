@@ -12,7 +12,7 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-int64_t top::ClipOp::getFLOPs() { return 0; }
+int64_t top::ClipOp::getFLOPs() { return 2 * module::getNumElements(getOutput()); }
 
 LogicalResult top::ClipOp::init(InferenceParameter &p) { return success(); }
 void top::ClipOp::deinit(InferenceParameter &p) {}
