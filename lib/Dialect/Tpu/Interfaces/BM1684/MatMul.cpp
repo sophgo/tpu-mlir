@@ -35,16 +35,13 @@ void tpu::MatMulOp::codegen_global_bm1684() {
   int if_relu = p.do_relu ? 1 : 0;
   double relu_upper_limit = p.do_relu ? p.relu_limit : 0.0; //no working in backend
   auto in_addr = module::getAddress(getInput());
-  auto in_dims = module::getShape(getInput()).size();
-  int  in_shape[MAX_SHAPE_DIMS];
-  module::getGlobalShape(getInput(), in_shape, in_dims);
   auto right_addr = module::getAddress(getRight());
-  auto right_dims = module::getShape(getRight()).size();
-  int  right_shape[MAX_SHAPE_DIMS];
-  module::getGlobalShape(getRight(), right_shape, right_dims);
   auto bias_addr = module::getAddress(getBias());
   auto out_addr = module::getAddress(getOutput());
-
+  int batch_in = module::getNumElements(getInput()) / ((int)p.M * (int)p.K);
+  int batch_right = module::getNumElements(getRight()) / ((int)p.K * (int)p.N);
+  int in_shape[3] = {batch_in, (int)p.M, (int)p.K};
+  int right_shape[3] = {batch_right, (int)p.K, (int)p.N};
   if (module::isUniformQuantized(getInput())) {
     int in_sign = module::isSign(getInput());
     int right_sign = module::isSign(getRight());
@@ -64,10 +61,10 @@ void tpu::MatMulOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_batch_matmul_forward_parallel_v2(
         in_addr,
         (const int*)in_shape,
-        in_dims,
+        3,
         right_addr,
         (const int*)right_shape,
-        right_dims,
+        3,
         out_addr,
         bias_addr,
         using_bias,
