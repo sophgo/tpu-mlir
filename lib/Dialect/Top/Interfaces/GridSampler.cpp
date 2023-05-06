@@ -60,4 +60,15 @@ void top::GridSamplerOp::shape_inference() {
   out_shape.push_back(grid_shape[2]);
   auto out = getOutput();
   module::setShapeOrVerify(out, out_shape);
+
+  // unsqueeze grid shape
+  if (grid_shape.size() != input_shape.size() &&
+      grid_shape[grid_shape.size() - 1] == 1) {
+    std::vector<int64_t> new_shape(grid_shape.begin(),
+                                   grid_shape.begin() + input_shape.size());
+    auto newType = RankedTensorType::get(new_shape, module::getElementType(getGrid()));
+    getGrid().setType(newType);
+    // module::setShapeOrVerify(getGrid(), new_shape);
+  }
+  
 }
