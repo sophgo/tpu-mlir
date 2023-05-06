@@ -56,12 +56,16 @@ void tpu::Pool2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int top_dim[4] = {(int)out_gi.n_slice, (int)p.c, (int)out_gi.h_slice,
                     (int)p.ow};
   bool is_avg_pooling = getPoolMode() == tpu::PoolMode::Avg;
+  int pad_h_t = (in_gi.h_idx == 0 ? p.pad_h : 0);
+  int pad_h_b = (in_gi.h_idx + in_gi.h_slice == p.ih ? p.pad_h_after : 0);
+  int pad_w_l = (in_gi.w_idx == 0 ? p.pad_w : 0);
+  int pad_w_r = (in_gi.w_idx + in_gi.w_slice == p.iw ? p.pad_w_after : 0);
   if (module::isUniformQuantized(getInput())) {
     int bottom_sign = module::isSign(getInput()) ? 1 : 0;
     int top_sign = module::isSign(getOutput()) ? 1 : 0;
     BM1684::instance().dl_nodechip_pooling_fix8b_forward_local(
         in_gi.out_addr, /*weight*/ 0, /*bias*/ 0, out_gi.out_addr, bottom_dim,
-        top_dim, p.kh, p.kw, p.pad_h, p.pad_h_after, p.pad_w, p.pad_w_after,
+        top_dim, p.kh, p.kw, pad_h_t, pad_h_b, pad_w_l, pad_w_r,
         p.sh, p.sw,
         /*ins_h*/ 0, /*ins_w*/ 0, is_avg_pooling ? 1 : 0,
         p.count_include_pad ? 0 : 1, // avg_pooling_mode should be always 0,
@@ -71,7 +75,7 @@ void tpu::Pool2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   } else {
     BM1684::instance().dl_nodechip_pooling_forward_local(
         in_gi.out_addr, out_gi.out_addr, bottom_dim, top_dim, p.kh, p.kw,
-        p.pad_h, p.pad_h_after, p.pad_w, p.pad_w_after, p.sh, p.sw,
+        pad_h_t, pad_h_b, pad_w_l, pad_w_r, p.sh, p.sw,
         is_avg_pooling ? 1 : 0, p.count_include_pad ? 0 : 1,
         (CMD_ID_NODE *)BM1684::instance().bdc_node, p.do_relu);
   }
