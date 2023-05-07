@@ -28,28 +28,53 @@ The overall flow is shown in the (:ref:`main_flow`) diagram, where the model is 
 Top Pass
 ------------
 
-Canonicalize
-    Graph optimization related to specific OP, such as merging relu into conv, shape merge, etc.
-Calibration
-    According to the calibration table, insert min and max for each OP for subsequent quantization. Insert threshold for symmetric quantization.
-Lowering
-    Lower the OP to the tpu layer according to the quantization type. Supported types are F32/F16/BF16/INT8 symmetric/INT8 asymmetric.
-
+shape-infer
+   Do shape inference, and constant folder
+canonicalize
+   Graph optimization related to specific OP, such as merging relu into conv, shape merge, etc.
+extra-optimize
+   Do extra patterns, such as get FLOPs, remove unuse output, etc.
+chip-assign
+   Assign chip, such as bm1684x, cv183x, etc; and adjust top mlir by chip, for example, make all cv18xx input types as F32.
+import-calibration-table
+   Import calibration table, assign min and max for all ops, for quantization later.
+chip-top-optimize
+   Do top ops optimization by chip.
+convert-top-to-tpu
+   Lower top ops to tpu ops; if for mode F32/F16/BF16, top op normally convert to tpu op directly; if INT8, quantization is needed.
 
 .. _tpu pass:
 
 Tpu Pass
 ------------
 
-Canonicalize
+canonicalize
    Graph optimization related to specific OP, such as merging of consecutive Requants, etc.
-WeightReorder
+strip-io-quant
+   Input and output types will be quantized if true; or be F32
+chip-tpu-optimize
+   Do tpu ops optimization by chip.
+weight-reorder
    Reorder the weights of individual OP based on chip characteristics, such as filter and bias for convolution.
-Subnet
+subnet-divide
    Split the network into different subnets according to TPU/CPU, if all operators are TPU, there is only one subnet.
-LayerGroup
+op-reorder
+   Reorder op to make sure ops are close to their users.
+layer-group
    Slice the network so that as many OPs as possible are computed consecutively in the local mem.
-MemAssign
+address-assign
    Assign addresses to the OPs that need global mem.
-CodeGen
+codegen
    Use Builder module to generate the final model in flatbuffers format.
+
+.. _other pass:
+
+Other Passes
+------------
+
+There are some optional passes, not in the diagram, used for special functions.
+
+fuse-preprocess
+   Fuse image preprocess to model.
+post-handle
+   Fuse postprocess to model, only support ssd and yolo.
