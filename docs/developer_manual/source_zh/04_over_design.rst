@@ -26,31 +26,56 @@ Tpu Dialect
 
 .. _top pass:
 
-Top Pass
+Top Passes
 ------------
 
-Canonicalize
-   与具体OP有关的图优化, 比如relu合并到conv、shape合并等等
-Calibration
-   按照calibration table, 给每个OP插入min和max, 用于后续量化; 对应对称量化则插入threshold
-Lowering
-   将OP根据类型下沉到tpu层, 支持的类型有F32/F16/BF16/INT8对称/INT8非对称。
-
+shape-infer
+   做shape推导, 包括常量折叠。对于shape不确定的op, 在这里确定shape。
+canonicalize
+   与具体op有关的图优化, 比如relu合并到conv、shape合并等等。
+extra-optimize
+   额外的pattern实现, 比如求FLOPs、去除无效输出等等。
+chip-assign
+   配置chip, 如bm1684x或者cv183x等等; 并根据chip对top层进行调整, 比如cv18xx将输入全部调整为F32。
+import-calibration-table
+   按照calibration table, 给每个op插入min和max, 用于后续量化; 对应对称量化则插入threshold
+chip-top-optimize
+   与chip相关的top层算子优化, 这是一个妥协, 有些top算子与chip具有相关性
+convert-top-to-tpu
+   将top层下层到tpu层; 如果是浮点类型(F32/F16/BF16), top层op基本上直接转换成相应的tpu层op即可; 如果是INT8类型, 则需要量化转换
 
 .. _tpu pass:
 
-Tpu Pass
+Tpu Passes
 ------------
 
-Canonicalize
-   与具体OP有关的图优化, 比如连续Requant的合并等等
-WeightReorder
-   根据芯片特征对个别OP的权重进行重新排列, 比如卷积的filter和bias
-Subnet
+canonicalize
+   与tpu层具体op有关的图优化, 比如连续Requant的合并等等
+strip-io-quant
+   决定输入或输出是否是量化类型, 否则就是默认F32类型
+chip-tpu-optimize
+   与chip相关的tpu层算子优化
+weight-reorder
+   根据芯片特征对个别op的权重进行重新排列, 比如卷积的filter和bias
+subnet-divide
    将网络按照TPU/CPU切分成不同的子网络, 如果所有算子都是TPU, 则子网络只有一个
-LayerGroup
-   对网络进行切分, 使尽可能多的OP在local mem中连续计算
-MemAssign
+op-reorder
+   对op进行顺序调整, 让使用者离被使用者尽可能的靠近; 也有针对attention一类操作做特殊处理
+layer-group
+   对网络进行切分, 使尽可能多的op在local mem中连续计算
+address-assign
    给需要global mem的op分配地址
-CodeGen
-   用Builder模块采用flatbuffers格式生成最终的模型
+codegen
+   执行op的codegen接口, 生成cmdbuf。并用Builder模块采用flatbuffers格式生成最终的模型
+
+.. _other pass:
+
+Other Passes
+------------
+
+还有一些可选的pass没有再图中标出来, 用于实现特定功能。
+
+fuse-preprocess
+   用于预处理融合, 对于图片类输入, 将图片的预处理过程合并到模型中
+post-handle
+   用于将ssd或yolo的后处理合并到模型中
