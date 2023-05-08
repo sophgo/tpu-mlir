@@ -44,10 +44,6 @@ void tpu::MatMulOp::codegen_global_bm1684() {
   module::getGlobalShape(getRight(), right_shape, right_dims);
   auto bias_addr = module::getAddress(getBias());
   auto out_addr = module::getAddress(getOutput());
-  if(using_bias){
-    auto bias_dims = module::getShape(getBias()).size();
-    assert(bias_dims <=1 && "bias only support 1 dim!");
-  }
 
   if (module::isUniformQuantized(getInput())) {
     int in_sign = module::isSign(getInput());

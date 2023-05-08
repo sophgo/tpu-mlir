@@ -66,4 +66,8 @@ LogicalResult top::CompareOp::inference(InferenceParameter &p) {
 
 void top::CompareOp::shape_inference() {
   broadcast_shape_inference(getOperation());
+  for (int i = 0; i < getNumOperands(); i++) {
+    auto value = getOperation()->getOperand(i);
+    broadcast_tensor_reshape(getOutput(), value);
+  }
 }
