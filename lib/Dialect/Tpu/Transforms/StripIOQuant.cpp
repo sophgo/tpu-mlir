@@ -13,7 +13,6 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 
-
 namespace tpu_mlir {
 namespace tpu {
 
@@ -23,14 +22,19 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
   LogicalResult matchAndRewrite(tpu::CastOp op,
                                 PatternRewriter &rewriter) const override {
     if (auto inputOp = op.getInput().getDefiningOp<top::InputOp>()) {
-      if (!inputOp.getResult().hasOneUse())
+      auto out = inputOp.getOutput();
+      if (!out.hasOneUse()) {
         return failure();
-      inputOp.getResult().setType(op.getResult().getType());
-      rewriter.replaceOp(op, inputOp.getResult());
+      }
+      if (!module::isUniformQuantized(out)) {
+        return failure();
+      }
+      out.setType(op.getResult().getType());
+      rewriter.replaceOp(op, out);
       return success();
     }
     // for case input -> reshape -> cast -> any op
-    if(auto reshapeOp = op.getInput().getDefiningOp<tpu::ReshapeOp>()) {
+    if (auto reshapeOp = op.getInput().getDefiningOp<tpu::ReshapeOp>()) {
       if (!reshapeOp.getResult().hasOneUse()) {
         return failure();
       }
@@ -39,13 +43,13 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
         return failure();
       }
       auto new_ele_type = module::getElementType(op.getResult());
-      auto input_new_type =
-        RankedTensorType::get(
-          inputOp.getResult().getType().cast<RankedTensorType>().getShape(), new_ele_type);
+      auto input_new_type = RankedTensorType::get(
+          inputOp.getResult().getType().cast<RankedTensorType>().getShape(),
+          new_ele_type);
       inputOp.getResult().setType(input_new_type);
-      auto reshape_new_type =
-        RankedTensorType::get(
-          reshapeOp.getResult().getType().cast<RankedTensorType>().getShape(), new_ele_type);
+      auto reshape_new_type = RankedTensorType::get(
+          reshapeOp.getResult().getType().cast<RankedTensorType>().getShape(),
+          new_ele_type);
       reshapeOp.getResult().setType(reshape_new_type);
       rewriter.replaceOp(op, reshapeOp.getResult());
       return success();
@@ -71,7 +75,7 @@ struct StripInputQuantCpuCastPattern
       return success();
     }
     // for case input -> reshape -> cast -> any op
-    if(auto reshapeOp = op.getInputs()[0].getDefiningOp<tpu::ReshapeOp>()) {
+    if (auto reshapeOp = op.getInputs()[0].getDefiningOp<tpu::ReshapeOp>()) {
       if (!reshapeOp.getResult().hasOneUse()) {
         return failure();
       }
@@ -80,13 +84,13 @@ struct StripInputQuantCpuCastPattern
         return failure();
       }
       auto new_ele_type = module::getElementType(op.getResults()[0]);
-      auto input_new_type =
-        RankedTensorType::get(
-          inputOp.getResult().getType().cast<RankedTensorType>().getShape(), new_ele_type);
+      auto input_new_type = RankedTensorType::get(
+          inputOp.getResult().getType().cast<RankedTensorType>().getShape(),
+          new_ele_type);
       inputOp.getResult().setType(input_new_type);
-      auto reshape_new_type =
-        RankedTensorType::get(
-          reshapeOp.getResult().getType().cast<RankedTensorType>().getShape(), new_ele_type);
+      auto reshape_new_type = RankedTensorType::get(
+          reshapeOp.getResult().getType().cast<RankedTensorType>().getShape(),
+          new_ele_type);
       reshapeOp.getResult().setType(reshape_new_type);
       rewriter.replaceOp(op, reshapeOp.getResult());
       return success();
@@ -103,6 +107,10 @@ struct StripOutputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
 
     if (op.getOutput().hasOneUse() &&
         isa<ReturnOp>(op.getOutput().use_begin().getUser())) {
+      auto in = op.getInput();
+      if (!module::isUniformQuantized(in)) {
+        return failure();
+      }
       rewriter.replaceOp(op, op.getInput());
       return success();
     }

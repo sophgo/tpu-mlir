@@ -52,9 +52,9 @@ class MODEL_RUN(object):
             self.ini_content[key] = os.path.expandvars(self.ini_content[key])
 
         if not os.path.exists(self.ini_content["model_path"]):
-            assert ("model_path2" in self.ini_content
-                    and os.path.exists(self.ini_content["model_path2"])
-                    and "model path doesn't exist")
+            if "model_path2" not in self.ini_content or not os.path.exists(
+                    self.ini_content["model_path2"]):
+                raise RuntimeError("{} not exist".format(self.ini_content["model_path"]))
             self.ini_content["model_path"] = self.ini_content["model_path2"]
 
         self.do_cali = not self.ini_content["model_path"].endswith(".tflite")
