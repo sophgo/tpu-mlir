@@ -564,6 +564,8 @@ protected:
                  ForwardCalibartion<top::MaxPoolWithMaskOp>,
                  ForwardCalibartion<top::MaxUnpoolOp>,
                  ForwardCalibartion<top::ReshapeOp>,
+                 ForwardCalibartion<top::UnsqueezeOp>,
+                 ForwardCalibartion<top::SqueezeOp>,
                  ForwardCalibartion<top::SliceOp>,
                  ForwardCalibartion<top::TileOp>,
                  ForwardCalibartion<top::PadOp>,

@@ -153,7 +153,7 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
     auto in = op.getInput();
     auto in_type = in.getType();
     auto out_type = op.getOutput().getType();
-    if (in_type == out_type) {
+    if (type_need_cast(in_type, out_type) == false) {
       // for example, int32 cast int32 => remove this one cast
       rewriter.replaceOp(op, {in});
       return success();
