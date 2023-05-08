@@ -51,6 +51,10 @@ void getInputsOutputs(std::vector<Operation *> &ops, std::vector<Value> &inputs,
   }
   for (auto op : ops) {
     for (auto v : op->getOperands()) {
+      if (v.isa<BlockArgument>()) {
+        inputs.push_back(v);
+        continue;
+      }
       if (find(inputs.begin(), inputs.end(), v) != inputs.end()) {
         continue;
       }
@@ -71,6 +75,22 @@ void getInputsOutputs(std::vector<Operation *> &ops, std::vector<Value> &inputs,
           outputs.push_back(v);
           break;
         }
+      }
+    }
+  }
+
+  for (auto&& op: ops) {
+    if (isa<tpu::IfOp>(op)) {
+      //get the nested's op from above
+      for (int i=0; i < 2; i++) {
+        Region& region = op->getRegion(i);
+        region.walk([&](Operation *inner_op) {
+          for (int k = 0; k < inner_op->getNumOperands(); k++) {
+            auto from_op = inner_op->getOperand(k).getDefiningOp();
+            if (from_op->getParentOp() != inner_op->getParentOp())
+              inputs.emplace_back(inner_op->getOperand(k));
+          }
+        });
       }
     }
   }
@@ -130,7 +150,8 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
       continue;
     }
     for (auto it : llvm::enumerate(op->getOperands())) {
-      if (isa<top::NoneOp>(it.value().getDefiningOp())) {
+      if (!it.value().isa<BlockArgument>()
+          && isa<top::NoneOp>(it.value().getDefiningOp())) {
         op->setOperand(it.index(), noneOp);
       }
     }
@@ -141,22 +162,25 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
     auto arg = block->getArgument(it.index());
     arg.setLoc(argLoc[it.index()]);
     it.value().replaceUsesWithIf(arg, [&](OpOperand &operand) {
-      Operation *user = operand.getOwner();
-      return find(sf->ops.begin(), sf->ops.end(), user) != sf->ops.end();
+      /* bugfix:according to the value's def-use,
+         check the proper ancestor's operand's owner */
+      return fnOp->isProperAncestor(operand.getOwner());
     });
   }
 }
 
 static void insert_subop(std::shared_ptr<SubFunction> &subf, Operation *op) {
   for (auto opd : op->getOperands()) {
-    auto op_ = opd.getDefiningOp();
-    if (isa<top::WeightOp>(op_)) {
-      if (std::find(subf->ops.begin(), subf->ops.end(), op_) ==
-          subf->ops.end()) {
-        subf->ops.push_back(op_);
+    if (!opd.isa<BlockArgument>()) {
+      auto op_ = opd.getDefiningOp();
+      if (isa<top::WeightOp>(op_)) {
+        if (std::find(subf->ops.begin(), subf->ops.end(), op_) ==
+            subf->ops.end()) {
+          subf->ops.push_back(op_);
+        }
+      } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
+        subf->have_none = true;
       }
-    } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
-      subf->have_none = true;
     }
   }
   subf->ops.push_back(op);

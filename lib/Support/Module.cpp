@@ -93,6 +93,22 @@ Value getOriValue(Value v) {
       auto call_op = getCallOp(func_op);
       // pre call op
       auto operand = call_op.getOperand(idx);
+      if (operand.isa<BlockArgument>()) {
+        auto find_root = [](auto&&Me, Value v) ->Value {
+          if (v.isa<BlockArgument>()) {
+              int index = dyn_cast<BlockArgument>(v).getArgNumber();
+              auto p_op = v.getParentBlock()->getParentOp();
+              auto func_op = dyn_cast<FuncOp>(p_op);
+              auto call_op = getCallOp(func_op);
+              return Me(Me, call_op.getOperand(index));
+          } else {
+            return v;
+          }
+        };
+
+        Value src_v = find_root(find_root, operand);
+        return src_v;
+      }
       auto result = operand.cast<OpResult>();
       auto opd = result.getDefiningOp();
       if (isa<top::InputOp>(opd)) {
