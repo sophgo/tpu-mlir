@@ -56,4 +56,17 @@ void broadcast_shape_inference(mlir::Operation *op) {
   module::setShapeOrVerify(out, out_shape);
 }
 
+void broadcast_tensor_reshape(const mlir::Value &expect, mlir::Value &input) {
+  llvm::SmallVector<int64_t> shape(
+      module::getShape(expect).size() - module::getShape(input).size(), 1);
+  // insert 1 at the begin of input if dim of input is not same with expect
+  if (module::isWeight(input) &&
+      module::getShape(input).size() != module::getShape(expect).size()) {
+    for (auto iter : module::getShape(input)) {
+      shape.push_back(iter);
+    }
+    auto newType = RankedTensorType::get(shape, module::getElementType(input));
+    input.setType(newType);
+  }
+}
 }; // namespace tpu_mlir

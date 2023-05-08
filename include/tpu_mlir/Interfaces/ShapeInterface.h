@@ -19,6 +19,9 @@ void common_shape_inference(mlir::Operation *op);
 // binary operation with the implicit broadcast
 void broadcast_shape_inference(mlir::Operation *op);
 
+// reshape broadcast tensor if shape dim is not same with the expected tensor
+void broadcast_tensor_reshape(const mlir::Value &expect, mlir::Value &input);
+
 } // namespace tpu_mlir
 /// Include the ODS generated interface header files.
 #include "tpu_mlir/Interfaces/ShapeInterface.h.inc"

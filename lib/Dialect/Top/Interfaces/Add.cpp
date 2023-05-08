@@ -74,4 +74,8 @@ LogicalResult top::AddOp::inference(InferenceParameter &p) {
 
 void top::AddOp::shape_inference() {
   broadcast_shape_inference(getOperation());
+  for (int i = 0; i < getNumOperands(); i++) {
+    auto value = getInputs()[i];
+    broadcast_tensor_reshape(getOutput(), value);
+  }
 }

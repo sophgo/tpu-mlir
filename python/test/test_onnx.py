@@ -3342,11 +3342,12 @@ class ONNX_IR_TESTER(object):
 
     def test_AddWeight(self, case_name):
         input_shape = [1, 16, 28, 28]
+        wshape = [28, 28]
         output_shape = [1, 16, 28, 28]
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        w_data = np.random.rand(*input_shape).astype(np.float32)
+        w_data = np.random.rand(*wshape).astype(np.float32)
         w_value = helper.make_tensor(
             name='w',
             data_type=onnx.TensorProto.FLOAT,
