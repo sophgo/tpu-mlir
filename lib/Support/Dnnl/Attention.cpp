@@ -72,7 +72,7 @@ void Attention::setup(float *input, float *keys, float *values,
     p_binary = data_binary->data();
     binary = new Binary();
     // std::vector<int64_t> lshape = {batch, M_q, M_k};
-    std::vector<int64_t> rshape = {1, 1, M_k};
+    std::vector<int64_t> rshape = {batch, 1, M_k};
     (*(Binary *)binary)
         .hs(p_mat0, musk, lshape, rshape)
         .dst(p_binary, lshape)

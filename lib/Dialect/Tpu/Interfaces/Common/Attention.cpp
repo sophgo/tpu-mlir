@@ -43,7 +43,8 @@ LogicalResult tpu::AttentionOp::init(InferenceParameter &p) {
   float *k_bias = has_bias&0x02 ? bias_offset + d * len : nullptr;
   len += has_bias&0x02 ? 1 : 0;
   float *v_bias = has_bias&0x04 ? bias_offset + d * len : nullptr;
-  float *o_bias = has_bias&0x08 ? (p.inputs[9] + align_up(d, NPU_NUM) * out_shape[2]) : nullptr;
+  len += has_bias&0x04 ? 1 : 0;
+  float *o_bias = has_bias&0x08 ? bias_offset + d * len : nullptr;
 
   attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], q_weight, q_bias,
                    k_weight, k_bias, v_weight, v_bias, p.inputs[9],

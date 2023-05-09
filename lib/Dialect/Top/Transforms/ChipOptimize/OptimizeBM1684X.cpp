@@ -58,6 +58,150 @@ public:
   }
 };
 
+Value is_reshape_permute(Value in) {
+  auto reshape0 = dyn_cast<top::ReshapeOp>(in.getDefiningOp());
+  if (!reshape0 || !reshape0->hasOneUse()) {
+    return NULL;
+  }
+  auto permute0 = dyn_cast<top::PermuteOp>(reshape0.getInput().getDefiningOp());
+  if (!permute0 || !permute0->hasOneUse()) {
+    return NULL;
+  }
+  auto reshape1 = dyn_cast<top::ReshapeOp>(permute0.getInput().getDefiningOp());
+  if (!reshape1) {
+    return permute0.getInput();
+  } else if (!reshape1->hasOneUse()) {
+    return NULL;
+  } else {
+    return reshape1.getInput();
+  }
+}
+
+Value is_permute_reshape(Value in) {
+  Value permute_out;
+  auto reshape0 = dyn_cast<top::ReshapeOp>(in.getDefiningOp());
+  if (!reshape0) {
+    permute_out = in;
+  } else if (!reshape0->hasOneUse()) {
+    return NULL;
+  } else {
+    permute_out = reshape0.getInput();
+  }
+  auto permute0 = dyn_cast<top::PermuteOp>(permute_out.getDefiningOp());
+  if (!permute0 || !permute0->hasOneUse())
+    return NULL;
+  auto reshape1 = dyn_cast<top::ReshapeOp>(permute0.getInput().getDefiningOp());
+  if (!reshape1 || !reshape1->hasOneUse()) {
+    return NULL;
+  }
+  return reshape1.getInput();
+}
+
+class ConvertMatMul2Attention : public OpRewritePattern<top::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    auto filter = op.getRight();
+    return failure();
+    if (module::isWeight(filter) == false) {
+      return failure();
+    }
+    if (op->hasOneUse() == false) {
+      return failure();
+    }
+    Value matmul_out = is_reshape_permute(op.getInput());
+    if (matmul_out == NULL) {
+      return failure();
+    }
+    auto matmul0 = dyn_cast<top::MatMulOp>(matmul_out.getDefiningOp());
+    if (!matmul0) {
+      return failure();
+    }
+    auto softmax = dyn_cast<top::SoftmaxOp>(matmul0.getInput().getDefiningOp());
+    if (!softmax || !softmax->hasOneUse()) {
+      return failure();
+    }
+    Value mul_out;
+    auto add = dyn_cast<top::AddOp>(softmax.getInput().getDefiningOp());
+    if (!add) {
+      mul_out = softmax.getInput();
+    } else {
+      mul_out = add.getInputs()[0];
+    }
+    auto mul_const = dyn_cast<top::MulConstOp>(mul_out.getDefiningOp());
+    if (!mul_const || !mul_const->hasOneUse()) {
+      return failure();
+    }
+    auto matmul1 = dyn_cast<top::MatMulOp>(mul_const.getInput().getDefiningOp());
+    if (!matmul1) {
+      return failure();
+    }
+    // queries
+    Value matmul_out1 = is_permute_reshape(matmul1.getInput());
+    if (matmul_out1 == NULL) {
+      return failure();
+    }
+    auto matmul_queries = dyn_cast<top::MatMulOp>(matmul_out1.getDefiningOp());
+    if (!matmul_queries || !module::isWeight(matmul_queries.getRight())) {
+      return failure();
+    }
+    // keys
+    auto permute0 = dyn_cast<top::PermuteOp>(matmul1.getRight().getDefiningOp());
+    if (!permute0 || !permute0->hasOneUse())
+      return failure();
+    Value matmul_out2 = is_permute_reshape(permute0.getInput());
+    if (matmul_out2 == NULL) {
+      return failure();
+    }
+    auto matmul_keys = dyn_cast<top::MatMulOp>(matmul_out2.getDefiningOp());
+    if (!matmul_keys || !module::isWeight(matmul_keys.getRight())) {
+      return failure();
+    }
+    // values
+    Value matmul_out3 = is_permute_reshape(matmul0.getRight());
+    if (matmul_out3 == NULL) {
+      return failure();
+    }
+    auto matmul_values = dyn_cast<top::MatMulOp>(matmul_out3.getDefiningOp());
+    if (!matmul_values || !module::isWeight(matmul_values.getRight())) {
+      return failure();
+    }
+    rewriter.setInsertionPointAfter(op);
+    auto none = module::getNoneOp(op);
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(rewriter.getNamedAttr("scale", mul_const.getConstValAttr()));
+    auto batch = module::getShape(op.getOutput())[0];
+    auto shape = module::getShape(matmul0.getOutput());
+    int64_t head;
+    if (shape.size() == 3) {
+      head = shape[0] / batch;
+    } else {
+      head = shape[1];
+    }
+    attrs.push_back(rewriter.getNamedAttr("head", rewriter.getI64IntegerAttr(head)));
+    std::vector<Value> operands;
+    operands.push_back(matmul_queries.getInput());
+    operands.push_back(matmul_keys.getInput());
+    operands.push_back(matmul_values.getInput());
+    operands.push_back(matmul_queries.getRight());
+    operands.push_back(matmul_queries.getBias());
+    operands.push_back(matmul_keys.getRight());
+    operands.push_back(matmul_keys.getBias());
+    operands.push_back(matmul_values.getRight());
+    operands.push_back(matmul_values.getBias());
+    operands.push_back(op.getRight());
+    operands.push_back(op.getBias());
+    operands.push_back(add ? add.getInputs()[1] : none);
+    auto attention =
+        rewriter.create<top::AttentionOp>(op.getLoc(), op.getOutput().getType(),
+                                       operands, attrs);
+    op.replaceAllUsesWith(attention.getOperation());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 // reorder op when reshapeOp is before matmul/mulconst/cast/softmax op to
 // eliminate reshapeOp
 class ReshapeReorderPattern : public OpRewritePattern<top::ReshapeOp> {
@@ -193,6 +337,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
       ConvertMatMulWithRightTranspose,
+      ConvertMatMul2Attention,
       ReshapeReorderPattern
   >(patterns->getContext());
   // clang-format on
