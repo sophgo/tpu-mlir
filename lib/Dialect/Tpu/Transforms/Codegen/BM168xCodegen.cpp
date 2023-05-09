@@ -173,8 +173,7 @@ BMCodegen::CreateShapeVector(const ArrayRef<int64_t> &shape) {
 }
 
 Offset<Vector<Offset<bmodel::Tensor>>>
-BMCodegen::CreateTensorVector(const std::vector<Value> &values,
-                              std::vector<bool> is_cpu) {
+BMCodegen::CreateTensorVector(const std::vector<Value> &values) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   int index = 0;
@@ -222,10 +221,14 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values,
     } else {
       tb.add_scale(scale);
     }
-    if (is_cpu.empty()) {
+    if (!tensor_is_cpu.count(v_name) || tensor_is_cpu[v_name].empty()) {
       tb.add_mem_type(MEM_TYPE_TPU);
     } else {
-      tb.add_mem_type(is_cpu[index] ? MEM_TYPE_ALL : MEM_TYPE_TPU);
+      int mem_type = 0;
+      for (int i = 0; i < tensor_is_cpu[v_name].size(); i++) {
+        mem_type |= tensor_is_cpu[v_name][0] ? MEM_TYPE_ALL : MEM_TYPE_TPU;
+      }
+      tb.add_mem_type(mem_type);
     }
     tb.add_device_addr(module::getAddress(v));
     tb.add_size(Arch::get_gmem_bytes(v));
@@ -598,26 +601,8 @@ void BMCodegen::codegen(Operation *op) {
 Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
   bm168x->before_codegen();
   auto func = module::getFuncOp(call.getCallee());
-  std::vector<bool> input_is_cpu = {};
-  bool first = true;
   func.walk([&](Operation *op) {
     codegen(op);
-    if (first) {
-      first = false;
-      auto prevs = op->getOperands();
-      if (!prevs.empty()) {
-        for (auto prev : prevs) {
-          if (prev.getDefiningOp() != nullptr) {
-            input_is_cpu.push_back(
-                isa<tpu::GenericCpuOp>(prev.getDefiningOp()));
-          } else {
-            input_is_cpu.push_back(false);
-          }
-        }
-      } else {
-        input_is_cpu.push_back(false);
-      }
-    }
   });
   bm168x->after_codegen(module::getFLOPs());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
@@ -626,17 +611,19 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
   std::vector<int> next_id_v = {};
-  std::vector<bool> next_is_cpu = {};
   for (auto v : llvm::enumerate(call.getResults())) {
+    std::string v_name = module::getName(outputs[v.index()]).str();
+    std::vector<bool> user_is_cpu;
+    tensor_is_cpu[v_name] = user_is_cpu;
     for (auto user : v.value().getUsers()) {
       if (isa<ReturnOp>(user)) {
-        next_is_cpu.push_back(false);
+        tensor_is_cpu[v_name].push_back(false);
         next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
         auto func = module::getFuncOp(call.getCallee());
         auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
         auto subnet = getRunMode(func);
-        next_is_cpu.push_back(subnet == RunMode::CPU);
+        tensor_is_cpu[v_name].push_back(subnet == RunMode::CPU);
         // callOp's result maybe have more than two users
         next_id_v.insert(next_id_v.begin(), id);
       } else {
@@ -644,8 +631,8 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
       }
     }
   }
-  auto input_tensor = CreateTensorVector(inputs, input_is_cpu);
-  auto output_tensor = CreateTensorVector(outputs, next_is_cpu);
+  auto input_tensor = CreateTensorVector(inputs);
+  auto output_tensor = CreateTensorVector(outputs);
   std::unordered_set<int> next_id_set;
   for (auto it = next_id_v.begin(); it != next_id_v.end();) {
     if (next_id_set.count(*it)) {
@@ -688,13 +675,14 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
       inputs.push_back(opd);
     }
   });
-  std::vector<bool> input_is_cpu(inputs.size(), true);
-  std::vector<bool> output_is_cpu(outputs.size(), true);
-  auto input_tensor = CreateTensorVector(inputs, input_is_cpu);
-  auto output_tensor = CreateTensorVector(outputs, output_is_cpu);
+
   std::vector<int> next_id_v = {};
-  for (auto v : call.getResults()) {
-    for (auto user : v.getUsers()) {
+  for (auto v : llvm::enumerate(call.getResults())) {
+    std::string v_name = module::getName(outputs[v.index()]).str();
+    std::vector<bool> user_is_cpu;
+    tensor_is_cpu[v_name] = user_is_cpu;
+    for (auto user : v.value().getUsers()) {
+      tensor_is_cpu[v_name].push_back(true);
       if (isa<ReturnOp>(user)) {
         next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
@@ -707,6 +695,14 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
       }
     }
   }
+  for (auto input : inputs) {
+    auto input_name = module::getName(input).str();
+    if (!tensor_is_cpu.count(input_name) || tensor_is_cpu[input_name].empty()) {
+      tensor_is_cpu[input_name] = std::vector<bool>(1, true);
+    }
+  }
+  auto input_tensor = CreateTensorVector(inputs);
+  auto output_tensor = CreateTensorVector(outputs);
 
   std::unordered_set<int> next_id_set;
   for (auto it = next_id_v.begin(); it != next_id_v.end();) {
@@ -776,41 +772,23 @@ Offset<bmodel::SubNet>
 BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
                         std::unique_ptr<Context> &context) {
   auto func = module::getFuncOp(call.getCallee());
-  std::vector<bool> input_is_cpu = {};
-  bool first = true;
-  func.walk([&](Operation *op) {
-    if (first) {
-      first = false;
-      auto prevs = op->getOperands();
-      if (!prevs.empty()) {
-        for (auto prev : prevs) {
-          if (prev.getDefiningOp() != nullptr) {
-            input_is_cpu.push_back(
-                isa<tpu::GenericCpuOp>(prev.getDefiningOp()));
-          } else {
-            input_is_cpu.push_back(false);
-          }
-        }
-      } else {
-        input_is_cpu.push_back(false);
-      }
-    }
-  });
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
   std::vector<int> next_id_v = {};
-  std::vector<bool> next_is_cpu = {};
   for (auto v : llvm::enumerate(call.getResults())) {
     for (auto user : v.value().getUsers()) {
+      std::string v_name = module::getName(outputs[v.index()]).str();
+      std::vector<bool> user_is_cpu;
+      tensor_is_cpu[v_name] = user_is_cpu;
       if (isa<ReturnOp>(user)) {
-        next_is_cpu.push_back(false);
+        tensor_is_cpu[v_name].push_back(false);
         next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
         auto func = module::getFuncOp(call.getCallee());
         auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
         auto subnet = getRunMode(func);
-        next_is_cpu.push_back(subnet == RunMode::CPU);
+        tensor_is_cpu[v_name].push_back(subnet == RunMode::CPU);
         // callOp's result maybe have more than two users
         next_id_v.insert(next_id_v.begin(), id);
       } else {
@@ -818,8 +796,8 @@ BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
       }
     }
   }
-  auto input_tensor = CreateTensorVector(inputs, input_is_cpu);
-  auto output_tensor = CreateTensorVector(outputs, next_is_cpu);
+  auto input_tensor = CreateTensorVector(inputs);
+  auto output_tensor = CreateTensorVector(outputs);
   std::function<void(Operation *, SubnetIr *)> task =
       std::bind(&BMCodegen::codegen_ir, this, std::placeholders::_1,
                 std::placeholders::_2);
