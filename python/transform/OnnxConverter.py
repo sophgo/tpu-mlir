@@ -1612,9 +1612,10 @@ class OnnxConverter(BaseConverter):
 
     def convert_squeeze_op(self, onnx_node):
         assert (onnx_node.op_type == "Squeeze")
+        assert ('axes' in onnx_node.attrs or len(onnx_node.inputs) > 1)
         op = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        axes = self.getWeight(onnx_node.inputs[1]).astype(int)
+        axes = self.getWeight(onnx_node.inputs[1]).astype(int) if len(onnx_node.inputs) > 1 else onnx_node.attrs['axes']
         new_op = top.SqueezeOp(self.mlir.get_tensor_type(output_shape),
                                op,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
