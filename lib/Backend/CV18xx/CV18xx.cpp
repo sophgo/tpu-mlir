@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/MathExtras.h>
@@ -424,7 +425,8 @@ void CV18xx::tiling_all(std::vector<tiling_info_t> &tiling_result,
   tile.n = 1;
   tile.c = NPU_NUM;
   tile.w = tiu_eu_num(fmt);
-  tile.h = std::min(ceiling_func(total, tile.c * tile.w), MAX_HEIGHT);
+  tile.h = std::min(ceiling_func(total, tile.c * tile.w),
+                    static_cast<int64_t>(MAX_HEIGHT));
   bool lmem_ok = false;
   while (total > 0) {
     int64_t count = tile.n * tile.c * tile.h * tile.w;
@@ -557,7 +559,7 @@ int64_t CV18xx::lmem_woring_size(std::vector<int64_t> shape, int count,
   assert(shape.size() == 4);
   if (eu_align) {
     return count * shape[0] * ceiling_func(shape[1], NPU_NUM) *
-           ALIGN(shape[2] * shape[3] * bytesize_of_fmt(fmt), EU_BYTES) ;
+           ALIGN(shape[2] * shape[3] * bytesize_of_fmt(fmt), EU_BYTES);
   } else {
     return count * shape[0] * ceiling_func(shape[1], NPU_NUM) * shape[2] *
            shape[3] * bytesize_of_fmt(fmt);
@@ -713,5 +715,6 @@ cvk_fmt_t CV18xx::getDataType(mlir::Type type) {
   llvm_unreachable("Unsupport type \n");
   return CVK_FMT_F32;
 }
+
 } // namespace backend
 } // namespace tpu_mlir

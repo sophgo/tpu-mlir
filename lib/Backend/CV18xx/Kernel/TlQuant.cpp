@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "tl_quant"

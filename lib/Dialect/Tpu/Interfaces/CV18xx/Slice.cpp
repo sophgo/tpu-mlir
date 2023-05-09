@@ -44,6 +44,9 @@ int64_t tpu::SliceOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
 }
 
 void tpu::SliceOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                        int64_t d_step, int64_t w_step,
+                                        group_type_t group_type,
+                                        local_sec_info_t &sec_info,
                                         int64_t layer_id) {
   int64_t in, ic, ih, iw, on, oc, oh, ow;
   module::getNCHW(getOutput(), on, oc, oh, ow);
@@ -54,8 +57,10 @@ void tpu::SliceOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   laddr_t la_input = in_gi.out_addr;
   laddr_t la_output = out_gi.out_addr;
 
-  std::vector<int64_t> input_shape = {in_gi.n_slice, ic, in_gi.h_slice, iw};
-  std::vector<int64_t> output_shape = {out_gi.n_slice, oc, out_gi.h_slice, ow};
+  std::vector<int64_t> input_shape = {sec_info.n_slice, ic, sec_info.h_slice,
+                                      iw};
+  std::vector<int64_t> output_shape = {sec_info.out_n_slice, oc,
+                                       sec_info.out_h_slice, ow};
   std::vector<int32_t> crop_offset_v;
   crop_offset_v.assign(crop_offset->begin(), crop_offset->end());
   auto fmt = CV18xx::getDataType(getOutput());

@@ -74,6 +74,9 @@ int64_t tpu::CastOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
 }
 
 void tpu::CastOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                       int64_t d_step, int64_t w_step,
+                                       group_type_t group_type,
+                                       local_sec_info_t &sec_info,
                                        int64_t layer_id) {
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
@@ -81,8 +84,8 @@ void tpu::CastOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
 
-  n = out_gi.n_slice;
-  h = out_gi.h_slice;
+  n = sec_info.n_slice;
+  h = sec_info.h_slice;
 
   laddr_t la_input = in_gi.out_addr;
   laddr_t la_output = out_gi.out_addr;

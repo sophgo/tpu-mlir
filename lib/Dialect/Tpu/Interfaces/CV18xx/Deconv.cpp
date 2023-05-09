@@ -95,6 +95,9 @@ int64_t tpu::DeconvOp::getBufferSize_cv18xx(
 }
 
 void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                         int64_t d_step, int64_t w_step,
+                                         group_type_t group_type,
+                                         local_sec_info_t &sec_info,
                                          int64_t layer_id) {
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
@@ -110,9 +113,9 @@ void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
 
   bool do_ic_alignment = false;
 
-  int n = in_gi.n_slice;
-  int ih = in_gi.h_slice;
-  int oh = out_gi.h_slice;
+  int n = sec_info.n_slice;
+  int ih = sec_info.h_slice;
+  int oh = sec_info.out_h_slice;
 
   int pad_h_top, pad_h_bottom;
   int pad_w_left, pad_w_right;
@@ -123,7 +126,8 @@ void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   int ins_h = attr.sh - 1;
   int ins_w = attr.sw - 1;
   if (auto deconv_in_slice =
-          DeconvSlice(gi.h_idx, gi.h_slice, attr.sh, kh_ext, attr.ih, attr.pad_h)) {
+          DeconvSlice(sec_info.out_h_idx, sec_info.out_h_slice, attr.sh, kh_ext,
+                      attr.ih, attr.pad_h)) {
     pad_h_top = deconv_in_slice.value()[0];
     pad_h_bottom = deconv_in_slice.value()[1];
 

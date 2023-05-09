@@ -82,6 +82,9 @@ int64_t tpu::ConcatOp::getBufferSize_cv18xx(
 }
 
 void tpu::ConcatOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                         int64_t d_step, int64_t w_step,
+                                         group_type_t group_type,
+                                         local_sec_info_t &sec_info,
                                          int64_t layer_id) {
   int axis = getAxis();
   auto nInputs = getNumOperands();
@@ -103,8 +106,8 @@ void tpu::ConcatOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   for (uint32_t i = output_dim.size(); i < 4; i++) {
     output_dim.push_back(1); // fill to 4 dim
   }
-  output_dim[0] = out_gi.n_slice;
-  output_dim[2] = out_gi.h_slice;
+  output_dim[0] = sec_info.out_n_slice;
+  output_dim[2] = sec_info.out_h_slice;
 
   // prepare quant info
   std::vector<int32_t> m_i8_array;
@@ -126,7 +129,7 @@ void tpu::ConcatOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
       m_i8 = m_i8_array.data();
     }
   }
-  cvi_backend_tl_concat(layer_id, axis_dims.data(), nInputs,
-                              output_dim.data(), la_input.data(), la_output,
-                              getDoRelu(), r_i8, m_i8, dtype);
+  cvi_backend_tl_concat(layer_id, axis_dims.data(), nInputs, output_dim.data(),
+                        la_input.data(), la_output, getDoRelu(), r_i8, m_i8,
+                        dtype);
 }

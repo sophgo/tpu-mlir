@@ -146,6 +146,9 @@ int64_t tpu::PadOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
 }
 
 void tpu::PadOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                      int64_t d_step, int64_t w_step,
+                                      group_type_t group_type,
+                                      local_sec_info_t &sec_info,
                                       int64_t layer_id) {
   std::vector<int64_t> i_s;
   std::vector<int64_t> o_s;
@@ -158,14 +161,14 @@ void tpu::PadOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   laddr_t la_input = in_gi.out_addr;
   laddr_t la_output = out_gi.out_addr;
 
-  pads[2] = (in_gi.h_idx == 0 ? pads[2] : 0);
-  pads[6] = (in_gi.h_idx + in_gi.h_slice == i_s[2] ? pads[6] : 0);
+  pads[2] = (sec_info.h_idx == 0 ? pads[2] : 0);
+  pads[6] = (sec_info.h_idx + sec_info.h_slice == i_s[2] ? pads[6] : 0);
 
-  i_s[0] = in_gi.n_slice;
-  i_s[2] = in_gi.h_slice;
+  i_s[0] = sec_info.n_slice;
+  i_s[2] = sec_info.h_slice;
 
-  o_s[0] = out_gi.n_slice;
-  o_s[2] = out_gi.h_slice;
+  o_s[0] = sec_info.out_n_slice;
+  o_s[2] = sec_info.out_h_slice;
 
   float const_val = getVal().convertToDouble();
   if (module::isUniformQuantized(getOutput())) {

@@ -405,6 +405,10 @@ public:
     for (size_t i = 0; i < pass_ir->lg_infos.size(); ++i) {
       auto time_step = std::make_shared<BasicTimeStep>();
       shape_secs_t shape_secs = init_group_data_secs(pass_ir->lg_infos[i]);
+      if (shape_secs.nsecs == 0 || shape_secs.hsecs == 0 ||
+          shape_secs.dsecs == 0 || shape_secs.wsecs == 0) {
+        return false;
+      }
       bool ret =
           time_step->assignTimeStep(pass_ir->lg_infos[i], shape_secs, true);
       if (!ret) {

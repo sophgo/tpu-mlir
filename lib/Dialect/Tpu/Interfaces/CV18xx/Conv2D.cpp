@@ -34,7 +34,8 @@ void tpu::Conv2DOp::codegen_global_cv18xx(int64_t layer_id) {
   }
 
   auto filterOp = getFilter().getDefiningOp<top::WeightOp>();
-  bool do_compress = filterOp.getDoCompress().has_value() && filterOp.getDoCompress().value();
+  bool do_compress =
+      filterOp.getDoCompress().has_value() && filterOp.getDoCompress().value();
   do_compress = attr.groups > 1 ? false : do_compress;
   WeightCompresser weight_opt(this->getOperation(), do_compress);
   if (module::isUniformQuantized(getOutput())) {
@@ -129,6 +130,9 @@ int64_t tpu::Conv2DOp::getBufferSize_cv18xx(
 }
 
 void tpu::Conv2DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                         int64_t d_step, int64_t w_step,
+                                         group_type_t group_type,
+                                         local_sec_info_t &sec_info,
                                          int64_t layer_id) {
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
@@ -145,12 +149,12 @@ void tpu::Conv2DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   laddr_t la_working = gi.buffer_addr;
   bool do_ic_alignment = this->getUse_3icOptimize();
 
-  int n = in_gi.n_slice;
-  int ih = in_gi.h_slice;
-  int oh = out_gi.h_slice;
+  int n = sec_info.n_slice;
+  int ih = sec_info.h_slice;
+  int oh = sec_info.out_h_slice;
 
-  uint32_t pht = (in_gi.h_idx == 0 ? attr.pht : 0);
-  uint32_t phb = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
+  uint32_t pht = (sec_info.h_idx == 0 ? attr.pht : 0);
+  uint32_t phb = (sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.phb : 0);
 
   if (module::isUniformQuantized(getOutput())) {
     float neg_slope = 0.0f;

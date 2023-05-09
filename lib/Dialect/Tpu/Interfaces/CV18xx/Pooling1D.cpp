@@ -8,15 +8,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/Module.h"
 
 #include "tpu_mlir/Support/MathUtils.h"
-
-
 
 using namespace tpu_mlir::backend;
 
@@ -37,7 +35,7 @@ void tpu::Pool1DOp::codegen_global_cv18xx(int64_t layer_id) {
           attr.n, attr.c, attr.ih, attr.iw, attr.kh, attr.kw, attr.pad_h,
           attr.pad_h_after, attr.pad_w, attr.pad_w_after, // pad (t, b, l, r)
           attr.sh, attr.sw,
-          attr.do_relu,                 // int do_relu,
+          attr.do_relu,                    // int do_relu,
           (int8_t)getRshift().value(),     // int right_shift_width,
           (int8_t)getMultiplier().value(), // &threshold_x_quantized,
           true);
@@ -99,7 +97,11 @@ int64_t tpu::Pool1DOp::getBufferSize_cv18xx(
   return 0;
 }
 
-void tpu::Pool1DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
+void tpu::Pool1DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                         int64_t d_step, int64_t w_step,
+                                         group_type_t group_type,
+                                         local_sec_info_t &sec_info,
+                                         int64_t layer_id) {
   auto attr = parseParam();
 
   auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
@@ -108,41 +110,45 @@ void tpu::Pool1DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t
   laddr_t la_input = in_gi.out_addr;
   laddr_t la_output = out_gi.out_addr;
 
-  int64_t pad_h_t = in_gi.h_idx == 0 ? attr.pad_h : 0;
+  int64_t pad_h_t = sec_info.h_idx == 0 ? attr.pad_h : 0;
   int64_t pad_h_b =
-      in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0;
+      sec_info.h_idx + sec_info.h_slice == attr.ih ? attr.pad_h_after : 0;
 
   if (getPoolMode() == tpu::PoolMode::Avg) {
     if (module::isUniformQuantized(getOutput())) {
       cvi_backend_tl_pooling(
-          layer_id, la_input, la_output, in_gi.n_slice, attr.c, in_gi.h_slice,
-          attr.iw, out_gi.n_slice, attr.c, out_gi.h_slice, attr.ow, attr.kh,
-          attr.kw, attr.sh, attr.sw, pad_h_t, pad_h_b, attr.pad_w,
-          attr.pad_w_after, true, /*is_avg_pooling,*/
+          layer_id, la_input, la_output, sec_info.n_slice, attr.c,
+          sec_info.h_slice, attr.iw, sec_info.out_n_slice, attr.c,
+          sec_info.out_h_slice, attr.ow, attr.kh, attr.kw, attr.sh, attr.sw,
+          pad_h_t, pad_h_b, attr.pad_w, attr.pad_w_after,
+          true, /*is_avg_pooling,*/
           (int8_t)getRshift().value(), (int8_t)getMultiplier().value());
     } else {
-      cvi_backend_tl_bf16_pooling(layer_id, la_input, la_output, in_gi.n_slice,
-                             attr.c, in_gi.h_slice, attr.iw, out_gi.n_slice,
-                             attr.c, out_gi.h_slice, attr.ow, attr.kh, attr.kw,
-                             attr.sh, attr.sw, pad_h_t, pad_h_b, attr.pad_w,
-                             attr.pad_w_after, true /*is_avg_pooling,*/);
+      cvi_backend_tl_bf16_pooling(
+          layer_id, la_input, la_output, sec_info.n_slice, attr.c,
+          sec_info.h_slice, attr.iw, sec_info.out_n_slice, attr.c,
+          sec_info.out_h_slice, attr.ow, attr.kh, attr.kw, attr.sh, attr.sw,
+          pad_h_t, pad_h_b, attr.pad_w, attr.pad_w_after,
+          true /*is_avg_pooling,*/);
     }
   } else if (getPoolMode() == tpu::PoolMode::Max) {
     if (module::isUniformQuantized(getOutput())) {
       int8_t rshift_i8 = 0;
       int8_t multiplier_i8 = 1;
-      cvi_backend_tl_pooling(
-          layer_id, la_input, la_output, in_gi.n_slice, attr.c, in_gi.h_slice,
-          attr.iw, out_gi.n_slice, attr.c, out_gi.h_slice, attr.ow, attr.kh,
-          attr.kw, attr.sh, attr.sw, pad_h_t, pad_h_b, attr.pad_w,
-          attr.pad_w_after, false, /*is_avg_pooling,*/
-          rshift_i8, multiplier_i8);
+      cvi_backend_tl_pooling(layer_id, la_input, la_output, sec_info.n_slice,
+                             attr.c, sec_info.h_slice, attr.iw,
+                             sec_info.out_n_slice, attr.c, sec_info.out_h_slice,
+                             attr.ow, attr.kh, attr.kw, attr.sh, attr.sw,
+                             pad_h_t, pad_h_b, attr.pad_w, attr.pad_w_after,
+                             false, /*is_avg_pooling,*/
+                             rshift_i8, multiplier_i8);
     } else {
-      cvi_backend_tl_bf16_pooling(layer_id, la_input, la_output, in_gi.n_slice,
-                             attr.c, in_gi.h_slice, attr.iw, out_gi.n_slice,
-                             attr.c, out_gi.h_slice, attr.ow, attr.kh, attr.kw,
-                             attr.sh, attr.sw, pad_h_t, pad_h_b, attr.pad_w,
-                             attr.pad_w_after, false /*is_avg_pooling,*/);
+      cvi_backend_tl_bf16_pooling(
+          layer_id, la_input, la_output, sec_info.n_slice, attr.c,
+          sec_info.h_slice, attr.iw, sec_info.out_n_slice, attr.c,
+          sec_info.out_h_slice, attr.ow, attr.kh, attr.kw, attr.sh, attr.sw,
+          pad_h_t, pad_h_b, attr.pad_w, attr.pad_w_after,
+          false /*is_avg_pooling,*/);
     }
   } else {
     llvm_unreachable("Not supported now");

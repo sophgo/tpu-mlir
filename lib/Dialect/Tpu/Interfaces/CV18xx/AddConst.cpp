@@ -11,12 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
-
-
 
 // =========================================
 // GlobalGenInterface
@@ -37,6 +32,10 @@ int64_t tpu::AddConstOp::getBufferSize_cv18xx(
   llvm_unreachable("Not supported now");
 }
 
-void tpu::AddConstOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
+void tpu::AddConstOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                           int64_t d_step, int64_t w_step,
+                                           group_type_t group_type,
+                                           local_sec_info_t &sec_info,
+                                           int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }

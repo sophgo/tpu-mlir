@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgFixedPoolingKernel.hpp"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 #define DEBUG_TYPE "TgFixedPoolingKernel"
 
@@ -84,7 +85,8 @@ void TgInt8PoolingKernel::doTileForNormalCase() {
   // determin the shape of tile.
   for (step_ow = stride_w > 15 ? 1 : ow; step_ow > 0; step_ow--) {
     for (step_oh = stride_h > 15 ? 1 : oh; step_oh > 0; step_oh--) {
-      for (step_c = std::min(c, MAX_CHANNEL); step_c > 0; step_c -= CV18xx::NPU_NUM) {
+      for (step_c = std::min(c, MAX_CHANNEL); step_c > 0;
+           step_c -= CV18xx::NPU_NUM) {
         if (step_c != c) {
           step_c = align_up(step_c, CV18xx::NPU_NUM);
         }
@@ -313,10 +315,9 @@ void TgInt8PoolingKernel::compute(int32_t step_idx, int32_t flip) {
 }
 
 void cvi_backend_tg_fixed_max_pooling_kernel(
-     uint32_t layer_id, gaddr_t ga_input,
-    gaddr_t ga_output, int n, int c, int h, int w, int kh, int kw, int pad_top,
-    int pad_bot, int pad_left, int pad_right, int stride_h, int stride_w,
-    bool do_relu, bool ceil_mode) {
+    uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output, int n, int c, int h,
+    int w, int kh, int kw, int pad_top, int pad_bot, int pad_left,
+    int pad_right, int stride_h, int stride_w, bool do_relu, bool ceil_mode) {
 
   assert(!do_relu);
   TgInt8PoolingKernel kernel;
@@ -329,10 +330,10 @@ void cvi_backend_tg_fixed_max_pooling_kernel(
 }
 
 void cvi_backend_tg_fixed_avg_pooling_kernel(
-     uint32_t layer_id, gaddr_t ga_input,
-    gaddr_t ga_output, int n, int c, int h, int w, int kh, int kw, int pad_top,
-    int pad_bot, int pad_left, int pad_right, int stride_h, int stride_w,
-    bool do_relu, int rshift, int multiplier, bool ceil_mode) {
+    uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output, int n, int c, int h,
+    int w, int kh, int kw, int pad_top, int pad_bot, int pad_left,
+    int pad_right, int stride_h, int stride_w, bool do_relu, int rshift,
+    int multiplier, bool ceil_mode) {
 
   assert(!do_relu);
   TgInt8PoolingKernel kernel;

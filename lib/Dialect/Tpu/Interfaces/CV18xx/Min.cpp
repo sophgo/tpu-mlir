@@ -7,25 +7,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
-
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
-
-
 
 // =========================================
 // GlobalGenInterface
 // =========================================
 
 // int8
-void tpu::MinOp::codegen_global_cv18xx( int64_t layer_id) {
+void tpu::MinOp::codegen_global_cv18xx(int64_t layer_id) {
 
   int input_num = getInputs().size();
   assert(input_num == 2);
@@ -51,8 +47,8 @@ void tpu::MinOp::codegen_global_cv18xx( int64_t layer_id) {
     }
     std::vector<int> coeffs(input_num, 1);
     cvi_backend_tg_fixed_eltwise_min_kernel(
-         layer_id, ga_inputs.data(), ga_output, input_num, n, c, h,
-        w, getDoRelu(), do_early_stride, early_stride_h, early_stride_w,
+        layer_id, ga_inputs.data(), ga_output, input_num, n, c, h, w,
+        getDoRelu(), do_early_stride, early_stride_h, early_stride_w,
         rshift_int, multiplier_int.data(), coeffs.data());
   } else {
     // TODO do_early_stride, coeffs
@@ -64,7 +60,7 @@ void tpu::MinOp::codegen_global_cv18xx( int64_t layer_id) {
         ga_output,        // gaddr_t ga_output
         input_num,        // int input_size
         n, c, h, w,
-        getDoRelu(),        // bool do_relu
+        getDoRelu(), // bool do_relu
         do_early_stride, early_stride_h, early_stride_w, coeffs.data());
   }
 }
@@ -73,12 +69,18 @@ void tpu::MinOp::codegen_global_cv18xx( int64_t layer_id) {
 // LocalGenInterface
 // =========================================
 
-int64_t tpu::MinOp::getBufferSize_cv18xx(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+int64_t tpu::MinOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
+                                         int64_t out_lmem_bytes,
+                                         int64_t in_nslice, int64_t in_hslice,
+                                         int64_t out_nslice,
+                                         int64_t out_hslice) {
   llvm_unreachable("Not supported now");
 }
 
-void tpu::MinOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
+void tpu::MinOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                      int64_t d_step, int64_t w_step,
+                                      group_type_t group_type,
+                                      local_sec_info_t &sec_info,
+                                      int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }

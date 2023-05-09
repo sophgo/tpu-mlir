@@ -13,12 +13,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
-
-
 
 // =========================================
 // GlobalGenInterface
@@ -63,7 +58,11 @@ int64_t tpu::ActiveOp::getBufferSize_cv18xx(
   return 0;
 }
 
-void tpu::ActiveOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
+void tpu::ActiveOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                         int64_t d_step, int64_t w_step,
+                                         group_type_t group_type,
+                                         local_sec_info_t &sec_info,
+                                         int64_t layer_id) {
   if (getMode() != ActiveMode::ABSVAL) {
     return;
   }
@@ -77,33 +76,23 @@ void tpu::ActiveOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t
   std::vector<laddr_t> la_input(1);
   la_input[0] = in_gi.out_addr;
   laddr_t la_output = out_gi.out_addr;
-  n = in_gi.n_slice;
-  h = in_gi.h_slice;
+  n = sec_info.n_slice;
+  h = sec_info.h_slice;
   int op_code = 3; // abs
   int nInputs = 1;
   if (module::isUniformQuantized(getOutput())) {
-    cvi_backend_tl_eltwise(layer_id, la_input.data(), la_output,
-                            -1, /*la_working*/
-                            n, c, h, w, nInputs,
-                            op_code,
-                            0 /*rshift*/,
-                            0 /*m_i8_input*/,
-                            0 /*use_default_coeff*/,
-                            0 /*do_relu*/,
-                            0 /*relu_slope*/,
-                            NULL /*coeffs*/,
-                            0,
-                            0, 0, 0 /*do_early_stride, early_stride_h, early_stride_w*/);
+    cvi_backend_tl_eltwise(
+        layer_id, la_input.data(), la_output, -1, /*la_working*/
+        n, c, h, w, nInputs, op_code, 0 /*rshift*/, 0 /*m_i8_input*/,
+        0 /*use_default_coeff*/, 0 /*do_relu*/, 0 /*relu_slope*/,
+        NULL /*coeffs*/, 0, 0, 0,
+        0 /*do_early_stride, early_stride_h, early_stride_w*/);
   } else {
-    cvi_backend_bf16_tl_eltwise(layer_id, la_input.data(), la_output,
-                            n, c, h, w, nInputs,
-                            op_code,
-                            0 /*use_default_coeff*/,
-                            0 /*do_relu*/,
-                            0 /*relu_slope*/,
-                            NULL /*coeffs*/,
-                            0 /*do_early_stride*/,
-                            0, 0 /*early_stride_h, early_stride_w*/);
+    cvi_backend_bf16_tl_eltwise(layer_id, la_input.data(), la_output, n, c, h,
+                                w, nInputs, op_code, 0 /*use_default_coeff*/,
+                                0 /*do_relu*/, 0 /*relu_slope*/,
+                                NULL /*coeffs*/, 0 /*do_early_stride*/, 0,
+                                0 /*early_stride_h, early_stride_w*/);
   }
-  //llvm_unreachable("Not supported now");
+  // llvm_unreachable("Not supported now");
 }

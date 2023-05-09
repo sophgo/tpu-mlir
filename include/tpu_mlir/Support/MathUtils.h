@@ -43,15 +43,19 @@ typedef enum {
 // =======================
 // alignment function
 // =======================
-template <typename T> static inline T abs_ceiling_func(T numerator, T denominator) {
+template <typename T>
+static inline T abs_ceiling_func(T numerator, T denominator) {
   return (abs(numerator + denominator) - 1) / abs(denominator);
 }
 
-template <typename T> static inline T ceiling_func(T numerator, T denominator) {
+template <typename U, typename V>
+static inline auto ceiling_func(U numerator, V denominator)
+    -> decltype(numerator + denominator) {
   return (numerator + denominator - 1) / denominator;
 }
 
-template <typename T> static inline T align_up(T x, T a) {
+template <typename U, typename V>
+static inline auto align_up(U x, V a) -> decltype(x + a) {
   return ceiling_func(x, a) * a;
 }
 
@@ -132,7 +136,8 @@ void pad_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
 void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
                            int h, int w, int kd, int kh, int kw, int dd, int dh,
                            int dw, int sd, int sh, int sw, int pdf, int pdb,
-                           int pht, int phb, int pwl, int pwr, int opd, int oph, int opw, float pad_value);
+                           int pht, int phb, int pwl, int pwr, int opd, int oph,
+                           int opw, float pad_value);
 void dilate_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
                    int w, int pdf, int pdb, int pht, int phb, int pwl, int pwr,
                    float pad_value, int ins_h, int ins_w, float ins_value);

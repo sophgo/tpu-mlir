@@ -53,6 +53,9 @@ int64_t tpu::LRNOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
 }
 
 void tpu::LRNOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                      int64_t d_step, int64_t w_step,
+                                      group_type_t group_type,
+                                      local_sec_info_t &sec_info,
                                       int64_t layer_id) {
   if (module::isUniformQuantized(getOutput())) {
     llvm_unreachable("Not supported now");
@@ -73,8 +76,8 @@ void tpu::LRNOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   laddr_t la_table = table_gi.out_addr;
   laddr_t la_mantissa = mantissa_gi.out_addr;
 
-  n = in_gi.n_slice;
-  h = in_gi.h_slice;
+  n = sec_info.n_slice;
+  h = sec_info.h_slice;
 
   int local_size = getSize();
   float alpha = getAlpha().convertToDouble();
