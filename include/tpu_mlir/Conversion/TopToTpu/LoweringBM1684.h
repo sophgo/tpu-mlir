@@ -75,5 +75,6 @@ LOWERING_BM1684(LeakyRelu)
 LOWERING_BM1684(GELU)
 LOWERING_BM1684(Pow)
 LOWERING_BM1684(Div)
+LOWERING_BM1684(Compare)
 } // namespace bm1684
 } // namespace tpu_mlir
