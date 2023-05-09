@@ -121,7 +121,9 @@ def mlir_to_model(tpu_mlir: str,
 
     try:
         if model.endswith(".bmodel"):
-            _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
+            # The suffix of the profile file is not consistent.
+            # bm1684 uses ".dat", bm1684x uses ".txt".
+            _os_system(["mv compiler_profile_0.[td][xa]t", model + ".compiler_profile_0.txt"])
             _os_system(["mv net_0.profile", model + ".net_0.profile"])
     except RuntimeError:
         pass

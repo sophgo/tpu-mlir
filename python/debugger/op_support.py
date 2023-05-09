@@ -110,7 +110,6 @@ class InsBase:
     @classmethod
     def decode(cls, cmd_bits):
         cls = cls()
-        cls._cache = {}
         cls.cmd = cmd_bits[: cls.length]
         cls._cache = {}
         cls._decode()
