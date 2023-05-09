@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgArgMaxKernel.hpp"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUCompressUtil.h"
 #include <llvm/Support/Debug.h>
 #define DEBUG_TYPE "argmax_kernel"
@@ -56,7 +57,8 @@ void TgArgMaxKernel::doTileForNormalCase() {
 
   // determin the shape of tile.
   for (step_oh = std::min(oh, 1); step_oh > 0; step_oh--) {
-    for (step_c = std::min(c, MAX_CHANNEL); step_c > 0; step_c -= CV18xx::NPU_NUM) {
+    for (step_c = std::min(c, MAX_CHANNEL); step_c > 0;
+         step_c -= CV18xx::NPU_NUM) {
       if (step_c != c) {
         step_c = align_up(step_c, CV18xx::NPU_NUM);
       }

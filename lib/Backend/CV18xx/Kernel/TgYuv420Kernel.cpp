@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/TPUCompressUtil.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgYuv420Kernel.hpp"
 #include <numeric>
@@ -201,7 +202,7 @@ void TgYuv420Kernel::allocLmem() {
 
 void TgYuv420Kernel::deallocLmem() {
   for (int i = BLOB_NUM - 1; i >= 0; i--) {
-    CV18xx::lmem_free_tensor(tl_mem[i]); 
+    CV18xx::lmem_free_tensor(tl_mem[i]);
   }
   CV18xx::lmem_free_tensor(tl_mem_kernel);
 }

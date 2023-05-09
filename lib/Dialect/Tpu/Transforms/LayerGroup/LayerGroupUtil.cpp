@@ -149,13 +149,13 @@ shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
     total_secs = ceiling_func(total_secs, shape_secs.dsecs);
     shape_secs.hsecs = std::max(total_secs, shape_secs.hsecs);
     if (shape_secs.hsecs > max_shape_secs.hsecs) {
-      shape_secs.wsecs =
-          std::min(ceiling_func(shape_secs.hsecs, max_shape_secs.hsecs),
-                   max_shape_secs.wsecs);
+      shape_secs.wsecs = ceiling_func(shape_secs.hsecs, max_shape_secs.hsecs);
+      if (shape_secs.wsecs > max_shape_secs.wsecs) {
+        return {0, 0, 0, 0};
+      }
       shape_secs.hsecs = max_shape_secs.hsecs;
     }
   }
-
   return shape_secs;
 }
 
@@ -486,7 +486,7 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
     }
   } else {
     for (int64_t i = 0; i < secs; ++i) {
-      step = n / secs + (n % secs > i);
+      step = n / secs + (n % secs > i ? 1 : 0);
       idx = n / secs * i + (n % secs > i ? i : n % secs);
       slice = (n - idx) > step ? step : (n - idx);
       // assert(idx < n);
@@ -508,7 +508,7 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
   // h slice_info
   secs = shape_secs.hsecs;
   for (int64_t i = 0; i < secs; ++i) {
-    step = h / secs + (h % secs > i);
+    step = h / secs + (h % secs > i ? 1 : 0);
     idx = h / secs * i + (h % secs > i ? i : h % secs);
     slice = (h - idx) > step ? step : (h - idx);
     // assert(idx < h);
@@ -517,7 +517,7 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
   // d slice_info
   secs = shape_secs.dsecs;
   for (int64_t i = 0; i < secs; ++i) {
-    step = d / secs + (d % secs > i);
+    step = d / secs + (d % secs > i ? 1 : 0);
     idx = d / secs * i + (d % secs > i ? i : d % secs);
     slice = (d - idx) > step ? step : (d - idx);
     // assert(idx < d);
@@ -526,7 +526,7 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
   // w slice_info
   secs = shape_secs.wsecs;
   for (int64_t i = 0; i < secs; ++i) {
-    step = w / secs + (w % secs > i);
+    step = w / secs + (w % secs > i ? 1 : 0);
     idx = w / secs * i + (w % secs > i ? i : w % secs);
     slice = (w - idx) > step ? step : (w - idx);
     // assert(idx < w);

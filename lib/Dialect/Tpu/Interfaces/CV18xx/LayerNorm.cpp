@@ -15,8 +15,6 @@
 
 using namespace tpu_mlir::backend;
 
-
-
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -74,6 +72,9 @@ int64_t tpu::LayerNormOp::getBufferSize_cv18xx(
 }
 
 void tpu::LayerNormOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                            int64_t d_step, int64_t w_step,
+                                            group_type_t group_type,
+                                            local_sec_info_t &sec_info,
                                             int64_t layer_id) {
   bool has_weight = !getWeight().getType().isa<mlir::NoneType>();
   bool has_bias = !getBias().getType().isa<mlir::NoneType>();
@@ -95,8 +96,8 @@ void tpu::LayerNormOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   laddr_t la_bias = b_gi.out_addr;
   laddr_t la_working = gi.buffer_addr;
 
-  n = in_gi.n_slice;
-  h = in_gi.h_slice;
+  n = sec_info.n_slice;
+  h = sec_info.h_slice;
 
   const float eps = getEps().convertToDouble();
   cvi_backend_tl_bf16_layernorm(

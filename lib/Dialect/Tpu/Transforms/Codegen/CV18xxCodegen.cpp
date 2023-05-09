@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "CV18xxCodegen.hpp"
+#include "mlir/Support/FileUtilities.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -15,7 +16,6 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/raw_ostream.h"
-#include "mlir/Support/FileUtilities.h"
 #include <elf.h>
 #include <fstream>
 #include <map>
@@ -266,7 +266,8 @@ void CviTpuRoutine::codegen_for_group(GroupOp gOp) {
   SoftwarePipeline timestep_swpipl;
   for (uint64_t nstep = 0, hstep = 0; nstep < nsecs || draining_period;) {
     /* add for software pipeline */
-    timestep_swpipl.write_swloop_buffer(nstep, 0, hstep, 0, 0, swpipl_stage_num);
+    timestep_swpipl.write_swloop_buffer(nstep, 0, hstep, 0, 0,
+                                        swpipl_stage_num);
     for (uint32_t ts = 0; ts < timestep_num; ++ts) {
       CV18xx::parallel_enable();
       auto cur_op_ids = timestep_table[ts];
@@ -288,8 +289,14 @@ void CviTpuRoutine::codegen_for_group(GroupOp gOp) {
         std::string prefix = module::getName(group_ops[id]).str();
         if (ginfo.overstepped == false) {
           CV18xx::set_layer_id(*layer_id);
+          auto group_type = static_cast<group_type_t>(gOp.getGroupType());
+          local_sec_info_t sec_info;
+          lgOp.assign_sec_info(tensor_step->nstep, tensor_step->cstep,
+                               tensor_step->hstep, tensor_step->dstep,
+                               tensor_step->wstep, group_type, sec_info);
           lgOp.codegen_local_cv18xx(tensor_step->nstep, tensor_step->hstep,
-                                    *layer_id);
+                                    tensor_step->dstep, tensor_step->wstep,
+                                    group_type, sec_info, *layer_id);
           ++(*layer_id);
         }
       } // ops, include Load/Store op

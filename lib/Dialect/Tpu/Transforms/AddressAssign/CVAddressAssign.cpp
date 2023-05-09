@@ -197,7 +197,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr,
   }
   // make the order of the ops positive
   std::reverse(inplace_ops.begin(), inplace_ops.end());
-  updateConcatOpTargetV(inplace_ops, op_infos);
+  // updateConcatOpTargetV(inplace_ops, op_infos);
   for (auto iter = ops.begin(); iter != ops.end(); ++iter) {
     auto op = *iter;
     if (isa<tpu::GroupOp>(op)) {

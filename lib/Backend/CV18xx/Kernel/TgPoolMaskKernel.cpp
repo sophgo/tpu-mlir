@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgPoolMaskKernel.hpp"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 #define DEBUG_TYPE "TgPoolMaskKernel"
 

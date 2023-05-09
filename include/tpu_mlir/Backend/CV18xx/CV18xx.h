@@ -36,13 +36,6 @@ typedef uint64_t gaddr_t;
 #define __ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
 #define ALIGN(x, a) __ALIGN_MASK(x, (__typeof__(x))(a)-1)
 
-static inline int ceiling_func(int numerator, int denominator) {
-  return (numerator + denominator - 1) / denominator;
-}
-
-static inline uint64_t align_up(uint64_t x, uint64_t n) {
-  return ceiling_func(x, n) * n;
-}
 
 // cvicontex
 /*

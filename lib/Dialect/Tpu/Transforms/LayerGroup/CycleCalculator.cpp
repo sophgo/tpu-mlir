@@ -9,6 +9,9 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CycleCalculator.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_profiling.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
@@ -405,31 +408,159 @@ int64_t Bm168xCycleCalculator::getStoreCycle(Value v,
   return gdma_cycle;
 }
 
-int64_t Cv18xxCycleCalculator::getGlobalLayerCycle(Operation *op) { return 0; }
+int64_t Cv18xxCycleCalculator::getGlobalLayerCycle(Operation *op) {
+  std::vector<uint8_t> cmdbuf;
+  auto castOp = dyn_cast<GlobalGenInterface>(op);
+  castOp.codegen_global_cv18xx(0);
+  CV18xx::submit();
+  CV18xx::read_cmdbuf(cmdbuf);
+  uint64_t cycle = CV18xxProfiling::get_cycle(cmdbuf);
+  // {
+  //   static int count = 0;
+  //   std::stringstream ss;
+  //   ss << "cmdbuf_" << count++ << ".bin";
+  //   std::ofstream ofs(ss.str(), std::ios::binary);
+  //   ofs.write((char *)cmdbuf.data(), cmdbuf.size());
+  // }
+  return cycle;
+}
 
 int64_t Cv18xxCycleCalculator::getLocalLayerCycle(Operation *op,
                                                   TensorInfo &tensor_infos,
                                                   group_type_t group_type,
                                                   bool calc_bdc_slack) {
-  return 0;
+  // some tiu op assert when input addr == out addr, so change out addr =
+  // LMEM_BYTES / 2
+  local_sec_info_t sec_info;
+  set_local_sec_info(sec_info, op, tensor_infos, group_type);
+  int64_t in0_lmem_bytes = Arch::get_tensor_lmem_bytes(
+      op->getOperand(0), sec_info.n_slice, sec_info.c_slice, sec_info.d_slice,
+      sec_info.h_slice, sec_info.w_slice);
+  if (in0_lmem_bytes > Arch::LMEM_BYTES) {
+    return std::numeric_limits<int64_t>::max() / 100;
+  }
+  std::vector<uint8_t> cmdbuf;
+  auto lgOp = dyn_cast<LocalGenInterface>(op);
+  lgOp.codegen_local_cv18xx(0, 0, 0, 0, group_type, sec_info, 0);
+  CV18xx::submit();
+  CV18xx::read_cmdbuf(cmdbuf);
+  uint64_t cycle = CV18xxProfiling::get_cycle(cmdbuf);
+  return cycle;
 }
 
 int64_t Cv18xxCycleCalculator::getGdmaCycle(Value v,
                                             const tensor_info_t &tensor_info,
                                             group_type_t group_type) {
-  return 0;
+  int64_t cycle = 0;
+  if (tensor_info.mode == TIMESTEP_LOAD) {
+    cycle = getLoadCycle(v, tensor_info, group_type);
+  } else {
+    cycle = getStoreCycle(v, tensor_info, group_type);
+  }
+  return cycle;
 }
 
 int64_t Cv18xxCycleCalculator::getLoadCycle(Value v,
                                             const tensor_info_t &tensor_info,
                                             group_type_t group_type) {
-  return 0;
+  int64_t n_slice, c_slice, h_slice, d_slice, w_slice;
+  auto &si = tensor_info.slice_info;
+  get_max_slice_nchdw(si, n_slice, c_slice, h_slice, d_slice, w_slice);
+  bool need_bcast = tensor_info.need_bcast;
+  bool eu_align = tensor_info.eu_align;
+  bool bcompressed = false;
+  auto ifmt = CV18xx::getDataType(v);
+  auto ofmt = ifmt;
+  int64_t N, C, H, W;
+  module::getNCHW(v, N, C, H, W);
+
+  auto g_addr = module::getAddress(v);
+  auto l_addr = 0;
+
+  bool isNeuron = false;
+  if (isa<top::WeightOp>(module::getOriValue(v).getDefiningOp())) {
+    isNeuron = false;
+  }
+  if (isNeuron) {
+    if (ifmt == CVK_FMT_U8) {
+      ifmt = CVK_FMT_I8;
+    }
+    if (ofmt == CVK_FMT_U8) {
+      ofmt = CVK_FMT_I8;
+    }
+    assert((ifmt == CVK_FMT_BF16 || ifmt == CVK_FMT_I8) &&
+           (ofmt == CVK_FMT_BF16 || ofmt == CVK_FMT_I8) &&
+           "current load neuron only support int8/bf16");
+  } else {
+    assert(
+        (ofmt == CVK_FMT_BF16 || ofmt == CVK_FMT_I8 || ofmt == CVK_FMT_U16) &&
+        "current load weight only support int8/uint16/bf16");
+    if (ofmt == CVK_FMT_U16) {
+      ofmt = CVK_FMT_BF16;
+    }
+    ifmt = ofmt;
+  }
+  if (need_bcast) {
+    cvi_backend_tl_load_stride_broadcast(0, g_addr, l_addr, n_slice, C, h_slice,
+                                         w_slice, C, H, W, eu_align, isNeuron,
+                                         ifmt, ofmt, bcompressed);
+  } else {
+    cvi_backend_tl_load_stride(0, g_addr, l_addr, n_slice, C, h_slice, w_slice,
+                               C, H, W, false, eu_align, isNeuron, ifmt, ofmt,
+                               bcompressed);
+  }
+  CV18xx::submit();
+  std::vector<uint8_t> cmdbuf;
+  CV18xx::read_cmdbuf(cmdbuf);
+  uint64_t cycle = CV18xxProfiling::get_cycle(cmdbuf);
+  return cycle;
 }
 
 int64_t Cv18xxCycleCalculator::getStoreCycle(Value v,
                                              const tensor_info_t &tensor_info,
                                              group_type_t group_type) {
-  return 0;
+  int64_t n_slice, c_slice, h_slice, d_slice, w_slice;
+  auto &si = tensor_info.slice_info;
+  get_max_slice_nchdw(si, n_slice, c_slice, h_slice, d_slice, w_slice);
+  bool eu_align = tensor_info.eu_align;
+  auto ifmt = CV18xx::getDataType(v);
+  auto ofmt = ifmt;
+  int64_t N, C, H, W;
+  module::getNCHW(v, N, C, H, W);
+
+  auto g_addr = module::getAddress(v);
+  auto l_addr = 0;
+
+  bool isNeuron = false;
+  if (isa<top::WeightOp>(module::getOriValue(v).getDefiningOp())) {
+    isNeuron = false;
+  }
+  if (isNeuron) {
+    if (ifmt == CVK_FMT_U8) {
+      ifmt = CVK_FMT_I8;
+    }
+    if (ofmt == CVK_FMT_U8) {
+      ofmt = CVK_FMT_I8;
+    }
+    assert((ifmt == CVK_FMT_BF16 || ifmt == CVK_FMT_I8) &&
+           (ofmt == CVK_FMT_BF16 || ofmt == CVK_FMT_I8) &&
+           "current load neuron only support int8/bf16");
+  } else {
+    assert(
+        (ofmt == CVK_FMT_BF16 || ofmt == CVK_FMT_I8 || ofmt == CVK_FMT_U16) &&
+        "current load weight only support int8/uint16/bf16");
+    if (ofmt == CVK_FMT_U16) {
+      ofmt = CVK_FMT_BF16;
+    }
+    ifmt = ofmt;
+  }
+  cvi_backend_tl_store_stride(0, g_addr, l_addr, n_slice, C, h_slice, w_slice,
+                              C, H, W, false, eu_align, isNeuron, ifmt, ofmt);
+  CV18xx::submit();
+  std::vector<uint8_t> cmdbuf;
+  CV18xx::read_cmdbuf(cmdbuf);
+  uint64_t cycle = CV18xxProfiling::get_cycle(cmdbuf);
+  return cycle;
 }
 
 } // namespace tpu

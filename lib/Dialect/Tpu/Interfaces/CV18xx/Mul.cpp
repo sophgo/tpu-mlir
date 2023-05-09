@@ -35,8 +35,10 @@ void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
   int early_stride_w = 0;
   std::vector<int64_t> shape0(4, 1);
   std::vector<int64_t> shape1(4, 1);
-  module::getNCHW(getInputs()[0], shape0[0], shape0[1], shape0[2], shape0[3], false);
-  module::getNCHW(getInputs()[1], shape1[0], shape1[1], shape1[2], shape1[3], false);
+  module::getNCHW(getInputs()[0], shape0[0], shape0[1], shape0[2], shape0[3],
+                  false);
+  module::getNCHW(getInputs()[1], shape1[0], shape1[1], shape1[2], shape1[3],
+                  false);
   auto prod0 = std::accumulate(shape0.begin(), shape0.end(), 1,
                                std::multiplies<int64_t>());
   auto prod1 = std::accumulate(shape1.begin(), shape1.end(), 1,
@@ -110,6 +112,9 @@ int64_t tpu::MulOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
 }
 
 void tpu::MulOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                      int64_t d_step, int64_t w_step,
+                                      group_type_t group_type,
+                                      local_sec_info_t &sec_info,
                                       int64_t layer_id) {
   int64_t input_num = getInputs().size();
   assert(input_num == 2);
@@ -127,8 +132,8 @@ void tpu::MulOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   laddr_t la_output = out_gi.out_addr;
   laddr_t la_working = gi.buffer_addr;
 
-  n = in0_gi.n_slice;
-  h = in0_gi.h_slice;
+  n = sec_info.n_slice;
+  h = sec_info.h_slice;
 
   // op code PROD = 0; SUM = 1; MAX = 2;
   int op_code = 0;

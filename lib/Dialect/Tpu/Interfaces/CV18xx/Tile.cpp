@@ -12,9 +12,6 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -24,10 +21,11 @@ void tpu::TileOp::codegen_global_cv18xx(int64_t layer_id) {
   gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(getOutput());
   int64_t n, c, h, w;
-  auto fmt = module::isUniformQuantized(getOutput()) ? CVK_FMT_I8 : CVK_FMT_BF16;
+  auto fmt =
+      module::isUniformQuantized(getOutput()) ? CVK_FMT_I8 : CVK_FMT_BF16;
   module::getNCHW(getInput(), n, c, h, w);
-  cvi_backend_tg_tile_kernel(layer_id, ga_input, ga_output, n, c, h, w, getAxis(),
-                             getTile(), fmt);
+  cvi_backend_tg_tile_kernel(layer_id, ga_input, ga_output, n, c, h, w,
+                             getAxis(), getTile(), fmt);
 }
 
 // =========================================
@@ -42,6 +40,10 @@ int64_t tpu::TileOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::TileOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
+void tpu::TileOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                       int64_t d_step, int64_t w_step,
+                                       group_type_t group_type,
+                                       local_sec_info_t &sec_info,
+                                       int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }

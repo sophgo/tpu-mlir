@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgConvKernel.hpp"
 #include "tpu_mlir/Support/TPUCompressUtil.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include <numeric>
 

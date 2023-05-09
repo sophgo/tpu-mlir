@@ -47,14 +47,16 @@ int64_t tpu::UpsampleOp::getBufferSize_cv18xx(
 }
 
 void tpu::UpsampleOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                           int64_t d_step, int64_t w_step,
+                                           group_type_t group_type,
+                                           local_sec_info_t &sec_info,
                                            int64_t layer_id) {
-
   int64_t n, c, ih, iw;
   module::getNCHW(getInput(), n, c, ih, iw);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
-  n = in_gi.n_slice;
-  ih = in_gi.h_slice;
+  n = sec_info.n_slice;
+  ih = sec_info.h_slice;
   laddr_t la_input = in_gi.out_addr;
   laddr_t la_output = out_gi.out_addr;
   auto ifmt = CV18xx::getDataType(getInput());
@@ -62,5 +64,6 @@ void tpu::UpsampleOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   auto scale_w = getScaleW();
 
   cvi_backend_tl_upsample(layer_id, // layer_id,
-                          la_input, la_output, n, c, ih, iw, scale_h, scale_w, ifmt);
+                          la_input, la_output, n, c, ih, iw, scale_h, scale_w,
+                          ifmt);
 }

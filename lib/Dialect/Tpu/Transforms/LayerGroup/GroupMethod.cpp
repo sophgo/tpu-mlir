@@ -286,6 +286,10 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   }
 
   auto shape_secs = init_group_data_secs(lg_info);
+  if (shape_secs.nsecs == 0 || shape_secs.hsecs == 0 || shape_secs.dsecs == 0 ||
+      shape_secs.wsecs == 0) {
+    return false;
+  }
 
   auto time_step = std::make_shared<BasicTimeStep>();
   status = time_step->assignTimeStep(lg_info, shape_secs, true);
@@ -538,6 +542,11 @@ bool GroupMethod::update_sequence_group_cost(
     }
 
     shape_secs[i] = init_group_data_secs(*groups[i]);
+    if (shape_secs[i].nsecs == 0 || shape_secs[i].hsecs == 0 ||
+        shape_secs[i].dsecs == 0 || shape_secs[i].wsecs == 0) {
+      valid = false;
+      break;
+    }
     if (!time_steps[i]->assignTimeStep(*groups[i], shape_secs[i], true)) {
       valid = false;
       break;

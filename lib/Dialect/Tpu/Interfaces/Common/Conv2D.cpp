@@ -190,8 +190,6 @@ void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t c_step,
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
                                                d_step, w_step, c_step);
-  int64_t pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
-  int64_t pad_w_r = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pwr : 0);
   sec_info.n_slice = in_gi.n_slice;
   sec_info.d_slice = in_gi.d_slice;
   sec_info.h_slice = in_gi.h_slice;
@@ -201,17 +199,21 @@ void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t c_step,
   sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attr.ih);
   sec_info.is_w_split = !(in_gi.w_idx == 0 && in_gi.w_slice == attr.iw);
   // to be compatible with nntoolchain
-  if (sec_info.is_h_split) {
-    sec_info.h_idx = h_step == 0 ? -attr.pht : in_gi.h_idx;
-    sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
-                                          : sec_info.h_slice;
-    sec_info.h_slice = sec_info.h_slice + pad_h_b;
-  }
-  if (sec_info.is_w_split) {
-    sec_info.w_idx = w_step == 0 ? -attr.pwl : in_gi.w_idx;
-    sec_info.w_slice = sec_info.w_idx < 0 ? sec_info.w_slice - sec_info.w_idx
-                                          : sec_info.w_slice;
-    sec_info.w_slice = sec_info.w_slice + pad_w_r;
+  if (!module::isCV18xx()) {
+    int64_t pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
+    int64_t pad_w_r = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pwr : 0);
+    if (sec_info.is_h_split) {
+      sec_info.h_idx = h_step == 0 ? -attr.pht : in_gi.h_idx;
+      sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
+                                            : sec_info.h_slice;
+      sec_info.h_slice = sec_info.h_slice + pad_h_b;
+    }
+    if (sec_info.is_w_split) {
+      sec_info.w_idx = w_step == 0 ? -attr.pwl : in_gi.w_idx;
+      sec_info.w_slice = sec_info.w_idx < 0 ? sec_info.w_slice - sec_info.w_idx
+                                            : sec_info.w_slice;
+      sec_info.w_slice = sec_info.w_slice + pad_w_r;
+    }
   }
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;

@@ -144,6 +144,9 @@ LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
       module::isWeight(op->getOperand(1)))
     return failure();
   if (module::isCV18xx()) {
+    if (op->getNumOperands() != 2) {
+      return failure();
+    }
     if (lhs_shape != rhs_shape) {
       return failure();
     }

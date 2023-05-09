@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -60,6 +60,9 @@ int64_t tpu::LutBF16Op::getBufferSize_cv18xx(
 }
 
 void tpu::LutBF16Op::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                          int64_t d_step, int64_t w_step,
+                                          group_type_t group_type,
+                                          local_sec_info_t &sec_info,
                                           int64_t layer_id) {
   int64_t n, c, h, w;
   auto shape = module::getShape(getInput());
@@ -77,8 +80,8 @@ void tpu::LutBF16Op::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   laddr_t la_y_mantissa = mantissa_gi.out_addr;
   laddr_t la_working = gi.buffer_addr;
 
-  n = in_gi.n_slice;
-  h = in_gi.h_slice;
+  n = sec_info.n_slice;
+  h = sec_info.h_slice;
 
   int method = 0;
   if (getLutMode() == LutBF16Mode::Mantissa) {

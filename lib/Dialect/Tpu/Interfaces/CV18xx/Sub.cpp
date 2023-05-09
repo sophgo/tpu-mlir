@@ -12,9 +12,6 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -39,8 +36,8 @@ void tpu::SubOp::codegen_global_cv18xx(int64_t layer_id) {
     multiplier.assign(multiplier_v->begin(), multiplier_v->end());
 
     cvi_backend_tg_int8_bcast_sub_kernel(
-        layer_id, ga_a, ga_b, ga_output, n, c, h, w, bn, bc, bh, bw, getDoRelu(),
-        (int32_t)rshift_v->at(0), multiplier.data());
+        layer_id, ga_a, ga_b, ga_output, n, c, h, w, bn, bc, bh, bw,
+        getDoRelu(), (int32_t)rshift_v->at(0), multiplier.data());
 
   } else {
     cvi_backend_tg_bf16_bcast_sub_kernel(layer_id, ga_a, ga_b, ga_output, n, c,
@@ -61,6 +58,10 @@ int64_t tpu::SubOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::SubOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
+void tpu::SubOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                      int64_t d_step, int64_t w_step,
+                                      group_type_t group_type,
+                                      local_sec_info_t &sec_info,
+                                      int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }
