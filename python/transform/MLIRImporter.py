@@ -74,7 +74,8 @@ class MLIRImporter(object):
             "F64": F64Type.get(),
             "F32": F32Type.get(),
             "F16": F16Type.get(),
-            "BF16": BF16Type.get()
+            "BF16": BF16Type.get(),
+            "DICT": DictAttr.get(),
         }
         if do_declare:
             self.declare_func(input_types, output_types)
@@ -97,6 +98,9 @@ class MLIRImporter(object):
             return ArrayAttr.get([FloatAttr.get_f32(x) for x in data])
         if data_type == 'F64':
             return ArrayAttr.get([FloatAttr.get_f64(x) for x in data])
+        if data_type == 'DICT':
+            # the data in list has been transformed to DictAttr
+            return ArrayAttr.get(data)
         raise RuntimeError("unsupport data type:{}".format(data_type))
 
     # shape: [] => [* x f32]; None => NoneType; [None, None] => [NoneType, NoneType]

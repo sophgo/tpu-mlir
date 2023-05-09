@@ -53,6 +53,20 @@ public:
     return reinterpret_cast<FPtrTy>(fPtr);
   }
 
+  // the cast function only for custom op
+  template <typename FPtrTy> FPtrTy CastToCustomFPtr(const char *symbolName) {
+    llvm::StringRef custom_lib_name = "libbackend_custom.so";
+    std::string Err;
+    auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(custom_lib_name.data(), &Err);
+    assert(custom_dl.isValid());
+    auto fPtr = custom_dl.getAddressOfSymbol(symbolName);
+    if (fPtr == nullptr) {
+      llvm::errs() << "can't find symbol: " << symbolName << "\n";
+      llvm_unreachable(symbolName);
+    }
+    return reinterpret_cast<FPtrTy>(fPtr);
+  }
+
 protected:
   static Arch *inst;
   llvm::sys::DynamicLibrary DL;

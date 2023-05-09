@@ -2612,4 +2612,21 @@ def Top_DeformConv2DOp: Top_Op<"DeformConv2D", [SupportFuseRelu]> {
   }];
 }
 
+
+def Top_CustomOp: Top_Op<"Custom"> {
+  let summary = "Custom operator";
+  let description = [{
+    Custom operator
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    StrAttr:$name,
+    DictArrayAttr:$params
+    );
+
+  let results = (outs Variadic<AnyTensor>:$output);
+}
+
+
 #endif // Top_OPS

@@ -73,7 +73,8 @@
         "typeindex": "cpp",
         "valarray": "cpp",
         "codecvt": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "tpu_utils.h": "c"
     },
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,

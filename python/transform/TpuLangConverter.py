@@ -145,6 +145,7 @@ class TpuLangConverter(BaseConverter):
         "uint32": "UINT32",
         "uint64": "UINT64",
         "bool": "BOOL",
+        "dict": "DICT",
     }
 
     def __init__(self, name: str, graph: Graph):
@@ -209,15 +210,31 @@ class TpuLangConverter(BaseConverter):
 
     def attr_to_mlir(self, params: dict):
         attrs = {}
-        for key, value in params.items():
-            if value[2] is False:
-                attrs[key] = self.mlir.ArrayAttr(value[0], self.MLIRImporterTypeStr[value[1]])
-            elif value[1].find("int") >= 0:
-                attrs[key] = IntegerAttr.get(self.type_to_mlir[value[1]], value[0])
-            elif value[1] is "bool":
-                attrs[key] = BoolAttr.get(value[0])
+        def _attr_convert(attr):
+            if attr[2] is False:
+                return self.mlir.ArrayAttr(attr[0], self.MLIRImporterTypeStr[attr[1]])
+            elif attr[1].find("int") >= 0:
+                return IntegerAttr.get(self.type_to_mlir[attr[1]], attr[0])
+            elif attr[1] is "bool":
+                return BoolAttr.get(attr[0])
+            elif attr[1] is "string":
+                return StringAttr.get(attr[0])
             else:
-                attrs[key] = FloatAttr.get(self.type_to_mlir[value[1]], value[0])
+                return FloatAttr.get(self.type_to_mlir[attr[1]], attr[0])
+
+        for key, value in params.items():
+            # DictArrayAttr for custom op
+            if value[1] is "dict" and not value[2]:
+                array_attr = []
+                for i, dict in enumerate(value[0]):
+                    sub_dict = {}
+                    for k, v in dict[0].items():
+                        sub_dict[k] = _attr_convert(v)
+                    dict_attr = DictAttr.get(sub_dict)
+                    array_attr.append(dict_attr)
+                attrs[key] = self.mlir.ArrayAttr(array_attr, self.MLIRImporterTypeStr[value[1]])
+            else:
+                attrs[key] = _attr_convert(value)
         return attrs
 
     def __type2mlir(self, mlir_ctx):
