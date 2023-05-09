@@ -29,8 +29,7 @@ private:
   Offset<Vector<Offset<bmodel::Shape>>>
   CreateShapeVector(const ArrayRef<int64_t> &shape);
   Offset<Vector<Offset<bmodel::Tensor>>>
-  CreateTensorVector(const std::vector<Value> &values,
-                     std::vector<bool> cpu_type = {});
+  CreateTensorVector(const std::vector<Value> &values);
   Offset<bmodel::SubNet> CreateSubNet(func::CallOp call);
   Offset<bmodel::SubNet> CreateSubNet(func::CallOp call,
                                       std::unique_ptr<SubnetIr> subnet_ir_,
@@ -62,6 +61,7 @@ private:
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> cmd_group_all;
   TensorLocation tensor_loc;
   ProfileCtx profile_ctx;
+  std::unordered_map<std::string, std::vector<bool>> tensor_is_cpu;
 };
 
 } // namespace tpu
