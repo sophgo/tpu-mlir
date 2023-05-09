@@ -62,8 +62,9 @@ template <typename T> static bool check_type(Type eltType) {
   } else if (eltType.isInteger(32)) {
     same =
         (std::is_same<T, int32_t>::value || std::is_same<T, uint32_t>::value);
+  } else if (eltType.isInteger(4)) {
+    same = (std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value);
   } else {
-    // eltType.isF16()
     // eltType.isF64()
     // ...
     same = false;
@@ -133,8 +134,7 @@ public:
   LogicalResult addTensor(llvm::StringRef name, const T *data,
                           RankedTensorType &type, int64_t length = 0) {
     assert(!readOnly);
-    if(!type.getElementType().isInteger(4))
-      assert(check_type<T>(type.getElementType()) == true);
+    assert(check_type<T>(type.getElementType()) == true);
     auto it = map.find(name.str());
     if (it != map.end()) {
       llvm::errs() << "failed to add tensor " << name.str()
@@ -156,12 +156,11 @@ public:
     return success();
   }
 
-  template <typename T>
+ template <typename T>
   LogicalResult addTensor(llvm::StringRef name, const std::vector<T> *data,
                           RankedTensorType &type) {
     assert(!readOnly);
-    if(!type.getElementType().isInteger(4))
-      assert(check_type<T>(type.getElementType()) == true);
+    assert(check_type<T>(type.getElementType()) == true);
     return addTensor(name, data->data(), type, data->size());
   }
 
@@ -238,10 +237,9 @@ public:
     auto others = type.getNumElements() / n;
     auto count = (n + stmode_map.at(store_mode) - 1) /
                  stmode_map.at(store_mode) * stmode_map.at(store_mode) * others;
+    assert(check_type<T>(type.getElementType()) == true);
     bool isINT4 = type.getElementType().isInteger(4);
-    if (!isINT4) {
-      assert(check_type<T>(type.getElementType()) == true);
-    } else {
+    if (isINT4) {
       auto dims = type.getShape().size();
       if(dims == 2) {  // for MatMul
         count = type.getDimSize(0) * ((type.getDimSize(1) + 1) / 2);
