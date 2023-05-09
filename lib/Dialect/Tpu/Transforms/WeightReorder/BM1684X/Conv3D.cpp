@@ -54,7 +54,6 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
     return failure();
 
   auto attr = op.parseParam();
-  #if 0
   // filter reorder
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_type = module::getStorageType(op.getFilter());
@@ -63,7 +62,8 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
   int64_t IC_PARALLEL = BM168x::ic_num(fmt_bytes);
   int64_t filter_shape[5];
   // (oc, ic, kd, kh, kw) -> (1, oc, kt, ic/IC_PARALLEL, kh*kw * IC_PARALLEL)
-  // int8/uint8 local layer shape, only change shape info for layer group
+  // int8/uint8 local layer shape, only change shape info for layer group,
+  // the real weight reorder will be done in GroupPostTransformPass
   filter_shape[0] = 1;
   filter_shape[1] = attr.oc;
   filter_shape[2] = attr.kd;
@@ -71,7 +71,6 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
   filter_shape[4] = attr.kh * attr.kw * IC_PARALLEL;
   auto new_type = RankedTensorType::get(filter_shape, filter_type);
   op.getFilter().setType(new_type);
-  #endif
   // bias op
   if (attr.has_bias) {
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
@@ -88,7 +87,6 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
   if (attr.is_dw || attr.groups > 1) {
     llvm_unreachable("depthwise should support !!");
   }
-  #if 0
   // filter reorder
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_type = module::getStorageType(op.getFilter());
@@ -98,7 +96,8 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
   int64_t filter_shape[5];
   if (filter_type.isF16() || filter_type.isBF16()) {
     // (oc, ic, kd, kh, kw) -> (1, oc, kt, ic/IC_PARALLEL, kh*kw * IC_PARALLEL)
-    // f16/bf16 local layer shape, only change shape info for layer group
+    // f16/bf16 local layer shape, only change shape info for layer group,
+    // the real weight reorder will be done in GroupPostTransformPass
     filter_shape[0] = 1;
     filter_shape[1] = attr.oc;
     filter_shape[2] = attr.kd;
@@ -110,7 +109,6 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
     op.dump();
     llvm_unreachable("op type not support");
   }
-  #endif
   // bias op
   if (attr.has_bias) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
