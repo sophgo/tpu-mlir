@@ -50,7 +50,7 @@ faceboxes                 N        N        N        Y        N        N
 alphapose                 Y        N        N        N        Y        N
 espcn_3x                  Y        N        N        N        Y        N
 unet                      Y        N        N        N        Y        N
-nasnet_mobile             Y        N        N        N        Y        N
+nasnet_mobile             N        N        N        N        N        N
 ecanet50                  Y        N        N        N        Y        N
 res2net50                 Y        N        N        N        Y        N
 gaitset                   N        N        N        Y        N        N
