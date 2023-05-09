@@ -2460,4 +2460,19 @@ def Tpu_DeformGatherOp : Tpu_Op<"DeformGather"> {
   }];
 }
 
+def Tpu_CustomOp: Tpu_Op<"Custom"> {
+  let summary = "Custom operator";
+  let description = [{
+    Custom operator
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    StrAttr:$name,
+    DictArrayAttr:$params
+    );
+
+  let results = (outs Variadic<AnyTensor>:$output);
+}
+
 #endif // TPU_OPS

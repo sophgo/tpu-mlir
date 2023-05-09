@@ -64,17 +64,26 @@ typedef void (*cmd_id_divide)(void *p_cmd_src, void *p_cmd_dst0,
 typedef void (*cmd_id_merge)(void *p_cmd_dst, void *p_cmd_src0,
                              void *p_cmd_src1);
 typedef void (*sg_set_profile_dump)(bool enable);
-typedef void (*sg_set_profile_path)(const char* path);
+typedef void (*sg_set_profile_path)(const char *path);
 typedef void (*sg_stas_dump)(void *pid_node);
 typedef void (*sg_flops_dump)(long long flops, void *pid_node);
 typedef void (*sg_stas_reset)();
 
 // for cpuop
-typedef void* (*bmcpu_init)();
+typedef void *(*bmcpu_init)();
 typedef void (*bmcpu_uninit)(void *);
-typedef void (*bmcpu_process)(void *, int, void *, int, const std::vector<float *>&, const std::vector<std::vector<int>>&, const std::vector<float *>&, std::vector<std::vector<int>>&);
-typedef int (*bmcpu_reshape)(void *, int, void *, int, const std::vector<std::vector<int>>&, std::vector<std::vector<int>>&);
-typedef int  (*bmcpu_dtype)(void* bmcpu_handle, int op_type, const void *param, size_t param_size, const std::vector<int> &input_dtypes, std::vector<int> &output_dtypes);
+typedef void (*bmcpu_process)(void *, int, void *, int,
+                              const std::vector<float *> &,
+                              const std::vector<std::vector<int>> &,
+                              const std::vector<float *> &,
+                              std::vector<std::vector<int>> &);
+typedef int (*bmcpu_reshape)(void *, int, void *, int,
+                             const std::vector<std::vector<int>> &,
+                             std::vector<std::vector<int>> &);
+typedef int (*bmcpu_dtype)(void *bmcpu_handle, int op_type, const void *param,
+                           size_t param_size,
+                           const std::vector<int> &input_dtypes,
+                           std::vector<int> &output_dtypes);
 
 namespace tpu_mlir {
 namespace backend {
@@ -82,7 +91,6 @@ namespace backend {
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 #define CAST_FUNCTION_WITH_SYM(name, sym) dl_##name = CastToFPtr<name>(#sym)
 #define CAST_CPU_FUNCTION(name) dl_##name = CpuCastToFPtr<name>(#name)
-
 
 class BM168x : public Arch {
 
@@ -101,10 +109,17 @@ public:
                               int param_size, void *info, void *input,
                               void *output);
   static int64_t call_global_bfsz_func(const char *symbolName, void *params,
-                                       int param_size, void *input, void *output);
+                                       int param_size, void *input,
+                                       void *output);
   static int call_local_bfsz_func(const char *symbolName, void *params,
                                   int param_size, void *info, void *input,
                                   void *output);
+  static void call_global_custom_func(const char *symbolName, void *params,
+                                      int param_size, void *input,
+                                      void *output);
+  static void call_local_custom_func(const char *symbolName, void *params,
+                                     int param_size, void *info, void *input,
+                                     void *output);
   static DATA_TYPE_T getDataType(Type type);
   static DATA_TYPE_T getDataType(Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
@@ -195,15 +210,14 @@ public:
   bmcpu_dtype dl_bmcpu_dtype;
 
   template <typename FPtrTy> FPtrTy CpuCastToFPtr(const char *symbolName) {
-  assert(cpuopDL.isValid());
-  auto fPtr = cpuopDL.getAddressOfSymbol(symbolName);
-  if (fPtr == nullptr) {
-    llvm::errs() << "can't find symbol: " << symbolName << "\n";
-    llvm_unreachable(symbolName);
+    assert(cpuopDL.isValid());
+    auto fPtr = cpuopDL.getAddressOfSymbol(symbolName);
+    if (fPtr == nullptr) {
+      llvm::errs() << "can't find symbol: " << symbolName << "\n";
+      llvm_unreachable(symbolName);
+    }
+    return reinterpret_cast<FPtrTy>(fPtr);
   }
-  return reinterpret_cast<FPtrTy>(fPtr);
-}
-
 
 public:
   // -------------------------------------------------------------------
@@ -260,6 +274,7 @@ public:
   std::map<int, uint32_t> net_cpu_mem_size;
   llvm::sys::DynamicLibrary cpuopDL;
   llvm::StringRef libcpuop = "libcpuop.so";
+
 protected:
   BM168x(){};
   virtual ~BM168x() = 0;
@@ -270,7 +285,6 @@ protected:
 protected:
   static BM168x *bm168x;
   bool really_issue_command;
-
 };
 
 } // namespace backend

@@ -302,6 +302,24 @@ void BM168x::call_local_func(const char *symbolName, void *params,
   func(params, param_size, info, input, output, instance()->bdc_node);
 }
 
+typedef int (*global_custom_api_t)(void *params, int param_size, void *input,
+                                   void *output, void *pid_node);
+void BM168x::call_global_custom_func(const char *symbolName, void *params,
+                                     int param_size, void *input,
+                                     void *output) {
+  auto func = instance()->CastToCustomFPtr<global_custom_api_t>(symbolName);
+  func(params, param_size, input, output, instance()->cmdid_node);
+}
+
+typedef int (*local_custom_api_t)(void *params, int param_size, void *info,
+                                   void *input, void *output, void *pid_node);
+void BM168x::call_local_custom_func(const char *symbolName, void *params,
+                                    int param_size, void *info, void *input,
+                                    void *output) {
+  auto func = instance()->CastToCustomFPtr<local_custom_api_t>(symbolName);
+  func(params, param_size, info, input, output, instance()->bdc_node);
+}
+
 typedef int64_t (*global_bfsz_backend_api_t)(void *params, int param_size,
                                              void *input, void *output);
 int64_t BM168x::call_global_bfsz_func(const char *symbolName, void *params,

@@ -42,13 +42,14 @@ def compile(name: str,
             opt=2,
             dyn=False,
             profile=False,
+            custom=False,
             refs=None):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     # convert to mlir
     converter = TpuLangConverter(name=name, graph=TpuLang.graph)
     model_transform(name, converter)
-    model_inference(model_name=name, inputs=inputs)
+    model_inference(model_name=name, inputs=inputs, custom=custom)
     if cmp and refs is not None:
         model_validate(model_name=name, refs=refs)
 
@@ -61,19 +62,20 @@ def model_transform(model_name, converter: TpuLangConverter):
     print("Mlir file generated:{}".format(mlir_file))
 
 
-def model_inference(model_name, inputs):
+def model_inference(model_name, inputs, custom=False):
     in_f32_npz = model_name + '_in_f32.npz'
     mlir_file = model_name + '.mlir'
     ref_inputs = dict()
     for tensor in TpuLang.graph.inputs:
         ref_inputs[tensor.name] = tensor.buffer
     np.savez(in_f32_npz, **ref_inputs)
-    res_npz = model_name + '_top_outputs.npz'
-    # inference of mlir model
-    from tools.model_runner import mlir_inference, show_fake_cmd
-    show_fake_cmd(in_f32_npz, mlir_file, res_npz)
-    f32_outputs = mlir_inference(ref_inputs, mlir_file)
-    np.savez(res_npz, **f32_outputs)
+    # inference of mlir model, no inference performed when there is custom op
+    if not custom:
+        res_npz = model_name + '_top_outputs.npz'
+        from tools.model_runner import mlir_inference, show_fake_cmd
+        show_fake_cmd(in_f32_npz, mlir_file, res_npz)
+        f32_outputs = mlir_inference(ref_inputs, mlir_file)
+        np.savez(res_npz, **f32_outputs)
 
 
 def model_validate(model_name, refs: dict):
@@ -122,9 +124,11 @@ def broadcast_shape_inference(ops: list):
     return out_shape
 
 
-# data_type must be in ["float32", "float16", "int64" "int32", "int16". "int8", "uint8", "bool"]
+# data_type must be in ["float32", "float16", "int64" "int32", "int16". "int8", "uint8", "bool", "string", "dict"]
 def Attr(data, data_type: str = 'int64'):
-    assert data_type.find("int") >= 0 or data_type in ["float32", "float64", "bool"]
+    assert data_type.find("int") >= 0 or data_type in [
+        "float32", "float64", "bool", "string", "dict"
+    ]
     return [data, data_type, True]
 
 
@@ -141,6 +145,67 @@ def Attr(data, data_type: str = 'int64'):
     TpuLang.insert_op(op_type, inputs=[in_tensor], outputs=[output], params=attr)
     return output
 '''
+
+
+def custom(tensors_in: list,
+           shape_func,
+           op_name: str,
+           out_dtypes: list,
+           out_names: list = None,
+           params: dict = None):
+    '''
+        The custom op
+        Arguments:
+            tensors_in: list of input tensors (including weight tensors)
+            shape_func: function for doing shape inference, taking tensors_in as the parameter
+            op_name: name of the custom operator
+            out_dtypes: list of outputs' data type
+            out_name: list of output names
+            params: parameters of the custom op
+
+        Return:
+            tensors_out: list of output tensors
+    '''
+
+    out_shapes = shape_func(tensors_in)
+
+    tensors_out = []
+    for i, out_dtype in enumerate(out_dtypes):
+        tensor_out = Tensor(out_shapes[i],
+                            dtype=out_dtype,
+                            name=out_names[i] if out_names else None)
+        tensors_out.append(tensor_out)
+
+    attrs = {}
+
+    attrs["name"] = Attr(op_name, "string")
+    dict_array = []
+    for key, value in params.items():
+        params_new = {}
+        if isinstance(value, int):
+            value_new = Attr(value)
+        elif isinstance(value, bool):
+            value_new = Attr(value, "bool")
+        # not support string params for now
+        # elif isinstance(value, str):
+        #     value_new = Attr(value, "string")
+        elif isinstance(value, list):
+            if all(isinstance(x, int) for x in value):
+                value_new = ArrayAttr(value)
+            elif all(isinstance(x, float) for x in value):
+                value_new = ArrayAttr(value, "float32")
+            else:
+                raise ValueError(f"Elements in the list of {key} must be int-only or float-only")
+        else:
+            value_new = Attr(value, "float32")
+        params_new[key] = value_new
+        dict_array.append(Attr(params_new, "dict"))
+
+    attrs["params"] = ArrayAttr(dict_array, "dict")
+
+    TpuLang.insert_op("top.Custom", tensors_in, tensors_out, params=attrs)
+
+    return tensors_out
 
 
 def add(tensor_i0: Tensor, tensor_i1: Tensor, out_dtype: str = None, out_name: str = None):
