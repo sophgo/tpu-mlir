@@ -2611,18 +2611,15 @@ void ArgMaxFunc::invoke() {
 GatherndFunc::GatherndFunc(GatherNDParam &param) : param_(param) {}
 
 uint64_t GatherndFunc::gather_offset(std::vector<int64_t> input_shape,
-                                     std::vector<int> gather_index, int cur_dim,
-                                     int offset) {
-  if (cur_dim == gather_index.size() - 1) {
-    return offset + gather_index[cur_dim];
-  }
-  uint64_t cur_offset = gather_index[cur_dim];
-  for (int d = cur_dim + 1; d < gather_index.size(); ++d) {
-    cur_offset *= input_shape[d];
-  }
-  uint64_t new_offset = gather_offset(input_shape, gather_index, cur_dim + 1,
-                                      offset + cur_offset);
-  return new_offset;
+                                     std::vector<int> gather_index) {
+    uint64_t offset = 0;
+    int dim_size = gather_index.size();
+    uint64_t gap = 1;
+    for (int i = dim_size - 1; i >= 0; i--) {
+        offset += gather_index[i] * gap;
+        gap *= input_shape[i];
+    }
+    return offset;
 }
 
 void GatherndFunc::invoke() {
@@ -2668,7 +2665,7 @@ void GatherndFunc::invoke() {
                  c * indices_new_shape[2],
              indices_new_shape[2] * sizeof(int));
       gather_index.insert(gather_index.begin(), b);
-      uint64_t offset = gather_offset(input_new_shape, gather_index, 0, 0);
+      uint64_t offset = gather_offset(input_new_shape, gather_index);
       memcpy(out + (b * indices_new_shape[1] + c) * gather_eltment,
              input + offset * gather_eltment, gather_eltment * sizeof(float));
     }

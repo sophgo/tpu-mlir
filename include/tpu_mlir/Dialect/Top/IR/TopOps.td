@@ -2528,6 +2528,7 @@ def Top_GatherNDOp: Top_Op<"GatherND"> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$indices,
+    OptionalAttr<I64Attr>:$indice_dims,
     DefaultValuedAttr<I64Attr, "0">:$batch_dims
   );
 

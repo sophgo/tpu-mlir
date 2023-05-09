@@ -570,8 +570,7 @@ public:
 
 private:
   uint64_t gather_offset(std::vector<int64_t> input_shape,
-                         std::vector<int> gather_index, int cur_dim,
-                         int offset);
+                         std::vector<int> gather_index);
   GatherNDParam param_;
 };
 
