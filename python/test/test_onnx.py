@@ -272,6 +272,8 @@ class ONNX_IR_TESTER(object):
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
         else:
+            if self.chip == "bm1686":
+                self.support_quant_modes.append("int4")
             if self.mode not in self.support_quant_modes:
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
             self.quant_modes = [self.mode]
@@ -5505,7 +5507,9 @@ if __name__ == "__main__":
     dir = "onnx_test_{}".format(args.chip)
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
-    if args.case == "" or args.case.lower() == "all":
+    if args.mode == 'int4':
+        test_int4(tester)
+    elif args.case == "" or args.case.lower() == "all":
         test_all(tester)
     else:
         tester.test_single(args.case)
