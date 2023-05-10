@@ -1615,7 +1615,13 @@ class OnnxConverter(BaseConverter):
         assert ('axes' in onnx_node.attrs or len(onnx_node.inputs) > 1)
         op = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        axes = self.getWeight(onnx_node.inputs[1]).astype(int) if len(onnx_node.inputs) > 1 else onnx_node.attrs['axes']
+        if self.opset < 13:
+            axes = onnx_node.attrs.get('axes')
+        else:
+            if len(onnx_node.inputs) == 1:
+                axes = []
+            else:
+                axes = self.getWeight(onnx_node.inputs[1]).astype(int)
         new_op = top.SqueezeOp(self.mlir.get_tensor_type(output_shape),
                                op,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
@@ -1627,7 +1633,13 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Unsqueeze")
         op = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        axes = self.getWeight(onnx_node.inputs[1]).astype(int)
+        if self.opset < 13:
+            axes = onnx_node.attrs.get('axes')
+        else:
+            if len(onnx_node.inputs) == 1:
+                axes = []
+            else:
+                axes = self.getWeight(onnx_node.inputs[1]).astype(int)
         new_op = top.UnsqueezeOp(self.mlir.get_tensor_type(output_shape),
                                op,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
