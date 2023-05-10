@@ -1187,7 +1187,6 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp, IfOp">]> 
     OpBuilder<(ins), [{ build($_builder, $_state, std::nullopt); }]>
   ];
 
-  let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
 def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
