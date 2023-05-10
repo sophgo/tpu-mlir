@@ -72,8 +72,8 @@ full_model_list = {
     "alphapose_res50":            (N,      N,       N,      N,      N,      Y,      Y),
     ######## Pytorch #######      ######
     "bert_pt":                    (N,      Y,       Y,      N,      N,      N,      N),
-    "bert_base_pt":               (N,      Y,       Y,      N,      N,      N,      N),
-    "bert_large_pt":              (N,      Y,       Y,      N,      N,      N,      N),
+    "bert_base_pt":               (N,      N,       N,      N,      N,      N,      N),
+    "bert_large_pt":              (N,      N,       N,      N,      N,      N,      N),
     "resnet50_pt":                (N,      Y,       Y,      N,      N,      Y,      Y),
     "sd_encoder_pt":              (N,      Y,       Y,      N,      N,      N,      N),
     "sd_decoder_pt":              (N,      Y,       Y,      N,      N,      N,      N),
