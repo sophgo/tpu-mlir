@@ -94,6 +94,7 @@ class TorchInterpreter():
             "aten::gelu": ['approximate'],
             "aten::add": ['alpha'],
             "aten::sub": ['alpha'],
+            "aten::expand": ['implicit'],
             "aten::arange": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::addmm": ['beta', 'alpha'],
             "aten::to":
