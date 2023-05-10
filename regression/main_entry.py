@@ -23,8 +23,9 @@ import argparse
 
 class MAIN_ENTRY(object):
 
-    def __init__(self, test_type):
+    def __init__(self, test_type, disable_thread:bool):
         self.test_type = test_type
+        self.disable_thread = disable_thread
         self.current_dir = os.getcwd()
         self.is_basic = test_type == "basic"
         # yapf: disable
@@ -93,7 +94,7 @@ class MAIN_ENTRY(object):
             for chip in chips:
                 success = self.run_op_test(op_source, tester, test_func, chip)
                 # basic test stops once a test failed
-                if not success and self.test_type == "basic":
+                if not success and self.is_basic:
                     return 1
             end_time = time.time()
             self.time_cost.append(f"run_{op_source}: {int(end_time - tmp_time)} seconds")
@@ -101,41 +102,50 @@ class MAIN_ENTRY(object):
 
         # test script
         success = self.run_script_test()
-        if not success and self.test_type == "basic":
+        if not success and self.is_basic:
             return 1
         end_time = time.time()
         self.time_cost.append(f"run_script: {int(end_time - tmp_time)} seconds")
         tmp_time = end_time
 
         # test model regression
-        model_list = basic_model_list if self.test_type == "basic" else full_model_list
+        model_list = basic_model_list if self.is_basic else full_model_list
         for idx, chip in enumerate(chip_support.keys()):
             cur_model_list = [
                 model_name for model_name, do_test in model_list.items() if do_test[idx]
             ]
-            process_number = multiprocessing.cpu_count() // 2 + 1
-            processes = []
-            finished_list = multiprocessing.Manager().list()
-            for model in cur_model_list:
-                p = multiprocessing.Process(target=self.run_regression_net,
-                                            args=(model, chip, finished_list))
-                processes.append(p)
-                if len(processes) == process_number:
+            if self.disable_thread:
+                finished_list = list()
+                for model in cur_model_list:
+                    self.run_regression_net(model, chip, finished_list)
+                self.results.extend(finished_list)
+                for result in finished_list:
+                    if result["status"] == "FAILED" and self.is_basic:
+                        return 1
+            else:
+                process_number = multiprocessing.cpu_count() // 2 + 1
+                processes = []
+                finished_list = multiprocessing.Manager().list()
+                for model in cur_model_list:
+                    p = multiprocessing.Process(target=self.run_regression_net,
+                                                args=(model, chip, finished_list))
+                    processes.append(p)
+                    if len(processes) == process_number:
+                        for p in processes:
+                            p.start()
+                        for j in processes:
+                            j.join()
+                        processes = []
+                if processes:
                     for p in processes:
                         p.start()
                     for j in processes:
                         j.join()
-                    processes = []
-            if processes:
-                for p in processes:
-                    p.start()
-                for j in processes:
-                    j.join()
 
-            self.results.extend(finished_list)
-            for result in finished_list:
-                if result["status"] == "FAILED" and self.test_type == "basic":
-                    return 1
+                self.results.extend(finished_list)
+                for result in finished_list:
+                    if result["status"] == "FAILED" and self.is_basic:
+                        return 1
 
             end_time = time.time()
             self.time_cost.append(f"run models for {chip}: {int(end_time - tmp_time)} seconds")
@@ -148,9 +158,9 @@ class MAIN_ENTRY(object):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
-    parser.add_argument("test_type", default="all", type=str.lower,
-                        choices=['all', 'basic'],
-                        help="quantize mode, 'all' runs all modes (no int4), 'baisc' runs f16 and int8 sym only")
+    parser.add_argument("--test_type", default="all", type=str.lower, choices=['all', 'basic'],
+                        help="whether do all model test, 'all' runs all modes, 'baisc' runs basic models f16 and int8 sym only")
+    parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     # yapf: enable
     args = parser.parse_args()
 
@@ -158,7 +168,7 @@ if __name__ == "__main__":
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
 
-    main_entry = MAIN_ENTRY(args.test_type)
+    main_entry = MAIN_ENTRY(args.test_type, args.disable_thread)
     exit_status = main_entry.run_all()
     for time in main_entry.time_cost:
         print(time)

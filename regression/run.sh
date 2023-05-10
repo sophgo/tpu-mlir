@@ -1,4 +1,4 @@
 #!/bin/bash
 set -e
 pip list
-$REGRESSION_PATH/main_entry.py basic
+$REGRESSION_PATH/main_entry.py --test_type basic
