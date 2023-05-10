@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import pymlir
 import sys
+import copy
 sys.path.append('../..')
 
 
@@ -136,6 +137,8 @@ class mlir_net:
     def all_tensor_names(self):
         return self.mlir_module.all_tensor_names
 
+    def all_weight_names(self):
+        return self.mlir_module.all_weight_names
 
 class analysis_data():
     def __init__(self, path, param_f32mlir, param_qmlir, param_input):
@@ -231,6 +234,32 @@ class analysis_data():
             f32 = self.f32_net.tensor(name)
         else:
             f32 = quant
+        return f32, quant
+
+    def weight(self, fweight, name):
+        fp32_exist = False
+        if name in self.quant_net.all_weight_names():
+            quant = self.quant_net.tensor(name).copy()
+        else:
+            return None, None
+        if fweight in self.f32_net.all_weight_names():
+            f32 = self.f32_net.tensor(fweight).copy()
+            fp32_exist = True
+        else:
+            f32 = quant.copy()
+        if fp32_exist:
+            for op in self.f32_net.mlir_parser.get_op_name_list():
+                if fweight in self.f32_net.mlir_parser.get_opds_by_op_name(op):
+                    if self.f32_net.mlir_parser.get_op_type_by_op_name(op) == "tpu.Conv": # for perchannel weight ops, add later
+                        oc = f32.shape[0]
+                        max = np.max(np.abs(f32),axis=1)
+                        quant = quant * ((max/127.0)[:,None])
+                    else: # for per layer weight ops
+                        fmax = np.max(np.abs(f32))
+                        if self.quant_net.tensor_qtype(name) == "I8":
+                            quant = quant.astype(np.float32)* (fmax/127.0)
+                        if self.quant_net.tensor_qtype(name) == "U8":
+                            quant = quant.astype(np.float32)* (fmax/255.0)
         return f32, quant
 
     def run_metrics(self):

@@ -46,6 +46,7 @@ def forward_net(app):
             app.Global.figure_cache = plot.figure_cache(
                 app.Global.analysis_data)
             app.Global.dist_cache = plot.figure_cache(app.Global.analysis_data)
+            app.Global.weight_cache = plot.figure_cache(app.Global.analysis_data)
             if state == "Idle":
                 return app.Global.analysis_data.forward_count, True
             return dash.no_update, False
@@ -268,6 +269,36 @@ def show_dist(app):
                                                name=name, scale=scale, dtype=dtype)
         return fig, name
 
+@register
+def show_weight(app):
+    # show graph
+    @app.callback(Output('weight-graph', 'figure'),
+                  Output('weight-store', 'data'),
+                  Input('cytoscape-responsive-layout', 'tapNodeData'),
+                  Input('weight-sample', 'value'),
+                  prevent_initial_call=True)
+    def show_weight(nodeData, samples):
+        if nodeData is None:
+            return dash.no_update
+        if app.Global.weight_cache is None:
+            return dash.no_update
+        id = int(nodeData['id'])
+        layer = app.Global.analysis_data.quant_net.layer_by_idx(id).name
+        top_opsq = {op.name:op for op in app.Global.analysis_data.quant_net.mlir_parser.ops}
+        if len(top_opsq[layer].opds) > 1 and top_opsq[layer].opds[1] in app.Global.analysis_data.quant_net.all_weight_names():
+            weight = top_opsq[layer].opds[1]
+        else:
+            return dash.no_update
+        top_opsf = {op.name:op for op in app.Global.analysis_data.f32_net.mlir_parser.ops}
+        if len(top_opsf[layer].opds) > 1 and top_opsf[layer].opds[1] in app.Global.analysis_data.f32_net.all_weight_names():
+            fweight = top_opsf[layer].opds[1]
+        else:
+            fweight = None
+
+        fig = app.Global.weight_cache.get_figure(plot.linear_plot,
+                                                 name=weight,
+                                                 max_sampling=int(samples), weight=True, f32weight=fweight)
+        return fig, weight
 
 @register
 def show_layer_info(app):
@@ -416,5 +447,18 @@ def sync_sample(app):
         """,
         Output('figure-sample-display', 'children'),
         Input('figure-sample', 'value'),
+        prevent_initial_call=True,
+    )
+
+@register
+def sync_wsample(app):
+    app.clientside_callback(
+        """
+        function(value) {
+           return value;
+        }
+        """,
+        Output('weight-sample-display', 'children'),
+        Input('weight-sample', 'value'),
         prevent_initial_call=True,
     )

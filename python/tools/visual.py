@@ -66,6 +66,7 @@ class global_state():
         self.analysis_data = None
         self.figure_cache = None
         self.dist_cache = None
+        self.weight_cache = None
         self.draggable = None
         self.zIndex = 50
         self.f32_mlir = ""
@@ -138,7 +139,7 @@ app.layout = html.Div(
                         ),
                         html.Div(
                             component.info_tab(
-                                'info-tab', 'info-tab0', 'info-tab1', 'info-tab2'),
+                                'info-tab', 'info-tab0', 'info-tab1', 'info-tab2', 'info-tab3'),
                             style={'height': '100vh'}),
                     ]),
             ]),
