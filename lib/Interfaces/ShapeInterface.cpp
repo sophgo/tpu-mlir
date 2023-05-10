@@ -57,11 +57,11 @@ void broadcast_shape_inference(mlir::Operation *op) {
 }
 
 void broadcast_tensor_reshape(const mlir::Value &expect, mlir::Value &input) {
-  llvm::SmallVector<int64_t> shape(
-      module::getShape(expect).size() - module::getShape(input).size(), 1);
   // insert 1 at the begin of input if dim of input is not same with expect
-  if (module::isWeight(input) &&
+  if (module::isWeight(input) && module::getNumElements(input) > 1 &&
       module::getShape(input).size() != module::getShape(expect).size()) {
+    llvm::SmallVector<int64_t> shape(
+        module::getShape(expect).size() - module::getShape(input).size(), 1);
     for (auto iter : module::getShape(input)) {
       shape.push_back(iter);
     }
