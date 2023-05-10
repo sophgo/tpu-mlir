@@ -131,6 +131,7 @@ class TorchConverter(BaseConverter):
             "aten::new_ones": lambda node: self.convert_new_constant_fill_op(node, 1),
             "aten::new_zeros": lambda node: self.convert_new_constant_fill_op(node, 0),
             "aten::ones": lambda node: self.convert_constant_fill_op(node, 1),
+            "aten::expand": lambda node: self.convert_expand_op(node),
             "aten::pad": lambda node: self.convert_pad_op(node, mode='unknown'),
             "aten::pow": lambda node: self.convert_pow_op(node),
             "aten::prelu": lambda node: self.convert_prelu_op(node),
@@ -610,6 +611,25 @@ class TorchConverter(BaseConverter):
                                     loc=self.get_loc(torch_node.name),
                                     ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
+
+    def convert_expand_op(self, torch_node: TorchNode):
+        implict = False
+        if torch_node.inputs[2] in self.const_val:
+            implict = self.const_val[torch_node.inputs[2]]
+        if implict:
+            print('not handled')
+        opI = self.getOp(torch_node.inputs[0])
+        opS = self.getOp(torch_node.inputs[1])
+        new_cf = top.ConstantFillOp(self.unranked_type,
+                                    opS,
+                                    value=1.0,
+                                    loc=self.get_loc(torch_node.name+'_size'),
+                                    ip=self.mlir.insert_point).output
+        new_exp = top.MulOp(self.unranked_type, [opI, new_cf],
+                           do_relu=False,
+                           loc=self.get_loc(torch_node.name),
+                           ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_exp)
 
     def convert_arange_op(self, torch_node: TorchNode):
         in0, in1, in2 = torch_node.inputs[:3]
