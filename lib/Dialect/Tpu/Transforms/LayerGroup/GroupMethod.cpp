@@ -97,7 +97,7 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
 
 static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
   for (auto op : group_ops) {
-    if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp,
+    if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
              ReshapeOp, SoftmaxOp>(op)) {
       return false;
     }
@@ -106,7 +106,7 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
       if (op_.getAxis() != shape.size() - 1) {
         return false;
       }
-    } else if (isa<AddOp>(op)) {
+    } else if (isa<AddOp, MulOp>(op)) {
       auto shapeB = module::getShape(op->getOperand(1));
       if (shape != shapeB) {
         return false;
@@ -529,6 +529,7 @@ bool GroupMethod::update_sequence_group_cost(
   for (size_t i = 0; i < 2; ++i) {
     if (group_one_layer_proc(*groups[i], true, &group_costs[i])) {
       shape_secs[i].nsecs = 1;
+      shape_secs[i].csecs = 1;
       shape_secs[i].hsecs = 1;
       shape_secs[i].dsecs = 1;
       shape_secs[i].wsecs = 1;

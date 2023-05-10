@@ -756,8 +756,9 @@ bool LmemAllocator::assignLmemAddr(const LgInfo &lg_info,
                                    BasicTimeStepPtr &time_step,
                                    const shape_secs_t &shape_secs) {
   time_step->update_all_mem_buffer_size(lg_info);
-  bool one_loop = (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 &&
-                   shape_secs.dsecs == 1 && shape_secs.wsecs == 1);
+  bool one_loop =
+      (shape_secs.nsecs == 1 && shape_secs.hsecs == 1 &&
+       shape_secs.csecs == 1 && shape_secs.dsecs == 1 && shape_secs.wsecs == 1);
 
   std::list<MemBufSortStd> membuf_list;
   init_membuf_list(membuf_list, time_step, one_loop);
@@ -851,7 +852,6 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
          shape_secs.hsecs <= max_shape_secs.hsecs &&
          shape_secs.wsecs <= max_shape_secs.wsecs &&
          shape_secs.csecs <= max_shape_secs.csecs) {
-    // if (shape_secs.csecs == 64 && shape_secs.hsecs == 3) shape_secs.hsecs = 4;
     // reassign time step
     status = time_step->assignTimeStep(lg_info, shape_secs, true);
     if (status == false) {
