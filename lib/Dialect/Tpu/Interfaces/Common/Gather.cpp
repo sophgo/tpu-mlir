@@ -23,6 +23,9 @@ LogicalResult tpu::GatherOp::inference(InferenceParameter &p) {
   int64_t outer_dims = 1;
   int64_t inner_dims = 1;
   auto input_shape = module::getShape(getInput());
+  if (ax < 0) {
+    ax += input_shape.size();
+  }
   for (int i = 0; i < ax; ++i) {
     outer_dims *= input_shape[i];
   }
@@ -35,7 +38,11 @@ LogicalResult tpu::GatherOp::inference(InferenceParameter &p) {
   for (int64_t i = 0; i < outer_dims; ++i) {
     for (int64_t j = 0; j < num_indices; ++j) {
       for (int64_t k = 0; k < inner_dims; ++k) {
-        int64_t src_idx = (i * input_shape[ax] + (int64_t)inds[j]) * inner_dims + k;
+        int64_t src_idx =
+            (i * input_shape[ax] +
+             (int64_t)(inds[j] < 0 ? inds[j] + input_shape[ax] : inds[j])) *
+                inner_dims +
+            k;
         int64_t dst_idx = (i * num_indices + j) * inner_dims + k;
         dst[dst_idx] = src[src_idx];
       }
@@ -60,6 +67,10 @@ mlir::Type tpu::GatherOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
     }
     mode = TypeCastMode::DO_CAST;
     auto bitwidth = stype.getIntOrFloatBitWidth();
+    if (module::isBM1684XFamily()) {
+      // indices should be int32 in BM1684x
+      bitwidth = 32;
+    }
     return Builder(op).getIntegerType(bitwidth);
   }
   return type_verify_case_same(op, opd_idx, mode);
