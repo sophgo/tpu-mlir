@@ -593,7 +593,7 @@ protected:
     // keep sign for some ops
     // backend not support in out not the same sign
     patterns.clear();
-    patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>, KeepAddSignPattern,
+    patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
                  SetSubConstSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
   }
