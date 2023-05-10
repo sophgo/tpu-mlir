@@ -139,7 +139,45 @@ struct OptMatMulSmallCdim : public OpRewritePattern<MatMulOp> {
   }
 };
 
+// Add Reshape op after non-keepdims MatMul to make layergroup easier
+struct NoKeepDimsAddReshape : public OpRewritePattern<MatMulOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+
+    if (op.getKeepDims()) {
+      return failure();
+    }
+
+    // specail case for bert
+    auto output = op.getResult();
+    for (auto user : output.getUsers()) {
+      if (auto packop = dyn_cast<top::PackOp>(user)) {
+        return failure();
+      }
+    }
+
+    // cache the output type and loc
+    auto reshape_out = output.getType();
+    auto out_loc = output.getLoc();
+
+    // change the MatMul op into keepdims and recalculate the output shape
+    op.setKeepDims(true);
+    output.setType(UnrankedTensorType::get(module::getElementType(output)));
+    output.setLoc(NameLoc::get(rewriter.getStringAttr(module::getName(output).str() + "_keepdims")));
+    op.shape_inference();
+
+    // add reshape op after Matmul
+    rewriter.setInsertionPointAfter(op);
+    auto reshape_op = rewriter.create<ReshapeOp>(out_loc, reshape_out, ValueRange{output});
+    output.replaceAllUsesExcept(reshape_op.getOutput(), reshape_op);
+
+    return success();
+  }
+};
+
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<MatMulWithBias>(context);
+  results.insert<MatMulWithBias, NoKeepDimsAddReshape>(context);
 }

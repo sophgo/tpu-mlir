@@ -211,7 +211,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
         quant[i * 2] = multiplier_v[i];
-        quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xff) |
+        quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xffff) |
                            (((int32_t)out_zp & 0xffff) << 16);
       }
     } else {
@@ -441,7 +441,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
       quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
         quant[i * 2] = multiplier_v[i];
-        quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xff) |
+        quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xffff) |
                            (((int32_t)out_zp & 0xffff) << 16);
       }
     } else {
@@ -528,7 +528,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
         quant.resize(p.oc * quant_w_size, 0);
         for (size_t i = 0; i < p.oc; ++i) {
           quant[i * 2] = multiplier_v[i];
-          quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xff) |
+          quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xffff) |
                              (((int32_t)out_zp & 0xffff) << 16);
         }
       } else {
@@ -761,16 +761,27 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
         do_requant(op->getLoc(), newValue, op.getOutput().getType(), true,
                    multiplier[0], shift[0], tpu::RequantMode::TFLite_LShift);
   } else {
-    std::vector<int32_t> quant(quant_size * 3, 0);
-    for (int i = 0; i < quant_size; ++i) {
-      quant[i * 3] = multiplier[i];
-      quant[i * 3 + 1] = shift[i];
-      quant[i * 3 + 2] = output_qtype.getZeroPoint();
-    }
+    std::vector<int32_t> quant;
     std::vector<int64_t> quant_shape(module::getShape(op.getInput()).size(),
-                                     1l);
+                                      1l);
     quant_shape[1] = quant_size;
-    quant_shape.back() = 3;
+    if (module::isBM1686()) {
+      quant.resize(quant_size * 2, 0);
+      for (int i = 0; i < quant_size; ++i) {
+        quant[i * 2] = multiplier[i];
+        quant[i * 2 + 1] = (((int32_t)shift[i]) & 0xffff) |
+                           (((int32_t)output_qtype.getZeroPoint() & 0xffff) << 16);
+      }
+      quant_shape.back() = 2;
+    } else {
+      quant.resize(quant_size * 3, 0);
+      for (int i = 0; i < quant_size; ++i) {
+        quant[i * 3] = multiplier[i];
+        quant[i * 3 + 1] = shift[i];
+        quant[i * 3 + 2] = output_qtype.getZeroPoint();
+      }
+      quant_shape.back() = 3;
+    }
     auto quant_type = RankedTensorType::get(quant_shape, rewriter.getI32Type());
     auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
     newValue =

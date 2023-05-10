@@ -81,9 +81,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
-  if (module::isBM1686() && getCoeffMerged()) {
-    return 0;
-  }
+
   auto &p = getConv2DParam(*this);
   int64_t sz = 0;
   auto in_type = BM168x::getDataType(getInput());
@@ -94,6 +92,11 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int oc_per_npu = ceiling_func(p.oc, BM168x::NPU_NUM);
   int ic_per_npu = ceiling_func(p.ic / p.groups, BM168x::NPU_NUM);
   int int32_size = out_lmem_bytes * sizeof(int32_t) / out_type_len;
+  if (module::isBM1686() && getCoeffMerged()) {
+    if (module::isUniformQuantized(getInput()) && p.kernel_zp != 0)
+      return int32_size * 2;
+    return 0;
+  }
   if (getCoeffMerged()) {
     sz += int32_size;
   }

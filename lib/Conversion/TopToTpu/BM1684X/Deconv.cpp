@@ -157,7 +157,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
     if (module::isBM1686()) {
       quant_int32->data()[2 * c] = int32_multiplier;
       quant_int32->data()[2 * c + 1] =
-          ((-(int32_t)rshift) & 0xff) | (((int32_t)out_zp & 0xffff) << 16);
+          ((-(int32_t)rshift) & 0xffff) | (((int32_t)out_zp & 0xffff) << 16);
 
     } else {
       quant_int32->data()[3 * c] = int32_multiplier;

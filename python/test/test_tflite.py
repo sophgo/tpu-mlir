@@ -84,7 +84,7 @@ class TFLITE_IR_TESTER(object):
         }
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["int8"]
-        self.support_chip = ["bm1684x"]
+        self.support_chip = ["bm1684x", 'bm1686']
         if chip not in self.support_chip:
             raise RuntimeError("{} not support tflite now.".format(self.chip))
         self.chip = chip.lower()
@@ -963,7 +963,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684x'],
+                        choices=['bm1684x', 'bm1686'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'int8'],
