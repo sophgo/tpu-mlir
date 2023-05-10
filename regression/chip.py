@@ -16,7 +16,7 @@ chip_support = {
     # chip_name: (F32, F16, BF16, INT8_sym, INT8_asym, INT4_sym, dynamic, model_type)
     "bm1684":    (Y,   N,   N,    Y,        N,         N,        N,       "bmodel"),
     "bm1684x":   (Y,   Y,   Y,    Y,        Y,         N,        N,       "bmodel"),
-    "bm1686":    (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
+    "bm1686":    (Y,   Y,   Y,    Y,        Y,         Y,        N,       "bmodel"),
     "cv180x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
     "cv181x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
     "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
@@ -90,12 +90,12 @@ full_model_list = {
     "feature_extract_cf":         (N,      Y,       Y,      N,      N,      Y,      Y),
     "squeezenet_v1.1_cf":         (N,      Y,       Y,      N,      N,      Y,      Y),
     ######## tflite ########      ########
-    "inception_v4_tf":            (N,      Y,       N,      N,      N,      N,      N),
-    "mobilenet_v2_tf":            (N,      Y,       N,      N,      N,      N,      N),
-    "resnet50_tf":                (N,      Y,       N,      N,      N,      N,      N),
-    "ssd_mobilenet_v1_tf":        (N,      Y,       N,      N,      N,      N,      N),
-    "yolov5s_tf":                 (N,      Y,       N,      N,      N,      N,      N),
-    "mobilebert_tf":              (N,      Y,       N,      N,      N,      N,      N),
+    "inception_v4_tf":            (N,      Y,       Y,      N,      N,      N,      N),
+    "mobilenet_v2_tf":            (N,      Y,       Y,      N,      N,      N,      N),
+    "resnet50_tf":                (N,      Y,       Y,      N,      N,      N,      N),
+    "ssd_mobilenet_v1_tf":        (N,      Y,       Y,      N,      N,      N,      N),
+    "yolov5s_tf":                 (N,      Y,       Y,      N,      N,      N,      N),
+    "mobilebert_tf":              (N,      Y,       Y,      N,      N,      N,      N),
     ######## PaddlePaddle ##      ##############
     "pp_humanseg":                (N,      Y,       Y,      N,      N,      N,      N),
     "pp_liteseg":                 (N,      Y,       Y,      N,      N,      N,      N),

@@ -374,7 +374,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
         quant_w_size = 2;
         quant.resize(quant_w_size, 0);
         quant[i * 2] = scale;
-        quant[i * 2 + 1] = ((-(int32_t)shift) & 0xff) |
+        quant[i * 2 + 1] = ((-(int32_t)shift) & 0xffff) |
                           (((int32_t)out_zp & 0xffff) << 16);
       } else {
         quant_w_size = 3;
