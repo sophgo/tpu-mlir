@@ -9,10 +9,8 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
-
+#include "tpu_mlir/Support/Module.h"
 
 int64_t top::GatherOp::getFLOPs() { return 0; }
 
@@ -28,6 +26,9 @@ LogicalResult top::GatherOp::inference(InferenceParameter &p) {
   int64_t outer_dims = 1;
   int64_t inner_dims = 1;
   auto input_shape = module::getShape(getInput());
+  if (ax < 0) {
+    ax += input_shape.size();
+  }
   for (int i = 0; i < ax; ++i) {
     outer_dims *= input_shape[i];
   }
@@ -40,13 +41,16 @@ LogicalResult top::GatherOp::inference(InferenceParameter &p) {
   for (int64_t i = 0; i < outer_dims; ++i) {
     for (int64_t j = 0; j < num_indices; ++j) {
       for (int64_t k = 0; k < inner_dims; ++k) {
-        int64_t src_idx = (i * input_shape[ax] + (int64_t)inds[j]) * inner_dims + k;
+        int64_t src_idx =
+            (i * input_shape[ax] +
+             (int64_t)(inds[j] < 0 ? inds[j] + input_shape[ax] : inds[j])) *
+                inner_dims +
+            k;
         int64_t dst_idx = (i * num_indices + j) * inner_dims + k;
         dst[dst_idx] = src[src_idx];
       }
     }
   }
-
 
   return success();
 }
@@ -55,6 +59,9 @@ void top::GatherOp::shape_inference() {
   auto indices_shape = module::getShape(getIndices());
   auto ax = getAxis();
   auto input_shape = module::getShape(getInput());
+  if (ax < 0) {
+    ax += input_shape.size();
+  }
   std::vector<int64_t> out_shape;
   for (int i = 0; i < ax; ++i) {
     out_shape.push_back(input_shape[i]);
