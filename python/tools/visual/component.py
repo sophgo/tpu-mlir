@@ -258,7 +258,7 @@ def draggable_toolbox(*ids):
 
 
 def info_tab(*ids):
-    tabs_styles = {'zIndex': 99, 'display': 'inlineBlock', 'height': '3vh', 'width': '20vw',
+    tabs_styles = {'zIndex': 99, 'display': 'inlineBlock', 'height': '3vh', 'width': '30vw',
                    "background": "#323130", 'border': 'grey', 'border-radius': '4px'}
     tab_style = {
         "background": "#92a8d1",
@@ -310,8 +310,18 @@ def info_tab(*ids):
                                 dist_figure('dist-graph', 'dist-store'),
                                 style={'height': '100vh'}),
                         ], style=tab_style, selected_style=tab_selected_style),
-                dcc.Tab(label='Summary Info', value='tab2',
+                dcc.Tab(label='Weight Info', value='tab2',
                         id=ids[3],
+                        children=[
+                            html.Div(
+                                tensor_figure(
+                                    'weight-graph', 'weight-sample',
+                                    'weight-sample-display',
+                                    'weight-store'),
+                                    style={'height': '80vh'}),
+                        ], style=tab_style, selected_style=tab_selected_style),
+                dcc.Tab(label='Summary Info', value='tab3',
+                        id=ids[4],
                         children=[
                             html.Div(
                                 info_tabulator('info-tabulator'),
@@ -384,6 +394,20 @@ def dist_figure(*ids):
               "height": "100%",
               })
 
+def weight_figure(*ids):
+    id_figure, id_fig_store = ids
+    return html.Div([
+        dcc.Store(id=id_fig_store, data=""),
+        dcc.Graph(id=id_figure,
+                  responsive=True,
+                  style={
+                      "width": "100%",
+                      "height": "60%",
+                  },
+                  config={'displayModeBar': False})
+    ], style={"width": "100%",
+              "height": "100%",
+              })
 
 def metrics_figure(*ids):
     id_m, *_ = ids

@@ -20,10 +20,13 @@ class figure_cache():
         self.figure = dict()
 
 
-def linear_plot(data, name=None, max_sampling=1000):
+def linear_plot(data, name=None, max_sampling=1000, weight=False, f32weight=None):
     import numpy as np
     from . import plot_utils as plt
-    blob_fp, blob_int = data.tensor(name)
+    if weight:
+        blob_fp, blob_int = data.weight(f32weight, name)
+    else:
+        blob_fp, blob_int = data.tensor(name)
     data_size = blob_fp.size
     if data_size > max_sampling:
         step = data_size // max_sampling

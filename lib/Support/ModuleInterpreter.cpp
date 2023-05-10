@@ -761,6 +761,27 @@ bool ModuleInterpreter::getTensorQuantInfo(const std::string name,
       scale = 1.0;
       zp = 0;
     }
+  } else if (stype.isa<IntegerType>()) {
+    if (stype.isSignedInteger(8))
+      dtype = std::string("I8");
+    else if (stype.isSignlessInteger(8) || stype.isUnsignedInteger(8))
+      dtype = std::string("I8"); // FIXME, seems fail to tell i8 from u8
+    else if (stype.isSignlessInteger(16) || stype.isUnsignedInteger(16))
+      dtype = std::string("U16");
+    else if (stype.isSignedInteger(16))
+      dtype = std::string("I16");
+    else if (stype.isSignedInteger(32))
+      dtype = std::string("I32");
+    else if (stype.isSignlessInteger(32) || stype.isUnsignedInteger(32))
+      dtype = std::string("U32");
+    else {
+      dtype = std::string("I4");
+    }
+    scale = 1.0;
+    zp = 0;
+  }
+  else {
+    dtype = std::string("UK"); scale = 1.0; zp = 0;
   }
   return true;
 }

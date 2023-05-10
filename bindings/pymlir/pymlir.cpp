@@ -98,6 +98,10 @@ public:
     for (auto &name : interpreter_->all_tensor_names) {
       all_tensor_names.append(name);
     }
+    for (auto &name : interpreter_->all_weight_names) {
+      all_weight_names.append(name);
+    }
+
   }
 
   py::dict getAllTensor() {
@@ -171,6 +175,7 @@ public:
 
 public:
   py::list all_tensor_names;
+  py::list all_weight_names;
   py::list input_names;
   py::list output_names;
   static std::string version;
@@ -229,6 +234,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def_readonly("input_names", &py_module::input_names)
       .def_readonly("output_names", &py_module::output_names)
       .def_readonly("all_tensor_names", &py_module::all_tensor_names)
+      .def_readonly("all_weight_names", &py_module::all_weight_names)
       .def_readonly_static("version", &py_module::version);
   // clang-format on
 }
