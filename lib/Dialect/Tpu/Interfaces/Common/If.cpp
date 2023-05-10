@@ -22,5 +22,8 @@ void tpu::IfOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::IfOp::inference(InferenceParameter &p) {
-  return success();
+  if (p.inputs[0][0] > 0)
+    return success(); //then_branch
+  else
+    return failure(); //else_branch
 }

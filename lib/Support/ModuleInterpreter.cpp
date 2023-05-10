@@ -384,9 +384,11 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
       LLVM_DEBUG(llvm::dbgs() << "compute: '" << op << "'\n");
       if (flag && isa<func::FuncOp>(*(op->getParentOp())))
         flag = 0; //clear
-      if (auto ifOp = dyn_cast<top::IfOp>(op)) {
+      if (isa<tpu::IfOp, top::IfOp>(op)) {
+        std::optional<RegisteredOperationName> info = op->getName().getRegisteredInfo();
         if_name = name;
-        if (failed(ifOp.inference(*inference_map[name]))) {
+        auto *inferInterface = info->getInterface<tpu_mlir::InferenceInterface>();
+        if (failed(inferInterface->inference(inferInterface, op, *inference_map[name]))) {
           flag = 2; //else branch
         } else {
           flag = 1;//then branch
@@ -406,7 +408,7 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
           }
         }
 
-        if (auto yieldOp = dyn_cast<top::YieldOp>(op)) {
+        if (isa<tpu::YieldOp, top::YieldOp>(op)) {
           auto num_element = module::getNumElements(op->getOperand(0));
           name = module::getName(op->getOperand(0).getDefiningOp()).str();
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
