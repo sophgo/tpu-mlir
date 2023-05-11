@@ -379,11 +379,14 @@ class MODEL_RUN(object):
                     or self.quant_modes["int8_asym"]) and self.do_cali:
                 self.make_calibration_table()
             if self.disable_thread:
-                result_queue = queue.Queue()
-                self.run_model_deploy_wrapper(quant_mode, self.model_name, do_sample, result_queue)
-                quant_mode, success, error = result_queue.get()
-                if not success:
-                    raise error
+                for quant_mode, support in self.quant_modes.items():
+                    if support:
+                        result_queue = queue.Queue()
+                        self.run_model_deploy_wrapper(quant_mode, self.model_name, do_sample,
+                                                      result_queue)
+                        _, success, error = result_queue.get()
+                        if not success:
+                            raise error
             else:
                 result_queue = queue.Queue()
                 threads = []
@@ -399,7 +402,7 @@ class MODEL_RUN(object):
                     t.join()
 
                 while not result_queue.empty():
-                    quant_mode, success, error = result_queue.get()
+                    _, success, error = result_queue.get()
                     if not success:
                         raise error
 

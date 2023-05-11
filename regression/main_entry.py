@@ -23,7 +23,7 @@ import argparse
 
 class MAIN_ENTRY(object):
 
-    def __init__(self, test_type, disable_thread:bool):
+    def __init__(self, test_type, disable_thread: bool):
         self.test_type = test_type
         self.disable_thread = disable_thread
         self.current_dir = os.getcwd()
@@ -119,9 +119,10 @@ class MAIN_ENTRY(object):
                 for model in cur_model_list:
                     self.run_regression_net(model, chip, finished_list)
                 self.results.extend(finished_list)
-                for result in finished_list:
-                    if result["status"] == "FAILED" and self.is_basic:
-                        return 1
+                if self.is_basic:
+                    for result in finished_list:
+                        if result["status"] == "FAILED":
+                            return 1
             else:
                 process_number = multiprocessing.cpu_count() // 2 + 1
                 processes = []
@@ -143,9 +144,10 @@ class MAIN_ENTRY(object):
                         j.join()
 
                 self.results.extend(finished_list)
-                for result in finished_list:
-                    if result["status"] == "FAILED" and self.is_basic:
-                        return 1
+                if self.is_basic:
+                    for result in finished_list:
+                        if result["status"] == "FAILED":
+                            return 1
 
             end_time = time.time()
             self.time_cost.append(f"run models for {chip}: {int(end_time - tmp_time)} seconds")
