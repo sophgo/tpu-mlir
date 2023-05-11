@@ -22,7 +22,7 @@ void tpu::MulShiftOp::codegen_global_bm1684() {
   module::getGlobalShape(getInput(), in_shape);
   int sign[3];
   sign[0] = module::isSign(getInput());
-  sign[1] = 0;
+  sign[1] = 1;
   sign[2] = module::isSign(getOutput());
   BM1684::instance().dl_nodechip_mulshift_fix8b_forward(
       in_addr, out_addr, in_shape[0], in_shape[1], in_shape[2], in_shape[3],
