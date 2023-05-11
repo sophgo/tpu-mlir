@@ -55,10 +55,44 @@ Value get_weight(Value weight, int head, int idx, int axis, Type to_type, std::s
   }
 }
 
-template <typename ElemTy>
-Value lowering_attention_float(PatternRewriter &rewriter,
-                              top::AttentionOp op) {
-  auto stype = module::getStorageType(op.getInput());
+top::AttentionOp attention_head(PatternRewriter &rewriter, top::AttentionOp op, int index) {
+    auto input = op.getInput();
+    auto keys = op.getKeys();
+    auto values = op.getValues();
+    auto head = op.getHead();
+    auto none_op = module::getNoneOp(op);
+    std::string out_name = module::getName(op.getOutput()).data();
+    // attention for each head
+    auto weight_q = get_weight(op.getQueriesWeight(), head, index, -1, rewriter.getF32Type(), "weight");
+    auto weight_k = get_weight(op.getKeysWeight(), head, index, -1, rewriter.getF32Type(), "weight");
+    auto weight_v = get_weight(op.getValuesWeight(), head, index, -1, rewriter.getF32Type(), "weight");
+    auto weight_o = get_weight(op.getOutWeight(), head, index, -2, rewriter.getF32Type(), "weight");
+    auto bias_q = get_weight(op.getQueriesBias(), head, index, -1, rewriter.getF32Type(), "bias");
+    auto bias_k = get_weight(op.getKeysBias(), head, index, -1, rewriter.getF32Type(), "bias");
+    auto bias_v = get_weight(op.getValuesBias(), head, index, -1, rewriter.getF32Type(), "bias");
+    std::vector<Value> operands_a = {input, keys, values, weight_q, bias_q, weight_k, bias_k, weight_v, bias_v, weight_o};
+    int64_t has_bias = module::isNone(op.getQueriesBias()) ? 0 : 1;
+    has_bias |= module::isNone(op.getKeysBias()) ? 0 : 0x01<<1;
+    has_bias |= module::isNone(op.getValuesBias()) ? 0 : 0x01<<2;
+    if (index == 0 && !module::isNone(op.getOutBias())) {
+      operands_a.push_back(op.getOutBias());
+      has_bias |= 0x01<<3;
+    } else {
+      operands_a.push_back(none_op);
+    }
+    operands_a.push_back(op.getMusk());
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(rewriter.getNamedAttr("head", rewriter.getI64IntegerAttr(1)));
+    attrs.push_back(rewriter.getNamedAttr("scale", op.getScaleAttr()));
+    attrs.push_back(rewriter.getNamedAttr("has_bias", rewriter.getI64IntegerAttr(has_bias)));
+    std::string name_new = out_name + "_head_" + std::to_string(index);
+    auto name_loc = NameLoc::get(rewriter.getStringAttr(name_new));
+    auto attention = rewriter.create<top::AttentionOp>(name_loc, op.getOutput().getType(),
+                                                       operands_a, attrs);
+    return attention;
+}
+
+void attention_reorder(PatternRewriter &rewriter, top::AttentionOp op) {
   auto none_op = module::getNoneOp(op);
   if (op.getValues() == op.getKeys()) {
     op->setOperand(2, none_op);
@@ -80,7 +114,7 @@ Value lowering_attention_float(PatternRewriter &rewriter,
   offset = data_copy(v_w, offset, new_weight);
 
   std::vector<int64_t> weight_shape = {1, weight_h, q_shape[1]};
-  auto new_type = RankedTensorType::get(weight_shape, stype);
+  auto new_type = RankedTensorType::get(weight_shape, rewriter.getF32Type());
   auto new_op =
           top::WeightOp::create(op, "filter_reorderd", *new_weight, new_type);
   op->setOperand(3, new_op);
@@ -90,6 +124,7 @@ Value lowering_attention_float(PatternRewriter &rewriter,
   bias_len += module::isNone(op.getValuesBias()) ? 0 : q_shape[1];
   bias_len += module::isNone(op.getOutBias()) ? 0 : o_shape[1];
   if (bias_len) {
+    offset = 0;
     auto new_weight = std::make_shared<std::vector<float>>(bias_len);
     if (!module::isNone(op.getQueriesBias())) {
       auto q_b = op.getQueriesBias().getDefiningOp<top::WeightOp>();
@@ -108,7 +143,7 @@ Value lowering_attention_float(PatternRewriter &rewriter,
       offset = data_copy(o_b, offset, new_weight);
     }
     std::vector<int64_t> weight_shape = {1, 1, bias_len};
-    auto new_type = RankedTensorType::get(weight_shape, stype);
+    auto new_type = RankedTensorType::get(weight_shape, rewriter.getF32Type());
     auto new_op =
           top::WeightOp::create(op, "bias_reorderd", *new_weight, new_type);
     op->setOperand(4, new_op);
@@ -124,10 +159,14 @@ Value lowering_attention_float(PatternRewriter &rewriter,
     auto shape = module::getShape(op.getOutWeight());
     std::vector<int64_t> weight_shape(shape);
     weight_shape.insert(weight_shape.begin(), 1);
-    auto new_type = RankedTensorType::get(weight_shape, stype);
+    auto new_type = RankedTensorType::get(weight_shape, rewriter.getF32Type());
     op.getOutWeight().setType(new_type);
   }
-  // lowering_common_float<tpu::AttentionOp, ElemTy>(rewriter, op);
+}
+
+template <typename ElemTy>
+Value lowering_attention_float(PatternRewriter &rewriter,
+                              top::AttentionOp op) {
   auto newType = getQuantFloatType<ElemTy>(op->getResult(0));
   auto nstype = module::getStorageType(newType);
   std::vector<Value> operands;
@@ -153,48 +192,15 @@ Value lowering_attention_float(PatternRewriter &rewriter,
 }
 
 template <typename ElemTy>
-void split_attention_head(PatternRewriter &rewriter, top::AttentionOp op) {
-    auto input = op.getInput();
-    auto keys = op.getKeys();
-    auto values = op.getValues();
-    rewriter.setInsertionPointAfterValue(input);
-    auto in_shape = module::getShape(input);
-    auto k_shape = module::getShape(keys);
-    // int64_t dim = in_shape.size();
+void lowering_multi_attention_float(PatternRewriter &rewriter, top::AttentionOp op) {
+    rewriter.setInsertionPointAfter(op);
     auto head = op.getHead();
-    auto type = module::getStorageType(input);
-    auto none_op = module::getNoneOp(op);
-    auto musk_r = op.getMusk();
     std::string out_name = module::getName(op.getOutput()).data();
     std::vector<Value> operands;
     // attention for each head
     for (int i = 0; i < head; ++i) {
-      auto weight_q = get_weight(op.getQueriesWeight(), head, i, -1, rewriter.getF32Type(), "weight");
-      auto weight_k = get_weight(op.getKeysWeight(), head, i, -1, rewriter.getF32Type(), "weight");
-      auto weight_v = get_weight(op.getValuesWeight(), head, i, -1, rewriter.getF32Type(), "weight");
-      auto weight_o = get_weight(op.getOutWeight(), head, i, -2, rewriter.getF32Type(), "weight");
-      auto bias_q = get_weight(op.getQueriesBias(), head, i, -1, rewriter.getF32Type(), "bias");
-      auto bias_k = get_weight(op.getKeysBias(), head, i, -1, rewriter.getF32Type(), "bias");
-      auto bias_v = get_weight(op.getValuesBias(), head, i, -1, rewriter.getF32Type(), "bias");
-      std::vector<Value> operands_a = {input, keys, values, weight_q, bias_q, weight_k, bias_k, weight_v, bias_v, weight_o};
-      int64_t has_bias = module::isNone(op.getQueriesBias()) ? 0 : 1;
-      has_bias |= module::isNone(op.getKeysBias()) ? 0 : 0x01<<1;
-      has_bias |= module::isNone(op.getValuesBias()) ? 0 : 0x01<<2;
-      if (i == 0 && !module::isNone(op.getOutBias())) {
-        operands_a.push_back(op.getOutBias());
-        has_bias |= 0x01<<3;
-      } else {
-        operands_a.push_back(none_op);
-      }
-      operands_a.push_back(op.getMusk());
-      std::vector<NamedAttribute> attrs;
-      attrs.push_back(rewriter.getNamedAttr("head", rewriter.getI64IntegerAttr(1)));
-      attrs.push_back(rewriter.getNamedAttr("scale", op.getScaleAttr()));
-      attrs.push_back(rewriter.getNamedAttr("has_bias", rewriter.getI64IntegerAttr(has_bias)));
-      std::string name_new = out_name + "_head_" + std::to_string(i);
-      auto name_loc = NameLoc::get(rewriter.getStringAttr(name_new));
-      auto attention = rewriter.create<top::AttentionOp>(name_loc, op.getOutput().getType(),
-                                                         operands_a, attrs);
+      auto attention = attention_head(rewriter, op, i);
+      attention_reorder(rewriter, attention);
       // multi head fuse
       operands.push_back(lowering_attention_float<ElemTy>(rewriter, attention));
       if (i > 0) {
@@ -218,7 +224,7 @@ void split_attention_head(PatternRewriter &rewriter, top::AttentionOp op) {
 
 void AttentionLowering::LoweringF32(PatternRewriter &rewriter,
                                     top::AttentionOp op) const {
-  split_attention_head<Float16Type>(rewriter, op);
+  lowering_multi_attention_float<Float16Type>(rewriter, op);
 }
 void AttentionLowering::LoweringINT4(PatternRewriter &rewriter, top::AttentionOp op,
                                      bool asymmetric) const {
@@ -226,18 +232,17 @@ void AttentionLowering::LoweringINT4(PatternRewriter &rewriter, top::AttentionOp
 }
 void AttentionLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::AttentionOp op, bool asymmetric) const {
-  // llvm_unreachable("Not Implemented");
-  split_attention_head<Float16Type>(rewriter, op);
+  lowering_multi_attention_float<Float16Type>(rewriter, op);
 }
 
 void AttentionLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::AttentionOp op) const {
-  split_attention_head<BFloat16Type>(rewriter, op);
+  lowering_multi_attention_float<BFloat16Type>(rewriter, op);
 }
 
 void AttentionLowering::LoweringF16(PatternRewriter &rewriter,
                                     top::AttentionOp op) const {
-  split_attention_head<Float16Type>(rewriter, op);
+  lowering_multi_attention_float<Float16Type>(rewriter, op);
 }
 
 void AttentionLowering::LoweringQuantized(PatternRewriter &rewriter,
