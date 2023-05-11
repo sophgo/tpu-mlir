@@ -54,6 +54,7 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
     operands.push_back(module::getNoneOp(op));
     operands.push_back(module::getNoneOp(op));
   }
+  operands.push_back(module::getNoneOp(op));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::PadOp>(op, newType, operands, attrs);
 }
@@ -94,6 +95,7 @@ void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
     operands.push_back(module::getNoneOp(op));
     operands.push_back(module::getNoneOp(op));
   }
+  operands.push_back(module::getNoneOp(op));
   auto newType = getQuantBF16Type(op->getResult(0));
   rewriter.replaceOpWithNewOp<tpu::PadOp>(op, newType, operands,
                                           op->getAttrs());

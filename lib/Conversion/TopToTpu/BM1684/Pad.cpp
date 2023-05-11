@@ -7,18 +7,23 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
+#include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 
 namespace tpu_mlir {
-namespace bm1684x {
+namespace bm1684 {
 
 void PadLowering::LoweringF32(PatternRewriter &rewriter, top::PadOp op) const {
-  lowering_common_f32<tpu::PadOp>(rewriter, op, 4);
+  std::vector<Value> operands;
+  operands.push_back(op.getOperand());
+  auto noneOp = module::getNoneOp(op);
+  for (int i = op->getNumOperands(); i < 4; i++) {
+    operands.push_back(noneOp);
+  }
+
+  rewriter.replaceOpWithNewOp<tpu::PadOp>(op, op.getOutput().getType(),
+                                          operands, op->getAttrs());
 }
-void PadLowering::LoweringINT4(PatternRewriter &rewriter, top::PadOp op,
-                               bool asymmetric) const {
-  LoweringINT8(rewriter, op, asymmetric);
-}
+
 void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
                                bool asymmetric) const {
   int64_t in_zp;
@@ -41,18 +46,5 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   rewriter.replaceOpWithNewOp<tpu::PadOp>(op, newType, operands, attrs);
 }
 
-void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
-  lowering_common_bf16<tpu::PadOp>(rewriter, op, 4);
-}
-
-void PadLowering::LoweringF16(PatternRewriter &rewriter, top::PadOp op) const {
-  lowering_common_f16<tpu::PadOp>(rewriter, op, 4);
-}
-
-void PadLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::PadOp op) const {
-  lowering_common<tpu::PadOp>(rewriter, op, op.getOutput().getType(), 4);
-}
-
-} // namespace bm1684x
+} // namespace bm1684
 } // namespace tpu_mlir

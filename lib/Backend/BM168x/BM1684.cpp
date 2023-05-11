@@ -216,6 +216,8 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_pad);
   CAST_FUNCTION(nodechip_pad_local);
   CAST_FUNCTION(nodechip_pad_fix8b_local);
+  CAST_FUNCTION(nodechip_pad3d);
+  CAST_FUNCTION(nodechip_pad3d_fix8b);
   CAST_FUNCTION(nodechip_concat_local_v2);
   CAST_FUNCTION(nodechip_concat_fix8b_local_v2);
   CAST_FUNCTION(nodechip_const_binary);

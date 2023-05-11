@@ -1389,6 +1389,7 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
     // for cv18xx reflect mode
     AnyTensorOrNone:$left_select,
     AnyTensorOrNone:$right_select,
+    AnyTensorOrNone:$buffer,
     I64ArrayAttr:$paddings,
     DefaultValuedAttr<F64Attr, "0.0">:$val,
     DefaultValuedAttr<I64Attr, "0">:$mode
