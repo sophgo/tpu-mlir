@@ -514,6 +514,59 @@ public:
     }
   };
 
+class PadGlobalBuffer : public OpRewritePattern<tpu::PadOp> {
+public:
+  using OpRewritePattern<tpu::PadOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::PadOp padOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(padOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684Family()) {
+      return failure();
+    }
+    // if (!module::isUniformQuantized(padOp.getInput())) {
+    //   return failure();
+    // }
+    std::vector<int64_t> shape = module::getShape(padOp.getInput());
+    if (shape.size() == 3) {
+      std::vector<int64_t> buffer_shape = {ceiling_func(shape[0], (int64_t)4),
+                                           shape[1], shape[2]};
+      auto type = module::getStorageType(padOp.getOutput());
+      auto buffer_type = RankedTensorType::get(buffer_shape, type);
+      auto buffer = tpu::BufferOp::create(padOp, buffer_type);
+      padOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+        return operand.get() == padOp.getBuffer();
+      });
+      return success();
+    } else if (shape.size() == 4) {
+      std::vector<int64_t> buffer_shape = {ceiling_func(shape[0], (int64_t)4),
+                                           shape[1], shape[2], shape[3]};
+      auto type = module::getStorageType(padOp.getOutput());
+      auto buffer_type = RankedTensorType::get(buffer_shape, type);
+      auto buffer = tpu::BufferOp::create(padOp, buffer_type);
+      padOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+        return operand.get() == padOp.getBuffer();
+      });
+      return success();
+    } else if (shape.size() == 5) {
+      std::vector<int64_t> buffer_shape = {ceiling_func(shape[0], (int64_t)4),
+                                           shape[1], shape[2], shape[3],
+                                           shape[4]};
+      auto type = module::getStorageType(padOp.getOutput());
+      auto buffer_type = RankedTensorType::get(buffer_shape, type);
+      auto buffer = tpu::BufferOp::create(padOp, buffer_type);
+      padOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+        return operand.get() == padOp.getBuffer();
+      });
+      return success();
+    } else {
+      return failure();
+    }
+  }
+};
+
 } // namespace bm168x
 namespace tpu {
 using namespace bm168x;
@@ -530,7 +583,8 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       InterpGlobalBuffer,
       NonZeroGlobalBuffer,
       DeformGatherGlobalBuffer,
-      TileGlobalBuffer
+      TileGlobalBuffer,
+      PadGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }

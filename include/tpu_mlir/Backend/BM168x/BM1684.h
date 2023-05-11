@@ -175,6 +175,8 @@ typedef void (*nodechip_pad_fix8b)(uint64_t bottom_global_offset, uint64_t top_g
 typedef void (*nodechip_pad)(uint64_t bottom_global_offset, uint64_t top_global_offset, int bottom_n, int bottom_c, int bottom_h, int bottom_w, int (*paddings)[2], float pad_val, int pad_op, void *pid_node);
 typedef void (*nodechip_pad_local)(int input_local_offset, int output_local_offset, int input_n, int input_c, int input_h, int input_w, int (*pad)[2], int type, float constant, void *pid_node);
 typedef void (*nodechip_pad_fix8b_local)(int input_local_offset, int output_local_offset, int input_n, int input_c, int input_h, int input_w, int (*pad)[2], int type, unsigned char constant, void *pid_node);
+typedef void (*nodechip_pad3d)(uint64_t bottom_global_offset, uint64_t top_global_offset, uint64_t buffer_offset, int n, int c, int t, int h, int w, int (*pad)[2], int type, float constant, void *pid_node);
+typedef void (*nodechip_pad3d_fix8b)(uint64_t input_global_offset, uint64_t output_global_offset, uint64_t buffer_global_offset1, uint64_t buffer_global_offset2, bool input_is_4N, bool output_is_4N, int input_n, int input_c, int input_t, int input_h, int input_w, int (*pad)[2], int type, char constant, void *pid_node);
 typedef void (*nodechip_concat_local_v2)(uint32_t *p_bottom_local_offset, uint32_t top_local_offset, int **bottom_dim, int bottom_num, int *is_st_concat_way, int *top_dim, int concat_axis, void *id_node, void *id_node_gdma);
 typedef void (*nodechip_concat_fix8b_local_v2)(uint32_t *p_bottom_local_offset, uint32_t top_local_offset, int **bottom_dim, int bottom_num, int *is_st_concat_way, int *top_dim, int concat_axis, void *id_node, void *id_node_gdma);
 typedef void (*nodechip_const_binary)(uint64_t bottom_global_addr, uint64_t length, float bottom_val, uint64_t top_global_addr, int binary_op, int inversed, int if_relu, float relu_limit, CMD_ID_NODE *pid_node, int input_is_int32);
@@ -377,6 +379,8 @@ public:
   nodechip_pad dl_nodechip_pad;
   nodechip_pad_local dl_nodechip_pad_local;
   nodechip_pad_fix8b_local dl_nodechip_pad_fix8b_local;
+  nodechip_pad3d dl_nodechip_pad3d;
+  nodechip_pad3d_fix8b dl_nodechip_pad3d_fix8b;
   nodechip_concat_local_v2 dl_nodechip_concat_local_v2;
   nodechip_concat_fix8b_local_v2 dl_nodechip_concat_fix8b_local_v2;
   nodechip_const_binary dl_nodechip_const_binary;
