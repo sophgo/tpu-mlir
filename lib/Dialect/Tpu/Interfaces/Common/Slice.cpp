@@ -100,12 +100,14 @@ slice_attr_t tpu::SliceOp::parseParam() {
     }
   }
   attr.fusible = false;
-  if (attr.no_step && real_axes.size() == 1) {
-    int axis = real_axes[0];
-    int outer_dim = std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis,
-                                    1, std::multiplies<int64_t>());
-    if (outer_dim == 1) {
-      attr.fusible = true;
+  if (module::isBM1684Family() == false) {
+    if (attr.no_step && real_axes.size() == 1) {
+      int axis = real_axes[0];
+      int outer_dim = std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis,
+                                      1, std::multiplies<int64_t>());
+      if (outer_dim == 1) {
+        attr.fusible = true;
+      }
     }
   }
   return attr;
