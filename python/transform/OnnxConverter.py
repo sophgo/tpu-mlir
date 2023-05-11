@@ -921,8 +921,18 @@ class OnnxConverter(BaseConverter):
         operands = list()
         A = onnx_node.inputs[0]
         B = onnx_node.inputs[1]
-        in_op = self.getOperand(A)
-        operands.append(in_op)
+        if self.isWeight(A):
+            if trans_a == 1 or alpha != 1:
+                _tensor = self.getWeight(A)
+                if trans_a == 1:
+                    _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
+                if alpha != 1:
+                    _tensor *= alpha
+                A += '_fix'
+                self.addWeight(A, _tensor)
+            operands.append(self.getWeightOp(A))
+        else:
+            operands.append(self.getOperand(A))
 
         if self.isWeight(B):
             if trans_b == 1 or alpha != 1:
@@ -1650,8 +1660,14 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Clip")
         input = self.getOperand(onnx_node.inputs[0])
         if len(onnx_node.inputs) == 3:
-            min = self.getWeight(onnx_node.inputs[1])
-            max = self.getWeight(onnx_node.inputs[2])
+            try:
+                min = self.getWeight(onnx_node.inputs[1])
+            except:
+                min = onnx_node.attrs.get('min', -np.inf)
+            try:
+                max = self.getWeight(onnx_node.inputs[2])
+            except:
+                max = onnx_node.attrs.get('max', np.inf)
         else:
             min = onnx_node.attrs.get('min', -np.inf)
             max = onnx_node.attrs.get('max', np.inf)
