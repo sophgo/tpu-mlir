@@ -737,15 +737,19 @@ class ActivationCalibrator2(BaseKldCalibrator):
                     min_value = min(np.min(activation), min_value)
                     max_value = max(np.max(activation), max_value)
                     abs_value = max(abs(min_value), abs(max_value))
-                    if 'use_percetile9999' in self.debug_cmd:
+                    if 'use_percentile9999' in self.debug_cmd:
                         all_data.extend(activation.flatten().tolist())
-            if 'use_percetile9999' in self.debug_cmd:
+                    if 'use_max' in self.debug_cmd:
+                        all_data.extend(activation.flatten().tolist())
+            if 'use_percentile9999' in self.debug_cmd:
                 #t0 = time.time()
                 all_data = np.abs(np.array(all_data))
                 abs_value2 = np.percentile(all_data, 99.99 + i * step)
-                #print('percentile calc:', time.time() - t0, ",rete:", 99.99+i*step)
-                #if abs_value2 < abs_value:
-                #    print(f'percetile9999 valid, rate:{abs_value2/abs_value}')
+                abs_value = abs_value2
+            if 'use_max' in self.debug_cmd:
+                #t0 = time.time()
+                all_data = np.abs(np.array(all_data))
+                abs_value2 = np.max(all_data)
                 abs_value = abs_value2
             if abs_value == 0:
                 # if network outputs are all zero, change it to 1e-5 for them.
@@ -779,6 +783,10 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 _, _, abs_val = v
                 thresholds_map['abs_max'][k] = abs_val
                 if thresholds_map[k] > abs_val:
+                    thresholds_map[k] = abs_val
+                if 'use_percentile9999' in self.debug_cmd:
+                    thresholds_map[k] = abs_val
+                elif 'use_max' in self.debug_cmd:
                     thresholds_map[k] = abs_val
         return thresholds_map
 
