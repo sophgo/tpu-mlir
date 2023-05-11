@@ -53,7 +53,7 @@ class MAIN_ENTRY(object):
         dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{model_name}_{chip}")
         os.makedirs(dir, exist_ok=True)
         os.chdir(dir)
-        regressor = MODEL_RUN(model_name, chip, self.test_type)
+        regressor = MODEL_RUN(model_name, chip, self.test_type, disable_thread=self.disable_thread)
         ret = regressor.run_full()
         finished_list.append({
             "name": f"Test {model_name} {chip}",

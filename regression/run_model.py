@@ -30,7 +30,8 @@ class MODEL_RUN(object):
                  merge_weight: bool = False,
                  fuse_preprocess: bool = False,
                  customization_format: str = "",
-                 aligned_input: bool = False):
+                 aligned_input: bool = False,
+                 disable_thread: bool = True):
         self.model_name = model_name
         self.chip = chip
         self.mode = mode
@@ -40,6 +41,7 @@ class MODEL_RUN(object):
         self.customization_format = customization_format
         self.aligned_input = aligned_input
         self.merge_weight = merge_weight
+        self.disable_thread = disable_thread
         self.model_type = chip_support[self.chip][-1]
         self.command = f"run_model.py {model_name} --chip {chip} --mode {mode}"
 
@@ -376,24 +378,30 @@ class MODEL_RUN(object):
             if (self.quant_modes["int4_sym"] or self.quant_modes["int8_sym"]
                     or self.quant_modes["int8_asym"]) and self.do_cali:
                 self.make_calibration_table()
-
-            result_queue = queue.Queue()
-            threads = []
-            for quant_mode in self.quant_modes.keys():
-                if self.quant_modes[quant_mode]:
-                    t = threading.Thread(target=self.run_model_deploy_wrapper,
-                                         args=(quant_mode, self.model_name, do_sample,
-                                               result_queue))
-                    t.start()
-                    threads.append(t)
-
-            for t in threads:
-                t.join()
-
-            while not result_queue.empty():
+            if self.disable_thread:
+                result_queue = queue.Queue()
+                self.run_model_deploy_wrapper(quant_mode, self.model_name, do_sample, result_queue)
                 quant_mode, success, error = result_queue.get()
                 if not success:
                     raise error
+            else:
+                result_queue = queue.Queue()
+                threads = []
+                for quant_mode in self.quant_modes.keys():
+                    if self.quant_modes[quant_mode]:
+                        t = threading.Thread(target=self.run_model_deploy_wrapper,
+                                             args=(quant_mode, self.model_name, do_sample,
+                                                   result_queue))
+                        t.start()
+                        threads.append(t)
+
+                for t in threads:
+                    t.join()
+
+                while not result_queue.empty():
+                    quant_mode, success, error = result_queue.get()
+                    if not success:
+                        raise error
 
             # currently only do f32 dynamic mode
             if self.do_dynamic and self.quant_modes["f32"]:
@@ -430,6 +438,7 @@ if __name__ == "__main__":
                         help="pixel format of input frame to the model")
     parser.add_argument("--aligned_input", action='store_true',
                         help='if the input frame is width/channel aligned')
+    parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     # yapf: enable
     args = parser.parse_args()
     dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{args.model_name}_{args.chip}")
@@ -437,5 +446,5 @@ if __name__ == "__main__":
     os.chdir(dir)
     runner = MODEL_RUN(args.model_name, args.chip, args.mode, args.dyn_mode, args.do_post_handle,
                        args.merge_weight, args.fuse_preprocess, args.customization_format,
-                       args.aligned_input)
+                       args.aligned_input, args.disable_thread)
     runner.run_full()
