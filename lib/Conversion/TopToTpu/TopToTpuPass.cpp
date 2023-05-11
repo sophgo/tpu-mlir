@@ -373,10 +373,19 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
     if (!module::isCalibratedType(out)) {
       return failure();
     }
-    auto out_qtype = module::getCalibratedType(out);
-    // checkout all input cali is the same
+    // checkout all inputs have the same sign
     auto in_0 = op.getInputs()[0];
     auto in_0_qtype = module::getCalibratedType(in_0);
+    bool un_signed = in_0_qtype.getMin() >= 0;
+    for (uint i = 1; i < op.getInputs().size(); i++) {
+      auto qtype = module::getCalibratedType(op.getInputs()[i]);
+      if (un_signed != (qtype.getMin() >= 0)) {
+        return failure();
+      }
+    }
+
+    auto out_qtype = module::getCalibratedType(out);
+    // checkout all input cali is the same
     bool same = true;
     for (uint i = 1; i < op.getInputs().size(); i++) {
       auto qtype = module::getCalibratedType(op.getInputs()[i]);
@@ -533,6 +542,12 @@ protected:
     RewritePatternSet patterns(ctx_);
     patterns.add<ForwardCalibartion<top::ReshapeOp>,
                  ForwardCalibartion<top::PermuteOp>>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    // keep sign for some ops, keep sign before backward speading to check the sign consistency in backward
+    // backend not support in out not the same sign
+    patterns.clear();
+    patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
+                 SetSubConstSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
     patterns.add<BackwardMutiInSingleOut<top::ConcatOp>,
