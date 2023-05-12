@@ -26,7 +26,7 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
       if (!out.hasOneUse()) {
         return failure();
       }
-      if (!module::isUniformQuantized(out)) {
+      if (!module::isUniformQuantized(op.getOutput())) {
         return failure();
       }
       out.setType(op.getResult().getType());
