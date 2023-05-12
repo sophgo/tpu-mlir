@@ -469,6 +469,14 @@ bool is_matmul_right_tensor(Operation *op, Value v) {
   return res;
 }
 
+bool is_attention_not_input_tensor(Operation *op, Value v) {
+  bool res = false;
+  if (auto attention_op = dyn_cast<tpu::AttentionOp>(op)) {
+    res = (v != attention_op.getInput());
+  }
+  return res;
+}
+
 slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
                                 int64_t c, int64_t h, int64_t d, int64_t w,
                                 int64_t bitwidth) {
@@ -546,6 +554,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
   auto lg_op = cast<LocalGenInterface>(op);
   bool is_broadcast_tensor = is_broadcast_binary(op, in);
   bool is_right_matrix = is_matmul_right_tensor(op, in);
+  bool is_no_input_attention = is_attention_not_input_tensor(op, in);
 
   int64_t idx = 0, slice = 0;
   if (shape_secs.nsecs == 1) {
@@ -584,6 +593,10 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
           hold_in_lmem = false;
           continue;
         }
+      } else if (is_no_input_attention) {
+        idx = 0;
+        slice = c;
+        in_si.c.emplace_back(slice_pair_t(idx, slice));
       } else {
         if (failed(ret) || slice == 0) {
           return false;

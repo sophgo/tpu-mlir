@@ -103,7 +103,6 @@ public:
   LogicalResult matchAndRewrite(top::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
     auto filter = op.getRight();
-    return failure();
     if (module::isWeight(filter) == false) {
       return failure();
     }
