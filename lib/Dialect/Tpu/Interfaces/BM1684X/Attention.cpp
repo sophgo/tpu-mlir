@@ -75,6 +75,7 @@ int64_t tpu::AttentionOp::getBufferSize_bm1684x(
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   int64_t batch, M_q, N_q, W;
   module::getNCHW(getInput(), batch, M_q, N_q, W, group_type);
+  M_q = in_cslice;
   int64_t M_k = module::isNone(getKeys()) ? M_q : module::getShape(getKeys())[1];
   auto queries_shape = module::getShape(getQueriesWeight());
   int64_t d = queries_shape[queries_shape.size() - 1];

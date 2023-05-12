@@ -91,6 +91,10 @@ LogicalResult tpu::AttentionOp::AllowDataSplit(int64_t axis,
                                             group_type_t group_type) {
   if (axis == 0) {
     return success();
+  } else if (axis == 1) {
+    if (!module::isNone(getKeys())) {
+      return success();
+    }
   }
   return failure();
 }

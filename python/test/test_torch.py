@@ -1541,7 +1541,7 @@ class TORCH_IR_TESTER(object):
                     self.v_b = torch.randn((1, 1, d*head))
                     self.o_w = torch.randn((d*head, shape[2])) / np.sqrt(d)
                     self.o_b = torch.randn((1, 1, shape[2]))
-                    self.musk = torch.randn((1,1,1,shape[1]))
+                    self.musk = torch.randn((shape[0],1,1,shape[1]))
 
                 def forward(self, x):
                     q = torch.matmul(x, self.q_w) + self.q_b
@@ -1567,33 +1567,39 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([shape], Model(), [self.Desc('float32', -1, 1)])
 
-        def _test_attention1(shape0, shape1, d, head):
+        def _test_attention1(shape0, shape1, d, head, has_bias=True):
 
             class Model(nn.Module):
 
                 def __init__(self):
                     super(Model, self).__init__()
                     self.q_w = torch.randn((shape0[2], d*head)) / np.sqrt(d)
-                    self.q_b = torch.randn((1, 1, d*head))
+                    self.q_b = torch.randn((1, 1, d*head)) * 0.1
                     self.k_w = torch.randn((shape1[2], d*head)) / np.sqrt(d)
-                    self.k_b = torch.randn((1, 1, d*head))
+                    self.k_b = torch.randn((1, 1, d*head)) * 0.1
                     self.v_w = torch.randn((shape1[2], d*head)) / np.sqrt(d)
-                    self.v_b = torch.randn((1, 1, d*head))
+                    self.v_b = torch.randn((1, 1, d*head)) * 0.1
                     self.o_w = torch.randn((d*head, shape0[2])) / np.sqrt(d)
-                    self.o_b = torch.randn((1, 1, shape0[2]))
+                    self.o_b = torch.randn((1, 1, shape0[2])) * 0.1
 
                 def forward(self, x, x1):
-                    q = torch.matmul(x, self.q_w) + self.q_b
+                    q = torch.matmul(x, self.q_w)
+                    if has_bias:
+                        q = q + self.q_b
                     q = q.reshape((shape0[0], shape0[1], head, d))
                     q = q.transpose(1,2)
-                    k = torch.matmul(x1, self.k_w) + self.k_b
+                    k = torch.matmul(x1, self.k_w)
+                    if has_bias:
+                        k = k + self.k_b
                     k = k.reshape((shape1[0], shape1[1], head, d))
                     k = k.transpose(1,2)
                     k = k.transpose(3,2)
                     m0 = torch.matmul(q, k)
                     m0 = m0 / np.sqrt(d)
                     m0 = torch.softmax(m0, 3)
-                    v = torch.matmul(x1, self.v_w) + self.v_b
+                    v = torch.matmul(x1, self.v_w)
+                    if has_bias:
+                        v = v + self.v_b
                     v = v.reshape((shape1[0], shape1[1], head, d))
                     v = v.transpose(1,2)
                     m1 = torch.matmul(m0, v)
@@ -1605,11 +1611,13 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([shape0, shape1], Model(), [self.Desc('float32', -1, 1), self.Desc('float32', -1, 1)])
 
-        _test_attention0((1, 4096, 80), 40, 2)
-        _test_attention0((1, 384, 768), 64, 12)
-        # _test_attention0((2, 384, 80), 40, 2)
-        # _test_attention0((2, 4096, 320), 40, 8)
+        _test_attention0((1, 384, 80), 40, 2)
+        _test_attention0((1, 384, 1024), 64, 12)
+        # _test_attention0((2, 384, 64), 32, 2)
+        # _test_attention0((2, 4096, 320), 40, 2)
+        # _test_attention1((2, 4096, 320), (2, 128, 768), 40, 8)
         _test_attention1((2, 4096, 320), (2, 77, 768), 40, 2)
+        # _test_attention1((1, 384, 64), (1, 384, 64), 32, 2, False)
 
     #######################################################################
     # Select

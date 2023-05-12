@@ -99,7 +99,7 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
 static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
-             ReshapeOp, SoftmaxOp>(op)) {
+             ReshapeOp, SoftmaxOp, AttentionOp>(op)) {
       return false;
     }
     auto shape = module::getShape(op->getOperand(0));
@@ -129,6 +129,10 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
       auto left_trans = op_.getLeftTranspose();
       auto right_trans = op_.getRightTranspose();
       if (left_trans && right_trans) {
+        return false;
+      }
+    } else if (auto op_ = dyn_cast<AttentionOp>(op)) {
+      if (module::isNone(op_.getKeys())) {
         return false;
       }
     }
