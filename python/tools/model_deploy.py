@@ -223,6 +223,11 @@ class DeployTool:
             tool.validate_model()
 
     def validate_model(self):
+        size = os.path.getsize(self.model)
+        if size > 0x10000000:
+            print("Warning: {} is too large and will cost a long time. Please run in board".format(
+                self.model))
+            return
         self.model_npz = "{}_model_outputs.npz".format(self.prefix)
         file_mark(self.model_npz)
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)

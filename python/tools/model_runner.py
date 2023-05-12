@@ -146,15 +146,13 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             raise ValueError(f"unknown type: form {input.dtype} to {i.data.dtype}")
 
     size = os.path.getsize(model_file)
-    pack_bmodel_context = (
-        iter([None]) if is_cv18xx else pack_bmodel_context_generator(model_file, net)
-    )
+    pack_bmodel_context = (iter([None]) if is_cv18xx else pack_bmodel_context_generator(
+        model_file, net))
     next(pack_bmodel_context)
 
     if size > 0x10000000:
-        print(
-            "Warning: {} is too large, run by cmodel will cost a long time. Please run in board"
-            .format(model_file))
+        print("Warning: {} is too large and will cost a long time. Please run in board".format(
+            model_file))
         return {}
 
     if is_cv18xx:
