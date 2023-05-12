@@ -22,12 +22,9 @@ class CodeGeninterface;
 
 class TensorLocationImpl {
 public:
-  TensorLocationImpl(Operation *moduleOp, std::string filename)
-      : OS(filename, EC), J(OS, 2) {
+  TensorLocationImpl(AsmState::LocationMap *location, std::string filename)
+      : OS(filename, EC), J(OS, 2), opToLineCol(*location) {
     J.arrayBegin();
-    llvm::raw_null_ostream os;
-    AsmState state(moduleOp, OpPrintingFlags(), &opToLineCol);
-    moduleOp->print(os, state);
   }
   ~TensorLocationImpl() { J.arrayEnd(); }
 
@@ -58,7 +55,7 @@ private:
   std::error_code EC;
   llvm::raw_fd_ostream OS;
   json::OStream J;
-  AsmState::LocationMap opToLineCol;
+  const AsmState::LocationMap &opToLineCol;
 };
 
 class TensorLocation {

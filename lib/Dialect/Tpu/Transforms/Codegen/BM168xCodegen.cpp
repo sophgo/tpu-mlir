@@ -21,6 +21,7 @@
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
+#include "llvm/Support/MemoryBuffer.h"
 #include <llvm/Support/Debug.h>
 
 #include <fstream>
@@ -39,10 +40,15 @@ namespace tpu_mlir {
 namespace tpu {
 
 void BMCodegen::run(ModuleOp &module, std::string &filename) {
+  // record the line number of operation in module.
+  llvm::raw_null_ostream os;
+  AsmState state(module, OpPrintingFlags(), &opToLineCol);
+  module->print(os, state);
+
   auto chip_ = module::getChip();
   chip = module::stringifyChip(chip_).upper();
-  tensor_loc = TensorLocation(module, filename + ".json");
-  profile_ctx = ProfileCtx(module, true);
+  tensor_loc = TensorLocation(&opToLineCol, filename + ".json");
+  profile_ctx = ProfileCtx(&opToLineCol, true);
   bm168x = BM168x::instance();
   DynCodegenInit();
   std::vector<top::WeightOp> weights;
@@ -139,18 +145,31 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
   npb.add_sub_net(subnets);
   npb.add_cpu_mem_size(0);
   if (true) {
-    std::vector<uint8_t> data;
-    auto fp = fopen("net_0.profile", "rb");
-    if (fp) {
-      fseek(fp, 0, SEEK_END);
-      uint32_t size = ftell(fp);
-      data.resize(size);
-      fseek(fp, 0, SEEK_SET);
-      fread(data.data(), 1, size, fp);
-      fclose(fp);
-      auto profile_data = model_gen->WriteBinary(data.size(), data.data());
-      npb.add_net_profile(&profile_data);
-    }
+    auto save_profile_info = [&](StringRef pfname, auto fun) -> bool {
+      llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
+          llvm::MemoryBuffer::getFileOrSTDIN(pfname);
+      if (std::error_code ec = fileOrErr.getError()) {
+        llvm::errs() << "Could not open file: '" << pfname << "'"
+                     << ec.message() << "\n";
+        return false;
+      }
+      auto profile_data =
+          model_gen->WriteBinary((*fileOrErr)->getBufferSize(),
+                                 (uint8_t *)(*fileOrErr)->getBufferStart());
+      fun(&profile_data);
+      return true;
+    };
+    using namespace std::placeholders;
+    save_profile_info(
+        "net_0.profile",
+        std::bind(&bmodel::NetParameterBuilder::add_net_profile, &npb, _1));
+    if (!save_profile_info(
+            "compiler_profile_0.txt",
+            std::bind(&bmodel::NetParameterBuilder::add_net_stat, &npb, _1))) {
+      save_profile_info(
+          "compiler_profile_0.dat",
+          std::bind(&bmodel::NetParameterBuilder::add_net_stat, &npb, _1));
+    };
   }
 
   model_gen->AddNet(module::getModuleName().str(), npb.Finish());
@@ -321,13 +340,12 @@ void BMCodegen::codegen_for_overlap_ops(
       for (auto op : cur_ops) {
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
         auto ginfo = lgOp.getGroupInfo(0l, 0l, 0l, 0l, 0l);
-        // add prefix to each cmd in profile.txt
-        std::string prefix = op->getName().getStringRef().str().substr(4);
         auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
         if (isa<LoadOp, StoreOp>(op)) {
           pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
         }
-        BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
+        BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
+                                                 gen_op_id(op).c_str());
         lgOp.assign_sec_info(0l, 0l, 0l, 0l, 0l, next_group_type, sec_info);
         LLVM_DEBUG(llvm::dbgs()
                    << "codegen op: '" << module::getName(lgOp) << "'\n");
@@ -353,13 +371,12 @@ void BMCodegen::codegen_for_overlap_ops(
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
         auto ginfo = lgOp.getGroupInfo(nsecs - 1, hsecs - 1, dsecs - 1,
                                        wsecs - 1, csecs - 1);
-        // add prefix to each cmd in profile.txt
-        std::string prefix = op->getName().getStringRef().str().substr(4);
         auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
         if (isa<LoadOp, StoreOp>(op)) {
           pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
         }
-        BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
+        BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
+                                                 gen_op_id(op).c_str());
         lgOp.assign_sec_info(nsecs - 1, csecs - 1, hsecs - 1, dsecs - 1,
                              wsecs - 1, prev_group_type, sec_info);
         LLVM_DEBUG(llvm::dbgs()
@@ -509,16 +526,13 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
         ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep,
                                   tensor_step->dstep, tensor_step->wstep,
                                   tensor_step->cstep);
-        // add prefix to each cmd in profile.txt
-        std::string prefix =
-            group_ops[id]->getName().getStringRef().str().substr(4);
-
         if (ginfo.overstepped == false) {
           auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
           if (isa<LoadOp, StoreOp>(*group_ops[id])) {
             pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
           }
-          BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
+          BM168x::instance()->dl_set_cmd_id_prefix(
+              pid_node, gen_op_id(group_ops[id]).c_str());
           lgOp.assign_sec_info(tensor_step->nstep, tensor_step->cstep,
                                tensor_step->hstep, tensor_step->dstep,
                                tensor_step->wstep, group_type, sec_info);
@@ -589,9 +603,8 @@ void BMCodegen::codegen(Operation *op) {
   } else if (module::isOpInGroup(op)) {
     return;
   } else if (auto castOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
-    std::string prefix = op->getName().getStringRef().str().substr(4);
     auto pid_node = (CMD_ID_NODE *)BM168x::instance()->cmdid_node;
-    BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
+    BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op).c_str());
     LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(op) << "'\n");
     profile_ctx.log_global_layer(op);
     castOp.codegen_global_bm168x();
@@ -859,5 +872,17 @@ BMCodegen::CreateStageIRVector(const vector<stage_param_t> &stage_param_v,
   binary_ir = model_gen->WriteBinary(ir_size, buffer + ir_offset);
   return stage_ir;
 }
+
+SmallString<128> BMCodegen::gen_op_id(Operation *op) {
+  int64_t line_num = -1; // unknown location
+  auto it = opToLineCol.find(op);
+  if (it != opToLineCol.end()) {
+    line_num = it->second.first;
+  }
+  SmallString<128> prefix = op->getName().getStringRef().substr(4);
+  prefix.append({"_", std::to_string(line_num)});
+  return prefix;
+}
+
 } // namespace tpu
 } // namespace tpu_mlir

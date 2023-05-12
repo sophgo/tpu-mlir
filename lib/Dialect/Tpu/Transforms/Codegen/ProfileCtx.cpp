@@ -51,14 +51,12 @@ template string array_to_string<int64_t>(const int64_t *data, size_t len,
                                          const string &prefix,
                                          const string &suffix, size_t max_len);
 
-ProfileCtx::ProfileCtx(Operation *moduleOp, bool enable_profile) {
+ProfileCtx::ProfileCtx(AsmState::LocationMap *location, bool enable_profile) {
+  opToLineCol = location;
   fake_tensor_id = -1;
   net_num = 0;
   cur_net_idx = 0;
   enable_profile_ = enable_profile;
-  llvm::raw_null_ostream os;
-  AsmState state(moduleOp, OpPrintingFlags(), &opToLineCol);
-  moduleOp->print(os, state);
 }
 
 int64_t ProfileCtx::get_tensor_id(Value value) {
@@ -75,8 +73,8 @@ int64_t ProfileCtx::get_tensor_id(Value value) {
         }
       });
     }
-    auto it = opToLineCol.find(src_op);
-    if (it != opToLineCol.end()) {
+    auto it = opToLineCol->find(src_op);
+    if (it != opToLineCol->end()) {
       tensor_id = it->second.first;
     }
   } else {
@@ -94,6 +92,13 @@ void ProfileCtx::log_str(const char *fmt, ...) {
   va_start(params, fmt);
   vfprintf(fp, fmt, params);
   va_end(params);
+}
+
+bool isWeight(Value value) {
+  if (auto op = dyn_cast_or_null<tpu::LoadOp>(value.getDefiningOp())) {
+    return module::isWeight(op.getInput());
+  }
+  return module::isWeight(value);
 }
 
 void ProfileCtx::log_tensor(Value value, bool is_in, int64_t n_step,
@@ -132,7 +137,7 @@ void ProfileCtx::log_tensor(Value value, bool is_in, int64_t n_step,
 
   log_str("[bmprofile] tensor_id=%d is_in=%d shape=%s dtype=%d is_const=%d "
           "gaddr=%lld gsize=%d loffset=%d nslice=%d hslice=%d l2addr=%d\n",
-          tensor_id, is_in, shape_str.c_str(), dtype, module::isWeight(value),
+          tensor_id, is_in, shape_str.c_str(), dtype, isWeight(value),
           gaddr, gsize, laddr, n_slice, h_slice, l2addr);
 }
 
@@ -141,8 +146,8 @@ void ProfileCtx::log_global_layer(Operation *op) {
     return;
   }
   int64_t layer_id = 0;
-  auto it = opToLineCol.find(op);
-  if (it != opToLineCol.end()) {
+  auto it = opToLineCol->find(op);
+  if (it != opToLineCol->end()) {
     layer_id = it->second.first;
   }
 
@@ -166,8 +171,8 @@ void ProfileCtx::log_local_layer(Operation *op, int64_t n_step,
     return;
   }
   int64_t layer_id = 0;
-  auto it = opToLineCol.find(op);
-  if (it != opToLineCol.end()) {
+  auto it = opToLineCol->find(op);
+  if (it != opToLineCol->end()) {
     layer_id = it->second.first;
   }
 
