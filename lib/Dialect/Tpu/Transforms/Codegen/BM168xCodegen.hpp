@@ -51,6 +51,7 @@ private:
       Operation *prev_op, Operation *next_op, int64_t cur_ts,
       bool first_compute_loop, bool last_compute_loop);
   void codegen_ir(Operation *op, SubnetIr *subnet_ir_);
+  SmallString<128> gen_op_id(Operation *op);
 
 private:
   ModuleOp module;
@@ -62,6 +63,7 @@ private:
   TensorLocation tensor_loc;
   ProfileCtx profile_ctx;
   std::unordered_map<std::string, std::vector<bool>> tensor_is_cpu;
+  AsmState::LocationMap opToLineCol;
 };
 
 } // namespace tpu

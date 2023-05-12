@@ -149,6 +149,9 @@ table NetParameter {
     // Per group neuron tensor device memory sizes.
     // If this array exists, it will be used instead of ctx_size
     ctx_sizes:[uint64] (id: 14);
+
+    // record net stat_gen info for simulate, optional
+    net_stat:Binary (id: 15);
 }
 
 table Net {
@@ -158,6 +161,11 @@ table Net {
     parameter:[NetParameter] (id: 3);  // one net can one or more stages
 }
 
+table KernelModule {
+    file_name:string (required, id: 0);
+    binary:Binary (required, id: 1);
+}
+
 table Model {
     type:string (required, id: 0);
     version:string (required, id: 1);
@@ -165,6 +173,7 @@ table Model {
     chip:string (required, id: 3); // BM1682/BM1684/...
     net:[Net] (required, id: 4);
     neuron_size:uint64 (id: 5);    // max neuron size
+    kernel_module:KernelModule (id: 6);
 }
 
 root_type Model;

@@ -19,8 +19,8 @@ namespace tpu {
 
 class ProfileCtx {
 public:
-  ProfileCtx() {}
-  ProfileCtx(Operation *moduleOp, bool enable_profile);
+  ProfileCtx(){};
+  ProfileCtx(AsmState::LocationMap *location, bool enable_profile);
   void log_str(const char *fmt, ...);
   void log_tensor(Value value, bool is_in, int64_t n_step=0, int64_t h_step=0);
   void log_local_layer(Operation *op, int64_t n_step, int64_t h_step);
@@ -44,7 +44,7 @@ private:
   int32_t cur_net_idx;
   bool enable_profile_;
   std::vector<FILE *> fp_profile;
-  AsmState::LocationMap opToLineCol;
+  AsmState::LocationMap *opToLineCol;
 };
 
 } // namespace tpu
