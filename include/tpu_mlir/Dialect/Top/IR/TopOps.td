@@ -1570,7 +1570,7 @@ def Top_InterpOp : Top_Op<"Interp"> {
     DefaultValuedAttr<F64Attr, "-1.0">:$scale_h,
     DefaultValuedAttr<F64Attr, "-1.0">:$scale_w
   );
-
+  let hasCanonicalizer=1;
   let results = (outs AnyTensor:$output);
 }
 
