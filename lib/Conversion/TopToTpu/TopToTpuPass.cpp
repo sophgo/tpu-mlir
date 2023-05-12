@@ -380,7 +380,8 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
     for (uint i = 1; i < op.getInputs().size(); i++) {
       auto qtype = module::getCalibratedType(op.getInputs()[i]);
       if (un_signed != (qtype.getMin() >= 0)) {
-        return failure();
+        if (isa<top::ConcatOp>(op))
+          return failure();
       }
     }
 
