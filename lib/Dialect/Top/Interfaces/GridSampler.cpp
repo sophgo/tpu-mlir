@@ -13,7 +13,22 @@
 
 
 
-int64_t top::GridSamplerOp::getFLOPs() { return 0; }
+int64_t top::GridSamplerOp::getFLOPs() {
+  tensor_list_t input;
+  input.shape = module::getShape(getInput());
+  auto grid_shape = module::getShape(getGrid());
+  if (0 == getMode())
+  {
+    // (x1, y1) = floor(x*w, y*h), (x2, y2) = ceil(x*w, y*h)
+    // f(x, y) = (1 / ((x2 - x1) * (y2 - y1))) *
+    //           (f(Q11) * (x2 - x) * (y2 - y) + f(Q21) * (x - x1) * (y2 - y) +
+    //            f(Q12) * (x2 - x) * (y - y1) +
+    //            f(Q22) * (x - x1) * (y - y1))
+    return 21 * grid_shape[1] * grid_shape[2];
+  } else {
+    return 0;
+  }
+}
 
 LogicalResult top::GridSamplerOp::init(InferenceParameter &p) { return success(); }
 
