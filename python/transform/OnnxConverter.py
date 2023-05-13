@@ -2032,26 +2032,6 @@ class OnnxConverter(BaseConverter):
             slice_ends = [in0_shape[i] for i in range(len(in0_shape))]
             slice_offset[axis] = offset
             slice_ends[axis] = offset + 1
-            if axis == 0:
-                slice_shape = list(in0_shape)
-                slice_shape[axis] = (abs(slice_ends[axis] - slice_offset[axis]) + abs(slice_steps[axis]) - 1) // abs(slice_steps[axis])
-                new_op = top.SliceOp(self.mlir.get_tensor_type(slice_shape),
-                                     in0,
-                                     self.mlir.none_op,
-                                     self.mlir.none_op,
-                                     self.mlir.none_op,
-                                     offset=list(slice_offset),
-                                     steps=list(slice_steps),
-                                     ends=list(slice_ends),
-                                     loc=self.get_loc(name),
-                                     ip=self.mlir.insert_point).output
-                if slice_shape!=out_shape:
-                    new_op =  top.ReshapeOp(self.mlir.get_tensor_type(out_shape),
-                                   new_op,
-                                   loc=self.get_loc("{}_Reshape".format(onnx_node.name)),
-                                   ip=self.mlir.insert_point).output
-                self.addOperand(onnx_node.name, new_op)
-                return
             slice_shape = list(np.take(np.ones(in0_shape), np.array([offset]), axis=axis).shape)
 
             slice_op = top.SliceOp(self.mlir.get_tensor_type(slice_shape),
