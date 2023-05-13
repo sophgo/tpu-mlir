@@ -165,12 +165,14 @@ struct NoKeepDimsAddReshape : public OpRewritePattern<MatMulOp> {
     // change the MatMul op into keepdims and recalculate the output shape
     op.setKeepDims(true);
     output.setType(UnrankedTensorType::get(module::getElementType(output)));
-    output.setLoc(NameLoc::get(rewriter.getStringAttr(module::getName(output).str() + "_keepdims")));
+    output.setLoc(NameLoc::get(
+        rewriter.getStringAttr(module::getName(output).str() + "_keepdims")));
     op.shape_inference();
 
     // add reshape op after Matmul
     rewriter.setInsertionPointAfter(op);
-    auto reshape_op = rewriter.create<ReshapeOp>(out_loc, reshape_out, ValueRange{output});
+    auto reshape_op =
+        rewriter.create<ReshapeOp>(out_loc, reshape_out, ValueRange{output});
     output.replaceAllUsesExcept(reshape_op.getOutput(), reshape_op);
 
     return success();
@@ -179,5 +181,6 @@ struct NoKeepDimsAddReshape : public OpRewritePattern<MatMulOp> {
 
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<MatMulWithBias, NoKeepDimsAddReshape>(context);
+  // results.insert<MatMulWithBias, NoKeepDimsAddReshape>(context);
+  results.insert<MatMulWithBias>(context);
 }

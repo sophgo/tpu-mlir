@@ -96,7 +96,7 @@ full_model_list = {
     "resnet50_tf":                (N,      Y,       Y,      N,      N,      N,      N),
     "ssd_mobilenet_v1_tf":        (N,      Y,       Y,      N,      N,      N,      N),
     "yolov5s_tf":                 (N,      Y,       Y,      N,      N,      N,      N),
-    "mobilebert_tf":              (N,      Y,       Y,      N,      N,      N,      N),
+    "mobilebert_tf":              (N,      Y,       N,      N,      N,      N,      N),
     ######## PaddlePaddle ##      ##############
     "pp_humanseg":                (N,      Y,       Y,      N,      N,      N,      N),
     "pp_liteseg":                 (N,      Y,       Y,      N,      N,      N,      N),
