@@ -7,15 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
-#include "mlir/Support/LLVM.h"
 #include "omp.h"
 #include "progressbar.hpp"
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
+#include <llvm/Support/Debug.h>
+#include "mlir/Support/LLVM.h"
 #include <list>
 #include <map>
 #include <set>
@@ -774,14 +775,14 @@ void GroupMethod::get_final_groups(
 }
 
 void GroupMethod::show_cut_results() {
-  for (size_t i = 0; i < cut_results_.size(); ++i) {
+  LLVM_DEBUG(for (size_t i = 0; i < cut_results_.size(); ++i) {
     auto &cut_result = cut_results_[i];
     llvm::errs() << "base group[" << i << "] cut results: ";
     for (size_t j = 0; j < cut_result.size(); ++j) {
       llvm::errs() << cut_result[j] << ", ";
     }
     llvm::errs() << "\n";
-  }
+  });
 }
 
 /// The pass of layer group searching
