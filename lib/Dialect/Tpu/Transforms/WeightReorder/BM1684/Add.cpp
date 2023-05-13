@@ -18,9 +18,9 @@ LogicalResult WeightReorder<tpu::AddOp, int8_t>::matchAndRewrite(
     tpu::AddOp op, PatternRewriter &rewriter) const {
   /// convert 1N to 4N
   for (int32_t i = 0; i < op.getNumOperands(); i++) {
-    if (dyn_cast<top::WeightOp>(op.getInputs()[i].getDefiningOp()) &&
+    if (module::isWeight(op.getInputs()[i]) &&
         module::getStorageType(op.getInputs()[i]).isInteger(8)) {
-      auto castOp = dyn_cast<top::WeightOp>(op.getInputs()[i].getDefiningOp());
+      auto castOp = cast<top::WeightOp>(op.getInputs()[i].getDefiningOp());
       auto value = op.getInputs()[i];
       auto value_ptr = castOp.read<int8_t>();
       auto value_new = BM1684::instance().Convert1NTo4N(value, value_ptr);

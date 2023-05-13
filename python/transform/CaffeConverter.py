@@ -670,6 +670,7 @@ class CaffeConverter(BaseConverter):
         assert (self.layerType(layer) == 'Crop')
         in_op = self.getOperand(layer.bottom[0])
         input_shape = self.getShape(layer.bottom[0])
+        output_shape = self.getShape(layer.top[0])
         input_dim = len(input_shape)
         p = layer.crop_param
         axis_index = p.axis
@@ -677,7 +678,6 @@ class CaffeConverter(BaseConverter):
         offset_size = len(p.offset)
         crop_offset = [0] * input_dim
         crop_step = [1] * input_dim
-        crop_ends = [-1] * input_dim
         if offset_size > 1:
             assert (offset_size + axis_index <= input_dim)
         for i in range(input_dim):
@@ -691,17 +691,16 @@ class CaffeConverter(BaseConverter):
                     # number of dimensions to crop, that is dimensions after the axis.
                     offset = p.offset[i - start_axis]
             crop_offset[i] = offset
-
-        attrs = {
-            'loc': self.get_loc(layer.top[0]),
-            'offset': list(crop_offset),
-            'steps': list(crop_step),
-            'ends': list(crop_ends)
-        }
-        output_shape = self.getShape(layer.top[0])
+        crop_ends = [a + b for a, b in zip(crop_offset, output_shape)]
         new_op = top.SliceOp(self.mlir.get_tensor_type(output_shape),
                              in_op,
-                             **attrs,
+                             self.mlir.none_op,
+                             self.mlir.none_op,
+                             self.mlir.none_op,
+                             offset=list(crop_offset),
+                             steps=list(crop_step),
+                             ends=list(crop_ends),
+                             loc=self.get_loc(layer.top[0]),
                              ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
@@ -917,7 +916,8 @@ class CaffeConverter(BaseConverter):
             'mode': StringAttr.get('linear'),
         }
 
-        target_shape_op = self.create_weight_op(layer.name + "_shape", np.array(output_shape[2:], np.int32))
+        target_shape_op = self.create_weight_op(layer.name + "_shape",
+                                                np.array(output_shape[2:], np.int32))
         new_op = top.InterpOp(self.mlir.get_tensor_type(output_shape),
                               in_op,
                               target_shape_op,
@@ -1442,10 +1442,8 @@ class CaffeConverter(BaseConverter):
 
     def convert_slice_op(self, layer):
         assert (self.layerType(layer) == 'Slice')
-        op = self.getOperand(layer.bottom[0])
+        in_op = self.getOperand(layer.bottom[0])
         input_shape = self.getShape(layer.bottom[0])
-        operands = list()
-        operands.append(op)
         p = layer.slice_param
         axis = p.axis
         bottom_slice_axis = input_shape[axis]
@@ -1472,16 +1470,16 @@ class CaffeConverter(BaseConverter):
             crop_offset = [0] * len(input_shape)
             crop_offset[axis] = offset
             steps = [1] * len(input_shape)
-            ends = [-1] * len(input_shape)
-            param = {
-                'loc': self.get_loc(layer.top[i]),
-                'offset': crop_offset,
-                'steps': steps,
-                'ends': ends
-            }
+            ends = [a + b for a, b in zip(crop_offset, output_shape)]
             new_op = top.SliceOp(self.mlir.get_tensor_type(output_shape),
-                                 *operands,
-                                 **param,
+                                 in_op,
+                                 self.mlir.none_op,
+                                 self.mlir.none_op,
+                                 self.mlir.none_op,
+                                 offset=crop_offset,
+                                 steps=steps,
+                                 ends=ends,
+                                 loc=self.get_loc(layer.top[i]),
                                  ip=self.mlir.insert_point).output
             self.addOperand(layer.top[i], new_op)
             offset += slices[i]

@@ -60,7 +60,7 @@ void tpu::AddOp::codegen_global_bm1684() {
     bool is_coeff[2] = {0};
     for (int i = 0; i < getNumOperands(); i++) {
       if (auto castOp =
-              dyn_cast<top::WeightOp>(getInputs()[i].getDefiningOp())) {
+              dyn_cast_or_null<top::WeightOp>(getInputs()[i].getDefiningOp())) {
         is_coeff[i] =
             castOp.getStoreMode().has_value() && castOp.getStoreMode() != "4N";
       }

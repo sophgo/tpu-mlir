@@ -42,6 +42,7 @@ basic_model_list = {
     "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y),
     "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      N),
     "yolov5s_tf":                 (N,      Y,       N,      N,      N,      N,      N),
+    "retinaface_mnet_with_det":   (N,      N,       N,      N,      Y,      Y,      Y),
 }
 
 
