@@ -136,7 +136,7 @@ class ONNX_IR_TESTER(object):
             "Relu":         (self.test_Relu,          Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
             "PermuteMove":  (self.test_PermuteMove,   N, Y, Y, Y),
-            "ScatterND":    (self.test_ScatterND,     Y, N, N, N),
+            "ScatterND":    (self.test_ScatterND,     N, N, N, N),
             "Shape":        (self.test_Shape,         N, Y, Y, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y),

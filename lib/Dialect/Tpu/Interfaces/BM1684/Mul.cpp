@@ -57,7 +57,7 @@ void tpu::MulOp::codegen_global_bm1684() {
     bool is_coeff[2] = {0};
     for (int i = 0; i < getNumOperands(); i++) {
       if (auto castOp =
-              dyn_cast<top::WeightOp>(getInputs()[i].getDefiningOp())) {
+              dyn_cast_or_null<top::WeightOp>(getInputs()[i].getDefiningOp())) {
         is_coeff[i] =
             castOp.getStoreMode().has_value() && castOp.getStoreMode() != "4N";
       }
@@ -159,15 +159,13 @@ void tpu::MulOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   }
 }
 
-uint32_t tpu::MulOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::MulOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");
   return 0;
 }
-int64_t tpu::MulOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::MulOp::get_fw_type_bm1684() { return -1; }
 
-int32_t tpu::MulOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+int32_t tpu::MulOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");
   return 0;
 }
