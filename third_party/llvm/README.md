@@ -22,4 +22,3 @@ cmake -G Ninja ../llvm \
 cmake --build . --target install
 
 # use clean.sh to remove unused binary
-

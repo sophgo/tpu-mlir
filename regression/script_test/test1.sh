@@ -104,3 +104,27 @@ tpuc-opt mobilenet_v2.mlir \
 tpuc-opt mobilenet_v2.mlir \
   --convert-top-to-tosa="includeWeight=True" \
   -o mobilenet_v2_tosa.mlir
+
+# mlir-opt mobilenet_v2_tosa.mlir \
+#   --pass-pipeline="func.func(\
+#     tosa-to-linalg-named, \
+#     tosa-to-linalg, \
+#     tosa-to-arith, \
+#     tosa-to-scf, \
+#     canonicalize, \
+#     linalg-bufferize, \
+#     convert-linalg-to-affine-loops, \
+#     affine-loop-fusion, \
+#     affine-simplify-structures, \
+#     lower-affine)" \
+#   -o mobilenet_v2_affine.mlir
+
+# mlir-opt mobilenet_v2_affine.mlir \
+#   --func-bufferize --tensor-bufferize --arith-expand --arith-bufferize \
+#   --normalize-memrefs --convert-scf-to-cf --convert-math-to-llvm \
+#   --convert-arith-to-llvm --llvm-request-c-wrappers --convert-func-to-llvm \
+#   --convert-cf-to-llvm --memref-expand --canonicalize \
+#   --llvm-legalize-for-export --reconcile-unrealized-casts |
+#   mlir-translate --mlir-to-llvmir |
+#   llc -mtriple=x86_64-unknown-linux-gnu --filetype=obj \
+#     -o mobilenet_v2.o

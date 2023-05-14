@@ -27,7 +27,11 @@ install(FILES oneDNN/lib/libdnnl.so
               CV18xx/lib/libcviruntime.so
               CV18xx/lib/libcvicmodel.so
               CV18xx/lib/libunwind.so.8
-
         DESTINATION lib)
+
+install(PROGRAMS llvm/bin/mlir-opt
+                 llvm/bin/mlir-translate
+                 llvm/bin/llc
+        DESTINATION bin)
 install(DIRECTORY llvm/python_packages/mlir_core/mlir DESTINATION python)
 install(DIRECTORY caffe/python/caffe DESTINATION python)

@@ -1,8 +1,7 @@
 #!/bin/bash
 set -xe
-shopt -s extglob
 pushd bin/
-for file in `ls !(mlir-tblgen)`; do echo "" > $file; done
+for file in `ls | grep -vw -E 'mlir-opt|mlir-tblgen|mlir-translate|llc'`; do echo "" > $file; done
 popd
 
 rm -rf need
