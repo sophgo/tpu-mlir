@@ -87,6 +87,7 @@ class ONNX_IR_TESTER(object):
             "Gather":       (self.test_Gather,        N, Y, Y, Y),
             "GatherND":     (self.test_GatherND,      Y, N, N, N),
             "Gather2":      (self.test_Gather2,       N, Y, N, N),
+            "Gather3":      (self.test_Gather3,       Y, Y, N, N),
             "Gemm":         (self.test_Gemm,          Y, Y, Y, Y),
             "GroupFC":      (self.test_GroupFC,       N, Y, Y, Y),
             "GRU":          (self.test_GRU,           N, Y, Y, Y),  # test gru output Y
@@ -115,10 +116,10 @@ class ONNX_IR_TESTER(object):
             "MinBcast":     (self.test_MinBcast,      Y, Y, Y, N),
             "MulConst":     (self.test_MulConst,      Y, Y, Y, Y),
             "Neg":          (self.test_Neg,           N, Y, Y, Y),
-            "Pad":          (self.test_Pad,           N, Y, Y, Y),  # zero pad
-            "Pad1":         (self.test_Pad1,          N, Y, Y, Y),  # pad val
+            "Pad":          (self.test_Pad,           Y, Y, Y, Y),  # zero pad
+            "Pad1":         (self.test_Pad1,          Y, Y, Y, Y),  # pad val
             "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y),
-            "PadReflect":   (self.test_PadReflect,    N, Y, Y, Y),
+            "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y),
             "Pow1":         (self.test_Pow1,          Y, Y, Y, Y),  # y = x ^ n
             "Pow2":         (self.test_Pow2,          N, N, N, N),  # y = n ^ x
             "PRelu":        (self.test_PRelu,         N, Y, Y, Y),
@@ -553,6 +554,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Unsqueeze(self, case_name):
+
         class Model(nn.Module):
 
             def __init__(self):
@@ -2842,6 +2844,7 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(1, 3, 10, 320, 320).float()
         self.torch_and_test(x, Model(), case_name)
+
     def test_Depth2SpaceWithPermute(self, case_name):
         input_shape = [1, 108, 192, 32]
         transpose_order = [0, 3, 1, 2]
@@ -2849,28 +2852,32 @@ class ONNX_IR_TESTER(object):
         mode = 'DCR'
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        permute_output_shape = [input_shape[transpose_order[j]] for j in range(len(transpose_order))]
-        permute_output = helper.make_tensor_value_info('permute_output', TensorProto.FLOAT, permute_output_shape)
+        permute_output_shape = [
+            input_shape[transpose_order[j]] for j in range(len(transpose_order))
+        ]
+        permute_output = helper.make_tensor_value_info('permute_output', TensorProto.FLOAT,
+                                                       permute_output_shape)
         transpose_def = helper.make_node("Transpose",
-                                        inputs=['input'],
-                                        outputs=['permute_output'],
-                                        perm=transpose_order)
+                                         inputs=['input'],
+                                         outputs=['permute_output'],
+                                         perm=transpose_order)
 
         depth2space_input_shape = permute_output_shape
-        depth2space_output_shape = [depth2space_input_shape[0],
-                                    depth2space_input_shape[1] // (block_size * block_size),
-                                    depth2space_input_shape[2] * block_size,
-                                    depth2space_input_shape[3] * block_size]
+        depth2space_output_shape = [
+            depth2space_input_shape[0], depth2space_input_shape[1] // (block_size * block_size),
+            depth2space_input_shape[2] * block_size, depth2space_input_shape[3] * block_size
+        ]
 
-        depth2space_output = helper.make_tensor_value_info('depth2space_output', TensorProto.FLOAT, depth2space_output_shape)
+        depth2space_output = helper.make_tensor_value_info('depth2space_output', TensorProto.FLOAT,
+                                                           depth2space_output_shape)
         depth2space_def = helper.make_node("DepthToSpace",
-                                        inputs=['permute_output'],
-                                        outputs=['depth2space_output'],
-                                        blocksize=block_size,
-                                        mode=mode)
+                                           inputs=['permute_output'],
+                                           outputs=['depth2space_output'],
+                                           blocksize=block_size,
+                                           mode=mode)
 
-        graph_def = helper.make_graph([transpose_def, depth2space_def], "{}_{}".format(case_name, 0), [input],
-                                    [depth2space_output])
+        graph_def = helper.make_graph([transpose_def, depth2space_def],
+                                      "{}_{}".format(case_name, 0), [input], [depth2space_output])
         self.onnx_and_test(graph_def)
 
     def test_GaToSlice(self, case_name):
@@ -4634,7 +4641,8 @@ class ONNX_IR_TESTER(object):
             indices = helper.make_tensor_value_info("indices", TensorProto.INT64, idx_shape)
             updates = helper.make_tensor_value_info("updates", TensorProto.FLOAT, update_shape)
             output = helper.make_tensor_value_info("output", TensorProto.FLOAT, x_shape)
-            add_data = helper.make_tensor('add_tensor', TensorProto.FLOAT, x_shape, np.random.rand(*x_shape).astype(np.float32))
+            add_data = helper.make_tensor('add_tensor', TensorProto.FLOAT, x_shape,
+                                          np.random.rand(*x_shape).astype(np.float32))
             scatternd_def = helper.make_node("ScatterND",
                                              inputs=list(input_data.keys()),
                                              outputs=["scatter_output"])
@@ -5221,17 +5229,17 @@ class ONNX_IR_TESTER(object):
         output_shape = [len(input_shape)]
         axes = [0, 2]
         axes_tensor = numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes")
-        unsqueeze_shape = [1,  output_shape[0],1]
+        unsqueeze_shape = [1, output_shape[0], 1]
 
         graph_def = helper.make_graph(
-            name = case_name,
+            name=case_name,
             inputs=[
                 helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape),
             ],
-            outputs=[ helper.make_tensor_value_info('unsqueezeinfo', TensorProto.INT64, unsqueeze_shape)],
-            initializer=[
-               numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes")
+            outputs=[
+                helper.make_tensor_value_info('unsqueezeinfo', TensorProto.INT64, unsqueeze_shape)
             ],
+            initializer=[numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes")],
             nodes=[
                 helper.make_node(
                     'Shape',  # node name
@@ -5242,30 +5250,29 @@ class ONNX_IR_TESTER(object):
                     "Unsqueeze",  # node name
                     inputs=['shapeinfo', "axes"],  # inputs
                     outputs=['unsqueezeinfo'],  # outputs
-                )]
-        )
+                )
+            ])
         self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
-
-
 
     def test_ShapeSqueeze(self, case_name):
         from onnx import numpy_helper
         from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
         input_shape = [1, 1, 2, 3]
-        output_shape = [2,3]
+        output_shape = [2, 3]
         axes = [0, 1]
         unsqueeze_shape = [1, 1, output_shape[0]]
-        squeeze_shape =  [len(input_shape)]
+        squeeze_shape = [len(input_shape)]
         graph_def = helper.make_graph(
-            name = case_name,
+            name=case_name,
             inputs=[
                 helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape),
             ],
-            outputs=[ helper.make_tensor_value_info('squeezeinfo', TensorProto.INT64, squeeze_shape)],
-
+            outputs=[
+                helper.make_tensor_value_info('squeezeinfo', TensorProto.INT64, squeeze_shape)
+            ],
             initializer=[
-               numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes_unsqueeze"),
-               numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes_squeeze")
+                numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes_unsqueeze"),
+                numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes_squeeze")
             ],
             nodes=[
                 helper.make_node(
@@ -5282,8 +5289,8 @@ class ONNX_IR_TESTER(object):
                     "Squeeze",  # node name
                     inputs=['unsqueezeinfo', "axes_squeeze"],  # inputs
                     outputs=['squeezeinfo'],  # outputs
-                )]
-        )
+                )
+            ])
         self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
 
     def test_Gather2(self, case_name):
@@ -5309,6 +5316,22 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[indices])
         self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
+    def test_Gather3(self, case_name):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.index = np.array([15, 16, 17, 21, 22, 23, 27, 28, 29, 66, 67,
+                                       68]).astype(np.int64)
+                self.axis = 1
+
+            def forward(self, x):
+                return torch.index_select(x, self.axis, torch.from_numpy(self.index)) * 2
+
+        x = torch.randn(1, 72, 9).float()
+        self.torch_and_test(x, Model(), case_name)
 
     def test_Concat3(self, case_name):
         input_shape = [2, 3]
