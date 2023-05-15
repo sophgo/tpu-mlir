@@ -61,6 +61,9 @@ LogicalResult top::MaskedFillOp::inference(InferenceParameter &p) {
 }
 
 void top::MaskedFillOp::shape_inference() {
-  //MaskedFillOp somtimes may support broadcast, thus no need shape_inference.
-  //common_shape_inference(getOperation());
+  broadcast_shape_inference(getOperation());
+  for(int i = 0; i< getNumOperands(); ++i) {
+    auto value = getOperation()->getOperand(i);
+    broadcast_tensor_reshape(getOutput(), value);
+  }
 }
