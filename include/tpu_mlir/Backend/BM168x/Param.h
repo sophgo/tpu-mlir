@@ -1012,6 +1012,8 @@ typedef struct batch_matmul_common_spec {
   int izp_const_val;
   bool has_bias;
   bool hdim_is_batch;
+  bool do_relu;
+  float upper_limit;
   /* requant param */
   int requant_mode; // mode < 0 means no requantize
   int mul_val;
