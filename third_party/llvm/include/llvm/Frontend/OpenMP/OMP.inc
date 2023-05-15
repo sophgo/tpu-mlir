@@ -3622,8 +3622,8 @@ EMPTY_CLASS(Unknown);
 EMPTY_CLASS(Untied);
 EMPTY_CLASS(Update);
 EMPTY_CLASS(Use);
-EMPTY_CLASS(UseDeviceAddr);
-WRAPPER_CLASS(UseDevicePtr, std::list<Name>);
+WRAPPER_CLASS(UseDeviceAddr, OmpObjectList);
+WRAPPER_CLASS(UseDevicePtr, OmpObjectList);
 EMPTY_CLASS(UsesAllocators);
 EMPTY_CLASS(When);
 EMPTY_CLASS(Write);
@@ -4181,11 +4181,16 @@ void Before(const OmpClause::Unknown &) { Word("UNKNOWN"); }
 void Before(const OmpClause::Untied &) { Word("UNTIED"); }
 void Before(const OmpClause::Update &) { Word("UPDATE"); }
 void Before(const OmpClause::Use &) { Word("USE"); }
-void Before(const OmpClause::UseDeviceAddr &) { Word("USE_DEVICE_ADDR"); }
+void Unparse(const OmpClause::UseDeviceAddr &x) {
+  Word("USE_DEVICE_ADDR");
+  Put("(");
+  Walk(x.v);
+  Put(")");
+}
 void Unparse(const OmpClause::UseDevicePtr &x) {
   Word("USE_DEVICE_PTR");
   Put("(");
-  Walk(x.v, ",");
+  Walk(x.v);
   Put(")");
 }
 void Before(const OmpClause::UsesAllocators &) { Word("USES_ALLOCATORS"); }
@@ -4511,8 +4516,8 @@ TYPE_PARSER(
   "write" >> construct<OmpClause>(construct<OmpClause::Write>()) ||
   "when" >> construct<OmpClause>(construct<OmpClause::When>()) ||
   "uses_allocators" >> construct<OmpClause>(construct<OmpClause::UsesAllocators>()) ||
-  "use_device_ptr" >> construct<OmpClause>(construct<OmpClause::UseDevicePtr>(parenthesized(name))) ||
-  "use_device_addr" >> construct<OmpClause>(construct<OmpClause::UseDeviceAddr>()) ||
+  "use_device_ptr" >> construct<OmpClause>(construct<OmpClause::UseDevicePtr>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "use_device_addr" >> construct<OmpClause>(construct<OmpClause::UseDeviceAddr>(parenthesized(Parser<OmpObjectList>{}))) ||
   "use" >> construct<OmpClause>(construct<OmpClause::Use>()) ||
   "update" >> construct<OmpClause>(construct<OmpClause::Update>()) ||
   "untied" >> construct<OmpClause>(construct<OmpClause::Untied>()) ||

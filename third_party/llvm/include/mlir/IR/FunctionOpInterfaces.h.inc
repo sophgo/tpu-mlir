@@ -227,7 +227,7 @@ public:
     ///    has less parameters we drop the extra attributes, if there are more
     ///    parameters they won't have any attributes.
     void setType(Type newType) {
-      function_interface_impl::setFunctionType(this->getOperation(), newType);
+      function_interface_impl::setFunctionType((*this), newType);
     }
 
     //===------------------------------------------------------------------===//
@@ -268,7 +268,7 @@ public:
       Type newType = (*this).getTypeWithArgsAndResults(
           argIndices, argTypes, /*resultIndices=*/{}, /*resultTypes=*/{});
       function_interface_impl::insertFunctionArguments(
-          this->getOperation(), argIndices, argTypes, argAttrs, argLocs,
+          (*this), argIndices, argTypes, argAttrs, argLocs,
           originalNumArgs, newType);
     }
 
@@ -288,7 +288,7 @@ public:
       Type newType = (*this).getTypeWithArgsAndResults(
         /*argIndices=*/{}, /*argTypes=*/{}, resultIndices, resultTypes);
       function_interface_impl::insertFunctionResults(
-          this->getOperation(), resultIndices, resultTypes, resultAttrs,
+          (*this), resultIndices, resultTypes, resultAttrs,
           originalNumResults, newType);
     }
 
@@ -303,7 +303,7 @@ public:
     void eraseArguments(const BitVector &argIndices) {
       Type newType = (*this).getTypeWithoutArgs(argIndices);
       function_interface_impl::eraseFunctionArguments(
-        this->getOperation(), argIndices, newType);
+        (*this), argIndices, newType);
     }
 
     /// Erase a single result at `resultIndex`.
@@ -317,7 +317,7 @@ public:
     void eraseResults(const BitVector &resultIndices) {
       Type newType = (*this).getTypeWithoutResults(resultIndices);
       function_interface_impl::eraseFunctionResults(
-          this->getOperation(), resultIndices, newType);
+          (*this), resultIndices, newType);
     }
 
     /// Return the type of this function with the specified arguments and
@@ -366,7 +366,7 @@ public:
 
     /// Return all of the attributes for the argument at 'index'.
     ArrayRef<NamedAttribute> getArgAttrs(unsigned index) {
-      return function_interface_impl::getArgAttrs(this->getOperation(), index);
+      return function_interface_impl::getArgAttrs((*this), index);
     }
 
     /// Return an ArrayAttr containing all argument attribute dictionaries of
@@ -416,11 +416,11 @@ public:
     }
     void setAllArgAttrs(ArrayRef<DictionaryAttr> attributes) {
       assert(attributes.size() == (*this).getNumArguments());
-      function_interface_impl::setAllArgAttrDicts(this->getOperation(), attributes);
+      function_interface_impl::setAllArgAttrDicts((*this), attributes);
     }
     void setAllArgAttrs(ArrayRef<Attribute> attributes) {
       assert(attributes.size() == (*this).getNumArguments());
-      function_interface_impl::setAllArgAttrDicts(this->getOperation(), attributes);
+      function_interface_impl::setAllArgAttrDicts((*this), attributes);
     }
     void setAllArgAttrs(ArrayAttr attributes) {
       assert(attributes.size() == (*this).getNumArguments());
@@ -455,7 +455,7 @@ public:
 
     /// Return all of the attributes for the result at 'index'.
     ArrayRef<NamedAttribute> getResultAttrs(unsigned index) {
-      return function_interface_impl::getResultAttrs(this->getOperation(), index);
+      return function_interface_impl::getResultAttrs((*this), index);
     }
 
     /// Return an ArrayAttr containing all result attribute dictionaries of this
@@ -506,12 +506,12 @@ public:
     void setAllResultAttrs(ArrayRef<DictionaryAttr> attributes) {
       assert(attributes.size() == (*this).getNumResults());
       function_interface_impl::setAllResultAttrDicts(
-        this->getOperation(), attributes);
+        (*this), attributes);
     }
     void setAllResultAttrs(ArrayRef<Attribute> attributes) {
       assert(attributes.size() == (*this).getNumResults());
       function_interface_impl::setAllResultAttrDicts(
-        this->getOperation(), attributes);
+        (*this), attributes);
     }
     void setAllResultAttrs(ArrayAttr attributes) {
       assert(attributes.size() == (*this).getNumResults());
@@ -541,7 +541,7 @@ public:
     /// attribute is returned.
     DictionaryAttr getArgAttrDict(unsigned index) {
       assert(index < (*this).getNumArguments() && "invalid argument number");
-      return function_interface_impl::getArgAttrDict(this->getOperation(), index);
+      return function_interface_impl::getArgAttrDict((*this), index);
     }
 
     /// Returns the dictionary attribute corresponding to the result at 'index'.
@@ -549,7 +549,7 @@ public:
     /// returned.
     DictionaryAttr getResultAttrDict(unsigned index) {
       assert(index < (*this).getNumResults() && "invalid result number");
-      return function_interface_impl::getResultAttrDict(this->getOperation(), index);
+      return function_interface_impl::getResultAttrDict((*this), index);
     }
   //===----------------------------------------------------------------===//
   // Inherited from ::mlir::SymbolOpInterface
@@ -774,7 +774,7 @@ namespace detail {
     ///    has less parameters we drop the extra attributes, if there are more
     ///    parameters they won't have any attributes.
     void setType(Type newType) {
-      function_interface_impl::setFunctionType(this->getOperation(), newType);
+      function_interface_impl::setFunctionType((*static_cast<ConcreteOp *>(this)), newType);
     }
 
     //===------------------------------------------------------------------===//
@@ -815,7 +815,7 @@ namespace detail {
       Type newType = (*static_cast<ConcreteOp *>(this)).getTypeWithArgsAndResults(
           argIndices, argTypes, /*resultIndices=*/{}, /*resultTypes=*/{});
       function_interface_impl::insertFunctionArguments(
-          this->getOperation(), argIndices, argTypes, argAttrs, argLocs,
+          (*static_cast<ConcreteOp *>(this)), argIndices, argTypes, argAttrs, argLocs,
           originalNumArgs, newType);
     }
 
@@ -835,7 +835,7 @@ namespace detail {
       Type newType = (*static_cast<ConcreteOp *>(this)).getTypeWithArgsAndResults(
         /*argIndices=*/{}, /*argTypes=*/{}, resultIndices, resultTypes);
       function_interface_impl::insertFunctionResults(
-          this->getOperation(), resultIndices, resultTypes, resultAttrs,
+          (*static_cast<ConcreteOp *>(this)), resultIndices, resultTypes, resultAttrs,
           originalNumResults, newType);
     }
 
@@ -850,7 +850,7 @@ namespace detail {
     void eraseArguments(const BitVector &argIndices) {
       Type newType = (*static_cast<ConcreteOp *>(this)).getTypeWithoutArgs(argIndices);
       function_interface_impl::eraseFunctionArguments(
-        this->getOperation(), argIndices, newType);
+        (*static_cast<ConcreteOp *>(this)), argIndices, newType);
     }
 
     /// Erase a single result at `resultIndex`.
@@ -864,7 +864,7 @@ namespace detail {
     void eraseResults(const BitVector &resultIndices) {
       Type newType = (*static_cast<ConcreteOp *>(this)).getTypeWithoutResults(resultIndices);
       function_interface_impl::eraseFunctionResults(
-          this->getOperation(), resultIndices, newType);
+          (*static_cast<ConcreteOp *>(this)), resultIndices, newType);
     }
 
     /// Return the type of this function with the specified arguments and
@@ -913,7 +913,7 @@ namespace detail {
 
     /// Return all of the attributes for the argument at 'index'.
     ArrayRef<NamedAttribute> getArgAttrs(unsigned index) {
-      return function_interface_impl::getArgAttrs(this->getOperation(), index);
+      return function_interface_impl::getArgAttrs((*static_cast<ConcreteOp *>(this)), index);
     }
 
     /// Return an ArrayAttr containing all argument attribute dictionaries of
@@ -963,11 +963,11 @@ namespace detail {
     }
     void setAllArgAttrs(ArrayRef<DictionaryAttr> attributes) {
       assert(attributes.size() == (*static_cast<ConcreteOp *>(this)).getNumArguments());
-      function_interface_impl::setAllArgAttrDicts(this->getOperation(), attributes);
+      function_interface_impl::setAllArgAttrDicts((*static_cast<ConcreteOp *>(this)), attributes);
     }
     void setAllArgAttrs(ArrayRef<Attribute> attributes) {
       assert(attributes.size() == (*static_cast<ConcreteOp *>(this)).getNumArguments());
-      function_interface_impl::setAllArgAttrDicts(this->getOperation(), attributes);
+      function_interface_impl::setAllArgAttrDicts((*static_cast<ConcreteOp *>(this)), attributes);
     }
     void setAllArgAttrs(ArrayAttr attributes) {
       assert(attributes.size() == (*static_cast<ConcreteOp *>(this)).getNumArguments());
@@ -1002,7 +1002,7 @@ namespace detail {
 
     /// Return all of the attributes for the result at 'index'.
     ArrayRef<NamedAttribute> getResultAttrs(unsigned index) {
-      return function_interface_impl::getResultAttrs(this->getOperation(), index);
+      return function_interface_impl::getResultAttrs((*static_cast<ConcreteOp *>(this)), index);
     }
 
     /// Return an ArrayAttr containing all result attribute dictionaries of this
@@ -1053,12 +1053,12 @@ namespace detail {
     void setAllResultAttrs(ArrayRef<DictionaryAttr> attributes) {
       assert(attributes.size() == (*static_cast<ConcreteOp *>(this)).getNumResults());
       function_interface_impl::setAllResultAttrDicts(
-        this->getOperation(), attributes);
+        (*static_cast<ConcreteOp *>(this)), attributes);
     }
     void setAllResultAttrs(ArrayRef<Attribute> attributes) {
       assert(attributes.size() == (*static_cast<ConcreteOp *>(this)).getNumResults());
       function_interface_impl::setAllResultAttrDicts(
-        this->getOperation(), attributes);
+        (*static_cast<ConcreteOp *>(this)), attributes);
     }
     void setAllResultAttrs(ArrayAttr attributes) {
       assert(attributes.size() == (*static_cast<ConcreteOp *>(this)).getNumResults());
@@ -1088,7 +1088,7 @@ namespace detail {
     /// attribute is returned.
     DictionaryAttr getArgAttrDict(unsigned index) {
       assert(index < (*static_cast<ConcreteOp *>(this)).getNumArguments() && "invalid argument number");
-      return function_interface_impl::getArgAttrDict(this->getOperation(), index);
+      return function_interface_impl::getArgAttrDict((*static_cast<ConcreteOp *>(this)), index);
     }
 
     /// Returns the dictionary attribute corresponding to the result at 'index'.
@@ -1096,7 +1096,7 @@ namespace detail {
     /// returned.
     DictionaryAttr getResultAttrDict(unsigned index) {
       assert(index < (*static_cast<ConcreteOp *>(this)).getNumResults() && "invalid result number");
-      return function_interface_impl::getResultAttrDict(this->getOperation(), index);
+      return function_interface_impl::getResultAttrDict((*static_cast<ConcreteOp *>(this)), index);
     }
   
   };

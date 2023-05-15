@@ -70,7 +70,19 @@ public:
       : AllowedTypes(std::move(AllowedTypes)),
         Strategies(std::move(Strategies)) {}
 
-  void mutateModule(Module &M, int Seed, size_t CurSize, size_t MaxSize);
+  /// Calculate the size of module as the number of objects in it, i.e.
+  /// instructions, basic blocks, functions, and aliases.
+  ///
+  /// \param M module
+  /// \return number of objects in module
+  static size_t getModuleSize(const Module &M);
+
+  /// Mutate given module. No change will be made if no strategy is selected.
+  ///
+  /// \param M  module to mutate
+  /// \param Seed seed for random mutation
+  /// \param MaxSize max module size (see getModuleSize)
+  void mutateModule(Module &M, int Seed, size_t MaxSize);
 };
 
 /// Strategy that injects operations into the function.
@@ -81,6 +93,7 @@ class InjectorIRStrategy : public IRMutationStrategy {
                                                         RandomIRBuilder &IB);
 
 public:
+  InjectorIRStrategy() : Operations(getDefaultOps()) {}
   InjectorIRStrategy(std::vector<fuzzerop::OpDescriptor> &&Operations)
       : Operations(std::move(Operations)) {}
   static std::vector<fuzzerop::OpDescriptor> getDefaultOps();

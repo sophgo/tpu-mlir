@@ -35,7 +35,7 @@
       return getImpl()->getSuccessorOperands(getImpl(), getOperation(), index);
   }
 /// Returns the `BlockArgument` corresponding to operand `operandIndex` in
-/// some successor, or None if `operandIndex` isn't a successor operand
+/// some successor, or std::nullopt if `operandIndex` isn't a successor operand
 /// index.
 ::std::optional<::mlir::BlockArgument> mlir::BranchOpInterface::getSuccessorBlockArgument(unsigned operandIndex) {
       return getImpl()->getSuccessorBlockArgument(getImpl(), getOperation(), operandIndex);

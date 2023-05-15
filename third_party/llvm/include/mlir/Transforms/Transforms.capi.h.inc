@@ -47,6 +47,11 @@ MLIR_CAPI_EXPORTED void mlirRegisterTransformsLoopInvariantCodeMotion(void);
 
 
 /* Create Transforms Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsMem2Reg(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsMem2Reg(void);
+
+
+/* Create Transforms Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsPrintIRPass(void);
 MLIR_CAPI_EXPORTED void mlirRegisterTransformsPrintIRPass(void);
 

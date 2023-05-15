@@ -219,6 +219,8 @@ void AvgPoolLowering::Lowering(PatternRewriter &rewriter,
   std::vector<int64_t> newValues{x1, x2, x3, x4};
   attrs.push_back(
       rewriter.getNamedAttr("pad", rewriter.getDenseI64ArrayAttr(newValues)));
+  attrs.push_back(
+      rewriter.getNamedAttr("acc_type", TypeAttr::get(rewriter.getF32Type())));
   // do_relu
   if (op.getDoRelu()) {
     // Avgpool op

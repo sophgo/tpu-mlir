@@ -32,12 +32,13 @@ namespace mlir {
 
 namespace detail {
 class ModuleOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  ModuleOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ModuleOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -54,7 +55,9 @@ class ModuleOpGenericAdaptor : public detail::ModuleOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ModuleOpGenericAdaptorBase;
 public:
-  ModuleOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ModuleOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ModuleOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ModuleOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -184,12 +187,13 @@ namespace mlir {
 
 namespace detail {
 class UnrealizedConversionCastOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  UnrealizedConversionCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  UnrealizedConversionCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -200,7 +204,9 @@ class UnrealizedConversionCastOpGenericAdaptor : public detail::UnrealizedConver
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::UnrealizedConversionCastOpGenericAdaptorBase;
 public:
-  UnrealizedConversionCastOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  UnrealizedConversionCastOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  UnrealizedConversionCastOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : UnrealizedConversionCastOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());

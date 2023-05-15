@@ -382,12 +382,13 @@ namespace tosa {
 
 namespace detail {
 class AbsOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  AbsOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  AbsOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -398,7 +399,9 @@ class AbsOpGenericAdaptor : public detail::AbsOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::AbsOpGenericAdaptorBase;
 public:
-  AbsOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  AbsOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  AbsOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : AbsOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -456,7 +459,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -473,12 +476,13 @@ namespace tosa {
 
 namespace detail {
 class AddOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  AddOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  AddOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -489,7 +493,9 @@ class AddOpGenericAdaptor : public detail::AddOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::AddOpGenericAdaptorBase;
 public:
-  AddOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  AddOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  AddOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : AddOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -554,7 +560,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -571,14 +577,32 @@ namespace tosa {
 
 namespace detail {
 class ApplyScaleOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using double_roundTy = ::mlir::BoolAttr;
+    double_roundTy double_round;
+
+    auto getDoubleRound() {
+      auto &propStorage = this->double_round;
+      return propStorage.cast<::mlir::BoolAttr>();
+    }
+    void setDoubleRound(const ::mlir::BoolAttr &propValue) {
+      this->double_round = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ApplyScaleOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ApplyScaleOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::BoolAttr getDoubleRoundAttr();
   bool getDoubleRound();
@@ -589,7 +613,9 @@ class ApplyScaleOpGenericAdaptor : public detail::ApplyScaleOpGenericAdaptorBase
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ApplyScaleOpGenericAdaptorBase;
 public:
-  ApplyScaleOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ApplyScaleOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ApplyScaleOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ApplyScaleOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -635,6 +661,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ApplyScaleOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("double_round")};
     return ::llvm::ArrayRef(attrNames);
@@ -663,6 +690,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::BoolAttr getDoubleRoundAttr();
   bool getDoubleRound();
   void setDoubleRoundAttr(::mlir::BoolAttr attr);
@@ -702,14 +736,32 @@ namespace tosa {
 
 namespace detail {
 class ArgMaxOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using axisTy = ::mlir::IntegerAttr;
+    axisTy axis;
+
+    auto getAxis() {
+      auto &propStorage = this->axis;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setAxis(const ::mlir::IntegerAttr &propValue) {
+      this->axis = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ArgMaxOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ArgMaxOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
@@ -720,7 +772,9 @@ class ArgMaxOpGenericAdaptor : public detail::ArgMaxOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ArgMaxOpGenericAdaptorBase;
 public:
-  ArgMaxOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ArgMaxOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ArgMaxOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ArgMaxOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -758,6 +812,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ArgMaxOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("axis")};
     return ::llvm::ArrayRef(attrNames);
@@ -782,6 +837,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
   void setAxisAttr(::mlir::IntegerAttr attr);
@@ -793,7 +855,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -821,14 +883,32 @@ namespace tosa {
 
 namespace detail {
 class ArithmeticRightShiftOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using roundTy = ::mlir::BoolAttr;
+    roundTy round;
+
+    auto getRound() {
+      auto &propStorage = this->round;
+      return propStorage.cast<::mlir::BoolAttr>();
+    }
+    void setRound(const ::mlir::BoolAttr &propValue) {
+      this->round = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ArithmeticRightShiftOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ArithmeticRightShiftOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::BoolAttr getRoundAttr();
   bool getRound();
@@ -839,7 +919,9 @@ class ArithmeticRightShiftOpGenericAdaptor : public detail::ArithmeticRightShift
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ArithmeticRightShiftOpGenericAdaptorBase;
 public:
-  ArithmeticRightShiftOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ArithmeticRightShiftOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ArithmeticRightShiftOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ArithmeticRightShiftOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -881,6 +963,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ArithmeticRightShiftOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("round")};
     return ::llvm::ArrayRef(attrNames);
@@ -907,6 +990,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::TypedValue<::mlir::TensorType> getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::BoolAttr getRoundAttr();
   bool getRound();
   void setRoundAttr(::mlir::BoolAttr attr);
@@ -918,7 +1008,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -946,14 +1036,72 @@ namespace tosa {
 
 namespace detail {
 class AvgPool2dOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using acc_typeTy = ::mlir::TypeAttr;
+    acc_typeTy acc_type;
+
+    auto getAccType() {
+      auto &propStorage = this->acc_type;
+      return propStorage.cast<::mlir::TypeAttr>();
+    }
+    void setAccType(const ::mlir::TypeAttr &propValue) {
+      this->acc_type = propValue;
+    }
+    using kernelTy = ::mlir::DenseI64ArrayAttr;
+    kernelTy kernel;
+
+    auto getKernel() {
+      auto &propStorage = this->kernel;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setKernel(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->kernel = propValue;
+    }
+    using padTy = ::mlir::DenseI64ArrayAttr;
+    padTy pad;
+
+    auto getPad() {
+      auto &propStorage = this->pad;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setPad(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->pad = propValue;
+    }
+    using quantization_infoTy = mlir::tosa::UnaryOpQuantizationAttr;
+    quantization_infoTy quantization_info;
+
+    auto getQuantizationInfo() {
+      auto &propStorage = this->quantization_info;
+      return propStorage.dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
+    }
+    void setQuantizationInfo(const mlir::tosa::UnaryOpQuantizationAttr &propValue) {
+      this->quantization_info = propValue;
+    }
+    using strideTy = ::mlir::DenseI64ArrayAttr;
+    strideTy stride;
+
+    auto getStride() {
+      auto &propStorage = this->stride;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setStride(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->stride = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  AvgPool2dOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  AvgPool2dOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseI64ArrayAttr getKernelAttr();
   ::llvm::ArrayRef<int64_t> getKernel();
@@ -961,6 +1109,8 @@ public:
   ::llvm::ArrayRef<int64_t> getStride();
   ::mlir::DenseI64ArrayAttr getPadAttr();
   ::llvm::ArrayRef<int64_t> getPad();
+  ::mlir::TypeAttr getAccTypeAttr();
+  ::mlir::Type getAccType();
   mlir::tosa::UnaryOpQuantizationAttr getQuantizationInfoAttr();
   ::std::optional<mlir::tosa::UnaryOpQuantizationAttr> getQuantizationInfo();
 };
@@ -970,7 +1120,9 @@ class AvgPool2dOpGenericAdaptor : public detail::AvgPool2dOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::AvgPool2dOpGenericAdaptorBase;
 public:
-  AvgPool2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  AvgPool2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  AvgPool2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : AvgPool2dOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -1008,41 +1160,50 @@ public:
   template <typename RangeT>
   using GenericAdaptor = AvgPool2dOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("kernel"), ::llvm::StringRef("pad"), ::llvm::StringRef("quantization_info"), ::llvm::StringRef("stride")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("acc_type"), ::llvm::StringRef("kernel"), ::llvm::StringRef("pad"), ::llvm::StringRef("quantization_info"), ::llvm::StringRef("stride")};
     return ::llvm::ArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr getKernelAttrName() {
+  ::mlir::StringAttr getAccTypeAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr getKernelAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getAccTypeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr getPadAttrName() {
+  ::mlir::StringAttr getKernelAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr getPadAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getKernelAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr getQuantizationInfoAttrName() {
+  ::mlir::StringAttr getPadAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr getQuantizationInfoAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getPadAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr getStrideAttrName() {
+  ::mlir::StringAttr getQuantizationInfoAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr getStrideAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getQuantizationInfoAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
+  }
+
+  ::mlir::StringAttr getStrideAttrName() {
+    return getAttributeNameForIndex(4);
+  }
+
+  static ::mlir::StringAttr getStrideAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 4);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -1056,12 +1217,21 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::DenseI64ArrayAttr getKernelAttr();
   ::llvm::ArrayRef<int64_t> getKernel();
   ::mlir::DenseI64ArrayAttr getStrideAttr();
   ::llvm::ArrayRef<int64_t> getStride();
   ::mlir::DenseI64ArrayAttr getPadAttr();
   ::llvm::ArrayRef<int64_t> getPad();
+  ::mlir::TypeAttr getAccTypeAttr();
+  ::mlir::Type getAccType();
   mlir::tosa::UnaryOpQuantizationAttr getQuantizationInfoAttr();
   ::std::optional<mlir::tosa::UnaryOpQuantizationAttr> getQuantizationInfo();
   void setKernelAttr(::mlir::DenseI64ArrayAttr attr);
@@ -1070,18 +1240,20 @@ public:
   void setStride(::llvm::ArrayRef<int64_t> attrValue);
   void setPadAttr(::mlir::DenseI64ArrayAttr attr);
   void setPad(::llvm::ArrayRef<int64_t> attrValue);
+  void setAccTypeAttr(::mlir::TypeAttr attr);
+  void setAccType(::mlir::Type attrValue);
   void setQuantizationInfoAttr(mlir::tosa::UnaryOpQuantizationAttr attr);
   ::mlir::Attribute removeQuantizationInfoAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type outputType, ::mlir::Value input, ::mlir::DenseI64ArrayAttr kernel, ::mlir::DenseI64ArrayAttr stride, ::mlir::DenseI64ArrayAttr pad);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::DenseI64ArrayAttr kernel, ::mlir::DenseI64ArrayAttr stride, ::mlir::DenseI64ArrayAttr pad, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::DenseI64ArrayAttr kernel, ::mlir::DenseI64ArrayAttr stride, ::mlir::DenseI64ArrayAttr pad, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::llvm::ArrayRef<int64_t> kernel, ::llvm::ArrayRef<int64_t> stride, ::llvm::ArrayRef<int64_t> pad, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::llvm::ArrayRef<int64_t> kernel, ::llvm::ArrayRef<int64_t> stride, ::llvm::ArrayRef<int64_t> pad, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type outputType, ::mlir::Value input, ::mlir::DenseI64ArrayAttr kernel, ::mlir::DenseI64ArrayAttr stride, ::mlir::DenseI64ArrayAttr pad, ::mlir::TypeAttr acc_type);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::DenseI64ArrayAttr kernel, ::mlir::DenseI64ArrayAttr stride, ::mlir::DenseI64ArrayAttr pad, ::mlir::TypeAttr acc_type, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::DenseI64ArrayAttr kernel, ::mlir::DenseI64ArrayAttr stride, ::mlir::DenseI64ArrayAttr pad, ::mlir::TypeAttr acc_type, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::llvm::ArrayRef<int64_t> kernel, ::llvm::ArrayRef<int64_t> stride, ::llvm::ArrayRef<int64_t> pad, ::mlir::Type acc_type, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::llvm::ArrayRef<int64_t> kernel, ::llvm::ArrayRef<int64_t> stride, ::llvm::ArrayRef<int64_t> pad, ::mlir::Type acc_type, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -1089,7 +1261,7 @@ private:
   }
 
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 4 && "invalid attribute index");
+    assert(index < 5 && "invalid attribute index");
     assert(name.getStringRef() == getOperationName() && "invalid operation name");
     return name.getAttributeNames()[index];
   }
@@ -1109,12 +1281,13 @@ namespace tosa {
 
 namespace detail {
 class BitwiseAndOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  BitwiseAndOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  BitwiseAndOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -1125,7 +1298,9 @@ class BitwiseAndOpGenericAdaptor : public detail::BitwiseAndOpGenericAdaptorBase
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::BitwiseAndOpGenericAdaptorBase;
 public:
-  BitwiseAndOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  BitwiseAndOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  BitwiseAndOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : BitwiseAndOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -1189,7 +1364,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -1206,12 +1381,13 @@ namespace tosa {
 
 namespace detail {
 class BitwiseNotOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  BitwiseNotOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  BitwiseNotOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -1222,7 +1398,9 @@ class BitwiseNotOpGenericAdaptor : public detail::BitwiseNotOpGenericAdaptorBase
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::BitwiseNotOpGenericAdaptorBase;
 public:
-  BitwiseNotOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  BitwiseNotOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  BitwiseNotOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : BitwiseNotOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -1280,7 +1458,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -1297,12 +1475,13 @@ namespace tosa {
 
 namespace detail {
 class BitwiseOrOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  BitwiseOrOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  BitwiseOrOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -1313,7 +1492,9 @@ class BitwiseOrOpGenericAdaptor : public detail::BitwiseOrOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::BitwiseOrOpGenericAdaptorBase;
 public:
-  BitwiseOrOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  BitwiseOrOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  BitwiseOrOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : BitwiseOrOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -1377,7 +1558,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -1394,12 +1575,13 @@ namespace tosa {
 
 namespace detail {
 class BitwiseXorOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  BitwiseXorOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  BitwiseXorOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -1410,7 +1592,9 @@ class BitwiseXorOpGenericAdaptor : public detail::BitwiseXorOpGenericAdaptorBase
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::BitwiseXorOpGenericAdaptorBase;
 public:
-  BitwiseXorOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  BitwiseXorOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  BitwiseXorOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : BitwiseXorOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -1474,7 +1658,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -1491,12 +1675,13 @@ namespace tosa {
 
 namespace detail {
 class CastOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  CastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  CastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -1507,7 +1692,9 @@ class CastOpGenericAdaptor : public detail::CastOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::CastOpGenericAdaptorBase;
 public:
-  CastOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  CastOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  CastOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : CastOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -1566,7 +1753,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -1583,12 +1770,13 @@ namespace tosa {
 
 namespace detail {
 class CeilOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  CeilOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  CeilOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -1599,7 +1787,9 @@ class CeilOpGenericAdaptor : public detail::CeilOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::CeilOpGenericAdaptorBase;
 public:
-  CeilOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  CeilOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  CeilOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : CeilOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -1657,7 +1847,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -1674,14 +1864,62 @@ namespace tosa {
 
 namespace detail {
 class ClampOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using max_fpTy = ::mlir::FloatAttr;
+    max_fpTy max_fp;
+
+    auto getMaxFp() {
+      auto &propStorage = this->max_fp;
+      return propStorage.cast<::mlir::FloatAttr>();
+    }
+    void setMaxFp(const ::mlir::FloatAttr &propValue) {
+      this->max_fp = propValue;
+    }
+    using max_intTy = ::mlir::IntegerAttr;
+    max_intTy max_int;
+
+    auto getMaxInt() {
+      auto &propStorage = this->max_int;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setMaxInt(const ::mlir::IntegerAttr &propValue) {
+      this->max_int = propValue;
+    }
+    using min_fpTy = ::mlir::FloatAttr;
+    min_fpTy min_fp;
+
+    auto getMinFp() {
+      auto &propStorage = this->min_fp;
+      return propStorage.cast<::mlir::FloatAttr>();
+    }
+    void setMinFp(const ::mlir::FloatAttr &propValue) {
+      this->min_fp = propValue;
+    }
+    using min_intTy = ::mlir::IntegerAttr;
+    min_intTy min_int;
+
+    auto getMinInt() {
+      auto &propStorage = this->min_int;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setMinInt(const ::mlir::IntegerAttr &propValue) {
+      this->min_int = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ClampOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ClampOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getMinIntAttr();
   uint64_t getMinInt();
@@ -1698,7 +1936,9 @@ class ClampOpGenericAdaptor : public detail::ClampOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ClampOpGenericAdaptorBase;
 public:
-  ClampOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ClampOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ClampOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ClampOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -1736,6 +1976,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ClampOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("max_fp"), ::llvm::StringRef("max_int"), ::llvm::StringRef("min_fp"), ::llvm::StringRef("min_int")};
     return ::llvm::ArrayRef(attrNames);
@@ -1784,6 +2025,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::TypedValue<::mlir::TensorType> getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getMinIntAttr();
   uint64_t getMinInt();
   ::mlir::IntegerAttr getMaxIntAttr();
@@ -1808,7 +2056,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -1836,12 +2084,13 @@ namespace tosa {
 
 namespace detail {
 class ClzOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  ClzOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ClzOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -1852,7 +2101,9 @@ class ClzOpGenericAdaptor : public detail::ClzOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ClzOpGenericAdaptorBase;
 public:
-  ClzOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ClzOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ClzOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ClzOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -1910,7 +2161,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -1927,14 +2178,32 @@ namespace tosa {
 
 namespace detail {
 class ConcatOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using axisTy = ::mlir::IntegerAttr;
+    axisTy axis;
+
+    auto getAxis() {
+      auto &propStorage = this->axis;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setAxis(const ::mlir::IntegerAttr &propValue) {
+      this->axis = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ConcatOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ConcatOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
@@ -1945,7 +2214,9 @@ class ConcatOpGenericAdaptor : public detail::ConcatOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ConcatOpGenericAdaptorBase;
 public:
-  ConcatOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ConcatOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ConcatOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ConcatOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -1983,6 +2254,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ConcatOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("axis")};
     return ::llvm::ArrayRef(attrNames);
@@ -2007,6 +2279,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::TypedValue<::mlir::TensorType> getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
   void setAxisAttr(::mlir::IntegerAttr attr);
@@ -2022,7 +2301,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -2053,14 +2332,32 @@ namespace tosa {
 
 namespace detail {
 class ConstOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using valueTy = ::mlir::ElementsAttr;
+    valueTy value;
+
+    auto getValue() {
+      auto &propStorage = this->value;
+      return propStorage.cast<::mlir::ElementsAttr>();
+    }
+    void setValue(const ::mlir::ElementsAttr &propValue) {
+      this->value = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ConstOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ConstOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::ElementsAttr getValueAttr();
   ::mlir::ElementsAttr getValue();
@@ -2071,7 +2368,9 @@ class ConstOpGenericAdaptor : public detail::ConstOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ConstOpGenericAdaptorBase;
 public:
-  ConstOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ConstOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ConstOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ConstOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -2105,6 +2404,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ConstOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("value")};
     return ::llvm::ArrayRef(attrNames);
@@ -2127,6 +2427,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::TypedValue<::mlir::TensorType> getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::ElementsAttr getValueAttr();
   ::mlir::ElementsAttr getValue();
   void setValueAttr(::mlir::ElementsAttr attr);
@@ -2164,14 +2471,62 @@ namespace tosa {
 
 namespace detail {
 class Conv2DOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using dilationTy = ::mlir::DenseI64ArrayAttr;
+    dilationTy dilation;
+
+    auto getDilation() {
+      auto &propStorage = this->dilation;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setDilation(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->dilation = propValue;
+    }
+    using padTy = ::mlir::DenseI64ArrayAttr;
+    padTy pad;
+
+    auto getPad() {
+      auto &propStorage = this->pad;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setPad(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->pad = propValue;
+    }
+    using quantization_infoTy = mlir::tosa::ConvOpQuantizationAttr;
+    quantization_infoTy quantization_info;
+
+    auto getQuantizationInfo() {
+      auto &propStorage = this->quantization_info;
+      return propStorage.dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+    }
+    void setQuantizationInfo(const mlir::tosa::ConvOpQuantizationAttr &propValue) {
+      this->quantization_info = propValue;
+    }
+    using strideTy = ::mlir::DenseI64ArrayAttr;
+    strideTy stride;
+
+    auto getStride() {
+      auto &propStorage = this->stride;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setStride(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->stride = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  Conv2DOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  Conv2DOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseI64ArrayAttr getPadAttr();
   ::llvm::ArrayRef<int64_t> getPad();
@@ -2188,7 +2543,9 @@ class Conv2DOpGenericAdaptor : public detail::Conv2DOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::Conv2DOpGenericAdaptorBase;
 public:
-  Conv2DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  Conv2DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  Conv2DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : Conv2DOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -2234,6 +2591,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = Conv2DOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilation"), ::llvm::StringRef("pad"), ::llvm::StringRef("quantization_info"), ::llvm::StringRef("stride")};
     return ::llvm::ArrayRef(attrNames);
@@ -2286,6 +2644,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::DenseI64ArrayAttr getPadAttr();
   ::llvm::ArrayRef<int64_t> getPad();
   ::mlir::DenseI64ArrayAttr getStrideAttr();
@@ -2311,7 +2676,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -2339,14 +2704,62 @@ namespace tosa {
 
 namespace detail {
 class Conv3DOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using dilationTy = ::mlir::DenseI64ArrayAttr;
+    dilationTy dilation;
+
+    auto getDilation() {
+      auto &propStorage = this->dilation;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setDilation(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->dilation = propValue;
+    }
+    using padTy = ::mlir::DenseI64ArrayAttr;
+    padTy pad;
+
+    auto getPad() {
+      auto &propStorage = this->pad;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setPad(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->pad = propValue;
+    }
+    using quantization_infoTy = mlir::tosa::ConvOpQuantizationAttr;
+    quantization_infoTy quantization_info;
+
+    auto getQuantizationInfo() {
+      auto &propStorage = this->quantization_info;
+      return propStorage.dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+    }
+    void setQuantizationInfo(const mlir::tosa::ConvOpQuantizationAttr &propValue) {
+      this->quantization_info = propValue;
+    }
+    using strideTy = ::mlir::DenseI64ArrayAttr;
+    strideTy stride;
+
+    auto getStride() {
+      auto &propStorage = this->stride;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setStride(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->stride = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  Conv3DOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  Conv3DOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseI64ArrayAttr getPadAttr();
   ::llvm::ArrayRef<int64_t> getPad();
@@ -2363,7 +2776,9 @@ class Conv3DOpGenericAdaptor : public detail::Conv3DOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::Conv3DOpGenericAdaptorBase;
 public:
-  Conv3DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  Conv3DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  Conv3DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : Conv3DOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -2409,6 +2824,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = Conv3DOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilation"), ::llvm::StringRef("pad"), ::llvm::StringRef("quantization_info"), ::llvm::StringRef("stride")};
     return ::llvm::ArrayRef(attrNames);
@@ -2461,6 +2877,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::DenseI64ArrayAttr getPadAttr();
   ::llvm::ArrayRef<int64_t> getPad();
   ::mlir::DenseI64ArrayAttr getStrideAttr();
@@ -2486,7 +2909,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -2514,14 +2937,52 @@ namespace tosa {
 
 namespace detail {
 class CustomOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using configTy = ::mlir::StringAttr;
+    configTy config;
+
+    auto getConfig() {
+      auto &propStorage = this->config;
+      return propStorage.cast<::mlir::StringAttr>();
+    }
+    void setConfig(const ::mlir::StringAttr &propValue) {
+      this->config = propValue;
+    }
+    using identifierTy = ::mlir::StringAttr;
+    identifierTy identifier;
+
+    auto getIdentifier() {
+      auto &propStorage = this->identifier;
+      return propStorage.cast<::mlir::StringAttr>();
+    }
+    void setIdentifier(const ::mlir::StringAttr &propValue) {
+      this->identifier = propValue;
+    }
+    using implementation_attrsTy = ::mlir::StringAttr;
+    implementation_attrsTy implementation_attrs;
+
+    auto getImplementationAttrs() {
+      auto &propStorage = this->implementation_attrs;
+      return propStorage.cast<::mlir::StringAttr>();
+    }
+    void setImplementationAttrs(const ::mlir::StringAttr &propValue) {
+      this->implementation_attrs = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  CustomOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  CustomOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::StringAttr getIdentifierAttr();
   ::llvm::StringRef getIdentifier();
@@ -2536,7 +2997,9 @@ class CustomOpGenericAdaptor : public detail::CustomOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::CustomOpGenericAdaptorBase;
 public:
-  CustomOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  CustomOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  CustomOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : CustomOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -2574,6 +3037,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = CustomOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("config"), ::llvm::StringRef("identifier"), ::llvm::StringRef("implementation_attrs")};
     return ::llvm::ArrayRef(attrNames);
@@ -2614,6 +3078,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Operation::result_range getOutputs();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::StringAttr getIdentifierAttr();
   ::llvm::StringRef getIdentifier();
   ::mlir::StringAttr getConfigAttr();
@@ -2657,14 +3128,62 @@ namespace tosa {
 
 namespace detail {
 class DepthwiseConv2DOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using dilationTy = ::mlir::DenseI64ArrayAttr;
+    dilationTy dilation;
+
+    auto getDilation() {
+      auto &propStorage = this->dilation;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setDilation(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->dilation = propValue;
+    }
+    using padTy = ::mlir::DenseI64ArrayAttr;
+    padTy pad;
+
+    auto getPad() {
+      auto &propStorage = this->pad;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setPad(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->pad = propValue;
+    }
+    using quantization_infoTy = mlir::tosa::ConvOpQuantizationAttr;
+    quantization_infoTy quantization_info;
+
+    auto getQuantizationInfo() {
+      auto &propStorage = this->quantization_info;
+      return propStorage.dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+    }
+    void setQuantizationInfo(const mlir::tosa::ConvOpQuantizationAttr &propValue) {
+      this->quantization_info = propValue;
+    }
+    using strideTy = ::mlir::DenseI64ArrayAttr;
+    strideTy stride;
+
+    auto getStride() {
+      auto &propStorage = this->stride;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setStride(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->stride = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  DepthwiseConv2DOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  DepthwiseConv2DOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseI64ArrayAttr getPadAttr();
   ::llvm::ArrayRef<int64_t> getPad();
@@ -2681,7 +3200,9 @@ class DepthwiseConv2DOpGenericAdaptor : public detail::DepthwiseConv2DOpGenericA
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::DepthwiseConv2DOpGenericAdaptorBase;
 public:
-  DepthwiseConv2DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  DepthwiseConv2DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  DepthwiseConv2DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : DepthwiseConv2DOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -2727,6 +3248,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = DepthwiseConv2DOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilation"), ::llvm::StringRef("pad"), ::llvm::StringRef("quantization_info"), ::llvm::StringRef("stride")};
     return ::llvm::ArrayRef(attrNames);
@@ -2779,6 +3301,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::DenseI64ArrayAttr getPadAttr();
   ::llvm::ArrayRef<int64_t> getPad();
   ::mlir::DenseI64ArrayAttr getStrideAttr();
@@ -2804,7 +3333,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -2832,12 +3361,13 @@ namespace tosa {
 
 namespace detail {
 class DivOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  DivOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  DivOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -2848,7 +3378,9 @@ class DivOpGenericAdaptor : public detail::DivOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::DivOpGenericAdaptorBase;
 public:
-  DivOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  DivOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  DivOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : DivOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -2913,7 +3445,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -2930,12 +3462,13 @@ namespace tosa {
 
 namespace detail {
 class EqualOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  EqualOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  EqualOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -2946,7 +3479,9 @@ class EqualOpGenericAdaptor : public detail::EqualOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::EqualOpGenericAdaptorBase;
 public:
-  EqualOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  EqualOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  EqualOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : EqualOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -3013,7 +3548,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
   /// Returns when two result types are compatible for this op; method used by
@@ -3033,12 +3568,13 @@ namespace tosa {
 
 namespace detail {
 class ExpOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  ExpOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ExpOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -3049,7 +3585,9 @@ class ExpOpGenericAdaptor : public detail::ExpOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ExpOpGenericAdaptorBase;
 public:
-  ExpOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ExpOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ExpOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ExpOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -3107,7 +3645,8 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -3124,14 +3663,32 @@ namespace tosa {
 
 namespace detail {
 class FFT2dOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using inverseTy = ::mlir::BoolAttr;
+    inverseTy inverse;
+
+    auto getInverse() {
+      auto &propStorage = this->inverse;
+      return propStorage.cast<::mlir::BoolAttr>();
+    }
+    void setInverse(const ::mlir::BoolAttr &propValue) {
+      this->inverse = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  FFT2dOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  FFT2dOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::BoolAttr getInverseAttr();
   bool getInverse();
@@ -3142,7 +3699,9 @@ class FFT2dOpGenericAdaptor : public detail::FFT2dOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::FFT2dOpGenericAdaptorBase;
 public:
-  FFT2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  FFT2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  FFT2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : FFT2dOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -3184,6 +3743,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = FFT2dOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("inverse")};
     return ::llvm::ArrayRef(attrNames);
@@ -3212,6 +3772,13 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutputReal();
   ::mlir::Value getOutputImag();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::BoolAttr getInverseAttr();
   bool getInverse();
   void setInverseAttr(::mlir::BoolAttr attr);
@@ -3223,7 +3790,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -3251,12 +3818,13 @@ namespace tosa {
 
 namespace detail {
 class FloorOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  FloorOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  FloorOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -3267,7 +3835,9 @@ class FloorOpGenericAdaptor : public detail::FloorOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::FloorOpGenericAdaptorBase;
 public:
-  FloorOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  FloorOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  FloorOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : FloorOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -3325,7 +3895,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -3342,14 +3912,32 @@ namespace tosa {
 
 namespace detail {
 class FullyConnectedOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using quantization_infoTy = mlir::tosa::ConvOpQuantizationAttr;
+    quantization_infoTy quantization_info;
+
+    auto getQuantizationInfo() {
+      auto &propStorage = this->quantization_info;
+      return propStorage.dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+    }
+    void setQuantizationInfo(const mlir::tosa::ConvOpQuantizationAttr &propValue) {
+      this->quantization_info = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  FullyConnectedOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  FullyConnectedOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   mlir::tosa::ConvOpQuantizationAttr getQuantizationInfoAttr();
   ::std::optional<mlir::tosa::ConvOpQuantizationAttr> getQuantizationInfo();
@@ -3360,7 +3948,9 @@ class FullyConnectedOpGenericAdaptor : public detail::FullyConnectedOpGenericAda
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::FullyConnectedOpGenericAdaptorBase;
 public:
-  FullyConnectedOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  FullyConnectedOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  FullyConnectedOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : FullyConnectedOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -3406,6 +3996,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = FullyConnectedOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("quantization_info")};
     return ::llvm::ArrayRef(attrNames);
@@ -3434,6 +4025,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   mlir::tosa::ConvOpQuantizationAttr getQuantizationInfoAttr();
   ::std::optional<mlir::tosa::ConvOpQuantizationAttr> getQuantizationInfo();
   void setQuantizationInfoAttr(mlir::tosa::ConvOpQuantizationAttr attr);
@@ -3445,7 +4043,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -3473,12 +4071,13 @@ namespace tosa {
 
 namespace detail {
 class GatherOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  GatherOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  GatherOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -3489,7 +4088,9 @@ class GatherOpGenericAdaptor : public detail::GatherOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::GatherOpGenericAdaptorBase;
 public:
-  GatherOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  GatherOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  GatherOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : GatherOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -3553,7 +4154,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -3570,12 +4171,13 @@ namespace tosa {
 
 namespace detail {
 class GreaterEqualOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  GreaterEqualOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  GreaterEqualOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -3586,7 +4188,9 @@ class GreaterEqualOpGenericAdaptor : public detail::GreaterEqualOpGenericAdaptor
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::GreaterEqualOpGenericAdaptorBase;
 public:
-  GreaterEqualOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  GreaterEqualOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  GreaterEqualOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : GreaterEqualOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -3651,7 +4255,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -3668,12 +4272,13 @@ namespace tosa {
 
 namespace detail {
 class GreaterOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  GreaterOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  GreaterOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -3684,7 +4289,9 @@ class GreaterOpGenericAdaptor : public detail::GreaterOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::GreaterOpGenericAdaptorBase;
 public:
-  GreaterOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  GreaterOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  GreaterOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : GreaterOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -3749,7 +4356,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -3766,12 +4373,13 @@ namespace tosa {
 
 namespace detail {
 class IdentityOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  IdentityOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  IdentityOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -3782,7 +4390,9 @@ class IdentityOpGenericAdaptor : public detail::IdentityOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::IdentityOpGenericAdaptorBase;
 public:
-  IdentityOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  IdentityOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  IdentityOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : IdentityOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -3840,7 +4450,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -3857,12 +4467,13 @@ namespace tosa {
 
 namespace detail {
 class IfOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  IfOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  IfOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -3876,7 +4487,9 @@ class IfOpGenericAdaptor : public detail::IfOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::IfOpGenericAdaptorBase;
 public:
-  IfOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  IfOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  IfOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : IfOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -3941,7 +4554,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
 public:
 };
 } // namespace tosa
@@ -3957,12 +4570,13 @@ namespace tosa {
 
 namespace detail {
 class LogOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  LogOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  LogOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -3973,7 +4587,9 @@ class LogOpGenericAdaptor : public detail::LogOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::LogOpGenericAdaptorBase;
 public:
-  LogOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  LogOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  LogOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : LogOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -4031,7 +4647,8 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -4048,12 +4665,13 @@ namespace tosa {
 
 namespace detail {
 class LogicalAndOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  LogicalAndOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  LogicalAndOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -4064,7 +4682,9 @@ class LogicalAndOpGenericAdaptor : public detail::LogicalAndOpGenericAdaptorBase
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::LogicalAndOpGenericAdaptorBase;
 public:
-  LogicalAndOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  LogicalAndOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  LogicalAndOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : LogicalAndOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -4128,7 +4748,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -4145,12 +4765,13 @@ namespace tosa {
 
 namespace detail {
 class LogicalLeftShiftOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  LogicalLeftShiftOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  LogicalLeftShiftOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -4161,7 +4782,9 @@ class LogicalLeftShiftOpGenericAdaptor : public detail::LogicalLeftShiftOpGeneri
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::LogicalLeftShiftOpGenericAdaptorBase;
 public:
-  LogicalLeftShiftOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  LogicalLeftShiftOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  LogicalLeftShiftOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : LogicalLeftShiftOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -4225,7 +4848,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -4242,12 +4865,13 @@ namespace tosa {
 
 namespace detail {
 class LogicalNotOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  LogicalNotOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  LogicalNotOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -4258,7 +4882,9 @@ class LogicalNotOpGenericAdaptor : public detail::LogicalNotOpGenericAdaptorBase
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::LogicalNotOpGenericAdaptorBase;
 public:
-  LogicalNotOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  LogicalNotOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  LogicalNotOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : LogicalNotOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -4318,8 +4944,8 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -4336,12 +4962,13 @@ namespace tosa {
 
 namespace detail {
 class LogicalOrOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  LogicalOrOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  LogicalOrOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -4352,7 +4979,9 @@ class LogicalOrOpGenericAdaptor : public detail::LogicalOrOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::LogicalOrOpGenericAdaptorBase;
 public:
-  LogicalOrOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  LogicalOrOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  LogicalOrOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : LogicalOrOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -4416,7 +5045,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -4433,12 +5062,13 @@ namespace tosa {
 
 namespace detail {
 class LogicalRightShiftOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  LogicalRightShiftOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  LogicalRightShiftOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -4449,7 +5079,9 @@ class LogicalRightShiftOpGenericAdaptor : public detail::LogicalRightShiftOpGene
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::LogicalRightShiftOpGenericAdaptorBase;
 public:
-  LogicalRightShiftOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  LogicalRightShiftOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  LogicalRightShiftOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : LogicalRightShiftOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -4513,7 +5145,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -4530,12 +5162,13 @@ namespace tosa {
 
 namespace detail {
 class LogicalXorOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  LogicalXorOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  LogicalXorOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -4546,7 +5179,9 @@ class LogicalXorOpGenericAdaptor : public detail::LogicalXorOpGenericAdaptorBase
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::LogicalXorOpGenericAdaptorBase;
 public:
-  LogicalXorOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  LogicalXorOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  LogicalXorOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : LogicalXorOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -4610,7 +5245,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -4627,14 +5262,32 @@ namespace tosa {
 
 namespace detail {
 class MatMulOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using quantization_infoTy = mlir::tosa::MatMulOpQuantizationAttr;
+    quantization_infoTy quantization_info;
+
+    auto getQuantizationInfo() {
+      auto &propStorage = this->quantization_info;
+      return propStorage.dyn_cast_or_null<mlir::tosa::MatMulOpQuantizationAttr>();
+    }
+    void setQuantizationInfo(const mlir::tosa::MatMulOpQuantizationAttr &propValue) {
+      this->quantization_info = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  MatMulOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  MatMulOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   mlir::tosa::MatMulOpQuantizationAttr getQuantizationInfoAttr();
   ::std::optional<mlir::tosa::MatMulOpQuantizationAttr> getQuantizationInfo();
@@ -4645,7 +5298,9 @@ class MatMulOpGenericAdaptor : public detail::MatMulOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::MatMulOpGenericAdaptorBase;
 public:
-  MatMulOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  MatMulOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  MatMulOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : MatMulOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -4687,6 +5342,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = MatMulOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("quantization_info")};
     return ::llvm::ArrayRef(attrNames);
@@ -4713,6 +5369,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getC();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   mlir::tosa::MatMulOpQuantizationAttr getQuantizationInfoAttr();
   ::std::optional<mlir::tosa::MatMulOpQuantizationAttr> getQuantizationInfo();
   void setQuantizationInfoAttr(mlir::tosa::MatMulOpQuantizationAttr attr);
@@ -4723,7 +5386,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -4751,14 +5414,52 @@ namespace tosa {
 
 namespace detail {
 class MaxPool2dOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using kernelTy = ::mlir::DenseI64ArrayAttr;
+    kernelTy kernel;
+
+    auto getKernel() {
+      auto &propStorage = this->kernel;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setKernel(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->kernel = propValue;
+    }
+    using padTy = ::mlir::DenseI64ArrayAttr;
+    padTy pad;
+
+    auto getPad() {
+      auto &propStorage = this->pad;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setPad(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->pad = propValue;
+    }
+    using strideTy = ::mlir::DenseI64ArrayAttr;
+    strideTy stride;
+
+    auto getStride() {
+      auto &propStorage = this->stride;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setStride(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->stride = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  MaxPool2dOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  MaxPool2dOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseI64ArrayAttr getKernelAttr();
   ::llvm::ArrayRef<int64_t> getKernel();
@@ -4773,7 +5474,9 @@ class MaxPool2dOpGenericAdaptor : public detail::MaxPool2dOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::MaxPool2dOpGenericAdaptorBase;
 public:
-  MaxPool2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  MaxPool2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  MaxPool2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : MaxPool2dOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -4811,6 +5514,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = MaxPool2dOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("kernel"), ::llvm::StringRef("pad"), ::llvm::StringRef("stride")};
     return ::llvm::ArrayRef(attrNames);
@@ -4851,6 +5555,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::DenseI64ArrayAttr getKernelAttr();
   ::llvm::ArrayRef<int64_t> getKernel();
   ::mlir::DenseI64ArrayAttr getStrideAttr();
@@ -4871,7 +5582,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -4899,12 +5610,13 @@ namespace tosa {
 
 namespace detail {
 class MaximumOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  MaximumOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  MaximumOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -4915,7 +5627,9 @@ class MaximumOpGenericAdaptor : public detail::MaximumOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::MaximumOpGenericAdaptorBase;
 public:
-  MaximumOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  MaximumOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  MaximumOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : MaximumOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -4979,7 +5693,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -4996,12 +5710,13 @@ namespace tosa {
 
 namespace detail {
 class MinimumOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  MinimumOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  MinimumOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -5012,7 +5727,9 @@ class MinimumOpGenericAdaptor : public detail::MinimumOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::MinimumOpGenericAdaptorBase;
 public:
-  MinimumOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  MinimumOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  MinimumOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : MinimumOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -5076,7 +5793,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -5093,14 +5810,32 @@ namespace tosa {
 
 namespace detail {
 class MulOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using shiftTy = ::mlir::IntegerAttr;
+    shiftTy shift;
+
+    auto getShift() {
+      auto &propStorage = this->shift;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setShift(const ::mlir::IntegerAttr &propValue) {
+      this->shift = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  MulOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  MulOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getShiftAttr();
   uint32_t getShift();
@@ -5111,7 +5846,9 @@ class MulOpGenericAdaptor : public detail::MulOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::MulOpGenericAdaptorBase;
 public:
-  MulOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  MulOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  MulOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : MulOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -5153,6 +5890,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = MulOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("shift")};
     return ::llvm::ArrayRef(attrNames);
@@ -5179,6 +5917,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::TypedValue<::mlir::TensorType> getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getShiftAttr();
   uint32_t getShift();
   void setShiftAttr(::mlir::IntegerAttr attr);
@@ -5191,7 +5936,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -5219,14 +5964,32 @@ namespace tosa {
 
 namespace detail {
 class NegateOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using quantization_infoTy = mlir::tosa::UnaryOpQuantizationAttr;
+    quantization_infoTy quantization_info;
+
+    auto getQuantizationInfo() {
+      auto &propStorage = this->quantization_info;
+      return propStorage.dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
+    }
+    void setQuantizationInfo(const mlir::tosa::UnaryOpQuantizationAttr &propValue) {
+      this->quantization_info = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  NegateOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  NegateOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   mlir::tosa::UnaryOpQuantizationAttr getQuantizationInfoAttr();
   ::std::optional<mlir::tosa::UnaryOpQuantizationAttr> getQuantizationInfo();
@@ -5237,7 +6000,9 @@ class NegateOpGenericAdaptor : public detail::NegateOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::NegateOpGenericAdaptorBase;
 public:
-  NegateOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  NegateOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  NegateOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : NegateOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -5275,6 +6040,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = NegateOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("quantization_info")};
     return ::llvm::ArrayRef(attrNames);
@@ -5299,6 +6065,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::TypedValue<::mlir::TensorType> getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   mlir::tosa::UnaryOpQuantizationAttr getQuantizationInfoAttr();
   ::std::optional<mlir::tosa::UnaryOpQuantizationAttr> getQuantizationInfo();
   void setQuantizationInfoAttr(mlir::tosa::UnaryOpQuantizationAttr attr);
@@ -5309,7 +6082,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -5337,14 +6110,32 @@ namespace tosa {
 
 namespace detail {
 class PadOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using quantization_infoTy = mlir::tosa::PadOpQuantizationAttr;
+    quantization_infoTy quantization_info;
+
+    auto getQuantizationInfo() {
+      auto &propStorage = this->quantization_info;
+      return propStorage.dyn_cast_or_null<mlir::tosa::PadOpQuantizationAttr>();
+    }
+    void setQuantizationInfo(const mlir::tosa::PadOpQuantizationAttr &propValue) {
+      this->quantization_info = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  PadOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  PadOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   mlir::tosa::PadOpQuantizationAttr getQuantizationInfoAttr();
   ::std::optional<mlir::tosa::PadOpQuantizationAttr> getQuantizationInfo();
@@ -5355,7 +6146,9 @@ class PadOpGenericAdaptor : public detail::PadOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::PadOpGenericAdaptorBase;
 public:
-  PadOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  PadOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  PadOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : PadOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -5402,6 +6195,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = PadOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("quantization_info")};
     return ::llvm::ArrayRef(attrNames);
@@ -5430,6 +6224,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::TypedValue<::mlir::RankedTensorType> getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   mlir::tosa::PadOpQuantizationAttr getQuantizationInfoAttr();
   ::std::optional<mlir::tosa::PadOpQuantizationAttr> getQuantizationInfo();
   void setQuantizationInfoAttr(mlir::tosa::PadOpQuantizationAttr attr);
@@ -5443,7 +6244,7 @@ public:
   ::mlir::LogicalResult verifyInvariants();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -5471,12 +6272,13 @@ namespace tosa {
 
 namespace detail {
 class PowOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  PowOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  PowOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -5487,7 +6289,9 @@ class PowOpGenericAdaptor : public detail::PowOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::PowOpGenericAdaptorBase;
 public:
-  PowOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  PowOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  PowOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : PowOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -5551,7 +6355,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -5568,12 +6372,13 @@ namespace tosa {
 
 namespace detail {
 class RFFT2dOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  RFFT2dOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  RFFT2dOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -5584,7 +6389,9 @@ class RFFT2dOpGenericAdaptor : public detail::RFFT2dOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::RFFT2dOpGenericAdaptorBase;
 public:
-  RFFT2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  RFFT2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  RFFT2dOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : RFFT2dOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -5644,7 +6451,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -5661,12 +6468,13 @@ namespace tosa {
 
 namespace detail {
 class ReciprocalOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  ReciprocalOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ReciprocalOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -5677,7 +6485,9 @@ class ReciprocalOpGenericAdaptor : public detail::ReciprocalOpGenericAdaptorBase
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ReciprocalOpGenericAdaptorBase;
 public:
-  ReciprocalOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ReciprocalOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ReciprocalOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ReciprocalOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -5735,7 +6545,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -5752,14 +6562,32 @@ namespace tosa {
 
 namespace detail {
 class ReduceAllOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using axisTy = ::mlir::IntegerAttr;
+    axisTy axis;
+
+    auto getAxis() {
+      auto &propStorage = this->axis;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setAxis(const ::mlir::IntegerAttr &propValue) {
+      this->axis = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ReduceAllOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ReduceAllOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
@@ -5770,7 +6598,9 @@ class ReduceAllOpGenericAdaptor : public detail::ReduceAllOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ReduceAllOpGenericAdaptorBase;
 public:
-  ReduceAllOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ReduceAllOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ReduceAllOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ReduceAllOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -5808,6 +6638,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ReduceAllOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("axis")};
     return ::llvm::ArrayRef(attrNames);
@@ -5832,6 +6663,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
   void setAxisAttr(::mlir::IntegerAttr attr);
@@ -5847,7 +6685,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -5878,14 +6716,32 @@ namespace tosa {
 
 namespace detail {
 class ReduceAnyOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using axisTy = ::mlir::IntegerAttr;
+    axisTy axis;
+
+    auto getAxis() {
+      auto &propStorage = this->axis;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setAxis(const ::mlir::IntegerAttr &propValue) {
+      this->axis = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ReduceAnyOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ReduceAnyOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
@@ -5896,7 +6752,9 @@ class ReduceAnyOpGenericAdaptor : public detail::ReduceAnyOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ReduceAnyOpGenericAdaptorBase;
 public:
-  ReduceAnyOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ReduceAnyOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ReduceAnyOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ReduceAnyOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -5934,6 +6792,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ReduceAnyOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("axis")};
     return ::llvm::ArrayRef(attrNames);
@@ -5958,6 +6817,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
   void setAxisAttr(::mlir::IntegerAttr attr);
@@ -5973,7 +6839,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -6004,14 +6870,32 @@ namespace tosa {
 
 namespace detail {
 class ReduceMaxOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using axisTy = ::mlir::IntegerAttr;
+    axisTy axis;
+
+    auto getAxis() {
+      auto &propStorage = this->axis;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setAxis(const ::mlir::IntegerAttr &propValue) {
+      this->axis = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ReduceMaxOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ReduceMaxOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
@@ -6022,7 +6906,9 @@ class ReduceMaxOpGenericAdaptor : public detail::ReduceMaxOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ReduceMaxOpGenericAdaptorBase;
 public:
-  ReduceMaxOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ReduceMaxOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ReduceMaxOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ReduceMaxOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -6060,6 +6946,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ReduceMaxOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("axis")};
     return ::llvm::ArrayRef(attrNames);
@@ -6084,6 +6971,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
   void setAxisAttr(::mlir::IntegerAttr attr);
@@ -6099,7 +6993,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -6130,14 +7024,32 @@ namespace tosa {
 
 namespace detail {
 class ReduceMinOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using axisTy = ::mlir::IntegerAttr;
+    axisTy axis;
+
+    auto getAxis() {
+      auto &propStorage = this->axis;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setAxis(const ::mlir::IntegerAttr &propValue) {
+      this->axis = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ReduceMinOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ReduceMinOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
@@ -6148,7 +7060,9 @@ class ReduceMinOpGenericAdaptor : public detail::ReduceMinOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ReduceMinOpGenericAdaptorBase;
 public:
-  ReduceMinOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ReduceMinOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ReduceMinOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ReduceMinOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -6186,6 +7100,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ReduceMinOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("axis")};
     return ::llvm::ArrayRef(attrNames);
@@ -6210,6 +7125,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
   void setAxisAttr(::mlir::IntegerAttr attr);
@@ -6225,7 +7147,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -6256,14 +7178,32 @@ namespace tosa {
 
 namespace detail {
 class ReduceProdOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using axisTy = ::mlir::IntegerAttr;
+    axisTy axis;
+
+    auto getAxis() {
+      auto &propStorage = this->axis;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setAxis(const ::mlir::IntegerAttr &propValue) {
+      this->axis = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ReduceProdOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ReduceProdOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
@@ -6274,7 +7214,9 @@ class ReduceProdOpGenericAdaptor : public detail::ReduceProdOpGenericAdaptorBase
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ReduceProdOpGenericAdaptorBase;
 public:
-  ReduceProdOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ReduceProdOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ReduceProdOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ReduceProdOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -6312,6 +7254,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ReduceProdOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("axis")};
     return ::llvm::ArrayRef(attrNames);
@@ -6336,6 +7279,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
   void setAxisAttr(::mlir::IntegerAttr attr);
@@ -6351,7 +7301,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -6382,14 +7332,32 @@ namespace tosa {
 
 namespace detail {
 class ReduceSumOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using axisTy = ::mlir::IntegerAttr;
+    axisTy axis;
+
+    auto getAxis() {
+      auto &propStorage = this->axis;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setAxis(const ::mlir::IntegerAttr &propValue) {
+      this->axis = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ReduceSumOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ReduceSumOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
@@ -6400,7 +7368,9 @@ class ReduceSumOpGenericAdaptor : public detail::ReduceSumOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ReduceSumOpGenericAdaptorBase;
 public:
-  ReduceSumOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ReduceSumOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ReduceSumOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ReduceSumOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -6438,6 +7408,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ReduceSumOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("axis")};
     return ::llvm::ArrayRef(attrNames);
@@ -6462,6 +7433,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
   void setAxisAttr(::mlir::IntegerAttr attr);
@@ -6477,7 +7455,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -6508,14 +7486,92 @@ namespace tosa {
 
 namespace detail {
 class RescaleOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using double_roundTy = ::mlir::BoolAttr;
+    double_roundTy double_round;
+
+    auto getDoubleRound() {
+      auto &propStorage = this->double_round;
+      return propStorage.cast<::mlir::BoolAttr>();
+    }
+    void setDoubleRound(const ::mlir::BoolAttr &propValue) {
+      this->double_round = propValue;
+    }
+    using input_zpTy = ::mlir::IntegerAttr;
+    input_zpTy input_zp;
+
+    auto getInputZp() {
+      auto &propStorage = this->input_zp;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setInputZp(const ::mlir::IntegerAttr &propValue) {
+      this->input_zp = propValue;
+    }
+    using multiplierTy = ::mlir::DenseI32ArrayAttr;
+    multiplierTy multiplier;
+
+    auto getMultiplier() {
+      auto &propStorage = this->multiplier;
+      return propStorage.cast<::mlir::DenseI32ArrayAttr>();
+    }
+    void setMultiplier(const ::mlir::DenseI32ArrayAttr &propValue) {
+      this->multiplier = propValue;
+    }
+    using output_zpTy = ::mlir::IntegerAttr;
+    output_zpTy output_zp;
+
+    auto getOutputZp() {
+      auto &propStorage = this->output_zp;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setOutputZp(const ::mlir::IntegerAttr &propValue) {
+      this->output_zp = propValue;
+    }
+    using per_channelTy = ::mlir::BoolAttr;
+    per_channelTy per_channel;
+
+    auto getPerChannel() {
+      auto &propStorage = this->per_channel;
+      return propStorage.cast<::mlir::BoolAttr>();
+    }
+    void setPerChannel(const ::mlir::BoolAttr &propValue) {
+      this->per_channel = propValue;
+    }
+    using scale32Ty = ::mlir::BoolAttr;
+    scale32Ty scale32;
+
+    auto getScale32() {
+      auto &propStorage = this->scale32;
+      return propStorage.cast<::mlir::BoolAttr>();
+    }
+    void setScale32(const ::mlir::BoolAttr &propValue) {
+      this->scale32 = propValue;
+    }
+    using shiftTy = ::mlir::DenseI32ArrayAttr;
+    shiftTy shift;
+
+    auto getShift() {
+      auto &propStorage = this->shift;
+      return propStorage.cast<::mlir::DenseI32ArrayAttr>();
+    }
+    void setShift(const ::mlir::DenseI32ArrayAttr &propValue) {
+      this->shift = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  RescaleOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  RescaleOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getInputZpAttr();
   uint32_t getInputZp();
@@ -6538,7 +7594,9 @@ class RescaleOpGenericAdaptor : public detail::RescaleOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::RescaleOpGenericAdaptorBase;
 public:
-  RescaleOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  RescaleOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  RescaleOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : RescaleOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -6576,6 +7634,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = RescaleOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("double_round"), ::llvm::StringRef("input_zp"), ::llvm::StringRef("multiplier"), ::llvm::StringRef("output_zp"), ::llvm::StringRef("per_channel"), ::llvm::StringRef("scale32"), ::llvm::StringRef("shift")};
     return ::llvm::ArrayRef(attrNames);
@@ -6648,6 +7707,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::TypedValue<::mlir::TensorType> getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getInputZpAttr();
   uint32_t getInputZp();
   ::mlir::IntegerAttr getOutputZpAttr();
@@ -6683,7 +7749,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -6711,14 +7777,32 @@ namespace tosa {
 
 namespace detail {
 class ReshapeOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using new_shapeTy = ::mlir::DenseI64ArrayAttr;
+    new_shapeTy new_shape;
+
+    auto getNewShape() {
+      auto &propStorage = this->new_shape;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setNewShape(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->new_shape = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ReshapeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ReshapeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseI64ArrayAttr getNewShapeAttr();
   ::llvm::ArrayRef<int64_t> getNewShape();
@@ -6729,7 +7813,9 @@ class ReshapeOpGenericAdaptor : public detail::ReshapeOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ReshapeOpGenericAdaptorBase;
 public:
-  ReshapeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ReshapeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ReshapeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ReshapeOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -6759,7 +7845,7 @@ public:
 
   ::mlir::LogicalResult verify(::mlir::Location loc);
 };
-class ReshapeOp : public ::mlir::Op<ReshapeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::RankedTensorType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::InferShapedTypeOpInterface::Trait, ::mlir::ConditionallySpeculatable::Trait, ::mlir::OpTrait::AlwaysSpeculatableImplTrait, ::mlir::MemoryEffectOpInterface::Trait, TosaOp::Trait> {
+class ReshapeOp : public ::mlir::Op<ReshapeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::RankedTensorType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::InferTypeOpInterface::Trait, ::mlir::InferShapedTypeOpInterface::Trait, ::mlir::OpTrait::InferTensorType, ::mlir::ConditionallySpeculatable::Trait, ::mlir::OpTrait::AlwaysSpeculatableImplTrait, ::mlir::MemoryEffectOpInterface::Trait, TosaOp::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6767,6 +7853,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ReshapeOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("new_shape")};
     return ::llvm::ArrayRef(attrNames);
@@ -6791,21 +7878,31 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::TypedValue<::mlir::RankedTensorType> getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::DenseI64ArrayAttr getNewShapeAttr();
   ::llvm::ArrayRef<int64_t> getNewShape();
   void setNewShapeAttr(::mlir::DenseI64ArrayAttr attr);
   void setNewShape(::llvm::ArrayRef<int64_t> attrValue);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, ::mlir::DenseI64ArrayAttr new_shape);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value input1, ::mlir::DenseI64ArrayAttr new_shape);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::mlir::DenseI64ArrayAttr new_shape);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, ::llvm::ArrayRef<int64_t> new_shape);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value input1, ::llvm::ArrayRef<int64_t> new_shape);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::llvm::ArrayRef<int64_t> new_shape);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -6819,6 +7916,9 @@ private:
   }
 
 public:
+  /// Returns true when two result types are compatible for this op;
+  /// Method used by InferTypeOpInterface.
+  static bool isCompatibleReturnTypes(TypeRange l, TypeRange r);
 };
 } // namespace tosa
 } // namespace mlir
@@ -6833,14 +7933,62 @@ namespace tosa {
 
 namespace detail {
 class ResizeOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using borderTy = ::mlir::DenseI64ArrayAttr;
+    borderTy border;
+
+    auto getBorder() {
+      auto &propStorage = this->border;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setBorder(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->border = propValue;
+    }
+    using modeTy = ::mlir::StringAttr;
+    modeTy mode;
+
+    auto getMode() {
+      auto &propStorage = this->mode;
+      return propStorage.cast<::mlir::StringAttr>();
+    }
+    void setMode(const ::mlir::StringAttr &propValue) {
+      this->mode = propValue;
+    }
+    using offsetTy = ::mlir::DenseI64ArrayAttr;
+    offsetTy offset;
+
+    auto getOffset() {
+      auto &propStorage = this->offset;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setOffset(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->offset = propValue;
+    }
+    using scaleTy = ::mlir::DenseI64ArrayAttr;
+    scaleTy scale;
+
+    auto getScale() {
+      auto &propStorage = this->scale;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setScale(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->scale = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ResizeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ResizeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseI64ArrayAttr getScaleAttr();
   ::llvm::ArrayRef<int64_t> getScale();
@@ -6857,7 +8005,9 @@ class ResizeOpGenericAdaptor : public detail::ResizeOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ResizeOpGenericAdaptorBase;
 public:
-  ResizeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ResizeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ResizeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ResizeOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -6895,6 +8045,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ResizeOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("border"), ::llvm::StringRef("mode"), ::llvm::StringRef("offset"), ::llvm::StringRef("scale")};
     return ::llvm::ArrayRef(attrNames);
@@ -6943,6 +8094,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::DenseI64ArrayAttr getScaleAttr();
   ::llvm::ArrayRef<int64_t> getScale();
   ::mlir::DenseI64ArrayAttr getOffsetAttr();
@@ -6967,7 +8125,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -6995,14 +8153,32 @@ namespace tosa {
 
 namespace detail {
 class ReverseOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using axisTy = ::mlir::IntegerAttr;
+    axisTy axis;
+
+    auto getAxis() {
+      auto &propStorage = this->axis;
+      return propStorage.cast<::mlir::IntegerAttr>();
+    }
+    void setAxis(const ::mlir::IntegerAttr &propValue) {
+      this->axis = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  ReverseOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ReverseOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
@@ -7013,7 +8189,9 @@ class ReverseOpGenericAdaptor : public detail::ReverseOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ReverseOpGenericAdaptorBase;
 public:
-  ReverseOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ReverseOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ReverseOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ReverseOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -7051,6 +8229,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = ReverseOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("axis")};
     return ::llvm::ArrayRef(attrNames);
@@ -7075,6 +8254,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::IntegerAttr getAxisAttr();
   uint64_t getAxis();
   void setAxisAttr(::mlir::IntegerAttr attr);
@@ -7087,7 +8273,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -7115,12 +8301,13 @@ namespace tosa {
 
 namespace detail {
 class RsqrtOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  RsqrtOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  RsqrtOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -7131,7 +8318,9 @@ class RsqrtOpGenericAdaptor : public detail::RsqrtOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::RsqrtOpGenericAdaptorBase;
 public:
-  RsqrtOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  RsqrtOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  RsqrtOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : RsqrtOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -7189,7 +8378,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -7206,12 +8395,13 @@ namespace tosa {
 
 namespace detail {
 class ScatterOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  ScatterOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  ScatterOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -7222,7 +8412,9 @@ class ScatterOpGenericAdaptor : public detail::ScatterOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::ScatterOpGenericAdaptorBase;
 public:
-  ScatterOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  ScatterOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  ScatterOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : ScatterOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -7292,7 +8484,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -7309,12 +8501,13 @@ namespace tosa {
 
 namespace detail {
 class SelectOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  SelectOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  SelectOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -7325,7 +8518,9 @@ class SelectOpGenericAdaptor : public detail::SelectOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::SelectOpGenericAdaptorBase;
 public:
-  SelectOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  SelectOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  SelectOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : SelectOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -7398,7 +8593,7 @@ public:
   static ::mlir::LogicalResult canonicalize(SelectOp op, ::mlir::PatternRewriter &rewriter);
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -7415,12 +8610,13 @@ namespace tosa {
 
 namespace detail {
 class SigmoidOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  SigmoidOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  SigmoidOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -7431,7 +8627,9 @@ class SigmoidOpGenericAdaptor : public detail::SigmoidOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::SigmoidOpGenericAdaptorBase;
 public:
-  SigmoidOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  SigmoidOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  SigmoidOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : SigmoidOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -7489,7 +8687,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -7506,14 +8704,42 @@ namespace tosa {
 
 namespace detail {
 class SliceOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using sizeTy = ::mlir::DenseI64ArrayAttr;
+    sizeTy size;
+
+    auto getSize() {
+      auto &propStorage = this->size;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setSize(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->size = propValue;
+    }
+    using startTy = ::mlir::DenseI64ArrayAttr;
+    startTy start;
+
+    auto getStart() {
+      auto &propStorage = this->start;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setStart(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->start = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  SliceOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  SliceOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseI64ArrayAttr getStartAttr();
   ::llvm::ArrayRef<int64_t> getStart();
@@ -7526,7 +8752,9 @@ class SliceOpGenericAdaptor : public detail::SliceOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::SliceOpGenericAdaptorBase;
 public:
-  SliceOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  SliceOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  SliceOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : SliceOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -7564,6 +8792,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = SliceOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("size"), ::llvm::StringRef("start")};
     return ::llvm::ArrayRef(attrNames);
@@ -7596,6 +8825,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::DenseI64ArrayAttr getStartAttr();
   ::llvm::ArrayRef<int64_t> getStart();
   ::mlir::DenseI64ArrayAttr getSizeAttr();
@@ -7613,7 +8849,7 @@ public:
   ::mlir::LogicalResult verifyInvariants();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -7641,12 +8877,13 @@ namespace tosa {
 
 namespace detail {
 class SubOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  SubOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  SubOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -7657,7 +8894,9 @@ class SubOpGenericAdaptor : public detail::SubOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::SubOpGenericAdaptorBase;
 public:
-  SubOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  SubOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  SubOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : SubOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -7722,7 +8961,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -7739,12 +8978,13 @@ namespace tosa {
 
 namespace detail {
 class TableOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  TableOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  TableOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -7755,7 +8995,9 @@ class TableOpGenericAdaptor : public detail::TableOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::TableOpGenericAdaptorBase;
 public:
-  TableOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  TableOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  TableOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : TableOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -7819,7 +9061,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -7836,12 +9078,13 @@ namespace tosa {
 
 namespace detail {
 class TanhOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  TanhOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  TanhOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -7852,7 +9095,9 @@ class TanhOpGenericAdaptor : public detail::TanhOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::TanhOpGenericAdaptorBase;
 public:
-  TanhOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  TanhOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  TanhOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : TanhOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -7910,7 +9155,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
@@ -7927,14 +9172,32 @@ namespace tosa {
 
 namespace detail {
 class TileOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using multiplesTy = ::mlir::DenseI64ArrayAttr;
+    multiplesTy multiples;
+
+    auto getMultiples() {
+      auto &propStorage = this->multiples;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setMultiples(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->multiples = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  TileOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  TileOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseI64ArrayAttr getMultiplesAttr();
   ::llvm::ArrayRef<int64_t> getMultiples();
@@ -7945,7 +9208,9 @@ class TileOpGenericAdaptor : public detail::TileOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::TileOpGenericAdaptorBase;
 public:
-  TileOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  TileOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  TileOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : TileOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -7983,6 +9248,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = TileOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("multiples")};
     return ::llvm::ArrayRef(attrNames);
@@ -8007,6 +9273,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::DenseI64ArrayAttr getMultiplesAttr();
   ::llvm::ArrayRef<int64_t> getMultiples();
   void setMultiplesAttr(::mlir::DenseI64ArrayAttr attr);
@@ -8019,7 +9292,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -8047,14 +9320,62 @@ namespace tosa {
 
 namespace detail {
 class TransposeConv2DOpGenericAdaptorBase {
+public:
+  struct Properties {
+    using out_padTy = ::mlir::DenseI64ArrayAttr;
+    out_padTy out_pad;
+
+    auto getOutPad() {
+      auto &propStorage = this->out_pad;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setOutPad(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->out_pad = propValue;
+    }
+    using out_shapeTy = ::mlir::DenseI64ArrayAttr;
+    out_shapeTy out_shape;
+
+    auto getOutShape() {
+      auto &propStorage = this->out_shape;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setOutShape(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->out_shape = propValue;
+    }
+    using quantization_infoTy = mlir::tosa::ConvOpQuantizationAttr;
+    quantization_infoTy quantization_info;
+
+    auto getQuantizationInfo() {
+      auto &propStorage = this->quantization_info;
+      return propStorage.dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+    }
+    void setQuantizationInfo(const mlir::tosa::ConvOpQuantizationAttr &propValue) {
+      this->quantization_info = propValue;
+    }
+    using strideTy = ::mlir::DenseI64ArrayAttr;
+    strideTy stride;
+
+    auto getStride() {
+      auto &propStorage = this->stride;
+      return propStorage.cast<::mlir::DenseI64ArrayAttr>();
+    }
+    void setStride(const ::mlir::DenseI64ArrayAttr &propValue) {
+      this->stride = propValue;
+    }
+  };
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  Properties properties;
+  ::mlir::RegionRange odsRegions;
 public:
-  TransposeConv2DOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  TransposeConv2DOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
+  const Properties &getProperties() {
+    return properties;
+  }
+
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseI64ArrayAttr getOutPadAttr();
   ::llvm::ArrayRef<int64_t> getOutPad();
@@ -8071,7 +9392,9 @@ class TransposeConv2DOpGenericAdaptor : public detail::TransposeConv2DOpGenericA
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::TransposeConv2DOpGenericAdaptorBase;
 public:
-  TransposeConv2DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  TransposeConv2DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const Properties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  TransposeConv2DOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : TransposeConv2DOpGenericAdaptor(values, attrs, (properties ? *properties.as<Properties *>() : Properties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -8117,6 +9440,7 @@ public:
   template <typename RangeT>
   using GenericAdaptor = TransposeConv2DOpGenericAdaptor<RangeT>;
   using FoldAdaptor = GenericAdaptor<::llvm::ArrayRef<::mlir::Attribute>>;
+  using Properties = FoldAdaptor::Properties;
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("out_pad"), ::llvm::StringRef("out_shape"), ::llvm::StringRef("quantization_info"), ::llvm::StringRef("stride")};
     return ::llvm::ArrayRef(attrNames);
@@ -8169,6 +9493,13 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getOutput();
+  static ::mlir::LogicalResult setPropertiesFromAttr(Properties &prop, ::mlir::Attribute attr, ::mlir::InFlightDiagnostic *diag);
+  static ::mlir::Attribute getPropertiesAsAttr(::mlir::MLIRContext *ctx, const Properties &prop);
+  static llvm::hash_code computePropertiesHash(const Properties &prop);
+  static std::optional<mlir::Attribute> getInherentAttr(const Properties &prop, llvm::StringRef name);
+  static void setInherentAttr(Properties &prop, llvm::StringRef name, mlir::Attribute value);
+  static void populateInherentAttrs(const Properties &prop, ::mlir::NamedAttrList &attrs);
+  static ::mlir::LogicalResult verifyInherentAttrs(::mlir::OperationName opName, ::mlir::NamedAttrList &attrs, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag);
   ::mlir::DenseI64ArrayAttr getOutPadAttr();
   ::llvm::ArrayRef<int64_t> getOutPad();
   ::mlir::DenseI64ArrayAttr getStrideAttr();
@@ -8193,7 +9524,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -8221,12 +9552,13 @@ namespace tosa {
 
 namespace detail {
 class TransposeOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  TransposeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  TransposeOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -8237,7 +9569,9 @@ class TransposeOpGenericAdaptor : public detail::TransposeOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::TransposeOpGenericAdaptorBase;
 public:
-  TransposeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  TransposeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  TransposeOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : TransposeOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -8303,7 +9637,7 @@ public:
   ::mlir::LogicalResult verifyInvariants();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::OpFoldResult fold(FoldAdaptor adaptor);
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
   LogicalResult getConstantPerms(llvm::SmallVector<int64_t> &perms);
@@ -8321,12 +9655,13 @@ namespace tosa {
 
 namespace detail {
 class WhileOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  WhileOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  WhileOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -8340,7 +9675,9 @@ class WhileOpGenericAdaptor : public detail::WhileOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::WhileOpGenericAdaptorBase;
 public:
-  WhileOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  WhileOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  WhileOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : WhileOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());
@@ -8399,7 +9736,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::Region &getLoopBody();
-  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+  static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
 public:
 };
 } // namespace tosa
@@ -8415,12 +9752,13 @@ namespace tosa {
 
 namespace detail {
 class YieldOpGenericAdaptorBase {
+public:
 protected:
   ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
   ::std::optional<::mlir::OperationName> odsOpName;
+  ::mlir::RegionRange odsRegions;
 public:
-  YieldOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  YieldOpGenericAdaptorBase(::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {});
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index, unsigned odsOperandsSize);
   ::mlir::DictionaryAttr getAttributes();
@@ -8431,7 +9769,9 @@ class YieldOpGenericAdaptor : public detail::YieldOpGenericAdaptorBase {
   using ValueT = ::llvm::detail::ValueOfRange<RangeT>;
   using Base = detail::YieldOpGenericAdaptorBase;
 public:
-  YieldOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {}) : Base(attrs, regions), odsOperands(values) {}
+  YieldOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs = nullptr, const ::mlir::EmptyProperties &properties = {}, ::mlir::RegionRange regions = {}) : Base(attrs, properties, regions), odsOperands(values) {}
+
+  YieldOpGenericAdaptor(RangeT values, ::mlir::DictionaryAttr attrs, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions = {}) : YieldOpGenericAdaptor(values, attrs, (properties ? *properties.as<::mlir::EmptyProperties *>() : ::mlir::EmptyProperties{}), regions) {}
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index) {
     return Base::getODSOperandIndexAndLength(index, odsOperands.size());

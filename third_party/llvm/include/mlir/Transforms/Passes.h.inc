@@ -9,6 +9,7 @@
 #define GEN_PASS_DECL_INLINER
 #define GEN_PASS_DECL_LOCATIONSNAPSHOT
 #define GEN_PASS_DECL_LOOPINVARIANTCODEMOTION
+#define GEN_PASS_DECL_MEM2REG
 #define GEN_PASS_DECL_PRINTIRPASS
 #define GEN_PASS_DECL_PRINTOPSTATS
 #define GEN_PASS_DECL_SCCP
@@ -476,6 +477,77 @@ private:
 } // namespace impl
 #undef GEN_PASS_DEF_LOOPINVARIANTCODEMOTION
 #endif // GEN_PASS_DEF_LOOPINVARIANTCODEMOTION
+
+//===----------------------------------------------------------------------===//
+// Mem2Reg
+//===----------------------------------------------------------------------===//
+#ifdef GEN_PASS_DECL_MEM2REG
+std::unique_ptr<::mlir::Pass> createMem2Reg();
+#undef GEN_PASS_DECL_MEM2REG
+#endif // GEN_PASS_DECL_MEM2REG
+#ifdef GEN_PASS_DEF_MEM2REG
+
+namespace impl {
+  std::unique_ptr<::mlir::Pass> createMem2Reg();
+} // namespace impl
+namespace impl {
+
+template <typename DerivedT>
+class Mem2RegBase : public ::mlir::OperationPass<> {
+public:
+  using Base = Mem2RegBase;
+
+  Mem2RegBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  Mem2RegBase(const Mem2RegBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("mem2reg");
+  }
+  ::llvm::StringRef getArgument() const override { return "mem2reg"; }
+
+  ::llvm::StringRef getDescription() const override { return "Promotes memory slots into values."; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("Mem2Reg");
+  }
+  ::llvm::StringRef getName() const override { return "Mem2Reg"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(Mem2RegBase<DerivedT>)
+
+protected:
+private:
+
+  friend std::unique_ptr<::mlir::Pass> createMem2Reg() {
+    return std::make_unique<DerivedT>();
+  }
+};
+} // namespace impl
+
+std::unique_ptr<::mlir::Pass> createMem2Reg() {
+  return impl::createMem2Reg();
+}
+#undef GEN_PASS_DEF_MEM2REG
+#endif // GEN_PASS_DEF_MEM2REG
 
 //===----------------------------------------------------------------------===//
 // PrintIRPass
@@ -1103,6 +1175,23 @@ inline void registerLoopInvariantCodeMotionPass() {
 }
 
 //===----------------------------------------------------------------------===//
+// Mem2Reg Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerMem2Reg() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return createMem2Reg();
+  });
+}
+
+// Old registration code, kept for temporary backwards compatibility.
+inline void registerMem2RegPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return createMem2Reg();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // PrintIRPass Registration
 //===----------------------------------------------------------------------===//
 
@@ -1250,6 +1339,7 @@ inline void registerTransformsPasses() {
   registerInliner();
   registerLocationSnapshot();
   registerLoopInvariantCodeMotion();
+  registerMem2Reg();
   registerPrintIRPass();
   registerPrintOpStats();
   registerSCCP();
@@ -1590,6 +1680,51 @@ public:
   /// instantiation because Pass classes should only be visible by the current
   /// library.
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LoopInvariantCodeMotionBase<DerivedT>)
+
+protected:
+};
+
+template <typename DerivedT>
+class Mem2RegBase : public ::mlir::OperationPass<> {
+public:
+  using Base = Mem2RegBase;
+
+  Mem2RegBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  Mem2RegBase(const Mem2RegBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("mem2reg");
+  }
+  ::llvm::StringRef getArgument() const override { return "mem2reg"; }
+
+  ::llvm::StringRef getDescription() const override { return "Promotes memory slots into values."; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("Mem2Reg");
+  }
+  ::llvm::StringRef getName() const override { return "Mem2Reg"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(Mem2RegBase<DerivedT>)
 
 protected:
 };

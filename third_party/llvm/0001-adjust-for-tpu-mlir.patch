@@ -1,60 +1,52 @@
-From cd55f461a94ba698848bdc3da2bb7cd010ab505d Mon Sep 17 00:00:00 2001
+From 2c71e43b52de0aa79b9c05585b76cb4bb0920aeb Mon Sep 17 00:00:00 2001
 From: "pengchao.hu" <pengchao.hu@sophgo.com>
-Date: Sat, 22 Apr 2023 16:49:19 +0800
-Subject: [PATCH] adjust for tpu mlir
+Date: Mon, 15 May 2023 11:06:11 +0800
+Subject: [PATCH] adjust for tpu-mlir
 
 ---
- mlir/CMakeLists.txt                           |   2 +-
+ mlir/CMakeLists.txt                           |   4 +-
  mlir/include/mlir/CMakeLists.txt              |   4 +-
- .../mlir/Dialect/Affine/CMakeLists.txt        |   2 +-
- .../include/mlir/Dialect/Arith/CMakeLists.txt |   2 +-
- mlir/include/mlir/Dialect/CMakeLists.txt      |  20 -
- mlir/include/mlir/Dialect/Func/CMakeLists.txt |   2 +-
- .../mlir/Dialect/Linalg/CMakeLists.txt        |   2 +-
- .../mlir/Dialect/MemRef/CMakeLists.txt        |   4 +-
- mlir/include/mlir/Dialect/SCF/CMakeLists.txt  |   4 +-
- .../mlir/Dialect/SparseTensor/CMakeLists.txt  |   2 +-
- .../mlir/Dialect/Tensor/CMakeLists.txt        |   2 +-
+ mlir/include/mlir/Dialect/CMakeLists.txt      |  31 -
+ mlir/include/mlir/Dialect/Func/IR/FuncOps.td  |   4 +-
  mlir/include/mlir/Dialect/Tosa/CMakeLists.txt |   2 +-
- mlir/include/mlir/InitAllDialects.h           | 110 +--
- mlir/include/mlir/InitAllPasses.h             |  57 +-
+ .../mlir/Dialect/Tosa/IR/TosaOpBase.td        |   2 -
+ mlir/include/mlir/InitAllDialects.h           | 127 +---
+ mlir/include/mlir/InitAllPasses.h             |  59 +-
  .../Bindings/Python/RegisterEverything.cpp    |  10 +-
  mlir/lib/CAPI/CMakeLists.txt                  |   2 +-
- mlir/lib/CAPI/Dialect/CMakeLists.txt          |  99 ---
- .../CAPI/RegisterEverything/CMakeLists.txt    |   4 +-
- .../RegisterEverything/RegisterEverything.cpp |  10 +-
+ mlir/lib/CAPI/Dialect/CMakeLists.txt          | 126 ----
+ .../CAPI/RegisterEverything/CMakeLists.txt    |  14 +-
+ .../RegisterEverything/RegisterEverything.cpp |   5 -
  mlir/lib/CMakeLists.txt                       |   6 +-
- mlir/lib/Dialect/Affine/CMakeLists.txt        |   4 +-
- mlir/lib/Dialect/Arith/CMakeLists.txt         |   2 +-
- mlir/lib/Dialect/Bufferization/CMakeLists.txt |   4 +-
- mlir/lib/Dialect/CMakeLists.txt               |  21 +-
+ mlir/lib/Dialect/CMakeLists.txt               |  32 +-
  mlir/lib/Dialect/Func/CMakeLists.txt          |   2 +-
- mlir/lib/Dialect/Linalg/CMakeLists.txt        |   4 +-
- mlir/lib/Dialect/Math/CMakeLists.txt          |   2 +-
- mlir/lib/Dialect/MemRef/CMakeLists.txt        |   4 +-
- mlir/lib/Dialect/SCF/CMakeLists.txt           |   4 +-
- mlir/lib/Dialect/SparseTensor/CMakeLists.txt  |   4 +-
- mlir/lib/Dialect/Tensor/CMakeLists.txt        |   4 +-
- mlir/lib/Dialect/Tosa/CMakeLists.txt          |   4 +-
+ mlir/lib/Dialect/Func/IR/CMakeLists.txt       |   2 -
+ mlir/lib/Dialect/Func/IR/FuncOps.cpp          |   9 -
+ mlir/lib/Dialect/Tosa/CMakeLists.txt          |   5 +-
+ .../Dialect/Tosa/IR/TosaCanonicalizations.cpp |  53 +-
+ mlir/lib/Dialect/Tosa/IR/TosaOps.cpp          |   1 -
  mlir/lib/IR/Verifier.cpp                      |   8 +-
  mlir/lib/Rewrite/CMakeLists.txt               |   2 +-
- mlir/lib/Rewrite/FrozenRewritePatternSet.cpp  |   3 +-
- mlir/lib/Tools/CMakeLists.txt                 |   8 +-
+ mlir/lib/Rewrite/FrozenRewritePatternSet.cpp  |   7 +-
+ mlir/lib/Tools/CMakeLists.txt                 |   7 -
  mlir/python/CMakeLists.txt                    | 640 +++++++++---------
- mlir/python/mlir/ir.py                        |  21 +
+ mlir/python/mlir/ir.py                        |  20 +
  mlir/tools/CMakeLists.txt                     |  18 +-
+ mlir/tools/mlir-opt/CMakeLists.txt            |   1 -
  mlir/tools/mlir-opt/mlir-opt.cpp              |   3 +-
- 40 files changed, 410 insertions(+), 698 deletions(-)
+ 30 files changed, 387 insertions(+), 819 deletions(-)
 
 diff --git a/mlir/CMakeLists.txt b/mlir/CMakeLists.txt
-index c9b0d53bc3e9..a69ae63cfdd1 100644
+index d91d1b105da4..5af7f05767c1 100644
 --- a/mlir/CMakeLists.txt
 +++ b/mlir/CMakeLists.txt
-@@ -169,7 +169,7 @@ include_directories( ${MLIR_INCLUDE_DIR})
+@@ -161,8 +161,8 @@ include_directories( ${MLIR_INCLUDE_DIR})
+ # MLIR_TABLEGEN_EXE in PARENT_SCOPE which gets lost if that folder is included
  # from another directory like tools
  add_subdirectory(tools/mlir-tblgen)
- add_subdirectory(tools/mlir-linalg-ods-gen)
+-add_subdirectory(tools/mlir-linalg-ods-gen)
 -add_subdirectory(tools/mlir-pdll)
++# add_subdirectory(tools/mlir-linalg-ods-gen)
 +# add_subdirectory(tools/mlir-pdll)
  
  set(MLIR_TABLEGEN_EXE "${MLIR_TABLEGEN_EXE}" CACHE INTERNAL "")
@@ -72,122 +64,77 @@ index 1e31d7c29e1e..e166510d2512 100644
 -add_subdirectory(Reducer)
 +# add_subdirectory(Reducer)
  add_subdirectory(Transforms)
-diff --git a/mlir/include/mlir/Dialect/Affine/CMakeLists.txt b/mlir/include/mlir/Dialect/Affine/CMakeLists.txt
-index fe1b372f6e03..968d45a5299b 100644
---- a/mlir/include/mlir/Dialect/Affine/CMakeLists.txt
-+++ b/mlir/include/mlir/Dialect/Affine/CMakeLists.txt
-@@ -1,5 +1,5 @@
- add_subdirectory(IR)
--add_subdirectory(TransformOps)
-+#add_subdirectory(TransformOps)
- 
- set(LLVM_TARGET_DEFINITIONS Passes.td)
- mlir_tablegen(Passes.h.inc -gen-pass-decls -name Affine)
-diff --git a/mlir/include/mlir/Dialect/Arith/CMakeLists.txt b/mlir/include/mlir/Dialect/Arith/CMakeLists.txt
-index 9f57627c321f..68ac6312e7a3 100644
---- a/mlir/include/mlir/Dialect/Arith/CMakeLists.txt
-+++ b/mlir/include/mlir/Dialect/Arith/CMakeLists.txt
-@@ -1,2 +1,2 @@
- add_subdirectory(IR)
--add_subdirectory(Transforms)
-+# add_subdirectory(Transforms)
 diff --git a/mlir/include/mlir/Dialect/CMakeLists.txt b/mlir/include/mlir/Dialect/CMakeLists.txt
-index 58cc690d9a78..4ebdebba265a 100644
+index 58cc690d9a78..e974b4b9aea3 100644
 --- a/mlir/include/mlir/Dialect/CMakeLists.txt
 +++ b/mlir/include/mlir/Dialect/CMakeLists.txt
-@@ -1,37 +1,17 @@
+@@ -1,37 +1,6 @@
 -add_subdirectory(AMDGPU)
 -add_subdirectory(AMX)
- add_subdirectory(Affine)
- add_subdirectory(Arith)
+-add_subdirectory(Affine)
+-add_subdirectory(Arith)
 -add_subdirectory(ArmNeon)
 -add_subdirectory(ArmSVE)
 -add_subdirectory(Async)
- add_subdirectory(Bufferization)
- add_subdirectory(Complex)
- add_subdirectory(ControlFlow)
+-add_subdirectory(Bufferization)
+-add_subdirectory(Complex)
+-add_subdirectory(ControlFlow)
 -add_subdirectory(DLTI)
 -add_subdirectory(EmitC)
  add_subdirectory(Func)
 -add_subdirectory(GPU)
 -add_subdirectory(Index)
--add_subdirectory(IRDL)
+ add_subdirectory(IRDL)
 -add_subdirectory(LLVMIR)
- add_subdirectory(Linalg)
+-add_subdirectory(Linalg)
 -add_subdirectory(MLProgram)
- add_subdirectory(Math)
- add_subdirectory(MemRef)
+-add_subdirectory(Math)
+-add_subdirectory(MemRef)
 -add_subdirectory(NVGPU)
 -add_subdirectory(OpenACC)
 -add_subdirectory(OpenMP)
  add_subdirectory(PDL)
  add_subdirectory(PDLInterp)
  add_subdirectory(Quant)
- add_subdirectory(SCF)
+-add_subdirectory(SCF)
 -add_subdirectory(SPIRV)
 -add_subdirectory(Shape)
- add_subdirectory(SparseTensor)
- add_subdirectory(Tensor)
+-add_subdirectory(SparseTensor)
+-add_subdirectory(Tensor)
  add_subdirectory(Tosa)
 -add_subdirectory(Transform)
- add_subdirectory(Utils)
+-add_subdirectory(Utils)
 -add_subdirectory(Vector)
 -add_subdirectory(X86Vector)
-diff --git a/mlir/include/mlir/Dialect/Func/CMakeLists.txt b/mlir/include/mlir/Dialect/Func/CMakeLists.txt
-index 9f57627c321f..68ac6312e7a3 100644
---- a/mlir/include/mlir/Dialect/Func/CMakeLists.txt
-+++ b/mlir/include/mlir/Dialect/Func/CMakeLists.txt
-@@ -1,2 +1,2 @@
- add_subdirectory(IR)
--add_subdirectory(Transforms)
-+# add_subdirectory(Transforms)
-diff --git a/mlir/include/mlir/Dialect/Linalg/CMakeLists.txt b/mlir/include/mlir/Dialect/Linalg/CMakeLists.txt
-index f0a486df9842..72a2c066680b 100644
---- a/mlir/include/mlir/Dialect/Linalg/CMakeLists.txt
-+++ b/mlir/include/mlir/Dialect/Linalg/CMakeLists.txt
-@@ -1,5 +1,5 @@
- add_subdirectory(IR)
--add_subdirectory(TransformOps)
-+#add_subdirectory(TransformOps)
+diff --git a/mlir/include/mlir/Dialect/Func/IR/FuncOps.td b/mlir/include/mlir/Dialect/Func/IR/FuncOps.td
+index 69dc8d32c3c6..19180e767cda 100644
+--- a/mlir/include/mlir/Dialect/Func/IR/FuncOps.td
++++ b/mlir/include/mlir/Dialect/Func/IR/FuncOps.td
+@@ -13,7 +13,6 @@ include "mlir/IR/EnumAttr.td"
+ include "mlir/IR/OpAsmInterface.td"
+ include "mlir/IR/SymbolInterfaces.td"
+ include "mlir/Interfaces/CallInterfaces.td"
+-include "mlir/Interfaces/ControlFlowInterfaces.td"
+ include "mlir/IR/FunctionInterfaces.td"
+ include "mlir/Interfaces/InferTypeOpInterface.td"
+ include "mlir/Interfaces/SideEffectInterfaces.td"
+@@ -21,7 +20,6 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
+ def Func_Dialect : Dialect {
+   let name = "func";
+   let cppNamespace = "::mlir::func";
+-  let dependentDialects = ["cf::ControlFlowDialect"];
+   let hasConstantMaterializer = 1;
+   let usePropertiesForAttributes = 1;
+ }
+@@ -353,7 +351,7 @@ def FuncOp : Func_Op<"func", [
+ //===----------------------------------------------------------------------===//
  
- set(LLVM_TARGET_DEFINITIONS Passes.td)
- mlir_tablegen(Passes.h.inc -gen-pass-decls -name Linalg)
-diff --git a/mlir/include/mlir/Dialect/MemRef/CMakeLists.txt b/mlir/include/mlir/Dialect/MemRef/CMakeLists.txt
-index 660deb21479d..22bc6adea9db 100644
---- a/mlir/include/mlir/Dialect/MemRef/CMakeLists.txt
-+++ b/mlir/include/mlir/Dialect/MemRef/CMakeLists.txt
-@@ -1,3 +1,3 @@
- add_subdirectory(IR)
--add_subdirectory(TransformOps)
--add_subdirectory(Transforms)
-+# add_subdirectory(TransformOps)
-+# add_subdirectory(Transforms)
-diff --git a/mlir/include/mlir/Dialect/SCF/CMakeLists.txt b/mlir/include/mlir/Dialect/SCF/CMakeLists.txt
-index 660deb21479d..22bc6adea9db 100644
---- a/mlir/include/mlir/Dialect/SCF/CMakeLists.txt
-+++ b/mlir/include/mlir/Dialect/SCF/CMakeLists.txt
-@@ -1,3 +1,3 @@
- add_subdirectory(IR)
--add_subdirectory(TransformOps)
--add_subdirectory(Transforms)
-+# add_subdirectory(TransformOps)
-+# add_subdirectory(Transforms)
-diff --git a/mlir/include/mlir/Dialect/SparseTensor/CMakeLists.txt b/mlir/include/mlir/Dialect/SparseTensor/CMakeLists.txt
-index 9f57627c321f..68ac6312e7a3 100644
---- a/mlir/include/mlir/Dialect/SparseTensor/CMakeLists.txt
-+++ b/mlir/include/mlir/Dialect/SparseTensor/CMakeLists.txt
-@@ -1,2 +1,2 @@
- add_subdirectory(IR)
--add_subdirectory(Transforms)
-+# add_subdirectory(Transforms)
-diff --git a/mlir/include/mlir/Dialect/Tensor/CMakeLists.txt b/mlir/include/mlir/Dialect/Tensor/CMakeLists.txt
-index 9f57627c321f..68ac6312e7a3 100644
---- a/mlir/include/mlir/Dialect/Tensor/CMakeLists.txt
-+++ b/mlir/include/mlir/Dialect/Tensor/CMakeLists.txt
-@@ -1,2 +1,2 @@
- add_subdirectory(IR)
--add_subdirectory(Transforms)
-+# add_subdirectory(Transforms)
+ def ReturnOp : Func_Op<"return", [Pure, HasParent<"FuncOp">,
+-                                MemRefsNormalizable, ReturnLike, Terminator]> {
++                                MemRefsNormalizable, Terminator]> {
+   let summary = "Function return operation";
+   let description = [{
+     The `func.return` operation represents a return operation within a function.
 diff --git a/mlir/include/mlir/Dialect/Tosa/CMakeLists.txt b/mlir/include/mlir/Dialect/Tosa/CMakeLists.txt
 index 9f57627c321f..218c20c8819f 100644
 --- a/mlir/include/mlir/Dialect/Tosa/CMakeLists.txt
@@ -196,48 +143,61 @@ index 9f57627c321f..218c20c8819f 100644
  add_subdirectory(IR)
 -add_subdirectory(Transforms)
 +#add_subdirectory(Transforms)
+diff --git a/mlir/include/mlir/Dialect/Tosa/IR/TosaOpBase.td b/mlir/include/mlir/Dialect/Tosa/IR/TosaOpBase.td
+index 5d25f8d0a404..06e12085e584 100644
+--- a/mlir/include/mlir/Dialect/Tosa/IR/TosaOpBase.td
++++ b/mlir/include/mlir/Dialect/Tosa/IR/TosaOpBase.td
+@@ -40,8 +40,6 @@ def Tosa_Dialect : Dialect {
+     there will be tools to lower from the ML frameworks into TOSA.
+   }];
+ 
+-  let dependentDialects = ["tensor::TensorDialect"];
+-
+   let cppNamespace = "mlir::tosa";
+   let hasConstantMaterializer = 1;
+   let useDefaultAttributePrinterParser = 1;
 diff --git a/mlir/include/mlir/InitAllDialects.h b/mlir/include/mlir/InitAllDialects.h
-index 578594eee9df..7534068026db 100644
+index e0f154824d8e..b39ea292dd0b 100644
 --- a/mlir/include/mlir/InitAllDialects.h
 +++ b/mlir/include/mlir/InitAllDialects.h
-@@ -14,70 +14,20 @@
+@@ -14,71 +14,12 @@
  #ifndef MLIR_INITALLDIALECTS_H_
  #define MLIR_INITALLDIALECTS_H_
  
--#include "mlir/Dialect/AMDGPU/AMDGPUDialect.h"
+-#include "mlir/Dialect/AMDGPU/IR/AMDGPUDialect.h"
 -#include "mlir/Dialect/AMX/AMXDialect.h"
- #include "mlir/Dialect/Affine/IR/AffineOps.h"
+-#include "mlir/Dialect/Affine/IR/AffineOps.h"
 -#include "mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h"
 -#include "mlir/Dialect/Affine/TransformOps/AffineTransformOps.h"
- #include "mlir/Dialect/Arith/IR/Arith.h"
+-#include "mlir/Dialect/Arith/IR/Arith.h"
 -#include "mlir/Dialect/Arith/IR/ValueBoundsOpInterfaceImpl.h"
 -#include "mlir/Dialect/Arith/Transforms/BufferizableOpInterfaceImpl.h"
 -#include "mlir/Dialect/ArmNeon/ArmNeonDialect.h"
 -#include "mlir/Dialect/ArmSVE/ArmSVEDialect.h"
 -#include "mlir/Dialect/Async/IR/Async.h"
- #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+-#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 -#include "mlir/Dialect/Bufferization/TransformOps/BufferizationTransformOps.h"
 -#include "mlir/Dialect/Bufferization/Transforms/FuncBufferizableOpInterfaceImpl.h"
- #include "mlir/Dialect/Complex/IR/Complex.h"
- #include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
+-#include "mlir/Dialect/Complex/IR/Complex.h"
+-#include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
 -#include "mlir/Dialect/DLTI/DLTI.h"
 -#include "mlir/Dialect/EmitC/IR/EmitC.h"
  #include "mlir/Dialect/Func/IR/FuncOps.h"
 -#include "mlir/Dialect/GPU/IR/GPUDialect.h"
 -#include "mlir/Dialect/GPU/TransformOps/GPUTransformOps.h"
--#include "mlir/Dialect/IRDL/IR/IRDL.h"
+ #include "mlir/Dialect/IRDL/IR/IRDL.h"
 -#include "mlir/Dialect/Index/IR/IndexDialect.h"
 -#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 -#include "mlir/Dialect/LLVMIR/NVVMDialect.h"
 -#include "mlir/Dialect/LLVMIR/ROCDLDialect.h"
- #include "mlir/Dialect/Linalg/IR/Linalg.h"
+-#include "mlir/Dialect/Linalg/IR/Linalg.h"
 -#include "mlir/Dialect/Linalg/IR/ValueBoundsOpInterfaceImpl.h"
--#include "mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.h"
+-#include "mlir/Dialect/Linalg/TransformOps/DialectExtension.h"
 -#include "mlir/Dialect/Linalg/Transforms/BufferizableOpInterfaceImpl.h"
 -#include "mlir/Dialect/Linalg/Transforms/TilingInterfaceImpl.h"
 -#include "mlir/Dialect/MLProgram/IR/MLProgram.h"
- #include "mlir/Dialect/Math/IR/Math.h"
- #include "mlir/Dialect/MemRef/IR/MemRef.h"
+-#include "mlir/Dialect/Math/IR/Math.h"
+-#include "mlir/Dialect/MemRef/IR/MemRef.h"
 -#include "mlir/Dialect/MemRef/IR/ValueBoundsOpInterfaceImpl.h"
 -#include "mlir/Dialect/MemRef/TransformOps/MemRefTransformOps.h"
 -#include "mlir/Dialect/MemRef/Transforms/BufferizableOpInterfaceImpl.h"
@@ -245,22 +205,23 @@ index 578594eee9df..7534068026db 100644
 -#include "mlir/Dialect/NVGPU/IR/NVGPUDialect.h"
 -#include "mlir/Dialect/OpenACC/OpenACC.h"
 -#include "mlir/Dialect/OpenMP/OpenMPDialect.h"
--#include "mlir/Dialect/PDL/IR/PDL.h"
--#include "mlir/Dialect/PDLInterp/IR/PDLInterp.h"
+ #include "mlir/Dialect/PDL/IR/PDL.h"
+ #include "mlir/Dialect/PDLInterp/IR/PDLInterp.h"
  #include "mlir/Dialect/Quant/QuantOps.h"
- #include "mlir/Dialect/SCF/IR/SCF.h"
+-#include "mlir/Dialect/SCF/IR/SCF.h"
 -#include "mlir/Dialect/SCF/IR/ValueBoundsOpInterfaceImpl.h"
 -#include "mlir/Dialect/SCF/TransformOps/SCFTransformOps.h"
 -#include "mlir/Dialect/SCF/Transforms/BufferizableOpInterfaceImpl.h"
 -#include "mlir/Dialect/SPIRV/IR/SPIRVDialect.h"
 -#include "mlir/Dialect/Shape/IR/Shape.h"
 -#include "mlir/Dialect/Shape/Transforms/BufferizableOpInterfaceImpl.h"
- #include "mlir/Dialect/SparseTensor/IR/SparseTensor.h"
+-#include "mlir/Dialect/SparseTensor/IR/SparseTensor.h"
 -#include "mlir/Dialect/SparseTensor/Transforms/BufferizableOpInterfaceImpl.h"
- #include "mlir/Dialect/Tensor/IR/Tensor.h"
+-#include "mlir/Dialect/Tensor/IR/Tensor.h"
 -#include "mlir/Dialect/Tensor/IR/TensorInferTypeOpInterfaceImpl.h"
 -#include "mlir/Dialect/Tensor/IR/TensorTilingInterfaceImpl.h"
 -#include "mlir/Dialect/Tensor/IR/ValueBoundsOpInterfaceImpl.h"
+-#include "mlir/Dialect/Tensor/TransformOps/TensorTransformOps.h"
 -#include "mlir/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.h"
  #include "mlir/Dialect/Tosa/IR/TosaOps.h"
 -#include "mlir/Dialect/Transform/IR/TransformDialect.h"
@@ -271,37 +232,37 @@ index 578594eee9df..7534068026db 100644
  #include "mlir/IR/Dialect.h"
  
  namespace mlir {
-@@ -85,76 +35,20 @@ namespace mlir {
+@@ -86,77 +27,13 @@ namespace mlir {
  /// Add all the MLIR dialects to the provided registry.
  inline void registerAllDialects(DialectRegistry &registry) {
    // clang-format off
 -  registry.insert<acc::OpenACCDialect,
-+  registry.insert<
-                   affine::AffineDialect,
-                   arith::ArithDialect,
+-                  affine::AffineDialect,
+-                  arith::ArithDialect,
 -                  amdgpu::AMDGPUDialect,
 -                  amx::AMXDialect,
 -                  arm_neon::ArmNeonDialect,
 -                  async::AsyncDialect,
-                   bufferization::BufferizationDialect,
-                   cf::ControlFlowDialect,
-                   complex::ComplexDialect,
+-                  bufferization::BufferizationDialect,
+-                  cf::ControlFlowDialect,
+-                  complex::ComplexDialect,
 -                  DLTIDialect,
 -                  emitc::EmitCDialect,
-                   func::FuncDialect,
+-                  func::FuncDialect,
 -                  gpu::GPUDialect,
 -                  index::IndexDialect,
--                  irdl::IRDLDialect,
++  registry.insert<func::FuncDialect,
+                   irdl::IRDLDialect,
 -                  LLVM::LLVMDialect,
-                   linalg::LinalgDialect,
+-                  linalg::LinalgDialect,
 -                  math::MathDialect,
-                   memref::MemRefDialect,
+-                  memref::MemRefDialect,
 -                  ml_program::MLProgramDialect,
 -                  nvgpu::NVGPUDialect,
-                   scf::SCFDialect,
+-                  scf::SCFDialect,
 -                  omp::OpenMPDialect,
--                  pdl::PDLDialect,
--                  pdl_interp::PDLInterpDialect,
+                   pdl::PDLDialect,
+                   pdl_interp::PDLInterpDialect,
                    quant::QuantizationDialect,
 -                  spirv::SPIRVDialect,
 -                  arm_sve::ArmSVEDialect,
@@ -310,7 +271,7 @@ index 578594eee9df..7534068026db 100644
 -                  ROCDL::ROCDLDialect,
 -                  shape::ShapeDialect,
 -                  sparse_tensor::SparseTensorDialect,
-                   tensor::TensorDialect,
+-                  tensor::TensorDialect,
 -                  transform::TransformDialect,
 -                  tosa::TosaDialect,
 -                  x86vector::X86VectorDialect>();
@@ -324,6 +285,7 @@ index 578594eee9df..7534068026db 100644
 -  linalg::registerTransformDialectExtension(registry);
 -  memref::registerTransformDialectExtension(registry);
 -  scf::registerTransformDialectExtension(registry);
+-  tensor::registerTransformDialectExtension(registry);
 -  vector::registerTransformDialectExtension(registry);
 -
 -  // Register all external models.
@@ -351,14 +313,15 @@ index 578594eee9df..7534068026db 100644
  
  /// Append all the MLIR dialects to the registry contained in the given context.
 diff --git a/mlir/include/mlir/InitAllPasses.h b/mlir/include/mlir/InitAllPasses.h
-index 216fc1232371..42068bd3dee1 100644
+index a42983d7fe03..42068bd3dee1 100644
 --- a/mlir/include/mlir/InitAllPasses.h
 +++ b/mlir/include/mlir/InitAllPasses.h
-@@ -14,30 +14,6 @@
+@@ -14,31 +14,6 @@
  #ifndef MLIR_INITALLPASSES_H_
  #define MLIR_INITALLPASSES_H_
  
 -#include "mlir/Conversion/Passes.h"
+-#include "mlir/Dialect/AMDGPU/Transforms/Passes.h"
 -#include "mlir/Dialect/Affine/Passes.h"
 -#include "mlir/Dialect/Arith/Transforms/Passes.h"
 -#include "mlir/Dialect/Async/Passes.h"
@@ -385,7 +348,7 @@ index 216fc1232371..42068bd3dee1 100644
  namespace mlir {
  
  // This function may be called to register the MLIR passes with the
-@@ -47,38 +23,7 @@ namespace mlir {
+@@ -48,39 +23,7 @@ namespace mlir {
  // registry, since it would already be calling the creation routine of the
  // individual passes.
  // The global registry is interesting to interact with the command-line tools.
@@ -398,6 +361,7 @@ index 216fc1232371..42068bd3dee1 100644
 -
 -  // Dialect passes
 -  affine::registerAffinePasses();
+-  amdgpu::registerAMDGPUPasses();
 -  registerAsyncPasses();
 -  arith::registerArithPasses();
 -  bufferization::registerBufferizationPasses();
@@ -465,10 +429,10 @@ index 052eff327c73..f1bfeb8a8bba 100644
  add_subdirectory(IR)
  add_subdirectory(RegisterEverything)
 diff --git a/mlir/lib/CAPI/Dialect/CMakeLists.txt b/mlir/lib/CAPI/Dialect/CMakeLists.txt
-index 6c8454a79aa2..8fe527445c90 100644
+index 6c8454a79aa2..5188fd025c75 100644
 --- a/mlir/lib/CAPI/Dialect/CMakeLists.txt
 +++ b/mlir/lib/CAPI/Dialect/CMakeLists.txt
-@@ -1,17 +1,3 @@
+@@ -1,102 +1,3 @@
 -add_mlir_upstream_c_api_library(MLIRCAPIAsync
 -  Async.cpp
 -  AsyncPasses.cpp
@@ -483,13 +447,16 @@ index 6c8454a79aa2..8fe527445c90 100644
 -  MLIRAsyncTransforms
 -  MLIRPass
 -)
- 
- add_mlir_upstream_c_api_library(MLIRCAPIControlFlow
-   ControlFlow.cpp
-@@ -22,52 +8,6 @@ add_mlir_upstream_c_api_library(MLIRCAPIControlFlow
-   MLIRControlFlowDialect
- )
- 
+-
+-add_mlir_upstream_c_api_library(MLIRCAPIControlFlow
+-  ControlFlow.cpp
+-
+-  PARTIAL_SOURCES_INTENDED
+-  LINK_LIBS PUBLIC
+-  MLIRCAPIIR
+-  MLIRControlFlowDialect
+-)
+-
 -add_mlir_upstream_c_api_library(MLIRCAPIGPU
 -  GPU.cpp
 -  GPUPasses.cpp
@@ -536,13 +503,16 @@ index 6c8454a79aa2..8fe527445c90 100644
 -  MLIRCAPIIR
 -  MLIRMLProgramDialect
 -)
- 
- add_mlir_upstream_c_api_library(MLIRCAPISCF
-   SCF.cpp
-@@ -78,26 +18,6 @@ add_mlir_upstream_c_api_library(MLIRCAPISCF
-   MLIRSCFDialect
- )
- 
+-
+-add_mlir_upstream_c_api_library(MLIRCAPISCF
+-  SCF.cpp
+-
+-  PARTIAL_SOURCES_INTENDED
+-  LINK_LIBS PUBLIC
+-  MLIRCAPIIR
+-  MLIRSCFDialect
+-)
+-
 -add_mlir_upstream_c_api_library(MLIRCAPIShape
 -  Shape.cpp
 -
@@ -562,14 +532,21 @@ index 6c8454a79aa2..8fe527445c90 100644
 -  MLIRSparseTensorDialect
 -  MLIRSparseTensorTransforms
 -)
--
+ 
  add_mlir_upstream_c_api_library(MLIRCAPIFunc
    Func.cpp
- 
-@@ -115,16 +35,6 @@ add_mlir_upstream_c_api_library(MLIRCAPITensor
-   MLIRCAPIIR
-   MLIRTensorDialect
+@@ -107,24 +8,6 @@ add_mlir_upstream_c_api_library(MLIRCAPIFunc
+   MLIRFuncDialect
  )
+ 
+-add_mlir_upstream_c_api_library(MLIRCAPITensor
+-  Tensor.cpp
+-
+-  PARTIAL_SOURCES_INTENDED
+-  LINK_LIBS PUBLIC
+-  MLIRCAPIIR
+-  MLIRTensorDialect
+-)
 -
 -add_mlir_upstream_c_api_library(MLIRCAPITransformDialect
 -  Transform.cpp
@@ -583,7 +560,7 @@ index 6c8454a79aa2..8fe527445c90 100644
  add_mlir_upstream_c_api_library(MLIRCAPIQuant
    Quant.cpp
  
-@@ -133,12 +43,3 @@ add_mlir_upstream_c_api_library(MLIRCAPIQuant
+@@ -133,12 +16,3 @@ add_mlir_upstream_c_api_library(MLIRCAPIQuant
    MLIRCAPIIR
    MLIRQuantDialect
  )
@@ -597,32 +574,44 @@ index 6c8454a79aa2..8fe527445c90 100644
 -  MLIRPDLDialect
 -)
 diff --git a/mlir/lib/CAPI/RegisterEverything/CMakeLists.txt b/mlir/lib/CAPI/RegisterEverything/CMakeLists.txt
-index 55fe49bcef7b..541cc4c83a05 100644
+index 55fe49bcef7b..5ca87d22c26a 100644
 --- a/mlir/lib/CAPI/RegisterEverything/CMakeLists.txt
 +++ b/mlir/lib/CAPI/RegisterEverything/CMakeLists.txt
-@@ -10,8 +10,8 @@ add_mlir_upstream_c_api_library(MLIRCAPIRegisterEverything
-   ${translation_libs}
-   ${conversion_libs}
+@@ -1,17 +1,17 @@
+ # Dialect registration.
+ get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
+-get_property(translation_libs GLOBAL PROPERTY MLIR_TRANSLATION_LIBS)
+-get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
++#get_property(translation_libs GLOBAL PROPERTY MLIR_TRANSLATION_LIBS)
++#get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
+ add_mlir_upstream_c_api_library(MLIRCAPIRegisterEverything
+   RegisterEverything.cpp
+ 
+   LINK_LIBS PUBLIC
+   ${dialect_libs}
+-  ${translation_libs}
+-  ${conversion_libs}
++  #${translation_libs}
++  #${conversion_libs}
  
 -  MLIRBuiltinToLLVMIRTranslation
 +  #MLIRBuiltinToLLVMIRTranslation
    MLIRCAPIIR
 -  MLIRLLVMToLLVMIRTranslation
+-  MLIRCAPITransforms
 +  #MLIRLLVMToLLVMIRTranslation
-   MLIRCAPITransforms
++  #MLIRCAPITransforms
  )
 diff --git a/mlir/lib/CAPI/RegisterEverything/RegisterEverything.cpp b/mlir/lib/CAPI/RegisterEverything/RegisterEverything.cpp
-index e4a7516437cb..d9ea9853f407 100644
+index e4a7516437cb..865e2de35fcc 100644
 --- a/mlir/lib/CAPI/RegisterEverything/RegisterEverything.cpp
 +++ b/mlir/lib/CAPI/RegisterEverything/RegisterEverything.cpp
-@@ -11,17 +11,17 @@
+@@ -11,17 +11,12 @@
  #include "mlir/CAPI/IR.h"
  #include "mlir/InitAllDialects.h"
  #include "mlir/InitAllPasses.h"
 -#include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 -#include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
-+// #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
-+// #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
  
  void mlirRegisterAllDialects(MlirDialectRegistry registry) {
    mlir::registerAllDialects(*unwrap(registry));
@@ -632,9 +621,6 @@ index e4a7516437cb..d9ea9853f407 100644
 -  auto &ctx = *unwrap(context);
 -  mlir::registerBuiltinDialectTranslation(ctx);
 -  mlir::registerLLVMDialectTranslation(ctx);
-+  // auto &ctx = *unwrap(context);
-+  // mlir::registerBuiltinDialectTranslation(ctx);
-+  // mlir::registerLLVMDialectTranslation(ctx);
  }
  
  void mlirRegisterAllPasses() { mlir::registerAllPasses(); }
@@ -664,62 +650,31 @@ index c71664a3f006..3503d15c51b0 100644
  add_subdirectory(Tools)
  add_subdirectory(Transforms)
  add_subdirectory(ExecutionEngine)
-diff --git a/mlir/lib/Dialect/Affine/CMakeLists.txt b/mlir/lib/Dialect/Affine/CMakeLists.txt
-index a981040c761d..a9d49f879b0d 100644
---- a/mlir/lib/Dialect/Affine/CMakeLists.txt
-+++ b/mlir/lib/Dialect/Affine/CMakeLists.txt
-@@ -1,5 +1,5 @@
- add_subdirectory(Analysis)
- add_subdirectory(IR)
--add_subdirectory(Transforms)
--add_subdirectory(TransformOps)
-+# add_subdirectory(Transforms)
-+# add_subdirectory(TransformOps)
- add_subdirectory(Utils)
-diff --git a/mlir/lib/Dialect/Arith/CMakeLists.txt b/mlir/lib/Dialect/Arith/CMakeLists.txt
-index 31167e6af908..bef3bf5230b2 100644
---- a/mlir/lib/Dialect/Arith/CMakeLists.txt
-+++ b/mlir/lib/Dialect/Arith/CMakeLists.txt
-@@ -1,3 +1,3 @@
- add_subdirectory(IR)
--add_subdirectory(Transforms)
-+# add_subdirectory(Transforms)
- add_subdirectory(Utils)
-diff --git a/mlir/lib/Dialect/Bufferization/CMakeLists.txt b/mlir/lib/Dialect/Bufferization/CMakeLists.txt
-index 660deb21479d..22bc6adea9db 100644
---- a/mlir/lib/Dialect/Bufferization/CMakeLists.txt
-+++ b/mlir/lib/Dialect/Bufferization/CMakeLists.txt
-@@ -1,3 +1,3 @@
- add_subdirectory(IR)
--add_subdirectory(TransformOps)
--add_subdirectory(Transforms)
-+# add_subdirectory(TransformOps)
-+# add_subdirectory(Transforms)
 diff --git a/mlir/lib/Dialect/CMakeLists.txt b/mlir/lib/Dialect/CMakeLists.txt
-index 6f01ea7a1da1..32c116b1ebe1 100644
+index 6f01ea7a1da1..9d1c7ff3b7e2 100644
 --- a/mlir/lib/Dialect/CMakeLists.txt
 +++ b/mlir/lib/Dialect/CMakeLists.txt
-@@ -1,40 +1,21 @@
- add_subdirectory(Affine)
+@@ -1,40 +1,10 @@
+-add_subdirectory(Affine)
 -add_subdirectory(AMDGPU)
- add_subdirectory(Arith)
+-add_subdirectory(Arith)
 -add_subdirectory(ArmNeon)
 -add_subdirectory(ArmSVE)
 -add_subdirectory(Async)
 -add_subdirectory(AMX)
- add_subdirectory(Bufferization)
- add_subdirectory(Complex)
- add_subdirectory(ControlFlow)
+-add_subdirectory(Bufferization)
+-add_subdirectory(Complex)
+-add_subdirectory(ControlFlow)
 -add_subdirectory(DLTI)
 -add_subdirectory(EmitC)
  add_subdirectory(Func)
 -add_subdirectory(GPU)
 -add_subdirectory(Index)
--add_subdirectory(IRDL)
- add_subdirectory(Linalg)
+ add_subdirectory(IRDL)
+-add_subdirectory(Linalg)
 -add_subdirectory(LLVMIR)
- add_subdirectory(Math)
- add_subdirectory(MemRef)
+-add_subdirectory(Math)
+-add_subdirectory(MemRef)
 -add_subdirectory(MLProgram)
 -add_subdirectory(NVGPU)
 -add_subdirectory(OpenACC)
@@ -727,14 +682,14 @@ index 6f01ea7a1da1..32c116b1ebe1 100644
  add_subdirectory(PDL)
  add_subdirectory(PDLInterp)
  add_subdirectory(Quant)
- add_subdirectory(SCF)
+-add_subdirectory(SCF)
 -add_subdirectory(Shape)
- add_subdirectory(SparseTensor)
+-add_subdirectory(SparseTensor)
 -add_subdirectory(SPIRV)
- add_subdirectory(Tensor)
+-add_subdirectory(Tensor)
  add_subdirectory(Tosa)
 -add_subdirectory(Transform)
- add_subdirectory(Utils)
+-add_subdirectory(Utils)
 -add_subdirectory(Vector)
 -add_subdirectory(X86Vector)
 +
@@ -749,85 +704,158 @@ index 9f57627c321f..68ac6312e7a3 100644
  add_subdirectory(IR)
 -add_subdirectory(Transforms)
 +# add_subdirectory(Transforms)
-diff --git a/mlir/lib/Dialect/Linalg/CMakeLists.txt b/mlir/lib/Dialect/Linalg/CMakeLists.txt
-index c47e4c5495c1..c4cfb2235862 100644
---- a/mlir/lib/Dialect/Linalg/CMakeLists.txt
-+++ b/mlir/lib/Dialect/Linalg/CMakeLists.txt
-@@ -1,4 +1,4 @@
- add_subdirectory(IR)
--add_subdirectory(TransformOps)
--add_subdirectory(Transforms)
-+# add_subdirectory(TransformOps)
-+# add_subdirectory(Transforms)
- add_subdirectory(Utils)
-diff --git a/mlir/lib/Dialect/Math/CMakeLists.txt b/mlir/lib/Dialect/Math/CMakeLists.txt
-index 9f57627c321f..68ac6312e7a3 100644
---- a/mlir/lib/Dialect/Math/CMakeLists.txt
-+++ b/mlir/lib/Dialect/Math/CMakeLists.txt
-@@ -1,2 +1,2 @@
- add_subdirectory(IR)
--add_subdirectory(Transforms)
-+# add_subdirectory(Transforms)
-diff --git a/mlir/lib/Dialect/MemRef/CMakeLists.txt b/mlir/lib/Dialect/MemRef/CMakeLists.txt
-index 660deb21479d..22bc6adea9db 100644
---- a/mlir/lib/Dialect/MemRef/CMakeLists.txt
-+++ b/mlir/lib/Dialect/MemRef/CMakeLists.txt
-@@ -1,3 +1,3 @@
- add_subdirectory(IR)
--add_subdirectory(TransformOps)
--add_subdirectory(Transforms)
-+# add_subdirectory(TransformOps)
-+# add_subdirectory(Transforms)
-diff --git a/mlir/lib/Dialect/SCF/CMakeLists.txt b/mlir/lib/Dialect/SCF/CMakeLists.txt
-index c47e4c5495c1..c4cfb2235862 100644
---- a/mlir/lib/Dialect/SCF/CMakeLists.txt
-+++ b/mlir/lib/Dialect/SCF/CMakeLists.txt
-@@ -1,4 +1,4 @@
- add_subdirectory(IR)
--add_subdirectory(TransformOps)
--add_subdirectory(Transforms)
-+# add_subdirectory(TransformOps)
-+# add_subdirectory(Transforms)
- add_subdirectory(Utils)
-diff --git a/mlir/lib/Dialect/SparseTensor/CMakeLists.txt b/mlir/lib/Dialect/SparseTensor/CMakeLists.txt
-index 31a59e2bb1d5..3a22ab4b9c7f 100644
---- a/mlir/lib/Dialect/SparseTensor/CMakeLists.txt
-+++ b/mlir/lib/Dialect/SparseTensor/CMakeLists.txt
-@@ -1,4 +1,4 @@
- add_subdirectory(IR)
--add_subdirectory(Transforms)
--add_subdirectory(Pipelines)
-+# add_subdirectory(Transforms)
-+# add_subdirectory(Pipelines)
- add_subdirectory(Utils)
-diff --git a/mlir/lib/Dialect/Tensor/CMakeLists.txt b/mlir/lib/Dialect/Tensor/CMakeLists.txt
-index 329a6c3e8025..e605818feb0c 100644
---- a/mlir/lib/Dialect/Tensor/CMakeLists.txt
-+++ b/mlir/lib/Dialect/Tensor/CMakeLists.txt
-@@ -1,4 +1,4 @@
- add_subdirectory(IR)
--add_subdirectory(Transforms)
--add_subdirectory(TransformOps)
-+# add_subdirectory(Transforms)
-+# add_subdirectory(TransformOps)
- add_subdirectory(Utils)
+diff --git a/mlir/lib/Dialect/Func/IR/CMakeLists.txt b/mlir/lib/Dialect/Func/IR/CMakeLists.txt
+index 58fafe7d5f77..9884f28e41cf 100644
+--- a/mlir/lib/Dialect/Func/IR/CMakeLists.txt
++++ b/mlir/lib/Dialect/Func/IR/CMakeLists.txt
+@@ -9,8 +9,6 @@ add_mlir_dialect_library(MLIRFuncDialect
+ 
+   LINK_LIBS PUBLIC
+   MLIRCallInterfaces
+-  MLIRControlFlowDialect
+-  MLIRControlFlowInterfaces
+   MLIRInferTypeOpInterface
+   MLIRIR
+   MLIRSideEffectInterfaces
+diff --git a/mlir/lib/Dialect/Func/IR/FuncOps.cpp b/mlir/lib/Dialect/Func/IR/FuncOps.cpp
+index 4fa2608785f9..a4389189ca3f 100644
+--- a/mlir/lib/Dialect/Func/IR/FuncOps.cpp
++++ b/mlir/lib/Dialect/Func/IR/FuncOps.cpp
+@@ -7,8 +7,6 @@
+ //===----------------------------------------------------------------------===//
+ 
+ #include "mlir/Dialect/Func/IR/FuncOps.h"
+-
+-#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
+ #include "mlir/IR/Builders.h"
+ #include "mlir/IR/BuiltinOps.h"
+ #include "mlir/IR/BuiltinTypes.h"
+@@ -69,14 +67,7 @@ struct FuncInlinerInterface : public DialectInlinerInterface {
+   /// as necessary.
+   void handleTerminator(Operation *op, Block *newDest) const final {
+     // Only return needs to be handled here.
+-    auto returnOp = dyn_cast<ReturnOp>(op);
+-    if (!returnOp)
+       return;
+-
+-    // Replace the return with a branch to the dest.
+-    OpBuilder builder(op);
+-    builder.create<cf::BranchOp>(op->getLoc(), newDest, returnOp.getOperands());
+-    op->erase();
+   }
+ 
+   /// Handle the given inlined terminator by replacing it with a new operation
 diff --git a/mlir/lib/Dialect/Tosa/CMakeLists.txt b/mlir/lib/Dialect/Tosa/CMakeLists.txt
-index b36e4a1cabb4..46296bf54ba6 100644
+index b36e4a1cabb4..3ee7ffc22eaf 100644
 --- a/mlir/lib/Dialect/Tosa/CMakeLists.txt
 +++ b/mlir/lib/Dialect/Tosa/CMakeLists.txt
-@@ -21,8 +21,8 @@ add_mlir_dialect_library(MLIRTosaDialect
+@@ -16,13 +16,10 @@ add_mlir_dialect_library(MLIRTosaDialect
+   MLIRIR
+   MLIRDialect
+   MLIRCallInterfaces
+-  MLIRControlFlowInterfaces
+   MLIRQuantDialect
    MLIRQuantUtils
    MLIRSideEffectInterfaces
-   MLIRTensorDialect
+-  MLIRTensorDialect
 -  MLIRVectorInterfaces
-+  # MLIRVectorInterfaces
    MLIRViewLikeInterface
    )
  
 -add_subdirectory(Transforms)
 +# add_subdirectory(Transforms)
+diff --git a/mlir/lib/Dialect/Tosa/IR/TosaCanonicalizations.cpp b/mlir/lib/Dialect/Tosa/IR/TosaCanonicalizations.cpp
+index d5263a3ff056..8817524c36c4 100644
+--- a/mlir/lib/Dialect/Tosa/IR/TosaCanonicalizations.cpp
++++ b/mlir/lib/Dialect/Tosa/IR/TosaCanonicalizations.cpp
+@@ -12,7 +12,6 @@
+ //===----------------------------------------------------------------------===//
+ 
+ #include "mlir/Dialect/Quant/QuantOps.h"
+-#include "mlir/Dialect/Tensor/IR/Tensor.h"
+ #include "mlir/Dialect/Tosa/IR/TosaOps.h"
+ #include "mlir/Dialect/Tosa/Utils/ConversionUtils.h"
+ #include "mlir/Dialect/Tosa/Utils/QuantUtils.h"
+@@ -42,18 +41,7 @@ struct ConcatOptimization : public OpRewritePattern<tosa::ConcatOp> {
+ 
+   LogicalResult matchAndRewrite(tosa::ConcatOp op,
+                                 PatternRewriter &rewriter) const override {
+-    if (op.getInput1().size() != 1)
+-      return failure();
+-    if (op.getInput1().front().getType() != op.getType()) {
+-      rewriter
+-          .replaceOpWithNewOp<tensor::CastOp>(op, op.getType(),
+-                                              op.getInput1().front())
+-          .getResult();
+-      return success();
+-    }
+-
+-    rewriter.replaceOp(op, op.getInput1().front());
+-    return success();
++    return failure();
+   }
+ };
+ 
+@@ -135,44 +123,7 @@ struct ConsolidateTransposeOptimization
+ 
+   LogicalResult matchAndRewrite(tosa::TransposeOp transposeOp,
+                                 PatternRewriter &rewriter) const override {
+-    // Input is also TransposeOp - transpose(transpose(A)).
+-    auto innerTranspose =
+-        transposeOp.getInput1().getDefiningOp<tosa::TransposeOp>();
+-    if (!innerTranspose)
+-      return rewriter.notifyMatchFailure(transposeOp,
+-                                         "input must be transpose operation");
+-
+-    SmallVector<int64_t> transposePerms, innerTransposePerms;
+-    if (transposeOp.getConstantPerms(transposePerms).failed())
+-      return rewriter.notifyMatchFailure(transposeOp,
+-                                         "transpose perms must be constant");
+-    if (innerTranspose.getConstantPerms(innerTransposePerms).failed())
+-      return rewriter.notifyMatchFailure(
+-          transposeOp, "inner transpose perms must be constant");
+-    if (transposePerms.size() != innerTransposePerms.size())
+-      return rewriter.notifyMatchFailure(
+-          transposeOp,
+-          "transpose and inner transpose perms sizes must be equal");
+-    if (transposePerms.empty())
+-      return rewriter.notifyMatchFailure(
+-          transposeOp, "transpose perms sizes must be positive");
+-
+-    // Consolidate transposes into one transpose.
+-    SmallVector<int32_t> perms(transposePerms.size());
+-    for (int i = 0, s = transposePerms.size(); i < s; ++i)
+-      perms[i] = innerTransposePerms[transposePerms[i]];
+-
+-    auto permsTy =
+-        RankedTensorType::get(transposePerms.size(), rewriter.getI32Type());
+-    auto permsAttr = DenseIntElementsAttr::get(permsTy, perms);
+-    Value permsValue =
+-        rewriter.create<arith::ConstantOp>(transposeOp.getLoc(), permsAttr);
+-
+-    rewriter.replaceOpWithNewOp<tosa::TransposeOp>(
+-        transposeOp, transposeOp.getResult().getType(),
+-        innerTranspose.getInput1(), permsValue);
+-
+-    return success();
++    return failure();
+   }
+ };
+ 
+diff --git a/mlir/lib/Dialect/Tosa/IR/TosaOps.cpp b/mlir/lib/Dialect/Tosa/IR/TosaOps.cpp
+index 1b063e75eb93..5ecba23fdff0 100644
+--- a/mlir/lib/Dialect/Tosa/IR/TosaOps.cpp
++++ b/mlir/lib/Dialect/Tosa/IR/TosaOps.cpp
+@@ -14,7 +14,6 @@
+ 
+ #include "mlir/Dialect/Tosa/IR/TosaOps.h"
+ #include "mlir/Dialect/Quant/QuantOps.h"
+-#include "mlir/Dialect/Tensor/IR/Tensor.h"
+ #include "mlir/Dialect/Tosa/Utils/QuantUtils.h"
+ #include "mlir/Dialect/Tosa/Utils/ShapeUtils.h"
+ #include "mlir/IR/BuiltinTypes.h"
 diff --git a/mlir/lib/IR/Verifier.cpp b/mlir/lib/IR/Verifier.cpp
-index 432d7bb28ae9..c322d239d1bb 100644
+index 68e498d57324..e9ff955a7270 100644
 --- a/mlir/lib/IR/Verifier.cpp
 +++ b/mlir/lib/IR/Verifier.cpp
 @@ -156,10 +156,10 @@ LogicalResult OperationVerifier::verifyBlock(
@@ -858,7 +886,7 @@ index e0395be6cd6f..bd3a0c400a4e 100644
    MLIRSideEffectInterfaces
    )
 diff --git a/mlir/lib/Rewrite/FrozenRewritePatternSet.cpp b/mlir/lib/Rewrite/FrozenRewritePatternSet.cpp
-index 43840d1e8cec..e27881ecf48f 100644
+index 43840d1e8cec..1fc71ddbce9d 100644
 --- a/mlir/lib/Rewrite/FrozenRewritePatternSet.cpp
 +++ b/mlir/lib/Rewrite/FrozenRewritePatternSet.cpp
 @@ -8,7 +8,6 @@
@@ -869,23 +897,26 @@ index 43840d1e8cec..e27881ecf48f 100644
  #include "mlir/Dialect/PDL/IR/PDLOps.h"
  #include "mlir/Interfaces/SideEffectInterfaces.h"
  #include "mlir/Pass/Pass.h"
-@@ -40,7 +39,7 @@ convertPDLToPDLInterp(ModuleOp pdlModule,
+@@ -40,9 +39,9 @@ convertPDLToPDLInterp(ModuleOp pdlModule,
    // mode.
    pdlPipeline.enableVerifier(false);
  #endif
 -  pdlPipeline.addPass(createPDLToPDLInterpPass(configMap));
+-  if (failed(pdlPipeline.run(pdlModule)))
+-    return failure();
 +  // pdlPipeline.addPass(createPDLToPDLInterpPass(configMap));
-   if (failed(pdlPipeline.run(pdlModule)))
-     return failure();
++  // if (failed(pdlPipeline.run(pdlModule)))
++  //   return failure();
  
+   // Simplify again after running the lowering pipeline.
+   pdlModule.getBody()->walk(simplifyFn);
 diff --git a/mlir/lib/Tools/CMakeLists.txt b/mlir/lib/Tools/CMakeLists.txt
-index 6175a1ce5f8d..b0a42407a475 100644
+index 6175a1ce5f8d..fc1c16d0399d 100644
 --- a/mlir/lib/Tools/CMakeLists.txt
 +++ b/mlir/lib/Tools/CMakeLists.txt
-@@ -1,10 +1,4 @@
+@@ -1,10 +1,3 @@
 -add_subdirectory(lsp-server-support)
 -add_subdirectory(mlir-lsp-server)
-+
  add_subdirectory(mlir-opt)
 -add_subdirectory(mlir-pdll-lsp-server)
 -add_subdirectory(mlir-reduce)
@@ -895,7 +926,7 @@ index 6175a1ce5f8d..b0a42407a475 100644
  add_subdirectory(Plugins)
 -add_subdirectory(tblgen-lsp-server)
 diff --git a/mlir/python/CMakeLists.txt b/mlir/python/CMakeLists.txt
-index 0a4c2f803641..3cb888b88239 100644
+index 0a4c2f803641..338d96a4c201 100644
 --- a/mlir/python/CMakeLists.txt
 +++ b/mlir/python/CMakeLists.txt
 @@ -46,21 +46,21 @@ declare_mlir_python_sources(MLIRPythonCAPI.HeaderSources
@@ -923,7 +954,7 @@ index 0a4c2f803641..3cb888b88239 100644
 +#   TD_FILE dialects/AsyncOps.td
 +#   SOURCES_GLOB dialects/async_dialect/*.py
 +#   DIALECT_NAME async_dialect)
-+
++#
 +# declare_mlir_dialect_python_bindings(
 +#   ADD_TO_PARENT MLIRPythonSources.Dialects
 +#   ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mlir"
@@ -1603,18 +1634,17 @@ index 0a4c2f803641..3cb888b88239 100644
      MLIRPythonCAPI
  )
 diff --git a/mlir/python/mlir/ir.py b/mlir/python/mlir/ir.py
-index 1e24fcbf99e4..92b07eec84e9 100644
+index 714253426b02..1331923a5eff 100644
 --- a/mlir/python/mlir/ir.py
 +++ b/mlir/python/mlir/ir.py
-@@ -31,8 +31,29 @@ def _i32Attr(x, context):
+@@ -40,7 +40,27 @@ def _i32Attr(x, context):
  def _i64Attr(x, context):
-   return IntegerAttr.get(
-       IntegerType.get_signless(64, context=context), x)
-+@register_attribute_builder("I64ArrayAttr")
-+def _i64ArrayAttr(x, context):
-+  return ArrayAttr.get([IntegerAttr.get(
-+      IntegerType.get_signless(64, context=context), v) for v in x])
-+
+   return IntegerAttr.get(IntegerType.get_signless(64, context=context), x)
+ 
++@register_attribute_builder("SI32Attr")
++def _si32Attr(x, context):
++  return IntegerAttr.get(IntegerType.get_signed(32, context=context), x)
+ 
 +@register_attribute_builder("F64Attr")
 +def _f64Attr(x, context):
 +  return FloatAttr.get_f64(x, context=context)
@@ -1630,12 +1660,11 @@ index 1e24fcbf99e4..92b07eec84e9 100644
 +@register_attribute_builder("F32ArrayAttr")
 +def _f32ArrayAttr(x, context):
 +  return ArrayAttr.get([FloatAttr.get_f32(v, context=context) for v in x])
- 
- @register_attribute_builder("StrAttr")
++
 +@register_attribute_builder("ReduceModeAttr")
+ @register_attribute_builder("StrAttr")
  def _stringAttr(x, context):
    return StringAttr.get(x, context=context)
- 
 diff --git a/mlir/tools/CMakeLists.txt b/mlir/tools/CMakeLists.txt
 index e9a1e4d62517..79ab4687c0cd 100644
 --- a/mlir/tools/CMakeLists.txt
@@ -1663,8 +1692,20 @@ index e9a1e4d62517..79ab4687c0cd 100644
  
  # mlir-cpu-runner requires ExecutionEngine.
  if(MLIR_ENABLE_EXECUTION_ENGINE)
+diff --git a/mlir/tools/mlir-opt/CMakeLists.txt b/mlir/tools/mlir-opt/CMakeLists.txt
+index 2d021d58c49a..c99e47555f15 100644
+--- a/mlir/tools/mlir-opt/CMakeLists.txt
++++ b/mlir/tools/mlir-opt/CMakeLists.txt
+@@ -51,7 +51,6 @@ set(LIBS
+   ${dialect_libs}
+   ${conversion_libs}
+   ${test_libs}
+-  MLIRAffineAnalysis
+   MLIRAnalysis
+   MLIRDialect
+   MLIROptLib
 diff --git a/mlir/tools/mlir-opt/mlir-opt.cpp b/mlir/tools/mlir-opt/mlir-opt.cpp
-index ce9008b58ba2..017422e8146e 100644
+index 13a525f0bcff..130819fe5477 100644
 --- a/mlir/tools/mlir-opt/mlir-opt.cpp
 +++ b/mlir/tools/mlir-opt/mlir-opt.cpp
 @@ -26,7 +26,7 @@

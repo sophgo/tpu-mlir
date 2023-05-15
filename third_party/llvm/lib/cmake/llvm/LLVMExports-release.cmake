@@ -45,6 +45,16 @@ set_target_properties(LLVMTableGenGlobalISel PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS LLVMTableGenGlobalISel )
 list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMTableGenGlobalISel "${_IMPORT_PREFIX}/lib/libLLVMTableGenGlobalISel.a" )
 
+# Import target "LLVMTableGenCommon" for configuration "Release"
+set_property(TARGET LLVMTableGenCommon APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(LLVMTableGenCommon PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libLLVMTableGenCommon.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS LLVMTableGenCommon )
+list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMTableGenCommon "${_IMPORT_PREFIX}/lib/libLLVMTableGenCommon.a" )
+
 # Import target "llvm-tblgen" for configuration "Release"
 set_property(TARGET llvm-tblgen APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(llvm-tblgen PROPERTIES
@@ -123,6 +133,16 @@ set_target_properties(LLVMIRReader PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS LLVMIRReader )
 list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMIRReader "${_IMPORT_PREFIX}/lib/libLLVMIRReader.a" )
+
+# Import target "LLVMCodeGenTypes" for configuration "Release"
+set_property(TARGET LLVMCodeGenTypes APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(LLVMCodeGenTypes PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libLLVMCodeGenTypes.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS LLVMCodeGenTypes )
+list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMCodeGenTypes "${_IMPORT_PREFIX}/lib/libLLVMCodeGenTypes.a" )
 
 # Import target "LLVMCodeGen" for configuration "Release"
 set_property(TARGET LLVMCodeGen APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -839,15 +859,6 @@ set_target_properties(llvm-profdata PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS llvm-profdata )
 list(APPEND _IMPORT_CHECK_FILES_FOR_llvm-profdata "${_IMPORT_PREFIX}/bin/llvm-profdata" )
-
-# Import target "mlir-linalg-ods-yaml-gen" for configuration "Release"
-set_property(TARGET mlir-linalg-ods-yaml-gen APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(mlir-linalg-ods-yaml-gen PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/mlir-linalg-ods-yaml-gen"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS mlir-linalg-ods-yaml-gen )
-list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-linalg-ods-yaml-gen "${_IMPORT_PREFIX}/bin/mlir-linalg-ods-yaml-gen" )
 
 # Import target "MLIRSupportIndentedOstream" for configuration "Release"
 set_property(TARGET MLIRSupportIndentedOstream APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)

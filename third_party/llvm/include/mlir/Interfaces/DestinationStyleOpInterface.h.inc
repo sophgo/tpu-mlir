@@ -201,7 +201,7 @@ namespace detail {
     /// Return true if the `opOperand` is a scalar value.
     bool isScalar(::mlir::OpOperand * opOperand) {
       assert(opOperand->getOwner() == (*static_cast<ConcreteOp *>(this)).getOperation());
-        return !opOperand->get().getType().template isa<ShapedType>();
+        return !::llvm::isa<ShapedType>(opOperand->get().getType());
     }
     /// Return the OpResult that is tied to the given OpOperand.
     ::mlir::OpResult getTiedOpResult(::mlir::OpOperand * opOperand) {
@@ -224,7 +224,7 @@ namespace detail {
           ::llvm::all_of((*static_cast<ConcreteOp *>(this))->getOpOperands(),
             [&](::mlir::OpOperand &opOperand) {
               return isScalar(&opOperand) ||
-                     opOperand.get().getType().template isa<::mlir::MemRefType>();
+                     ::llvm::isa<::mlir::MemRefType>(opOperand.get().getType());
             });
     }
     /// Return whether the op has only ranked tensor inputs/inits.
@@ -232,7 +232,7 @@ namespace detail {
       return ::llvm::all_of((*static_cast<ConcreteOp *>(this))->getOpOperands(),
           [&](::mlir::OpOperand &opOperand) {
             return isScalar(&opOperand) ||
-                   opOperand.get().getType().template isa<::mlir::RankedTensorType>();
+                   ::llvm::isa<::mlir::RankedTensorType>(opOperand.get().getType());
           });
     }
     static ::mlir::LogicalResult verifyRegionTrait(::mlir::Operation *op) {
@@ -429,7 +429,7 @@ auto [start, end] = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getDpsInitsPos
 template<typename ConcreteModel, typename ConcreteOp>
 bool detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isScalar(::mlir::Operation *tablegen_opaque_val, ::mlir::OpOperand *opOperand) const {
 assert(opOperand->getOwner() == (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOperation());
-        return !opOperand->get().getType().template isa<ShapedType>();
+        return !::llvm::isa<ShapedType>(opOperand->get().getType());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::OpResult detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTiedOpResult(::mlir::Operation *tablegen_opaque_val, ::mlir::OpOperand *opOperand) const {
@@ -452,7 +452,7 @@ return (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getNumResults() == 0 &&
           ::llvm::all_of((llvm::cast<ConcreteOp>(tablegen_opaque_val))->getOpOperands(),
             [&](::mlir::OpOperand &opOperand) {
               return isScalar(&opOperand) ||
-                     opOperand.get().getType().template isa<::mlir::MemRefType>();
+                     ::llvm::isa<::mlir::MemRefType>(opOperand.get().getType());
             });
 }
 template<typename ConcreteModel, typename ConcreteOp>
@@ -460,7 +460,7 @@ bool detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteM
 return ::llvm::all_of((llvm::cast<ConcreteOp>(tablegen_opaque_val))->getOpOperands(),
           [&](::mlir::OpOperand &opOperand) {
             return isScalar(&opOperand) ||
-                   opOperand.get().getType().template isa<::mlir::RankedTensorType>();
+                   ::llvm::isa<::mlir::RankedTensorType>(opOperand.get().getType());
           });
 }
 } // namespace mlir

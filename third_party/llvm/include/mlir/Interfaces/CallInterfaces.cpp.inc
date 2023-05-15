@@ -13,6 +13,14 @@
 ::mlir::CallInterfaceCallable mlir::CallOpInterface::getCallableForCallee() {
       return getImpl()->getCallableForCallee(getImpl(), getOperation());
   }
+/// Sets the callee of this call-like operation. A `callee` is either a
+/// reference to a symbol, via SymbolRefAttr, or a reference to a defined
+/// SSA value. The type of the `callee` is expected to be the same as the
+/// return type of `getCallableForCallee`, e.g., `callee` should be
+/// SymbolRefAttr for `func.call`.
+void mlir::CallOpInterface::setCalleeFromCallable(::mlir::CallInterfaceCallable callee) {
+      return getImpl()->setCalleeFromCallable(getImpl(), getOperation(), callee);
+  }
 /// Returns the operands within this call that are used as arguments to the
 /// callee.
 ::mlir::Operation::operand_range mlir::CallOpInterface::getArgOperands() {

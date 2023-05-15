@@ -125,8 +125,8 @@ class FuncOp(_ods_ir.OpView):
       _ods_ir.AttrBuilder.get('SymbolNameAttr')(sym_name, context=_ods_context))
     attributes["function_type"] = (function_type if (
     issubclass(type(function_type), _ods_ir.Attribute) or
-    not _ods_ir.AttrBuilder.contains('anonymous_400')) else
-      _ods_ir.AttrBuilder.get('anonymous_400')(function_type, context=_ods_context))
+    not _ods_ir.AttrBuilder.contains('anonymous_392')) else
+      _ods_ir.AttrBuilder.get('anonymous_392')(function_type, context=_ods_context))
     if sym_visibility is not None: attributes["sym_visibility"] = (sym_visibility if (
         issubclass(type(sym_visibility), _ods_ir.Attribute) or
         not _ods_ir.AttrBuilder.contains('StrAttr')) else

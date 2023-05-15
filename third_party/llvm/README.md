@@ -1,10 +1,10 @@
 ## clone and build llvm
 
 ``` shell
-# 2023-04-22 15:00
+# 2023-05-14 22:00
 git clone https://github.com/llvm/llvm-project.git
 cd llvm-project
-git checkout c39dcf54bb0494f319cdc712d24607433bd7f30a
+git checkout 6e19eea02bbe7747cfca1f2a13287b9987ab959a
 mkdir -p llvm-project/build
 git am 0001-ajust-for-tpu-mlir.patch
 cd llvm-project/build
@@ -22,3 +22,4 @@ cmake -G Ninja ../llvm \
 cmake --build . --target install
 
 # use clean.sh to remove unused binary
+# after clean, build origin mlir-opt/mlir-translate/llc, and do strip

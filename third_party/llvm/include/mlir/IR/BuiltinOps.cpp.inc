@@ -34,12 +34,17 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_BuiltinOps0(
 }
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_BuiltinOps0(
-    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((attr.isa<::mlir::StringAttr>()))) {
-    return op->emitOpError("attribute '") << attrName
+    ::mlir::Attribute attr, ::llvm::StringRef attrName, llvm::function_ref<::mlir::InFlightDiagnostic()> getDiag) {
+  if (attr && !((::llvm::isa<::mlir::StringAttr>(attr))))
+    return getDiag() << "attribute '" << attrName
         << "' failed to satisfy constraint: string attribute";
-  }
   return ::mlir::success();
+}
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_BuiltinOps0(
+    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
+  return __mlir_ods_local_attr_constraint_BuiltinOps0(attr, attrName, [op]() {
+    return op->emitOpError();
+  });
 }
 
 static ::mlir::LogicalResult __mlir_ods_local_region_constraint_BuiltinOps0(
@@ -60,7 +65,7 @@ namespace mlir {
 //===----------------------------------------------------------------------===//
 
 namespace detail {
-ModuleOpGenericAdaptorBase::ModuleOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+ModuleOpGenericAdaptorBase::ModuleOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, const ::mlir::EmptyProperties &properties, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("builtin.module", odsAttrs.getContext());
 }
 
@@ -103,7 +108,7 @@ std::pair<unsigned, unsigned> ModuleOpGenericAdaptorBase::getODSOperandIndexAndL
 }
 
 } // namespace detail
-ModuleOpAdaptor::ModuleOpAdaptor(ModuleOp op) : ModuleOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
+ModuleOpAdaptor::ModuleOpAdaptor(ModuleOp op) : ModuleOpAdaptor(op->getOperands(), op->getAttrDictionary(), op.getProperties(), op->getRegions()) {}
 
 ::mlir::LogicalResult ModuleOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
@@ -123,10 +128,10 @@ ModuleOpAdaptor::ModuleOpAdaptor(ModuleOp op) : ModuleOpAdaptor(op->getOperands(
     ++namedAttrIt;
   }
 
-  if (tblgen_sym_name && !((tblgen_sym_name.isa<::mlir::StringAttr>())))
+  if (tblgen_sym_name && !((::llvm::isa<::mlir::StringAttr>(tblgen_sym_name))))
     return emitError(loc, "'builtin.module' op ""attribute 'sym_name' failed to satisfy constraint: string attribute");
 
-  if (tblgen_sym_visibility && !((tblgen_sym_visibility.isa<::mlir::StringAttr>())))
+  if (tblgen_sym_visibility && !((::llvm::isa<::mlir::StringAttr>(tblgen_sym_visibility))))
     return emitError(loc, "'builtin.module' op ""attribute 'sym_visibility' failed to satisfy constraint: string attribute");
   return ::mlir::success();
 }
@@ -194,11 +199,11 @@ void ModuleOp::setSymVisibility(::std::optional<::llvm::StringRef> attrValue) {
 }
 
 ::mlir::Attribute ModuleOp::removeSymNameAttr() {
-  return (*this)->removeAttr(getSymNameAttrName());
+return (*this)->removeAttr(getSymNameAttrName());
 }
 
 ::mlir::Attribute ModuleOp::removeSymVisibilityAttr() {
-  return (*this)->removeAttr(getSymVisibilityAttrName());
+return (*this)->removeAttr(getSymVisibilityAttrName());
 }
 
 ::mlir::LogicalResult ModuleOp::verifyInvariantsImpl() {
@@ -246,11 +251,15 @@ void ModuleOp::setSymVisibility(::std::optional<::llvm::StringRef> attrValue) {
 
   // Parsing an optional symbol name doesn't fail, so no need to check the
   // result.
-  (void)parser.parseOptionalSymbolName(sym_nameAttr, "sym_name", result.attributes);
+  (void)parser.parseOptionalSymbolName(sym_nameAttr);
+  if (sym_nameAttr) result.attributes.append("sym_name", sym_nameAttr);
   if (sym_nameAttr) {
   }
-  if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
-    return ::mlir::failure();
+  {
+    auto loc = parser.getCurrentLocation();(void)loc;
+    if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
+      return ::mlir::failure();
+  }
 
   if (parser.parseRegion(*bodyRegionRegion))
     return ::mlir::failure();
@@ -261,7 +270,7 @@ void ModuleOp::setSymVisibility(::std::optional<::llvm::StringRef> attrValue) {
 }
 
 void ModuleOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
-  if ((*this)->getAttr("sym_name")) {
+  if (getSymNameAttr()) {
     _odsPrinter << ' ';
     _odsPrinter.printSymbolName(getSymNameAttr().getValue());
   }
@@ -282,7 +291,7 @@ namespace mlir {
 //===----------------------------------------------------------------------===//
 
 namespace detail {
-UnrealizedConversionCastOpGenericAdaptorBase::UnrealizedConversionCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+UnrealizedConversionCastOpGenericAdaptorBase::UnrealizedConversionCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, const ::mlir::EmptyProperties &properties, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("builtin.unrealized_conversion_cast", odsAttrs.getContext());
 }
 
@@ -309,7 +318,7 @@ std::pair<unsigned, unsigned> UnrealizedConversionCastOpGenericAdaptorBase::getO
 }
 
 } // namespace detail
-UnrealizedConversionCastOpAdaptor::UnrealizedConversionCastOpAdaptor(UnrealizedConversionCastOp op) : UnrealizedConversionCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
+UnrealizedConversionCastOpAdaptor::UnrealizedConversionCastOpAdaptor(UnrealizedConversionCastOp op) : UnrealizedConversionCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op.getProperties(), op->getRegions()) {}
 
 ::mlir::LogicalResult UnrealizedConversionCastOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();
@@ -431,8 +440,11 @@ void UnrealizedConversionCastOp::build(::mlir::OpBuilder &, ::mlir::OperationSta
 
   if (parser.parseTypeList(outputsTypes))
     return ::mlir::failure();
-  if (parser.parseOptionalAttrDict(result.attributes))
-    return ::mlir::failure();
+  {
+    auto loc = parser.getCurrentLocation();(void)loc;
+    if (parser.parseOptionalAttrDict(result.attributes))
+      return ::mlir::failure();
+  }
   result.addTypes(outputsTypes);
   if (parser.resolveOperands(inputsOperands, inputsTypes, inputsOperandsLoc, result.operands))
     return ::mlir::failure();

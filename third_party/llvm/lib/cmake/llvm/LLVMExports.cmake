@@ -16,7 +16,7 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 set(_targetsDefined)
 set(_targetsNotDefined)
 set(_expectedTargets)
-foreach(_expectedTarget LLVMDemangle LLVMSupport LLVMTableGen LLVMTableGenGlobalISel llvm-tblgen LLVMCore LLVMFuzzerCLI LLVMFuzzMutate LLVMFileCheck LLVMInterfaceStub LLVMIRPrinter LLVMIRReader LLVMCodeGen LLVMSelectionDAG LLVMAsmPrinter LLVMMIRParser LLVMGlobalISel LLVMBinaryFormat LLVMBitReader LLVMBitWriter LLVMBitstreamReader LLVMDWARFLinker LLVMDWARFLinkerParallel LLVMExtensions LLVMFrontendHLSL LLVMFrontendOpenACC LLVMFrontendOpenMP LLVMTransformUtils LLVMInstrumentation LLVMAggressiveInstCombine LLVMInstCombine LLVMScalarOpts LLVMipo LLVMVectorize LLVMObjCARCOpts LLVMCoroutines LLVMCFGuard LLVMLinker LLVMAnalysis LLVMLTO LLVMMC LLVMMCParser LLVMMCDisassembler LLVMMCA LLVMObjCopy LLVMObject LLVMObjectYAML LLVMOption LLVMRemarks LLVMDebuginfod LLVMDebugInfoDWARF LLVMDebugInfoGSYM LLVMDebugInfoLogicalView LLVMDebugInfoMSF LLVMDebugInfoCodeView LLVMDebugInfoPDB LLVMSymbolize LLVMDWP LLVMExecutionEngine LLVMInterpreter LLVMJITLink LLVMMCJIT LLVMOrcJIT LLVMOrcShared LLVMOrcTargetProcess LLVMRuntimeDyld LLVMTarget LLVMAsmParser LLVMLineEditor LLVMProfileData LLVMCoverage LLVMPasses LLVMTargetParser LLVMTextAPI LLVMDlltoolDriver LLVMLibDriver LLVMXRay LLVMWindowsDriver LLVMWindowsManifest LTO llvm-ar llvm-config llvm-lto llvm-profdata mlir-linalg-ods-yaml-gen MLIRSupportIndentedOstream mlir-opt bugpoint dsymutil llc lli llvm-as llvm-bcanalyzer llvm-c-test llvm-cat llvm-cfi-verify LLVMCFIVerify llvm-cov llvm-cvtres llvm-cxxdump llvm-cxxfilt llvm-cxxmap llvm-debuginfo-analyzer llvm-debuginfod-find llvm-diff LLVMDiff llvm-dis llvm-dwarfdump llvm-dwarfutil llvm-dwp llvm-exegesis LLVMExegesis llvm-extract llvm-gsymutil llvm-ifs llvm-jitlink llvm-libtool-darwin llvm-link llvm-lipo llvm-lto2 llvm-mc llvm-mca llvm-ml llvm-modextract llvm-mt llvm-nm llvm-objcopy llvm-objdump llvm-opt-report llvm-pdbutil llvm-profgen llvm-rc llvm-readobj llvm-reduce llvm-remark-size-diff llvm-remarkutil llvm-rtdyld llvm-sim llvm-size llvm-split llvm-stress llvm-strings llvm-symbolizer llvm-tapi-diff llvm-tli-checker llvm-undname llvm-xray opt Remarks sancov sanstats verify-uselistorder)
+foreach(_expectedTarget LLVMDemangle LLVMSupport LLVMTableGen LLVMTableGenGlobalISel LLVMTableGenCommon llvm-tblgen LLVMCore LLVMFuzzerCLI LLVMFuzzMutate LLVMFileCheck LLVMInterfaceStub LLVMIRPrinter LLVMIRReader LLVMCodeGenTypes LLVMCodeGen LLVMSelectionDAG LLVMAsmPrinter LLVMMIRParser LLVMGlobalISel LLVMBinaryFormat LLVMBitReader LLVMBitWriter LLVMBitstreamReader LLVMDWARFLinker LLVMDWARFLinkerParallel LLVMExtensions LLVMFrontendHLSL LLVMFrontendOpenACC LLVMFrontendOpenMP LLVMTransformUtils LLVMInstrumentation LLVMAggressiveInstCombine LLVMInstCombine LLVMScalarOpts LLVMipo LLVMVectorize LLVMObjCARCOpts LLVMCoroutines LLVMCFGuard LLVMLinker LLVMAnalysis LLVMLTO LLVMMC LLVMMCParser LLVMMCDisassembler LLVMMCA LLVMObjCopy LLVMObject LLVMObjectYAML LLVMOption LLVMRemarks LLVMDebuginfod LLVMDebugInfoDWARF LLVMDebugInfoGSYM LLVMDebugInfoLogicalView LLVMDebugInfoMSF LLVMDebugInfoCodeView LLVMDebugInfoPDB LLVMSymbolize LLVMDWP LLVMExecutionEngine LLVMInterpreter LLVMJITLink LLVMMCJIT LLVMOrcJIT LLVMOrcShared LLVMOrcTargetProcess LLVMRuntimeDyld LLVMTarget LLVMAsmParser LLVMLineEditor LLVMProfileData LLVMCoverage LLVMPasses LLVMTargetParser LLVMTextAPI LLVMDlltoolDriver LLVMLibDriver LLVMXRay LLVMWindowsDriver LLVMWindowsManifest LTO llvm-ar llvm-config llvm-lto llvm-profdata MLIRSupportIndentedOstream mlir-opt bugpoint dsymutil llc lli llvm-as llvm-bcanalyzer llvm-c-test llvm-cat llvm-cfi-verify LLVMCFIVerify llvm-cov llvm-cvtres llvm-cxxdump llvm-cxxfilt llvm-cxxmap llvm-debuginfo-analyzer llvm-debuginfod-find llvm-diff LLVMDiff llvm-dis llvm-dwarfdump llvm-dwarfutil llvm-dwp llvm-exegesis LLVMExegesis llvm-extract llvm-gsymutil llvm-ifs llvm-jitlink llvm-libtool-darwin llvm-link llvm-lipo llvm-lto2 llvm-mc llvm-mca llvm-ml llvm-modextract llvm-mt llvm-nm llvm-objcopy llvm-objdump llvm-opt-report llvm-pdbutil llvm-profgen llvm-rc llvm-readobj llvm-reduce llvm-remark-size-diff llvm-remarkutil llvm-rtdyld llvm-sim llvm-size llvm-split llvm-stress llvm-strings llvm-symbolizer llvm-tapi-diff llvm-tli-checker llvm-undname llvm-xray opt Remarks sancov sanstats verify-uselistorder)
   list(APPEND _expectedTargets ${_expectedTarget})
   if(NOT TARGET ${_expectedTarget})
     list(APPEND _targetsNotDefined ${_expectedTarget})
@@ -71,6 +71,13 @@ set_target_properties(LLVMTableGen PROPERTIES
 add_library(LLVMTableGenGlobalISel STATIC IMPORTED)
 
 set_target_properties(LLVMTableGenGlobalISel PROPERTIES
+  INTERFACE_LINK_LIBRARIES "LLVMCodeGenTypes;LLVMSupport;LLVMTableGen"
+)
+
+# Create imported target LLVMTableGenCommon
+add_library(LLVMTableGenCommon STATIC IMPORTED)
+
+set_target_properties(LLVMTableGenCommon PROPERTIES
   INTERFACE_LINK_LIBRARIES "LLVMSupport;LLVMTableGen"
 )
 
@@ -126,39 +133,46 @@ set_target_properties(LLVMIRReader PROPERTIES
   INTERFACE_LINK_LIBRARIES "LLVMAsmParser;LLVMBitReader;LLVMCore;LLVMSupport"
 )
 
+# Create imported target LLVMCodeGenTypes
+add_library(LLVMCodeGenTypes STATIC IMPORTED)
+
+set_target_properties(LLVMCodeGenTypes PROPERTIES
+  INTERFACE_LINK_LIBRARIES "LLVMSupport"
+)
+
 # Create imported target LLVMCodeGen
 add_library(LLVMCodeGen STATIC IMPORTED)
 
 set_target_properties(LLVMCodeGen PROPERTIES
-  INTERFACE_LINK_LIBRARIES "-lpthread;LLVMAnalysis;LLVMBitReader;LLVMBitWriter;LLVMCore;LLVMMC;LLVMObjCARCOpts;LLVMProfileData;LLVMScalarOpts;LLVMSupport;LLVMTarget;LLVMTargetParser;LLVMTransformUtils"
+  INTERFACE_LINK_LIBRARIES "-lpthread;LLVMAnalysis;LLVMBitReader;LLVMBitWriter;LLVMCodeGenTypes;LLVMCore;LLVMMC;LLVMObjCARCOpts;LLVMProfileData;LLVMScalarOpts;LLVMSupport;LLVMTarget;LLVMTargetParser;LLVMTransformUtils"
 )
 
 # Create imported target LLVMSelectionDAG
 add_library(LLVMSelectionDAG STATIC IMPORTED)
 
 set_target_properties(LLVMSelectionDAG PROPERTIES
-  INTERFACE_LINK_LIBRARIES "LLVMAnalysis;LLVMCodeGen;LLVMCore;LLVMMC;LLVMSupport;LLVMTarget;LLVMTargetParser;LLVMTransformUtils"
+  INTERFACE_LINK_LIBRARIES "LLVMAnalysis;LLVMCodeGen;LLVMCodeGenTypes;LLVMCore;LLVMMC;LLVMSupport;LLVMTarget;LLVMTargetParser;LLVMTransformUtils"
 )
 
 # Create imported target LLVMAsmPrinter
 add_library(LLVMAsmPrinter STATIC IMPORTED)
 
 set_target_properties(LLVMAsmPrinter PROPERTIES
-  INTERFACE_LINK_LIBRARIES "LLVMAnalysis;LLVMBinaryFormat;LLVMCodeGen;LLVMCore;LLVMDebugInfoCodeView;LLVMDebugInfoDWARF;LLVMMC;LLVMMCParser;LLVMRemarks;LLVMSupport;LLVMTarget;LLVMTargetParser"
+  INTERFACE_LINK_LIBRARIES "LLVMAnalysis;LLVMBinaryFormat;LLVMCodeGen;LLVMCodeGenTypes;LLVMCore;LLVMDebugInfoCodeView;LLVMDebugInfoDWARF;LLVMMC;LLVMMCParser;LLVMRemarks;LLVMSupport;LLVMTarget;LLVMTargetParser"
 )
 
 # Create imported target LLVMMIRParser
 add_library(LLVMMIRParser STATIC IMPORTED)
 
 set_target_properties(LLVMMIRParser PROPERTIES
-  INTERFACE_LINK_LIBRARIES "LLVMAsmParser;LLVMBinaryFormat;LLVMCodeGen;LLVMCore;LLVMMC;LLVMSupport;LLVMTarget"
+  INTERFACE_LINK_LIBRARIES "LLVMAsmParser;LLVMBinaryFormat;LLVMCodeGen;LLVMCodeGenTypes;LLVMCore;LLVMMC;LLVMSupport;LLVMTarget"
 )
 
 # Create imported target LLVMGlobalISel
 add_library(LLVMGlobalISel STATIC IMPORTED)
 
 set_target_properties(LLVMGlobalISel PROPERTIES
-  INTERFACE_LINK_LIBRARIES "LLVMAnalysis;LLVMCodeGen;LLVMCore;LLVMMC;LLVMSelectionDAG;LLVMSupport;LLVMTarget;LLVMTransformUtils"
+  INTERFACE_LINK_LIBRARIES "LLVMAnalysis;LLVMCodeGen;LLVMCodeGenTypes;LLVMCore;LLVMMC;LLVMSelectionDAG;LLVMSupport;LLVMTarget;LLVMTransformUtils"
 )
 
 # Create imported target LLVMBinaryFormat
@@ -193,7 +207,7 @@ set_target_properties(LLVMBitstreamReader PROPERTIES
 add_library(LLVMDWARFLinker STATIC IMPORTED)
 
 set_target_properties(LLVMDWARFLinker PROPERTIES
-  INTERFACE_LINK_LIBRARIES "LLVMAsmPrinter;LLVMBinaryFormat;LLVMCodeGen;LLVMDebugInfoDWARF;LLVMMC;LLVMObject;LLVMSupport;LLVMTargetParser"
+  INTERFACE_LINK_LIBRARIES "LLVMAsmPrinter;LLVMBinaryFormat;LLVMCodeGen;LLVMCodeGenTypes;LLVMDebugInfoDWARF;LLVMMC;LLVMObject;LLVMSupport;LLVMTargetParser"
 )
 
 # Create imported target LLVMDWARFLinkerParallel
@@ -319,7 +333,7 @@ set_target_properties(LLVMAnalysis PROPERTIES
 add_library(LLVMLTO STATIC IMPORTED)
 
 set_target_properties(LLVMLTO PROPERTIES
-  INTERFACE_LINK_LIBRARIES "LLVMAggressiveInstCombine;LLVMAnalysis;LLVMBinaryFormat;LLVMBitReader;LLVMBitWriter;LLVMCodeGen;LLVMCore;LLVMExtensions;LLVMipo;LLVMInstCombine;LLVMInstrumentation;LLVMLinker;LLVMMC;LLVMObjCARCOpts;LLVMObject;LLVMPasses;LLVMRemarks;LLVMScalarOpts;LLVMSupport;LLVMTarget;LLVMTargetParser;LLVMTransformUtils"
+  INTERFACE_LINK_LIBRARIES "LLVMAggressiveInstCombine;LLVMAnalysis;LLVMBinaryFormat;LLVMBitReader;LLVMBitWriter;LLVMCodeGen;LLVMCodeGenTypes;LLVMCore;LLVMExtensions;LLVMipo;LLVMInstCombine;LLVMInstrumentation;LLVMLinker;LLVMMC;LLVMObjCARCOpts;LLVMObject;LLVMPasses;LLVMRemarks;LLVMScalarOpts;LLVMSupport;LLVMTarget;LLVMTargetParser;LLVMTransformUtils"
 )
 
 # Create imported target LLVMMC
@@ -610,9 +624,6 @@ add_executable(llvm-lto IMPORTED)
 # Create imported target llvm-profdata
 add_executable(llvm-profdata IMPORTED)
 
-# Create imported target mlir-linalg-ods-yaml-gen
-add_executable(mlir-linalg-ods-yaml-gen IMPORTED)
-
 # Create imported target MLIRSupportIndentedOstream
 add_library(MLIRSupportIndentedOstream STATIC IMPORTED)
 
@@ -711,7 +722,7 @@ add_executable(llvm-exegesis IMPORTED)
 add_library(LLVMExegesis STATIC IMPORTED)
 
 set_target_properties(LLVMExegesis PROPERTIES
-  INTERFACE_LINK_LIBRARIES "LLVMAnalysis;LLVMCodeGen;LLVMCore;LLVMExecutionEngine;LLVMGlobalISel;LLVMMC;LLVMMCA;LLVMMCDisassembler;LLVMMCJIT;LLVMMCParser;LLVMObject;LLVMObjectYAML;LLVMRuntimeDyld;LLVMSupport;LLVMTargetParser"
+  INTERFACE_LINK_LIBRARIES "LLVMAnalysis;LLVMCodeGen;LLVMCodeGenTypes;LLVMCore;LLVMExecutionEngine;LLVMGlobalISel;LLVMMC;LLVMMCA;LLVMMCDisassembler;LLVMMCJIT;LLVMMCParser;LLVMObject;LLVMObjectYAML;LLVMRuntimeDyld;LLVMSupport;LLVMTargetParser"
 )
 
 # Create imported target llvm-extract

@@ -18,7 +18,6 @@
 
 #include "mlir/IR/Location.h"
 #include "mlir/Pass/Pass.h"
-#include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 

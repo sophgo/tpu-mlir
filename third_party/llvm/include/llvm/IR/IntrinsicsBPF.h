@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum BPFIntrinsics : unsigned {
 // Enum values for intrinsics
-    bpf_btf_type_id = 3037,                           // llvm.bpf.btf.type.id
+    bpf_btf_type_id = 3077,                           // llvm.bpf.btf.type.id
     bpf_compare,                               // llvm.bpf.compare
     bpf_load_byte,                             // llvm.bpf.load.byte
     bpf_load_half,                             // llvm.bpf.load.half

@@ -110,6 +110,14 @@ ATTRIBUTE_STRBOOL(UnsafeFPMath,unsafe-fp-math)
 ATTRIBUTE_STRBOOL(UseSampleProfile,use-sample-profile)
 #undef ATTRIBUTE_STRBOOL
 
+#ifndef ATTRIBUTE_COMPLEXSTR
+#define ATTRIBUTE_COMPLEXSTR(FIRST, SECOND) ATTRIBUTE_ALL(FIRST, SECOND)
+#endif
+
+ATTRIBUTE_COMPLEXSTR(DenormalFPMath,denormal-fp-math)
+ATTRIBUTE_COMPLEXSTR(DenormalFPMathF32,denormal-fp-math-f32)
+#undef ATTRIBUTE_COMPLEXSTR
+
 #undef ATTRIBUTE_ALL
 #endif
 
@@ -222,6 +230,7 @@ static inline bool hasCompatibleFnAttrs(const Function &Caller,
   Ret &= isEqual<ShadowCallStackAttr>(Caller, Callee);
   Ret &= isEqual<UseSampleProfileAttr>(Caller, Callee);
   Ret &= isEqual<NoProfileAttr>(Caller, Callee);
+  Ret &= checkDenormMode(Caller, Callee);
 
   return Ret;
 }

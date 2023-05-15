@@ -422,7 +422,7 @@
     write_register,                            // llvm.write_register
     xray_customevent,                          // llvm.xray.customevent
     xray_typedevent,                           // llvm.xray.typedevent
-    num_intrinsics = 11645
+    num_intrinsics = 11769
 #endif
 
 // llvm::Intrinsic::IITDescriptor::ArgKind

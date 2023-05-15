@@ -24,8 +24,8 @@ namespace llvm {
 namespace memprof {
 
 /// Return the allocation type for a given set of memory profile values.
-AllocationType getAllocType(uint64_t MaxAccessCount, uint64_t MinSize,
-                            uint64_t MinLifetime);
+AllocationType getAllocType(uint64_t TotalLifetimeAccessDensity,
+                            uint64_t AllocCount, uint64_t TotalLifetime);
 
 /// Build callstack metadata from the provided list of call stack ids. Returns
 /// the resulting metadata node.
@@ -36,6 +36,9 @@ MDNode *getMIBStackNode(const MDNode *MIB);
 
 /// Returns the allocation type from an MIB metadata node.
 AllocationType getMIBAllocType(const MDNode *MIB);
+
+/// Returns the string to use in attributes with the given type.
+std::string getAllocTypeAttributeString(AllocationType Type);
 
 /// True if the AllocTypes bitmask contains just a single type.
 bool hasSingleAllocType(uint8_t AllocTypes);

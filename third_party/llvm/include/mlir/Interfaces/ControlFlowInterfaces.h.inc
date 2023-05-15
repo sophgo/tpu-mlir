@@ -82,7 +82,7 @@ public:
   /// interfering with other successor operands.
   ::mlir::SuccessorOperands getSuccessorOperands(unsigned index);
   /// Returns the `BlockArgument` corresponding to operand `operandIndex` in
-  /// some successor, or None if `operandIndex` isn't a successor operand
+  /// some successor, or std::nullopt if `operandIndex` isn't a successor operand
   /// index.
   ::std::optional<::mlir::BlockArgument> getSuccessorBlockArgument(unsigned operandIndex);
   /// Returns the successor that would be chosen with the given constant

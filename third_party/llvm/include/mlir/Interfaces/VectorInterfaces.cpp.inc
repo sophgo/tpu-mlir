@@ -107,7 +107,7 @@ SmallVector<int64_t> mlir::VectorTransferOpInterface::getTransferChunkAccessed()
       return getImpl()->getTransferChunkAccessed(getImpl(), getOperation());
   }
 /// Return the shape ratio of unrolling to the target vector shape
-/// `targetShape`. Return `None` if the op cannot be unrolled to the target
+/// `targetShape`. Return `std::nullopt` if the op cannot be unrolled to the target
 /// vector shape.
 ::std::optional<::llvm::SmallVector<int64_t, 4>> mlir::VectorUnrollOpInterface::getShapeForUnroll() {
       return getImpl()->getShapeForUnroll(getImpl(), getOperation());

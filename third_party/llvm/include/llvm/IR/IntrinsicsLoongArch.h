@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum LOONGARCHIntrinsics : unsigned {
 // Enum values for intrinsics
-    loongarch_asrtgt_d = 5061,                        // llvm.loongarch.asrtgt.d
+    loongarch_asrtgt_d = 5101,                        // llvm.loongarch.asrtgt.d
     loongarch_asrtle_d,                        // llvm.loongarch.asrtle.d
     loongarch_break,                           // llvm.loongarch.break
     loongarch_cacop_d,                         // llvm.loongarch.cacop.d

@@ -28,9 +28,8 @@ int main(int argc, char **argv) {
   DialectRegistry registry;
   tpu_mlir::registerAllDialects(registry);
   if (argc <= 2) {
-    return asMainReturnCode(
-        MlirOptMain(argc, argv, "TPU MLIR module optimizer driver\n", registry,
-                    /*preloadDialectsInContext=*/false));
+    return asMainReturnCode(MlirOptMain(
+        argc, argv, "TPU MLIR module optimizer driver\n", registry));
   }
 
   int num_pre = sizeof(PluginPrePass) / sizeof(PluginPrePass[0]);
@@ -69,6 +68,5 @@ int main(int argc, char **argv) {
   }
 
   return asMainReturnCode(MlirOptMain(
-      new_argc, new_argv, "TPU MLIR module optimizer driver\n", registry,
-      /*preloadDialectsInContext=*/false));
+      new_argc, new_argv, "TPU MLIR module optimizer driver\n", registry));
 }

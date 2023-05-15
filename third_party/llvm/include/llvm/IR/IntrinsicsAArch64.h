@@ -639,6 +639,10 @@ enum AARCH64Intrinsics : unsigned {
     aarch64_sve_cntd,                          // llvm.aarch64.sve.cntd
     aarch64_sve_cnth,                          // llvm.aarch64.sve.cnth
     aarch64_sve_cntp,                          // llvm.aarch64.sve.cntp
+    aarch64_sve_cntp_c16,                      // llvm.aarch64.sve.cntp.c16
+    aarch64_sve_cntp_c32,                      // llvm.aarch64.sve.cntp.c32
+    aarch64_sve_cntp_c64,                      // llvm.aarch64.sve.cntp.c64
+    aarch64_sve_cntp_c8,                       // llvm.aarch64.sve.cntp.c8
     aarch64_sve_cntw,                          // llvm.aarch64.sve.cntw
     aarch64_sve_compact,                       // llvm.aarch64.sve.compact
     aarch64_sve_convert_from_svbool,           // llvm.aarch64.sve.convert.from.svbool
@@ -889,6 +893,10 @@ enum AARCH64Intrinsics : unsigned {
     aarch64_sve_ptest_first,                   // llvm.aarch64.sve.ptest.first
     aarch64_sve_ptest_last,                    // llvm.aarch64.sve.ptest.last
     aarch64_sve_ptrue,                         // llvm.aarch64.sve.ptrue
+    aarch64_sve_ptrue_c16,                     // llvm.aarch64.sve.ptrue.c16
+    aarch64_sve_ptrue_c32,                     // llvm.aarch64.sve.ptrue.c32
+    aarch64_sve_ptrue_c64,                     // llvm.aarch64.sve.ptrue.c64
+    aarch64_sve_ptrue_c8,                      // llvm.aarch64.sve.ptrue.c8
     aarch64_sve_punpkhi,                       // llvm.aarch64.sve.punpkhi
     aarch64_sve_punpklo,                       // llvm.aarch64.sve.punpklo
     aarch64_sve_raddhnb,                       // llvm.aarch64.sve.raddhnb
@@ -1298,20 +1306,52 @@ enum AARCH64Intrinsics : unsigned {
     aarch64_sve_uzpq_x2,                       // llvm.aarch64.sve.uzpq.x2
     aarch64_sve_uzpq_x4,                       // llvm.aarch64.sve.uzpq.x4
     aarch64_sve_whilege,                       // llvm.aarch64.sve.whilege
+    aarch64_sve_whilege_c16,                   // llvm.aarch64.sve.whilege.c16
+    aarch64_sve_whilege_c32,                   // llvm.aarch64.sve.whilege.c32
+    aarch64_sve_whilege_c64,                   // llvm.aarch64.sve.whilege.c64
+    aarch64_sve_whilege_c8,                    // llvm.aarch64.sve.whilege.c8
     aarch64_sve_whilege_x2,                    // llvm.aarch64.sve.whilege.x2
     aarch64_sve_whilegt,                       // llvm.aarch64.sve.whilegt
+    aarch64_sve_whilegt_c16,                   // llvm.aarch64.sve.whilegt.c16
+    aarch64_sve_whilegt_c32,                   // llvm.aarch64.sve.whilegt.c32
+    aarch64_sve_whilegt_c64,                   // llvm.aarch64.sve.whilegt.c64
+    aarch64_sve_whilegt_c8,                    // llvm.aarch64.sve.whilegt.c8
     aarch64_sve_whilegt_x2,                    // llvm.aarch64.sve.whilegt.x2
     aarch64_sve_whilehi,                       // llvm.aarch64.sve.whilehi
+    aarch64_sve_whilehi_c16,                   // llvm.aarch64.sve.whilehi.c16
+    aarch64_sve_whilehi_c32,                   // llvm.aarch64.sve.whilehi.c32
+    aarch64_sve_whilehi_c64,                   // llvm.aarch64.sve.whilehi.c64
+    aarch64_sve_whilehi_c8,                    // llvm.aarch64.sve.whilehi.c8
     aarch64_sve_whilehi_x2,                    // llvm.aarch64.sve.whilehi.x2
     aarch64_sve_whilehs,                       // llvm.aarch64.sve.whilehs
+    aarch64_sve_whilehs_c16,                   // llvm.aarch64.sve.whilehs.c16
+    aarch64_sve_whilehs_c32,                   // llvm.aarch64.sve.whilehs.c32
+    aarch64_sve_whilehs_c64,                   // llvm.aarch64.sve.whilehs.c64
+    aarch64_sve_whilehs_c8,                    // llvm.aarch64.sve.whilehs.c8
     aarch64_sve_whilehs_x2,                    // llvm.aarch64.sve.whilehs.x2
     aarch64_sve_whilele,                       // llvm.aarch64.sve.whilele
+    aarch64_sve_whilele_c16,                   // llvm.aarch64.sve.whilele.c16
+    aarch64_sve_whilele_c32,                   // llvm.aarch64.sve.whilele.c32
+    aarch64_sve_whilele_c64,                   // llvm.aarch64.sve.whilele.c64
+    aarch64_sve_whilele_c8,                    // llvm.aarch64.sve.whilele.c8
     aarch64_sve_whilele_x2,                    // llvm.aarch64.sve.whilele.x2
     aarch64_sve_whilelo,                       // llvm.aarch64.sve.whilelo
+    aarch64_sve_whilelo_c16,                   // llvm.aarch64.sve.whilelo.c16
+    aarch64_sve_whilelo_c32,                   // llvm.aarch64.sve.whilelo.c32
+    aarch64_sve_whilelo_c64,                   // llvm.aarch64.sve.whilelo.c64
+    aarch64_sve_whilelo_c8,                    // llvm.aarch64.sve.whilelo.c8
     aarch64_sve_whilelo_x2,                    // llvm.aarch64.sve.whilelo.x2
     aarch64_sve_whilels,                       // llvm.aarch64.sve.whilels
+    aarch64_sve_whilels_c16,                   // llvm.aarch64.sve.whilels.c16
+    aarch64_sve_whilels_c32,                   // llvm.aarch64.sve.whilels.c32
+    aarch64_sve_whilels_c64,                   // llvm.aarch64.sve.whilels.c64
+    aarch64_sve_whilels_c8,                    // llvm.aarch64.sve.whilels.c8
     aarch64_sve_whilels_x2,                    // llvm.aarch64.sve.whilels.x2
     aarch64_sve_whilelt,                       // llvm.aarch64.sve.whilelt
+    aarch64_sve_whilelt_c16,                   // llvm.aarch64.sve.whilelt.c16
+    aarch64_sve_whilelt_c32,                   // llvm.aarch64.sve.whilelt.c32
+    aarch64_sve_whilelt_c64,                   // llvm.aarch64.sve.whilelt.c64
+    aarch64_sve_whilelt_c8,                    // llvm.aarch64.sve.whilelt.c8
     aarch64_sve_whilelt_x2,                    // llvm.aarch64.sve.whilelt.x2
     aarch64_sve_whilerw_b,                     // llvm.aarch64.sve.whilerw.b
     aarch64_sve_whilerw_d,                     // llvm.aarch64.sve.whilerw.d

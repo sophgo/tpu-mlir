@@ -359,7 +359,7 @@ public:
   /// type. In particular, vectors can consist of integer, index, or float
   /// primitives.
   static bool isValidElementType(Type t) {
-    return t.isa<IntegerType, IndexType, FloatType>();
+    return ::llvm::isa<IntegerType, IndexType, FloatType>(t);
   }
 
   /// Returns true if the vector contains scalable dimensions.
@@ -376,7 +376,7 @@ public:
   bool hasRank() const { return true; }
 
   /// Clone this vector type with the given shape and element type. If the
-  /// provided shape is `None`, the current shape of the type is used.
+  /// provided shape is `std::nullopt`, the current shape of the type is used.
   VectorType cloneWith(std::optional<ArrayRef<int64_t>> shape,
                        Type elementType) const;
   using Base::getChecked;

@@ -292,25 +292,25 @@ FloatAttr FloatAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic(
 }
 
 FloatAttr FloatAttr::get(Type type, double value) {
-  if (type.isF64() || !type.isa<FloatType>())
+  if (type.isF64() || !::llvm::isa<FloatType>(type))
     return Base::get(type.getContext(), type, APFloat(value));
 
   // This handles, e.g., F16 because there is no APFloat constructor for it.
   bool unused;
   APFloat val(value);
-  val.convert(type.cast<FloatType>().getFloatSemantics(),
+  val.convert(::llvm::cast<FloatType>(type).getFloatSemantics(),
               APFloat::rmNearestTiesToEven, &unused);
   return Base::get(type.getContext(), type, val);
 }
 
 FloatAttr FloatAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type type, double value) {
-  if (type.isF64() || !type.isa<FloatType>())
+  if (type.isF64() || !::llvm::isa<FloatType>(type))
     return Base::getChecked(emitError, type.getContext(), type, APFloat(value));
 
   // This handles, e.g., F16 because there is no APFloat constructor for it.
   bool unused;
   APFloat val(value);
-  val.convert(type.cast<FloatType>().getFloatSemantics(),
+  val.convert(::llvm::cast<FloatType>(type).getFloatSemantics(),
               APFloat::rmNearestTiesToEven, &unused);
   return Base::getChecked(emitError, type.getContext(), type, val);
 }
@@ -386,7 +386,7 @@ IntegerAttr IntegerAttr::get(Type type, int64_t value) {
     return Base::get(type.getContext(), type, apValue);
   }
 
-  IntegerType intTy = type.cast<IntegerType>();
+  IntegerType intTy = ::llvm::cast<IntegerType>(type);
   APInt apValue(intTy.getWidth(), value, intTy.isSignedInteger());
   return Base::get(type.getContext(), type, apValue);
 }
@@ -398,7 +398,7 @@ IntegerAttr IntegerAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnos
     return Base::getChecked(emitError, type.getContext(), type, apValue);
   }
 
-  IntegerType intTy = type.cast<IntegerType>();
+  IntegerType intTy = ::llvm::cast<IntegerType>(type);
   APInt apValue(intTy.getWidth(), value, intTy.isSignedInteger());
   return Base::getChecked(emitError, type.getContext(), type, apValue);
 }
@@ -535,21 +535,21 @@ struct SparseElementsAttrStorage : public ::mlir::AttributeStorage {
 SparseElementsAttr SparseElementsAttr::get(ShapedType type, DenseElementsAttr indices, DenseElementsAttr values) {
   assert(indices.getType().getElementType().isInteger(64) &&
          "expected sparse indices to be 64-bit integer values");
-  assert((type.isa<RankedTensorType, VectorType>()) &&
+  assert((::llvm::isa<RankedTensorType, VectorType>(type)) &&
          "type must be ranked tensor or vector");
   assert(type.hasStaticShape() && "type must have static shape");
   return Base::get(type.getContext(), type,
-               indices.cast<DenseIntElementsAttr>(), values);
+               ::llvm::cast<DenseIntElementsAttr>(indices), values);
 }
 
 SparseElementsAttr SparseElementsAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ShapedType type, DenseElementsAttr indices, DenseElementsAttr values) {
   assert(indices.getType().getElementType().isInteger(64) &&
          "expected sparse indices to be 64-bit integer values");
-  assert((type.isa<RankedTensorType, VectorType>()) &&
+  assert((::llvm::isa<RankedTensorType, VectorType>(type)) &&
          "type must be ranked tensor or vector");
   assert(type.hasStaticShape() && "type must have static shape");
   return Base::getChecked(emitError, type.getContext(), type,
-               indices.cast<DenseIntElementsAttr>(), values);
+               ::llvm::cast<DenseIntElementsAttr>(indices), values);
 }
 
 ShapedType SparseElementsAttr::getType() const {

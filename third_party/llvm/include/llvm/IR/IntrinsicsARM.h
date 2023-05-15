@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum ARMIntrinsics : unsigned {
 // Enum values for intrinsics
-    arm_cde_cx1 = 2546,                               // llvm.arm.cde.cx1
+    arm_cde_cx1 = 2586,                               // llvm.arm.cde.cx1
     arm_cde_cx1a,                              // llvm.arm.cde.cx1a
     arm_cde_cx1d,                              // llvm.arm.cde.cx1d
     arm_cde_cx1da,                             // llvm.arm.cde.cx1da

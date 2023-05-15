@@ -12,8 +12,8 @@ namespace detail {
 struct InferTypeOpInterfaceInterfaceTraits {
   struct Concept {
     /// The methods defined by the interface.
-    ::mlir::LogicalResult (*inferReturnTypes)(::mlir::MLIRContext *, ::std::optional<::mlir::Location>, ::mlir::ValueRange, ::mlir::DictionaryAttr, ::mlir::RegionRange, ::llvm::SmallVectorImpl<::mlir::Type>&);
-    ::mlir::LogicalResult (*refineReturnTypes)(::mlir::MLIRContext *, ::std::optional<::mlir::Location>, ::mlir::ValueRange, ::mlir::DictionaryAttr, ::mlir::RegionRange, ::llvm::SmallVectorImpl<::mlir::Type>&);
+    ::mlir::LogicalResult (*inferReturnTypes)(::mlir::MLIRContext *, ::std::optional<::mlir::Location>, ::mlir::ValueRange, ::mlir::DictionaryAttr, ::mlir::OpaqueProperties, ::mlir::RegionRange, ::llvm::SmallVectorImpl<::mlir::Type>&);
+    ::mlir::LogicalResult (*refineReturnTypes)(::mlir::MLIRContext *, ::std::optional<::mlir::Location>, ::mlir::ValueRange, ::mlir::DictionaryAttr, ::mlir::OpaqueProperties, ::mlir::RegionRange, ::llvm::SmallVectorImpl<::mlir::Type>&);
     bool (*isCompatibleReturnTypes)(::mlir::TypeRange, ::mlir::TypeRange);
   };
   template<typename ConcreteOp>
@@ -22,8 +22,8 @@ struct InferTypeOpInterfaceInterfaceTraits {
     using Interface = ::mlir::InferTypeOpInterface;
     Model() : Concept{inferReturnTypes, refineReturnTypes, isCompatibleReturnTypes} {}
 
-    static inline ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes);
-    static inline ::mlir::LogicalResult refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes);
+    static inline ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes);
+    static inline ::mlir::LogicalResult refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes);
     static inline bool isCompatibleReturnTypes(::mlir::TypeRange lhs, ::mlir::TypeRange rhs);
   };
   template<typename ConcreteOp>
@@ -32,15 +32,15 @@ struct InferTypeOpInterfaceInterfaceTraits {
     using Interface = ::mlir::InferTypeOpInterface;
     FallbackModel() : Concept{inferReturnTypes, refineReturnTypes, isCompatibleReturnTypes} {}
 
-    static inline ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes);
-    static inline ::mlir::LogicalResult refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes);
+    static inline ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes);
+    static inline ::mlir::LogicalResult refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes);
     static inline bool isCompatibleReturnTypes(::mlir::TypeRange lhs, ::mlir::TypeRange rhs);
   };
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
     using ConcreteEntity = ConcreteOp;
-    static ::mlir::LogicalResult refineReturnTypes(::mlir::MLIRContext *context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&returnTypes);
+    static ::mlir::LogicalResult refineReturnTypes(::mlir::MLIRContext *context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&returnTypes);
     static bool isCompatibleReturnTypes(::mlir::TypeRange lhs, ::mlir::TypeRange rhs);
   };
 };template <typename ConcreteOp>
@@ -60,7 +60,7 @@ public:
   ///       and the regions of the op. Be aware that this method is supposed to be
   ///       called with valid arguments, e.g., operands are verified, or it may result
   ///       in an undefined behavior.
-  ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes);
+  ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes);
   /// Refine the return types that an op would generate.
   /// 
   ///       This method computes the return types as `inferReturnTypes` does but
@@ -81,7 +81,7 @@ public:
   /// 
   ///       Be aware that this method is supposed to be called with valid arguments,
   ///       e.g., operands are verified, or it may result in an undefined behavior.
-  ::mlir::LogicalResult refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes);
+  ::mlir::LogicalResult refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes);
   /// Returns whether two array of types are compatible result types for an op.
   bool isCompatibleReturnTypes(::mlir::TypeRange lhs, ::mlir::TypeRange rhs);
 };
@@ -108,10 +108,10 @@ namespace detail {
     /// 
     ///       Be aware that this method is supposed to be called with valid arguments,
     ///       e.g., operands are verified, or it may result in an undefined behavior.
-    static ::mlir::LogicalResult refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes) {
+    static ::mlir::LogicalResult refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes) {
       llvm::SmallVector<Type, 4> inferredReturnTypes;
           if (failed(ConcreteOp::inferReturnTypes(context, location, operands,
-                                                  attributes, regions,
+                                                  attributes, properties, regions,
                                                   inferredReturnTypes)))
             return failure();
           if (!ConcreteOp::isCompatibleReturnTypes(inferredReturnTypes,
@@ -142,7 +142,7 @@ namespace detail {
 struct InferShapedTypeOpInterfaceInterfaceTraits {
   struct Concept {
     /// The methods defined by the interface.
-    ::mlir::LogicalResult (*inferReturnTypeComponents)(::mlir::MLIRContext*, ::std::optional<::mlir::Location>, ::mlir::ValueShapeRange, ::mlir::DictionaryAttr, ::mlir::RegionRange, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&);
+    ::mlir::LogicalResult (*inferReturnTypeComponents)(::mlir::MLIRContext*, ::std::optional<::mlir::Location>, ::mlir::ValueShapeRange, ::mlir::DictionaryAttr, ::mlir::OpaqueProperties, ::mlir::RegionRange, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&);
     ::mlir::LogicalResult (*reifyReturnTypeShapes)(const Concept *impl, ::mlir::Operation *, ::mlir::OpBuilder&, ::mlir::ValueRange, ::llvm::SmallVectorImpl<::mlir::Value> &);
   };
   template<typename ConcreteOp>
@@ -151,7 +151,7 @@ struct InferShapedTypeOpInterfaceInterfaceTraits {
     using Interface = ::mlir::InferShapedTypeOpInterface;
     Model() : Concept{inferReturnTypeComponents, reifyReturnTypeShapes} {}
 
-    static inline ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes);
+    static inline ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes);
     static inline ::mlir::LogicalResult reifyReturnTypeShapes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::OpBuilder& builder, ::mlir::ValueRange operands, ::llvm::SmallVectorImpl<::mlir::Value> & reifiedReturnShapes);
   };
   template<typename ConcreteOp>
@@ -160,14 +160,14 @@ struct InferShapedTypeOpInterfaceInterfaceTraits {
     using Interface = ::mlir::InferShapedTypeOpInterface;
     FallbackModel() : Concept{inferReturnTypeComponents, reifyReturnTypeShapes} {}
 
-    static inline ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes);
+    static inline ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes);
     static inline ::mlir::LogicalResult reifyReturnTypeShapes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::OpBuilder& builder, ::mlir::ValueRange operands, ::llvm::SmallVectorImpl<::mlir::Value> & reifiedReturnShapes);
   };
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
     using ConcreteEntity = ConcreteOp;
-    static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
+    static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
     ::mlir::LogicalResult reifyReturnTypeShapes(::mlir::Operation *tablegen_opaque_val, ::mlir::OpBuilder&builder, ::mlir::ValueRange operands, ::llvm::SmallVectorImpl<::mlir::Value> &reifiedReturnShapes) const;
   };
 };template <typename ConcreteOp>
@@ -189,7 +189,7 @@ public:
   ///       Unknown (e.g., unranked) shape and nullptrs for element type and attribute
   ///       may be returned by this function while returning success. E.g., partial
   ///       population of components is not error condition.
-  ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes);
+  ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes);
   /// Reify the shape computation for the operation.
   /// 
   ///       Insert operations using the given OpBuilder that computes the
@@ -220,7 +220,7 @@ namespace detail {
     ///       Unknown (e.g., unranked) shape and nullptrs for element type and attribute
     ///       may be returned by this function while returning success. E.g., partial
     ///       population of components is not error condition.
-    static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes) {
+    static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes) {
       return ::mlir::failure();
     }
     /// Reify the shape computation for the operation.
@@ -302,34 +302,34 @@ namespace detail {
 } // namespace mlir
 namespace mlir {
 template<typename ConcreteOp>
-::mlir::LogicalResult detail::InferTypeOpInterfaceInterfaceTraits::Model<ConcreteOp>::inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {
-  return ConcreteOp::inferReturnTypes(context, location, operands, attributes, regions, inferredReturnTypes);
+::mlir::LogicalResult detail::InferTypeOpInterfaceInterfaceTraits::Model<ConcreteOp>::inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {
+  return ConcreteOp::inferReturnTypes(context, location, operands, attributes, properties, regions, inferredReturnTypes);
 }
 template<typename ConcreteOp>
-::mlir::LogicalResult detail::InferTypeOpInterfaceInterfaceTraits::Model<ConcreteOp>::refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes) {
-  return ConcreteOp::refineReturnTypes(context, location, operands, attributes, regions, returnTypes);
+::mlir::LogicalResult detail::InferTypeOpInterfaceInterfaceTraits::Model<ConcreteOp>::refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes) {
+  return ConcreteOp::refineReturnTypes(context, location, operands, attributes, properties, regions, returnTypes);
 }
 template<typename ConcreteOp>
 bool detail::InferTypeOpInterfaceInterfaceTraits::Model<ConcreteOp>::isCompatibleReturnTypes(::mlir::TypeRange lhs, ::mlir::TypeRange rhs) {
   return ConcreteOp::isCompatibleReturnTypes(lhs, rhs);
 }
 template<typename ConcreteOp>
-::mlir::LogicalResult detail::InferTypeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {
-  return ConcreteOp::inferReturnTypes(context, location, operands, attributes, regions, inferredReturnTypes);
+::mlir::LogicalResult detail::InferTypeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {
+  return ConcreteOp::inferReturnTypes(context, location, operands, attributes, properties, regions, inferredReturnTypes);
 }
 template<typename ConcreteOp>
-::mlir::LogicalResult detail::InferTypeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes) {
-  return ConcreteOp::refineReturnTypes(context, location, operands, attributes, regions, returnTypes);
+::mlir::LogicalResult detail::InferTypeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes) {
+  return ConcreteOp::refineReturnTypes(context, location, operands, attributes, properties, regions, returnTypes);
 }
 template<typename ConcreteOp>
 bool detail::InferTypeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::isCompatibleReturnTypes(::mlir::TypeRange lhs, ::mlir::TypeRange rhs) {
   return ConcreteOp::isCompatibleReturnTypes(lhs, rhs);
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::mlir::LogicalResult detail::InferTypeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::refineReturnTypes(::mlir::MLIRContext *context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&returnTypes) {
+::mlir::LogicalResult detail::InferTypeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::refineReturnTypes(::mlir::MLIRContext *context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&returnTypes) {
 llvm::SmallVector<Type, 4> inferredReturnTypes;
           if (failed(ConcreteOp::inferReturnTypes(context, location, operands,
-                                                  attributes, regions,
+                                                  attributes, properties, regions,
                                                   inferredReturnTypes)))
             return failure();
           if (!ConcreteOp::isCompatibleReturnTypes(inferredReturnTypes,
@@ -351,23 +351,23 @@ bool detail::InferTypeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, C
 } // namespace mlir
 namespace mlir {
 template<typename ConcreteOp>
-::mlir::LogicalResult detail::InferShapedTypeOpInterfaceInterfaceTraits::Model<ConcreteOp>::inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes) {
-  return ConcreteOp::inferReturnTypeComponents(context, location, operands, attributes, regions, inferredReturnShapes);
+::mlir::LogicalResult detail::InferShapedTypeOpInterfaceInterfaceTraits::Model<ConcreteOp>::inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes) {
+  return ConcreteOp::inferReturnTypeComponents(context, location, operands, attributes, properties, regions, inferredReturnShapes);
 }
 template<typename ConcreteOp>
 ::mlir::LogicalResult detail::InferShapedTypeOpInterfaceInterfaceTraits::Model<ConcreteOp>::reifyReturnTypeShapes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::OpBuilder& builder, ::mlir::ValueRange operands, ::llvm::SmallVectorImpl<::mlir::Value> & reifiedReturnShapes) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).reifyReturnTypeShapes(builder, operands, reifiedReturnShapes);
 }
 template<typename ConcreteOp>
-::mlir::LogicalResult detail::InferShapedTypeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes) {
-  return ConcreteOp::inferReturnTypeComponents(context, location, operands, attributes, regions, inferredReturnShapes);
+::mlir::LogicalResult detail::InferShapedTypeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes) {
+  return ConcreteOp::inferReturnTypeComponents(context, location, operands, attributes, properties, regions, inferredReturnShapes);
 }
 template<typename ConcreteOp>
 ::mlir::LogicalResult detail::InferShapedTypeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::reifyReturnTypeShapes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::OpBuilder& builder, ::mlir::ValueRange operands, ::llvm::SmallVectorImpl<::mlir::Value> & reifiedReturnShapes) {
   return static_cast<const ConcreteOp *>(impl)->reifyReturnTypeShapes(tablegen_opaque_val, builder, operands, reifiedReturnShapes);
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::mlir::LogicalResult detail::InferShapedTypeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes) {
+::mlir::LogicalResult detail::InferShapedTypeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::inferReturnTypeComponents(::mlir::MLIRContext*context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes) {
 return ::mlir::failure();
 }
 template<typename ConcreteModel, typename ConcreteOp>

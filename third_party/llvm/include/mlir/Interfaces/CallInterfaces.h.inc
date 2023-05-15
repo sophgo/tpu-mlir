@@ -13,24 +13,27 @@ struct CallOpInterfaceInterfaceTraits {
   struct Concept {
     /// The methods defined by the interface.
     ::mlir::CallInterfaceCallable (*getCallableForCallee)(const Concept *impl, ::mlir::Operation *);
+    void (*setCalleeFromCallable)(const Concept *impl, ::mlir::Operation *, ::mlir::CallInterfaceCallable);
     ::mlir::Operation::operand_range (*getArgOperands)(const Concept *impl, ::mlir::Operation *);
   };
   template<typename ConcreteOp>
   class Model : public Concept {
   public:
     using Interface = ::mlir::CallOpInterface;
-    Model() : Concept{getCallableForCallee, getArgOperands} {}
+    Model() : Concept{getCallableForCallee, setCalleeFromCallable, getArgOperands} {}
 
     static inline ::mlir::CallInterfaceCallable getCallableForCallee(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline void setCalleeFromCallable(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::CallInterfaceCallable callee);
     static inline ::mlir::Operation::operand_range getArgOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteOp>
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::CallOpInterface;
-    FallbackModel() : Concept{getCallableForCallee, getArgOperands} {}
+    FallbackModel() : Concept{getCallableForCallee, setCalleeFromCallable, getArgOperands} {}
 
     static inline ::mlir::CallInterfaceCallable getCallableForCallee(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline void setCalleeFromCallable(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::CallInterfaceCallable callee);
     static inline ::mlir::Operation::operand_range getArgOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteModel, typename ConcreteOp>
@@ -52,6 +55,12 @@ public:
   /// SSA value. If the reference is an SSA value, the SSA value corresponds
   /// to a region of a lambda-like operation.
   ::mlir::CallInterfaceCallable getCallableForCallee();
+  /// Sets the callee of this call-like operation. A `callee` is either a
+  /// reference to a symbol, via SymbolRefAttr, or a reference to a defined
+  /// SSA value. The type of the `callee` is expected to be the same as the
+  /// return type of `getCallableForCallee`, e.g., `callee` should be
+  /// SymbolRefAttr for `func.call`.
+  void setCalleeFromCallable(::mlir::CallInterfaceCallable callee);
   /// Returns the operands within this call that are used as arguments to the
   /// callee.
   ::mlir::Operation::operand_range getArgOperands();
@@ -142,12 +151,20 @@ template<typename ConcreteOp>
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getCallableForCallee();
 }
 template<typename ConcreteOp>
+void detail::CallOpInterfaceInterfaceTraits::Model<ConcreteOp>::setCalleeFromCallable(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::CallInterfaceCallable callee) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).setCalleeFromCallable(callee);
+}
+template<typename ConcreteOp>
 ::mlir::Operation::operand_range detail::CallOpInterfaceInterfaceTraits::Model<ConcreteOp>::getArgOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getArgOperands();
 }
 template<typename ConcreteOp>
 ::mlir::CallInterfaceCallable detail::CallOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getCallableForCallee(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getCallableForCallee(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+void detail::CallOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::setCalleeFromCallable(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::CallInterfaceCallable callee) {
+  return static_cast<const ConcreteOp *>(impl)->setCalleeFromCallable(tablegen_opaque_val, callee);
 }
 template<typename ConcreteOp>
 ::mlir::Operation::operand_range detail::CallOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getArgOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {

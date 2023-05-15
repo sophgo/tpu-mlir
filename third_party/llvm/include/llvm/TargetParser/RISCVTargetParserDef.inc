@@ -2,7 +2,6 @@
 #define PROC(ENUM, NAME, DEFAULT_MARCH)
 #endif
 
-PROC(INVALID, {"invalid"}, {""})
 PROC(GENERIC_RV32, {"generic-rv32"}, {"rv32i2p1"})
 PROC(GENERIC_RV64, {"generic-rv64"}, {"rv64i2p1"})
 PROC(ROCKET_RV32, {"rocket-rv32"}, {"rv32i2p1_zicsr2p0_zifencei2p0"})
@@ -19,6 +18,7 @@ PROC(SIFIVE_S54, {"sifive-s54"}, {"rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zi
 PROC(SIFIVE_S76, {"sifive-s76"}, {"rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0"})
 PROC(SIFIVE_U54, {"sifive-u54"}, {"rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0"})
 PROC(SIFIVE_U74, {"sifive-u74"}, {"rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_zicsr2p0_zifencei2p0"})
+PROC(SIFIVE_X280, {"sifive-x280"}, {"rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zifencei2p0_zfh1p0_zfhmin1p0_zba1p0_zbb1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvfh0p1_zvl128b1p0_zvl256b1p0_zvl32b1p0_zvl512b1p0_zvl64b1p0"})
 PROC(SYNTACORE_SCR1_BASE, {"syntacore-scr1-base"}, {"rv32i2p1_c2p0_zicsr2p0_zifencei2p0"})
 PROC(SYNTACORE_SCR1_MAX, {"syntacore-scr1-max"}, {"rv32i2p1_m2p0_c2p0_zicsr2p0_zifencei2p0"})
 

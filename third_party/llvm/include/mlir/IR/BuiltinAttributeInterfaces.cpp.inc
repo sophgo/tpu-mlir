@@ -18,8 +18,12 @@ bool mlir::ElementsAttr::isSplat() const {
       return getImpl()->isSplat(getImpl(), *this);
   }
 /// Returns the shaped type of the elements attribute.
-::mlir::ShapedType mlir::ElementsAttr::getType() const {
-      return getImpl()->getType(getImpl(), *this);
+::mlir::ShapedType mlir::ElementsAttr::getShapedType() const {
+      return getImpl()->getShapedType(getImpl(), *this);
+  }
+/// Get the attribute's type
+::mlir::Type mlir::ElementsAttr::getType() const {
+      return getImpl()->implTypedAttr->getType(getImpl()->implTypedAttr, *this);
   }
 /// Get the MemRef layout as an AffineMap, the method must not return NULL
 ::mlir::AffineMap mlir::MemRefLayoutAttrInterface::getAffineMap() const {

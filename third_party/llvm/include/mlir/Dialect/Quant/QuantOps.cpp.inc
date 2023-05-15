@@ -28,7 +28,7 @@ namespace quant {
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_QuantOps0(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::FloatType>())) || ((type.isa<mlir::quant::QuantizedType>()))) || (((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return ((elementType.isa<::mlir::FloatType>())) || ((elementType.isa<mlir::quant::QuantizedType>())); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return ((elementType.isa<::mlir::FloatType>())) || ((elementType.isa<mlir::quant::QuantizedType>())); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
+  if (!((((::llvm::isa<::mlir::FloatType>(type))) || ((::llvm::isa<mlir::quant::QuantizedType>(type)))) || (((::llvm::isa<::mlir::TensorType>(type))) && ([](::mlir::Type elementType) { return ((::llvm::isa<::mlir::FloatType>(elementType))) || ((::llvm::isa<mlir::quant::QuantizedType>(elementType))); }(::llvm::cast<::mlir::ShapedType>(type).getElementType()))) || ((((::llvm::isa<::mlir::VectorType>(type))) && ((::llvm::cast<::mlir::VectorType>(type).getRank() > 0))) && ([](::mlir::Type elementType) { return ((::llvm::isa<::mlir::FloatType>(elementType))) || ((::llvm::isa<mlir::quant::QuantizedType>(elementType))); }(::llvm::cast<::mlir::ShapedType>(type).getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be primitive/tensor/vector of real valued primitive (float or quantized type), but got " << type;
   }
@@ -38,7 +38,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_QuantOps0(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_QuantOps1(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!(((((type.isa<::mlir::FloatType>())) || ((type.isa<mlir::quant::QuantizedType>()))) || (((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return ((elementType.isa<::mlir::FloatType>())) || ((elementType.isa<mlir::quant::QuantizedType>())); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return ((elementType.isa<::mlir::FloatType>())) || ((elementType.isa<mlir::quant::QuantizedType>())); }(type.cast<::mlir::ShapedType>().getElementType())))) || ((((type.isSignlessInteger())) || ((type.isa<mlir::quant::QuantizedType>()))) || (((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return ((elementType.isSignlessInteger())) || ((elementType.isa<mlir::quant::QuantizedType>())); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return ((elementType.isSignlessInteger())) || ((elementType.isa<mlir::quant::QuantizedType>())); }(type.cast<::mlir::ShapedType>().getElementType())))))) {
+  if (!(((((::llvm::isa<::mlir::FloatType>(type))) || ((::llvm::isa<mlir::quant::QuantizedType>(type)))) || (((::llvm::isa<::mlir::TensorType>(type))) && ([](::mlir::Type elementType) { return ((::llvm::isa<::mlir::FloatType>(elementType))) || ((::llvm::isa<mlir::quant::QuantizedType>(elementType))); }(::llvm::cast<::mlir::ShapedType>(type).getElementType()))) || ((((::llvm::isa<::mlir::VectorType>(type))) && ((::llvm::cast<::mlir::VectorType>(type).getRank() > 0))) && ([](::mlir::Type elementType) { return ((::llvm::isa<::mlir::FloatType>(elementType))) || ((::llvm::isa<mlir::quant::QuantizedType>(elementType))); }(::llvm::cast<::mlir::ShapedType>(type).getElementType())))) || ((((type.isSignlessInteger())) || ((::llvm::isa<mlir::quant::QuantizedType>(type)))) || (((::llvm::isa<::mlir::TensorType>(type))) && ([](::mlir::Type elementType) { return ((elementType.isSignlessInteger())) || ((::llvm::isa<mlir::quant::QuantizedType>(elementType))); }(::llvm::cast<::mlir::ShapedType>(type).getElementType()))) || ((((::llvm::isa<::mlir::VectorType>(type))) && ((::llvm::cast<::mlir::VectorType>(type).getRank() > 0))) && ([](::mlir::Type elementType) { return ((elementType.isSignlessInteger())) || ((::llvm::isa<mlir::quant::QuantizedType>(elementType))); }(::llvm::cast<::mlir::ShapedType>(type).getElementType())))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be , but got " << type;
   }
@@ -54,7 +54,7 @@ namespace quant {
 //===----------------------------------------------------------------------===//
 
 namespace detail {
-DequantizeCastOpGenericAdaptorBase::DequantizeCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+DequantizeCastOpGenericAdaptorBase::DequantizeCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, const ::mlir::EmptyProperties &properties, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("quant.dcast", odsAttrs.getContext());
 }
 
@@ -67,7 +67,7 @@ std::pair<unsigned, unsigned> DequantizeCastOpGenericAdaptorBase::getODSOperandI
 }
 
 } // namespace detail
-DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(DequantizeCastOp op) : DequantizeCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
+DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(DequantizeCastOp op) : DequantizeCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op.getProperties(), op->getRegions()) {}
 
 ::mlir::LogicalResult DequantizeCastOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();
@@ -163,7 +163,7 @@ namespace quant {
 //===----------------------------------------------------------------------===//
 
 namespace detail {
-QuantizeCastOpGenericAdaptorBase::QuantizeCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+QuantizeCastOpGenericAdaptorBase::QuantizeCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, const ::mlir::EmptyProperties &properties, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("quant.qcast", odsAttrs.getContext());
 }
 
@@ -176,7 +176,7 @@ std::pair<unsigned, unsigned> QuantizeCastOpGenericAdaptorBase::getODSOperandInd
 }
 
 } // namespace detail
-QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(QuantizeCastOp op) : QuantizeCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
+QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(QuantizeCastOp op) : QuantizeCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op.getProperties(), op->getRegions()) {}
 
 ::mlir::LogicalResult QuantizeCastOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();
@@ -272,7 +272,7 @@ namespace quant {
 //===----------------------------------------------------------------------===//
 
 namespace detail {
-StorageCastOpGenericAdaptorBase::StorageCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+StorageCastOpGenericAdaptorBase::StorageCastOpGenericAdaptorBase(::mlir::DictionaryAttr attrs, const ::mlir::EmptyProperties &properties, ::mlir::RegionRange regions) : odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
     odsOpName.emplace("quant.scast", odsAttrs.getContext());
 }
 
@@ -285,7 +285,7 @@ std::pair<unsigned, unsigned> StorageCastOpGenericAdaptorBase::getODSOperandInde
 }
 
 } // namespace detail
-StorageCastOpAdaptor::StorageCastOpAdaptor(StorageCastOp op) : StorageCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op->getRegions()) {}
+StorageCastOpAdaptor::StorageCastOpAdaptor(StorageCastOp op) : StorageCastOpAdaptor(op->getOperands(), op->getAttrDictionary(), op.getProperties(), op->getRegions()) {}
 
 ::mlir::LogicalResult StorageCastOpAdaptor::verify(::mlir::Location loc) {
   return ::mlir::success();

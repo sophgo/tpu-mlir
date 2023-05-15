@@ -1,7 +1,11 @@
 #!/bin/bash
 set -xe
 pushd bin/
-for file in `ls | grep -vw -E 'mlir-opt|mlir-tblgen|mlir-translate|llc'`; do echo "" > $file; done
+for file in `ls | grep -vw -E 'mlir-tblgen|mlir-translate|llc|mlir-opt'`; do echo "" > $file; done
+popd
+
+pushd include/mlir/Dialect/
+for file in `ls | grep -vw -E 'Func|Quant|IRDL|PDL|PDLInterp|Tosa|CommonFolders.h|Traits.h'`; do rm $file -rf; done
 popd
 
 rm -rf need
@@ -32,35 +36,22 @@ need_list=(
   "libMLIRFuncDialect.a"
   "libMLIRIR.a"
   "libMLIRDialect.a"
-  "libMLIRControlFlowDialect.a"
+  "libMLIRIRDL.a"
   "libMLIRTosaDialect.a"
-  "libMLIRAffineDialect.a"
-  "libMLIRSCFDialect.a"
-  "libMLIRTensorDialect.a"
-  "libMLIRArithUtils.a"
-  "libMLIRParallelCombiningOpInterface.a"
   "libMLIRPluginsLib.a"
-  "libMLIRLinalgDialect.a"
-  "libMLIRDestinationStyleOpInterface.a"
-  "libMLIRValueBoundsOpInterface.a"
-  "libMLIRComplexDialect.a"
   "libMLIRCastInterfaces.a"
   "libMLIRDialectUtils.a"
-  "libMLIRArithDialect.a"
   "libMLIRInferIntRangeCommon.a"
   "libMLIRPresburger.a"
-  "libMLIRMemRefDialect.a"
   "libMLIRLoopLikeInterface.a"
   "libMLIRInferTypeOpInterface.a"
   "libMLIROptLib.a"
   "libMLIRDebug.a"
   "libMLIRQuantDialect.a"
   "libMLIRQuantUtils.a"
+  "libMLIRMemorySlotInterfaces.a"
   "libMLIRParser.a"
   "libMLIRPass.a"
-  "libMLIRPDL.a"
-  "libMLIRPDLInterp.a"
-  "libMLIRPDLToPDLInterp.a"
   "libMLIRObservers.a"
   "libMLIRRewrite.a"
   "libMLIRSideEffectInterfaces.a"

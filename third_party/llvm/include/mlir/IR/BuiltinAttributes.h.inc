@@ -73,8 +73,8 @@ public:
     public:
       explicit attr_value_iterator(ArrayAttr::iterator it)
           : llvm::mapped_iterator<ArrayAttr::iterator, AttrTy (*)(Attribute)>(
-                it, [](Attribute attr) { return attr.cast<AttrTy>(); }) {}
-      AttrTy operator*() const { return (*this->I).template cast<AttrTy>(); }
+                it, [](Attribute attr) { return ::llvm::cast<AttrTy>(attr); }) {}
+      AttrTy operator*() const { return ::llvm::cast<AttrTy>(*this->I); }
     };
 
   public:
@@ -116,7 +116,7 @@ public:
 namespace detail {
 struct DenseIntOrFPElementsAttrStorage;
 } // namespace detail
-class DenseIntOrFPElementsAttr : public ::mlir::Attribute::AttrBase<DenseIntOrFPElementsAttr, DenseElementsAttr, detail::DenseIntOrFPElementsAttrStorage, ::mlir::ElementsAttr::Trait, ::mlir::TypedAttr::Trait> {
+class DenseIntOrFPElementsAttr : public ::mlir::Attribute::AttrBase<DenseIntOrFPElementsAttr, DenseElementsAttr, detail::DenseIntOrFPElementsAttrStorage, ::mlir::TypedAttr::Trait, ::mlir::ElementsAttr::Trait> {
 public:
   using Base::Base;
     using DenseElementsAttr::empty;
@@ -222,7 +222,7 @@ public:
 namespace detail {
 struct DenseResourceElementsAttrStorage;
 } // namespace detail
-class DenseResourceElementsAttr : public ::mlir::Attribute::AttrBase<DenseResourceElementsAttr, ::mlir::Attribute, detail::DenseResourceElementsAttrStorage, ::mlir::ElementsAttr::Trait, ::mlir::TypedAttr::Trait> {
+class DenseResourceElementsAttr : public ::mlir::Attribute::AttrBase<DenseResourceElementsAttr, ::mlir::Attribute, detail::DenseResourceElementsAttrStorage, ::mlir::TypedAttr::Trait, ::mlir::ElementsAttr::Trait> {
 public:
   using Base::Base;
   protected:
@@ -243,7 +243,7 @@ public:
 namespace detail {
 struct DenseStringElementsAttrStorage;
 } // namespace detail
-class DenseStringElementsAttr : public ::mlir::Attribute::AttrBase<DenseStringElementsAttr, DenseElementsAttr, detail::DenseStringElementsAttrStorage, ::mlir::ElementsAttr::Trait, ::mlir::TypedAttr::Trait> {
+class DenseStringElementsAttr : public ::mlir::Attribute::AttrBase<DenseStringElementsAttr, DenseElementsAttr, detail::DenseStringElementsAttrStorage, ::mlir::TypedAttr::Trait, ::mlir::ElementsAttr::Trait> {
 public:
   using Base::Base;
     using DenseElementsAttr::empty;
@@ -435,7 +435,7 @@ public:
 namespace detail {
 struct SparseElementsAttrStorage;
 } // namespace detail
-class SparseElementsAttr : public ::mlir::Attribute::AttrBase<SparseElementsAttr, ::mlir::Attribute, detail::SparseElementsAttrStorage, ::mlir::ElementsAttr::Trait, ::mlir::TypedAttr::Trait> {
+class SparseElementsAttr : public ::mlir::Attribute::AttrBase<SparseElementsAttr, ::mlir::Attribute, detail::SparseElementsAttrStorage, ::mlir::TypedAttr::Trait, ::mlir::ElementsAttr::Trait> {
 public:
   using Base::Base;
     /// The set of data types that can be iterated by this attribute.
@@ -487,7 +487,7 @@ public:
     template <typename T>
     std::enable_if_t<std::is_base_of<Attribute, T>::value, T>
     getZeroValue() const {
-      return getZeroAttr().template cast<T>();
+      return ::llvm::cast<T>(getZeroAttr());
     }
     /// Get a zero for an APInt.
     template <typename T>

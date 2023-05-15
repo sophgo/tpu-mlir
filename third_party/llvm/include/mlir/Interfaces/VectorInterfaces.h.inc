@@ -46,7 +46,7 @@ public:
   template <typename ConcreteOp>
   struct Trait : public detail::VectorUnrollOpInterfaceTrait<ConcreteOp> {};
   /// Return the shape ratio of unrolling to the target vector shape
-  /// `targetShape`. Return `None` if the op cannot be unrolled to the target
+  /// `targetShape`. Return `std::nullopt` if the op cannot be unrolled to the target
   /// vector shape.
   ::std::optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll();
 };
@@ -54,12 +54,11 @@ namespace detail {
   template <typename ConcreteOp>
   struct VectorUnrollOpInterfaceTrait : public ::mlir::OpInterface<VectorUnrollOpInterface, detail::VectorUnrollOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
     /// Return the shape ratio of unrolling to the target vector shape
-    /// `targetShape`. Return `None` if the op cannot be unrolled to the target
+    /// `targetShape`. Return `std::nullopt` if the op cannot be unrolled to the target
     /// vector shape.
     ::std::optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll() {
       assert((*static_cast<ConcreteOp *>(this))->getNumResults() == 1);
-        auto vt = (*static_cast<ConcreteOp *>(this)).getResult().getType().
-          template dyn_cast<::mlir::VectorType>();
+        auto vt = ::llvm::dyn_cast<::mlir::VectorType>((*static_cast<ConcreteOp *>(this)).getResult().getType());
         if (!vt)
           return ::std::nullopt;
         ::llvm::SmallVector<int64_t, 4> res(vt.getShape().begin(), vt.getShape().end());
@@ -253,8 +252,7 @@ namespace detail {
     bool isDimInBounds(unsigned dim) {
       return (*static_cast<ConcreteOp *>(this)).isBroadcastDim(dim)
             || ((*static_cast<ConcreteOp *>(this)).getInBounds()
-                && (*static_cast<ConcreteOp *>(this)).getInBounds()->template cast<::mlir::ArrayAttr>()[dim]
-                                    .template cast<::mlir::BoolAttr>().getValue());
+                && cast<::mlir::BoolAttr>(cast<::mlir::ArrayAttr>(*(*static_cast<ConcreteOp *>(this)).getInBounds())[dim]).getValue());
     }
     /// Returns true if the specified dimension is a broadcast.
     bool isBroadcastDim(unsigned idx) {
@@ -273,11 +271,11 @@ namespace detail {
     }
     /// Return the ShapedType.
     ::mlir::ShapedType getShapedType() {
-      return (*static_cast<ConcreteOp *>(this)).getSource().getType().template cast<::mlir::ShapedType>();
+      return ::llvm::cast<::mlir::ShapedType>((*static_cast<ConcreteOp *>(this)).getSource().getType());
     }
     /// Return the VectorType.
     ::mlir::VectorType getVectorType() {
-      return (*static_cast<ConcreteOp *>(this)).getVector().getType().template dyn_cast<::mlir::VectorType>();
+      return ::llvm::dyn_cast<::mlir::VectorType>((*static_cast<ConcreteOp *>(this)).getVector().getType());
     }
     /// Return the mask operand if the op has a mask. Otherwise, return a empty value.
     Value getMask() {
@@ -362,8 +360,7 @@ template<typename ConcreteOp>
 template<typename ConcreteModel, typename ConcreteOp>
 ::std::optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getShapeForUnroll(::mlir::Operation *tablegen_opaque_val) const {
 assert((llvm::cast<ConcreteOp>(tablegen_opaque_val))->getNumResults() == 1);
-        auto vt = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getResult().getType().
-          template dyn_cast<::mlir::VectorType>();
+        auto vt = ::llvm::dyn_cast<::mlir::VectorType>((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getResult().getType());
         if (!vt)
           return ::std::nullopt;
         ::llvm::SmallVector<int64_t, 4> res(vt.getShape().begin(), vt.getShape().end());
@@ -535,8 +532,7 @@ template<typename ConcreteModel, typename ConcreteOp>
 bool detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isDimInBounds(::mlir::Operation *tablegen_opaque_val, unsigned dim) const {
 return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isBroadcastDim(dim)
             || ((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInBounds()
-                && (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInBounds()->template cast<::mlir::ArrayAttr>()[dim]
-                                    .template cast<::mlir::BoolAttr>().getValue());
+                && cast<::mlir::BoolAttr>(cast<::mlir::ArrayAttr>(*(llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInBounds())[dim]).getValue());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 bool detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isBroadcastDim(::mlir::Operation *tablegen_opaque_val, unsigned idx) const {
@@ -554,11 +550,11 @@ for (unsigned i = 0, rank = getTransferRank(); i < rank; ++i) {
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::ShapedType detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getShapedType(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSource().getType().template cast<::mlir::ShapedType>();
+return ::llvm::cast<::mlir::ShapedType>((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSource().getType());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::VectorType detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getVectorType(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getVector().getType().template dyn_cast<::mlir::VectorType>();
+return ::llvm::dyn_cast<::mlir::VectorType>((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getVector().getType());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 Value detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMask(::mlir::Operation *tablegen_opaque_val) const {
