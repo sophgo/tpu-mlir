@@ -551,7 +551,7 @@ class TorchConverter(BaseConverter):
                               op0,
                               axes,
                               keepdims,
-                              method,
+                              StringAttr.get(method),
                               loc=self.get_loc(torch_node.name),
                               ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
