@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -33,6 +33,9 @@ void tpu::PadOp::codegen_global_bm1684() {
     llvm_unreachable("Not Implemented");
   }
   int type = getMode();
+  if (type > 1) {
+    llvm_unreachable("not support");
+  }
   float constant = getVal().convertToDouble();
   if (dims == 3 || dims == 4) {
     int in_shape[4] = {0};
@@ -140,6 +143,9 @@ void tpu::PadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     llvm_unreachable("Not Implemented");
   }
   int type = getMode();
+  if (type > 1) {
+    llvm_unreachable("not support");
+  }
   float constant = getVal().convertToDouble();
   if (dims == 3 || dims == 4) {
     int in_shape[4] = {0};
@@ -192,8 +198,10 @@ void tpu::PadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   }
 }
 
-uint32_t tpu::PadOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+uint32_t tpu::PadOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+  GLOBAL_IR_COMMON(pad);
 }
-int64_t tpu::PadOp::get_fw_type_bm1684() { return -1; }
+
+int64_t tpu::PadOp::get_fw_type_bm1684() {
+  return FW_BMNET_PAD;
+}

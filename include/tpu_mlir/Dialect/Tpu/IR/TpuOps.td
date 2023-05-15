@@ -1397,6 +1397,9 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
     DefaultValuedAttr<I64Attr, "0">:$mode
   );
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_DivOp: Tpu_Op<"Div", [
@@ -1755,6 +1758,9 @@ def Tpu_TileOp:Tpu_Op<"Tile", [
     AnyTensorOrNone:$buffer
   );
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_GatherOp: Tpu_Op<"Gather", [
@@ -1767,7 +1773,7 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$indices,
-
+    AnyTensorOrNone:$buffer, //for BM1684
     DefaultValuedAttr<I64Attr, "0">:$axis
   );
 

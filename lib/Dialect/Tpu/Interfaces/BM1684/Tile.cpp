@@ -9,9 +9,9 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 
@@ -85,10 +85,10 @@ void tpu::TileOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
   int input_dim = module::getShape(input).size();
-  int  input_shape[input_dim];
+  int input_shape[input_dim];
   module::getGlobalShape(getInput(), input_shape, input_dim);
   int output_dim = module::getShape(output).size();
-  int  output_shape[output_dim];
+  int output_shape[output_dim];
   module::getGlobalShape(getInput(), output_shape, output_dim);
   int *tile_coeff = new int[input_dim];
   for (int i = 0; i < input_dim; i++) {
@@ -100,22 +100,23 @@ void tpu::TileOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   auto out_gdma_format = BM168x::getGdmaFormat(output_dtype);
   if (module::isUniformQuantized(getInput())) {
     BM1684::instance().dl_nodechip_tile_fix8b_local(
-        la_input, la_output, la_buffer, (const int*)input_shape, (const int*)tile_coeff, input_dim,
-        in_gdma_format, out_gdma_format, 0,
+        la_input, la_output, la_buffer, (const int *)input_shape,
+        (const int *)tile_coeff, input_dim, in_gdma_format, out_gdma_format, 0,
         (CMD_ID_NODE *)BM1684::instance().bdc_node,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_tile_local(
-        la_input, la_output, (const int*)input_shape, (const int*)tile_coeff, input_dim, in_gdma_format,
-        out_gdma_format, 0, (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        la_input, la_output, (const int *)input_shape, (const int *)tile_coeff,
+        input_dim, in_gdma_format, out_gdma_format, 0,
+        (CMD_ID_NODE *)BM1684::instance().bdc_node);
   }
 }
 
 uint32_t tpu::TileOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+  GLOBAL_IR_COMMON(tile);
 }
-int64_t tpu::TileOp::get_fw_type_bm1684() { return -1; }
+
+int64_t tpu::TileOp::get_fw_type_bm1684() { return FW_BMNET_TILE; }
 
 int32_t tpu::TileOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");

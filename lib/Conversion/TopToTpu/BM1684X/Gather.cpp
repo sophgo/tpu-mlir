@@ -14,12 +14,12 @@ namespace bm1684x {
 
 void GatherLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::GatherOp op) const {
-  lowering_common_f32<tpu::GatherOp>(rewriter, op, 0, 1);
+  lowering_common_f32<tpu::GatherOp>(rewriter, op, 3, 1);
 }
 
 void GatherLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherOp op,
                                   bool asymmetric) const {
-  lowering_common_f32<tpu::GatherOp>(rewriter, op, 0, 1);
+  lowering_common_f32<tpu::GatherOp>(rewriter, op, 3, 1);
 }
 void GatherLowering::LoweringINT4(PatternRewriter &rewriter, top::GatherOp op,
                                    bool asymmetric) const {
@@ -27,17 +27,17 @@ void GatherLowering::LoweringINT4(PatternRewriter &rewriter, top::GatherOp op,
 }
 void GatherLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::GatherOp op) const {
-  lowering_common_bf16<tpu::GatherOp>(rewriter, op, 0, 1);
+  lowering_common_bf16<tpu::GatherOp>(rewriter, op, 3, 1);
 }
 
 void GatherLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::GatherOp op) const {
-  lowering_common_f16<tpu::GatherOp>(rewriter, op, 0, 1);
+  lowering_common_f16<tpu::GatherOp>(rewriter, op, 3, 1);
 }
 
 void GatherLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::GatherOp op) const {
-  lowering_common<tpu::GatherOp>(rewriter, op, op.getOutput().getType());
+  lowering_common<tpu::GatherOp>(rewriter, op, op.getOutput().getType(), 3);
 }
 
 } // namespace bm1684x

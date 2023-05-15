@@ -526,10 +526,10 @@ public:
     if (!module::isBM1684Family()) {
       return failure();
     }
-    // if (!module::isUniformQuantized(padOp.getInput())) {
-    //   return failure();
-    // }
     std::vector<int64_t> shape = module::getShape(padOp.getInput());
+    if (shape.size() < 5 && !module::isUniformQuantized(padOp.getInput())) {
+      return failure();
+    }
     if (shape.size() == 3) {
       std::vector<int64_t> buffer_shape = {ceiling_func(shape[0], (int64_t)4),
                                            shape[1], shape[2]};
@@ -567,12 +567,42 @@ public:
   }
 };
 
+class GatherGlobalBuffer : public OpRewritePattern<tpu::GatherOp> {
+public:
+  using OpRewritePattern<tpu::GatherOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::GatherOp GatherOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(GatherOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684Family()) {
+      return failure();
+    }
+    // only dynamic index_select need buffer
+    if (module::isWeight(GatherOp.getIndices())) {
+      return failure();
+    }
+    auto elment_num = module::getNumElements(GatherOp.getInput());
+    auto type = module::getStorageType(GatherOp.getInput());
+    // add buffer
+    std::vector<int64_t> buffer_shape = {2, elment_num}; // double buffer
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(GatherOp, buffer_type);
+    GatherOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == GatherOp.getBuffer();
+    });
+    return success();
+  }
+};
+
 } // namespace bm168x
 namespace tpu {
 using namespace bm168x;
 void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
+      GatherGlobalBuffer,
       GRUGlobalBuffer,
       LSTMGlobalBuffer,
       ReduceGlobalBuffer,

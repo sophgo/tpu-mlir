@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -255,4 +256,33 @@ LogicalResult tpu::PadOp::LocalGenSupport() {
     return success();
   }
   return failure();
+}
+
+void tpu::PadOp::assign_fw_param(void *param) {
+  fw_pad_layer_param_t fw_pad_layer_param = {0};
+  fw_pad_layer_param.ic = module::getShape(getInput())[1];
+  fw_pad_layer_param.pad_val = getVal().convertToDouble();
+  fw_pad_layer_param.pad_mode = getMode();
+  auto pads = module::getI64Array(getPaddings());
+  if (pads->size() > 8 || fw_pad_layer_param.pad_mode > 1) {
+    llvm_unreachable("not support");
+  }
+  auto dims = module::getShape(getInput()).size();
+  assert(dims * 2 == pads->size());
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < dims; ++j) {
+      fw_pad_layer_param.paddings[j][i] = pads->at(i * dims + j);
+    }
+  }
+  if (module::isUniformQuantized(getInput())) {
+    int in_shape[MAX_SHAPE_DIMS];
+    module::getGlobalShape(getInput(), in_shape);
+    auto buffer_offset = ceiling_func(in_shape[0], 4) * 4 * in_shape[1] *
+                         in_shape[2] * in_shape[3];
+    fw_pad_layer_param.input_global_offset_1N_buf =
+        module::getAddress(getBuffer());
+    fw_pad_layer_param.output_global_offset_1N_buf =
+        module::getAddress(getBuffer()) + buffer_offset;
+  }
+  memcpy(param, &fw_pad_layer_param, sizeof(fw_pad_layer_param_t));
 }
