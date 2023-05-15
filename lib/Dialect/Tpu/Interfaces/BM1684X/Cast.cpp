@@ -141,7 +141,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       param.requant_addr = 0;
       param.buffer_local_addr = buffer_addr;
       param.n = sec_info.out_n_slice * in_gi.d_slice;
-      param.c = c;
+      param.c = sec_info.c_slice;
       param.h = sec_info.out_h_slice;
       param.w = sec_info.out_w_slice;
       param.is_perchannel = false;
@@ -159,7 +159,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       param.output_addr = gi.out_addr;
       param.dequant_addr = 0;
       param.n = sec_info.out_n_slice * in_gi.d_slice;
-      param.c = c;
+      param.c = sec_info.c_slice;
       param.h = sec_info.out_h_slice;
       param.w = sec_info.out_w_slice;
       param.is_perchannel = false;
