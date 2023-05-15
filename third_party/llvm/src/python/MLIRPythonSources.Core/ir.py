@@ -64,7 +64,6 @@ def _f64ArrayAttr(x, context):
 def _f32ArrayAttr(x, context):
   return ArrayAttr.get([FloatAttr.get_f32(v, context=context) for v in x])
 
-@register_attribute_builder("ReduceModeAttr")
 @register_attribute_builder("StrAttr")
 def _stringAttr(x, context):
   return StringAttr.get(x, context=context)
