@@ -99,8 +99,9 @@ public:
     if (has_weight) {
       auto valptr = op.read_as_float();
       auto new_val = change_weight(valptr, op->getResult(0).getType());
-      auto attr = DenseElementsAttr::get(
-          outType, llvm::ArrayRef(new_val, valptr->size()));
+      auto attr =
+          DenseElementsAttr::get(outType.cast<RankedTensorType>(),
+                                 llvm::ArrayRef(new_val, valptr->size()));
       rewriter.replaceOpWithNewOp<mlir::tosa::ConstOp>(op, outType, attr);
     } else {
       // auto out_shape = outType.cast<RankedTensorType>().getShape();
