@@ -36,6 +36,8 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     spec.has_bias = p.with_bias;
     spec.hdim_is_batch = p.hdim_is_batch;
     spec.requant_mode = -1;
+    spec.do_relu = p.do_relu;
+    spec.upper_limit = p.relu_limit;
     if (module::isUniformQuantized(getInput())) {
       spec.R_zp_is_const = true;
       spec.R_zp_const_val = p.right_zp;
@@ -217,6 +219,8 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.hdim_is_batch = p.hdim_is_batch;
   common.left_reuse = p.left_reuse;
   common.requant_mode = -1;
+  common.do_relu = p.do_relu;
+  common.upper_limit = p.relu_limit;
   if (module::isUniformQuantized(getInput())) {
     common.R_zp_is_const = true;
     common.R_zp_const_val = p.right_zp;
@@ -265,6 +269,8 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
     spec.has_bias = p.with_bias;
     spec.hdim_is_batch = false;
     spec.requant_mode = -1;
+    spec.do_relu = p.do_relu;
+    spec.upper_limit = p.relu_limit;
     if (module::isUniformQuantized(getInput())) {
       spec.R_zp_is_const = true;
       spec.R_zp_const_val = p.right_zp;
