@@ -51,6 +51,7 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
   profile_ctx = ProfileCtx(&opToLineCol, true);
   bm168x = BM168x::instance();
   DynCodegenInit();
+  next_id = merge_num = 0;
   std::vector<top::WeightOp> weights;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
@@ -86,34 +87,47 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
   bool is_first = true;
   int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;
 
-  main_func.walk([&](func::CallOp call) {
-    auto func = module::getFuncOp(call.getCallee());
-    auto mode = getRunMode(func);
-    switch (mode) {
-    case RunMode::TPU_STATIC: {
-      profile_ctx.set_profile_start();
-      auto subnet = CreateSubNet(call);
-      subnet_v.push_back(subnet);
-      profile_ctx.set_profile_end();
-    } break;
-    case RunMode::TPU_DYNAMIC: {
-      auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
-      auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
-      subnet_v.push_back(subnet);
-    } break;
-    case RunMode::CPU: {
-      auto subnet = CreateCPUSubNet(call);
-      subnet_v.push_back(subnet);
-    } break;
-    default:
-      llvm_unreachable("Not Implemented");
-      break;
-    }
-    if (is_first) {
-      is_first = false;
-      if (mode == RunMode::TPU_DYNAMIC) {
-        first_dynamic = true;
+  module.walk<WalkOrder::PreOrder>([&](Operation* op){
+    if (isa<func::CallOp>(op)) {
+      auto call = dyn_cast<func::CallOp>(op);
+      auto func = module::getFuncOp(call.getCallee());
+      auto mode = getRunMode(func);
+      switch (mode) {
+      case RunMode::TPU_STATIC: {
+        profile_ctx.set_profile_start();
+        auto subnet = CreateSubNet(call);
+        subnet_v.push_back(subnet);
+        profile_ctx.set_profile_end();
+      } break;
+      case RunMode::TPU_DYNAMIC: {
+        auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
+        auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
+        subnet_v.push_back(subnet);
+      } break;
+      case RunMode::CPU: {
+        auto subnet = CreateCPUSubNet(call);
+        subnet_v.push_back(subnet);
+      } break;
+      case RunMode::SWITCH: {
+        auto subnet = CreateSwitchSubNet(call);
+        subnet_v.push_back(subnet);
+      } break;
+      default:
+        llvm_unreachable("Not Implemented");
+        break;
       }
+      if (is_first) {
+        is_first = false;
+        if (mode == RunMode::TPU_DYNAMIC) {
+          first_dynamic = true;
+        }
+      }
+    } else if (isa<func::ReturnOp>(op)
+               && isa<tpu::IfOp>(op->getOperand(0).getDefiningOp())) {
+      //codegen merge subnet
+      auto ifOp = dyn_cast<tpu::IfOp>(op->getOperand(0).getDefiningOp());
+      auto subnet = CreateMergeSubNet(ifOp);
+      subnet_v.push_back(subnet);
     }
   });
   auto subnets = builder.CreateVector(subnet_v);
@@ -322,6 +336,37 @@ BMCodegen::CreateCmdGroupVector() {
     return 0;
   }
   return std::move(cmd_group_v);
+}
+
+Offset<bmodel::SwitchParam>
+BMCodegen::CreateSwitchParamVector(vector<int>& output_from,
+                          vector<int>& output_branch) {
+  auto &builder = model_gen->Builder();
+  auto out_from = builder.CreateVector(output_from);
+  auto out_branch = builder.CreateVector(output_branch);
+  bmodel::SwitchParamBuilder mpb(builder);
+  mpb.add_output_from(out_from);
+  mpb.add_output_branch(out_branch);
+  return mpb.Finish();
+}
+
+Offset<bmodel::MergeParam>
+BMCodegen::CreateMergeParamVector(vector<vector<int>>& output_from) {
+  auto& builder = model_gen->Builder();
+  vector<Offset<Vector<int>>> indice_v;
+  for(auto& indice: output_from){
+      indice_v.push_back(builder.CreateVector(indice));
+  }
+  vector<Offset<bmodel::OutputFrom>> output_from_v;
+  for(auto idx: indice_v){
+      bmodel::OutputFromBuilder ofb(builder);
+      ofb.add_indice(idx);
+      output_from_v.push_back(ofb.Finish());
+  }
+  auto output_froms = builder.CreateVector(output_from_v);
+  bmodel::MergeParamBuilder mpb(builder);
+  mpb.add_output_from(output_froms);
+  return mpb.Finish();
 }
 
 void BMCodegen::codegen_for_overlap_ops(
@@ -618,7 +663,8 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
     codegen(op);
   });
   bm168x->after_codegen(module::getFLOPs());
-  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt() + merge_num;
+  next_id = subnet_id + 1;
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
   std::vector<Value> inputs;
   std::vector<Value> outputs;
@@ -629,7 +675,14 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
     std::vector<bool> user_is_cpu;
     tensor_is_cpu[v_name] = user_is_cpu;
     for (auto user : v.value().getUsers()) {
-      if (isa<ReturnOp>(user)) {
+      if (isa<tpu::IfOp>(call->getParentOp())
+          && isa<tpu::YieldOp>(user)) {
+        tensor_is_cpu[v_name].push_back(false);
+        auto funcOp = call->getParentOp()->getParentOp();
+        //id is the ifOp's id + 3
+        int merge_id = funcOp->getAttrOfType<IntegerAttr>("id").getInt() + merge_num + 3;
+        next_id_v.push_back(merge_id);
+      } else if (isa<ReturnOp>(user)) {
         tensor_is_cpu[v_name].push_back(false);
         next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
@@ -677,7 +730,8 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
   bm168x->before_codegen();
   auto func = module::getFuncOp(call.getCallee());
   bm168x->after_codegen(module::getFLOPs());
-  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt() + merge_num;
+  next_id = subnet_id + 1;
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
   std::vector<Value> inputs;
   std::vector<Value> outputs;
@@ -772,6 +826,111 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
   return snb.Finish();
 }
 
+Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(func::CallOp call){
+  auto func = module::getFuncOp(call.getCallee());
+  std::vector<Value> inputs;
+  std::vector<Value> outputs;
+  std::vector<int> next_id_v = {};
+  func.walk<WalkOrder::PreOrder>([&](Operation *op) {
+    if (isa<func::CallOp>(op)) {
+      auto branch = module::getFuncOp(dyn_cast<func::CallOp>(op).getCallee());
+      int branch_id = branch->getAttrOfType<IntegerAttr>("id").getInt();
+      next_id_v.push_back(branch_id);
+    } else if (isa<tpu::IfOp>(op)) {
+      inputs.emplace_back(module::getOriValue(op->getOperand(0)));
+    }
+  });
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt() + merge_num;
+  next_id = subnet_id + 1;
+  LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
+
+  auto input_tensor = CreateTensorVector(inputs);
+  auto output_tensor = CreateTensorVector(outputs);
+  std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
+  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
+                  next_id_v.end());
+  auto &builder = model_gen->Builder();
+  auto next_ids = builder.CreateVector(next_id_v);
+  vector<int> output_from;
+  vector<int> output_branch;
+  Offset<bmodel::SwitchParam> switch_param
+           = CreateSwitchParamVector(output_from, output_branch);
+
+  bmodel::SubNetBuilder snb(builder);
+  snb.add_switch_param(switch_param);
+  snb.add_is_dynamic(false);
+  snb.add_subnet_mode(SUBNET_MODE_SWITCH);
+  snb.add_input_tensor(input_tensor);
+  snb.add_output_tensor(output_tensor);
+  snb.add_id(subnet_id);
+  snb.add_next_subnet_ids(next_ids);
+  return snb.Finish();
+}
+
+Offset<bmodel::SubNet>
+BMCodegen::CreateMergeSubNet(tpu::IfOp ifOp) {
+  std::vector<Value> inputs;
+  std::vector<Value> outputs;
+  std::vector<int> next_id_v = {};
+  int subnet_id = next_id++; merge_num++;
+  LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
+  for (int k = 0; k < ifOp.getNumResults(); k++) {
+    for (int i = 0; i < ifOp.getNumRegions(); i++) {
+      Region& region = ifOp.getRegion(i);
+      Operation* yieldOp = region.back().getTerminator();
+      inputs.emplace_back(module::getOriValue(yieldOp->getOperand(k)));
+    }
+  }
+
+  for (int i = 0; i < ifOp.getNumResults(); i++){
+    outputs.emplace_back(module::getOriValue(ifOp.getResult(i)));
+  }
+  int next = std::numeric_limits<int>::max();
+  //get the nearest subnet_id
+  if (auto funcOp = dyn_cast<func::FuncOp>(ifOp->getParentOp())) {
+    auto callOp = module::getCallOp(funcOp);
+    for (int i = 0; i < callOp.getNumResults(); i++) {
+      for (Operation *op: callOp.getResult(i).getUsers()) {
+        if (isa<func::CallOp>(op)) {
+          auto func = module::getFuncOp(dyn_cast<func::CallOp>(op).getCallee());
+          int id = func->getAttrOfType<IntegerAttr>("id").getInt() + merge_num;
+          if (id < next)
+            next = id;
+        }
+      }
+    }
+  }
+
+  if (next == std::numeric_limits<int>::max())
+    next_id_v.push_back(-1);
+  else
+    next_id_v.push_back(next);
+  auto input_tensor = CreateTensorVector(inputs);
+  auto output_tensor = CreateTensorVector(outputs);
+  std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
+  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
+                  next_id_v.end());
+  auto &builder = model_gen->Builder();
+  auto next_ids = builder.CreateVector(next_id_v);
+  vector<vector<int>> output_from;
+  int index = 0;
+  for (int i = 0; i < outputs.size(); i++) {
+    output_from.emplace_back(vector{index++, index++});
+  }
+  Offset<bmodel::MergeParam> merge_param
+           = CreateMergeParamVector(output_from);
+
+  bmodel::SubNetBuilder snb(builder);
+  snb.add_merge_param(merge_param);
+  snb.add_is_dynamic(false);
+  snb.add_subnet_mode(SUBNET_MODE_MERGE);
+  snb.add_input_tensor(input_tensor);
+  snb.add_output_tensor(output_tensor);
+  snb.add_id(subnet_id);
+  snb.add_next_subnet_ids(next_ids);
+  return snb.Finish();
+}
+
 void BMCodegen::codegen_ir(Operation *op, SubnetIr *subnet_ir_) {
   if (module::isOpInGroup(op) || isa_and_nonnull<top::WeightOp>(op)) {
     return;
@@ -816,7 +975,8 @@ BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
                 std::placeholders::_2);
   subnet_ir_->generate_compiler_ir(module, call, task);
   subnet_ir_->write_binary_ir_to_buffer(context);
-  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt() + merge_num;
+  next_id = subnet_id + 1;
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
 
   std::unordered_set<int> next_id_set;

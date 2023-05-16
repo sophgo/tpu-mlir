@@ -241,8 +241,10 @@ class ONNX_IR_TESTER(object):
             "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N),
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, N, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y),
-            #"If":               (self.test_If,    Y, N, N),
-            #"If2":               (self.test_If_v2,    Y, N, N),
+            #f32 mode works finely
+            #"If":               (self.test_If,    N, Y, N, N),
+            #f32 mode works finely
+            #"If2":               (self.test_If_v2,    N, Y, N, N)
             #"Loop" :            (self.test_Loop,    Y, N, N)
         }
         # yapf: enable

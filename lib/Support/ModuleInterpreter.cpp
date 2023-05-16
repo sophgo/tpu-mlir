@@ -409,11 +409,13 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
         }
 
         if (isa<tpu::YieldOp, top::YieldOp>(op)) {
-          auto num_element = module::getNumElements(op->getOperand(0));
-          name = module::getName(op->getOperand(0).getDefiningOp()).str();
+          for (int k = 0; k < op->getNumOperands(); k++) {
+            auto num_element = module::getNumElements(op->getOperand(k));
+            name = module::getName(op->getOperand(k).getDefiningOp()).str();
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
-          for (int i = 0; i < num_element; i++)
-            inference_map[if_name]->outputs[0][i] = inference_map[name]->outputs[0][i];
+            for (int i = 0; i < num_element; i++)
+              inference_map[if_name]->outputs[k][i] = inference_map[name]->outputs[k][i];
+          }
         }
       }
 
