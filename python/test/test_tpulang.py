@@ -59,6 +59,8 @@ class TPULANG_IR_TESTER(object):
         TPULANG_IR_TESTER.ID = 0
         print("Test: {}".format(case))
         if case in self.test_function:
+            os.makedirs(case, exist_ok=True)
+            os.chdir(case)
             func, _ = self.test_function[case]
             func(case)
             print("====== TEST {} Success ======".format(case))

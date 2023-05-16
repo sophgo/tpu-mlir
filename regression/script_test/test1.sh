@@ -1,4 +1,5 @@
 #!/bin/bash
+# test case: test batch 4, calibration by npz, preprocess, tosa convert
 set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
