@@ -289,9 +289,8 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
     return false;
   }
 
-  auto shape_secs = init_group_data_secs(lg_info);
-  if (shape_secs.nsecs == 0 || shape_secs.hsecs == 0 || shape_secs.dsecs == 0 ||
-      shape_secs.wsecs == 0) {
+  shape_secs_t shape_secs;
+  if(!init_group_data_secs(lg_info, shape_secs)) {
     return false;
   }
 
@@ -545,9 +544,7 @@ bool GroupMethod::update_sequence_group_cost(
       continue;
     }
 
-    shape_secs[i] = init_group_data_secs(*groups[i]);
-    if (shape_secs[i].nsecs == 0 || shape_secs[i].hsecs == 0 ||
-        shape_secs[i].dsecs == 0 || shape_secs[i].wsecs == 0) {
+    if (!init_group_data_secs(*groups[i], shape_secs[i])) {
       valid = false;
       break;
     }

@@ -23,7 +23,8 @@ namespace tpu_mlir {
 namespace tpu {
 
 shape_secs_t get_group_max_secs(const LgInfo &lg_info);
-shape_secs_t init_group_data_secs(const LgInfo &lg_info);
+bool init_group_data_secs(const LgInfo &lg_info,
+                                        shape_secs_t &shape_secs);
 
 void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos);
 bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
