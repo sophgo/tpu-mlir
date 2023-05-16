@@ -218,11 +218,11 @@ void updateModuleTypes() {
 void removeUnusedOp() {
   std::vector<Operation *> all_ops;
   for (auto func : m.getOps<FuncOp>()) {
-    for (auto &op : func.getOps()) {
-      if (false == isa<ReturnOp, FuncOp, tpu::YieldOp>(op)) {
-        all_ops.push_back(&op);
-      }
-    }
+    //for to support nested region's op
+    func.walk<WalkOrder::PreOrder>([&](Operation *op) {
+      if (!isa<ReturnOp, FuncOp, tpu::YieldOp, top::YieldOp>(op))
+        all_ops.push_back(op);
+    });
   }
   for (auto iter = all_ops.rbegin(); iter != all_ops.rend(); iter++) {
     if ((*iter)->use_empty()) {
