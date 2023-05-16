@@ -129,7 +129,7 @@ class SimpleTuner:
         self.abs_max_dict = abs_max_dict
         self.args.tune_num = min(len(ds.data_list), args.tune_num)
         self.tuned_op_list = []
-        self.data_list = ds.data_list[:self.args.tune_num]
+        self.data_list = ds.data_list  # [:self.args.tune_num]
         self.ppa_list = ppa_list
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
         if self.debug_cmd:
@@ -180,25 +180,64 @@ class SimpleTuner:
         inp_ref_dict = {}
         for input in self.module.input_names:
             inp_ref_dict[input] = self.parser.get_use_count_by_op_name(input)
-        batched_inputs = self.input_num * ['']
+
+        if self.ds.all_image:
+            batched_inputs = self.input_num * ['']
+        else:
+            batched_inputs = {}
+
         idx, tune_idx = 0, 0
         self.dq_activations[tune_idx] = {}
         self.ref_activations[tune_idx] = {}
         only_one = len(self.module.input_names) == 1
+        print(f'prepare data from {len(self.data_list)}')
         for data in self.data_list:
             if self.ds.all_npz:
                 x = np.load(data)
                 if only_one:
-                    assert(len(x.files) == 1)
+                    assert (len(x.files) == 1)
                     n0 = self.module.input_names[0]
                     n1 = x.files[0]
-                    self.dq_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
-                    self.ref_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
+                    if x[n1].shape[0] > 1:
+                        self.dq_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
+                        self.ref_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
+                    else:
+                        batched_inputs[n1] = (np.concatenate(
+                            [batched_inputs[n1], x[n1].astype(np.float32)], axis=0)
+                                            if n1 in batched_inputs else x[n1].astype(np.float32))
+                        if batched_inputs[n1].shape[0] >= self.batch_size:
+                            self.dq_activations[tune_idx][n0] = [
+                                batched_inputs[n1][:self.batch_size], inp_ref_dict[n0]
+                            ]
+                            self.ref_activations[tune_idx][n0] = [
+                                batched_inputs[n1][:self.batch_size], inp_ref_dict[n0]
+                            ]
+                            batched_inputs.pop(n1)
+                        else:
+                            continue
                 else:
                     for input in self.module.input_names:
                         assert (input in x)
-                        self.dq_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
-                        self.ref_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                        if x[input].shape[0] > 1:
+                            self.dq_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                            self.ref_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                            batch_size = self.batch_size
+                        else:
+                            batched_inputs[input] = (np.concatenate(
+                                [batched_inputs[input], x[input].astype(np.float32)], axis=0) if input
+                                                    in batched_inputs else x[input].astype(np.float32))
+                            batch_size = batched_inputs[input].shape[0]
+                            if batched_inputs[input].shape[0] >= self.batch_size:
+                                self.dq_activations[tune_idx][input] = [
+                                    batched_inputs[input][:self.batch_size], inp_ref_dict[input]
+                                ]
+                                self.ref_activations[tune_idx][input] = [
+                                    batched_inputs[input][:self.batch_size], inp_ref_dict[input]
+                                ]
+                                batched_inputs.pop(input)
+
+                    if batch_size < self.batch_size:
+                        continue
             elif self.ds.all_image:
                 idx += 1
                 inputs = data.split(',')
@@ -229,6 +268,13 @@ class SimpleTuner:
             tune_idx += 1
             self.dq_activations[tune_idx] = {}
             self.ref_activations[tune_idx] = {}
+
+        if len(self.ref_activations[tune_idx]) == 0:
+            print(f'last tune data (tune_idx={tune_idx}) not valid, droped')
+            self.ref_activations.pop(tune_idx)
+        print(f"real tune_num = {self.args.tune_num}")
+        self.args.tune_num = min(self.args.tune_num, len(self.ref_activations))
+        assert self.args.tune_num > 0
 
     def get_input_tensor(self, i, op_name):
         if op_name in self.dq_activations[i]:
@@ -329,6 +375,7 @@ class SimpleTuner:
             refcount = self.ref_activations[i][input_op][1]
             if i == 0:
                 tmp += '\nits input:{}, refcount:{}'.format(input_op, refcount)
+
             self.module.set_tensor(input_op, data)
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
@@ -612,25 +659,65 @@ class ActivationCalibrator2(BaseKldCalibrator):
         inp_ref_dict = {}
         for input in self.module.input_names:
             inp_ref_dict[input] = self.parser.get_use_count_by_op_name(input)
-        batched_inputs = self.input_num * ['']
+
+        if self.ds.all_image:
+            batched_inputs = self.input_num * ['']
+        else:
+            batched_inputs = {}
         idx, tune_idx = 0, 0
         self.dq_activations[tune_idx] = {}
         self.ref_activations[tune_idx] = {}
         only_one = len(self.module.input_names) == 1
         for data in self.data_list:
+            if tune_idx > self.args.tune_num + 1:
+                break
             if self.ds.all_npz:
                 x = np.load(data)
                 if only_one:
-                    assert(len(x.files) == 1)
+                    assert (len(x.files) == 1)
                     n0 = self.module.input_names[0]
                     n1 = x.files[0]
-                    self.dq_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
-                    self.ref_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
+                    if x[n1].shape[0] > 1:
+                        self.dq_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
+                        self.ref_activations[tune_idx][n0] = [x[n1], inp_ref_dict[n0]]
+                    else:
+                        batched_inputs[n1] = (np.concatenate(
+                            [batched_inputs[n1], x[n1].astype(np.float32)], axis=0)
+                                            if n1 in batched_inputs else x[n1].astype(np.float32))
+                        if batched_inputs[n1].shape[0] >= self.batch_size:
+                            self.dq_activations[tune_idx][n0] = [
+                                batched_inputs[n1][:self.batch_size], inp_ref_dict[n0]
+                            ]
+                            self.ref_activations[tune_idx][n0] = [
+                                batched_inputs[n1][:self.batch_size], inp_ref_dict[n0]
+                            ]
+                            batched_inputs.pop(n1)
+                        else:
+                            continue
                 else:
                     for input in self.module.input_names:
                         assert (input in x)
-                        self.dq_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
-                        self.ref_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                        if x[input].shape[0] > 1:
+                            self.dq_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                            self.ref_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                            batch_size = self.batch_size
+                        else:
+                            batched_inputs[input] = (np.concatenate(
+                                [batched_inputs[input], x[input].astype(np.float32)], axis=0) if input
+                                                    in batched_inputs else x[input].astype(np.float32))
+                            batch_size = batched_inputs[input].shape[0]
+                            if batched_inputs[input].shape[0] >= self.batch_size:
+                                self.dq_activations[tune_idx][input] = [
+                                    batched_inputs[input][:self.batch_size], inp_ref_dict[input]
+                                ]
+                                self.ref_activations[tune_idx][input] = [
+                                    batched_inputs[input][:self.batch_size], inp_ref_dict[input]
+                                ]
+                                batched_inputs.pop(input)
+
+                    if batch_size < self.batch_size:
+                        continue
+
             elif self.ds.all_image:
                 idx += 1
                 inputs = data.split(',')
@@ -662,6 +749,12 @@ class ActivationCalibrator2(BaseKldCalibrator):
             self.dq_activations[tune_idx] = {}
             self.ref_activations[tune_idx] = {}
 
+        if len(self.ref_activations[tune_idx]) == 0:
+            print(f'last tune data (tune_idx={tune_idx}) not valid, droped')
+            self.ref_activations.pop(tune_idx)
+        self.args.tune_num = min(self.args.tune_num, len(self.ref_activations))
+        assert self.args.tune_num > 0
+
     def clear_ref_tensor(self, i, evaled_op):
         if self.ref_activations[i][evaled_op][1] == 0:  #清除残留的网络输出
             self.ref_activations[i].pop(evaled_op)
@@ -674,6 +767,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                     self.ref_activations[i][input_op][1] -= 1
 
     def get_ref_tensor(self, i, evaled_op):
+        # print(i, self.ref_activations[i])
         if evaled_op in self.ref_activations[i]:
             return self.ref_activations[i][evaled_op][0]
         print('error, idx:{} evaled_op:{} not in ref_activations'.format(i, evaled_op))
@@ -725,15 +819,17 @@ class ActivationCalibrator2(BaseKldCalibrator):
         for i, evaled_op in enumerate(all_tensors):
             pbar.set_description("activation_collect_and_calc_th for op: {}".format(evaled_op))
             pbar.update(1)
-            for idx in range(self.args.input_num):
+            for idx in range(self.args.tune_num):
                 self.gen_ref_tensor(idx, evaled_op)
 
             min_value = inf
             max_value = -inf
             abs_value = None
             all_data = []
-            for idx in range(self.args.input_num):
+            for idx in range(self.args.tune_num):
                 activation = self.get_ref_tensor(idx, evaled_op)
+                if activation is None:
+                    continue
                 if 'use_torch_observer_for_cali' in self.debug_cmd:
                     from torch import Tensor
                     self.torchObserver_dict[evaled_op](Tensor(activation.astype(np.float32)))
@@ -765,7 +861,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
             self.activations_statistics[evaled_op] = (min_value, max_value, abs_value)
 
             if 'use_torch_observer_for_cali' not in self.debug_cmd:
-                for idx in range(self.args.input_num):
+                for idx in range(self.args.tune_num):
                     activation = self.get_ref_tensor(idx, evaled_op)
                     _, _, abs_value = self.activations_statistics[evaled_op]
                     hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
@@ -783,7 +879,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 thresholds_map_scale[evaled_op] = scale.numpy()[0]
                 thresholds_map_zp[evaled_op] = zp.numpy()[0]
 
-            for idx in range(self.args.input_num):
+            for idx in range(self.args.tune_num):
                 self.clear_ref_tensor(idx, evaled_op)
         pbar.close()
 
@@ -930,7 +1026,10 @@ class ActivationCalibrator(BaseKldCalibrator):
             os.system('rm -rf ./tmpdata/;mkdir -p ./tmpdata/')
         else:
             os.system('mkdir -p ./tmpdata/')
-        batched_inputs = self.input_num * ['']
+        if self.ds.all_image:
+            batched_inputs = self.input_num * ['']
+        else:
+            batched_inputs = {}
         show_mem_info('mem info before _activations_generator_and_find_minmax')
         pbar = tqdm(self.ds.data_list, total=self.num_samples, position=0, leave=True)
         for data in self.ds.data_list:
@@ -938,9 +1037,22 @@ class ActivationCalibrator(BaseKldCalibrator):
             pbar.update(1)
             if self.ds.all_npz:
                 x = np.load(data)
+                is_set = False
                 for op in self.parser.inputs:
                     assert (op.name in x)
-                    self.module.set_tensor(op.name, x[op.name].astype(np.float32))
+                    if x[op.name].shape[0] > 1:
+                        self.module.set_tensor(op.name, x[op.name].astype(np.float32))
+                        is_set = True
+                    else:
+                        batched_inputs[op.name] = (np.concatenate(
+                            [batched_inputs[op.name], x[op.name].astype(np.float32)], axis=0) if op.name
+                                                in batched_inputs else x[op.name].astype(np.float32))
+
+                        if batched_inputs[op.name].shape[0] >= self.batch_size:
+                            self.module.set_tensor(op.name, batched_inputs[op.name][:self.batch_size])
+                            is_set = True
+                if not is_set:
+                    continue
             elif self.ds.all_npy:
                 inputs = data.split(',')
                 inputs = [s.strip() for s in inputs]
