@@ -98,6 +98,8 @@ class TFLITE_IR_TESTER(object):
     def test_single(self, case: str):
       np.random.seed(0)
       if case in self.test_function:
+        os.makedirs(case, exist_ok=True)
+        os.chdir(case)
         print("Test: {}".format(case))
         self.test_function[case](case)
         print("====== TEST {} Success ======".format(case))

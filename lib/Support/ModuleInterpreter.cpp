@@ -374,27 +374,32 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
   std::string if_name;
   for (auto func : module.getOps<FuncOp>()) {
     WalkResult result = func.walk<WalkOrder::PreOrder>([&](Operation *op) {
-      bar.update();
       if (isa<func::FuncOp>(*op)) {
         return WalkResult::advance();
       }
       std::string name;
-      if (op->getLoc().isa<NameLoc>() || op->getLoc().isa<FusedLoc>())
+      if (op->getLoc().isa<NameLoc>() || op->getLoc().isa<FusedLoc>()) {
         name = module::getName(op).str();
+      }
       LLVM_DEBUG(llvm::dbgs() << "compute: '" << op << "'\n");
-      if (flag && isa<func::FuncOp>(*(op->getParentOp())))
-        flag = 0; //clear
+      if (flag && isa<func::FuncOp>(*(op->getParentOp()))) {
+        flag = 0; // clear
+      }
       if (isa<tpu::IfOp, top::IfOp>(op)) {
-        std::optional<RegisteredOperationName> info = op->getName().getRegisteredInfo();
+        std::optional<RegisteredOperationName> info =
+            op->getName().getRegisteredInfo();
         if_name = name;
-        auto *inferInterface = info->getInterface<tpu_mlir::InferenceInterface>();
-        if (failed(inferInterface->inference(inferInterface, op, *inference_map[name]))) {
-          flag = 2; //else branch
+        auto *inferInterface =
+            info->getInterface<tpu_mlir::InferenceInterface>();
+        if (failed(inferInterface->inference(inferInterface, op,
+                                             *inference_map[name]))) {
+          flag = 2; // else branch
         } else {
-          flag = 1;//then branch
+          flag = 1; // then branch
         }
         return WalkResult::advance();
-      } else if (isa<tpu_mlir::InferenceInterface>(op) && !flag) {
+      } else if (isa<tpu_mlir::InferenceInterface>(op) && 0 == flag) {
+        bar.update();
         auto infer_op = dyn_cast<InferenceInterface>(op);
         if (failed(infer_op.inference(*inference_map[name]))) {
           infer_op.dump();
@@ -414,7 +419,8 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
             name = module::getName(op->getOperand(k).getDefiningOp()).str();
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
             for (int i = 0; i < num_element; i++)
-              inference_map[if_name]->outputs[k][i] = inference_map[name]->outputs[k][i];
+              inference_map[if_name]->outputs[k][i] =
+                  inference_map[name]->outputs[k][i];
           }
         }
       }
@@ -781,9 +787,10 @@ bool ModuleInterpreter::getTensorQuantInfo(const std::string name,
     }
     scale = 1.0;
     zp = 0;
-  }
-  else {
-    dtype = std::string("UK"); scale = 1.0; zp = 0;
+  } else {
+    dtype = std::string("UK");
+    scale = 1.0;
+    zp = 0;
   }
   return true;
 }

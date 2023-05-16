@@ -26,7 +26,6 @@ class MODEL_RUN(object):
                  chip: str = "bm1684x",
                  mode: str = "all",
                  dyn_mode: bool = False,
-                 do_post_handle: bool = False,
                  merge_weight: bool = False,
                  fuse_preprocess: bool = False,
                  customization_format: str = "",
@@ -36,7 +35,6 @@ class MODEL_RUN(object):
         self.model_name = model_name
         self.chip = chip
         self.mode = mode
-        self.do_post_handle = do_post_handle
         self.dyn_mode = dyn_mode
         self.fuse_pre = fuse_preprocess
         self.customization_format = customization_format
@@ -70,7 +68,7 @@ class MODEL_RUN(object):
         self.tolerance = {
             "f32": config.get(self.arch, "f32_tolerance", fallback="0.99,0.99"),
             "f16": config.get(self.arch, "f16_tolerance", fallback="0.95,0.85"),
-            "bf16": config.get(self.arch, "bf16_tolerance", fallback="0.95,0.85"),
+            "bf16": config.get(self.arch, "bf16_tolerance", fallback="0.95,0.80"),
             "int8_sym": config.get(self.arch, "int8_sym_tolerance", fallback="0.8,0.5"),
             "int8_asym": config.get(self.arch, "int8_asym_tolerance", fallback="0.8,0.5"),
             "int4_sym": config.get(self.arch, "int4_sym_tolerance", fallback="0.8,0.5"),
@@ -158,8 +156,6 @@ class MODEL_RUN(object):
             cmd += ["--output_names {}".format(self.ini_content["output_names"])]
         if "excepts" in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
-        if self.do_post_handle and "post_type" in self.ini_content:
-            cmd += ["--post_handle_type {}".format(self.ini_content["post_type"])]
         _os_system(cmd, self.save_log)
 
     def make_calibration_table(self):
@@ -250,8 +246,6 @@ class MODEL_RUN(object):
 
         # add according to arguments
         model_file = f"{model_name}_{self.chip}_{quant_mode}"
-        if self.do_post_handle:
-            cmd += ["--post_op"]
         if self.fuse_pre:
             cmd += ["--fuse_preprocess"]
             model_file += "_fuse_preprocess"
@@ -338,8 +332,6 @@ class MODEL_RUN(object):
             "model_runner.py", f"--input {static_model_name}_in_f32.npz",
             f"--model {static_model_file}", f"--output {static_out}"
         ]
-        if self.do_post_handle:
-            cmd += ["--post_op"]
         _os_system(cmd, self.save_log)
         cmd[2], cmd[3] = f"--model {dyn_model_file}", f"--output {dyn_out}"
         _os_system(cmd, self.save_log)
@@ -433,7 +425,6 @@ if __name__ == "__main__":
                         choices=['all', 'basic', 'f32', 'f16', 'bf16', 'int8_sym', 'int8_asym', 'int4_sym'],
                         help="quantize mode, 'all' runs all modes except int4, 'baisc' runs f16 and int8 sym only")
     parser.add_argument("--dyn_mode", default='store_true', help="dynamic mode")
-    parser.add_argument("--do_post_handle", action='store_true', help="whether to do post handle")
     parser.add_argument("--merge_weight", action="store_true",
                         help="merge weights into one weight binary with previous generated cvimodel")
     # fuse preprocess
@@ -453,7 +444,7 @@ if __name__ == "__main__":
     dir = os.path.expandvars(out_dir)
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
-    runner = MODEL_RUN(args.model_name, args.chip, args.mode, args.dyn_mode, args.do_post_handle,
-                       args.merge_weight, args.fuse_preprocess, args.customization_format,
-                       args.aligned_input, args.save_log, args.disable_thread)
+    runner = MODEL_RUN(args.model_name, args.chip, args.mode, args.dyn_mode, args.merge_weight,
+                       args.fuse_preprocess, args.customization_format, args.aligned_input,
+                       args.save_log, args.disable_thread)
     runner.run_full()

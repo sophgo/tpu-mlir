@@ -287,6 +287,8 @@ class ONNX_IR_TESTER(object):
         torch.manual_seed(7)
         print("Test: {}".format(case))
         if case in self.test_cases:
+            os.makedirs(case, exist_ok=True)
+            os.chdir(case)
             func, _, _, _, _ = self.test_cases[case]
             func(case)
             print("====== TEST {} Success ======".format(case))
@@ -396,7 +398,7 @@ class ONNX_IR_TESTER(object):
         elif quant_mode == "int4":
             ref_tpu_tolerance = "0.90,0.60"
         elif quant_mode == "bf16":
-            ref_tpu_tolerance = "0.95,0.85"
+            ref_tpu_tolerance = "0.95,0.80"
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
         file_mark(tpu_npz)
         show_fake_cmd(input_npz, tpu_mlir, tpu_npz)

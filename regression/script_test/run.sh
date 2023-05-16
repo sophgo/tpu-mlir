@@ -9,6 +9,7 @@ pushd $TEST_DIR
 
 $DIR/test1.sh
 $DIR/test2.sh
-
+$DIR/test3.sh
+$DIR/test4.sh
 
 popd
