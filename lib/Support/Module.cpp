@@ -935,18 +935,7 @@ void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs) {
 void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
                       std::vector<Value> &outputs) {
   for (auto opd : call.getOperands()) {
-    auto result = opd.cast<OpResult>();
-    auto op = result.getDefiningOp();
-    if (isa<top::InputOp>(op)) {
-      inputs.push_back(opd);
-    } else if (auto call_ = dyn_cast<func::CallOp>(op)) {
-      auto func_op = getFuncOp(call_.getCallee());
-      auto return_op = dyn_cast<ReturnOp>(func_op.front().back());
-      assert(return_op);
-      inputs.push_back(return_op.getOperand(result.getResultNumber()));
-    } else {
-      llvm_unreachable("input is illegal");
-    }
+    inputs.emplace_back(module::getOriValue(opd));
   }
   auto func = getFuncOp(call.getCallee());
   func.walk([&](ReturnOp op) {

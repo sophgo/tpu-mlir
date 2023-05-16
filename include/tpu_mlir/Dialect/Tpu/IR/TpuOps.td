@@ -19,6 +19,8 @@
 include "mlir/IR/AttrTypeBase.td"
 include "mlir/IR/OpBase.td"
 include "mlir/IR/EnumAttr.td"
+include "mlir/Interfaces/ControlFlowInterfaces.td"
+include "mlir/Interfaces/LoopLikeInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "tpu_mlir/Interfaces/LocalGenInterface.td"
 include "tpu_mlir/Interfaces/GlobalGenInterface.td"
@@ -2403,7 +2405,9 @@ def Tpu_Device2HostOp : Tpu_Op<"Device2Host", [
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_IfOp : Tpu_Op<"If"> {
+def Tpu_IfOp : Tpu_Op<"If", [DeclareOpInterfaceMethods<RegionBranchOpInterface>,
+              RecursiveMemoryEffects,
+               NoRegionArguments]> {
   let summary = "if operation";
   let description = [{
     If conditional

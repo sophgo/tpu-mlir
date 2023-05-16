@@ -35,6 +35,8 @@ private:
                                       std::unique_ptr<SubnetIr> subnet_ir_,
                                       std::unique_ptr<Context> &context);
   Offset<bmodel::SubNet> CreateCPUSubNet(func::CallOp call);
+   Offset<bmodel::SubNet> CreateSwitchSubNet(func::CallOp call);
+  Offset<bmodel::SubNet> CreateMergeSubNet(tpu::IfOp ifOp);
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
   Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                                           uint64_t coeff_addr,
@@ -43,6 +45,11 @@ private:
   CreateStageIRVector(const vector<stage_param_t> &stage_param_v,
                       const vector<u32> &binary_ir_v, u32 ir_offset,
                       bmodel::Binary &binary_ir);
+  Offset<bmodel::SwitchParam>
+  CreateSwitchParamVector(vector<int>& output_from,
+                          vector<int>& output_branch);
+  Offset<bmodel::MergeParam>
+  CreateMergeParamVector(vector<vector<int>>& output_from);
   void codegen(Operation *op);
   void codegen_for_group(GroupOp gOP, Operation *prev_op, Operation *next_op);
   void codegen_for_overlap_ops(
@@ -64,6 +71,8 @@ private:
   ProfileCtx profile_ctx;
   std::unordered_map<std::string, std::vector<bool>> tensor_is_cpu;
   AsmState::LocationMap opToLineCol;
+  unsigned merge_num;
+  unsigned next_id;
 };
 
 } // namespace tpu

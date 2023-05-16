@@ -84,5 +84,35 @@ RunMode getRunMode(FuncOp func) {
   return func->getAttrOfType<tpu::RunModeAttr>("mode").getValue();
 }
 
+void IfOp::getSuccessorRegions(std::optional<unsigned> index,
+                               ArrayRef<Attribute> operands,
+                               SmallVectorImpl<RegionSuccessor> &regions) {
+  // The `then` and the `else` region branch back to the parent operation.
+  if (index) {
+    regions.push_back(RegionSuccessor(getResults()));
+    return;
+}
+
+  // Don't consider the else region if it is empty.
+  Region *elseRegion = &this->getElseBranch();
+  if (elseRegion->empty())
+    elseRegion = nullptr;
+
+  // Otherwise, the successor is dependent on the condition.
+  bool condition;
+  if (auto condAttr = operands.front().dyn_cast_or_null<IntegerAttr>()) {
+    condition = condAttr.getValue().isOne();
+  } else {
+    // If the condition isn't constant, both regions may be executed.
+    regions.push_back(RegionSuccessor(&getThenBranch()));
+    // If the else region does not exist, it is not a viable successor.
+    if (elseRegion)
+      regions.push_back(RegionSuccessor(elseRegion));
+    return;
+  }
+
+  // Add the successor regions using the condition.
+  regions.push_back(RegionSuccessor(condition ? &getThenBranch() : elseRegion));
+}
 } // namespace tpu
 } // namespace tpu_mlir
