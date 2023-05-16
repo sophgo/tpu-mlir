@@ -85,6 +85,7 @@ class TORCH_IR_TESTER(object):
             "LSTM":             (self.test_LSTM,              Y, Y, Y),
             "Math":             (self.test_Math,              Y, Y, N),
             "MatMul":           (self.test_MatMul,            Y, Y, Y),
+            "Max":              (self.test_Max,               Y, Y, N),
             "MaxPool1d":        (self.test_MaxPool1d,         Y, Y, Y),
             "MaxPool2d":        (self.test_MaxPool2d,         Y, Y, Y),
             "MaxPool3d":        (self.test_MaxPool3d,         Y, Y, Y),
@@ -522,6 +523,28 @@ class TORCH_IR_TESTER(object):
         test = self._test_AvgPool()
         test((nn.AvgPool3d, F.avg_pool3d), (4, 8, 12, 20, 24), 4, 3, 2)
         test((nn.AvgPool3d, F.avg_pool3d), (1, 3, 12, 20, 24), (3, 3, 2), (1, 1, 1), (1, 0, 1))
+
+    #######################################################################
+    # Max
+    # ------------
+    def test_Max(self):
+
+        def _test_max(shape, dim):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    max_values, max_indices = torch.max(x, dim=dim)
+                    return max_values, max_indices
+
+            self.trace_and_test([shape], Model())
+
+        _test_max((4, 30), 1)
+        _test_max((1, 3, 64, 64), 3)
+        _test_max((4, 384), 0)
 
     #######################################################################
     # MaxPooling
