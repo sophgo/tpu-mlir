@@ -79,6 +79,7 @@ class TorchConverter(BaseConverter):
             "aten::cat": lambda node: self.convert_concat_op(node),
             "aten::channel_shuffle": lambda node: self.convert_channel_shuffle_op(node),
             "aten::chunk": lambda node: self.convert_chunk_op(node),
+            "aten::copy": lambda node: self.convert_skip_op(node),
             "aten::cos": lambda node: self.convert_math_op(node, "cos"),
             "aten::cosh": lambda node: self.convert_math_op(node, "cosh"),
             "aten::_convolution": lambda node: self.convert_conv_op(node),
@@ -118,6 +119,7 @@ class TorchConverter(BaseConverter):
             "aten::lstm": lambda node: self.convert_lstm_op(node),
             "aten::lt": lambda node: self.convert_compare_op(node, "Less"),
             "aten::matmul": lambda node: self.convert_matmul_op(node),
+            "aten::max": lambda node: self.convert_max_op(node),
             "aten::max_pool1d": lambda node: self.convert_maxpool_op(node),
             "aten::max_pool2d": lambda node: self.convert_maxpool_op(node),
             "aten::max_pool3d": lambda node: self.convert_maxpool_op(node),
@@ -219,6 +221,15 @@ class TorchConverter(BaseConverter):
         if len(unknown_ops) != 0:
             raise RuntimeError(
                 "The following operators are not implemented: {}".format(unknown_ops))
+
+    def check_need(self, name):
+        for node in self.converted_nodes:
+            for i in node.inputs:
+                if i == name:
+                    return True
+        if name in self.output_names:
+            return True
+        return False
 
     def load_torch_model(self, torch_file, input_shapes: list, input_types: list,
                          output_names: list):
@@ -454,6 +465,29 @@ class TorchConverter(BaseConverter):
                                loc=self.get_loc(torch_node.name),
                                ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
+
+    def convert_max_op(self, torch_node: TorchNode):
+        op = self.getOperand(torch_node.inputs[0])
+        dim = self.const_val[torch_node.inputs[1]]
+        keepdims = self.const_val[torch_node.inputs[2]]
+        select_last_index = True
+        out_needs = [False, False]
+        for idx, out in enumerate(torch_node.outputs):
+            if len(out) > 0 and self.check_need(out):
+                out_needs[idx] = True
+        new_op = top.ArgOp(self.unranked_type,
+                           self.unranked_type,
+                           op,
+                           axis=dim,
+                           keepdims=keepdims,
+                           mode=StringAttr.get("ArgMax"),
+                           select_last_index=select_last_index,
+                           loc=self.get_loc(torch_node.outputs),
+                           ip=self.mlir.insert_point)
+        out_ops = [new_op.values, new_op.indices]
+        for idx, need in enumerate(out_needs):
+            if not need: continue
+            self.addOperand(torch_node.outputs[idx], out_ops[idx])
 
     def convert_maxpool_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
@@ -1233,7 +1267,10 @@ class TorchConverter(BaseConverter):
         else:
             pad_mode = pad_modes[self.const_val[torch_node.inputs[2]]]
             if pad_mode == 0:
-                val = self.const_val[torch_node.inputs[3]]
+                if torch_node.inputs[3] in self.const_val:
+                    val = self.const_val[torch_node.inputs[3]]
+                elif self.mlir.none_op == self.getOp(torch_node.inputs[3]):
+                    val = 0
 
         new_op = top.PadOp(self.unranked_type,
                            op,
