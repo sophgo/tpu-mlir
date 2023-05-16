@@ -47,6 +47,7 @@ protected:
 class Bm168xCycleCalculator : public CycleCalculator {
 public:
   Bm168xCycleCalculator() {}
+  ~Bm168xCycleCalculator() {}
   int64_t getGlobalLayerCycle(Operation *op) override;
   int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
 
@@ -63,6 +64,7 @@ public:
 class Cv18xxCycleCalculator : public CycleCalculator {
 public:
   Cv18xxCycleCalculator() {}
+  ~Cv18xxCycleCalculator() {}
   int64_t getGlobalLayerCycle(Operation *op) override;
   int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
                              group_type_t group_type,
@@ -73,6 +75,10 @@ public:
                        group_type_t group_type) override;
   int64_t getStoreCycle(Value v, const tensor_info_t &tensor_info,
                         group_type_t group_type) override;
+
+private:
+  bool check_lmem(Operation *op, const TensorInfo &tesnor_info,
+                  group_type_t group_type);
 };
 } // namespace tpu
 } // namespace tpu_mlir

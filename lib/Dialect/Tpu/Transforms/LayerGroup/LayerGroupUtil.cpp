@@ -87,10 +87,10 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
                       .csecs = max_csecs};
 }
 
-shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
-  shape_secs_t shape_secs = {1, 1, 1, 1, 1};
+bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs) {
+  shape_secs = {1, 1, 1, 1, 1};
   if (lg_info.group_ops.size() == 1) {
-    return shape_secs;
+    return true;
   }
 
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info);
@@ -151,12 +151,12 @@ shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
     if (shape_secs.hsecs > max_shape_secs.hsecs) {
       shape_secs.wsecs = ceiling_func(shape_secs.hsecs, max_shape_secs.hsecs);
       if (shape_secs.wsecs > max_shape_secs.wsecs) {
-        return {0, 0, 0, 0};
+        return false;
       }
       shape_secs.hsecs = max_shape_secs.hsecs;
     }
   }
-  return shape_secs;
+  return true;
 }
 
 static int64_t get_split_max_secs(BasicTimeStepPtr time_step) {

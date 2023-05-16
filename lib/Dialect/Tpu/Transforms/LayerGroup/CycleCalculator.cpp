@@ -425,20 +425,45 @@ int64_t Cv18xxCycleCalculator::getGlobalLayerCycle(Operation *op) {
   return cycle;
 }
 
+bool Cv18xxCycleCalculator::check_lmem(Operation *op,
+                                       const TensorInfo &tensor_infos,
+                                       group_type_t group_type) {
+  // simply check if local memory is enough
+  int64_t total_size = 0;
+  auto ins = get_input_values(op);
+  auto outs = get_output_values(op);
+  for (auto in : ins) {
+    auto iter = tensor_infos.find(in);
+    if (iter == tensor_infos.end())
+      continue;
+    auto &si = iter->second.slice_info;
+    if (!module::isWeight(in)) {
+      total_size += Arch::get_tensor_lmem_bytes(
+          in, si.n[0].second, si.c[0].second, si.d[0].second, si.h[0].second,
+          si.w[0].second);
+    }
+  }
+  for (auto out : outs) {
+    auto iter = tensor_infos.find(out);
+    if (iter == tensor_infos.end())
+      continue;
+    auto &si = iter->second.slice_info;
+    total_size += Arch::get_tensor_lmem_bytes(out, si.n[0].second,
+                                              si.c[0].second, si.d[0].second,
+                                              si.h[0].second, si.w[0].second);
+  }
+  return total_size < Arch::LMEM_BYTES;
+}
+
 int64_t Cv18xxCycleCalculator::getLocalLayerCycle(Operation *op,
                                                   TensorInfo &tensor_infos,
                                                   group_type_t group_type,
                                                   bool calc_bdc_slack) {
-  // some tiu op assert when input addr == out addr, so change out addr =
-  // LMEM_BYTES / 2
-  local_sec_info_t sec_info;
-  set_local_sec_info(sec_info, op, tensor_infos, group_type);
-  int64_t in0_lmem_bytes = Arch::get_tensor_lmem_bytes(
-      op->getOperand(0), sec_info.n_slice, sec_info.c_slice, sec_info.d_slice,
-      sec_info.h_slice, sec_info.w_slice);
-  if (in0_lmem_bytes > Arch::LMEM_BYTES) {
+  if (!check_lmem(op, tensor_infos, group_type)) {
     return std::numeric_limits<int64_t>::max() / 100;
   }
+  local_sec_info_t sec_info;
+  set_local_sec_info(sec_info, op, tensor_infos, group_type);
   std::vector<uint8_t> cmdbuf;
   auto lgOp = dyn_cast<LocalGenInterface>(op);
   lgOp.codegen_local_cv18xx(0, 0, 0, 0, group_type, sec_info, 0);

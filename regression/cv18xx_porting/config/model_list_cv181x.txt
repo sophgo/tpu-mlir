@@ -3,63 +3,58 @@
 #
 
 # caffe
-resnet50                  N        N        N        Y        N        N
-vgg16                     N        N        N        N        N        N
-mobilenet_v1              N        N        N        Y        N        Y
-mobilenet_v2              Y        N        N        N        N        N
-googlenet                 N        N        N        Y        N        Y
-inception_v3              N        N        N        Y        N        N
-inception_v4              N        N        N        Y        N        N
-squeezenet_v1.0           N        N        N        Y        N        Y
-squeezenet_v1.1           N        N        N        Y        N        Y
-shufflenet_v2             Y        N        N        N        N        Y
-densenet_121              N        N        N        Y        N        Y
-densenet_201              N        N        N        Y        N        N
-senet_res50               N        N        N        Y        N        N
-resnext50                 N        N        N        Y        N        N
-arcface_res50             N        N        N        Y        N        N
-retinaface_mnet25         N        N        N        Y        N        N
-retinaface_mnet25_600     N        N        N        Y        N        N
-retinaface_res50          N        N        N        Y        N        N
-ssd300                    N        N        N        Y        N        N
-mobilenet_ssd             N        N        N        Y        N        N
-yolo_v1_448               N        N        N        Y        N        N
+resnet50                  Y        Y        N        N        N        Y
+vgg16                     N        N        N        Y        N        N
+mobilenet_v1              Y        N        N        N        Y        Y
+mobilenet_v2              Y        Y        N        N        N        N
+googlenet                 N        N        N        Y        Y        Y
+inception_v3              Y        N        N        N        N        N
+inception_v4              N        N        N        Y        Y        Y
+squeezenet_v1.0           N        N        N        Y        Y        Y
+squeezenet_v1.1           Y        N        N        N        Y        Y
+shufflenet_v2             Y        N        N        N        Y        Y
+densenet_121              Y        N        N        N        Y        Y
+densenet_201              Y        N        N        N        N        N
+senet_res50               Y        N        N        N        N        Y
+resnext50                 Y        N        N        N        Y        N
+arcface_res50             Y        N        N        N        Y        N
+retinaface_mnet25         Y        N        N        N        Y        N
+retinaface_mnet25_600     Y        N        N        N        N        N
+retinaface_res50          Y        N        N        N        N        N
+ssd300                    N        N        N        Y        Y        N
+mobilenet_ssd             Y        N        N        N        Y        N
+yolo_v1_448               Y        N        N        N        N        N
 #yolo_v2_1080              N        N        N        Y        N        N
-yolo_v2_416               N        N        N        Y        N        N
+yolo_v2_416               Y        N        N        N        N        N
 yolo_v3_608               N        N        N        Y        N        N
 yolo_v3_416               N        N        N        Y        N        N
-yolo_v3_320               N        N        N        Y        N        N
-yolo_v3_tiny              N        N        N        Y        N        N
-yolo_v3_spp               N        N        N        N        N        N
+yolo_v3_320               Y        N        N        N        N        N
+yolo_v3_tiny              Y        N        N        N        N        N
+yolo_v3_spp               N        N        N        Y        N        N
 yolo_v4                   N        N        N        Y        N        N
 faster_rcnn               N        N        N        Y        N        N
-icnet                     N        N        N        N        N        N
+# icnet                     N        N        N        Y        N        N
 erfnet                    N        N        N        Y        N        N
 enet                      N        N        N        Y        N        N
 fcn-8s                    N        N        N        Y        N        N
 
 # onnx
 blazeface                 N        N        N        Y        N        N
-resnet18                  N        N        N        Y        N        N
-efficientnet_b0           N        N        N        Y        N        N
-efficientnet-lite_b0      N        N        N        Y        N        N
+resnet18                  Y        N        N        N        Y        N
+efficientnet_b0           N        N        N        Y        Y        N
+efficientnet-lite_b0      Y        N        N        N        Y        N
 faceboxes                 N        N        N        Y        N        N
-alphapose                 N        N        N        Y        N        N
-espcn_3x                  N        N        N        Y        N        N
+alphapose                 Y        N        N        N        Y        N
+espcn_3x                  N        N        N        Y        Y        N
 unet                      N        N        N        Y        N        N
-nasnet_mobile             N        N        N        Y        N        N
+nasnet_mobile             Y        N        N        N        N        N
 ecanet50                  N        N        N        Y        N        N
 res2net50                 N        N        N        Y        N        N
 gaitset                   N        N        N        Y        N        N
 efficientdet_d0           N        N        N        Y        N        N
-yolo_v4_s                 N        N        N        Y        N        N
-yolo_v5_s                 N        N        N        Y        N        N
-yolox_s                   N        N        N        Y        N        N
+#resnetv2                 Y        N        N        Y        N        N
+yolo_v4_s                 Y        N        N        N        N        N
+yolo_v5_s                 Y        N        N        N        N        N
+yolox_s                   Y        N        N        N        N        N
 ppyolo_tiny               N        N        N        Y        N        N
-#resnetv2                  Y        N        N        Y        N        N
-
-
-# too big:
-# vgg16 inception_v4 ssd300 retinaface_res50 yolo_v3_320 yolo_v3_416 yolo_v3_608 
-# erfnet yolo_v3_spp enet yolo_v4 unet faster_rcnn fcn-8s
-
+yolo_v7                   Y        N        N        N        N        N
