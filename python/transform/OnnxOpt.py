@@ -509,23 +509,43 @@ class ReForm(object):
     def remove_cast(self):
         cast_ops = []
         cast_in_dict = defaultdict(str)
+        cast_out_dict = defaultdict(str)
+        net_out_names = set()
+        for gout in self.gout:
+            net_out_names.add(gout.name)
+        reverse_search = False
 
-        def find_cast_in(node):
-            if node not in cast_in_dict:
+        def find_cast(node, cast_dict):
+            if node not in cast_dict:
                 return node
             else:
-                return find_cast_in(cast_in_dict[node])
+                return find_cast(cast_dict[node], cast_dict)
 
         for node in self.nodes:
             if node.op_type == "Cast":
                 cast_ops.append(node)
                 cast_in_dict[node.output[0]] = node.input[0]
+                if node.output[0] in net_out_names: reverse_search = True
                 continue
             if node.op_type == "Constant":
                 continue
             for i in range(len(node.input)):
                 if node.input[i] in cast_in_dict:
-                    node.input[i] = find_cast_in(cast_in_dict[node.input[i]])
+                    node.input[i] = find_cast(cast_in_dict[node.input[i]], cast_in_dict)
+
+        if reverse_search:
+            for node in reversed(self.nodes):
+                if node.op_type == "Cast":
+                    cast_out_dict[node.input[0]] = node.output[0]
+                    continue
+                if node.op_type == "Constant":
+                    continue
+                for i in range(len(node.output)):
+                    if node.output[i] in cast_out_dict:
+                        out_name = find_cast(cast_out_dict[node.output[i]], cast_out_dict)
+                        if out_name in net_out_names:
+                            node.output[i] = out_name
+
         for op in cast_ops:
             self.nodes.remove(op)
 
