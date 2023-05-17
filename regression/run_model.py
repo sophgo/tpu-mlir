@@ -425,6 +425,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument('model_name', metavar='model_name', help='model name')
+    parser.add_argument("--out_dir", default="", type=str, help="out directory")
     parser.add_argument("--chip", default="bm1684x", type=str.lower, help="chip platform name")
     parser.add_argument("--mode", default="all", type=str.lower,
                         choices=['all', 'basic', 'f32', 'f16', 'bf16', 'int8_sym', 'int8_asym', 'int4_sym'],
@@ -444,7 +445,8 @@ if __name__ == "__main__":
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     # yapf: enable
     args = parser.parse_args()
-    dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{args.model_name}_{args.chip}")
+    out_dir = f"$REGRESSION_PATH/regression_out/{args.model_name}_{args.chip}" if args.out_dir == "" else args.out_dir
+    dir = os.path.expandvars(out_dir)
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
     runner = MODEL_RUN(args.model_name, args.chip, args.mode, args.dyn_mode, args.do_post_handle,

@@ -587,6 +587,36 @@ def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu]> {
   let hasCanonicalizer = 1;
 }
 
+def Top_MinConstOp: Top_Op<"MinConst"> {
+  let summary = "Min Const operator";
+
+  let description = [{
+    Y = Min(X, const_val)
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr: $const_val
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_MaxConstOp: Top_Op<"MaxConst"> {
+  let summary = "Max Const operator";
+
+  let description = [{
+    Y = Max(X, const_val)
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr: $const_val
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_NormalizeOp: Top_Op<"Normalize"> {
   let summary = "Normalize operator";
 
