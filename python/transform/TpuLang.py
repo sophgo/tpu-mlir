@@ -42,14 +42,14 @@ def compile(name: str,
             opt=2,
             dyn=False,
             profile=False,
-            custom=False,
+            has_custom=False,
             refs=None):
     TpuLang.graph.inputs = inputs
     TpuLang.graph.outputs = outputs
     # convert to mlir
     converter = TpuLangConverter(name=name, graph=TpuLang.graph)
     model_transform(name, converter)
-    model_inference(model_name=name, inputs=inputs, custom=custom)
+    model_inference(model_name=name, inputs=inputs, has_custom=has_custom)
     if cmp and refs is not None:
         model_validate(model_name=name, refs=refs)
 
@@ -62,7 +62,7 @@ def model_transform(model_name, converter: TpuLangConverter):
     print("Mlir file generated:{}".format(mlir_file))
 
 
-def model_inference(model_name, inputs, custom=False):
+def model_inference(model_name, inputs, has_custom=False):
     in_f32_npz = model_name + '_in_f32.npz'
     mlir_file = model_name + '.mlir'
     ref_inputs = dict()
@@ -70,7 +70,7 @@ def model_inference(model_name, inputs, custom=False):
         ref_inputs[tensor.name] = tensor.buffer
     np.savez(in_f32_npz, **ref_inputs)
     # inference of mlir model, no inference performed when there is custom op
-    if not custom:
+    if not has_custom:
         res_npz = model_name + '_top_outputs.npz'
         from tools.model_runner import mlir_inference, show_fake_cmd
         show_fake_cmd(in_f32_npz, mlir_file, res_npz)

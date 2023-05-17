@@ -1,5 +1,5 @@
-Test SDK release package with TPU-PERF
-======================================
+Appendix.03: Test SDK release package with TPU-PERF
+===================================================
 
 
 Configure the system environment
