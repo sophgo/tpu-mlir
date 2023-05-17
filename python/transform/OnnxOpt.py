@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter,defaultdict
 import onnx
 import onnx.numpy_helper
 import copy
@@ -508,19 +508,24 @@ class ReForm(object):
 
     def remove_cast(self):
         cast_ops = []
-        flush_input = False
-        for idx, node in enumerate(self.nodes):
+        cast_in_dict = defaultdict(str)
+
+        def find_cast_in(node):
+            if node not in cast_in_dict:
+                return node
+            else:
+                return find_cast_in(cast_in_dict[node])
+
+        for node in self.nodes:
             if node.op_type == "Cast":
                 cast_ops.append(node)
-                flush_input = True
+                cast_in_dict[node.output[0]] = node.input[0]
                 continue
             if node.op_type == "Constant":
                 continue
-            if flush_input:
-                for i in range(len(node.input)):
-                    if cast_ops[-1].output[0] == node.input[i]:
-                        self.nodes[idx].input[i] = cast_ops[-1].input[0]
-                        flush_input = False
+            for i in range(len(node.input)):
+                if node.input[i] in cast_in_dict:
+                    node.input[i] = find_cast_in(cast_in_dict[node.input[i]])
         for op in cast_ops:
             self.nodes.remove(op)
 
