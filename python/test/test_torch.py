@@ -55,6 +55,7 @@ class TORCH_IR_TESTER(object):
             "BMM":              (self.test_BatchMatMul,       Y, Y, Y),
             "ChannelShuffle":   (self.test_ChannelShuffle,    Y, Y, Y),
             "Chunk":            (self.test_Chunk,             Y, Y, Y),
+            "Clamp":            (self.test_Clamp,             Y, Y, N),
             "Compare":          (self.test_Compare,           Y, Y, N),
             "Concat":           (self.test_Concat,            Y, Y, Y),
             "Conv1d":           (self.test_Conv1d,            Y, Y, Y),
@@ -752,6 +753,22 @@ class TORCH_IR_TESTER(object):
 
         self.trace_and_test([(4, 16, 30)], Model0())
         #self.trace_and_test([(4, 16, 10)], Model1())
+
+    #######################################################################
+    # Clamp
+    # ------------
+    def test_Clamp(self):
+
+        class Model0(torch.nn.Module):
+
+            def __init__(self):
+                super(Model0, self).__init__()
+
+            def forward(self, x):
+                y = x * 30
+                return torch.clamp(y, -10, 20)
+
+        self.trace_and_test([(4, 16, 30)], Model0())
 
     #######################################################################
     # SplitUesless

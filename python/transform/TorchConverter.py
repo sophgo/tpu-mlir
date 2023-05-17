@@ -80,6 +80,7 @@ class TorchConverter(BaseConverter):
             "aten::channel_shuffle": lambda node: self.convert_channel_shuffle_op(node),
             "aten::chunk": lambda node: self.convert_chunk_op(node),
             "aten::copy": lambda node: self.convert_skip_op(node),
+            "aten::clamp": lambda node: self.convert_clamp_op(node),
             "aten::cos": lambda node: self.convert_math_op(node, "cos"),
             "aten::cosh": lambda node: self.convert_math_op(node, "cosh"),
             "aten::_convolution": lambda node: self.convert_conv_op(node),
@@ -1235,6 +1236,22 @@ class TorchConverter(BaseConverter):
         for i in range(num):
             self.addOperand(tensors[i], new_ops[i])
         self.tensor_list[torch_node.outputs[0]] = tensors
+
+    def convert_clamp_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        min_val = self.const_val[torch_node.inputs[1]]
+        max_val = self.const_val[torch_node.inputs[2]]
+        min_op = top.MinConstOp(self.unranked_type,
+                                op0,
+                                const_val=max_val,
+                                loc=self.get_loc(torch_node.name + "_min"),
+                                ip=self.mlir.insert_point).output
+        max_op = top.MaxConstOp(self.unranked_type,
+                                min_op,
+                                const_val=min_val,
+                                loc=self.get_loc(torch_node.name),
+                                ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, max_op)
 
     def convert_relu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])

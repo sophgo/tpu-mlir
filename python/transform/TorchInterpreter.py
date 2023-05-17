@@ -68,7 +68,7 @@ class TorchInterpreter():
                 self.ref_tensor[node.outputs[i]] = out
             else:
                 self.const_val[node.outputs[i]] = out
-    
+
     def run_prim(self, node: TorchNode):
         assert node.op_type.split('::')[0] == 'prim'
         if node.op_type == "prim::ListConstruct" or node.op_type == "prim::TupleConstruct":

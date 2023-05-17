@@ -38,7 +38,7 @@ LogicalResult tpu::MaxConstOp::inference(InferenceParameter &p) {
     for (int64_t i = 0; i < num_elem; i++) {
       float p_val = p.inputs[0][i] - izp;
       p_val = applyMultiplierAndRShift(p_val, getMultiplier(), 0);
-      p.outputs[0][i] = std::max(p_val, const_val);
+      p_val = std::max(p_val, const_val);
       p_val = applyMultiplierAndRShift(p_val, 1, getRshift());
       if (getDoRelu() && p_val < 0) {
         p_val = 0;

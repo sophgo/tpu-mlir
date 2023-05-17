@@ -15,7 +15,22 @@
 using namespace tpu_mlir::backend;
 
 void tpu::MinConstOp::codegen_global_bm1684x() {
-  llvm_unreachable("Not Implemented");
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  auto input_type = module::getStorageType(getInput());
+  constbinary_global_spec_t param = {0};
+  param.common.binary_type = BINARY_MIN;
+  param.common.if_relu = 0;
+  param.common.relu_upper_limit = 0;
+  param.common.B_const_val = getConstVal().convertToDouble();
+  param.common.inversed = 0;
+  param.common.scale_A = 1;
+  param.common.rshift_A = 0;
+  param.common.B_dtype = input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  BM168x::call_global_func("backend_api_constbinary_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
 
 int64_t tpu::MinConstOp::getBufferSize_bm1684x(
@@ -31,7 +46,22 @@ void tpu::MinConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                             int64_t w_step,
                                             group_type_t group_type,
                                             local_sec_info_t &sec_info) {
-  llvm_unreachable("Not Implemented");
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
+  auto input_type = module::getStorageType(getInput());
+  constbinary_local_spec_t param = {0};
+  param.common.binary_type = BINARY_MIN;
+  param.common.if_relu = 0;
+  param.common.relu_upper_limit = 0;
+  param.common.B_const_val = getConstVal().convertToDouble();
+  param.common.inversed = 0;
+  param.common.scale_A = 1;
+  param.common.rshift_A = 0;
+  param.common.B_dtype = input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  BM168x::call_local_func("backend_api_constbinary_local", &param,
+                          sizeof(param), &sec_info, input_spec->data(),
+                          output_spec->data());
 }
 
 int64_t tpu::MinConstOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }

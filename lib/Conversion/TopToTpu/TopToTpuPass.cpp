@@ -577,6 +577,8 @@ protected:
     patterns.clear();
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
+                 ForwardCalibartion<top::MinConstOp>,
+                 ForwardCalibartion<top::MaxConstOp>,
                  ForwardCalibartion<top::MaxPoolWithMaskOp>,
                  ForwardCalibartion<top::MaxUnpoolOp>,
                  ForwardCalibartion<top::ReshapeOp>,
