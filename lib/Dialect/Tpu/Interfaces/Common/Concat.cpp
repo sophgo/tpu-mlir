@@ -84,8 +84,17 @@ LogicalResult tpu::ConcatOp::LocalGenSupport() {
   auto shape = module::getShape(getOutput());
   int num_dims = shape.size();
   auto ax = getAxis();
-  if (ax == 1 && (num_dims == 3 || num_dims == 4)) {
-    return success();
+  if (module::isCV18xx()) {
+    if (ax == 1 && (num_dims == 3 || num_dims == 4)) {
+      return success();
+    }
+  } else if (module::isBM1684Family()) {
+    return (ax > 3 ||
+            (!module::getStorageType(getOutput()).isInteger(32) && ax == 0))
+               ? failure()
+               : success();
+  } else {
+    return ax > 3 ? failure() : success();
   }
   return failure();
 }

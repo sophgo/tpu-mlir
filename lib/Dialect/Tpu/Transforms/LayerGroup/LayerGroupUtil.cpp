@@ -282,24 +282,30 @@ void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
     }
   } else {
     // split depth and height
-    float d_len = 0.f, h_len = 0.f;
-    for (auto out : group_out_tensors) {
-      int64_t n, c, d, h, w;
-      module::getNCDHW(out, n, c, d, h, w, lg_info.type);
-      d_len += (float)d;
-      h_len += (float)h;
-    }
-    float min_len = __FLT_MAX__;
-    for (int64_t i = max_shape_secs.dsecs; i > 0; --i) {
-      int64_t dsecs = i;
-      int64_t hsecs = ceiling_func(dhw_secs, i);
-
-      int cur_len = (dsecs - 1) + (hsecs - 1) * (d_len / h_len);
-      if (cur_len < min_len) {
-        min_len = cur_len;
-        shape_secs.dsecs = dsecs;
-        shape_secs.hsecs = hsecs;
+    if (module::isBM1686()) {
+      float d_len = 0.f, h_len = 0.f;
+      for (auto out : group_out_tensors) {
+        int64_t n, c, d, h, w;
+        module::getNCDHW(out, n, c, d, h, w, lg_info.type);
+        d_len += (float)d;
+        h_len += (float)h;
       }
+      float min_len = __FLT_MAX__;
+      for (int64_t i = max_shape_secs.dsecs; i > 0; --i) {
+        int64_t dsecs = i;
+        int64_t hsecs = ceiling_func(dhw_secs, i);
+
+        int cur_len = (dsecs - 1) + (hsecs - 1) * (d_len / h_len);
+        if (cur_len < min_len) {
+          min_len = cur_len;
+          shape_secs.dsecs = dsecs;
+          shape_secs.hsecs = hsecs;
+        }
+      }
+    } else {
+      /// if split h or w, gdma band width may be lowered due to ddr 4k channel interleave
+      shape_secs.dsecs = std::min(max_shape_secs.dsecs, dhw_secs);
+      shape_secs.hsecs = ceiling_func(dhw_secs, shape_secs.dsecs);
     }
     // d split is max but h max still not enough, split w
     if (shape_secs.hsecs > max_shape_secs.hsecs) {
