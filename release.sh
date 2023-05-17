@@ -13,6 +13,8 @@ rm -rf ${release_archive}*
 cp -rf ${INSTALL_PATH} ${release_archive}
 
 cp -rf ${PROJECT_ROOT}/regression ${release_archive}
+rm -rf ${PROJECT_ROOT}/third_party/customlayer/build
+cp -rf ${PROJECT_ROOT}/third_party/customlayer ${release_archive}
 
 # ------------------------------------------------------------------------------
 

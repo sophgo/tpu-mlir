@@ -327,7 +327,7 @@ class TPULANG_IR_TESTER(object):
             params = {"order": [2, 1, 0]}
             outs = self.custom_op([x],
                                   shape_func,
-                                  "SwapChannel",
+                                  "swapchannel",
                                   params=params,
                                   dtypes=[dtype],
                                   out_names=out_names)
@@ -335,7 +335,7 @@ class TPULANG_IR_TESTER(object):
                          outs,
                          False,
                          2,
-                         custom=True)
+                         has_custom=True)
             TPULANG_IR_TESTER.ID += 1
 
             # save the origin output for comparison

@@ -2466,7 +2466,8 @@ def Tpu_DeformGatherOp : Tpu_Op<"DeformGather"> {
   }];
 }
 
-def Tpu_CustomOp: Tpu_Op<"Custom"> {
+def Tpu_CustomOp: Tpu_Op<"Custom",
+  [DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "Custom operator";
   let description = [{
     Custom operator
@@ -2475,7 +2476,8 @@ def Tpu_CustomOp: Tpu_Op<"Custom"> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     StrAttr:$name,
-    DictArrayAttr:$params
+    DictArrayAttr:$params,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
     );
 
   let results = (outs Variadic<AnyTensor>:$output);
