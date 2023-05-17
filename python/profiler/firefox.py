@@ -22,6 +22,11 @@ import json
 from typing import List, Hashable
 
 
+class RefObj:
+    def __hash__(self) -> int:
+        return id(self)
+
+
 # --------------------------------------------------------------------------------
 
 # from https://github.com/firefox-devtools/profiler/blob/main/src/types/profile.js
@@ -58,8 +63,8 @@ class RawMarkerTable:
     length: int
 
 
-@dataclass
-class NativeSymbolTable:
+@dataclass(eq=False)
+class NativeSymbolTable(RefObj):
     # The library that this native symbol is in.
     libIndex: list  # Array<IndexIntoLibs>,
     # The library-relative offset of this symbol.
@@ -71,8 +76,8 @@ class NativeSymbolTable:
     length: int  # number,
 
 
-@dataclass
-class ResourceTable:
+@dataclass(eq=False)
+class ResourceTable(RefObj):
     lib: list  # Array<IndexIntoLibs | null>,
     name: list  # Array<IndexIntoStringTable>,
     host: list  # Array<IndexIntoStringTable | null>,
@@ -80,8 +85,8 @@ class ResourceTable:
     length: int  # number,
 
 
-@dataclass(unsafe_hash=True)
-class Lib:
+@dataclass(eq=False)
+class Lib(RefObj):
     arch: str  # string, // e.g. "x86_64"
     name: str  # string, // e.g. "firefox"
     path: str  # string, // e.g. "/Applications/FirefoxNightly.app/Contents/MacOS/firefox"
@@ -103,8 +108,8 @@ class Lib:
     codeId: str  # string | null, // e.g. "6132B96B70fd000"
 
 
-@dataclass
-class Category:
+@dataclass(eq=False)
+class Category(RefObj):
     name: str  # string,
     color: str  # string,
     subcategories: list  # string[],
@@ -358,7 +363,7 @@ class Table:
                 self.table[obj] = len(self.table)
             return self.table[obj]
         else:
-            assert self.table == []
+            assert self.table == {}
             try:
                 return self.unhashable.index(obj)
             except ValueError:
@@ -412,8 +417,8 @@ class TableEncoder(json.JSONEncoder):
             raise TypeError(f"type:{type(o)}. {o}")
 
 
-@dataclass(unsafe_hash=True)
-class Resource:
+@dataclass(eq=False)
+class Resource(RefObj):
     str_table: Table = dc.field(repr=False, hash=None, compare=False)
     lib_table: Table = dc.field(repr=False, hash=None, compare=False)
     name: str
@@ -428,8 +433,8 @@ class Resource:
             self.lib = self.lib_table.get_id(self.lib)
 
 
-@dataclass(unsafe_hash=True)
-class Function:
+@dataclass(eq=False)
+class Function(RefObj):
     str_table: Table = dc.field(repr=False, hash=None, compare=False)
     resource_table: Table = dc.field(repr=False, hash=None, compare=False)
     name: str
@@ -452,8 +457,8 @@ class Function:
             self.resource = self.resource_table.get_id(self.resource)
 
 
-@dataclass(unsafe_hash=True)
-class nativeSymbol:
+@dataclass(eq=False)
+class nativeSymbol(RefObj):
     str_table: Table = dc.field(repr=False, hash=None, compare=False)
     lib_table: Table = dc.field(repr=False, hash=None, compare=False)
     name: str
@@ -466,8 +471,8 @@ class nativeSymbol:
         self.libIndex = self.lib_table.get_id(self.libIndex)
 
 
-@dataclass(unsafe_hash=True)
-class Frame:
+@dataclass(eq=False)
+class Frame(RefObj):
     str_table: Table = dc.field(repr=False, hash=None, compare=False)
     func_table: Table = dc.field(repr=False, hash=None, compare=False)
     symbol_table: Table = dc.field(repr=False, hash=None, compare=False)
@@ -538,8 +543,8 @@ class markerSchema:
     )  # dict {key, label, format, searchable} | {label, value}
 
 
-@dataclass
-class Marker:
+@dataclass(eq=False)
+class Marker(RefObj):
     str_table: Table = dc.field(
         default_factory=list, repr=False, hash=None, compare=False
     )
@@ -555,8 +560,8 @@ class Marker:
             self.name = self.str_table.get_id(self.name)
 
 
-@dataclass(unsafe_hash=True)
-class Stack:
+@dataclass(eq=False)
+class Stack(RefObj):
     frame_table: Table = dc.field(repr=False, hash=None, compare=False)
     stack_table: Table = dc.field(repr=False, hash=None, compare=False)
     frame: Frame
@@ -570,8 +575,8 @@ class Stack:
             self.prefix = self.stack_table.get_id(self.prefix)
 
 
-@dataclass(unsafe_hash=True)
-class Sample:
+@dataclass(eq=False)
+class Sample(RefObj):
     stack_table: Table = dc.field(repr=False, hash=None, compare=False)
     stack: Stack
     time: float
@@ -599,8 +604,8 @@ class RawMarker:
     threadId: int
 
 
-@dataclass
-class Thread:
+@dataclass(eq=False)
+class Thread(RefObj):
     # Top -> Bottom
     # // static information
     # stack{
@@ -669,16 +674,16 @@ class Thread:
     def add_sample(self, *args, **kargs):
         sample = Sample(self.stackTable, *args, **kargs)
         self.samples.get_id(sample)
-        # return sample
+        return sample
 
     def add_marker(self, *args, **kargs):
         marker = Marker(self.stringArray, *args, **kargs)
         self.markers.get_id(marker)
-        # return marker
+        return marker
 
 
-@dataclass
-class Profile:
+@dataclass(eq=False)
+class Profile(RefObj):
     meta: ProfileMeta  # ProfileMeta,
     threads: list = dc.field(default_factory=list)
     libs: list = dc.field(default_factory=list)
