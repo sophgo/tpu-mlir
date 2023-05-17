@@ -56,6 +56,7 @@ class ONNX_IR_TESTER(object):
             "BCastAdd":     (self.test_BCastAdd,      Y, Y, Y, Y),
             "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y),
             "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y),
+            "Cast":         (self.test_Cast,          Y, Y, Y, Y),
             "CompareCst":   (self.test_CompareCst,    N, Y, Y, N),
             "Compare":      (self.test_Compare,       Y, Y, Y, N),
             "Compare2":     (self.test_Compare2,      Y, N, N, N),
@@ -4073,6 +4074,42 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([cmp_def],
                                         case_name, [input], [output])
         self.onnx_and_test(graph_def)
+
+    def test_Cast(self, case_name):
+        input_shape = [1, 32, 64]
+        output1_shape, output2_shape = [1, 32, 64, 1], [1, 1, 32, 64]
+        dim4_shape = [4]
+        shape1_data = np.array(output1_shape, dtype=np.int64)
+        shape2_data = np.array(output2_shape, dtype=np.int64)
+        input_data = {"input": np.random.randint(0, 255, input_shape).astype(np.float32)}
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+        output1 = helper.make_tensor_value_info("output1", TensorProto.FLOAT, output1_shape)
+        output2 = helper.make_tensor_value_info("output2", TensorProto.INT64, output2_shape)
+        shape1 = helper.make_tensor('shape1', TensorProto.INT64, dim4_shape, shape1_data)
+        shape2 = helper.make_tensor('shape2', TensorProto.INT64, dim4_shape, shape2_data)
+        mul_const = helper.make_tensor(name='const_mul',
+                                       data_type=TensorProto.FLOAT,
+                                       dims=[],
+                                       vals=[2.0])
+        reshape1_def = helper.make_node("Reshape",
+                                        inputs=['input', 'shape1'],
+                                        outputs=['shape1_out'])
+        cast1_def = helper.make_node("Cast",
+                                     inputs=["shape1_out"],
+                                     outputs=["cast1_out"],
+                                     to=TensorProto.INT64)
+        reshape2_def = helper.make_node("Reshape",
+                                        inputs=['cast1_out', 'shape2'],
+                                        outputs=['output2'])
+        cast2_def = helper.make_node("Cast",
+                                     inputs=["cast1_out"],
+                                     outputs=["cast2_out"],
+                                     to=TensorProto.FLOAT)
+        mul_def = helper.make_node("Mul", inputs=["cast2_out", "const_mul"], outputs=["output1"])
+        graph_def = helper.make_graph([reshape1_def, cast1_def, reshape2_def, cast2_def, mul_def],
+                                      case_name, [input], [output1, output2],
+                                      initializer=[shape1, shape2, mul_const])
+        self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_CompareCst(self, case_name):
         shape = [1, 3, 27, 27]

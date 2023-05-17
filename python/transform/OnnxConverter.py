@@ -1715,24 +1715,25 @@ class OnnxConverter(BaseConverter):
         weight_name = onnx_node.inputs[1]
         is_shape_3 = len(input_shape) == 3
         old_weight = np.ascontiguousarray(self.tensors[weight_name])
-        if group != 1:
-            # (ic, oc / g, kh, kw) --> (g, oc/g, ic / g, kh, kw) --> (oc / g, ic, kh, kw)
-            _shape = list(old_weight.shape)
-            old_shape = [group, int(_shape[0] / group), _shape[1]] + _shape[2:]
-            new_shape = [_shape[1], _shape[0]] + _shape[2:]
-            old_weight = old_weight.reshape(old_shape)
-            order = [0, 2, 1] + list(range(len(_shape) + 1)[3:])
-            new_weight = np.transpose(old_weight, order).reshape(new_shape)
-            self.tensors[weight_name] = new_weight
-        else:
-            # (ic, oc, kh, kw) --> (oc, ic, kh, kw)
-            order = [1, 0] + list(range(len(old_weight.shape))[2:])
-            self.tensors[weight_name] = np.transpose(old_weight, order)
+        if weight_name not in self.mlir.load_weight:
+            if group != 1:
+                # (ic, oc / g, kh, kw) --> (g, oc/g, ic / g, kh, kw) --> (oc / g, ic, kh, kw)
+                _shape = list(old_weight.shape)
+                old_shape = [group, int(_shape[0] / group), _shape[1]] + _shape[2:]
+                new_shape = [_shape[1], _shape[0]] + _shape[2:]
+                old_weight = old_weight.reshape(old_shape)
+                order = [0, 2, 1] + list(range(len(_shape) + 1)[3:])
+                new_weight = np.transpose(old_weight, order).reshape(new_shape)
+                self.tensors[weight_name] = new_weight
+            else:
+                # (ic, oc, kh, kw) --> (oc, ic, kh, kw)
+                order = [1, 0] + list(range(len(old_weight.shape))[2:])
+                self.tensors[weight_name] = np.transpose(old_weight, order)
 
-        self.shapes[weight_name] = self.tensors[weight_name].shape
-        if is_shape_3:
-            _shape = self.shapes[weight_name]
-            self.shapes[weight_name] = np.insert(_shape, -1, 1)
+            self.shapes[weight_name] = self.tensors[weight_name].shape
+            if is_shape_3:
+                _shape = self.shapes[weight_name]
+                self.shapes[weight_name] = np.insert(_shape, -1, 1)
 
         filter_opd = self.getWeightOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
