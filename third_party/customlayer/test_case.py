@@ -9,9 +9,8 @@
 # ==============================================================================
 
 import numpy as np
-import os, sys
+import os
 import transform.TpuLang as tpul
-from typing import List
 
 # initialize tpulang
 tpul.init("BM1684X", True)
@@ -37,7 +36,7 @@ def swapChannel(inputs, dtype="float32"):
     outs = tpul.custom(
         tensors_in=inputs,
         shape_func=shape_func,
-        # op_name should be consistent with the backend, case insensitive
+        # op_name should be consistent with the backend
         op_name="SwapChannel",
         params=params,
         out_dtypes=[dtype],
@@ -54,7 +53,7 @@ if __name__ == "__main__":
     x_data = rand_data(input_shape, dtype)
     x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
 
-    # 2. inference
+    # 2. builde model
     outs = swapChannel(inputs=[x], dtype=dtype)
 
     # 3. compile to Top mlir file, the input will be saved in {top_mlir}_in_f32.npz

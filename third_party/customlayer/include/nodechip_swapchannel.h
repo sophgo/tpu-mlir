@@ -18,5 +18,4 @@ void nodechip_swapchannel_global(
 }
 #endif
 
-
 #endif

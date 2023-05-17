@@ -26,3 +26,4 @@ TPU-MLIR Technical Reference Manual
    14_mlir_eval
    15_qat
    16_tpulang
+   17_custom
