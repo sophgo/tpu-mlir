@@ -59,6 +59,11 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
     if (p.hdim_is_batch) {
       p.K = b_s[b_dims - 3];
       p.N = b_s[b_dims - 1];
+      // fix bias_merge_izp size for bm1684x
+      if (module::isBM1684XFamily()) {
+        p.N = b_s[b_dims - 3];
+        p.K = b_s[b_dims - 1];
+      }
     } else {
       // trans hw
       p.N = b_s[b_dims - 2];

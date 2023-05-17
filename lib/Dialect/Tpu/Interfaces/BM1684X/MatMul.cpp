@@ -193,6 +193,9 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
     buffer_size +=
         align_up(p.hdim_is_batch ? w1 : h1, BM168x::eu_num(sizeof(int32_t))) *
         sizeof(int32_t);
+    if (p.right_transpose) {
+      buffer_size += ceiling_func(c1, BM168x::NPU_NUM) * align_up(1, BM168x::eu_num(sizeof(int32_t))) * sizeof(int32_t);
+    }
   }
 
   return buffer_size;

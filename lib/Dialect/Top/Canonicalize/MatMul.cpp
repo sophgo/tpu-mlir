@@ -181,6 +181,5 @@ struct NoKeepDimsAddReshape : public OpRewritePattern<MatMulOp> {
 
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  // results.insert<MatMulWithBias, NoKeepDimsAddReshape>(context);
-  results.insert<MatMulWithBias>(context);
+  results.insert<MatMulWithBias, NoKeepDimsAddReshape>(context);
 }
