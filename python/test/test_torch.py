@@ -91,6 +91,7 @@ class TORCH_IR_TESTER(object):
             "MaxPool2d":        (self.test_MaxPool2d,         Y, Y, Y),
             "MaxPool3d":        (self.test_MaxPool3d,         Y, Y, Y),
             "MeshGrid":         (self.test_MeshGrid,          N, N, N),
+            "Min":              (self.test_Min,               Y, Y, N),
             "MM":               (self.test_MM,                Y, Y, Y),
             "Mul":              (self.test_Mul,               Y, Y, Y),
             "NewZeros":         (self.test_NewZeros,          Y, Y, Y),
@@ -532,7 +533,7 @@ class TORCH_IR_TESTER(object):
     # ------------
     def test_Max(self):
 
-        def _test_max(shape, dim):
+        def _test_max(shape, dim, ret_case):
 
             class Model(torch.nn.Module):
 
@@ -541,13 +542,47 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x):
                     max_values, max_indices = torch.max(x, dim=dim)
-                    return max_values, max_indices
+                    if ret_case == 0:
+                        return max_indices
+                    elif ret_case == 1:
+                        return max_values
+                    else:
+                        return max_values, max_indices
 
             self.trace_and_test([shape], Model())
 
-        _test_max((4, 30), 1)
-        _test_max((1, 3, 64, 64), 3)
-        _test_max((4, 384), 0)
+        for ret_case in [0, 1, 2]:
+            _test_max((4, 30), 1, ret_case)
+            _test_max((1, 3, 64, 64), 3, ret_case)
+            _test_max((4, 384), 0, ret_case)
+
+    #######################################################################
+    # Min
+    # ------------
+    def test_Min(self):
+
+        def _test_min(shape, dim, ret_case):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    min_values, min_indices = torch.min(x, dim=dim)
+                    if ret_case == 0:
+                        return min_indices
+                    elif ret_case == 1:
+                        return min_values
+                    else:
+                        return min_values, min_indices
+
+            self.trace_and_test([shape], Model())
+
+        for ret_case in [0, 1, 2]:
+            _test_min((4, 30), 1, ret_case)
+            _test_min((1, 3, 64, 64), 3, ret_case)
+            _test_min((4, 384), 0, ret_case)
 
     #######################################################################
     # MaxPooling
