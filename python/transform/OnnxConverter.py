@@ -653,7 +653,7 @@ class OnnxConverter(BaseConverter):
                         is_scale = False
                     elif rhs_shape[1 - axis] == channel:
                         # all dim except channel is 1 need broadcast, use scaleop
-                        is_scale = True
+                        is_scale = False if len(rhs_shape) == 1 else True
                     else:
                         # channel need broadcast, use addop
                         is_scale = False
