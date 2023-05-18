@@ -33,8 +33,8 @@ void tpu::SliceOp::codegen_global_bm1684() {
   int *end_index = new int[MAX_SHAPE_DIMS];
   int *stride = new int[MAX_SHAPE_DIMS];
   // assign param and call func
-  module::getGlobalShape(input, input_shape);
   for (int i = 0; i < shape_dim; ++i) {
+    input_shape[i] = p.is_4[i];
     begin_index[i] = p.offset_4[i];
     end_index[i] = p.os_4[i] * p.step_4[i] + p.offset_4[i];
     stride[i] = p.step_4[i];

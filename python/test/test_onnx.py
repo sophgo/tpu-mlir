@@ -213,7 +213,7 @@ class ONNX_IR_TESTER(object):
             "Depth2SpaceWithPermute": (self.test_Depth2SpaceWithPermute, Y, Y, Y, N),
             "Div2Mul":          (self.test_Div2Mul,         Y, Y, Y, Y),
             "ConvSlice":        (self.test_ConvSlice,       Y, Y, Y, N),
-            "GaToSlice":        (self.test_GaToSlice,       N, Y, Y, Y),
+            "GaToSlice":        (self.test_GaToSlice,       Y, Y, Y, Y),
             "Mul2Scale":        (self.test_Mul2Scale,       Y, Y, Y, Y),
             "MatMulTranspose":  (self.test_MatMulTranspose, N, Y, Y, Y),
             "MatMulTranspose2":  (self.test_MatMulTranspose2, N, Y, Y, Y),
