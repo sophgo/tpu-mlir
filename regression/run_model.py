@@ -61,9 +61,9 @@ class MODEL_RUN(object):
 
         self.do_cali = not self.ini_content["model_path"].endswith(".tflite")
         self.arch = chip
-        if chip.startswith("cv18"):
+        if chip.startswith("cv18") and chip != "cv186x":
             self.arch = "cv18xx"
-        elif chip == "bm1686":
+        elif chip == "bm1686" or chip == "cv186x":
             self.arch = "bm1684x"
         self.tolerance = {
             "f32": config.get(self.arch, "f32_tolerance", fallback="0.99,0.99"),

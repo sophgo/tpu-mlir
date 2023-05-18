@@ -276,7 +276,7 @@ class ONNX_IR_TESTER(object):
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
         else:
-            if self.chip == "bm1686":
+            if self.chip == "bm1686" or self.chip == "cv186x" :
                 self.support_quant_modes.append("int4")
             if self.mode not in self.support_quant_modes:
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))

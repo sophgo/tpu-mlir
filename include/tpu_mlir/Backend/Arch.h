@@ -22,7 +22,7 @@ namespace backend {
 
 class Arch {
 public:
-  static void init();
+  static void init(uint64_t freq);
   static int64_t NPU_NUM;
   static int64_t EU_BYTES;
   static int64_t LMEM_BYTES;
@@ -31,6 +31,8 @@ public:
   static llvm::StringRef LIB_BACKEND_NAME;
   static bool ALIGN_4N;
   static module::Chip chip;
+  static uint64_t FREQ;
+  static uint64_t get_frequance() {return Arch::FREQ;}
   // dbytes is 0.5 for INT4
   static int64_t eu_num(double dbytes);
   static int64_t get_n_align(int64_t dtype_bytes) {

@@ -48,6 +48,10 @@ int main(int argc, char **argv) {
   new_argv[0] = argv[0];
   new_argv[1] = argv[1];
   for (int i = 0; i < num_pre; i++) {
+    if (strncmp(argv[left], PluginPrePass[i].c_str(), PluginPrePass[i].length()) == 0){
+      new_argc--;
+      continue;
+    }
     new_argv[idx] = (char *)PluginPrePass[i].c_str();
     idx++;
   }

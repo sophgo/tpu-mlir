@@ -6,6 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
+#include <type_traits>
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
@@ -28,27 +29,36 @@ int64_t Arch::LMEM_BANK_BYTES = 0;
 bool Arch::ALIGN_4N = false;
 llvm::StringRef Arch::LIB_BACKEND_NAME = "";
 module::Chip Arch::chip;
-
+uint64_t Arch::FREQ = 0;
 Arch *Arch::inst = nullptr;
 
-void Arch::init() {
+using A2_1 = std::integral_constant<int, 900>;
+using A2_2 = std::integral_constant<int, 500>;
+
+void Arch::init(uint64_t freq) {
   if (inst != nullptr) {
     return;
   }
+
   chip = module::getChip();
-  if (chip == module::Chip::BM1684) {
-    inst = &BM1684::instance();
-  } else if (chip == module::Chip::BM1684X) {
-    inst = &BM1684X::instance();
-  } else if (chip == module::Chip::BM1686) {
-    inst = &BM1686::instance();
-  } else if (module::isCV18xx()) {
-    inst = &CV18xx::instance(chip);
-  } else if (chip == module::Chip::ALL) {
+  if (chip == module::Chip::ALL) {
     // do nothing
     return;
   } else {
-    llvm_unreachable("unsupport chip");
+    Arch::FREQ = freq;
+    if (chip == module::Chip::BM1684) {
+      inst = &BM1684::instance();
+    } else if (chip == module::Chip::BM1684X) {
+      inst = &BM1684X::instance();
+    } else if (chip == module::Chip::BM1686) {
+      inst = &BM1686<A2_1>::instance();
+    } else if (chip == module::Chip::CV186X) {
+      inst = &BM1686<A2_2>::instance();
+    } else if (module::isCV18xx()) {
+      inst = &CV18xx::instance(chip);
+    } else {
+      llvm_unreachable("unsupport chip");
+    }
   }
 }
 
