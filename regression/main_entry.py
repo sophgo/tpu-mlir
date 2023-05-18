@@ -19,6 +19,7 @@ import test_torch
 import test_tflite
 import test_onnx
 import argparse
+import logging
 
 
 class MAIN_ENTRY(object):
@@ -38,6 +39,7 @@ class MAIN_ENTRY(object):
             "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x"]),
         }
         # yapf: enable
+        self.model_cases = set()
         self.results = []
         self.time_cost = []
 
@@ -49,18 +51,37 @@ class MAIN_ENTRY(object):
         })
 
     def run_regression_net(self, model_name, chip, finished_list):
+        case_name = f"{model_name}_{chip}"
+        # set the file for saving output stream
+        log_filename = case_name + ".log"
+
+        logging.basicConfig(filename=log_filename,
+                            filemode='w',
+                            level=logging.DEBUG,
+                            format='%(message)s')
+
+        file_handler = logging.FileHandler(log_filename)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(logging.Formatter('%(message)s'))
+
         print(f"======= run_models.py {model_name} {chip} {self.test_type}=====")
         dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{model_name}_{chip}")
         os.makedirs(dir, exist_ok=True)
         os.chdir(dir)
-        regressor = MODEL_RUN(model_name, chip, self.test_type, disable_thread=self.disable_thread)
+        regressor = MODEL_RUN(model_name,
+                              chip,
+                              self.test_type,
+                              save_log=True,
+                              disable_thread=self.disable_thread)
         ret = regressor.run_full()
         finished_list.append({
-            "name": f"Test {model_name} {chip}",
+            "name": case_name,
             "status": "PASSED" if ret == 0 else "FAILED",
             "error_cases": []
         })
         os.chdir(self.current_dir)
+
+        file_handler.close()
         return ret == 0
 
     def run_op_test(self, op_source, tester, test_all_func, chip):
@@ -75,13 +96,14 @@ class MAIN_ENTRY(object):
         error_cases = test_all_func(tester)
         self.add_result(f"test_{op_source}.py {chip}", not error_cases, error_cases)
         os.chdir(self.current_dir)
+
         return not error_cases
 
     def run_script_test(self):
         # run scripts under $REGRESSION_OUT/script_test
         print("======= script test ======")
         ret = os.system(os.path.expandvars("$REGRESSION_PATH/script_test/run.sh"))
-        self.add_result("Script Test", ret == 0)
+        self.add_result("script_test", ret == 0)
         return ret == 0
 
     def run_all(self):
@@ -117,6 +139,7 @@ class MAIN_ENTRY(object):
             if self.disable_thread:
                 finished_list = list()
                 for model in cur_model_list:
+                    self.model_cases.add(f"{model}_{chip}")
                     self.run_regression_net(model, chip, finished_list)
                 self.results.extend(finished_list)
                 if self.is_basic:
@@ -128,6 +151,7 @@ class MAIN_ENTRY(object):
                 processes = []
                 finished_list = multiprocessing.Manager().list()
                 for model in cur_model_list:
+                    self.model_cases.add(f"{model}_{chip}")
                     p = multiprocessing.Process(target=self.run_regression_net,
                                                 args=(model, chip, finished_list))
                     processes.append(p)
@@ -171,7 +195,16 @@ if __name__ == "__main__":
     os.chdir(dir)
 
     main_entry = MAIN_ENTRY(args.test_type, args.disable_thread)
+
     exit_status = main_entry.run_all()
+
+    # print log of failed cases first
+    for result in main_entry.results:
+        if result["name"] in main_entry.model_cases and result["status"] == "FAILED":
+            with open(result["name"] + ".log", 'r') as file:
+                content = file.read()
+                print(content)
+
     for time in main_entry.time_cost:
         print(time)
     for result in main_entry.results:
