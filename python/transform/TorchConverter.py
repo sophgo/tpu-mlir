@@ -126,6 +126,7 @@ class TorchConverter(BaseConverter):
             "aten::max_pool3d": lambda node: self.convert_maxpool_op(node),
             "aten::mean": lambda node: self.convert_reduce_op(node, method="ReduceMean"),
             "aten::meshgrid": lambda node: self.convert_mesh_grid_op(node),
+            "aten::min": lambda node: self.convert_min_op(node),
             "aten::mish": lambda node: self.convert_mish_op(node),
             "aten::mm": lambda node: self.convert_matmul_op(node),
             "aten::mul": lambda node: self.convert_mul_op(node),
@@ -509,6 +510,30 @@ class TorchConverter(BaseConverter):
                                loc=self.get_loc(torch_node.name),
                                ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
+
+    def convert_min_op(self, torch_node: TorchNode):
+        op = self.getOperand(torch_node.inputs[0])
+        dim = self.const_val[torch_node.inputs[1]]
+        keepdims = self.const_val[torch_node.inputs[2]]
+        select_last_index = True
+        out_needs = [False, False]
+        for idx, out in enumerate(torch_node.outputs):
+            if len(out) > 0 and self.check_need(out):
+                out_needs[idx] = True
+        new_op = top.ArgOp(self.unranked_type,
+                           self.unranked_type,
+                           op,
+                           axis=dim,
+                           keepdims=keepdims,
+                           mode=StringAttr.get("ArgMin"),
+                           select_last_index=select_last_index,
+                           loc=self.get_loc(torch_node.outputs),
+                           ip=self.mlir.insert_point)
+        out_ops = [new_op.values, new_op.indices]
+        print(out_needs)
+        for idx, need in enumerate(out_needs):
+            if not need: continue
+            self.addOperand(torch_node.outputs[idx], out_ops[idx])
 
     def _mul_scale(self, in_name, scale):
         in_op = self.getOp(in_name)
