@@ -108,7 +108,7 @@ class bmodel_inference(common_inference):
             chip = get_chip_from_model(self.args.model_file)
             # trick for runtime link chip cmodel
             lib_so = 'libcmodel_1684x.so'
-            if chip == 'BM1686':
+            if chip == 'BM1686' or chip == 'CV186X':
                 lib_so = 'libcmodel_1686.so'
             elif chip == 'BM1684':
                 lib_so = 'libcmodel_1684.so'

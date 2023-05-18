@@ -805,9 +805,9 @@ bool isCV18xx() {
 }
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
-  return (chip == Chip::BM1684X || chip == Chip::BM1686);
+  return (chip == Chip::BM1684X || chip == Chip::BM1686 || chip == Chip::CV186X);
 }
-bool isBM1686() { return (chip == Chip::BM1686); }
+bool isBM1686() { return (chip == Chip::BM1686 || chip == Chip::CV186X); }
 bool isBM1684X() { return (chip == Chip::BM1684X); }
 
 ModuleOp getModuleOp() { return m; }

@@ -259,7 +259,7 @@ if __name__ == '__main__':
                         help="do INT8 asymmetric quantization")
     parser.add_argument("--chip", required=True, type=str.lower,
                         choices=['bm1686', 'bm1684x', 'bm1684',
-                                 'cv183x', 'cv182x', 'cv181x', 'cv180x'],
+                                 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x'],
                         help="chip platform name")
     parser.add_argument("--model", required=True, help='output model')
     parser.add_argument("--dynamic", action='store_true',

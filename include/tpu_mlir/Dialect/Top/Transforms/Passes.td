@@ -20,6 +20,10 @@ def Init : Pass<"init", "ModuleOp"> {
   let summary = "init module";
   let constructor = "createInitPass()";
   let dependentDialects = ["TopDialect"];
+  let options = [
+    Option<"freq", "freq", "uint64_t", /*default=*/"",
+           "chip frequance">,
+  ];
 }
 
 def Deinit : Pass<"deinit", "ModuleOp"> {
@@ -34,7 +38,7 @@ def ChipAssign : Pass<"chip-assign", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
   let options = [
     Option<"chip", "chip", "std::string", /*default=*/"",
-           "chip: cv183x/cv182x/bm1684/bm1684x/bm1686">,
+           "chip: cv183x/cv182x/cv186x/bm1684/bm1684x/bm1686">,
   ];
 }
 

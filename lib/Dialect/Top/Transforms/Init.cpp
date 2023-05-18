@@ -26,7 +26,7 @@ public:
   void runOnOperation() override {
     auto mOp = getOperation();
     module::init(mOp);
-    backend::Arch::init();
+    backend::Arch::init(freq);
   }
 };
 
