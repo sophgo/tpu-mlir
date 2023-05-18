@@ -116,7 +116,7 @@ class ONNX_IR_TESTER(object):
             "Min":          (self.test_Min,           Y, Y, Y, Y),
             "MinBcast":     (self.test_MinBcast,      Y, Y, Y, N),
             "MulConst":     (self.test_MulConst,      Y, Y, Y, Y),
-            "Neg":          (self.test_Neg,           N, Y, Y, Y),
+            "Neg":          (self.test_Neg,           Y, Y, Y, Y),
             "Pad":          (self.test_Pad,           Y, Y, Y, Y),  # zero pad
             "Pad1":         (self.test_Pad1,          Y, Y, Y, Y),  # pad val
             "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y),
