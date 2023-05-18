@@ -235,10 +235,10 @@ class DeployTool:
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
             f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts,
-                              self.post_op)
+                              True, self.post_op)
         else:
             f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts,
-                              self.post_op)
+                              True, self.post_op)
 
 
 if __name__ == '__main__':

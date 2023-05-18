@@ -10,8 +10,64 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
+
+static void lrn_inference_cv18xx(InferenceParameter &p, int64_t size,
+                                 double alpha, double bias, int64_t n,
+                                 int64_t c, int64_t h, int64_t w) {
+  float alpha_bf16 = BF16(static_cast<float>(alpha / size));
+  float bias_bf16 = BF16(static_cast<float>(bias));
+  int64_t move_counts = (size - 1) / 2;
+  std::vector<float> elem(n * c * h * w);
+  // y = x * (k + sum(ax^2))^(-beta)
+  // step 1: elem = ax ^ 2
+#pragma omp parallel for schedule(static, omp_schedule(n *c))
+  for (int64_t i = 0; i < n * c; ++i) {
+    for (int64_t j = 0; j < h * w; ++j) {
+      elem[i * h * w + j] =
+          BF16(alpha_bf16 * BF16(std::pow(p.inputs[0][i * h * w + j], 2)));
+    }
+  }
+
+  // step 2: tmp = sum(elem)
+  std::vector<float> tmp(n * c * h * w, 0);
+  for (int64_t _n = 0; _n < n; ++_n) {
+#pragma omp parallel for schedule(static, omp_schedule(c))
+    for (int64_t _c = 0; _c < c; ++_c) {
+      for (int64_t i = 0; i < h * w; ++i) {
+        int64_t begin_c = std::max((int64_t)0, _c - move_counts);
+        int64_t end_c = std::min(c, _c + move_counts + 1);
+        for (int64_t j = begin_c; j < end_c; ++j) {
+          tmp[_n * c * h * w + _c * h * w + i] +=
+              elem[_n * c * h * w + j * h * w + i];
+        }
+      }
+    }
+  }
+
+  // step 3: elem = k + tmp
+#pragma omp parallel for schedule(static, omp_schedule(n *c))
+  for (int64_t i = 0; i < n * c; ++i) {
+    for (int64_t j = 0; j < h * w; ++j) {
+      elem[i * h * w + j] = BF16(BF16(tmp[i * h * w + j]) + bias_bf16);
+    }
+  }
+
+  // step 4: tmp = elem ^ (-beta)
+  bf16_lut_mantissa(elem.data(), tmp.data(), n * c * h * w, p.inputs[1],
+                    p.inputs[2], "mantissa");
+
+  // step 5: output = x * tmp
+#pragma omp parallel for schedule(static, omp_schedule(n *c))
+  for (int64_t i = 0; i < n * c; ++i) {
+    for (int64_t j = 0; j < h * w; ++j) {
+      p.outputs[0][i * h * w + j] =
+          tmp[i * h * w + j] * p.inputs[0][i * h * w + j];
+    }
+  }
+}
 
 LogicalResult tpu::LRNOp::init(InferenceParameter &p) {
   auto alpha_ = getAlpha().convertToDouble();
@@ -54,8 +110,16 @@ LogicalResult tpu::LRNOp::inference(InferenceParameter &p) {
   auto out_type = module::getStorageType(getOutput());
 
   if (out_type.isa<FloatType>()) {
-    auto lrn = (LRN *)p.handle;
-    lrn->run();
+    if (module::isCV18xx()) {
+      int64_t n, c, h, w;
+      module::getNCHW(getInput(), n, c, h, w);
+      lrn_inference_cv18xx(p, getSize(), getAlpha().convertToDouble(),
+                           getBias().convertToDouble(), n, c, h, w);
+    } else {
+      auto lrn = (LRN *)p.handle;
+      lrn->run();
+    }
+
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {

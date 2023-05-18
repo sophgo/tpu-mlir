@@ -56,7 +56,7 @@ static void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale, int num,
     scale = BF16(scale);
 #pragma omp parallel for schedule(static, omp_schedule(num))
     for (int i = 0; i < num; i++) {
-      p_dst[i] = BF16(BF16(p_src[i]) * scale);
+      p_dst[i] = BF16(BF16(p_src[i], false) * scale);
     }
   } else {
 #pragma omp parallel for schedule(static, omp_schedule(num))

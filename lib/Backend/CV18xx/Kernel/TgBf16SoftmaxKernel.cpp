@@ -1274,7 +1274,7 @@ void TgSoftmaxKernel::exponential(cvk_tl_t *tl_in, cvk_tl_t *tl_out,
   cvi_backend_bf16_tl_lut_slope_method(
       layer_id, tl_in->start_address, tl_out->start_address,
       tl_work->start_address, tl_exponential_table_answer->start_address,
-      tl_exponential_table_answer_slope->start_address, -1 * EXP_BF16_LUT_RANGE,
+      tl_exponential_table_answer_slope->start_address, -EXP_BF16_LUT_RANGE,
       EXP_BF16_LUT_RANGE, tl_in->shape.n, tl_in->shape.c, tl_in->shape.h,
       tl_in->shape.w, false);
 }
