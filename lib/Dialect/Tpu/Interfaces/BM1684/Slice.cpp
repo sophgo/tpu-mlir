@@ -26,7 +26,7 @@ void tpu::SliceOp::codegen_global_bm1684() {
   auto input_addr = module::getAddress(input);
   auto output_addr = module::getAddress(output);
   int begin_mask = 0, end_mask = 0;
-  int shape_dim = module::getShape(input).size();
+  int shape_dim = p.is_4.size();
   // malloc
   int *input_shape = new int[MAX_SHAPE_DIMS];
   int *begin_index = new int[MAX_SHAPE_DIMS];

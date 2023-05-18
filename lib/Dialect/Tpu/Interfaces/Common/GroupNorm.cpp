@@ -125,7 +125,20 @@ LogicalResult tpu::GroupNormOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::GroupNormOp::LocalGenSupport() { return success(); }
+LogicalResult tpu::GroupNormOp::LocalGenSupport() { 
+  if (module::isBM1684Family()) {
+    auto input_shape = module::getShape(getInput());
+    int num_dims = input_shape.size();
+    int input_c = num_dims > 1 ? input_shape[1] : 1;
+    int input_w = num_dims > 3 ? input_shape[3] : 1;
+    bool support_c = input_c < (((int)1) << 12) && input_c >= 0;
+    bool support_w = input_w < (((int)1) << 16) && input_w >= 0;
+    if (!support_c || !support_w) {
+      return failure();
+    }
+  }
+  return success();
+}
 
 LogicalResult tpu::GroupNormOp::AllowDataSplit(int64_t axis,
                                                group_type_t group_type) {
