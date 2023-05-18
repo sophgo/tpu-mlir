@@ -539,7 +539,10 @@ class CaffeConverter(BaseConverter):
                                **attrs,
                                ip=self.mlir.insert_point).output
         elif p.operation == 3:  # min
-            raise RuntimeError("Min not support now")
+            new_op = top.MinOp(self.mlir.get_tensor_type(output_shape),
+                               operands,
+                               **attrs,
+                               ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_inner_product_op(self, layer):
@@ -1283,7 +1286,27 @@ class CaffeConverter(BaseConverter):
 
     def convert_relu6_op(self, layer):
         assert (self.layerType(layer) == 'ReLU6')
-        raise RuntimeError("not implemented")
+        op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        output_shape = input_shape
+        clip_attrs = {'loc': self.get_loc(layer.top[0]), 'min': 0.0, 'max': 6.0}
+        if layer.relu_param.HasField('negative_slope'):
+            attrs = {'loc': self.get_loc(layer.top[0] + '_leakyrelu')}
+            attrs['alpha'] = layer.relu_param.negative_slope
+            leaky_relu_op = top.LeakyReluOp(self.mlir.get_tensor_type(output_shape),
+                                            op,
+                                            **attrs,
+                                            ip=self.mlir.insert_point).output
+            new_op = top.ClipOp(self.mlir.get_tensor_type(output_shape),
+                                leaky_relu_op,
+                                **clip_attrs,
+                                ip=self.mlir.insert_point).output
+        else:
+            new_op = top.ClipOp(self.mlir.get_tensor_type(output_shape),
+                                op,
+                                **clip_attrs,
+                                ip=self.mlir.insert_point).output
+        self.addOperand(layer.top[0], new_op)
 
     def convert_reorg_op(self, layer):
         assert (self.layerType(layer) == 'Reorg')
@@ -1491,7 +1514,15 @@ class CaffeConverter(BaseConverter):
 
     def convert_tanh_op(self, layer):
         assert (self.layerType(layer) == 'TanH')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        output_shape = input_shape
+        attrs = {'loc': self.get_loc(layer.top[0])}
+        new_op = top.TanHOp(self.mlir.get_tensor_type(output_shape),
+                               in_op,
+                               **attrs,
+                               ip=self.mlir.insert_point).output
+        self.addOperand(layer.top[0], new_op)
 
     def convert_tile_op(self, layer):
         assert (self.layerType(layer) == 'Tile')
