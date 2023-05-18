@@ -22,7 +22,7 @@ void SoftmaxLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SoftmaxOp op) const {
   Value table_weight, slope_table_weight, reciprocal_table_weight,
       reciprocal_mantissa_table_weight;
-  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, -15, 15, active_exp,
+  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, -EXP_BF16_LUT_RANGE, EXP_BF16_LUT_RANGE, active_exp,
                   table_weight, slope_table_weight);
   if (op.getLog()) {
     createBf16LutOp(op, "log", TableMode::Mantissa, 0.0, 0.0, -62, 63, nullptr,
