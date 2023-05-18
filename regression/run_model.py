@@ -31,6 +31,7 @@ class MODEL_RUN(object):
                  fuse_preprocess: bool = False,
                  customization_format: str = "",
                  aligned_input: bool = False,
+                 save_log: bool = False,
                  disable_thread: bool = True):
         self.model_name = model_name
         self.chip = chip
@@ -41,6 +42,7 @@ class MODEL_RUN(object):
         self.customization_format = customization_format
         self.aligned_input = aligned_input
         self.merge_weight = merge_weight
+        self.save_log = save_log
         self.disable_thread = disable_thread
         self.model_type = chip_support[self.chip][-1]
         self.command = f"run_model.py {model_name} --chip {chip} --mode {mode}"
@@ -158,7 +160,7 @@ class MODEL_RUN(object):
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
         if self.do_post_handle and "post_type" in self.ini_content:
             cmd += ["--post_handle_type {}".format(self.ini_content["post_type"])]
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
 
     def make_calibration_table(self):
         '''generate calibration when there is no existing one'''
@@ -187,7 +189,7 @@ class MODEL_RUN(object):
             cmd.extend([f"--debug_cmd {d_cmd}"])
         else:
             cmd.extend(["--input_num 100"])
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
 
     def int4_tmp_test(self):
         '''tmp test script for int4 sym mode, no bmodel generated for now'''
@@ -201,7 +203,7 @@ class MODEL_RUN(object):
             "--convert-top-to-tpu=\"mode=INT4 asymmetric=false\"", "--canonicalize",
             f"-o {tpu_mlir}"
         ]
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
 
         # inference and compare
         output_npz = tpu_mlir.replace(".mlir", "_outputs.npz")
@@ -209,12 +211,12 @@ class MODEL_RUN(object):
             "model_runner.py", "--input {}_in_f32.npz".format(self.model_name),
             f"--model {tpu_mlir}", f"--output {output_npz}"
         ]
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
         cmd = ["npz_tool.py", "compare", output_npz, self.ini_content["test_reference"], "-v"]
         if "int4_sym_tolerance" in self.ini_content:
             cmd += "--tolerance {}".format(self.ini_content["int4_sym_tolerance"]),
 
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
 
     def test_input_copy(self, quant_mode):
         test_input = self.ini_content["test_input"] if self.fuse_pre else self.ini_content[
@@ -225,7 +227,7 @@ class MODEL_RUN(object):
         else:
             new_test_input = test_input.replace(".npz", f"_for_{quant_mode}.npz")
         cmd = ["cp", test_input, new_test_input]
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
         return new_test_input
 
     def run_model_deploy(self,
@@ -302,7 +304,7 @@ class MODEL_RUN(object):
         if "excepts" in self.ini_content:
             cmd += ["--excepts {}".format(self.ini_content["excepts"])]
 
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
 
         if to_test:
             os.system(f"rm {new_test_input}")
@@ -338,11 +340,11 @@ class MODEL_RUN(object):
         ]
         if self.do_post_handle:
             cmd += ["--post_op"]
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
         cmd[2], cmd[3] = f"--model {dyn_model_file}", f"--output {dyn_out}"
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
         cmd = ["npz_tool.py", "compare", static_out, dyn_out, "-vv"]
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
 
     def run_sample(self, model_def: str, test_input: str, output: str, model_data: str = ""):
         '''run samples under tpu-mlir/python/test/'''
@@ -354,7 +356,7 @@ class MODEL_RUN(object):
         if model_data:
             cmd += [f"--model_data {model_data}"]
 
-        _os_system(cmd)
+        _os_system(cmd, self.save_log)
 
     def run_model_deploy_wrapper(self, quant_mode, model_name, do_sample, result_queue):
         try:
@@ -442,7 +444,9 @@ if __name__ == "__main__":
                         help="pixel format of input frame to the model")
     parser.add_argument("--aligned_input", action='store_true',
                         help='if the input frame is width/channel aligned')
+    parser.add_argument("--save_log", action="store_true", help='if true, save the log to file')
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
+
     # yapf: enable
     args = parser.parse_args()
     out_dir = f"$REGRESSION_PATH/regression_out/{args.model_name}_{args.chip}" if args.out_dir == "" else args.out_dir
@@ -451,5 +455,5 @@ if __name__ == "__main__":
     os.chdir(dir)
     runner = MODEL_RUN(args.model_name, args.chip, args.mode, args.dyn_mode, args.do_post_handle,
                        args.merge_weight, args.fuse_preprocess, args.customization_format,
-                       args.aligned_input, args.disable_thread)
+                       args.aligned_input, args.save_log, args.disable_thread)
     runner.run_full()

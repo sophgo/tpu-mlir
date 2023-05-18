@@ -6,18 +6,51 @@
 # ==============================================================================
 
 import os
+import subprocess
+import logging
 
 
-def _os_system(cmd: list):
+def _os_system_log(cmd_str):
+    # use subprocess to redirect the output stream
+    # the file for saving the output stream should be set if using this function
+    logging.info("[Running]: %s", cmd_str)
+
+    process = subprocess.Popen(cmd_str,
+                               shell=True,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT,
+                               universal_newlines=True)
+
+    while True:
+        output = process.stdout.readline().strip()
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            logging.info(output)
+
+    process.wait()
+    ret = process.returncode
+
+    if ret == 0:
+        logging.info("[Success]: %s", cmd_str)
+    else:
+        raise RuntimeError("[!Error]: {}".format(cmd_str))
+
+
+def _os_system(cmd: list, save_log: bool = False):
     cmd_str = ""
     for s in cmd:
         cmd_str += str(s) + " "
-    print("[Running]: {}".format(cmd_str))
-    ret = os.system(cmd_str)
-    if ret == 0:
-        print("[Success]: {}".format(cmd_str))
+    if not save_log:
+        print("[Running]: {}".format(cmd_str))
+        ret = os.system(cmd_str)
+        if ret == 0:
+            print("[Success]: {}".format(cmd_str))
+        else:
+            raise RuntimeError("[!Error]: {}".format(cmd_str))
     else:
-        raise RuntimeError("[!Error]: {}".format(cmd_str))
+        _os_system_log(cmd_str)
+
 
 
 def mlir_opt_for_top(mlirfile, opt_mlirfile, post_handle_type=""):
