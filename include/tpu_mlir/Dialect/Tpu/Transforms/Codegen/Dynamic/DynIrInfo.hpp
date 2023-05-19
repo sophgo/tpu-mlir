@@ -84,6 +84,7 @@ typedef struct ir_layer_info {
     fw_batchnorm_layer_param_t fw_batchnorm_layer_param;
     fw_reshape_layer_param_t fw_reshape_layer_param;
     fw_deconv_layer_param_t fw_deconv_layer_param;
+    fw_deconv3d_layer_param_t fw_deconv3d_layer_param;
     fw_crop_layer_param_t fw_crop_layer_param;
     fw_concat_loc_layer_param_t fw_concat_loc_layer_param;
     fw_mulshift_layer_param_t fw_mulshift_layer_param;

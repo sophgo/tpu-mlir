@@ -165,6 +165,7 @@ void *call_global_layer_ir_write(FW_LAYER_TYPE_T fw_layer_type, void *p_ir_addr,
   GLB_IRBUF_CASE(UPSAMPLEMASK, upsample_mask)
   GLB_IRBUF_CASE(UPSAMPLE, upsample)
   GLB_IRBUF_CASE(GROUP_NORM, group_norm)
+  GLB_IRBUF_CASE(DECONV3D, deconv3d)
   // global_dynamic: add layer_type irbuf_write case
   GLB_IRBUF_CASE_END()
   return p_ir_addr;
@@ -897,6 +898,7 @@ IMPLEMENT_GLB_IRBUF_WRITE(tpu)
 IMPLEMENT_GLB_IRBUF_WRITE(upsample_mask)
 IMPLEMENT_GLB_IRBUF_WRITE(upsample)
 IMPLEMENT_GLB_IRBUF_WRITE(group_norm)
+IMPLEMENT_GLB_IRBUF_WRITE(deconv3d)
 // global_dynamic step 5: implement static_glb_xxx_irbuf_write
 
 // the irbuf will be unpacked by dynamic_glb_arith_shift_layer_ctrl(), these two

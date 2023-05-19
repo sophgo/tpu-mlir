@@ -188,6 +188,7 @@ typedef enum fw_layer_type {
   FW_BMNET_SUBM_SPARSE_CONV3D = 142,
   FW_BMNET_SHAPE_UNSQUEEZE  = 143,
   FW_BMNET_UNSQUEEZE = 144,
+  FW_BMNET_DECONV3D = 145,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;
@@ -363,6 +364,26 @@ typedef struct fw_deconv_layer_param {
   u32 imm_buffer_offset;
   u32 using_depthwise;
 } fw_deconv_layer_param_t;
+
+typedef struct fw_deconv3d_layer_param {
+  int oc;
+  int groups;
+  int kernel[3]; //kd, kh, kw
+  int dilation[3]; //dd, dh, dw
+  int pads[6]; //d, d_after, h, h_after, w, w_after
+  int stride[3]; //sd, sh, sw
+  int using_bias;
+  int if_relu;
+  float relu_upper_limit;
+  int output_padding[3];
+  /*for bm1684x*/
+  int dtype[4]; //weight, bias, output, kzp
+  int kzp_is_const;
+  int pad_insert_is_const;
+  int kzp_val;
+  int pad_val;
+  int insert_val;
+} fw_deconv3d_layer_param_t;
 
 typedef struct fw_crop_layer_param {
   u32 shape_tensor_id;
