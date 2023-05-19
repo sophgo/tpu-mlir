@@ -85,7 +85,7 @@ class ONNX_IR_TESTER(object):
             "Expand":       (self.test_Expand,        Y, Y, Y, Y),
             "Expand2":      (self.test_Expand2,       Y, Y, Y, Y),
             "Floor":        (self.test_floor,         Y, Y, Y, N),
-            "Gather":       (self.test_Gather,        N, Y, Y, Y),
+            "Gather":       (self.test_Gather,        Y, Y, Y, Y),
             "GatherND":     (self.test_GatherND,      Y, N, N, Y),
             "Gather2":      (self.test_Gather2,       N, Y, N, N),
             "Gather3":      (self.test_Gather3,       Y, Y, N, N),
