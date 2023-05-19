@@ -121,6 +121,16 @@ LogicalResult top::ConvOp::inference(InferenceParameter &p) {
   return success();
 }
 
+LogicalResult top::ConvOp::backward_weight(InferenceParameter &p, InferenceParameter &p_back) {
+  if (p.handle == nullptr) {
+    return failure();
+  }
+  auto conv = (Conv *)p.handle;
+  conv->run_backw(p_back.inputs[0], p_back.outputs[0]);
+
+  return success();
+}
+
 void top::ConvOp::shape_inference() {
   // n, c, w | n, c, h, w | n, c, d, h, w
   auto input_shape = module::getShape(getInput());

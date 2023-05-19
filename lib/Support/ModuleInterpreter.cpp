@@ -667,6 +667,62 @@ void ModuleInterpreter::invoke_from(const std::string op_name) {
     });
   }
 }
+
+// this function is specific for learning weight calibration, returns the
+// gradent of weight in conv input is the grd of dst, and returns the gradent of
+// weight
+void ModuleInterpreter::backward_weight_at(const std::string op_name,
+                                      const void *dst_grd, const int dst_grd_len, const void *weight_grd, const int weight_grd_len) {
+  module::init(module);
+  if (value_map.find(op_name) == value_map.end()) {
+    llvm::errs() << "Can't find op:" << op_name << "\n";
+    llvm_unreachable("invoke_at op_name error");
+  }
+  auto v = value_map[op_name];
+  auto op = v.getDefiningOp();
+  if (op == nullptr || !isa<top::ConvOp>(op)) {
+    llvm_unreachable("op.type not support backward_weight!!");
+  }
+
+  auto back_param = std::make_shared<InferenceParameter>();
+  for (auto result : op->getResults()) {
+    if (result.getType().isa<NoneType>()) {
+      continue;
+    }
+    auto type = result.getType().cast<RankedTensorType>();
+    auto name = module::getName(result).str();
+    size_t count = type.getNumElements();
+    if (count != dst_grd_len){
+      llvm_unreachable("output size mis-match");
+    }
+  }
+  back_param->inputs.push_back((float *)dst_grd);
+  if (auto convop = dyn_cast<top::ConvOp>(op)) {
+    auto opd = convop.getFilter();
+    if (opd.getType().isa<NoneType>()) {
+      llvm_unreachable("op.filter not exist!!");
+    }
+    auto type = opd.getType().cast<RankedTensorType>();
+    size_t count = type.getNumElements();
+    if (count != weight_grd_len){
+      llvm_unreachable("weight grd size mis-match!");
+    }
+  }
+  back_param->outputs.push_back((float*)weight_grd);
+
+  if (op == nullptr || false == isa<InferenceInterface>(op)) {
+    llvm::errs() << "Op :" << op_name << " can't do backward";
+    llvm_unreachable("backward weight error");
+  }
+  auto infer_op = cast<InferenceInterface>(op);
+  LLVM_DEBUG(llvm::dbgs() << "backward at: '" << op_name << "'\n");
+  if (failed(infer_op.backward_weight(*inference_map[op_name], *back_param))) {
+    infer_op.dump();
+    llvm_unreachable("infer_op.backward failed!!");
+  }
+  return;
+}
+
 void ModuleInterpreter::setTensor(const std::string &name, const void *data,
                                   size_t size, bool is_integer) {
   module::init(module);

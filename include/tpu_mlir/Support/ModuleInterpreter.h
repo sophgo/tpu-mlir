@@ -46,6 +46,7 @@ public:
   void fake_quant_weight();
   std::shared_ptr<std::vector<float>> invoke_at(std::string name);
   void invoke_from(const std::string op_name);
+  void backward_weight_at(std::string name, const void *dst_grd, const int dst_grd_len, const void *weight_grd, const int weight_grd_len);
   void setTensor(const std::string &name, const void *data, size_t size,
                  bool is_integer = false);
   std::shared_ptr<std::vector<float>> getTensor(const std::string &name,
