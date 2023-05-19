@@ -2481,4 +2481,15 @@ def Tpu_CustomOp: Tpu_Op<"Custom"> {
   let results = (outs Variadic<AnyTensor>:$output);
 }
 
+def Tpu_Weight2ActivationOp: Tpu_Op<"Weight2Activation"> {
+  let summary = "Weight to activation operator";
+
+  let description = [{
+    Convert weight tensor to activation tensor
+  }];
+
+  let arguments = (ins AnyRankedTensor:$input);
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

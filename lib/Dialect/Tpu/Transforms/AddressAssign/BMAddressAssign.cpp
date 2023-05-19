@@ -194,6 +194,10 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
         }
       }
       module::setAddress(sliceOp.getOutput(), addr + offset_bytes);
+    } else if (auto weight2activation_op =
+                   dyn_cast<tpu::Weight2ActivationOp>(op)) {
+      module::setAddress(weight2activation_op.getOutput(),
+                         module::getAddress(weight2activation_op.getInput()));
     } else {
       llvm_unreachable("set address of undefined inplace op!");
     }
@@ -362,6 +366,9 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
     return p.fusible;
   } else if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
     return concatOp.getOnlyMerge();
+  } else if (auto weight2activation_op =
+                 dyn_cast<tpu::Weight2ActivationOp>(op)) {
+    return true;
   }
   return false;
 }
