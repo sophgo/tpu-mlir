@@ -28,6 +28,18 @@ def InferenceInterface : OpInterface<"InferenceInterface"> {
         /*desc=*/[{
         }],
         /*retType=*/"::mlir::LogicalResult",
+        /*methodName=*/"backward_weight",
+        /*args=*/(ins "InferenceParameter&":$param, "InferenceParameter&":$b_param),
+        /*methodBody=*/"",
+        /*defaultImplementation=*/[{
+          return mlir::failure();
+        }]
+
+      >,
+      InterfaceMethod<
+        /*desc=*/[{
+        }],
+        /*retType=*/"::mlir::LogicalResult",
         /*methodName=*/"init",
         /*args=*/(ins "InferenceParameter&":$param)
       >,

@@ -282,7 +282,8 @@ def Top_UnpackOp: Top_Op<"Unpack"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
+def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu,
+  DeclareOpInterfaceMethods<InferenceInterface,["backward_weight"]>]> {
   let summary = "Convolution operator";
 
   let description = [{
