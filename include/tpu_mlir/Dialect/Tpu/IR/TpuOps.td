@@ -1632,6 +1632,42 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
   }];
 }
 
+def Tpu_Deconv3DOp: Tpu_Op<"Deconv3D",[
+    SupportFuseRelu,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  let summary = "3D deconvolution operator";
+
+  let description = [{
+    "Perform 3D deconvolution operation."
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyRankedTensor:$filter,
+    AnyTensorOrNone:$bias,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    DefaultValuedAttr<I64Attr, "1">:$group,
+    OptionalAttr<I64ArrayAttr>:$dilations,
+    OptionalAttr<I64ArrayAttr>:$output_padding,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    //new param
+    BoolAttr:$with_bias,
+    OptionalAttr<I64ArrayAttr>:$multiplier,
+    OptionalAttr<I64ArrayAttr>:$rshift,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+
+  let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    deconv_attr_t parseParam();
+    void assign_fw_param(void *param);
+  }];
+}
+
 def Tpu_ScaleOp: Tpu_Op<"Scale", [
   SupportFuseRelu, InOutSameShape,
   DeclareOpInterfaceMethods<LocalGenInterface>,

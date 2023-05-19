@@ -75,6 +75,7 @@ class ONNX_IR_TESTER(object):
             "Clip":         (self.test_Clip,          Y, Y, Y, Y),
             "DepthToSpace": (self.test_DepthToSpace,  Y, Y, Y, Y),
             "Deconv":       (self.test_Deconv,        Y, Y, Y, Y),
+            "Deconv3d":     (self.test_Deconv3d,      Y, N, N, N),
             "Div":          (self.test_Div,           Y, Y, Y, Y),
             "DivBcast":     (self.test_DivBcast,      Y, Y, Y, N),
             "DivBcast2":    (self.test_DivBcast2,     Y, Y, Y, N),
@@ -2217,6 +2218,29 @@ class ONNX_IR_TESTER(object):
                 return y
 
         x = torch.randn(3, 8, 16, 32).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_Deconv3d(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.deconv = nn.ConvTranspose3d(in_channels=4,
+                                                 out_channels=12,
+                                                 kernel_size=2,
+                                                 stride=2,
+                                                 padding=0,
+                                                 output_padding=0,
+                                                 groups=2,
+                                                 bias=True,
+                                                 dilation=1)
+
+            def forward(self, x):
+                y = self.deconv(x)
+                return y
+
+        x = torch.randn(3, 4, 8, 8, 8).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_Slice3(self, case_name):

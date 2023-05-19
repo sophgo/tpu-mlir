@@ -190,6 +190,7 @@ DECLARE_GLB_IRWRITE_FUNC(sequence_gen)
 DECLARE_GLB_IRWRITE_FUNC(upsample_mask)
 DECLARE_GLB_IRWRITE_FUNC(upsample)
 DECLARE_GLB_IRWRITE_FUNC(group_norm)
+DECLARE_GLB_IRWRITE_FUNC(deconv3d)
 // global_dynamic : declare static_glb_xxx_irbuf_write here
 
 #undef DECLARE_GLB_IRWRITE_FUNC
