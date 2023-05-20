@@ -31,6 +31,8 @@ static void usage(void) {
        << "      --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath" << endl
        << "      --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path" << endl
        << "      --dump model_file start_offset byte_size out_file: dump binary data to file from bmodel" << endl
+       << "      --kernel_dump model_file -o kernel_file_name : dump kernel_module file" << endl
+       << "      --kernel_update model_file kernel_name : add/update kernel_module file" << endl
        << endl
        << "    [cvimodel]:" << endl
        << "      --info model_file : show model info" << endl

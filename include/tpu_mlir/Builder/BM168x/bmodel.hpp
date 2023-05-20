@@ -64,7 +64,8 @@ class ModelGen {
   void AddNet(const flatbuffers::Offset<Net> &net);
   void AddNet(std::string net_name, const flatbuffers::Offset<NetParameter> &parameter,
               uint32_t *net_idx = NULL, uint32_t *stage_idx = NULL);
-
+  // firmware_core.so save into bmodel
+  void AddKernelModule(std::string &version, Binary &tpu_module);
   // finish and save to file
   void Finish(const std::string &filename);
 
@@ -84,6 +85,11 @@ class ModelGen {
     std::vector<flatbuffers::Offset<NetParameter>> parameters;
   } NET_INFO_T;
 
+  typedef struct {
+    std::string file_name;
+    Binary binary;
+  } KERNEL_MODULE_T;
+
   std::string chip_;
   flatbuffers::FlatBufferBuilder builder_;
   std::vector<uint8_t> binary_;
@@ -91,6 +97,8 @@ class ModelGen {
   std::vector<NET_INFO_T> net_vector_;
   std::vector<flatbuffers::Offset<bmodel::Net>> nets_;
   uint64_t max_neuron_size_;
+  // Binary tpu_module_;
+  KERNEL_MODULE_T kernel_module_;
 };
 
 class ModelCtx {

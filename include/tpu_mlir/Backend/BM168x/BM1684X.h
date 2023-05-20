@@ -34,10 +34,14 @@ public:
 
 public:
   virtual void after_codegen(int64_t flops = 0) override;
-
   // arch info
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) override;
+
+public:
+  // specific global info
+  static constexpr llvm::StringRef LIB_KERNEL_NAME =
+      "libbm1684x_kernel_module.so";
 
 protected:
   BM1684X() {
@@ -64,7 +68,7 @@ protected:
     GDMA_VALUE_FORMAT_BFLOAT16 = 5;
     GDMA_VALUE_FORMAT_INT4 = 6;
     GDMA_VALUE_FORMAT_NUM = 7;
-    LIB_NAME = "libbackend_1684x.so";
+    LIB_BACKEND_NAME = "libbackend_1684x.so";
     start_env();
   };
   virtual ~BM1684X() { end_env(); };
