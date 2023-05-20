@@ -125,7 +125,18 @@ void bm_show(const string &filename) {
        << model->version()->c_str() << endl;
   cout << "chip: " << model->chip()->c_str() << endl;
   cout << "create time: " << model->time()->c_str() << endl;
-
+  // kernel_module info
+  auto kernel_module = model->kernel_module();
+  if (!kernel_module) {
+    cout << "no kernel_module" << endl;
+  } else {
+    auto module_binary = kernel_module->binary();
+    size_t module_size = module_binary->size();
+    std::unique_ptr<uint8_t[]> binary(new uint8_t[module_size]);
+    model_ctx.read_binary(module_binary, binary.get());
+    cout << "kernel_module name: " << kernel_module->file_name()->c_str() << endl;
+    cout << "kernel_module size: " << module_size << endl;
+  }
   for (uint32_t idx = 0; idx < model->net()->size(); idx++) {
     auto net = model->net()->Get(idx);
     auto parameter = net->parameter();

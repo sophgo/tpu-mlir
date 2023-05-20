@@ -435,7 +435,7 @@ protected:
     GDMA_VALUE_FORMAT_INT8 = 3;
     GDMA_VALUE_FORMAT_FLOAT16 = 4;
     GDMA_VALUE_FORMAT_NUM = 5;
-    LIB_NAME = "libbackend_1684.so";
+    LIB_BACKEND_NAME = "libbackend_1684.so";
     ALIGN_4N = true;
     start_env();
   };

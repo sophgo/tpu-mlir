@@ -28,7 +28,7 @@ public:
   static int64_t LMEM_BYTES;
   static int64_t LMEM_BANKS;
   static int64_t LMEM_BANK_BYTES;
-  static llvm::StringRef LIB_NAME;
+  static llvm::StringRef LIB_BACKEND_NAME;
   static bool ALIGN_4N;
   static module::Chip chip;
   // dbytes is 0.5 for INT4

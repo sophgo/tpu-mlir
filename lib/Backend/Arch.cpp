@@ -26,7 +26,7 @@ int64_t Arch::LMEM_BYTES = 0;
 int64_t Arch::LMEM_BANKS = 0;
 int64_t Arch::LMEM_BANK_BYTES = 0;
 bool Arch::ALIGN_4N = false;
-llvm::StringRef Arch::LIB_NAME = "";
+llvm::StringRef Arch::LIB_BACKEND_NAME = "";
 module::Chip Arch::chip;
 
 Arch *Arch::inst = nullptr;
@@ -138,7 +138,7 @@ Arch::~Arch() {}
 void Arch::load_library() {
   if (!DL.isValid()) {
     std::string Err;
-    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(LIB_NAME.data(), &Err);
+    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(LIB_BACKEND_NAME.data(), &Err);
     if (DL.isValid() == false) {
       llvm_unreachable(Err.c_str());
     }

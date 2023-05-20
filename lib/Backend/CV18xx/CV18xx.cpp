@@ -669,7 +669,7 @@ void CV18xx::load_ctx(module::Chip chip) {
 }
 
 CV18xx::CV18xx(module::Chip chip) {
-  LIB_NAME = "libcvikernel.so";
+  LIB_BACKEND_NAME = "libcvikernel.so";
   load_library();
   load_ctx(chip);
   NPU_NUM = cvk_ctx_->info.npu_num;

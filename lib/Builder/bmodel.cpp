@@ -219,6 +219,11 @@ void ModelGen::AddChip(const std::string &arch_name)
   chip_ = arch_name;
 }
 
+void ModelGen::AddKernelModule(std::string &file_name, Binary &tpu_module) {
+  kernel_module_.file_name = file_name;
+  kernel_module_.binary = tpu_module;
+}
+
 void ModelGen::Finish(const string &filename)
 {
   this->Finish();
@@ -254,6 +259,12 @@ size_t ModelGen::Finish()
   auto chip = builder_.CreateString(chip_);
   auto now = time(0);
   auto time = builder_.CreateString(ctime(&now));
+  auto module_name = builder_.CreateString(kernel_module_.file_name);
+
+  bmodel::KernelModuleBuilder kb(builder_);
+  kb.add_file_name(module_name);
+  kb.add_binary(&kernel_module_.binary);
+  auto kernel_module = kb.Finish();
 
   bmodel::ModelBuilder mb(builder_);
   mb.add_chip(chip);
@@ -262,6 +273,7 @@ size_t ModelGen::Finish()
   mb.add_version(version);
   mb.add_net(net);
   mb.add_neuron_size(max_neuron_size_);
+  mb.add_kernel_module(kernel_module);
 
   auto model = mb.Finish();
   builder_.Finish(model);

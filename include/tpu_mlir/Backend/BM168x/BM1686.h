@@ -32,7 +32,7 @@ protected:
     GMEM_START_ADDR = 0x100000000ull;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
     CTX_START_ADDR = GMEM_START_ADDR;
-    LIB_NAME = "libbackend_1686.so";
+    LIB_BACKEND_NAME = "libbackend_1686.so";
     // GDMA format
     GDMA_VALUE_FORMAT_INT8 = 0;
     GDMA_VALUE_FORMAT_FLOAT16 = 1;
