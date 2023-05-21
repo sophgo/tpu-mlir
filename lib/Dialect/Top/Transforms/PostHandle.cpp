@@ -41,8 +41,8 @@ public:
         std::vector<NamedAttribute> attrs;
         std::string new_name;
         int64_t keep_topk= 200;
-        int64_t batch_num = module::getShape(inputs[0])[0];
-        int64_t dims = module::getShape(inputs[0]).size();
+        auto in_shape = module::getShape(inputs[0]);
+        int64_t batch_num = in_shape[0];
         //insert posthandleOp
         if (type == "yolo") {
           new_name = "yolo_post";
@@ -50,8 +50,8 @@ public:
           int64_t flag = 1;//used to distinguish between BM16xx and CV18xx
           std::vector<int64_t> scale{8,16,32};
           std::vector<int64_t> mask{0, 1, 2, 3, 4, 5, 6, 7, 8};
-          h = scale[0] * module::getShape(inputs[0])[dims-2];
-          w = scale[0] * module::getShape(inputs[0])[dims-1];
+          h = scale[0] * in_shape[2];
+          w = scale[0] * in_shape[3];
           attrs.emplace_back(builder.getNamedAttr("net_input_h",builder.getI64IntegerAttr(h)));
           attrs.emplace_back(builder.getNamedAttr("net_input_w",builder.getI64IntegerAttr(w)));
           attrs.emplace_back(builder.getNamedAttr("nms_threshold",builder.getF64FloatAttr(0.5)));

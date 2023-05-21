@@ -168,11 +168,8 @@ def f32_blobs_compare(a_npz: str,
                       b_npz: str,
                       tolerance: str,
                       excepts=None,
-                      show_detail=True,
-                      post_op=False):
+                      show_detail=True):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
-    if post_op:
-        cmd.extend(["--post_op", post_op])
     if excepts:
         cmd.extend(["--except", excepts])
     if show_detail:

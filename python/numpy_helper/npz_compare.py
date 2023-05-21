@@ -41,7 +41,6 @@ def parse_args(args_list):
     parser.add_argument("--save", type=str, help="Save result as a csv file")
     parser.add_argument("--per_axis_compare", type=int, default=-1,
                         help="Compare along axis, usually along axis 1 as per-channel")
-    parser.add_argument("--post_op", action='store_true', help="if the bmodel have post handle op")
     args = parser.parse_args(args_list)
     # yapf: enable
     return args
@@ -68,19 +67,23 @@ def fp32_to_bf16(d_fp32):
     return d_bf16.reshape(s)
 
 
+def crop_array(data, shape):
+    slices = [slice(0, dim) for dim in shape]
+    return data[tuple(slices)]
+
+
 def align_type_and_shape(d1, d2):
     try:
         d2 = d2.reshape(d1.shape)
     except:
-        print("WARRING: Two narraies are not the same shape." + \
-              " {} v.s. {}, check if continue:".format(d1.shape, d2.shape))
-        # check if do-early-stride case
-        if d2.shape[2] % d1.shape[2] == 0 and \
-           d2.shape[3] % d1.shape[3] == 0:
-            sh = int(d2.shape[2] / d1.shape[2])
-            sw = int(d2.shape[3] / d1.shape[3])
-            d2 = d2[:, :, ::sh, ::sw]
-            print("Ignore this warning, continue")
+        print("WARRING: not the same shape " + " {} v.s. {}".format(d1.shape, d2.shape))
+        s1 = np.array(d1.shape)
+        s2 = np.array(d2.shape)
+        if s1.size == s2.size and (np.all(s1 >= s2) or np.all(s1 <= s2)):
+            if np.all(s1 >= s2):
+                d1 = crop_array(d1, s2)
+            else:
+                d2 = crop_array(d2, s1)
         else:
             raise RuntimeError("Fatal, stop")
 
@@ -207,15 +210,9 @@ def npz_compare(args_list):
         for name in compare_process_name_list:
             pbar.set_description("compare {}".format(name))
             pbar.update(1)
-            if args.post_op:
-                #Todo: select the minimum shape as the base to compare
-                p = multiprocessing.Process(target=compare_one_array,
-                                            args=(tc, npz1, npz2, name, args.verbose, lock, dic,
-                                                  int8_tensor_close, args.per_axis_compare))
-            else:
-                p = multiprocessing.Process(target=compare_one_array,
-                                            args=(tc, npz1, npz2, name, args.verbose, lock, dic,
-                                                  int8_tensor_close, args.per_axis_compare))
+            p = multiprocessing.Process(target=compare_one_array,
+                                        args=(tc, npz1, npz2, name, args.verbose, lock, dic,
+                                              int8_tensor_close, args.per_axis_compare))
             processes.append(p)
             p.start()
 

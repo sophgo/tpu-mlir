@@ -8,7 +8,8 @@ model_transform.py \
   --model_name yolov5s \
   --model_def ${REGRESSION_PATH}/model/yolov5s.onnx \
   --input_shapes=[[1,3,192,1024]] \
-  --output_names=350,498,646 \
+  --output_names=326,474,622 \
+  --keep_aspect_ratio \
   --scale=0.0039216,0.0039216,0.0039216 \
   --pixel_format=rgb \
   --test_input=${REGRESSION_PATH}/image/dog.jpg \
@@ -29,6 +30,15 @@ model_deploy.py \
   --fuse_preprocess \
   --test_input ${REGRESSION_PATH}/image/dog.jpg \
   --test_reference yolov5s_top_outputs.npz \
-  --except "yolo_post" \
   --compare_all \
+  --except "yolo_post" \
+  --debug \
   --model yolov5s_int8.bmodel
+
+detect_yolov5.py \
+  --input ${REGRESSION_PATH}/image/dog.jpg \
+  --model yolov5s_int8.bmodel \
+  --net_input_dims 192,1024 \
+  --fuse_preprocess \
+  --fuse_postprocess \
+  --out dog_out.jpg
