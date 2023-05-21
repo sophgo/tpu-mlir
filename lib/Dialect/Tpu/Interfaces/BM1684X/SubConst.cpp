@@ -75,6 +75,7 @@ void tpu::SubConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
   auto input_type = module::getStorageType(getInput());
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
 
   constbinary_local_spec_t param = {0};
   param.common.binary_type = BINARY_SUB;
@@ -84,6 +85,7 @@ void tpu::SubConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.common.inversed = getIsReverse();
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
+  param.buffer_addr = gi.buffer_addr;
   if (module::isUniformQuantized(getInput())) {
     param.common.B_dtype = DTYPE_INT32;
     param.common.scale_A = getMultiplier();
