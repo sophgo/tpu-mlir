@@ -81,7 +81,6 @@ class DeployTool:
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         self.dynamic = args.dynamic
         self.compare_all = args.compare_all
-        self.post_op = args.post_op
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
                 self.prefix += "_asym"
@@ -237,10 +236,10 @@ class DeployTool:
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
             f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts,
-                              True, self.post_op)
+                              True)
         else:
             f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts,
-                              True, self.post_op)
+                              True)
 
 
 if __name__ == '__main__':
@@ -289,8 +288,6 @@ if __name__ == '__main__':
                         help="strip output type cast in bmodel, need outside type conversion")
     parser.add_argument("--disable_layer_group", action="store_true",
                         help="Decide whether to enable layer group pass")
-    parser.add_argument("--post_op", action="store_true",
-                        help="if the bmodel have post handle op")
     parser.add_argument("--op_divide", action="store_true",
                         help="if do large global op divide.")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
