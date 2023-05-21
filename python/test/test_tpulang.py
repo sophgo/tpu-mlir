@@ -318,36 +318,76 @@ class TPULANG_IR_TESTER(object):
         """Custom test sample"""
 
         @tpulang
-        def _test_swap_channel(input_shape: List[int], dtype="float32"):
+        def _test_base(op_name: str, input_shapes: list, params: dict, shape_func, infer_func,
+                       out_names, dtype: str):
+            input_data = []
+            inputs = []
+            for input_shape in input_shapes:
+                x_data = rand_data(input_shape, dtype)
+                input_data.append(x_data)
+                x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
+                inputs.append(x)
 
-            def shape_func(tensors_in):
-                return [tensors_in[0].shape]
-
-            x_data = rand_data(input_shape, dtype)
-            x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
-            out_names = ["out"]
-            params = {"order": [2, 1, 0]}
-            outs = self.custom_op([x],
+            outs = self.custom_op(inputs,
                                   shape_func,
-                                  "swapchannel",
+                                  op_name,
                                   params=params,
                                   dtypes=[dtype],
                                   out_names=out_names)
-            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x],
+            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID),
+                         inputs,
                          outs,
                          False,
                          2,
                          has_custom=True)
             TPULANG_IR_TESTER.ID += 1
-
             # save the origin output for comparison
-            origin_out = x_data[:, [2, 1, 0], :, :]
             # There are two outputs because in non-f32 quant mode, the result will be
             # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
-            out = {out_names[0]: origin_out, f"{out_names[0]}_f32": origin_out}
-            np.savez("target_data", **out)
+            if infer_func:
+                origin_out = infer_func(input_data)
+                out = {}
+                for out_name in out_names:
+                    out[out_name] = origin_out
+                    out[f"{out_name}_f32"] = origin_out
+                np.savez(f"{op_name}_target_data", **out)
 
-        _test_swap_channel([1, 3, 14, 14])
+        def _test_swap_channel(input_shapes: list, dtype="float32"):
+
+            def shape_func(tensors_in):
+                return [tensors_in[0].shape]
+
+            def infer_func(np_data):
+                return [np_data[0][:, [2, 1, 0], :, :]]
+
+            params = {"order": [2, 1, 0]}
+            _test_base("swapchannel", input_shapes, params, shape_func, infer_func, ["out"], dtype)
+
+        def _test_abs_add(input_shapes: list, dtype="float32"):
+
+            def shape_func(tensors_in):
+                return [tensors_in[0].shape]
+
+            def infer_func(np_data):
+                return [np.abs(np_data[0]) + 1.2]
+
+            params = {"b_val": 1.2}
+            _test_base("absadd", input_shapes, params, shape_func, infer_func, ["out"], dtype)
+
+        def _test_ceil_add(input_shapes: list, dtype="float32"):
+
+            def shape_func(tensors_in):
+                return [tensors_in[0].shape]
+
+            def infer_func(np_data):
+                return [np.ceil(np_data[0]) + 1.5]
+
+            params = {"b_val": 1.5}
+            _test_base("ceiladd", input_shapes, params, shape_func, infer_func, ["out"], dtype)
+
+        _test_swap_channel([[1, 3, 14, 14]])
+        _test_abs_add([[1, 3, 14, 14]])
+        _test_ceil_add([[1, 3, 14, 14]])
 
 
 def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):

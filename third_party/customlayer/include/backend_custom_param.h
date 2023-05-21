@@ -14,4 +14,12 @@ typedef struct swapchannel_param {
   int order[3];
 } swapchannel_param_t;
 
+typedef struct {
+  float b_val;
+} absadd_param_t;
+
+typedef struct {
+  float b_val;
+} ceiladd_param_t;
+
 #endif
