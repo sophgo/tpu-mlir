@@ -10,7 +10,9 @@
                 "${workspaceFolder}/third_party/cnpy",
                 "${workspaceFolder}/third_party/flatbuffers/include",
                 "${workspaceFolder}/third_party/nntoolchain/include",
-                "${workspaceFolder}/third_party/progressbar/include"
+                "${workspaceFolder}/third_party/progressbar/include",
+                "${workspaceFolder}/third_party/customlayer/include",
+                "${workspaceFolder}/third_party/customlayer/include/kernel"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

@@ -9,7 +9,6 @@ set(CMAKE_BUILD_TYPE Debug)
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 include_directories(${SRC_DIR}/include)
-
 include_directories(${SRC_DIR}/include/kernel)
 
 file(GLOB_RECURSE SRC_FILES
