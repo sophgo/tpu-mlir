@@ -79,7 +79,7 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
     int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
     int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
-  int64_t sz = out_lmem_bytes * sizeof(int32_t);
+  int64_t sz = 0;
   auto &attr = getDeconvParam(*this);
 
   auto idtype = BM168x::getDataType(getInput());
@@ -90,12 +90,12 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   // fp part 2: used for group > 1, input must start from npu 0
   if (attr.g > 1 &&
       (idtype == DTYPE_FP32 || idtype == DTYPE_BFP16 || idtype == DTYPE_FP16)) {
-    sz += ic_per_npu * align_up(in_hslice * in_wslice, eu_num) * type_len;
+    sz = ic_per_npu * align_up(in_hslice * in_wslice, eu_num) * type_len;
   }
   // quant : used for groups > 1, input must start from npu 0,
   if (attr.g > 1 && !attr.is_dw && type_len == 1) {
-    sz += ic_per_npu * (align_up(in_hslice * in_wslice, eu_num) +
-                        (attr.pad_insert_is_const ? 0 : 2));
+    sz = ic_per_npu * (align_up(in_hslice * in_wslice, eu_num) +
+                       (attr.pad_insert_is_const ? 0 : 2));
   }
 
   return sz;

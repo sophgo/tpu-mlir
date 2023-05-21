@@ -88,6 +88,7 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.common.inversed = 0;
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
+  param.buffer_addr = gi.buffer_addr;
   if (module::isUniformQuantized(getInput())) {
     param.common.B_const_val = 1; // coeff has been merge in multiplier&&rshift
     param.common.B_dtype = DTYPE_INT8;
