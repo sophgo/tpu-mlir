@@ -102,6 +102,8 @@ class Decoder:
         main_cmd, inserted_cmd = dma, bdc
         # remove the system command
         def get_end(cmd):
+            if len(cmd) == 0:
+                return 0
             sys = (self.context.opdef.bdc_sys, self.context.opdef.dma_sys)
             if all(sys):
                 if isinstance(cmd[-1], sys):

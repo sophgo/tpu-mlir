@@ -34,7 +34,7 @@ if [ "$1" = "RELEASE" ]; then
   ./release_doc.sh
   # strip mlir tools
   pushd $INSTALL_PATH
-  find ./ -name "*.so" | xargs strip
+  find ./ -name "*.so"  ! -name "*_kernel_module.so" | xargs strip
   ls bin/* | xargs strip
   find ./ -name "*.a" | xargs rm
   popd

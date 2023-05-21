@@ -38,53 +38,6 @@ class WeightType(Enum):
     bytes = "bytes"
 
 
-@dataclass
-class SamplesLikeTableShape:
-    stack: list  # Array<IndexIntoStackTable | null>,
-    time: float  # Milliseconds[],
-    # An optional weight array. If not present, then the weight is assumed to be 1.
-    # See the WeightType type for more information.
-    weight: int  # null | number[],
-    weightType: int  # WeightType
-    length: int
-
-
-@dataclass
-class RawMarkerTable:
-    data: list  # Array<MarkerPayload | null>,
-    name: list  # IndexIntoStringTable[],
-    startTime: list  # Array<number | null>,
-    endTime: list  # Array<number | null>,
-    phase: list  # MarkerPhase[],
-    category: list  # IndexIntoCategoryList[],
-    #   // This property isn't present in normal threads. However it's present for
-    #   // merged threads, so that we know the origin thread for these markers.
-    threadId: list  # Tid[],
-    length: int
-
-
-@dataclass(eq=False)
-class NativeSymbolTable(RefObj):
-    # The library that this native symbol is in.
-    libIndex: list  # Array<IndexIntoLibs>,
-    # The library-relative offset of this symbol.
-    address: list  # Array<Address>,
-    # The symbol name, demangled.
-    name: list  # Array<IndexIntoStringTable>,
-    # The size of the function's machine code (if known), in bytes.
-    functionSize: list  # Array<Bytes | null>,
-    length: int  # number,
-
-
-@dataclass(eq=False)
-class ResourceTable(RefObj):
-    lib: list  # Array<IndexIntoLibs | null>,
-    name: list  # Array<IndexIntoStringTable>,
-    host: list  # Array<IndexIntoStringTable | null>,
-    type: list  # resourceTypeEnum[],
-    length: int  # number,
-
-
 @dataclass(eq=False)
 class Lib(RefObj):
     arch: str  # string, // e.g. "x86_64"
@@ -582,7 +535,7 @@ class Sample(RefObj):
     time: float
     threadCPUDelta: int
     weight: None = None
-    weightType: WeightType = WeightType.samples
+    weightType: WeightType = WeightType.tracing_ms
     # threadId: Thread
 
     def __post_init__(self):
@@ -731,7 +684,7 @@ frame2 = thread1.add_frame(func2, 0, 3, 0)
 stack1 = thread1.add_stack(frame, 2, 0)
 stack2 = thread1.add_stack(frame2, 3, 0, stack1)
 stack3 = thread1.add_stack(frame2, 3, 0, stack2)
-thread1.add_sample(stack1, 100.0, 1000, 20)
+thread1.add_sample(stack1, 100.0, 1000, 0.03)
 thread1.add_sample(stack2, 200.0, 1000, 20)
 thread1.add_sample(stack3, 900.0, 1000, 20)
 thread1.add_sample(stack1, 1200.0, 100, 50)
