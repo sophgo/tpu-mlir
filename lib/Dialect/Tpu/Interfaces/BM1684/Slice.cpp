@@ -18,9 +18,6 @@ using namespace tpu_mlir::backend;
 
 void tpu::SliceOp::codegen_global_bm1684() {
   auto p = parseParam();
-  if (p.fusible) {
-    return;
-  }
   auto input = getInput();
   auto output = getOutput();
   auto input_addr = module::getAddress(input);

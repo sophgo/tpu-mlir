@@ -70,6 +70,9 @@ struct TopFuseReshape3 : public OpRewritePattern<ReshapeOp> {
     if (!a_in.hasOneUse()) {
       return failure();
     }
+    if (!b_in.hasOneUse()) {
+      return failure();
+    }
     if (!isa<ReshapeOp>(a_in.getDefiningOp())) {
       return failure();
     }
