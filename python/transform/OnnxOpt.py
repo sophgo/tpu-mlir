@@ -1,8 +1,9 @@
-from collections import Counter,defaultdict
+from collections import Counter, defaultdict, OrderedDict
 import onnx
 import onnx.numpy_helper
 import copy
 import numpy as np
+import onnxruntime as rt
 from transform.OnnxOpOptionalAttrs import OnnxOpOptionalAttrGetter
 
 onnx_attr_translator = {
@@ -55,6 +56,233 @@ def get_node_attrs(node) -> dict:
         if k not in attrs:
             attrs[k] = v
     return attrs
+
+
+class ConstantFolding(object):
+    def __init__(self, model):
+        self.model = copy.deepcopy(model)
+        if self.model.graph.value_info:
+            n = len(self.model.graph.value_info)
+            for _ in range(n):
+                v = self.model.graph.value_info[0]
+                self.model.graph.value_info.remove(v)
+        try:
+            onnx.checker.check_model(self.model)
+        except onnx.onnx_cpp2py_export.checker.ValidationError:
+            print("WARNING: Field 'shape' of type is required but missing.")
+        self.const_tensors = []
+
+    def get_inputs(self):
+        initializer_names = [x.name for x in self.model.graph.initializer]
+        return [ipt for ipt in self.model.graph.input if ipt.name not in initializer_names]
+
+    def get_input_names(self):
+        input_names = [ipt.name for ipt in self.get_inputs()]
+        return input_names
+
+    def generate_specific_rand_input(self, input_shapes):
+        inputs = {}
+        for key, shape in input_shapes.items():
+            if not np.all(np.array(shape) > 0):
+                raise RuntimeError("The shape of input '{}' has dynamic size '{}', "
+                                   "please determine the input size when export "
+                                   "onnx".format(key, shape))
+            elem_type = self.get_elem_type(key)
+            elem_type = self.get_np_type_from_elem_type(elem_type)
+            if elem_type == np.bool :  # for mask
+                inputs.update({key: np.random.randint(0, 2, shape, dtype=elem_type)})
+            # elif elem_type == np.int64:
+            #     inputs.update({key: np.random.randint(0, 10, size=shape, dtype=elem_type)})
+            elif len(shape) == 0: # for idx
+                inputs.update({key: np.array(0, dtype=elem_type)})
+            else:
+                inputs.update({key: np.random.rand(*shape).astype(elem_type)})
+        return inputs
+
+    def get_value_info_all(self, name):
+        for v in self.model.graph.value_info:
+            if v.name == name:
+                return v
+        for v in self.model.graph.input:
+            if v.name == name:
+                return v
+        for v in self.model.graph.output:
+            if v.name == name:
+                return v
+        return None
+
+    @staticmethod
+    def insert_elem(nodes, idx, element):
+        nodes.extend([nodes[-1]])
+        for i in reversed(range(idx + 1, len(nodes) - 1)):
+            nodes[i].CopyFrom(nodes[i - 1])
+        nodes[idx].CopyFrom(element)
+
+    @staticmethod
+    def get_shape_from_value_info_proto(vinfo):
+        return [dim.dim_value for dim in vinfo.type.tensor_type.shape.dim]
+
+    @staticmethod
+    def get_np_type_from_elem_type(elem_type):
+        types = (None, np.float32, np.uint8, np.int8, np.uint16, np.int16, np.int32,
+                np.int64, str, np.bool, np.float16, np.double, np.uint32, np.uint64,
+                np.complex64, np.complex128, np.float16)
+        assert len(types) == 17
+        _type = types[elem_type]
+        assert _type is not None
+        return _type
+
+    def get_shape(self, name):
+        vinfo = self.get_value_info_all(name)
+        if vinfo is None:
+            raise RuntimeError("Can't get shape of '{}'".format(name))
+        return self.get_shape_from_value_info_proto(vinfo)
+
+    def get_elem_type(self, name):
+        vinfo = self.get_value_info_all(name)
+        if vinfo is None:
+            raise RuntimeError("Can't get dtype of '{}'".format(name))
+        return vinfo.type.tensor_type.elem_type
+
+    def is_dynamic(self, node):
+        if node.op_type in ["NonMaxSuppression", "NonZero", "Unique"] \
+                and node.input[0] not in self.const_tensors:
+            return True
+        if node.op_type in ["Reshape", "Expand", "Upsample", "ConstantOfShape"] \
+                and len(node.input) > 1 and node.input[1] not in self.const_tensors:
+            return True
+        if node.op_type in ["Resize"] \
+                and ((len(node.input) > 2 and node.input[2] not in self.const_tensors) \
+                    or (len(node.input) > 3 and node.input[3] not in self.const_tensors)):
+            return True
+        return False
+
+    def has_subgraph_in_node(self, node):
+        for attr in node.attribute:
+            if attr.type in [onnx.AttributeProto.GRAPH, onnx.AttributeProto.GRAPHS]:
+                return True
+        return False
+
+    def is_quantizeLinear(self, node):
+        return node.op_type in ["DequantizeLinear", "QuantizeLinear"]
+
+    def is_non_determinstic_node(self, node):
+        return node.op_type in ["RandomNormal", "RandomNormalLike", "RandomUniformLike"]
+
+    def get_constant_nodes(self):
+        const_nodes = []
+        dynamic_tensors = []
+        self.const_tensors = [x.name for x in self.model.graph.initializer]
+        self.const_tensors.extend([node.output[0] for node in self.model.graph.node if node.op_type == "Constant"])
+        for node in self.model.graph.node:
+            if any(x in dynamic_tensors for x in node.input):
+                dynamic_tensors.extend(node.output)
+            elif node.op_type == "Shape":
+                const_nodes.append(node)
+                self.const_tensors.extend(node.output)
+            elif self.is_dynamic(node):
+                dynamic_tensors.extend(node.output)
+            elif self.is_quantizeLinear(node):
+                pass
+            elif self.has_subgraph_in_node(node):
+                pass
+            elif len(node.input) > 0 and all([x in self.const_tensors for x in node.input]) \
+                    and not self.is_non_determinstic_node(node):
+                const_nodes.append(node)
+                self.const_tensors.extend(node.output)
+        return copy.deepcopy(const_nodes)
+
+    def forward(self, model):
+        input_shapes = {}
+        sess_options = rt.SessionOptions()
+        sess_options.graph_optimization_level = rt.GraphOptimizationLevel(0)
+        sess_options.log_severity_level = 3
+
+        sess = rt.InferenceSession(model.SerializeToString(), sess_options=sess_options,
+                                   providers=["CPUExecutionProvider"])
+        input_names = self.get_input_names()
+        inputs = {}
+        for name in input_names:
+            shape = self.get_shape(name)
+            input_shapes.update({name: shape})
+        inputs.update(self.generate_specific_rand_input(input_shapes))
+        outputs = [x.name for x in sess.get_outputs()]
+        run_options = rt.RunOptions()
+        run_options.log_severity_level = 3
+        return OrderedDict(zip(outputs, sess.run(outputs, inputs, run_options=run_options)))
+
+    def forward_for_node_outputs(self, const_nodes):
+        model = copy.deepcopy(self.model)
+        for node in const_nodes:
+            for output in node.output:
+                model.graph.output.extend([onnx.ValueInfoProto(name=output)])
+        return self.forward(model)
+
+    def eliminate_const_nodes(self, const_node, res):
+        do_eliminate = False
+        for i, node in enumerate(self.model.graph.node):
+            if node in const_node:
+                for output in node.output:
+                    new_node = copy.deepcopy(node)
+                    new_node.name = "node_" + output
+                    new_node.op_type = "Constant"
+                    new_attr = onnx.helper.make_attribute(
+                        "value",
+                        onnx.numpy_helper.from_array(res[output], name=output)
+                    )
+                    del new_node.input[:]
+                    del new_node.attribute[:]
+                    del new_node.output[:]
+                    new_node.output.extend([output])
+                    new_node.attribute.extend([new_attr])
+                    self.insert_elem(self.model.graph.node, i + 1, new_node)
+                del self.model.graph.node[i]
+                do_eliminate = True
+        return do_eliminate
+
+    def remove_unused_nodes(self):
+        node_inputs = []
+        unused_node = []
+        for n in self.model.graph.node:
+            node_inputs.extend(n.input)
+        node_inputs.extend([out.name for out in self.model.graph.output])
+        node_inputs = set(node_inputs)
+
+        for n in self.model.graph.node:
+            if len(set(n.output).intersection(node_inputs)) == 0:
+                unused_node.append(n)
+        for n in unused_node:
+            self.model.graph.node.remove(n)
+
+    def infer_shapes(self):
+        try:
+            self.model = onnx.shape_inference.infer_shapes(self.model)
+        except:
+            pass
+        # self.model = onnx.shape_inference.infer_shapes(self.model, strict_mode =True, data_prop=True)
+
+
+    def folding(self, infer_shapes=True):
+        const_nodes = self.get_constant_nodes()
+        res = self.forward_for_node_outputs(const_nodes)
+        const_node = [node for node in const_nodes if node.output[0] in res]
+        do_eliminate = self.eliminate_const_nodes(const_node, res)
+        if infer_shapes:
+            self.infer_shapes()
+        return do_eliminate
+
+    def run(self):
+        def fixed_point(fun):
+            flag = fun()
+            while True:
+                if flag:
+                    flag = fun()
+                    continue
+                break
+        fixed_point(self.folding)
+        self.remove_unused_nodes()
+        # dump_model(self.model, "constant_opt.onnx")
+        return self.model
 
 
 class OuterNode(object):
