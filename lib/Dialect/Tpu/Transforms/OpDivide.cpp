@@ -193,7 +193,6 @@ public:
     do {
       if (max_size < info.max_size) {
         max_size = info.max_size;
-        info.op->dump();
       }
       main_ops.push_back(info);
       info.op = nullptr;
@@ -282,7 +281,6 @@ public:
       } else {
         auto size = getTensorSize(op->getResult(0));
         if (last_size < size) {
-          op->dump();
           last_size = size;
         }
       }

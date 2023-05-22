@@ -1689,6 +1689,36 @@ public:
     return success();
   }
 };
+
+class ConvertClipOp : public OpRewritePattern<top::ClipOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ClipOp op,
+                                PatternRewriter &rewriter) const override {
+    auto input = op.getOperand();
+    if (module::isCalibratedType(input)) {
+      auto formerOp = input.getDefiningOp();
+      double min = op.getMin().convertToDouble();
+      double max = op.getMax().convertToDouble();
+      if (min != 0.0 || !formerOp->hasAttr("do_relu")) {
+        return failure();
+      }
+      auto input_type = input.getType().cast<RankedTensorType>();
+      double input_max = module::getCalibratedType(input).getMax();
+      double new_max = std::min(max, input_max);
+      auto newCaliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(), -new_max, new_max);
+      auto newType = RankedTensorType::get(input_type.getShape(), newCaliType);
+      auto out_name = module::getName(op.getOutput()).str();
+      auto input_loc = NameLoc::get(rewriter.getStringAttr(out_name));
+      formerOp->setLoc(input_loc);
+      formerOp->setAttr("do_relu", rewriter.getBoolAttr(true));
+      input.setType(newType);
+      rewriter.replaceOp(op, {input});
+      return success();
+    }
+    return failure();
+  }
+};
 } // namespace cv18xx
 
 namespace top {
@@ -1717,7 +1747,8 @@ void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
         ConvertSqrtOp,
         ConvertAvgPoolOp,
         ConvertSqueezeOp,
-        ConvertUnsqueezeOp
+        ConvertUnsqueezeOp,
+        ConvertClipOp
         >(patterns->getContext());
   // clang-format on
 }
