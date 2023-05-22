@@ -10,7 +10,7 @@
 
 from .MLIRImporter import MLIRImporter, Platform
 from .BaseConverter import BaseConverter
-from .OnnxOpt import onnx_opt
+from .OnnxOpt import onnx_opt, ConstantFolding
 from onnx import numpy_helper, mapping
 from numbers import Number
 import onnxsim.onnx_simplifier as onnxsim
@@ -412,6 +412,9 @@ class OnnxConverter(BaseConverter):
         self.input_types = self.get_input_types(self.model)
         self.output_types = self.get_output_types(self.model)
         print("After assigning input_shape:")
+        if not is_ok_ and use_onnxsim:
+            cf = ConstantFolding(self.model)
+            self.model = cf.run()
         is_ok = self.model_simplify(use_onnxsim)
         if (is_ok_ and not is_ok):
             print("WARNING: Onnx-sim failed caused by assign input_shape.")

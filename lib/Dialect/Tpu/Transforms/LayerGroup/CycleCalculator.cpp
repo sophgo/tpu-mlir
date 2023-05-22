@@ -438,6 +438,9 @@ bool Cv18xxCycleCalculator::check_lmem(Operation *op,
       continue;
     auto &si = iter->second.slice_info;
     if (!module::isWeight(in)) {
+      if (si.h[0].second > (4095-32)) {
+        return false;
+      }
       total_size += Arch::get_tensor_lmem_bytes(
           in, si.n[0].second, si.c[0].second, si.d[0].second, si.h[0].second,
           si.w[0].second);
@@ -448,6 +451,9 @@ bool Cv18xxCycleCalculator::check_lmem(Operation *op,
     if (iter == tensor_infos.end())
       continue;
     auto &si = iter->second.slice_info;
+    if (si.h[0].second > (4095-32)) {
+      return false;
+    }
     total_size += Arch::get_tensor_lmem_bytes(out, si.n[0].second,
                                               si.c[0].second, si.d[0].second,
                                               si.h[0].second, si.w[0].second);
