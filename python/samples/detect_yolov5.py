@@ -102,7 +102,7 @@ def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
     return img
 
 
-def vis2(img, dets, conf=0.5, class_names=None):
+def vis2(img, dets, input_shape, conf=0.5, class_names=None):
     shape = dets.shape
     num = shape[-2]
     img_h, img_w = img.shape[0:2]
@@ -112,7 +112,17 @@ def vis2(img, dets, conf=0.5, class_names=None):
         score = d[2]
         if score < conf:
             continue
-        x, y, w, h = d[3] * img_h, d[4] * img_h, d[5] * img_h, d[6] * img_h
+        x, y, w, h = d[3] * input_shape[1], d[4] * input_shape[0], d[5] * input_shape[1], d[6] * input_shape[0]
+
+        r = min(input_shape[0] / img.shape[0], input_shape[1] / img.shape[1])
+        new_img_h = img_h * r
+        new_img_w = img_w * r
+        x -= ((input_shape[1] - new_img_w) / 2)
+        y -= ((input_shape[0] - new_img_h) / 2)
+        x /= r
+        y /= r
+        w /= r
+        h /= r
         x0 = int(x - w / 2)
         y0 = int(y - h / 2)
         x1 = int(x + w / 2)
@@ -360,7 +370,7 @@ def main():
         cv2.imwrite(args.output, fix_img)
     else:
         dets = output['yolo_post']
-        fix_img = vis2(origin_img, dets, conf=args.score_thres, class_names=COCO_CLASSES)
+        fix_img = vis2(origin_img, dets, input_shape, conf=args.score_thres, class_names=COCO_CLASSES)
         cv2.imwrite(args.output, fix_img)
 
 
