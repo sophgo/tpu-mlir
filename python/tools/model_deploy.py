@@ -73,6 +73,7 @@ class DeployTool:
         self.state = self.module.module_state
         self.disable_layer_group = args.disable_layer_group
         self.merge_weight = args.merge_weight
+        self.op_divide = args.op_divide
         self.correctness = "0.99,0.90"
         if self.quantize_table:
             self.correctness = "0.99,0.85"
@@ -218,6 +219,7 @@ class DeployTool:
             self.quant_output,
             self.disable_layer_group,
             self.merge_weight,
+            self.op_divide
         )
         if self.do_validate:
             tool.validate_model()
@@ -289,6 +291,8 @@ if __name__ == '__main__':
                         help="Decide whether to enable layer group pass")
     parser.add_argument("--post_op", action="store_true",
                         help="if the bmodel have post handle op")
+    parser.add_argument("--op_divide", action="store_true",
+                        help="if do large global op divide.")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--merge_weight", action="store_true", default=False,
                         help="merge weights into one weight binary with previous generated cvimodel")
