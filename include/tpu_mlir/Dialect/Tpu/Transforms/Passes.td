@@ -88,4 +88,10 @@ def ChipOptimize : Pass<"chip-tpu-optimize", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def OpDivide : Pass<"op-divide", "ModuleOp"> {
+  let summary = "divide large global op to save global memory";
+  let constructor = "createOpDividePass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 #endif
