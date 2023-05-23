@@ -71,6 +71,7 @@ def RoiAlignModeAttr: AnyStrAttrOf<["Avg","Max"]>;
 def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
 def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_SIZE"]>;
 def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov4", "yolov5"]>;
+def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 
 def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
   let summary = "Structure of layer group parameters";
@@ -1743,6 +1744,25 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM"> {
   let extraClassDeclaration = [{
     lstm_attr_t parseParam();
   }];
+}
+
+def Tpu_MatchTemplateOp: Tpu_Op<"MatchTemplate", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Opencv MatchTemplate operator";
+
+  let description = [{
+    Perform opencv MatchTemplate operation.
+  }];
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyTensorOrNone:$match,
+    AnyTensorOrNone:$table,
+    AnyTensorOrNone:$mantissa_table,
+    MatchTemplateModeAttr:$mode
+  );
+
+  let results = (outs AnyRankedTensor:$output);
 }
 
 def Tpu_TileOp:Tpu_Op<"Tile", [

@@ -27,7 +27,15 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
         return failure();
       }
       if (!module::isUniformQuantized(op.getOutput())) {
-        return failure();
+        // special case for 18xx MatchTemplateOp
+        if (module::getStorageType(op.getOutput()).isUnsignedInteger(8)) {
+          auto nextOp = *op->getUsers().begin();
+          if (!module::isCV18xx() || !isa<tpu::MatchTemplateOp>(nextOp)) {
+            return failure();
+          }
+        } else {
+          return failure();
+        }
       }
       out.setType(op.getResult().getType());
       rewriter.replaceOp(op, out);

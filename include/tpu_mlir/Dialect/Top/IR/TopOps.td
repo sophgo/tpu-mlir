@@ -68,6 +68,7 @@ def RoiAlignModeAttr: AnyStrAttrOf<["Avg","Max"]>;
 def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
 def StoreModeAttr: AnyStrAttrOf<["1N", "2N", "4N"]>;
 def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov4", "yolov5"]>;
+def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -1494,6 +1495,22 @@ def Top_NmsOp : Top_Op<"Nms"> {
     Variadic<AnyTensor>: $inputs,
     I64Attr: $center_point_box,
     I64Attr: $max_output_size
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_MatchTemplateOp: Top_Op<"MatchTemplate"> {
+  let summary = "opencv MatchTemplate operator";
+
+  let description = [{
+    Perform opencv MatchTemplate operation.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$match,
+    MatchTemplateModeAttr:$mode
   );
 
   let results = (outs AnyTensor:$output);

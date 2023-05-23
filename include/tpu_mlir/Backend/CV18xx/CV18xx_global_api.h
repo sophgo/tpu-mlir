@@ -293,6 +293,11 @@ void cvi_backend_tg_bf16_softmax_kernel(
     gaddr_t ga_reciprocal_table_mantissa_data_lut, gaddr_t ga_output,
     int64_t *shape, int axis, int dimension, bool do_log);
 
+void cvi_backend_tg_bf16_match_template_kernel(
+    uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_template, gaddr_t ga_table,
+    gaddr_t ga_mantissa_table, gaddr_t ga_output, int ih, int iw, int th,
+    int tw, const char *mode);
+
 //////// fixed & bf16 kernel api ////////////////
 void cvi_backend_tg_concat_kernel(uint32_t layer_id, int input_num,
                                   gaddr_t input_gaddrs[], gaddr_t output_gaddr,

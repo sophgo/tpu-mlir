@@ -46,6 +46,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       LogLowering,
       LRNLowering,
       LSTMLowering,
+      MatchTemplateLowering,
       MatMulLowering,
       MaxLowering,
       MaxPoolLowering,
