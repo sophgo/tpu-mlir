@@ -549,7 +549,7 @@ static int getDsize(DType &dtype) {
 flatbuffers::Offset<Tensor> CviModelBuilder::buildNeuron(op_info_t &op_info) {
 
   // quant info
-  float qscale = 0.0f; // fix me sophone set 1.0
+  float qscale = 1.0f;
   QuantType quant_type = QuantType_NONE;
   if (module::isUniformQuantized(op_info.op->getResult(op_info.idx))) {
     auto qtype =
