@@ -162,8 +162,7 @@ void bf16_lut_slope(float *input, float *output, int size, float *base_table,
   float offset = BF16((range_end + range_start) / 2);
 
   for (int i = 0; i < size; ++i) {
-    float rescale_bf16_input =
-        BF16(BF16(input[i] - offset, (offset != 0)) * scale);
+    float rescale_bf16_input = bf16_mul(bf16_add(input[i], -offset), scale);
     // get interger part
     int rescale_input_i8 = to_int8(rescale_bf16_input, ROUNDING_DOWN);
     // get delta x (x - x0)
@@ -173,7 +172,7 @@ void bf16_lut_slope(float *input, float *output, int size, float *base_table,
     // base y0 = f(x0)
     auto base = base_table[rescale_input_i8 & 0xff];
     // result = y0 + delta * slope
-    output[i] = BF16(base + delta_x * slope);
+    output[i] = bf16_add(base, bf16_mul(delta_x, slope));
   }
 }
 
@@ -315,9 +314,9 @@ void bf16_lut_mantissa(float *input, float *output, int size, float *exp_table,
     float exponent = exp_table[exponentIndex];
     float mantissa = mantissa_table[bf16_val & 0xff];
     if (method == "mantissa")
-      output[i] = BF16(exponent * mantissa);
+      output[i] = bf16_mul(exponent, mantissa);
     else if (method == "log")
-      output[i] = BF16(exponent + mantissa);
+      output[i] = bf16_add(exponent, mantissa);
     else {
       llvm::errs() << "unsupported lookup table func:" << method << "\n";
       llvm_unreachable("Error");

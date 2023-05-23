@@ -10,6 +10,7 @@
 #include "bitcasts.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
+#include <float.h>
 #include <math.h>
 
 namespace tpu_mlir {
@@ -842,5 +843,140 @@ float F16(float src) {
 float BF16(float src, bool is_tpu) {
   auto u16_val = f32_to_bf16(src, is_tpu);
   return bf16_to_f32(u16_val);
+}
+
+#define BF16_POSITIVE_MAX_VAL 0x7F7F
+#define BF16_NEGATIVE_MAX_VAL 0xFF7F
+#define BF16_POSITIVE_INF_EXP 0x7F80
+#define BF16_NEGATIVE_INF_EXP 0xFF80
+
+#define FP32_POSITIVE_MAX_VAL 0x7F7FFFFF // FLT_MAX (fp32)
+#define FP32_NEGATIVE_MAX_VAL 0xFF7FFFFF
+#define FP32_POSITIVE_INF_EXP 0x7F800000
+#define FP32_NEGATIVE_INF_EXP 0xFF800000
+
+union convert_type_float {
+  float fval;
+  uint16_t bf16[2];
+  uint32_t ival;
+};
+
+typedef union convert_type_float convert_int_float;
+
+/* convert float to hex directly */
+static inline uint32_t convert_fp32_hex(float val) {
+  convert_int_float convert_val;
+  convert_val.fval = val;
+  return convert_val.ival;
+}
+
+static inline int bf16_unnormal_value_fp32(float *fval, int trans_pos) {
+  int unnormal = 0;
+  if ((convert_fp32_hex(*fval) & FP32_POSITIVE_INF_EXP) == 0) {
+    *fval = 0;
+  } else if ((convert_fp32_hex(*fval) & FP32_POSITIVE_INF_EXP) ==
+             FP32_POSITIVE_INF_EXP) {
+    *fval = FLT_MAX; // FP32_NEGATIVE_MAX_VAL;
+    unnormal = 1;
+  } else if ((convert_fp32_hex(*fval) & FP32_NEGATIVE_INF_EXP) ==
+             FP32_NEGATIVE_INF_EXP) {
+    /* HW keeps -FLT_MAX to FLT_MAX*/
+    *fval = trans_pos ? FLT_MAX : -FLT_MAX; // FP32_NEGATIVE_MAX_VAL;
+    unnormal = 1;
+  } else if (*fval == FLT_MAX || *fval == -FLT_MAX) {
+    /* HW keeps -FLT_MAX to FLT_MAX*/
+    if (trans_pos)
+      *fval = FLT_MAX;
+    unnormal = 1;
+  }
+  return unnormal;
+}
+
+static inline void bf16_cal_add(float *res, float a, float b, int *overflow) {
+  float tmp0 = a;
+  float tmp1 = b;
+  *overflow |= bf16_unnormal_value_fp32(&tmp0, 0);
+  *overflow |= bf16_unnormal_value_fp32(&tmp1, 0);
+  if (*overflow) {
+    *res = ((convert_fp32_hex(a) >> 31) ^ (convert_fp32_hex(b) >> 31))
+               ? FLT_MAX
+               : -FLT_MAX;
+  } else
+    *res = tmp0 + tmp1;
+}
+
+float bf16_add(float lhs, float rhs) {
+  int overflow = 0;
+  float tmp = 0.0f;
+  bf16_cal_add(&tmp, lhs, rhs, &overflow);
+  bf16_unnormal_value_fp32(&tmp, 1);
+  return BF16(tmp);
+}
+
+static inline int check_max_inf_value(float a) {
+  if ((convert_fp32_hex(a) & FP32_POSITIVE_INF_EXP) == FP32_POSITIVE_INF_EXP ||
+      (convert_fp32_hex(a) & FP32_NEGATIVE_INF_EXP) == FP32_NEGATIVE_INF_EXP ||
+      (convert_fp32_hex(a) & FP32_POSITIVE_MAX_VAL) == FP32_POSITIVE_MAX_VAL ||
+      (convert_fp32_hex(a) & FP32_NEGATIVE_MAX_VAL) == FP32_NEGATIVE_MAX_VAL) {
+    return 1;
+  } else
+    return 0;
+}
+
+static inline void bf16_cal_mac(float *res, float a, float b, int *overflow) {
+  int inf_a = check_max_inf_value(a);
+  int inf_b = check_max_inf_value(b);
+  float mac;
+  if (!inf_a && ((convert_fp32_hex(a) & FP32_POSITIVE_INF_EXP) == 0))
+    a = 0;
+  if (!inf_b && ((convert_fp32_hex(b) & FP32_POSITIVE_INF_EXP) == 0))
+    b = 0;
+  if (inf_a || inf_b) {
+    *res = ((convert_fp32_hex(a) >> 31) ^ (convert_fp32_hex(b) >> 31))
+               ? FLT_MAX
+               : -FLT_MAX;
+    *overflow = 1;
+  } else {
+    mac = a * b;
+    if ((convert_fp32_hex(mac) & FP32_POSITIVE_INF_EXP) == 0)
+      mac = 0;
+    else if (check_max_inf_value(mac) ||
+             ((convert_fp32_hex(mac) & FP32_POSITIVE_MAX_VAL) ==
+              FP32_POSITIVE_MAX_VAL)) {
+      *res = FLT_MAX; // convert_hex_fp32(FP32_POSITIVE_MAX_VAL);
+      *overflow = 1;
+    } else if (check_max_inf_value(mac) ||
+               ((convert_fp32_hex(mac) & FP32_NEGATIVE_MAX_VAL) ==
+                FP32_NEGATIVE_MAX_VAL)) {
+      *res = -FLT_MAX; // convert_hex_fp32(FP32_NEGATIVE_MAX_VAL);
+      *overflow = 1;
+    }
+  }
+  if (*overflow == 0) {
+    *res += mac;
+    if ((convert_fp32_hex(*res) & FP32_POSITIVE_INF_EXP) == 0)
+      *res = 0;
+    else if (check_max_inf_value(*res) ||
+             ((convert_fp32_hex(*res) & FP32_POSITIVE_MAX_VAL) ==
+              FP32_POSITIVE_MAX_VAL)) {
+      *res = FLT_MAX; // convert_hex_fp32(FP32_POSITIVE_MAX_VAL);
+      *overflow = 1;
+    } else if (check_max_inf_value(*res) ||
+               ((convert_fp32_hex(*res) & FP32_NEGATIVE_MAX_VAL) ==
+                FP32_NEGATIVE_MAX_VAL)) {
+      *res = -FLT_MAX; // convert_hex_fp32(FP32_NEGATIVE_MAX_VAL);
+      *overflow = 1;
+    }
+  }
+}
+
+float bf16_mul(float lhs, float rhs) {
+  int overflow = 0;
+  float tmp = 0.0f;
+  bf16_cal_mac(&tmp, lhs, rhs, &overflow);
+
+  bf16_unnormal_value_fp32(&tmp, 1);
+
+  return BF16(tmp);
 }
 } // namespace tpu_mlir

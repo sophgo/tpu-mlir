@@ -56,7 +56,7 @@ static void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale, int num,
     scale = BF16(scale);
 #pragma omp parallel for schedule(static, omp_schedule(num))
     for (int i = 0; i < num; i++) {
-      p_dst[i] = BF16(BF16(p_src[i], false) * scale);
+      p_dst[i] = bf16_mul(BF16(p_src[i], false), scale);
     }
   } else {
 #pragma omp parallel for schedule(static, omp_schedule(num))
@@ -92,7 +92,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     for (int64_t i = 0; i < num_elem; i++) {
       float v;
       if (is_cv18xx) {
-        v = BF16(BF16(p.inputs[0][i], false) * BF16(1. / qtype.getScale()));
+        v = bf16_mul(BF16(p.inputs[0][i], false), BF16(1. / qtype.getScale()));
       } else {
         v = requant(p.inputs[0][i], qtype);
       }

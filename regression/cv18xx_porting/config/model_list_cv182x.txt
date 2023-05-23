@@ -7,7 +7,7 @@ resnet50                  Y        Y        N        N        N        Y
 vgg16                     N        N        N        Y        N        N
 mobilenet_v1              Y        N        N        N        Y        Y
 mobilenet_v2              Y        Y        N        N        N        N
-googlenet                 N        N        N        N        Y        Y
+googlenet                 Y        N        N        N        Y        Y
 inception_v3              Y        N        N        N        N        N
 inception_v4              N        N        N        Y        Y        Y
 squeezenet_v1.0           N        N        N        Y        Y        Y
