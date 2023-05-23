@@ -3,7 +3,7 @@
 #include "nodechip_swapchannel.h"
 
 // parse param function
-swapchannel_param_t swapchannel_parse_param(Data* param) {
+swapchannel_param_t swapchannel_parse_param(custom_param_t* param) {
     swapchannel_param_t sc_param = {0};
     for (int i = 0; i < 3; i++) {
         sc_param.order[i] = param[0].int_arr_t[i];
@@ -15,7 +15,7 @@ swapchannel_param_t swapchannel_parse_param(Data* param) {
 void api_swapchannel_global(
     global_tensor_spec_t *input,
     global_tensor_spec_t *output,
-    Data *param)
+    custom_param_t *param)
 {
     swapchannel_param_t sc_param = swapchannel_parse_param(param);
 

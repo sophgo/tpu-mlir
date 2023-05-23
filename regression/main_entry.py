@@ -217,7 +217,7 @@ if __name__ == "__main__":
     # print last 100 lines log of failed cases first
     for result in main_entry.results:
         if result["name"].startswith(tuple(main_entry.op_test_types.keys())):
-            break
+            continue
         if result["status"] == "FAILED":
             with open(result["name"] + ".log", 'r') as file:
                 lines = file.readlines()
@@ -225,13 +225,16 @@ if __name__ == "__main__":
                 content = ''.join(last_100_lines)
                 print(content)
 
+    print("============ Time Consum ============")
     for time in main_entry.time_cost:
         print(time)
 
+    print("============ Passed Cases ============")
     for result in main_entry.results:
         if result["status"] == "PASSED":
             print("{} {}".format(result["name"], result["status"]))
 
+    print("============ Failed Cases ============")
     for result in main_entry.results:
         if result["status"] == "FAILED":
             print("{} {}".format(result["name"], result["status"]))

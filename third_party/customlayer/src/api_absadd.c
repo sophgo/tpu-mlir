@@ -3,7 +3,7 @@
 #include "nodechip_absadd.h"
 
 // parse param function
-absadd_param_t absadd_parse_param(Data* param) {
+absadd_param_t absadd_parse_param(custom_param_t* param) {
     absadd_param_t abs_param = {0};
     abs_param.b_val = param[0].float_t;
     return abs_param;
@@ -13,7 +13,7 @@ absadd_param_t absadd_parse_param(Data* param) {
 void api_absadd_global(
     global_tensor_spec_t *input,
     global_tensor_spec_t *output,
-    Data *param)
+    custom_param_t *param)
 {
     absadd_param_t absadd_param = absadd_parse_param(param);
 

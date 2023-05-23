@@ -37,7 +37,7 @@ def swapChannel(inputs, dtype="float32"):
         tensors_in=inputs,
         shape_func=shape_func,
         # op_name should be consistent with the backend
-        op_name="SwapChannel",
+        op_name="swapchannel",
         params=params,
         out_dtypes=[dtype],
         out_names=out_names)
@@ -45,6 +45,8 @@ def swapChannel(inputs, dtype="float32"):
 
 
 if __name__ == "__main__":
+    model_name = "tpulang_test_net"
+
     os.makedirs("tmp", exist_ok=True)
     os.chdir("tmp")
     # 1. prepare the input
@@ -57,22 +59,23 @@ if __name__ == "__main__":
     outs = swapChannel(inputs=[x], dtype=dtype)
 
     # 3. compile to Top mlir file, the input will be saved in {top_mlir}_in_f32.npz
-    top_mlir = "test_case"
-    tpul.compile(top_mlir, [x], outs, False, 2, has_custom=True)
+    tpul.compile(model_name, [x], outs, False, 2, has_custom=True)
 
     # 4. deploy the model to F32 bmodel
-    deploy_cmd = f"model_deploy.py --mlir {top_mlir}.mlir --quantize F32 --chip bm1684x --model test_case.bmodel"
+    deploy_cmd = f"model_deploy.py --mlir {model_name}.mlir --quantize F32 --chip bm1684x --model {model_name}.bmodel"
     os.system(deploy_cmd)
 
     # 5. do bmodel inference and compare with the origin output
-    infer_cmd = f"model_runner.py --input {top_mlir}_in_f32.npz --model test_case.bmodel --output ref_data.npz"
+    bmodel_output = f"{model_name}_ref_data.npz"
+    infer_cmd = f"model_runner.py --input {model_name}_in_f32.npz --model {model_name}.bmodel --output {bmodel_output}"
     os.system(infer_cmd)
     # save the origin output for comparison
     origin_out = x_data[:, [2, 1, 0], :, :]
     # There are two outputs because in non-f32 quant mode, the result will be
     # dequant back to f32 with castOp so that the final result will be named with the suffix '_f32'
     out = {outs[0].name: origin_out, f"{outs[0].name}_f32": origin_out}
-    np.savez("target_data", **out)
+    origin_output = f"{model_name}_target_data.npz"
+    np.savez(origin_output.replace(".npz", ""), **out)
 
-    cmp_cmd = "npz_tool.py compare target_data.npz ref_data.npz"
+    cmp_cmd = f"npz_tool.py compare {origin_output} {bmodel_output}"
     os.system(cmp_cmd)

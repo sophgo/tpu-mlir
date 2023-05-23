@@ -20,15 +20,15 @@ typedef struct {
   // max size of int and float array is set as 16
   int int_arr_t[16];
   float float_arr_t[16];
-} Data;
+} custom_param_t;
 
-void processParam(const mlir::ArrayAttr &params, std::vector<Data> &values,
+void processParam(const mlir::ArrayAttr &params, std::vector<custom_param_t> &values,
                   int &param_size) {
   for (auto param : params) {
     auto dict = param.dyn_cast<DictionaryAttr>();
     for (auto element : dict) {
       Attribute value_param = element.getValue();
-      Data value = {0};
+      custom_param_t value = {0};
       if (auto int_attr = value_param.dyn_cast<IntegerAttr>()) {
         value.int_t = int_attr.getInt();
         param_size += sizeof(int);
@@ -74,7 +74,7 @@ void tpu::CustomOp::codegen_global_bm1684x() {
 
   // parse param of the custom op
   auto params = getParams();
-  vector<Data> values;
+  vector<custom_param_t> values;
   int param_size = 0;
   processParam(params, values, param_size);
 
