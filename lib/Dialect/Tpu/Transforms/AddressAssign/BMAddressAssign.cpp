@@ -178,6 +178,9 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       }
     } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
       auto addr = module::getAddress(reshapeOp.getInput());
+      if (addr == 0) {
+        addr = module::getAddress(module::getOriValue(reshapeOp.getOperand(0)));
+      }
       module::setAddress(reshapeOp.getOutput(), addr);
     } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
       auto addr = module::getAddress(sliceOp.getInput());
