@@ -25,7 +25,7 @@ void top::CustomOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::CustomOp::inference(InferenceParameter &p) {
   //top::CustomOp no need to inference
-  llvm_unreachable("top::CustomOp no need to inference");
+  llvm_unreachable("CustomOp no need to inference");
   return failure();
 }
 

@@ -34,13 +34,12 @@ private:
 #define IMPL_CUSTOM_API_GLB(name, type)                                   \
   extern "C"{                                                             \
     int backend_api_##name##_global(                                      \
-        Data *param,                                                      \
+        custom_param_t *param,                                            \
         int param_size,                                                   \
         global_tensor_spec_t *inputs,                                     \
         global_tensor_spec_t *outputs,                                    \
         void *pid_node)                                                   \
     {                                                                     \
-      TPUKERNEL_ASSERT((size_t)param_size <= sizeof(type));               \
       USE_NODE(pid_node);                                                 \
       api_##name##_global(inputs, outputs, param);                        \
       return 0;                                                           \
@@ -50,14 +49,13 @@ private:
 #define IMPL_CUSTOM_API_LOC(name, type)                                   \
   extern "C"{                                                             \
     int backend_api_##name##_local(                                       \
-        Data *param,                                                      \
+        custom_param_t *param,                                            \
         int param_size,                                                   \
         local_sec_info_t *sec_info,                                       \
         local_tensor_spec *inputs,                                        \
         local_tensor_spec *outputs,                                       \
         void *pid_node)                                                   \
     {                                                                     \
-      TPUKERNEL_ASSERT((size_t)param_size <= sizeof(type));               \
       USE_NODE(pid_node);                                                 \
       api_##name##_local(sec_info, inputs, outputs, param);               \
       return 0;                                                           \

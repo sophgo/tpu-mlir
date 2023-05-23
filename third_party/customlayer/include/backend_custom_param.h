@@ -7,7 +7,7 @@ typedef struct {
   // max size of int and float array is set as 16
   int int_arr_t[16];
   float float_arr_t[16];
-} Data;
+} custom_param_t;
 
 // start defining your custom op param from here
 typedef struct swapchannel_param {

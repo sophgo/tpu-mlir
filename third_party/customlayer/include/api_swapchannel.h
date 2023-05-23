@@ -9,7 +9,7 @@ extern "C" {
 void api_swapchannel_global(
     global_tensor_spec_t *input,
     global_tensor_spec_t *output,
-    Data *param);
+    custom_param_t *param);
 
 #ifdef __cplusplus
 }

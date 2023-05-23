@@ -1,0 +1,58 @@
+name: "test_net"
+layer{
+    name:"input0"
+    type:"Input"
+    top:"input0"
+    input_param{ shape:{dim:1 dim:3 dim:14 dim:14} }
+}
+
+layer{
+    name:"input1"
+    type:"Input"
+    top:"input1"
+    input_param{ shape:{dim:1 dim:3 dim:24 dim:26} }
+}
+
+layer {
+  name: "input0_bn"
+  type: "BatchNorm"
+  bottom: "input0"
+  top: "input0_bn"
+  batch_norm_param {
+    eps: 1e-5
+  }
+}
+
+layer {
+  name: "input1_bn"
+  type: "BatchNorm"
+  bottom: "input1"
+  top: "input1_bn"
+  batch_norm_param {
+    eps: 1e-5
+  }
+}
+
+layer {
+  name: "myabsadd"
+  type: "Python"
+  bottom: "input0_bn"
+  top: "myabsadd"
+  python_param {
+    module: "my_layer"
+    layer: "AbsAdd"
+    param_str: "{ 'b_val': 1.2}"
+  }
+}
+
+layer {
+  name: "myceiladd"
+  type: "Python"
+  bottom: "input1_bn"
+  top: "myceiladd"
+  python_param {
+    module: "my_layer"
+    layer: "CeilAdd"
+    param_str: "{ 'b_val': 1.5}"
+  }
+}

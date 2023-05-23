@@ -22,6 +22,7 @@ export PATH=$PROJECT_ROOT/python/tools:$PATH
 export PATH=$PROJECT_ROOT/python/utils:$PATH
 export PATH=$PROJECT_ROOT/python/test:$PATH
 export PATH=$PROJECT_ROOT/python/samples:$PATH
+export PATH=$PROJECT_ROOT/third_party/customlayer/python:$PATH
 
 export LD_LIBRARY_PATH=$INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
@@ -29,5 +30,6 @@ export PYTHONPATH=$INSTALL_PATH/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/llvm/python_packages/mlir_core:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/caffe/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/python:$PYTHONPATH
+export PYTHONPATH=$PROJECT_ROOT/third_party/customlayer/python:$PYTHONPATH
 
 export OMP_NUM_THREADS=4

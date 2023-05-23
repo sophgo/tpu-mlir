@@ -1,8 +1,6 @@
 Custom Operators
 =================
 
-Currently TPU-MLIR allows users to implement computations on tensors using TPU-Kernel and TpuLang for floating-point operations (i.e., F32, F16, BF16). This chapter primarily explains the process of using custom operators in the TPU-MLIR distribution package.
-
 Overview
 ---------
 TPU-MLIR already includes a rich library of operators that can fulfill the needs of most neural network models. However, in certain scenarios, there may be a requirement for users to define their own custom operators to perform computations on tensors. This need arises when:
@@ -18,10 +16,14 @@ The functionality of custom operators allows users to freely use the interfaces 
 
   b. The operator can optionally implement the local layer. The input and output data of the local layer are stored in local memory. It can be combined with other layers for layer group optimization, avoiding the need to transfer data to and from global memory during the calculation of this layer. The advantage is that it saves GDMA transfers and achieves higher computational efficiency. However, it is more complex to implement. The local memory needs to be allocated in advance during model deployment, limiting its usage and making it impractical for certain operators.
 
-Once the backend operator is encapsulated, it is possible to construct Top MLIR models that include custom operators by calling the TpuLang interface in the frontend, and finally deploy the model using the model_deploy.py interface.
+The frontend can build models containing custom operators using tpulang or Caffe, and finally deploy the models through the model conversion interface of TPU-MLIR. This chapter primarily introduces the process of using custom operators in the TPU-MLIR release package.
+
 
 Custom Operator Addition Process
 --------------------------------
+
+Add TpuLang Custom Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. Load TPU-MLIR
 
@@ -37,7 +39,7 @@ Custom Operator Addition Process
 
   b. Add the api_{op_name}.h header file in the ./include directory to declare the interfaces for the custom operator functions (void api_{op_name}_global and void api_{op_name}_local). Then, add the api_{op_name}.c file in the ./src directory and implement the corresponding interfaces.
 
-  c. Additionally, users need to implement corresponding functions to parse the parameters passed from the frontend of toolchain based on the parameters required by the operator. Parameters are passed through a pointer to a Data array, where each Data structure contains information about a parameter, and the parameter value is stored in the corresponding member variables in Data (which includes integer, floating-point number, integer array, and floating-point array variables). The order of the parameters is the same as the order in which the user provides them when calling the TpuLang interface. The definition of the Data is as follows:
+  c. Additionally, users need to implement corresponding functions to parse the parameters passed from the frontend of toolchain based on the parameters required by the operator. Parameters are passed through a pointer to a custom_param_t array, where each custom_param_t structure contains information about a parameter, and the parameter value is stored in the corresponding member variables in custom_param_t (which includes integer, floating-point number, integer array, and floating-point array variables). The order of the parameters is the same as the order in which the user provides them when calling the TpuLang interface. The definition of the custom_param_t is as follows:
 
   .. code-block:: c
 
@@ -47,7 +49,7 @@ Custom Operator Addition Process
       // max size of int and float array is set as 16
       int int_arr_t[16];
       float float_arr_t[16];
-    } Data;
+    } custom_param_t;
 
 
 4. Define the backend interface
@@ -94,10 +96,40 @@ Custom Operator Addition Process
             tensors_out: list of output tensors
     '''
 
+Add Caffe Custom Operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Steps 1-5 are the same as in Add TpuLang Custom Operator section, and will not be repeated here.
+
+6. Defining custom operators in Caffe
+
+  To define custom operators in Caffe, you need to define a class in the file $TPUC_ROOT/customlayer/python/my_layer.py that inherits from caffe.Layer and override the setup, reshape, forward, and backward functions as needed.
+
+7. Implementing the frontend conversion function
+
+  The type of custom operators implemented in python is "Python", so you need to implement a corresponding conversion function of MyCaffeConverter class defined in the file $TPUC_ROOT/customlayer/python/my_converter.py, based on the definition in step 6.
+
+  After the definition, you can call my_converter.py interface for Top MLIR conversion:
+
+  .. code-block:: shell
+
+    my_converter.py \
+    --model_name # the model name \
+    --model_def # .prototxt file \
+    --model_data # .caffemodel file \
+    --input_shapes # list of input shapes (e.g., [[1,2,3],[3,4,5]]) \
+    --mlir # output mlir file
+
+
 Custom Operator Example
 -----------------------
 
-This section provides an example of implementing and applying a global layer swapchanel operator.
+This section assumes that the tpu-mlir release package has been loaded.
+
+Example of TpuLang
+~~~~~~~~~~~~~~~~~~~
+
+This subsection provides a sample of swapchanel operator implementation and application through TpuLang interface.
 
 1. Backend Operator Implementation
 
@@ -189,7 +221,7 @@ This section provides an example of implementing and applying a global layer swa
     void api_swapchannel_global(
         global_tensor_spec_t *input,
         global_tensor_spec_t *output,
-        Data *param);
+        custom_param_t *param);
 
     #ifdef __cplusplus
     }
@@ -205,7 +237,7 @@ This section provides an example of implementing and applying a global layer swa
     #include "nodechip_swapchannel.h"
 
     // parse param function
-    swapchannel_param_t parsParam(Data* param) {
+    swapchannel_param_t parsParam(custom_param_t* param) {
         swapchannel_param_t sc_param = {0};
         for (int i = 0; i < 3; i++) {
             sc_param.order[i] = param[0].int_arr_t[i];
@@ -217,7 +249,7 @@ This section provides an example of implementing and applying a global layer swa
     void api_swapchannel_global(
         global_tensor_spec_t *input,
         global_tensor_spec_t *output,
-        Data *param)
+        custom_param_t *param)
     {
         swapchannel_param_t sc_param = parsParam(param);
 
@@ -246,7 +278,7 @@ This section provides an example of implementing and applying a global layer swa
     // 2. global backend api functions
     IMPL_CUSTOM_API_GLB(swapchannel, swapchannel_param_t)
 
-  After completing the implementation of the backend interface, you can run $TPUC_ROOT/build.sh to compile and install the custom operator dynamic library.
+  After completing the implementation of the backend interface, you can run $TPUC_ROOT/customlayer/build.sh to compile and install the custom operator dynamic library.
 
 4. TpuLang Interface Invocation
 
@@ -284,7 +316,124 @@ This section provides an example of implementing and applying a global layer swa
               out_names=out_names)
 
       # 4. compile to Top mlir file, the input will be saved in {top_mlir}_in_f32.npz
-      top_mlir = "test_case"
+      top_mlir = "tpulang_test_net"
       tpul.compile(top_mlir, [x], outs, False, 2, has_custom=True)
 
-  By running the above code, you can obtain the Top MLIR file test_case.mlir. For the subsequent model deployment process, please refer to the User Interface section.
+  By running the above code, you can obtain the Top MLIR file tpulang_test_net.mlir. For the subsequent model deployment process, please refer to the User Interface chapter.
+
+Example of Caffe
+~~~~~~~~~~~~~~~~~
+
+This subsection provides application examples of custom operators absadd and ceiladd in Caffe.
+
+1. Backend operator and interface implementation
+
+  The implementation of absadd and ceiladd is similar to the swapchannel operator and can be found in  $TPUC_ROOT/customlayer/include and $TPUC_ROOT/customlayer/src.
+
+2. Defining Caffe custom operators
+
+  The definition of absadd and ceiladd in Caffe can be found in $TPUC_ROOT/customlayer/python/my_layer.py as follows:
+
+  .. code-block:: python
+
+    import caffe
+    import numpy as np
+
+    # Define the custom layer
+    class AbsAdd(caffe.Layer):
+
+        def setup(self, bottom, top):
+            params = eval(self.param_str)
+            self.b_val = params['b_val']
+
+        def reshape(self, bottom, top):
+            top[0].reshape(*bottom[0].data.shape)
+
+        def forward(self, bottom, top):
+            top[0].data[...] = np.abs(np.copy(bottom[0].data)) + self.b_val
+
+        def backward(self, top, propagate_down, bottom):
+            pass
+
+    class CeilAdd(caffe.Layer):
+
+        def setup(self, bottom, top):
+            params = eval(self.param_str)
+            self.b_val = params['b_val']
+
+        def reshape(self, bottom, top):
+            top[0].reshape(*bottom[0].data.shape)
+
+        def forward(self, bottom, top):
+            top[0].data[...] = np.ceil(np.copy(bottom[0].data)) + self.b_val
+
+        def backward(self, top, propagate_down, bottom):
+            pass
+
+  The expression of corresponding operators in Caffe prototxt is as follows:
+
+  .. code-block:: text
+
+    layer {
+      name: "myabsadd"
+      type: "Python"
+      bottom: "input0_bn"
+      top: "myabsadd"
+      python_param {
+        module: "my_layer"
+        layer: "AbsAdd"
+        param_str: "{ 'b_val': 1.2}"
+      }
+    }
+
+    layer {
+      name: "myceiladd"
+      type: "Python"
+      bottom: "input1_bn"
+      top: "myceiladd"
+      python_param {
+        module: "my_layer"
+        layer: "CeilAdd"
+        param_str: "{ 'b_val': 1.5}"
+      }
+    }
+
+3. Implement operator front-end conversion functions
+
+  Define a convert_python_op function of the MyCaffeConverter class in $TPUC_ROOT/customlayer/python/my_converter.py, the code is as follows:
+
+  .. code-block:: python
+
+    def convert_python_op(self, layer):
+        assert (self.layerType(layer) == "Python")
+        in_op = self.getOperand(layer.bottom[0])
+        p = layer.python_param
+
+        dict_attr = dict(eval(p.param_str))
+        params = dict_attr_convert(dict_attr)
+
+        # p.layer.lower() to keep the consistency with the backend op name
+        attrs = {"name": p.layer.lower(), "params": params, 'loc': self.get_loc(layer.top[0])}
+
+        # The output shape compute based on reshape function in my_layer
+        out_shape = self.getShape(layer.top[0])
+        outs = top.CustomOp([self.mlir.get_tensor_type(out_shape)], [in_op],
+                            **attrs,
+                            ip=self.mlir.insert_point).output
+        # add the op result to self.operands
+        self.addOperand(layer.top[0], outs[0])
+
+4. Caffe front-end conversion
+
+  Complete the conversion of Caffe model in the $TPUC_ROOT/customlayer/test directory (i.e., my_model.prototxt and my_model.caffemodel, which contain absadd and ceiladd operators) by calling the my_converter.py interface, the command is as follows:
+
+  .. code-block:: shell
+
+    my_converter.py \
+    --model_name caffe_test_net \
+    --model_def $TPUC_ROOT/customlayer/test/my_model.prototxt \
+    --model_data $TPUC_ROOT/customlayer/test/my_model.caffemodel \
+    --input_shapes [[1,3,14,14],[1,3,24,26]] \
+    --mlir caffe_test_net.mlir
+
+  So far, the Top MLIR file caffe_test_net.mlir has been obtained. For the subsequent model deployment process, please refer to the user interface chapter.

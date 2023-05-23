@@ -2466,7 +2466,8 @@ def Tpu_DeformGatherOp : Tpu_Op<"DeformGather"> {
   }];
 }
 
-def Tpu_CustomOp: Tpu_Op<"Custom"> {
+def Tpu_CustomOp: Tpu_Op<"Custom",
+  [DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Custom operator";
   let description = [{
     Custom operator
