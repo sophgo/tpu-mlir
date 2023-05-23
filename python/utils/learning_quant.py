@@ -11,6 +11,9 @@ import copy
 from scipy.special import expit
 
 from datetime import datetime
+from multiprocessing.pool import ThreadPool
+from multiprocessing import Lock
+
 
 import pymlir
 from utils.mlir_parser import MlirParser
@@ -86,16 +89,63 @@ def remote_show(op, alpha, iter):
 def quant_requant_active(data, scale, unsigned=False):
     if unsigned:
         d = data/scale*255.0
-        dout = [np.round(x) for x in d]
+        dout = np.round(d)
         return np.clip(dout, 0, 255)/255.0 * scale
     else:
         d = data/scale*127.0
-        dout = [np.round(x) for x in d]
+        dout = np.round(d)
         return np.clip(dout, -128, 127)/127.0 * scale
 
 def cal_loss(target, ref):
     mse_diff = ((target - ref)**2).mean()
     return mse_diff
+
+def learning_weight_wrap(reqs):
+    cls, epoch, op, total = reqs
+    return cls.learning_one(epoch, op, total)
+
+def learning_scale_wrap(reqs):
+    cls, op, total = reqs
+    return cls.learning_one(op, total)
+
+def into_groups(parser, layers):
+    groups = {}
+    group_idx = 0
+    for l in layers:
+        allocated = False
+        if group_idx == 0 and group_idx not in groups:
+            groups[0] = [l]
+            group_idx += 1
+            continue
+        for i in np.arange(group_idx):
+            notin = True
+            for out_op in parser.get_next_op_by_op_name(l):
+                for layer in groups[i]:
+                    if out_op not in parser.get_pre_op_by_op_name(layer) and out_op not in parser.get_next_op_by_op_name(layer):
+                        continue
+                    else:
+                        notin = False
+                        break
+            if notin:
+                for in_op in parser.get_pre_op_by_op_name(l):
+                    for layer in groups[i]:
+                        if in_op not in parser.get_next_op_by_op_name(layer) and in_op not in parser.get_pre_op_by_op_name(layer):
+                            continue
+                        else:
+                            notin = False
+                            break
+                if notin:
+                    groups[i].append(l)
+                    allocated = True
+                    break
+            if allocated:
+                break
+        if allocated:
+            continue
+        else:
+            groups[group_idx] = [l]
+            group_idx += 1
+    return groups
 
 class logging:
     def __init__(self, filename = "logging"):
@@ -183,7 +233,7 @@ class learning_inputs:
         return self.num_sample
 
 class ref_tensors:
-    def __init__(self, loopnum, seg):
+    def __init__(self, loopnum, seg, buf_num=8):
         self.loopnum = loopnum
         self.ops = {}
         self.dir = './buf/'
@@ -194,6 +244,8 @@ class ref_tensors:
         self.batch_tensors = []
         self.buffer = {}
         self.atime = {}
+        self.buf_num = buf_num
+        self.lock = Lock()
 
         if os.path.exists(self.dir):
             if not os.path.isfile(self.dir+'0-0.npy'):
@@ -226,18 +278,23 @@ class ref_tensors:
             self.ops[op] = str(len(self.ops))
             fname = self.ops[op]
         index = op+'+'+str(idx)
+        self.lock.acquire()
         if index not in self.buffer:
             self.buffer[index] = np.load(self.dir+fname+'-'+str(int(idx))+'.npy')
+        self.lock.release()
         self.atime[index] = datetime.now()
-        if len(self.buffer) > 8:
+        if len(self.buffer) > self.buf_num:
+            self.lock.acquire()
             t=datetime.now()
             e=''
             for i in self.buffer:
                 if self.atime[i] < t:
                     t = self.atime[i]
                     e = i
-            del self.buffer[e]
-            del self.atime[e]
+            if e != index and (datetime.now()-self.atime[e]).total_seconds()>2:
+                del self.buffer[e]
+                del self.atime[e]
+            self.lock.release()
         return self.buffer[index]
 
 
@@ -423,6 +480,7 @@ class LearningWeight:
         self.input_num = self.parser.get_input_num()  # number of net inputs
         self.mini_batch = args.mini_batch
         self.num_sample = 0
+        self.epoch = args.epoch
         self.pre_loss = {}
         self.post_loss = {}
         self.loss = {}
@@ -462,17 +520,20 @@ class LearningWeight:
     def sigmoid(self, x):
         return expit(x)
 
+    def exp_neg(self, x):
+        return (1.0/(expit(x)+1e-8))-1.0
+
     def rec_sig(self, x):
         return np.clip(self.sigmoid(x)*1.2-0.1,0,1)
 
     def cal_beta(self, iter):
-        if iter < self.num_sample*self.beta_warmup:
+        if iter < self.num_sample*self.epoch*self.beta_warmup:
             return self.beta_start
         else:
-            return int(self.beta_end + 0.5 * (self.beta_start - self.beta_end) * (1.0 + np.cos((iter-self.num_sample*self.beta_warmup)/(self.num_sample*(1.0-self.beta_warmup)) * np.pi)))
+            return int(self.beta_end + 0.5 * (self.beta_start - self.beta_end) * (1.0 + np.cos((iter-self.num_sample*self.epoch*self.beta_warmup)/(self.num_sample*self.epoch*(1.0-self.beta_warmup)) * np.pi)))
 
     def cal_round_loss(self, iter, alpha, beta, reg=0.01):
-        if iter < self.num_sample * self.beta_warmup:
+        if iter < self.num_sample * self.epoch * self.beta_warmup:
             return 0.0
         else:
             rect_alpha = np.clip((self.zeta - self.gamma)*self.sigmoid(alpha) + self.gamma, 0, 1)
@@ -496,19 +557,20 @@ class LearningWeight:
         return self.cal_grd_signed(out, scale)
 
     def cal_grdr_signed(self, alpha, beta, iter, reg=0.01):
-        if iter < self.num_sample * self.beta_warmup:
+        if iter < self.num_sample * self.epoch * self.beta_warmup:
             return np.zeros_like(alpha)
         else:
             sig_a = self.sigmoid(alpha)
             rect_a = 2*np.clip(sig_a*1.2-0.1, 0, 1)-1
             pos = np.where(alpha>=0, 1, 0)
             neg = np.where(alpha<0, 1, 0)
-            eff = np.where((sig_a*1.2-0.1)>0, 1, 0) * np.where((sig_a*1.2-0.1)<1.0, 1, 0)
-            po = np.where((sig_a*1.2-0.1)>=1.0, -1,0).astype(np.float32)
-            no = np.where((sig_a*1.2-0.1)<0, 1, 0).astype(np.float32)
+            p_eff = np.where((sig_a*1.2-0.1)>1.0, 1, 0)
+            n_eff = np.where((sig_a*1.2-0.1)<0, 1, 0)
+            pos = pos - p_eff
+            neg = neg - n_eff
             grdp = -2.4*beta*np.power(rect_a, beta-1)*sig_a*(1-sig_a)*pos
             grdn = 2.4*beta*np.power(-rect_a, beta-1)*sig_a*(1-sig_a)*neg
-            grd = ((grdp+grdn)*eff + (no + po)*beta)*reg
+            grd = (grdp+grdn)*reg
             return grd
 
     def cal_grdr(self, alpha, beta, iter, unsigned = False):
@@ -541,7 +603,7 @@ class LearningWeight:
         self.module.set_tensor(self.finetune_layer_weights[op], self.orig_weights[op])
 
     def quant_requant_weight(self, op, hard=False):
-        weight_tmp = copy.deepcopy(self.orig_weights[op])
+        weight_tmp = self.orig_weights[op].copy()
         scales = self.weights_scales[op]/127.0
         shape=weight_tmp.shape
         if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
@@ -632,36 +694,42 @@ class LearningWeight:
                 d = quant_requant_active(d, scale, False)
         return d
 
-    def learning_one(self, op, progress, total):
-        loger.logging(f"now to learn {op}")
-        pbar_detail = tqdm(np.arange(self.num_sample*3))
+    def learning_one(self, epoch, op, total):
+        loger.logging(f"now to learn {op} in epoch {epoch}")
+        sub_total = 1
+        if epoch == 0:
+            sub_total += 1
+        if epoch == self.epoch - 1:
+            sub_total += 1
+        pbar_detail = tqdm(np.arange(self.num_sample*sub_total))
         pbar_detail.set_description("Learning Weight, op %s" % op)
 
-        self.quant_requant_weight_orig(op)
-        for loop in np.arange(self.num_sample):
-            pbar_detail.set_postfix_str(
-                f"Cal orig loss {loop} [Total Progress: {progress}/{total}]")
-            pbar_detail.update()
-            self.set_op_inputs(op, loop)
-            outputs = self.module.invoke_at(op)
-            scale = self.scales[op][0]
-            unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
-            if self.compare_quanted:
-                if self.support_unsigned:
-                    outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
+        if epoch == 0:
+            self.quant_requant_weight_orig(op)
+            for loop in np.arange(self.num_sample):
+                pbar_detail.set_postfix_str(
+                    f"Cal orig loss {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
+                pbar_detail.update()
+                self.set_op_inputs(op, loop)
+                outputs = self.module.invoke_at(op)
+                scale = self.scales[op][0]
+                unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
+                if self.compare_quanted:
+                    if self.support_unsigned:
+                        outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
+                    else:
+                        outputs[0] = quant_requant_active(outputs[0], scale, False)
+                ref = ref_all_tensor.get(op, loop)
+                if op in self.pre_loss:
+                    pre_loss = self.pre_loss[op] + cal_loss(outputs, ref)
+                    self.pre_loss[op] = pre_loss
                 else:
-                    outputs[0] = quant_requant_active(outputs[0], scale, False)
-            ref = ref_all_tensor.get(op, loop)
-            if op in self.pre_loss:
-                pre_loss = self.pre_loss[op] + cal_loss(outputs, ref)
-                self.pre_loss[op] = pre_loss
-            else:
-                pre_loss = cal_loss(outputs, ref)
-                self.pre_loss[op] = pre_loss
+                    pre_loss = cal_loss(outputs, ref)
+                    self.pre_loss[op] = pre_loss
 
         for loop in np.arange(self.num_sample):
             pbar_detail.set_postfix_str(
-                f"Learning {loop} [Total Progress: {progress}/{total}]")
+                f"Learning {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
             pbar_detail.update()
             self.set_op_inputs(op, loop)
             self.quant_requant_weight(op)
@@ -673,12 +741,13 @@ class LearningWeight:
             else:
                 outputq = quant_requant_active(outputs[0], scale, False)
             ref = ref_all_tensor.get(op, loop)
-            beta = self.cal_beta(loop)
+            beta = self.cal_beta(epoch*self.num_sample+loop)
             loss = cal_loss(outputq, ref)
-            loss += self.cal_round_loss(loop, self.alpha[op], beta)
+            loger.logging(f"loss of {op} in loop {loop} is {loss}")
+            loss += self.cal_round_loss(epoch*self.num_sample+loop, self.alpha[op], beta)
+            loger.logging(f"loss of {op} in loop {loop} plus is {loss}")
             self.opt.update_loss(op, loss)
             unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
-            #now to calculate grd
             grd_dst = self.cal_grd(outputs[0], scale, unsigned)
             if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
                 grd_w = self.module.backward_weight_at(op, self.finetune_layer_weights[op], grd_dst)
@@ -692,49 +761,55 @@ class LearningWeight:
                 grd_w = np.matmul(input, grd_d)
                 grd_w = grd_w/(np.prod(shape)/(shape[-1]*shape[-2]))
             shape = self.alpha[op].shape
-            exp_alpha = (1.0/(expit(self.alpha[op])+1e-8))-1.0
-            if self.parser.get_op_type_by_op_name(op) == 'top.MatMul' or self.parser.get_op_type_by_op_name(op) == 'top.Conv':
-                grd_w1 =1.2*(exp_alpha/np.power(exp_alpha+1, 2))
+            exp_alpha = self.exp_neg(self.alpha[op])
+            grd_w1 =1.2*(exp_alpha/((exp_alpha+1)*(exp_alpha+1)))
+            if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
+                grd_w1 = (grd_w1.reshape(shape[0],-1)*((self.weights_scales[op]/127.0)[:,None])).reshape(shape)
+            elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
+                grd_w1 =1.2*(exp_alpha/((exp_alpha+1)*(exp_alpha+1)))*(self.weights_scales[op]/127.0)
             else:
                 print("not support!")
                 sys.exit(1)
             grd_w = grd_w * grd_w1
-            grd_r = self.cal_grdr(self.alpha[op], beta, loop, unsigned)
+            grd_r = self.cal_grdr(self.alpha[op], beta, epoch*self.num_sample+loop, unsigned)
             grd = grd_w + grd_r
             self.opt.update_grd(op, grd)
-            if (loop+1) % self.mini_batch == 0:
-                self.alpha[op] = self.opt.update_alpha(loop, op, self.alpha[op], self.mini_batch)
+            if (epoch*self.num_sample+loop+1) % self.mini_batch == 0:
+                self.alpha[op] = self.opt.update_alpha(epoch*self.num_sample+loop, op, self.alpha[op], self.mini_batch)
                 if (loop+1) % 4 == 0:
                     remote_show(op, self.alpha[op], loop)
 
-        self.quant_requant_weight(op, True)
-        for loop in np.arange(self.num_sample):
-            pbar_detail.set_postfix_str(
-                f"Comparing {loop} [Total Progress: {progress}/{total}]")
-            pbar_detail.update()
-            self.set_op_inputs(op, loop)
-            self.module.invoke_at(op)
-            outputs = self.module.get_tensor(op)
-            scale = self.scales[op][0]
-            unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
-            if self.compare_quanted:
-                if self.support_unsigned:
-                    outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
+        if epoch == self.epoch-1:
+            self.quant_requant_weight(op, True)
+            for loop in np.arange(self.num_sample):
+                pbar_detail.set_postfix_str(
+                    f"Comparing {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
+                pbar_detail.update()
+                self.set_op_inputs(op, loop)
+                self.module.invoke_at(op)
+                outputs = self.module.get_tensor(op)
+                scale = self.scales[op][0]
+                unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
+                if self.compare_quanted:
+                    if self.support_unsigned:
+                        outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
+                    else:
+                        outputs[0] = quant_requant_active(outputs[0], scale, False)
+                ref = ref_all_tensor.get(op, loop)
+                if op in self.post_loss:
+                    post_loss = self.post_loss[op] + cal_loss(outputs, ref)
+                    self.post_loss[op] = post_loss
                 else:
-                    outputs[0] = quant_requant_active(outputs[0], scale, False)
-            ref = ref_all_tensor.get(op, loop)
-            if op in self.post_loss:
-                post_loss = self.post_loss[op] + cal_loss(outputs, ref)
-                self.post_loss[op] = post_loss
-            else:
-                post_loss = cal_loss(outputs, ref)
-                self.post_loss[op] = post_loss
+                    post_loss = cal_loss(outputs, ref)
+                    self.post_loss[op] = post_loss
 
-        if self.post_loss[op] <= self.pre_loss[op]:
-            loger.logging(f'{op} use trained weight {self.post_loss[op]} vs {self.pre_loss[op]}')
-            self.update_weight(op)
-        else:
-            loger.logging(f'{op} do not use learned weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+            if self.post_loss[op] <= self.pre_loss[op]:
+                loger.logging(f'{op} use trained weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+                print(f'{op} use trained weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+                self.update_weight(op)
+            else:
+                loger.logging(f'{op} do not use learned weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+                print(f'{op} do not use learned weight {self.post_loss[op]} vs {self.pre_loss[op]}')
 
     def adjust_weight(self, op):
         shape = self.orig_weights[op].shape
@@ -763,12 +838,34 @@ class LearningWeight:
         np.savez(self.weight_file, **self.param_back)
 
     def learning(self):
-        import sys
         total = len(self.finetune_layers)
-        progress = 0
-        for op in self.finetune_layers:
-            self.learning_one(op, progress, total)
-            progress = progress+1
+        can_parallel = True
+        for l in self.finetune_layers:
+            if self.parser.get_op_type_by_op_name(l) != 'top.MatMul':
+                can_parallel = False
+                break
+        if can_parallel: 
+            groups = into_groups(self.parser, self.finetune_layers)
+            for epoch in np.arange(self.epoch):
+                for layers in groups:
+                    reqs = [(self, epoch, x, total) for x in groups[layers]]
+                    learned = 0
+                    for result in pool.map(learning_weight_wrap, reqs):
+                        learned += 1
+                print("")
+                print("=================================================")
+                print(f"  End epoch {epoch}, learned {learned} layers")
+                print("=================================================")
+                print("")
+        else:
+            for epoch in np.arange(self.epoch):
+                for l in self.finetune_layers:
+                    self.learning_one(epoch, l, total)
+                print("")
+                print("=================================================")
+                print(f"  End epoch {epoch}, learned {total} layers")
+                print("=================================================")
+                print("")
         self.save_weights()
 
 class LearningScale:
@@ -1040,16 +1137,16 @@ class LearningScale:
         else:
             return grd
 
-    def learning_one(self, op, progress, total):
+    def learning_one(self, op, total):
         loger.logging(f"now to learn {op} scale")
         pbar_detail = tqdm(np.arange(self.num_sample*3))
         pbar_detail.set_description("Learning Scale, op %s" % op)
         for loop in np.arange(self.num_sample):
             pbar_detail.set_postfix_str(
-                f"Cal orig loss {loop} [Total Progress: {progress}/{total}]")
+                f"Cal orig loss {loop} [Total Progress: {total}]")
             pbar_detail.update()
             self.set_op_inputs(op, loop)
-            outputs = self.module.invoke_at(op)
+            outputs = self.module.invoke_at(op).copy()
             scale = self.orig_scales[op][0]
             unsigned = self.orig_scales[op][1] >= 0 and self.orig_scales[op][2] >= 0
             if self.support_unsigned:
@@ -1066,10 +1163,10 @@ class LearningScale:
 
         for loop in np.arange(self.num_sample):
             pbar_detail.set_postfix_str(
-                f"Learning {loop} [Total Progress: {progress}/{total}]")
+                f"Learning {loop} [Total Progress: {total}]")
             pbar_detail.update()
             self.set_op_inputs(op, loop)
-            outputs = self.module.invoke_at(op)
+            outputs = self.module.invoke_at(op).copy()
             scale = 1.0
             if op in self.new_scales:
                 scale = self.new_scales[op][0]
@@ -1100,11 +1197,11 @@ class LearningScale:
 
         for loop in np.arange(self.num_sample):
             pbar_detail.set_postfix_str(
-                f"Comparing {loop} [Total Progress: {progress}/{total}]")
+                f"Comparing {loop} [Total Progress: {total}]")
             pbar_detail.update()
             self.set_op_inputs(op, loop)
             self.module.invoke_at(op)
-            outputs = self.module.get_tensor(op)
+            outputs = self.module.get_tensor(op).copy()
             scale = self.new_scales[op][0]
             unsigned = self.orig_scales[op][1] >= 0 and self.orig_scales[op][2] >= 0
             if self.support_unsigned:
@@ -1130,10 +1227,21 @@ class LearningScale:
     def learning(self):
         import sys
         total = len(self.finetune_layers)
-        progress = 0
-        for op in self.finetune_layers:
-            self.learning_one(op, progress, total)
-            progress = progress+1
+        groups = into_groups(self.parser, self.finetune_layers)
+        can_parallel = True
+        for l in self.finetune_layers:
+            if self.parser.get_op_type_by_op_name(l) != 'top.MatMul':
+                can_parallel = False
+                break
+        if can_parallel:
+            for layers in groups:
+                reqs = [(self, x, total) for x in groups[layers]]
+                learned = 0
+                for result in pool.map(learning_scale_wrap, reqs):
+                    learned += 1
+        else:
+            for l in self.finetune_layers:
+                self.learning_one(l, total)
 
 if __name__ == '__main__':
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
@@ -1146,11 +1254,15 @@ if __name__ == '__main__':
     parser.add_argument(
         "--data_list", help="specify a file with inputs's absolute path for mix precision searching")
     parser.add_argument('--input_num', type=int, default=1000,
-                        help='num of inputs for quantization searching')
-    parser.add_argument('--data_seg', type=int, default=2000,
+                        help='num of input samples for quantization searching')
+    parser.add_argument('--data_seg', type=int, default=1000,
                         help='num of samples to buffer data on disk, they will be re-aranged after gather all samples')
+    parser.add_argument('--epoch', type=int, default=1,
+                        help='num of repeat times of input_num samples for weight learning')
     parser.add_argument('--mini_batch', type=int, default=4,
                         help='batch size for learning')
+    parser.add_argument('--threads', type=int, default=4,
+                        help='number of working threads')
     parser.add_argument('--momentum', type=float, default=0.9,
                         help='momentum of learning')
     parser.add_argument('--nesterov', action='store_true', dest='nesterov',
@@ -1184,22 +1296,23 @@ if __name__ == '__main__':
     if args.data_seg > args.input_num:
         args.data_seg = args.input_num
     loger = logging()
+    pool = ThreadPool(args.threads)
     scale_searcher = LearningScale(args)
     cali_table = CaliTable(args.calibration_table, args.output_calibration_table)
     scale_searcher.orig_scales = cali_table.table
     all_inputs = learning_inputs(scale_searcher.parser, args)
     num_sample = all_inputs.prepare(args.input_num)
     scale_searcher.num_sample = num_sample
-    scheduler = LrScheduler(args.lr, scale_searcher.num_sample, args.lr_scheduler)
     learn_scale = args.target == "Scale" or args.target == "Both"
     learn_weight = args.target == "Weight" or args.target == "Both"
     print(f'Learning Scale: {learn_scale}; Learning Weight: {learn_weight}')
     if learn_scale:
+        scheduler = LrScheduler(args.lr, scale_searcher.num_sample, args.lr_scheduler)
         if args.opt == 'SGD':
             scale_searcher.opt = scale_searcher.SgdScaleOpt(scheduler, args.momentum, args.nesterov, args.weight_decay)
         else:
             scale_searcher.opt = scale_searcher.AdamScaleOpt(scheduler, 0.9, 0.999, args.weight_decay)
-    ref_all_tensor = ref_tensors(scale_searcher.num_sample, args.data_seg)
+    ref_all_tensor = ref_tensors(scale_searcher.num_sample, args.data_seg, args.threads*4*(num_sample//args.data_seg))
     ref_all_tensor.gather(scale_searcher, all_inputs)
     del all_inputs
     if learn_scale:
@@ -1208,10 +1321,11 @@ if __name__ == '__main__':
         cali_table.write()
     del scale_searcher
     if learn_weight:
+        scheduler = LrScheduler(args.lr, num_sample*args.epoch, args.lr_scheduler)
         weight_searcher = LearningWeight(args)
         weight_searcher.scales = cali_table.table
         weight_searcher.num_sample = num_sample
-        weight_searcher.opt = weight_searcher.SgdWeightOpt(scheduler, args.momentum, args.nesterov, args.weight_decay)
+        weight_searcher.opt = weight_searcher.SgdWeightOpt(scheduler, args.momentum, args.nesterov, args.weight_decay, args.epoch)
         weight_searcher.learning()
         del weight_searcher
 
