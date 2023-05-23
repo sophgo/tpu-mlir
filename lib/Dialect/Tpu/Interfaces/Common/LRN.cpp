@@ -13,7 +13,6 @@
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-
 static void lrn_inference_cv18xx(InferenceParameter &p, int64_t size,
                                  double alpha, double bias, int64_t n,
                                  int64_t c, int64_t h, int64_t w) {
@@ -21,28 +20,37 @@ static void lrn_inference_cv18xx(InferenceParameter &p, int64_t size,
   float bias_bf16 = BF16(static_cast<float>(bias));
   int64_t move_counts = (size - 1) / 2;
   std::vector<float> elem(n * c * h * w);
-  // y = x * (k + sum(ax^2))^(-beta)
-  // step 1: elem = ax ^ 2
+// y = x * (k + sum(ax^2))^(-beta)
+// step 1: elem = ax ^ 2
 #pragma omp parallel for schedule(static, omp_schedule(n *c))
   for (int64_t i = 0; i < n * c; ++i) {
     for (int64_t j = 0; j < h * w; ++j) {
       elem[i * h * w + j] =
-          BF16(alpha_bf16 * BF16(std::pow(p.inputs[0][i * h * w + j], 2)));
+          bf16_mul(alpha_bf16, bf16_mul(p.inputs[0][i * h * w + j],
+                                        p.inputs[0][i * h * w + j]));
     }
   }
 
   // step 2: tmp = sum(elem)
-  std::vector<float> tmp(n * c * h * w, 0);
+  std::vector<float> tmp(n * c * h * w, BF16(0));
   for (int64_t _n = 0; _n < n; ++_n) {
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int64_t _c = 0; _c < c; ++_c) {
       for (int64_t i = 0; i < h * w; ++i) {
-        int64_t begin_c = std::max((int64_t)0, _c - move_counts);
-        int64_t end_c = std::min(c, _c + move_counts + 1);
-        for (int64_t j = begin_c; j < end_c; ++j) {
-          tmp[_n * c * h * w + _c * h * w + i] +=
-              elem[_n * c * h * w + j * h * w + i];
+        float tmp_value = elem[_n * c * h * w + _c * h * w + i];
+        for (int64_t step = 1; step <= move_counts && step; ++step) {
+          int64_t left_shift_c = _c + step;
+          if (left_shift_c < c) {
+            tmp_value = bf16_add(
+                tmp_value, elem[_n * c * h * w + left_shift_c * h * w + i]);
+          }
+          int64_t right_shift_c = _c - step;
+          if (right_shift_c >= 0) {
+            tmp_value = bf16_add(
+                tmp_value, elem[_n * c * h * w + right_shift_c * h * w + i]);
+          }
         }
+        tmp[_n * c * h * w + _c * h * w + i] = tmp_value;
       }
     }
   }
@@ -51,7 +59,7 @@ static void lrn_inference_cv18xx(InferenceParameter &p, int64_t size,
 #pragma omp parallel for schedule(static, omp_schedule(n *c))
   for (int64_t i = 0; i < n * c; ++i) {
     for (int64_t j = 0; j < h * w; ++j) {
-      elem[i * h * w + j] = BF16(BF16(tmp[i * h * w + j]) + bias_bf16);
+      elem[i * h * w + j] = bf16_add(tmp[i * h * w + j], bias_bf16);
     }
   }
 
@@ -64,7 +72,7 @@ static void lrn_inference_cv18xx(InferenceParameter &p, int64_t size,
   for (int64_t i = 0; i < n * c; ++i) {
     for (int64_t j = 0; j < h * w; ++j) {
       p.outputs[0][i * h * w + j] =
-          tmp[i * h * w + j] * p.inputs[0][i * h * w + j];
+          bf16_mul(tmp[i * h * w + j], p.inputs[0][i * h * w + j]);
     }
   }
 }

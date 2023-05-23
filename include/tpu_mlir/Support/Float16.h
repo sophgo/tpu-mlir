@@ -29,4 +29,6 @@ void F16(float *p_src, float *p_dst, int num);
 float BF16(float src, bool is_tpu = true);
 void BF16(float *p_src, float *p_dst, int num, bool is_tpu = true);
 
+float bf16_mul(float lhs, float rhs);
+float bf16_add(float lhs, float rhs);
 } // namespace tpu_mlir
