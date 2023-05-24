@@ -43,12 +43,12 @@ class ModelTransformer(object):
         trimmed_arr = repeated_arr[:batch_size]
         return trimmed_arr
 
-    def model_transform(self, mlir_file: str, post_handle_type=""):
+    def model_transform(self, mlir_file: str, add_postprocess=""):
         self.mlir_file = mlir_file
         mlir_origin = mlir_file.replace('.mlir', '_origin.mlir', 1)
         file_mark(mlir_origin)
         self.converter.generate_mlir(mlir_origin)
-        mlir_opt_for_top(mlir_origin, self.mlir_file, post_handle_type)
+        mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess)
         print("Mlir file generated:{}".format(mlir_file))
 
         self.module_parsered = MlirParser(self.mlir_file)
@@ -248,8 +248,8 @@ if __name__ == '__main__':
     parser.add_argument("--tolerance", default='0.99,0.99',
                         help="minimum similarity tolerance to model transform")
     parser.add_argument("--excepts", default='-', help="excepts")
-    parser.add_argument("--post_handle_type", default="", type=str.lower,
-                        choices=['','yolo', 'ssd'], help="post handle type, such as yolo,ssd etc")
+    parser.add_argument("--add_postprocess", default="", type=str.lower,
+                        choices=['','yolov3','yolov5','ssd'], help="add postprocess for model")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
     # yapf: enable
@@ -258,7 +258,7 @@ if __name__ == '__main__':
     if unknown_args:
         args.unknown_params += unknown_args
     tool = get_model_transform(args)
-    tool.model_transform(args.mlir, args.post_handle_type)
+    tool.model_transform(args.mlir, args.add_postprocess)
     if args.test_input:
         assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)

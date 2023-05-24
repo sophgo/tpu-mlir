@@ -76,5 +76,5 @@ There are some optional passes, not in the diagram, used for special functions.
 
 fuse-preprocess
    Fuse image preprocess to model.
-post-handle
-   Fuse postprocess to model, only support ssd and yolo.
+add-postprocess
+   add postprocess to model, only support ssd/yolov3/yolov5.

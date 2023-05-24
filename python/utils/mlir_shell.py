@@ -53,10 +53,10 @@ def _os_system(cmd: list, save_log: bool = False):
 
 
 
-def mlir_opt_for_top(mlirfile, opt_mlirfile, post_handle_type=""):
+def mlir_opt_for_top(mlirfile, opt_mlirfile, add_postprocess=""):
     cmd = ["tpuc-opt", mlirfile, "--shape-infer", "--canonicalize"]
-    if len(post_handle_type) > 0:
-        cmd.extend([f"--post-handle=\"type={post_handle_type}\""])
+    if len(add_postprocess) > 0:
+        cmd.extend([f"--add-postprocess=\"type={add_postprocess}\""])
     cmd.extend(["--extra-optimize", "-o", opt_mlirfile])
     _os_system(cmd)
 

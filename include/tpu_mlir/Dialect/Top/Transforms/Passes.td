@@ -92,13 +92,13 @@ def FusePreprocess : Pass<"fuse-preprocess", "ModuleOp"> {
   let dependentDialects = ["TopDialect", "mlir::quant::QuantizationDialect"];
 }
 
-def PostHandle : Pass<"post-handle", "ModuleOp"> {
+def AddPostprocess : Pass<"add-postprocess", "ModuleOp"> {
   let summary = "post handle in mlir by tpuc-opt";
-  let constructor = "createPostHandlePass()";
+  let constructor = "createAddPostprocessPass()";
   let dependentDialects = ["TopDialect"];
   let options = [
       Option<"type", "type", "std::string", /*default=*/"",
-             "type of post-handle.">
+             "type of add-postprocess.">
   ];
 }
 #endif

@@ -36,14 +36,31 @@ void loweringYoloDetection(PatternRewriter &rewriter, top::YoloDetectionOp op) {
       rewriter.getF32FloatAttr(op.getObjThreshold().convertToDouble())));
   param.emplace_back(rewriter.getNamedAttr(
       "keep_topk", rewriter.getI32IntegerAttr(op.getKeepTopk())));
+  auto version = op.getVersion();
+  bool spp_net = false, tiny = false, yolov4 = false;
+  if (version == "yolov4") {
+    yolov4 = true;
+  } else if (version == "yolov3_spp") {
+    spp_net = true;
+  } else if (version == "yolov3_tiny") {
+    tiny = true;
+  }
   param.emplace_back(
-      rewriter.getNamedAttr("spp_net", rewriter.getBoolAttr(op.getSppNet())));
+      rewriter.getNamedAttr("spp_net", rewriter.getBoolAttr(spp_net)));
+  param.emplace_back(rewriter.getNamedAttr("tiny", rewriter.getBoolAttr(tiny)));
   param.emplace_back(
-      rewriter.getNamedAttr("tiny", rewriter.getBoolAttr(op.getTiny())));
+      rewriter.getNamedAttr("yolo_v4", rewriter.getBoolAttr(yolov4)));
+  auto anchors = module::getI64Array(op.getAnchors());
+  auto num_anchor = anchors->size();
+  std::stringstream ss;
+  for (int i = 0; i < num_anchor; i++) {
+    ss << anchors->at(i);
+    if (i < num_anchor - 1) {
+      ss << ",";
+    }
+  }
   param.emplace_back(
-      rewriter.getNamedAttr("yolo_v4", rewriter.getBoolAttr(op.getYoloV4())));
-  param.emplace_back(rewriter.getNamedAttr(
-      "anchors", rewriter.getStringAttr(op.getAnchors())));
+      rewriter.getNamedAttr("anchors", rewriter.getStringAttr(ss.str())));
   attrs.emplace_back(
       rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(param)));
   std::vector<Value> operands(op.getOperands().begin(), op.getOperands().end());

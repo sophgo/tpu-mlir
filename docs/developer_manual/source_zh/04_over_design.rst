@@ -77,5 +77,5 @@ Other Passes
 
 fuse-preprocess
    用于预处理融合, 对于图片类输入, 将图片的预处理过程合并到模型中
-post-handle
+add-postprocess
    用于将ssd或yolo的后处理合并到模型中

@@ -14,7 +14,7 @@ model_transform.py \
   --pixel_format=rgb \
   --test_input=${REGRESSION_PATH}/image/dog.jpg \
   --test_result=yolov5s_top_outputs.npz \
-  --post_handle_type=yolo \
+  --add_postprocess=yolov5 \
   --mlir yolov5s.mlir
 
 run_calibration.py yolov5s.mlir \

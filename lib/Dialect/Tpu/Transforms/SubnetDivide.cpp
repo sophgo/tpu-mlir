@@ -23,7 +23,6 @@
 
 using namespace llvm;
 
-
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
@@ -79,11 +78,11 @@ void getInputsOutputs(std::vector<Operation *> &ops, std::vector<Value> &inputs,
     }
   }
 
-  for (auto&& op: ops) {
+  for (auto &&op : ops) {
     if (isa<tpu::IfOp>(op)) {
-      //get the nested's op from above
-      for (int i=0; i < 2; i++) {
-        Region& region = op->getRegion(i);
+      // get the nested's op from above
+      for (int i = 0; i < 2; i++) {
+        Region &region = op->getRegion(i);
         region.walk([&](Operation *inner_op) {
           for (int k = 0; k < inner_op->getNumOperands(); k++) {
             auto from_op = inner_op->getOperand(k).getDefiningOp();
@@ -150,8 +149,8 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
       continue;
     }
     for (auto it : llvm::enumerate(op->getOperands())) {
-      if (!it.value().isa<BlockArgument>()
-          && isa<top::NoneOp>(it.value().getDefiningOp())) {
+      if (!it.value().isa<BlockArgument>() &&
+          isa<top::NoneOp>(it.value().getDefiningOp())) {
         op->setOperand(it.index(), noneOp);
       }
     }
@@ -199,11 +198,8 @@ public:
   }
 
   static bool force_dynamic_run(Operation *op) {
-    if (isa<TopKOp,
-            YoloDetectionOp,
-            DetectionOutputOp,
-            RoiAlignOp,
-            NonZeroOp>(op)) {
+    if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp>(
+            op)) {
       return true;
     } else if (op->hasTrait<trait::ShapeProducer>()) {
       return true;
@@ -316,7 +312,7 @@ public:
     auto mainFunc = module::getMainFuncOp();
     std::shared_ptr<SubFunction> subf = nullptr;
     bool seperate;
-    //for to traverse the nested regions, walk by preorder preferred.
+    // for to traverse the nested regions, walk by preorder preferred.
     mainFunc.walk<WalkOrder::PreOrder>([&](Operation *op) {
       if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, ReturnOp,
               func::CallOp>(op)) {

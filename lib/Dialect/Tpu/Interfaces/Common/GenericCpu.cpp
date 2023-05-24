@@ -126,11 +126,12 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
         param.get("nms_threshold").cast<FloatAttr>().getValueAsDouble();
     yolo_param.obj_threshold =
         param.get("obj_threshold").cast<FloatAttr>().getValueAsDouble();
-    yolo_param.tiny = param.get("tiny").cast<BoolAttr>().getValue();
-    yolo_param.yolo_v4 = param.get("yolo_v4").cast<BoolAttr>().getValue();
-    yolo_param.spp_net = param.get("spp_net").cast<BoolAttr>().getValue();
-    yolo_param.anchors = param.get("anchors").cast<StringAttr>().getValue();
-
+    auto anchors = param.get("anchors").cast<StringAttr>().getValue().str();
+    std::istringstream iss(anchors);
+    std::string s;
+    while (std::getline(iss, s, ',')) {
+      yolo_param.anchors.push_back(atoi(s.c_str()));
+    }
     for (size_t i = 0; i < getInputs().size(); ++i) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
@@ -382,8 +383,10 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     mlir::DictionaryAttr dic_param = this->getParam().value();
     GridSamplerParam param;
     param.mode = dic_param.get("mode").cast<IntegerAttr>().getInt();
-    param.padding_mode = dic_param.get("padding_mode").cast<IntegerAttr>().getInt();
-    param.align_corners = dic_param.get("align_corners").cast<BoolAttr>().getValue();
+    param.padding_mode =
+        dic_param.get("padding_mode").cast<IntegerAttr>().getInt();
+    param.align_corners =
+        dic_param.get("align_corners").cast<BoolAttr>().getValue();
     tensor_list_t input;
     tensor_list_t grid;
     input.ptr = p.inputs[0];

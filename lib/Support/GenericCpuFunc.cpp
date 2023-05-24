@@ -391,7 +391,7 @@ static inline float _softmax(float *probs, float *data, int input_stride,
    cell_idx)
 
 static void process_feature(detection *det, int *det_idx, float *feature,
-                            std::vector<int64_t> grid_size, float *anchor,
+                            std::vector<int64_t> grid_size, int64_t *anchor,
                             std::vector<int64_t> yolo_size,
                             int64_t num_of_class, float obj_threshold) {
   int yolo_w = yolo_size[1];
@@ -745,42 +745,10 @@ void DetectionOutputFunc::invoke() {
 }
 
 YoloDetectionFunc::YoloDetectionFunc(YoloDetParam &param) : param_(param) {
-  std::istringstream iss(param_.anchors);
-  std::string s;
-  while (std::getline(iss, s, ',')) {
-    _anchors.push_back(atof(s.c_str()));
-  }
   std::sort(param_.inputs.begin(), param_.inputs.end(),
             [](const tensor_list_t &a, const tensor_list_t &b) {
               return a.shape[3] > b.shape[3];
             });
-  if (param_.tiny) {
-    assert(param_.inputs.size() == 2);
-    if (_anchors.size() == 0) {
-      _anchors = {
-          10, 14, 23,  27,  37,  58, // layer23-conv (26*26)
-          81, 82, 135, 169, 344, 319 // layer16-conv (13*13)
-      };
-    }
-  } else {
-    assert(param_.inputs.size() == 3);
-    if (_anchors.size() == 0) {
-      if (param_.yolo_v4) {
-        _anchors = {
-            142, 110, 192, 243, 459, 401, // layer161-conv
-            36,  75,  76,  55,  72,  146, // layer150-conv
-            12,  16,  19,  36,  40,  28,  // layer139-conv
-        };
-      } else {
-        // Yolov3 default anchors
-        _anchors = {
-            10,  13, 16,  30,  33,  23,  // layer106-conv (52*52)
-            30,  61, 62,  45,  59,  119, // layer94-conv  (26*26)
-            116, 90, 156, 198, 373, 326  // layer82-conv  (13*13)
-        };
-      }
-    }
-  }
 }
 
 void YoloDetectionFunc::invoke() {
@@ -788,8 +756,8 @@ void YoloDetectionFunc::invoke() {
   memset(top_data, 0, param_.output.size);
   int batch = param_.output.shape[0];
   size_t bottom_count = param_.inputs.size();
-  assert(_anchors.size() == bottom_count * 6);
-  float(*anchors)[6] = (float(*)[6])_anchors.data();
+  assert(param_.anchors.size() == bottom_count * 6);
+  int64_t(*anchors)[6] = (int64_t(*)[6])param_.anchors.data();
 
   for (int b = 0; b < batch; ++b) {
     std::vector<std::vector<int64_t>> grid_size;
@@ -1662,52 +1630,20 @@ void ApplyNms_opt(std::vector<PredictionResult> &boxes, std::vector<int> &idxes,
   }
 }
 
-Yolo_v2_DetectionFunc::Yolo_v2_DetectionFunc(YoloDetParam &param)
+YoloDetectionFunc_v2::YoloDetectionFunc_v2(YoloDetParam &param)
     : param_(param) {
-  std::istringstream iss(param_.anchors);
-  std::string s;
-  while (std::getline(iss, s, ',')) {
-    _anchors.push_back(atof(s.c_str()));
-  }
   std::sort(param_.inputs.begin(), param_.inputs.end(),
             [](const tensor_list_t &a, const tensor_list_t &b) {
               return a.shape[3] > b.shape[3];
             });
-  if (param_.tiny) {
-    assert(param_.inputs.size() == 2);
-    if (_anchors.size() == 0) {
-      _anchors = {
-          10, 14, 23,  27,  37,  58, // layer23-conv (26*26)
-          81, 82, 135, 169, 344, 319 // layer16-conv (13*13)
-      };
-    }
-  } else {
-    assert(param_.inputs.size() == 3);
-    if (_anchors.size() == 0) {
-      if (param_.yolo_v4) {
-        _anchors = {
-            142, 110, 192, 243, 459, 401, // layer161-conv
-            36,  75,  76,  55,  72,  146, // layer150-conv
-            12,  16,  19,  36,  40,  28,  // layer139-conv
-        };
-      } else {
-        // Yolov3 default anchors
-        _anchors = {
-            10,  13, 16,  30,  33,  23,  // layer106-conv (52*52)
-            30,  61, 62,  45,  59,  119, // layer94-conv  (26*26)
-            116, 90, 156, 198, 373, 326  // layer82-conv  (13*13)
-        };
-      }
-    }
-  }
 }
 
-void Yolo_v2_DetectionFunc::invoke() {
+void YoloDetectionFunc_v2::invoke() {
   auto top_data = param_.output.ptr;
   memset(top_data, 0, param_.output.size);
   int batch_num = param_.inputs[0].shape[0];
   int bottom_num = param_.inputs.size();
-  assert(_anchors.size() == bottom_num * 6);
+  assert(param_.anchors.size() == bottom_num * 6);
   int len = 4 + param_.class_num + 1;
   int mask_offset = 0;
   const int num = batch_num;
@@ -1768,14 +1704,14 @@ void Yolo_v2_DetectionFunc::invoke() {
             swap_data[1] = swap_data[0] * swap_data[1];
 
             if (swap_data[1] > param_.obj_threshold) {
-              [&](std::vector<float> &b, float *x, float *biases, int n, int i,
-                  int j, int lw, int lh, int w, int h) {
+              [&](std::vector<float> &b, float *x, int64_t *biases, int n,
+                  int i, int j, int lw, int lh, int w, int h) {
                 b.clear();
                 b.push_back((i + (x[0])) / lw);
                 b.push_back((j + (x[1])) / lh);
                 b.push_back(exp(x[2]) * biases[2 * n] / (w));
                 b.push_back(exp(x[3]) * biases[2 * n + 1] / (h));
-              }(pred, &swap_data[2], _anchors.data(),
+              }(pred, &swap_data[2], param_.anchors.data(),
                 param_.mask[n + mask_offset], cx, cy, w, h, param_.net_input_w,
                 param_.net_input_h);
 
@@ -1791,7 +1727,7 @@ void Yolo_v2_DetectionFunc::invoke() {
           }
         }
       }
-      mask_offset += param_.mask_group_size;
+      mask_offset += param_.num_boxes;
     }
 
     // NMS for each image
@@ -2025,8 +1961,10 @@ void BMCpuOp::get_grid_sampler_param() {
   cpu_grid_sampler_param_t cpu_param{};
   mlir::DictionaryAttr paramDic = op_.getParam().value();
   cpu_param.mode = paramDic.get("mode").cast<IntegerAttr>().getInt();
-  cpu_param.padding_mode = paramDic.get("padding_mode").cast<IntegerAttr>().getInt();
-  cpu_param.align_corners = paramDic.get("align_corners").cast<BoolAttr>().getValue();
+  cpu_param.padding_mode =
+      paramDic.get("padding_mode").cast<IntegerAttr>().getInt();
+  cpu_param.align_corners =
+      paramDic.get("align_corners").cast<BoolAttr>().getValue();
   this->param_size = sizeof(cpu_grid_sampler_param_t);
   this->param = (void *)malloc(this->param_size);
   memcpy(this->param, &cpu_param, this->param_size);
@@ -2612,14 +2550,14 @@ GatherndFunc::GatherndFunc(GatherNDParam &param) : param_(param) {}
 
 uint64_t GatherndFunc::gather_offset(std::vector<int64_t> input_shape,
                                      std::vector<int> gather_index) {
-    uint64_t offset = 0;
-    int dim_size = gather_index.size();
-    uint64_t gap = 1;
-    for (int i = dim_size - 1; i >= 0; i--) {
-        offset += gather_index[i] * gap;
-        gap *= input_shape[i];
-    }
-    return offset;
+  uint64_t offset = 0;
+  int dim_size = gather_index.size();
+  uint64_t gap = 1;
+  for (int i = dim_size - 1; i >= 0; i--) {
+    offset += gather_index[i] * gap;
+    gap *= input_shape[i];
+  }
+  return offset;
 }
 
 void GatherndFunc::invoke() {
@@ -2779,7 +2717,7 @@ scalar_t GridSamplerFunc::clip_coordinates(scalar_t in, int64_t clip_limit) {
 // can be represented as ints.
 template <typename scalar_t>
 scalar_t GridSamplerFunc::reflect_coordinates(scalar_t in, int64_t twice_low,
-                                           int64_t twice_high) {
+                                              int64_t twice_high) {
   if (twice_low == twice_high) {
     return static_cast<scalar_t>(0);
   }
@@ -2844,18 +2782,16 @@ void GridSamplerFunc::invoke() {
   const int OH = grid_shape[1];
   const int OW = grid_shape[2];
 
-#pragma omp parallel for schedule(static, omp_schedule(N * C))
+#pragma omp parallel for schedule(static, omp_schedule(N *C))
   for (int n = 0; n < N; ++n) {
     const float *input = input_tensor.ptr + n * C * IH * IW;
     const float *grid = grid_tensor.ptr + n * OH * OW * 2;
     float *output = output_tensor.ptr + n * C * OH * OW;
     for (int h = 0; h < OH; ++h) {
       for (int w = 0; w < OW; ++w) {
-        auto fx =
-            computeIndex(*grid, IW, padding_mode, align_corners);
+        auto fx = computeIndex(*grid, IW, padding_mode, align_corners);
         ++grid;
-        auto fy =
-            computeIndex(*grid, IH, padding_mode, align_corners);
+        auto fy = computeIndex(*grid, IH, padding_mode, align_corners);
         ++grid;
         switch (mode) {
         case GridSamplerBilinear: {

@@ -37,6 +37,7 @@ struct Attr {
   static constexpr llvm::StringRef ASYMMETRIC = "module.asymmetric";
   static constexpr llvm::StringRef MODE = "module.mode";
   static constexpr llvm::StringRef PLATFORM = "module.platform";
+  static constexpr llvm::StringRef POSTPROCESS = "module.postprocess";
 };
 
 static ModuleOp m = nullptr;
@@ -94,13 +95,13 @@ Value getOriValue(Value v) {
       // pre call op
       auto operand = call_op.getOperand(idx);
       if (operand.isa<BlockArgument>()) {
-        auto find_root = [](auto&&Me, Value v) ->Value {
+        auto find_root = [](auto &&Me, Value v) -> Value {
           if (v.isa<BlockArgument>()) {
-              int index = dyn_cast<BlockArgument>(v).getArgNumber();
-              auto p_op = v.getParentBlock()->getParentOp();
-              auto func_op = dyn_cast<FuncOp>(p_op);
-              auto call_op = getCallOp(func_op);
-              return Me(Me, call_op.getOperand(index));
+            int index = dyn_cast<BlockArgument>(v).getArgNumber();
+            auto p_op = v.getParentBlock()->getParentOp();
+            auto func_op = dyn_cast<FuncOp>(p_op);
+            auto call_op = getCallOp(func_op);
+            return Me(Me, call_op.getOperand(index));
           } else {
             return v;
           }
@@ -218,7 +219,7 @@ void updateModuleTypes() {
 void removeUnusedOp() {
   std::vector<Operation *> all_ops;
   for (auto func : m.getOps<FuncOp>()) {
-    //for to support nested region's op
+    // for to support nested region's op
     func.walk<WalkOrder::PreOrder>([&](Operation *op) {
       if (!isa<ReturnOp, FuncOp, tpu::YieldOp, top::YieldOp>(op))
         all_ops.push_back(op);
@@ -619,13 +620,14 @@ FuncOp getFuncOp(StringRef func_name) {
 func::CallOp getCallOp(FuncOp func) {
   func::CallOp call = nullptr;
   for (auto each_func : m.getOps<FuncOp>()) {
-    WalkResult result = each_func.walk<WalkOrder::PreOrder>([&](func::CallOp op) {
-      if (!call && op.getCallee() == func.getName()) {
-        call = op;
-        return WalkResult::interrupt();
-      }
-      return WalkResult::advance();
-    });
+    WalkResult result =
+        each_func.walk<WalkOrder::PreOrder>([&](func::CallOp op) {
+          if (!call && op.getCallee() == func.getName()) {
+            call = op;
+            return WalkResult::interrupt();
+          }
+          return WalkResult::advance();
+        });
     if (result.wasInterrupted())
       break;
   }
@@ -722,6 +724,12 @@ int64_t getNeuronAddr() {
 void setNeuronAddr(int64_t addr) {
   m->setAttr(Attr::NEURON_ADDR, Builder(ctx).getI64IntegerAttr(addr));
 }
+llvm::StringRef getPostprocess() {
+  return m->getAttrOfType<StringAttr>(Attr::POSTPROCESS).strref();
+}
+void setPostprocess(StringRef post) {
+  m->setAttr(Attr::POSTPROCESS, Builder(ctx).getStringAttr(post));
+}
 
 Chip getChip() { return chip; }
 
@@ -805,7 +813,8 @@ bool isCV18xx() {
 }
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
-  return (chip == Chip::BM1684X || chip == Chip::BM1686 || chip == Chip::CV186X);
+  return (chip == Chip::BM1684X || chip == Chip::BM1686 ||
+          chip == Chip::CV186X);
 }
 bool isBM1686() { return (chip == Chip::BM1686 || chip == Chip::CV186X); }
 bool isBM1684X() { return (chip == Chip::BM1684X); }
@@ -1127,8 +1136,9 @@ void saveWeight() {
     func.walk([&](Operation *op) {
       if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
         auto name = module::getName(op);
-        //if op have more than two regions, it can have the same op Name
-        if (all_names.find(name) != all_names.end() && !isa<tpu::YieldOp, tpu::IfOp>(op)) {
+        // if op have more than two regions, it can have the same op Name
+        if (all_names.find(name) != all_names.end() &&
+            !isa<tpu::YieldOp, tpu::IfOp>(op)) {
           op->dump();
           llvm_unreachable("op name conflict");
         }
