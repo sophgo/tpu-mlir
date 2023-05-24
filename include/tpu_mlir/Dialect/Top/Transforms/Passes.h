@@ -26,7 +26,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
 std::unique_ptr<OperationPass<ModuleOp>> createQDQConvertPass();
 std::unique_ptr<OperationPass<ModuleOp>> createExtraOptimizePass();
 std::unique_ptr<OperationPass<ModuleOp>> createFusePreprocessPass();
-std::unique_ptr<OperationPass<ModuleOp>> createPostHandlePass();
+std::unique_ptr<OperationPass<ModuleOp>> createAddPostprocessPass();
 std::unique_ptr<OperationPass<ModuleOp>> createShapeInferPass();
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

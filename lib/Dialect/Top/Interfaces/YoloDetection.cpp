@@ -23,6 +23,7 @@ LogicalResult top::YoloDetectionOp::init(InferenceParameter &p) {
 void top::YoloDetectionOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
+  auto num_input = getInputs().size();
   YoloDetParam param;
   param.class_num = getClassNum();
   param.net_input_h = getNetInputH();
@@ -30,15 +31,9 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.keep_topk = getKeepTopk();
   param.nms_threshold = getNmsThreshold().convertToDouble();
   param.obj_threshold = getObjThreshold().convertToDouble();
-  param.tiny = getTiny();
-  param.yolo_v4 = getYoloV4();
-  param.spp_net = getSppNet();
-  param.anchors = getAnchors().str();
+  param.anchors = *module::getI64Array(getAnchors());
   param.num_boxes = getNumBoxes();
-  param.mask_group_size = getMaskGroupSize();
-  ArrayAttr &&mask = getMask();
-  for (uint32_t i = 0; i < mask.size(); i++)
-    param.mask[i] = (float)(mask[i].cast<IntegerAttr>().getInt());
+  param.mask = *module::getI64Array(getMask(), param.num_boxes * num_input, 0);
   for (size_t i = 0; i < getInputs().size(); ++i) {
     tensor_list_t tensor_list;
     tensor_list.ptr = p.inputs[i];
@@ -49,9 +44,10 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.output.ptr = p.outputs[0];
   param.output.size = module::getNumElements(getOutput());
   param.output.shape = module::getShape(getOutput());
-  if (getFlag()) {
-    Yolo_v2_DetectionFunc yolo_v2_func(param);
-    yolo_v2_func.invoke();
+  auto process = module::getPostprocess();
+  if (process.starts_with("yolo")) {
+    YoloDetectionFunc_v2 yolo_func(param);
+    yolo_func.invoke();
   } else {
     YoloDetectionFunc yolo_func(param);
     yolo_func.invoke();

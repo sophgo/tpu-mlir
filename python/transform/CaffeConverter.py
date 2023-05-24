@@ -1519,9 +1519,9 @@ class CaffeConverter(BaseConverter):
         output_shape = input_shape
         attrs = {'loc': self.get_loc(layer.top[0])}
         new_op = top.TanHOp(self.mlir.get_tensor_type(output_shape),
-                               in_op,
-                               **attrs,
-                               ip=self.mlir.insert_point).output
+                            in_op,
+                            **attrs,
+                            ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
     def convert_tile_op(self, layer):
@@ -1575,7 +1575,15 @@ class CaffeConverter(BaseConverter):
                 p.anchors = "142,110,192,243,459,401,36,75,76,55,72,146,12,16,19,36,40,28"
             else:
                 p.anchors = "10,13,16,30,33,23,30,61,62,45,59,119,116,90,156,198,373,326"
-
+        version = "yolo_v3"
+        if p.spp_net:
+            version = "yolo_v3_spp"
+        elif p.tiny:
+            version = "yolo_v3_tiny"
+        elif p.yolo_v4:
+            version = "yolo_v4"
+        else:
+            version = "yolo_v3"
         param = {
             'loc': self.get_loc(layer.top[0]),
             'net_input_h': p.net_input_h,
@@ -1583,9 +1591,7 @@ class CaffeConverter(BaseConverter):
             "nms_threshold": p.nms_threshold,
             "obj_threshold": p.obj_threshold,
             "keep_topk": p.keep_topk,
-            "spp_net": p.spp_net,
-            "tiny": p.tiny,
-            "yolo_v4": p.yolo_v4,
+            "version": StringAttr.get(version),
             "class_num": p.class_num,
             "anchors": p.anchors
         }

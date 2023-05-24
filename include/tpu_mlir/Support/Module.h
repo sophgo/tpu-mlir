@@ -85,6 +85,8 @@ int64_t getFLOPs();
 void setFLOPs(int64_t flops);
 bool isAsymmetric();
 void setAsymmetric(bool is_asymmetric);
+llvm::StringRef getPostprocess();
+void setPostprocess(StringRef post);
 
 //-----------------------------------------------------------------
 // Helper Functions for ModuleOp
