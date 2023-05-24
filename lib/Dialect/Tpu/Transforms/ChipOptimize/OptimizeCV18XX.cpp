@@ -92,6 +92,10 @@ public:
     auto type =
         RankedTensorType::get({on, oc, oh, ow}, tensorType.getElementType());
     op->getResult(0).setType(type); // rewrite inputShape
+    //Rename this op to pass the similarity comparison, because its output shape changed
+    std::string ori_name = module::getName(op->getResult(0)).str();
+    auto new_loc = NameLoc::get(rewriter.getStringAttr(ori_name + "_early_stride"));
+    op->setLoc(new_loc);
     return success();
   }
 };

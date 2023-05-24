@@ -73,7 +73,7 @@ class TORCH_IR_TESTER(object):
             "Floor":            (self.test_Floor,             Y, Y, N),
             "FloorDiv":         (self.test_FloorDiv,          Y, Y, N),
             "Gather":           (self.test_Gather,            N, N, N),
-            "GridSampler":      (self.test_GridSampler,       Y, N, N),
+            "GridSampler":      (self.test_GridSampler,       Y, N, Y),
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, N),
             "GRU":              (self.test_GRU,               Y, Y, Y),
             "IndexSelect":      (self.test_IndexSelect,       Y, Y, Y),

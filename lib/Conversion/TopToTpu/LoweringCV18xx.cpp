@@ -36,6 +36,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       GatherNDLowering,
       GELULowering,
       GRULowering,
+      GridSamplerLowering,
       HardSigmoidLowering,
       HardSwishLowering,
       InstanceNormLowering,
