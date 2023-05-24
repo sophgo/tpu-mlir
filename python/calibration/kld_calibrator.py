@@ -192,6 +192,8 @@ class SimpleTuner:
         only_one = len(self.module.input_names) == 1
         print(f'prepare data from {len(self.data_list)}')
         for data in self.data_list:
+            if len(self.ref_activations) > self.args.tune_num + 1:
+                break
             if self.ds.all_npz:
                 x = np.load(data)
                 if only_one:
@@ -272,8 +274,9 @@ class SimpleTuner:
         if len(self.ref_activations[tune_idx]) == 0:
             print(f'last tune data (tune_idx={tune_idx}) not valid, droped')
             self.ref_activations.pop(tune_idx)
-        print(f"real tune_num = {self.args.tune_num}")
         self.args.tune_num = min(self.args.tune_num, len(self.ref_activations))
+        print(f"tune_num = {self.args.tune_num}, ref = {len(self.ref_activations)}")
+        print(f"real tune_num = {self.args.tune_num}")
         assert self.args.tune_num > 0
 
     def get_input_tensor(self, i, op_name):
@@ -669,8 +672,6 @@ class ActivationCalibrator2(BaseKldCalibrator):
         self.ref_activations[tune_idx] = {}
         only_one = len(self.module.input_names) == 1
         for data in self.data_list:
-            if tune_idx > self.args.tune_num + 1:
-                break
             if self.ds.all_npz:
                 x = np.load(data)
                 if only_one:
@@ -750,10 +751,12 @@ class ActivationCalibrator2(BaseKldCalibrator):
             self.ref_activations[tune_idx] = {}
 
         if len(self.ref_activations[tune_idx]) == 0:
-            print(f'last tune data (tune_idx={tune_idx}) not valid, droped')
+            print(f'last input data (idx={tune_idx}) not valid, droped')
             self.ref_activations.pop(tune_idx)
-        self.args.tune_num = min(self.args.tune_num, len(self.ref_activations))
-        assert self.args.tune_num > 0
+        self.args.input_num = min(self.args.input_num, len(self.ref_activations))
+        print(f"input_num = {self.args.input_num}, ref = {len(self.ref_activations)}")
+        print(f"real input_num = {self.args.input_num}")
+        assert self.args.input_num > 0
 
     def clear_ref_tensor(self, i, evaled_op):
         if self.ref_activations[i][evaled_op][1] == 0:  #清除残留的网络输出
@@ -819,14 +822,14 @@ class ActivationCalibrator2(BaseKldCalibrator):
         for i, evaled_op in enumerate(all_tensors):
             pbar.set_description("activation_collect_and_calc_th for op: {}".format(evaled_op))
             pbar.update(1)
-            for idx in range(self.args.tune_num):
+            for idx in range(self.args.input_num):
                 self.gen_ref_tensor(idx, evaled_op)
 
             min_value = inf
             max_value = -inf
             abs_value = None
             all_data = []
-            for idx in range(self.args.tune_num):
+            for idx in range(self.args.input_num):
                 activation = self.get_ref_tensor(idx, evaled_op)
                 if activation is None:
                     continue
@@ -861,7 +864,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
             self.activations_statistics[evaled_op] = (min_value, max_value, abs_value)
 
             if 'use_torch_observer_for_cali' not in self.debug_cmd:
-                for idx in range(self.args.tune_num):
+                for idx in range(self.args.input_num):
                     activation = self.get_ref_tensor(idx, evaled_op)
                     _, _, abs_value = self.activations_statistics[evaled_op]
                     hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
@@ -879,7 +882,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 thresholds_map_scale[evaled_op] = scale.numpy()[0]
                 thresholds_map_zp[evaled_op] = zp.numpy()[0]
 
-            for idx in range(self.args.tune_num):
+            for idx in range(self.args.input_num):
                 self.clear_ref_tensor(idx, evaled_op)
         pbar.close()
 
