@@ -238,6 +238,80 @@ public:
     return RunMode::TPU_STATIC;
   }
 
+  bool toposortAction(Block *block, llvm::iterator_range<Block::iterator> ops) {
+    auto isOpReady = [&](Operation *op, llvm::DenseSet<Operation *> &unscheduledOps) -> bool {
+        // An operation is ready to be scheduled if all its operands are ready. An
+        const auto isReady = [&](Value value) {
+          Operation *parent = value.getDefiningOp();
+          if (!parent)
+            return true;
+          do {
+            if (parent == op)
+              return true;
+            if (unscheduledOps.contains(parent))
+              return false;
+          } while ((parent = parent->getParentOp()));
+          return true;
+        };
+
+        WalkResult readyToSchedule = op->walk([&](Operation *nestedOp) {
+          return llvm::all_of(nestedOp->getOperands(),
+                            [&](Value operand) { return isReady(operand); })
+                  ? WalkResult::advance()
+                  : WalkResult::interrupt();
+      });
+      return !readyToSchedule.wasInterrupted();
+    };
+
+    llvm::DenseSet<Operation *> unscheduledOps;
+    for (Operation &op : ops)
+      unscheduledOps.insert(&op);
+
+    Block::iterator nextScheduledOp = ops.begin();
+    Block::iterator end = ops.end();
+
+    bool allOpsScheduled = true;
+    while (!unscheduledOps.empty()) {
+      bool scheduledAtLeastOnce = false;
+
+      for (Operation &op :
+          llvm::make_early_inc_range(llvm::make_range(nextScheduledOp, end))) {
+        if (!isOpReady(&op, unscheduledOps))
+          continue;
+
+        unscheduledOps.erase(&op);
+        op.moveBefore(block, nextScheduledOp);
+        scheduledAtLeastOnce = true;
+        if (&op == &*nextScheduledOp)
+          ++nextScheduledOp;
+      }
+
+      if (!scheduledAtLeastOnce) {
+        allOpsScheduled = false;
+        unscheduledOps.erase(&*nextScheduledOp);
+        ++nextScheduledOp;
+      }
+    }
+
+    return allOpsScheduled;
+  }
+
+  void toposort() {
+    module::getModuleOp().walk([&](Operation *op) {
+      for (auto it : llvm::enumerate(op->getRegions())) {
+        for (Block &block : it.value()) {
+          if (block.empty())
+            continue;
+          if (block.back().hasTrait<OpTrait::IsTerminator>())
+            toposortAction(&block, block.without_terminator());
+          else
+            toposortAction(&block,
+              llvm::make_range(block.begin(), block.end()));
+        }
+      }
+    });
+  }
+
   void divide_func() {
     auto mainFunc = module::getMainFuncOp();
     std::shared_ptr<SubFunction> subf = nullptr;
