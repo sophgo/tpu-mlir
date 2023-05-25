@@ -10,7 +10,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ```
 
 ## TPU1686 2023-05-19
-sha256: cbab24538410455184baad807729f7322cf68a93
+sha256: 6df9af24553a5dcd60e58b1349c13d3392d178bc
 
 ``` bash
 pushd  nntoolchain/net_compiler/
@@ -22,7 +22,7 @@ cp bmcompiler/libbackend/libbackend_1684x.so /workspace/tpu-mlir/third_party/nnt
 cp out/install/lib/libcmodel_1686.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp bmcompiler/libbackend/libbackend_1686.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 popd
-pushd nntoolchain/bm1686/
+pushd nntoolchain/TPU1686/
 source scripts/envsetup.sh
 rebuild_firmware
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so

@@ -923,8 +923,11 @@ def Tpu_AttentionOp: Tpu_Op<"Attention", [
     AnyTensor:$out_weight,
     AnyTensorOrNone:$out_bias,
     AnyTensorOrNone:$musk,
+    AnyTensorOrNone:$table,
+    DefaultValuedAttr<I64ArrayAttr, "{0}">:$quant_param,
     F64Attr:$scale,
     I64Attr:$head,
+    I64Attr:$dim,
     DefaultValuedAttr<I64Attr, "0">:$has_bias
   );
 

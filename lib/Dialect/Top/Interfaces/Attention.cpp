@@ -29,8 +29,8 @@ LogicalResult top::AttentionOp::init(InferenceParameter &p) {
 
   attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.inputs[3], p.inputs[4],
                    p.inputs[5], p.inputs[6], p.inputs[7], p.inputs[8], p.inputs[9],
-                   p.inputs[10], p.inputs[11], p.outputs[0], batch, M_q, M_k, N_q, N_k,
-                   d, scale, 0);
+                   p.inputs[10], p.inputs[11], nullptr, p.outputs[0], nullptr,
+                   batch, M_q, M_k, N_q, N_k, d, scale, 0);
   p.handle = (void *)attention;
   return success();
 }

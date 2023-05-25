@@ -103,6 +103,7 @@ public:
   LogicalResult matchAndRewrite(top::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
     auto filter = op.getRight();
+    // return failure();
     if (module::isWeight(filter) == false) {
       return failure();
     }
@@ -113,11 +114,11 @@ public:
     if (matmul_out == NULL) {
       return failure();
     }
-    auto matmul0 = dyn_cast<top::MatMulOp>(matmul_out.getDefiningOp());
-    if (!matmul0) {
+    auto matmul1 = dyn_cast<top::MatMulOp>(matmul_out.getDefiningOp());
+    if (!matmul1) {
       return failure();
     }
-    auto softmax = dyn_cast<top::SoftmaxOp>(matmul0.getInput().getDefiningOp());
+    auto softmax = dyn_cast<top::SoftmaxOp>(matmul1.getInput().getDefiningOp());
     if (!softmax || !softmax->hasOneUse()) {
       return failure();
     }
@@ -132,12 +133,12 @@ public:
     if (!mul_const || !mul_const->hasOneUse()) {
       return failure();
     }
-    auto matmul1 = dyn_cast<top::MatMulOp>(mul_const.getInput().getDefiningOp());
-    if (!matmul1) {
+    auto matmul0 = dyn_cast<top::MatMulOp>(mul_const.getInput().getDefiningOp());
+    if (!matmul0) {
       return failure();
     }
     // queries
-    Value matmul_out1 = is_permute_reshape(matmul1.getInput());
+    Value matmul_out1 = is_permute_reshape(matmul0.getInput());
     if (matmul_out1 == NULL) {
       return failure();
     }
@@ -146,7 +147,7 @@ public:
       return failure();
     }
     // keys
-    auto permute0 = dyn_cast<top::PermuteOp>(matmul1.getRight().getDefiningOp());
+    auto permute0 = dyn_cast<top::PermuteOp>(matmul0.getRight().getDefiningOp());
     if (!permute0 || !permute0->hasOneUse())
       return failure();
     Value matmul_out2 = is_permute_reshape(permute0.getInput());
@@ -158,7 +159,7 @@ public:
       return failure();
     }
     // values
-    Value matmul_out3 = is_permute_reshape(matmul0.getRight());
+    Value matmul_out3 = is_permute_reshape(matmul1.getRight());
     if (matmul_out3 == NULL) {
       return failure();
     }
@@ -171,7 +172,7 @@ public:
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr("scale", mul_const.getConstValAttr()));
     auto batch = module::getShape(op.getOutput())[0];
-    auto shape = module::getShape(matmul0.getOutput());
+    auto shape = module::getShape(matmul1.getOutput());
     int64_t head;
     if (shape.size() == 3) {
       head = shape[0] / batch;
@@ -179,6 +180,28 @@ public:
       head = shape[1];
     }
     attrs.push_back(rewriter.getNamedAttr("head", rewriter.getI64IntegerAttr(head)));
+    if (module::isCalibratedType(op.getOutput().getType())) {
+      // quant param
+      // qo, ko, vo, m0, si, so, m1
+      std::vector<double> scale_v;
+      double scale;
+      int64_t zp;
+      module::getScaleAndZeroPoint(matmul_queries.getOutput(), scale, zp, false);
+      scale_v.push_back(scale);
+      module::getScaleAndZeroPoint(matmul_keys.getOutput(), scale, zp, false);
+      scale_v.push_back(scale);
+      module::getScaleAndZeroPoint(matmul_values.getOutput(), scale, zp, false);
+      scale_v.push_back(scale);
+      module::getScaleAndZeroPoint(matmul0.getOutput(), scale, zp, false);
+      scale_v.push_back(scale);
+      module::getScaleAndZeroPoint(mul_const.getOutput(), scale, zp, false);
+      scale_v.push_back(scale);
+      module::getScaleAndZeroPoint(softmax.getOutput(), scale, zp, false);
+      scale_v.push_back(scale);
+      module::getScaleAndZeroPoint(matmul1.getOutput(), scale, zp, false);
+      scale_v.push_back(scale);
+      attrs.push_back(rewriter.getNamedAttr("scale_param", rewriter.getF64ArrayAttr(scale_v)));
+    }
     std::vector<Value> operands;
     operands.push_back(matmul_queries.getInput());
     operands.push_back(matmul_keys.getInput());

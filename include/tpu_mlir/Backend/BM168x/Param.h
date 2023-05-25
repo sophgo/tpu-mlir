@@ -1240,6 +1240,8 @@ typedef struct attention_common_spec {
     int hasbias;
     int hasmusk;
     int input_num;
+    int dim;
+    int quant_param[16];
 } attention_common_spec_t;
 
 typedef struct attention_global_spec {

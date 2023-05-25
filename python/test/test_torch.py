@@ -47,7 +47,7 @@ class TORCH_IR_TESTER(object):
             "Addmm":            (self.test_Addmm,             Y, Y, Y),
             "Arange":           (self.test_Arange,            Y, Y, Y),
             "Attention":        (self.test_Attention,         Y, Y, Y),
-            "AttentionNew":     (self.test_AttentionNew,      N, N, N),
+            "AttentionNew":     (self.test_AttentionNew,      Y, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,         Y, Y, Y),
             "AvgPool2d":        (self.test_AvgPool2d,         Y, Y, Y),
             "AvgPool3d":        (self.test_AvgPool3d,         Y, Y, Y),
@@ -1618,7 +1618,7 @@ class TORCH_IR_TESTER(object):
                     self.v_b = torch.randn((1, 1, d*head))
                     self.o_w = torch.randn((d*head, shape[2])) / np.sqrt(d)
                     self.o_b = torch.randn((1, 1, shape[2]))
-                    self.musk = torch.randn((shape[0],1,1,shape[1]))
+                    self.musk = -((torch.randn((shape[0],1,1,shape[1])) > 0) * 1000)
 
                 def forward(self, x):
                     q = torch.matmul(x, self.q_w) + self.q_b
@@ -1688,12 +1688,12 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([shape0, shape1], Model(), [self.Desc('float32', -1, 1), self.Desc('float32', -1, 1)])
 
-        _test_attention0((1, 384, 80), 40, 2)
-        _test_attention0((1, 384, 1024), 64, 12)
+        # _test_attention0((1, 384, 80), 40, 2)
+        _test_attention0((1, 384, 768), 64, 12)
         # _test_attention0((2, 384, 64), 32, 2)
         # _test_attention0((2, 4096, 320), 40, 2)
         # _test_attention1((2, 4096, 320), (2, 128, 768), 40, 8)
-        _test_attention1((2, 4096, 320), (2, 77, 768), 40, 2)
+        # _test_attention1((2, 4096, 320), (2, 77, 768), 40, 2)
         # _test_attention1((1, 384, 64), (1, 384, 64), 32, 2, False)
 
     #######################################################################

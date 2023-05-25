@@ -15,17 +15,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
-
-int64_t data_copy(top::WeightOp weight, bool is_f16, std::shared_ptr<std::vector<short>> &data_i16, int64_t offset) {
-  auto data_fp32 = weight.read<float>();
-  auto count = data_fp32->size();
-  for (uint32_t i = 0; i < count; i++) {
-    data_i16->at(offset + i) = is_f16 ? f32_to_f16(data_fp32->at(i))
-                                      : f32_to_bf16(data_fp32->at(i));
-  }
-  return offset + count;
-}
-
 // void get_param(tpu::AttentionOp op, attention_common_spec_t spec) {
 //   spec.hasbias = module::isNone(op.getQueriesBias()) ? 0 : 1;
 //   spec.hasbias &= module::isNone(op.getKeysBias()) ? 0 : 0x01<<1;
@@ -49,10 +38,15 @@ void tpu::AttentionOp::codegen_global_bm1684x() {
   // get_param(op, common);
   common.hasbias = getHasBias();
   common.head = getHead();
+  common.dim = getDim();
   common.scale = getScale().convertToDouble();
   common.hasmusk = !module::isNone(getMusk());
   common.input_num = module::isNone(getKeys()) ? 1 :
                      (module::isNone(getValues()) ? 2 : 3);
+  auto quant_param = module::getI64Array(getQuantParam());
+  for (int i = 0; i < quant_param->size(); ++i) {
+    common.quant_param[i] = quant_param->at(i);
+  }
 
   BM168x::call_global_func("backend_api_attention_global", &param, sizeof(param),
                            input_spec->data(), output_spec->data());
@@ -78,12 +72,30 @@ int64_t tpu::AttentionOp::getBufferSize_bm1684x(
   M_q = in_cslice;
   int64_t M_k = module::isNone(getKeys()) ? M_q : module::getShape(getKeys())[1];
   auto queries_shape = module::getShape(getQueriesWeight());
-  int64_t d = queries_shape[queries_shape.size() - 1];
+  int64_t d = getDim();
   int64_t M_v = M_k;
   auto out_type = module::getStorageType(getOutput());
 
   int64_t buffer_size = 0;
   int c_per_npu = ceiling_func(M_q, BM168x::NPU_NUM);
+  if (out_type.isInteger(8)) {
+    auto eu_num_i32 = BM168x::eu_num(sizeof(int));
+    auto eu_num_i8 = BM168x::eu_num(sizeof(int8_t));
+    int64_t d_size = align_up(d, eu_num_i8) * sizeof(int8_t);
+
+    int64_t k_buffer_size = d_size * ceiling_func(M_k, BM168x::NPU_NUM);
+    int64_t v_buffer_size = d_size * ceiling_func(M_v, BM168x::NPU_NUM);
+    int64_t mat0_size = c_per_npu * align_up(M_k, eu_num_i8) * sizeof(int8_t);
+    int64_t mat1_size = c_per_npu * d_size;
+    int64_t softmax_buffer_size = c_per_npu * sizeof(int32_t) *
+                                  (align_up(1, eu_num_i32) + align_up(M_k, eu_num_i32));
+    int64_t max_m = std::max(M_q, M_k);
+    int64_t max_n = std::max(d, M_k);
+    int64_t mat_buffer_size = ceiling_func(max_m, BM168x::NPU_NUM) * align_up(max_n, eu_num_i32) ;
+    int64_t const_size = align_up(mat0_size + mat1_size + k_buffer_size + v_buffer_size, BM168x::LMEM_BANK_BYTES);
+    int64_t imm_buffer_size = align_up(std::max(mat_buffer_size, softmax_buffer_size), BM168x::LMEM_BANK_BYTES);
+    return std::min(imm_buffer_size + const_size, BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 3));
+  }
   auto eu_num_f32 = BM168x::eu_num(sizeof(float));
   auto eu_num_f16 = BM168x::eu_num(sizeof(short));
   int64_t softmax_buffer_size = c_per_npu * eu_num_f32 * sizeof(float);
@@ -121,10 +133,15 @@ void tpu::AttentionOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   // get_param(op, common);
   common.hasbias = getHasBias();
   common.head = getHead();
+  common.dim = getDim();
   common.scale = getScale().convertToDouble();
   common.hasmusk = !module::isNone(getMusk());
   common.input_num = module::isNone(getKeys()) ? 1 :
                      (module::isNone(getValues()) ? 2 : 3);
+  auto quant_param = module::getI64Array(getQuantParam());
+  for (int i = 0; i < quant_param->size(); ++i) {
+    common.quant_param[i] = quant_param->at(i);
+  }
 
   BM168x::call_local_func("backend_api_attention_local", &param, sizeof(param),
                           &sec_info, input_spec->data(), output_spec->data());
