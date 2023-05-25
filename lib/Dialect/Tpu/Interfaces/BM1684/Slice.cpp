@@ -129,3 +129,15 @@ uint32_t tpu::SliceOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
 }
 
 int64_t tpu::SliceOp::get_fw_type_bm1684() { return FW_BMNET_STRIDESLICE; }
+
+int32_t tpu::SliceOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
+  int fw_ir_length = 0;
+  IR_PARAM_COMMON(stride_slice);
+  // input tensor
+  dynamic_push_back_local_tensor(layer_info->ir_tensor_info_v, getInput());
+  // output
+  dynamic_push_back_local_tensor(layer_info->ir_tensor_info_v, getOutput());
+  // compute fw ir info length for crop input and output
+  fw_ir_length += 2 * (2 * sizeof(uint32_t)) + sizeof(uint32_t);
+  return fw_ir_length;
+}

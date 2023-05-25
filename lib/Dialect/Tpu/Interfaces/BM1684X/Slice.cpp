@@ -165,3 +165,7 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
 int64_t tpu::SliceOp::get_fw_type_bm1684x() {
   return FW_BMNET_STRIDESLICE;
 }
+
+int64_t tpu::SliceOp::dyn_codegen_local_bm1684x(void* buffer) {
+  llvm_unreachable("not implement");
+}

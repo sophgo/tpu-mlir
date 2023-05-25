@@ -608,6 +608,9 @@ def Tpu_MulOp: Tpu_Op<"Mul",
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_MaxOp: Tpu_Op<"Max", [
@@ -631,6 +634,9 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_MinOp: Tpu_Op<"Min", [
@@ -654,6 +660,9 @@ def Tpu_MinOp: Tpu_Op<"Min", [
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
@@ -719,6 +728,9 @@ def Tpu_ActiveOp: Tpu_Op<"Active",
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_ClipOp: Tpu_Op<"Clip",
@@ -1431,7 +1443,8 @@ def Tpu_DivOp: Tpu_Op<"Div", [
 }
 
 def Tpu_SliceOp: Tpu_Op<"Slice", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "LocalGenSupport"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Slice operator";
   let description = [{
     Slice Operation on input.
