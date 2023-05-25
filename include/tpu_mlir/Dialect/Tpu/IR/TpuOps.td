@@ -355,9 +355,9 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
     //new param
     BoolAttr:$with_bias,
     DefaultValuedAttr<I64Attr, "0">:$kernel_zp,
-    // OptionalAttr<I64ArrayAttr>:$multiplier,
-    // OptionalAttr<I64ArrayAttr>:$rshift,
-    // Tpu_RequantModeAttr:$quant_mode,
+    OptionalAttr<I64ArrayAttr>:$multiplier,
+    OptionalAttr<I64ArrayAttr>:$rshift,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyRankedTensor:$output);

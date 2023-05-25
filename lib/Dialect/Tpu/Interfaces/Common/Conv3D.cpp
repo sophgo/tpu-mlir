@@ -97,6 +97,51 @@ LogicalResult tpu::Conv3DOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
+  } else if (module::isUniformQuantized(getOutput()) &&
+             out_type.isInteger(8) /* for BM1684 Conv3D */) {
+    auto o_s = getOutput().getType().cast<RankedTensorType>().getShape();
+    auto sType = module::getStorageType(getOutput());
+    int64_t n = o_s[0], c = o_s[1], d = o_s[2], h = o_s[3], w = o_s[4];
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
+    auto rshift_v = module::getI64Array(getRshift().value());
+    auto multiplier_v =
+        module::getI64Array(getMultiplier(), rshift_v->size(), 1);
+    bool per_axis = rshift_v->size() == c;
+    // do bias after conv prevent precision issue
+    auto bias_i32 = std::make_shared<std::vector<int32_t>>(c, 0);
+    bool do_relu = getDoRelu();
+    if (getWithBias()) {
+      auto biasOp = cast<top::WeightOp>(getBias().getDefiningOp());
+      bias_i32 = biasOp.read_as_int32();
+    }
+    auto qmode = getQuantMode();
+    bool is_tf = qmode == tpu::RequantMode::QDM ||
+                 qmode == tpu::RequantMode::TFLite ||
+                 qmode == tpu::RequantMode::TFLite_LShift;
+    auto rmode = is_tf ? ROUNDING_HALF_AWAY_FROM_ZERO : ROUNDING_HALF_UP;
+
+#pragma omp parallel for schedule(static, omp_schedule(c))
+    for (int ic = 0; ic < c; ic++) {
+      int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);
+      int64_t multi = 1;
+      if (qmode != tpu::RequantMode::OnlyShift) {
+        multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
+      }
+      int32_t bias = bias_i32->at(ic);
+      for (int in = 0; in < n; in++) {
+        for (int hw = 0; hw < d * h * w; hw++) {
+          int offset = (in * c + ic) * d * h * w + hw;
+          int64_t v = 0;
+          int64_t tmp = p.outputs[0][offset] + bias;
+          v = applyMultiplierAndRShift(tmp, multi, shift, qmode, rmode) +
+              o_qtype.getZeroPoint();
+          if (do_relu && (v < 0)) {
+            v = 0;
+          }
+          p.outputs[0][offset] = saturate(v, out_type);
+        }
+      }
+    }
   }
 
   return success();
