@@ -19,6 +19,7 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op, Type typ
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
     if (isa<top::WeightOp>(opd.getDefiningOp())) {
+      //remove target_shape operands of top::InterpOp op
       opd.dropAllUses();
       opd.getDefiningOp()->erase();
       auto v = module::getNoneOp(op);
@@ -52,7 +53,13 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op, Type typ
   }
   std::vector<Type> new_types;
   for (auto out : op->getResults()) {
+    if (type.isF16()) {
+      new_types.push_back(getQuantF16Type(out));
+    } else if (type.isBF16()) {
+      new_types.push_back(getQuantBF16Type(out));
+    } else {
       new_types.push_back(out.getType());
+    }
   }
   rewriter.replaceOpWithNewOp<tpu::InterpOp>(op, new_types, operands, attrs);
   return;
