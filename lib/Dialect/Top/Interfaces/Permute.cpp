@@ -24,6 +24,10 @@ permute_attr_t top::PermuteOp::parseParam() {
                         5);
   }
   if (ret == false) {
+    ret = permute_reset(in_shape, *in_order, attr.in_shape_fix, attr.order_fix,
+                        6);
+  }
+  if (ret == false) {
     dump();
     llvm_unreachable("Not Implemented");
   }
@@ -39,12 +43,6 @@ LogicalResult top::PermuteOp::init(InferenceParameter &p) {
   attr->in_shape_fix = param.in_shape_fix;
   attr->order_fix = param.order_fix;
   attr->out_shape_fix = param.out_shape_fix;
-  if (attr->order_fix.size() == 4) {
-    // to 5 dim
-    attr->in_shape_fix.push_back(1);
-    attr->out_shape_fix.push_back(1);
-    attr->order_fix.push_back(4);
-  }
   p.handle = (void *)attr;
   return success();
 }
