@@ -1155,44 +1155,47 @@ bool permute_reset(const std::vector<int64_t> &shape,
 }
 
 template <typename T>
-void function_permute(T *from, T *to, const std::vector<int64_t> &shape_5,
-                      const std::vector<int64_t> &order_5) {
-  int64_t in = shape_5[0];
-  int64_t ic = shape_5[1];
-  int64_t id = shape_5[2];
-  int64_t ih = shape_5[3];
-  int64_t iw = shape_5[4];
-  int64_t o0 = order_5[0];
-  int64_t o1 = order_5[1];
-  int64_t o2 = order_5[2];
-  int64_t o3 = order_5[3];
-  int64_t o4 = order_5[4];
-  // clang-format on
-  for (int n = 0; n < in; n++) {
-    for (int c = 0; c < ic; c++) {
-      for (int d = 0; d < id; d++) {
-        for (int h = 0; h < ih; h++) {
-          for (int w = 0; w < iw; w++) {
-            int cur[5] = {n, c, d, h, w};
-            int in_idx = w + h * iw + d * iw * ih + c * id * ih * iw +
-                         n * ic * id * ih * iw;
-            int out_idx =
-                cur[o4] + cur[o3] * shape_5[o4] +
-                cur[o2] * shape_5[o4] * shape_5[o3] +
-                cur[o1] * shape_5[o4] * shape_5[o3] * shape_5[o2] +
-                cur[o0] * shape_5[o4] * shape_5[o3] * shape_5[o2] * shape_5[o1];
-            to[out_idx] = from[in_idx];
+void function_permute(T *from, T *to, const std::vector<int64_t> &shape,
+                      const std::vector<int64_t> &order) {
+  std::vector<int64_t> shape_6 = shape;
+  std::vector<int64_t> order_6 = order;
+  // convert to 6-dim
+  for (int dim = shape.size(); dim < 6; ++dim) {
+    shape_6.push_back(1);
+    order_6.push_back(dim);
+  }
+  int64_t in = shape_6[0], ic = shape_6[1], it = shape_6[2], id = shape_6[3],
+          ih = shape_6[4], iw = shape_6[5];
+  int64_t o0 = order_6[0], o1 = order_6[1], o2 = order_6[2], o3 = order_6[3],
+          o4 = order_6[4], o5 = order_6[5];
+  for (int n = 0; n < in; ++n) {
+    for (int c = 0; c < ic; ++c) {
+      for (int t = 0; t < it; ++t) {
+        for (int d = 0; d < id; ++d) {
+          for (int h = 0; h < ih; h++) {
+            for (int w = 0; w < iw; w++) {
+              int cur[6] = {n, c, t, d, h, w};
+              int in_idx = w + h * iw + d * iw * ih + t * id * ih * iw +
+                           c * it * id * ih * iw + n * ic * it * id * ih * iw;
+              int out_idx = cur[o5] + cur[o4] * shape_6[o5] +
+                            cur[o3] * shape_6[o5] * shape_6[o4] +
+                            cur[o2] * shape_6[o5] * shape_6[o4] * shape_6[o3] +
+                            cur[o1] * shape_6[o5] * shape_6[o4] * shape_6[o3] *
+                                shape_6[o2] +
+                            cur[o0] * shape_6[o5] * shape_6[o4] * shape_6[o3] *
+                                shape_6[o2] * shape_6[o1];
+              to[out_idx] = from[in_idx];
+            }
           }
         }
       }
     }
   }
-  // clang-format off
 }
 
 template
-void function_permute(float *from, float *to, const std::vector<int64_t> &shape_5,
-                      const std::vector<int64_t> &order_5);
+void function_permute(float *from, float *to, const std::vector<int64_t> &shape,
+                      const std::vector<int64_t> &order);
 
 bool compare(float a, float b, llvm::StringRef mode) {
   if (mode == "Equal" || mode == "Not") {

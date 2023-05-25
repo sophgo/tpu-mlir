@@ -235,6 +235,7 @@ class ONNX_IR_TESTER(object):
             "PermuteToReorg2":  (self.test_PermuteToReorg2, N, Y, Y, Y),
             "PermuteToReshape": (self.test_PermuteToReshape,Y, Y, Y, N),
             "Permute5dSplit":   (self.test_Permute5dSplit,  Y, Y, Y, Y),
+            "Permute7d":        (self.test_Permute7d,       Y, Y, Y, N),
             "PoolAfterRelu":    (self.test_PoolAfterRelu,   N, Y, Y, Y),
             "PoolSignError":    (self.test_PoolSignError,   N, Y, Y, Y),
             "ReshapeFuse":      (self.test_ReshapeFuse,     Y, Y, Y, Y),
@@ -4866,6 +4867,18 @@ class ONNX_IR_TESTER(object):
             graph_def = helper.make_graph([permute_def], "{}_{}".format(case_name, i), [input],
                                           [output])
             self.onnx_and_test(graph_def)
+
+    def test_Permute7d(self, case_name):
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                return x.permute(0, 1, 3, 5, 2, 4, 6)
+
+        x = torch.randn(1, 2, 4, 4, 4, 2, 4).float()
+        self.torch_and_test(x, Model(), case_name)
 
     def test_PoolSignError(self, case_name):
 

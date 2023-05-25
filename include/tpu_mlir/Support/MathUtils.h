@@ -199,9 +199,10 @@ bool permute_reset(const std::vector<int64_t> &shape,
                    const std::vector<int64_t> &order,
                    std::vector<int64_t> &to_shape,
                    std::vector<int64_t> &to_order, int to_dim);
+
 template <typename T>
-void function_permute(T *from, T *to, const std::vector<int64_t> &shape_5,
-                      const std::vector<int64_t> &order_5);
+void function_permute(T *from, T *to, const std::vector<int64_t> &shape,
+                      const std::vector<int64_t> &order);
 
 // compare
 bool compare(float lhs, float rhs, llvm::StringRef mode);
