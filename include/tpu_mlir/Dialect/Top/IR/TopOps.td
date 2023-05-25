@@ -721,6 +721,9 @@ def Top_AttentionOp: Top_Op<"Attention"> {
     AnyTensorOrNone:$musk,
     F64Attr:$scale,
     I64Attr:$head,
+    DefaultValuedAttr<I64Attr, "0">:$dim,
+    DefaultValuedAttr<F64ArrayAttr, "{1.0}">:$scale_param,
+    DefaultValuedAttr<I64ArrayAttr, "{0}">:$zp_param,
     DefaultValuedAttr<I64Attr, "0">:$has_bias
   );
 

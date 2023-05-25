@@ -25,6 +25,7 @@ LogicalResult tpu::AttentionOp::init(InferenceParameter &p) {
   auto key_shape = module::isNone(getKeys()) ? in_shape : module::getShape(getKeys());
   auto queries_shape = module::getShape(getQueriesWeight());
   auto out_shape = module::getShape(getOutput());
+  auto out_type = module::getStorageType(getOutput());
   int batch = in_shape[0];
   int M_q = in_shape[1];
   int M_k = key_shape[1];
@@ -33,23 +34,30 @@ LogicalResult tpu::AttentionOp::init(InferenceParameter &p) {
   int64_t d = queries_shape[queries_shape.size() - 1];
   auto scale = getScale().convertToDouble();
   int has_bias = getHasBias();
+  auto quant_param = module::getI64Array(getQuantParam());
 
   float *q_weight = p.inputs[3];
   float *k_weight = q_weight + align_up(in_shape[2], NPU_NUM) * d;
   float *v_weight = k_weight + align_up(key_shape[2], NPU_NUM) * d;
   float *bias_offset = p.inputs[4];
   float *q_bias = has_bias&0x01 ? bias_offset : nullptr;
-  int len = has_bias&0x01 ? 1 : 0;
-  float *k_bias = has_bias&0x02 ? bias_offset + d * len : nullptr;
-  len += has_bias&0x02 ? 1 : 0;
-  float *v_bias = has_bias&0x04 ? bias_offset + d * len : nullptr;
-  len += has_bias&0x04 ? 1 : 0;
-  float *o_bias = has_bias&0x08 ? bias_offset + d * len : nullptr;
+  int len = has_bias&0x01 ? d : 0;
+  float *k_bias = has_bias&0x02 ? bias_offset + len : nullptr;
+  len += has_bias&0x02 ? d : 0;
+  float *v_bias = has_bias&0x04 ? bias_offset + len : nullptr;
+  len += has_bias&0x04 ? d : 0;
+  float *o_bias = has_bias&0x08 ? bias_offset + len : nullptr;
+  len += has_bias&0x08 ? N_q : 0;
+  // float *table = has_bias&0x10 ? bias_offset + len : nullptr;
+  int type = out_type.isF16() ? 1 : 0;
+  type = out_type.isBF16() ? 2 : type;
+  type = out_type.isInteger(32) ? 3 : type;
 
   attention->setup(p.inputs[0], p.inputs[1], p.inputs[2], q_weight, q_bias,
                    k_weight, k_bias, v_weight, v_bias, p.inputs[9],
-                   o_bias, p.inputs[11], p.outputs[0], batch, M_q, M_k, N_q, N_k,
-                   d, scale, 0, 1);
+                   o_bias, p.inputs[11], p.inputs[12], p.outputs[0], quant_param->data(),
+                   batch, M_q, M_k, N_q, N_k,
+                   d, scale, 0, type);
   p.handle = (void *)attention;
   return success();
 }
