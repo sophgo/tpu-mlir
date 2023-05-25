@@ -60,15 +60,15 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.keep_top_k = getKeepTopk();
   spec.nms_threshold = getNmsThreshold().convertToDouble();
   spec.confidence_threshold = getObjThreshold().convertToDouble();
-  auto scale = module::getI64Array(getScale(), spec.num_boxes, 0);
-  auto mask =
-      module::getI64Array(getMask(), spec.num_boxes * spec.input_num, 0);
   auto anchors = module::getI64Array(getAnchors());
-  for (uint32_t i = 0; i < scale->size(); i++) {
-    spec.anchor_scale[i] = (float)(scale->at(i));
+  double width = (double)getNetInputW();
+  for (uint32_t i = 0; i < spec.input_num; i++) {
+    auto s = module::getShape(getInputs()[i]);
+    assert(s.size() == 4);
+    spec.anchor_scale[i] = (float)(width / s[3]);
   }
-  for (uint32_t i = 0; i < mask->size(); i++) {
-    spec.mask[i] = (float)(mask->at(i));
+  for (uint32_t i = 0; i < spec.input_num * spec.num_boxes; i++) {
+    spec.mask[i] = (float)(i);
   }
   for (uint32_t i = 0; i < anchors->size(); i++) {
     spec.bias[i] = (float)(anchors->at(i));

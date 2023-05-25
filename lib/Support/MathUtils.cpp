@@ -947,9 +947,10 @@ int StopForAxis(const int *stop_indices, const int *strides, const int mask,
   return stop;
 }
 
-void topk_indices(std::vector<std::pair<int, float>> &result,
-                  const float *items, int num_elem, int k, bool largest) {
-  using pair_t = std::pair<int, float>;
+template <typename T>
+void topk_indices(std::vector<std::pair<int, T>> &result, const T *items,
+                  int num_elem, int k, bool largest) {
+  using pair_t = std::pair<int, T>;
   auto cmp_large = [](pair_t const &item1, pair_t const &item2) {
     return (item1.second > item2.second) ||
            (item1.second == item2.second && item1.first < item2.first);
@@ -966,6 +967,13 @@ void topk_indices(std::vector<std::pair<int, float>> &result,
   std::partial_sort_copy(topk.begin(), topk.end(), result.begin(), result.end(),
                          cmp);
 }
+
+template void topk_indices(std::vector<std::pair<int, float>> &result,
+                           const float *items, int num_elem, int k,
+                           bool largest);
+template void topk_indices(std::vector<std::pair<int, int64_t>> &result,
+                           const int64_t *items, int num_elem, int k,
+                           bool largest);
 
 template <typename T>
 std::vector<int64_t> shape_expand_dim(const std::vector<T> &shape, int dims) {
