@@ -112,7 +112,11 @@ class OnnxConverter(BaseConverter):
         self.node_name_mapping = {}  # used in onnx opt
         self.load_onnx_model(onnx_file, input_shapes, output_names, use_onnxsim)
         self.init_MLIRImporter()
-        self.opset = self.model.opset_import[-1].version
+        # some onnx may have strange domain, such as "ai.onnx.ml"
+        for ver_info in self.model.opset_import:
+          if ver_info.domain == "":
+            self.opset = ver_info.version
+            break
         self.preprocess_args = {}
         if 'channel_format' in preprocess_args:
             if preprocess_args['channel_format'] != "none":
