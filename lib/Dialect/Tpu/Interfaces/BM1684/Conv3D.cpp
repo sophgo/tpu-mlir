@@ -14,12 +14,49 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::Conv3DOp::codegen_global_bm1684() {
-  llvm_unreachable("Not Implemented");
+  auto attr = parseParam();
+  auto in_addr = module::getAddress(getInput());
+  auto out_addr = module::getAddress(getOutput());
+  auto filter_addr = module::getAddress(getFilter());
+  auto bias_addr = module::getAddress(getBias());
+
+  if (module::isUniformQuantized(getInput())) {
+    // Int8
+    auto shift_v = module::getI64Array(getRshift(), 1, 0);
+    auto shift = shift_v->at(0);
+    auto in_sign = module::isSign(getInput());
+    auto filter_sign = module::isSign(getFilter());
+    auto bias_sign = attr.has_bias ? module::isSign(getBias()) : 0;
+    auto out_sign = module::isSign(getOutput());
+    BM1684::instance().dl_nodechip_conv3d_fix8b_parallel(
+        in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic, attr.id,
+        attr.ih, attr.iw, attr.groups, attr.oc, attr.kd, attr.kh, attr.kw,
+        attr.dd, attr.dh, attr.dw, attr.pdf, attr.pht, attr.pwl, attr.pdb,
+        attr.phb, attr.pwr, attr.sd, attr.sh, attr.sw, attr.has_bias ? 1 : 0,
+        attr.do_relu ? 1 : 0, attr.relu_limit, in_sign, out_sign, filter_sign,
+        bias_sign, shift, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  } else {
+    // F32
+    // refer to
+    // bmcompiler/src/interface/bmcompiler_net_interface.cpp:5284
+    int ic_threshold = 10;
+    int method = 0;
+    if (attr.dd > 1)
+      method = 2; // nodechip not implemented
+    else if (attr.ic / attr.groups > ic_threshold || attr.dh > 1)
+      method = 1;
+
+    BM1684::instance().dl_nodechip_conv3d_parallel(
+        in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic, attr.id,
+        attr.ih, attr.iw, attr.groups, attr.oc, attr.kd, attr.kh, attr.kw,
+        attr.dd, attr.dh, attr.dw, attr.pdf, attr.pht, attr.pwl, attr.pdb,
+        attr.phb, attr.pwr, attr.sd, attr.sh, attr.sw, attr.has_bias ? 1 : 0,
+        attr.do_relu ? 1 : 0, attr.relu_limit, method,
+        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  }
 }
 
 int64_t tpu::Conv3DOp::getBufferSize_bm1684(
@@ -29,20 +66,19 @@ int64_t tpu::Conv3DOp::getBufferSize_bm1684(
   return 0;
 }
 
-void tpu::Conv3DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
+void tpu::Conv3DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
+                                         local_sec_info_t &sec_info) {
   llvm_unreachable("Not Implemented");
 }
 
-uint32_t tpu::Conv3DOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::Conv3DOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");
   return 0;
 }
 
-int64_t tpu::Conv3DOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::Conv3DOp::get_fw_type_bm1684() { return -1; }
 
-int32_t tpu::Conv3DOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+int32_t tpu::Conv3DOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");
   return 0;
 }

@@ -190,10 +190,21 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(has_bias)));
 
+  auto ctx = op->getContext();
+  attrs.push_back(rewriter.getNamedAttr(
+      "quant_mode",
+      tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+
   bool output_int32 = false;
   if (op.getKernelShape().size() == 3) {
     output_int32 = true;
   }
+
   if (output_int32) {
     // to int32, and then requant to int8
     auto convType = RankedTensorType::get(module::getShape(op.getOutput()),
@@ -231,16 +242,6 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     rewriter.replaceOp(op, {newValue});
     return;
   }
-
-  auto ctx = op->getContext();
-  attrs.push_back(rewriter.getNamedAttr(
-      "quant_mode",
-      tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
-  attrs.push_back(rewriter.getNamedAttr(
-      "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
-  attrs.push_back(rewriter.getNamedAttr(
-      "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
 
   auto newValue =
       CreateConvOp(rewriter, p.dims, op->getLoc(), newType, operands, attrs);
@@ -763,14 +764,15 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
   } else {
     std::vector<int32_t> quant;
     std::vector<int64_t> quant_shape(module::getShape(op.getInput()).size(),
-                                      1l);
+                                     1l);
     quant_shape[1] = quant_size;
     if (module::isBM1686()) {
       quant.resize(quant_size * 2, 0);
       for (int i = 0; i < quant_size; ++i) {
         quant[i * 2] = multiplier[i];
-        quant[i * 2 + 1] = (((int32_t)shift[i]) & 0xffff) |
-                           (((int32_t)output_qtype.getZeroPoint() & 0xffff) << 16);
+        quant[i * 2 + 1] =
+            (((int32_t)shift[i]) & 0xffff) |
+            (((int32_t)output_qtype.getZeroPoint() & 0xffff) << 16);
       }
       quant_shape.back() = 2;
     } else {
