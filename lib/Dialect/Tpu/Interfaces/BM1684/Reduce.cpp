@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
@@ -48,7 +48,22 @@ void tpu::ReduceOp::codegen_global_bm1684() {
 }
 
 uint32_t tpu::ReduceOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+  ir_layer_info_t *layer_info = (ir_layer_info_t *)ir_layer_info;
+  dynamic_common_ir_layer_info(layer_info, getInput(), getOutput());
+  fw_reduce_full_layer_param_t layer_param = {0};
+  layer_param.reduce_method = BM1684::get_reduce_type(getMode());
+  layer_param.axis_num = getAxes().size();
+  short version = 1;
+  layer_param.keep_dims |= (version << 8); // reduce_full_v3
+  auto axes = module::getI64Array(getAxes());
+  for (int i = 0; i < getAxes().size(); i++) {
+    layer_param.axis_list[i] = axes->at(i);
+  }
+  layer_param.input_sign = module::isSign(getInput());
+  layer_param.input_scale = 1.f; // not implement
+  layer_param.output_scale = 1.f;
+  layer_info->fw_layer_param_u.fw_reduce_full_layer_param = layer_param;
+  return sizeof(fw_reduce_full_layer_param_t);
 }
-int64_t tpu::ReduceOp::get_fw_type_bm1684() { return -1; }
+
+int64_t tpu::ReduceOp::get_fw_type_bm1684() { return FW_BMNET_REDUCE_FULL; }
