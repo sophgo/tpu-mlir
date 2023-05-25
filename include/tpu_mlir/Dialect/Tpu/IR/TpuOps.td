@@ -2384,9 +2384,7 @@ def Tpu_YoloDetectionOp : Tpu_Op<"YoloDetection"> {
     I64ArrayAttr:$anchors,
     YoloVersionAttr:$version,
     DefaultValuedAttr<I64Attr, "80">:$class_num,
-    DefaultValuedAttr<I64Attr, "3">:$num_boxes,
-    OptionalAttr<I64ArrayAttr>:$scale,
-    OptionalAttr<I64ArrayAttr>:$mask
+    DefaultValuedAttr<I64Attr, "3">:$num_boxes
   );
 
   let results = (outs AnyRankedTensor:$output);

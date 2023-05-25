@@ -724,9 +724,14 @@ int64_t getNeuronAddr() {
 void setNeuronAddr(int64_t addr) {
   m->setAttr(Attr::NEURON_ADDR, Builder(ctx).getI64IntegerAttr(addr));
 }
+
 llvm::StringRef getPostprocess() {
-  return m->getAttrOfType<StringAttr>(Attr::POSTPROCESS).strref();
+  if (m->hasAttrOfType<StringAttr>(Attr::POSTPROCESS)) {
+    return m->getAttrOfType<StringAttr>(Attr::POSTPROCESS).strref();
+  }
+  return llvm::StringRef("");
 }
+
 void setPostprocess(StringRef post) {
   m->setAttr(Attr::POSTPROCESS, Builder(ctx).getStringAttr(post));
 }

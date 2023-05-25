@@ -33,8 +33,10 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.obj_threshold = getObjThreshold().convertToDouble();
   param.anchors = *module::getI64Array(getAnchors());
   param.num_boxes = getNumBoxes();
-  param.mask = *module::getI64Array(getMask(), param.num_boxes * num_input, 0);
-  for (size_t i = 0; i < getInputs().size(); ++i) {
+  for (int i = 0; i < param.num_boxes * num_input; i++) {
+    param.mask.push_back(i);
+  }
+  for (size_t i = 0; i < num_input; ++i) {
     tensor_list_t tensor_list;
     tensor_list.ptr = p.inputs[i];
     tensor_list.size = module::getNumElements(getInputs()[i]);

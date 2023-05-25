@@ -52,12 +52,11 @@ def _os_system(cmd: list, save_log: bool = False):
         _os_system_log(cmd_str)
 
 
-
 def mlir_opt_for_top(mlirfile, opt_mlirfile, add_postprocess=""):
-    cmd = ["tpuc-opt", mlirfile, "--shape-infer", "--canonicalize"]
+    cmd = ["tpuc-opt", mlirfile, "--shape-infer"]
     if len(add_postprocess) > 0:
         cmd.extend([f"--add-postprocess=\"type={add_postprocess}\""])
-    cmd.extend(["--extra-optimize", "-o", opt_mlirfile])
+    cmd.extend(["--canonicalize", "--extra-optimize", "-o", opt_mlirfile])
     _os_system(cmd)
 
 
@@ -164,11 +163,7 @@ def mlir_to_model(tpu_mlir: str,
         pass
 
 
-def f32_blobs_compare(a_npz: str,
-                      b_npz: str,
-                      tolerance: str,
-                      excepts=None,
-                      show_detail=True):
+def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
     if excepts:
         cmd.extend(["--except", excepts])
