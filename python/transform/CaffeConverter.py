@@ -1579,13 +1579,13 @@ class CaffeConverter(BaseConverter):
         # yapf: enable
         assert (len(anchors) == 6 * len(operands))
         if p.spp_net:
-            version = "yolo_v3_spp"
+            version = "yolov3_spp"
         elif p.tiny:
-            version = "yolo_v3_tiny"
+            version = "yolov3_tiny"
         elif p.yolo_v4:
-            version = "yolo_v4"
+            version = "yolov4"
         else:
-            version = "yolo_v3"
+            version = "yolov3"
         param = {
             'loc': self.get_loc(layer.top[0]),
             'net_input_h': p.net_input_h,
