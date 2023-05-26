@@ -75,7 +75,6 @@ MLIR转F32模型
        --chip bm1684x \
        --test_input mobilenet_v2_in_f32.npz \
        --test_reference mobilenet_v2_top_outputs.npz \
-       --tolerance 0.99,0.99 \
        --model mobilenet_v2_1684x_f32.bmodel
 
 编译完成后, 会生成名为 ``${model_name}_1684x_f32.bmodel`` 的文件。

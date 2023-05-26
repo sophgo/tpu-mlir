@@ -75,7 +75,6 @@ MLIR转F16模型
        --chip bm1684x \
        --test_input yolov5s_pt_in_f32.npz \
        --test_reference yolov5s_pt_top_outputs.npz \
-       --tolerance 0.99,0.99 \
        --model yolov5s_pt_1684x_f16.bmodel
 
 

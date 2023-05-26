@@ -14,10 +14,11 @@ TPU-MLIR快速入门手册
    02_env
    03_onnx
    04_torch
-   05_tflite
-   06_caffe
+   05_caffe
+   06_tflite
    07_mix_precision
    08_fuse_preprocess
+   09_add_postprocess
    Appx.01_to_onnx_convert
    Appx.02_cv18xx_guide
    Appx.03_bm168x_test

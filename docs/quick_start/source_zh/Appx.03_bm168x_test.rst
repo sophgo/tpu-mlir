@@ -235,7 +235,9 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 
 此时会编译以下模型（由于model-zoo的模型在持续添加中，这里只列出部分模型；同时该
 过程也编译了用于测试精度的模型，后续精度测试部分无需再编译模型。）:
+
 ::
+
    * efficientnet-lite4
    * mobilenet_v2
    * resnet18

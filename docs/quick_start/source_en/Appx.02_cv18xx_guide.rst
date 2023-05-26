@@ -75,7 +75,6 @@ Convert the mlir file to the cvimodel of bf16, the operation is as follows:
        --chip cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
-       --tolerance 0.99,0.99 \
        --model yolov5s_cv183x_bf16.cvimodel
 
 For the argument description of ``model_deploy.py``, refer to the section "Compile ONNX model - MLIR to F32 model".
