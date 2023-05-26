@@ -167,6 +167,13 @@ public:
     if (!matmul_values || !module::isWeight(matmul_values.getRight())) {
       return failure();
     }
+    if (module::isBM1686()) {
+      auto len = module::getNumElements(matmul_queries.getInput());
+      // TODO: do not suppose attention when size greater than [batch, 2048, 320]
+      if (len > 2048 * 320) {
+        return failure();
+      }
+    }
     rewriter.setInsertionPointAfter(op);
     auto none = module::getNoneOp(op);
     std::vector<NamedAttribute> attrs;
