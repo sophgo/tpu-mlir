@@ -2121,7 +2121,7 @@ class OnnxConverter(BaseConverter):
         # tile one axis each time to avoid gmem buffer
         count = sum([out_shape[-i] != output_shape[-i] for i in range(1, len(out_shape) + 1)])
         if count == 0:
-            self.convert_skip_op(onnx_node)
+            self.addOperand(onnx_node.name, new_op)
             return
         assert count > 0
 
