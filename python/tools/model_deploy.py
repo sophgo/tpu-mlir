@@ -142,6 +142,7 @@ class DeployTool:
                         'resize_dims': ppa.resize_dims,
                         'fuse_pre': True,
                         'keep_aspect_ratio': ppa.keep_aspect_ratio,
+                        'keep_ratio_mode': ppa.keep_ratio_mode,
                         "pixel_format": ppa.pixel_format,
                         'customization_format': self.customization_format,
                         'aligned': self.aligned_input,

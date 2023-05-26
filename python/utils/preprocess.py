@@ -87,6 +87,28 @@ class ImageResizeTool:
             return new_image
         raise RuntimeError("invalid image shape:{}".format(resized_img.shape))
 
+    @staticmethod
+    def short_side_scale_resize(image, h, w, use_pil_resize=False):
+        if use_pil_resize:
+            iw, ih = image.size
+        else:
+            ih = image.shape[0]
+            iw = image.shape[1]
+        scale = max(float(w) / iw, float(h) / ih)
+        rescale_w = int(iw * scale)
+        rescale_h = int(ih * scale)
+        if use_pil_resize:
+            resized_img = image.resize(
+                (rescale_w, rescale_h), PIL.Image.BILINEAR)
+            resized_img = np.array(resized_img)
+        else:
+            resized_img = cv2.resize(image, (rescale_w, rescale_h))
+        #center_crop to make sure resized_img shape is (h,w)
+        start_h = (rescale_h - h) // 2
+        start_w = (rescale_w - w) // 2
+        resized_img = resized_img[start_h : start_h + h, start_w : start_w + w]
+        return resized_img
+
 
 def add_preprocess_parser(parser):
     parser.add_argument("--resize_dims", type=str,
@@ -94,6 +116,8 @@ def add_preprocess_parser(parser):
     parser.add_argument("--keep_aspect_ratio", action='store_true', default=False,
                         help="Resize image by keeping same ratio, any areas which" +
                              "are not taken are filled with 0")
+    parser.add_argument("--keep_ratio_mode", choices=['letterbox', 'short_side_scale'], default='letterbox',
+                        help = "If use keep_aspect_ratio, different mode for resize")
     parser.add_argument("--mean", default='0,0,0', nargs='?',
                         help="Per Channel image mean values")
     parser.add_argument("--scale", default='1,1,1',
@@ -130,7 +154,8 @@ class preprocess(object):
         self.has_pre = False
         pass
 
-    def config(self, resize_dims=None, keep_aspect_ratio=False, customization_format = None, fuse_pre = False, aligned = False,
+    def config(self, resize_dims=None, keep_aspect_ratio=False, keep_ratio_mode = "letterbox",
+               customization_format = None, fuse_pre = False, aligned = False,
                mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0, chip = "",
                channel_format='nchw', debug_cmd='', input_shapes=None, unknown_params=[], **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
         if self.debug_cmd == '':
@@ -157,6 +182,7 @@ class preprocess(object):
             self.resize_dims = self.net_input_dims
         self.crop_method = 'center'
         self.keep_aspect_ratio = keep_aspect_ratio
+        self.keep_ratio_mode = keep_ratio_mode
         self.pad_value = pad_value
         self.pad_type = pad_type
         self.pixel_format = pixel_format
@@ -217,6 +243,7 @@ class preprocess(object):
         format_str = "  config Preprocess args : \n" + \
             "\tresize_dims           : {}\n" + \
             "\tkeep_aspect_ratio     : {}\n" + \
+            "\tkeep_ratio_mode       : {}\n" + \
             "\tpad_value             : {}\n" + \
             "\tpad_type              : {}\n" + \
             "\t--------------------------\n" + \
@@ -226,7 +253,7 @@ class preprocess(object):
             "\tpixel_format          : {}\n" + \
             "\tchannel_format        : {}\n"
         resize_dims_str = resize_dims if resize_dims is not None else 'same to net input dims'
-        info_str += format_str.format(resize_dims_str, self.keep_aspect_ratio, self.pad_value, self.pad_type,
+        info_str += format_str.format(resize_dims_str, self.keep_aspect_ratio, self.keep_ratio_mode, self.pad_value, self.pad_type,
                                       list(self.mean.flatten()), list(
                                           self.scale.flatten()), self.pixel_format, self.channel_format)
         logger.info(info_str)
@@ -257,6 +284,7 @@ class preprocess(object):
         if self.channel_format == 'nhwc':
             self.net_input_dims = shape[1:-1]
         self.keep_aspect_ratio = Operation.bool(attrs['keep_aspect_ratio'])
+        self.keep_ratio_mode = Operation.str(attrs['keep_ratio_mode'])
         self.pad_value = Operation.int(attrs['pad_value'])
         self.pad_type = Operation.str(attrs['pad_type'])
         self.resize_dims = Operation.int_array(attrs['resize_dims'])
@@ -273,6 +301,7 @@ class preprocess(object):
         format_str = "\n  load_config Preprocess args : \n" + \
             "\tresize_dims           : {}\n" + \
             "\tkeep_aspect_ratio     : {}\n" + \
+            "\tkeep_ratio_mode       : {}\n" + \
             "\tpad_value             : {}\n" + \
             "\tpad_type              : {}\n" + \
             "\tinput_dims            : {}\n" + \
@@ -282,7 +311,7 @@ class preprocess(object):
             "\t--------------------------\n" + \
             "\tpixel_format          : {}\n" + \
             "\tchannel_format        : {}\n"
-        logger.info(format_str.format(self.resize_dims, self.keep_aspect_ratio, self.pad_value, self.pad_type,
+        logger.info(format_str.format(self.resize_dims, self.keep_aspect_ratio, self.keep_ratio_mode, self.pad_value, self.pad_type,
                                       self.net_input_dims,
                                       list(self.mean.flatten()), list(
                                           self.scale.flatten()),
@@ -295,6 +324,7 @@ class preprocess(object):
         return {
             'resize_dims': self.resize_dims,
             'keep_aspect_ratio': self.keep_aspect_ratio,
+            'keep_ratio_mode': self.keep_ratio_mode,
             'pad_value': self.pad_value,
             'pad_type': self.pad_type,
             'mean': list(self.mean.flatten()),
@@ -356,8 +386,12 @@ class preprocess(object):
             ratio = min(
                 self.net_input_dims[0] / image.shape[0], self.net_input_dims[1] / image.shape[1])
         if self.keep_aspect_ratio:
-            image = ImageResizeTool.letterbox_resize(
-                image, self.resize_dims[0], self.resize_dims[1], self.pad_value, self.pad_type, use_pil_resize)
+            if self.keep_ratio_mode == "letterbox":
+                image = ImageResizeTool.letterbox_resize(
+                    image, self.resize_dims[0], self.resize_dims[1], self.pad_value, self.pad_type, use_pil_resize)
+            else:
+                image = ImageResizeTool.short_side_scale_resize(
+                    image, self.resize_dims[0], self.resize_dims[1], use_pil_resize)
         else:
             image = ImageResizeTool.stretch_resize(
                 image, self.resize_dims[0], self.resize_dims[1], use_pil_resize)
