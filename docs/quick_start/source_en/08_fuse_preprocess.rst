@@ -1,5 +1,5 @@
 Use TPU for Preprocessing
-==========================
+==============================
 At present, the two main series of chips supported by TPU-MLIR are BM168x and CV18xx. Both of them support common image preprocessing fusion. The developer can pass the preprocessing arguments during the compilation process, and the compiler will directly insert the corresponding preprocessing operators into the generated model. The generated bmodel or cvimodel can directly use the unpreprocessed image as input and use TPU to do the preprocessing.
 
 .. list-table:: Supported Preprocessing Type

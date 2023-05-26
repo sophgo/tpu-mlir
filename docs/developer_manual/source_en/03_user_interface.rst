@@ -118,6 +118,9 @@ Used to convert various neural network models into MLIR files, the supported par
    * - output_names
      - N
      - The names of the output. Use the output of the model if not specified, otherwise use the specified names as the output
+   * - add_postprocess
+     - N
+     - add postprocess op into bmodel, set the type of post handle op such as yolov3/yolov3_tiny/yolov5/ssd
    * - test_input
      - N
      - The input file for validation, which can be an image, npy or npz. No validation will be carried out if it is not specified
@@ -130,9 +133,6 @@ Used to convert various neural network models into MLIR files, the supported par
    * - mlir
      - Y
      - The output mlir file name (including path)
-   * - add_postprocess
-     - N
-     - add postprocess op into bmodel, set the type of post handle op such as yolov3 and yolov5 and ssd
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
 

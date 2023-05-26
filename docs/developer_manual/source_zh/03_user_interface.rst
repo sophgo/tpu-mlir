@@ -211,6 +211,9 @@ model_transform.py
    * - output_names
      - 否
      - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后用该指定名称做输出
+   * - add_postprocess
+     - 否
+     - 将后处理融合到模型中, 指定后处理类型, 目前支持yolov3、yolov3_tiny、yolov5和ssd后处理
    * - test_input
      - 否
      - 指定输入文件用于验证, 可以是图片或npy或npz; 可以不指定, 则不会正确性验证
@@ -223,9 +226,6 @@ model_transform.py
    * - mlir
      - 是
      - 指定输出的mlir文件名称和路径
-   * - add_postprocess
-     - 否
-     - 将后处理融合到模型中, 指定后处理类型, 目前支持yolo_v3、yolo_v5和ssd后处理
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是后续模型的输入文件。
 

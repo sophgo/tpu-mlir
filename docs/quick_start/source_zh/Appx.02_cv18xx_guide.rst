@@ -79,7 +79,6 @@ MLIR转BF16模型
        --chip cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
-       --tolerance 0.99,0.99 \
        --model yolov5s_cv183x_bf16.cvimodel
 
 ``model_deploy.py`` 的相关参数说明参考“编译ONNX模型-MLIR转F32模型”部分。
