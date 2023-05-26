@@ -75,7 +75,7 @@ void InterpLowering::LoweringINT4(PatternRewriter &rewriter, top::InterpOp op,
 }
 void InterpLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::InterpOp op, bool asymmetric) const {
-   LoweringInterp(rewriter, op, rewriter.getI8Type());
+   LoweringInterp(rewriter, op, rewriter.getF16Type());
 }
 
 void InterpLowering::LoweringBF16(PatternRewriter &rewriter,
