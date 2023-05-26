@@ -38,6 +38,8 @@ static void Backward(Value in) {
   } else if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
     BackwardOp(permuteOp);
     // Backward(permuteOp.getInput());
+  } else if (auto d2s = dyn_cast<top::Depth2SpaceOp>(in.getDefiningOp())) {
+    BackwardOp(d2s);
   }
 }
 
@@ -559,6 +561,7 @@ protected:
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
                  BackwardCalibartion<top::MaxPoolWithMaskOp>,
+                 BackwardCalibartion<top::Depth2SpaceOp>,
                  //BackwardCalibartion<top::LeakyReluOp, true>,
                 //  BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
