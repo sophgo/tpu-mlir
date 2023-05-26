@@ -143,6 +143,7 @@ def Top_InputOp: Top_BaseOp<"Input"> {
     OptionalAttr<ChannelFormatAttr>:$channel_format,
     OptionalAttr<I64ArrayAttr>:$resize_dims,
     OptionalAttr<BoolAttr>:$keep_aspect_ratio,
+    OptionalAttr<StrAttr>:$keep_ratio_mode,
     OptionalAttr<I64Attr>:$pad_value,
     OptionalAttr<PadModeAttr>:$pad_type,
     OptionalAttr<F64ArrayAttr>:$scale,
