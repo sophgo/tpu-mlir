@@ -199,6 +199,7 @@ class ONNX_IR_TESTER(object):
             "TorchNonZero":         (self.test_TorchNonZero,        N, Y, Y, N),
             "TorchReflectionPad":   (self.test_TorchReflectionPad,  N, Y, Y, Y),
             "TorchRoiAlign":        (self.test_TorchRoiAlign,       N, Y, Y, N),
+            "TorchScatterND":       (self.test_TorchScatterND,      N, N, N, Y),
             "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y),
             "TorchStd":             (self.test_TorchStd,            N, Y, Y, Y),
             "TorchWhere":           (self.test_TorchWhere,          N, Y, Y, N),
@@ -3219,6 +3220,20 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(4, 3, 100, 100).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_TorchScatterND(self, case_name):
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y):
+                x[:, ::3, 2::2, ::1] = y
+                return x
+
+        x = torch.randn(2, 51, 40, 2).float()
+        y = torch.randn(2, 17, 19, 1).float()
+        self.torch_and_test((x, y), Model(), case_name)
 
     def test_TorchConv2d(self, case_name):
 

@@ -569,6 +569,8 @@ protected:
       patterns.add<BackwardCalibartion<top::LeakyReluOp, true>>(ctx_);
     } else {
       patterns.add<BackwardCalibartion<top::LeakyReluOp, false>>(ctx_);
+      // need consideration
+      patterns.add<BackwardCalibartion<top::ScatterNDOp, false>>(ctx_);
     }
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();

@@ -8,12 +8,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
-
-
-LogicalResult tpu::ScatterNDOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::ScatterNDOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::ScatterNDOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ScatterNDOp::inference(InferenceParameter &p) {
@@ -25,7 +25,7 @@ LogicalResult tpu::ScatterNDOp::inference(InferenceParameter &p) {
   auto data_shape = module::getShape(getInputData());
   auto indices_shape = module::getShape(getIndices());
   auto updates_shape = module::getShape(getUpdates());
-  auto dtype_size = module::getDtypeSize(getInputData());
+  auto dtype_size = sizeof(float);
   int r = data_shape.size();
   int q = indices_shape.size();
   int k = indices_shape[q - 1];
@@ -46,12 +46,12 @@ LogicalResult tpu::ScatterNDOp::inference(InferenceParameter &p) {
   memcpy(dst, data, data_elems * dtype_size);
 
   int data_strides[k];
-
   for (int dim = k - 1; dim >= 0; --dim) {
-    if (dim == k - 1)
-      data_strides[dim] = 1;
-    else
+    if (dim == k - 1) {
+      data_strides[dim] = slice_elems;
+    } else {
       data_strides[dim] = data_strides[dim + 1] * data_shape[dim + 1];
+    }
   }
   int64_t idx = 0;
   if (r == k) {
@@ -70,7 +70,7 @@ LogicalResult tpu::ScatterNDOp::inference(InferenceParameter &p) {
       for (int64_t i = 0; i < k; ++i) {
         idx += indices[loc * k + i] * data_strides[i];
       }
-      memcpy(dst + idx, updates + loc, slice_elems * dtype_size);
+      memcpy(dst + idx, updates + loc * slice_elems, slice_elems * dtype_size);
     }
   }
 
