@@ -76,7 +76,6 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
   profile_ctx = ProfileCtx(&opToLineCol, true);
   bm168x = BM168x::instance();
   DynCodegenInit();
-  next_id = merge_num = 0;
   std::vector<top::WeightOp> weights;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
@@ -116,15 +115,19 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
   auto main_func = module::getMainFuncOp();
   std::vector<Offset<bmodel::SubNet>> subnet_v;
   auto context = std::make_unique<Context>();
-  bool first_dynamic = false;
-  bool is_first = true;
   int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;
+  bool first_dynamic = false;
 
-  module.walk<WalkOrder::PreOrder>([&](Operation *op) {
-    if (isa<func::CallOp>(op)) {
-      auto call = dyn_cast<func::CallOp>(op);
-      auto func = module::getFuncOp(call.getCallee());
+  module.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
+    if (func == module::getMainFuncOp())
+      return WalkResult::advance();
+    if (auto call = module::getCallOp(func)) {
       auto mode = getRunMode(func);
+      int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
+      if (subnet_id == 0 && mode == RunMode::TPU_DYNAMIC) {
+        first_dynamic = true;
+      }
+
       switch (mode) {
       case RunMode::TPU_STATIC: {
         profile_ctx.set_profile_start();
@@ -145,24 +148,19 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
         auto subnet = CreateSwitchSubNet(call);
         subnet_v.push_back(subnet);
       } break;
+      case RunMode::MERGE: {
+        auto subnet = CreateMergeSubNet(call);
+        subnet_v.push_back(subnet);
+      } break;
       default:
         llvm_unreachable("Not Implemented");
         break;
       }
-      if (is_first) {
-        is_first = false;
-        if (mode == RunMode::TPU_DYNAMIC) {
-          first_dynamic = true;
-        }
-      }
-    } else if (isa<func::ReturnOp>(op) &&
-               isa<tpu::IfOp>(op->getOperand(0).getDefiningOp())) {
-      // codegen merge subnet
-      auto ifOp = dyn_cast<tpu::IfOp>(op->getOperand(0).getDefiningOp());
-      auto subnet = CreateMergeSubNet(ifOp);
-      subnet_v.push_back(subnet);
     }
+
+    return WalkResult::advance();
   });
+
   auto subnets = builder.CreateVector(subnet_v);
   auto cmd_group = model_gen->Builder().CreateVector(*cmd_group_all);
   bmodel::Binary binary_ir;
@@ -292,7 +290,7 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values) {
     } else {
       int mem_type = 0;
       for (int i = 0; i < tensor_is_cpu[v_name].size(); i++) {
-        mem_type |= tensor_is_cpu[v_name][0] ? MEM_TYPE_ALL : MEM_TYPE_TPU;
+        mem_type |= tensor_is_cpu[v_name][i] ? MEM_TYPE_ALL : MEM_TYPE_TPU;
       }
       tb.add_mem_type(mem_type);
     }
@@ -694,51 +692,31 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
   auto func = module::getFuncOp(call.getCallee());
   func.walk([&](Operation *op) { codegen(op); });
   bm168x->after_codegen(module::getFLOPs());
-  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt() + merge_num;
-  next_id = subnet_id + 1;
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
-  std::vector<int> next_id_v = {};
+  auto next_index =
+       func->getAttrOfType<DenseI32ArrayAttr>("next_index");
+  std::vector<int> next_id_v(next_index.asArrayRef());
   for (auto v : llvm::enumerate(call.getResults())) {
     std::string v_name = module::getName(outputs[v.index()]).str();
     std::vector<bool> user_is_cpu;
     tensor_is_cpu[v_name] = user_is_cpu;
     for (auto user : v.value().getUsers()) {
-      if (isa<tpu::IfOp>(call->getParentOp()) && isa<tpu::YieldOp>(user)) {
+      if (isa<tpu::YieldOp, ReturnOp>(user)) {
         tensor_is_cpu[v_name].push_back(false);
-        auto funcOp = call->getParentOp()->getParentOp();
-        // id is the ifOp's id + 3
-        int merge_id =
-            funcOp->getAttrOfType<IntegerAttr>("id").getInt() + merge_num + 3;
-        next_id_v.push_back(merge_id);
-      } else if (isa<ReturnOp>(user)) {
-        tensor_is_cpu[v_name].push_back(false);
-        next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
         auto func = module::getFuncOp(call.getCallee());
-        auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
-        auto subnet = getRunMode(func);
-        tensor_is_cpu[v_name].push_back(subnet == RunMode::CPU);
-        // callOp's result maybe have more than two users
-        next_id_v.insert(next_id_v.begin(), id);
-      } else {
-        llvm_unreachable("next op is illegal");
+        auto mode = getRunMode(func);
+        tensor_is_cpu[v_name].push_back(mode == RunMode::CPU);
       }
     }
   }
+
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);
-  std::unordered_set<int> next_id_set;
-  for (auto it = next_id_v.begin(); it != next_id_v.end();) {
-    if (next_id_set.count(*it)) {
-      it = next_id_v.erase(it);
-    } else {
-      next_id_set.insert(*it);
-      ++it;
-    }
-  }
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
   auto cmd_group_v = CreateCmdGroupVector();
@@ -761,8 +739,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
   bm168x->before_codegen();
   auto func = module::getFuncOp(call.getCallee());
   bm168x->after_codegen(module::getFLOPs());
-  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt() + merge_num;
-  next_id = subnet_id + 1;
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
   std::vector<Value> inputs;
   std::vector<Value> outputs;
@@ -774,43 +751,28 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
     }
   });
 
-  std::vector<int> next_id_v = {};
-  for (auto v : llvm::enumerate(call.getResults())) {
-    std::string v_name = module::getName(outputs[v.index()]).str();
-    std::vector<bool> user_is_cpu;
-    tensor_is_cpu[v_name] = user_is_cpu;
-    for (auto user : v.value().getUsers()) {
-      tensor_is_cpu[v_name].push_back(true);
-      if (isa<ReturnOp>(user)) {
-        next_id_v.push_back(-1);
-      } else if (auto call = dyn_cast<func::CallOp>(user)) {
-        auto func = module::getFuncOp(call.getCallee());
-        auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
-        // callOp's result maybe have more than two users
-        next_id_v.insert(next_id_v.begin(), id);
-      } else {
-        llvm_unreachable("next op is illegal");
-      }
-    }
-  }
+  auto next_index =
+       func->getAttrOfType<DenseI32ArrayAttr>("next_index");
+  std::vector<int> next_id_v(next_index.asArrayRef());
+
   for (auto input : inputs) {
     auto input_name = module::getName(input).str();
     if (!tensor_is_cpu.count(input_name) || tensor_is_cpu[input_name].empty()) {
       tensor_is_cpu[input_name] = std::vector<bool>(1, true);
     }
   }
-  auto input_tensor = CreateTensorVector(inputs);
-  auto output_tensor = CreateTensorVector(outputs);
 
-  std::unordered_set<int> next_id_set;
-  for (auto it = next_id_v.begin(); it != next_id_v.end();) {
-    if (next_id_set.count(*it)) {
-      it = next_id_v.erase(it);
-    } else {
-      next_id_set.insert(*it);
-      ++it;
+  for (auto v : llvm::enumerate(call.getResults())) {
+    std::string v_name = module::getName(outputs[v.index()]).str();
+    std::vector<bool> user_is_cpu;
+    tensor_is_cpu[v_name] = user_is_cpu;
+    for (auto user : v.value().getUsers()) {
+      (void)user;
+      tensor_is_cpu[v_name].push_back(true);
     }
   }
+  auto input_tensor = CreateTensorVector(inputs);
+  auto output_tensor = CreateTensorVector(outputs);
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
 
@@ -861,25 +823,21 @@ Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(func::CallOp call) {
   auto func = module::getFuncOp(call.getCallee());
   std::vector<Value> inputs;
   std::vector<Value> outputs;
-  std::vector<int> next_id_v = {};
+  auto next_index =
+       func->getAttrOfType<DenseI32ArrayAttr>("next_index");
+  std::vector<int> next_id_v(next_index.asArrayRef());
   func.walk<WalkOrder::PreOrder>([&](Operation *op) {
-    if (isa<func::CallOp>(op)) {
-      auto branch = module::getFuncOp(dyn_cast<func::CallOp>(op).getCallee());
-      int branch_id = branch->getAttrOfType<IntegerAttr>("id").getInt();
-      next_id_v.push_back(branch_id);
-    } else if (isa<tpu::IfOp>(op)) {
+    if (isa<tpu::IfOp>(op)) {
       inputs.emplace_back(module::getOriValue(op->getOperand(0)));
     }
   });
-  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt() + merge_num;
-  next_id = subnet_id + 1;
+
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
 
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);
-  std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
-  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
-                  next_id_v.end());
+
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
   vector<int> output_from;
@@ -898,13 +856,34 @@ Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(func::CallOp call) {
   return snb.Finish();
 }
 
-Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(tpu::IfOp ifOp) {
+Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(func::CallOp call) {
   std::vector<Value> inputs;
   std::vector<Value> outputs;
-  std::vector<int> next_id_v = {};
-  int subnet_id = next_id++;
-  merge_num++;
+  auto func = module::getFuncOp(call.getCallee());
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
+  auto next_index =
+       func->getAttrOfType<DenseI32ArrayAttr>("next_index");
+  std::vector<int> next_id_v(next_index.asArrayRef());
+
+  module::getInputsOutputs(call, inputs, outputs);
+  for (auto v : llvm::enumerate(call.getResults())) {
+    std::string v_name = module::getName(outputs[v.index()]).str();
+    std::vector<bool> user_is_cpu;
+    tensor_is_cpu[v_name] = user_is_cpu;
+    for (auto user : v.value().getUsers()) {
+      if (isa<tpu::YieldOp, ReturnOp>(user)) {
+        tensor_is_cpu[v_name].push_back(false);
+      } else if (auto call = dyn_cast<func::CallOp>(user)) {
+        auto func = module::getFuncOp(call.getCallee());
+        auto mode = getRunMode(func);
+        tensor_is_cpu[v_name].push_back(mode == RunMode::CPU);
+      }
+    }
+  }
+  auto ifOp = dyn_cast<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp());
+  inputs.clear();
+  outputs.clear();
   for (int k = 0; k < ifOp.getNumResults(); k++) {
     for (int i = 0; i < ifOp.getNumRegions(); i++) {
       Region &region = ifOp.getRegion(i);
@@ -916,31 +895,9 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(tpu::IfOp ifOp) {
   for (int i = 0; i < ifOp.getNumResults(); i++) {
     outputs.emplace_back(module::getOriValue(ifOp.getResult(i)));
   }
-  int next = std::numeric_limits<int>::max();
-  // get the nearest subnet_id
-  if (auto funcOp = dyn_cast<func::FuncOp>(ifOp->getParentOp())) {
-    auto callOp = module::getCallOp(funcOp);
-    for (int i = 0; i < callOp.getNumResults(); i++) {
-      for (Operation *op : callOp.getResult(i).getUsers()) {
-        if (isa<func::CallOp>(op)) {
-          auto func = module::getFuncOp(dyn_cast<func::CallOp>(op).getCallee());
-          int id = func->getAttrOfType<IntegerAttr>("id").getInt() + merge_num;
-          if (id < next)
-            next = id;
-        }
-      }
-    }
-  }
 
-  if (next == std::numeric_limits<int>::max())
-    next_id_v.push_back(-1);
-  else
-    next_id_v.push_back(next);
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);
-  std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
-  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
-                  next_id_v.end());
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
   vector<vector<int>> output_from;
@@ -977,27 +934,24 @@ BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
-  std::vector<int> next_id_v = {};
+  auto next_index =
+       func->getAttrOfType<DenseI32ArrayAttr>("next_index");
+  std::vector<int> next_id_v(next_index.asArrayRef());
   for (auto v : llvm::enumerate(call.getResults())) {
+    std::string v_name = module::getName(outputs[v.index()]).str();
+    std::vector<bool> user_is_cpu;
+    tensor_is_cpu[v_name] = user_is_cpu;
     for (auto user : v.value().getUsers()) {
-      std::string v_name = module::getName(outputs[v.index()]).str();
-      std::vector<bool> user_is_cpu;
-      tensor_is_cpu[v_name] = user_is_cpu;
-      if (isa<ReturnOp>(user)) {
+      if (isa<tpu::YieldOp, ReturnOp>(user)) {
         tensor_is_cpu[v_name].push_back(false);
-        next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
         auto func = module::getFuncOp(call.getCallee());
-        auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
-        auto subnet = getRunMode(func);
-        tensor_is_cpu[v_name].push_back(subnet == RunMode::CPU);
-        // callOp's result maybe have more than two users
-        next_id_v.insert(next_id_v.begin(), id);
-      } else {
-        llvm_unreachable("next op is illegal");
+        auto mode = getRunMode(func);
+        tensor_is_cpu[v_name].push_back(mode == RunMode::CPU);
       }
     }
   }
+
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);
   std::function<void(Operation *, SubnetIr *)> task =
@@ -1005,19 +959,10 @@ BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
                 std::placeholders::_2);
   subnet_ir_->generate_compiler_ir(module, call, task);
   subnet_ir_->write_binary_ir_to_buffer(context);
-  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt() + merge_num;
-  next_id = subnet_id + 1;
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
+
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
 
-  std::unordered_set<int> next_id_set;
-  for (auto it = next_id_v.begin(); it != next_id_v.end();) {
-    if (next_id_set.count(*it)) {
-      it = next_id_v.erase(it);
-    } else {
-      next_id_set.insert(*it);
-      ++it;
-    }
-  }
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
 

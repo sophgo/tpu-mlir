@@ -22,6 +22,7 @@ include "mlir/IR/EnumAttr.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/Interfaces/LoopLikeInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/Interfaces/InferTypeOpInterface.td"
 include "tpu_mlir/Interfaces/LocalGenInterface.td"
 include "tpu_mlir/Interfaces/GlobalGenInterface.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
@@ -2611,4 +2612,17 @@ def Tpu_Batch2SpaceOp: Tpu_Op<"Batch2Space"> {
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_IdentityOp : Tpu_Op<"Identity", [NoMemoryEffect,SameOperandsAndResultType]> {
+  let summary = "identity operator";
+
+  let description = [{
+     identity operator.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$input
+  );
+
+  let results = (outs Variadic<AnyRankedTensor>:$output);
+}
 #endif // TPU_OPS
