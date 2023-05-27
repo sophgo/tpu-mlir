@@ -125,6 +125,7 @@ class TORCH_IR_TESTER(object):
             "View":             (self.test_View,              Y, Y, Y),
             "Where":            (self.test_Where,             Y, Y, N),
             ## Special Case
+            "AddError":         (self.test_AddError,          N, N, N),
             "SplitReshape":     (self.test_SplitReshape,      Y, Y, Y),
         }
         # yapf: enable
@@ -667,6 +668,11 @@ class TORCH_IR_TESTER(object):
         self._test_binary(torch.add, (1, 3, 32, 32), (1, 3, 32, 32), 3)
         self._test_binary(torch.add, (2, 32, 16), (2, 1, 16), 3)
         self._test_binary(torch.add, (32, 32), (32))
+
+    def test_AddError(self):
+        """AddError"""
+
+        self._test_binary(torch.add, (1, 4, 12, 147, 147), (1, 4, 1, 147, 147))
 
     #######################################################################
     # Sub
