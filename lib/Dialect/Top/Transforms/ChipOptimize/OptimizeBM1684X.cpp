@@ -102,8 +102,9 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(top::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
+    // sd_decoder_pt error in bm1684x/bm1686
+    return failure();
     auto filter = op.getRight();
-    // return failure();
     if (module::isWeight(filter) == false) {
       return failure();
     }

@@ -73,8 +73,8 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   auto g_addr = module::getAddress(getInput());
-  int64_t dhw = D * H * W;
-  int64_t eu_num = BM168x::eu_num(fmt_bytes);
+  // int64_t dhw = D * H * W;
+  // int64_t eu_num = BM168x::eu_num(fmt_bytes);
   int64_t use_3ic = getUse_3icOptimize();
   if (use_3ic < 4 && use_3ic > 0) {
     auto g_stride = BM168x::getGlobalStride(N, C, H, W);
@@ -103,7 +103,9 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           s_stride.N, s_stride.H, gdma_format, true, GDMA_VALUE_DIR_S2L,
           pid_node);
     }
-  } else if (dhw <= eu_num && (C & 0xff) == 0 && data_type == DTYPE_INT8 &&
+  }
+#if 0
+  else if (dhw <= eu_num && (C & 0xff) == 0 && data_type == DTYPE_INT8 &&
              real_dslice == D && real_hslice == H && real_wslice == W &&
              real_cslice == C && N == 1) {
     // optimize coeff load shape
@@ -125,7 +127,9 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
         N, C, H, W, nstride, cstride, hstride, wstride,
         dst_nstride, dst_cstride, dst_hstride, dst_wstride,
         gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
-  } else {
+  }
+#endif
+  else {
     int64_t c_num_local = ceiling_func(real_cslice, Arch::NPU_NUM);
     int64_t c_stride = gi.eu_align ? align_up(real_hslice * real_wslice,
                                               Arch::eu_num(fmt_bytes))

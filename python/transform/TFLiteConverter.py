@@ -240,6 +240,8 @@ class TFLiteConverter(BaseConverter):
         else:
             self.output_names = output_names
         self.input_shapes = [x.shape for x in self.graph.inputs]
+        for x in self.graph.inputs:
+            self.addShape(x.name, x.shape)
         self.output_shapes = []
         self.outputs = []
         for op in self.graph.operators:
@@ -248,6 +250,7 @@ class TFLiteConverter(BaseConverter):
                     self.outputs.append(out)
                     self.__nhwc2nchw(out)
                     self.output_shapes.append(out.shape)
+                    self.addShape(out.name, out.shape)
 
         self.mlir = MLIRImporter(
             self.input_shapes,

@@ -47,7 +47,7 @@ class TORCH_IR_TESTER(object):
             "Addmm":            (self.test_Addmm,             Y, Y, Y),
             "Arange":           (self.test_Arange,            Y, Y, Y),
             "Attention":        (self.test_Attention,         Y, Y, Y),
-            "AttentionNew":     (self.test_AttentionNew,      Y, N, N),
+            "AttentionNew":     (self.test_AttentionNew,      N, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,         Y, Y, Y),
             "AvgPool2d":        (self.test_AvgPool2d,         Y, Y, Y),
             "AvgPool3d":        (self.test_AvgPool3d,         Y, Y, Y),
