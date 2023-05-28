@@ -82,7 +82,7 @@
 
 模型部署样例
 ------------
-以mobilenet_v2模型为例, 参考“编译Caffe模型”章节, 在tpu-mlir/regression/regression_out/目录下使用model_transform工具生成原始mlir, 并通过run_calibration工具生成校准表。
+以mobilenet_v2模型为例, 参考“编译Caffe模型”章节, 使用model_transform工具生成原始mlir, 并通过run_calibration工具生成校准表。
 
 
 BM1684X部署

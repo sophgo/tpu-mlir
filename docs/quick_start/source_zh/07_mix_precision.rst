@@ -192,7 +192,7 @@
        --dataset ../COCO2017 \
        --calibration_table yolov3_cali_table \
        --chip bm1684x \
-       --min_layer_cos 0.999 \ #若这里使用默认的0.99时，程序会检测到原始int8模型已满足0.99的cos，从而直接不再搜素
+       --min_layer_cos 0.999 \ #若这里使用默认的0.99时，程序会检测到原始int8模型已满足0.99的cos，从而直接不再搜索
        --expected_cos 0.9999 \
        -o yolov3_qtable
 
