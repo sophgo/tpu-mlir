@@ -80,7 +80,7 @@ The "YUV*" type format is the special input format of CV18xx series chips. When 
 
 Model Deployment Example
 -------------------------
-Take the mobilenet_v2 model as an example, use the model_transform tool to generate the original mlir, and the run_calibration tool to generate the calibration table in the tpu-mlir/regression/regression_out/ directory (refer to the chapter "Compiling the Caffe Model" for more details).
+Take the mobilenet_v2 model as an example, use the model_transform tool to generate the original mlir, and the run_calibration tool to generate the calibration table (refer to the chapter "Compiling the Caffe Model" for more details).
 
 
 Deploy to BM168x

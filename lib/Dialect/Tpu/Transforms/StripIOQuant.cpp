@@ -16,6 +16,17 @@
 namespace tpu_mlir {
 namespace tpu {
 
+bool isF32(Value v) { return isa<Float32Type>(module::getStorageType(v)); }
+bool isF16(Value v) { return isa<Float16Type>(module::getStorageType(v)); }
+
+bool isF32toF16(tpu::CastOp op) {
+  return isF32(op.getInput()) && isF16(op.getOutput());
+}
+
+bool isF16toF32(tpu::CastOp op) {
+  return isF32(op.getOutput()) && isF16(op.getInput());
+}
+
 struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
   StripInputQuantTpuCastPattern(MLIRContext *context)
       : OpRewritePattern<tpu::CastOp>(context) {}
@@ -26,7 +37,7 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
       if (!out.hasOneUse()) {
         return failure();
       }
-      if (!module::isUniformQuantized(op.getOutput())) {
+      if (!module::isUniformQuantized(op.getOutput()) && !isF32toF16(op)) {
         // special case for 18xx MatchTemplateOp
         if (module::getStorageType(op.getOutput()).isUnsignedInteger(8)) {
           auto nextOp = *op->getUsers().begin();
@@ -116,7 +127,7 @@ struct StripOutputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
     if (op.getOutput().hasOneUse() &&
         isa<ReturnOp>(op.getOutput().use_begin().getUser())) {
       auto in = op.getInput();
-      if (!module::isUniformQuantized(in)) {
+      if (!module::isUniformQuantized(in) && !isF16toF32(op)) {
         return failure();
       }
       rewriter.replaceOp(op, op.getInput());
