@@ -729,7 +729,6 @@ def Top_AttentionOp: Top_Op<"Attention"> {
   );
 
   let results = (outs AnyTensor:$output);
-  let hasCanonicalizer = 1;
 }
 
 def Top_PadOp:Top_Op<"Pad"> {
