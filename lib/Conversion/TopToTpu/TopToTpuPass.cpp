@@ -774,13 +774,8 @@ protected:
                        module::Mode::F16});
                 }
                 input_ok++;
-              } else if (auto addop = dyn_cast<top::AddOp>(opd.getDefiningOp())) {
-                if (addop.getNumOperands() == 2) {
-                  if (isa<top::AttentionOp>(addop.getOperand(0).getDefiningOp()) ||
-                      isa<top::AttentionOp>(addop.getOperand(1).getDefiningOp())) {
-                    input_ok++;
-                  }
-                }
+              } else if (auto attenop = dyn_cast<top::AttentionOp>(opd.getDefiningOp())) {
+                input_ok++;
               } else {
                 input_ok = 0;
                 return;

@@ -103,33 +103,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
           s_stride.N, s_stride.H, gdma_format, true, GDMA_VALUE_DIR_S2L,
           pid_node);
     }
-  }
-#if 0
-  else if (dhw <= eu_num && (C & 0xff) == 0 && data_type == DTYPE_INT8 &&
-             real_dslice == D && real_hslice == H && real_wslice == W &&
-             real_cslice == C && N == 1) {
-    // optimize coeff load shape
-    D = 1;
-    H = 2;
-    W = dhw;
-    N = N * C / BM168x::NPU_NUM / H;
-    C = BM168x::NPU_NUM;
-    int64_t wstride = 1;
-    int64_t hstride = BM168x::NPU_NUM * dhw;
-    int64_t cstride = dhw;
-    int64_t nstride = BM168x::NPU_NUM * dhw * H;
-    int64_t dst_wstride = 1;
-    int64_t dst_hstride = eu_num;
-    int64_t dst_cstride = 0;
-    int64_t dst_nstride = eu_num * H;
-    BM168x::instance()->dl_tensor_stride_move_gen_cmd(
-        gi.out_addr, 0, g_addr,
-        N, C, H, W, nstride, cstride, hstride, wstride,
-        dst_nstride, dst_cstride, dst_hstride, dst_wstride,
-        gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
-  }
-#endif
-  else {
+  } else {
     int64_t c_num_local = ceiling_func(real_cslice, Arch::NPU_NUM);
     int64_t c_stride = gi.eu_align ? align_up(real_hslice * real_wslice,
                                               Arch::eu_num(fmt_bytes))

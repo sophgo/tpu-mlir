@@ -90,8 +90,9 @@ int64_t tpu::AttentionOp::getBufferSize_bm1684x(
     int64_t softmax_buffer_size = c_per_npu * sizeof(int32_t) *
                                   (align_up(1, eu_num_i32) + align_up(M_k, eu_num_i32));
     int64_t max_m = std::max(M_q, M_k);
-    int64_t max_n = std::max(d, M_k);
-    int64_t mat_buffer_size = ceiling_func(max_m, BM168x::NPU_NUM) * align_up(max_n, eu_num_i32) ;
+    int64_t mat_buffer_size0 = ceiling_func(max_m, BM168x::NPU_NUM) * align_up(d, eu_num_i32);
+    int64_t mat_buffer_size1 = ceiling_func(M_q, BM168x::NPU_NUM) * align_up(M_k, eu_num_i32);
+    int64_t mat_buffer_size = std::max(mat_buffer_size0, mat_buffer_size1);
     int64_t const_size = align_up(mat0_size + mat1_size + k_buffer_size + v_buffer_size, BM168x::LMEM_BANK_BYTES);
     int64_t imm_buffer_size = align_up(std::max(mat_buffer_size, softmax_buffer_size), BM168x::LMEM_BANK_BYTES);
     return std::min(imm_buffer_size + const_size, BM168x::LMEM_BANK_BYTES * (BM168x::LMEM_BANKS / 3));
