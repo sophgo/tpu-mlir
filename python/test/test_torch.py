@@ -1697,9 +1697,9 @@ class TORCH_IR_TESTER(object):
         # _test_attention0((1, 384, 80), 40, 2)
         _test_attention0((1, 384, 768), 64, 12)
         # _test_attention0((2, 384, 64), 32, 2)
-        # _test_attention0((2, 4096, 320), 40, 2)
+        _test_attention0((2, 4096, 320), 40, 2)
         # _test_attention1((2, 4096, 320), (2, 128, 768), 40, 8)
-        # _test_attention1((2, 4096, 320), (2, 77, 768), 40, 2)
+        _test_attention1((2, 4096, 320), (2, 77, 768), 40, 2, False)
         # _test_attention1((1, 384, 64), (1, 384, 64), 32, 2, False)
 
     #######################################################################
