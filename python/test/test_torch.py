@@ -48,7 +48,7 @@ class TORCH_IR_TESTER(object):
             "Addmm":            (self.test_Addmm,             Y, Y, Y),
             "Arange":           (self.test_Arange,            Y, Y, Y),
             "Attention":        (self.test_Attention,         Y, Y, Y),
-            "AttentionNew":     (self.test_AttentionNew,      N, N, N),
+            "AttentionNew":     (self.test_AttentionNew,      Y, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,         Y, Y, Y),
             "AvgPool2d":        (self.test_AvgPool2d,         Y, Y, Y),
             "AvgPool3d":        (self.test_AvgPool3d,         Y, Y, Y),
@@ -1610,7 +1610,7 @@ class TORCH_IR_TESTER(object):
 
     def test_AttentionNew(self):
 
-        def _test_attention0(shape, d, head):
+        def _test_attention0(shape, d, head, has_musk=True):
 
             class Model(nn.Module):
 
@@ -1636,7 +1636,8 @@ class TORCH_IR_TESTER(object):
                     k = k.transpose(3,2)
                     m0 = torch.matmul(q, k)
                     m0 = m0 / np.sqrt(d)
-                    m0 = m0 + self.musk
+                    if has_musk:
+                        m0 = m0 + self.musk
                     m0 = torch.softmax(m0, 3)
                     v = torch.matmul(x, self.v_w) + self.v_b
                     v = v.reshape((shape[0], shape[1], head, d))
@@ -1694,11 +1695,15 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([shape0, shape1], Model(), [self.Desc('float32', -1, 1), self.Desc('float32', -1, 1)])
 
-        # _test_attention0((1, 384, 80), 40, 2)
+        # _test_attention0((1, 4096, 128), 64, 2)
         _test_attention0((1, 384, 768), 64, 12)
         # _test_attention0((2, 384, 64), 32, 2)
-        _test_attention0((2, 4096, 320), 40, 2)
+        # _test_attention0((2, 1024, 640), 80, 2, False)
+        # _test_attention0((2, 256, 1280), 160, 2, False)
+        # _test_attention0((2, 4096, 320), 40, 2, False)
         # _test_attention1((2, 4096, 320), (2, 128, 768), 40, 8)
+        # _test_attention1((2, 256, 1280), (2, 77, 768), 160, 2, False)
+        # _test_attention1((2, 1024, 640), (2, 77, 768), 80, 2, False)
         _test_attention1((2, 4096, 320), (2, 77, 768), 40, 2, False)
         # _test_attention1((1, 384, 64), (1, 384, 64), 32, 2, False)
 
