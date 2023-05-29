@@ -9,8 +9,8 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1686 2023-05-19
-sha256: 6df9af24553a5dcd60e58b1349c13d3392d178bc
+## TPU1686 2023-05-29
+sha256: fa7df191fd7abd0df9bc41923a324e5bd3d8a823
 
 ``` bash
 pushd  nntoolchain/net_compiler/

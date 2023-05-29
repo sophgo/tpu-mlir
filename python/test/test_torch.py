@@ -44,6 +44,7 @@ class TORCH_IR_TESTER(object):
             "Activation":       (self.test_Activation,        Y, Y, Y),
             "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, Y, Y, Y),
             "Add":              (self.test_Add,               Y, Y, Y),
+            "Add5d":            (self.test_Add5d,             Y, Y, Y),
             "Addmm":            (self.test_Addmm,             Y, Y, Y),
             "Arange":           (self.test_Arange,            Y, Y, Y),
             "Attention":        (self.test_Attention,         Y, Y, Y),
@@ -125,7 +126,6 @@ class TORCH_IR_TESTER(object):
             "View":             (self.test_View,              Y, Y, Y),
             "Where":            (self.test_Where,             Y, Y, N),
             ## Special Case
-            "AddError":         (self.test_AddError,          N, N, N),
             "SplitReshape":     (self.test_SplitReshape,      Y, Y, Y),
         }
         # yapf: enable
@@ -669,7 +669,7 @@ class TORCH_IR_TESTER(object):
         self._test_binary(torch.add, (2, 32, 16), (2, 1, 16), 3)
         self._test_binary(torch.add, (32, 32), (32))
 
-    def test_AddError(self):
+    def test_Add5d(self):
         """AddError"""
 
         self._test_binary(torch.add, (1, 4, 12, 147, 147), (1, 4, 1, 147, 147))
