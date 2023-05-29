@@ -16,6 +16,7 @@ from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.auto_remove import file_mark, file_clean
 from utils.mlir_shell import *
+from utils.misc import collect_process
 import os
 import torch
 import torch.nn as nn
@@ -280,7 +281,7 @@ class ONNX_IR_TESTER(object):
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
         else:
-            if self.chip == "bm1686" or self.chip == "cv186x" :
+            if self.chip == "bm1686" or self.chip == "cv186x":
                 self.support_quant_modes.append("int4")
             if self.mode not in self.support_quant_modes:
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
@@ -3222,6 +3223,7 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test(x, Model(), case_name)
 
     def test_TorchScatterND(self, case_name):
+
         class Model(torch.nn.Module):
 
             def __init__(self):
@@ -4085,8 +4087,7 @@ class ONNX_IR_TESTER(object):
             prelu_def = helper.make_node("PRelu", ["input", "slope"], ["output0"])
             add_def = helper.make_node('Add', ['output0', 'input1'], ['output'])
             graph_def = helper.make_graph([prelu_def, add_def],
-                                          "{}_{}".format(case_name, i),
-                                          [inputs, inputs1],
+                                          "{}_{}".format(case_name, i), [inputs, inputs1],
                                           outputs,
                                           initializer=[slope])
             self.onnx_and_test(graph_def)
@@ -4130,8 +4131,7 @@ class ONNX_IR_TESTER(object):
         input = helper.make_tensor_value_info("input", TensorProto.BOOL, shape)
         output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
         cmp_def = helper.make_node("Not", inputs=["input"], outputs=["output"])
-        graph_def = helper.make_graph([cmp_def],
-                                        case_name, [input], [output])
+        graph_def = helper.make_graph([cmp_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
     def test_Cast(self, case_name):
@@ -4193,8 +4193,8 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
         cmp_def = helper.make_node("And", inputs=["input", "constant"], outputs=["output"])
         graph_def = helper.make_graph([cmp_def],
-                                        case_name, [input], [output],
-                                        initializer=[constant])
+                                      case_name, [input], [output],
+                                      initializer=[constant])
         self.onnx_and_test(graph_def)
 
     def test_Compare(self, case_name):
@@ -4884,6 +4884,7 @@ class ONNX_IR_TESTER(object):
             self.onnx_and_test(graph_def)
 
     def test_Permute7d(self, case_name):
+
         class Model(torch.nn.Module):
 
             def __init__(self):
@@ -5532,26 +5533,15 @@ def test_int4(tester: ONNX_IR_TESTER):
         for case in test_cases:
             if tester.check_support(case):
                 p = multiprocessing.Process(target=test_one_case_in_all,
+                                            name=case,
                                             args=(tester, case, error_cases, success_cases))
-                p.name = case
                 processes.append(p)
             if len(processes) == process_number:
-                for p in processes:
-                    p.start()
-                for j in processes:
-                    j.join()
-                for p in processes:
-                    if p.exitcode:
-                        error_cases.append(p.name)
+                collect_process(processes, error_cases)
                 processes = []
         if processes:
-            for p in processes:
-                p.start()
-            for j in processes:
-                j.join()
-            for p in processes:
-                if p.exitcode:
-                    error_cases.append(p.name)
+            collect_process(processes, error_cases)
+            processes = []
     else:
         error_cases = []
         success_cases = []
@@ -5576,29 +5566,17 @@ def test_all(tester: ONNX_IR_TESTER):
         success_cases = multiprocessing.Manager().list()
         for case in tester.test_cases:
             if tester.check_support(case):
-                print("====== test_onnx.py --case {} --chip {} TEST START PROCESSING ======".format(case, tester.chip))
+                print("====== test_onnx.py --case {} --chip {} TEST START PROCESSING ======".format(
+                    case, tester.chip))
                 p = multiprocessing.Process(target=test_one_case_in_all,
+                                            name=case,
                                             args=(tester, case, error_cases, success_cases))
-                p.name = case
                 processes.append(p)
             if len(processes) == process_number:
-                for p in processes:
-                    p.start()
-                for j in processes:
-                    j.join()
-                for p in processes:
-                    if p.exitcode:
-                        error_cases.append(p.name)
+                collect_process(processes, error_cases)
                 processes = []
-
-        if processes:
-            for p in processes:
-                p.start()
-            for j in processes:
-                j.join()
-            for p in processes:
-                if p.exitcode:
-                    error_cases.append(p.name)
+        collect_process(processes, error_cases)
+        processes = []
     else:
         error_cases = []
         success_cases = []

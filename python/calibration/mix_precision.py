@@ -389,9 +389,9 @@ class MixPrecSearcher:
                 fp32_v = model.module.get_fp32_tensor(op_name).copy()
             count = model.parser.get_user_count_by_op_name(op_name)
             if fp32_v is None:
-                data_dict[i][op_name] = [value, count]
+                data_dict[i][op_name] = [value.copy(), count]
             else:
-                data_dict[i][op_name] = [value, count, fp32_v]
+                data_dict[i][op_name] = [value.copy(), count, fp32_v]
         return True
 
     def visual_tensor_diff(self, name, cos, int8_out, fp32_out):

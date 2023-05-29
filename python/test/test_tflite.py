@@ -14,6 +14,7 @@ from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
 from utils.auto_remove import file_mark, file_clean
+from utils.misc import collect_process
 import os
 
 # from tflite.BuiltinOperator import BuiltinOperator
@@ -930,27 +931,14 @@ def test_all(tester: TFLITE_IR_TESTER):
   success_cases = multiprocessing.Manager().list()
   for case in tester.test_function:
     if tester.check_support(case):
-      p = multiprocessing.Process(target=test_one_case_in_all,
+      p = multiprocessing.Process(target=test_one_case_in_all, name=case,
                                   args=(tester, case, error_cases, success_cases))
-      p.name = case
       processes.append(p)
     if len(processes) == process_number:
-      for p in processes:
-        p.start()
-      for j in processes:
-        j.join()
-      for p in processes:
-          if p.exitcode:
-              error_cases.append(p.name)
+      collect_process(processes, error_cases)
       processes = []
-  if processes:
-    for p in processes:
-      p.start()
-    for j in processes:
-      j.join()
-    for p in processes:
-        if p.exitcode:
-            error_cases.append(p.name)
+  collect_process(processes, error_cases)
+  processes = []
   print("Success: {}".format(success_cases))
   print("Failure: {}".format(error_cases))
   if error_cases:

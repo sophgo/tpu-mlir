@@ -10,6 +10,7 @@ import numpy as np
 import os, sys
 import transform.TpuLang as tpul
 from typing import List
+from utils.misc import collect_process
 
 
 def rand_data(shape, dtype):
@@ -410,26 +411,14 @@ def test_all(tester: TPULANG_IR_TESTER):
     for case in tester.test_function:
         if tester.check_support(case):
             p = multiprocessing.Process(target=test_one_case_in_all,
+                                        name=case,
                                         args=(tester, case, error_cases, success_cases))
-            p.name = case
             processes.append(p)
         if len(processes) == process_number:
-            for p in processes:
-                p.start()
-            for j in processes:
-                j.join()
-            for p in processes:
-                if p.exitcode:
-                    error_cases.append(p.name)
+            collect_process(processes, error_cases)
             processes = []
-    if processes:
-        for p in processes:
-            p.start()
-        for j in processes:
-            j.join()
-        for p in processes:
-            if p.exitcode:
-                error_cases.append(p.name)
+    collect_process(processes, error_cases)
+    processes = []
     # error_cases = []
     # success_cases = []
     # for case in tester.test_cases:
