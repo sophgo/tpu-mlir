@@ -226,7 +226,7 @@ class DeployTool:
 
     def validate_model(self):
         size = os.path.getsize(self.model)
-        if size > 0x10000000:
+        if size > 0x8000000:
             print("Warning: {} is too large and will cost a long time. Please run in board".format(
                 self.model))
             return
