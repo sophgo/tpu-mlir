@@ -65,6 +65,7 @@ protected:
   void getYoloOperandsAndAnchors(std::vector<Value> &operands,
                                  std::vector<int64_t> &anchors);
   void insertYoloOp(OpBuilder &builder);
+  void insertYolov5Op(OpBuilder &builder);
   void insertSsdOp(OpBuilder &builder);
 
 protected:
@@ -79,6 +80,12 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
   std::vector<int64_t> widths;
   auto opds = terminator->getOperands();
   auto num_opds = opds.size();
+  // TODO: Maybe yolov5 has only 1 yolo layer
+  if (post_type == "yolov5" && num_opds == 1) {
+    operands.push_back(opds[0]);
+    anchors = {0};
+    return;
+  }
   for (auto opd : opds) {
     auto s = module::getShape(opd);
     if (s.size() != 4 || width % s[3] != 0 || num_opds > 3) {
@@ -130,11 +137,13 @@ void AddPostprocessPass::insertYoloOp(OpBuilder &builder) {
   attrs.emplace_back(
       builder.getNamedAttr("nms_threshold", builder.getF64FloatAttr(0.5)));
   attrs.emplace_back(
-      builder.getNamedAttr("obj_threshold", builder.getF64FloatAttr(0.7)));
+      builder.getNamedAttr("obj_threshold", builder.getF64FloatAttr(0.5)));
   attrs.emplace_back(
       builder.getNamedAttr("keep_topk", builder.getI64IntegerAttr(topk)));
   attrs.emplace_back(
       builder.getNamedAttr("anchors", builder.getI64ArrayAttr(anchors)));
+  attrs.emplace_back(
+      builder.getNamedAttr("agnostic_nms", builder.getBoolAttr(false)));
   attrs.emplace_back(
       builder.getNamedAttr("version", builder.getStringAttr(post_type)));
   auto new_type =

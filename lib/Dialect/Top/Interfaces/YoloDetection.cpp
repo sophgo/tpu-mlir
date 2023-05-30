@@ -31,6 +31,7 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.keep_topk = getKeepTopk();
   param.nms_threshold = getNmsThreshold().convertToDouble();
   param.obj_threshold = getObjThreshold().convertToDouble();
+  param.agnostic_nms = getAgnosticNms();
   param.anchors = *module::getI64Array(getAnchors());
   param.num_boxes = getNumBoxes();
   for (int i = 0; i < param.num_boxes * num_input; i++) {
@@ -47,11 +48,11 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.output.size = module::getNumElements(getOutput());
   param.output.shape = module::getShape(getOutput());
   auto process = module::getPostprocess();
-  if (process.starts_with("yolo")) {
-    YoloDetectionFunc_v2 yolo_func(param);
+  if (process.starts_with("yolov5") && p.inputs.size() == 1) {
+    Yolov5DetectionFunc yolo_func(param);
     yolo_func.invoke();
   } else {
-    YoloDetectionFunc yolo_func(param);
+    YoloDetectionFunc_v2 yolo_func(param);
     yolo_func.invoke();
   }
   return success();

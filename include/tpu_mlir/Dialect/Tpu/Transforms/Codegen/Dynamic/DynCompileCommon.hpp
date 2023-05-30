@@ -189,6 +189,7 @@ typedef enum fw_layer_type {
   FW_BMNET_SHAPE_UNSQUEEZE  = 143,
   FW_BMNET_UNSQUEEZE = 144,
   FW_BMNET_DECONV3D = 145,
+  FW_BMNET_YOLOV5_DETECT_OUT = 146,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;
@@ -1237,6 +1238,14 @@ typedef struct fw_yolov3_detect_out_layer_param {
   int clip_bbox;     // used for paddle yolo_box 1:true, 0:false
   float scale;       // used for paddle yolo_box
 } fw_yolov3_detect_out_layer_param_t;
+
+typedef struct fw_yolov5_detect_out_layer_param {
+    int keep_top_k;
+    int agnostic_nms;
+    int max_hw;
+    float nms_threshold;
+    float confidence_threshold;
+} fw_yolov5_detect_out_layer_param_t;
 
 typedef struct {
   int num_classes;
