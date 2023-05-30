@@ -127,7 +127,7 @@ public:
     auto dilation_v = module::getI64Array(op.getDilations(), 2, 1);
     auto dilation_h = dilation_v->at(0);
     auto dilation_w = dilation_v->at(1);
-    if (1 == dilation_h || 1 == dilation_w) {
+    if (1 == dilation_h && 1 == dilation_w) {
       return failure();
     }
     auto kernel = module::getI64Array(op.getKernelShape());
@@ -147,6 +147,9 @@ public:
     std::string output_name = module::getName(op->getResult(0)).str();
     auto input_shape = module::getShape(input_value);
     auto output_shape = module::getShape(op->getResult(0));
+    if(input_shape.size() != 4 || output_shape.size() != 4){
+      return failure();
+    }
     auto input_ele_type = module::getElementType(input_value);
     auto output_ele_type = module::getElementType(op.getOutput());
 
