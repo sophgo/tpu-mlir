@@ -145,7 +145,7 @@ class ONNX_IR_TESTER(object):
             "Shape":        (self.test_Shape,         N, Y, Y, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y),
-            "Softplus":     (self.test_Softplus,      N, Y, Y, Y),
+            "Softplus":     (self.test_Softplus,      Y, Y, Y, Y),
             "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y),
             "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y),
             "Slice":        (self.test_Slice,         Y, Y, Y, Y),
