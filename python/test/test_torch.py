@@ -12,7 +12,6 @@ from tools.model_runner import mlir_inference, model_inference, torch_inference,
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
-from utils.misc import collect_process
 import os
 
 import torch
@@ -2504,6 +2503,7 @@ def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cas
 def test_all(tester: TORCH_IR_TESTER):
     if tester.multithread:
         import multiprocessing
+        from utils.misc import collect_process
         process_number = multiprocessing.cpu_count() // 2 + 1
         processes = []
         error_cases = multiprocessing.Manager().list()

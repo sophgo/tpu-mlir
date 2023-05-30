@@ -10,7 +10,6 @@ import numpy as np
 import os, sys
 import transform.TpuLang as tpul
 from typing import List
-from utils.misc import collect_process
 
 
 def rand_data(shape, dtype):
@@ -404,6 +403,7 @@ def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_c
 
 def test_all(tester: TPULANG_IR_TESTER):
     import multiprocessing
+    from utils.misc import collect_process
     process_number = multiprocessing.cpu_count() // 2 + 1
     processes = []
     error_cases = multiprocessing.Manager().list()

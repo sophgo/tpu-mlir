@@ -16,7 +16,6 @@ from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.auto_remove import file_mark, file_clean
 from utils.mlir_shell import *
-from utils.misc import collect_process
 import os
 import torch
 import torch.nn as nn
@@ -5526,6 +5525,7 @@ def test_int4(tester: ONNX_IR_TESTER):
     }
     if tester.multithread:
         import multiprocessing
+        from utils.misc import collect_process
         process_number = multiprocessing.cpu_count() // 2 + 1
         processes = []
         error_cases = multiprocessing.Manager().list()
@@ -5560,6 +5560,7 @@ def test_int4(tester: ONNX_IR_TESTER):
 def test_all(tester: ONNX_IR_TESTER):
     if tester.multithread:
         import multiprocessing
+        from utils.misc import collect_process
         process_number = multiprocessing.cpu_count() // 2 + 1
         processes = []
         error_cases = multiprocessing.Manager().list()
