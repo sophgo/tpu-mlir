@@ -28,7 +28,7 @@ The operation is as follows:
    :linenos:
 
    $ mkdir yolov5s_torch && cd yolov5s_torch
-   $ cp $TPUC_ROOT/regression/model/yolov5s.pt .
+   $ wget https://github.com/ultralytics/yolov5/releases/download/v5.0/yolov5s.pt
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace

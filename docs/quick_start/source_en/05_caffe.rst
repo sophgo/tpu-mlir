@@ -25,8 +25,8 @@ The operation is as follows:
    :linenos:
 
    $ mkdir mobilenet_v2 && cd mobilenet_v2
-   $ cp $TPUC_ROOT/regression/model/mobilenet_v2_deploy.prototxt .
-   $ cp $TPUC_ROOT/regression/model/mobilenet_v2.caffemodel .
+   $ wget https://raw.githubusercontent.com/shicai/MobileNet-Caffe/master/mobilenet_v2_deploy.prototxt
+   $ wget https://github.com/shicai/MobileNet-Caffe/raw/master/mobilenet_v2.caffemodel
    $ cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace

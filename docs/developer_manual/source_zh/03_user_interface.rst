@@ -207,7 +207,10 @@ model_transform.py
      - 图片每个通道的比值, 默认为1.0,1.0,1.0
    * - pixel_format
      - 否
-     - 图片类型, 可以是rgb、bgr、gray、rgbd四种情况
+     - 图片类型, 可以是rgb、bgr、gray、rgbd四种情况, 默认为bgr
+   * - channel_format
+     - 否
+     - 通道类型，对于图片输入可以是nhwc或nchw, 非图片输入则为none, 默认是nchw
    * - output_names
      - 否
      - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后用该指定名称做输出

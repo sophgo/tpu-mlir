@@ -114,7 +114,10 @@ Used to convert various neural network models into MLIR files, the supported par
      - The scale of each channel of the image. The default is 1.0,1.0,1.0
    * - pixel_format
      - N
-     - Image type, can be rgb, bgr, gray or rgbd
+     - Image type, can be rgb, bgr, gray or rgbd. The default is bgr
+   * - channel_format
+     - N
+     - Channel type, can be nhwc or nchw for image input, otherwise it is none. The default is nchw
    * - output_names
      - N
      - The names of the output. Use the output of the model if not specified, otherwise use the specified names as the output
