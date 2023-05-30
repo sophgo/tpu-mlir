@@ -26,7 +26,7 @@ The operation is as follows:
    :linenos:
 
    $ mkdir yolov5s_onnx && cd yolov5s_onnx
-   $ cp $TPUC_ROOT/regression/model/yolov5s.onnx .
+   $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace

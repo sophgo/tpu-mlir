@@ -25,7 +25,7 @@ CV18xx支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数�
    :linenos:
 
    $ mkdir model_yolov5s && cd model_yolov5s
-   $ cp $TPUC_ROOT/regression/model/yolov5s.onnx .
+   $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace

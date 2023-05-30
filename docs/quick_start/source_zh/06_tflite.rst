@@ -1,7 +1,7 @@
 编译TFLite模型
 ================
 
-本章以 ``resnet50_int8.tflite`` 模型为例, 介绍如何编译迁移一个TFLite模型至BM1684X TPU平台运行。
+本章以 ``lite-model_mobilebert_int8_1.tflite`` 模型为例, 介绍如何编译迁移一个TFLite模型至BM1684X TPU平台运行。
 
 本章需要如下文件(其中xxxx对应实际的版本信息):
 
@@ -16,8 +16,8 @@
 准备工作目录
 ------------------
 
-建立 ``model_resnet50_tf`` 目录, 注意是与tpu-mlir同级目录; 并把测试图片文件放入
-``model_resnet50_tf`` 目录中。
+建立 ``mobilebert_tf`` 目录, 注意是与tpu-mlir同级目录; 并把测试图片文件放入
+``mobilebert_tf`` 目录中。
 
 
 操作如下:
@@ -25,9 +25,9 @@
 .. code-block:: shell
    :linenos:
 
-   $ mkdir model_resnet50_tf && cd model_resnet50_tf
-   $ cp $TPUC_ROOT/regression/model/resnet50_int8.tflite .
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ mkdir mobilebert_tf && cd mobilebert_tf
+   $ wget -O lite-model_mobilebert_int8_1.tflite https://storage.googleapis.com/tfhub-lite-models/iree/lite-model/mobilebert/int8/1.tflite
+   $ cp ${REGRESSION_PATH}/npz_input/squad_data.npz .
    $ mkdir workspace && cd workspace
 
 
@@ -37,26 +37,22 @@
 TFLite转MLIR
 ------------------
 
-本例中的模型是bgr输入, mean为 ``103.939,116.779,123.68``, scale为 ``1.0,1.0,1.0``
-
 模型转换命令如下:
 
 
 .. code-block:: shell
 
     $ model_transform.py \
-        --model_name resnet50_tf \
-        --model_def  ../resnet50_int8.tflite \
-        --input_shapes [[1,3,224,224]] \
-        --mean 103.939,116.779,123.68 \
-        --scale 1.0,1.0,1.0 \
-        --pixel_format bgr \
-        --test_input ../image/cat.jpg \
-        --test_result resnet50_tf_top_outputs.npz \
-        --mlir resnet50_tf.mlir
+        --model_name mobilebert_tf \
+        --mlir mobilebert_tf.mlir \
+        --model_def ../lite-model_mobilebert_int8_1.tflite \
+        --test_input ../squad_data.npz \
+        --test_result mobilebert_tf_top_outputs.npz \
+        --input_shapes [[1,384],[1,384],[1,384]] \
+        --channel_format none
 
 
-转成mlir文件后, 会生成一个 ``resnet50_tf_in_f32.npz`` 文件, 该文件是模型的输入文件。
+转成mlir文件后, 会生成一个 ``mobilebert_tf_in_f32.npz`` 文件, 该文件是模型的输入文件。
 
 
 MLIR转模型
@@ -66,14 +62,14 @@ MLIR转模型
 
 .. code-block:: shell
 
-   $ model_deploy.py \
-       --mlir resnet50_tf.mlir \
-       --quantize INT8 \
-       --asymmetric \
-       --chip bm1684x \
-       --test_input resnet50_tf_in_f32.npz \
-       --test_reference resnet50_tf_top_outputs.npz \
-       --model resnet50_tf_1684x.bmodel
+    $ model_deploy.py \
+        --mlir mobilebert_tf.mlir \
+        --quantize INT8 \
+        --asymmetric \
+        --chip bm1684x \
+        --test_input mobilebert_tf_in_f32.npz \
+        --test_reference mobilebert_tf_top_outputs.npz \
+        --model mobilebert_tf_bm1684x_int8_asym.bmodel
 
 
-编译完成后, 会生成名为 ``resnet50_tf_1684x.bmodel`` 的文件。
+编译完成后, 会生成名为 ``mobilebert_tf_bm1684x_int8_asym.bmodel`` 的文件。
