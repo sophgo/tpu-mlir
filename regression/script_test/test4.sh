@@ -4,6 +4,10 @@ set -ex
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
+mkdir -p yolov5s
+pushd yolov5s
+
+# yolov5s
 model_transform.py \
   --model_name yolov5s \
   --model_def ${REGRESSION_PATH}/model/yolov5s.onnx \
@@ -42,3 +46,44 @@ detect_yolov5.py \
   --fuse_preprocess \
   --fuse_postprocess \
   --out dog_out.jpg
+
+popd
+
+mkdir -p yolov3
+pushd yolov3
+
+# yolov3
+model_transform.py \
+  --model_name yolov3 \
+  --model_def ${NNMODELS_PATH}/onnx_models/yolov3-10.onnx \
+  --input_shapes=[[1,3,416,416]] \
+  --output_names=convolution_output2,convolution_output1,convolution_output \
+  --keep_aspect_ratio \
+  --scale=0.0039216,0.0039216,0.0039216 \
+  --pixel_format=rgb \
+  --test_input=${REGRESSION_PATH}/image/dog.jpg \
+  --test_result=yolov3_top_outputs.npz \
+  --add_postprocess=yolov3 \
+  --mlir yolov3.mlir
+
+model_deploy.py \
+  --mlir yolov3.mlir \
+  --quantize F32 \
+  --chip bm1684x \
+  --fuse_preprocess \
+  --test_input ${REGRESSION_PATH}/image/dog.jpg \
+  --test_reference yolov3_top_outputs.npz \
+  --compare_all \
+  --except "yolo_post" \
+  --debug \
+  --model yolov3_f32.bmodel
+
+detect_yolov3.py \
+  --input ${REGRESSION_PATH}/image/dog.jpg \
+  --model yolov3_f32.bmodel \
+  --net_input_dims 416,416 \
+  --fuse_preprocess \
+  --fuse_postprocess \
+  --out dog_out.jpg
+
+popd

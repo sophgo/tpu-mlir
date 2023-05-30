@@ -68,6 +68,7 @@ full_model_list = {
     "ultraface_640":              (N,      Y,       Y,      N,      N,      N,      N,      Y),
     "vgg16":                      (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
+    "yolov3":                     (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov3_tiny":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolox_s":                    (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov5s_with_trans":         (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
