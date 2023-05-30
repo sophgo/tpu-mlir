@@ -169,8 +169,11 @@ public:
     }
     if (module::isBM1686()) {
       auto len = module::getNumElements(matmul_queries.getInput());
+      auto len_weight0 = module::getNumElements(matmul_queries.getRight());
+      auto len_weight1 = module::getNumElements(matmul_keys.getRight());
+      auto len_weight2 = module::getNumElements(matmul_values.getRight());
       // TODO: do not suppose attention when size greater than [batch, 2048, 320]
-      if (len > 2048 * 320) {
+      if (len > 2048 * 320 || (len_weight0 + len_weight1 + len_weight2) > 1024 * 160 * 3) {
         return failure();
       }
     }
