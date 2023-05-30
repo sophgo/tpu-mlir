@@ -14,7 +14,6 @@ from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
 from utils.auto_remove import file_mark, file_clean
-from utils.misc import collect_process
 import os
 
 # from tflite.BuiltinOperator import BuiltinOperator
@@ -925,6 +924,7 @@ def test_one_case_in_all(tester: TFLITE_IR_TESTER, case, error_cases, success_ca
 
 def test_all(tester: TFLITE_IR_TESTER):
   import multiprocessing
+  from utils.misc import collect_process
   process_number = multiprocessing.cpu_count() // 2 + 1
   processes = []
   error_cases = multiprocessing.Manager().list()

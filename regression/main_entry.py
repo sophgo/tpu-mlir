@@ -10,7 +10,6 @@ import os
 
 test_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'python', 'test'))
 sys.path.append(test_dir)
-import multiprocessing
 import time
 from chip import *
 from run_model import MODEL_RUN
@@ -21,6 +20,12 @@ import test_onnx
 import argparse
 import logging
 from utils.mlir_shell import _os_system_log
+
+
+class Status:
+    PASSED = 'PASSED'
+    FAILED = 'FAILED'
+    TIMEOUT = 'TIMEOUT'
 
 
 class MAIN_ENTRY(object):
@@ -47,7 +52,7 @@ class MAIN_ENTRY(object):
     def add_result(self, test_name: str, status: bool, error_cases: list = []):
         self.results.append({
             "name": test_name,
-            "status": "PASSED" if status else "FAILED",
+            "status": Status.PASSED if status else Status.FAILED,
             "error_cases": error_cases
         })
 
@@ -73,7 +78,7 @@ class MAIN_ENTRY(object):
         ret = regressor.run_full()
         finished_list.append({
             "name": case_name,
-            "status": "PASSED" if ret == 0 else "FAILED",
+            "status": Status.PASSED if ret == 0 else Status.FAILED,
             "error_cases": []
         })
         os.chdir(self.current_dir)
@@ -156,32 +161,37 @@ class MAIN_ENTRY(object):
                 self.results.extend(finished_list)
                 if self.is_basic:
                     for result in finished_list:
-                        if result["status"] == "FAILED":
+                        if result["status"] != Status.PASSED:
                             return 1
             else:
+                import multiprocessing
+                from utils.misc import collect_process
                 process_number = multiprocessing.cpu_count() // 2 + 1
                 processes = []
                 finished_list = multiprocessing.Manager().list()
+                error_cases = multiprocessing.Manager().list()
                 for model in cur_model_list:
+                    name = f"{model}_{chip}"
                     p = multiprocessing.Process(target=self.run_regression_net,
+                                                name=name,
                                                 args=(model, chip, finished_list))
                     processes.append(p)
                     if len(processes) == process_number:
-                        for p in processes:
-                            p.start()
-                        for j in processes:
-                            j.join()
+                        collect_process(processes, error_cases, 1200)
                         processes = []
-                if processes:
-                    for p in processes:
-                        p.start()
-                    for j in processes:
-                        j.join()
-
+                collect_process(processes, error_cases, 1200)
+                processes = []
+                for error in error_cases:
+                    if error not in finished_list:
+                        finished_list.append({
+                            "name": error,
+                            "status": Status.TIMEOUT,
+                            "error_cases": []
+                        })
                 self.results.extend(finished_list)
                 if self.is_basic:
                     for result in finished_list:
-                        if result["status"] == "FAILED":
+                        if result["status"] != Status.PASSED:
                             return 1
 
             end_time = time.time()
@@ -189,7 +199,7 @@ class MAIN_ENTRY(object):
             tmp_time = end_time
         self.time_cost.append(f"total time: {int(end_time - start_time)} seconds")
 
-        return 1 if any(result.get("status") == "FAILED" for result in self.results) else 0
+        return 1 if any(result.get("status") != Status.PASSED for result in self.results) else 0
 
 
 if __name__ == "__main__":
@@ -218,7 +228,7 @@ if __name__ == "__main__":
     for result in main_entry.results:
         if result["name"].startswith(tuple(main_entry.op_test_types.keys())):
             continue
-        if result["status"] == "FAILED":
+        if result["status"] != Status.PASSED:
             with open(result["name"] + ".log", 'r') as file:
                 lines = file.readlines()
                 last_100_lines = lines[-100:]
@@ -231,12 +241,12 @@ if __name__ == "__main__":
 
     print("============ Passed Cases ============")
     for result in main_entry.results:
-        if result["status"] == "PASSED":
+        if result["status"] == Status.PASSED:
             print("{} {}".format(result["name"], result["status"]))
 
     print("============ Failed Cases ============")
     for result in main_entry.results:
-        if result["status"] == "FAILED":
+        if result["status"] != Status.PASSED:
             print("{} {}".format(result["name"], result["status"]))
             if result["error_cases"]:
                 print("Failed cases: ", result["error_cases"])
