@@ -1590,7 +1590,7 @@ void RetinaFaceDetectionFunc::invoke() {
 
 template <typename Dtype>
 void ApplyNms_opt(std::vector<PredictionResult> &boxes, std::vector<int> &idxes,
-                  Dtype threshold) {
+                  Dtype threshold, int agnostic_nms = 0) {
   int bbox_cnt = (int)boxes.size();
   // init the map
   uint32_t map[bbox_cnt / 32 + 1];
@@ -1616,7 +1616,12 @@ void ApplyNms_opt(std::vector<PredictionResult> &boxes, std::vector<int> &idxes,
       Bbox2.w = boxes[j].w;
       Bbox2.h = boxes[j].h;
 
-      Dtype iou = box_iou(Bbox1, Bbox2);
+      Dtype iou;
+      if (agnostic_nms == 0 && boxes[i].classType == boxes[j].classType) {
+        iou = box_iou(Bbox1, Bbox2);
+      } else {
+        iou = (Dtype)0;
+      }
       if (iou >= threshold) {
         map[j / 32] &= ~(1 << (j % 32));
       }
@@ -1781,6 +1786,92 @@ void YoloDetectionFunc_v2::invoke() {
       top_data[i * 7 + 5] = total_preds[i].w;
       top_data[i * 7 + 6] = total_preds[i].h;
     }
+  }
+}
+
+Yolov5DetectionFunc::Yolov5DetectionFunc(YoloDetParam &param)
+    : param_(param) {
+}
+
+void Yolov5DetectionFunc::invoke() {
+  auto top_data = param_.output.ptr;
+  memset(top_data, 0, param_.output.size);
+  int batch_num = param_.inputs[0].shape[0];
+  int box_num = param_.inputs[0].shape[1];
+  int box_len = param_.inputs[0].shape[2];
+  int agnostic_nms = param_.agnostic_nms;
+
+  std::vector<PredictionResult> total_preds;
+  // #pragma omp parallel for schedule(static, omp_schedule(batch_num * 4))
+  for (int b = 0; b < batch_num; b++) {
+    std::vector<PredictionResult> preds;
+    //================================
+    // box decode
+    //================================
+    for (int j = 0; j < box_num; j++) {
+      const float *input_data =
+          param_.inputs[0].ptr + b * box_num * box_len + j * box_len;
+      if (input_data[4] > param_.obj_threshold) {
+        float max_value = -10000;
+        int max_idx = 0;
+        for (int l = 5; l < box_len; l++) {
+          if (input_data[4] * input_data[l] > max_value) {
+            max_value = input_data[4] * input_data[l];
+            max_idx = l - 5;
+          }
+        }
+        if (max_value >= param_.obj_threshold) {
+          PredictionResult pred;
+          pred.classType = max_idx;
+          pred.confidence = max_value;
+          pred.idx = b;
+          pred.x = input_data[0];
+          pred.y = input_data[1];
+          pred.w = input_data[2];
+          pred.h = input_data[3];
+          preds.push_back(pred);
+        }
+      }
+    }
+    //================================
+    // NMS for each image
+    //================================
+    std::vector<int> idxes;
+    idxes.clear();
+
+    int num_kept = 0;
+    if (preds.size() > 0) {
+      std::stable_sort(
+          preds.begin(), preds.end(),
+          [](const PredictionResult &box1, const PredictionResult &box2) {
+            return box1.confidence > box2.confidence;
+          });
+
+      ApplyNms_opt(preds, idxes, param_.nms_threshold, agnostic_nms);
+      num_kept = idxes.size();
+
+      if (param_.keep_topk > 0) {
+        if (num_kept > param_.keep_topk)
+          num_kept = param_.keep_topk;
+      } else {
+        if (num_kept > KEEP_TOP_K)
+          num_kept = KEEP_TOP_K;
+      }
+
+      for (int i = 0; i < num_kept; i++) {
+        total_preds.push_back(preds[idxes[i]]);
+      }
+    }
+  }
+
+  for (int i = 0; i < total_preds.size(); i++) {
+    top_data[i * 7 + 0] = total_preds[i].idx;        // Image_Id
+    top_data[i * 7 + 1] = total_preds[i].classType;  // label
+    top_data[i * 7 + 2] = total_preds[i].confidence; // confidence
+    top_data[i * 7 + 3] = total_preds[i].x;
+    top_data[i * 7 + 4] = total_preds[i].y;
+    top_data[i * 7 + 5] = total_preds[i].w;
+    top_data[i * 7 + 6] = total_preds[i].h;
   }
 }
 
