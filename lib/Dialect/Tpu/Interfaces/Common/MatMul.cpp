@@ -222,6 +222,9 @@ LogicalResult tpu::MatMulOp::LocalGenSupport() {
   if (module::isCV18xx()) {
     return failure();
   }
+  if(module::isBM1684XFamily() && (int)getRunMode(getOperation()) == 1) {
+    return failure();
+  }
 
   auto ins = getOperands();
   if (backend::BM168x::getDataType(ins[0]) == DTYPE_FP32) {

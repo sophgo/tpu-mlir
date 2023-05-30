@@ -206,6 +206,9 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
     }
     return (p.offset_4[1] % CV18xx::NPU_NUM == 0) ? success() : failure();
   } else if (module::isBM1684XFamily()) {
+    if((int)getRunMode(getOperation()) == 1) {
+      return failure();
+    }
     const auto offset = module::getI64Array(getOffset());
     const auto steps = module::getI64Array(getSteps());
     // TODO: force layer group to allow that offset->at(0) != 0
