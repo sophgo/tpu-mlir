@@ -677,9 +677,19 @@ public:
         if previous subnet is switch/merge, need to check
         the previous subnet of switch/merge continuously */
       auto pre_subnets = previous_static_subnet(previous_static_subnet, subnets, index);
-      if (!pre_subnets.empty() &&
-          pre_subnets[0]->type == RunMode::TPU_STATIC)
+      if (pre_subnets.size() == 1
+          && pre_subnets[0]->type == RunMode::TPU_STATIC)
         return true;
+      else if (pre_subnets.size() >= 2) {
+        /* merge subnet have at least two previous subnet,
+         as long as there is one dynamic, can transfer
+         dynamic to successors */
+        for (int i = 0; i < pre_subnets.size(); i++) {
+          if (pre_subnets[i]->type == RunMode::TPU_DYNAMIC)
+            return false;
+        }
+        return true;
+      }
       else
         return false;
     }
