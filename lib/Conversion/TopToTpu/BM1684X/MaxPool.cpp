@@ -17,7 +17,7 @@ void MaxPoolLowering::LoweringF32(PatternRewriter &rewriter,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.getKernelShape().size() == 3) {
-    lowering_common_f32<tpu::Pool3DOp>(rewriter, op);
+    lowering_common_f32<tpu::Pool3DOp>(rewriter, op, 2);
   } else if (op.getKernelShape().size() == 2) {
     lowering_common_f32<tpu::Pool2DOp>(rewriter, op);
   } else {
@@ -30,7 +30,7 @@ void MaxPoolLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxPoolOp op,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.getKernelShape().size() == 3) {
-    lowering_common_int8<tpu::Pool3DOp>(rewriter, op, asymmetric);
+    lowering_common_int8<tpu::Pool3DOp>(rewriter, op, asymmetric, 2);
   } else if (op.getKernelShape().size() == 2) {
     lowering_common_int8<tpu::Pool2DOp>(rewriter, op, asymmetric);
   } else {
@@ -49,7 +49,7 @@ void MaxPoolLowering::LoweringBF16(PatternRewriter &rewriter,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.getKernelShape().size() == 3) {
-    lowering_common_bf16<tpu::Pool3DOp>(rewriter, op);
+    lowering_common_bf16<tpu::Pool3DOp>(rewriter, op, 2);
   } else if (op.getKernelShape().size() == 2) {
     lowering_common_bf16<tpu::Pool2DOp>(rewriter, op);
   } else {
@@ -62,7 +62,7 @@ void MaxPoolLowering::LoweringF16(PatternRewriter &rewriter,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.getKernelShape().size() == 3) {
-    lowering_common_f16<tpu::Pool3DOp>(rewriter, op);
+    lowering_common_f16<tpu::Pool3DOp>(rewriter, op, 2);
   } else if (op.getKernelShape().size() == 2) {
     lowering_common_f16<tpu::Pool2DOp>(rewriter, op);
   } else {
@@ -75,7 +75,7 @@ void MaxPoolLowering::LoweringQuantized(PatternRewriter &rewriter,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.getKernelShape().size() == 3) {
-    lowering_common<tpu::Pool3DOp>(rewriter, op, op.getOutput().getType());
+    lowering_common<tpu::Pool3DOp>(rewriter, op, op.getOutput().getType(), 2);
   } else if (op.getKernelShape().size() == 2) {
     lowering_common<tpu::Pool2DOp>(rewriter, op, op.getOutput().getType());
   } else {

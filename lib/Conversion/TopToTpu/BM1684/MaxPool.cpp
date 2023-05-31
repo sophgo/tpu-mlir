@@ -17,7 +17,7 @@ void MaxPoolLowering::LoweringF32(PatternRewriter &rewriter,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.getKernelShape().size() == 3) {
-    lowering_common_f32<tpu::Pool3DOp>(rewriter, op);
+    lowering_common_f32<tpu::Pool3DOp>(rewriter, op, 2);
   } else if (op.getKernelShape().size() == 2) {
     lowering_common_f32<tpu::Pool2DOp>(rewriter, op);
   } else {
@@ -30,7 +30,7 @@ void MaxPoolLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxPoolOp op,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.getKernelShape().size() == 3) {
-    lowering_common_int8<tpu::Pool3DOp>(rewriter, op);
+    lowering_common_int8<tpu::Pool3DOp>(rewriter, op, false, 2);
   } else if (op.getKernelShape().size() == 2) {
     lowering_common_int8<tpu::Pool2DOp>(rewriter, op);
   } else {
