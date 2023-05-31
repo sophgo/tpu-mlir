@@ -407,7 +407,28 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
 def Tpu_Pool1DOp:Tpu_PoolOp<"Pool1D">;
 def Tpu_Pool2DOp:Tpu_PoolOp<"Pool2D">;
 def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D",[
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardD"]>]>;
+  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardD"]>]>{
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyTensorOrNone:$buffer, //for BM1684 Pool3D
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    Tpu_PoolModeAttr:$pool_mode,
+    DefaultValuedAttr<I64Attr, "0">:$pad_value,
+    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    /// symmetric quantize param
+    OptionalAttr<SI32Attr>:$multiplier,
+    OptionalAttr<SI32Attr>:$rshift,
+    /// asymmetric quantize param
+    OptionalAttr<F64Attr>:$scale,
+    OptionalAttr<F64Attr>:$offset,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
+  );
+}
 
 def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
   [SupportFuseRelu,

@@ -737,6 +737,33 @@ public:
   }
 };
 
+
+class Pool3DGlobalBuffer : public OpRewritePattern<tpu::Pool3DOp> {
+public:
+  using OpRewritePattern<tpu::Pool3DOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::Pool3DOp Pool3DOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(Pool3DOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684Family()) {
+      return failure();
+    }
+
+    auto elment_num = module::getNumElements(Pool3DOp.getInput());
+    auto type = module::getStorageType(Pool3DOp.getInput());
+    // add buffer
+    std::vector<int64_t> buffer_shape = {2, elment_num}; // double buffer
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(Pool3DOp, buffer_type);
+    Pool3DOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == Pool3DOp.getBuffer();
+    });
+    return success();
+  }
+};
+
 } // namespace bm168x
 
 namespace tpu {
@@ -753,6 +780,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       SoftmaxGlobalBuffer,
       PermuteGlobalBuffer,
       InterpGlobalBuffer,
+      Pool3DGlobalBuffer,
       NonZeroGlobalBuffer,
       DeformGatherGlobalBuffer,
       TileGlobalBuffer,
