@@ -8,6 +8,7 @@
 #
 # ==============================================================================
 
+import os
 import numpy as np
 import argparse
 from utils.mlir_shell import *
@@ -114,90 +115,69 @@ class DeployTool:
                                                                 ppa.channel_format)
             return
         self.inputs = {}
-        #self.pre_inputs = {}
+        gen_input_f32 = {}
+        gen_ref = True if len(self.ref_npz) == 0 else False
+
         if self.fuse_preprocess:
             assert (self.test_input[0].endswith(('.jpg', '.jpeg', '.png')))
         if num_inputs == 1 and self.test_input[0].endswith(".npz"):
             x = np.load(self.test_input[0])
             for name in x.files:
                 self.inputs[name] = x[name]
+            if gen_ref:
+                gen_input_f32 = self.inputs
         else:
-            if self.fuse_preprocess:
-                #fuse_preprocess should input origin image format
-                ppa = preprocess()
-                input_shapes = []
-                for i in range(0, len(self.test_input)):
-                    print("Load config from {}, get the following preprocess args:".format(
-                        self.mlir_file))
-                    input_op = self.module.inputs[i].op
-                    if i == 0:
-                        #use the first input_op's shape as input_shapes
-                        input_shapes.append(Operation.shape(input_op))
+            assert (len(self.test_input) == len(self.module.inputs))
+            for infile, op in zip(self.test_input, self.module.inputs):
+                if infile.endswith(('.jpg', '.jpeg', '.png')):
+                    ppa = preprocess()
+                    input_op = op.op
+                    input_shape = [Operation.shape(input_op)]
                     ppa.load_config(input_op)
-                    if self.customization_format == '':
-                        self.customization_format = getCustomFormat(ppa.pixel_format,
-                                                                    ppa.channel_format)
-                    config = {
-                        'input_shapes': input_shapes,
-                        'resize_dims': ppa.resize_dims,
-                        'fuse_pre': True,
-                        'keep_aspect_ratio': ppa.keep_aspect_ratio,
-                        'keep_ratio_mode': ppa.keep_ratio_mode,
-                        "pixel_format": ppa.pixel_format,
-                        'customization_format': self.customization_format,
-                        'aligned': self.aligned_input,
-                        'pad_type': ppa.pad_type,
-                        'pad_value': ppa.pad_value,
-                        'chip': self.chip,
-                    }
-                    print("Add preprocess, set the following params:")
-                    ppb = preprocess()
-                    ppb.config(**config)
-                    self.inputs[self.module.inputs[i].name + "_raw"] = ppb.run(self.test_input[i])
-                    self.in_f32_npz = self.module_name + "_in_ori.npz"
-            else:
-                assert (len(self.test_input) == len(self.module.inputs))
-                for infile, op in zip(self.test_input, self.module.inputs):
-                    assert (infile.endswith(".npy"))
+                    if self.fuse_preprocess:
+                        #fuse_preprocess should input origin image format
+                        if self.customization_format == '':
+                            self.customization_format = getCustomFormat(ppa.pixel_format,
+                                                                        ppa.channel_format)
+                        config = {
+                            'input_shapes': input_shape,
+                            'resize_dims': ppa.resize_dims,
+                            'fuse_pre': True,
+                            'keep_aspect_ratio': ppa.keep_aspect_ratio,
+                            'keep_ratio_mode': ppa.keep_ratio_mode,
+                            "pixel_format": ppa.pixel_format,
+                            'customization_format': self.customization_format,
+                            'aligned': self.aligned_input,
+                            'pad_type': ppa.pad_type,
+                            'pad_value': ppa.pad_value,
+                            'chip': self.chip,
+                        }
+                        print("Add preprocess, set the following params:")
+                        ppb = preprocess()
+                        ppb.config(**config)
+                        self.inputs[op.name + "_raw"] = ppb.run(infile)
+                        self.in_f32_npz = self.module_name + "_in_ori.npz"
+                    if gen_ref:
+                        gen_input_f32[ppa.input_name] = ppa.run(infile)
+                        if not self.fuse_preprocess:
+                            self.inputs[ppa.input_name] = gen_input_f32[ppa.input_name]
+                elif infile.endswith(".npy"):
                     data = np.load(infile)
                     self.inputs[op.name] = data
+                    if gen_ref:
+                        gen_input_f32[op.name] = self.inputs
+                else:
+                    raise TypeError("Unsupport input type *{}".format(os.path.splitext(infile)))
         if self.aligned_input and not self.fuse_preprocess:
-            ppa = preprocess()
-            if self.customization_format == '':
-                #use the first input_op's pixel format
-                input_op = self.module.inputs[0].op
-                ppa.load_config(input_op)
-                self.customization_format = getCustomFormat(ppa.pixel_format, ppa.channel_format)
-            assert (self.customization_format.find("YUV") < 0)
-            if str(self.chip).lower().endswith('183x'):
-                ppa.VPSS_W_ALIGN = 32
-                ppa.VPSS_Y_ALIGN = 32
-                ppa.VPSS_CHANNEL_ALIGN = 4096
-            else:
-                ppa.VPSS_W_ALIGN = 64
-                ppa.VPSS_Y_ALIGN = 64
-                ppa.VPSS_CHANNEL_ALIGN = 64
-            #do align
-            for name in self.inputs.keys():
-                data = self.inputs[name]
-                x = np.squeeze(data, 0)
-                if self.customization_format == "GRAYSCALE":
-                    x = ppa.align_gray_frame(x, self.aligned_input)
-                elif self.customization_format.endswith("_PLANAR"):
-                    x = ppa.align_planar_frame(x, self.aligned_input)
-                else:
-                    x = ppa.align_packed_frame(x, self.aligned_input)
-                self.inputs[name] = np.expand_dims(x, axis=0)
-                if self.excepts == "-":
-                    self.excepts = name
-                else:
-                    self.excepts += ("," + name)
-            self.in_f32_npz = self.module_name + "_in_align.npz"
+            raise RuntimeError("Not support now, aligned_input requires fuse_preprocess to be set to True.")
         np.savez(self.in_f32_npz, **self.inputs)
-        if len(self.ref_npz) == 0:
+        if gen_ref:
+            gen_in_f32_npz = self.module_name + '_in_f32.npz'
+            file_mark(gen_in_f32_npz)
+            np.savez(gen_in_f32_npz, **gen_input_f32)
             self.ref_npz = self.module_name + "_top_outputs.npz"
-            show_fake_cmd(self.in_f32_npz, self.mlir_file, self.ref_npz)
-            top_outputs = mlir_inference(self.inputs, self.mlir_file)
+            show_fake_cmd(gen_in_f32_npz, self.mlir_file, self.ref_npz)
+            top_outputs = mlir_inference(gen_input_f32, self.mlir_file)
             np.savez(self.ref_npz, **top_outputs)
         self.tpu_npz = "{}_tpu_outputs.npz".format(self.prefix)
         file_mark(self.tpu_npz)
