@@ -2381,6 +2381,17 @@ class OnnxConverter(BaseConverter):
                                                                    onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
                 self.addOperand(onnx_node.name, pow_op)
+        elif self.isScalar(base):
+            expn_op = self.getOp(expn)
+            base_const = self.getScalar(base)
+            output_shape = self.getShape(onnx_node.name)
+            pow_op = top.Pow2Op(self.mlir.get_tensor_type(output_shape),
+                                base_const,
+                                expn_op,
+                                loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+            self.addOperand(onnx_node.name, pow_op)
         else:
             raise RuntimeError("Not implemented")
 
