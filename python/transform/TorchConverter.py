@@ -182,6 +182,7 @@ class TorchConverter(BaseConverter):
             "aten::zeros": lambda node: self.convert_constant_fill_op(node, 0),
             ###### prim #####
             "prim::Constant": lambda node: self.convert_constant(node),
+            "prim::DictConstruct": lambda node: self.convert_dict_construct(node),
             "prim::GetAttr": lambda node: self.convert_get_attr(node),
             "prim::ListConstruct": lambda node: self.convert_list_construct(node),
             "prim::ListUnpack": lambda node: self.convert_list_unpack(node),
@@ -260,6 +261,13 @@ class TorchConverter(BaseConverter):
                    outp.node().kind() == 'prim::ListConstruct':
                     ins = outp.node().inputs()
                     self.output_names.extend([i.debugName() for i in ins])
+                elif outp.node().kind() == 'prim::DictConstruct':
+                    ins = outp.node().inputs()
+                    ls_ins = list(ins)
+                    in_num = len(ls_ins)
+                    assert in_num % 2 == 0
+                    self.output_names.extend(
+                        [ls_ins[i*2+1].debugName() for i in range(int(in_num/2))])
                 else:
                     self.output_names.append(outp.debugName())
         self.weight_names = []
@@ -1710,7 +1718,7 @@ class TorchConverter(BaseConverter):
         n_offset_grps = self.const_val[torch_node.inputs[12]]
         use_mask = self.const_val[torch_node.inputs[13]]
         if (use_mask == 0):
-            mask_op = self.mlir.none_op;
+            mask_op = self.mlir.none_op
         new_op = top.DeformConv2DOp(self.unranked_type,
                             op,
                             weight_op,
@@ -1727,3 +1735,6 @@ class TorchConverter(BaseConverter):
                             loc=self.get_loc(torch_node.name),
                             ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
+
+    def convert_dict_construct(self, torch_node: TorchNode):
+        pass
