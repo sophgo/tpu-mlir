@@ -16,6 +16,12 @@
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
+// reshape1+permute+reshape2 ===> pixelshuffle
+// reshape1:[1x128x64x64] -> [1x32x2x2x64x64]
+// permute:[1x32x2x2x64x64] -> [1x32x64x2x64x2]
+// reshape2:1x32x64x2x64x2] -> [1x32x128x128]
+//==>pixelshuffle:[1x128x64x64] -> [1x32x128x128]
+
 struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -26,9 +32,15 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
       return failure();
     }
 
-    std::vector<int64_t> ps = {0, 1, 4, 2, 5, 3};
+    std::vector<int64_t> ps_crd = {0, 1, 4, 2, 5, 3};
+    std::vector<int64_t> ps_dcr = {0, 3, 4, 1, 5, 2};
     auto order = module::getI64Array(op.getOrder());
-    if (*order != ps) {
+    bool crd = true;
+    if (*order == ps_crd) {
+      crd = true;
+    } else if (*order == ps_dcr) {
+      crd = false;
+    } else {
       return failure();
     }
     auto reshape_before =
@@ -44,7 +56,7 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
     auto output_shape = module::getShape(reshape_after.getOutput());
     int64_t upscale_factor = input_shape[2];
     int64_t on = input_shape[0];
-    int64_t oc = input_shape[1];
+    int64_t oc = crd ? input_shape[1]: input_shape[3];
     int64_t oh = upscale_factor * input_shape[4];
     int64_t ow = upscale_factor * input_shape[5];
     std::vector<int64_t> o_s = {on, oc, oh, ow};
@@ -52,8 +64,7 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
       return failure();
     }
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(
-        rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(true)));
+    attrs.push_back(rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(crd)));
     attrs.push_back(
         rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(false)));
     attrs.push_back(rewriter.getNamedAttr(
@@ -90,9 +101,15 @@ struct TopPermuteToReorg : public OpRewritePattern<PermuteOp> {
       return failure();
     }
 
-    std::vector<int64_t> ps = {0, 1, 3, 5, 2, 4};
+    std::vector<int64_t> ps_crd = {0, 1, 3, 5, 2, 4};
+    std::vector<int64_t> ps_dcr = {0, 3, 5, 1, 2, 4};
     auto order = module::getI64Array(op.getOrder());
-    if (*order != ps) {
+    bool crd = true;
+    if (*order == ps_crd) {
+      crd = true;
+    } else if (*order == ps_dcr) {
+      crd = false;
+    } else {
       return failure();
     }
     auto reshape_before =
@@ -116,8 +133,7 @@ struct TopPermuteToReorg : public OpRewritePattern<PermuteOp> {
       return failure();
     }
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(
-        rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(true)));
+    attrs.push_back(rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(crd)));
     attrs.push_back(
         rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(true)));
     attrs.push_back(
