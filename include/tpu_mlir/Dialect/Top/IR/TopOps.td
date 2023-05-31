@@ -1716,6 +1716,19 @@ def Top_PowOp : Top_Op<"Pow"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_Pow2Op : Top_Op<"Pow2"> {
+  let summary = "Pow2 operation";
+  let description = [{
+    output = n ^ input
+  }];
+  let arguments = (ins
+    F64Attr: $const_val,
+    AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+  //let hasCanonicalizer = 1;
+}
+
 def Top_SqrtOp : Top_Op<"Sqrt"> {
   let summary = "Sqrt operation";
   let description = [{
