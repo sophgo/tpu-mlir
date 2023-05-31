@@ -760,18 +760,37 @@ protected:
               return;
             }
             int input_ok = 0;
+            int type = 0;
             for (auto opd : addop.getOperands()) {
               if (auto layernormop =
                       dyn_cast<top::LayerNormOp>(opd.getDefiningOp())) {
                 input_ok++;
               } else if (auto matmulop =
                              dyn_cast<top::MatMulOp>(opd.getDefiningOp())) {
-                if (LoweringConfig::quantize_map.find(
-                        module::getName(opd.getDefiningOp()).str()) ==
-                    LoweringConfig::quantize_map.end()) {
-                  LoweringConfig::quantize_map.insert(
-                      {module::getName(opd.getDefiningOp()).str(),
-                       module::Mode::F16});
+                int input_mm = 0;
+                int weight_num = 0;
+                int tensor_num = 0;
+                for ( auto opdm : matmulop.getOperands()) {
+                  if ( auto w = dyn_cast<top::WeightOp>(opdm.getDefiningOp())) {
+                    weight_num ++;
+                  }
+                  else if (auto mm = dyn_cast<top::GELUOp>(opdm.getDefiningOp())) {
+                    input_mm ++;
+                  }
+                  else {
+                    tensor_num ++;
+                  }
+                }
+                if (input_mm == 1) {
+                  input_ok ++;
+                  type ++;
+                }
+                else if (tensor_num == 1 ){
+                  input_ok ++;
+                }
+                else {
+                  input_ok = 0;
+                  return;
                 }
                 input_ok++;
               } else if (auto attenop = dyn_cast<top::AttentionOp>(opd.getDefiningOp())) {
@@ -788,6 +807,18 @@ protected:
               } else {
                 input_ok = 0;
                 return;
+              }
+            }
+
+            for (auto opd : addop.getOperands()) {
+              if (auto matmulop = dyn_cast<top::MatMulOp>(opd.getDefiningOp())) {
+                if (type == 1 && LoweringConfig::quantize_map.find(
+                        module::getName(opd.getDefiningOp()).str()) ==
+                    LoweringConfig::quantize_map.end()) {
+                  LoweringConfig::quantize_map.insert(
+                      {module::getName(opd.getDefiningOp()).str(),
+                       module::Mode::F16});
+                }
               }
             }
 
