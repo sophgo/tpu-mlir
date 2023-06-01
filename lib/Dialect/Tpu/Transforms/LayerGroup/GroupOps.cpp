@@ -86,7 +86,7 @@ void GroupOps::buildMlir() {
   for (int64_t i = group_num - 1; i >= 0; --i) {
     if (lg_infos[i].group_ops.size() > 1) {
       time_step = lg_pass_ir_->time_steps[i];
-      buildGroupOp(lg_infos[i], lg_pass_ir_->shape_secs[i]);
+      buildGroupOp(lg_infos[i], lg_pass_ir_->shape_secs[i], i);
     }
   }
   // update group overlap info
@@ -94,13 +94,13 @@ void GroupOps::buildMlir() {
   for (int64_t i = group_num - 1; i >= 0; --i) {
     if (lg_infos[i].group_ops.size() > 1) {
       time_step = lg_pass_ir_->time_steps[i];
-      UpdateGroupOverlapInfo(groups_[idx++]);
+      UpdateGroupOverlapInfo(groups_[idx++], i);
     }
   }
 }
 
 void GroupOps::buildGroupOp(const LgInfo &lg_info,
-                            const shape_secs_t &shape_secs) {
+                            const shape_secs_t &shape_secs, const int64_t group_idx) {
   auto builder = OpBuilder(ctx_);
   llvm::SmallVector<Value, 8> operands;
   llvm::SmallVector<Value, 8> outputs;
@@ -179,11 +179,11 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
         if (time_step->get_tensor_swpipl_stage(tensor.first) == stg) {
           if (self_up_overlap_ops.find(tensor.first) !=
               self_up_overlap_ops.end()) {
-            self_up_overlap_ops_[tensor.first] = id;
+            self_up_overlap_ops_[group_idx][tensor.first] = id;
           }
           if (self_down_overlap_ops.find(tensor.first) !=
               self_down_overlap_ops.end()) {
-            self_down_overlap_ops_[tensor.first] = id;
+            self_down_overlap_ops_[group_idx][tensor.first] = id;
           }
           if (tensor.second.mode == TIMESTEP_LOAD) {
             CreateLoadOp(tensor, id++, ops, lg_info.type);
@@ -252,7 +252,7 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
   groups_.push_back(groupOp.getOperation());
 }
 
-void GroupOps::UpdateGroupOverlapInfo(Operation *op) {
+void GroupOps::UpdateGroupOverlapInfo(Operation *op, int64_t group_idx) {
   auto builder = OpBuilder(ctx_);
   auto groupOp = dyn_cast<tpu::GroupOp>(op);
   auto &self_up_overlap_ops = time_step->get_self_up_overlap_ops();
@@ -263,14 +263,14 @@ void GroupOps::UpdateGroupOverlapInfo(Operation *op) {
   // update group_overlap op info of this group
   std::vector<int64_t> self_down_overlap_op;
   for (auto v : self_down_overlap_ops) {
-    self_down_overlap_op.push_back(self_down_overlap_ops_[v]);
+    self_down_overlap_op.push_back(self_down_overlap_ops_[group_idx][v]);
   }
   groupOp->setAttr("self_down_overlap_op",
                    builder.getI64ArrayAttr(self_down_overlap_op));
 
   std::vector<int64_t> self_up_overlap_op;
   for (auto v : self_up_overlap_ops) {
-    self_up_overlap_op.push_back(self_up_overlap_ops_[v]);
+    self_up_overlap_op.push_back(self_up_overlap_ops_[group_idx][v]);
   }
   groupOp->setAttr("self_up_overlap_op",
                    builder.getI64ArrayAttr(self_up_overlap_op));
@@ -279,7 +279,7 @@ void GroupOps::UpdateGroupOverlapInfo(Operation *op) {
   for (auto &elt : other_down_overlap_ops) {
     other_down_overlap_op.push_back(-(elt.first + 1));
     for (auto v : elt.second) {
-      other_down_overlap_op.push_back(self_down_overlap_ops_[v]);
+      other_down_overlap_op.push_back(self_down_overlap_ops_[group_idx-1][v]);
     }
   }
   groupOp->setAttr("other_down_overlap_op",
@@ -289,7 +289,7 @@ void GroupOps::UpdateGroupOverlapInfo(Operation *op) {
   for (auto &elt : other_up_overlap_ops) {
     other_up_overlap_op.push_back(-(elt.first + 1));
     for (auto v : elt.second) {
-      other_up_overlap_op.push_back(self_up_overlap_ops_[v]);
+      other_up_overlap_op.push_back(self_up_overlap_ops_[group_idx+1][v]);
     }
   }
   groupOp->setAttr("other_up_overlap_op",
