@@ -701,17 +701,12 @@ class OnnxConverter(BaseConverter):
         new_op = None
         if self.isScalar(lhs):
             # lhs_const + (-1 * rhs)
-
             rhs_op = self.getOp(rhs)
-            unm_op = top.MulConstOp(self.mlir.get_tensor_type(output_shape),
+            new_op = top.SubConstOp(self.mlir.get_tensor_type(output_shape),
                                     rhs_op,
-                                    const_val=-1,
-                                    loc=self.get_loc(name + "_unm"),
-                                    ip=self.mlir.insert_point).output
-            new_op = top.AddConstOp(self.mlir.get_tensor_type(output_shape),
-                                    unm_op,
                                     const_val=self.getScalar(lhs),
                                     loc=self.get_loc(name),
+                                    is_reverse=True,
                                     ip=self.mlir.insert_point).output
         elif self.isScalar(rhs):
             # lhs + (-rhs_const)
