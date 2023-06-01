@@ -40,7 +40,7 @@ def getCustomFormat(pixel_format, channel_format):
             custom_format = "BGR_PLANAR"
         else:
             custom_format = "BGR_PACKED"
-    elif pixel_format == "gary":
+    elif pixel_format == "gray":
         custom_format = "GRAYSCALE"
     elif pixel_format == "rgba":
         custom_format == "RGBA_PLANAR"

@@ -35,7 +35,7 @@ customization_format_attributes = {
     'RGB_PACKED':    ('rgb', 'nhwc'),
     'BGR_PLANAR':    ('bgr', 'nchw'),
     'BGR_PACKED':    ('bgr', 'nhwc'),
-    'GRAYSCALE':     ('bgr', 'nchw'),
+    'GRAYSCALE':     ('gray', 'nchw'),
     'YUV420_PLANAR': ('bgr', 'nchw'),
     'YUV_NV12':      ('bgr', 'nchw'),
     'YUV_NV21':      ('bgr', 'nchw'),
