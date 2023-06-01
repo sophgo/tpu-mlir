@@ -36,6 +36,26 @@ LMEM_SIZE = LANE_SIZE * NPU_NUM
 
 opparam_converter = {}
 
+__base_eu_num = 16
+__eu_num_map = {
+    DType.f32: __base_eu_num,
+    DType.i32: __base_eu_num,
+    DType.si32: __base_eu_num,
+    DType.ui32: __base_eu_num,
+    DType.f16: __base_eu_num * 2,
+    DType.bf16: __base_eu_num * 2,
+    DType.i16: __base_eu_num * 2,
+    DType.ui16: __base_eu_num * 2,
+    DType.si16: __base_eu_num * 2,
+    DType.i8: __base_eu_num * 4,
+    DType.ui8: __base_eu_num * 4,
+    DType.si8: __base_eu_num * 4,
+}
+
+
+def EU_NUM(dtype):
+    return __eu_num_map[dtype]
+
 
 def opparam_converter_regitstry(sheet_name):
     def add_converter(fun):

@@ -250,11 +250,11 @@ void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
     J.attribute("file-line", line_num);
     J.attribute("subnet_id", subnet_id);
     J.attribute("opcode", op->getName().getStringRef());
-    J.attributeArray("bdc_gdma_id(before)", [&] {
+    J.attributeArray("tiu_dma_id(before)", [&] {
       J.value(cmd_before[0]);
       J.value(cmd_before[1]);
     });
-    J.attributeArray("bdc_gdma_id(after)", [&] {
+    J.attributeArray("tiu_dma_id(after)", [&] {
       J.value(BM168x::instance()->bdc_total_id);
       J.value(BM168x::instance()->gdma_total_id);
     });
@@ -274,9 +274,11 @@ void TensorLocationImpl::after_codegen_local(Operation *op, int64_t n_step,
                                              int64_t d_step, int64_t w_step,
                                              group_type_t group_type,
                                              local_sec_info_t &sec_info) {
-  auto slice_i = slice_index{
-      .n_step = n_step, .h_step = h_step, .d_step = d_step,
-      .w_step = w_step, .c_step = c_step};
+  auto slice_i = slice_index{.n_step = n_step,
+                             .h_step = h_step,
+                             .d_step = d_step,
+                             .w_step = w_step,
+                             .c_step = c_step};
 
   json::Array operands, results;
 

@@ -14,7 +14,7 @@ import debugger.disassembler as dis
 def decode_tiu_file(tiu_file, device):
     tiu = dis.read_file_to_bits(tiu_file)
     context = Context(device.upper())
-    return context.decoder.decode_bdc_bits(tiu)
+    return context.decoder.decode_tiu_bits(tiu)
 
 
 def decode_dma_file(dma_file, device):
@@ -51,7 +51,7 @@ def BModel2Bin(bmodel_file):
                 _id = subnet["Id"][0]
                 for _net in subnet["CmdGroup"]:
                     with open(bmodel_file + f".{_id}.tiu.bin", "wb") as f:
-                        f.write(_net.bdc_cmd)
+                        f.write(_net.tiu_cmd)
                     with open(bmodel_file + f".{_id}.dma.bin", "wb") as f:
                         f.write(_net.dma_cmd)
 
@@ -135,7 +135,7 @@ def __main():
             module = BModel2Reg(args.bmodels[0])
             outs = {
                 _id: {
-                    "tiu": [x.reg for x in ops.bdc],
+                    "tiu": [x.reg for x in ops.tiu],
                     "dma": [x.reg for x in ops.dma],
                 }
                 for _id, ops in module
