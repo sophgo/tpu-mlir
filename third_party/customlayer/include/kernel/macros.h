@@ -44,7 +44,10 @@
         #define hang(_ret) while (1)
     #endif
 #else
-    #define hang(_ret) exit(_ret)
+    #ifdef hang
+    #undef hang
+    #endif
+    #define hang(_ret) _Exit(_ret)
 #endif
 
 #ifdef __cplusplus
