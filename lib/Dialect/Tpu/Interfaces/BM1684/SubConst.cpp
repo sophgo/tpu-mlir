@@ -14,12 +14,10 @@
 
 using namespace tpu_mlir::backend;
 
-#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
 // =========================================
 // GlobalGenInterface
 // =========================================
 
-// int8
 void tpu::SubConstOp::codegen_global_bm1684() {
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
@@ -28,7 +26,8 @@ void tpu::SubConstOp::codegen_global_bm1684() {
     auto b0_rshift = getRshift();
     int is_signs[3] = {module::isSign(getInput()), 1,
                        module::isSign(getOutput())};
-    int is_int8s[3] = {1, 0, 1};
+    int is_int8s[3] = {module::getStorageType(getInput()).isInteger(8), 0,
+                       module::getStorageType(getOutput()).isInteger(8)};
     int b0_shape[4] = {(int)n, (int)c, (int)h, (int)w};
     int16_t b1_val = (int16_t)getConstVal().convertToDouble();
     BM1684::instance().dl_nodechip_const_binary_fix8b_forward_parallel(
@@ -62,7 +61,7 @@ int64_t tpu::SubConstOp::getBufferSize_bm1684(
     auto EU_NUM = BM1684::eu_num(sizeof(int32_t));
     buffer_size = ceiling_func(in_hslice, 2) *
                   ceiling_func(c, BM1684::NPU_NUM) *
-                  ALIGN(in_hslice * w, EU_NUM) * sizeof(int);
+                  align_up(in_hslice * w, EU_NUM) * sizeof(int);
   }
   return buffer_size;
 }
@@ -83,7 +82,8 @@ void tpu::SubConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     auto b0_rshift = getRshift();
     int is_signs[3] = {module::isSign(getInput()), 1,
                        module::isSign(getOutput())};
-    int is_int8s[3] = {1, 0, 1};
+    int is_int8s[3] = {module::getStorageType(getInput()).isInteger(8), 0,
+                       module::getStorageType(getOutput()).isInteger(8)};
     BM1684::instance().dl_nodechip_const_binary_fix8b_forward_local(
         in_g_info.out_addr, out_g_info.out_addr, out_g_info.buffer_addr, b1_val,
         b0_shape, 4, BINARY_SUB, b0_mul, 1, b0_rshift, 0, getIsReverse(),
