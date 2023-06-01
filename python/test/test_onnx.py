@@ -3892,7 +3892,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 3, 27, 27]
 
         input0 = helper.make_tensor_value_info('input0', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        output0 = helper.make_tensor_value_info('output0', TensorProto.FLOAT, output_shape)
+        output1 = helper.make_tensor_value_info(
+            'output1', TensorProto.FLOAT, output_shape)
+        output2 = helper.make_tensor_value_info(
+            'output2', TensorProto.FLOAT, output_shape)
         w_data = np.random.rand(*input_shape).astype(np.float32)
         w_value = helper.make_tensor(
             name='w',
@@ -3900,16 +3904,29 @@ class ONNX_IR_TESTER(object):
             dims=w_data.shape,
             vals=w_data.flatten(),
         )
-
+        const = helper.make_tensor(name='const',
+                                   data_type=TensorProto.FLOAT,
+                                   dims=[],
+                                   vals=[1.0])
         sub_def = helper.make_node(
             'Sub',  # node name
             ['input0', 'w'],  # inputs
-            ['output'],  # outputs
+            ['output0'],  # outputs
+        )
+        sub_def1 = helper.make_node(
+            'Sub',  # node name
+            ['input0', 'const'],  # inputs
+            ['output1'],  # outputs
+        )
+        sub_def2 = helper.make_node(
+            'Sub',  # node name
+            ['const', 'input0'],  # inputs
+            ['output2'],  # outputs
         )
 
-        graph_def = helper.make_graph([sub_def],
-                                      case_name, [input0], [output],
-                                      initializer=[w_value])
+        graph_def = helper.make_graph([sub_def, sub_def1, sub_def2],
+                                      case_name, [input0], [output0, output1, output2],
+                                      initializer=[w_value, const])
         self.onnx_and_test(graph_def)
 
     def test_SubConst2(self, case_name):
