@@ -34,6 +34,7 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.agnostic_nms = getAgnosticNms();
   param.anchors = *module::getI64Array(getAnchors());
   param.num_boxes = getNumBoxes();
+  param.version = getVersion().str();
   for (int i = 0; i < param.num_boxes * num_input; i++) {
     param.mask.push_back(i);
   }
@@ -48,8 +49,13 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.output.size = module::getNumElements(getOutput());
   param.output.shape = module::getShape(getOutput());
   auto process = module::getPostprocess();
-  if (process.starts_with("yolov5") && p.inputs.size() == 1) {
+  if (process.starts_with("yolov5") && p.inputs.size() == 1 &&
+      param.inputs[0].shape.size() == 3) {
     Yolov5DetectionFunc yolo_func(param);
+    yolo_func.invoke();
+  } else if (process.starts_with("yolov5") &&
+             param.inputs[0].shape.size() == 4) {
+    YoloDetectionFunc_v2 yolo_func(param);
     yolo_func.invoke();
   } else {
     YoloDetectionFunc_v2 yolo_func(param);
