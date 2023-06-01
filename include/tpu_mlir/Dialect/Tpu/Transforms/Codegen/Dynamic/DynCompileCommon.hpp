@@ -29,6 +29,8 @@ typedef signed char s8;
 #define MAX_ELET_INPUT_NUM 10
 #define MAX_SPLIT_OUTPUT_NUM 8
 #define MAX_SHAPE_DIMS 8
+#define MAX_YOLO_INPUT_NUM 8 
+#define MAX_YOLO_ANCHOR_NUM 8
 typedef int LayerId;
 #ifdef __cplusplus
 extern "C" {
@@ -1246,6 +1248,19 @@ typedef struct fw_yolov5_detect_out_layer_param {
     float nms_threshold;
     float confidence_threshold;
 } fw_yolov5_detect_out_layer_param_t;
+
+typedef struct fw_yolov5_decode_detect_out_layer_param {
+    int input_num;
+    int batch_num;
+    int num_classes;
+    int num_boxes;
+    int keep_top_k;
+    float nms_threshold;
+    float confidence_threshold;
+    float anchors[2 * MAX_YOLO_INPUT_NUM * MAX_YOLO_ANCHOR_NUM];
+    float anchor_scale[MAX_YOLO_ANCHOR_NUM];
+    int agnostic_nms;
+} fw_yolov5_decode_detect_out_layer_param_t;
 
 typedef struct {
   int num_classes;

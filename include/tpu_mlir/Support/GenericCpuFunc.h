@@ -117,6 +117,7 @@ struct YoloDetParam {
   int64_t num_boxes;
   int64_t agnostic_nms;
   std::vector<int64_t> mask;
+  std::string version;
 };
 
 class YoloDetectionFunc {
@@ -159,6 +160,17 @@ private:
   YoloDetParam param_;
 };
 
+/**
+ * @brief postprocess for yolov5 in case of 4-D output shape [b, anchor*(5 + cls_num), H, W]
+*/
+class Yolov5DetectionFunc_v2 {
+public:
+  Yolov5DetectionFunc_v2(YoloDetParam &param);
+  void invoke();
+
+private:
+  YoloDetParam param_;
+};
 
 struct ProposalParam {
   std::vector<tensor_list_t> inputs;

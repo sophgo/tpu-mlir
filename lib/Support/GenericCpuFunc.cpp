@@ -393,7 +393,8 @@ static inline float _softmax(float *probs, float *data, int input_stride,
 static void process_feature(detection *det, int *det_idx, float *feature,
                             std::vector<int64_t> grid_size, int64_t *anchor,
                             std::vector<int64_t> yolo_size,
-                            int64_t num_of_class, float obj_threshold) {
+                            int64_t num_of_class, float obj_threshold,
+                            std::string version = "yolov3") {
   int yolo_w = yolo_size[1];
   int yolo_h = yolo_size[0];
   // TPU_LOG_DEBUG("grid_size_h: %d\n", grid_size[0]);
@@ -437,33 +438,63 @@ static void process_feature(detection *det, int *det_idx, float *feature,
       // get coord now
       int grid_x = i % grid_size[1];
       int grid_y = i / grid_size[1];
-      float box_x = _sigmoid(
-          feature[GET_INDEX(i, j, COORD_X_INDEX, num_cell, num_of_class)],
-          false);
-      box_x += grid_x;
-      box_x /= grid_size[1];
-      float box_y = _sigmoid(
-          feature[GET_INDEX(i, j, COORD_Y_INDEX, num_cell, num_of_class)],
-          false);
-      box_y += grid_y;
-      box_y /= grid_size[0];
-      // anchor is in shape [3][2]
-      float box_w = std::exp(
-          feature[GET_INDEX(i, j, COORD_W_INDEX, num_cell, num_of_class)]);
-      box_w *= anchor[j * 2];
-      box_w /= yolo_w;
-      float box_h = std::exp(
-          feature[GET_INDEX(i, j, COORD_H_INDEX, num_cell, num_of_class)]);
-      box_h *= anchor[j * 2 + 1];
-      box_h /= yolo_h;
-      hit2++;
-      // DBG("  hit2 %d, conf = %f, cls = %d, coord = [%f, %f, %f, %f]\n",
-      //    hit2, box_max_score, box_max_cls, box_x, box_y, box_w, box_h);
-      det[idx].bbox = box{box_x, box_y, box_w, box_h};
-      det[idx].score = box_max_score;
-      det[idx].cls = box_max_cls;
-      idx++;
-      assert(idx <= MAX_DET);
+      if (version == "yolov5") {
+        float io_r_h = yolo_size[0] / grid_size[0];
+        float io_r_w = yolo_size[1] / grid_size[1];
+        float box_x = _sigmoid(
+            feature[GET_INDEX(i, j, COORD_X_INDEX, num_cell, num_of_class)],
+            false);
+        box_x = (box_x * 2 + grid_x - 0.5) * io_r_w;
+        float box_y = _sigmoid(
+            feature[GET_INDEX(i, j, COORD_Y_INDEX, num_cell, num_of_class)],
+            false);
+        box_y = (box_y * 2 + grid_y - 0.5) * io_r_h;
+        // anchor is in shape [3][2]
+        float box_w = _sigmoid(
+            feature[GET_INDEX(i, j, COORD_W_INDEX, num_cell, num_of_class)],
+            false);
+        box_w = (box_w * 2) * (box_w * 2) * anchor[j * 2];
+        float box_h = _sigmoid(
+            feature[GET_INDEX(i, j, COORD_H_INDEX, num_cell, num_of_class)],
+            false);
+        box_h = (box_h * 2) * (box_h * 2) * anchor[j * 2 + 1];
+        hit2++;
+        // DBG("  hit2 %d, conf = %f, cls = %d, coord = [%f, %f, %f, %f]\n",
+        //    hit2, box_max_score, box_max_cls, box_x, box_y, box_w, box_h);
+        det[idx].bbox = box{box_x, box_y, box_w, box_h};
+        det[idx].score = box_max_score;
+        det[idx].cls = box_max_cls;
+        idx++;
+        assert(idx <= MAX_DET);
+      } else {
+        float box_x = _sigmoid(
+            feature[GET_INDEX(i, j, COORD_X_INDEX, num_cell, num_of_class)],
+            false);
+        box_x += grid_x;
+        box_x /= grid_size[1];
+        float box_y = _sigmoid(
+            feature[GET_INDEX(i, j, COORD_Y_INDEX, num_cell, num_of_class)],
+            false);
+        box_y += grid_y;
+        box_y /= grid_size[0];
+        // anchor is in shape [3][2]
+        float box_w = std::exp(
+            feature[GET_INDEX(i, j, COORD_W_INDEX, num_cell, num_of_class)]);
+        box_w *= anchor[j * 2];
+        box_w /= yolo_w;
+        float box_h = std::exp(
+            feature[GET_INDEX(i, j, COORD_H_INDEX, num_cell, num_of_class)]);
+        box_h *= anchor[j * 2 + 1];
+        box_h /= yolo_h;
+        hit2++;
+        // DBG("  hit2 %d, conf = %f, cls = %d, coord = [%f, %f, %f, %f]\n",
+        //    hit2, box_max_score, box_max_cls, box_x, box_y, box_w, box_h);
+        det[idx].bbox = box{box_x, box_y, box_w, box_h};
+        det[idx].score = box_max_score;
+        det[idx].cls = box_max_cls;
+        idx++;
+        assert(idx <= MAX_DET);
+      }
     }
   }
   *det_idx = idx;
@@ -780,7 +811,7 @@ void YoloDetectionFunc::invoke() {
     for (size_t i = 0; i < features.size(); i++) {
       process_feature(det_raw, &det_raw_idx, features[i], grid_size[i],
                       &anchors[i][0], {param_.net_input_h, param_.net_input_w},
-                      param_.class_num, param_.obj_threshold);
+                      param_.class_num, param_.obj_threshold, param_.version);
     }
     nms(det_raw, det_raw_idx, param_.nms_threshold);
     int det_idx = 0;
@@ -1703,31 +1734,56 @@ void YoloDetectionFunc_v2::invoke() {
             int arg_max = std::distance(
                 class_score.begin(),
                 std::max_element(class_score.begin(), class_score.end()));
+            if (param_.version == "yolov5") {
+              sigmoid_batch(swap_data, 6);
+              swap_data[1] = swap_data[0] * swap_data[1];
+              if (swap_data[1] > param_.obj_threshold) {
+                [&](std::vector<float> &b, float *x, int64_t *biases, int n,
+                    int i, int j, int lw, int lh, int w, int h) {
+                  b.clear();
+                  b.push_back((i + x[0] * 2 - 0.5) * w / lw);
+                  b.push_back((j + x[1] * 2 - 0.5) * h / lh);
+                  b.push_back((x[2] * 2) * (x[2] * 2) * biases[2 * n]);
+                  b.push_back((x[3] * 2) * (x[3] * 2) * biases[2 * n + 1]);
+                }(pred, &swap_data[2], param_.anchors.data(),
+                  param_.mask[n + mask_offset], cx, cy, w, h,
+                  param_.net_input_w, param_.net_input_h);
 
-            sigmoid_batch(swap_data, 4);
-            // Pmax = Pmax * Po
-            swap_data[1] = swap_data[0] * swap_data[1];
+                predict.idx = b;
+                predict.x = pred[0];
+                predict.y = pred[1];
+                predict.w = pred[2];
+                predict.h = pred[3];
+                predict.classType = arg_max;
+                predict.confidence = swap_data[1];
+                predicts.push_back(predict);
+              }
+            } else {
+              sigmoid_batch(swap_data, 4);
+              // Pmax = Pmax * Po
+              swap_data[1] = swap_data[0] * swap_data[1];
 
-            if (swap_data[1] > param_.obj_threshold) {
-              [&](std::vector<float> &b, float *x, int64_t *biases, int n,
-                  int i, int j, int lw, int lh, int w, int h) {
-                b.clear();
-                b.push_back((i + (x[0])) / lw);
-                b.push_back((j + (x[1])) / lh);
-                b.push_back(exp(x[2]) * biases[2 * n] / (w));
-                b.push_back(exp(x[3]) * biases[2 * n + 1] / (h));
-              }(pred, &swap_data[2], param_.anchors.data(),
-                param_.mask[n + mask_offset], cx, cy, w, h, param_.net_input_w,
-                param_.net_input_h);
+              if (swap_data[1] > param_.obj_threshold) {
+                [&](std::vector<float> &b, float *x, int64_t *biases, int n,
+                    int i, int j, int lw, int lh, int w, int h) {
+                  b.clear();
+                  b.push_back((i + (x[0])) / lw);
+                  b.push_back((j + (x[1])) / lh);
+                  b.push_back(exp(x[2]) * biases[2 * n] / (w));
+                  b.push_back(exp(x[3]) * biases[2 * n + 1] / (h));
+                }(pred, &swap_data[2], param_.anchors.data(),
+                  param_.mask[n + mask_offset], cx, cy, w, h,
+                  param_.net_input_w, param_.net_input_h);
 
-              predict.idx = b;
-              predict.x = pred[0];
-              predict.y = pred[1];
-              predict.w = pred[2];
-              predict.h = pred[3];
-              predict.classType = arg_max;
-              predict.confidence = swap_data[1];
-              predicts.push_back(predict);
+                predict.idx = b;
+                predict.x = pred[0];
+                predict.y = pred[1];
+                predict.w = pred[2];
+                predict.h = pred[3];
+                predict.classType = arg_max;
+                predict.confidence = swap_data[1];
+                predicts.push_back(predict);
+              }
             }
           }
         }

@@ -33,6 +33,12 @@ static const std::vector<int64_t> YOLOV4_ANCHORS = {
     142, 110, 192, 243, 459, 401  // 32
 };
 
+static const std::vector<int64_t> YOLOV5_ANCHORS = {
+    10,  13, 16,  30,  33,  23,  // 8
+    30,  61, 62,  45,  59,  119, // 16
+    116, 90, 156, 198, 373, 326  // 32
+};
+
 class AddPostprocessPass : public AddPostprocessBase<AddPostprocessPass> {
 public:
   AddPostprocessPass() {}
@@ -65,7 +71,6 @@ protected:
   void getYoloOperandsAndAnchors(std::vector<Value> &operands,
                                  std::vector<int64_t> &anchors);
   void insertYoloOp(OpBuilder &builder);
-  void insertYolov5Op(OpBuilder &builder);
   void insertSsdOp(OpBuilder &builder);
 
 protected:
@@ -81,7 +86,8 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
   auto opds = terminator->getOperands();
   auto num_opds = opds.size();
   // TODO: Maybe yolov5 has only 1 yolo layer
-  if (post_type == "yolov5" && num_opds == 1) {
+  if (post_type == "yolov5" && num_opds == 1 &&
+      module::getShape(opds[0]).size() == 3) {
     operands.push_back(opds[0]);
     anchors = {0};
     return;
@@ -102,6 +108,11 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
     auto w = result[i].second;
     operands.push_back(opds[idx]);
     scales.push_back(width / w);
+  }
+  // TODO: refine this mess
+  if (post_type == "yolov5" && module::getShape(opds[0]).size() == 4) {
+    anchors = YOLOV5_ANCHORS;
+    return;
   }
   if (num_opds == 3) {
     anchors = post_type == "yolov4" ? YOLOV4_ANCHORS : YOLOV3_ANCHORS;
