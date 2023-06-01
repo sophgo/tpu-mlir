@@ -10,17 +10,17 @@
 
 try:
     from . import regdef_1684x
-    from .opparam_1684x import opparam_converter
-    from .op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg
+    from .opparam_1684x import opparam_converter, NPU_NUM, EU_NUM
+    from .op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg, ALIGN
 except:
     import regdef_1684x
-    from opparam_1684x import opparam_converter
-    from op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg
+    from opparam_1684x import opparam_converter, NPU_NUM, EU_NUM
+    from op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg, ALIGN
 
 # global data and type
 # ------------------------------------------------------------
-bdc_cmd = dict()
-dma_cmd = dict()
+tiu_cls = dict()
+dma_cls = dict()
 
 # ------------------------------------------------------------
 # registry function
@@ -37,24 +37,24 @@ def base_registry(cmd_type, sheet_name, cls):
     return cls
 
 
-def bdc_registry(sheet_name):
+def tiu_registry(sheet_name):
     def decorate(cls):
-        return base_registry(bdc_cmd, sheet_name, cls)
+        return base_registry(tiu_cls, sheet_name, cls)
 
     return decorate
 
 
 def dma_registry(sheet_name):
     def decorate(cls):
-        return base_registry(dma_cmd, sheet_name, cls)
+        return base_registry(dma_cls, sheet_name, cls)
 
     return decorate
 
 
 # ------------------------------------------------------------
-# BDC definition
+# TIU definition
 # ------------------------------------------------------------
-class bdc_base(TIUBase):
+class tiu_base(TIUBase):
     opcode_bits = (41, 45)
     # extension
     eu_type = ()
@@ -78,6 +78,9 @@ class bdc_base(TIUBase):
             return False
         return True
 
+    def ops(self, is_arch):
+        raise NotImplementedError()
+
     def __repr__(self):
         if self.operands == []:
             return self.description
@@ -95,47 +98,102 @@ class bdc_base(TIUBase):
         )
 
 
-@bdc_registry("CONV")
-class conv_op(bdc_base):
+@tiu_registry("CONV")
+class conv_op(tiu_base):
     opcode = 0
     eu_type = {0: "conv.normal", 1: "conv.wrq", 2: "conv.wrqrelu"}
     description = "convolution"
 
+    def ops(self, is_arch=False):
+        n, ic, ih, iw = self.operands[0].shape
+        n, oc, oh, ow = self.results[0].shape
+        # remains_hw = 0
 
-@bdc_registry("sCONV")
+        has_bias = len(self.operands) > 2
+        if is_arch:
+            dtype = self.operands[0].dtype
+            ic = ALIGN(ic, NPU_NUM)
+            ow = ALIGN(oh * ow, EU_NUM(dtype))
+            oh = 1
+            oc = ALIGN(oc, NPU_NUM)
+            # iw = ALIGN(ih * iw, EU_NUM(dtype))
+            # ih = 1
+            # kw = ALIGN(kw, 64)
+            # remain_hw = ALIGN(ih*iw, EU_NUM) - ih*iw
+        out_size = n * oc * oh * ow
+        kh, kw = self.attribute["kernel"]
+        return out_size * (2 * ic * kh * kw - 1 + has_bias)
+
+
+@tiu_registry("sCONV")
 class sconv_op(conv_op):
     short_cmd = True
     description = "short convolution"
 
 
-@bdc_registry("MM")
-class mm_op(bdc_base):
+@tiu_registry("MM")
+class mm_op(tiu_base):
     opcode = 2
     eu_type = {1: "mm.normal", 2: "mm.wrq", 3: "mm.wrqrelu"}
     description = "matrix multiply"
 
+    def ops(self, is_arch=False):
+        m, lk = self.operands[0].shape
+        rk, n = self.operands[1].shape
+        if self.attribute["l_trans"]:
+            lk, m = m, lk
+        assert lk == rk
+        k = lk
+        res_add = self.reg.res_add
+        has_bias = len(self.operands) > 2
+        if is_arch:
+            dtype = self.operands[0].dtype
+            # align the column of B
+            n = ALIGN(self.reg.res0_c, NPU_NUM) * ALIGN(self.reg.res0_w, EU_NUM(dtype))
+        return m * n * (2 * k - 1 + has_bias + res_add)
 
-@bdc_registry("sMM")
+
+@tiu_registry("sMM")
 class smm_op(mm_op):
     short_cmd = True
     description = "short matrix multiply"
 
 
-@bdc_registry("MM2")
-class mm2_op(bdc_base):
+@tiu_registry("MM2")
+class mm2_op(tiu_base):
     opcode = 2
     eu_type = {4: "mm2.nn", 5: "mm2.nt", 6: "mm2.tt"}
     description = "matrix multiply2"
 
+    def ops(self, is_arch=False):
+        m, lk = self.operands[0].shape
+        rk, n = self.operands[1].shape
+        if self.op_name == "mm2.nt":
+            rk, n = n, rk
+        elif self.op_name == "mm2.tt":
+            rk, n = n, rk
+            lk, m = m, lk
 
-@bdc_registry("sMM2")
+        assert lk == rk
+        k = lk
+        has_bias = len(self.operands) > 2
+
+        if is_arch:
+            dtype = self.operands[0].dtype
+            k = ALIGN(k, EU_NUM(dtype))
+            m = ALIGN(m, NPU_NUM)
+
+        return m * n * (2 * k - 1 + has_bias)
+
+
+@tiu_registry("sMM2")
 class smm2_op(mm2_op):
     short_cmd = True
     description = "short matrix multiply2"
 
 
-@bdc_registry("CMP")
-class cmp_op(bdc_base):
+@tiu_registry("CMP")
+class cmp_op(tiu_base):
     opcode = 13
     eu_type = {
         22: "cmp.gt_and_sel",
@@ -146,15 +204,26 @@ class cmp_op(bdc_base):
     }
     description = "fused_cmpare"
 
+    def ops(self, is_arch=False):
+        n, c, h, w = self.results[0].shape
+        # res_num = len(self.results)
 
-@bdc_registry("sCMP")
+        hw = h * w
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            hw = ALIGN(h * w, EU_NUM(dtype))
+        return n * c * hw * 2
+
+
+@tiu_registry("sCMP")
 class scmp_op(cmp_op):
     short_cmd = True
     description = "short fused_cmpare"
 
 
-@bdc_registry("SFU")
-class sfu_op(bdc_base):
+@tiu_registry("SFU")
+class sfu_op(tiu_base):
     opcode = 9
     eu_type = {
         12: "sfu.taylor_4x",
@@ -164,15 +233,34 @@ class sfu_op(bdc_base):
     }
     description = "special_function"
 
+    def ops(self, is_arch=False):
+        n, c, h, w = self.operands[0].shape
+        factor = 1
+        res_num = len(self.results)
+        if self.op_name == "sfu.taylor_4x" or self.op_name == "sfu.taylor":
+            factor = 2 * self.reg.opd1_n - 1  # 2* table_len -1
+        elif self.op_name == "sfu.normalize":
+            factor = 1
+        elif self.op_name == "sfu.rsqrt":
+            factor = self.reg.opd2_n_str + 1  # iteration times
 
-@bdc_registry("sSFU")
+        hw = h * w
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            hw = ALIGN(w * h, EU_NUM(dtype))
+
+        return res_num * n * c * hw * factor
+
+
+@tiu_registry("sSFU")
 class ssfu_op(sfu_op):
     short_cmd = True
     description = "short special_function"
 
 
-@bdc_registry("VC")
-class vc_op(bdc_base):
+@tiu_registry("VC")
+class vc_op(tiu_base):
     opcode = 14
     eu_type = {
         0: "vc.mul",
@@ -194,28 +282,45 @@ class vc_op(bdc_base):
     }
     description = "vector correlation"
 
+    def ops(self, is_arch):
+        n, c, h, w = self.results[0].shape
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(w, EU_NUM(dtype))
+        return n * c * h * w
 
-@bdc_registry("sVC")
+
+@tiu_registry("sVC")
 class svc_op(vc_op):
     short_cmd = True
     description = "short vector correlation"
 
 
-@bdc_registry("LIN")
-class lin_op(bdc_base):
+@tiu_registry("LIN")
+class lin_op(tiu_base):
     opcode = 10
     eu_type = {1: "lin.mac", 20: "lin.square_sum", 21: "lin.square_diff"}
     description = "fused_linear"
 
+    def ops(self, is_arch):
+        n, c, h, w = self.results[0].shape
+        factor = 2
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(w, EU_NUM(dtype))
+        return n * c * h * w * factor
 
-@bdc_registry("sLIN")
+
+@tiu_registry("sLIN")
 class slin_op(lin_op):
     short_cmd = True
     description = "short fused_linear"
 
 
-@bdc_registry("AR")
-class ar_op(bdc_base):
+@tiu_registry("AR")
+class ar_op(tiu_base):
     opcode = 3
     eu_type = {
         0: "arith.mul",
@@ -251,28 +356,40 @@ class ar_op(bdc_base):
     }
     description = "arithmetic"
 
+    def ops(self, is_arch):
+        n, c, h, w = self.results[0].shape
+        factor = 1
+        hw = h * w
+        if self.op_name == "arith.div":
+            factor = 5  # TODO: fix the factor
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            hw = ALIGN(w * h, EU_NUM(dtype))
+        return n * c * hw * factor
 
-@bdc_registry("sAR")
+
+@tiu_registry("sAR")
 class sar_op(ar_op):
     short_cmd = True
     description = "short arithmetic"
 
 
-# @bdc_registry("SEG")
-# class seg_op(bdc_base):
+# @tiu_registry("SEG")
+# class seg_op(tiu_base):
 #     opcode = 3
 #     eu_type = [17, 24, 25]
 #     description = "arithmetic"
 
 
-# @bdc_registry("sSEG")
+# @tiu_registry("sSEG")
 # class sseg_op(seg_op):
 #     short_cmd = True
 #     description = "short arithmetic"
 
 
-@bdc_registry("PorD")
-class pord_op(bdc_base):
+@tiu_registry("PorD")
+class pord_op(tiu_base):
     opcode = 1
     eu_type = {
         0: "pord.depthwise",
@@ -285,15 +402,37 @@ class pord_op(bdc_base):
     }
     description = "depthwise or pooling"
 
+    def ops(self, is_arch):
+        n, c, h, w = self.results[0].shape
+        kh, kw = self.reg.opd1_h, self.reg.opd1_w
+        factor = 1
+        if self.op_name == "pord.avgpooling" or self.op_name == "pord.maxpooling":
+            factor = len(self.results)  # TODO: fix the factor
+        elif self.op_name == "pord.depthwise":
+            factor = 2
+        elif self.op_name == "pord.depthwiserelu":
+            factor = 3
+        else:
+            # roi_pooling
+            kh = 1
+            kw = 1
+            factor = 2 * 4 - 1  # bilinar, ignore coords generate
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(h * w, EU_NUM(dtype))
+            h = 1
+        return n * c * h * w * (factor * kh * kw - 1)
 
-@bdc_registry("sPorD")
+
+@tiu_registry("sPorD")
 class spord_op(pord_op):
     short_cmd = True
     description = "short depthwise or pooling"
 
 
-@bdc_registry("RQ&DQ")
-class rqdq_op(bdc_base):
+@tiu_registry("RQ&DQ")
+class rqdq_op(tiu_base):
     opcode = 4
     eu_type = {
         0: "quant.rq0",
@@ -309,15 +448,25 @@ class rqdq_op(bdc_base):
     def _set_op(self, reg):
         return ([],) * 3
 
+    def ops(self, is_arch):
+        n, c, h, w = self.results[0].shape
+        factor = 3  # mul, add, shift
+        hw = h * w
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            hw = ALIGN(h * w, EU_NUM(dtype))
+        return n * c * hw * factor
 
-@bdc_registry("sRQ&sDQ")
+
+@tiu_registry("sRQ&sDQ")
 class srqdq_op(rqdq_op):
     short_cmd = True
     description = "short RQ && DQ"
 
 
-@bdc_registry("SG")
-class sg_op(bdc_base):
+@tiu_registry("SG")
+class sg_op(tiu_base):
     opcode = 6
     eu_type = {
         0: "sg.pl_gather_d1coor",
@@ -340,28 +489,46 @@ class sg_op(bdc_base):
     }
     description = "scatter_gather"
 
+    def ops(self, is_arch):
+        n, c, h, w = self.results[0].shape
+        factor = 1
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(w, EU_NUM(dtype))
+        return n * c * h * w * factor
 
-@bdc_registry("sSG")
+
+@tiu_registry("sSG")
 class ssg_op(sg_op):
     short_cmd = True
     description = "short scatter_gather"
 
 
-@bdc_registry("SGL")
-class sgl_op(bdc_base):
+@tiu_registry("SGL")
+class sgl_op(tiu_base):
     opcode = 6
     eu_type = {17: "sgl.pe_s_gather_line", 18: "sgl.pe_s_scatter_line"}
     description = "scatter_gather_line"
 
+    def ops(self, is_arch):
+        n, c, h, w = self.results[0].shape
+        factor = 1
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(w, EU_NUM(dtype))
+        return n * c * h * w * factor
 
-@bdc_registry("sSGL")
+
+@tiu_registry("sSGL")
 class ssgl_op(sgl_op):
     short_cmd = True
     description = "short scatter_gather_line"
 
 
-@bdc_registry("TRANS&BC")
-class transbc_op(bdc_base):
+@tiu_registry("TRANS&BC")
+class transbc_op(tiu_base):
     opcode = 5
     eu_type = {
         0: "tsbc.cw_ts",
@@ -373,31 +540,58 @@ class transbc_op(bdc_base):
     }
     description = "TRANS && BC"
 
+    def ops(self, is_arch):
+        n, c, h, w = self.results[0].shape
+        factor = 1
+        hw = h * w
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            if self.op_name in (
+                "tsbc.l_copy",
+                "tsbc.l_bc",
+                "tsbc.s_bc",
+                "tsbc.s_distribute",
+            ):
+                hw = ALIGN(h * w, EU_NUM(dtype))
+            else:
+                hw = h * ALIGN(w, EU_NUM(dtype))
+        return n * c * hw * factor
 
-@bdc_registry("sTRANS&sBC")
+
+@tiu_registry("sTRANS&sBC")
 class stransbc_op(transbc_op):
     short_cmd = True
     description = "short TRANS && BC"
 
 
-@bdc_registry("LAR")
-class lar_op(bdc_base):
+@tiu_registry("LAR")
+class lar_op(tiu_base):
     opcode = 7
     short_cmd = None
     eu_type = range(31)
     description = "linear_arithmetic"
 
+    def ops(self, is_arch):
+        n, c, h, w = self.results[0].shape
+        factor = 1
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(w, EU_NUM(dtype))
+        return n * c * h * w * factor
 
-# @bdc_registry("SYS")
-# class sys_op(bdc_base):
+
+# @tiu_registry("SYS")
+# class sys_op(tiu_base):
 #     opcode = 15
 #     short_cmd = None
 #     eu_type = (0, 1, 2, 3, 4, 5, 30, 31)
 #     description = "system"
 
 
-@bdc_registry("SYSID")
-class bdc_sys(bdc_base):
+@tiu_registry("SYSID")
+class tiu_sys(tiu_base):
     opcode = 15
     short_cmd = None
     eu_type = {
@@ -411,6 +605,9 @@ class bdc_sys(bdc_base):
         31: "sys.end",
     }
     description = "system"
+
+    def ops(self, is_arch):
+        return 1
 
     def _set_op(self, reg):
         return ([],) * 3
@@ -463,6 +660,9 @@ class dma_base(DMABase):
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
         )
+
+    def ops(self, is_arch):
+        return 0
 
 
 @dma_registry("DMA_tensor（0x000）")

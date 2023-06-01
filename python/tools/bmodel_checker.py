@@ -44,7 +44,7 @@ class Operand(Value):
 class TensorLoc:
     __solts__ = ("tensor_loc", "cmd_index")
     # so many namedTuple, could we use a smart Table?
-    ID = namedtuple("ID", ["sunnetId", "bdc", "gdma"])
+    ID = namedtuple("ID", ["sunnetId", "tiu", "dma"])
     TR = namedtuple("TensorRecord", ["tensor", "record"])
 
     def __init__(self, ts_des_file):
@@ -64,7 +64,7 @@ class TensorLoc:
         for loc in self.tensor_loc:
             loc_s = {k: v for k, v in loc.items() if k not in ("operands", "results")}
             # before this nodechip command, we can check the input data.
-            key = self.ID(loc["subnet_id"], *loc["bdc_gdma_id(before)"])
+            key = self.ID(loc["subnet_id"], *loc["tiu_dma_id(before)"])
             self.breakpoint_loc.setdefault(key, []).extend(
                 self.TR(Operand(v, i), loc_s)
                 for i, v in enumerate(loc["operands"])
@@ -72,7 +72,7 @@ class TensorLoc:
             )
 
             # after this nodechip command, we can check the output data.
-            key = self.ID(loc["subnet_id"], *loc["bdc_gdma_id(after)"])
+            key = self.ID(loc["subnet_id"], *loc["tiu_dma_id(after)"])
             self.breakpoint_loc.setdefault(key, []).extend(
                 self.TR(Result(v, i), loc_s)
                 for i, v in enumerate(loc["results"])
@@ -95,12 +95,12 @@ class TensorLoc:
     def set_breakpoint(self, tdb: Tdb, subnet_id: int = 0):
         bp = filter(lambda x: x[0] == subnet_id, self.breakpoint_loc.keys())
 
-        def bb(bdc_id, gdma_id):
+        def bb(tiu_id, dma_id):
             x, y = -1, -1
-            if bdc_id > 0:
-                x = self.cmd_index[(subnet_id, bdc_id, None)]
-            if gdma_id > 0:
-                y = self.cmd_index[(subnet_id, None, gdma_id)]
+            if tiu_id > 0:
+                x = self.cmd_index[(subnet_id, tiu_id, None)]
+            if dma_id > 0:
+                y = self.cmd_index[(subnet_id, None, dma_id)]
             return max(x, y)
 
         tdb.breakpoint.extend(bb(x, y) for _, x, y in bp)
@@ -167,7 +167,7 @@ def _get_mlir_type_info():
             if match is None:
                 match = cali_re.search(mlir_type)
                 if match is None:
-                    raise ValueError(f"Do not recognize type: {mlir_type}")
+                    raise ValueError(f"Unrecognized type: {mlir_type}")
 
         zp = 0
         if "zero_point" in match.groupdict():
@@ -332,8 +332,8 @@ class ErrorMsg:
         value: str
         codes: str
         opcode: str
-        bdc_gdma_id_before: list
-        bdc_gdma_id_after: list
+        tiu_dma_id_before: list
+        tiu_dma_id_after: list
 
         def __rich_console__(self, console, options):
             from rich.json import JSON
@@ -349,8 +349,8 @@ class ErrorMsg:
             )
             table.add_row("opcode", self.opcode)
             table.add_row("value", JSON(self.value))
-            table.add_row("bdc_gdma_id (before codegen)", str(self.bdc_gdma_id_before))
-            table.add_row("bdc_gdma_id (after codegen)", str(self.bdc_gdma_id_after))
+            table.add_row("tiu_dma_id (before codegen)", str(self.tiu_dma_id_before))
+            table.add_row("tiu_dma_id (after codegen)", str(self.tiu_dma_id_after))
             yield table
             yield Panel(self.numpy_err, title="data-error", style="red")
             yield Panel(self.codes, title="asm")
@@ -455,7 +455,7 @@ ASM_CONTEXT_LENGTH = 2
 def check_data(tdb, tensors, ref_data, context):
     # multiple tensors
     def get_line_info(e, tensor_des):
-        info = ("opcode", "bdc_gdma_id(before)", "bdc_gdma_id(after)")
+        info = ("opcode", "tiu_dma_id(before)", "tiu_dma_id(after)")
         t = tensor_des.tensor
         t_info = {"loc": f"{t.__class__.__name__}[{t.index}]"}
         t_info.update(tensor_des.tensor.value)
@@ -557,8 +557,8 @@ class Checker:
                 info = (
                     "file-line",
                     "subnet_id",
-                    "bdc_gdma_id(before)",
-                    "bdc_gdma_id(after)",
+                    "tiu_dma_id(before)",
+                    "tiu_dma_id(after)",
                 )
 
                 key = RPS(*(tr.record[i] for i in info))
@@ -596,8 +596,8 @@ class Checker:
             return State.Pass
 
         for k, v in self.results.items():
-            bdc_x, gdma_x = k.ins_before
-            bdc_y, gdma_y = k.ins_after
+            tiu_x, dma_x = k.ins_before
+            tiu_y, dma_y = k.ins_after
             sid = k.subnet_id
             line = k.line
             ops = state_aggragate(v.operands_state)
@@ -605,13 +605,13 @@ class Checker:
             self.ins_state.update(
                 {
                     self.SI(sid, cmd_idx[(sid, x + 1, None)]): self.LS(line, ops, res)
-                    for x in range(bdc_x, bdc_y)
+                    for x in range(tiu_x, tiu_y)
                 }
             )
             self.ins_state.update(
                 {
                     self.SI(sid, cmd_idx[(sid, None, x + 1)]): self.LS(line, ops, res)
-                    for x in range(gdma_x, gdma_y)
+                    for x in range(dma_x, dma_y)
                 }
             )
 

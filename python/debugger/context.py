@@ -46,11 +46,11 @@ class Context:
 
     def __bind_resource(self, cmodel):
         # bind compute
-        for _, v in self.opdef.bdc_cmd.items():
+        for _, v in self.opdef.tiu_cls.items():
             for op in v:
-                setattr(op, "compute", lambda c: cmodel.bdc_compute(c.cmd))
+                setattr(op, "compute", lambda c: cmodel.tiu_compute(c.cmd))
 
-        for _, v in self.opdef.dma_cmd.items():
+        for _, v in self.opdef.dma_cls.items():
             for op in v:
                 setattr(op, "compute", lambda c: cmodel.dma_compute(c.cmd))
 
