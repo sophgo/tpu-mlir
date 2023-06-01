@@ -37,12 +37,12 @@ protected:
 
   // create MLIR GroupOp
   void buildMlir();
-  void buildGroupOp(const LgInfo &lg_info, const shape_secs_t &shape_secs);
+  void buildGroupOp(const LgInfo &lg_info, const shape_secs_t &shape_secs, int64_t group_idx);
   void CreateLoadOp(GdmaElt &tensor, int64_t id,
                     const std::vector<Operation *> &ops, group_type_t group_type);
 
   tpu::StoreOp CreateStoreOp(GdmaElt &tensor, int64_t id, group_type_t group_type);
-  void UpdateGroupOverlapInfo(Operation *op);
+  void UpdateGroupOverlapInfo(Operation *op, int64_t group_idx);
   void UpdateOpLgParam(Operation *op, TensorInfo &tensor_infos, int64_t id,
                        group_type_t group_type);
   tpu::LayerGroupAttr getLgParam(tensor_info_t &tensor_info, int64_t id,
@@ -69,8 +69,8 @@ protected:
   int64_t MAX_ID_;
 
   // used for group overlap
-  ValueIntMap self_up_overlap_ops_;
-  ValueIntMap self_down_overlap_ops_;
+  IntValueIntMap self_up_overlap_ops_;
+  IntValueIntMap self_down_overlap_ops_;
   std::vector<Operation*> groups_;
 };
 
