@@ -58,6 +58,9 @@ public:
                             int64_t *group_cost);
 
   bool group_valid_pre_check(const LgInfo &lg_info);
+
+  bool dynamic_group_valid_check(const LgInfo &lg_info);
+
   bool isLgSupport(Operation *op);
 
   int64_t cost_add(int64_t cost0, int64_t cost1);
@@ -92,6 +95,7 @@ protected:
   int64_t group_cost_;
   int64_t MAX_COST;
   int64_t opt_;
+  RunMode ranmode_;
 };
 
 std::unique_ptr<LgPass> CreateLayerGroupSearchPass(const LgOptions &options);

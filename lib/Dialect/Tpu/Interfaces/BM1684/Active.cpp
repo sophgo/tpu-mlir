@@ -171,12 +171,13 @@ int32_t tpu::ActiveOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   bool need_buffer = false;
   if (!module::isUniformQuantized(getOutput())) {
     switch (getMode()) {
+    case ActiveMode::SQRT:
+    case ActiveMode::ABSVAL:
+    case ActiveMode::RSQRT:
     case ActiveMode::SQUARE: break;
     case ActiveMode::EXP:
-    case ActiveMode::ABSVAL:
     case ActiveMode::LN:
     case ActiveMode::TANH:
-    case ActiveMode::SQRT:
     case ActiveMode::SIGMOID: need_buffer = true; break;
     case ActiveMode::FLOOR:
     case ActiveMode::GELU:

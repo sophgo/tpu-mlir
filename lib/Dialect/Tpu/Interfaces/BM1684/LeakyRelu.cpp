@@ -44,6 +44,8 @@ int64_t tpu::LeakyReluOp::getBufferSize_bm1684(
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
+  n = in_nslice;
+  h = in_hslice;
   auto NPU_NUM = BM1684::NPU_NUM;
   auto EU_NUM = BM1684::eu_num(sizeof(float));
   float slope_val = 0;
