@@ -54,7 +54,7 @@ uint32_t tpu::ReduceOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   layer_param.reduce_method = BM1684::get_reduce_type(getMode());
   layer_param.axis_num = getAxes().size();
   short version = 1;
-  layer_param.keep_dims |= (version << 8); // reduce_full_v3
+  layer_param.keep_dims = ((uint8_t)version << 8) | ((uint8_t)getKeepdims()); // reduce_full_v3
   auto axes = module::getI64Array(getAxes());
   for (int i = 0; i < getAxes().size(); i++) {
     layer_param.axis_list[i] = axes->at(i);

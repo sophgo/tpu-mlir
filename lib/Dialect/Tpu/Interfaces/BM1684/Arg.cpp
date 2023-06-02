@@ -86,6 +86,7 @@ uint32_t tpu::ArgOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
                            .Case("ArgMin", 1)
                            .Default(-1);
   layer_param.is_index_int32 = 1;
+  layer_param.select_last_index = getSelectLastIndex();
   if (DSIZE_8 == layer_info->data_size) {
     llvm_unreachable("not implement");
   }

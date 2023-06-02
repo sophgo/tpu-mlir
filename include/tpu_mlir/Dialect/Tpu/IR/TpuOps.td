@@ -1283,7 +1283,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu",
 }
 
 def Tpu_ConcatOp:Tpu_Op<"Concat", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Concatate operation";
   let description = [{
@@ -1636,7 +1636,7 @@ def Tpu_NonZeroOp:Tpu_Op<"NonZero", [
 def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport", "AllowDataSplit"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "deconvolution operator";
 

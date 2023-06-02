@@ -239,3 +239,13 @@ void tpu::DeconvOp::assign_fw_param(void *param) {
   fw_deconv_layer_param.using_depthwise = 1;
   memcpy(param, &fw_deconv_layer_param, sizeof(fw_deconv_layer_param_t));
 }
+
+LogicalResult tpu::DeconvOp::AllowDataSplit(int64_t axis,
+                                            group_type_t group_type) {
+  if (module::isBM1684Family() &&
+      getRunMode(getOperation()) == RunMode::TPU_DYNAMIC) {
+    return failure();
+  } else {
+    return success();
+  }
+}

@@ -339,6 +339,7 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
     int64_t total_secs = get_split_max_secs(time_step);
     shape_secs.nsecs =
         std::max(shape_secs.nsecs, std::min(max_shape_secs.nsecs, total_secs));
+    if (shape_secs.nsecs > nsec) continue;
     // update csecs
     int64_t cdhw_secs = ceiling_func(total_secs, shape_secs.nsecs);
     shape_secs.csecs =

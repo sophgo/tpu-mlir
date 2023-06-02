@@ -41,6 +41,15 @@ void tpu::CastOp::codegen_global_bm1684() {
         module::getAddress(getInput()), module::getAddress(getOutput()),
         module::getNumElements(getInput()), UNARY_I32_TO_F32, NULL,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  } else if (input_dtype == DTYPE_FP32 && output_dtype == DTYPE_INT32) {
+    // fp32 => int32
+    uint32_t input_shape[MAX_SHAPE_DIMS];
+    module::getGlobalShape(getInput(), (int *)input_shape);
+    BM1684::instance().dl_nodechip_float_to_int32_global(
+        module::getAddress(getInput()), module::getAddress(getOutput()),
+        input_shape, module::getShape(getInput()).size(), 1 /*input sign*/,
+        1 /*output sign*/, STORAGE_MODE_1N_FP32, STORAGE_MODE_1N_FP32,
+        ROUND_INF, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     dump();
     llvm_unreachable("CastOp type error");
@@ -55,8 +64,7 @@ int64_t tpu::CastOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   int64_t local_buffer_size = 0;
   auto input_dtype = BM1684::getDataType(getInput());
   auto output_dtype = BM1684::getDataType(getOutput());
-  if (input_dtype == DTYPE_FP32 &&
-      (output_dtype == DTYPE_INT8 || output_dtype == DTYPE_UINT8)) {
+  if (input_dtype == DTYPE_FP32) {
     local_buffer_size = in_lmem_bytes * 2;
   } else if (output_dtype == DTYPE_FP32 &&
              (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8)) {
@@ -99,6 +107,13 @@ void tpu::CastOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         output_group_info.buffer_addr, input_shape[0], input_shape[1],
         input_shape[2], input_shape[3], output_dtype == DTYPE_INT8 ? 1 : 0, 0,
         ROUND_INF, BM1684::instance().bdc_node);
+  } else if (input_dtype == DTYPE_FP32 && output_dtype == DTYPE_INT32) {
+    // fp32 => int32
+    BM1684::instance().dl_nodechip_float_to_int32_local(
+        input_group_info.out_addr, output_group_info.out_addr,
+        output_group_info.buffer_addr, input_shape, 1 /*input sign*/,
+        1 /*output sign*/, STORAGE_MODE_1N_FP32, STORAGE_MODE_1N_FP32,
+        ROUND_INF, (CMD_ID_NODE *)BM1684::instance().bdc_node);
   } else {
     llvm_unreachable("CastOp type error");
   }

@@ -443,5 +443,11 @@ mlir::Type tpu::GenericCpuOp::type_verify(uint64_t opd_idx,
                                    Builder(op).getIntegerType(32, true), mode);
     }
   }
+  if (func_name == "gathernd_tf") {
+    if (opd_idx == 1) {
+      return type_verify_case_type(op, opd_idx,
+                                   Builder(op).getIntegerType(32, true), mode);
+    }
+  }
   return type_verify_case_same(op, opd_idx, mode);
 }

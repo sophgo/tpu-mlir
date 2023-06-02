@@ -264,5 +264,7 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_unary);
   CAST_FUNCTION(nodechip_masked_fill_global);
   CAST_FUNCTION(nodechip_masked_fill_local);
+  CAST_FUNCTION(nodechip_float_to_int32_global);
+  CAST_FUNCTION(nodechip_float_to_int32_local);
   // clang-format on
 }

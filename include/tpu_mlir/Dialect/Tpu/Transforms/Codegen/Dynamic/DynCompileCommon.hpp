@@ -595,7 +595,8 @@ typedef struct fw_arg_layer_param {
   int input_sign;
   u64 input_glb_buf;
   u64 imm_index_glb_buf;
-  int is_index_int32;
+  short is_index_int32;
+  short select_last_index;
 } fw_arg_layer_param_t;
 
 typedef struct fw_active_layer_param {

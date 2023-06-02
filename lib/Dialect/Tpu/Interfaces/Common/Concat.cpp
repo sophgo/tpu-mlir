@@ -89,10 +89,17 @@ LogicalResult tpu::ConcatOp::LocalGenSupport() {
       return success();
     }
   } else if (module::isBM1684Family()) {
-    return (ax > 3 ||
-            (!module::getStorageType(getOutput()).isInteger(32) && ax == 0))
-               ? failure()
-               : success();
+    auto status = success();
+    auto funcOp = cast<FuncOp>(getOperation()->getParentOp());
+    auto runMode = getRunMode(funcOp);
+    if (ax > 3 ||
+        (!module::getStorageType(getOutput()).isInteger(32) && ax == 0)) {
+      status = failure();
+    }
+    if (runMode == RunMode::TPU_DYNAMIC && (ax == 3 && num_dims > 4)) {
+      status = failure();
+    }
+    return status;
   } else {
     return ax > 3 ? failure() : success();
   }
@@ -108,4 +115,9 @@ void tpu::ConcatOp::assign_fw_param(void *param) {
     module::getGlobalShape(getInputs()[i], concat_param.base_shape);
   }
   memcpy(param, &concat_param, sizeof(fw_concat_layer_param_t));
+}
+
+LogicalResult tpu::ConcatOp::AllowDataSplit(int64_t axis,
+                                            group_type_t group_type) {
+  return getAxis() == axis ? failure() : success();
 }

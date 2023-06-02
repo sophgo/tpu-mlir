@@ -270,6 +270,38 @@ static bool group_type_check(const LgInfo &lg_info) {
   return true;
 }
 
+bool GroupMethod::dynamic_group_valid_check(const LgInfo &lg_info) {
+  auto res = true;
+  if (ranmode_ == RunMode::TPU_DYNAMIC && lg_info.group_ops.size() > 1) {
+    // Condition 1
+    // Dynamic Backend will choose the first op's batch as the whole group's batch
+    // Need make sure dynamic group's ops have the same batch
+    int64_t group_n =
+        module::getShape(get_output_values(lg_info.group_ops[0])[0])[0];
+    for (auto op : lg_info.group_ops) {
+      if (!res) break;
+      auto outs = get_output_values(op);
+      for (auto out : outs) {
+        if (group_n != module::getShape(out)[0]) {
+          res = false;
+          break;
+        }
+      }
+    }
+    // Condition 2
+    // Inputs and outputs number of a group cannot be large,
+    // because it will cause much time to get info of inputs and outputs
+    // when dynamic runtime. Also the MCU memory will not be enough
+    // to store in/out node.
+    const uint32_t max_io_num = 96;
+    if (lg_info.group_ins.size() > max_io_num ||
+        lg_info.group_outs.size() > max_io_num) {
+      res = false;
+    }
+  }
+  return res;
+}
+
 bool GroupMethod::group_valid_pre_check(const LgInfo &lg_info) {
   if (!group_type_check(lg_info)) {
     return false;
@@ -291,6 +323,10 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
 
   shape_secs_t shape_secs;
   if(!init_group_data_secs(lg_info, shape_secs)) {
+    return false;
+  }
+
+  if (!dynamic_group_valid_check(lg_info)) {
     return false;
   }
 
@@ -753,6 +789,8 @@ void GroupMethod::simple_layer_group(
 
 void GroupMethod::process(std::vector<LgInfo> &lg_infos,
                           const std::vector<Operation *> &subnet_ops) {
+  auto funcOp = cast<FuncOp>(subnet_ops[0]->getParentOp());
+  ranmode_ = getRunMode(funcOp);
   switch (opt_) {
   case 1:
     simple_layer_group(lg_infos, subnet_ops);
