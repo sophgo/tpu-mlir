@@ -163,6 +163,7 @@ class OnnxConverter(BaseConverter):
             "GroupNormalization": lambda node: self.convert_group_norm_op(node),
             "Greater": lambda node: self.convert_cmp_op(node),
             "GreaterOrEqual": lambda node: self.convert_cmp_op(node),
+            "GridSample": lambda node: self.convert_grid_sampler_op(node),
             "GRU": lambda node: self.convert_gru_op(node),
             "HardSigmoid": lambda node: self.convert_hsigmoid_op(node),
             "HardSwish": lambda node: self.convert_hswish_op(node),
@@ -931,6 +932,7 @@ class OnnxConverter(BaseConverter):
         if self.isWeight(A):
             if trans_a == 1 or alpha != 1:
                 _tensor = self.getWeight(A)
+                _tensor = copy.deepcopy(_tensor) #if change weight,should do deepcopy
                 if trans_a == 1:
                     _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
                 if alpha != 1:
@@ -944,6 +946,7 @@ class OnnxConverter(BaseConverter):
         if self.isWeight(B):
             if trans_b == 1 or alpha != 1:
                 _tensor = self.getWeight(B)
+                _tensor = copy.deepcopy(_tensor) #if change weight,should do deepcopy
                 if trans_b == 1:
                     _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
                 if alpha != 1:
@@ -958,6 +961,7 @@ class OnnxConverter(BaseConverter):
             if self.isWeight(C):
                 if beta != 1:
                     _tensor = self.getWeight(C)
+                    _tensor = copy.deepcopy(_tensor) #if change weight,should do deepcopy
                     _tensor *= beta
                     C += '_fix'
                     self.addWeight(C, _tensor)
@@ -1200,6 +1204,7 @@ class OnnxConverter(BaseConverter):
         scale_factor = []
         sizes = []
         scale_factor = self.getWeight(onnx_node.inputs[1])
+        scale_factor = copy.deepcopy(scale_factor) #if change it,should do deepcopy first
         if (type(scale_factor) == np.ndarray and len(scale_factor.shape) == 2
                 and scale_factor.shape[1] == 1):
             scale_factor = scale_factor.reshape(-1)
@@ -1229,6 +1234,7 @@ class OnnxConverter(BaseConverter):
             # onnx opset 11
             try:
                 scale_factor = self.getWeight(onnx_node.inputs[2])
+                scale_factor = copy.deepcopy(scale_factor) #if change it,should do deepcopy first
             except KeyError:
                 scale_factor = []
             if (type(scale_factor) == np.ndarray and len(scale_factor.shape) == 2
@@ -1852,6 +1858,7 @@ class OnnxConverter(BaseConverter):
         num_dims = len(input_shape)
         axes = onnx_node.attrs.get('axes', list(range(num_dims))) \
             if len(onnx_node.inputs) == 1 else self.getWeight(onnx_node.inputs[1])
+        axes = copy.deepcopy(axes) #if change it, should do deepcopy
         keepdims = onnx_node.attrs.get('keepdims', 1) != 0
         for idx, ax in enumerate(axes):
             if ax < 0:
@@ -2933,3 +2940,36 @@ class OnnxConverter(BaseConverter):
                 self.parse_subgraph(new_op[0].owner, 0, attr.g)
         #restore the insert_point
         self.mlir.restore_insert_point()
+
+    def convert_grid_sampler_op(self, onnx_node):
+        assert(onnx_node.op_type == "GridSample")
+        assert(len(onnx_node.inputs) == 2)
+        input_data = self.getOp(onnx_node.inputs[0])
+        grid_data = self.getOp(onnx_node.inputs[1])
+        output_shape = self.getShape(onnx_node.name)
+        align_corners = onnx_node.attrs.get("align_corners", 0)
+        mode = onnx_node.attrs.get("mode", "bilinear")
+        if mode == b"bilinear":
+            mode = 0
+        elif mode == b"nearest":
+            mode = 1
+        else:
+            assert("Unsupported interpolation mode of {}.".format(mode) and 0)
+        padding_mode = onnx_node.attrs.get("padding_mode", "zeros")
+        if padding_mode == b"zeros":
+            padding_mode = 0
+        elif padding_mode == b"border":
+            padding_mode = 1
+        elif padding_mode == b"reflection":
+            padding_mode = 2
+        else:
+             assert("Unsupported padding_mode of {}.".format(padding_mode) and 0)
+        new_op = top.GridSamplerOp(self.mlir.get_tensor_type(output_shape),
+                                   input_data,
+                                   grid_data,
+                                   mode=mode,
+                                   padding_mode=padding_mode,
+                                   align_corners=align_corners,
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                   ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
