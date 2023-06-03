@@ -149,6 +149,7 @@ f64_array_t getF64Array(ArrayAttr arrayAttr);
 f64_array_t getF64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value);
 bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
+bool isOpInParallel(Operation *Op);
 FuncOp getFuncOp(StringRef func_name);
 func::CallOp getCallOp(FuncOp func);
 llvm::StringRef getModuleName();

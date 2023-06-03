@@ -17,7 +17,7 @@ file(GLOB _sources
           Transforms/WeightReorder/BM1684/*.cpp
           Transforms/WeightReorder/BM1684X/*.cpp
           Transforms/WeightReorder/CV18xx/*.cpp
-          Transforms/BM168x/BM1684/*.cpp)
+          Transforms/Parallel/*.cpp)
 
 add_llvm_library(TPUMLIRTpu
   ${_sources}
@@ -37,6 +37,7 @@ add_llvm_library(TPUMLIRTpu
   MLIRDynLocalGenInterfaceIncGen
   MLIRDynGlobalGenInterfaceIncGen
   MLIRTypeInterfaceIncGen
+  MLIRIndexingMapsInterfaceIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR
@@ -52,6 +53,7 @@ add_llvm_library(TPUMLIRTpu
   MLIRLocalGenInterface
   MLIRDynLocalGenInterface
   MLIRDynGlobalGenInterface
+  MLIRIndexingMapsInterface
   MLIRTypeInterface
   TPUMLIRSupport
   TPUMLIRTrait

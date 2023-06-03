@@ -77,6 +77,7 @@ class DeployTool:
         self.merge_weight = args.merge_weight
         self.op_divide = args.op_divide
         self.avoid_f16_overflow = args.avoid_f16_overflow
+        self.core = args.core
         self.correctness = "0.99,0.90"
         if self.quantize_table:
             self.correctness = "0.99,0.85"
@@ -210,7 +211,7 @@ class DeployTool:
         else:
             mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
                           self.quant_input, self.quant_output, self.disable_layer_group,
-                          self.merge_weight, self.op_divide)
+                          self.merge_weight, self.op_divide, self.core)
             if self.do_validate:
                 tool.validate_model()
 
@@ -284,6 +285,8 @@ if __name__ == '__main__':
                         help="Decide whether to enable layer group pass")
     parser.add_argument("--op_divide", action="store_true",
                         help="if do large global op divide.")
+    parser.add_argument("--core", default=1, type=int,
+                        help="The number of TPU cores used for parallel computation.")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--merge_weight", action="store_true", default=False,
                         help="merge weights into one weight binary with previous generated cvimodel")

@@ -11,9 +11,8 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Support/Module.h"
 
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
@@ -25,7 +24,6 @@
 #include <vector>
 
 using namespace llvm;
-
 
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
@@ -112,6 +110,10 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
           module::isOpInGroup(op)) {
         return;
       }
+      // The buffer Op will insert to parallel Op when needed.
+      if (module::isOpInParallel(op) && !isa<tpu::BufferOp>(op)) {
+        return;
+      };
       all_ops.emplace_back(op);
     });
   }
@@ -226,6 +228,31 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       }
     }
   }
+
+  // 4. set parallel Op address
+  for (auto func : module.getOps<FuncOp>()) {
+    func.walk<WalkOrder::PreOrder>([&](tpu::ParallelOp op) {
+      auto splitOp = &op.getBody().front().front();
+      int64_t address = module::getAddress(splitOp->getOperand(0));
+      for (auto v : splitOp->getResults()) {
+        module::setAddress(v, address);
+        address += module::getBytes(v);
+      }
+      auto yieldOp = &op.getBody().front().back();
+      for (auto joinOp_withType :
+           llvm::zip(yieldOp->getOperands(), op->getResultTypes())) {
+        auto joinOpValue = std::get<0>(joinOp_withType);
+        auto opType = std::get<1>(joinOp_withType);
+        joinOpValue.setType(op.getResult(0).getType());
+        address = module::getAddress(joinOpValue);
+        for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
+          module::setAddress(v, address);
+          address += module::getBytes(v);
+        }
+      }
+    });
+  }
+
   module::setNeuronAddr(start_addr);
   module::setNeuronSize(addr - start_addr);
   module::updateModuleTypes();
@@ -262,8 +289,9 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       }
 
       if (isInPlaceOp(op)) {
-        ValueInfo op_info(op,0);
-        liveRange[v_info].end = std::max(liveRange[op_info].end, liveRange[v_info].end);
+        ValueInfo op_info(op, 0);
+        liveRange[v_info].end =
+            std::max(liveRange[op_info].end, liveRange[v_info].end);
       }
 
       if (isa<top::InputOp>(opd)) {
@@ -280,9 +308,22 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     liveRange[v_info].tensor_size =
         getTensorGmemSize(op, v_info.index, alignment);
   };
+  auto updateAsyncLiveRange = [&](Operation *op, ValueInfo v_info) {
+    // all the ops in parallel region have the liveRange the same as this
+    // region.
+    liveRange[v_info].start = ops_loc[op];
+    liveRange[v_info].end = ops_loc[op->getParentOp()->getNextNode()];
+    liveRange[v_info].out_index = index;
+    liveRange[v_info].tensor_size = getTensorGmemSize(op, index, alignment);
+  };
   ValueInfo v(op, index);
   uint32_t loc = ops_loc[op];
   uint32_t endPosition = loc + 1;
+  if (auto nextOp = op->getNextNode()) {
+    // This operation may have a region and the next operation can be treated as
+    // the end of a scope.
+    endPosition = ops_loc[nextOp];
+  }
   if (isa<top::InputOp>(op)) {
     // liveRange.emplace_back(TensorLive(out, 0, 0xFFFFFFFF));
     // updateOperandsLiveRange(op, endPosition);
@@ -295,7 +336,8 @@ void BMAddressAssign::updateLiveRangeofBMOps(
        to next func's inner group op */
     // simple solution: don;t set the endlife if it connect to next subnet
     // currently. updateOperandsLiveRange(op, endPosition+2); Here,
-    // updateLiveRange from the last op to the first op, no need to concern it.
+    // updateLiveRange from the last op to the first op, no need to concern
+    // it.
     updateOperandsLiveRange(op, endPosition);
   } else if (isInPlaceOp(op)) {
     if (isa<tpu::ConcatOp>(op)) {
@@ -330,6 +372,9 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       updateOperandsLiveRange(op, maxPosition);
       inplace_ops.emplace_back(v);
     }
+  } else if (module::isOpInParallel(op)) {
+    updateAsyncLiveRange(op, v);
+    common_ops.emplace_back(v);
   } else if (op->getDialect()->getNamespace() == "tpu") {
     ValueInfo cur_info(op, index);
     if (!module::isNone(op->getResult(index))) {

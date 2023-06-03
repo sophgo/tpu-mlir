@@ -599,12 +599,23 @@ bool isOpInGroup(Operation *Op, int64_t *group_type) {
     return false;
   }
   auto parent = Op->getParentOp();
-  if (parent != nullptr && isa<tpu::GroupOp>(parent)) {
+  if (isa_and_nonnull<tpu::GroupOp>(parent)) {
     if (group_type) {
       if (auto groupop = dyn_cast<tpu::GroupOp>(Op)) {
         *group_type = groupop.getGroupType();
       }
     }
+    return true;
+  }
+  return false;
+}
+
+bool isOpInParallel(Operation *Op) {
+  if (Op == nullptr) {
+    return false;
+  }
+  auto parent = Op->getParentOp();
+  if (isa_and_nonnull<tpu::ParallelOp>(parent)) {
     return true;
   }
   return false;
@@ -1159,7 +1170,8 @@ void saveWeight() {
   std::set<StringRef> all_names;
   for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
-      if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
+      if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op) &&
+          !module::isOpInParallel(op)) {
         auto name = module::getName(op);
         // if op have more than two regions, it can have the same op Name
         if (all_names.find(name) != all_names.end() &&

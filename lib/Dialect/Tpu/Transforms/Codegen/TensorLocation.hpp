@@ -18,7 +18,26 @@ using namespace tpu_mlir::backend;
 
 class LocalGenInterfaceDecorator;
 class GlobalGenInterfaceDecorator;
-class CodeGeninterface;
+class ScopeVar;
+
+template <typename T>
+class Table {
+public:
+  Table(){};
+  bool contains(T key) { return prefix_record.contains(key); }
+  int64_t get_index(T key) {
+    if (contains(key))
+      return prefix_record[key];
+    int64_t index = prefix_record.size();
+    prefix_record.insert({key, index});
+    return index;
+  }
+
+  auto take_values() { return prefix_record.takeVector(); }
+
+private:
+  MapVector<T, int64_t> prefix_record;
+};
 
 class TensorLocationImpl {
 public:
@@ -56,9 +75,11 @@ private:
   llvm::raw_fd_ostream OS;
   json::OStream J;
   const AsmState::LocationMap &opToLineCol;
+  friend ScopeVar;
 };
 
 class TensorLocation {
+
 public:
   TensorLocation() { impl.reset(); }
   template <typename... Args>
@@ -70,6 +91,40 @@ private:
   static std::shared_ptr<TensorLocationImpl> impl;
   friend class LocalGenInterfaceDecorator;
   friend class GlobalGenInterfaceDecorator;
+  friend class ScopeVar;
+};
+
+class ScopeVar {
+  json::OStream &J;
+  const AsmState::LocationMap &opToLineCol;
+
+public:
+  ScopeVar(TensorLocation *tensor_loc, Operation *op)
+      : J(tensor_loc->impl->J), opToLineCol(tensor_loc->impl->opToLineCol) {
+    J.objectBegin();
+    if (auto func = dyn_cast<FuncOp>(op)) {
+      J.attribute("function", func.getName());
+    } else {
+      J.attribute("function", op->getName().getStringRef());
+    }
+    J.attribute("line", opToLineCol.at(op).first);
+    J.attributeBegin("body");
+    J.arrayBegin();
+  };
+
+  ScopeVar(TensorLocation *tensor_loc, StringRef name)
+      : J(tensor_loc->impl->J), opToLineCol(tensor_loc->impl->opToLineCol) {
+    J.objectBegin();
+    J.attribute("function", name);
+    J.attribute("line", nullptr);
+    J.attributeBegin("body");
+    J.arrayBegin();
+  };
+  ~ScopeVar() {
+    J.arrayEnd();
+    J.attributeEnd();
+    J.objectEnd();
+  };
 };
 
 class LocalGenInterfaceDecorator : public LocalGenInterface {

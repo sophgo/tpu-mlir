@@ -676,10 +676,15 @@ void BMCodegen::codegen(Operation *op) {
     while (next_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(next_op)) {
       next_op = next_op->getNextNode();
     }
-
     codegen_for_group(castOp, prev_op, next_op);
   } else if (module::isOpInGroup(op)) {
     return;
+  } else if (auto parallelOp = dyn_cast<ParallelOp>(op)) {
+    op->walk([&](GlobalGenInterfaceDecorator globalOp) {
+      auto pid_node = (CMD_ID_NODE *)BM168x::instance()->cmdid_node;
+      BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op).c_str());
+      globalOp.codegen_global_bm168x();
+    });
   } else if (auto castOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
     auto pid_node = (CMD_ID_NODE *)BM168x::instance()->cmdid_node;
     BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op).c_str());
