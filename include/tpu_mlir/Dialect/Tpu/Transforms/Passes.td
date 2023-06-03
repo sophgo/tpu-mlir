@@ -44,6 +44,16 @@ def LayerGroup : Pass<"layer-group", "FuncOp"> {
   ];
 }
 
+def Parallel : Pass<"parallel", "FuncOp"> {
+  let summary = "split the operation to fine-grained and run it in parallel on TPU";
+  let constructor = "createParallelPass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"core", "core", "int64_t", /*default=*/"1",
+           "core_num=1: Set how many cores will be used to run model in parallel.">,
+  ];
+}
+
 def AddressAssign : Pass<"address-assign", "ModuleOp"> {
   let summary = "assign address in tpu by tpuc-opt";
   let constructor = "createAddressAssignPass()";

@@ -456,9 +456,9 @@ class Frame(RefObj):
     #
     # The frames of an inline stack at an address all have the same address and the same
     # nativeSymbol, but each has a different func and line.
-    inlineDepth: int
     category: int = None
     subcategory: int = None
+    inlineDepth: int = 0
     # The library which this address is relative to is given by the frame's nativeSymbol:
     # frame -> nativeSymbol -> lib.
     address: int = -1
@@ -472,10 +472,9 @@ class Frame(RefObj):
     column: int = None
 
     def __post_init__(self):
-        self.implementation = self.str_table.get_id(self.implementation)
         self.func = self.func_table.get_id(self.func)
-        if self.nativeSymbol is not None:
-            self.nativeSymbol = self.symbol_table.get(self.nativeSymbol)
+        self.implementation = self.str_table.get_id(self.implementation)
+        self.nativeSymbol = self.symbol_table.get_id(self.nativeSymbol)
 
 
 class MarkerPhase(Enum):
@@ -532,8 +531,8 @@ class Stack(RefObj):
 class Sample(RefObj):
     stack_table: Table = dc.field(repr=False, hash=None, compare=False)
     stack: Stack
-    time: float
     threadCPUDelta: int
+    time: float
     weight: None = None
     weightType: WeightType = WeightType.tracing_ms
     # threadId: Thread
@@ -639,9 +638,19 @@ class Thread(RefObj):
 class Profile(RefObj):
     meta: ProfileMeta  # ProfileMeta,
     threads: list = dc.field(default_factory=list)
-    libs: list = dc.field(default_factory=list)
+    libs: Table = dc.field(default_factory=Table)
     counters: list = dc.field(default_factory=list)
     pages: list = dc.field(default_factory=list)
+
+    def add_lib(self, *args, **kargs):
+        lib = Lib(*args, **kargs)
+        self.libs.get_id(lib)
+        return lib
+
+    def add_thread(self, *args, **kargs):
+        thread = Thread(self.libs, *args, **kargs)
+        self.threads.append(thread)
+        return thread
 
 
 # --------------------------------------------------------------------------------
@@ -679,8 +688,8 @@ profile.threads.append(thread1)
 rs = thread1.add_resource("decoder", "vpp")
 func = thread1.add_function("func_1(tensor_a)", "file_A", 120)
 func2 = thread1.add_function("func_2(tensor_b)", "file_B", 110)
-frame = thread1.add_frame(func, 0, 2, 0)
-frame2 = thread1.add_frame(func2, 0, 3, 0)
+frame = thread1.add_frame(func, 2, 0)
+frame2 = thread1.add_frame(func2, 3, 0)
 stack1 = thread1.add_stack(frame, 2, 0)
 stack2 = thread1.add_stack(frame2, 3, 0, stack1)
 stack3 = thread1.add_stack(frame2, 3, 0, stack2)

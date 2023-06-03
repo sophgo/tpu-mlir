@@ -72,6 +72,10 @@ LogicalResult tpu::PermuteOp::canonicalize(tpu::PermuteOp op,
   int dim_size = shape.size();
   int start = 0, end = dim_size - 1;
   auto order = module::getI64Array(op.getOrder());
+  // dim "1" can be moved to anywhere.
+  // We needn't to consider the position of "1";
+  // cononicalize the order to a form: [ none_ones..., ones...]
+  // if the index of none_ones is ascending order, than it is a reshape.
   while (start < dim_size && start == order->at(start)) {
     start++;
   }
@@ -95,4 +99,24 @@ LogicalResult tpu::PermuteOp::canonicalize(tpu::PermuteOp op,
   rewriter.replaceOpWithNewOp<tpu::ReshapeOp>(op, op.getResult().getType(),
                                               operands);
   return success();
+};
+
+ArrayAttr tpu::PermuteOp::getIndexingMaps() {
+  auto order = module::getI64Array(getOrder());
+  int no_exchange_dim = 0;
+  for (int i = 0, n = order->size(); i < n; i++) {
+    if (i == order->at(0))
+      no_exchange_dim++;
+    else
+      break;
+  };
+  if (no_exchange_dim > 0) {
+    MLIRContext *context = getContext();
+    AffineMap identityMap =
+        AffineMap::getMultiDimIdentityMap(no_exchange_dim, context);
+    AffineMap emptyMap = AffineMap::get(no_exchange_dim, 0, context);
+    SmallVector<AffineMap> indexingMaps{identityMap, emptyMap, identityMap};
+    return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+  }
+  return {};
 };

@@ -41,7 +41,7 @@ class BlockTimelineRecord:
             def __getitem__(self, index):
                 return self.data[index]
 
-            def __len__(self, index):
+            def __len__(self):
                 return len(self.data)
 
             def __repr__(self) -> str:
@@ -102,6 +102,15 @@ class BlockTimelineRecord:
             attr[record.type].append(record.content)
         self.summary = self.summary[0]
 
+    def __repr__(self) -> str:
+        pmu_info = {
+            "TIU": len(self.tiu),
+            "DMA": len(self.dma),
+            "MCU": len(self.mcu_data),
+        }
+        pmu_info.update(self.summary)
+        return "\n".join(f"{k:>15}: {v}" for k, v in pmu_info.items())
+
 
 def get_hw_timming(in_dir):
     for _iter in itertools.count(0, 1):
@@ -111,3 +120,6 @@ def get_hw_timming(in_dir):
             yield BlockTimelineRecord(block_filename)
         else:
             break
+
+
+# sample -> timing

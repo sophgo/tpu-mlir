@@ -33,6 +33,13 @@ table CmdGroup {
     gdma_cmd_byte:uint32 (id: 5); // m_gdma_cmd_byte_v
 }
 
+table CoreCommands {
+    gdma_tiu_commands:[CmdGroup] (id: 0);  /* tpu command list with multiple id sync groups  */
+    sdma_commands: Binary (id: 1);         /* sdma command list */
+    hau_commands: Binary (id: 2);          /* hau command list */
+    cdma_commands: [Binary] (id: 3);       /* 6x cdma command list for each direction */
+}
+
 table StageIR {
     ir_info_len:uint32 (id: 0);  // ir_info_len_vv
     height_high:int32 (id: 1);   // stage_param_vv
@@ -104,6 +111,7 @@ table SubNet {
     next_subnet_ids:[int32] (id: 11);          /* next subnet ids for running: -1 means invalid branch, empty means end */
     merge_param: MergeParam (id: 12);
     switch_param: SwitchParam (id: 13);
+    core_commands: [CoreCommands] (id: 14);
 }
 
 table NetStatic {      // for old bmodel, not use any more
@@ -152,6 +160,9 @@ table NetParameter {
 
     // record net stat_gen info for simulate, optional
     net_stat:Binary (id: 15);
+
+    // The net may be deployed on multi cores
+    core_num: uint32 (id: 16);
 }
 
 table Net {

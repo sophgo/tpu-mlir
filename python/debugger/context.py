@@ -7,7 +7,6 @@
 #
 # ==============================================================================
 from enum import Enum
-import numpy as np
 import functools
 
 try:
@@ -30,14 +29,22 @@ class Context:
     def __init__(self, device: Device):
         self.device = Device(device)
         if self.device == Device.BM1684X:
-            from . import opdef_1684x
-            from . import opparam_1684x
+            try:
+                from . import opdef_1684x
+                from . import opparam_1684x
+            except:
+                import opdef_1684x
+                import opparam_1684x
 
             self.opdef = opdef_1684x
             self.opparam = opparam_1684x
         elif self.device == Device.BM1684:
-            from . import opdef_1684
-            from . import opparam_1684
+            try:
+                from . import opdef_1684
+                from . import opparam_1684
+            except:
+                import opdef_1684
+                import opparam_1684
 
             self.opdef = opdef_1684
             self.opparam = opparam_1684

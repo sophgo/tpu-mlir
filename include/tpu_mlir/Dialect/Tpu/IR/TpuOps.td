@@ -29,6 +29,7 @@ include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/TypeInterface.td"
 include "tpu_mlir/Interfaces/DynLocalGenInterface.td"
 include "tpu_mlir/Interfaces/DynGlobalGenInterface.td"
+include "tpu_mlir/Interfaces/IndexingMapsInterface.td"
 include "tpu_mlir/Traits/Traits.td"
 
 // =============================================================================
@@ -298,6 +299,7 @@ def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
 
 def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface,
       ["BackwardH", "BackwardW", "LocalGenSupport", "assign_sec_info"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface,
@@ -1232,7 +1234,41 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
   let regions = (region SizedRegion<1>:$body);
 }
 
-def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp, IfOp">]> {
+def Tpu_ParallelOp:Tpu_BaseOp<"Parallel"> {
+  let summary = "Parallel execution region";
+  let description = [{
+    The ops in one parallel should run in parallel.
+  }];
+  let arguments = (ins
+    Variadic<AnyTensorOrNone>:$inputs
+  );
+  let results = (outs Variadic<AnyRankedTensor>:$outputs);
+  let regions = (region SizedRegion<1>:$body);
+}
+
+def Tpu_SplitOp:Tpu_BaseOp<"Split"> {
+  let summary = "split tensor to continues pieces";
+  let description = [{
+    The ops in one parallel should run in parallel.
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input
+  );
+  let results = (outs Variadic<AnyRankedTensor>:$outputs);
+}
+
+def Tpu_JoinOp:Tpu_BaseOp<"Join"> {
+  let summary = "Join tensor to continues pieces";
+  let description = [{
+    The ops in one parallel should run in parallel.
+  }];
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp, ParallelOp, IfOp">]> {
   let summary = "Yield values to parent operation";
   let description = [{
   }];
@@ -1356,7 +1392,7 @@ def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_PermuteOp: Tpu_Op<"Permute"> {
+def Tpu_PermuteOp: Tpu_Op<"Permute", [DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
 
   let summary = "Permute operator";
 

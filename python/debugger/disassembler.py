@@ -68,7 +68,7 @@ class Decoder:
                     "Can not decode cmd, with opcode: {}, at {}.".format(cmd_key, cur)
                 )
 
-    def decode_tiu_bug(self, cmd_buf):
+    def decode_tiu_buf(self, cmd_buf):
         if cmd_buf:
             # input is a buffer
             return self.decode_tiu_bits(buffer_to_bits(cmd_buf))
@@ -127,7 +127,7 @@ class Decoder:
 
     def decode_bmodel_cmd(self, bmodel_cmd, subnet_id):
         tiu = itertools.islice(
-            self.decode_tiu_bug(bmodel_cmd.tiu_cls), bmodel_cmd.tiu_num
+            self.decode_tiu_buf(bmodel_cmd.tiu_cls), bmodel_cmd.tiu_num
         )
         dma = itertools.islice(
             self.decode_dma_buf(bmodel_cmd.dma_cmd), bmodel_cmd.dma_num

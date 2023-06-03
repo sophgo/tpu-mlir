@@ -344,3 +344,22 @@ void tpu::Conv2DOp::assign_fw_param(void *param) {
   fw_conv_layer_param.weight_is_tensor = !module::isWeight(getFilter());
   memcpy(param, &fw_conv_layer_param, sizeof(fw_conv_layer_param_t));
 }
+
+ArrayAttr tpu::Conv2DOp::getIndexingMaps() {
+  MLIRContext *context = getContext();
+  AffineMap identity2Map = AffineMap::getMultiDimIdentityMap(2, context);
+  AffineMap inputMap = AffineMap::get(2, 0, identity2Map.getResult(0));
+  AffineMap filterMap = AffineMap::get(2, 0, identity2Map.getResult(1));
+  AffineMap emptyMap = AffineMap::get(2, 0, context);
+
+  SmallVector<AffineMap> indexingMaps{inputMap, filterMap};
+
+  for (int i = 2, n = getNumOperands(); i < n; ++i) {
+    if (module::isNone(getOperand(i)))
+      indexingMaps.push_back(emptyMap);
+    else
+      indexingMaps.push_back(filterMap);
+  }
+  indexingMaps.push_back(identity2Map);
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+}

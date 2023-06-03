@@ -1312,8 +1312,10 @@ def _converter(reg):
         res0["shape"] = opd0["shape"]
 
     if reg.cmd_special_function in (BROADCAST, BANK4_BDC):  # broadcast
+        n, _, h, w = opd0["shape"]
+        opd0["shape"] = (n, 1, h, w)
         n, _, h, w = res0["shape"]
-        res0["shape"] = (n, reg.src_csize, h, w)
+        res0["shape"] = (n, reg.dst_csize, h, w)
     elif reg.cmd_special_function == TRANS:  # transpose
         n, c, h, w = opd0["shape"]
         res0["shape"] = (c, n, h, w)

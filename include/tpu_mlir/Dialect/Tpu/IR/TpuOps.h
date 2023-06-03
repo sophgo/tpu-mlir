@@ -21,6 +21,7 @@
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Interfaces/GlobalGenInterface.h"
 #include "tpu_mlir/Interfaces/TypeInterface.h"
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 #include "tpu_mlir/Support/TensorFile.h"
 #include "tpu_mlir/Support/AttrStruct.h"
 #include "tpu_mlir/Traits/Traits.h"
