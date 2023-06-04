@@ -68,33 +68,17 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
   // filter
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
-  bool is_quantized; // Make it uninitialized intentionally。
-  if (filterOp.getResult()
-          .getType()
-          .dyn_cast<RankedTensorType>()
-          .getElementType()
-          .dyn_cast<IntegerType>()) {
-    is_quantized = true;
-  } else {
-    is_quantized = false;
-  }
-  assert(!is_quantized ||
-         (is_quantized && filterOp.getScale().has_value()) &&
-             "Conv quant weight input must have scale attribute.");
-  auto filter_f32 = is_quantized ? nullptr : filterOp.read<float>();
-  auto filter_size = filterOp.getResult()
-                         .getType()
-                         .dyn_cast<RankedTensorType>()
-                         .getNumElements();
+  auto filter_f32 = filterOp.read<float>();
+  auto filter_size = filter_f32->size();
   float fmax, fmin;
-  if (filter_f32)
-    findMinMax(filter_f32->data(), filter_size, &fmin, &fmax);
-  bool fsign = (fmin < 0 || p.has_bias == true ||
-                is_quantized); // We only support signed qdq quant now.
+  findMinMax(filter_f32->data(), filter_size, &fmin, &fmax);
+  bool fsign = (fmin < 0 || p.has_bias == true);
+  bool all_i8 = is_all_int8(*filter_f32, fsign);
   float fqmax = fsign ? 127 : 255;
   f64_array_t weight_scale_v;
   if (filterOp.getScale().has_value()) {
     weight_scale_v = module::getF64Array(filterOp.getScale().value());
+    all_i8 = false;
   }
 
   i32_array_t bias_int32;
@@ -115,10 +99,10 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   int int32_multiplier, shift;
   int inner_dim = filter_size / p.oc;
   for (int c = 0; c < p.oc; c++) { // per-channel量化
-    // float *p_filter = filter_f32->data() + c * inner_dim;
-    float *p_filter =
-        is_quantized ? nullptr : (filter_f32->data() + c * inner_dim);
-    if (filterOp.getScale().has_value() && weight_scale_v->size()) {
+    float *p_filter = filter_f32->data() + c * inner_dim;
+    if (all_i8) {
+      scale_w = 1.0;
+    } else if (filterOp.getScale().has_value() && weight_scale_v->size()) {
       scale_w = weight_scale_v->data()[c];
     } else {
       float w_max = findMaxabs(p_filter, inner_dim);
@@ -129,16 +113,13 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     multiplier_v.push_back(int32_multiplier);
     rshift_v.push_back(shift);
 
-    if (!is_quantized) {
-      if (fsign) {
-        for (int t = 0; t < inner_dim; t++) {
-          filter_i8->data()[c * inner_dim + t] = to_int8(p_filter[t] / scale_w);
-        }
-      } else {
-        for (int t = 0; t < inner_dim; t++) {
-          filter_u8->data()[c * inner_dim + t] =
-              to_uint8(p_filter[t] / scale_w);
-        }
+    if (fsign) {
+      for (int t = 0; t < inner_dim; t++) {
+        filter_i8->data()[c * inner_dim + t] = to_int8(p_filter[t] / scale_w);
+      }
+    } else {
+      for (int t = 0; t < inner_dim; t++) {
+        filter_u8->data()[c * inner_dim + t] = to_uint8(p_filter[t] / scale_w);
       }
     }
 
@@ -161,9 +142,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   auto filter_type = op.getFilter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
                                         rewriter.getIntegerType(8, fsign));
-  if (is_quantized) {
-    operands.push_back(op.getFilter());
-  } else if (fsign) {
+  if (fsign) {
     auto new_filter =
         top::WeightOp::create(op, "filter_i8", *filter_i8, new_type);
     operands.push_back(new_filter);
