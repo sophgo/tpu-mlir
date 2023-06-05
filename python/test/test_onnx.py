@@ -141,7 +141,7 @@ class ONNX_IR_TESTER(object):
             "Relu":         (self.test_Relu,          Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
             "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y),
-            "ScatterND":    (self.test_ScatterND,     Y, N, N, N),
+            "ScatterND":    (self.test_ScatterND,     N, Y, N, N),
             "Shape":        (self.test_Shape,         N, Y, Y, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y),
@@ -4751,19 +4751,40 @@ class ONNX_IR_TESTER(object):
                 [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
 
     def test_ScatterND(self, case_name):
-        x_shapes = [[320, 320], [1, 5, 256]]
-        idx_shapes = [[160, 160, 2], [1, 1, 2]]
-        update_shapes = [[160, 160], [1, 1, 256]]
-        index_limits = [64, 1]
-        for i in range(1, len(x_shapes)):
-            x_shape, idx_shape, update_shape, index_limit = x_shapes[i], idx_shapes[
-                i], update_shapes[i], index_limits[i]
+        if self.chip == 'bm1684x':
+            x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2,3,20,40]]
+            idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 2, 5], [2,3,20,4]]
+            update_shapes = [[160, 160], [1, 3, 128, 128, 2],  [2,3,20]]
+        else:
+            x_shapes = [[320, 320], [1, 5, 256]]
+            idx_shapes = [[160, 160, 2], [1, 1, 2]]
+            update_shapes = [[160, 160], [1, 1, 256]]
+
+        for i in range(0, len(x_shapes)):
+            x_shape, idx_shape, update_shape = x_shapes[i], idx_shapes[i], update_shapes[i]
             # indices should not have duplicate entries: that is, if idx1 != idx2, then indices[idx1] != indices[idx2].
             # This ensures that the output value does not depend on the iteration order.
+            x_dims = len(x_shape)
+            k = idx_shape[-1]
+            assert (k <= x_dims)
+            # 生成不重复的 indices 数组
+            index_num = np.prod(idx_shape[:-1])
+            if k == x_dims:
+                offset_max = np.prod(x_shape)
+            else:
+                offset_max = np.prod(x_shape[:-1])
+
+            offset = np.random.choice(offset_max, size=index_num, replace=False)
+            indices = np.zeros(idx_shape, dtype=np.int32)
+            for i in range(k):
+                indices[...,k-i-1] = (offset % x_shape[k-i-1]).reshape(indices[...,k-i-1].shape)
+                offset = offset // x_shape[k-i-1]
+
             input_data = {
                 # "raw_data": np.random.rand(*input_shape['raw_data']).astype(np.float32),
                 "x_data": np.random.rand(*x_shape).astype(np.float32),
-                "indices": np.random.randint(0, index_limit, tuple(idx_shape)),
+                # "indices": np.random.randint(0, index_limit, tuple(idx_shape)),
+                "indices": indices,
                 "updates": np.random.rand(*update_shape).astype(np.float32)
             }
             raw_data = helper.make_tensor_value_info("x_data", TensorProto.FLOAT, x_shape)

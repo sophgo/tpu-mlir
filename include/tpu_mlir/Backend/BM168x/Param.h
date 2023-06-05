@@ -1152,6 +1152,8 @@ typedef struct {
   int data_dims;
   int indices_dims;
   int updates_dims;
+  uint64_t intermediate_buffer_global_addr;
+  bool with_hw_trans;
 } scatter_nd_global_param_t;
 
 typedef struct {

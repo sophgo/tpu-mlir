@@ -2838,7 +2838,7 @@ void ScatterNDFunc::invoke() {
     auto index_data = indices + idx * index_depth_;
     int out_offset = 0;
     for (int i = 0; i < outer_stride.size(); ++i) {
-      out_offset += index_data[i] * outer_stride[i];
+      out_offset += (int)index_data[i] * outer_stride[i];
     }
     auto out_ = out + out_offset;
     auto updates_data = updates + idx * outer_stride.back();
