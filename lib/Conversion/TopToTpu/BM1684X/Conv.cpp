@@ -73,7 +73,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   float fmax, fmin;
   findMinMax(filter_f32->data(), filter_size, &fmin, &fmax);
   bool fsign = (fmin < 0 || p.has_bias == true);
-  bool all_i8 = is_all_int8(*filter_f32, fsign);
+  float times = 1;
+  bool all_i8 = to_all_int8(*filter_f32, times, fsign);
   float fqmax = fsign ? 127 : 255;
   f64_array_t weight_scale_v;
   if (filterOp.getScale().has_value()) {
@@ -101,7 +102,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   for (int c = 0; c < p.oc; c++) { // per-channel量化
     float *p_filter = filter_f32->data() + c * inner_dim;
     if (all_i8) {
-      scale_w = 1.0;
+      scale_w = 1.0 / times;
     } else if (filterOp.getScale().has_value() && weight_scale_v->size()) {
       scale_w = weight_scale_v->data()[c];
     } else {

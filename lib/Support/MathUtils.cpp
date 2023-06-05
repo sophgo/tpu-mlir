@@ -1400,17 +1400,19 @@ int getBcastIndex(int out_index, std::vector<int64_t> &output_shape,
   return input_index;
 }
 
-bool is_all_int8(const std::vector<float> &data, bool sign) {
+bool is_all_int8(const std::vector<float> &data, float scale, bool sign) {
   if (sign == false) {
     // all uint8 ?
-    for (auto &d : data) {
+    for (auto d : data) {
+      d *= scale;
       if (d != (uint8_t)(d)) {
         return false;
       }
     }
   } else {
     // all int8 ?
-    for (auto &d : data) {
+    for (auto d : data) {
+      d *= scale;
       if (d != (int8_t)(d)) {
         return false;
       }
@@ -1419,4 +1421,16 @@ bool is_all_int8(const std::vector<float> &data, bool sign) {
   return true;
 }
 
+bool to_all_int8(const std::vector<float> &data, float &scale, bool sign) {
+  float s = 0;
+  for (int i = 0; i < 7; i++) {
+    s = std::pow(2, i);
+    auto ret = is_all_int8(data, s, sign);
+    if (ret) {
+      scale = s;
+      return true;
+    }
+  }
+  return false;
+}
 } // namespace tpu_mlir
