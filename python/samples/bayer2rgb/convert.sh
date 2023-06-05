@@ -30,6 +30,7 @@ model_deploy.py \
   --quant_output \
   --test_input input.npz \
   --test_reference bayer2rgb_top_outputs.npz \
+  --compare_all \
   --disable_layer_group \
   --model bayer2rgb.bmodel
 
