@@ -105,8 +105,6 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
 
   const bool have_weight = !getWeight().getType().isa<mlir::NoneType>();
   const bool have_bias = !getBias().getType().isa<mlir::NoneType>();
-  const bool need_mean = !getMean().getType().isa<mlir::NoneType>();
-  const bool need_rstd = !getRstd().getType().isa<mlir::NoneType>();
 
   const float *input_data = p.inputs[0];
   const float *weight_data = have_weight ? p.inputs[1] : nullptr;
@@ -114,8 +112,6 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
   float *table = p.inputs[3];
   float *mtable = p.inputs[4];
   float *output_data = p.outputs[0];
-  float *mean_data = need_mean ? p.outputs[1] : nullptr;
-  float *rstd_data = need_rstd ? p.outputs[2] : nullptr;
 
   std::vector<float> mean_arr(outer_dim, 0);
   std::vector<float> rstd_arr(outer_dim, 0);
@@ -132,12 +128,6 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
       normlize_f32(input_data + i * inner_dim, output_data + i * inner_dim,
                    _mean_data, _rstd_data, weight_data, bias_data, inner_dim,
                    eps_);
-    }
-    if (need_mean) {
-      mean_data[i] = _mean_data;
-    }
-    if (need_rstd) {
-      rstd_data[i] = _rstd_data;
     }
   }
   return success();

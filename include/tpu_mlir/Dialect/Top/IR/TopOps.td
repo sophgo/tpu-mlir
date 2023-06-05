@@ -1934,9 +1934,7 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
     F64Attr:$eps
   );
   let results = (outs
-    AnyTensor:$output,
-    AnyTensorOrNone:$mean,
-    AnyTensorOrNone:$rstd
+    AnyTensor:$output
   );
   let hasCanonicalizer = 1;
 }

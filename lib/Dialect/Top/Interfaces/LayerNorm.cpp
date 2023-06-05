@@ -9,8 +9,8 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 int64_t top::LayerNormOp::getFLOPs() {
   const bool have_weight = !getWeight().getType().isa<NoneType>();
@@ -41,15 +41,11 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
 
   const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
-  const bool need_mean = !getMean().getType().isa<NoneType>();
-  const bool need_rstd = !getRstd().getType().isa<NoneType>();
 
   const float *input_data = p.inputs[0];
   const float *weight_data = have_weight ? p.inputs[1] : nullptr;
   const float *bias_data = have_bias ? p.inputs[2] : nullptr;
   float *output_data = p.outputs[0];
-  float *mean_data = need_mean ? p.outputs[1] : nullptr;
-  float *rstd_data = need_rstd ? p.outputs[2] : nullptr;
 
   std::vector<float> mean_arr(outer_dim, 0);
   std::vector<float> rstd_arr(outer_dim, 0);
@@ -60,9 +56,6 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
       mean_arr[i] += input_data[i * inner_dim + j];
     }
     mean_arr[i] /= inner_dim;
-    if (need_mean) {
-      mean_data[i] = mean_arr[i];
-    }
     for (int j = 0; j < inner_dim; ++j) {
       const float dij = input_data[i * inner_dim + j] - mean_arr[i];
       rstd_arr[i] += dij * dij;
@@ -71,9 +64,7 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
     rstd_arr[i] += eps_;
     rstd_arr[i] = std::sqrt(rstd_arr[i]);
     rstd_arr[i] = 1.0f / rstd_arr[i];
-    if (need_rstd) {
-      rstd_data[i] = rstd_arr[i];
-    }
+
     for (int j = 0; j < inner_dim; ++j) {
       output_data[i * inner_dim + j] =
           input_data[i * inner_dim + j] - mean_arr[i];
@@ -97,7 +88,8 @@ void top::LayerNormOp::shape_inference() {
     setAxis(axis);
   }
   auto normalized_shape = module::getI64Array(getNormalizedShape());
-  if (!std::equal(normalized_shape->begin(), normalized_shape->end(), in_shape.begin() + axis)) {
+  if (!std::equal(normalized_shape->begin(), normalized_shape->end(),
+                  in_shape.begin() + axis)) {
     dump();
     llvm_unreachable("normalized_shape is illegal");
   }

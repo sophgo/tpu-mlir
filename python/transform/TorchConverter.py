@@ -1223,8 +1223,6 @@ class TorchConverter(BaseConverter):
             bias_opd = self.getWeightOp(torch_node.inputs[3])
         eps = self.const_val[torch_node.inputs[4]]
         out = top.LayerNormOp(self.unranked_type,
-                              self.unranked_type,
-                              self.unranked_type,
                               op0,
                               scale_opd,
                               bias_opd,

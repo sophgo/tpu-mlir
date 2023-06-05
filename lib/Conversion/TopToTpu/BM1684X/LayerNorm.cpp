@@ -41,21 +41,16 @@ static void LoweringLayerNorm(PatternRewriter &rewriter, top::LayerNormOp op,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  if (type.isF32()) {
-    rewriter.replaceOpWithNewOp<tpu::LayerNormOp>(op, op.getResultTypes(), opds,
-                                                  attrs);
-    return;
-  }
+
   std::vector<Type> new_types;
   new_types.reserve(3);
-  for (auto out : op.getResults()) {
-    if (type.isF16()) {
-      new_types.push_back(getQuantF16Type(out));
-    } else if (type.isBF16()) {
-      new_types.push_back(getQuantBF16Type(out));
-    } else {
-      new_types.push_back(out.getType());
-    }
+  auto out = op.getResult();
+  if (type.isF16()) {
+    new_types.push_back(getQuantF16Type(out));
+  } else if (type.isBF16()) {
+    new_types.push_back(getQuantBF16Type(out));
+  } else {
+    new_types.push_back(out.getType());
   }
   rewriter.replaceOpWithNewOp<tpu::LayerNormOp>(op, new_types, opds, attrs);
   return;

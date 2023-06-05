@@ -16,10 +16,6 @@ namespace cv18xx {
 
 void LayerNormLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::LayerNormOp op) const {
-
-  // TODO support output mean std
-  assert(op.getMean().getType().isa<mlir::NoneType>() &&
-         op.getRstd().getType().isa<mlir::NoneType>());
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
@@ -53,11 +49,10 @@ void LayerNormLowering::LoweringBF16(PatternRewriter &rewriter,
       dyn_cast<top::WeightOp>(mantissaOp.getDefiningOp()).clone_bf16(op));
 
   std::vector<Type> new_types;
-  for (auto out : op.getResults()) {
-    new_types.push_back(getQuantBF16Type(out));
-  }
+  auto out = op.getResult();
+  new_types.push_back(getQuantBF16Type(out));
   rewriter.replaceOpWithNewOp<tpu::LayerNormOp>(op, new_types, operands,
-                                             op->getAttrs());
+                                                op->getAttrs());
 }
 
 void LayerNormLowering::LoweringINT8(PatternRewriter &rewriter,
