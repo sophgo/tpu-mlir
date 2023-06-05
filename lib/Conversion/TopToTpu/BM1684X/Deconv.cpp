@@ -12,8 +12,28 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+static Value CreateDeconvOp(PatternRewriter &rewriter, int64_t dims, Location loc,
+                          Type type, std::vector<Value> &operands,
+                          std::vector<NamedAttribute> &attrs) {
+  switch (dims) {
+  case 1:
+  case 2: {
+    auto newOp = rewriter.create<tpu::DeconvOp>(loc, type, operands, attrs);
+    return newOp.getOutput();
+  } break;
+  case 3: {
+    auto newOp = rewriter.create<tpu::Deconv3DOp>(loc, type, operands, attrs);
+    return newOp.getOutput();
+  } break;
+  default:
+    llvm_unreachable("not support kernel dims");
+  }
+  return nullptr;
+}
+
 void DeconvLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::DeconvOp deconvOp) const {
+  rewriter.setInsertionPointAfter(deconvOp);
   auto op = deconvOp.getOperation();
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
@@ -27,9 +47,9 @@ void DeconvLowering::LoweringF32(PatternRewriter &rewriter,
   bool with_bias = !module::isNone(deconvOp.getBias());
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-
-  rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, deconvOp.getOutput().getType(),
-                                             operands, attrs);
+  auto newValue = CreateDeconvOp(rewriter, deconvOp.getKernelShape().size(), deconvOp->getLoc(),
+                               deconvOp.getOutput().getType(), operands, attrs);
+  rewriter.replaceOp(op, {newValue});
 }
 void DeconvLowering::LoweringINT4(PatternRewriter &rewriter, top::DeconvOp op,
                                   bool asymmetric) const {
@@ -137,12 +157,24 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   auto name = rewriter.getStringAttr(deconv_name);
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-  auto deconvType = RankedTensorType::get(
-      {param.n, param.oc, param.oh, param.ow}, rewriter.getI32Type());
+  auto deconvType = RankedTensorType::get(module::getShape(op.getOutput()),
+                                          rewriter.getI32Type());
   auto deconvOp = rewriter.create<tpu::DeconvOp>(NameLoc::get(name), deconvType,
                                                  operands, attrs);
 
   auto rqType = getQuantInt8Type(op.getOutput(), asymmetric);
+
+  bool output_int32 = false;
+  if (op.getKernelShape().size() == 3) {
+    output_int32 = true;
+  }
+
+  if (output_int32) {
+    // to int32, and then requant to int8
+    auto name_loc = NameLoc::get(rewriter.getStringAttr(deconv_name));
+    auto deconv_out = CreateDeconvOp(rewriter, op.getKernelShape().size(), name_loc,
+                                 deconvType, operands, attrs);
+  }
 
   int q_size = module::isBM1686() ? 2 : 3;
   auto quant_int32 =
@@ -165,8 +197,11 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
       quant_int32->data()[3 * c + 2] = out_zp;
     }
   }
-  auto new_quant_type =
+  auto new_quant_type1d =
+      RankedTensorType::get({1, param.oc, 1, 1, q_size}, rewriter.getI32Type());
+  auto new_quant_type2d =
       RankedTensorType::get({1, param.oc, 1, q_size}, rewriter.getI32Type());
+  auto new_quant_type = op.getKernelShape().size() == 3 ? new_quant_type1d : new_quant_type2d;
   auto new_quant =
       top::WeightOp::create(op, "quant_int32", *quant_int32, new_quant_type);
 
@@ -187,6 +222,7 @@ void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::DeconvOp op) const {
   std::vector<Value> operands;
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
+  rewriter.setInsertionPointAfter(op);
   operands.push_back(op.getInput());
   operands.push_back(filterOp.clone_bf16(op));
   operands.push_back(op.getBias());
@@ -198,11 +234,14 @@ void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantBF16Type(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, newType, operands, attrs);
+  auto newValue =
+      CreateDeconvOp(rewriter, op.getKernelShape().size(), op->getLoc(), newType, operands, attrs);
+  rewriter.replaceOp(op, {newValue});
 }
 
 void DeconvLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::DeconvOp op) const {
+  rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   operands.push_back(op.getInput());
@@ -216,7 +255,9 @@ void DeconvLowering::LoweringF16(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantF16Type(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, newType, operands, attrs);
+  auto newValue =
+      CreateDeconvOp(rewriter, op.getKernelShape().size(), op->getLoc(), newType, operands, attrs);
+  rewriter.replaceOp(op, {newValue});
 }
 
 void DeconvLowering::LoweringQuantized(PatternRewriter &rewriter,

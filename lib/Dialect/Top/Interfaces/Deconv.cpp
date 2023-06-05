@@ -11,11 +11,8 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
 deconv_attr_t top::DeconvOp::parseParam() {
   deconv_attr_t p = {0};
-  bool is_deconv3d = getKernelShape().size() == 3;
   auto ishape = getInput().getType().cast<RankedTensorType>().getShape();
   auto oshape = getOutput().getType().cast<RankedTensorType>().getShape();
   auto kernel = module::getI64Array(getKernelShape());
@@ -23,18 +20,19 @@ deconv_attr_t top::DeconvOp::parseParam() {
   auto dilation =
       module::getI64Array(getDilations(), getKernelShape().size(), 1);
   auto pad = module::getI64Array(getPads());
-  auto output_padding = module::getI64Array(getOutputPadding(), getKernelShape().size(), 1);
+  auto output_padding = module::getI64Array(getOutputPadding(), getKernelShape().size(), 0);
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.with_bias = !getBias().getType().isa<NoneType>();
   p.g = getGroup();
-  if (is_deconv3d) {
-    p.n = ishape[0];
-    p.ic = ishape[1];
+  p.n = ishape[0];
+  p.ic = ishape[1];
+  p.oc = oshape[1];
+  auto dims = ishape.size() - 2;
+  if (dims == 3) {
     p.id = ishape[2];
     p.ih = ishape[3];
     p.iw = ishape[4];
-    p.oc = oshape[1];
     p.od = oshape[2];
     p.oh = oshape[3];
     p.ow = oshape[4];
@@ -56,12 +54,9 @@ deconv_attr_t top::DeconvOp::parseParam() {
     p.output_pad_d = output_padding->at(0);
     p.output_pad_h = output_padding->at(1);
     p.output_pad_w = output_padding->at(2);
-  } else {
-    p.n = ishape[0];
-    p.ic = ishape[1];
+  } else if (dims == 2) {
     p.ih = ishape[2];
     p.iw = ishape[3];
-    p.oc = oshape[1];
     p.oh = oshape[2];
     p.ow = oshape[3];
     p.kh = kernel->at(0);
@@ -81,6 +76,17 @@ deconv_attr_t top::DeconvOp::parseParam() {
     p.kd = 1;
     p.sd = 1;
     p.dd = 1;
+  } else if (dims == 1) {
+    p.id = p.od = p.kd = p.dd = p.sd = 1;
+    p.iw = p.ow = p.kw = p.dw = p.sw = 1;
+    p.ih = ishape[2];
+    p.oh = oshape[2];
+    p.kh = kernel->at(0);
+    p.pad_h = pad->at(0);
+    p.pad_h_after = pad->size() > 2 ? pad->at(2) : pad->at(1);
+    p.sh = stride->at(0);
+    p.dh = dilation->at(0);
+    p.output_pad_h = output_padding->at(0);
   }
   p.is_dw = (p.oc == p.ic && p.oc == p.g && p.g > 1);
   return p;
@@ -125,15 +131,18 @@ void top::DeconvOp::shape_inference() {
   assert(input_shape.size() == filter_shape.size());
   assert(input_shape.size() > 2);
   int spacial_rank = input_shape.size() - 2;
-  assert(spacial_rank == getKernelShape().size());
+  if (spacial_rank != getKernelShape().size()) {
+    // have 1d to 2d
+    assert(module::isUnranked(getOutput()) == false);
+    return;
+  }
   assert(getPads().size() == spacial_rank * 2);
-
   llvm::SmallVector<int64_t> out_shape;
   out_shape.push_back(input_shape[0]);
   out_shape.push_back(filter_shape[0] * getGroup());
 
-  auto input_spacial_shape = &input_shape[2];
-  auto filter_spacial_shape = &filter_shape[2];
+  auto input_spacial_shape = llvm::ArrayRef(&input_shape[2], spacial_rank);
+  auto filter_spacial_shape = llvm::ArrayRef(&filter_shape[2], spacial_rank);
   auto pads = module::getI64Array(getPads());
   auto strides = module::getI64Array(getStrides());
   auto dilation = module::getI64Array(getDilations(), spacial_rank, 1);

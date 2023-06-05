@@ -22,6 +22,13 @@ using namespace tpu_mlir::backend;
 
 void tpu::DeconvOp::codegen_global_bm1684x() {
   auto attr = parseParam();
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  if (getKernelShape().size() == 1) {
+    BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.ih, attr.iw});
+    BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
+  }
   deconv_global_param_t param = {0};
   param.input_global_addr = module::getAddress(getInput());
   param.weight_global_addr = module::getAddress(getFilter());
@@ -107,6 +114,13 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  if (getKernelShape().size() == 1) {
+    BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.ih, attr.iw});
+    BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
+  }
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
                                                d_step, w_step, c_step);
@@ -182,6 +196,13 @@ int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(dyn_deconv_local_spec_t);
   auto attr = parseParam();
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  if (getKernelShape().size() == 1) {
+    BM168x::fix_shape(input_spec->at(0), {attr.n, attr.ic, attr.ih, attr.iw});
+    BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
+  }
   auto gi = getGroupInfo(0, 0, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
   auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), 0, 0);
