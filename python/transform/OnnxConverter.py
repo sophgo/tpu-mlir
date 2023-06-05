@@ -1963,7 +1963,6 @@ class OnnxConverter(BaseConverter):
         strides = onnx_node.attrs.get('strides', dim * [1])
         pads = onnx_node.attrs.get('pads', dim * 2 * [0])
         output_padding = onnx_node.attrs.get('output_padding', dim * [0])
-        auto_pad = onnx_node.attrs.get('auto_pad', None)
 
         operands = list()
         input_opd = self.getOperand(onnx_node.inputs[0])
@@ -1986,9 +1985,6 @@ class OnnxConverter(BaseConverter):
                 self.tensors[weight_name] = np.transpose(old_weight, order)
 
             self.shapes[weight_name] = self.tensors[weight_name].shape
-            if is_shape_3:
-                _shape = self.shapes[weight_name]
-                self.shapes[weight_name] = np.insert(_shape, -1, 1)
 
         filter_opd = self.getWeightOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
@@ -1999,24 +1995,6 @@ class OnnxConverter(BaseConverter):
         operands.append(filter_opd)
         operands.append(bias_opd)
 
-        # handle ConvTranspose1d case
-        new_name = onnx_node.name
-        if is_shape_3:
-            assert (dim == 1)
-            strides = [1, strides[0]]
-            pads = [0, pads[0], 0, pads[1]]
-            dilations = [1, dilations[0]]
-            kernel_shape = [1, kernel_shape[0]]
-            output_padding = [0, output_padding[0]]
-
-            input_shape = [input_shape[0], input_shape[1], 1, input_shape[2]]
-            output_shape.insert(-1, 1)
-            reshape0_op = top.ReshapeOp(self.mlir.get_tensor_type(input_shape),
-                                        input_opd,
-                                        loc=self.get_loc('{}_to4dim'.format(onnx_node.name)),
-                                        ip=self.mlir.insert_point).output
-            operands[0] = reshape0_op
-            new_name += "_reshape"
         new_op = top.DeconvOp(self.mlir.get_tensor_type(output_shape),
                               *operands,
                               kernel_shape=kernel_shape,
@@ -2026,19 +2004,9 @@ class OnnxConverter(BaseConverter):
                               output_padding=output_padding,
                               group=group,
                               do_relu=False,
-                              loc=self.get_loc('{}_{}'.format(new_name, onnx_node.op_type)),
+                              loc=self.get_loc('{}_{}'.format(onnx_node.name, onnx_node.op_type)),
                               ip=self.mlir.insert_point).output
-
-        if is_shape_3:
-            output_shape = [output_shape[0], output_shape[1], output_shape[3]]
-            reshape1_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
-                                        new_op,
-                                        loc=self.get_loc('{}_{}'.format(
-                                            onnx_node.name, onnx_node.op_type)),
-                                        ip=self.mlir.insert_point).output
-            self.addOperand(onnx_node.name, reshape1_op)
-        else:
-            self.addOperand(onnx_node.name, new_op)
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_split_op(self, onnx_node):
         assert (onnx_node.op_type == "Split")

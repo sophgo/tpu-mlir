@@ -1408,6 +1408,7 @@ def Top_DeconvOp: Top_Op<"Deconv", [SupportFuseRelu]> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     deconv_attr_t parseParam();
   }];
