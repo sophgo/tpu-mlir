@@ -9,9 +9,9 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -26,13 +26,12 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
   layer_norm_global_spec_t param = {0};
   const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
-  const bool need_mean = !getMean().getType().isa<NoneType>();
-  const bool need_rstd = !getRstd().getType().isa<NoneType>();
+
   param.common.axis = (int)getAxis();
   param.common.eps = getEps().convertToDouble();
   param.common.affine = (have_weight << 0) + (have_bias << 1);
-  param.common.need_mean = need_mean;
-  param.common.need_rstd = need_rstd;
+  param.common.need_mean = false;
+  param.common.need_rstd = false;
   BM168x::call_global_func("backend_api_layer_norm_global", &param,
                            sizeof(param), input_spec->data(),
                            output_spec->data());
@@ -53,8 +52,7 @@ int64_t tpu::LayerNormOp::getBufferSize_bm1684x(
   layer_norm_local_spec_t param = {0};
   const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
-  const bool need_mean = !getMean().getType().isa<NoneType>();
-  const bool need_rstd = !getRstd().getType().isa<NoneType>();
+
   param.common.axis = (int)getAxis();
   if (group_type == GROUP_SMALL_C) {
     auto shape = module::getShape(getInput());
@@ -62,8 +60,8 @@ int64_t tpu::LayerNormOp::getBufferSize_bm1684x(
   }
   param.common.eps = getEps().convertToDouble();
   param.common.affine = (have_weight << 0) + (have_bias << 1);
-  param.common.need_mean = need_mean;
-  param.common.need_rstd = need_rstd;
+  param.common.need_mean = false;
+  param.common.need_rstd = false;
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(local_sec_info_t));
   sec_info.group_type = group_type;
@@ -96,8 +94,7 @@ void tpu::LayerNormOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   layer_norm_local_spec_t param = {0};
   const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
-  const bool need_mean = !getMean().getType().isa<NoneType>();
-  const bool need_rstd = !getRstd().getType().isa<NoneType>();
+
   param.common.axis = (int)getAxis();
   if (group_type == GROUP_SMALL_C) {
     auto shape = module::getShape(getInput());
@@ -105,8 +102,8 @@ void tpu::LayerNormOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   }
   param.common.eps = getEps().convertToDouble();
   param.common.affine = (have_weight << 0) + (have_bias << 1);
-  param.common.need_mean = need_mean;
-  param.common.need_rstd = need_rstd;
+  param.common.need_mean = false;
+  param.common.need_rstd = false;
   const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
   param.buffer_addr = gi.buffer_addr;
   BM168x::call_local_func("backend_api_layer_norm_local", &param, sizeof(param),
@@ -122,13 +119,12 @@ int64_t tpu::LayerNormOp::dyn_codegen_global_bm1684x(void *buffer) {
   layer_norm_global_spec_t param = {0};
   const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
-  const bool need_mean = !getMean().getType().isa<NoneType>();
-  const bool need_rstd = !getRstd().getType().isa<NoneType>();
+
   param.common.axis = (int)getAxis();
   param.common.eps = getEps().convertToDouble();
   param.common.affine = (have_weight << 0) + (have_bias << 1);
-  param.common.need_mean = need_mean;
-  param.common.need_rstd = need_rstd;
+  param.common.need_mean = false;
+  param.common.need_rstd = false;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
@@ -147,8 +143,7 @@ int64_t tpu::LayerNormOp::dyn_codegen_local_bm1684x(void *buffer) {
   assert(group_type < GROUP_UNSUPPORT);
   const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
-  const bool need_mean = !getMean().getType().isa<NoneType>();
-  const bool need_rstd = !getRstd().getType().isa<NoneType>();
+
   param.common.axis = (int)getAxis();
   if (group_type == GROUP_SMALL_C) {
     auto shape = module::getShape(getInput());
@@ -156,8 +151,8 @@ int64_t tpu::LayerNormOp::dyn_codegen_local_bm1684x(void *buffer) {
   }
   param.common.eps = getEps().convertToDouble();
   param.common.affine = (have_weight << 0) + (have_bias << 1);
-  param.common.need_mean = need_mean;
-  param.common.need_rstd = need_rstd;
+  param.common.need_mean = false;
+  param.common.need_rstd = false;
   const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
   param.buffer_addr = gi.buffer_addr;
   return BM168x::dynamic_spec_to_buffer(buffer, param);

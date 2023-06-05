@@ -2079,9 +2079,7 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
     F64Attr:$eps
   );
   let results = (outs
-    AnyRankedTensor:$output,
-    AnyTensorOrNone:$mean,
-    AnyTensorOrNone:$rstd
+    AnyRankedTensor:$output
   );
 }
 

@@ -2600,9 +2600,7 @@ class OnnxConverter(BaseConverter):
         if type(eps) == list and len(eps) == 1:
             eps = eps[0]
         # stash_type is not important
-        loc_names = [
-            onnx_node.name + '_LayerNorm', onnx_node.name + '_Mean', onnx_node.name + '_Rstd'
-        ]
+        loc_name = onnx_node.name + '_LayerNorm'
         wb_shape = [1 if i < axis else input_shape[i] for i in range(num_dims)]
         input_opd = self.getOperand(onnx_node.inputs[0])
         scale_opd = self.mlir.none_op
@@ -2613,27 +2611,26 @@ class OnnxConverter(BaseConverter):
         if len(onnx_node.inputs) > 2:
             if not self.isScalar_(onnx_node.inputs[2], 0):
                 bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
-        out_shapes = [None, None, None]
-        out_needs = [False, False, False]
-        for idx, out in enumerate(onnx_node.outputs):
-            if len(out) > 0 and self.check_need(out):
-                loc_names[idx] = "{}_{}".format(out, onnx_node.op_type)
-                out_needs[idx] = True
-                out_shapes[idx] = self.getShape(out)
+        out_shape = None
+        out_need = False
+        out = onnx_node.outputs[0]
+        if len(out) > 0 and self.check_need(out):
+            loc_name = "{}_{}".format(out, onnx_node.op_type)
+            out_need = True
+            out_shape = self.getShape(out)
 
-        out_op = top.LayerNormOp(*self.mlir.get_tensor_type(out_shapes),
+        out_op = top.LayerNormOp(*self.mlir.get_tensor_type([out_shape]),
                                  input_opd,
                                  scale_opd,
                                  bias_opd,
                                  normalized_shape=normalized_shape,
                                  axis=axis,
                                  eps=eps,
-                                 loc=self.get_loc(loc_names),
+                                 loc=self.get_loc(loc_name),
                                  ip=self.mlir.insert_point)
-        out_ops = [out_op.output, out_op.mean, out_op.rstd]
-        for idx, need in enumerate(out_needs):
-            if need:
-                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+        out_op = out_op.output
+        if out_need:
+            self.addOperand(onnx_node.outputs[0], out_op)
 
     def convert_pixel_norm_op(self, onnx_node):
         assert (onnx_node.op_type == "PixelNormalization")
