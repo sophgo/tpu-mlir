@@ -737,7 +737,6 @@ public:
   }
 };
 
-
 class Pool3DGlobalBuffer : public OpRewritePattern<tpu::Pool3DOp> {
 public:
   using OpRewritePattern<tpu::Pool3DOp>::OpRewritePattern;
@@ -764,6 +763,26 @@ public:
   }
 };
 
+class ScatterNDGlobalBuffer : public OpRewritePattern<tpu::ScatterNDOp> {
+public:
+  using OpRewritePattern<tpu::ScatterNDOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::ScatterNDOp ScatterNDOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(ScatterNDOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684XFamily()) {
+      return failure();
+    }
+    auto buffer_type =
+        ScatterNDOp.getInputData().getType().cast<RankedTensorType>();
+    auto buffer = tpu::BufferOp::create(ScatterNDOp, buffer_type);
+    ScatterNDOp.setOperand(3, buffer);
+    return success();
+  }
+};
+
 } // namespace bm168x
 
 namespace tpu {
@@ -786,7 +805,8 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       TileGlobalBuffer,
       PadGlobalBuffer,
       Space2BatchGlobalBuffer,
-      Batch2SpaceGlobalBuffer
+      Batch2SpaceGlobalBuffer,
+      ScatterNDGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }

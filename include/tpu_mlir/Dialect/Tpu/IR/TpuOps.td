@@ -2359,6 +2359,7 @@ def Tpu_ScatterNDOp: Tpu_Op<"ScatterND", [
       `input_data`           : Tensor of rank r >= 1.
       `indices`      : Tensor of rank q >= 1.
       `updates`     : Tensor of rank q + r - indices_shape[-1] - 1.
+      `reduction`   : Type of reduction to apply: none (0 default), add(1), sub(2), max(3), min(4), mul(5).
 
     Outputs:
       `output`       : Tensor of rank r >= 1.
@@ -2367,7 +2368,9 @@ def Tpu_ScatterNDOp: Tpu_Op<"ScatterND", [
   let arguments = (ins
     AnyRankedTensor:$input_data,
     AnyRankedTensor:$indices,
-    AnyRankedTensor:$updates
+    AnyRankedTensor:$updates,
+    AnyTensorOrNone:$buffer,
+    DefaultValuedAttr<I32Attr, "0">:$reduction
   );
 
   let results = (outs AnyRankedTensor:$output);

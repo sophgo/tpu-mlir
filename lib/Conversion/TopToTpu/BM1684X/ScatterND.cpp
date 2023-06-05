@@ -14,7 +14,35 @@ namespace bm1684x {
 
 void ScatterNDLowering::LoweringF32(PatternRewriter &rewriter,
                                     top::ScatterNDOp op) const {
-  lowering_common_f32<tpu::ScatterNDOp>(rewriter, op);
+  std::vector<Value> operands;
+  operands.push_back(op.getInputData());
+  auto indices_op = dyn_cast<top::WeightOp>(op.getIndices().getDefiningOp());
+  if (indices_op) {
+    // convert fp32 indices into int32
+    auto indices_data = indices_op.read<float>();
+    std::vector<int32_t> indices_int32_v(
+        module::getNumElements(op.getIndices()));
+    for (int i = 0; i < module::getNumElements(op.getIndices()); ++i) {
+      indices_int32_v[i] = static_cast<int32_t>(indices_data->at(i));
+    }
+    auto new_type = RankedTensorType::get(module::getShape(op.getIndices()),
+                                          rewriter.getI32Type());
+    i32_array_t indices_int32 =
+        std::make_shared<std::vector<int32_t>>(indices_int32_v);
+    auto new_indices_op =
+        top::WeightOp::create(op, "indices_int32", *indices_int32, new_type);
+    operands.push_back(new_indices_op);
+  } else {
+    operands.push_back(op.getIndices());
+  }
+
+  operands.push_back(op.getUpdates());
+
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp);
+
+  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, op.getOutput().getType(),
+                                                operands, op->getAttrs());
 }
 
 void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter,
