@@ -93,6 +93,7 @@ class TorchConverter(BaseConverter):
             "aten::elu": lambda node: self.convert_elu_op(node),
             "aten::embedding": lambda node: self.convert_embedding_op(node),
             "aten::exp": lambda node: self.convert_math_op(node, "exp"),
+            "aten::expand": lambda node: self.convert_expand_op(node),
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
             "aten::floor": lambda node: self.convert_floor_op(node),
             "aten::floor_divide": lambda node: self.convert_floor_divide_op(node),
@@ -135,7 +136,7 @@ class TorchConverter(BaseConverter):
             "aten::new_ones": lambda node: self.convert_new_constant_fill_op(node, 1),
             "aten::new_zeros": lambda node: self.convert_new_constant_fill_op(node, 0),
             "aten::ones": lambda node: self.convert_constant_fill_op(node, 1),
-            "aten::expand": lambda node: self.convert_expand_op(node),
+            "aten::ones_like": lambda node: self.convert_constant_like_op(node, 1),
             "aten::pad": lambda node: self.convert_pad_op(node, mode='unknown'),
             "aten::pow": lambda node: self.convert_pow_op(node),
             "aten::prelu": lambda node: self.convert_prelu_op(node),
@@ -180,6 +181,7 @@ class TorchConverter(BaseConverter):
             "aten::view": lambda node: self.convert_reshape_op(node),
             "aten::where": lambda node: self.convert_where_op(node),
             "aten::zeros": lambda node: self.convert_constant_fill_op(node, 0),
+            "aten::zeros_like": lambda node: self.convert_constant_like_op(node, 0),
             ###### prim #####
             "prim::Constant": lambda node: self.convert_constant(node),
             "prim::DictConstruct": lambda node: self.convert_dict_construct(node),
@@ -663,6 +665,21 @@ class TorchConverter(BaseConverter):
         op0 = self.getOp(torch_node.inputs[0])
         new_op = top.ConstantFillOp(self.unranked_type,
                                     op0,
+                                    value=value,
+                                    loc=self.get_loc(torch_node.name),
+                                    ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_constant_like_op(self, torch_node: TorchNode, value):
+        op0 = self.getOp(torch_node.inputs[0])
+        size_op = top.SizeOp(self.unranked_type,
+                            op0,
+                            axis=None,
+                            loc=self.get_loc(torch_node.inputs[0] + "_size"),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.inputs[0] + "_size", size_op)
+        new_op = top.ConstantFillOp(self.unranked_type,
+                                    size_op,
                                     value=value,
                                     loc=self.get_loc(torch_node.name),
                                     ip=self.mlir.insert_point).output

@@ -90,7 +90,9 @@ class TorchInterpreter():
     def run_aten(self, node: TorchNode):
         ParamMap = {
             "aten::ones": ['dtype', 'layout', 'device', 'pin_memory'],
+            "aten::ones_like": ['dtype', 'layout', 'device', 'pin_memory', 'memory_format'],
             "aten::zeros": ['dtype', 'layout', 'device', 'pin_memory'],
+            "aten::zeros_like": ['dtype', 'layout', 'device', 'pin_memory', 'memory_format'],
             "aten::mean": ['dtype'],
             "aten::sum": ['dtype'],
             "aten::gelu": ['approximate'],

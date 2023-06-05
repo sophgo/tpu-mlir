@@ -59,6 +59,7 @@ class TORCH_IR_TESTER(object):
             "Clamp":            (self.test_Clamp,             N, Y, Y, N),
             "Compare":          (self.test_Compare,           N, Y, Y, N),
             "Concat":           (self.test_Concat,            N, Y, Y, Y),
+            "ConstantLike":     (self.test_ConstantLike,      N, Y, Y, Y),
             "Conv1d":           (self.test_Conv1d,            N, Y, Y, Y),
             "Conv2d":           (self.test_Conv2d,            N, Y, Y, Y),
             "Conv3d":           (self.test_Conv3d,            N, Y, Y, N),
@@ -2399,6 +2400,9 @@ class TORCH_IR_TESTER(object):
             _test_pad2d(op_type, (1, 3, 16, 32), 3, 0.5)
             _test_pad2d(op_type, (2, 4, 16, 32), (3, 4, 5, 6), 0.4)
 
+    #######################################################################
+    # Abs
+    # ------------
     def test_Abs(self):
         """Abs"""
 
@@ -2415,6 +2419,28 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([input_shape], Model())
 
         _test_abs((1, 16, 32, 32))
+
+    #######################################################################
+    # ConstantLike
+    # ------------
+    def test_ConstantLike(self):
+        """ZerosLike and OnesLike"""
+
+        def _test_constant_like(op_type, input_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = op_type(x)
+                    return x + y
+
+            self.trace_and_test([input_shape], Model())
+
+        for op_type in [torch.zeros_like, torch.ones_like]:
+            _test_constant_like(op_type, (1, 16, 32, 32))
 
     #######################################################################
     # GridSampler
