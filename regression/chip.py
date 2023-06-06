@@ -108,6 +108,7 @@ full_model_list = {
     "yolov4_cf":                  (N,      N,       N,      N,      N,      N,      Y,      N),
     # ----- cvs20-test -----      -------
     "feature_extract_cf":         (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
+    "squeezenet_v1.1_cf_cvs20":   (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "squeezenet_v1.1_cf":         (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     ######## tflite ########      ########
     "inception_v4_tf":            (N,      Y,       Y,      N,      N,      N,      N,      Y),
