@@ -18,4 +18,4 @@ The current directly supported frameworks are pytorch, onnx, tflite and caffe. M
 https://github.com/onnx/tutorials.
 
 
-To convert a model, firstly you need to execute it in the specified docker. With the required environment, conversion work can be done in two steps, converting the original model to mlir file by ``model_transform.py`` and converting the mlir file to bmodel by ``model_deploy.py``. To obtain an INT8 model, you need to call ``run_calibration.py`` to generate a quantization table and pass it to ``model_deploy.py``. This article mainly introduces the process of this model conversion.
+To convert a model, firstly you need to execute it in the specified docker. With the required environment, conversion work can be done in two steps, converting the original model to mlir file by ``model_transform.py`` and converting the mlir file to bmodel/cvimodel by ``model_deploy.py``. To obtain an INT8 model, you need to call ``run_calibration.py`` to generate a quantization table and pass it to ``model_deploy.py``. This article mainly introduces the process of this model conversion.

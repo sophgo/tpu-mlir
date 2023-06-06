@@ -1,13 +1,29 @@
 编译ONNX模型
 ============
 
-本章以 ``yolov5s.onnx`` 为例, 介绍如何编译迁移一个onnx模型至BM1684X TPU平台运行。
+本章以 ``yolov5s.onnx`` 为例, 介绍如何编译迁移一个onnx模型至TPU平台运行。
 
 该模型来自yolov5的官网: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
 本章需要如下文件(其中xxxx对应实际的版本信息):
 
 **tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
+
+.. list-table::
+   :widths: 35 20 30
+   :header-rows: 1
+
+   * - 平台
+     - 文件名
+     - 说明
+   * - cv183x/cv182x/cv181x/cv180x
+     - xxx.cvimodel
+     - 请参考: :ref:`CV18xx芯片使用指南 <onnx to cvimodel>`
+   * - 其它
+     - xxx.bmodel
+     - :ref:`继续本章节 <onnx to bmodel>`
+
+.. _onnx to bmodel:
 
 加载tpu-mlir
 ------------------

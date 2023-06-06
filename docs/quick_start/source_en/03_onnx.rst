@@ -10,6 +10,22 @@ This chapter requires the following files (where xxxx corresponds to the actual 
 
 **tpu-mlir_xxxx.tar.gz (The release package of tpu-mlir)**
 
+.. list-table::
+   :widths: 35 20 30
+   :header-rows: 1
+
+   * - platform
+     - file name
+     - info
+   * - cv183x/cv182x/cv181x/cv180x
+     - xxx.cvimodel
+     - please refer to the :ref:`CV18xx Guidance <onnx to cvimodel>`
+   * - 其它
+     - xxx.bmodel
+     - please refer to the :ref:`following <onnx to bmodel>`
+
+.. _onnx to bmodel:
+
 Load tpu-mlir
 ------------------
 

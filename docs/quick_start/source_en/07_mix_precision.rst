@@ -1,3 +1,5 @@
+.. _mix precision:
+
 Mix Precision
 ==================
 
