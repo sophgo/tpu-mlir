@@ -114,7 +114,8 @@ class MAIN_ENTRY(object):
 
         success = True
         try:
-            _os_system_log(os.path.expandvars("$REGRESSION_PATH/script_test/run.sh"))
+            _os_system_log(
+                os.path.expandvars("$REGRESSION_PATH/script_test/run.sh {}".format(self.test_type)))
         except:
             success = False
 

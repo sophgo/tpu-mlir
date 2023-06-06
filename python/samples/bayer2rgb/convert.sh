@@ -1,7 +1,7 @@
 #!/bin/bash
 
-mkdir -p workspace
-pushd workspace
+mkdir -p tmp
+pushd tmp
 
 python3 ../model.py
 
