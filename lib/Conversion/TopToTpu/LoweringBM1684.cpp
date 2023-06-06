@@ -12,6 +12,15 @@
 namespace tpu_mlir {
 namespace bm1684 {
 
+void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
+  patterns->add<
+      // clang-format off
+      ShapeTryLowering,
+      SliceTryLowering
+      // clang-format on
+      >(patterns->getContext());
+}
+
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
   patterns->add<
       // clang-format off

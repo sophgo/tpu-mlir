@@ -91,6 +91,25 @@ typedef enum {
 } ROUND_MODE_T;
 
 typedef enum {
+  BMNET_NEURON = 0,         // Addr align, h*w align
+  BMNET_COEFF  = 1,         // Addr unalign, h*w compact
+  BMNET_COEFF_NEURON = 2,   // Addr align, h*w compact
+  BMNET_COEFF_FC = 3,
+  BMNET_COEFF_WINOGRAD = 4,
+  BMNET_NEURON_FC = 5,
+  BMNET_NEURON_CONST = 6,   // Addr align, h*w align
+  BMNET_NEURON_SHAPE = 7,
+  BMNET_NEURON_CPU = 8,
+  BMNET_NEURON_ARRAY = 9,
+  BMNET_NEURON_FLOW = 10,
+  BMNET_NEURON_3IC = 11,
+  BMNET_CPU_CONST = 12,
+  BMNET_COEFF_ALIGN = 13,   // Addr align, h*w align
+  TENSOR_TYPE_NUM,
+  TENSOR_UNKNOWN = -1,
+} TENSOR_TYPE_T;
+
+typedef enum {
   ELTWISE_PRODUCT = 0,
   ELTWISE_ADD = 1,
   ELTWISE_MAX = 2,

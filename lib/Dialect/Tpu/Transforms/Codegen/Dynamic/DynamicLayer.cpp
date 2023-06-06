@@ -455,9 +455,9 @@ uint32_t push_back_layer_global_tensor(
   uint32_t fw_ir_length = 0;
   ir_tensor_info_t ir_tensor_info;
 
-  /*TODO only support is_neuron*/
+  /*TODO only support is_neuron and ShapeOp*/
   bool is_neuron = true;
-  bool is_shape = false;
+  bool is_shape = module::isShapeRelatedOp(v) ? true : false;
   bool is_array = false;
   bool is_flow = false;
 
@@ -467,7 +467,7 @@ uint32_t push_back_layer_global_tensor(
 
   /*TODO process shape layer*/
   ir_tensor_info.tensor_type =
-      module::isWeight(v) ? IR_TENSOR_TYPE_COEFF : IR_TENSOR_TYPE_NEURON;
+      module::isWeight(v) ? IR_TENSOR_TYPE_COEFF : module::isShapeRelatedOp(v) ? IR_TENSOR_TYPE_SHAPE : IR_TENSOR_TYPE_NEURON;
 
   ir_tensor_info.is_io_tensor = 0;
   if (is_layer_in) {
