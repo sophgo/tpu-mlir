@@ -315,6 +315,8 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     mlir::DictionaryAttr dic_param = this->getParam().value();
     int axis = dic_param.get("axis").cast<IntegerAttr>().getInt();
     int K = dic_param.get("K").cast<IntegerAttr>().getInt();
+    if (!module::isNone(getInputs()[1]))
+      K = (int)p.inputs[1][0];
     int is_sorted = dic_param.get("sorted").cast<IntegerAttr>().getInt();
     if (is_sorted == false) {
       llvm_unreachable("Not supported");
@@ -329,16 +331,16 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     for (int i = 0; i < axis; i++) {
       outer_dim *= input_shape[i];
     }
-#pragma omp parallel for schedule(static, omp_schedule(outer_dim))
+    #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
     for (int i = 0; i < outer_dim; i++) {
       auto *ptr = p.inputs[0] + i * axis_dim;
       std::vector<std::pair<int, float>> result;
       topk_indices(result, ptr, axis_dim, K, is_largest);
       for (int k = 0; k < K; k++) {
-        auto indices_ptr = p.outputs[1] + i * K + k;
-        *indices_ptr = (float)result[k].first;
-        auto values_ptr = p.outputs[0] + i * K + k;
-        *values_ptr = result[k].second;
+          auto indices_ptr = p.outputs[1] + i * K + k;
+          *indices_ptr = (float)result[k].first;
+          auto values_ptr = p.outputs[0] + i * K + k;
+          *values_ptr = result[k].second;
       }
     }
   } else if (func_name == "gathernd_tf") {

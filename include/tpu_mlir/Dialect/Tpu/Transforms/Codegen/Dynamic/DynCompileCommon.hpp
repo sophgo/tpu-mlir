@@ -1572,6 +1572,7 @@ typedef struct {
 } fw_dynamic_output_info_t;
 
 // must be same as TENSOR_TYPE_T in bmcompiler_net_param.h
+// must be same as include/tpu_mlir/Backend/BM168x/Param.h
 typedef enum {
   FW_BMNET_NEURON = 0,
   FW_BMNET_COEFF = 1,

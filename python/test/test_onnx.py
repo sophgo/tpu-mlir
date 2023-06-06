@@ -144,7 +144,9 @@ class ONNX_IR_TESTER(object):
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
             "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y),
             "ScatterND":    (self.test_ScatterND,     N, Y, Y, N),
-            "Shape":        (self.test_Shape,         N, Y, Y, N),
+            "Shape":        (self.test_Shape,         Y, Y, Y, N),
+            "ShapeCast":    (self.test_ShapeCast,     N, N, N, N),
+            "ShapeSlice":   (self.test_ShapeSlice,    Y, N, N, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y),
             "Softplus":     (self.test_Softplus,      Y, Y, Y, Y),
@@ -5406,6 +5408,41 @@ class ONNX_IR_TESTER(object):
             ['shapeinfo'],  # outputs
         )
         graph_def = helper.make_graph([shape_node], case_name, [input], [shapeinfo])
+        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
+    def test_ShapeSlice(self, case_name):
+        shape = [10,1000]
+        X = helper.make_tensor_value_info('X', TensorProto.FLOAT, shape)
+        X_Shape = helper.make_tensor_value_info('X_Shape', TensorProto.INT64,[2])
+        K = helper.make_tensor_value_info('K',TensorProto.INT64,[1])
+        o_shape = list(shape)
+        o_shape[-1] = shape[0]
+        starts = helper.make_tensor('starts', TensorProto.INT64, [1], np.array([0], np.int64))
+        ends = helper.make_tensor('ends', TensorProto.INT64,[1], np.array([1], np.int64))
+        axes = helper.make_tensor( 'axes',TensorProto.INT64,[1], np.array([0], np.int64))
+        steps = helper.make_tensor('steps', TensorProto.INT64,[1], np.array([1], np.int64))
+        shape_node = helper.make_node('Shape', inputs=['X'], outputs=['X_Shape'])
+        slice_node = helper.make_node("Slice",   inputs=['X_Shape','starts', 'ends', 'axes', 'steps'], outputs=['K'])
+        graph_def = helper.make_graph([shape_node, slice_node],case_name, [X],[K], initializer=[starts, ends, axes, steps])
+        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
+    def test_ShapeCast(self, case_name):
+        shape = [10,1000]
+        X = helper.make_tensor_value_info('X', TensorProto.FLOAT, shape)
+        X_Shape = helper.make_tensor_value_info('X_Shape', TensorProto.INT64,[2])
+        K = helper.make_tensor_value_info('K',TensorProto.INT64,[1])
+        o_shape = list(shape)
+        o_shape[-1] = shape[0]
+        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, o_shape)
+        Y_Index = helper.make_tensor_value_info('Y_Index',TensorProto.INT64,o_shape)
+        starts = helper.make_tensor('starts', TensorProto.INT64, [1], np.array([0], np.int64))
+        ends = helper.make_tensor('ends', TensorProto.INT64,[1], np.array([1], np.int64))
+        axes = helper.make_tensor( 'axes',TensorProto.INT64,[1], np.array([0], np.int64))
+        steps = helper.make_tensor('steps', TensorProto.INT64,[1], np.array([1], np.int64))
+        shape_node = helper.make_node('Shape', inputs=['X'], outputs=['X_Shape'])
+        slice_node = helper.make_node("Slice",   inputs=['X_Shape','starts', 'ends', 'axes', 'steps'], outputs=['K'])
+        topk_node = helper.make_node('TopK', inputs= ['X','K'],outputs=['Y_Value','Y_Index'], axis=-1, largest=True)
+        graph_def = helper.make_graph([shape_node, slice_node, topk_node],case_name, [X],[Y_Value, Y_Index], initializer=[starts, ends, axes, steps])
         self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
 
     def test_ConstOfShape(self, case_name):

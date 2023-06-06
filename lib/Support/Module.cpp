@@ -659,6 +659,17 @@ bool isWeight(Value v) {
   return false;
 }
 
+bool isShapeRelatedOp(Value v) {
+  auto op = v.getDefiningOp();
+  if (op == nullptr) {
+    return false;
+  }
+  if (isa<top::ShapeOp, tpu::ShapeOp, tpu::ShapeSliceOp, tpu::ShapeCastOp>(op)) {
+    return true;
+  }
+  return false;
+}
+
 bool isAllWeight(Operation *op) {
   for (auto in : op->getOperands()) {
     if (isNone(in) || isWeight(in)) {

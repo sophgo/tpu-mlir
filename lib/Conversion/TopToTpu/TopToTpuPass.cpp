@@ -487,6 +487,9 @@ public:
     if (module::isBM1684XFamily()) {
       bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
     }
+    else if (module::isBM1684Family()) {
+      bm1684::populateTopShapeToTpuConversionPatterns(&patterns);
+    }
 
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
 

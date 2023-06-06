@@ -2455,14 +2455,26 @@ class OnnxConverter(BaseConverter):
                 if K != out_shapes[idx][axis] and \
                   not self.isScalar(onnx_node.inputs[1]):
                     K = out_shapes[idx][axis]
-        out_op = top.TopKOp(*self.mlir.get_tensor_type(out_shapes),
-                            in_op,
-                            axis=axis,
-                            K=K,
-                            largest=largest,
-                            sorted=sorted,
-                            loc=self.get_loc(loc_names),
-                            ip=self.mlir.insert_point)
+        if self.isScalar(onnx_node.inputs[1]):
+            out_op = top.TopKOp(*self.mlir.get_tensor_type(out_shapes),
+                                in_op,
+                                self.mlir.none_op,
+                                axis=axis,
+                                K=K,
+                                largest=largest,
+                                sorted=sorted,
+                                loc=self.get_loc(loc_names),
+                                ip=self.mlir.insert_point)
+        else:
+            K = self.getOperand(onnx_node.inputs[1])
+            out_op = top.TopKOp(*self.mlir.get_tensor_type(out_shapes),
+                                in_op, K,
+                                axis=axis,
+                                K = -1,
+                                largest=largest,
+                                sorted=sorted,
+                                loc=self.get_loc(loc_names),
+                                ip=self.mlir.insert_point)
         out_ops = [out_op.values, out_op.indices]
         for idx, need in enumerate(out_needs):
             if need:

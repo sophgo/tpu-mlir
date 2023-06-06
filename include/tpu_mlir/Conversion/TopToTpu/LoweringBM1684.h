@@ -13,6 +13,19 @@
 
 namespace tpu_mlir {
 namespace bm1684 {
+
+void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns);
+
+#define SHAPE_LOWERING_BM1684(OP)                                             \
+  struct OP##TryLowering : public TopShapeLowering<top::OP##Op> {              \
+    OP##TryLowering(MLIRContext *ctx) : TopShapeLowering<top::OP##Op>(ctx) {}  \
+    void Lowering(PatternRewriter &rewriter,                                   \
+                  top::OP##Op op) const override;                              \
+  };
+
+SHAPE_LOWERING_BM1684(Shape)
+SHAPE_LOWERING_BM1684(Slice)
+
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
 #define LOWERING_BM1684(OP)                                                    \

@@ -766,7 +766,8 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
   inputs.clear();
   func.walk([&](tpu::GenericCpuOp op) {
     for (auto opd : op.getOperands()) {
-      inputs.push_back(opd);
+      if(!module::isNone(opd))
+        inputs.push_back(opd);
     }
   });
 

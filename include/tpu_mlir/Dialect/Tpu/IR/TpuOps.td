@@ -1603,6 +1603,7 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
+    AnyTensorOrNone:$K_tensor,
     I64Attr:$axis,
     I64Attr:$K,
     DefaultValuedAttr<BoolAttr, "true">:$largest,
@@ -1923,12 +1924,12 @@ def Tpu_GenericCpuOp : Tpu_Op<"GenericCpu", [
   }];
 
   let arguments = (ins
-    Variadic<AnyRankedTensor>:$inputs,
+    Variadic<AnyTensorOrNone>:$inputs,
     StrAttr:$cpu_op_name,
     OptionalAttr<DictionaryAttr>:$param
   );
 
-  let results = (outs Variadic<AnyRankedTensor>:$outputs);
+  let results = (outs Variadic<AnyTensorOrNone>:$outputs);
 }
 
 def Tpu_InterpOp: Tpu_Op<"Interp"> {
