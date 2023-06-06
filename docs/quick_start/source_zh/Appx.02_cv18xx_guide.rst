@@ -1,4 +1,6 @@
-附录02：CV18xx芯片使用指南
+.. _onnx to cvimodel:
+
+附录02: CV18xx芯片使用指南
 ===============================
 
 CV18xx支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数据类型方面,CV18xx支持BF16格式的量化
@@ -162,26 +164,44 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
    不同模型效果对比
 
-四张图片对比如 :numref:`yolov5s_result1` ，由于运行环境不同, 最终的效果和精度与 :numref:`yolov5s_result1` 会有些差异。
+四张图片对比如 :numref:`yolov5s_result1` ,由于运行环境不同, 最终的效果和精度与 :numref:`yolov5s_result1` 会有些差异。
 
 上述教程介绍了TPU-MLIR编译CV18xx系列芯片的ONNX模型的过程,caffe模型的转换过程可参考“编译Caffe模型”章节,只需要将对应的芯片名称换成实际的CV18xx芯片名称即可。
 
+op-divide
+----------
+在model_deploy阶段通过指定 `--op_divide`, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 不一定适用所有模型。
+
+.. code-block:: shell
+
+   $ model_deploy.py \
+       --mlir yolov5s.mlir \
+       --quantize INT8 \
+       --calibration_table yolov5s_cali_table \
+       --chip cv183x \
+       --test_input yolov5s_in_f32.npz \
+       --test_reference yolov5s_top_outputs.npz \
+       --tolerance 0.85,0.45 \
+       --model yolov5s_cv183x_int8_sym.cvimodel \
+       --op_divide
+
+.. _merge weight:
 
 合并cvimodel模型文件
 --------------------------
 
-对于同一个模型，可以依据输入的batch size以及分辨率（不同的h和w）分别生成独立的cvimodel文件。不过为了节省外存和运存，可以选择将这些相关的cvimodel文件合并为一个cvimodel文件，共享其权重部分。具体步骤如下：
+对于同一个模型,可以依据输入的batch size以及分辨率(不同的h和w)分别生成独立的cvimodel文件。不过为了节省外存和运存,可以选择将这些相关的cvimodel文件合并为一个cvimodel文件,共享其权重部分。具体步骤如下:
 
-步骤0：生成batch 1的cvimodel
+步骤0: 生成batch 1的cvimodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-请参考前述章节，新建workspace目录，通过model_transform.py将yolov5s转换成mlir fp32模型。
+请参考前述章节,新建workspace目录,通过model_transform.py将yolov5s转换成mlir fp32模型。
 
-.. admonition:: 注意 ：
+.. admonition:: 注意 :
   :class: attention
 
-  1.需要合并的cvimodel使用同一个workspace目录，并且不要与不需要合并的cvimodel
-  共用一个workspace；
+  1.需要合并的cvimodel使用同一个workspace目录,并且不要与不需要合并的cvimodel
+  共用一个workspace;
 
   2.步骤0、步骤1中 --merge_weight是必需选项。
 
@@ -201,7 +221,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s_bs1.mlir
 
-使用前述章节生成的yolov5s_cali_table；如果没有，则通过run_calibration.py工具对yolov5s.mlir进行量化校验获得calibration table文件。
+使用前述章节生成的yolov5s_cali_table;如果没有,则通过run_calibration.py工具对yolov5s.mlir进行量化校验获得calibration table文件。
 然后将模型量化并生成cvimodel:
 
 .. code-block:: shell
@@ -218,10 +238,10 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --merge_weight \
        --model yolov5s_cv183x_int8_sym_bs1.cvimodel
 
-步骤1：生成batch 2的cvimodel
+步骤1: 生成batch 2的cvimodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-同步骤0，在同一个workspace中生成batch为2的mlir fp32文件：
+同步骤0,在同一个workspace中生成batch为2的mlir fp32文件:
 
 .. code-block:: shell
 
@@ -252,10 +272,10 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --merge_weight \
        --model yolov5s_cv183x_int8_sym_bs2.cvimodel
 
-步骤2：合并batch 1和batch 2的cvimodel
+步骤2: 合并batch 1和batch 2的cvimodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-使用model_tool合并两个cvimodel文件：
+使用model_tool合并两个cvimodel文件:
 
 .. code-block:: shell
 
@@ -265,16 +285,16 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
       yolov5s_cv183x_int8_sym_bs2.cvimodel \
       -o yolov5s_cv183x_int8_sym_bs1_bs2.cvimodel
 
-步骤3：runtime接口调用cvimodel
+步骤3: runtime接口调用cvimodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-可以通过以下命令查看bs1和bs2指令的program id：
+可以通过以下命令查看bs1和bs2指令的program id:
 
 .. code-block:: shell
 
   model_tool --info yolov5s_cv183x_int8_sym_bs1_bs2.cvimodel
 
-在运行时可以通过如下方式去运行不同的batch命令：
+在运行时可以通过如下方式去运行不同的batch命令:
 
 .. code-block:: c++
 
@@ -300,23 +320,23 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
   CVI_NN_CleanupModel(bs1_handle);
   CVI_NN_CleanupModel(bs2_handle);
 
-综述：合并过程
+综述: 合并过程
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-使用上面命令，不论是相同模型还是不同模型，均可以进行合并。
-合并的原理是：模型生成过程中，会叠加前面模型的weight（如果相同则共用）。
+使用上面命令,不论是相同模型还是不同模型,均可以进行合并。
+合并的原理是: 模型生成过程中,会叠加前面模型的weight(如果相同则共用)。
 
-主要步骤在于：
+主要步骤在于:
 
-1. 用model_deploy.py生成模型时，加上--merge_weight参数
-2. 要合并的模型的生成目录必须是同一个，且在合并模型前不要清理任何中间文件（叠加前面模型weight通过中间文件_weight_map.csv实现）
+1. 用model_deploy.py生成模型时,加上--merge_weight参数
+2. 要合并的模型的生成目录必须是同一个,且在合并模型前不要清理任何中间文件(叠加前面模型weight通过中间文件_weight_map.csv实现)
 3. 用model_tool --combine 将多个cvimodel合并
 
 
 编译和运行runtime sample
 --------------------------
 
-本章首先介绍EVB如何运行sample应用程序，然后介绍如何交叉编译sample应用程序，最后介绍docker仿真编译和运行sample。具体包括4个samples：
+本章首先介绍EVB如何运行sample应用程序,然后介绍如何交叉编译sample应用程序,最后介绍docker仿真编译和运行sample。具体包括4个samples:
 * Sample-1 : classifier (mobilenet_v2)
 
 * Sample-2 : classifier_bf16 (mobilenet_v2)
@@ -325,17 +345,17 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 * Sample-4 : classifier multiple batch (mobilenet_v2)
 
-1) 在EVB运行release提供的sample预编译程序
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+在EVB运行release提供的sample预编译程序
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-需要如下文件：
+需要如下文件:
 
 * cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv|cv181x_glibc_riscv64].tar.gz
 * cvimodel_samples_[cv182x|cv183x|cv181x|cv180x].tar.gz
 
-将根据chip类型选择所需文件加载至EVB的文件系统，于evb上的linux console执行，以cv183x为例：
+将根据chip类型选择所需文件加载至EVB的文件系统,于evb上的linux console执行,以cv183x为例:
 
-解压samples使用的model文件（以cvimodel格式交付），并解压TPU_SDK，并进入samples目录，执行测试，过程如下：
+解压samples使用的model文件(以cvimodel格式交付),并解压TPU_SDK,并进入samples目录,执行测试,过程如下:
 
 .. code-block:: shell
 
@@ -410,7 +430,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
    #  0.071777, idx 287, n02127052 lynx, catamount
    #  0.041504, idx 331, n02326432 hare
 
-同时提供脚本作为参考，执行效果与直接运行相同，如下：
+同时提供脚本作为参考,执行效果与直接运行相同,如下:
 
 .. code-block:: shell
 
@@ -419,7 +439,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
    ./run_classifier_fused_preprocess.sh
    ./run_classifier_multi_batch.sh
 
-**在cvitek_tpu_sdk/samples/samples_extra目录下有更多的samples，可供参考：**
+**在cvitek_tpu_sdk/samples/samples_extra目录下有更多的samples,可供参考:**
 
 .. code-block:: shell
 
@@ -450,20 +470,20 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        ./data/obama1.jpg \
        ./data/obama2.jpg
 
-2) 交叉编译samples程序
+交叉编译samples程序
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-发布包有samples的源代码，按照本节方法在Docker环境下交叉编译samples程序，然后在evb上运行。
+发布包有samples的源代码,按照本节方法在Docker环境下交叉编译samples程序,然后在evb上运行。
 
-本节需要如下文件：
+本节需要如下文件:
 
-* cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv]].tar.gz
+* cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv].tar.gz
 * cvitek_tpu_samples.tar.gz
 
 aarch 64位  (如cv183x aarch64位平台)
-""""""""""""""""""""""""""""""""""""""
+``````````````````````````````````````
 
-TPU sdk准备：
+TPU sdk准备:
 
 .. code-block:: shell
 
@@ -473,7 +493,7 @@ TPU sdk准备：
    export TPU_SDK_PATH=$PWD/cvitek_tpu_sdk
    cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
 
-编译samples，安装至install_samples目录：
+编译samples,安装至install_samples目录:
 
 .. code-block:: shell
 
@@ -494,9 +514,9 @@ TPU sdk准备：
 
 
 arm 32位  (如cv183x平台32位、cv182x平台)
-""""""""""""""""""""""""""""""""""""""""""
+``````````````````````````````````````````
 
-TPU sdk准备：
+TPU sdk准备:
 
 .. code-block:: shell
 
@@ -506,7 +526,7 @@ TPU sdk准备：
    export PATH=$PWD/host-tools/gcc/gcc-linaro-6.3.1-2017.05-x86_64_arm-linux-gnueabihf/bin:$PATH
    cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
 
-如果docker版本低于1.7，则需要更新32位系统库（只需一次）：
+如果docker版本低于1.7,则需要更新32位系统库(只需一次):
 
 .. code-block:: shell
 
@@ -515,7 +535,7 @@ TPU sdk准备：
    apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386
 
 
-编译samples，安装至install_samples目录：
+编译samples,安装至install_samples目录:
 
 .. code-block:: shell
 
@@ -536,9 +556,9 @@ TPU sdk准备：
 
 
 uclibc 32位平台 (cv182x uclibc平台)
-""""""""""""""""""""""""""""""""""""""
+``````````````````````````````````````
 
-TPU sdk准备：
+TPU sdk准备:
 
 .. code-block:: shell
 
@@ -548,7 +568,7 @@ TPU sdk准备：
    export PATH=$PWD/host-tools/gcc/arm-cvitek-linux-uclibcgnueabihf/bin:$PATH
    cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
 
-如果docker版本低于1.7，则需要更新32位系统库（只需一次）：
+如果docker版本低于1.7,则需要更新32位系统库(只需一次):
 
 .. code-block:: shell
 
@@ -557,7 +577,7 @@ TPU sdk准备：
    apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386
 
 
-编译samples，安装至install_samples目录：
+编译samples,安装至install_samples目录:
 
 .. code-block:: shell
 
@@ -578,9 +598,9 @@ TPU sdk准备：
 
 
 riscv64位 musl平台 (如cv181x、cv180x riscv64位 musl平台)
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+``````````````````````````````````````````````````````````````
 
-TPU sdk准备：
+TPU sdk准备:
 
 .. code-block:: shell
 
@@ -590,7 +610,7 @@ TPU sdk准备：
    export PATH=$PWD/host-tools/gcc/riscv64-linux-musl-x86_64/bin:$PATH
    cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
 
-编译samples，安装至install_samples目录：
+编译samples,安装至install_samples目录:
 
 .. code-block:: shell
 
@@ -610,9 +630,9 @@ TPU sdk准备：
    cmake --build . --target install
 
 riscv64位 glibc平台 (如cv181x、cv180x riscv64位glibc平台)
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+``````````````````````````````````````````````````````````
 
-TPU sdk准备：
+TPU sdk准备:
 
 .. code-block:: shell
 
@@ -622,7 +642,7 @@ TPU sdk准备：
    export PATH=$PWD/host-tools/gcc/riscv64-linux-x86_64/bin:$PATH
    cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
 
-编译samples，安装至install_samples目录：
+编译samples,安装至install_samples目录:
 
 .. code-block:: shell
 
@@ -642,17 +662,17 @@ TPU sdk准备：
    cmake --build . --target install
 
 
-3) docker环境仿真运行的samples程序
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+docker环境仿真运行的samples程序
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-需要如下文件：
+需要如下文件:
 
 * cvitek_tpu_sdk_x86_64.tar.gz
 * cvimodel_samples_[cv182x|cv183x|cv181x|cv180x].tar.gz
 * cvitek_tpu_samples.tar.gz
 
 
-TPU sdk准备：
+TPU sdk准备:
 
 .. code-block:: shell
 
@@ -660,7 +680,7 @@ TPU sdk准备：
    export TPU_SDK_PATH=$PWD/cvitek_tpu_sdk
    cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
 
-编译samples，安装至install_samples目录：
+编译samples,安装至install_samples目录:
 
 .. code-block:: shell
 
@@ -679,7 +699,7 @@ TPU sdk准备：
       ..
    cmake --build . --target install
 
-运行samples程序：
+运行samples程序:
 
 .. code-block:: shell
 
@@ -694,6 +714,221 @@ TPU sdk准备：
 
 **其他samples运行命令参照EVB运行命令**
 
+FAQ
+----
 
+模型转换常见问题
+~~~~~~~~~~~~~~~~~~~~
+
+1 模型转换问题
+````````````````
+
+  1.1 pytorch,tensorflow等是否能直接转换为cvimodel?
+
+    pytorch: 支持通过 ``jit.trace(torch_model.eval(), inputs).save(`model_name.pt`)`` 静态化后的pt模型。
+
+    tensorflow / 其它: 暂不支持,可以通过onnx间接支持tf模型。
+
+  1.2 执行model_transform.py报错
+
+    ``model_transform.py`` 脚本作用是将onnx,caffe框架模型转化为fp32 mlir形式,报错很大概率就是存在不支持的算子或者算子属性不兼容,可以反馈给tpu团队解决。
+
+  1.3 执行model_deploy.py报错
+
+    ``model_deploy.py`` 作用是先将fp32 mlir通过量化转为int8/bf16mlir形式,然后再将int8/bf16mlir转化为cvimodel。
+    在转化的过程中,会涉及到两次相似度的对比: 一次是fp32 mlir与int8/bf16mlir之间的量化对比,一次是int8/bf16mlir与最终转化出来的cvimodel的相似度对比,若相似度对比失败则会出现下列问题:
+
+    .. figure:: ../assets/compare_failed.png
+       :height: 13cm
+       :align: center
+
+    解决方法: ``tolerance`` 参数不对。模型转换过程会对int8/bf16 mlir与fp32 mlir的输出计算相似度,而tolerance作用就是限制相似度的最低值,若计算出的相似度的最小值低于对应的预设的tolerance值则程序会停止执行, 可以考虑对tolerance进行调整。(如果相似度的最小值过低请反馈到tpu团队解决)。
+
+  1.4 ``model_transform.py`` 的 ``pixel_format`` 参数和 ``model_deploy.py`` 的 ``customization_format`` 参数的差异?
+
+    channel_order是原始模型的输入图片类型(只支持gray/rgb planar/bgr planar),customization_format是转换成cvimodel后的输入图片类型,由客户自行决定,需与 :ref:`fuse_preprocess <fuse preprocess>` 共同使用(如果输入图片是通过VPSS或者VI获取的YUV图片,可以设置customization_format为YUV格式)。如果pixel_format与customization_format不一致,cvimodel推理时会自动将输入转成pixel_format指定的类型。
+
+  1.5 是否支持多输入模型,怎么进行预处理?
+
+    仅支持多输入图片使用同一种预处理方式的模型,不支持多输入图片使用不同预处理方式的模型。
+
+2 量化问题
+````````````
+
+  2.1 跑run_calibration.py提示KeyError: 'images'
+
+    传入的images的路径不对,请检查数据集的路径是否正确。
+
+  2.2 跑量化如何处理多输入问题?
+
+    多输入模型跑run_calibration.py时, 需要多输入模型跑run_calibration.py时, 可使用.npz存储多个输入，或使用--data_list参数，且data_list中的每行的多个输入由“，”隔开。
+
+  2.3 跑量化输入会进行预处理吗?
+
+    会的,根据model_transform.py的预处理参数保存到mlir文件中,量化过程会进行加载预处理参数进行预处理。
+
+  2.4 跑量化输入程序被系统kill或者显示分配内存失败
+
+    需要先检查主机的内存是否足够,常见的模型需要8G内存左右即可。如果内存不够,可尝试在运行run_calibration.py时,添加以下参数来减少内存需求。
+
+     .. code-block:: shell
+
+       --tune_thread_num 2   			#默认为5
+
+  2.5 是否支持手动修改calibration table?
+
+    支持,但是不建议修改。
+
+3 其它常见问题
+````````````````````
+
+  3.1 转换后的模型是否支持加密?
+
+    暂时不支持。
+
+  3.2 bf16的模型与int8模型的速度差异是多少?
+
+    大约是3-4倍时间差异,具体的数据需要通过实验验证。
+
+  3.3 是否支持动态shape?
+
+    不支持。如果是固定的几种shape可以依据输入的batch_size以及不同的h和w分别生成独立的cvimodel文件,通过共享权重的形式合并为一个cvimodel。详见: :ref:`合并cvimodel模型文件 <merge weight>`
+
+模型评估常见问题
+~~~~~~~~~~~~~~~~~~~~
+
+1 模型的评估流程?
+`````````````````
+
+  先转化为bf16模型,通过 ``model_tool --info xxxx.cvimodel`` 命令来评估模型所需要的ION内存以及所占的存储空间,接着在板子上执行 ``model_runner`` 来评估模型运行的时间,之后根据提供的sample来评估业务场景下模型精度效果。模型输出的效果准确性符合预期之后,再转化为int8模型再完成与bf16模型相同的流程
+
+2 量化后精度与原来模型对不上,如何调试?
+``````````````````````````````````````
+
+  2.1 确保 ``model_deploy.py`` 的 ``--test_input``, ``--test_reference``, ``--compare_all``, ``--tolerance`` 参数进行了正确设置。
+
+  2.2 比较bf16模型与原始模型的运行结果,确保误差不大。如果误差较大,先确认预处理和后处理是否正确。
+
+  2.3 如果int8模型精度差:
+
+    1) 确认 ``run_calibration.py`` 使用的数据集为训练模型时使用的验证集;
+
+    2) 可以增加 ``run_calibration.py`` 使用的业务场景数据集(一般为100-1000张图片)。
+
+  2.4 确认输入类型:
+
+    1) 若指定 ``--fuse_preprocess`` 参数,cvimodel的input类型为uint8;
+
+    2) 若指定 ``--quant_input`` , 一般情况下,bf16_cvimoel的input类型为fp32,int8_cvimodel的input类型为int8;
+
+    3) input类型也可以通过model_tool --info xxx.cvimodel查看
+
+3 bf16模型的速度比较慢,int8模型精度不符合预期怎么办?
+````````````````````````````````````````````````````
+
+  使用混精度量化方法,可参考 :ref:`mix precision` 。
+
+模型部署常见问题
+~~~~~~~~~~~~~~~~~~~~
+
+1 CVI_NN_Forward接口调用多次后出错或者卡住时间过长?
+```````````````````````````````````````````````````
+
+  可能驱动或者硬件问题,需要反馈给tpu团队解决。
+
+2 模型预处理速度比较慢?
+```````````````````````
+
+  2.1 转模型的时候可以在运行 ``model_deploy.py`` 时加上 ``fuse_preprocess`` 参数, 将预处理放到TPU内部来处理。
+
+  2.2 如果图片是从vpss或者vi获取, 那么可以在转模型时使用 ``fuse_preprocess、aligned_input`` , 然后使用 ``CVI_NN_SetTensorPhysicalAddr`` 等接口直接将input tensor地址设置为图片的物理地址, 减少数据拷贝耗时。
+
+3 docker的推理和evb推理的浮点和定点结果是否一样?
+``````````````````````````````````````````````````
+
+  定点无差异, 浮点有差异, 但是相似度比较高, 误差可以忽略。
+
+4 如果要跑多个模型支持多线程并行吗?
+````````````````````````````````````
+
+  支持多线程, 但是多个模型在TPU上推理时是串行进行的。
+
+5 填充input tensor相关接口区别
+```````````````````````````````
+
+  ``CVI_NN_SetTensorPtr`` : 设置input tensor的虚拟地址，原本的tensor 内存不会释放。推理时从用户设置的虚拟地址 **拷贝数据** 到原本的tensor内存上。
+
+  ``CVI_NN_SetTensorPhysicalAddr`` : 设置input tensor的物理地址，原本的tensor 内存会释放。推理时直接从新设置的物理地址读取数据, **无需拷贝数据** 。从VPSS获取的Frame可以调用这个接口，传入Frame的首地址。注意需要转模型的时候 ``model_deploy.py`` 设置 ``--fused_preprocess --aligned_input`` 才能调用此接口。
+
+  ``CVI_NN_SetTensorWithVideoFrame`` : 通过VideoFrame结构体来填充Input Tensor。注意VideoFrame的地址为物理地址。如果转模型设置 ``--fuse_preprocess --aligned_input`` ，则等同于 ``CVI_NN_SetTensorPhysicalAddr`` ，否则会将VideoFrame的数据拷贝到Input Tensor。
+
+  ``CVI_NN_SetTensorWithAlignedFrames`` : 支持多batch，与 ``CVI_NN_SetTensorWithVideoFrame`` 类似。
+
+  ``CVI_NN_FeedTensorWithFrames`` : 与 ``CVI_NN_SetTensorWithVideoFrame`` 类似。
+
+6 模型载入后ion内存分配问题
+`````````````````````````````
+
+  6.1 调用 ``CVI_NN_RegisterModel`` 后会为weight和cmdbuf分配ion内存(从model_tool可以看到weight和cmdbuf大小)
+
+  6.2 调用 ``CVI_NN_GetInputOutputTensors`` 后会为tensor(包括private_gmem, shared_gmem, io_mem)分配ion内存
+
+  6.3 ``CVI_NN_CloneModel`` 可以共享weight和cmdbuf内存
+
+  6.4 其他接口均不会再申请ion内存, 即除了初始化, 其他阶段模型都不会再申请内存。
+
+  6.5 不同模型的shared_gmem是可以共享(包括多线程情况), 因此优先初始化shared_gmem最大的模型可以节省ion内存。
+
+7 加载业务程序后模型推理时间变长
+`````````````````````````````````
+
+  设置环境变量 ``export TPU_ENABLE_PMU=1`` 后, 模型推理时会打印tpu日志, 记录tdma_exe_ms、tiu_exe_ms、inference_ms这3个耗时。一般加载业务后tdma_exe_ms会变长, tiu_exe_ms不变, 这是因为tdma_exe_ms是内存搬运数据耗时, 如果内存带宽不够用了, tdma耗时就会增加。
+
+  优化的方向:
+
+    1) vpss/venc等优化chn, 降低分辨率
+
+    2) 业务层减少内存拷贝, 如图片尽量保存引用, 减少拷贝等
+
+    3) 模型填充Input tensor时, 使用无拷贝的方式
+
+其他常见问题
+~~~~~~~~~~~~~~~~~~~~
+
+1 在cv182x/cv181x/cv180x板端环境中出现: taz:invalid option --z解压失败的情况
+`````````````````````````````````````````````````````````````````````````````
+
+  先在其他linux环境下解压, 再放到板子中使用, 因为window不支持软链接, 所以在windows环境下解压可能导致软链接失效导致报错
+
+2 若tensorflow模型为saved_model的pb形式, 如何进行转化为frozen_model的pb形式
+``````````````````````````````````````````````````````````````````````````````
+
+  .. code-block:: shell
+
+   import tensorflow as tf
+   from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
+   from tensorflow.keras.preprocessing import image
+   from tensorflow.keras.applications.mobilenet_v2 import preprocess_input, decode_predictions
+   import numpy as np
+   import tf2onnx
+   import onnxruntime as rt
+
+   img_path = "./cat.jpg"
+   # pb model and variables should in model dir
+   pb_file_path = "your model dir"
+   img = image.load_img(img_path, target_size=(224, 224))
+   x = image.img_to_array(img)
+   x = np.expand_dims(x, axis=0)
+   # Or set your preprocess here
+   x = preprocess_input(x)
+
+   model = tf.keras.models.load_model(pb_file_path)
+   preds = model.predict(x)
+
+   # different model input shape and name will differently
+   spec = (tf.TensorSpec((1, 224, 224, 3), tf.float32, name="input"), )
+   output_path = model.name + ".onnx"
+
+   model_proto, _ = tf2onnx.convert.from_keras(model, input_signature=spec, opset=13, output_path=output_path)
 
 
