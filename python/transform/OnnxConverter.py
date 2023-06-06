@@ -489,8 +489,117 @@ class OnnxConverter(BaseConverter):
         unk_op.extend(set(full_nodes) - set(nodes_with_shape))
         if (flag and unk_op):
             unk_shape = self.get_unk_shape(unk_op)
-            for n, s in unk_shape:
-                self.addShape(n, list(s))
+
+    def get_slice_unk_shape(self, onnx_node):
+        input_shape = self.getShape(onnx_node.inputs[0])
+        starts = []
+        ends = []
+        axes = []
+        num_input = len(onnx_node.inputs)
+        num_dims = len(input_shape)
+        if num_input > 1:
+            starts = self.getWeight(onnx_node.inputs[1]).astype(int)
+            ends = self.getWeight(onnx_node.inputs[2]).astype(int)
+            axes = self.getWeight(onnx_node.inputs[3]).astype(int) if num_input > 3 else list(
+                np.arange(num_dims))
+            steps = self.getWeight(
+                onnx_node.inputs[4]).astype(int) if num_input > 4 else [1] * len(axes)
+        else:
+            starts = onnx_node.attrs.get('starts')
+            ends = onnx_node.attrs.get('ends')
+            axes = onnx_node.attrs.get('axes')
+            if axes == None:
+                axes_len = num_dims
+                axes = [i for i in range(axes_len)]
+            steps = [1] * len(axes)
+
+        slice_shape = list(input_shape)
+        slice_offset = [0] * num_dims
+        slice_step = [1] * num_dims
+        slice_end = [input_shape[i] for i in range(num_dims)]
+        for start, end, axis, step in zip(starts, ends, axes, steps):
+            start, end, axis, step = int(start), int(end), int(axis), int(step)
+            if axis < 0:
+                axis = axis + num_dims
+            if end < 0:
+                end = end + input_shape[axis]
+            if start < 0:
+                start = start + input_shape[axis]
+            if end > input_shape[axis]:
+                end = input_shape[axis]
+            elif end < 0:
+                if step < 0:
+                    end = -1
+                else:
+                    end = input_shape[axis]
+            slice_shape[axis] = (abs(end - start) + abs(step) - 1) // abs(step)
+            slice_offset[axis] = start
+            slice_step[axis] = step
+            slice_end[axis] = end
+        return slice_shape
+
+    def get_gather_unk_shape(self, onnx_node):
+        in0_shape = self.getShape(onnx_node.inputs[0])
+        axis = onnx_node.attrs.get('axis', 0)
+        if (axis < 0):
+            axis += in0_shape.size()
+        slice_shape = []
+        indices_shape = self.getShape(onnx_node.inputs[1])
+        for i in range(axis):
+            slice_shape.append(in0_shape[i])
+        for i in range(len(indices_shape)):
+            slice_shape.append(indices_shape[i])
+        for i in range(axis+1, len(in0_shape), 1):
+            slice_shape.append(in0_shape[i])
+        out_shape = []
+        for i in range(len(slice_shape)):
+            if slice_shape[i] != 1:
+                out_shape.append(slice_shape[i])
+        return out_shape
+
+    def get_binary_op_unk_shape(self, onnx_node):
+        in0_shape = self.getShape(onnx_node.inputs[0])
+        return in0_shape
+
+    def get_topk_unk_shape(self, onnx_node):
+        in_shape = self.getShape(onnx_node.inputs[0])
+        out_shape = copy.deepcopy(in_shape)
+        if not self.isScalar(onnx_node.inputs[1]) and \
+           len(self.getShape(onnx_node.inputs[1])) == 1:
+            K = self.getShape(onnx_node.inputs[1])[0]
+        else:
+            K = self.getScalar(onnx_node.inputs[1])
+
+        K = 200 if K <= 1 else K
+        axis = onnx_node.attrs.get('axis', -1)
+        num_dim = len(in_shape)
+        if axis < 0:
+            axis += num_dim
+        out_shape[axis] = K
+        return out_shape
+
+    def get_reduce_unk_shape(self, onnx_node):
+        input_shape = self.getShape(onnx_node.inputs[0])
+        keepdims = onnx_node.attrs.get('keepdims', 1) != 0
+        num_dims = len(input_shape)
+        axis = onnx_node.attrs.get('axes', list(range(num_dims))) \
+            if len(onnx_node.inputs) == 1 else self.getWeight(onnx_node.inputs[1])
+        out_shape = []
+        for i in range(len(input_shape)):
+            if i in axis:
+                if keepdims:
+                    out_shape.append(1)
+            else:
+                out_shape.append(input_shape[i])
+        return out_shape
+
+    def get_unsqueeze_unk_shape(self, onnx_node):
+        input_shape = self.getShape(onnx_node.inputs[0])
+        axes = onnx_node.attrs.get('axes')
+        out_shape = copy.deepcopy(input_shape)
+        for i in range(len(axes)):
+            out_shape.insert(axes[i], 1)
+        return out_shape
 
     def get_unk_shape(self, unk_op):
         # Notice this not always right. For some op in onnx
@@ -525,14 +634,36 @@ class OnnxConverter(BaseConverter):
             inputs[name] = np.ones(shape).astype(dtype)
         outs = session.run(None, inputs)
         outs_shape = [o.shape for o in outs]
+        nms_flag = False
+        for v in unk_op:
+            for node in model.graph.node:
+                if v in node.output:
+                    if node.op_type == "NonMaxSuppression":
+                        nms_flag = True
+
         for i, v in enumerate(unk_op):
             for idx, n in enumerate(model.graph.node):
                 if v in n.output:
+                    onnx_node = OnnxNode(n)
                     # dirty trick for NonMaxSuppression
                     if n.op_type == "NonMaxSuppression":
-                        node = OnnxNode(n)
-                        max_output_size = self.getWeight(node.inputs[2]).astype(np.int64)
-                        outs_shape[i] = [max_output_size[0] * self.getShape(node.inputs[1])[1], 3]
+                        max_output_size = self.getWeight(onnx_node.inputs[2]).astype(np.int64)
+                        outs_shape[i] = [max_output_size[0] * self.getShape(onnx_node.inputs[1])[1], 3]
+                    elif nms_flag:
+                        #if have nms op, need to infer the successor's op shape
+                        if n.op_type == "Slice":
+                            outs_shape[i] = self.get_slice_unk_shape(onnx_node)
+                        elif n.op_type == "Gather":
+                            outs_shape[i] = self.get_gather_unk_shape(onnx_node)
+                        elif n.op_type == "Mul" or n.op_type == "Add":
+                            outs_shape[i] = self.get_binary_op_unk_shape(onnx_node)
+                        elif n.op_type == "TopK":
+                            outs_shape[i] = self.get_topk_unk_shape(onnx_node)
+                        elif n.op_type == "ReduceMin":
+                            outs_shape[i] = self.get_reduce_unk_shape(onnx_node)
+                        elif n.op_type == "Unsqueeze":
+                            outs_shape[i] = self.get_unsqueeze_unk_shape(onnx_node)
+                    self.addShape(v, outs_shape[i])
         assert (len(outs_shape) == len(unk_op))
         return zip(unk_op, outs_shape)
 
@@ -2185,7 +2316,11 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "TopK")
         in_op = self.getOperand(onnx_node.inputs[0])
         in_shape = self.getShape(onnx_node.inputs[0])
-        K = self.getScalar(onnx_node.inputs[1])
+        if not self.isScalar(onnx_node.inputs[1]) and \
+           len(self.getShape(onnx_node.inputs[1])) == 1:
+            K = self.getShape(onnx_node.inputs[1])[0]
+        else:
+            K = self.getScalar(onnx_node.inputs[1])
         axis = onnx_node.attrs.get('axis', -1)
         largest = onnx_node.attrs.get('largest', True)
         sorted = onnx_node.attrs.get('sorted', True)
