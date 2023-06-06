@@ -149,23 +149,12 @@ private:
 };
 
 /**
- * @brief postprocess for yolov5 in case of 3-D output shape [b, total, 5 + cls_num]
-*/
+ * @brief postprocess for yolov5 in case of 3-D output shape [b, total, 5 +
+ * cls_num]
+ */
 class Yolov5DetectionFunc {
 public:
   Yolov5DetectionFunc(YoloDetParam &param);
-  void invoke();
-
-private:
-  YoloDetParam param_;
-};
-
-/**
- * @brief postprocess for yolov5 in case of 4-D output shape [b, anchor*(5 + cls_num), H, W]
-*/
-class Yolov5DetectionFunc_v2 {
-public:
-  Yolov5DetectionFunc_v2(YoloDetParam &param);
   void invoke();
 
 private:
