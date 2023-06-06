@@ -114,9 +114,9 @@ class OnnxConverter(BaseConverter):
         self.init_MLIRImporter()
         # some onnx may have strange domain, such as "ai.onnx.ml"
         for ver_info in self.model.opset_import:
-          if ver_info.domain == "":
-            self.opset = ver_info.version
-            break
+            if ver_info.domain == "":
+                self.opset = ver_info.version
+                break
         self.preprocess_args = {}
         if 'channel_format' in preprocess_args:
             if preprocess_args['channel_format'] != "none":
@@ -1058,7 +1058,7 @@ class OnnxConverter(BaseConverter):
         if self.isWeight(A):
             if trans_a == 1 or alpha != 1:
                 _tensor = self.getWeight(A)
-                _tensor = copy.deepcopy(_tensor) #if change weight,should do deepcopy
+                _tensor = copy.deepcopy(_tensor)  #if change weight,should do deepcopy
                 if trans_a == 1:
                     _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
                 if alpha != 1:
@@ -1072,7 +1072,7 @@ class OnnxConverter(BaseConverter):
         if self.isWeight(B):
             if trans_b == 1 or alpha != 1:
                 _tensor = self.getWeight(B)
-                _tensor = copy.deepcopy(_tensor) #if change weight,should do deepcopy
+                _tensor = copy.deepcopy(_tensor)  #if change weight,should do deepcopy
                 if trans_b == 1:
                     _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
                 if alpha != 1:
@@ -1087,7 +1087,7 @@ class OnnxConverter(BaseConverter):
             if self.isWeight(C):
                 if beta != 1:
                     _tensor = self.getWeight(C)
-                    _tensor = copy.deepcopy(_tensor) #if change weight,should do deepcopy
+                    _tensor = copy.deepcopy(_tensor)  #if change weight,should do deepcopy
                     _tensor *= beta
                     C += '_fix'
                     self.addWeight(C, _tensor)
@@ -1330,7 +1330,7 @@ class OnnxConverter(BaseConverter):
         scale_factor = []
         sizes = []
         scale_factor = self.getWeight(onnx_node.inputs[1])
-        scale_factor = copy.deepcopy(scale_factor) #if change it,should do deepcopy first
+        scale_factor = copy.deepcopy(scale_factor)  #if change it,should do deepcopy first
         if (type(scale_factor) == np.ndarray and len(scale_factor.shape) == 2
                 and scale_factor.shape[1] == 1):
             scale_factor = scale_factor.reshape(-1)
@@ -1360,7 +1360,7 @@ class OnnxConverter(BaseConverter):
             # onnx opset 11
             try:
                 scale_factor = self.getWeight(onnx_node.inputs[2])
-                scale_factor = copy.deepcopy(scale_factor) #if change it,should do deepcopy first
+                scale_factor = copy.deepcopy(scale_factor)  #if change it,should do deepcopy first
             except KeyError:
                 scale_factor = []
             if (type(scale_factor) == np.ndarray and len(scale_factor.shape) == 2
@@ -1493,8 +1493,8 @@ class OnnxConverter(BaseConverter):
             ends = onnx_node.attrs.get('ends')
             axes = onnx_node.attrs.get('axes')
             if axes == None:
-              axes_len = num_dims
-              axes = [i for i in range(axes_len)]
+                axes_len = num_dims
+                axes = [i for i in range(axes_len)]
             steps = [1] * len(axes)
         assert (len(starts) == len(ends))
         assert (len(axes) == len(ends))
@@ -1800,11 +1800,13 @@ class OnnxConverter(BaseConverter):
             else:
                 axes = self.getWeight(onnx_node.inputs[1]).astype(int)
         new_op = top.UnsqueezeOp(self.mlir.get_tensor_type(output_shape),
-                               op,
-                               loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                               ip=self.mlir.insert_point,
-                               axes=axes).output
+                                 op,
+                                 loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                 onnx_node.op_type)),
+                                 ip=self.mlir.insert_point,
+                                 axes=axes).output
         self.addOperand(onnx_node.name, new_op)
+
     def convert_clip_op(self, onnx_node):
         assert (onnx_node.op_type == "Clip")
         input = self.getOperand(onnx_node.inputs[0])
@@ -1984,7 +1986,7 @@ class OnnxConverter(BaseConverter):
         num_dims = len(input_shape)
         axes = onnx_node.attrs.get('axes', list(range(num_dims))) \
             if len(onnx_node.inputs) == 1 else self.getWeight(onnx_node.inputs[1])
-        axes = copy.deepcopy(axes) #if change it, should do deepcopy
+        axes = copy.deepcopy(axes)  #if change it, should do deepcopy
         keepdims = onnx_node.attrs.get('keepdims', 1) != 0
         for idx, ax in enumerate(axes):
             if ax < 0:
@@ -2527,8 +2529,7 @@ class OnnxConverter(BaseConverter):
             pow_op = top.Pow2Op(self.mlir.get_tensor_type(output_shape),
                                 base_const,
                                 expn_op,
-                                loc=self.get_loc("{}_{}".format(onnx_node.name,
-                                                                onnx_node.op_type)),
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                 ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, pow_op)
         else:
@@ -2592,13 +2593,13 @@ class OnnxConverter(BaseConverter):
         opd = onnx_node.inputs[0]
         output_shape = self.getShape(onnx_node.name)
         not_op = top.CompareConstOp(self.mlir.get_tensor_type(output_shape),
-                                        self.getOp(opd),
-                                        mode=StringAttr.get(onnx_node.op_type),
-                                        const_val=np.array([0]).astype(np.bool_),
-                                        inversed=False,
-                                        loc=self.get_loc("{}_{}".format(
-                                            onnx_node.name, onnx_node.op_type)),
-                                        ip=self.mlir.insert_point).output
+                                    self.getOp(opd),
+                                    mode=StringAttr.get(onnx_node.op_type),
+                                    const_val=np.array([0]).astype(np.bool_),
+                                    inversed=False,
+                                    loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                    onnx_node.op_type)),
+                                    ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, not_op)
 
     def convert_cmp_op(self, onnx_node):
@@ -2737,7 +2738,6 @@ class OnnxConverter(BaseConverter):
         if type(eps) == list and len(eps) == 1:
             eps = eps[0]
         # stash_type is not important
-        loc_name = onnx_node.name + '_LayerNorm'
         wb_shape = [1 if i < axis else input_shape[i] for i in range(num_dims)]
         input_opd = self.getOperand(onnx_node.inputs[0])
         scale_opd = self.mlir.none_op
@@ -2748,26 +2748,18 @@ class OnnxConverter(BaseConverter):
         if len(onnx_node.inputs) > 2:
             if not self.isScalar_(onnx_node.inputs[2], 0):
                 bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
-        out_shape = None
-        out_need = False
-        out = onnx_node.outputs[0]
-        if len(out) > 0 and self.check_need(out):
-            loc_name = "{}_{}".format(out, onnx_node.op_type)
-            out_need = True
-            out_shape = self.getShape(out)
-
-        out_op = top.LayerNormOp(*self.mlir.get_tensor_type([out_shape]),
+        output_shape = self.getShape(onnx_node.name)
+        out_op = top.LayerNormOp(self.mlir.get_tensor_type(output_shape),
                                  input_opd,
                                  scale_opd,
                                  bias_opd,
                                  normalized_shape=normalized_shape,
                                  axis=axis,
                                  eps=eps,
-                                 loc=self.get_loc(loc_name),
-                                 ip=self.mlir.insert_point)
-        out_op = out_op.output
-        if out_need:
-            self.addOperand(onnx_node.outputs[0], out_op)
+                                 loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                 onnx_node.op_type)),
+                                 ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, out_op)
 
     def convert_pixel_norm_op(self, onnx_node):
         assert (onnx_node.op_type == "PixelNormalization")
@@ -3071,8 +3063,8 @@ class OnnxConverter(BaseConverter):
         self.mlir.restore_insert_point()
 
     def convert_grid_sampler_op(self, onnx_node):
-        assert(onnx_node.op_type == "GridSample")
-        assert(len(onnx_node.inputs) == 2)
+        assert (onnx_node.op_type == "GridSample")
+        assert (len(onnx_node.inputs) == 2)
         input_data = self.getOp(onnx_node.inputs[0])
         grid_data = self.getOp(onnx_node.inputs[1])
         output_shape = self.getShape(onnx_node.name)
@@ -3083,7 +3075,7 @@ class OnnxConverter(BaseConverter):
         elif mode == b"nearest":
             mode = 1
         else:
-            assert("Unsupported interpolation mode of {}.".format(mode) and 0)
+            assert ("Unsupported interpolation mode of {}.".format(mode) and 0)
         padding_mode = onnx_node.attrs.get("padding_mode", "zeros")
         if padding_mode == b"zeros":
             padding_mode = 0
@@ -3092,13 +3084,14 @@ class OnnxConverter(BaseConverter):
         elif padding_mode == b"reflection":
             padding_mode = 2
         else:
-             assert("Unsupported padding_mode of {}.".format(padding_mode) and 0)
+            assert ("Unsupported padding_mode of {}.".format(padding_mode) and 0)
         new_op = top.GridSamplerOp(self.mlir.get_tensor_type(output_shape),
                                    input_data,
                                    grid_data,
                                    mode=mode,
                                    padding_mode=padding_mode,
                                    align_corners=align_corners,
-                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                   onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)

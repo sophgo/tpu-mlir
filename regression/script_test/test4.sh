@@ -88,19 +88,11 @@ run_calibration.py yolov5s_3o.mlir \
   --tune_num 20 \
   -o yolov5s_3o_cali_table
 
-run_qtable.py \
-  yolov5s_3o.mlir \
-	--dataset ${REGRESSION_PATH}/dataset/COCO2017 \
-	--chip bm1684x \
-	-o yolov5s_3o_qtable \
-	--calibration_table yolov5s_3o_cali_table
-
 model_deploy.py \
   --mlir yolov5s_3o.mlir \
   --quantize INT8 \
   --chip bm1684x \
   --calibration_table yolov5s_3o_cali_table \
-  --quantize_table yolov5s_3o_qtable \
   --fuse_preprocess \
   --test_input ${REGRESSION_PATH}/image/dog.jpg \
   --test_reference yolov5s_3o_top_outputs.npz \

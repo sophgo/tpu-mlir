@@ -272,11 +272,11 @@ class SimpleTuner:
             self.ref_activations[tune_idx] = {}
 
         if len(self.ref_activations[tune_idx]) == 0:
-            print(f'last tune data (tune_idx={tune_idx}) not valid, droped')
+            # print(f'last tune data (tune_idx={tune_idx}) not valid, droped')
             self.ref_activations.pop(tune_idx)
         self.args.tune_num = min(self.args.tune_num, len(self.ref_activations))
-        print(f"tune_num = {self.args.tune_num}, ref = {len(self.ref_activations)}")
-        print(f"real tune_num = {self.args.tune_num}")
+        # print(f"tune_num = {self.args.tune_num}, ref = {len(self.ref_activations)}")
+        # print(f"real tune_num = {self.args.tune_num}")
         assert self.args.tune_num > 0
 
     def get_input_tensor(self, i, op_name):
