@@ -54,7 +54,7 @@ class TORCH_IR_TESTER(object):
             "AvgPool3d":        (self.test_AvgPool3d,         N, Y, Y, Y),
             "BatchNorm":        (self.test_BatchNorm,         N, Y, Y, Y),
             "BMM":              (self.test_BatchMatMul,       N, Y, Y, Y),
-            "ChannelShuffle":   (self.test_ChannelShuffle,    N, Y, Y, Y),
+            "ChannelShuffle":   (self.test_ChannelShuffle,    Y, Y, Y, Y),
             "Chunk":            (self.test_Chunk,             N, Y, Y, Y),
             "Clamp":            (self.test_Clamp,             N, Y, Y, N),
             "Compare":          (self.test_Compare,           N, Y, Y, N),
