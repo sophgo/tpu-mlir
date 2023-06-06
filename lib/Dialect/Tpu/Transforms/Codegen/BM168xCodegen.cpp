@@ -700,6 +700,25 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
   auto next_index =
        func->getAttrOfType<DenseI32ArrayAttr>("next_index");
   std::vector<int> next_id_v(next_index.asArrayRef());
+  // for net input directly link to cpu subnet
+  for(auto v : llvm::enumerate(inputs)) {
+    auto v_name = module::getName(v.value()).str();
+    // if v_name do not in tensor_is_cpu, means it is a net input
+    if (tensor_is_cpu.count(v_name) && !tensor_is_cpu[v_name].empty()) {
+      continue;
+    }
+    std::vector<bool> user_is_cpu;
+    tensor_is_cpu[v_name] = user_is_cpu;
+    for (auto user : v.value().getUsers()) {
+      if (isa<tpu::YieldOp, ReturnOp>(user)) {
+        tensor_is_cpu[v_name].push_back(false);
+      } else if (auto call = dyn_cast<func::CallOp>(user)) {
+        auto func = module::getFuncOp(call.getCallee());
+        auto mode = getRunMode(func);
+        tensor_is_cpu[v_name].push_back(mode == RunMode::CPU);
+      }
+    }
+  }
   for (auto v : llvm::enumerate(call.getResults())) {
     std::string v_name = module::getName(outputs[v.index()]).str();
     std::vector<bool> user_is_cpu;
@@ -937,6 +956,25 @@ BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
   auto next_index =
        func->getAttrOfType<DenseI32ArrayAttr>("next_index");
   std::vector<int> next_id_v(next_index.asArrayRef());
+  // for net input directly link to cpu subnet
+  for(auto v : llvm::enumerate(inputs)) {
+    auto v_name = module::getName(v.value()).str();
+    // if v_name do not in tensor_is_cpu, means it is a net input
+    if (tensor_is_cpu.count(v_name) && !tensor_is_cpu[v_name].empty()) {
+      continue;
+    }
+    std::vector<bool> user_is_cpu;
+    tensor_is_cpu[v_name] = user_is_cpu;
+    for (auto user : v.value().getUsers()) {
+      if (isa<tpu::YieldOp, ReturnOp>(user)) {
+        tensor_is_cpu[v_name].push_back(false);
+      } else if (auto call = dyn_cast<func::CallOp>(user)) {
+        auto func = module::getFuncOp(call.getCallee());
+        auto mode = getRunMode(func);
+        tensor_is_cpu[v_name].push_back(mode == RunMode::CPU);
+      }
+    }
+  }
   for (auto v : llvm::enumerate(call.getResults())) {
     std::string v_name = module::getName(outputs[v.index()]).str();
     std::vector<bool> user_is_cpu;
