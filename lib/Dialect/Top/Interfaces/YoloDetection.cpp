@@ -9,9 +9,9 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 int64_t top::YoloDetectionOp::getFLOPs() {
   return module::getNumElements(getOutput());
@@ -48,14 +48,15 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.output.ptr = p.outputs[0];
   param.output.size = module::getNumElements(getOutput());
   param.output.shape = module::getShape(getOutput());
+  // empty process means the yolo layer comes from origin model but not
+  // add_postprocess
   auto process = module::getPostprocess();
-  if (process.starts_with("yolov5") && p.inputs.size() == 1 &&
-      param.inputs[0].shape.size() == 3) {
-    Yolov5DetectionFunc yolo_func(param);
+  if (process.empty()) {
+    YoloDetectionFunc yolo_func(param);
     yolo_func.invoke();
-  } else if (process.starts_with("yolov5") &&
-             param.inputs[0].shape.size() == 4) {
-    YoloDetectionFunc_v2 yolo_func(param);
+  } else if (process.starts_with("yolov5") && p.inputs.size() == 1 &&
+             param.inputs[0].shape.size() == 3) {
+    Yolov5DetectionFunc yolo_func(param);
     yolo_func.invoke();
   } else {
     YoloDetectionFunc_v2 yolo_func(param);
