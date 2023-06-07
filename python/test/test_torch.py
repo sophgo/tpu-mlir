@@ -65,7 +65,7 @@ class TORCH_IR_TESTER(object):
             "Conv3d":           (self.test_Conv3d,            N, Y, Y, N),
             "ConvGroup":        (self.test_ConvGroup,         N, Y, Y, Y),
             "ConvTrans":        (self.test_ConvTrans,         N, Y, Y, Y),
-            "ConstantFill":     (self.test_ConstantFill,      N, Y, Y, Y),
+            "ConstantFill":     (self.test_ConstantFill,      Y, Y, Y, Y),
             "DeformConv2D":     (self.test_DeformConv2D,      N, Y, N, N),
             "Div":              (self.test_Div,               N, Y, Y, Y),
             "Dropout":          (self.test_Dropout,           N, Y, Y, N),
