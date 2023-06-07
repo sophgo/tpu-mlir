@@ -2649,4 +2649,18 @@ def Tpu_IdentityOp : Tpu_Op<"Identity", [NoMemoryEffect,SameOperandsAndResultTyp
 
   let results = (outs Variadic<AnyRankedTensor>:$output);
 }
+
+def Tpu_NmsOp : Tpu_Op<"Nms"> {
+  let summary = " NMS operator";
+  let description = [{
+      tpu nms
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>: $inputs,
+    I64Attr: $center_point_box,
+    I64Attr: $max_output_size
+  );
+
+  let results = (outs AnyTensor:$output);
+}
 #endif // TPU_OPS

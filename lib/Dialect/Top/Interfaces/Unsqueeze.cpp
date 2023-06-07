@@ -42,5 +42,9 @@ void top::UnsqueezeOp::shape_inference() {
   for (auto axis : axes_) {
     out_shape.insert(out_shape.begin() + axis, 1);
   }
-  module::setShapeOrVerify(getOutput(), out_shape);
+  /* if previous op(such as reduce) change the shape,
+     the input & output shape size is equal, don;t verify again */
+  if (in_shape.size() != module::getShape(getOutput()).size()) {
+    module::setShapeOrVerify(getOutput(), out_shape);
+  }
 }
