@@ -84,5 +84,7 @@ LOWERING_BM1684(Pow)
 LOWERING_BM1684(Pow2)
 LOWERING_BM1684(Div)
 LOWERING_BM1684(Compare)
+LOWERING_BM1684(Mish)
+LOWERING_BM1684(Softsign)
 } // namespace bm1684
 } // namespace tpu_mlir
