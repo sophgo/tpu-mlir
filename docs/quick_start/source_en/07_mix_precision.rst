@@ -78,7 +78,7 @@ Step 1: To F32 mlir
        --pixel_format rgb \
        --keep_aspect_ratio \
        --pad_value 128 \
-       --output_names=transpose_output1,transpose_output \
+       --output_names=convolution_output1,convolution_output \
        --mlir yolov3_tiny.mlir
 
 Step 2: Gen calibartion table
