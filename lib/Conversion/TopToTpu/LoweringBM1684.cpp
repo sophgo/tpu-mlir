@@ -76,6 +76,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       Pow2Lowering,
       DivLowering,
       CompareLowering,
+      CompareConstLowering,
       MishLowering,
       SoftsignLowering
       // clang-format on

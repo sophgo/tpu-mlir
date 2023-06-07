@@ -57,7 +57,7 @@ class ONNX_IR_TESTER(object):
             "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y),
             "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y),
             "Cast":         (self.test_Cast,          Y, Y, Y, Y),
-            "CompareCst":   (self.test_CompareCst,    N, Y, Y, N),
+            "CompareCst":   (self.test_CompareCst,    Y, Y, Y, N),
             "Compare":      (self.test_Compare,       Y, Y, Y, N),
             "Compare2":     (self.test_Compare2,      Y, N, N, N),
             "Concat":       (self.test_Concat,        Y, Y, Y, Y),
