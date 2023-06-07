@@ -41,7 +41,7 @@ class TORCH_IR_TESTER(object):
             ##################################
             # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
             "Abs":              (self.test_Abs,               N, Y, Y, Y),
-            "Activation":       (self.test_Activation,        N, Y, Y, Y),
+            "Activation":       (self.test_Activation,        Y, Y, Y, Y),
             "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, N, Y, Y, Y),
             "Add":              (self.test_Add,               N, Y, Y, Y),
             "Add5d":            (self.test_Add5d,             N, Y, Y, Y),
@@ -49,8 +49,8 @@ class TORCH_IR_TESTER(object):
             "Arange":           (self.test_Arange,            N, Y, Y, Y),
             "Attention":        (self.test_Attention,         N, Y, Y, Y),
             "AttentionNew":     (self.test_AttentionNew,      N, Y, N, N),
-            "AvgPool1d":        (self.test_AvgPool1d,         N, Y, Y, Y),
-            "AvgPool2d":        (self.test_AvgPool2d,         N, Y, Y, Y),
+            "AvgPool1d":        (self.test_AvgPool1d,         Y, Y, Y, Y),
+            "AvgPool2d":        (self.test_AvgPool2d,         Y, Y, Y, Y),
             "AvgPool3d":        (self.test_AvgPool3d,         N, Y, Y, Y),
             "BatchNorm":        (self.test_BatchNorm,         N, Y, Y, Y),
             "BMM":              (self.test_BatchMatMul,       N, Y, Y, Y),

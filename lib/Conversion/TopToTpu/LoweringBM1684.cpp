@@ -75,7 +75,9 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       PowLowering,
       Pow2Lowering,
       DivLowering,
-      CompareLowering
+      CompareLowering,
+      MishLowering,
+      SoftsignLowering
       // clang-format on
       >(patterns->getContext());
 }

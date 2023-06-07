@@ -41,8 +41,11 @@ void tpu::ActiveOp::codegen_global_bm1684() {
        case ActiveMode::LN:
        case ActiveMode::GELU:
        case ActiveMode::SQRT:
+       case ActiveMode::MISH:
        case ActiveMode::SQUARE:
        case ActiveMode::SOFT_PLUS:
+       case ActiveMode::SOFT_SIGN:
+       case ActiveMode::LOG_SIGMOID:
        case ActiveMode::SIGMOID: break;
        case ActiveMode::SILU:
            activate_type = (int)ActiveMode::SWISH;
