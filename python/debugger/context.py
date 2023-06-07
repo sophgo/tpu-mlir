@@ -21,6 +21,7 @@ except:
 class Device(Enum):
     BM1684X = "BM1684X"
     BM1684 = "BM1684"
+    BM1686 = "BM1686"
 
 
 class Context:
@@ -40,6 +41,12 @@ class Context:
 
             self.opdef = opdef_1684
             self.opparam = opparam_1684
+        elif self.device == Device.BM1686:
+            from . import opdef_1686
+            from . import opparam_1686
+
+            self.opdef = opdef_1686
+            self.opparam = opparam_1686
 
         else:
             raise ValueError(f"Unknown device: {device}")
@@ -77,6 +84,8 @@ class Context:
             _cmodel = cmodel.BM1684X(memory_size)
         elif self.device == Device.BM1684:
             _cmodel = cmodel.BM1684(memory_size)
+        elif self.device == Device.BM1686:
+            _cmodel = cmodel.BM1686(memory_size)
         else:
             raise ValueError(f"device: {self.device} is not supported.")
 

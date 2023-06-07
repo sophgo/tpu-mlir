@@ -110,7 +110,11 @@ class Decoder:
                     return -1
             else:
                 return len(cmd)
-
+        def fix_tgcr_cmd_id_dp(tiu_cmd):
+            for i, v in enumerate(tiu_cmd):
+                if v.cmd_id_dep == 0 and v.opcode == 12:
+                    v.cmd_id_dep = tiu_cmd[i + 1].cmd_id_dep
+        fix_tgcr_cmd_id_dp(inserted_cmd[:get_end(inserted_cmd)])
         # remove system instruction
         main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
         inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]

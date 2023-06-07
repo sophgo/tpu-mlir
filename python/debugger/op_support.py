@@ -181,15 +181,17 @@ class DType(IntEnum):
     i16 = 3
     i32 = 4
     bf16 = 5
-    i64 = 6
+    i4 = 6
     # unsign integer
     ui8 = i8 + 8  # type: ignore
     ui16 = i16 + 8  # type: ignore
     ui32 = i32 + 8  # type: ignore
+    ui4 = i4 + 8  # type: ignore
     # sign integer
     si8 = i8 + 16  # type: ignore
     si16 = i16 + 16  # type: ignore
     si32 = i32 + 16  # type: ignore
+    si4 = i4 + 16  # type: ignore
 
     def is_float(self):
         return self in (DType.f32, DType.f16, DType.bf16)
@@ -299,6 +301,7 @@ class Layout(Enum):
     _64IC = 20
     _32IC = 21
     _1IC = 22
+    _16IC = 23
     # special alignment. TODO: give it a better name
     T3 = 30
     T4 = 31
