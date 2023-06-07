@@ -59,8 +59,17 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
     Yolov5DetectionFunc yolo_func(param);
     yolo_func.invoke();
   } else {
-    YoloDetectionFunc_v2 yolo_func(param);
-    yolo_func.invoke();
+    auto output_shape = module::getShape(this->getOutput());
+    int64_t dim = output_shape.size();
+    if (output_shape[dim - 1] == 6) {
+      //(x, y, w, h, cls, score)
+      YoloDetectionFunc yolo_func(param);
+      yolo_func.invoke();
+    } else {
+      //(batch_idx, cls, score, x, y, w, h)
+      YoloDetectionFunc_v2 yolo_func(param);
+      yolo_func.invoke();
+    }
   }
   return success();
 }

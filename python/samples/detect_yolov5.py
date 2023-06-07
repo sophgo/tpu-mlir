@@ -294,15 +294,6 @@ def postproc(outputs, imsize, top, left, anchors=ANCHORS):
     return scores, boxes_xyxy
 
 
-def refine_cvi_output(output):
-    new_output = {}
-    for k in output.keys():
-        if k.endswith("_f32"):
-            out = output[k]
-            n, c, h, w = out.shape[0], out.shape[1], out.shape[2], out.shape[3]
-            new_output[k] = out.reshape(n, c, h, w // 85, 85)
-    return new_output
-
 
 def parse_args():
     # yapf: disable
@@ -343,8 +334,7 @@ def main():
     elif args.model.endswith(".bmodel"):
         output = model_inference(data, args.model)
     elif args.model.endswith(".cvimodel"):
-        output = model_inference(data, args.model)
-        output = refine_cvi_output(output)
+        output = model_inference(data, args.model, False)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     if not args.fuse_postprocess:

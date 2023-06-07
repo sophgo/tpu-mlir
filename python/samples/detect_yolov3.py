@@ -323,13 +323,6 @@ def postprocess(outputs,
     return boxes, categories, confidences
 
 
-def refine_cvi_output(output):
-    new_output = {}
-    for k in output.keys():
-        if k.endswith("_f32"):
-            new_output[k] = output[k]
-    return new_output
-
 
 def parse_args():
     # yapf: disable
@@ -405,13 +398,12 @@ def main():
         else:
             if args.model.endswith('.mlir'):
                 output = mlir_inference(data, args.model, False)
-            elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
+            elif args.model.endswith(".bmodel"):
                 output = model_inference(data, args.model)
+            elif args.model.endswith(".cvimodel"):
+                output = model_inference(data, args.model, False)
             else:
                 raise RuntimeError("not support modle file:{}".format(args.model))
-            if args.model.endswith(".cvimodel"):
-                output = refine_cvi_output(output)
-
             if not args.fuse_postprocess:
                 boxes, categories, confidences = postprocess(output, input_shape, origin_image.size,
                                                              args.score_thres, args.iou_thres,
