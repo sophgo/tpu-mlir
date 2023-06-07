@@ -146,5 +146,6 @@ LOWERING_BM1684X(YoloDetection)
 LOWERING_BM1684X(DetectionOutput)
 LOWERING_BM1684X(Unsqueeze)
 LOWERING_BM1684X(Squeeze)
+LOWERING_BM1684X(Nms)
 } // namespace bm1684x
 } // namespace tpu_mlir

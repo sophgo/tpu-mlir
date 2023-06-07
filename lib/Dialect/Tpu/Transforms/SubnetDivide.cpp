@@ -237,7 +237,7 @@ public:
   }
 
   static bool force_dynamic_run(Operation *op) {
-    if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp>(
+    if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp, NmsOp>(
             op)) {
       return true;
     } else if (op->hasTrait<trait::ShapeProducer>()) {
