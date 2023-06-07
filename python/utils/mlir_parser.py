@@ -149,6 +149,7 @@ class MlirParser:
         self.module_name = eval(self.attrs['module.name'])
         self.module_state = eval(self.attrs['module.state'])
         self.module_weight_file = eval(self.attrs['module.weight_file'])
+        self.module_chip = eval(self.attrs['module.chip'])
         self.ops = []
         self.return_op = None
         for i in range(len(self.body.operations)):
