@@ -31,6 +31,7 @@ void ReluLowering::LoweringINT8(PatternRewriter &rewriter, top::ReluOp op,
   module::getScaleAndZeroPoint(re, re_scale, re_zp, asymmetric);
   auto re_rshift =
       calRightShiftNumUseCblas(coeff_v, re_scale, o_scale, BITS_INT8);
+  re_rshift = re_rshift < 0 ? 0 : re_rshift;
   float scale = 1.0 * (1 << re_rshift) * re_scale / o_scale;
   int8_t multiplier_int8;
   quantizeToInt8(&coeff_v, &multiplier_int8, 1, scale);

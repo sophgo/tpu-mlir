@@ -31,6 +31,7 @@ void SubConstLowering::LoweringINT8(PatternRewriter &rewriter,
   module::getScaleAndZeroPoint(b0, b0_scale, b0_zp, asymmetric);
   auto b0_rshift =
       calRightShiftNumUseCblas(coeff_v, b0_scale, o_scale, BITS_INT8);
+  b0_rshift = b0_rshift < 0 ? 0 : b0_rshift;
   float scale = 1.0 * (1 << b0_rshift) * b0_scale / o_scale;
   int8_t multiplier_int8;
   quantizeToInt8(&coeff_v, &multiplier_int8, 1, scale);

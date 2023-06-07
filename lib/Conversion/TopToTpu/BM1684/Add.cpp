@@ -62,6 +62,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
     }
     rshift_v[i] =
         calRightShiftNumUseCblas(coeff_v[i], in_scale, o_scale, BITS_INT8);
+    rshift_v[i] = rshift_v[i] < 0 ? 0 : rshift_v[i];
     float scale = 1.0 * (1 << rshift_v[i]) * in_scale / o_scale;
     int8_t multiplier_int8 = 0;
     float coeff = coeff_v[i];
