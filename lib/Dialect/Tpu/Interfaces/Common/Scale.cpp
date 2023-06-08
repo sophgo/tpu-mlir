@@ -50,7 +50,7 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
         for (int64_t k = 0; k < h * w; ++k) {
           int64_t idx = j * c * h * w + i * h * w + k;
           int64_t res = (int64_t)src[idx] * scale_val + bias_val;
-          res = RightShiftRound(res, rshift_val, ROUNDING_HALF_UP);
+          res = RightShiftRound(res, rshift_val, ROUNDING_DOWN);
           if (getDoRelu() && res < 0) {
             res = 0;
           }
@@ -71,7 +71,7 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
         for (int64_t k = 0; k < h * w; ++k) {
           int64_t idx = j * c * h * w + i * h * w + k;
           int64_t res = (int64_t)src[idx] * scale_val + bias_val;
-          res = RightShiftRound(res, rshift_val, ROUNDING_HALF_UP) + out_zp;
+          res = RightShiftRound(res, rshift_val, ROUNDING_DOWN) + out_zp;
           if (getDoRelu() && res < 0) {
             res = 0;
           }
