@@ -263,58 +263,6 @@ struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
     return success();
   }
 };
-
-struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
-  using OpRewritePattern::OpRewritePattern;
-  TopScaleToDwConv(MLIRContext *context, PatternBenefit benefit = 1)
-      : OpRewritePattern<ScaleOp>(context, benefit) {}
-
-  LogicalResult matchAndRewrite(ScaleOp op,
-                                PatternRewriter &rewriter) const override {
-    auto input_shape = module::getShape(op.getInput());
-    if (input_shape.size() > 4) {
-      return failure();
-    }
-    auto cur_scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
-    auto cur_bias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
-    if (!(cur_scale && cur_bias) || input_shape.size() < 4) {
-      return failure();
-    }
-    int channel = cur_scale.getType().cast<RankedTensorType>().getNumElements();
-    auto cur_scale_f32 = cur_scale.read<float>();
-    auto cur_bias_f32 = cur_bias.read<float>();
-
-    std::vector<float> new_scale_v(channel);
-    std::vector<float> new_bias_v(channel);
-    std::copy(cur_scale_f32->begin(), cur_scale_f32->end(),
-              new_scale_v.begin());
-    std::copy(cur_bias_f32->begin(), cur_bias_f32->end(), new_bias_v.begin());
-
-    // scale to depthwise convolution
-    NamedAttrList attrs;
-    attrs.set("kernel_shape", rewriter.getI64ArrayAttr({1, 1}));
-    attrs.set("strides", rewriter.getI64ArrayAttr({1, 1}));
-    attrs.set("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0}));
-    attrs.set("group", rewriter.getI64IntegerAttr(channel));
-    attrs.set("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
-    auto relu_limit = op.getReluLimit().convertToDouble();
-    attrs.set("relu_limit", rewriter.getF64FloatAttr(relu_limit));
-
-    auto filter_type =
-        RankedTensorType::get({channel, 1, 1, 1}, rewriter.getF32Type());
-    auto new_scale =
-        WeightOp::create(op, "merged_to_weight", new_scale_v, filter_type);
-    auto bias_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-    auto new_bias =
-        WeightOp::create(op, "merged_to_bias", new_bias_v, bias_type);
-
-    rewriter.replaceOpWithNewOp<ConvOp>(
-        op, op.getResult().getType(),
-        ValueRange{op.getInput(), new_scale, new_bias}, attrs);
-    return success();
-  }
-};
-
 struct ScaleShapeAlign : public OpRewritePattern<ScaleOp> {
   using OpRewritePattern::OpRewritePattern;
   ScaleShapeAlign(MLIRContext *context, PatternBenefit benefit = 1)
@@ -411,7 +359,7 @@ struct TopScaleMergeToMatMul : public OpRewritePattern<ScaleOp> {
 
 void ScaleOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<TopScaleToDwConv, TopScaleMergeToConv, TopMultiScaleMergeToOne,
+  results.insert<TopScaleMergeToConv, TopMultiScaleMergeToOne,
                  TopScaleMergeToBatchNorm, ScaleShapeAlign,
                  ConstbinaryMergeToTopScale, TopScaleMergeToMatMul>(context);
 }

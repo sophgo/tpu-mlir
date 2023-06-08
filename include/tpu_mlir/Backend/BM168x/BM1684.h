@@ -217,6 +217,9 @@ public:
   std::shared_ptr<std::vector<int8_t>>
   Convert1NTo4N(Value v, std::shared_ptr<std::vector<int8_t>> data);
 
+  std::shared_ptr<std::vector<int16_t>>
+  Convert1NTo2N(Value v, std::shared_ptr<std::vector<int16_t>> data);
+
   // -------------------------------------------------------------------
   // functions from nodechip
   // -------------------------------------------------------------------

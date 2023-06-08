@@ -1299,13 +1299,14 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(top::ScaleOp op,
                                 PatternRewriter &rewriter) const override {
-#if 0
   auto input_shape = module::getShape(op.getInput());
-
+  if (input_shape.size() > 4) {
+    return failure();
+  }
   auto cur_scale = dyn_cast<top::WeightOp>(op.getScale().getDefiningOp());
   auto cur_bias = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
-  if (!(cur_scale && cur_bias)) {
-    llvm_unreachable("Not support now.");
+  if (!(cur_scale && cur_bias) || input_shape.size() < 3) {
+    return failure();
   }
   int channel = cur_scale.getType().cast<RankedTensorType>().getNumElements();
   auto cur_scale_f32 = cur_scale.read<float>();
@@ -1339,9 +1340,6 @@ public:
       op, op.getResult().getType(),
       ValueRange{op.getInput(), new_scale, new_bias}, attrs);
   return success();
-#else
-    return failure();
-#endif
   }
 };
 

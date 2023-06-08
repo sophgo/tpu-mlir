@@ -42,6 +42,25 @@ BM1684::Convert1NTo4N(Value v, std::shared_ptr<std::vector<int8_t>> src) {
   return dst;
 }
 
+std::shared_ptr<std::vector<int16_t>>
+BM1684::Convert1NTo2N(Value v, std::shared_ptr<std::vector<int16_t>> src) {
+  auto shape = module::getShape(v);
+  const int64_t num_elements = module::getNumElements(v);
+  const int32_t N = shape[0];
+  const int32_t others = num_elements / N;
+  std::shared_ptr<std::vector<int16_t>> dst =
+      std::make_shared<std::vector<int16_t>>(align_up(N, 2) * others, 0);
+  for (int32_t n = 0; n < N; n++) {
+    for (int32_t inner = 0; inner < others; inner++) {
+      const int32_t out_idx =
+          n / 2 * others * sizeof(int16_t) + (n % 2) + inner * sizeof(int16_t);
+      const int32_t in_idx = n * others + inner;
+      dst->at(out_idx) = src->at(in_idx);
+    }
+  }
+  return dst;
+}
+
 void BM1684::load_functions() {
   BM168x::load_functions();
   // clang-format off
