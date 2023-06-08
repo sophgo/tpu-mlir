@@ -248,8 +248,7 @@ public:
       return !module::isNone(dyn_cast<SliceOp>(op).getOffsetT());
     } else if (module::isBM1684Family()) {
       if (auto gather_op = dyn_cast<tpu::GatherOp>(op)) {
-        if (!module::isWeight(gather_op.getIndices()))
-          return true;
+        return true;
       }
     }
     return false;

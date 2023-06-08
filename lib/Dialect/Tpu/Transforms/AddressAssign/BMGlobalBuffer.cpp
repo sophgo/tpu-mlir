@@ -718,10 +718,6 @@ public:
     if (!module::isBM1684Family()) {
       return failure();
     }
-    // only dynamic index_select need buffer
-    if (module::isWeight(GatherOp.getIndices())) {
-      return failure();
-    }
     auto elment_num = module::getNumElements(GatherOp.getInput());
     auto type = module::getStorageType(GatherOp.getInput());
     // add buffer
