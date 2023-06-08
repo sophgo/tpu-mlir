@@ -231,6 +231,11 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
             pre_op = parser.get_pre_op_by_op_name(name)[0]
             if pre_op in tensors:
                 outputs[pre_op] = tensors[pre_op]
+            else:
+                #if file exists,read tensor for compare
+                if os.path.isfile("./value2disk.npz"):
+                  x = np.load("./value2disk.npz")
+                  outputs[pre_op]=x[pre_op]
     return outputs
 
 

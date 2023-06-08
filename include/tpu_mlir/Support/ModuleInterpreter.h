@@ -82,6 +82,7 @@ private:
   std::map<std::string, Value> value_map;
   std::map<std::string, std::shared_ptr<InferenceParameter>> inference_map;
   std::map<std::string, std::shared_ptr<std::vector<float>>> mem_map;
+  std::vector<size_t> store_disk_shape;
 };
 
 } // namespace tpu_mlir
