@@ -2335,7 +2335,9 @@ class OnnxConverter(BaseConverter):
                 loc_names[idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
-
+                if K != out_shapes[idx][axis] and \
+                  not self.isScalar(onnx_node.inputs[1]):
+                    K = out_shapes[idx][axis]
         out_op = top.TopKOp(*self.mlir.get_tensor_type(out_shapes),
                             in_op,
                             axis=axis,
