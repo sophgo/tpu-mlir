@@ -1598,9 +1598,42 @@ class OnnxConverter(BaseConverter):
                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
+    # https://pytorch.org/docs/1.13/generated/torch.einsum.html?highlight=einsum#torch.einsum
     def convert_einsum_op(self, onnx_node):
         assert (onnx_node.op_type == "Einsum")
         equation = onnx_node.attrs.get("equation")
+        
+        if equation == b"i,j->ij": # outer product
+            lhs = self.getOperand(onnx_node.inputs[0])
+            rhs = self.getOp(onnx_node.inputs[1])
+            lhs_shape = self.getShape(onnx_node.inputs[0])
+            rhs_shape = self.getShape(onnx_node.inputs[1])
+            output_shape = self.getShape(onnx_node.name)
+
+            lhs_reshape_rst = [lhs_shape[0], 1]
+            lhs_reshape_op = top.ReshapeOp(self.mlir.get_tensor_type(lhs_reshape_rst),
+                                            lhs,
+                                            loc=self.get_loc("{}_{}".format(
+                                                onnx_node.name, "lhs_reshape")),
+                                            ip=self.mlir.insert_point).output
+
+            rhs_reshape_rst = [1, rhs_shape[0]]
+            rhs_reshape_op = top.ReshapeOp(self.mlir.get_tensor_type(rhs_reshape_rst),
+                                            rhs,
+                                            loc=self.get_loc("{}_{}".format(
+                                                onnx_node.name, "rhs_reshape")),
+                                            ip=self.mlir.insert_point).output
+            matmul_shape = [lhs_shape[0], rhs_shape[0]]
+            matmul_op = top.MatMulOp(self.mlir.get_tensor_type(matmul_shape),
+                                        lhs_reshape_op,
+                                        rhs_reshape_op,
+                                        self.mlir.none_op,
+                                        do_relu=False,
+                                        loc=self.get_loc("{}_{}".format(
+                                            onnx_node.name, onnx_node.op_type)),
+                                        ip=self.mlir.insert_point).output
+            self.addOperand(onnx_node.name, matmul_op)
+            return
         if equation == b"bfnd,ndh->bfh":
             lhs = self.getOperand(onnx_node.inputs[0])
             rhs = self.getOp(onnx_node.inputs[1])

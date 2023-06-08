@@ -82,6 +82,7 @@ class ONNX_IR_TESTER(object):
             "DivBcast2":    (self.test_DivBcast2,     Y, Y, Y, N),
             "Einsum":       (self.test_Einsum,        Y, Y, Y, Y),
             "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y),
+            "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y),
             "Elu":          (self.test_Elu,           N, Y, Y, N),
             "Erf":          (self.test_Erf,           N, Y, Y, N),
             "Exp":          (self.test_Exp,           Y, Y, Y, Y),
@@ -4303,6 +4304,25 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([einsum_def],
                                       case_name, [input], [output],
                                       initializer=[weight])
+        self.onnx_and_test(graph_def)
+
+    def test_Einsum3(self, case_name):
+        input_shape = {"input1": [4], "input2": [32]}
+        output_shape = [4, 32]
+
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        einsum_def = helper.make_node(
+            "Einsum",
+            inputs=['input1', 'input2'],
+            outputs=['output'],
+            equation='i,j->ij',
+        )
+
+        graph_def = helper.make_graph([einsum_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def)
 
     def test_Elu(self, case_name):
