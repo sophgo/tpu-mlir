@@ -604,16 +604,16 @@ public:
       int tile_count = 0;
       int max_tile = 1;
       uint64_t total_size = 1;
+      for (int i = 0; i < input_dim; ++i) {
+        tile_coeff[i] =
+            output_shape[i] < 0 ? 1 : output_shape[i] / input_shape[i];
+        if (tile_coeff[i] > 1)
+          tile_count++;
+        if (tile_coeff[i] > max_tile)
+          max_tile = tile_coeff[i];
+          total_size *= output_shape[i];
+      }
       if (type_len == 4) {
-        for (int i = 0; i < input_dim; ++i) {
-          tile_coeff[i] =
-              output_shape[i] < 0 ? 1 : output_shape[i] / input_shape[i];
-          if (tile_coeff[i] > 1)
-            tile_count++;
-          if (tile_coeff[i] > max_tile)
-            max_tile = tile_coeff[i];
-            total_size *= output_shape[i];
-        }
         if (tile_count > 1) {
           buffer_size = total_size / max_tile * type_len;
         }
@@ -630,10 +630,8 @@ public:
       else if (type_len == 1) {
         auto input = tileOp.getInput();
         auto output = tileOp.getOutput();
-        auto input_dtype = BM1684::getDataType(input);
-        auto input_format = BM168x::getGdmaFormat(input_dtype);
-        auto output_dtype = BM1684::getDataType(output);
-        auto output_format = BM168x::getGdmaFormat(output_dtype);
+        auto input_format = BM1684::getStoreMode(input);
+        auto output_format = BM1684::getStoreMode(output);
         BM1684::instance().dl_nodechip_tile_full_fix8b(
             0, 0, 0, &buffer_size, (const uint32_t *)in_shape, (const int *)tile_coeff, input_dim, input_format, output_format, 0,
             (CMD_ID_NODE *)BM1684::instance().cmdid_node);
