@@ -24,6 +24,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ConvLowering,
       CustomLowering,
       Depth2SpaceLowering,
+      EluLowering,
       FloorLowering,
       GatherLowering,
       GatherNDLowering,

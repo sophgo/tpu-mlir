@@ -84,7 +84,7 @@ class ONNX_IR_TESTER(object):
             "Einsum":       (self.test_Einsum,        Y, Y, Y, Y),
             "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y),
             "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y),
-            "Elu":          (self.test_Elu,           N, Y, Y, N),
+            "Elu":          (self.test_Elu,           Y, Y, Y, N),
             "Erf":          (self.test_Erf,           N, Y, Y, N),
             "Exp":          (self.test_Exp,           Y, Y, Y, Y),
             "Expand":       (self.test_Expand,        Y, Y, Y, Y),
