@@ -331,3 +331,128 @@ def requant_fp_to_int(tensor_i: Tensor,
     output.quantization(scale=scale, zero_point=offset)
     TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output])
     return output
+
+def matmul(input: Tensor,
+            right: Tensor,
+            bias: Tensor = None,
+            right_transpose=False,
+            left_transpose=False,
+            output_transpose=False,
+            hdim_is_batch=False,
+            keep_dims=False,
+            out_name: str = None):
+
+    o_dtype = input.dtype
+
+    def _shape_inference():
+        l_dims = len(input.shape)
+        r_dims =len(right.shape)
+        k = input.shape[l_dims - 1]
+        k_idx = r_dims - (1 if right_transpose else 2)
+        n_idx = r_dims - (2 if right_transpose else 1)
+        n = right.shape[n_idx]
+        import copy
+        out_shape = copy.copy(input.shape)
+        if r_dims == 1:
+            assert(right.shape[0] == k)
+            out_shape.pop()
+        elif right.shape[k_idx] == k:
+            out_shape[-1] = n
+        elif r_dims == 2:
+            sum = right.shape[k_idx]
+            while len(out_shape) > 0 and sum % out_shape[-1] == 0 and sum != 1:
+                sum = sum // out_shape.pop()
+            if sum != 1:
+                raise ValueError("shape is illegal")
+            out_shape.append(n)
+        else:
+            out_shape[-1] = n
+        if not keep_dims:
+            batch_size = 1
+            for s in out_shape[:-1]:
+                batch_size *= s
+            out_shape = [batch_size, n]
+        return out_shape
+
+
+
+    attr = {
+        "right_transpose": Attr(right_transpose, "bool"),
+        "left_transpose": Attr(left_transpose, "bool"),
+        "output_transpose": Attr(output_transpose, "bool"),
+        "hdim_is_batch": Attr(hdim_is_batch, "bool"),
+        "keep_dims": Attr(keep_dims, "bool"),
+        "do_relu":  Attr(False, "bool"),
+        "relu_limit":  Attr(-1.0, "float64")
+    }
+
+    output = Tensor(_shape_inference(), dtype=o_dtype, name=out_name)
+    inputs = [input, right, bias]
+    TpuLang.insert_op("top.MatMul", inputs=inputs, outputs=[output], params=attr)
+    return output
+
+def maxpool(input: Tensor,
+            kernel=None,
+            stride: List[int] = None,
+            pad: List[int] = None,
+            ceil_mode = False,
+            out_name: str = None):
+    kernel = [1, 1] if kernel is None else kernel
+    stride = [1, 1] if stride is None else stride
+    pad = [0, 0, 0, 0] if pad is None else pad
+    o_dtype = input.dtype
+
+    def _shape_inference():
+        assert len(input.shape) > 2
+        spacial_rank = len(input.shape) - 2
+        assert spacial_rank == len(kernel)
+        assert len(pad) == spacial_rank * 2
+        out_shape = [input.shape[0], input.shape[1]]
+        input_spacial_shape = input.shape[2:]
+        for i in range(spacial_rank):
+            input_dim_expanded = input_spacial_shape[i] + pad[i] + pad[i + spacial_rank] - kernel[i]
+            out_dim = (input_dim_expanded // stride[i]) + 1
+            # move ceil_mode to padding
+            need_fix_pad = input_dim_expanded % stride[i]
+            if ceil_mode and ceil_mode.value and need_fix_pad:
+                new_pad = pad[i + spacial_rank] + stride[i] - need_fix_pad
+                if new_pad < kernel[i]:
+                    pad[i + spacial_rank] = new_pad
+                    out_dim += 1
+            out_shape.append(out_dim)
+
+        return out_shape
+
+    attr = {
+        "kernel_shape": ArrayAttr(kernel),
+        "strides": ArrayAttr(stride),
+        "pads": ArrayAttr(pad),
+        "ceil_mode": Attr(ceil_mode, "bool"),
+        "keepdims": Attr(True, "bool"),
+        "pad_value": Attr(0),
+        "count_include_pad": Attr(False, "bool"),
+        "do_relu":  Attr(False, "bool"),
+        "relu_limit":  Attr(-1.0, "float64")
+    }
+
+    output = Tensor(_shape_inference(), dtype=o_dtype, name=out_name)
+
+    TpuLang.insert_op("top.MaxPool", inputs=[input], outputs=[output], params=attr)
+    return output
+
+def relu(input: Tensor, out_name: str = None):
+
+    o_dtype = input.dtype
+
+    def _shape_inference():
+        out_shape = input.shape
+        return out_shape
+
+    attr = {
+        "relu_limit":  Attr(-1.0, "float64")
+    }
+
+    output = Tensor(_shape_inference(), dtype=o_dtype, name=out_name)
+
+    TpuLang.insert_op("top.Relu", inputs=[input], outputs=[output], params=attr)
+    return output
