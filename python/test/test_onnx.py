@@ -41,7 +41,7 @@ class ONNX_IR_TESTER(object):
             # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
             "Abs":          (self.test_Abs,           Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y),
-            "And":          (self.test_And,           N, Y, N, N),
+            "And":          (self.test_And,           N, Y, Y, N),
             "AddBcast":     (self.test_AddBcast,      Y, Y, Y, N),
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N),
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N),  # failed cases
@@ -91,8 +91,8 @@ class ONNX_IR_TESTER(object):
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y),
             "GatherND":     (self.test_GatherND,      Y, N, N, Y),
-            "Gather2":      (self.test_Gather2,       N, Y, N, N),
-            "Gather3":      (self.test_Gather3,       Y, Y, N, N),
+            "Gather2":      (self.test_Gather2,       N, Y, Y, N),
+            "Gather3":      (self.test_Gather3,       Y, Y, Y, N),
             "Gemm":         (self.test_Gemm,          Y, Y, Y, Y),
             "GroupFC":      (self.test_GroupFC,       Y, Y, Y, Y),
             "GRU":          (self.test_GRU,           N, Y, Y, Y),  # test gru output Y
@@ -112,7 +112,7 @@ class ONNX_IR_TESTER(object):
             "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y),
             "Max":          (self.test_Max,           Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N),
-            "Not":          (self.test_Not,           N, Y, N, N),
+            "Not":          (self.test_Not,           N, Y, Y, N),
             "Mul":          (self.test_Mul,           Y, Y, Y, Y),
             "MulMerge":     (self.test_MulMerge,      Y, Y, Y, N),
             "MulBcast":     (self.test_MulBcast,      Y, Y, Y, N),
@@ -126,7 +126,7 @@ class ONNX_IR_TESTER(object):
             "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y),
             "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y),
             "Pow1":         (self.test_Pow1,          Y, Y, Y, Y),  # y = x ^ n
-            "Pow2":         (self.test_Pow2,          Y, Y, N, N),  # y = n ^ x
+            "Pow2":         (self.test_Pow2,          Y, Y, Y, N),  # y = n ^ x
             "PRelu":        (self.test_PRelu,         Y, Y, Y, Y),
             # "Range":        (self.test_Range,       N, Y, Y, N),
             "Resize":       (self.test_Resize,        Y, Y, Y, Y),
@@ -142,7 +142,7 @@ class ONNX_IR_TESTER(object):
             "Relu":         (self.test_Relu,          Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
             "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y),
-            "ScatterND":    (self.test_ScatterND,     N, Y, N, N),
+            "ScatterND":    (self.test_ScatterND,     N, Y, Y, N),
             "Shape":        (self.test_Shape,         N, Y, Y, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y),
@@ -168,9 +168,9 @@ class ONNX_IR_TESTER(object):
             "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y),
             "TopK":         (self.test_TopK,          N, Y, Y, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N),
-            "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, N, N),
-            "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, N, N),
-            "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, N, N),
+            "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N),
+            "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
+            "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
             "Where":        (self.test_Where,         N, Y, Y, Y),
             #####################################
             # Torch Test Case, Alphabetically
@@ -4771,7 +4771,7 @@ class ONNX_IR_TESTER(object):
                 [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
 
     def test_ScatterND(self, case_name):
-        if self.chip == 'bm1684x':
+        if self.chip in ['bm1684x', 'bm1686', 'cv186']:
             x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2,3,20,40]]
             idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 2, 5], [2,3,20,4]]
             update_shapes = [[160, 160], [1, 3, 128, 128, 2],  [2,3,20]]
