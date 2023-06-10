@@ -1286,20 +1286,16 @@ class TorchConverter(BaseConverter):
         self.tensor_list[torch_node.outputs[0]] = tensors
 
     def convert_clamp_op(self, torch_node: TorchNode):
-        op0 = self.getOp(torch_node.inputs[0])
+        op = self.getOp(torch_node.inputs[0])
         min_val = self.const_val[torch_node.inputs[1]]
         max_val = self.const_val[torch_node.inputs[2]]
-        min_op = top.MinConstOp(self.unranked_type,
-                                op0,
-                                const_val=max_val,
-                                loc=self.get_loc(torch_node.name + "_min"),
-                                ip=self.mlir.insert_point).output
-        max_op = top.MaxConstOp(self.unranked_type,
-                                min_op,
-                                const_val=min_val,
-                                loc=self.get_loc(torch_node.name),
-                                ip=self.mlir.insert_point).output
-        self.addOperand(torch_node.name, max_op)
+        new_op = top.ClipOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc(torch_node.name),
+                            min=min_val,
+                            max=max_val,
+                            ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
 
     def convert_relu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
