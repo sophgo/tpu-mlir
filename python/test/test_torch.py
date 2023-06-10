@@ -56,7 +56,7 @@ class TORCH_IR_TESTER(object):
             "BMM":              (self.test_BatchMatMul,       N, Y, Y, Y),
             "ChannelShuffle":   (self.test_ChannelShuffle,    N, Y, Y, Y),
             "Chunk":            (self.test_Chunk,             N, Y, Y, Y),
-            "Clamp":            (self.test_Clamp,             N, Y, Y, N),
+            "Clamp":            (self.test_Clamp,             Y, Y, Y, N),
             "Compare":          (self.test_Compare,           Y, Y, Y, N),
             "Concat":           (self.test_Concat,            N, Y, Y, Y),
             "ConstantLike":     (self.test_ConstantLike,      N, Y, Y, Y),
