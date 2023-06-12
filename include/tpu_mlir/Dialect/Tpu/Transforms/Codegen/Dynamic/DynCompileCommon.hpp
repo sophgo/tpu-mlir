@@ -29,7 +29,7 @@ typedef signed char s8;
 #define MAX_ELET_INPUT_NUM 10
 #define MAX_SPLIT_OUTPUT_NUM 8
 #define MAX_SHAPE_DIMS 8
-#define MAX_YOLO_INPUT_NUM 8 
+#define MAX_YOLO_INPUT_NUM 8
 #define MAX_YOLO_ANCHOR_NUM 8
 typedef int LayerId;
 #ifdef __cplusplus
@@ -192,6 +192,7 @@ typedef enum fw_layer_type {
   FW_BMNET_UNSQUEEZE = 144,
   FW_BMNET_DECONV3D = 145,
   FW_BMNET_YOLOV5_DETECT_OUT = 146,
+  FW_BMNET_ONNX_NMS = 147,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;
