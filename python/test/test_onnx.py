@@ -2062,11 +2062,13 @@ class ONNX_IR_TESTER(object):
         input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input_shape)
         axes = helper.make_tensor('axes', TensorProto.INT64, [len(axis)],
                                   axis * np.ones(1).astype(int))
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        output_1 = helper.make_tensor_value_info('output_1', TensorProto.FLOAT, output_shape)
+        output_2 = helper.make_tensor_value_info('output_2', TensorProto.FLOAT, output_shape)
         add_def = helper.make_node("Add", inputs=['input0', 'input1'], outputs=['x'])
-        squeeze_def = helper.make_node("Squeeze", inputs=['x', 'axes'], outputs=['output'])
-        graph_def = helper.make_graph([add_def, squeeze_def],
-                                      case_name, [input0, input1], [output],
+        squeeze_def1 = helper.make_node("Squeeze", inputs=['x', 'axes'], outputs=['output_1'])
+        squeeze_def2 = helper.make_node("Squeeze", inputs=['x'], outputs=['output_2'])
+        graph_def = helper.make_graph([add_def, squeeze_def1, squeeze_def2],
+                                      case_name, [input0, input1], [output_1, output_2],
                                       initializer=[axes])
         self.onnx_and_test(graph_def)
 

@@ -23,6 +23,7 @@ from utils.auto_remove import file_mark, file_clean
 import copy
 import mlir.dialects.top as top
 from mlir.ir import *
+from typing import List
 
 onnx_attr_translator = {
     "axis": lambda x: int(x),
@@ -110,6 +111,10 @@ class OnnxConverter(BaseConverter):
         self.model = None
         self.mlir = None
         self.node_name_mapping = {}  # used in onnx opt
+        self.np_onnx_dt_map = [None, np.float32, np.uint8, np.int8, np.int16,
+                               np.int16, np.int32, np.int64, None, np.bool,
+                               np.float16, np.float64, np.uint32, np.uint64,
+                               None, None, None]
         self.load_onnx_model(onnx_file, input_shapes, output_names, use_onnxsim)
         self.init_MLIRImporter()
         # some onnx may have strange domain, such as "ai.onnx.ml"
@@ -601,18 +606,94 @@ class OnnxConverter(BaseConverter):
             out_shape.insert(axes[i], 1)
         return out_shape
 
+    def infer_sugraph(self, input_node, input_tensor: List[np.ndarray], output_nodes):
+        found_start_node = False
+        subgraph = onnx.GraphProto(initializer=self.model.graph.initializer)
+        subgraph.output.extend(output_nodes)
+        self.all_values = {}
+        for x in self.model.graph.value_info:
+            self.all_values[x.name] = x
+        feed_subgraph_input = {}
+        for node in self.model.graph.node:
+            if found_start_node:
+                subgraph.node.extend([node])
+            if node.name == input_node.name:
+                found_start_node = True
+                assert len(node.output) == len(input_tensor)
+                for i in range(len(input_tensor)):
+                    feed_subgraph_input[node.output[i]] = input_tensor[i]
+                subgraph.input.extend([self.all_values[o] for o in node.output])
+        missing_inputs = []
+        node_outputs_set = set()
+        subgraph_inputs_set = set()
+        subgraph_init_set = set()
+        for node in subgraph.node:
+            node_outputs_set.update(node.output)
+        for inp in subgraph.input:
+            subgraph_inputs_set.update([inp.name])
+        for initial in subgraph.initializer:
+            subgraph_init_set.update([initial.name])
+        for node in subgraph.node:
+            for input_name in node.input:
+                if input_name not in subgraph_inputs_set and \
+                        input_name not in subgraph_init_set and \
+                        input_name not in node_outputs_set:
+                    missing_inputs.append((input_name,
+                                           self.getShape(input_name),
+                                           self.all_values[input_name]))
+
+        for mi in missing_inputs:
+            feed_subgraph_input[mi[0]] = np.ones(mi[1])
+        subgraph.input.extend([self.all_values[i[0]] for i in missing_inputs])
+        submodel = onnx.helper.make_model(subgraph,
+                                          opset_imports=self.model.opset_import)
+
+        for (k, v), t in zip(feed_subgraph_input.items(), subgraph.input):
+            dtype = self.np_onnx_dt_map[t.type.tensor_type.elem_type]
+            feed_subgraph_input[k] = v.astype(dtype)
+        options = onnxruntime.SessionOptions()
+        options.log_severity_level = 4
+        sess = onnxruntime.InferenceSession(submodel.SerializeToString(), sess_options=options)
+        sub_outs = sess.run(None, feed_subgraph_input)
+        return sub_outs
+
     def get_unk_shape(self, unk_op):
         # Notice this not always right. For some op in onnx
         # the shape of the output changes with the input data, such as nonzeroOp
         # gen fake model
+
+        def create_value_info_by_names(names):
+            value_infos = []
+            for name in names:
+                value_info = onnx.helper.ValueInfoProto()
+                value_info.name = name
+                value_infos.append(value_info)
+            return value_infos
+
+        intermediate_layer_value_infos = create_value_info_by_names(unk_op)
+        nms_flag = False
+        known_op = []
+        for v in unk_op:
+            for node in self.model.graph.node:
+                if v in node.output:
+                    if node.op_type == "NonMaxSuppression":
+                        nms_flag = True
+                        max_output_size = self.getWeight(node.input[2]).astype(np.int64)
+                        nms_outs_shape = [max_output_size[0] * self.getShape(node.input[1])[1], 3]
+                        input_tenasor = [np.ones(nms_outs_shape)]
+                        subgraph_outs = self.infer_sugraph(node, input_tenasor, intermediate_layer_value_infos)
+                        for proto, arr in zip(intermediate_layer_value_infos, subgraph_outs):
+                            self.addShape(proto.name, list(arr.shape))
+                            known_op.append(proto.name)
+        unk_op = list(set(unk_op) - set(known_op))
+        if len(unk_op) == 0:
+            return
         model = copy.deepcopy(self.model)
         outnode = model.graph.output
         for _ in range(len(outnode)):
             model.graph.output.remove(outnode[0])
-        for name in unk_op:
-            intermediate_layer_value_info = onnx.helper.ValueInfoProto()
-            intermediate_layer_value_info.name = name
-            model.graph.output.append(intermediate_layer_value_info)
+        intermediate_layer_value_infos = create_value_info_by_names(unk_op)
+        model.graph.output.extend(intermediate_layer_value_infos)
         onnx_file = "generate_onnx_with_unk.onnx"
         file_mark(onnx_file)
         onnx.save(model, onnx_file)
@@ -634,12 +715,6 @@ class OnnxConverter(BaseConverter):
             inputs[name] = np.ones(shape).astype(dtype)
         outs = session.run(None, inputs)
         outs_shape = [o.shape for o in outs]
-        nms_flag = False
-        for v in unk_op:
-            for node in model.graph.node:
-                if v in node.output:
-                    if node.op_type == "NonMaxSuppression":
-                        nms_flag = True
 
         for i, v in enumerate(unk_op):
             for idx, n in enumerate(model.graph.node):
@@ -1804,16 +1879,22 @@ class OnnxConverter(BaseConverter):
 
     def convert_squeeze_op(self, onnx_node):
         assert (onnx_node.op_type == "Squeeze")
-        assert ('axes' in onnx_node.attrs or len(onnx_node.inputs) > 1)
-        op = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        if self.opset < 13:
-            axes = onnx_node.attrs.get('axes')
-        else:
-            if len(onnx_node.inputs) == 1:
-                axes = []
+        op = self.getOperand(onnx_node.inputs[0])
+        if 'axes' in onnx_node.attrs or len(onnx_node.inputs) > 1:
+            if self.opset < 13:
+                axes = onnx_node.attrs.get('axes')
             else:
-                axes = self.getWeight(onnx_node.inputs[1]).astype(int)
+                if len(onnx_node.inputs) == 1:
+                    axes = []
+                else:
+                    axes = self.getWeight(onnx_node.inputs[1]).astype(int)
+        else:
+            axes = []
+            x_shape = self.getShape(onnx_node.inputs[0])
+            for i, s in enumerate(x_shape):
+                if s == 1:
+                    axes.append(i)
         new_op = top.SqueezeOp(self.mlir.get_tensor_type(output_shape),
                                op,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
