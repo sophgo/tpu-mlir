@@ -39,6 +39,10 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
 
 void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
+  if (module::isWeight(op.getFilter()) == false) {
+    LoweringF32(rewriter, op);
+    return;
+  }
   std::vector<Value> operands;
   operands.push_back(op.getInput());
   std::vector<NamedAttribute> attrs;
