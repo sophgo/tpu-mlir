@@ -62,6 +62,7 @@ void TgFcKernel::init(
   this->cur_rshift = 0;
   this->bias_loaded = false;
   this->quant_loaded = false;
+  this->do_qdm = false;
   left_gstride.row = K * fmt_size * (lstride ? batch_low : 1);
   right_gstride.row = N * r_fmt_size * (rstride ? batch_low : 1);
   output_gstride.row = N * fmt_size * (ostride ? batch_low : 1);
@@ -76,6 +77,7 @@ void TgFcKernel::init(
     }
   }
   if (multiplier != nullptr) {
+    this->do_qdm = true;
     if (multiplier->size() == 1) {
       this->multiplier.assign(batch, multiplier->at(0));
     } else if (multiplier->size() == batch) {
@@ -596,7 +598,7 @@ void TgFcKernel::compute(int32_t step_idx) {
   // processing stage.
   // So, only set chan_quan = 1 if no tiling or last tile.
   // And when chan_quan is enabled, des_opt_res0_int8 must be 1
-  if (cur_multiplier != 0) {
+  if (this->do_qdm) {
     cvk_tiu_matrix_multiplication_qm_param_t p = {0};
     p.res = &tl_Y;
     p.left = &tl_L;
