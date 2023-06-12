@@ -28,7 +28,7 @@ void ClipLowering::LoweringF32(PatternRewriter &rewriter, top::ClipOp op) const 
   attrs.push_back(rewriter.getNamedAttr(
       "const_val", op.getMaxAttr()));
   auto min_op = rewriter.create<tpu::MinConstOp>(
-      min_loc, type, ValueRange{max_op.getOutput()}, attrs);
+      op.getLoc(), type, ValueRange{max_op.getOutput()}, attrs);
 
   op.replaceAllUsesWith(min_op.getOperation());
 
@@ -52,7 +52,7 @@ void ClipLowering::LoweringINT8(PatternRewriter &rewriter, top::ClipOp op,
   attrs.push_back(rewriter.getNamedAttr(
       "const_val", op.getMaxAttr()));
   auto min_op = rewriter.create<tpu::MinConstOp>(
-      min_loc, type, ValueRange{max_op.getOutput()}, attrs);
+      op.getLoc(), type, ValueRange{max_op.getOutput()}, attrs);
 
   op.replaceAllUsesWith(min_op.getOperation());
 
