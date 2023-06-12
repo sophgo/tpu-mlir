@@ -52,6 +52,9 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
+  if (module::isWeight(op.getFilter()) == false) {
+    return failure();
+  }
   auto attr = op.parseParam();
   auto type_bytes = 1;
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
@@ -152,7 +155,9 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF32())
     return failure();
-
+  if (module::isWeight(op.getFilter()) == false) {
+    return failure();
+  }
   auto attr = op.parseParam();
   auto type_bytes = 4;
   auto out_type = module::getStorageType(op.getOutput());
