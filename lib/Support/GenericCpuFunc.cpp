@@ -1988,8 +1988,13 @@ int NmsFunc::invoke() {
     float score;
     int begin_index;
   };
+  //align with tpu algorithm
   auto cmp = [](const Candidate i, const Candidate j) {
-    return i.score < j.score;
+    if (i.score != j.score)
+      return i.score < j.score;
+    else {
+      return i.box_index > j.box_index;
+    }
   };
 
   int num_selected_indices = 0;

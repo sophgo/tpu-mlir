@@ -1648,12 +1648,11 @@ typedef struct nms_common_spec {
   float iou_threshold;
   float score_threshold;
   int keep_topk_per_class;
-  int   input_num;
+  int center_point_box;
+  int  input_num;
+  int onnx_nms;//1: onnx_nms
 } nms_common_spec_t;
 
-typedef struct dyn_nms_global_spec {
-    nms_common_spec_t common;
-} dyn_nms_global_spec_t;
 #ifdef __cplusplus
 }
 #endif
