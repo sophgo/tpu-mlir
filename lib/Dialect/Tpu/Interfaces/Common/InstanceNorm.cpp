@@ -16,17 +16,31 @@
 static void normlize_f32(const float *input_data, float *output_data,
                          const float *weight_data, const float *bias_data,
                          const int inner_dim, const float eps_) {
+  // The calculation process simulates cmodel
   float mean_data = 0;
+  float mean_data_odd = 0;
+  float mean_data_even = 0;
   float rstd_data = 0;
+  float rstd_data_odd = 0;
+  float rstd_data_even = 0;
+  float scale = 1.0/inner_dim;
   for (int j = 0; j < inner_dim; ++j) {
-    mean_data += input_data[j];
+    if(j % 2 == 0){
+      mean_data_even += input_data[j] * scale;
+    }else{
+      mean_data_odd += input_data[j] * scale;
+    }
   }
-  mean_data /= inner_dim;
+  mean_data = mean_data_odd + mean_data_even;
   for (int j = 0; j < inner_dim; ++j) {
     const float dij = input_data[j] - mean_data;
-    rstd_data += dij * dij;
+    if(j % 2 == 0){
+      rstd_data_even += dij * dij * scale;
+    }else{
+      rstd_data_odd += dij * dij * scale;
+    }
   }
-  rstd_data /= inner_dim;
+  rstd_data = rstd_data_even + rstd_data_odd;
   rstd_data += eps_;
   rstd_data = std::sqrt(rstd_data);
   rstd_data = 1.0f / rstd_data;
