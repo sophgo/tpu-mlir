@@ -122,6 +122,12 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
         elif i.dtype == "i8" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, -128, 127).astype(np.int8).reshape(i.data.shape)
+        elif i.dtype == "i8" and input.dtype == np.int32:
+            data = round_away_from_zero(input * i.qscale + zp)
+            i.data[:] = np.clip(data, -128, 127).astype(np.int8).reshape(i.data.shape)
+        elif i.dtype == "u8" and input.dtype == np.int32:
+            data = round_away_from_zero(input * i.qscale + zp)
+            i.data[:] = np.clip(data,  0, 255).astype(np.int8).reshape(i.data.shape)
         elif i.dtype == "u8" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8).reshape(i.data.shape)
