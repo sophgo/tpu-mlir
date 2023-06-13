@@ -27,12 +27,13 @@ public:
   void runOnOperation() override {
     auto mOp = getOperation();
     RewritePatternSet patterns(mOp.getContext());
-    if (module::isBM1684XFamily()) {
-      populateOptimizeBM1684XPatterns(&patterns);
-    } else if (module::isBM1684Family()) {
+    if (module::isBM1684Family()) {
       populateOptimizeBM1684Patterns(&patterns);
     } else if (module::isCV18xx()) {
       populateOptimizeCV18XXPatterns(&patterns);
+    } else {
+      // 1684x as default
+      populateOptimizeBM1684XPatterns(&patterns);
     }
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
   }
