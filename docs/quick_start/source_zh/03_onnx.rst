@@ -85,6 +85,7 @@ ONNX转MLIR
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
 
+.. _model_transform param:
 
 ``model_transform.py`` 主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
 
@@ -161,6 +162,7 @@ MLIR转F16模型
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_1684x_f16.bmodel
 
+.. _model_deploy param:
 
 ``model_deploy.py`` 的主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
 
@@ -199,6 +201,9 @@ MLIR转F16模型
    * - excepts
      - 否
      - 指定需要排除验证的网络层的名称, 多个用,隔开
+   * - op_divide
+     - 否
+     - cv183x/cv182x/cv181x/cv180x only, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 适用少数特定模型
    * - model
      - 是
      - 指定输出的model文件名称和路径

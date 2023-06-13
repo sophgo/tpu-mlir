@@ -62,7 +62,7 @@ The model conversion command is as follows:
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
 
-For the argument description of ``model_transform``, refer to the section "Compile ONNX Model - ONNX to MLIR".
+For the argument description of ``model_transform``, refer to the section :ref:`The main parameters of model_transform.py <model_transform param>` .
 
 MLIR to BF16 Model
 ~~~~~~~~~~~~~~~~~~~~
@@ -79,7 +79,7 @@ Convert the mlir file to the cvimodel of bf16, the operation is as follows:
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_cv183x_bf16.cvimodel
 
-For the argument description of ``model_deploy.py``, refer to the section "Compile ONNX model - MLIR to F32 model".
+For the argument description of ``model_deploy.py``, refer to the section  :ref:`The main parameters of model_deploy.py <model_deploy param>` .
 
 MLIR to INT8 Model
 ~~~~~~~~~~~~~~~~~~~~
@@ -751,7 +751,7 @@ Model transformation FAQ
 
      .. code-block:: shell
 
-       --tune_thread_num 2   			# default is 5
+       --tune_num 2   			# default is 5
 
   2.5 Does the calibration table support manual modification?
 
@@ -770,7 +770,7 @@ Model transformation FAQ
 
   3.3 Is dynamic shape supported?
 
-    Not supported. If several shapes are fixed, independent cvimodel files can be generated through the form of shared weights.
+    Cvimodel does not support dynamic shape. If several shapes are fixed, independent cvimodel files can be generated through the form of shared weights.
     See :ref:`Merge cvimodel Files <merge weight>` for details.
 
 Model performance evaluation FAQ

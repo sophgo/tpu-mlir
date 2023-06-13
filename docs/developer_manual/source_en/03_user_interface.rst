@@ -217,6 +217,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - excepts
      - N
      - Names of network layers that need to be excluded from validation. Separated by comma
+   * - op_divide
+     - N
+     - cv183x/cv182x/cv181x/cv180x only, Try to split the larger op into multiple smaller op to achieve the purpose of ion memory saving, suitable for a few specific models
    * - model
      - Y
      - Name of output model file (including path)
