@@ -63,79 +63,6 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
   }
 };
 
-struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
-  using OpRewritePattern::OpRewritePattern;
-  TopScaleMergeToConv(MLIRContext *context, PatternBenefit benefit = 9)
-      : OpRewritePattern<ScaleOp>(context, benefit) {}
-
-  LogicalResult matchAndRewrite(ScaleOp op,
-                                PatternRewriter &rewriter) const override {
-    auto formerOp = op.getInput().getDefiningOp();
-    if (!formerOp->hasOneUse() || !isa<ConvOp>(formerOp)) {
-      return failure();
-    }
-    auto conv_op = cast<ConvOp>(formerOp);
-    if (conv_op.getDoRelu()) {
-      return failure();
-    }
-
-    auto cur_scale_op = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
-    auto cur_bias_op = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
-    auto cur_scale_f32 = cur_scale_op.read<float>();
-    auto cur_bias_f32 = cur_bias_op.read<float>();
-
-    auto conv_weight_op =
-        dyn_cast<WeightOp>(conv_op.getFilter().getDefiningOp());
-    auto conv_bias_op = dyn_cast<WeightOp>(conv_op.getBias().getDefiningOp());
-
-    int64_t oc, ic, kh, kw;
-    module::getNCHW(conv_weight_op.getOutput(), oc, ic, kh, kw);
-
-    // merge weight: weight = weight * cur_scale
-    std::vector<float> conv_weight_v(oc * ic * kh * kw, 0);
-    auto conv_weight_f32 = conv_weight_op.read<float>();
-    for (int i = 0; i < oc; ++i) {
-      for (int j = 0; j < kw * kh * ic; ++j) {
-        conv_weight_v[i * ic * kh * kw + j] =
-            conv_weight_f32->at(i * ic * kh * kw + j) * cur_scale_f32->at(i);
-      }
-    }
-    // merge bias: bias = bias * cur_scale + cur_bias
-    std::vector<float> conv_bias_v(oc, 0);
-    if (conv_bias_op != nullptr) {
-      auto conv_bias_f32 = conv_bias_op.read<float>();
-      for (int i = 0; i < oc; ++i) {
-        conv_bias_v[i] =
-            conv_bias_f32->at(i) * cur_scale_f32->at(i) + cur_bias_f32->at(i);
-      }
-    } else {
-      for (int i = 0; i < oc; ++i) {
-        conv_bias_v[i] = cur_bias_f32->at(i);
-      }
-    }
-
-    auto weight_type =
-        RankedTensorType::get({oc, ic, kh, kw}, rewriter.getF32Type());
-    auto conv_weight = WeightOp::create(conv_op, "merged_to_conv_weight",
-                                        conv_weight_v, weight_type);
-    auto bias_type = RankedTensorType::get({oc}, rewriter.getF32Type());
-    auto conv_bias = WeightOp::create(conv_op, "merged_to_conv_bias",
-                                      conv_bias_v, bias_type);
-    conv_op->setOperand(1, conv_weight);
-    conv_op->setOperand(2, conv_bias);
-
-    // update attrs
-    double relu_limit = op.getReluLimit().convertToDouble();
-    formerOp->setLoc(op.getLoc());
-    formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
-    formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
-
-    // remove the scale Op
-    rewriter.replaceOp(op, {op.getInput()});
-    return success();
-  }
-};
-
 struct ConstbinaryMergeToTopScale : public OpRewritePattern<ScaleOp> {
   using OpRewritePattern::OpRewritePattern;
   ConstbinaryMergeToTopScale(MLIRContext *context, PatternBenefit benefit = 6)
@@ -359,7 +286,7 @@ struct TopScaleMergeToMatMul : public OpRewritePattern<ScaleOp> {
 
 void ScaleOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<TopScaleMergeToConv, TopMultiScaleMergeToOne,
+  results.insert<TopMultiScaleMergeToOne,
                  TopScaleMergeToBatchNorm, ScaleShapeAlign,
                  ConstbinaryMergeToTopScale, TopScaleMergeToMatMul>(context);
 }
