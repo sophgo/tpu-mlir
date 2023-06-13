@@ -411,6 +411,9 @@ model_deploy.py
    * - excepts
      - 否
      - 指定需要排除验证的网络层的名称, 多个用,隔开
+   * - op_divide
+     - 否
+     - cv183x/cv182x/cv181x/cv180x only, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 适用少数特定模型
    * - model
      - 是
      - 指定输出的model文件名称和路径

@@ -86,6 +86,8 @@ The model conversion command is as follows:
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
 
+.. _model_transform param:
+
 The main parameters of ``model_transform.py`` are described as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
 
 
@@ -162,6 +164,7 @@ To convert the mlir file to the f16 bmodel, we need to run:
        --tolerance 0.99,0.99 \
        --model yolov5s_1684x_f16.bmodel
 
+.. _model_deploy param:
 
 The main parameters of ``model_deploy.py`` are as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
 
@@ -200,6 +203,9 @@ The main parameters of ``model_deploy.py`` are as follows (for a complete introd
    * - excepts
      - N
      - Names of network layers that need to be excluded from validation. Separated by comma
+   * - op_divide
+     - N
+     - cv183x/cv182x/cv181x/cv180x only, Try to split the larger op into multiple smaller op to achieve the purpose of ion memory saving, suitable for a few specific models
    * - model
      - Y
      - Name of output model file (including path)

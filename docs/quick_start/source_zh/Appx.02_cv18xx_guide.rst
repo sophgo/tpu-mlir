@@ -66,7 +66,7 @@ ONNX转MLIR
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
 
-``model_transform`` 的相关参数说明参考“编译ONNX模型-ONNX转MLIR”部分。
+``model_transform`` 的相关参数说明参考 :ref:`model_transform参数说明 <model_transform param>` 部分。
 
 MLIR转BF16模型
 ~~~~~~~~~~~~~~~~~~~~
@@ -83,7 +83,7 @@ MLIR转BF16模型
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_cv183x_bf16.cvimodel
 
-``model_deploy.py`` 的相关参数说明参考“编译ONNX模型-MLIR转F32模型”部分。
+``model_deploy.py`` 的相关参数说明参考 :ref:`model_deploy参数说明 <model_deploy param>` 部分。
 
 MLIR转INT8模型
 ~~~~~~~~~~~~~~~~~~~~
@@ -167,23 +167,6 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 四张图片对比如 :numref:`yolov5s_result1` ,由于运行环境不同, 最终的效果和精度与 :numref:`yolov5s_result1` 会有些差异。
 
 上述教程介绍了TPU-MLIR编译CV18xx系列芯片的ONNX模型的过程,caffe模型的转换过程可参考“编译Caffe模型”章节,只需要将对应的芯片名称换成实际的CV18xx芯片名称即可。
-
-op-divide
-----------
-在model_deploy阶段通过指定 `--op_divide`, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 不一定适用所有模型。
-
-.. code-block:: shell
-
-   $ model_deploy.py \
-       --mlir yolov5s.mlir \
-       --quantize INT8 \
-       --calibration_table yolov5s_cali_table \
-       --chip cv183x \
-       --test_input yolov5s_in_f32.npz \
-       --test_reference yolov5s_top_outputs.npz \
-       --tolerance 0.85,0.45 \
-       --model yolov5s_cv183x_int8_sym.cvimodel \
-       --op_divide
 
 .. _merge weight:
 
@@ -773,7 +756,7 @@ FAQ
 
      .. code-block:: shell
 
-       --tune_thread_num 2   			#默认为5
+       --tune_num 2   			#默认为5
 
   2.5 是否支持手动修改calibration table?
 
@@ -792,7 +775,7 @@ FAQ
 
   3.3 是否支持动态shape?
 
-    不支持。如果是固定的几种shape可以依据输入的batch_size以及不同的h和w分别生成独立的cvimodel文件,通过共享权重的形式合并为一个cvimodel。详见: :ref:`合并cvimodel模型文件 <merge weight>`
+    cvimodel不支持动态shape。如果是固定的几种shape可以依据输入的batch_size以及不同的h和w分别生成独立的cvimodel文件,通过共享权重的形式合并为一个cvimodel。详见: :ref:`合并cvimodel模型文件 <merge weight>`
 
 模型评估常见问题
 ~~~~~~~~~~~~~~~~~~~~
