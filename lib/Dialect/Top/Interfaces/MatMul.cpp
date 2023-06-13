@@ -17,15 +17,17 @@
 // case 3: [3, 4, 5, 6] * [3, 4, 6, 7] = [3, 4, 5, 7] => batch = 12, M = 5, K = 6, N = 7
 // case 4: [4, 5, 6] * [6,7] = [4, 5, 7] => batch =1, M = 20, K = 6, N = 7
 // case 5: [4, 5, 6] * [6] = [4, 5] => batch =1, M = 20, K = 6, N = 1
+// case 6: [4096] * [4096, 12884] = [1,12884] => batch =1, M = 1, K = 4096, N = 12884
 // clang-format on
 matmul_attr_t top::MatMulOp::parseParam() {
   matmul_attr_t p = {0};
-  auto a_s = module::getShape(getInput());
+  auto a_s = SmallVector<int64_t>(module::getShape(getInput()));
   auto b_s = SmallVector<int64_t>(module::getShape(getRight()));
   auto o_s = SmallVector<int64_t>(module::getShape(getOutput()));
   p.with_bias = !module::isNone(getBias());
   p.do_relu = getDoRelu();
   p.relu_limit = this->getReluLimit().convertToDouble();
+  auto a_dims = a_s.size();
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();
   p.right_transpose = getRightTranspose();
@@ -34,6 +36,13 @@ matmul_attr_t top::MatMulOp::parseParam() {
     b_s.push_back(1);
     o_s.push_back(1);
     b_dims += 1;
+    o_dims += 1;
+  }
+  if (a_dims == 1){
+    assert(p.left_transpose == false);
+    a_s.insert(a_s.begin(), 1);
+    o_s.insert(o_s.begin(), 1);
+    a_dims += 1;
     o_dims += 1;
   }
   p.N = p.right_transpose ? b_s[b_dims - 2] : b_s[b_dims - 1];
