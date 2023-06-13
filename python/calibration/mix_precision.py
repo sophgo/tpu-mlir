@@ -386,7 +386,7 @@ class MixPrecSearcher:
             self.logger.print_dbg(f'invoke_at {op_name}')
             fp32_v = None
             if is_int8_data:
-                fp32_v = model.module.get_fp32_tensor(op_name).copy()
+                fp32_v = model.module.get_fp32_tensor(op_name)
             count = model.parser.get_user_count_by_op_name(op_name)
             if fp32_v is None:
                 data_dict[i][op_name] = [value.copy(), count]
@@ -673,7 +673,7 @@ class MixPrecSearcher:
                         if idx == 0:
                             self.dot_log.add_node_label(op.name, f'input_data_dict:{tmp1}{tmp2}, call infer_from')
                         outputs = mix_model.infer_from(op.name, input_data_dict, extra_input_data_dict, global_compare_layers)
-                        mix_layer_out = mix_model.module.get_fp32_tensor(op.name).copy()
+                        mix_layer_out = mix_model.module.get_fp32_tensor(op.name)
                         fp32_out = self.get_input_fp32_tensor(idx, op.name)
                         cos = cos_sim(mix_layer_out.reshape(-1), fp32_out.reshape(-1))
                         if idx == 0:
@@ -689,7 +689,7 @@ class MixPrecSearcher:
                                     if idx == 0:
                                         self.dot_log.add_node_label(op.name, f'use {next_op} to replace {next_top_op}')
                                     self.int8_activations[idx][next_top_op][0] = mix_model.module.get_tensor(next_op).copy()
-                                    self.int8_activations[idx][next_top_op][2] = mix_model.module.get_fp32_tensor(next_op).copy()
+                                    self.int8_activations[idx][next_top_op][2] = mix_model.module.get_fp32_tensor(next_op)
                     outputs_cos = outputs_cos / self.num_sample
                     self.dot_log.add_node_label(op.name, f'current output cos:{outputs_cos:.6f}')
                     mix_model.clean()
@@ -897,7 +897,7 @@ class MixPrecSearcher:
                 for idx in range(self.num_sample):
                     input_data_dict, extra_input_data_dict = self.collect_op_input_tensor(idx, top_op.name, extra_input, fp_layer_list)
                     outputs = mix_model.infer_from(top_op.name, input_data_dict, extra_input_data_dict, global_compare_layers)
-                    mix_layer_out = mix_model.module.get_fp32_tensor(top_op.name).copy()
+                    mix_layer_out = mix_model.module.get_fp32_tensor(top_op.name)
                     fp32_out = self.get_input_fp32_tensor(idx, top_op.name)
                     layer_cos += cos_sim(mix_layer_out, fp32_out)
                     outputs_cos += self._loss(outputs, predictions_gt[idx], layers_rate)
