@@ -38,7 +38,7 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(GRUOp, buffer_type);
     GRUOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == GRUOp.getBuffer();
+      return operand.get() == GRUOp.getBuffer() && operand.getOwner() == GRUOp;
     });
     return success();
   }
@@ -60,7 +60,7 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(lstmOp, buffer_type);
     lstmOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == lstmOp.getBuffer();
+      return operand.get() == lstmOp.getBuffer() && operand.getOwner() == lstmOp;
     });
     return success();
   }
@@ -102,7 +102,7 @@ public:
         auto buffer_type = RankedTensorType::get(buffer_shape, type);
         auto buffer = tpu::BufferOp::create(reduceOp, buffer_type);
         reduceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-          return operand.get() == reduceOp.getBuffer();
+          return operand.get() == reduceOp.getBuffer() && operand.getOwner() == reduceOp;
         });
       }
     } else if (module::isBM1684Family()) {
@@ -141,7 +141,7 @@ public:
         auto buffer_type = RankedTensorType::get(buffer_shape, type);
         auto buffer = tpu::BufferOp::create(reduceOp, buffer_type);
         reduceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-          return operand.get() == reduceOp.getBuffer();
+          return operand.get() == reduceOp.getBuffer() && operand.getOwner() == reduceOp;
         });
       }
     }
@@ -265,7 +265,7 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(softmaxOp, buffer_type);
     softmaxOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == softmaxOp.getBuffer();
+      return operand.get() == softmaxOp.getBuffer() && operand.getOwner() == softmaxOp;
     });
     return success();
   }
@@ -368,7 +368,7 @@ public:
         RankedTensorType::get(module::getShape(op.getInput()), type);
     auto buffer = tpu::BufferOp::create(op, buffer_type);
     op.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == op.getBuffer();
+      return operand.get() == op.getBuffer() && operand.getOwner() == op;
     });
     return success();
   }
@@ -432,7 +432,7 @@ public:
     auto buffer_type = RankedTensorType::get({(int64_t) buffer_size}, type);
     auto buffer = tpu::BufferOp::create(Op, buffer_type);
     Op.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == Op.getBuffer();
+      return operand.get() == Op.getBuffer() && operand.getOwner() == Op;
     });
     return success();
   }
@@ -623,7 +623,7 @@ public:
           auto buffer = tpu::BufferOp::create(tileOp, buffer_type);
           tileOp.getBuffer().replaceUsesWithIf(
               buffer, [&](OpOperand &operand) {
-                return operand.get() == tileOp.getBuffer();
+                return operand.get() == tileOp.getBuffer() && operand.getOwner() == tileOp;
               });
         }
       }
@@ -641,7 +641,7 @@ public:
           auto buffer = tpu::BufferOp::create(tileOp, buffer_type);
           tileOp.getBuffer().replaceUsesWithIf(
               buffer, [&](OpOperand &operand) {
-                return operand.get() == tileOp.getBuffer();
+                return operand.get() == tileOp.getBuffer() && operand.getOwner() == tileOp;
               });
         }
       } else {
@@ -676,7 +676,7 @@ public:
       auto buffer_type = RankedTensorType::get(buffer_shape, type);
       auto buffer = tpu::BufferOp::create(padOp, buffer_type);
       padOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-        return operand.get() == padOp.getBuffer();
+        return operand.get() == padOp.getBuffer() && operand.getOwner() == padOp;
       });
       return success();
     } else if (shape.size() == 4) {
@@ -686,7 +686,7 @@ public:
       auto buffer_type = RankedTensorType::get(buffer_shape, type);
       auto buffer = tpu::BufferOp::create(padOp, buffer_type);
       padOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-        return operand.get() == padOp.getBuffer();
+        return operand.get() == padOp.getBuffer() && operand.getOwner() == padOp;
       });
       return success();
     } else if (shape.size() == 5) {
@@ -697,7 +697,7 @@ public:
       auto buffer_type = RankedTensorType::get(buffer_shape, type);
       auto buffer = tpu::BufferOp::create(padOp, buffer_type);
       padOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-        return operand.get() == padOp.getBuffer();
+        return operand.get() == padOp.getBuffer() && operand.getOwner() == padOp;
       });
       return success();
     } else {
@@ -725,7 +725,7 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(GatherOp, buffer_type);
     GatherOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == GatherOp.getBuffer();
+      return operand.get() == GatherOp.getBuffer() && operand.getOwner() == GatherOp;
     });
     return success();
   }
@@ -751,7 +751,7 @@ public:
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(Pool3DOp, buffer_type);
     Pool3DOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == Pool3DOp.getBuffer();
+      return operand.get() == Pool3DOp.getBuffer() && operand.getOwner() == Pool3DOp;
     });
     return success();
   }
