@@ -1,6 +1,3 @@
-## TPU1686 2023-06-14
-commit id: d5769047ad9422da345533b62347e5e2fdb09e4c
-
 ## TPU1684 2023-06-05
 sha256: 2ff13a07d2d96bd24d5147b970d6e1bc39a52067
 
@@ -12,8 +9,8 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1686 2023-06-13
-sha256: 9a862d5ff8c167aaa234b9909072667a616a8851
+## TPU1686 2023-06-14
+sha256: b89e9f035156d47acde1c4a42b298cdec6ec54a7
 
 ``` bash
 pushd  nntoolchain/net_compiler/
