@@ -14,15 +14,15 @@ import re
 from mlir.ir import *
 from mlir.dialects import quant
 
-
 class Operation:
-
+    cache_map = {}
     def __init__(self, op, body, idx):
         self.name = Operation.name(op)
         self.type = Operation.type(op)
         self.loc = Operation.loc(op)
         self.shape = Operation.shape(op)
-        self.opds = Operation.operands(op, body, idx)
+        self.opds = Operation.operands_v2(op, body, idx)
+
         self.attrs = Operation.attrs(op)
         self.attrs = Operation.append_attr(op, self.attrs)
         self.outputs = Operation.outputs(op)
@@ -135,6 +135,18 @@ class Operation:
                         opds.append(Operation.name(prev_op))
         return opds
 
+    @staticmethod
+    def operands_v2(op, body, idx):
+        opds = []
+
+        for opd in op.operands:
+            if opd in Operation.cache_map:
+                for i,prev_op_name in Operation.cache_map[opd]:
+                    if i < idx:
+                        opds.append(prev_op_name)
+
+        return opds
+
 
 class MlirParser:
 
@@ -152,6 +164,21 @@ class MlirParser:
         self.module_chip = eval(self.attrs['module.chip'])
         self.ops = []
         self.return_op = None
+
+        cache_map = {}
+        print("load cache map")
+        for i in range(len(self.body.operations)):
+            # prev_op = body.operations[j]
+            prev_op = self.body.operations[i]
+            if Operation.type(prev_op) not in [
+                    "tpu.None",
+                    "top.None",
+                    "tpu.load_weight",
+                    "tpu.weight_file",
+            ] and len(prev_op.results) > 0:
+                cache_map.setdefault(prev_op.results[0],[]).append([i, Operation.name(prev_op)])
+        Operation.cache_map = cache_map
+
         for i in range(len(self.body.operations)):
             op = self.body.operations[i]
             type = Operation.type(op)
