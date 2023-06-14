@@ -724,6 +724,9 @@ def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
   );
 
   let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_MinConstOp: Tpu_Op<"MinConst", [
@@ -747,6 +750,9 @@ def Tpu_MinConstOp: Tpu_Op<"MinConst", [
   );
 
   let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_ActiveOp: Tpu_Op<"Active",
@@ -881,6 +887,9 @@ def Tpu_LutOp: Tpu_Op<"Lut",
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_LutBF16Op: Tpu_Op<"LutBF16",
@@ -1391,6 +1400,9 @@ def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_PermuteOp: Tpu_Op<"Permute", [DeclareOpInterfaceMethods<IndexingMapsInterface>]> {

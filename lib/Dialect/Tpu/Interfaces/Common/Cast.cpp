@@ -136,8 +136,13 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     //         p.outputs[0][i] = saturate(v, out_type);
     //       }
     //     }
+  } else if (in_type.isF32() && out_type.isInteger(32)){
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; i++) {
+      p.outputs[0][i] = round(p.inputs[0][i]);
+    }
   } else {
-    std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);
+      std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);
   }
 
   return success();

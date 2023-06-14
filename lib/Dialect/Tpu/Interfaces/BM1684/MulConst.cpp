@@ -92,13 +92,7 @@ void tpu::MulConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
 // ======================================
 
 uint32_t tpu::MulConstOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  uint32_t fw_ir_length = 0;
-  ir_layer_info_t *mulconst_layer = (ir_layer_info_t *)ir_layer_info;
-  dynamic_common_ir_layer_info(mulconst_layer, getInput(), getOutput());
-  assign_fw_param(
-      (void *)&mulconst_layer->fw_layer_param_u.fw_const_binary_layer_param);
-  fw_ir_length += sizeof(fw_const_binary_layer_param_t);
-  return fw_ir_length;
+  GLOBAL_IR_COMMON(const_binary);
 }
 
 int64_t tpu::MulConstOp::get_fw_type_bm1684() { return FW_BMNET_CONST_BINARY; }
@@ -109,20 +103,16 @@ int64_t tpu::MulConstOp::get_fw_type_bm1684() { return FW_BMNET_CONST_BINARY; }
 
 int32_t tpu::MulConstOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   int fw_ir_length = 0;
-  ir_layer_info_t *mulconst_layer = (ir_layer_info_t *)ir_layer_info;
-  dynamic_common_ir_layer_info(mulconst_layer, getInput(), getOutput());
-  assign_fw_param(
-      (void *)&mulconst_layer->fw_layer_param_u.fw_const_binary_layer_param);
-  fw_ir_length += sizeof(fw_const_binary_layer_param_t);
+  IR_PARAM_COMMON(const_binary);
 
   // input tensor
-  dynamic_push_back_local_tensor(mulconst_layer->ir_tensor_info_v, getInput());
+  dynamic_push_back_local_tensor(layer_info->ir_tensor_info_v, getInput());
 
   // output tensor
-  dynamic_push_back_local_tensor(mulconst_layer->ir_tensor_info_v, getOutput());
+  dynamic_push_back_local_tensor(layer_info->ir_tensor_info_v, getOutput());
 
-  if (DSIZE_FP32 != mulconst_layer->data_size) {
-    dynamic_push_back_local_buffer(mulconst_layer->ir_tensor_info_v,
+  if (DSIZE_FP32 != layer_info->data_size) {
+    dynamic_push_back_local_buffer(layer_info->ir_tensor_info_v,
                                    get_tensor_id(getInput()), getOutput());
     fw_ir_length += sizeof(uint32_t);
   }

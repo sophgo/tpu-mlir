@@ -67,6 +67,10 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
     int8_t multiplier_int8 = 0;
     float coeff = coeff_v[i];
     quantizeToInt8(&coeff, &multiplier_int8, 1, scale);
+    if (multiplier_int8 < 0 || multiplier_int8 > 127) {
+      lowering_common_f32<tpu::AddOp>(rewriter, op);
+      return;
+    }
     multiplier_v[i] = (double)multiplier_int8;
   }
   std::vector<NamedAttribute> attrs;

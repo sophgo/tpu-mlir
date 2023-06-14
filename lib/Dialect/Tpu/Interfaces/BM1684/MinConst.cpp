@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
@@ -75,14 +75,28 @@ void tpu::MinConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
 }
 
 uint32_t tpu::MinConstOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+  GLOBAL_IR_COMMON(const_binary);
 }
+
 int64_t tpu::MinConstOp::get_fw_type_bm1684() {
-  return -1;
+  return FW_BMNET_CONST_BINARY;
 }
 
 int32_t tpu::MinConstOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+  int fw_ir_length = 0;
+  IR_PARAM_COMMON(const_binary);
+  // input tensor
+  dynamic_push_back_local_tensor(layer_info->ir_tensor_info_v, getInput());
+  // output tensor
+  dynamic_push_back_local_tensor(layer_info->ir_tensor_info_v, getOutput());
+  if (DSIZE_FP32 != layer_info->data_size) {
+    dynamic_push_back_local_buffer(layer_info->ir_tensor_info_v,
+                                   get_tensor_id(getInput()), getOutput());
+    fw_ir_length += sizeof(uint32_t);
+  }
+  // compute fw ir info length for input and output
+  fw_ir_length += 2 * 2 * sizeof(uint32_t);
+  // add fw ir length for output consumer number
+  fw_ir_length += sizeof(uint32_t);
+  return fw_ir_length;
 }

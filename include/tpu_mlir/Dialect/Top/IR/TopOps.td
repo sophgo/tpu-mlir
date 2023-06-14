@@ -523,6 +523,7 @@ def Top_MinOp: Top_Op<"Min"> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_MaxOp: Top_Op<"Max"> {
@@ -537,6 +538,7 @@ def Top_MaxOp: Top_Op<"Max"> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu, SupportPermuteMove]> {

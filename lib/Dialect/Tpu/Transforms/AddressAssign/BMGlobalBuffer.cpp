@@ -191,6 +191,7 @@ public:
     delete[] begin_index;
     delete[] end_index;
     delete[] stride;
+    if (!buffer_size) return failure();
     // create bufferOp
     std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
     auto type = module::getStorageType(sliceOp.getOutput());

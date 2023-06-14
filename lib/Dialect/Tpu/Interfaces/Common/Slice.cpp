@@ -296,7 +296,6 @@ void tpu::SliceOp::assign_fw_param(void *param) {
     slice_param.stride[i] = steps->at(i);
   }
   if (module::isUniformQuantized(getInput())) {
-    llvm_unreachable("need varify");
     slice_param.buffer_global_addr = module::getAddress(getBuffer());
     auto input_shape = module::getShape(getInput());
     uint64_t input_size = ceiling_func(input_shape[0], (int64_t)4) * 4;
