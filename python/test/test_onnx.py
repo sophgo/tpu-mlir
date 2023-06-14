@@ -202,7 +202,7 @@ class ONNX_IR_TESTER(object):
             "TorchNonZero":         (self.test_TorchNonZero,        N, Y, Y, N),
             "TorchReflectionPad":   (self.test_TorchReflectionPad,  N, Y, Y, Y),
             "TorchRoiAlign":        (self.test_TorchRoiAlign,       N, Y, Y, N),
-            "TorchScatterND":       (self.test_TorchScatterND,      N, N, N, Y),
+            "TorchScatterND":       (self.test_TorchScatterND,      N, Y, Y, Y),
             "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y),
             "TorchStd":             (self.test_TorchStd,            N, Y, Y, Y),
             "TorchWhere":           (self.test_TorchWhere,          N, Y, Y, N),
@@ -248,7 +248,7 @@ class ONNX_IR_TESTER(object):
             "ReduceFuse":       (self.test_ReduceFuse,      Y, Y, Y, Y),
             "SwapDimInner":     (self.test_SwapDimInner,    Y, Y, Y, N),
             "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N),
-            "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, N, N),
+            "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y),
             #f32 mode works finely
             #"If":               (self.test_If,    N, Y, N, N),

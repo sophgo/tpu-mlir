@@ -72,6 +72,7 @@ full_model_list = {
     "ssd-12":                     (N,      Y,       Y,      N,      N,      N,      N,      Y),
     "ultraface_640":              (N,      Y,       Y,      N,      N,      N,      N,      Y),
     "unet":                       (N,      N,       N,      N,      N,      N,      Y,      N),
+    "unet_plusplus":              (N,      N,       Y,      N,      N,      N,      N,      N),
     "vgg16":                      (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov3":                     (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
