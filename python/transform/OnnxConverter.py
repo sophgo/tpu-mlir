@@ -1677,7 +1677,7 @@ class OnnxConverter(BaseConverter):
     def convert_einsum_op(self, onnx_node):
         assert (onnx_node.op_type == "Einsum")
         equation = onnx_node.attrs.get("equation")
-        
+
         if equation == b"i,j->ij": # outer product
             lhs = self.getOperand(onnx_node.inputs[0])
             rhs = self.getOp(onnx_node.inputs[1])
@@ -2447,7 +2447,8 @@ class OnnxConverter(BaseConverter):
         out_shapes = [None, None]
         out_needs = [False, False]
         for idx, out in enumerate(onnx_node.outputs):
-            if len(out) > 0 and self.check_need(out):
+            #topk at the hw need two output
+            if len(out) > 0:
                 loc_names[idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
