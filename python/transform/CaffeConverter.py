@@ -17,7 +17,7 @@ from google.protobuf import text_format
 from utils.pad_setting import set_caffe_pad
 import mlir.dialects.top as top
 from mlir.ir import *
-
+import my_layer
 
 class CaffeConverter(BaseConverter):
 
