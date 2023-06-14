@@ -22,7 +22,7 @@ struct RemoveUnuseOutput : public OpRewritePattern<TyOp> {
   LogicalResult matchAndRewrite(TyOp op,
                                 PatternRewriter &rewriter) const override {
     for (Value out : op.getResults()) {
-      if (out.getUsers().empty()) {
+      if (out.getUsers().empty() && !isa<tpu::TopKOp, top::TopKOp>(op)) {
         out.setType(mlir::NoneType::get(rewriter.getContext()));
       }
     }
