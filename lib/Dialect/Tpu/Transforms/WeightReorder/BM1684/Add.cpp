@@ -21,13 +21,22 @@ LogicalResult WeightReorder<tpu::AddOp, int8_t>::matchAndRewrite(
     if (module::isWeight(op.getInputs()[i]) &&
         module::getStorageType(op.getInputs()[i]).isInteger(8)) {
       auto castOp = cast<top::WeightOp>(op.getInputs()[i].getDefiningOp());
+      rewriter.setInsertionPointAfter(castOp);
+      auto name = module::getName(op.getInputs()[i]);
+      auto new_loc = NameLoc::get(
+          rewriter.getStringAttr(name.str() + "_convert_to_activation"));
+
       auto value = op.getInputs()[i];
       auto value_ptr = castOp.read<int8_t>();
       auto value_new = BM1684::instance().Convert1NTo4N(value, value_ptr);
       auto tensor_type = value.getType().cast<RankedTensorType>();
-      auto newOp = top::WeightOp::create(castOp, "reorderd", *value_new,
-                                         tensor_type, STORE_MODE_4N);
-      op.setOperand(i, newOp);
+      auto new_weight_value = top::WeightOp::create(
+          castOp, "reorderd", *value_new, tensor_type, STORE_MODE_4N);
+      auto weight2activation_op = rewriter.create<tpu::Weight2ActivationOp>(
+          castOp.getLoc(), tensor_type, ValueRange{new_weight_value});
+
+      castOp->setLoc(new_loc);
+      castOp.replaceAllUsesWith(weight2activation_op.getOperation());
       return success();
     }
   }

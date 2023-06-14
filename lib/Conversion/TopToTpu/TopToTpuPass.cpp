@@ -111,8 +111,12 @@ struct ForwardMulConst : public OpRewritePattern<top::MulConstOp> {
     auto const_v = op.getConstVal().convertToDouble();
     auto in_min = in_qtype.getMin();
     auto in_max = in_qtype.getMax();
-    auto out_max = (const_v >= 0 ? in_max : in_min) * const_v;
-    auto out_min = (const_v >= 0 ? in_min : in_max) * const_v;
+    auto out_max = (const_v >= 0 ? in_max : in_min);
+    auto out_min = (const_v >= 0 ? in_min : in_max);
+    if (const_v != (double)0) {
+      out_max *= const_v;
+      out_min *= const_v;
+    }
     if (module::isCalibratedType(out)) {
       auto out_qtype = module::getCalibratedType(out);
       if (out_max == out_qtype.getMax() && out_min == out_qtype.getMin()) {

@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -38,4 +38,14 @@ LogicalResult tpu::MulShiftOp::inference(InferenceParameter &p) {
     p.outputs[0][i] = saturate(v, sType);
   }
   return success();
+}
+
+void tpu::MulShiftOp::assign_fw_param(void *param) {
+  fw_mulshift_layer_param_t layer_param = {0};
+  layer_param.ic = module::getShape(getInput())[1];
+  layer_param.mulvalue = getMultiplier();
+  layer_param.mulshiftnum = getRshift();
+  layer_param.opd0_sign = module::isSign(getInput());
+  layer_param.res_sign = module::isSign(getOutput());
+  memcpy(param, &layer_param, sizeof(fw_mulshift_layer_param_t));
 }

@@ -147,6 +147,7 @@ void tpu::MulOp::assign_fw_param(void *param) {
     else if (dtype == DTYPE_UINT16)
       fw_broadcast_binary_layer_param->opd_sign[i] = 3;
   }
+  fw_broadcast_binary_layer_param->opd_sign[2] = module::isSign(getOutput());
   int a_shape[MAX_SHAPE_DIMS], b_shape[MAX_SHAPE_DIMS];
   module::getGlobalShape(getInputs()[0], a_shape);
   module::getGlobalShape(getInputs()[1], b_shape);

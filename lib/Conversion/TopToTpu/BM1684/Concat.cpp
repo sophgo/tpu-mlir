@@ -30,9 +30,16 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter, top::ConcatOp op,
   }
   auto op_c = op.getOperation();
   std::vector<Value> operands;
-  for (auto in : op.getInputs()) {
-    auto new_in = do_transfer(in, op.getOutput(), asymmetric);
-    operands.push_back(new_in);
+  llvm::SmallDenseMap<Value, Value> valueMap;
+  for (int i = 0; i < op.getInputs().size(); ++i) {
+    auto in = op.getInputs()[i];
+    if (valueMap.contains(in)) {
+      operands.push_back(valueMap.at(in));
+    } else {
+      auto new_in = do_transfer(in, op.getOutput(), asymmetric);
+      valueMap[in] = new_in;
+      operands.push_back(new_in);
+    }
   }
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   std::vector<NamedAttribute> attrs;

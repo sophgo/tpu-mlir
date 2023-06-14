@@ -112,7 +112,6 @@ void tpu::LeakyReluOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
 }
 
 uint32_t tpu::LeakyReluOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
-  llvm_unreachable("need verify");
   GLOBAL_IR_COMMON(prelu);
 }
 
