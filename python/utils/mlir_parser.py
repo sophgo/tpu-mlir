@@ -166,9 +166,7 @@ class MlirParser:
         self.return_op = None
 
         cache_map = {}
-        print("load cache map")
         for i in range(len(self.body.operations)):
-            # prev_op = body.operations[j]
             prev_op = self.body.operations[i]
             if Operation.type(prev_op) not in [
                     "tpu.None",
