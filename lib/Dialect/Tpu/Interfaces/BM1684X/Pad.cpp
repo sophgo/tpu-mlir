@@ -9,9 +9,9 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -35,7 +35,7 @@ void tpu::PadOp::codegen_global_bm1684x() {
     param.pad[i][1] = pads_4[i + 4];
     out_shape[i] += (pads_4[i] + pads_4[i + 4]);
   }
-  param.type = getMode();
+  param.type = (int)getMode();
   param.constant = getVal().convertToDouble();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
@@ -69,7 +69,7 @@ int64_t tpu::PadOp::dyn_codegen_global_bm1684x(void *buffer) {
     param.pad[i][1] = pads_4[i + 4];
     out_shape[i] += (pads_4[i] + pads_4[i + 4]);
   }
-  param.type = getMode();
+  param.type = (int)getMode();
   param.constant = getVal().convertToDouble();
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }

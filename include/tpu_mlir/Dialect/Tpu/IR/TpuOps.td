@@ -124,6 +124,20 @@ def Tpu_RequantMode: I32EnumAttr<"RequantMode",
 }
 def Tpu_RequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_RequantMode, "rq_mode">;
 
+def Tpu_PaddingMode: I32EnumAttr<"PaddingMode",
+    "requant mode supported by PadOp",
+    [
+      I32EnumAttrCase<"constant", 0>,
+      I32EnumAttrCase<"reflect", 1>,
+      I32EnumAttrCase<"symmetric", 2>,
+      I32EnumAttrCase<"edge", 3>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_PaddingModeAttr : EnumAttr<Tpu_Dialect, Tpu_PaddingMode, "Pad_Mode">;
+
+
 def Tpu_RoundMode: I32EnumAttr<"RoundMode",
     "round mode supported by Round",
     [
@@ -1435,7 +1449,7 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
     AnyTensorOrNone:$buffer,
     I64ArrayAttr:$paddings,
     DefaultValuedAttr<F64Attr, "0.0">:$val,
-    DefaultValuedAttr<I64Attr, "0">:$mode
+    DefaultValuedAttr<Tpu_PaddingModeAttr, "tpu::PaddingMode::constant">:$mode
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{

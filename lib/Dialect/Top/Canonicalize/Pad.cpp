@@ -33,8 +33,8 @@ struct TopFusePad : public OpRewritePattern<PadOp> {
     int pad_dim = tensor_dim - 2;
 
     // only const pad
-    auto pad_mode = op->getAttr("mode").cast<IntegerAttr>().getInt();
-    if (pad_mode != 0)
+    auto pad_mode = op.getMode();
+    if (pad_mode != "constant")
       return failure();
 
     // check next op, pad_value and pad algo

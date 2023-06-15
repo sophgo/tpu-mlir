@@ -1341,24 +1341,24 @@ class TorchConverter(BaseConverter):
         op = self.getOp(torch_node.inputs[0])
         pads = self.const_val[torch_node.inputs[1]]
         val = 0.0
-        pad_modes = {"constant": 0, "reflect": 1, "replicate": 3}
         if (mode == 'reflect' or mode == 'replicate'):
-            pad_mode = pad_modes[mode]
+            pass
         elif (mode == 'constant'):
-            pad_mode = pad_modes[mode]
             val = self.const_val[torch_node.inputs[2]]
         else:
-            pad_mode = pad_modes[self.const_val[torch_node.inputs[2]]]
-            if pad_mode == 0:
+            mode= self.const_val[torch_node.inputs[2]]
+            if mode == "constant":
                 if torch_node.inputs[3] in self.const_val:
                     val = self.const_val[torch_node.inputs[3]]
                 elif self.mlir.none_op == self.getOp(torch_node.inputs[3]):
                     val = 0
-
+        if mode == "replicate":
+            mode = "edge"
+        assert(mode in ("constant", "reflect", "edge"))
         new_op = top.PadOp(self.unranked_type,
                            op,
                            paddings=pads,
-                           mode=pad_mode,
+                           mode=StringAttr.get(mode),
                            val=val,
                            loc=self.get_loc(torch_node.name),
                            ip=self.mlir.insert_point).output

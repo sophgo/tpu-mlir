@@ -316,8 +316,7 @@ void cvi_backend_tg_crop_kernel(uint32_t layer_id, gaddr_t ga_input,
 void cvi_backend_tg_pad_kernel(uint32_t layer_id, gaddr_t ga_ifmap,
                                gaddr_t ga_ofmap, int input_n, int input_c,
                                int input_h, int input_w, int *pads,
-                               float const_val, const char *mode,
-                               cvk_fmt_t fmt);
+                               float const_val, int mode, cvk_fmt_t fmt);
 
 void cvi_backend_tg_reflectionpad_kernel(uint32_t layer_id, gaddr_t ga_input,
                                          gaddr_t ga_output, gaddr_t ga_left,
@@ -418,14 +417,15 @@ void cvi_backend_tg_scatterND_kernel(gaddr_t ga_input, gaddr_t ga_updates,
                                      const std::vector<int> &o_stride,
                                      const uint32_t offset, cvk_fmt_t fmt);
 
-  void cvi_backend_tg_yuv420_csc_kernel(
-      uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output, int n, int c,
-      int h, int w, const std::vector<int> &order, cvk_fmt_t fmt,
-      int32_t pixel_type, int32_t y_align, int32_t w_align,
-      int32_t channel_align);
+void cvi_backend_tg_yuv420_csc_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                      gaddr_t ga_output, int n, int c, int h,
+                                      int w, const std::vector<int> &order,
+                                      cvk_fmt_t fmt, int32_t pixel_type,
+                                      int32_t y_align, int32_t w_align,
+                                      int32_t channel_align);
 
-  void cvi_backend_tg_argmax_kernel(uint32_t layer_id, gaddr_t ga_input,
-                                    gaddr_t ga_output, int outer, int inner,
-                                    int w_tile_size, cvk_fmt_t fmt);
+void cvi_backend_tg_argmax_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                  gaddr_t ga_output, int outer, int inner,
+                                  int w_tile_size, cvk_fmt_t fmt);
 } // namespace backend
 } // namespace tpu_mlir

@@ -31,7 +31,7 @@ LogicalResult top::PadOp::init(InferenceParameter &p) {
   // set pads
   float *dst = p.outputs[0];
   auto total_num = module::getNumElements(getOutput());
-  if (getMode() == 0) {
+  if (getMode() == "constant") {
     float val_ = getVal().convertToDouble();
     for (int i = 0; i < total_num; i++) {
       dst[i] = val_;
@@ -63,7 +63,7 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
   const float *src = p.inputs[0];
   float *dst = p.outputs[0];
 
-  if (pad_mode == 0) {
+  if (pad_mode == "constant") {
     // when pads < 0 means cutoff
     int32_t start_in = pads[0] < 0 ? -pads[0] : 0;
     int32_t start_ic = pads[1] < 0 ? -pads[1] : 0;
@@ -115,7 +115,7 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
           memcpy(dst + output_offset, src + input_offset, sizeof(float) * iw);
         }
 
-        if (pad_mode == 1) {
+        if (pad_mode == "reflect") {
           // Left and right. Loop over the rows not in the vertical padding
           for (int h = pads[2]; h < oh - pads[6]; ++h) {
             // Offset to current row start (in padding of this row)
@@ -154,7 +154,7 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
             std::copy(srcptr, srcptr + ow, dstptr + h * ow);
             srcptr -= ow;
           }
-        } else if (pad_mode == 3) {
+        } else if (pad_mode == "edge") {
           // Edge pad to be implemented
 
           // Left and right. Loop over the rows not in the vertical padding

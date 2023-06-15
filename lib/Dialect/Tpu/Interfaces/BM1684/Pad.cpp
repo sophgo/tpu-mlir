@@ -28,7 +28,7 @@ void tpu::PadOp::codegen_global_bm1684() {
   for (int i = 0; i < 2 * dims; i++) {
     pads_n.push_back(pads->at(i));
   }
-  int type = getMode();
+  int type = (int)getMode();
   float constant = getVal().convertToDouble();
   if (dims <= 4) {
     int in_shape[4] = {0};
@@ -38,8 +38,7 @@ void tpu::PadOp::codegen_global_bm1684() {
       if (i < dims) {
         p_pad[i][0] = pads_n[i];
         p_pad[i][1] = pads_n[i + dims];
-      }
-      else {
+      } else {
         p_pad[i][0] = 0;
         p_pad[i][1] = 0;
       }
@@ -122,7 +121,7 @@ void tpu::PadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   for (int i = 0; i < 2 * dims; i++) {
     pads_n.push_back(pads->at(i));
   }
-  int type = getMode();
+  int type = (int)getMode();
   float constant = getVal().convertToDouble();
   if (dims <= 4) {
     int in_shape[4] = {0};
@@ -132,8 +131,7 @@ void tpu::PadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       if (i < dims) {
         p_pad[i][0] = pads_n[i];
         p_pad[i][1] = pads_n[i + dims];
-      }
-      else {
+      } else {
         p_pad[i][0] = 0;
         p_pad[i][1] = 0;
       }
@@ -173,10 +171,8 @@ void tpu::PadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   }
 }
 
-uint32_t tpu::PadOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::PadOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   GLOBAL_IR_COMMON(pad);
 }
 
-int64_t tpu::PadOp::get_fw_type_bm1684() {
-  return FW_BMNET_PAD;
-}
+int64_t tpu::PadOp::get_fw_type_bm1684() { return FW_BMNET_PAD; }

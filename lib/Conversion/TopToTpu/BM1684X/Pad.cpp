@@ -13,6 +13,10 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void PadLowering::LoweringF32(PatternRewriter &rewriter, top::PadOp op) const {
+  auto op_ = op.getOperation();
+  auto mode = tpu::symbolizePaddingMode(op.getMode())
+                  .value_or(tpu::PaddingMode::constant);
+  op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), mode));
   lowering_common_f32<tpu::PadOp>(rewriter, op, 4);
 }
 void PadLowering::LoweringINT4(PatternRewriter &rewriter, top::PadOp op,
@@ -35,22 +39,35 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   val = std::round(val / in_scale + in_zp);
   attrs.push_back(rewriter.getNamedAttr("paddings", op.getPaddingsAttr()));
   attrs.push_back(rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(val)));
-  attrs.push_back(rewriter.getNamedAttr("mode", op.getModeAttr()));
-
+  auto m = tpu::symbolizePaddingMode(op.getMode()).value_or(tpu::PaddingMode::constant);
+  attrs.push_back(rewriter.getNamedAttr(
+      "mode", tpu::PaddingModeAttr::get(op->getContext(), m)));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::PadOp>(op, newType, operands, attrs);
 }
 
 void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
+  auto op_ = op.getOperation();
+  auto mode = tpu::symbolizePaddingMode(op.getMode())
+                  .value_or(tpu::PaddingMode::constant);
+  op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), mode));
   lowering_common_bf16<tpu::PadOp>(rewriter, op, 4);
 }
 
 void PadLowering::LoweringF16(PatternRewriter &rewriter, top::PadOp op) const {
+  auto op_ = op.getOperation();
+  auto mode = tpu::symbolizePaddingMode(op.getMode())
+                  .value_or(tpu::PaddingMode::constant);
+  op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), mode));
   lowering_common_f16<tpu::PadOp>(rewriter, op, 4);
 }
 
 void PadLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::PadOp op) const {
+  auto op_ = op.getOperation();
+  auto mode = tpu::symbolizePaddingMode(op.getMode())
+                  .value_or(tpu::PaddingMode::constant);
+  op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), mode));
   lowering_common<tpu::PadOp>(rewriter, op, op.getOutput().getType(), 4);
 }
 
