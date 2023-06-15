@@ -122,25 +122,3 @@ Execute the following command to convert to the INT8 symmetric quantized model:
        --model mobilenet_v2_1684x_int8_sym.bmodel
 
 After compilation, a file named ``mobilenet_v2_1684x_int8_sym.bmodel`` is generated.
-
-
-Compile to INT8 asymmetric quantized model
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Execute the following command to convert to the INT8 asymmetric quantized model:
-
-.. code-block:: shell
-
-   $ model_deploy.py \
-       --mlir mobilenet_v2.mlir \
-       --quantize INT8 \
-       --asymmetric \
-       --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684x \
-       --test_input mobilenet_v2_in_f32.npz \
-       --test_reference mobilenet_v2_top_outputs.npz \
-       --tolerance 0.95,0.69 \
-       --model mobilenet_v2_1684x_int8_asym.bmodel
-
-
-After compilation, a file named ``mobilenet_v2_1684x_int8_asym.bmodel`` is generated.

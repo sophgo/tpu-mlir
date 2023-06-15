@@ -79,7 +79,6 @@
     $ model_deploy.py \
        --mlir resnet.mlir \
        --quantize INT8 \
-       # --asymmetric \
        --calibration_table somenet_cali_table \
        --chip bm1684x \
        --test_input somenet_in_f32.npz \
@@ -135,7 +134,6 @@
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \
        --quantize INT8 \
-       --asymmetric \
        --chip bm1684x \
        --test_input resnet50_tf_in_f32.npz \
        --test_reference resnet50_tf_top_outputs.npz \

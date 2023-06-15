@@ -63,11 +63,10 @@ This model is a tflite asymmetric quantized model, which can be converted into a
     $ model_deploy.py \
         --mlir mobilebert_tf.mlir \
         --quantize INT8 \
-        --asymmetric \
         --chip bm1684x \
         --test_input mobilebert_tf_in_f32.npz \
         --test_reference mobilebert_tf_top_outputs.npz \
-        --model mobilebert_tf_bm1684x_int8_asym.bmodel
+        --model mobilebert_tf_bm1684x_int8.bmodel
 
 
-Once compiled, a file named ``mobilebert_tf_bm1684x_int8_asym.bmodel`` is generated.
+Once compiled, a file named ``mobilebert_tf_bm1684x_int8.bmodel`` is generated.
