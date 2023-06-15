@@ -58,18 +58,17 @@ TFLite转MLIR
 MLIR转模型
 ------------------
 
-该模型是tflite非对称量化模型, 可以按如下参数转成模型:
+该模型是tflite int8模型, 可以按如下参数转成模型:
 
 .. code-block:: shell
 
     $ model_deploy.py \
         --mlir mobilebert_tf.mlir \
         --quantize INT8 \
-        --asymmetric \
         --chip bm1684x \
         --test_input mobilebert_tf_in_f32.npz \
         --test_reference mobilebert_tf_top_outputs.npz \
-        --model mobilebert_tf_bm1684x_int8_asym.bmodel
+        --model mobilebert_tf_bm1684x_int8.bmodel
 
 
-编译完成后, 会生成名为 ``mobilebert_tf_bm1684x_int8_asym.bmodel`` 的文件。
+编译完成后, 会生成名为 ``mobilebert_tf_bm1684x_int8.bmodel`` 的文件。

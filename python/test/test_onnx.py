@@ -261,7 +261,7 @@ class ONNX_IR_TESTER(object):
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
         #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
-        self.support_asym = [True, False]
+        self.support_asym = [False]
         self.model_file = ".bmodel"
         self.is_cv18xx = False
         self.chip = chip.lower()

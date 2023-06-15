@@ -30,7 +30,6 @@ TFLite model conversion is also supported, with the following command:
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \
        --quantize INT8 \
-       --asymmetric \
        --chip bm1684x \
        --test_input resnet50_tf_in_f32.npz \
        --test_reference resnet50_tf_top_outputs.npz \

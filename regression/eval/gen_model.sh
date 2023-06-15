@@ -19,8 +19,6 @@ if [ ! -f $cfg_file ]; then
   exit 1
 fi
 
-do_asymmetric=1
-
 source ${cfg_file}
 
 mkdir -p ${model_name}
