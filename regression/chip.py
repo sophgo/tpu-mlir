@@ -81,8 +81,9 @@ full_model_list = {
     "yolox_s":                    (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov5s-face":               (N,      N,       N,      N,      N,      N,      Y,      N),
     "yolov5s_with_trans":         (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
-    "alphapose_res50":            (N,      N,       N,      N,      N,      Y,      Y,      N),
+    "alphapose_res50":            (N,      N,       Y,      N,      N,      Y,      Y,      N),
     "yolov7":                     (N,      N,       N,      N,      N,      N,      Y,      N),
+    "yolov8s":                    (N,      N,       Y,      N,      N,      N,      N,      N),
     ######## Pytorch #######      ######
     "bert_pt":                    (N,      Y,       Y,      N,      N,      N,      N,      Y),
     "bert_base_pt":               (N,      N,       N,      N,      N,      N,      N,      N),
