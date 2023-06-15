@@ -669,30 +669,12 @@ public:
     if (shape.size() < 5 && !module::isUniformQuantized(padOp.getInput())) {
       return failure();
     }
-    if (shape.size() == 3) {
-      std::vector<int64_t> buffer_shape = {ceiling_func(shape[0], (int64_t)4),
-                                           shape[1], shape[2]};
-      auto type = module::getStorageType(padOp.getOutput());
-      auto buffer_type = RankedTensorType::get(buffer_shape, type);
-      auto buffer = tpu::BufferOp::create(padOp, buffer_type);
-      padOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-        return operand.get() == padOp.getBuffer() && operand.getOwner() == padOp;
-      });
-      return success();
-    } else if (shape.size() == 4) {
-      std::vector<int64_t> buffer_shape = {ceiling_func(shape[0], (int64_t)4),
-                                           shape[1], shape[2], shape[3]};
-      auto type = module::getStorageType(padOp.getOutput());
-      auto buffer_type = RankedTensorType::get(buffer_shape, type);
-      auto buffer = tpu::BufferOp::create(padOp, buffer_type);
-      padOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-        return operand.get() == padOp.getBuffer() && operand.getOwner() == padOp;
-      });
-      return success();
-    } else if (shape.size() == 5) {
-      std::vector<int64_t> buffer_shape = {ceiling_func(shape[0], (int64_t)4),
-                                           shape[1], shape[2], shape[3],
-                                           shape[4]};
+    if (shape.size() <= 5) {
+      std::vector<int64_t> buffer_shape;
+      buffer_shape.push_back(ceiling_func(shape[0], (int64_t)4));
+      for (int i = 1; i < shape.size(); ++i) {
+        buffer_shape.push_back(shape[i]);
+      }
       auto type = module::getStorageType(padOp.getOutput());
       auto buffer_type = RankedTensorType::get(buffer_shape, type);
       auto buffer = tpu::BufferOp::create(padOp, buffer_type);
