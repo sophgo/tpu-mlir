@@ -11,6 +11,7 @@ import copy
 from scipy.special import expit
 
 from datetime import datetime
+import time
 from multiprocessing.pool import ThreadPool
 from multiprocessing import Lock
 
@@ -20,6 +21,7 @@ from utils.mlir_parser import MlirParser
 from utils.preprocess import preprocess
 from calibration.data_selector import DataSelector
 
+import torch
 
 SKIP_OPERATION = [
     'top.Input', 'top.Reshape', 'top.Softmax', 'top.Weight', 'top.MaxPool', 'top.Slice', 'top.Tile',
@@ -100,7 +102,11 @@ def cal_loss(target, ref):
     mse_diff = ((target - ref)**2).mean()
     return mse_diff
 
-def learning_weight_wrap(reqs):
+def learning_adaweight_wrap(reqs):
+    cls, epoch, op, total = reqs
+    return cls.learning_one(epoch, op, total)
+
+def learning_gptweight_wrap(reqs):
     cls, epoch, op, total = reqs
     return cls.learning_one(epoch, op, total)
 
@@ -418,7 +424,477 @@ class CaliTable:
                 f'{op}  {self.table[op][0]}  {self.table[op][1]}  {self.table[op][2]}\n')
         f.close()
 
-class LearningWeight:
+
+DEBUG=False
+class LearningGptqWeight:
+
+    class GptqQuantizer():
+        def __init__(self, shape, bits, perchannel=False, sym=True,
+                mse=False, norm=2.4, grid=100, maxshrink=.8):
+            self.maxq = []
+            self.scale = np.zeros(shape[0])
+            self.zero = np.zeros(shape[0])
+            self.maxq = 2 ** bits - 1
+            self.perchannel = perchannel
+            self.sym = sym
+            self.mse = mse
+            self.norm = norm
+            self.grid = grid
+            self.maxshrink = maxshrink
+
+        def find_params(self, x, weight=False):
+            shape = x.shape
+            if self.perchannel:
+                if weight:
+                    x = x.reshape(shape[0],-1)
+                else:
+                    if len(shape) == 4:
+                        x = x.permute([1, 0, 2, 3])
+                        x = x.reshape(shape[0],-1)
+                    if len(shape) == 3:
+                        x = x.reshape((-1, shape[-1])).t()
+                    if len(shape) == 2:
+                        x = x.t()
+            else:
+                x = x.flatten().unsqueeze(0)
+
+            tmp = torch.zeros(x.shape[0])
+            xmin = torch.minimum(x.min(1)[0], tmp)
+            xmax = torch.maximum(x.max(1)[0], tmp)
+
+            if self.sym:
+                xmax = torch.maximum(torch.abs(xmin), xmax)
+                tmp = xmin < 0
+                if torch.any(tmp):
+                    xmin[tmp] = -xmax[tmp]
+            tmp = (xmin == 0) & (xmax == 0)
+            xmin[tmp] = -1
+            xmax[tmp] = +1
+
+            self.scale = (xmax - xmin) / self.maxq
+            if self.sym:
+                self.zero = np.ones_like(self.scale)*((self.maxq + 1) / 2)
+            else:
+                self.zero = np.round(-xmin / self.scale)
+
+            if self.mse:
+                best = np.full([x.shape[0]], float('inf'))
+                for i in range(int(self.maxshrink * self.grid)):
+                    p = 1 - i / self.grid
+                    xmin1 = p * xmin
+                    xmax1 = p * xmax
+                    scale1 = (xmax1 - xmin1) / self.maxq
+                    zero1 = np.round(-xmin1 / scale1) if not self.sym else self.zero
+                    q = self.quantize(x)
+                    q = np.power(np.abs(q-x,self.norm))
+                    err = np.sum(q, axis=1)
+                    tmp = err < best
+                    if np.any(tmp):
+                        best = np.where(tmp, err, best)
+                        self.scale[tmp] = scale1[tmp]
+                        self.zero[tmp] = zero1[tmp]
+            if not self.perchannel:
+                if weight:
+                    tmp = shape[0]
+                else:
+                    tmp = shape[1] if len(shape) != 3 else shape[2]
+                self.scale = self.scale.repeat(tmp)
+                self.zero = self.zero.repeat(tmp)
+
+            if weight:
+                shape = [-1] + [1] * (len(shape) - 1)
+                self.scale = self.scale.reshape(shape)
+                self.zero = self.zero.reshape(shape)
+                return
+            if len(shape) == 4:
+                self.scale = self.scale.reshape((1, -1, 1, 1))
+                self.zero = self.zero.reshape((1, -1, 1, 1))
+            if len(shape) == 3:
+                self.scale = self.scale.reshape((1, 1, -1))
+                self.zero = self.zero.reshape((1, 1, -1))
+            if len(shape) == 2:
+                self.scale = self.scale.unsqueeze(0)
+                self.zero = self.zero.unsqueeze(0)
+
+        def quantize(self, x):  #fixme , check perchannel
+            q = np.clip(np.round(x / self.scale) +self.zero, 0, self.maxq)
+            return self.scale * (q - self.zero)
+
+    def __init__(self, args):
+        self.scales = None
+        self.finetune_layers = []
+        self.finetune_layer_weights = {}  # layers to fine tune, without skipped
+        self.mlir_file = args.mlir_file
+        self.module = pymlir.module()
+        self.module.load(self.mlir_file)
+        self.parser = MlirParser(args.mlir_file)
+        self.batch_size = self.parser.get_batch_size()  # batch size of net
+        self.input_num = self.parser.get_input_num()  # number of net inputs
+        self.mini_batch = args.mini_batch
+        self.num_sample = 0
+        self.samples = {}
+        self.epoch = args.epoch
+        self.pre_loss = {}
+        self.post_loss = {}
+        self.loss = {}
+        self.orig_weights = {}
+        self.weight_file = self.parser.module_weight_file
+        self.param_back = {}
+        self.weights_scales = {}
+        self.compare_quanted = True
+        print(f'Learning GptqWeight')
+        self.support_unsigned = False
+        self.get_finetune_ops()
+        self.backup_weights()
+        self.H = {}
+        if self.mini_batch <= self.batch_size:
+            self.mini_batch = 1
+        else:
+            self.mini_batch = self.mini_batch // self.batch_size
+        w = np.load(self.weight_file, allow_pickle=True)
+        for k in w:
+            self.param_back[k] = w[k]
+
+    def get_finetune_ops(self):
+        top_ops = {op.name: op for op in self.parser.ops}
+        for op in top_ops:
+            if top_ops[op].type in LEARNING_WEIGHT_OPERATION:
+                if top_ops[op].type == 'top.Conv':
+                    if int(top_ops[op].attrs['group'].split(':')[0]) > 1:
+                        continue
+                if len(top_ops[op].opds) > 1 and top_ops[op].opds[1] in self.module.all_weight_names:
+                    self.finetune_layers.append(op)
+                    self.finetune_layer_weights[op] = top_ops[op].opds[1]
+        loger.logging(f'Learning Gptq Weight running on layers and weights: {self.finetune_layers}')
+
+    def backup_weights(self):
+        for op in self.finetune_layers:
+            self.orig_weights[op] = copy.deepcopy(self.module.get_tensor(self.finetune_layer_weights[op]))
+            oc = self.orig_weights[op].shape[0]
+            if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
+                self.weights_scales[op] = np.max(np.abs(self.orig_weights[op].reshape(oc,-1)), axis=1)
+                self.weights_scales[op] = np.where(self.weights_scales[op]>1e-8, self.weights_scales[op], 1e-8)
+            elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
+                self.weights_scales[op] = np.max(np.abs(self.orig_weights[op]))
+                self.weights_scales[op] = np.where(self.weights_scales[op]>1e-8, self.weights_scales[op], 1e-8)
+            else:
+                print("not support!")
+                sys.exit(1)
+
+    def quant_requant_weight(self, op, blocksize=128, percdamp=0.01, groupsize=-1):
+        W = torch.Tensor(self.orig_weights[op].copy())
+
+        tick  = time.time()
+
+        if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
+            W = W.reshape(shape[0],-1)
+            shape = W.shape
+            rows = W.reshape(shape[0],-1).shape[0]
+            columns = W.reshape(shape[0],-1).shape[1]
+            quanter = self.GptqQuantizer(shape, bits=8, perchannel=True, sym=True, mse=False)
+        elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
+            W = W.t()
+            shape = W.shape
+            rows = W.shape[0]
+            columns = W.reshape(W.shape[0],-1).shape[1]
+            quanter = self.GptqQuantizer(shape, bits=8, perchannel=False, sym=True, mse=False)
+        quanter.find_params(W, weight=True)
+
+        H = torch.Tensor(self.H[op])
+        dead = torch.diag(H) == 0
+        H[dead, dead] = 1
+        W[:, dead] = 0
+
+        Losses = torch.zeros_like(W)
+        Q = torch.zeros_like(W)
+
+        damp = percdamp * torch.mean(torch.diag(H))
+        diag = torch.arange(columns)
+        H[diag, diag] += damp
+        H = torch.linalg.cholesky(H)
+        H = torch.cholesky_inverse(H)
+        H = torch.linalg.cholesky(H, upper=True)
+        Hinv = H
+
+        for i1 in range(0, columns, blocksize):
+            i2 = min(i1 + blocksize, columns)
+            count = i2 - i1
+
+            W1 = W[:, i1:i2].clone()
+            Q1 = torch.zeros_like(W1)
+            Err1 = torch.zeros_like(W1)
+            Losses1 = torch.zeros_like(W1)
+            Hinv1 = Hinv[i1:i2, i1:i2]
+
+            for i in range(count):
+                w = W1[:, i]
+                d = Hinv1[i, i]
+
+                if groupsize != -1:
+                    if (i1 + i) % groupsize == 0:
+                        quanter.find_params(W[:, (i1 + i):(i1 + i + groupsize)], weight=True)
+
+                q = quanter.quantize(w.unsqueeze(1)).flatten()
+                Q1[:, i] = q
+                Losses1[:, i] = (w - q) ** 2 / d ** 2
+
+                err1 = (w - q) / d
+                W1[:, i:] -= err1.unsqueeze(1).matmul(Hinv1[i, i:].unsqueeze(0))
+                Err1[:, i] = err1
+
+            Q[:, i1:i2] = Q1
+            Losses[:, i1:i2] = Losses1 / 2
+
+            W[:, i2:] -= Err1.matmul(Hinv[i1:i2, i2:])
+
+        #torch.cuda.synchronize()
+        #print('time %.2f' % (time.time() - tick))
+        #print('error', torch.sum(Losses).item())
+
+        if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
+            self.update_weight(op, Q.numpy().reshape(shape))
+            self.module.set_tensor(self.finetune_layer_weights[op], Q.numpy().reshape(shape))
+        elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
+            self.update_weight(op, Q.numpy().transpose().reshape(shape))
+            self.module.set_tensor(self.finetune_layer_weights[op], Q.numpy().transpose().reshape(shape))
+
+    def quant_requant_weight_orig(self, op):
+        weight_tmp = copy.deepcopy(self.orig_weights[op])
+        scales = self.weights_scales[op]/127.0
+        shape=weight_tmp.shape
+        if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
+            weight_tmp = (weight_tmp.reshape(shape[0],-1)/scales[:,None]).reshape(shape)
+        if self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
+            weight_tmp = weight_tmp/scales
+        weight = np.clip(np.round(weight_tmp), -128.0, 127.0)
+        if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
+            self.module.set_tensor(self.finetune_layer_weights[op], (weight.reshape(shape[0],-1)*scales[:,None]).reshape(shape))
+        elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
+            self.module.set_tensor(self.finetune_layer_weights[op], weight*scales)
+        else:
+            print("not support!")
+            sys.exit(1)
+
+    def set_op_inputs(self, op, loop):
+        pre_ops = self.parser.get_pre_op_by_op_name(op)
+        for pop in pre_ops:
+            shape = ref_all_tensor.get(pop, loop).shape
+            if pop not in self.module.all_tensor_names:
+                if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape':
+                    pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
+                    pop=pre_pre_ops[0]
+                else:
+                    print(f"{op} input {pop} not in all tensor list")
+                    sys.exit(1)
+            d = ref_all_tensor.get(pop, loop).reshape(shape)
+            scale = self.scales[pop][0]
+            unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
+            if scale != 1.0:
+                if self.support_unsigned:
+                    d = quant_requant_active(d, scale, unsigned)
+                else:
+                    d = quant_requant_active(d, scale, False)
+            self.module.set_tensor(pop, d)
+
+    def update_weight(self, op, weight):
+        self.param_back[self.finetune_layer_weights[op]] = weight
+
+    def shape_str_to_list(self, shape):
+        s = shape.replace('[','').replace(']','').replace(' ','').split(',')
+        s = [int(x) for x in s]
+        return s
+
+    def update_H(self, op, input, output):
+        shape = input.shape
+        in_num = shape[0]
+        if op not in self.H:
+            weight_shape = self.orig_weights[op].shape
+            print(f'init shape of weight {weight_shape}')
+            if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
+                weight_shape = self.orig_weights[op].reshape(weight_shape[0],-1).shape
+            elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
+                weight_shape = self.orig_weights[op].transpose().shape
+            else:
+                print('not support!')
+                sys.exit(1)
+            self.H[op] = np.zeros((weight_shape[1],weight_shape[1]))
+            self.samples[op] = 0
+        else:
+            # do the add batch update to H
+            if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
+                op_ = self.parser.get_op_by_op_name(op)
+                if op_ == None:
+                    print(f'error find op {op}')
+                    sys.exit(1)
+                k_shape = self.shape_str_to_list(op_.attrs['kernel_shape'])
+                dia = self.shape_str_to_list(op_.attrs['dilations'])
+                pads = self.shape_str_to_list(op_.attrs['pads'])
+                #group = int(op_.attrs['group'].split(':')[0])
+                if len(pads) == 4:
+                    pads = [pads[0], pads[2]]
+                strides = self.shape_str_to_list(op_.attrs['strides'])
+                ufold = torch.nn.Unfold(tuple(k_shape), dilation=dia, padding = pads, stride=strides)
+                inp = ufold(torch.Tensor(input)).permute([1,0,2]).numpy()
+                #inp = inp.reshape(inp.shape[0]//group,-1)
+                inp = inp.reshape(inp.shape[0],-1)
+            elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
+                inp = input.reshape(-1,shape[-1]).transpose()
+            else:
+                print("not support!")
+                sys.exit(1)
+            self.H[op] *= self.samples[op]/(self.samples[op]+in_num)
+            self.samples[op] = self.samples[op]+in_num
+            inp = np.sqrt(2/self.samples[op])*inp
+            self.H[op] += np.matmul(inp, inp.transpose())
+
+    def get_op_input0(self, op, loop):
+        pre_ops = self.parser.get_pre_op_by_op_name(op)
+        for pop in pre_ops:
+            shape = ref_all_tensor.get(pop, loop).shape
+            if pop not in self.module.all_tensor_names:
+                if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape':
+                    pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
+                    pop=pre_pre_ops[0]
+                else:
+                    print(f"{op} input {pop} not in all tensor list")
+                    sys.exit(1)
+            d = ref_all_tensor.get(pop, loop).reshape(shape)
+            return d.copy()
+
+    def op_first_input(self, op, loop):
+        pre_ops = self.parser.get_pre_op_by_op_name(op)
+        if len(pre_ops) != 1:
+            print(f'input num not 1! {op}')
+            sys.exit(1)
+        pop = pre_ops[0]
+        shape = ref_all_tensor.get(pop, loop).shape
+        if pop not in self.module.all_tensor_names:
+            if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape':
+                pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
+                pop=pre_pre_ops[0]
+            else:
+                print(f"{op} input {pop} not in all tensor list")
+                sys.exit(1)
+        d = ref_all_tensor.get(pop, loop).reshape(shape)
+        scale = self.scales[pop][0]
+        unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
+        if scale != 1.0:
+            if self.support_unsigned:
+                d = quant_requant_active(d, scale, unsigned)
+            else:
+                d = quant_requant_active(d, scale, False)
+        return d
+
+    def learning_one(self, epoch, op, total):
+        loger.logging(f"now to learn {op} in epoch {epoch}")
+        sub_total = 1
+        if epoch == 0:
+            sub_total += 1
+        if epoch == self.epoch - 1:
+            sub_total += 1
+        pbar_detail = tqdm(np.arange(self.num_sample*sub_total))
+        pbar_detail.set_description("Learning Gptq Weight, op %s" % op)
+
+        if epoch == 0:
+            self.quant_requant_weight_orig(op)
+            for loop in np.arange(self.num_sample):
+                pbar_detail.set_postfix_str(
+                    f"Cal orig loss {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
+                pbar_detail.update()
+                self.set_op_inputs(op, loop)
+                outputs = self.module.invoke_at(op)
+                scale = self.scales[op][0]
+                unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
+                if self.compare_quanted:
+                    if self.support_unsigned:
+                        outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
+                    else:
+                        outputs[0] = quant_requant_active(outputs[0], scale, False)
+                ref = ref_all_tensor.get(op, loop)
+                if op in self.pre_loss:
+                    pre_loss = self.pre_loss[op] + cal_loss(outputs, ref)
+                    self.pre_loss[op] = pre_loss
+                else:
+                    pre_loss = cal_loss(outputs, ref)
+                    self.pre_loss[op] = pre_loss
+
+        for loop in np.arange(self.num_sample):
+            pbar_detail.set_postfix_str(
+                f"Learning {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
+            pbar_detail.update()
+            input = self.get_op_input0(op, loop) # FIXME, seems it is enough to calculate with float input
+            if epoch == 0 and loop == 0:
+                self.update_H(op, input, None) # init H
+            self.update_H(op, input, None)
+
+        if epoch == self.epoch-1:
+            self.quant_requant_weight(op)
+            for loop in np.arange(self.num_sample):
+                pbar_detail.set_postfix_str(
+                    f"Comparing {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
+                pbar_detail.update()
+                self.set_op_inputs(op, loop)
+                self.module.invoke_at(op)
+                outputs = self.module.get_tensor(op)
+                scale = self.scales[op][0]
+                unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
+                if self.compare_quanted:
+                    if self.support_unsigned:
+                        outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
+                    else:
+                        outputs[0] = quant_requant_active(outputs[0], scale, False)
+                ref = ref_all_tensor.get(op, loop)
+                if op in self.post_loss:
+                    post_loss = self.post_loss[op] + cal_loss(outputs, ref)
+                    self.post_loss[op] = post_loss
+                else:
+                    post_loss = cal_loss(outputs, ref)
+                    self.post_loss[op] = post_loss
+
+            if self.post_loss[op] <= self.pre_loss[op]:
+                loger.logging(f'{op} use trained weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+                print(f'{op} use trained weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+                #self.update_weight(op)
+            else:
+                loger.logging(f'{op} do not use learned weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+                print(f'{op} do not use learned weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+
+    def save_weights(self):
+        os.rename(self.weight_file, self.weight_file.replace(".npz",".bak.npz"))
+        np.savez(self.weight_file, **self.param_back)
+
+    def learning(self):
+        total = len(self.finetune_layers)
+        can_parallel = True
+        for l in self.finetune_layers:
+            if self.parser.get_op_type_by_op_name(l) != 'top.MatMul':
+                can_parallel = False
+                break
+        if can_parallel:
+            groups = into_groups(self.parser, self.finetune_layers)
+            for epoch in np.arange(self.epoch):
+                for layers in groups:
+                    reqs = [(self, epoch, x, total) for x in groups[layers]]
+                    learned = 0
+                    for result in pool.map(learning_gptweight_wrap, reqs):
+                        learned += 1
+                print("")
+                print("=================================================")
+                print(f"  End epoch {epoch}, learned {learned} layers")
+                print("=================================================")
+                print("")
+        else:
+            for epoch in np.arange(self.epoch):
+                for l in self.finetune_layers:
+                    self.learning_one(epoch, l, total)
+                print("")
+                print("=================================================")
+                print(f"  End epoch {epoch}, learned {total} layers")
+                print("=================================================")
+                print("")
+        self.save_weights()
+
+class LearningAdaWeight:
     class SgdWeightOpt:
         def __init__(self,lr, momentum=0.0,nesterov=False, weight_decay=0.0, support_unsigned = False):
             self.lr = lr
@@ -844,13 +1320,13 @@ class LearningWeight:
             if self.parser.get_op_type_by_op_name(l) != 'top.MatMul':
                 can_parallel = False
                 break
-        if can_parallel: 
+        if can_parallel:
             groups = into_groups(self.parser, self.finetune_layers)
             for epoch in np.arange(self.epoch):
                 for layers in groups:
                     reqs = [(self, epoch, x, total) for x in groups[layers]]
                     learned = 0
-                    for result in pool.map(learning_weight_wrap, reqs):
+                    for result in pool.map(learning_adaweight_wrap, reqs):
                         learned += 1
                 print("")
                 print("=================================================")
@@ -1250,28 +1726,28 @@ if __name__ == '__main__':
         description="Learning the scale for quantization, run after basic quant table")
     parser.add_argument('mlir_file', help='fp32 mlir file')
     parser.add_argument(
-        '--dataset', help='dataset path for mix precision searching')
+        '--dataset', required=True, type=str, help='dataset path for mix precision searching')
     parser.add_argument(
-        "--data_list", help="specify a file with inputs's absolute path for mix precision searching")
-    parser.add_argument('--input_num', type=int, default=1000,
+        "--data_list", required=False, type=str, help="specify a file with inputs's absolute path for mix precision searching")
+    parser.add_argument('--input_num', required=True, type=int, default=1000,
                         help='num of input samples for quantization searching')
-    parser.add_argument('--data_seg', type=int, default=1000,
+    parser.add_argument('--data_seg', required=False, type=int, default=1000,
                         help='num of samples to buffer data on disk, they will be re-aranged after gather all samples')
-    parser.add_argument('--epoch', type=int, default=1,
+    parser.add_argument('--epoch', required=False, type=int, default=1,
                         help='num of repeat times of input_num samples for weight learning')
-    parser.add_argument('--mini_batch', type=int, default=4,
+    parser.add_argument('--mini_batch', required=False, type=int, default=4,
                         help='batch size for learning')
-    parser.add_argument('--threads', type=int, default=4,
+    parser.add_argument('--threads', required=False, type=int, default=4,
                         help='number of working threads')
-    parser.add_argument('--momentum', type=float, default=0.9,
+    parser.add_argument('--momentum', required=False, type=float, default=0.9,
                         help='momentum of learning')
-    parser.add_argument('--nesterov', action='store_true', dest='nesterov',
+    parser.add_argument('--nesterov', required=False, action='store_true', dest='nesterov',
                         help='use nesterov in learning')
-    parser.add_argument('--weight_decay', type=float, default=0.001,
+    parser.add_argument('--weight_decay', required=False, type=float, default=0.001,
                         help='weight decay in learning')
-    parser.add_argument('--lr', type=float, default=0.001,
+    parser.add_argument('--lr', required=False, type=float, default=0.001,
                         help='learning rate in learning')
-    parser.add_argument('--lr_scheduler', type=str,default='Cosine',
+    parser.add_argument('--lr_scheduler', required=False, type=str,default='Cosine',
                         choices=['Fixed','Cosine','MultiStep'],
                         help='lr scheduler')
     parser.add_argument('--calibration_table', required=True,
@@ -1280,13 +1756,13 @@ if __name__ == '__main__':
                         choices=['bm1684x', 'bm1684', 'cv183x',
                                  'cv182x', 'cv181x', 'cv180x'],
                         help='chip platform name')
-    parser.add_argument('--opt', type=str,default='SGD',
+    parser.add_argument('--opt', required=False, type=str,default='SGD',
                         choices=['SGD','ADAM'],
                         help='Optimizer')
     parser.add_argument('--target', type=str,default='Scale',
-                        choices=['Scale','Weight', 'Both'],
+                        choices=['Scale','AdaWeight', 'GptWeight'],
                         help='to learn scale or weight or both')
-    parser.add_argument('-o', '--output_calibration_table', required=True, default="./new_cali",
+    parser.add_argument('-o', '--output_calibration_table', required=False, default="./new_cali",
                         help='output of calibration table after learning')
 
     args = parser.parse_args()
@@ -1303,9 +1779,11 @@ if __name__ == '__main__':
     all_inputs = learning_inputs(scale_searcher.parser, args)
     num_sample = all_inputs.prepare(args.input_num)
     scale_searcher.num_sample = num_sample
-    learn_scale = args.target == "Scale" or args.target == "Both"
-    learn_weight = args.target == "Weight" or args.target == "Both"
-    print(f'Learning Scale: {learn_scale}; Learning Weight: {learn_weight}')
+    learn_scale = args.target == "Scale"
+    learn_adaweight = args.target == "AdaWeight"
+    learn_gptweight = args.target == "GptWeight"
+
+    print(f'Learning Scale: {learn_scale}; Learning AdaWeight: {learn_adaweight}; Learning GptWeight: {learn_gptweight}')
     if learn_scale:
         scheduler = LrScheduler(args.lr, scale_searcher.num_sample, args.lr_scheduler)
         if args.opt == 'SGD':
@@ -1320,12 +1798,18 @@ if __name__ == '__main__':
         cali_table.update(scale_searcher.new_scales)
         cali_table.write()
     del scale_searcher
-    if learn_weight:
+    if learn_adaweight:
         scheduler = LrScheduler(args.lr, num_sample*args.epoch, args.lr_scheduler)
-        weight_searcher = LearningWeight(args)
+        weight_searcher = LearningAdaWeight(args)
         weight_searcher.scales = cali_table.table
         weight_searcher.num_sample = num_sample
         weight_searcher.opt = weight_searcher.SgdWeightOpt(scheduler, args.momentum, args.nesterov, args.weight_decay, args.epoch)
+        weight_searcher.learning()
+        del weight_searcher
+    if learn_gptweight:
+        weight_searcher = LearningGptqWeight(args)
+        weight_searcher.scales = cali_table.table
+        weight_searcher.num_sample = num_sample
         weight_searcher.learning()
         del weight_searcher
 
