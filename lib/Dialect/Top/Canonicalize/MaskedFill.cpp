@@ -51,6 +51,9 @@ struct MaskedFillBroadcast : public OpRewritePattern<MaskedFillOp> {
     for (int i = 0; i < dims; ++i) {
       if (broadcast[i] != 0) {
         auto tile_input = broadcast[i] == TILE_BRN ? input : cond;
+        // if(!tile_input.hasOneUse()) {
+        //   return failure();
+        // }
         auto tile_input_shape = module::getShape(tile_input);
         attrs.push_back(
             rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(i)));
@@ -66,8 +69,8 @@ struct MaskedFillBroadcast : public OpRewritePattern<MaskedFillOp> {
         auto tile_output_type = RankedTensorType::get(tile_output_shape, stype);
         bool reuse_tile = false;
         for (auto j : tile_input.getUsers()) {
-          if (isa<top::TileOp>(j)) {
-            auto tile_op = dyn_cast<top::TileOp>(j);
+          if (isa<TileOp>(j)) {
+            auto tile_op = dyn_cast<TileOp>(j);
             auto pre_tile_attrs = tile_op->getAttrs();
             if (pre_tile_attrs.equals(attrs)) {
               reuse_tile = true;
@@ -81,7 +84,7 @@ struct MaskedFillBroadcast : public OpRewritePattern<MaskedFillOp> {
           }
         }
         if (!reuse_tile) {
-          auto tile_op = rewriter.create<top::TileOp>(
+          auto tile_op = rewriter.create<TileOp>(
               tile_loc, tile_output_type, ValueRange{tile_input}, attrs);
           attrs.clear();
           if (broadcast[i] == TILE_BRN) {
@@ -95,7 +98,7 @@ struct MaskedFillBroadcast : public OpRewritePattern<MaskedFillOp> {
     for (auto &attr : op->getAttrs()) {
       attrs.push_back(attr);
     }
-    auto maskedfill_op = rewriter.create<top::MaskedFillOp>(
+    auto maskedfill_op = rewriter.create<MaskedFillOp>(
         op.getLoc(), op.getType(), ValueRange{cond, input}, attrs);
     op.replaceAllUsesWith(maskedfill_op.getOperation());
     op.erase();
@@ -103,7 +106,44 @@ struct MaskedFillBroadcast : public OpRewritePattern<MaskedFillOp> {
   }
 };
 
+
+struct MaskedFillMergePattern : public OpRewritePattern<MaskedFillOp> {
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(MaskedFillOp op,
+                              PatternRewriter &rewriter) const override {
+    auto out = op.getOutput();
+    if(!out.hasOneUse()){
+      return failure();
+    }
+    auto next_op = *op.getOutput().getUsers().begin();
+    // get attr
+    // auto attr = op->getAttrs;
+    auto value = op.getConstVal().convertToDouble();
+    // if value is -inf
+    if(value != -INFINITY) {
+      return failure();
+    }
+    if(!isa<SoftmaxOp>(next_op)) {
+      return failure();
+    }
+    // get softmax op's next op
+    auto softmax_op = dyn_cast<SoftmaxOp>(next_op);
+    auto softmax_next_op = *softmax_op.getOutput().getUsers().begin();
+    if(!isa<MaskedFillOp>(softmax_next_op)){
+      return failure();
+    }
+    auto maskedfill_op = dyn_cast<MaskedFillOp>(softmax_next_op);
+    value = maskedfill_op.getConstVal().convertToDouble();
+    if(value != 0) {
+      return failure();
+    }
+    rewriter.replaceAllUsesWith(maskedfill_op.getOutput(), softmax_op.getOutput());
+    rewriter.eraseOp(maskedfill_op);
+    return success();
+  };
+};
+
 void MaskedFillOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                                MLIRContext *context) {
-  results.insert<MaskedFillBroadcast>(context);
+  results.insert<MaskedFillBroadcast, MaskedFillMergePattern>(context);
 }
