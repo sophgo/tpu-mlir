@@ -98,14 +98,14 @@ void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
   gaddr_t ga_output = module::getAddress(getOutput());
   cvk_fmt_t fmt =
       module::isUniformQuantized(getOutput()) ? CVK_FMT_I8 : CVK_FMT_BF16;
-  if (getMode() == 0 || getMode() == 3) {
-    std::string mode = getMode() == 0 ? "constant" : "edge";
+  auto mode = getMode();
+  if (mode == tpu::PaddingMode::constant || mode == tpu::PaddingMode::edge) {
     parsePadParam(getOperation(), i_s, o_s, pads);
     float const_val = getVal().convertToDouble();
     cvi_backend_tg_pad_kernel(layer_id, ga_input, ga_output, i_s[0], i_s[1],
-                              i_s[2], i_s[3], pads.data(), const_val,
-                              mode.c_str(), fmt);
-  } else if (getMode() == 1) {
+                              i_s[2], i_s[3], pads.data(), const_val, (int)mode,
+                              fmt);
+  } else if (mode == tpu::PaddingMode::reflect) {
     // reflect
     std::vector<int> pads(4, 0);
     auto num_dims = module::getShape(getInput()).size();

@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 namespace tpu_mlir {
 
 namespace cv18xx {
@@ -401,6 +401,9 @@ public:
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "paddings", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{new_pad_v})));
+    attrs.push_back(rewriter.getNamedAttr(
+        "mode",
+        rewriter.getStringAttr("constant")));
     auto op_name = module::getName(op.getOperation()).str();
     auto loc = NameLoc::get(rewriter.getStringAttr(op_name + "_pad"));
     auto type = op.getInput().getType().cast<RankedTensorType>();

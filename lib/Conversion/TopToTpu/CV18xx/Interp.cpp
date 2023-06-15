@@ -9,8 +9,8 @@
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include "llvm/Support/FormatVariadic.h"
-#include <llvm/Support/Debug.h>
 #include <assert.h>
+#include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "interp_top2tpu"
 
@@ -51,7 +51,6 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
   std::vector<Value> operands;
   std::vector<int64_t> pads = {0, 0, 1, 1, 0, 0, 1, 1};
   double const_val = 0.0;
-  int64_t mode = 3;
 
   std::vector<int64_t> shape_after_pad;
   auto input_shape = module::getShape(op.getInput());
@@ -68,8 +67,9 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
       rewriter.getNamedAttr("paddings", rewriter.getI64ArrayAttr(pads)));
   pad_attrs.emplace_back(
       rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(const_val)));
-  pad_attrs.emplace_back(
-      rewriter.getNamedAttr("mode", rewriter.getI64IntegerAttr(mode)));
+  pad_attrs.push_back(rewriter.getNamedAttr(
+      "mode",
+       rewriter.getStringAttr("edge")));
   auto input_type = op.getInput().getType().cast<RankedTensorType>();
   auto pad_type = RankedTensorType::get(
       shape_after_pad, op.getInput().getType().getElementType());
@@ -281,19 +281,15 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
       // replace with conv
       int filter_size = factor * factor;
       float filter_val = 1; // nearnest
-      std::vector<int64_t> filter_shape = {ic, 1, factor,
-                                           factor};
+      std::vector<int64_t> filter_shape = {ic, 1, factor, factor};
       std::vector<float> new_filter(filter_size * ic, 0);
       for (int i = 0; i < ic; ++i) {
         new_filter[i * filter_size] = filter_val; // nearest
       }
       // insert conv op
-      std::vector<int64_t> conv_strides = {factor,
-                                           factor};
+      std::vector<int64_t> conv_strides = {factor, factor};
       std::vector<int64_t> conv_pads = {0, 0, 1, 1};
-      std::vector<int64_t> conv_kernel_shape = {
-          factor,
-          factor};
+      std::vector<int64_t> conv_kernel_shape = {factor, factor};
       int64_t group = ic;
       // create conv kernel (weight)
       // weight_shape = [ic, 1, 1, kh, kw]
@@ -442,7 +438,8 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
     return true;
   }
   // TODO support
-  // not support in tpu-mlir:convert in top2tpu will cause less of threshold when convert one op to multiply ops.
+  // not support in tpu-mlir:convert in top2tpu will cause less of threshold
+  // when convert one op to multiply ops.
   return false;
 
   // check for hw spec, ins/stride range is 0-15 in 1835
@@ -718,7 +715,6 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
     std::vector<NamedAttribute> attrs = createConvAttr(
         kernel, stride, dilation, padding, g, is_dw, with_bias, ins);
 
-
     if (loop - 1 == d) {
       // last one replace the interp name for compare
       prefix = "";
@@ -857,7 +853,8 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
       assert(0 && "it should be already converted in onnx_convert.\n");
     }
     if (coordinate_transformation_mode == "pytorch_half_pixel") {
-      //when pytorch use nearest method, coordinate_transformation_mode is actually nearest.
+      // when pytorch use nearest method, coordinate_transformation_mode is
+      // actually nearest.
       coordinate_transformation_mode = "nearest";
     } else {
       coordinate_transformation_mode = "nearest_half_pixel";

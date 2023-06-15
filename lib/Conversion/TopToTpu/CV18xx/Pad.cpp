@@ -20,12 +20,14 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   val = to_int8(val / in_scale, ROUNDING_HALF_UP);
   attrs.push_back(rewriter.getNamedAttr("paddings", op.getPaddingsAttr()));
   attrs.push_back(rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(val)));
-  attrs.push_back(rewriter.getNamedAttr("mode", op.getModeAttr()));
+  auto m = tpu::symbolizePaddingMode(op.getMode()).value_or(tpu::PaddingMode::constant);
+  attrs.push_back(rewriter.getNamedAttr(
+      "mode", tpu::PaddingModeAttr::get(op->getContext(), m)));
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  if (op.getMode() == 1) {
+  if (m == tpu::PaddingMode::reflect) {
     // pad reflect
-   auto nofDims = module::getShape(op.getInput()).size();
+    auto nofDims = module::getShape(op.getInput()).size();
     auto pads = module::getI64Array(op.getPaddings());
     int32_t count = 0;
     for (int i = 0; i < pads->size(); i++) {
@@ -60,9 +62,13 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
 }
 
 void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
+  auto m = tpu::symbolizePaddingMode(op.getMode())
+               .value_or(tpu::PaddingMode::constant);
+  auto op_ = op.getOperation();
+  op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), m));
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  if (op.getMode() == 1) {
+  if (m == tpu::PaddingMode::reflect) {
     // pad reflect
     auto nofDims = module::getShape(op.getInput()).size();
     auto pads = module::getI64Array(op.getPaddings());

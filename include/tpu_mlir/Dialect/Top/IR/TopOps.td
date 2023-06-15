@@ -69,6 +69,7 @@ def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
 def StoreModeAttr: AnyStrAttrOf<["1N", "2N", "4N"]>;
 def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov4", "yolov5"]>;
 def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
+def PaddingModeAttr:AnyStrAttrOf<["constant","reflect","symmetric","edge"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -744,7 +745,7 @@ def Top_PadOp:Top_Op<"Pad"> {
     AnyTensor:$input,
     I64ArrayAttr:$paddings,
     DefaultValuedAttr<F64Attr, "0.0">:$val,
-    DefaultValuedAttr<I64Attr, "0">:$mode
+    PaddingModeAttr:$mode
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;

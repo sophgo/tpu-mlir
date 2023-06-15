@@ -61,6 +61,9 @@ public:
       }
       attrs_pad.push_back(rewriter.getNamedAttr(
           "paddings", rewriter.getI64ArrayAttr(pad_paddings)));
+      attrs_pad.push_back(rewriter.getNamedAttr(
+          "mode", tpu::PaddingModeAttr::get(getContext(),tpu::PaddingMode::constant)));
+
       auto input_shape = module::getShape(input_value);
       auto output_shape_pad = llvm::SmallVector<int64_t>(input_shape);
       output_shape_pad[2] += (pad_paddings[2] + pad_paddings[6]);

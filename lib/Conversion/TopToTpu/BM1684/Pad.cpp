@@ -13,15 +13,11 @@ namespace tpu_mlir {
 namespace bm1684 {
 
 void PadLowering::LoweringF32(PatternRewriter &rewriter, top::PadOp op) const {
-  std::vector<Value> operands;
-  operands.push_back(op.getOperand());
-  auto noneOp = module::getNoneOp(op);
-  for (int i = op->getNumOperands(); i < 4; i++) {
-    operands.push_back(noneOp);
-  }
-
-  rewriter.replaceOpWithNewOp<tpu::PadOp>(op, op.getOutput().getType(),
-                                          operands, op->getAttrs());
+  auto op_ = op.getOperation();
+  auto mode = tpu::symbolizePaddingMode(op.getMode())
+                  .value_or(tpu::PaddingMode::constant);
+  op_->setAttr("mode", tpu::PaddingModeAttr::get(op.getContext(), mode));
+  lowering_common_f32<tpu::PadOp>(rewriter, op, 4);
 }
 
 void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
@@ -40,7 +36,9 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   val = std::round(val / in_scale + in_zp);
   attrs.push_back(rewriter.getNamedAttr("paddings", op.getPaddingsAttr()));
   attrs.push_back(rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(val)));
-  attrs.push_back(rewriter.getNamedAttr("mode", op.getModeAttr()));
+  auto m = tpu::symbolizePaddingMode(op.getMode()).value_or(tpu::PaddingMode::constant);
+  attrs.push_back(rewriter.getNamedAttr(
+      "mode", tpu::PaddingModeAttr::get(op->getContext(), m)));
 
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::PadOp>(op, newType, operands, attrs);

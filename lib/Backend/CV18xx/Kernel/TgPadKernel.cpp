@@ -10,8 +10,6 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include <llvm/Support/Debug.h>
 
-
-
 #define DEBUG_TYPE "cvi_backend_pad_kernel"
 
 namespace tpu_mlir {
@@ -330,12 +328,11 @@ static bool try_only_one_pad(uint32_t layer_id, gaddr_t ga_ifmap,
 void cvi_backend_tg_pad_kernel(uint32_t layer_id, gaddr_t ga_ifmap,
                                gaddr_t ga_ofmap, int input_n, int input_c,
                                int input_h, int input_w, int *pads,
-                               float const_val, const char *mode,
-                               cvk_fmt_t fmt) {
+                               float const_val, int mode, cvk_fmt_t fmt) {
 
   CV18xx::set_layer_id(layer_id);
 
-  if (!strcmp(mode, "edge")) {
+  if (mode == 3) { // edge
     return cvi_backend_tg_pad_kernel_edge(layer_id, ga_ifmap, ga_ofmap, input_n,
                                           input_c, input_h, input_w, pads, fmt);
   }

@@ -511,7 +511,8 @@ class TFLiteConverter(BaseConverter):
         op.inputs = [op.inputs[0]]  # remove ins[1]
         attr = {
             "paddings": self.mlir.ArrayAttr(paddings.flatten()),
-            "val": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], pad_val)
+            "val": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], pad_val),
+            "mode":StringAttr.get("constant")
         }
         return "top.Pad", attr, self.need_transpose
 

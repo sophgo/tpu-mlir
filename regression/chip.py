@@ -93,12 +93,12 @@ full_model_list = {
     "sd_decoder_pt":              (N,      Y,       Y,      N,      N,      N,      N,      Y),
     "yolov5s_pt":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     ######## caffe #########      #####
-    "mobilenet_v2_cf":            (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
+    "mobilenet_v2_cf":            (N,      Y,       Y,      N,      N,      Y,      Y,      Y),#
     "resnet18_cf":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "segnet_cf":                  (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "mobilenet_v2_cf_bs4":        (N,      N,       N,      N,      N,      Y,      Y,      N),
-    "retinaface_mnet_with_det":   (N,      N,       N,      Y,      N,      Y,      Y,      N),
-    "arcface_res50":              (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
+    "retinaface_mnet_with_det":   (N,      N,       N,      Y,      N,      Y,      Y,      N),#no model
+    "arcface_res50":              (N,      Y,       Y,      N,      N,      Y,      Y,      Y),#no model
     "yolov3_416_with_det":        (N,      N,       N,      N,      N,      Y,      Y,      N),
     "enet_cf":                    (N,      N,       N,      N,      N,      N,      Y,      N),
     "erfnet_cf":                  (N,      N,       N,      N,      N,      N,      Y,      N),

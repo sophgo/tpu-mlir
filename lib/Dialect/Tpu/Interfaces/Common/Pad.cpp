@@ -30,7 +30,7 @@ LogicalResult tpu::PadOp::init(InferenceParameter &p) {
   // set pads
   float *dst = p.outputs[0];
   auto total_num = module::getNumElements(getOutput());
-  if (getMode() == 0) {
+  if (getMode() == tpu::PaddingMode::constant) {
     float val_ = getVal().convertToDouble();
     for (int i = 0; i < total_num; i++) {
       dst[i] = val_;
@@ -62,7 +62,7 @@ LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
   const float *src = p.inputs[0];
   float *dst = p.outputs[0];
 
-  if (pad_mode == 0) {
+  if (pad_mode == tpu::PaddingMode::constant) {
     // when pads < 0 means cutoff
     int32_t start_in = pads[0] < 0 ? -pads[0] : 0;
     int32_t start_ic = pads[1] < 0 ? -pads[1] : 0;
@@ -114,7 +114,7 @@ LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
           memcpy(dst + output_offset, src + input_offset, sizeof(float) * iw);
         }
 
-        if (pad_mode == 1) {
+        if (pad_mode == tpu::PaddingMode::reflect) {
           // Left and right. Loop over the rows not in the vertical padding
           for (int h = pads[2]; h < oh - pads[6]; ++h) {
             // Offset to current row start (in padding of this row)
@@ -153,7 +153,7 @@ LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
             std::copy(srcptr, srcptr + ow, dstptr + h * ow);
             srcptr -= ow;
           }
-        } else if (pad_mode == 3) {
+        } else if (pad_mode == tpu::PaddingMode::edge) {
           // Edge pad to be implemented
 
           // Left and right. Loop over the rows not in the vertical padding
@@ -246,7 +246,8 @@ LogicalResult tpu::PadOp::BackwardW(int64_t &in_idx, int64_t &in_slice,
 
 LogicalResult tpu::PadOp::LocalGenSupport() {
   if (module::isCV18xx()) {
-    if (getMode() != 0 || module::getShape(getInput()).size() != 4) {
+    if (getMode() != tpu::PaddingMode::constant ||
+        module::getShape(getInput()).size() != 4) {
       return failure();
     }
     i64_array_t pads = module::getI64Array(getPaddings());
@@ -262,7 +263,8 @@ void tpu::PadOp::assign_fw_param(void *param) {
   fw_pad_layer_param_t fw_pad_layer_param = {0};
   fw_pad_layer_param.ic = module::getShape(getInput())[1];
   fw_pad_layer_param.pad_val = getVal().convertToDouble();
-  fw_pad_layer_param.pad_mode = getMode();
+  fw_pad_layer_param.pad_mode = (int)getMode();
+
   auto pads = module::getI64Array(getPaddings());
   if (pads->size() > 8 || fw_pad_layer_param.pad_mode > 1) {
     llvm_unreachable("not support");
