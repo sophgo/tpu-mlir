@@ -308,6 +308,82 @@ public:
     return failure();
   }
 };
+
+class MaskedFillPermuteMove : public OpRewritePattern<tpu::MaskedFillOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::MaskedFillOp op,
+                                PatternRewriter &rewriter) const override {
+    auto input_shape = module::getShape(op.getBrn());
+    auto condition_shape = module::getShape(op.getCond());
+    if(input_shape != condition_shape){
+      return failure();
+    }
+    auto op_name = module::getName(op.getOutput()).str();
+    if (op_name.find("_masked_fill") != std::string::npos) {
+      return failure();
+    }
+    std::vector<bool> is_permute;
+    assert(op->getNumOperands() == 2);
+    tpu::PermuteOp permute_op;
+    for (auto opd : op->getOperands()) {
+      Operation *op_ = opd.getDefiningOp();
+      if(isa<tpu::PermuteOp>(op_)){
+        is_permute.push_back(true);
+        permute_op = dyn_cast<tpu::PermuteOp>(op_);
+      } else {
+        is_permute.push_back(false);
+      }
+    }
+    if(is_permute[0] == is_permute[1]){
+      return failure();
+    }
+    auto permute_attr = permute_op->getAttrs();
+    auto permute_order = *module::getI64Array(permute_op.getOrder());
+    std::vector<int64_t> inv_order(permute_order.size());
+    for (int i = 0; i < permute_order.size(); ++i) {
+      inv_order[permute_order[i]] = i;
+    }
+    int need_permute = is_permute[0] ? 1 : 0;
+    auto need_permute_op = op->getOperand(need_permute);
+
+    auto type = permute_op.getInput().getType();
+    auto name = module::getName(need_permute_op);
+    std::vector<NamedAttribute> attrs;
+
+    attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(inv_order)));
+
+    int user_count = 0;
+    for(auto j : need_permute_op.getUsers()){
+      if(isa<tpu::PermuteOp>(j)){
+        user_count++;
+      }
+    }
+    auto loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_permute" + std::to_string(user_count)));
+    auto new_permute_op = rewriter.create<tpu::PermuteOp>(loc, type, ValueRange{need_permute_op, module::getNoneOp(need_permute_op.getDefiningOp())}, attrs);
+    auto masked_fill_attrs = op->getAttrs();
+    loc = NameLoc::get(rewriter.getStringAttr(
+        module::getName(need_permute_op).str() + "_masked_fill" + std::to_string(user_count)));
+    Value cond, brn;
+    if(is_permute[0]){
+      cond = permute_op.getInput();
+      brn = new_permute_op.getOutput();
+    } else {
+      cond = new_permute_op.getOutput();
+      brn = permute_op.getInput();
+    }
+    rewriter.setInsertionPointAfterValue(new_permute_op.getOutput());
+    auto new_masked_fill_op = rewriter.create<tpu::MaskedFillOp>(
+      loc, type, ValueRange{cond, brn}, masked_fill_attrs);
+    rewriter.replaceAllUsesWith(permute_op, new_masked_fill_op.getOutput());
+    rewriter.eraseOp(permute_op);
+    rewriter.setInsertionPointAfterValue(new_masked_fill_op.getOutput());
+    auto post_permute_op = rewriter.create<tpu::PermuteOp>(op.getLoc(), op.getOutput().getType(), ValueRange{new_masked_fill_op.getOutput(), module::getNoneOp(new_masked_fill_op)}, permute_attr);
+    rewriter.replaceAllUsesWith(op.getOutput(), post_permute_op.getOutput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
 } // namespace bm1684x
 
 namespace tpu {
@@ -317,7 +393,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
     patterns->add<
       MatMulHdimBatchPattern,
       MatMulLeftReusePattern,
-      PermuteReorderPattern
+      PermuteReorderPattern,
+      MaskedFillPermuteMove
     >(patterns->getContext());
   // clang-format on
 }
