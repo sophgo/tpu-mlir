@@ -21,7 +21,7 @@
 #define DEBUG_TYPE "math_utils"
 namespace tpu_mlir {
 
-void get_scale_and_shift(float scale_f, int &scale, int &shift, int bitwidth) {
+void get_multiplier_and_shift(float scale_f, int &scale, int &shift, int bitwidth) {
   float min_err = FLT_MAX;
   int m_limit = (bitwidth == 32) ? INT_MAX : CHAR_MAX;
   for (int n = -32; n < 31; n++) {
@@ -37,7 +37,7 @@ void get_scale_and_shift(float scale_f, int &scale, int &shift, int bitwidth) {
   scale = (int)std::round(scale_f * std::pow(2, shift));
 }
 
-void get_scale_and_shift_positive(float scale_f, int &scale, int &shift,
+void get_multiplier_and_shift_positive(float scale_f, int &scale, int &shift,
                                   int bitwidth) {
   float min_err = FLT_MAX;
   int m_limit = (bitwidth == 32) ? INT_MAX : CHAR_MAX;
@@ -54,7 +54,7 @@ void get_scale_and_shift_positive(float scale_f, int &scale, int &shift,
 
 // this function search positive right shift with max_shift, max_shift set to 8
 // for int16 op and shift to 8bit output.
-void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,
+void get_multiplier_and_shift_positive_maxshift(float scale_f, int &scale,
                                            int &shift, int bitwidth,
                                            int max_shift) {
   float min_err = FLT_MAX;

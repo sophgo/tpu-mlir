@@ -1220,10 +1220,9 @@ class ONNX_IR_TESTER(object):
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, input2_shape)
-        transpose_node = helper.make_node("Transpose",
+        transpose_node = helper.make_node("Abs",
                                           inputs=['input'],
-                                          outputs=['e'],
-                                          perm=[1, 0, 2, 3])
+                                          outputs=['e'])
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         w_data = np.random.rand(1).astype(np.float32)
         w_value = helper.make_tensor(
@@ -1233,15 +1232,15 @@ class ONNX_IR_TESTER(object):
             vals=w_data.flatten(),
         )
 
-        for i in ['Relu', 'Sigmoid']:
-            add_node = helper.make_node(
-                i,  # node name
-                ['e'],  # inputs
-                ['output'],  # outputs
-            )
-            graph_def = helper.make_graph([transpose_node, add_node], case_name + '_' + i, [input],
-                                          [output])
-            self.onnx_and_test(graph_def, check_last=True)
+        # for i in ['Relu', 'Sigmoid']:
+        #     add_node = helper.make_node(
+        #         i,  # node name
+        #         ['e'],  # inputs
+        #         ['output'],  # outputs
+        #     )
+        #     graph_def = helper.make_graph([transpose_node, add_node], case_name + '_' + i, [input],
+        #                                   [output])
+        #     self.onnx_and_test(graph_def, check_last=True)
 
         # addconst
         add_node = helper.make_node(

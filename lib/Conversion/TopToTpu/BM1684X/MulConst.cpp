@@ -32,7 +32,7 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
   module::getScaleAndZeroPoint(op.getOutput(), scale_o, zp_o, asymmetric);
   auto scale = scale_i / scale_o * op.getConstVal().convertToDouble();
   int multiplier, rshift;
-  get_scale_and_shift(scale, multiplier, rshift, 8);
+  get_multiplier_and_shift(scale, multiplier, rshift, 8);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);

@@ -64,10 +64,10 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
       operands.push_back(input);
       module::getScaleAndZeroPoint(input, scale, zeropoint, asymmetric);
       auto scale_f = scale / o_scale;
-      // get_scale_and_shift(coeff_v->at(i) * scale_f, scalei, shifti, 8);
-      // "get_scale_and_shift_positive" use positive right_shift, left_shift
+      // get_multiplier_and_shift(coeff_v->at(i) * scale_f, scalei, shifti, 8);
+      // "get_multiplier_and_shift_positive" use positive right_shift, left_shift
       // will be converted to the multiplier.
-      get_scale_and_shift_positive(coeff_v->at(i) * scale_f, scalei, shifti, 8);
+      get_multiplier_and_shift_positive(coeff_v->at(i) * scale_f, scalei, shifti, 8);
     }
     multiplier_v[i] = scalei;
     rshift_v[i] = shifti;

@@ -28,7 +28,7 @@ void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
     LoweringF16(rewriter, op);
   } else {
     int multiplier, rshift;
-    get_scale_and_shift(op.getAlpha().convertToDouble(), multiplier, rshift, 8);
+    get_multiplier_and_shift(op.getAlpha().convertToDouble(), multiplier, rshift, 8);
 
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(

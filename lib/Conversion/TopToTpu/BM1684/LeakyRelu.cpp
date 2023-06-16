@@ -20,7 +20,7 @@ void LeakyReluLowering::LoweringF32(PatternRewriter &rewriter,
 void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter, top::LeakyReluOp op,
                                  bool asymmetric) const {
     int multiplier, rshift;
-    get_scale_and_shift(op.getAlpha().convertToDouble(), multiplier, rshift, 8);
+    get_multiplier_and_shift(op.getAlpha().convertToDouble(), multiplier, rshift, 8);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "multiplier", rewriter.getSI32IntegerAttr(multiplier)));

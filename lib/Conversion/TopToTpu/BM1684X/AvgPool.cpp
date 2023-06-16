@@ -60,7 +60,7 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
     assert(in_zp == 0 && out_zp == 0);
     double scale = in_scale / (out_scale * kh * kw);
     int multiplier, rshift;
-    get_scale_and_shift(scale, multiplier, rshift, 8);
+    get_multiplier_and_shift(scale, multiplier, rshift, 8);
 
     attrs.push_back(rewriter.getNamedAttr(
         "multiplier", rewriter.getSI32IntegerAttr(multiplier)));

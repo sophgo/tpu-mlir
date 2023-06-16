@@ -73,11 +73,11 @@ void topk_indices(std::vector<std::pair<int, T>> &result, const T *items,
 // =======================
 // interfece for quantization
 // =======================
-void get_scale_and_shift(float scale_f, int &scale, int &shift,
+void get_multiplier_and_shift(float scale_f, int &scale, int &shift,
                          int bitwidth = 32);
-void get_scale_and_shift_positive(float scale_f, int &scale, int &shift,
+void get_multiplier_and_shift_positive(float scale_f, int &scale, int &shift,
                                   int bitwidth = 32);
-void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,
+void get_multiplier_and_shift_positive_maxshift(float scale_f, int &scale,
                                            int &shift, int bitwidth,
                                            int max_shift = 8);
 template <typename Dtype> float findMaxabs(const Dtype *pSrcData, int len);

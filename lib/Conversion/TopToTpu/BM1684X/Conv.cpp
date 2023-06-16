@@ -125,7 +125,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       scale_w = std::max(w_max / fqmax, 1e-5f);
     }
     double scale_f = scale_w * in_scale / out_scale;
-    get_scale_and_shift(scale_f, int32_multiplier, shift, 32);
+    get_multiplier_and_shift(scale_f, int32_multiplier, shift, 32);
     multiplier_v.push_back(int32_multiplier);
     rshift_v.push_back(shift);
 
@@ -361,7 +361,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     } else {
       scale_f = scale_w * in_scale / out_scale;
     }
-    get_scale_and_shift(scale_f, int32_multiplier, shift, 32);
+    get_multiplier_and_shift(scale_f, int32_multiplier, shift, 32);
     multiplier_v.push_back(int32_multiplier);
     rshift_v.push_back(shift);
     if (fsign) {
@@ -516,7 +516,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
           scale_f = scale_w * in_scale / out_int8_scale;
         else
           scale_f = scale_w * in_scale / out_scale;
-        get_scale_and_shift(scale_f, int32_multiplier, shift, 32);
+        get_multiplier_and_shift(scale_f, int32_multiplier, shift, 32);
         multiplier_v.push_back(int32_multiplier);
         rshift_v.push_back(shift);
       }

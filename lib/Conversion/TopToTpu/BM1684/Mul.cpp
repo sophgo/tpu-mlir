@@ -68,7 +68,7 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
 
   int multiplier;
   int rshift;
-  get_scale_and_shift(scale, multiplier, rshift, 8);
+  get_multiplier_and_shift(scale, multiplier, rshift, 8);
 
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));

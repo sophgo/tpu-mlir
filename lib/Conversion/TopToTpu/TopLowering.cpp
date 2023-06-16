@@ -34,7 +34,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
   auto out_name = module::getName(op);
   auto new_name = in_name.str() + "_to_" + out_name.str();
   int multiplier, rshift;
-  get_scale_and_shift_positive(in_scale / out_scale, multiplier, rshift, 8);
+  get_multiplier_and_shift_positive(in_scale / out_scale, multiplier, rshift, 8);
   if (in_zp == 0 && out_zp == 0) {
     std::vector<NamedAttribute> attrs;
     auto name_loc = NameLoc::get(builder.getStringAttr(new_name));

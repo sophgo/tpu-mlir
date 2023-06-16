@@ -78,7 +78,7 @@ void tpu::CustomOp::codegen_global_bm1684x() {
   int param_size = 0;
   processParam(params, values, param_size);
 
-  BM168x::call_global_custom_func(api_name.c_str(), values.data(), param_size,
+  BM168x::call_global_special_func(api_name.c_str(), values.data(), param_size,
                                   input_spec->data(), output_spec->data());
 }
 

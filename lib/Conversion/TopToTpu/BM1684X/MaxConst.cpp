@@ -28,7 +28,7 @@ void MaxConstLowering::LoweringINT8(PatternRewriter &rewriter,
   module::getScaleAndZeroPoint(out, out_scale, out_zp, asymmetric);
 
   int multiplier, rshift;
-  get_scale_and_shift_positive(in_scale / out_scale, multiplier, rshift, 8);
+  get_multiplier_and_shift_positive(in_scale / out_scale, multiplier, rshift, 8);
   double const_val = op.getConstVal().convertToDouble();
   const_val = static_cast<int>(round(const_val / out_scale)) << rshift;
   op.setConstValAttr(rewriter.getF64FloatAttr(const_val));

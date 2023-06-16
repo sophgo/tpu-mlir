@@ -114,10 +114,10 @@ public:
   static int call_local_bfsz_func(const char *symbolName, void *params,
                                   int param_size, void *info, void *input,
                                   void *output);
-  static void call_global_custom_func(const char *symbolName, void *params,
+  static void call_global_special_func(const char *symbolName, void *params,
                                       int param_size, void *input,
                                       void *output);
-  static void call_local_custom_func(const char *symbolName, void *params,
+  static void call_local_special_func(const char *symbolName, void *params,
                                      int param_size, void *info, void *input,
                                      void *output);
   static DATA_TYPE_T getDataType(Type type);

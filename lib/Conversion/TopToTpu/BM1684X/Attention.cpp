@@ -281,7 +281,7 @@ Value generate_table(mlir::Operation *op, float scale) {
 
 void generate_quant_param(std::vector<int64_t>& param, double scale) {
   int mul = 1, shift = 0;
-  get_scale_and_shift(scale, mul, shift, 32);
+  get_multiplier_and_shift(scale, mul, shift, 32);
   param.push_back(mul);
   param.push_back(shift);
   param.push_back(0);
@@ -384,7 +384,7 @@ void lowering_multi_attention_int(PatternRewriter &rewriter, top::AttentionOp op
     module::getScaleAndZeroPoint(op.getOutput(), o_scale, zp, false);
     auto scale_param = module::getF64Array(op.getScaleParam());
     double m1_scale = scale_param->at(6);
-    get_scale_and_shift(m1_scale * ow_scale / o_scale, multi, shift, 32);
+    get_multiplier_and_shift(m1_scale * ow_scale / o_scale, multi, shift, 32);
     // attention for each head
     for (int i = 0; i < head; ++i) {
       auto attention = attention_head(rewriter, op, i);

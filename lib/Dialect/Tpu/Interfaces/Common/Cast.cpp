@@ -192,7 +192,7 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
         int32_t multiplier;
         int32_t shift;
         std::vector<NamedAttribute> attrs;
-        get_scale_and_shift(1.0 / qtype.getScale(), multiplier, shift, 32);
+        get_multiplier_and_shift(1.0 / qtype.getScale(), multiplier, shift, 32);
         auto ctx = op.getContext();
         attrs.push_back(rewriter.getNamedAttr(
             "multiplier", rewriter.getSI32IntegerAttr(multiplier)));

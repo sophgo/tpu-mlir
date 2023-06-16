@@ -552,6 +552,8 @@ def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu, SupportPermuteMove]> {
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );
 
+  let hasCanonicalizer = 1;
+
   let results = (outs AnyTensor:$output);
 }
 
@@ -2040,7 +2042,6 @@ def Top_ROIPoolingOp : Top_Op<"ROIPooling">  {
   let results = (outs AnyTensor:$output);
 }
 
-
 def Top_DequantizeLinearOp : Top_Op<"DequantizeLinear"> {
   let summary = "Linear dequantize operation";
   let description = [{
@@ -2659,7 +2660,6 @@ def Top_DeformConv2DOp: Top_Op<"DeformConv2D", [SupportFuseRelu]> {
   }];
 }
 
-
 def Top_CustomOp: Top_Op<"Custom"> {
   let summary = "Custom operator";
   let description = [{
@@ -2674,6 +2674,5 @@ def Top_CustomOp: Top_Op<"Custom"> {
 
   let results = (outs Variadic<AnyTensor>:$output);
 }
-
 
 #endif // Top_OPS

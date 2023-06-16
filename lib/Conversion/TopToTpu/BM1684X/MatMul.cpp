@@ -83,7 +83,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     }
     bool with_bias = p.with_bias || in_zp != 0;
     float scale_f = in_scale * w_scale / out_scale;
-    get_scale_and_shift(scale_f, scale, shift, 32);
+    get_multiplier_and_shift(scale_f, scale, shift, 32);
     auto filter_type = op.getRight().getType().cast<RankedTensorType>();
     auto new_type =
         RankedTensorType::get(filter_type.getShape(), rewriter.getI8Type());
@@ -112,7 +112,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     module::getScaleAndZeroPoint(op.getRight(), w_scale, w_zp, asymmetric);
     module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
     float scale_f = in_scale * w_scale / out_scale;
-    get_scale_and_shift(scale_f, scale, shift, 32);
+    get_multiplier_and_shift(scale_f, scale, shift, 32);
     for (auto operand : op.getOperands())
       operands.push_back(operand);
     if (p.with_bias) {
@@ -276,7 +276,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     } else {
       scale_f = in_scale * w_scale / out_scale;
     }
-    get_scale_and_shift(scale_f, scale, shift, 32);
+    get_multiplier_and_shift(scale_f, scale, shift, 32);
     auto filter_type = op.getRight().getType().cast<RankedTensorType>();
     auto new_type =
         RankedTensorType::get(filter_type.getShape(), rewriter.getI8Type());
@@ -305,7 +305,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     module::getScaleAndZeroPoint(op.getRight(), w_scale, w_zp, asymmetric);
     module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
     float scale_f = in_scale * w_scale / out_scale;
-    get_scale_and_shift(scale_f, scale, shift, 32);
+    get_multiplier_and_shift(scale_f, scale, shift, 32);
     for (auto operand : op.getOperands())
       operands.push_back(operand);
     if (p.with_bias) {

@@ -16,7 +16,7 @@ file(GLOB_RECURSE SRC_FILES
     ${SRC_DIR}/src/*.c
 )
 
-add_library(backend_custom SHARED ${SRC_FILES})
-set_target_properties(backend_custom PROPERTIES LINK_FLAGS "-g")
+add_library(backend_special SHARED ${SRC_FILES})
+set_target_properties(backend_special PROPERTIES LINK_FLAGS "-g")
 
-install(TARGETS backend_custom LIBRARY DESTINATION lib)
+install(TARGETS backend_special LIBRARY DESTINATION lib)

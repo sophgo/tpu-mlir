@@ -1,13 +1,5 @@
-#ifndef BACKEND_CUSTOM_PARAM_H
-#define BACKEND_CUSTOM_PARAM_H
-
-typedef struct {
-  int int_t;
-  float float_t;
-  // max size of int and float array is set as 16
-  int int_arr_t[16];
-  float float_arr_t[16];
-} custom_param_t;
+#ifndef BACKEND_API_PARAM_H
+#define BACKEND_API_PARAM_H
 
 // start defining your custom op param from here
 typedef struct swapchannel_param {

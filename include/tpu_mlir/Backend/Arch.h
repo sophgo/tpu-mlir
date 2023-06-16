@@ -55,9 +55,9 @@ public:
     return reinterpret_cast<FPtrTy>(fPtr);
   }
 
-  // the cast function only for custom op
-  template <typename FPtrTy> FPtrTy CastToCustomFPtr(const char *symbolName) {
-    llvm::StringRef custom_lib_name = "libbackend_custom.so";
+  // the cast function only for special op in summer course
+  template <typename FPtrTy> FPtrTy CastToSpecialFPtr(const char *symbolName) {
+    llvm::StringRef custom_lib_name = "libbackend_special.so";
     std::string Err;
     auto custom_dl = llvm::sys::DynamicLibrary::getPermanentLibrary(custom_lib_name.data(), &Err);
     assert(custom_dl.isValid());

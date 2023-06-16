@@ -3,7 +3,7 @@
 
 #include "common.h"
 #include "tpu_kernel.h"
-#include "backend_custom_param.h"
+#include "backend_api_param.h"
 
 class id_node_guard {
 public:
@@ -31,35 +31,29 @@ private:
 
 #define USE_NODE(node) id_node_guard __guard(node)
 
-#define IMPL_CUSTOM_API_GLB(name, type)                                   \
+#define _BACKEND_PARSE_API(type, name, param, param_size)          \
+  TPUKERNEL_ASSERT((size_t)param_size <= sizeof(type));            \
+  type name = {0};                                                 \
+  memcpy(&name, param, param_size);
+
+#define BACKEND_PARSE_API(type, name, param, param_size, pid_node) \
+  _BACKEND_PARSE_API(type, name, param, param_size)                \
+  USE_NODE(pid_node)
+
+#define IMPL_BACKEND_API_GLB(name, type)                          \
   extern "C"{                                                             \
     int backend_api_##name##_global(                                      \
-        custom_param_t *param,                                            \
+        void *param,                                                      \
         int param_size,                                                   \
         global_tensor_spec_t *inputs,                                     \
         global_tensor_spec_t *outputs,                                    \
         void *pid_node)                                                   \
     {                                                                     \
-      USE_NODE(pid_node);                                                 \
-      api_##name##_global(inputs, outputs, param);                        \
+      BACKEND_PARSE_API(type, api, param, param_size, pid_node);          \
+      api_##name##_global(inputs, outputs, &api);                         \
       return 0;                                                           \
     }                                                                     \
   }                                                                       \
 
-#define IMPL_CUSTOM_API_LOC(name, type)                                   \
-  extern "C"{                                                             \
-    int backend_api_##name##_local(                                       \
-        custom_param_t *param,                                            \
-        int param_size,                                                   \
-        local_sec_info_t *sec_info,                                       \
-        local_tensor_spec *inputs,                                        \
-        local_tensor_spec *outputs,                                       \
-        void *pid_node)                                                   \
-    {                                                                     \
-      USE_NODE(pid_node);                                                 \
-      api_##name##_local(sec_info, inputs, outputs, param);               \
-      return 0;                                                           \
-    }                                                                     \
-  }
-
 #endif
+

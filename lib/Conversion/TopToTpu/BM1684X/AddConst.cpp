@@ -30,7 +30,7 @@ void AddConstLowering::LoweringINT8(PatternRewriter &rewriter,
   module::getScaleAndZeroPoint(in, in_scale, in_zp, asymmetric);
   module::getScaleAndZeroPoint(out, out_scale, out_zp, asymmetric);
   int multiplier, rshift;
-  get_scale_and_shift_positive(in_scale / out_scale, multiplier, rshift, 8);
+  get_multiplier_and_shift_positive(in_scale / out_scale, multiplier, rshift, 8);
 
   double const_b = op.getConstVal().convertToDouble();
   const_b = static_cast<int>(round(const_b / out_scale)) << rshift;

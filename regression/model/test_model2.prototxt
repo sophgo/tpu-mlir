@@ -1,0 +1,30 @@
+name: "test_net"
+layer{
+    name:"input0"
+    type:"Input"
+    top:"input0"
+    input_param{ shape:{dim:1 dim:3 dim:14 dim:14} }
+}
+
+layer {
+  name: "input0_bn"
+  type: "BatchNorm"
+  bottom: "input0"
+  top: "input0_bn"
+  batch_norm_param {
+    eps: 1e-5
+  }
+}
+
+layer {
+  name: "absadd"
+  type: "Python"
+  bottom: "input0_bn"
+  top: "absadd"
+  python_param {
+    module: "my_layer"
+    layer: "AbsAdd"
+    param_str: "{ 'b_val': 0.54}"
+  }
+}
+
