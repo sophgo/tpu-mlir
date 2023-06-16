@@ -681,8 +681,7 @@ void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
     auto s = getShape(v);
     /* unranked tensor is okay, for example:
        tensor<*xf32>->tensor<1xf32> */
-    if ((std::max(s.size(), shape.size()) > 1) &&
-        s != shape) {
+    if ((std::max(s.size(), shape.size()) > 1) && s != shape) {
       v.dump();
       llvm_unreachable("Shape Verify failed");
     }
@@ -746,6 +745,9 @@ void setPostprocess(StringRef post) {
 Chip getChip() { return chip; }
 
 Mode getMode() {
+  if (false == m->hasAttrOfType<StringAttr>(Attr::MODE)) {
+    return Mode::F32;
+  }
   auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
   return symbolizeMode(s).value_or(Mode::F32);
 }
