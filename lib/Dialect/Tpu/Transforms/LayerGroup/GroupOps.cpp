@@ -165,14 +165,6 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
   int64_t id = 0;
   for (int64_t stg = 0; stg < 3; ++stg) {
     for (size_t ts = 0; ts < time_step->get_timestep_num(); ++ts) {
-      if (stg == 1) {
-        auto cur_ts_layers = time_step->getLayers(ts);
-        for (auto op : cur_ts_layers) {
-          UpdateOpLgParam(op, tensor_infos, id++, lg_info.type);
-          op->moveAfter(current_op_);
-          current_op_ = op;
-        }
-      }
 
       auto cur_ts_tensors = time_step->getTensors(ts);
       for (auto tensor : cur_ts_tensors) {
@@ -191,6 +183,15 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
             auto storeOp = CreateStoreOp(tensor, id++, lg_info.type);
             stores.push_back(storeOp.getOutput());
           }
+        }
+      }
+
+      if (stg == 1) {
+        auto cur_ts_layers = time_step->getLayers(ts);
+        for (auto op : cur_ts_layers) {
+          UpdateOpLgParam(op, tensor_infos, id++, lg_info.type);
+          op->moveAfter(current_op_);
+          current_op_ = op;
         }
       }
     }
