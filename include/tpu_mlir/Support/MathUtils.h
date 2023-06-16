@@ -269,6 +269,20 @@ saturate(T v, mlir::Type type,
 }
 
 template <typename T>
+int16_t to_int16(T value,
+               RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+  auto v = to_int(value, round_mode);
+  return v > 32767 ? 32767 : v < -32768 ? -32768 : v;
+};
+
+template <typename T>
+uint16_t to_uint16(T value,
+                 RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+  auto v = to_int(value, round_mode);
+  return v > 65535 ? 65535 : v < 0 ? 0 : v;
+}
+
+template <typename T>
 int8_t to_int8(T value,
                RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
   auto v = to_int(value, round_mode);
