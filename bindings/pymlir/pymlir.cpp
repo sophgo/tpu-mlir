@@ -47,10 +47,14 @@ typedef std::map<std::string, std::vector<int64_t>> shape_map_t;
 namespace py = pybind11;
 
 // Warning: buffer in C++. New inference will erase old output
-static py::array getPyArray(std::shared_ptr<std::vector<float>> ptr, const std::vector<int64_t> &shape) {
-    auto shared_ptr_ptr = new std::shared_ptr<std::vector<float>>(std::move(ptr));
-    py::capsule delete_shared_ptr_ptr(shared_ptr_ptr, [](void *ptr) {delete reinterpret_cast<std::shared_ptr<std::vector<float>>*>(ptr);});
-    return py::array_t<float>(shape, (*shared_ptr_ptr)->data(), delete_shared_ptr_ptr);
+static py::array getPyArray(std::shared_ptr<std::vector<float>> ptr,
+                            const std::vector<int64_t> &shape) {
+  auto shared_ptr_ptr = new std::shared_ptr<std::vector<float>>(std::move(ptr));
+  py::capsule delete_shared_ptr_ptr(shared_ptr_ptr, [](void *ptr) {
+    delete reinterpret_cast<std::shared_ptr<std::vector<float>> *>(ptr);
+  });
+  return py::array_t<float>(shape, (*shared_ptr_ptr)->data(),
+                            delete_shared_ptr_ptr);
 }
 
 struct quant_brief_info {
@@ -129,14 +133,14 @@ public:
                             true);
   }
 
-  //Warning: using copy in python
+  // Warning: using copy in python
   py::array get_tensor(std::string name) {
     auto tensor = interpreter_->getTensor(name);
     auto shape = interpreter_->getTensorShape(name);
     return getPyArray(std::move(tensor), shape);
   }
 
-  //Tip: not using copy in python, since independent mem
+  // Tip: not using copy in python, since independent mem
   py::array get_fp32_tensor(std::string name) {
     auto tensor = interpreter_->getTensor(name, true);
     auto shape = interpreter_->getTensorShape(name);
@@ -173,14 +177,18 @@ public:
     return getPyArray(std::move(tensor), shape);
   }
 
-  py::array backward_weight_at(const std::string name, const std::string weight_name, py::array_t<float, py::array::c_style | py::array::forcecast> grd_dst) {
+  py::array backward_weight_at(
+      const std::string name, const std::string weight_name,
+      py::array_t<float, py::array::c_style | py::array::forcecast> grd_dst) {
     auto shape = interpreter_->getTensorShape(weight_name);
     size_t size = 1;
     for (auto dim : shape) {
       size *= dim;
     }
-    py::array_t <float, py::array::c_style | py::array::forcecast> weight_grd(shape);
-    interpreter_->backward_weight_at(name, grd_dst.data(), grd_dst.size(), weight_grd.data(), size);
+    py::array_t<float, py::array::c_style | py::array::forcecast> weight_grd(
+        shape);
+    interpreter_->backward_weight_at(name, grd_dst.data(), grd_dst.size(),
+                                     weight_grd.data(), size);
     return weight_grd;
   }
 
