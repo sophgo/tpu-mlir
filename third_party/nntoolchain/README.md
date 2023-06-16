@@ -1,5 +1,5 @@
-## TPU1684 2023-06-05
-sha256: 647b030b051283d3ebcd4b59799fe47f29cd82da
+## TPU1684 2023-06-16
+sha256: 9540a9b1bff45c9ffb11507c6b2388f95f21994a
 
 ``` bash
 cd  nntoolchain/net_compiler/

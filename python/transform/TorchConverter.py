@@ -120,6 +120,7 @@ class TorchConverter(BaseConverter):
             "aten::log_softmax": lambda node: self.convert_softmax_op(node, log=True),
             "aten::lstm": lambda node: self.convert_lstm_op(node),
             "aten::lt": lambda node: self.convert_compare_op(node, "Less"),
+            "aten::masked_fill": lambda node: self.convert_masked_fill(node),
             "aten::matmul": lambda node: self.convert_matmul_op(node),
             "aten::max": lambda node: self.convert_max_op(node),
             "aten::max_pool1d": lambda node: self.convert_maxpool_op(node),
@@ -1406,6 +1407,19 @@ class TorchConverter(BaseConverter):
                             op,
                             loc=self.get_loc(torch_node.name),
                             ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_masked_fill(self, torch_node: TorchNode):
+        x = self.getOp(torch_node.inputs[0])
+        mask = self.getOp(torch_node.inputs[1])
+        const_val = self.const_val[torch_node.inputs[2]]
+        new_op = top.MaskedFillOp(self.unranked_type,
+                                  mask,
+                                  x,
+                                  inversed=True,
+                                  const_val=const_val,
+                                  loc=self.get_loc(torch_node.name),
+                                  ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
 
     def convert_matmul_op(self, torch_node: TorchNode):

@@ -86,6 +86,7 @@ class TORCH_IR_TESTER(object):
             "Linear":           (self.test_Linear,            N, Y, Y, Y),
             "LogSoftmax":       (self.test_LogSoftmax,        N, Y, Y, Y),
             "LSTM":             (self.test_LSTM,              N, Y, Y, Y),
+            "MaskedFill":       (self.test_MaskedFill,        Y, Y, Y, N),
             "Math":             (self.test_Math,              N, Y, Y, N),
             "MatMul":           (self.test_MatMul,            N, Y, Y, Y),
             "Max":              (self.test_Max,               N, Y, Y, N),
@@ -203,7 +204,8 @@ class TORCH_IR_TESTER(object):
     def compare(self, ref_out, targe_out):
         if ref_out.dtype in [np.int64, np.int32, np.int16, np.int8]:
             cos = self.cosine_similarity(ref_out, targe_out)
-            assert (cos > 0.997)
+            assert (cos > 0.997 or (np.linalg.norm(ref_out) == 0
+                                    and np.linalg.norm(targe_out) == 0))
         else:
             np.testing.assert_allclose(ref_out, targe_out, rtol=1e-5, atol=1e-01)
 
@@ -1418,6 +1420,41 @@ class TORCH_IR_TESTER(object):
         _test_t((32, 32))
         if not self.is_cv18xx:
             _test_t((32, ))
+
+    #######################################################################
+    # MaskedFill
+    # ------------
+    def test_MaskedFill(self):
+        def _test_masked_fill(in_shape, mask_shape, is_local):
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x, mask):
+                    if is_local:
+                        x += x
+                        x -= 2
+                        x *= 2
+                        x += 1
+                    x = torch.masked_fill(x, mask, 5)
+                    if is_local:
+                        x += 1
+                    return x
+
+            self.trace_and_test([in_shape, mask_shape], Model(),
+                                [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
+
+        dims = [3, 4, 5]
+        shape = [1, 3, 128, 300, 2]
+        for dim in dims:
+            shapes = [shape[: dim], shape[: dim]]
+            odd = True
+            for i in range(dim):
+                shapes[odd][i] = 1
+                odd = not odd
+            _test_masked_fill(tuple(shapes[0]), tuple(shapes[1]), False)
+        _test_masked_fill(([1, 3, 1, 300]), ([1, 1, 128, 300]), True)
 
     #######################################################################
     # Math: cos/sin/tan/tanh
