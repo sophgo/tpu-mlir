@@ -203,6 +203,8 @@ typedef void (*nodechip_space2batch_fix8b)(uint64_t input_global_addr, uint64_t 
 typedef void (*nodechip_batch2space)(uint64_t input_global_addr, uint64_t output_global_addr, uint64_t buffer_global_addr, const int* input_shape, const int input_dim, const int* block_sizes, const int* pad_sizes, int* output_shape, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_batch2space_fix8b)(uint64_t input_global_addr, uint64_t output_global_addr, uint64_t buffer_global_addr, uint64_t imm_global_addr, uint64_t *buffer_size, const int* input_shape, const int input_dim, int  in_store_mode, int  out_store_mode, const int* block_sizes, const int* crops_sizes, int* output_shape, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_unary)(uint64_t bottom_global_addr, uint64_t top_global_addr, uint64_t length, UNARY_FUNC_TYPE type, void *param, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_masked_fill_global)(uint64_t input_global_addr, uint64_t mask_global_addr, uint64_t output_global_addr, uint32_t *input_shape, uint32_t *mask_shape, int input_dims, int mask_dims, uint32_t value, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_masked_fill_local)(uint32_t input_addr, uint32_t mask_addr, uint32_t buffer_addr, uint32_t output_addr, const int *input_shape, const int *mask_shape, int input_dims, int mask_dims, uint32_t value, CMD_ID_NODE *pid_node);
 
 // clang-format on
 namespace tpu_mlir {
@@ -417,6 +419,8 @@ public:
   nodechip_batch2space dl_nodechip_batch2space;
   nodechip_batch2space_fix8b dl_nodechip_batch2space_fix8b;
   nodechip_unary dl_nodechip_unary;
+  nodechip_masked_fill_global dl_nodechip_masked_fill_global;
+  nodechip_masked_fill_local dl_nodechip_masked_fill_local;
   // clang-format on
 public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;
