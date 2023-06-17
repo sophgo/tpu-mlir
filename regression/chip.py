@@ -72,7 +72,7 @@ full_model_list = {
     "ssd-12":                     (N,      Y,       Y,      N,      N,      N,      N,      Y),
     "ultraface_640":              (N,      Y,       Y,      N,      N,      N,      N,      Y),
     "unet":                       (N,      N,       N,      N,      N,      N,      Y,      N),
-    "unet_plusplus":              (N,      N,       Y,      N,      N,      N,      N,      N),
+    "unet_plusplus":              (N,      N,       N,      N,      N,      N,      N,      N),
     "vgg16":                      (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov3":                     (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
@@ -83,7 +83,7 @@ full_model_list = {
     "yolov5s_with_trans":         (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "alphapose_res50":            (N,      N,       Y,      N,      N,      Y,      Y,      N),
     "yolov7":                     (N,      N,       N,      N,      N,      N,      Y,      N),
-    "yolov8s":                    (N,      N,       Y,      N,      N,      N,      N,      N),
+    "yolov8s":                    (N,      N,       N,      N,      N,      N,      N,      N),
     ######## Pytorch #######      ######
     "bert_pt":                    (N,      Y,       Y,      N,      N,      N,      N,      Y),
     "bert_base_pt":               (N,      N,       N,      N,      N,      N,      N,      N),
