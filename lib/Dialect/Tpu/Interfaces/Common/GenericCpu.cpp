@@ -408,6 +408,46 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
 
     GridSamplerFunc func(param);
     func.invoke();
+  } else if (func_name == "deform_gather") {
+    mlir::DictionaryAttr dic_param = this->getParam().value();
+    DeformGatherParam param;
+    param.mode = DEFORM_TORCHVISION_MODE;
+    param.modulated = dic_param.get("use_mask").cast<BoolAttr>().getValue();
+    param.deform_groups = dic_param.get("deform_group").cast<IntegerAttr>().getInt();
+    param.kh = dic_param.get("kh").cast<IntegerAttr>().getInt();
+    param.kw = dic_param.get("kw").cast<IntegerAttr>().getInt();
+    param.pad_t = dic_param.get("pad_t").cast<IntegerAttr>().getInt();
+    param.pad_b = dic_param.get("pad_b").cast<IntegerAttr>().getInt();
+    param.pad_l = dic_param.get("pad_l").cast<IntegerAttr>().getInt();
+    param.pad_r = dic_param.get("pad_r").cast<IntegerAttr>().getInt();
+    param.stride_h = dic_param.get("stride_h").cast<IntegerAttr>().getInt();
+    param.stride_w = dic_param.get("stride_w").cast<IntegerAttr>().getInt();
+    param.dilation_h = dic_param.get("dilation_h").cast<IntegerAttr>().getInt();
+    param.dilation_w = dic_param.get("dilation_w").cast<IntegerAttr>().getInt();
+    tensor_list_t input;
+    input.ptr = p.inputs[0];
+    input.size = module::getNumElements(getInputs()[0]);
+    input.shape = module::getShape(getInputs()[0]);
+    tensor_list_t offset;
+    offset.ptr = p.inputs[1];
+    offset.size = module::getNumElements(getInputs()[1]);
+    offset.shape = module::getShape(getInputs()[1]);
+    param.inputs.push_back(input);
+    param.inputs.push_back(offset);
+    if (param.modulated) {
+      tensor_list_t mask;
+      mask.ptr = p.inputs[2];
+      mask.size = module::getNumElements(getInputs()[2]);
+      mask.shape = module::getShape(getInputs()[2]);
+      param.inputs.push_back(mask);
+    }
+    tensor_list_t output;
+    output.size = module::getNumElements(getOutputs()[0]);
+    output.shape = module::getShape(getOutputs()[0]);
+    output.ptr = p.outputs[0];
+    param.output = output;
+    DeformGatherFunc func(param);
+    func.invoke();
   } else {
     llvm_unreachable("generic cpu func not supported!\n");
   }

@@ -543,6 +543,7 @@ private:
   void get_gather_nd_tf_param();
   void get_tensor_scatter_param();
   void get_grid_sampler_param();
+  void get_deform_gather_param();
 };
 
 struct NmsParam {
@@ -692,6 +693,33 @@ private:
   ScatterNDParam param_;
   void scatternd_update_core(float *data, const float *updates, int len,
                              CPU_SCATTER_OP_T op);
+};
+
+struct DeformGatherParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  bool modulated;
+  int deform_groups;
+  int kh;
+  int kw;
+  int pad_t;
+  int pad_b;
+  int pad_l;
+  int pad_r;
+  int stride_h;
+  int stride_w;
+  int dilation_h;
+  int dilation_w;
+  DEFORM_MODE_T mode;
+};
+
+class DeformGatherFunc {
+public:
+  DeformGatherFunc(DeformGatherParam &param);
+  void invoke();
+
+private:
+  DeformGatherParam param_;
 };
 
 } // namespace tpu_mlir
