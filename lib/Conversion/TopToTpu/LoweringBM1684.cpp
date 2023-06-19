@@ -32,6 +32,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ConcatLowering,
       ConvLowering,
       CustomLowering,
+      DeformConv2DLowering,
       Depth2SpaceLowering,
       EluLowering,
       FloorLowering,

@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/Module.h"
 
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/DeformConv2D.h"
 #include <algorithm>
 #include <assert.h>
 #include <cmath>
@@ -2059,6 +2060,7 @@ int BMCpuOp::getCpuOpType() {
       .Case("gathernd_tf", CPU_GATHERND_TF)
       .Case("tensor_scatter", CPU_TENSOR_SCATTER_OP)
       .Case("grid_sampler", CPU_GRID_SAMPLER)
+      .Case("deform_gather", CPU_DEFORM_GATHER)
       .Default(CPU_LAYER_UNKNOW);
 }
 
@@ -2122,6 +2124,27 @@ void BMCpuOp::get_grid_sampler_param() {
   memcpy(this->param, &cpu_param, this->param_size);
 }
 
+void BMCpuOp::get_deform_gather_param() {
+  cpu_deform_gather_param_t cpu_param{};
+  mlir::DictionaryAttr paramDic = op_.getParam().value();
+  cpu_param.mode = DEFORM_TORCHVISION_MODE;
+  cpu_param.modulated = paramDic.get("use_mask").cast<BoolAttr>().getValue();
+  cpu_param.deform_groups = paramDic.get("deform_group").cast<IntegerAttr>().getInt();
+  cpu_param.kh = paramDic.get("kh").cast<IntegerAttr>().getInt();
+  cpu_param.kw = paramDic.get("kw").cast<IntegerAttr>().getInt();
+  cpu_param.pad_t = paramDic.get("pad_t").cast<IntegerAttr>().getInt();
+  cpu_param.pad_b = paramDic.get("pad_b").cast<IntegerAttr>().getInt();
+  cpu_param.pad_l = paramDic.get("pad_l").cast<IntegerAttr>().getInt();
+  cpu_param.pad_r = paramDic.get("pad_r").cast<IntegerAttr>().getInt();
+  cpu_param.stride_h = paramDic.get("stride_h").cast<IntegerAttr>().getInt();
+  cpu_param.stride_w = paramDic.get("stride_w").cast<IntegerAttr>().getInt();
+  cpu_param.dilation_h = paramDic.get("dilation_h").cast<IntegerAttr>().getInt();
+  cpu_param.dilation_w = paramDic.get("dilation_w").cast<IntegerAttr>().getInt();
+  this->param_size = sizeof(cpu_deform_gather_param_t);
+  this->param = (void *)malloc(this->param_size);
+  memcpy(this->param, &cpu_param, this->param_size);
+}
+
 void BMCpuOp::getCpuParam() {
   switch (this->op_type) {
   case CPU_TOPK:
@@ -2138,6 +2161,9 @@ void BMCpuOp::getCpuParam() {
     break;
   case CPU_GRID_SAMPLER:
     get_grid_sampler_param();
+    break;
+  case CPU_DEFORM_GATHER:
+    get_deform_gather_param();
     break;
   case CPU_LAYER_UNKNOW:
     llvm_unreachable("Unknow CPU Op");
@@ -2998,6 +3024,42 @@ void GridSamplerFunc::invoke() {
   }
   output_tensor.shape = {N, C, OH, OW};
   return;
+}
+
+DeformGatherFunc::DeformGatherFunc(DeformGatherParam &param) : param_(param) {}
+
+void DeformGatherFunc::invoke() {
+  std::vector<int64_t> input_shapes = param_.inputs[0].shape;
+  deform_gather_attr_t attr;
+  attr.n = input_shapes[0];
+  attr.ic = input_shapes[1];
+  attr.ih = input_shapes[2];
+  attr.iw = input_shapes[3];
+  attr.kh = param_.kh;
+  attr.kw = param_.kw;
+  attr.pht = param_.pad_t;
+  attr.phb = param_.pad_b;
+  attr.pwl = param_.pad_l;
+  attr.pwr = param_.pad_r;
+  attr.sh = param_.stride_h;
+  attr.sw = param_.stride_w;
+  attr.dh = param_.dilation_h;
+  attr.dw = param_.dilation_w;
+  const int conved_H =
+      ((attr.ih - (attr.dh * (attr.kh - 1) + 1) + attr.pht + attr.phb) / attr.sh + 1);
+  const int conved_W =
+      ((attr.iw - (attr.dw * (attr.kw - 1) + 1) + attr.pwl + attr.pwr) / attr.sw + 1);
+  attr.oc = attr.ic * attr.kh * attr.kw;
+  attr.oh = conved_H;
+  attr.ow = conved_W;
+  attr.deform_groups = param_.deform_groups;
+  attr.use_mask = param_.modulated;
+  InferenceParameter p;
+  for (int i = 0; i < param_.inputs.size(); ++i) {
+    p.inputs.push_back(param_.inputs[i].ptr);
+  }
+  p.outputs.push_back(param_.output.ptr);
+  processDeformGather(p, attr, param_.output.ptr, false);
 }
 
 } // namespace tpu_mlir

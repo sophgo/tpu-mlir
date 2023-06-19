@@ -94,8 +94,8 @@ void processDeformGather(InferenceParameter &p,
                                          const deform_gather_attr_t &attr,
                                          float *data_out, bool top_flag) {
   // data: [N, C, H, W]
-  // offset£º [N, num_deform_group*kh*kw*2, conved_H, conved_W]
-  // mask£º [N, num_deform_group*kh*kw, conved_H, conved_W]
+  // offset: [N, num_deform_group*kh*kw*2, conved_H, conved_W]
+  // mask: [N, num_deform_group*kh*kw, conved_H, conved_W]
   // out: [N, C*kh*kw, conved_H, conved_W]
 
   const int N = attr.n;
