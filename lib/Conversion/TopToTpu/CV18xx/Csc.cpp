@@ -103,11 +103,17 @@ void CscLowering::LoweringINT8(PatternRewriter &rewriter, top::CscOp op,
     int64_t unaligned_w = oc * oh * ow / (c * h);
     std::vector<int64_t> slice_offset{0, 0, 0, 0};
     std::vector<int64_t> slice_stpes{1, 1, 1, 1};
+    std::vector<int64_t> slice_ends{-1, -1, -1, -1};
     auto caliType = module::getCalibratedType(op.getOutput());
     auto slice_type = RankedTensorType::get({n, c, h, unaligned_w}, caliType);
     attrs.emplace_back(rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(slice_offset)));
     attrs.emplace_back(rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(slice_stpes)));
+    attrs.emplace_back(rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(slice_ends)));
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_slice"));
+    auto noneOp = module::getNoneOp(op);
+    for (int i = 0; i < 3; i++) {
+      operands.emplace_back(noneOp);
+    }
     auto slice_op = rewriter.create<top::SliceOp>(loc, slice_type, operands, attrs);
     auto slice_out = slice_op.getOutput();
     attrs.clear();
