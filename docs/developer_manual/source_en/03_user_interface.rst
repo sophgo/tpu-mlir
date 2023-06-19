@@ -30,7 +30,6 @@ TFLite model conversion is also supported, with the following command:
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \
        --quantize INT8 \
-       --asymmetric \
        --chip bm1684x \
        --test_input resnet50_tf_in_f32.npz \
        --test_reference resnet50_tf_top_outputs.npz \
@@ -114,7 +113,10 @@ Used to convert various neural network models into MLIR files, the supported par
      - The scale of each channel of the image. The default is 1.0,1.0,1.0
    * - pixel_format
      - N
-     - Image type, can be rgb, bgr, gray or rgbd
+     - Image type, can be rgb, bgr, gray or rgbd. The default is bgr
+   * - channel_format
+     - N
+     - Channel type, can be nhwc or nchw for image input, otherwise it is none. The default is nchw
    * - output_names
      - N
      - The names of the output. Use the output of the model if not specified, otherwise use the specified names as the output
@@ -214,6 +216,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - excepts
      - N
      - Names of network layers that need to be excluded from validation. Separated by comma
+   * - op_divide
+     - N
+     - cv183x/cv182x/cv181x/cv180x only, Try to split the larger op into multiple smaller op to achieve the purpose of ion memory saving, suitable for a few specific models
    * - model
      - Y
      - Name of output model file (including path)

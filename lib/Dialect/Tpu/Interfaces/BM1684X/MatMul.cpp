@@ -252,25 +252,19 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto p = parseParam();
   if (!buffer)
-    return (p.batch != 1 ? sizeof(batch_matmul_common_spec_t)
-                         : sizeof(fc_global_spec_t));
+    return ((p.hdim_is_batch || p.batch != 1)
+                ? sizeof(batch_matmul_common_spec_t)
+                : sizeof(fc_global_spec_t));
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  if (p.batch != 1) {
-    BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
-    if (p.right_transpose == false) {
-      BM168x::fix_shape(input_spec->at(1), {p.batch, p.K, p.N});
-    } else {
-      BM168x::fix_shape(input_spec->at(1), {p.batch, p.N, p.K});
-    }
-    BM168x::fix_shape(output_spec->at(0), {p.batch, p.M, p.N});
+  if (p.hdim_is_batch || p.batch != 1) {
     batch_matmul_common_spec_t spec{0};
     spec.Y_dtype = output_spec->at(0).dtype;
-    spec.L_trans = false;
+    spec.L_trans = p.left_transpose;
     spec.R_trans = p.right_transpose;
     spec.has_bias = p.with_bias;
-    spec.hdim_is_batch = false;
+    spec.hdim_is_batch = p.hdim_is_batch;
     spec.requant_mode = -1;
     spec.do_relu = p.do_relu;
     spec.upper_limit = p.relu_limit;
@@ -292,13 +286,6 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
     }
     return BM168x::dynamic_spec_to_buffer(buffer, spec);
   }
-  BM168x::fix_shape(input_spec->at(0), {p.M, p.K});
-  if (p.right_transpose == false) {
-    BM168x::fix_shape(input_spec->at(1), {p.K, p.N});
-  } else {
-    BM168x::fix_shape(input_spec->at(1), {p.N, p.K});
-  }
-  BM168x::fix_shape(output_spec->at(0), {p.M, p.N});
   fc_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.if_relu = p.do_relu;
@@ -330,7 +317,8 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
 
 int64_t tpu::MatMulOp::get_fw_type_bm1684x() {
   auto p = parseParam();
-  return (p.batch != 1 ? FW_BMNET_BATCH_MATMUL : FW_BMNET_FC);
+  return ((p.hdim_is_batch || p.batch != 1) ? FW_BMNET_BATCH_MATMUL
+                                            : FW_BMNET_FC);
 }
 
 int64_t tpu::MatMulOp::dyn_codegen_local_bm1684x(void *buffer) {

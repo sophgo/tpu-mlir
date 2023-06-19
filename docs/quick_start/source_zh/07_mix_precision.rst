@@ -1,3 +1,5 @@
+.. _mix precision:
+
 混精度使用方法
 ==================
 
@@ -79,7 +81,7 @@
        --pixel_format rgb \
        --keep_aspect_ratio \
        --pad_value 128 \
-       --output_names=transpose_output1,transpose_output \
+       --output_names=convolution_output1,convolution_output \
        --mlir yolov3_tiny.mlir
 
 第二步: 生成calibartion table
@@ -118,7 +120,7 @@
 
 .. code-block:: shell
 
-    orange:73.0%
+    orange:72.9%
 
 
 得到图片 ``yolov3_int8.jpg``, 如下( :ref:`yolov3_int8_result` ):
@@ -144,7 +146,7 @@
 使用 ``run_qtable.py`` 生成混精度量化表, 相关参数说明如下:
 
 .. list-table:: run_qtable.py 参数功能
-   :widths: 18 10 50
+   :widths: 23 8 50
    :header-rows: 1
 
    * - 参数名
@@ -183,6 +185,15 @@
    * - o
      - 是
      - 输出混精度量化表
+   * - global_compare_layers
+     - 否
+     - 指定用于替换最终输出层的层，并用于全局比较,例如：\'layer1,layer2\' or \'layer1:0.3,layer2:0.7\'
+   * - fp_type
+     - 否
+     - 指定混合精度的浮点类型
+   * - loss_table
+     - 否
+     - 指定保存所有被量化成浮点类型的层的损失值的文件名，默认为full_loss_table.txt
 
 本例中采用默认10张图片校准, 执行命令如下（对于CV18xx系列的芯片，将chip设置为对应的芯片名称即可）:
 
@@ -192,7 +203,7 @@
        --dataset ../COCO2017 \
        --calibration_table yolov3_cali_table \
        --chip bm1684x \
-       --min_layer_cos 0.999 \ #若这里使用默认的0.99时，程序会检测到原始int8模型已满足0.99的cos，从而直接不再搜素
+       --min_layer_cos 0.999 \ #若这里使用默认的0.99时，程序会检测到原始int8模型已满足0.99的cos，从而直接不再搜索
        --expected_cos 0.9999 \
        -o yolov3_qtable
 
@@ -200,8 +211,8 @@
 
 .. code-block:: shell
 
-    int8 outputs_cos:0.999317
-    mix model outputs_cos:0.999739
+    int8 outputs_cos:0.999115 old
+    mix model outputs_cos:0.999517
     Output mix quantization table to yolov3_qtable
     total time:44 second
 
@@ -211,12 +222,12 @@
 .. code-block:: shell
 
     # op_name   quantize_mode
-    convolution_output11_Conv F16
-    model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu F16
     model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool F16
     convolution_output10_Conv F16
-    convolution_output9_Conv F16
+    model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu F16
+    model_1/leaky_re_lu_3/LeakyRelu:0_pooling0_MaxPool F16
     model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu F16
+    model_1/leaky_re_lu_4/LeakyRelu:0_pooling0_MaxPool F16
     model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu F16
     model_1/leaky_re_lu_5/LeakyRelu:0_pooling0_MaxPool F16
     model_1/concatenate_1/concat:0_Concat F16
@@ -229,17 +240,17 @@
 
     # chip: bm1684x  mix_mode: F16
     ###
-    No.0   : Layer: convolution_output11_Conv                            Cos: 0.984398
-    No.1   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu          Cos: 0.998341
-    No.2   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool   Cos: 0.998500
-    No.3   : Layer: convolution_output9_Conv                             Cos: 0.998926
-    No.4   : Layer: convolution_output8_Conv                             Cos: 0.999249
-    No.5   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_pooling0_MaxPool   Cos: 0.999284
-    No.6   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu          Cos: 0.999368
-    No.7   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu          Cos: 0.999554
-    No.8   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool   Cos: 0.999576
-    No.9   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_pooling0_MaxPool   Cos: 0.999723
-    No.10  : Layer: convolution_output12_Conv                            Cos: 0.999810
+    No.0   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu                Cos: 0.994063
+    No.1   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu                Cos: 0.997447
+    No.2   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu                Cos: 0.997450
+    No.3   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu                Cos: 0.997982
+    No.4   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool         Cos: 0.998163
+    No.5   : Layer: convolution_output11_Conv                                  Cos: 0.998300
+    No.6   : Layer: convolution_output9_Conv                                   Cos: 0.999302
+    No.7   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu                Cos: 0.999371
+    No.8   : Layer: convolution_output8_Conv                                   Cos: 0.999424
+    No.9   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool         Cos: 0.999574
+    No.10  : Layer: convolution_output12_Conv                                  Cos: 0.999784
 
 
 该表按cos从小到大顺利排列, 表示该层的前驱Layer根据各自的cos已换成相应的浮点模式后, 该层计算得到的cos, 若该cos仍小于前面min_layer_cos参数，则会将该层及直接后继层设置为浮点计算。
@@ -274,7 +285,7 @@
 .. code-block:: shell
 
     person:63.9%
-    orange:73.0%
+    orange:72.9%
 
 
 得到图片yolov3_mix.jpg, 如下( :ref:`yolov3_mix_result` ):

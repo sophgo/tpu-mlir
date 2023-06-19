@@ -26,7 +26,7 @@ The operation is as follows:
    :linenos:
 
    $ mkdir yolov5s_onnx && cd yolov5s_onnx
-   $ cp $TPUC_ROOT/regression/model/yolov5s.onnx .
+   $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace
@@ -45,7 +45,7 @@ The model conversion command is as follows:
    $ model_transform.py \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
-       --input_shapes [[1,3,192,1024]] \
+       --input_shapes [[1,3,640,640]] \
        --mean 0.0,0.0,0.0 \
        --scale 0.0039216,0.0039216,0.0039216 \
        --keep_aspect_ratio \
@@ -67,7 +67,7 @@ The generated yolov5s.mlir file finally has a top.YoloDetection inserted at the 
     %260 = "top.Weight"() : () -> tensor<255x512x1x1xf32> loc(#loc261)
     %261 = "top.Weight"() : () -> tensor<255xf32> loc(#loc262)
     %262 = "top.Conv"(%253, %260, %261) {dilations = [1, 1], do_relu = false, group = 1 : i64, kernel_shape = [1, 1], pads = [0, 0, 0, 0], relu_limit = -1.000000e+00 : f64, strides = [1, 1]} : (tensor<1x512x6x32xf32>, tensor<255x512x1x1xf32>, tensor<255xf32>) -> tensor<1x255x6x32xf32> loc(#loc263)
-    %263 = "top.YoloDetection"(%256, %259, %262) {anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326], class_num = 80 : i64, keep_topk = 200 : i64, net_input_h = 192 : i64, net_input_w = 1024 : i64, nms_threshold = 5.000000e-01 : f64, num_boxes = 3 : i64, obj_threshold = 0.69999999999999996 : f64, version = "yolov5"} : (tensor<1x255x24x128xf32>, tensor<1x255x12x64xf32>, tensor<1x255x6x32xf32>) -> tensor<1x1x200x7xf32> loc(#loc264)
+    %263 = "top.YoloDetection"(%256, %259, %262) {anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326], class_num = 80 : i64, keep_topk = 200 : i64, net_input_h = 640 : i64, net_input_w = 640 : i64, nms_threshold = 5.000000e-01 : f64, num_boxes = 3 : i64, obj_threshold = 0.69999999999999996 : f64, version = "yolov5"} : (tensor<1x255x24x128xf32>, tensor<1x255x12x64xf32>, tensor<1x255x6x32xf32>) -> tensor<1x1x200x7xf32> loc(#loc264)
     return %263 : tensor<1x1x200x7xf32> loc(#loc)
 
 Here you can see that top.YoloDetection includes parameters such as anchors, num_boxes, and so on. If the post-processing is not standard YOLO, and needs to be changed to other parameters, these parameters in the MLIR file can be directly modified.
@@ -112,7 +112,7 @@ In this way, the converted model is a model that includes post-processing. The m
     ------------
     stage 0:
     subnet number: 2
-    input: images_raw, [1, 3, 192, 1024], uint8, scale: 1, zero_point: 0
+    input: images_raw, [1, 3, 640, 640], uint8, scale: 1, zero_point: 0
     output: yolo_post, [1, 1, 200, 7], float32, scale: 1, zero_point: 0
 
     device mem size: 24970588 (coeff: 14757888, instruct: 1372, runtime: 10211328)
@@ -134,7 +134,7 @@ The command execution is as follows:
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
        --model yolov5s_1684x_f16.bmodel \
-       --net_input_dims 192,1024 \
+       --net_input_dims 640,640 \
        --fuse_preprocess \
        --fuse_postprocess \
        --output dog_out.jpg

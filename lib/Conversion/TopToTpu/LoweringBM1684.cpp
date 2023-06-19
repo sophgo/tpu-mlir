@@ -12,6 +12,15 @@
 namespace tpu_mlir {
 namespace bm1684 {
 
+void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
+  patterns->add<
+      // clang-format off
+      ShapeTryLowering,
+      SliceTryLowering
+      // clang-format on
+      >(patterns->getContext());
+}
+
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
   patterns->add<
       // clang-format off
@@ -24,11 +33,14 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ConvLowering,
       CustomLowering,
       Depth2SpaceLowering,
+      EluLowering,
       FloorLowering,
       GatherLowering,
       GatherNDLowering,
       GridSamplerLowering,
       GroupNormLowering,
+      GRULowering,
+      InstanceNormLowering,
       MatMulLowering,
       MaxPoolLowering,
       MulLowering,
@@ -40,9 +52,12 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ReduceLowering,
       ReluLowering,
       ReshapeLowering,
+      ScaleLowering,
       ScatterNDLowering,
+      ShuffleChannelLowering,
       SliceLowering,
       SoftmaxLowering,
+      SoftplusLowering,
       SigmoidLowering,
       SiLULowering,
       SqrtLowering,
@@ -55,6 +70,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       HardSigmoidLowering,
       HardSwishLowering,
       AddConstLowering,
+      SubConstLowering,
       MulConstLowering,
       SubLowering,
       LayerNormLowering,
@@ -69,8 +85,13 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       LeakyReluLowering,
       GELULowering,
       PowLowering,
+      Pow2Lowering,
       DivLowering,
-      CompareLowering
+      CompareLowering,
+      CompareConstLowering,
+      MishLowering,
+      SoftsignLowering,
+      MaskedFillLowering
       // clang-format on
       >(patterns->getContext());
 }

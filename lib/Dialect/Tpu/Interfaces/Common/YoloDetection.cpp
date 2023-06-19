@@ -31,7 +31,9 @@ LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
   param.obj_threshold = getObjThreshold().convertToDouble();
   param.anchors = *module::getI64Array(getAnchors());
   param.num_boxes = getNumBoxes();
+  param.agnostic_nms = getAgnosticNms();
   auto num_input = getInputs().size();
+  param.version = getVersion().str();
   for (int i = 0; i < param.num_boxes * num_input; i++) {
     param.mask.push_back(i);
   }
@@ -45,7 +47,20 @@ LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
   param.output.ptr = p.outputs[0];
   param.output.size = module::getNumElements(getOutput());
   param.output.shape = module::getShape(getOutput());
-  YoloDetectionFunc_v2 yolo_func(param);
-  yolo_func.invoke();
+
+  // empty process means the yolo layer comes from origin model but not
+  // add_postprocess
+  auto process = module::getPostprocess();
+  if (process.empty()) {
+    YoloDetectionFunc yolo_func(param);
+    yolo_func.invoke();
+  } else if (process.starts_with("yolov5") && p.inputs.size() == 1 &&
+      param.inputs[0].shape.size() == 3) {
+    Yolov5DetectionFunc yolo_func(param);
+    yolo_func.invoke();
+  } else {
+    YoloDetectionFunc_v2 yolo_func(param);
+    yolo_func.invoke();
+  }
   return success();
 }

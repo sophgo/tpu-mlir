@@ -293,8 +293,12 @@ llvm::ArrayRef<int64_t> getShape(Value v) {
     v.dump();
     llvm_unreachable("v is none type");
   }
-  auto type = v.getType().cast<RankedTensorType>();
-  return type.getShape();
+  if (!isUnranked(v)) {
+    auto type = v.getType().cast<RankedTensorType>();
+    return type.getShape();
+  } else {
+    return v.getType().cast<UnrankedTensorType>().getShape();
+  }
 }
 
 void getGlobalShape(Value v, int *shape, int dim) {
@@ -655,6 +659,17 @@ bool isWeight(Value v) {
   return false;
 }
 
+bool isShapeRelatedOp(Value v) {
+  auto op = v.getDefiningOp();
+  if (op == nullptr) {
+    return false;
+  }
+  if (isa<top::ShapeOp, tpu::ShapeOp, tpu::ShapeSliceOp, tpu::ShapeCastOp>(op)) {
+    return true;
+  }
+  return false;
+}
+
 bool isAllWeight(Operation *op) {
   for (auto in : op->getOperands()) {
     if (isNone(in) || isWeight(in)) {
@@ -675,7 +690,9 @@ void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
     v.setType(newType);
   } else {
     auto s = getShape(v);
-    if (s != shape) {
+    /* unranked tensor is okay, for example:
+       tensor<*xf32>->tensor<1xf32> */
+    if ((std::max(s.size(), shape.size()) > 1) && s != shape) {
       v.dump();
       llvm_unreachable("Shape Verify failed");
     }
@@ -739,6 +756,9 @@ void setPostprocess(StringRef post) {
 Chip getChip() { return chip; }
 
 Mode getMode() {
+  if (false == m->hasAttrOfType<StringAttr>(Attr::MODE)) {
+    return Mode::F32;
+  }
   auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
   return symbolizeMode(s).value_or(Mode::F32);
 }

@@ -115,7 +115,9 @@ struct YoloDetParam {
   double nms_threshold;
   double obj_threshold;
   int64_t num_boxes;
+  int64_t agnostic_nms;
   std::vector<int64_t> mask;
+  std::string version;
 };
 
 class YoloDetectionFunc {
@@ -140,6 +142,19 @@ struct PredictionResult {
 class YoloDetectionFunc_v2 {
 public:
   YoloDetectionFunc_v2(YoloDetParam &param);
+  void invoke();
+
+private:
+  YoloDetParam param_;
+};
+
+/**
+ * @brief postprocess for yolov5 in case of 3-D output shape [b, total, 5 +
+ * cls_num]
+ */
+class Yolov5DetectionFunc {
+public:
+  Yolov5DetectionFunc(YoloDetParam &param);
   void invoke();
 
 private:

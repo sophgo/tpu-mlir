@@ -96,12 +96,15 @@ LogicalResult tpu::Pool3DOp::inference(InferenceParameter &p) {
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
   if (out_type.isInteger(8)) {
+    if (getScale().has_value() || getOffset().has_value()) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int64_t i = 0; i < num_elem; ++i) {
-      p.outputs[0][i] = p.outputs[0][i] * pooling->kd * pooling->kh *
-                            pooling->kw * getScale().value().convertToDouble() +
-                        getOffset().value().convertToDouble();
-      p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
+      for (int64_t i = 0; i < num_elem; ++i) {
+        p.outputs[0][i] = p.outputs[0][i] * pooling->kd * pooling->kh *
+                              pooling->kw *
+                              getScale().value().convertToDouble() +
+                          getOffset().value().convertToDouble();
+        p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
+      }
     }
   } else if (out_type.isa<FloatType>()) {
     if (getDoRelu()) {

@@ -19,7 +19,13 @@ void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter, top::ScatterNDOp
     llvm_unreachable("Not support activation indices.");
   }
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, newType, op->getOperands(), op->getAttrs());
+  std::vector<Value> operands;
+  operands.push_back(op.getInputData());
+  operands.push_back(op.getIndices());
+  operands.push_back(op.getUpdates());
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp);
+  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, newType, operands, op->getAttrs());
 }
 
 void ScatterNDLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -28,7 +34,13 @@ void ScatterNDLowering::LoweringBF16(PatternRewriter &rewriter,
     llvm_unreachable("Not support activation indices.");
   }
   auto newType = getQuantBF16Type(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, newType, op->getOperands(), op->getAttrs());
+  std::vector<Value> operands;
+  operands.push_back(op.getInputData());
+  operands.push_back(op.getIndices());
+  operands.push_back(op.getUpdates());
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp);
+  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, newType, operands, op->getAttrs());
 }
 
 } // namespace cv18xx

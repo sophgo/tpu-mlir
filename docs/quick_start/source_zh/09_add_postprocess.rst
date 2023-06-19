@@ -27,7 +27,7 @@
    :linenos:
 
    $ mkdir yolov5s_onnx && cd yolov5s_onnx
-   $ cp $TPUC_ROOT/regression/model/yolov5s.onnx .
+   $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace
 
@@ -45,7 +45,7 @@ ONNX转MLIR
    $ model_transform.py \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
-       --input_shapes [[1,3,192,1024]] \
+       --input_shapes [[1,3,640,640]] \
        --mean 0.0,0.0,0.0 \
        --scale 0.0039216,0.0039216,0.0039216 \
        --keep_aspect_ratio \
@@ -65,14 +65,21 @@ ONNX转MLIR
 
     %260 = "top.Weight"() : () -> tensor<255x512x1x1xf32> loc(#loc261)
     %261 = "top.Weight"() : () -> tensor<255xf32> loc(#loc262)
-    %262 = "top.Conv"(%253, %260, %261) {dilations = [1, 1], do_relu = false, group = 1 : i64, kernel_shape = [1, 1], pads = [0, 0, 0, 0], relu_limit = -1.000000e+00 : f64, strides = [1, 1]} : (tensor<1x512x6x32xf32>, tensor<255x512x1x1xf32>, tensor<255xf32>) -> tensor<1x255x6x32xf32> loc(#loc263)
-    %263 = "top.YoloDetection"(%256, %259, %262) {anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326], class_num = 80 : i64, keep_topk = 200 : i64, net_input_h = 192 : i64, net_input_w = 1024 : i64, nms_threshold = 5.000000e-01 : f64, num_boxes = 3 : i64, obj_threshold = 0.69999999999999996 : f64, version = "yolov5"} : (tensor<1x255x24x128xf32>, tensor<1x255x12x64xf32>, tensor<1x255x6x32xf32>) -> tensor<1x1x200x7xf32> loc(#loc264)
+    %262 = "top.Conv"(%253, %260, %261) {dilations = [1, 1], do_relu = false, group = 1 : i64, kernel_shape = [1, 1], pads = [0, 0, 0, 0], relu_limit = -1.000000e+00 : f64, strides = [1, 1]} : (tensor<1x512x20x20xf32>, tensor<255x512x1x1xf32>, tensor<255xf32>) -> tensor<1x255x20x20xf32> loc(#loc263)
+    %263 = "top.YoloDetection"(%256, %259, %262) {agnostic_nms = false, anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326], class_num = 80 : i64, keep_topk = 200 : i64, net_input_h = 640 : i64, net_input_w = 640 : i64, nms_threshold = 5.000000e-01 : f64, num_boxes = 3 : i64, obj_threshold = 5.000000e-01 : f64, version = "yolov5"} : (tensor<1x255x80x80xf32>, tensor<1x255x40x40xf32>, tensor<1x255x20x20xf32>) -> tensor<1x1x200x7xf32> loc(#loc264)
     return %263 : tensor<1x1x200x7xf32> loc(#loc)
 
 这里看到 ``top.YoloDetection`` 包括了anchors、num_boxes等等参数, 如果并非标准的yolo后处理, 需要改成其他参数, 可以直接修改mlir文件的这些参数。
 
 另外输出也变成了1个, shape为 ``1x1x200x7``, 其中200代表最大检测框数, 当有多个batch时, 它的数值会变为 ``batch x 200``;
 7分别指 ``[batch_number, class_id, score, center_x, center_y, width, height]``。
+其中坐标是相对模型输入长宽的坐标, 比如本例中640x640, 数值参考如下：
+
+.. code-block:: text
+    :linenos:
+
+    [0., 16., 0.924488, 184.21094, 401.21973, 149.66412, 268.50336 ]
+
 
 MLIR转换成BModel
 --------------------
@@ -112,7 +119,7 @@ MLIR转换成BModel
     ------------
     stage 0:
     subnet number: 2
-    input: images_raw, [1, 3, 192, 1024], uint8, scale: 1, zero_point: 0
+    input: images_raw, [1, 3, 640, 640], uint8, scale: 1, zero_point: 0
     output: yolo_post, [1, 1, 200, 7], float32, scale: 1, zero_point: 0
 
     device mem size: 24970588 (coeff: 14757888, instruct: 1372, runtime: 10211328)
@@ -134,7 +141,7 @@ MLIR转换成BModel
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
        --model yolov5s_1684x_f16.bmodel \
-       --net_input_dims 192,1024 \
+       --net_input_dims 640,640 \
        --fuse_preprocess \
        --fuse_postprocess \
        --output dog_out.jpg

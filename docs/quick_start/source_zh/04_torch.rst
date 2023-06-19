@@ -26,7 +26,7 @@
    :linenos:
 
    $ mkdir yolov5s_torch && cd yolov5s_torch
-   $ cp $TPUC_ROOT/regression/model/yolov5s.pt .
+   $ wget https://github.com/sophgo/model-zoo/raw/main/vision/detection/yolov5/yolov5s-5.0.pt
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace
@@ -48,7 +48,7 @@ TORCH转MLIR
 
    $ model_transform.py \
        --model_name yolov5s_pt \
-       --model_def ../yolov5s.pt \
+       --model_def ../yolov5s-5.0.pt \
        --input_shapes [[1,3,640,640]] \
        --mean 0.0,0.0,0.0 \
        --scale 0.0039216,0.0039216,0.0039216 \

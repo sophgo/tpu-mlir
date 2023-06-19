@@ -13,10 +13,11 @@
 namespace tpu_mlir {
 namespace bm1684 {
 
-static void Gather_lowring_common(PatternRewriter &rewriter, top::GatherOp op) {
-  if (module::isBM1684Family() && module::isWeight(op.getInput())) {
+void GatherLowering::LoweringF32(PatternRewriter &rewriter,
+                                 top::GatherOp op) const {
+  rewriter.setInsertionPointAfter(op);
+  if (module::isWeight(op.getInput())) {
     // need insert Weight2ActivationOp before Gather's input
-    rewriter.setInsertionPointAfter(op);
     auto name = module::getName(op.getInput());
     auto insert_loc = NameLoc::get(
         rewriter.getStringAttr(name.str() + "_convert_to_activation"));
@@ -32,19 +33,25 @@ static void Gather_lowring_common(PatternRewriter &rewriter, top::GatherOp op) {
         attrs);
     op.getResult().replaceAllUsesWith(new_gather_op.getOutput());
     op.erase();
-  } else {
-    lowering_common_f32<tpu::GatherOp>(rewriter, op, 3, 1);
+    return;
   }
-}
-
-void GatherLowering::LoweringF32(PatternRewriter &rewriter,
-                                 top::GatherOp op) const {
-  Gather_lowring_common(rewriter, op);
+  std::vector<Value> operands;
+  operands.push_back(op.getInput());
+  if (module::isWeight(op.getIndices())) {
+    auto wOp = op.getIndices().getDefiningOp<top::WeightOp>();
+    operands.push_back(wOp.clone_int(op));
+  } else {
+    operands.push_back(op.getIndices());
+  }
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp);
+  rewriter.replaceOpWithNewOp<tpu::GatherOp>(op, op.getOutput().getType(),
+                                             operands, op->getAttrs());
 }
 
 void GatherLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherOp op,
                                   bool asymmetric) const {
-  Gather_lowring_common(rewriter, op);
+  LoweringF32(rewriter, op);
 }
 
 } // namespace bm1684

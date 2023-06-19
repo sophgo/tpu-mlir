@@ -102,8 +102,7 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(top::MatMulOp op,
                                 PatternRewriter &rewriter) const override {
-    // sd_decoder_pt error in bm1684x/bm1686
-    return failure();
+    // return failure();
     auto filter = op.getRight();
     if (module::isWeight(filter) == false) {
       return failure();
@@ -134,7 +133,8 @@ public:
     if (!mul_const || !mul_const->hasOneUse()) {
       return failure();
     }
-    auto matmul0 = dyn_cast<top::MatMulOp>(mul_const.getInput().getDefiningOp());
+    auto matmul0 =
+        dyn_cast<top::MatMulOp>(mul_const.getInput().getDefiningOp());
     if (!matmul0) {
       return failure();
     }
@@ -148,7 +148,8 @@ public:
       return failure();
     }
     // keys
-    auto permute0 = dyn_cast<top::PermuteOp>(matmul0.getRight().getDefiningOp());
+    auto permute0 =
+        dyn_cast<top::PermuteOp>(matmul0.getRight().getDefiningOp());
     if (!permute0 || !permute0->hasOneUse())
       return failure();
     Value matmul_out2 = is_permute_reshape(permute0.getInput());
@@ -170,15 +171,21 @@ public:
     }
     if (module::isBM1686()) {
       auto len = module::getNumElements(matmul_queries.getInput());
-      // TODO: do not suppose attention when size greater than [batch, 2048, 320]
-      if (len > 2048 * 320) {
+      auto len_weight0 = module::getNumElements(matmul_queries.getRight());
+      auto len_weight1 = module::getNumElements(matmul_keys.getRight());
+      auto len_weight2 = module::getNumElements(matmul_values.getRight());
+      // TODO: do not suppose attention when size greater than [batch, 2048,
+      // 320]
+      if (len > 2048 * 320 ||
+          (len_weight0 + len_weight1 + len_weight2) > 1024 * 160 * 3) {
         return failure();
       }
     }
     rewriter.setInsertionPointAfter(op);
     auto none = module::getNoneOp(op);
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(rewriter.getNamedAttr("scale", mul_const.getConstValAttr()));
+    attrs.push_back(
+        rewriter.getNamedAttr("scale", mul_const.getConstValAttr()));
     auto batch = module::getShape(op.getOutput())[0];
     auto shape = module::getShape(matmul1.getOutput());
     int64_t head;
@@ -187,14 +194,16 @@ public:
     } else {
       head = shape[1];
     }
-    attrs.push_back(rewriter.getNamedAttr("head", rewriter.getI64IntegerAttr(head)));
+    attrs.push_back(
+        rewriter.getNamedAttr("head", rewriter.getI64IntegerAttr(head)));
     if (module::isCalibratedType(op.getOutput().getType())) {
       // quant param
       // qo, ko, vo, m0, si, so, m1
       std::vector<double> scale_v;
       double scale;
       int64_t zp;
-      module::getScaleAndZeroPoint(matmul_queries.getOutput(), scale, zp, false);
+      module::getScaleAndZeroPoint(matmul_queries.getOutput(), scale, zp,
+                                   false);
       scale_v.push_back(scale);
       module::getScaleAndZeroPoint(matmul_keys.getOutput(), scale, zp, false);
       scale_v.push_back(scale);
@@ -208,7 +217,8 @@ public:
       scale_v.push_back(scale);
       module::getScaleAndZeroPoint(matmul1.getOutput(), scale, zp, false);
       scale_v.push_back(scale);
-      attrs.push_back(rewriter.getNamedAttr("scale_param", rewriter.getF64ArrayAttr(scale_v)));
+      attrs.push_back(rewriter.getNamedAttr("scale_param",
+                                            rewriter.getF64ArrayAttr(scale_v)));
     }
     std::vector<Value> operands;
     operands.push_back(matmul_queries.getInput());
@@ -223,9 +233,8 @@ public:
     operands.push_back(op.getRight());
     operands.push_back(op.getBias());
     operands.push_back(add ? add.getInputs()[1] : none);
-    auto attention =
-        rewriter.create<top::AttentionOp>(op.getLoc(), op.getOutput().getType(),
-                                       operands, attrs);
+    auto attention = rewriter.create<top::AttentionOp>(
+        op.getLoc(), op.getOutput().getType(), operands, attrs);
     op.replaceAllUsesWith(attention.getOperation());
     rewriter.eraseOp(op);
     return success();
@@ -359,6 +368,127 @@ public:
   }
 };
 
+class ConvertScaleOp : public OpRewritePattern<top::ScaleOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ScaleOp op,
+                                PatternRewriter &rewriter) const override {
+    auto input_shape = module::getShape(op.getInput());
+    if (input_shape.size() > 4) {
+      return failure();
+    }
+    auto cur_scale = dyn_cast<top::WeightOp>(op.getScale().getDefiningOp());
+    auto cur_bias = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
+    if (!(cur_scale && cur_bias) || input_shape.size() < 3) {
+      return failure();
+    }
+    int channel = cur_scale.getType().cast<RankedTensorType>().getNumElements();
+    auto cur_scale_f32 = cur_scale.read<float>();
+    auto cur_bias_f32 = cur_bias.read<float>();
+
+    std::vector<float> new_scale_v(channel);
+    std::vector<float> new_bias_v(channel);
+    std::copy(cur_scale_f32->begin(), cur_scale_f32->end(),
+              new_scale_v.begin());
+    std::copy(cur_bias_f32->begin(), cur_bias_f32->end(), new_bias_v.begin());
+
+    // scale to depthwise convolution
+    NamedAttrList attrs;
+    attrs.set("kernel_shape", rewriter.getI64ArrayAttr({1, 1}));
+    attrs.set("strides", rewriter.getI64ArrayAttr({1, 1}));
+    attrs.set("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0}));
+    attrs.set("group", rewriter.getI64IntegerAttr(channel));
+    attrs.set("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
+    auto relu_limit = op.getReluLimit().convertToDouble();
+    attrs.set("relu_limit", rewriter.getF64FloatAttr(relu_limit));
+
+    auto filter_type =
+        RankedTensorType::get({channel, 1, 1, 1}, rewriter.getF32Type());
+    auto new_scale =
+        top::WeightOp::create(op, "_to_weight", new_scale_v, filter_type);
+    auto bias_type = RankedTensorType::get({channel}, rewriter.getF32Type());
+    auto new_bias =
+        top::WeightOp::create(op, "_to_bias", new_bias_v, bias_type);
+
+    rewriter.replaceOpWithNewOp<top::ConvOp>(
+        op, op.getResult().getType(),
+        ValueRange{op.getInput(), new_scale, new_bias}, attrs);
+    return success();
+  }
+};
+
+class MergeScale2Conv : public OpRewritePattern<top::ScaleOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ScaleOp op,
+                                PatternRewriter &rewriter) const override {
+    auto formerOp = op.getInput().getDefiningOp();
+    if (!formerOp->hasOneUse() || !isa<top::ConvOp>(formerOp)) {
+      return failure();
+    }
+    auto conv_op = cast<top::ConvOp>(formerOp);
+    if (conv_op.getDoRelu()) {
+      return failure();
+    }
+
+    auto cur_scale_op = dyn_cast<top::WeightOp>(op.getScale().getDefiningOp());
+    auto cur_bias_op = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
+    auto cur_scale_f32 = cur_scale_op.read<float>();
+    auto cur_bias_f32 = cur_bias_op.read<float>();
+
+    auto conv_weight_op =
+        dyn_cast<top::WeightOp>(conv_op.getFilter().getDefiningOp());
+    auto conv_bias_op =
+        dyn_cast<top::WeightOp>(conv_op.getBias().getDefiningOp());
+
+    int64_t oc, ic, kh, kw;
+    module::getNCHW(conv_weight_op.getOutput(), oc, ic, kh, kw);
+
+    // merge weight: weight = weight * cur_scale
+    std::vector<float> conv_weight_v(oc * ic * kh * kw, 0);
+    auto conv_weight_f32 = conv_weight_op.read<float>();
+    for (int i = 0; i < oc; ++i) {
+      for (int j = 0; j < kw * kh * ic; ++j) {
+        conv_weight_v[i * ic * kh * kw + j] =
+            conv_weight_f32->at(i * ic * kh * kw + j) * cur_scale_f32->at(i);
+      }
+    }
+    // merge bias: bias = bias * cur_scale + cur_bias
+    std::vector<float> conv_bias_v(oc, 0);
+    if (conv_bias_op != nullptr) {
+      auto conv_bias_f32 = conv_bias_op.read<float>();
+      for (int i = 0; i < oc; ++i) {
+        conv_bias_v[i] =
+            conv_bias_f32->at(i) * cur_scale_f32->at(i) + cur_bias_f32->at(i);
+      }
+    } else {
+      for (int i = 0; i < oc; ++i) {
+        conv_bias_v[i] = cur_bias_f32->at(i);
+      }
+    }
+
+    auto weight_type =
+        RankedTensorType::get({oc, ic, kh, kw}, rewriter.getF32Type());
+    auto conv_weight = top::WeightOp::create(conv_op, "merged_to_conv_weight",
+                                             conv_weight_v, weight_type);
+    auto bias_type = RankedTensorType::get({oc}, rewriter.getF32Type());
+    auto conv_bias = top::WeightOp::create(conv_op, "merged_to_conv_bias",
+                                           conv_bias_v, bias_type);
+    conv_op->setOperand(1, conv_weight);
+    conv_op->setOperand(2, conv_bias);
+    conv_op.getOutput().setType(op.getOutput().getType());
+    // update attrs
+    double relu_limit = op.getReluLimit().convertToDouble();
+    formerOp->setLoc(op.getLoc());
+    formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
+    formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
+
+    // remove the scale Op
+    rewriter.replaceOp(op, {op.getInput()});
+    return success();
+  }
+};
+
 } // namespace bm1684x
 
 namespace top {
@@ -368,7 +498,9 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<
       ConvertMatMulWithRightTranspose,
       ConvertMatMul2Attention,
-      ReshapeReorderPattern
+      ReshapeReorderPattern,
+      MergeScale2Conv,
+      ConvertScaleOp
   >(patterns->getContext());
   // clang-format on
 }

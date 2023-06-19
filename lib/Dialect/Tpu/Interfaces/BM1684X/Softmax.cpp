@@ -161,3 +161,20 @@ int64_t tpu::SoftmaxOp::dyn_codegen_global_bm1684x(void *buffer) {
 }
 
 int64_t tpu::SoftmaxOp::get_fw_type_bm1684x() { return FW_BMNET_SOFTMAX; }
+
+// ======================================
+// Dynamic LocalGenInterface
+// ======================================
+int64_t tpu::SoftmaxOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(softmax_local_param_t);
+  softmax_local_param_t param{0};
+  auto &common = param.common;
+  common.zero_point = 0.f;
+  common.scale_val = 1.f;
+  common.begin_axis = getAxis();
+  common.end_axis = getAxis();
+  common.scale_val = 1.f;
+  common.log = getLog();
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}

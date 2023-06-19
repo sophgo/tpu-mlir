@@ -12,7 +12,10 @@
 #include "tpu_mlir/Support/Module.h"
 
 typedef void (*set_tiu_freq)(float freq);
-
+typedef void (*set_gdma_bw_s2s)(float GBps);
+typedef void (*set_gdma_bw_s2l)(float GBps);
+typedef void (*set_gdma_bw_l2s)(float GBps);
+typedef void (*set_gdma_bw_l2l)(float GBps);
 namespace tpu_mlir {
 namespace backend {
 template<typename type>
@@ -23,12 +26,32 @@ public:
     return BM1686;
   }
   set_tiu_freq dl_set_tiu_freq;
-
+  set_gdma_bw_s2s dl_set_gdma_bw_s2s;
+  set_gdma_bw_s2l dl_set_gdma_bw_s2l;
+  set_gdma_bw_l2s dl_set_gdma_bw_l2s;
+  set_gdma_bw_l2l dl_set_gdma_bw_l2l;
 private:
   void set_simulation_freq(void) {
     CAST_FUNCTION(set_tiu_freq);
     if(get_frequance() == 0) {
+      CAST_FUNCTION(set_gdma_bw_s2s);
+      CAST_FUNCTION(set_gdma_bw_s2l);
+      CAST_FUNCTION(set_gdma_bw_l2s);
+      CAST_FUNCTION(set_gdma_bw_l2l);
+      if(type::value == 375) //cv186
+      {
+        dl_set_gdma_bw_s2s(12.0f);
+        dl_set_gdma_bw_s2l(12.0f);
+        dl_set_gdma_bw_l2s(12.0f);
+        dl_set_gdma_bw_l2l(10.0f);
+      } else {
+        dl_set_gdma_bw_s2s(12.0f);
+        dl_set_gdma_bw_s2l(24.0f);
+        dl_set_gdma_bw_l2s(24.0f);
+        dl_set_gdma_bw_l2l(12.0f);
+      }
       dl_set_tiu_freq(static_cast<float>(type::value));
+
     } else {
       dl_set_tiu_freq(static_cast<float>(get_frequance()));
     }

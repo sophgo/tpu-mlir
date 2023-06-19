@@ -24,19 +24,20 @@
 using namespace llvm;
 
 namespace tpu_mlir {
-class ScfTypeConverter: public TypeConverter {
+class ScfTypeConverter : public TypeConverter {
 public:
   ScfTypeConverter() {
     // The order of type conversion is important: later ones are tried earlier.
     addConversion([](Type type) { return type; });
     addConversion([](TensorType tensorType) {
       assert(tensorType.hasRank() && "expected only ranked shapes");
-      return MemRefType::get(tensorType.getShape(), tensorType.getElementType());
+      return MemRefType::get(tensorType.getShape(),
+                             tensorType.getElementType());
     });
 
     addSourceMaterialization([&](OpBuilder &builder, Type resultType,
-                                ValueRange inputs,
-                                Location loc) -> Optional<Value> {
+                                 ValueRange inputs,
+                                 Location loc) -> Optional<Value> {
       if (inputs.size() != 1)
         return std::nullopt;
 
@@ -45,8 +46,8 @@ public:
     });
 
     addTargetMaterialization([&](OpBuilder &builder, Type resultType,
-                                ValueRange inputs,
-                                Location loc) -> Optional<Value> {
+                                 ValueRange inputs,
+                                 Location loc) -> Optional<Value> {
       if (inputs.size() != 1)
         return std::nullopt;
 
@@ -55,38 +56,43 @@ public:
     });
   }
 
-  bool isSignatureLegal(mlir::FunctionType funcType){
-    return llvm::all_of(llvm::concat<const mlir::Type>(funcType.getInputs(), funcType.getResults()),
-      [this](mlir::Type type) {return isLegal(type);});
+  bool isSignatureLegal(mlir::FunctionType funcType) {
+    return llvm::all_of(llvm::concat<const mlir::Type>(funcType.getInputs(),
+                                                       funcType.getResults()),
+                        [this](mlir::Type type) { return isLegal(type); });
   }
 
-  bool isSignatureLegal(mlir::func::CallOp call){
-    auto f = [this](mlir::Type type) {return isLegal(type);};
+  bool isSignatureLegal(mlir::func::CallOp call) {
+    auto f = [this](mlir::Type type) { return isLegal(type); };
     return llvm::all_of(call.getOperandTypes(), f) &&
            llvm::all_of(call.getResultTypes(), f);
   }
-
 };
 
 class IfOpLowering : public ConversionPattern {
 public:
   explicit IfOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
-            : ConversionPattern(typeConverter, top::IfOp::getOperationName(), 1, ctx) {}
-  LogicalResult matchAndRewrite(Operation *op, ArrayRef<Value> operands,
-                                ConversionPatternRewriter &rewriter) const final {
-    auto tpuIfOp = rewriter.create<tpu::IfOp>(op->getLoc(), op->getResultTypes(),
-                                             op->getOperands(), op->getAttrs());
+      : ConversionPattern(typeConverter, top::IfOp::getOperationName(), 1,
+                          ctx) {}
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const final {
+    auto tpuIfOp = rewriter.create<tpu::IfOp>(
+        op->getLoc(), op->getResultTypes(), op->getOperands(), op->getAttrs());
     rewriter.createBlock(&(tpuIfOp.getThenBranch()));
     rewriter.createBlock(&(tpuIfOp.getElseBranch()));
     auto ifOp = dyn_cast<top::IfOp>(op);
-    graphToTpuBranch(rewriter, op->getLoc(), ifOp.getThenBranch(), tpuIfOp.getThenBranch());
-    graphToTpuBranch(rewriter, op->getLoc(), ifOp.getElseBranch(), tpuIfOp.getElseBranch());
+    graphToTpuBranch(rewriter, op->getLoc(), ifOp.getThenBranch(),
+                     tpuIfOp.getThenBranch());
+    graphToTpuBranch(rewriter, op->getLoc(), ifOp.getElseBranch(),
+                     tpuIfOp.getElseBranch());
     rewriter.replaceOp(op, tpuIfOp->getResults());
     return success();
   }
+
 private:
-  void graphToTpuBranch(PatternRewriter &rewriter, Location loc,
-                        Region &graph, Region &tpuBranch) const {
+  void graphToTpuBranch(PatternRewriter &rewriter, Location loc, Region &graph,
+                        Region &tpuBranch) const {
     OpBuilder::InsertionGuard insertGuard(rewriter);
 
     rewriter.eraseBlock(&tpuBranch.back());
@@ -94,7 +100,8 @@ private:
     rewriter.setInsertionPointToEnd(&tpuBranch.back());
 
     Operation *returnOp = tpuBranch.back().getTerminator();
-    rewriter.replaceOpWithNewOp<tpu::YieldOp>(returnOp, returnOp->getOperands());
+    rewriter.replaceOpWithNewOp<tpu::YieldOp>(returnOp,
+                                              returnOp->getOperands());
   }
 };
 
@@ -172,11 +179,13 @@ public:
   }
 };
 
-template <typename OpTy> class TopShapeLowering : public OpRewritePattern<OpTy> {
+template <typename OpTy>
+class TopShapeLowering : public OpRewritePattern<OpTy> {
 public:
   using OpRewritePattern<OpTy>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(OpTy opTy, PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewrite(OpTy opTy,
+                                PatternRewriter &rewriter) const override {
     Lowering(rewriter, opTy);
     return success();
   }
@@ -200,8 +209,7 @@ mlir::Type getQuantBoolType(Value v);
 // newType
 template <typename OpTy>
 static void lowering_common(PatternRewriter &rewriter, Operation *from,
-                            Type newType, int num_operands = 0,
-                            int idx_operands = -1) {
+                            Type newType, int num_operands = 0) {
   auto stype = module::getStorageType(newType);
   std::vector<Value> operands;
   int in_num_ops = from->getNumOperands();
@@ -213,9 +221,7 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
     if (isa<top::WeightOp>(in.getDefiningOp())) {
       auto wOp = in.getDefiningOp<top::WeightOp>();
       auto wtype = module::getStorageType(in);
-      if (idx_operands >= 0 && i >= idx_operands) {
-        operands.push_back(wOp.clone_int(from));
-      } else if (stype.isF16()) {
+      if (stype.isF16()) {
         operands.push_back(wOp.clone_f16(from));
       } else if (stype.isBF16()) {
         operands.push_back(wOp.clone_bf16(from));
@@ -239,8 +245,8 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
 // f32 output to int8 output
 template <typename OpTy>
 static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
-                                 bool asymmetric = false, int num_operands = 0,
-                                 int idx_operands = -1) {
+                                 bool asymmetric = false,
+                                 int num_operands = 0) {
   assert(from->getNumResults() == 1);
   auto newType = getQuantInt8Type(from->getResult(0), asymmetric);
   lowering_common<OpTy>(rewriter, from, newType, num_operands);
@@ -279,31 +285,28 @@ static mlir::Type getQuantF16Type(Value v) {
 // lowering to f32/f16/bf16
 template <typename OpTy, typename ElemTy>
 static void lowering_common_float(PatternRewriter &rewriter, Operation *from,
-                                  int num_operands = 0, int idx_operands = -1) {
+                                  int num_operands = 0) {
   assert(from->getNumResults() == 1);
   auto newType = getQuantFloatType<ElemTy>(from->getResult(0));
-  lowering_common<OpTy>(rewriter, from, newType, num_operands, idx_operands);
+  lowering_common<OpTy>(rewriter, from, newType, num_operands);
 }
 
 template <typename OpTy>
 static void lowering_common_f32(PatternRewriter &rewriter, Operation *from,
-                                int num_operands = 0, int idx_operands = -1) {
-  lowering_common_float<OpTy, Float32Type>(rewriter, from, num_operands,
-                                           idx_operands);
+                                int num_operands = 0) {
+  lowering_common_float<OpTy, Float32Type>(rewriter, from, num_operands);
 }
 
 template <typename OpTy>
 static void lowering_common_bf16(PatternRewriter &rewriter, Operation *from,
-                                 int num_operands = 0, int idx_operands = -1) {
-  lowering_common_float<OpTy, BFloat16Type>(rewriter, from, num_operands,
-                                            idx_operands);
+                                 int num_operands = 0) {
+  lowering_common_float<OpTy, BFloat16Type>(rewriter, from, num_operands);
 }
 
 template <typename OpTy>
 static void lowering_common_f16(PatternRewriter &rewriter, Operation *from,
-                                int num_operands = 0, int idx_operands = -1) {
-  lowering_common_float<OpTy, Float16Type>(rewriter, from, num_operands,
-                                           idx_operands);
+                                int num_operands = 0) {
+  lowering_common_float<OpTy, Float16Type>(rewriter, from, num_operands);
 }
 
 // from int8 to int8, convert one (scale zp) to another (scale zp)
@@ -356,8 +359,8 @@ int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
                          int64_t lshift);
 
 // try to insert tpu.Host2DeviceOp at input #idx
-void try_insert_host2device(Operation* op, uint32_t idx);
+void try_insert_host2device(Operation *op, uint32_t idx);
 // try to insert tpu.Device2HostOp at input #idx
-void try_insert_device2host(Operation* op, uint32_t idx);
+void try_insert_device2host(Operation *op, uint32_t idx);
 
 } // namespace tpu_mlir

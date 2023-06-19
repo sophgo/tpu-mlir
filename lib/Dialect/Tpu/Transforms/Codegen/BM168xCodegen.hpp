@@ -36,7 +36,7 @@ private:
                                       std::unique_ptr<Context> &context);
   Offset<bmodel::SubNet> CreateCPUSubNet(func::CallOp call);
    Offset<bmodel::SubNet> CreateSwitchSubNet(func::CallOp call);
-  Offset<bmodel::SubNet> CreateMergeSubNet(tpu::IfOp ifOp);
+  Offset<bmodel::SubNet> CreateMergeSubNet(func::CallOp call);
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
   Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                                           uint64_t coeff_addr,
@@ -71,8 +71,6 @@ private:
   ProfileCtx profile_ctx;
   std::unordered_map<std::string, std::vector<bool>> tensor_is_cpu;
   AsmState::LocationMap opToLineCol;
-  unsigned merge_num;
-  unsigned next_id;
 };
 
 } // namespace tpu

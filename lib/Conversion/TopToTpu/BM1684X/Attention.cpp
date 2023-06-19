@@ -97,12 +97,11 @@ top::AttentionOp attention_head(PatternRewriter &rewriter, top::AttentionOp op, 
 }
 
 template <typename T>
-Value weight_reorder(Value q_weight, Value k_weight, Value v_weight, Type to_type,
+Value weight_reorder(top::AttentionOp op, Type to_type,
                      int N_q, int N_k, int d) {
-  auto op = q_weight.getDefiningOp();
-  auto q_w = q_weight.getDefiningOp<top::WeightOp>();
-  auto k_w = k_weight.getDefiningOp<top::WeightOp>();
-  auto v_w = v_weight.getDefiningOp<top::WeightOp>();
+  auto q_w = op.getQueriesWeight().getDefiningOp<top::WeightOp>();
+  auto k_w = op.getKeysWeight().getDefiningOp<top::WeightOp>();
+  auto v_w = op.getValuesWeight().getDefiningOp<top::WeightOp>();
   int64_t weight_h = (align_up(N_q, NPU_NUM) + align_up(N_k, NPU_NUM) + N_k);
   auto new_weight = std::make_shared<std::vector<T>>(weight_h * d);
 
@@ -118,14 +117,16 @@ Value weight_reorder(Value q_weight, Value k_weight, Value v_weight, Type to_typ
 }
 
 template <typename T>
-Value bias_reorder(Value q_bias, Value k_bias, Value v_bias, Value o_bias,
-                   Type to_type, int N_q, int d) {
+Value bias_reorder(top::AttentionOp op, Type to_type, int N_q, int d) {
+  auto q_bias = op.getQueriesBias();
+  auto k_bias = op.getKeysBias();
+  auto v_bias = op.getValuesBias();
+  auto o_bias = op.getOutBias();
   int64_t bias_len = module::isNone(q_bias) ? 0 : d;
   bias_len += module::isNone(k_bias) ? 0 : d;
   bias_len += module::isNone(v_bias) ? 0 : d;
   bias_len += module::isNone(o_bias) ? 0 : N_q;
   if (bias_len) {
-    auto op = q_bias.getDefiningOp();
     int offset = 0;
     auto new_weight = std::make_shared<std::vector<T>>(bias_len);
     if (!module::isNone(q_bias)) {
@@ -167,13 +168,9 @@ void attention_reorder(PatternRewriter &rewriter, top::AttentionOp op, Type w_ty
   auto k_shape = module::getShape(op.getKeysWeight());
   auto o_shape = module::getShape(op.getOutWeight());
 
-  auto new_op = weight_reorder<T1>(
-                    op.getQueriesWeight(), op.getKeysWeight(), op.getValuesWeight(),
-                    w_type, q_shape[0], k_shape[0], k_shape[1]);
+  auto new_op = weight_reorder<T1>(op, w_type, q_shape[0], k_shape[0], k_shape[1]);
   op->setOperand(3, new_op);
-  auto bias_op = bias_reorder<T2>(
-                    op.getQueriesBias(), op.getKeysBias(), op.getValuesBias(),
-                    op.getOutBias(), b_type, q_shape[0], k_shape[1]);
+  auto bias_op = bias_reorder<T2>(op, b_type, q_shape[0], k_shape[1]);
   op->setOperand(4, bias_op);
   op->setOperand(5, none_op);
   op->setOperand(6, none_op);

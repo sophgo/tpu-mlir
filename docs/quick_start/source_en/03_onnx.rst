@@ -10,6 +10,22 @@ This chapter requires the following files (where xxxx corresponds to the actual 
 
 **tpu-mlir_xxxx.tar.gz (The release package of tpu-mlir)**
 
+.. list-table::
+   :widths: 35 20 30
+   :header-rows: 1
+
+   * - platform
+     - file name
+     - info
+   * - cv183x/cv182x/cv181x/cv180x
+     - xxx.cvimodel
+     - please refer to the :ref:`CV18xx Guidance <onnx to cvimodel>`
+   * - 其它
+     - xxx.bmodel
+     - please refer to the :ref:`following <onnx to bmodel>`
+
+.. _onnx to bmodel:
+
 Load tpu-mlir
 ------------------
 
@@ -29,7 +45,7 @@ The operation is as follows:
    :linenos:
 
    $ mkdir yolov5s_onnx && cd yolov5s_onnx
-   $ cp $TPUC_ROOT/regression/model/yolov5s.onnx .
+   $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace
@@ -70,6 +86,8 @@ The model conversion command is as follows:
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
 
+.. _model_transform param:
+
 The main parameters of ``model_transform.py`` are described as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
 
 
@@ -106,7 +124,10 @@ The main parameters of ``model_transform.py`` are described as follows (for a co
      - The scale of each channel of the image. The default is 1.0,1.0,1.0
    * - pixel_format
      - N
-     - Image type, can be rgb, bgr, gray or rgbd
+     - Image type, can be rgb, bgr, gray or rgbd. The default is bgr
+   * - channel_format
+     - N
+     - Channel type, can be nhwc or nchw for image input, otherwise it is none. The default is nchw
    * - output_names
      - N
      - The names of the output. Use the output of the model if not specified, otherwise use the specified names as the output
@@ -143,6 +164,7 @@ To convert the mlir file to the f16 bmodel, we need to run:
        --tolerance 0.99,0.99 \
        --model yolov5s_1684x_f16.bmodel
 
+.. _model_deploy param:
 
 The main parameters of ``model_deploy.py`` are as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
 
@@ -181,6 +203,9 @@ The main parameters of ``model_deploy.py`` are as follows (for a complete introd
    * - excepts
      - N
      - Names of network layers that need to be excluded from validation. Separated by comma
+   * - op_divide
+     - N
+     - cv183x/cv182x/cv181x/cv180x only, Try to split the larger op into multiple smaller op to achieve the purpose of ion memory saving, suitable for a few specific models
    * - model
      - Y
      - Name of output model file (including path)

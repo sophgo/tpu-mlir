@@ -22,6 +22,7 @@ include "mlir/IR/EnumAttr.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/Interfaces/LoopLikeInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/Interfaces/InferTypeOpInterface.td"
 include "tpu_mlir/Interfaces/LocalGenInterface.td"
 include "tpu_mlir/Interfaces/GlobalGenInterface.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
@@ -354,9 +355,9 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
     //new param
     BoolAttr:$with_bias,
     DefaultValuedAttr<I64Attr, "0">:$kernel_zp,
-    // OptionalAttr<I64ArrayAttr>:$multiplier,
-    // OptionalAttr<I64ArrayAttr>:$rshift,
-    // Tpu_RequantModeAttr:$quant_mode,
+    OptionalAttr<I64ArrayAttr>:$multiplier,
+    OptionalAttr<I64ArrayAttr>:$rshift,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyRankedTensor:$output);
@@ -406,7 +407,28 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
 def Tpu_Pool1DOp:Tpu_PoolOp<"Pool1D">;
 def Tpu_Pool2DOp:Tpu_PoolOp<"Pool2D">;
 def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D",[
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardD"]>]>;
+  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardD"]>]>{
+
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyTensorOrNone:$buffer, //for BM1684 Pool3D
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    Tpu_PoolModeAttr:$pool_mode,
+    DefaultValuedAttr<I64Attr, "0">:$pad_value,
+    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    /// symmetric quantize param
+    OptionalAttr<SI32Attr>:$multiplier,
+    OptionalAttr<SI32Attr>:$rshift,
+    /// asymmetric quantize param
+    OptionalAttr<F64Attr>:$scale,
+    OptionalAttr<F64Attr>:$offset,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
+  );
+}
 
 def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
   [SupportFuseRelu,
@@ -608,6 +630,9 @@ def Tpu_MulOp: Tpu_Op<"Mul",
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_MaxOp: Tpu_Op<"Max", [
@@ -631,6 +656,9 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_MinOp: Tpu_Op<"Min", [
@@ -654,6 +682,9 @@ def Tpu_MinOp: Tpu_Op<"Min", [
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
@@ -719,6 +750,9 @@ def Tpu_ActiveOp: Tpu_Op<"Active",
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_ClipOp: Tpu_Op<"Clip",
@@ -1200,6 +1234,7 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp, IfOp">]> 
 def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>,
     InOutSameShape]> {
   let summary = "softmax operator";
 
@@ -1431,7 +1466,8 @@ def Tpu_DivOp: Tpu_Op<"Div", [
 }
 
 def Tpu_SliceOp: Tpu_Op<"Slice", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "LocalGenSupport"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "BackwardW", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Slice operator";
   let description = [{
     Slice Operation on input.
@@ -1567,6 +1603,7 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
+    AnyTensorOrNone:$K_tensor,
     I64Attr:$axis,
     I64Attr:$K,
     DefaultValuedAttr<BoolAttr, "true">:$largest,
@@ -1887,12 +1924,12 @@ def Tpu_GenericCpuOp : Tpu_Op<"GenericCpu", [
   }];
 
   let arguments = (ins
-    Variadic<AnyRankedTensor>:$inputs,
+    Variadic<AnyTensorOrNone>:$inputs,
     StrAttr:$cpu_op_name,
     OptionalAttr<DictionaryAttr>:$param
   );
 
-  let results = (outs Variadic<AnyRankedTensor>:$outputs);
+  let results = (outs Variadic<AnyTensorOrNone>:$outputs);
 }
 
 def Tpu_InterpOp: Tpu_Op<"Interp"> {
@@ -2044,9 +2081,7 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
     F64Attr:$eps
   );
   let results = (outs
-    AnyRankedTensor:$output,
-    AnyTensorOrNone:$mean,
-    AnyTensorOrNone:$rstd
+    AnyRankedTensor:$output
   );
 }
 
@@ -2325,6 +2360,7 @@ def Tpu_ScatterNDOp: Tpu_Op<"ScatterND", [
       `input_data`           : Tensor of rank r >= 1.
       `indices`      : Tensor of rank q >= 1.
       `updates`     : Tensor of rank q + r - indices_shape[-1] - 1.
+      `reduction`   : Type of reduction to apply: none (0 default), add(1), sub(2), max(3), min(4), mul(5).
 
     Outputs:
       `output`       : Tensor of rank r >= 1.
@@ -2333,7 +2369,9 @@ def Tpu_ScatterNDOp: Tpu_Op<"ScatterND", [
   let arguments = (ins
     AnyRankedTensor:$input_data,
     AnyRankedTensor:$indices,
-    AnyRankedTensor:$updates
+    AnyRankedTensor:$updates,
+    AnyTensorOrNone:$buffer,
+    DefaultValuedAttr<I32Attr, "0">:$reduction
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2387,7 +2425,8 @@ def Tpu_YoloDetectionOp : Tpu_Op<"YoloDetection"> {
     I64ArrayAttr:$anchors,
     YoloVersionAttr:$version,
     DefaultValuedAttr<I64Attr, "80">:$class_num,
-    DefaultValuedAttr<I64Attr, "3">:$num_boxes
+    DefaultValuedAttr<I64Attr, "3">:$num_boxes,
+    DefaultValuedAttr<BoolAttr, "false">:$agnostic_nms
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2598,4 +2637,31 @@ def Tpu_Batch2SpaceOp: Tpu_Op<"Batch2Space"> {
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_IdentityOp : Tpu_Op<"Identity", [NoMemoryEffect,SameOperandsAndResultType]> {
+  let summary = "identity operator";
+
+  let description = [{
+     identity operator.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$input
+  );
+
+  let results = (outs Variadic<AnyRankedTensor>:$output);
+}
+
+def Tpu_NmsOp : Tpu_Op<"Nms"> {
+  let summary = " NMS operator";
+  let description = [{
+      tpu nms
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>: $inputs,
+    I64Attr: $center_point_box,
+    I64Attr: $max_output_size
+  );
+
+  let results = (outs AnyTensor:$output);
+}
 #endif // TPU_OPS

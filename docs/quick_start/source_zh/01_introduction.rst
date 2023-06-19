@@ -21,7 +21,7 @@ TPU-MLIR的整体架构如下:
 https://github.com/onnx/tutorials。
 
 转模型需要在指定的docker执行, 主要分两步, 一是通过 ``model_transform.py`` 将原始模型
-转换成mlir文件, 二是通过 ``model_deploy.py`` 将mlir文件转换成bmodel。
+转换成mlir文件, 二是通过 ``model_deploy.py`` 将mlir文件转换成bmodel/cvimodel。
 
 如果要转INT8模型, 则需要调用 ``run_calibration.py`` 生成校准表, 然后传给 ``model_deploy.py``。
 

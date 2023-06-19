@@ -91,6 +91,25 @@ typedef enum {
 } ROUND_MODE_T;
 
 typedef enum {
+  BMNET_NEURON = 0,         // Addr align, h*w align
+  BMNET_COEFF  = 1,         // Addr unalign, h*w compact
+  BMNET_COEFF_NEURON = 2,   // Addr align, h*w compact
+  BMNET_COEFF_FC = 3,
+  BMNET_COEFF_WINOGRAD = 4,
+  BMNET_NEURON_FC = 5,
+  BMNET_NEURON_CONST = 6,   // Addr align, h*w align
+  BMNET_NEURON_SHAPE = 7,
+  BMNET_NEURON_CPU = 8,
+  BMNET_NEURON_ARRAY = 9,
+  BMNET_NEURON_FLOW = 10,
+  BMNET_NEURON_3IC = 11,
+  BMNET_CPU_CONST = 12,
+  BMNET_COEFF_ALIGN = 13,   // Addr align, h*w align
+  TENSOR_TYPE_NUM,
+  TENSOR_UNKNOWN = -1,
+} TENSOR_TYPE_T;
+
+typedef enum {
   ELTWISE_PRODUCT = 0,
   ELTWISE_ADD = 1,
   ELTWISE_MAX = 2,
@@ -183,6 +202,49 @@ typedef enum {
   ARG_MAXT = 0,
   ARG_MINT = 1,
 } arg_method_t;
+
+typedef enum {
+    UNARY_F32_ABS,
+    UNARY_F32_ACOSH,
+    UNARY_F32_ARCCOS,
+    UNARY_F32_ARCSIN,
+    UNARY_F32_ASINH,
+    UNARY_F32_ATANH,
+    UNARY_F32_CEIL,
+    UNARY_F32_COS,
+    UNARY_F32_COSH,
+    UNARY_F32_COT,
+    UNARY_F32_EXP,
+    UNARY_F32_EXPM1,
+    UNARY_F32_FLOOR,
+    UNARY_F32_IPOWER,
+    UNARY_F32_SQUARE,
+    UNARY_F32_LOG,
+    UNARY_F32_LOG1P,
+    UNARY_F32_PRELU,
+    UNARY_F32_PRELU_N,
+    UNARY_F32_RELU,
+    UNARY_F32_RELU_N,
+    UNARY_F32_ELU,
+    UNARY_F32_ROUND,
+    UNARY_F32_RSQRT,
+    UNARY_F32_SIGMOID,
+    UNARY_F32_SIGN,
+    UNARY_F32_SIN,
+    UNARY_F32_SINH,
+    UNARY_F32_SQRT,
+    UNARY_F32_TAN,
+    UNARY_F32_TANH,
+    UNARY_F32_TO_I32,
+    UNARY_F32_TRIM,
+    UNARY_I32_TO_F32,
+    UNARY_U32_TO_F32,
+    UNARY_U8_TO_F32,
+    UNARY_F32_MISH,
+    UNARY_F32_SWISH,
+    UNARY_F32_IS_FINITE,
+    UNARY_F32_GELU,
+} UNARY_FUNC_TYPE;
 // -------------------------------------------------------------------
 // Struct Definition
 // -------------------------------------------------------------------
@@ -1109,6 +1171,8 @@ typedef struct {
   int data_dims;
   int indices_dims;
   int updates_dims;
+  uint64_t intermediate_buffer_global_addr;
+  bool with_hw_trans;
 } scatter_nd_global_param_t;
 
 typedef struct {
@@ -1598,6 +1662,15 @@ typedef struct {
   int offset_interleave;
   uint64_t buffer_addr;
 } deform_gather_global_spec_t;
+
+typedef struct nms_common_spec {
+  float iou_threshold;
+  float score_threshold;
+  int keep_topk_per_class;
+  int center_point_box;
+  int  input_num;
+  int onnx_nms;//1: onnx_nms
+} nms_common_spec_t;
 
 #ifdef __cplusplus
 }

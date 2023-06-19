@@ -26,8 +26,8 @@
    :linenos:
 
    $ mkdir mobilenet_v2 && cd mobilenet_v2
-   $ cp $TPUC_ROOT/regression/model/mobilenet_v2_deploy.prototxt .
-   $ cp $TPUC_ROOT/regression/model/mobilenet_v2.caffemodel .
+   $ wget https://raw.githubusercontent.com/shicai/MobileNet-Caffe/master/mobilenet_v2_deploy.prototxt
+   $ wget https://github.com/shicai/MobileNet-Caffe/raw/master/mobilenet_v2.caffemodel
    $ cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace
@@ -120,28 +120,6 @@ MLIR转INT8模型
        --test_input mobilenet_v2_in_f32.npz \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \
-       --model mobilenet_v2_1684x_int8_sym.bmodel
+       --model mobilenet_v2_1684x_int8.bmodel
 
-编译完成后, 会生成名为 ``${model_name}_1684x_int8_sym.bmodel`` 的文件。
-
-
-编译为INT8非对称量化模型
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-转成INT8非对称量化模型, 执行如下命令:
-
-.. code-block:: shell
-
-   $ model_deploy.py \
-       --mlir mobilenet_v2.mlir \
-       --quantize INT8 \
-       --asymmetric \
-       --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684x \
-       --test_input mobilenet_v2_in_f32.npz \
-       --test_reference mobilenet_v2_top_outputs.npz \
-       --tolerance 0.95,0.69 \
-       --model mobilenet_v2_1684x_int8_asym.bmodel
-
-
-编译完成后, 会生成名为 ``${model_name}_1684x_int8_asym.bmodel`` 的文件。
+编译完成后, 会生成名为 ``${model_name}_1684x_int8.bmodel`` 的文件。

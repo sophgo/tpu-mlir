@@ -82,6 +82,7 @@ void TgScaleLutKernel::reshape() {
       }
     }
     if (c == c_) {
+      tl_lut.resize(1);
       return;
     }
     if (w_ > MAX_WIDTH) {
@@ -94,6 +95,7 @@ void TgScaleLutKernel::reshape() {
         }
       }
       if (w_ >= MAX_H_STRIDE && h_ >= MAX_H_STRIDE) {
+        assert(0 && "w_ >= MAX_H_STRIDE && h_ >= MAX_H_STRIDE");
         return;
       }
       if (w_ >= MAX_H_STRIDE) {

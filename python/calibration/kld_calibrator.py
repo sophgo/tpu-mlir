@@ -272,11 +272,11 @@ class SimpleTuner:
             self.ref_activations[tune_idx] = {}
 
         if len(self.ref_activations[tune_idx]) == 0:
-            print(f'last tune data (tune_idx={tune_idx}) not valid, droped')
+            # print(f'last tune data (tune_idx={tune_idx}) not valid, droped')
             self.ref_activations.pop(tune_idx)
         self.args.tune_num = min(self.args.tune_num, len(self.ref_activations))
-        print(f"tune_num = {self.args.tune_num}, ref = {len(self.ref_activations)}")
-        print(f"real tune_num = {self.args.tune_num}")
+        # print(f"tune_num = {self.args.tune_num}, ref = {len(self.ref_activations)}")
+        # print(f"real tune_num = {self.args.tune_num}")
         assert self.args.tune_num > 0
 
     def get_input_tensor(self, i, op_name):
@@ -854,8 +854,8 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 all_data = np.abs(np.array(all_data))
                 abs_value2 = np.max(all_data)
                 abs_value = abs_value2
-            if abs_value == 0:
-                # if network outputs are all zero, change it to 1e-5 for them.
+            if abs_value <= 1e-5:
+                # if op's outputs are all close to zero, change it to 1e-5 for them.
                 min_value = -1e-5
                 max_value = 1e-5
                 abs_value = 1e-5
@@ -877,6 +877,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 qmin, qmax = -128, 127
                 scale, zp = self.torchObserver_dict[evaled_op].calculate_qparams()
                 threshold = float(scale * max(-(qmin-zp), (qmax-zp)))
+                threshold = 1e-5 if (threshold <= 1e-5) else threshold  # fix me
                 thresholds_map[evaled_op] = threshold
                 thresholds_map_absmax[evaled_op] = threshold
                 thresholds_map_scale[evaled_op] = scale.numpy()[0]

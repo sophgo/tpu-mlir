@@ -17,24 +17,30 @@
 using namespace tpu_mlir::backend;
 
 void tpu::CastOp::codegen_global_bm1684() {
-  bool qInput = module::isUniformQuantized(getInput());
-  bool qOutput = module::isUniformQuantized(getOutput());
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
-  if (qInput && !qOutput) {
+  auto input_dtype = BM1684::getDataType(getInput());
+  auto output_dtype = BM1684::getDataType(getOutput());
+  if (output_dtype == DTYPE_FP32 &&
+      (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8)) {
     // int8 => fp32
-    auto input_dtype = BM1684::getDataType(getInput());
     BM1684::instance().dl_nodechip_global_int2float(
         module::getAddress(getInput()), module::getAddress(getOutput()), n, c,
         h, w, input_dtype == DTYPE_INT8 ? 1 : 0, 1.f, STORAGE_MODE_4N_INT8,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
-  } else if (qOutput && !qInput) {
+  } else if (input_dtype == DTYPE_FP32 &&
+             (output_dtype == DTYPE_INT8 || output_dtype == DTYPE_UINT8)) {
     // fp32 => int8
-    auto output_dtype = BM1684::getDataType(getOutput());
     BM1684::instance().dl_nodechip_float2int8_v2(
         module::getAddress(getInput()), module::getAddress(getOutput()), n, c,
         h, w, output_dtype == DTYPE_INT8 ? 1 : 0, 1.f, STORAGE_MODE_4N_INT8,
         ROUND_INF, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  } else if (input_dtype == DTYPE_INT32 && output_dtype == DTYPE_FP32) {
+    // int32 => fp32
+    BM1684::instance().dl_nodechip_unary(
+        module::getAddress(getInput()), module::getAddress(getOutput()),
+        module::getNumElements(getInput()), UNARY_I32_TO_F32, NULL,
+        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     dump();
     llvm_unreachable("CastOp type error");

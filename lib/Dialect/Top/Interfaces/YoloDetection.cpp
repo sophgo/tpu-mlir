@@ -9,9 +9,9 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 int64_t top::YoloDetectionOp::getFLOPs() {
   return module::getNumElements(getOutput());
@@ -31,8 +31,10 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.keep_topk = getKeepTopk();
   param.nms_threshold = getNmsThreshold().convertToDouble();
   param.obj_threshold = getObjThreshold().convertToDouble();
+  param.agnostic_nms = getAgnosticNms();
   param.anchors = *module::getI64Array(getAnchors());
   param.num_boxes = getNumBoxes();
+  param.version = getVersion().str();
   for (int i = 0; i < param.num_boxes * num_input; i++) {
     param.mask.push_back(i);
   }
@@ -46,13 +48,28 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.output.ptr = p.outputs[0];
   param.output.size = module::getNumElements(getOutput());
   param.output.shape = module::getShape(getOutput());
+  // empty process means the yolo layer comes from origin model but not
+  // add_postprocess
   auto process = module::getPostprocess();
-  if (process.starts_with("yolo")) {
-    YoloDetectionFunc_v2 yolo_func(param);
-    yolo_func.invoke();
-  } else {
+  if (process.empty()) {
     YoloDetectionFunc yolo_func(param);
     yolo_func.invoke();
+  } else if (process.starts_with("yolov5") && p.inputs.size() == 1 &&
+             param.inputs[0].shape.size() == 3) {
+    Yolov5DetectionFunc yolo_func(param);
+    yolo_func.invoke();
+  } else {
+    auto output_shape = module::getShape(this->getOutput());
+    int64_t dim = output_shape.size();
+    if (output_shape[dim - 1] == 6) {
+      //(x, y, w, h, cls, score)
+      YoloDetectionFunc yolo_func(param);
+      yolo_func.invoke();
+    } else {
+      //(batch_idx, cls, score, x, y, w, h)
+      YoloDetectionFunc_v2 yolo_func(param);
+      yolo_func.invoke();
+    }
   }
   return success();
 }

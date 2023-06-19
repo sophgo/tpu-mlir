@@ -314,8 +314,10 @@ def main():
     else:
         if args.model.endswith('.mlir'):
             output = mlir_inference(data, args.model, False)
-        elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
+        elif args.model.endswith(".bmodel"):
             output = model_inference(data, args.model)
+        elif args.model.endswith(".cvimodel"):
+            output = model_inference(data, args.model, False)
         else:
             raise RuntimeError("not support modle file:{}".format(args.model))
 

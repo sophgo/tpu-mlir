@@ -1,5 +1,5 @@
-## TPU1684 2023-05-09
-sha256: 0bddf4692746ee7cead54cd3b4ceb807ed24df8c
+## TPU1684 2023-06-16
+sha256: 9540a9b1bff45c9ffb11507c6b2388f95f21994a
 
 ``` bash
 cd  nntoolchain/net_compiler/
@@ -9,8 +9,8 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1686 2023-05-19
-sha256: 6df9af24553a5dcd60e58b1349c13d3392d178bc
+## TPU1686 2023-06-14
+sha256: b89e9f035156d47acde1c4a42b298cdec6ec54a7
 
 ``` bash
 pushd  nntoolchain/net_compiler/
@@ -29,10 +29,10 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 popd
 ```
 
-2023-04-12
-build from tpu-runtime 9e9d9a7d983305cb15c36b5774f9dd3259d6b970
+2023-06-12
+build from tpu-runtime 8b87be4b4215221373c2842cca4ea8269e883e3e
 2023-03-03
-build from nntoolchain e0309c47ba4957dec9e9a7c108946f7eee943128
+build from nntoolchain 8308714678f92122c2b3bb1989cfa978feb13c71
 2023-05-16
 build from libsophon   721d98b749901481d5f1fbc4594d6d588ac165ea
 2023-04-26

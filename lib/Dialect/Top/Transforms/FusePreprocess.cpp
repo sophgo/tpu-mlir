@@ -38,7 +38,7 @@ public:
     std::map<std::string, std::pair<std::string, std::string>> attributes_map =
         {{"RGB_PLANAR", {"rgb", "nchw"}},  {"RGB_PACKED", {"rgb", "nhwc"}},
          {"BGR_PLANAR", {"bgr", "nchw"}},  {"BGR_PACKED", {"bgr", "nhwc"}},
-         {"GRAYSCALE", {"bgr", "nchw"}},   {"YUV420_PLANAR", {"bgr", "nchw"}},
+         {"GRAYSCALE", {"gray", "nchw"}},  {"YUV420_PLANAR", {"bgr", "nchw"}},
          {"YUV_NV21", {"bgr", "nchw"}},    {"YUV_NV12", {"bgr", "nchw"}},
          {"RGBA_PLANAR", {"rgba", "nchw"}}};
     std::string quant_mode = this->mode;

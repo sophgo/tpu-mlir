@@ -1,7 +1,9 @@
+.. _onnx to cvimodel:
+
 Appendix.02: CV18xx Guidance
 =============================
 
-CV18xx series chip currently supports ONNX and Caffe models but not TFLite models. In terms of quantization, CV18xx supports BF16 and asymmetric INT8 format. This chapter takes the CV183X as an example to introduce the compilation and runtime sample of the CV18xx series chip.
+CV18xx series chip currently supports ONNX and Caffe models but not TFLite models. In terms of quantization, CV18xx supports BF16 and symmetric INT8 format. This chapter takes the CV183X as an example to introduce the compilation and runtime sample of the CV18xx series chip.
 
 Compile yolov5 model
 --------------------
@@ -23,7 +25,7 @@ The operation is as follows:
    :linenos:
 
    $ mkdir model_yolov5s && cd model_yolov5s
-   $ cp $TPUC_ROOT/regression/model/yolov5s.onnx .
+   $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace
@@ -60,7 +62,7 @@ The model conversion command is as follows:
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
 
-For the argument description of ``model_transform``, refer to the section "Compile ONNX Model - ONNX to MLIR".
+For the argument description of ``model_transform``, refer to the section :ref:`The main parameters of model_transform.py <model_transform param>` .
 
 MLIR to BF16 Model
 ~~~~~~~~~~~~~~~~~~~~
@@ -77,7 +79,7 @@ Convert the mlir file to the cvimodel of bf16, the operation is as follows:
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_cv183x_bf16.cvimodel
 
-For the argument description of ``model_deploy.py``, refer to the section "Compile ONNX model - MLIR to F32 model".
+For the argument description of ``model_deploy.py``, refer to the section  :ref:`The main parameters of model_deploy.py <model_deploy param>` .
 
 MLIR to INT8 Model
 ~~~~~~~~~~~~~~~~~~~~
@@ -164,6 +166,7 @@ The comparison of the four images is shown in :numref:`yolov5s_result1`, due to 
 
 The above tutorial introduces the process of TPU-MLIR deploying the ONNX model to the CV18xx series chip. For the conversion process of the Caffe model, please refer to the chapter "Compiling the Caffe Model". You only need to replace the chip name with the specific CV18xx chip.
 
+.. _merge weight:
 
 Merge cvimodel Files
 ---------------------------
@@ -456,11 +459,11 @@ run them on EVB board according to the following instructions.
 
 The following files are required in this part:
 
-* cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv]].tar.gz
+* cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv].tar.gz
 * cvitek_tpu_samples.tar.gz
 
 aarch 64-bit  (such as cv183x aarch64-bit platform)
-""""""""""""""""""""""""""""""""""""""""""""""""""""""
+``````````````````````````````````````````````````````
 
 Prepare TPU sdk:
 
@@ -493,7 +496,7 @@ Compile samples and install them into "install_samples" directory:
    cmake --build . --target install
 
 arm 32-bit  (such as 32-bit cv183x/cv182x platform)
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+``````````````````````````````````````````````````````
 
 Prepare TPU sdk:
 
@@ -534,7 +537,7 @@ Compile samples and install them into ``install_samples`` directory:
 
 
 uclibc 32-bit platform (such as cv182x uclibc platform)
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+`````````````````````````````````````````````````````````
 Prepare TPU sdk:
 
 .. code-block:: shell
@@ -573,7 +576,7 @@ Compile samples and install them into ``install_samples`` directory:
    cmake --build . --target install
 
 riscv 64-bit musl platform (such as cv180x/cv181x riscv 64-bit musl platform)
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+```````````````````````````````````````````````````````````````````````````````
 
 Prepare TPU sdk:
 
@@ -606,7 +609,7 @@ Compile samples and install them into ``install_samples`` directory:
 
 
 riscv 64-bit glibc platform(such as cv180x/cv181x 64-bit glibc platform)
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+``````````````````````````````````````````````````````````````````````````````````````````
 
 Prepare TPU sdk:
 
@@ -688,3 +691,222 @@ Run samples:
    ./bin/cvi_sample_model_info $MODEL_PATH/mobilenet_v2.cvimodel
 
 **Other samples are samely to the instructions of running on EVB board.**
+
+FAQ
+----
+
+Model transformation FAQ
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1 Related to model transformation
+`````````````````````````````````````
+
+  1.1 Whether pytorch,tensorflow, etc. can be converted directly to cvimodel?
+
+    pytorch: Supports the .pt model statically via ``jit.trace(torch_model.eval(), inputs).save('model_name.pt')``.
+
+    tensorflow / others: It is not supported yet and can be supported indirectly through onnx.
+
+  1.2 An error occurs when model transform.py is executed
+
+    ``model_transform.py`` This script convert the onnx,caffe model into the fp32 mlir. The high probability of error here is that there are unsupported operators or incompatible operator attributes, which can be fed back to the tpu team to solve.
+
+  1.3 An error occurs when model deploy.py is executed
+
+    ``model_deploy.py`` This script quantizes fp32 mlir to int8/bf16mlir, and then converts int8/bf16mlir to cvimodel.
+    In the process of conversion, two similarity comparisons will be involved: one is the quantitative comparison between fp32 mlir and int8/bf16mlir, and the other is the similarity comparison between int8/bf16mlir and the final converted cvimodel. If the similarity comparison fails, the following err will occur:
+
+    .. figure:: ../assets/compare_failed.png
+       :height: 13cm
+       :align: center
+
+    Solution: The tolerance parameter is incorrect. During the model conversion process, similarity will be calculated for the output of int8/bf16 mlir and fp32 mlir, and tolerance is to limit the minimum value of similarity. If the calculated minimum value of similarity is lower than the corresponding preset tolerance value, the program will stop execution. Consider making adjustments to tolerance. (If the minimum similarity value is too low, please report it to the tpu team.)
+
+  1.4 What is the difference between the ``pixel_format parameter`` of ``model_transform.py`` and the ``customization_format`` parameter of ``model_deploy.py``?
+
+    Channel_order is the input image type of the original model (only gray/rgb planar/bgr planar is supported),customization_format is the input image type of cvimodel, which is determined by the customer and must be used together with :ref:`fuse_preprocess <fuse preprocess>`. (If the input is a YUV image obtained through VPSS or VI, set customization_format to YUV format.) If pixel_format is inconsistent with customization_format,cvimodel will automatically converts the input to the type specified by pixel_format.
+
+  1.5 Whether the multi-input model is supported and how to preprocess it?
+
+    Models with multiple input images using different preprocessing methods are not supported.
+
+2 Related to model quantization
+````````````````````````````````````
+
+  2.1 run run_calibration.py raise KeyError: 'images'
+
+   Please check that the path of the data set is correct.
+
+  2.2 How to deal with multiple input problems by running quantization?
+
+    When running run_calibration.py, you can store multiple inputs using .npz, or using the --data_list argument, and the multiple inputs in each row of the data_list are separated by ",".
+
+  2.3 Is the input preprocessed when quantization is performed?
+
+    Yes, according to the preprocessing parameters stored in the mlir file, the quantization process is preprocessed by loading the preprocessing parameters.
+
+  2.4 The program is killed by the system or the memory allocation fails when run calibration
+
+    It is necessary to check whether the memory of the host is enough, and the common model requires about 8G memory. If memory is insufficient, try adding the following parameters when running run_calibration.py to reduce memory requirements.
+
+     .. code-block:: shell
+
+       --tune_num 2   			# default is 5
+
+  2.5 Does the calibration table support manual modification?
+
+    Supported, but it is not recommended.
+
+3 Others
+````````````````````
+
+  3.1 Does the converted model support encryption?
+
+    Not supported for now.
+
+  3.2 What is the difference in inference speed between bf16 model and int8 model?
+
+    The theoretical difference is about 3-4 times, and there will be differences for different models, which need to be verified in practice.
+
+  3.3 Is dynamic shape supported?
+
+    Cvimodel does not support dynamic shape. If several shapes are fixed, independent cvimodel files can be generated through the form of shared weights.
+    See :ref:`Merge cvimodel Files <merge weight>` for details.
+
+Model performance evaluation FAQ
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1 Evaluation process
+```````````````````````
+
+  First converted to bf16 model, through the ``model_tool --info xxxx.cvimodel`` command to obtain the ION memory and the storage space required by the model , and then execute ``model_runner`` on the EVB board to evaluate the performance, and then evaluate the accuracy in the business scenario according to the provided sample. After the accuracy of the model output meets the expectation, the same evaluation is performed on the int8 model.
+
+2 After quantization, the accuracy does not match the original model, how to debug?
+``````````````````````````````````````````````````````````````````````````````````````
+
+  2.1 Ensure ``--test_input``, ``--test_reference``, ``--compare_all`` , ``--tolerance`` parameters are set up correctly.
+
+  2.2 Compare the results of the original model and the bf16 model. If the error is large, check whether the pre-processing and post-processing are correct.
+
+  2.3 If int8 model accuracy is poor:
+
+    1) Verify that the data set used by run_calibration.py is the validation set used when training the model;
+
+    2) A business scenario data set (typically 100-1000 images) can be added for run_calibration.
+
+  2.4 Confirm the input type of cvimodel:
+
+    1) If the ``--fuse_preprocess`` argument is specified, the input type of cvimodel is uint8;
+
+    2) If ``--quant_input`` is specified,in general,bf16_cvimoel input type is fp32,int8_cvimodel input type is int8;
+
+    3) The input type can also be obtained with ``model_tool --info xxx.cvimodel``
+
+3 bf16 model speed is relatively slow,int8 model accuracy does not meet expectations how to do?
+``````````````````````````````````````````````````````````````````````````````````````````````````
+
+  Try using a mixed-precision quantization method. See :ref:`mix precision` for details.
+
+Common problems of model deployment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1 The The CVI_NN_Forward interface encounters an error after being invoked for many times or is stuck for a long time
+```````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````
+
+  There may be driver or hardware issues that need to be reported to the tpu team for resolution.
+
+2 Is the model preprocessing slow?
+``````````````````````````````````````
+
+  2.1 Add the ``--fuse_preprocess`` parameter when running model_deploy.py, which will put the preprocessing inside the TPU for processing.
+
+  2.2 If the image is obtained from vpss or vi, you can use ``--fuse_preprocess``, ``--aligned_input`` when converting to the model. Then use an interface such as CVI_NN_SetTensorPhysicalAddr to set the input tensor address directly to the physical address of the image, reducing the data copy time.
+
+3 Are floating-point and fixed-point results the same when comparing the inference results of docker and evb ?
+```````````````````````````````````````````````````````````````````````````````````````````````````````````````
+
+  Fixed point has no difference, floating point has difference, but the difference can be ignored.
+
+4 Support multi-model inference parallel?
+````````````````````````````````````````````
+
+  Multithreading is supported, but models are inferred on TPU in serial.
+
+5 Fill input tensor related interface
+`````````````````````````````````````````
+
+  ``CVI_NN_SetTensorPtr`` : Set the virtual address of input tensor, and the original tensor memory will not be freed. Inference **copies data** from a user-set virtual address to the original tensor memory.
+
+  ``CVI_NN_SetTensorPhysicalAddr`` : Set the physical address of input tensor, and the original tensor memory will be freed. Inference directly reads data from the newly set physical address, **data copy is not required** . A Frame obtained from VPSS can call this interface by passing in the Frame's first address. Note that model_deploy.py must be set ``--fused_preprocess`` and ``--aligned_input`` .
+
+  ``CVI_NN_SetTensorWithVideoFrame`` : Fill the Input Tensor with the VideoFrame structure. Note The address of VideoFrame is a physical address. If the model is fused preprocess and aligned_input, it is equivalent to CVI_NN_SetTensorPhysicalAddr, otherwise the VideoFrame data will be copied to the Input Tensor.
+
+  ``CVI_NN_SetTensorWithAlignedFrames`` : Support multi-batch, similar to ``CVI_NN_SetTensorWithVideoFrame`` .
+
+  ``CVI_NN_FeedTensorWithFrames`` : similar to ``CVI_NN_SetTensorWithVideoFrame`` .
+
+6 How is ion memory allocated after model loading
+`````````````````````````````````````````````````````
+
+  6.1 Calling ``CVI_NN_RegisterModel`` allocates ion memory for weight and cmdbuf (you can see the weight and cmdbuf sizes by using model_tool).
+
+  6.2 Calling ``CVI_NN_GetInputOutputTensors`` allocates ion memory for tensor(including private_gmem, shared_gmem, io_mem).
+
+  6.3 Calling ``CVI_NN_CloneModel`` can share weight and cmdbuf memory.
+
+  6.4 Other interfaces do not apply for ion memory.
+
+  6.5 Shared_gmem of different models can be shared (including multithreading), so initializing shared_gmem of the largest model first will saves ion memory.
+
+7 The model inference time becomes longer after loading the business program
+`````````````````````````````````````````````````````````````````````````````````
+
+  Generally, after services are loaded, the tdma_exe_ms becomes longer, but the tiu_exe_ms remains unchanged. This is because tdma_exe_ms takes time to carry data in memory. If the memory bandwidth is insufficient, the tdma time will increase.
+
+  suggestion:
+
+    1) vpss/venc optimize chn and reduce resolution
+
+    2) Reduces memory copy
+
+    3) Fill input tensor by using copy-free mode
+
+Others
+~~~~~~~~~~~~~~~~~~~~
+
+1 In the cv182x/cv181x/cv180x on-board environment, the taz:invalid option --z decompression fails
+```````````````````````````````````````````````````````````````````````````````````````````````````````````
+
+  Decompress the sdk in other linux environments and then use it on the board. windows does not support soft links. Therefore, decompressing the SDK in Windows may cause the soft links to fail and an error may be reported
+
+2 If tensorflow model is pb form of saved_model, how to convert it to pb form of frozen_model
+```````````````````````````````````````````````````````````````````````````````````````````````````
+
+  .. code-block:: shell
+
+   import tensorflow as tf
+   from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
+   from tensorflow.keras.preprocessing import image
+   from tensorflow.keras.applications.mobilenet_v2 import preprocess_input, decode_predictions
+   import numpy as np
+   import tf2onnx
+   import onnxruntime as rt
+
+   img_path = "./cat.jpg"
+   # pb model and variables should in model dir
+   pb_file_path = "your model dir"
+   img = image.load_img(img_path, target_size=(224, 224))
+   x = image.img_to_array(img)
+   x = np.expand_dims(x, axis=0)
+   # Or set your preprocess here
+   x = preprocess_input(x)
+
+   model = tf.keras.models.load_model(pb_file_path)
+   preds = model.predict(x)
+
+   # different model input shape and name will differently
+   spec = (tf.TensorSpec((1, 224, 224, 3), tf.float32, name="input"), )
+   output_path = model.name + ".onnx"
+
+   model_proto, _ = tf2onnx.convert.from_keras(model, input_signature=spec, opset=13, output_path=output_path)
+

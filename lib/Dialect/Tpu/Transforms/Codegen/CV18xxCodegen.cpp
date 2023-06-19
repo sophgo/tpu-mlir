@@ -350,7 +350,7 @@ flatbuffers::Offset<Routine> CviTpuRoutine::build() {
 }
 
 CviModelBuilder::CviModelBuilder(ModuleOp &module) : fbb_(1024) {
-  int layer_id = 0;
+  int32_t layer_id = 0;
   auto chip_ = module::getChip();
   chip = module::stringifyChip(chip_);
   privateGmemSize_ = module::getGmemPrivateSize();
@@ -358,11 +358,29 @@ CviModelBuilder::CviModelBuilder(ModuleOp &module) : fbb_(1024) {
   version_ = get_version(majorVersion_, minorVersion_, subMinorVersion_);
   modelName_ = module::getModuleName().str();
   coeff_size = module::getCoeffSize(); // set in assignAddr
-  auto main_func = module::getMainFuncOp();
-  main_func.walk([&](func::CallOp call) { addRoutine(call, &layer_id); });
-  for (auto func : module.getOps<FuncOp>()) {
+  std::map<int32_t, func::FuncOp> subFuncs;
+  module.walk<WalkOrder::PreOrder>([&](func::FuncOp func){
     func.walk([&](top::WeightOp op) { weights.push_back(op); });
-  }
+    if (func == module::getMainFuncOp()) {
+      return WalkResult::advance();
+    }
+    int32_t subIdx = func->getAttrOfType<IntegerAttr>("id").getInt();
+    subFuncs[subIdx] = func;
+    return WalkResult::advance();
+  });
+  int32_t nextSubIdx = 0;
+  while (nextSubIdx != -1) {
+    func::FuncOp func;
+    if (subFuncs.find(nextSubIdx) != subFuncs.end()) {
+      func = subFuncs[nextSubIdx];
+    } else {
+      llvm_unreachable("Cant find subFunc.");
+    }
+    if (auto call = module::getCallOp(func)) {
+      addRoutine(call, &layer_id);
+    }
+    nextSubIdx = func->getAttrOfType<DenseI32ArrayAttr>("next_index")[0];
+  };
   module::getInputsOutputs(inputs, outputs);
 }
 

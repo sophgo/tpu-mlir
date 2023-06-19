@@ -91,6 +91,7 @@ protected:
   bool do_bias;
   bool do_relu;
   bool do_quant_bf16;
+  bool do_qdm;
   std::vector<int> rshift;
   std::vector<int> multiplier;
   int cur_rshift;

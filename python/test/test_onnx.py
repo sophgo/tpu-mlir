@@ -41,7 +41,7 @@ class ONNX_IR_TESTER(object):
             # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
             "Abs":          (self.test_Abs,           Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y),
-            "And":          (self.test_And,           N, Y, N, N),
+            "And":          (self.test_And,           N, Y, Y, N),
             "AddBcast":     (self.test_AddBcast,      Y, Y, Y, N),
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N),
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N),  # failed cases
@@ -57,7 +57,7 @@ class ONNX_IR_TESTER(object):
             "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y),
             "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y),
             "Cast":         (self.test_Cast,          Y, Y, Y, Y),
-            "CompareCst":   (self.test_CompareCst,    N, Y, Y, N),
+            "CompareCst":   (self.test_CompareCst,    Y, Y, Y, N),
             "Compare":      (self.test_Compare,       Y, Y, Y, N),
             "Compare2":     (self.test_Compare2,      Y, N, N, N),
             "Concat":       (self.test_Concat,        Y, Y, Y, Y),
@@ -65,6 +65,7 @@ class ONNX_IR_TESTER(object):
             "Concat3":      (self.test_Concat3,       N, Y, Y, N),
             "ConstOfShape": (self.test_ConstOfShape,  N, Y, Y, N),
             "Conv1d":       (self.test_Conv1d,        Y, Y, Y, Y),
+            "Conv1dbigd":   (self.test_Conv1d_bigd,   Y, N, N, N),
             "Conv2d":       (self.test_Conv2d,        Y, Y, Y, Y),
             "Conv2dbigd":   (self.test_Conv2d_bigd,   Y, N, N, N),
             "Conv3d":       (self.test_Conv3d,        N, Y, Y, Y),
@@ -75,13 +76,15 @@ class ONNX_IR_TESTER(object):
             "Clip":         (self.test_Clip,          Y, Y, Y, Y),
             "DepthToSpace": (self.test_DepthToSpace,  Y, Y, Y, Y),
             "Deconv":       (self.test_Deconv,        Y, Y, Y, Y),
+            "Deconv2":      (self.test_Deconv2,       Y, N, N, Y),
             "Deconv3d":     (self.test_Deconv3d,      Y, N, N, N),
             "Div":          (self.test_Div,           Y, Y, Y, Y),
             "DivBcast":     (self.test_DivBcast,      Y, Y, Y, N),
             "DivBcast2":    (self.test_DivBcast2,     Y, Y, Y, N),
             "Einsum":       (self.test_Einsum,        Y, Y, Y, Y),
             "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y),
-            "Elu":          (self.test_Elu,           N, Y, Y, N),
+            "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y),
+            "Elu":          (self.test_Elu,           Y, Y, Y, N),
             "Erf":          (self.test_Erf,           N, Y, Y, N),
             "Exp":          (self.test_Exp,           Y, Y, Y, Y),
             "Expand":       (self.test_Expand,        Y, Y, Y, Y),
@@ -89,8 +92,8 @@ class ONNX_IR_TESTER(object):
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y),
             "GatherND":     (self.test_GatherND,      Y, N, N, Y),
-            "Gather2":      (self.test_Gather2,       N, Y, N, N),
-            "Gather3":      (self.test_Gather3,       Y, Y, N, N),
+            "Gather2":      (self.test_Gather2,       N, Y, Y, N),
+            "Gather3":      (self.test_Gather3,       Y, Y, Y, N),
             "Gemm":         (self.test_Gemm,          Y, Y, Y, Y),
             "GroupFC":      (self.test_GroupFC,       Y, Y, Y, Y),
             "GRU":          (self.test_GRU,           N, Y, Y, Y),  # test gru output Y
@@ -110,7 +113,7 @@ class ONNX_IR_TESTER(object):
             "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y),
             "Max":          (self.test_Max,           Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N),
-            "Not":          (self.test_Not,           N, Y, N, N),
+            "Not":          (self.test_Not,           N, Y, Y, N),
             "Mul":          (self.test_Mul,           Y, Y, Y, Y),
             "MulMerge":     (self.test_MulMerge,      Y, Y, Y, N),
             "MulBcast":     (self.test_MulBcast,      Y, Y, Y, N),
@@ -124,7 +127,7 @@ class ONNX_IR_TESTER(object):
             "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y),
             "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y),
             "Pow1":         (self.test_Pow1,          Y, Y, Y, Y),  # y = x ^ n
-            "Pow2":         (self.test_Pow2,          N, N, N, N),  # y = n ^ x
+            "Pow2":         (self.test_Pow2,          Y, Y, Y, N),  # y = n ^ x
             "PRelu":        (self.test_PRelu,         Y, Y, Y, Y),
             # "Range":        (self.test_Range,       N, Y, Y, N),
             "Resize":       (self.test_Resize,        Y, Y, Y, Y),
@@ -140,11 +143,13 @@ class ONNX_IR_TESTER(object):
             "Relu":         (self.test_Relu,          Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
             "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y),
-            "ScatterND":    (self.test_ScatterND,     Y, N, N, N),
-            "Shape":        (self.test_Shape,         N, Y, Y, N),
+            "ScatterND":    (self.test_ScatterND,     N, Y, Y, N),
+            "Shape":        (self.test_Shape,         Y, Y, Y, N),
+            "ShapeCast":    (self.test_ShapeCast,     N, N, N, N),
+            "ShapeSlice":   (self.test_ShapeSlice,    Y, N, N, N),
             "SiLU":         (self.test_SiLU,          Y, Y, Y, Y),
             "Softmax":      (self.test_Softmax,       Y, Y, Y, Y),
-            "Softplus":     (self.test_Softplus,      N, Y, Y, Y),
+            "Softplus":     (self.test_Softplus,      Y, Y, Y, Y),
             "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y),
             "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y),
             "Slice":        (self.test_Slice,         Y, Y, Y, Y),
@@ -166,9 +171,9 @@ class ONNX_IR_TESTER(object):
             "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y),
             "TopK":         (self.test_TopK,          N, Y, Y, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N),
-            "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, N, N),
-            "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, N, N),
-            "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, N, N),
+            "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N),
+            "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
+            "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
             "Where":        (self.test_Where,         N, Y, Y, Y),
             #####################################
             # Torch Test Case, Alphabetically
@@ -199,7 +204,7 @@ class ONNX_IR_TESTER(object):
             "TorchNonZero":         (self.test_TorchNonZero,        N, Y, Y, N),
             "TorchReflectionPad":   (self.test_TorchReflectionPad,  N, Y, Y, Y),
             "TorchRoiAlign":        (self.test_TorchRoiAlign,       N, Y, Y, N),
-            "TorchScatterND":       (self.test_TorchScatterND,      N, N, N, Y),
+            "TorchScatterND":       (self.test_TorchScatterND,      N, Y, Y, Y),
             "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y),
             "TorchStd":             (self.test_TorchStd,            N, Y, Y, Y),
             "TorchWhere":           (self.test_TorchWhere,          N, Y, Y, N),
@@ -245,7 +250,7 @@ class ONNX_IR_TESTER(object):
             "ReduceFuse":       (self.test_ReduceFuse,      Y, Y, Y, Y),
             "SwapDimInner":     (self.test_SwapDimInner,    Y, Y, Y, N),
             "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N),
-            "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, N, N),
+            "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y),
             #f32 mode works finely
             #"If":               (self.test_If,    N, Y, N, N),
@@ -258,7 +263,7 @@ class ONNX_IR_TESTER(object):
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
         #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
-        self.support_asym = [True, False]
+        self.support_asym = [False]
         self.model_file = ".bmodel"
         self.is_cv18xx = False
         self.chip = chip.lower()
@@ -280,7 +285,7 @@ class ONNX_IR_TESTER(object):
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
         else:
-            if self.chip == "bm1686" or self.chip == "cv186x" :
+            if self.chip == "bm1686" or self.chip == "cv186x":
                 self.support_quant_modes.append("int4")
             if self.mode not in self.support_quant_modes:
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
@@ -947,6 +952,22 @@ class ONNX_IR_TESTER(object):
     def test_Conv1d(self, case_name):
         oc = 32
         self.ConvBase(case_name, [1, 16, 100], [oc, 16, 3], [1, oc, 100], [3], [1, 1], [1], [1], 1)
+
+    def test_Conv1d_bigd(self, case_name):
+        # batchs = [1]
+        # for idx, batch in enumerate(batchs):
+        input_shape = [1, 1024, 163]
+        filter_shape = [1024, 1024, 3]
+        output_shape = [1, 1024, 1]
+        self.ConvBase(case_name,
+                        input_shape,
+                        filter_shape,
+                        output_shape,
+                        kernel=[3],
+                        padding=[0, 0],
+                        stride=[1],
+                        dilation=[81],
+                        groups=1)
 
     def test_Conv2d(self, case_name):
         batchs = [1, 2, 4]
@@ -2043,11 +2064,13 @@ class ONNX_IR_TESTER(object):
         input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input_shape)
         axes = helper.make_tensor('axes', TensorProto.INT64, [len(axis)],
                                   axis * np.ones(1).astype(int))
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        output_1 = helper.make_tensor_value_info('output_1', TensorProto.FLOAT, output_shape)
+        output_2 = helper.make_tensor_value_info('output_2', TensorProto.FLOAT, output_shape)
         add_def = helper.make_node("Add", inputs=['input0', 'input1'], outputs=['x'])
-        squeeze_def = helper.make_node("Squeeze", inputs=['x', 'axes'], outputs=['output'])
-        graph_def = helper.make_graph([add_def, squeeze_def],
-                                      case_name, [input0, input1], [output],
+        squeeze_def1 = helper.make_node("Squeeze", inputs=['x', 'axes'], outputs=['output_1'])
+        squeeze_def2 = helper.make_node("Squeeze", inputs=['x'], outputs=['output_2'])
+        graph_def = helper.make_graph([add_def, squeeze_def1, squeeze_def2],
+                                      case_name, [input0, input1], [output_1, output_2],
                                       initializer=[axes])
         self.onnx_and_test(graph_def)
 
@@ -2220,6 +2243,28 @@ class ONNX_IR_TESTER(object):
                 return y
 
         x = torch.randn(3, 8, 16, 32).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_Deconv2(self, case_name):
+        groups, kernel = 4, 4
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.filter = torch.arange(0, groups * kernel * kernel,
+                                           dtype=torch.float32).reshape(groups, 1, kernel, kernel)
+
+            def forward(self, x):
+                y = F.conv_transpose2d(x,
+                                       self.filter,
+                                       padding=1,
+                                       stride=2,
+                                       dilation=1,
+                                       groups=groups)
+                return y
+
+        x = torch.randn(1, groups, 32, 32).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_Deconv3d(self, case_name):
@@ -3222,6 +3267,7 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test(x, Model(), case_name)
 
     def test_TorchScatterND(self, case_name):
+
         class Model(torch.nn.Module):
 
             def __init__(self):
@@ -3874,7 +3920,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 3, 27, 27]
 
         input0 = helper.make_tensor_value_info('input0', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        output0 = helper.make_tensor_value_info('output0', TensorProto.FLOAT, output_shape)
+        output1 = helper.make_tensor_value_info(
+            'output1', TensorProto.FLOAT, output_shape)
+        output2 = helper.make_tensor_value_info(
+            'output2', TensorProto.FLOAT, output_shape)
         w_data = np.random.rand(*input_shape).astype(np.float32)
         w_value = helper.make_tensor(
             name='w',
@@ -3882,16 +3932,29 @@ class ONNX_IR_TESTER(object):
             dims=w_data.shape,
             vals=w_data.flatten(),
         )
-
+        const = helper.make_tensor(name='const',
+                                   data_type=TensorProto.FLOAT,
+                                   dims=[],
+                                   vals=[1.0])
         sub_def = helper.make_node(
             'Sub',  # node name
             ['input0', 'w'],  # inputs
-            ['output'],  # outputs
+            ['output0'],  # outputs
+        )
+        sub_def1 = helper.make_node(
+            'Sub',  # node name
+            ['input0', 'const'],  # inputs
+            ['output1'],  # outputs
+        )
+        sub_def2 = helper.make_node(
+            'Sub',  # node name
+            ['const', 'input0'],  # inputs
+            ['output2'],  # outputs
         )
 
-        graph_def = helper.make_graph([sub_def],
-                                      case_name, [input0], [output],
-                                      initializer=[w_value])
+        graph_def = helper.make_graph([sub_def, sub_def1, sub_def2],
+                                      case_name, [input0], [output0, output1, output2],
+                                      initializer=[w_value, const])
         self.onnx_and_test(graph_def)
 
     def test_SubConst2(self, case_name):
@@ -4085,8 +4148,7 @@ class ONNX_IR_TESTER(object):
             prelu_def = helper.make_node("PRelu", ["input", "slope"], ["output0"])
             add_def = helper.make_node('Add', ['output0', 'input1'], ['output'])
             graph_def = helper.make_graph([prelu_def, add_def],
-                                          "{}_{}".format(case_name, i),
-                                          [inputs, inputs1],
+                                          "{}_{}".format(case_name, i), [inputs, inputs1],
                                           outputs,
                                           initializer=[slope])
             self.onnx_and_test(graph_def)
@@ -4130,8 +4192,7 @@ class ONNX_IR_TESTER(object):
         input = helper.make_tensor_value_info("input", TensorProto.BOOL, shape)
         output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
         cmp_def = helper.make_node("Not", inputs=["input"], outputs=["output"])
-        graph_def = helper.make_graph([cmp_def],
-                                        case_name, [input], [output])
+        graph_def = helper.make_graph([cmp_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
     def test_Cast(self, case_name):
@@ -4193,8 +4254,8 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
         cmp_def = helper.make_node("And", inputs=["input", "constant"], outputs=["output"])
         graph_def = helper.make_graph([cmp_def],
-                                        case_name, [input], [output],
-                                        initializer=[constant])
+                                      case_name, [input], [output],
+                                      initializer=[constant])
         self.onnx_and_test(graph_def)
 
     def test_Compare(self, case_name):
@@ -4270,6 +4331,25 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([einsum_def],
                                       case_name, [input], [output],
                                       initializer=[weight])
+        self.onnx_and_test(graph_def)
+
+    def test_Einsum3(self, case_name):
+        input_shape = {"input1": [4], "input2": [32]}
+        output_shape = [4, 32]
+
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        einsum_def = helper.make_node(
+            "Einsum",
+            inputs=['input1', 'input2'],
+            outputs=['output'],
+            equation='i,j->ij',
+        )
+
+        graph_def = helper.make_graph([einsum_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def)
 
     def test_Elu(self, case_name):
@@ -4718,19 +4798,40 @@ class ONNX_IR_TESTER(object):
                 [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
 
     def test_ScatterND(self, case_name):
-        x_shapes = [[320, 320], [1, 5, 256]]
-        idx_shapes = [[160, 160, 2], [1, 1, 2]]
-        update_shapes = [[160, 160], [1, 1, 256]]
-        index_limits = [64, 1]
-        for i in range(1, len(x_shapes)):
-            x_shape, idx_shape, update_shape, index_limit = x_shapes[i], idx_shapes[
-                i], update_shapes[i], index_limits[i]
+        if self.chip in ['bm1684x', 'bm1686', 'cv186']:
+            x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2,3,20,40]]
+            idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 2, 5], [2,3,20,4]]
+            update_shapes = [[160, 160], [1, 3, 128, 128, 2],  [2,3,20]]
+        else:
+            x_shapes = [[320, 320], [1, 5, 256]]
+            idx_shapes = [[160, 160, 2], [1, 1, 2]]
+            update_shapes = [[160, 160], [1, 1, 256]]
+
+        for i in range(0, len(x_shapes)):
+            x_shape, idx_shape, update_shape = x_shapes[i], idx_shapes[i], update_shapes[i]
             # indices should not have duplicate entries: that is, if idx1 != idx2, then indices[idx1] != indices[idx2].
             # This ensures that the output value does not depend on the iteration order.
+            x_dims = len(x_shape)
+            k = idx_shape[-1]
+            assert (k <= x_dims)
+            # 生成不重复的 indices 数组
+            index_num = np.prod(idx_shape[:-1])
+            if k == x_dims:
+                offset_max = np.prod(x_shape)
+            else:
+                offset_max = np.prod(x_shape[:-1])
+
+            offset = np.random.choice(offset_max, size=index_num, replace=False)
+            indices = np.zeros(idx_shape, dtype=np.int32)
+            for i in range(k):
+                indices[...,k-i-1] = (offset % x_shape[k-i-1]).reshape(indices[...,k-i-1].shape)
+                offset = offset // x_shape[k-i-1]
+
             input_data = {
                 # "raw_data": np.random.rand(*input_shape['raw_data']).astype(np.float32),
                 "x_data": np.random.rand(*x_shape).astype(np.float32),
-                "indices": np.random.randint(0, index_limit, tuple(idx_shape)),
+                # "indices": np.random.randint(0, index_limit, tuple(idx_shape)),
+                "indices": indices,
                 "updates": np.random.rand(*update_shape).astype(np.float32)
             }
             raw_data = helper.make_tensor_value_info("x_data", TensorProto.FLOAT, x_shape)
@@ -4884,6 +4985,7 @@ class ONNX_IR_TESTER(object):
             self.onnx_and_test(graph_def)
 
     def test_Permute7d(self, case_name):
+
         class Model(torch.nn.Module):
 
             def __init__(self):
@@ -5308,6 +5410,41 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([shape_node], case_name, [input], [shapeinfo])
         self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
 
+    def test_ShapeSlice(self, case_name):
+        shape = [10,1000]
+        X = helper.make_tensor_value_info('X', TensorProto.FLOAT, shape)
+        X_Shape = helper.make_tensor_value_info('X_Shape', TensorProto.INT64,[2])
+        K = helper.make_tensor_value_info('K',TensorProto.INT64,[1])
+        o_shape = list(shape)
+        o_shape[-1] = shape[0]
+        starts = helper.make_tensor('starts', TensorProto.INT64, [1], np.array([0], np.int64))
+        ends = helper.make_tensor('ends', TensorProto.INT64,[1], np.array([1], np.int64))
+        axes = helper.make_tensor( 'axes',TensorProto.INT64,[1], np.array([0], np.int64))
+        steps = helper.make_tensor('steps', TensorProto.INT64,[1], np.array([1], np.int64))
+        shape_node = helper.make_node('Shape', inputs=['X'], outputs=['X_Shape'])
+        slice_node = helper.make_node("Slice",   inputs=['X_Shape','starts', 'ends', 'axes', 'steps'], outputs=['K'])
+        graph_def = helper.make_graph([shape_node, slice_node],case_name, [X],[K], initializer=[starts, ends, axes, steps])
+        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
+    def test_ShapeCast(self, case_name):
+        shape = [10,1000]
+        X = helper.make_tensor_value_info('X', TensorProto.FLOAT, shape)
+        X_Shape = helper.make_tensor_value_info('X_Shape', TensorProto.INT64,[2])
+        K = helper.make_tensor_value_info('K',TensorProto.INT64,[1])
+        o_shape = list(shape)
+        o_shape[-1] = shape[0]
+        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, o_shape)
+        Y_Index = helper.make_tensor_value_info('Y_Index',TensorProto.INT64,o_shape)
+        starts = helper.make_tensor('starts', TensorProto.INT64, [1], np.array([0], np.int64))
+        ends = helper.make_tensor('ends', TensorProto.INT64,[1], np.array([1], np.int64))
+        axes = helper.make_tensor( 'axes',TensorProto.INT64,[1], np.array([0], np.int64))
+        steps = helper.make_tensor('steps', TensorProto.INT64,[1], np.array([1], np.int64))
+        shape_node = helper.make_node('Shape', inputs=['X'], outputs=['X_Shape'])
+        slice_node = helper.make_node("Slice",   inputs=['X_Shape','starts', 'ends', 'axes', 'steps'], outputs=['K'])
+        topk_node = helper.make_node('TopK', inputs= ['X','K'],outputs=['Y_Value','Y_Index'], axis=-1, largest=True)
+        graph_def = helper.make_graph([shape_node, slice_node, topk_node],case_name, [X],[Y_Value, Y_Index], initializer=[starts, ends, axes, steps])
+        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+
     def test_ConstOfShape(self, case_name):
         input_shape = [4, 10, 27, 27]
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
@@ -5525,6 +5662,7 @@ def test_int4(tester: ONNX_IR_TESTER):
     }
     if tester.multithread:
         import multiprocessing
+        from utils.misc import collect_process
         process_number = multiprocessing.cpu_count() // 2 + 1
         processes = []
         error_cases = multiprocessing.Manager().list()
@@ -5532,26 +5670,15 @@ def test_int4(tester: ONNX_IR_TESTER):
         for case in test_cases:
             if tester.check_support(case):
                 p = multiprocessing.Process(target=test_one_case_in_all,
+                                            name=case,
                                             args=(tester, case, error_cases, success_cases))
-                p.name = case
                 processes.append(p)
             if len(processes) == process_number:
-                for p in processes:
-                    p.start()
-                for j in processes:
-                    j.join()
-                for p in processes:
-                    if p.exitcode:
-                        error_cases.append(p.name)
+                collect_process(processes, error_cases)
                 processes = []
         if processes:
-            for p in processes:
-                p.start()
-            for j in processes:
-                j.join()
-            for p in processes:
-                if p.exitcode:
-                    error_cases.append(p.name)
+            collect_process(processes, error_cases)
+            processes = []
     else:
         error_cases = []
         success_cases = []
@@ -5570,35 +5697,24 @@ def test_int4(tester: ONNX_IR_TESTER):
 def test_all(tester: ONNX_IR_TESTER):
     if tester.multithread:
         import multiprocessing
+        from utils.misc import collect_process
         process_number = multiprocessing.cpu_count() // 2 + 1
         processes = []
         error_cases = multiprocessing.Manager().list()
         success_cases = multiprocessing.Manager().list()
         for case in tester.test_cases:
             if tester.check_support(case):
-                print("====== test_onnx.py --case {} --chip {} TEST START PROCESSING ======".format(case, tester.chip))
+                print("====== test_onnx.py --case {} --chip {} TEST START PROCESSING ======".format(
+                    case, tester.chip))
                 p = multiprocessing.Process(target=test_one_case_in_all,
+                                            name=case,
                                             args=(tester, case, error_cases, success_cases))
-                p.name = case
                 processes.append(p)
             if len(processes) == process_number:
-                for p in processes:
-                    p.start()
-                for j in processes:
-                    j.join()
-                for p in processes:
-                    if p.exitcode:
-                        error_cases.append(p.name)
+                collect_process(processes, error_cases)
                 processes = []
-
-        if processes:
-            for p in processes:
-                p.start()
-            for j in processes:
-                j.join()
-            for p in processes:
-                if p.exitcode:
-                    error_cases.append(p.name)
+        collect_process(processes, error_cases)
+        processes = []
     else:
         error_cases = []
         success_cases = []

@@ -124,7 +124,7 @@ typedef void (*nodechip_topk)(uint64_t bottom_global_offset, uint64_t top_value_
 typedef void (*nodechip_topk_fix8b)(uint64_t bottom_global_offset, uint64_t top_value_global_offset, uint64_t top_index_global_offset, int k, int dim, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, int in_sign, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_lut_v2)(uint64_t bottom_global_offset, uint64_t top_global_offset, uint64_t table_global_offset, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, int bottom_stmode, int top_dtype, int top_stmode, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_cumsum)(uint64_t bottom_global_offset, uint64_t top_global_offset, int dim, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, CMD_ID_NODE *pid_node);
-typedef void (*nodechip_arg)(uint64_t input_offset_global, uint64_t value_offset_global, uint64_t index_offset_global, int input_n, int input_c, int input_h, int input_w, int axis, int method, int is_index_int32, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_arg)(uint64_t input_offset_global, uint64_t value_offset_global, uint64_t index_offset_global, int input_n, int input_c, int input_h, int input_w, int axis, int method, int is_index_int32, int select_last_index, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_arg_local)(uint32_t input_lmem_offset, uint32_t index_lmem_offset, uint32_t argval_lmem_offset, uint32_t imm_lmem_offset, int input_n, int input_c, int input_h, int input_w, int axis, int method, int is_index_int32, CMD_ID_NODE *pid_node, CMD_ID_NODE *pid_node_gdma);
 typedef void (*nodechip_arg_fix8b)(uint64_t input_offset_global, uint64_t input_1N_global_addr, uint64_t value_offset_global, uint64_t output_1N_global_addr, uint64_t index_offset_global, uint64_t imm_index_global_addr, int input_sign, int input_n, int input_c, int input_h, int input_w, int axis, int method, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_stride_slice_md)(uint64_t input_global_addr, uint64_t output_global_addr, int *input_shape, int shape_size, int begin_mask, int end_mask, int *begin_index, int *end_index, int *stride, CMD_ID_NODE *pid_node);
@@ -165,13 +165,13 @@ typedef void (*nodechip_deconv3d)(uint64_t ifmap_offset_global, uint64_t ofmap_o
 typedef void (*nodechip_conv3d_fix8b_parallel)(uint64_t input_global_offset, uint64_t output_global_offset, uint64_t filter_global_offset, uint64_t bias_global_offset, int batch, int IC_ALL, int IT, int IH, int IW, int groups, int OC_ALL, int FT, int FH, int FW, int DT, int DH, int DW, int PT0, int PT1, int PH0, int PH1, int PW0, int PW1, int ST, int SH, int SW, int using_bias, int if_relu, int upper_limit, int in_sign, int out_sign, int weight_sign, int bias_sign, int rshift_num, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_conv3d_add_parallel)(uint64_t ifmap_offset_global, uint64_t other_offset_global, uint64_t ofmap_offset_global, uint64_t weight_offset_global, uint64_t bias_offset_global, int input_n, int input_c, int input_t, int input_h, int input_w, int groups, int output_c, int kt, int kh, int kw, int dt, int dh, int dw, int pad_t, int pad_t_after, int pad_h, int pad_h_after, int pad_w, int pad_w_after, int stride_t, int stride_h, int stride_w, int using_bias, int if_relu, float relu_upper_limit, int method, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_unfold)(uint64_t input_global_offset, int input_rank, int *input_shape, int unfold_axis, int unfold_size, int unfold_step, uint64_t buffer_global_offset, uint64_t *buffer_size, uint64_t output_global_offset, CMD_ID_NODE *id_node);
-typedef void (*nodechip_gru)(uint64_t xGlobalAddr, uint64_t h0GlobalAddr, uint64_t yGlobalAddr, uint64_t hnGlobalAddr, uint64_t wGlobalAddr, uint64_t bGlobalAddr, uint64_t zGlobalAddr, bool bias, int sequence, int batch, int xSize, int hSize, bool batchFirst, bool bidirectional, int numLayers, CMD_ID_NODE *id_node);
+typedef void (*nodechip_gru)(uint64_t xGlobalAddr, uint64_t h0GlobalAddr, uint64_t yGlobalAddr, uint64_t hnGlobalAddr, uint64_t wGlobalAddr, uint64_t bGlobalAddr, uint64_t zGlobalAddr, bool bias, bool outputY, bool outputYh, int sequence, int batch, int xSize, int hSize, bool batchFirst, bool bidirectional, int numLayers, CMD_ID_NODE *id_node);
 typedef void (*nodechip_pytorch_lstm)(uint64_t xGlobalAddr, uint64_t h0GlobalAddr, uint64_t c0GlobalAddr, uint64_t yGlobalAddr, uint64_t hnGlobalAddr, uint64_t cnGlobalAddr, uint64_t wGlobalAddr, uint64_t bGlobalAddr, uint64_t zGlobalAddr, bool bias, bool output_y, bool output_yh, bool output_yc, int sequence, int batch, int xSize, int hSize, bool batchFirst, bool bidirectional, int numLayers, CMD_ID_NODE *id_node);
 typedef void (*nodechip_matrix_band_part)(uint64_t input_global_offset, uint64_t output_global_offset, const int *shape, int dim, int lower, int upper, CMD_ID_NODE *id_node);
 typedef void (*nodechip_global_memcpy_ex)(uint64_t src_addr, uint64_t dst_addr, int block_num, int src_stride, int dst_stride, int src_dtype, int dst_dtype, int block_size, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_lut_local_v2)(int index_local_offset, int table_l2_offset, int imm_local_offset, int output_local_offset, int *index_shape, int index_dim, int bottom_stmode, int top_dtype, int top_stmode, void *pid_node);
 typedef void (*nodechip_serial_number_gen)(uint64_t global_addr, uint32_t local_addr, uint32_t local_buffer, int save_in_global, int save_as_float, int C, int HW, void *pid_node);
-typedef void (*nodechip_pad_fix8b)(uint64_t bottom_global_offset, uint64_t top_global_offset, bool input_is_4N, uint64_t input_1N_global_offset, bool output_is_4N, uint64_t output_1N_global_offset, int bottom_n, int bottom_c, int bottom_h, int bottom_w, int (*paddings)[2], char pad_val, int pad_op, void *pid_node);
+typedef void (*nodechip_pad_fix8b)(uint64_t bottom_global_offset, uint64_t top_global_offset, bool input_is_4N, uint64_t input_1N_global_offset, bool output_is_4N, uint64_t output_1N_global_offset, int bottom_n, int bottom_c, int bottom_h, int bottom_w, int (*paddings)[2], int type, char constant, void *pid_node);
 typedef void (*nodechip_pad)(uint64_t bottom_global_offset, uint64_t top_global_offset, int bottom_n, int bottom_c, int bottom_h, int bottom_w, int (*paddings)[2], int pad_op, float pad_val, void *pid_node);
 typedef void (*nodechip_pad_local)(int input_local_offset, int output_local_offset, int input_n, int input_c, int input_h, int input_w, int (*pad)[2], int type, float constant, void *pid_node);
 typedef void (*nodechip_pad_fix8b_local)(int input_local_offset, int output_local_offset, int input_n, int input_c, int input_h, int input_w, int (*pad)[2], int type, unsigned char constant, void *pid_node);
@@ -202,6 +202,9 @@ typedef void (*nodechip_space2batch)(uint64_t input_global_addr, uint64_t output
 typedef void (*nodechip_space2batch_fix8b)(uint64_t input_global_addr, uint64_t output_global_addr, uint64_t buffer_global_addr, uint64_t *buffer_size, const int* input_shape, const int input_dim, int  in_store_mode, int  out_store_mode, const int* block_sizes, const int* pad_sizes, int* output_shape, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_batch2space)(uint64_t input_global_addr, uint64_t output_global_addr, uint64_t buffer_global_addr, const int* input_shape, const int input_dim, const int* block_sizes, const int* pad_sizes, int* output_shape, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_batch2space_fix8b)(uint64_t input_global_addr, uint64_t output_global_addr, uint64_t buffer_global_addr, uint64_t imm_global_addr, uint64_t *buffer_size, const int* input_shape, const int input_dim, int  in_store_mode, int  out_store_mode, const int* block_sizes, const int* crops_sizes, int* output_shape, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_unary)(uint64_t bottom_global_addr, uint64_t top_global_addr, uint64_t length, UNARY_FUNC_TYPE type, void *param, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_masked_fill_global)(uint64_t input_global_addr, uint64_t mask_global_addr, uint64_t output_global_addr, uint32_t *input_shape, uint32_t *mask_shape, int input_dims, int mask_dims, uint32_t value, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_masked_fill_local)(uint32_t input_addr, uint32_t mask_addr, uint32_t buffer_addr, uint32_t output_addr, const int *input_shape, const int *mask_shape, int input_dims, int mask_dims, uint32_t value, CMD_ID_NODE *pid_node);
 
 // clang-format on
 namespace tpu_mlir {
@@ -215,6 +218,9 @@ public:
 
   std::shared_ptr<std::vector<int8_t>>
   Convert1NTo4N(Value v, std::shared_ptr<std::vector<int8_t>> data);
+
+  std::shared_ptr<std::vector<int16_t>>
+  Convert1NTo2N(Value v, std::shared_ptr<std::vector<int16_t>> data);
 
   // -------------------------------------------------------------------
   // functions from nodechip
@@ -412,6 +418,9 @@ public:
   nodechip_space2batch_fix8b dl_nodechip_space2batch_fix8b;
   nodechip_batch2space dl_nodechip_batch2space;
   nodechip_batch2space_fix8b dl_nodechip_batch2space_fix8b;
+  nodechip_unary dl_nodechip_unary;
+  nodechip_masked_fill_global dl_nodechip_masked_fill_global;
+  nodechip_masked_fill_local dl_nodechip_masked_fill_local;
   // clang-format on
 public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;

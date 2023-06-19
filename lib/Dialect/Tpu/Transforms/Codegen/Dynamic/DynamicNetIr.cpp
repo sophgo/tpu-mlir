@@ -640,6 +640,9 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
             sub_group.group_ops.push_back(op);
             id++;
           }
+        } else if (!isa<tpu::YieldOp>(op)){
+          op->dump();
+          llvm_unreachable("such op need support dynamic local");
         }
       });
     }

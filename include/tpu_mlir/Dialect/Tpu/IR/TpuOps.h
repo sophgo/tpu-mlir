@@ -40,5 +40,6 @@ const pool_attr_t &getPool2DParam(tpu::Pool2DOp &op);
 const slice_attr_t &getSliceParam(tpu::SliceOp &op);
 
 RunMode getRunMode(mlir::func::FuncOp func);
+RunMode getRunMode(Operation *op);
 } // namespace tpu
 } // namespace tpu_mlir

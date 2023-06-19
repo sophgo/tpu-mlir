@@ -66,7 +66,7 @@ customization_format_attributes = {
     'RGB_PACKED': ('rgb', 'nhwc'),
     'BGR_PLANAR': ('bgr', 'nchw'),
     'BGR_PACKED': ('bgr', 'nhwc'),
-    'GRAYSCALE': ('bgr', 'nchw'),
+    'GRAYSCALE': ('gray', 'nchw'),
     'YUV420_PLANAR': ('bgr', 'nchw'),
     'YUV_NV12': ('bgr', 'nchw'),
     'YUV_NV21': ('bgr', 'nchw'),
@@ -102,7 +102,7 @@ def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
     return img
 
 
-def vis2(img, dets, input_shape, conf=0.5, class_names=None):
+def vis2(img, dets, input_shape, class_names=None):
     shape = dets.shape
     num = shape[-2]
     img_h, img_w = img.shape[0:2]
@@ -110,10 +110,7 @@ def vis2(img, dets, input_shape, conf=0.5, class_names=None):
         d = dets[0][0][i]
         cls_id = int(d[1])
         score = d[2]
-        if score < conf:
-            continue
-        x, y, w, h = d[3] * input_shape[1], d[4] * input_shape[0], d[5] * input_shape[1], d[6] * input_shape[0]
-
+        x, y, w, h = d[3], d[4], d[5], d[6]
         r = min(input_shape[0] / img.shape[0], input_shape[1] / img.shape[1])
         new_img_h = img_h * r
         new_img_w = img_w * r
@@ -297,15 +294,6 @@ def postproc(outputs, imsize, top, left, anchors=ANCHORS):
     return scores, boxes_xyxy
 
 
-def refine_cvi_output(output):
-    new_output = {}
-    for k in output.keys():
-        if k.endswith("_f32"):
-            out = output[k]
-            n, c, h, w = out.shape[0], out.shape[1], out.shape[2], out.shape[3]
-            new_output[k] = out.reshape(n, c, h, w // 85, 85)
-    return new_output
-
 
 def parse_args():
     # yapf: disable
@@ -346,8 +334,7 @@ def main():
     elif args.model.endswith(".bmodel"):
         output = model_inference(data, args.model)
     elif args.model.endswith(".cvimodel"):
-        output = model_inference(data, args.model)
-        output = refine_cvi_output(output)
+        output = model_inference(data, args.model, False)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     if not args.fuse_postprocess:
@@ -370,7 +357,7 @@ def main():
         cv2.imwrite(args.output, fix_img)
     else:
         dets = output['yolo_post']
-        fix_img = vis2(origin_img, dets, input_shape, conf=args.score_thres, class_names=COCO_CLASSES)
+        fix_img = vis2(origin_img, dets, input_shape, class_names=COCO_CLASSES)
         cv2.imwrite(args.output, fix_img)
 
 

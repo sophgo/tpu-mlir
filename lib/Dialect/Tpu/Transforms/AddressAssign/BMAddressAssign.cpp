@@ -182,6 +182,11 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
         addr = module::getAddress(module::getOriValue(reshapeOp.getOperand(0)));
       }
       module::setAddress(reshapeOp.getOutput(), addr);
+    } else if (auto identityOp = dyn_cast<tpu::IdentityOp>(op)) {
+      for (auto it : llvm::enumerate(identityOp.getInput())) {
+        auto addr = module::getAddress(module::getOriValue(it.value()));
+        module::setAddress(identityOp.getOutput()[it.index()], addr);
+      }
     } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
       auto addr = module::getAddress(sliceOp.getInput());
       auto p = sliceOp.parseParam();
@@ -255,6 +260,12 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         liveRange[v_info].tensor_size =
             getTensorGmemSize(opd, v_info.index, alignment);
       }
+
+      if (isInPlaceOp(op)) {
+        ValueInfo op_info(op,0);
+        liveRange[v_info].end = std::max(liveRange[op_info].end, liveRange[v_info].end);
+      }
+
       if (isa<top::InputOp>(opd)) {
         liveRange[v_info].start = 0;
         liveRange[v_info].end = 0xFFFFFFFF;
@@ -371,6 +382,8 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
     return concatOp.getOnlyMerge();
   } else if (auto weight2activation_op =
                  dyn_cast<tpu::Weight2ActivationOp>(op)) {
+    return true;
+  } else if (isa<tpu::IdentityOp>(op)) {
     return true;
   }
   return false;

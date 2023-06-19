@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-
-#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 // in TPU1684's Arg Definition, Nullptr is not 0.
 // which can be found in TPU1684/fireware_core/src/global_layer/nodechip_arg.c:6
@@ -54,7 +54,7 @@ void tpu::ArgOp::codegen_global_bm1684() {
             value_global_offset,
             index_global_offset,
             n, c, h, w,
-            axis, method, 1,
+            axis, method, 1, getSelectLastIndex(),
             (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }else {
     int w = 1;
@@ -69,16 +69,28 @@ void tpu::ArgOp::codegen_global_bm1684() {
             value_global_offset,
             index_global_offset,
             n, bottom_dim[axis - 1], bottom_dim[axis], w,
-            2, method, 1,
+            2, method, 1, getSelectLastIndex(),
             (CMD_ID_NODE*)BM1684::instance().cmdid_node);
   }
 }
 
-uint32_t tpu::ArgOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+uint32_t tpu::ArgOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
+  ir_layer_info_t *layer_info = (ir_layer_info_t *)ir_layer_info;
+  dynamic_common_ir_layer_info(layer_info, getInput(), getIndices());
+  fw_arg_layer_param_t layer_param = {0};
+  layer_param.ic = module::getShape(getInput())[1];
+  layer_param.axis = getAxis();
+  layer_param.input_sign = module::isSign(getInput());
+  layer_param.method = StringSwitch<int>(getMode())
+                           .Case("ArgMax", 0)
+                           .Case("ArgMin", 1)
+                           .Default(-1);
+  layer_param.is_index_int32 = 1;
+  if (DSIZE_8 == layer_info->data_size) {
+    llvm_unreachable("not implement");
+  }
+  layer_info->fw_layer_param_u.fw_arg_layer_param = layer_param;
+  return sizeof(fw_arg_layer_param_t);
 }
 
-int64_t tpu::ArgOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::ArgOp::get_fw_type_bm1684() { return FW_BMNET_ARG; }

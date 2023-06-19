@@ -178,3 +178,18 @@ def seed_all(seed=1029):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
+
+
+def collect_process(processes: list, error_cases, timeout: int = 300):
+    if 0 == len(processes):
+        return
+    for p in processes:
+        p.start()
+    for j in processes:
+        j.join(timeout)
+    for p in processes:
+        if p.is_alive():
+            p.terminate()
+            error_cases.append(p.name)
+        elif p.exitcode != 0:
+            error_cases.append(p.name)

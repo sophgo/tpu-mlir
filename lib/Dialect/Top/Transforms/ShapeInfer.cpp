@@ -66,6 +66,60 @@ public:
   }
 };
 
+class CopyMultiUseWeight : public OpRewritePattern<WeightOp> {
+public:
+  using OpRewritePattern<WeightOp>::OpRewritePattern;
+
+  int getOperandIndex(Operation *op, Value operand) const {
+    int n = op->getNumOperands();
+    for (int i = 0; i < n; i++) {
+      if (operand == op->getOperand(i)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  template<typename T>
+  void copyNewWeight(Operation *user, WeightOp op) const {
+    int operand_index = getOperandIndex(user, op.getOutput());
+    assert(operand_index != -1);
+    auto weight_data = op.read<T>();
+    auto weight_type = op.getType().cast<RankedTensorType>();
+    auto new_weight_value = top::WeightOp::create(op, "new", *weight_data, weight_type);
+    user->setOperand(operand_index, new_weight_value);
+  }
+
+  LogicalResult matchAndRewrite(WeightOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op->hasOneUse()) {
+      for (auto user : op->getUsers()) {
+        auto elt_type = module::getStorageType(op.getOutput());
+        if (elt_type.isF32()) {
+          copyNewWeight<float>(user, op);
+        } else if (elt_type.isInteger(32)) {
+          copyNewWeight<int32_t>(user, op);
+        } else if (elt_type.isUnsignedInteger(32)) {
+          copyNewWeight<uint32_t>(user, op);
+        } else if (elt_type.isBF16() || elt_type.isF16()
+                  || elt_type.isUnsignedInteger(16)) {
+          copyNewWeight<uint16_t>(user, op);
+        } else if (elt_type.isInteger(16)) {
+          copyNewWeight<int16_t>(user, op);
+        } else if (elt_type.isInteger(8) || elt_type.isInteger(4)) {
+          copyNewWeight<int8_t>(user, op);
+        } else if (elt_type.isUnsignedInteger(8)) {
+          copyNewWeight<uint8_t>(user, op);
+        } else {
+          op.dump();
+          llvm_unreachable("unsupported weight element type");
+        }
+      }
+    }
+    return success();
+  }
+};
+
 // if all inputs is weight, convert to weight op
 static void WeightFolder(Operation *op) {
   //if the op is in the region of other op, don't do WeightFolder
@@ -141,6 +195,9 @@ public:
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
     patterns.clear();
     patterns.add<UnTupleFusePattern>(ctx);
+    applyPatternsAndFoldGreedily(mOp, std::move(patterns));
+    patterns.clear();
+    patterns.add<CopyMultiUseWeight>(ctx);
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
     // Do shape infer
     for (auto func : mOp.getOps<FuncOp>()) {
