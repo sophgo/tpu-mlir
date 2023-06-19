@@ -596,7 +596,7 @@ class SimpleTuner:
 
 class ActivationCalibrator2(BaseKldCalibrator):
 
-    def __init__(self, args, ds: DataSelector):
+    def __init__(self, args, ds: DataSelector, tune_ds: DataSelector):
         super().__init__()
         self.args = copy.deepcopy(args)
         self.start_time = time.time()
@@ -634,6 +634,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
             tmp.load_config(self.parser.get_input_op_by_idx(i))
             self.ppa_list.append(tmp)
         self.ds = ds
+        self.tune_ds = ds if tune_ds is None else tune_ds
         self.data_list = ds.data_list
         self.args.input_num = len(self.data_list)
         if ds.all_image:
@@ -947,7 +948,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
             return
 
         # setp 4: tune to get better threshold of each layers.
-        self.tunner = SimpleTuner(self.args, self.ds, self.ppa_list, thresholds_map_absmax)
+        self.tunner = SimpleTuner(self.args, self.tune_ds, self.ppa_list, thresholds_map_absmax)
         thresholds = self.tunner.run()
 
         # step 5: dump threshold table after tuning
@@ -989,7 +990,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
 
 class ActivationCalibrator(BaseKldCalibrator):
 
-    def __init__(self, args, ds: DataSelector):
+    def __init__(self, args, ds: DataSelector, tune_ds: DataSelector):
         super().__init__()
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
@@ -1017,6 +1018,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         self.activations_statistics = dict()
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
         self.ds = ds
+        self.tune_ds = ds if tune_ds is None else tune_ds
 
     def _activations_size(self, tensors):
         size = 0
@@ -1205,7 +1207,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             return
 
         # setp 4: tune to get better threshold of each layers.
-        self.tunner = SimpleTuner(self.args, self.ds, self.ppa_list)
+        self.tunner = SimpleTuner(self.args, self.tune_ds, self.ppa_list)
         thresholds = self.tunner.run()
 
         # step 5: dump threshold table after tuning

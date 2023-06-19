@@ -20,7 +20,18 @@ using namespace tpu_mlir::backend;
 
 // int8
 void tpu::CompareConstOp::codegen_global_cv18xx(int64_t layer_id) {
-  llvm_unreachable("Not supported now");
+  gaddr_t input_gaddr = module::getAddress(this->getInput());
+  gaddr_t output_gaddr = module::getAddress(this->getOutput());
+  // parseparam
+  int64_t n, c, h, w;
+  module::getNCHW(getOutput(), n, c, h, w, false);
+  auto fmt =
+      module::isUniformQuantized(getOutput()) ? CVK_FMT_U8 : CVK_FMT_BF16;
+  // auto pos = positive();
+  auto pos = false;  // todo
+  assert(fmt == CVK_FMT_BF16); // todo
+  cvi_backend_zero_mask_kernel(layer_id, input_gaddr, output_gaddr, n, c, h, w,
+                               pos, fmt);
 }
 
 // =========================================

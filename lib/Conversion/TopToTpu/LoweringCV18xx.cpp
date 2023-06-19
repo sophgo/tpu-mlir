@@ -20,6 +20,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ArgLowering,
       AvgPoolLowering,
       CastLowering,
+      CompareConstLowering,
       ConcatLowering,
       ConvLowering,
       ClipLowering,

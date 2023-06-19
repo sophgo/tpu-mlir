@@ -68,7 +68,7 @@ class TORCH_IR_TESTER(object):
             "ConstantFill":     (self.test_ConstantFill,      Y, Y, Y, Y),
             "DeformConv2D":     (self.test_DeformConv2D,      Y, Y, N, N),
             "Div":              (self.test_Div,               N, Y, Y, Y),
-            "Dropout":          (self.test_Dropout,           N, Y, Y, N),
+            "Dropout":          (self.test_Dropout,           N, Y, Y, Y),
             "Elu":              (self.test_Elu,               Y, Y, Y, Y),
             "Embedding":        (self.test_Embedding,         N, Y, Y, Y),
             "Flatten":          (self.test_Flatten,           N, Y, Y, N),

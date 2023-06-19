@@ -24,6 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, help='dataset for calibration')
     parser.add_argument('--data_list', type=str, help='Input list file contain all input')
     parser.add_argument('--input_num', type=int, default=0, help='num of images for calibration')
+    parser.add_argument('--tune_list', type=str, default='', help='Tune list file contain all input for tune')
     parser.add_argument('--tune_num', type=int, default=5, help='num of images for tune')
     parser.add_argument('--histogram_bin_num', type=int, default=2048,
                         help='Specify histogram bin numer for kld calculate')
@@ -31,11 +32,19 @@ if __name__ == '__main__':
     parser.add_argument('--debug_cmd', type=str, default='', help='debug cmd')
     # yapf: enable
     args = parser.parse_args()
-
+    dump_list = True if 'dump_list' in args.debug_cmd else False
     selector = DataSelector(args.dataset, args.input_num, args.data_list)
+    tune_ds = None
+    if args.tune_list:
+        tune_ds = DataSelector(None, args.tune_num, args.tune_list)
+        args.tune_num = len(tune_ds.data_list)
+    if dump_list:
+        selector.dump("./selected_image_list.txt")
+        if tune_ds is not None:
+            tune_ds.dump("./selected_tune_image_list.txt")
     # calibration
     if 'use_old_cali' in args.debug_cmd:
-        calibrator = ActivationCalibrator(args, selector)
+        calibrator = ActivationCalibrator(args, selector, tune_ds)
     else:
-        calibrator = ActivationCalibrator2(args, selector)
+        calibrator = ActivationCalibrator2(args, selector, tune_ds)
     calibrator.run()
