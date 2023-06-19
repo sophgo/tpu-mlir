@@ -57,7 +57,7 @@ class ONNX_IR_TESTER(object):
             "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y),
             "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y),
             "Cast":         (self.test_Cast,          Y, Y, Y, Y),
-            "CompareCst":   (self.test_CompareCst,    Y, Y, Y, N),
+            "CompareCst":   (self.test_CompareCst,    Y, Y, Y, Y),
             "Compare":      (self.test_Compare,       Y, Y, Y, N),
             "Compare2":     (self.test_Compare2,      Y, N, N, N),
             "Concat":       (self.test_Concat,        Y, Y, Y, Y),
@@ -3287,17 +3287,16 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Model, self).__init__()
-                self.conv2d = nn.Conv2d(in_channels=10,
-                                        out_channels=10,
+                self.conv2d = nn.Conv2d(in_channels=160,
+                                        out_channels=128,
                                         kernel_size=3,
-                                        stride=1,
-                                        padding=16,
-                                        dilation=16)
+                                        stride=(2, 1),
+                                        padding=1)
 
             def forward(self, x):
                 return self.conv2d(x)
 
-        x = torch.randn(1, 10, 64, 64).float()
+        x = torch.randn(1, 160, 20, 30).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_TorchConv3dTrans(self, case_name):
@@ -4233,12 +4232,17 @@ class ONNX_IR_TESTER(object):
 
     def test_CompareCst(self, case_name):
         shape = [1, 3, 27, 27]
+        # "Equal" need not to be tested since equal op between floating number may be invalid
+        cases = ("Greater", "GreaterOrEqual", "Less", "LessOrEqual")
+        const_value = 0.5
+        if self.is_cv18xx:
+            cases = ("Equal", )
+            const_value = 0.0
         input = helper.make_tensor_value_info("input", TensorProto.FLOAT, shape)
         constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
-                                      np.array([0.5]).astype(np.float32))
+                                      np.array([const_value]).astype(np.float32))
         output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
-        # "Equal" need not to be tested since equal op between floating number may be invalid
-        for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
+        for cmp_type in cases:
             cmp_def = helper.make_node(cmp_type, inputs=["input", "constant"], outputs=["output"])
             graph_def = helper.make_graph([cmp_def],
                                           case_name, [input], [output],

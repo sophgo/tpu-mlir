@@ -13,7 +13,7 @@
 
 
 
-#define DEBUG_TYPE "cvi_backend_pad_kernel"
+#define DEBUG_TYPE "cvi_backend_tile_kernel"
 
 
 

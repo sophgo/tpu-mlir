@@ -427,5 +427,9 @@ void cvi_backend_tg_yuv420_csc_kernel(uint32_t layer_id, gaddr_t ga_input,
 void cvi_backend_tg_argmax_kernel(uint32_t layer_id, gaddr_t ga_input,
                                   gaddr_t ga_output, int outer, int inner,
                                   int w_tile_size, cvk_fmt_t fmt);
+
+void cvi_backend_zero_mask_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                  gaddr_t ga_output, int n, int c, int h, int w,
+                                  bool positive, cvk_fmt_t fmt);
 } // namespace backend
 } // namespace tpu_mlir

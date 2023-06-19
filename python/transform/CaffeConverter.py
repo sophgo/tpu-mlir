@@ -88,8 +88,9 @@ class CaffeConverter(BaseConverter):
             'LRN': lambda layer: self.convert_lrn_op(layer),
             'LSTM': lambda layer: self.convert_lstm_op(layer),
             'Lstm': lambda layer: self.convert_lstm_jun_op(layer),
-            'Normalize': lambda layer: self.convert_normalize_op(layer),
+            'MatMul': lambda layer: self.convert_matmul_op(layer),
             'Mish': lambda layer: self.convert_mish_op(layer),
+            'Normalize': lambda layer: self.convert_normalize_op(layer),
             'Padding': lambda layer: self.convert_padding_op(layer),
             'Permute': lambda layer: self.convert_permute_op(layer),
             'Pooling': lambda layer: self.convert_pooling_op(layer),
@@ -115,7 +116,7 @@ class CaffeConverter(BaseConverter):
             'Tile': lambda layer: self.convert_tile_op(layer),
             'Upsample': lambda layer: self.convert_upsample_op(layer),
             'YoloDetection': lambda layer: self.convert_yolo_detection_op(layer),
-            'MatMul': lambda layer: self.convert_matmul_op(layer),
+
         }
 
     def __del__(self):
