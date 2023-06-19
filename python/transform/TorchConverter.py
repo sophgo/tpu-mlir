@@ -94,6 +94,7 @@ class TorchConverter(BaseConverter):
             "aten::embedding": lambda node: self.convert_embedding_op(node),
             "aten::exp": lambda node: self.convert_math_op(node, "exp"),
             "aten::expand": lambda node: self.convert_expand_op(node),
+            "aten::expand_as": lambda node: self.convert_expand_as_op(node),
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
             "aten::floor": lambda node: self.convert_floor_op(node),
             "aten::floor_divide": lambda node: self.convert_floor_divide_op(node),
@@ -101,6 +102,7 @@ class TorchConverter(BaseConverter):
             "aten::gather": lambda node: self.convert_gather_op(node),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
+            "aten::erf": lambda node: self.convert_erf_op(node),
             "aten::grid_sampler": lambda node: self.convert_grid_sampler_op(node),
             "aten::group_norm": lambda node: self.convert_group_norm_op(node),
             "aten::gru": lambda node: self.convert_gru_op(node),
@@ -711,6 +713,25 @@ class TorchConverter(BaseConverter):
                                     value=1.0,
                                     loc=self.get_loc(torch_node.name+'_size'),
                                     ip=self.mlir.insert_point).output
+        new_exp = top.MulOp(self.unranked_type, [opI, new_cf],
+                           do_relu=False,
+                           loc=self.get_loc(torch_node.name),
+                           ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_exp)
+
+    def convert_expand_as_op(self, torch_node: TorchNode):
+        opI = self.getOp(torch_node.inputs[0])
+        opS = self.getOp(torch_node.inputs[1])
+        size_op = top.SizeOp(self.unranked_type,
+                            opS,
+                            axis=None,
+                            loc=self.get_loc(torch_node.inputs[1] + "_size"),
+                            ip=self.mlir.insert_point).output
+        new_cf = top.ConstantFillOp(self.unranked_type,
+                            size_op,
+                            value=1.0,
+                            loc=self.get_loc(torch_node.name+'_size'),
+                            ip=self.mlir.insert_point).output
         new_exp = top.MulOp(self.unranked_type, [opI, new_cf],
                            do_relu=False,
                            loc=self.get_loc(torch_node.name),
@@ -1404,6 +1425,14 @@ class TorchConverter(BaseConverter):
     def convert_gelu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
         new_op = top.GELUOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc(torch_node.name),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_erf_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        new_op = top.ErfOp(self.unranked_type,
                             op,
                             loc=self.get_loc(torch_node.name),
                             ip=self.mlir.insert_point).output
