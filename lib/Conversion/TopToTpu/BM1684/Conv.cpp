@@ -55,7 +55,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
   auto filter_max = findMaxabs(filter_f32->data(), filter_f32->size());
   int rshift = calRightShiftNum(filter_max, in_scale, out_scale, BITS_INT8);
-  if (rshift < 0) {
+  if (rshift < 0 || attr.sw > 15 || attr.sh > 15) {
     // lowring as fp32
     LoweringF32(rewriter, op);
   } else {
