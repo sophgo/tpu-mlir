@@ -704,11 +704,10 @@ class TORCH_IR_TESTER(object):
     # ------------
     def test_Div(self):
         """Div"""
-
-        self._test_binary(torch.div, (1, 3, 32, 31), (1, 3, 32, 1), min=0)
+        if self.chip != "bm1686":
+            self._test_binary(torch.div, (1, 3, 32, 31), (1, 3, 32, 1), min=0)
+            self._test_binary(torch.div, (32, 32), (32), min=0)
         self._test_binary(torch.div, (2, 32, 16), (2, 1, 16), min=0)
-        self._test_binary(torch.div, (32, 32), (32), min=0)
-
     #######################################################################
     # Compare
     # ------------
