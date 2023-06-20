@@ -226,7 +226,56 @@ struct MulMerge : public OpRewritePattern<MulOp> {
   }
 };
 
+struct MergeGelu : public OpRewritePattern<MulOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MulOp op,
+                                PatternRewriter &rewriter) const override {
+    if (module::isUniformQuantized(op.getOutput()))
+      return failure();
+    if (!op.getResult().hasOneUse())
+      return failure();
+    MulConstOp mulconst_op = NULL;
+    AddConstOp addconst_op = NULL;
+    for (auto in:op.getInputs()) {
+      if (auto weight_op = dyn_cast<WeightOp>(in.getDefiningOp()))
+        return failure();
+      else if (addconst_op = dyn_cast<AddConstOp>(in.getDefiningOp()))
+        continue;
+      else if (mulconst_op = dyn_cast<MulConstOp>(in.getDefiningOp()))
+        continue;
+      else
+        return failure();
+    }
+    if (mulconst_op == NULL || addconst_op == NULL)
+      return failure();
+    if (!mulconst_op.getResult().hasOneUse() || !addconst_op.getResult().hasOneUse())
+      return failure();
+    if (fabs(mulconst_op.getConstVal().convertToDouble() - 0.5)>1e-4)
+      return failure();
+    if (fabs(addconst_op.getConstVal().convertToDouble() - 1.0)>1e-4)
+      return failure();
+    ErfOp erf_op = NULL;
+    erf_op = dyn_cast<ErfOp>(addconst_op.getInput().getDefiningOp());
+    if (erf_op == NULL)
+      return failure();
+    if (!erf_op.getResult().hasOneUse())
+      return failure();
+    MulConstOp mulconst_op1 = NULL;
+    mulconst_op1 = dyn_cast<MulConstOp>(erf_op.getInput().getDefiningOp());
+    if (mulconst_op1 == NULL)
+      return failure();
+    if (fabs(mulconst_op1.getConstVal().convertToDouble() - 0.70710676908493042f)>1e-4)
+      return failure();
+    if (mulconst_op1.getInput().getDefiningOp() != mulconst_op.getInput().getDefiningOp())
+      return failure();
+    rewriter.replaceOpWithNewOp<GELUOp>(op, op.getResult().getType(),
+             ValueRange{mulconst_op.getInput()});
+    return success();
+  }
+};
+
 void MulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<MulToSiLU, MulToMulConst, MulToScale, MulMerge>(context);
+  results.insert<MulToSiLU, MulToMulConst, MulToScale, MulMerge, MergeGelu>(context);
 }
