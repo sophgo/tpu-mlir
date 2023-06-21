@@ -3291,7 +3291,8 @@ class ONNX_IR_TESTER(object):
                                         out_channels=128,
                                         kernel_size=3,
                                         stride=(2, 1),
-                                        padding=1)
+                                        padding=16,
+                                        dilation=16)
 
             def forward(self, x):
                 return self.conv2d(x)

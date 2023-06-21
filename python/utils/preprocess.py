@@ -160,17 +160,18 @@ class preprocess(object):
                channel_format='nchw', debug_cmd='', input_shapes=None, unknown_params=[], **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
         if self.debug_cmd == '':
             self.debug_cmd = debug_cmd
-        if input_shapes is None or input_shapes == [] or channel_format == 'none':
-            return
-        if isinstance(input_shapes, str):
-            input_shapes = str2shape(input_shapes)
-        self.batch_size = input_shapes[0][0]
-        self.net_input_dims = input_shapes[0][-2:]
-        if channel_format == 'nhwc':
-            if len(input_shapes[0]) >= 4:
-                self.net_input_dims = input_shapes[0][-3:-1]
-            else:
-                self.net_input_dims = input_shapes[0][:-1]
+        if input_shapes is not None and input_shapes != [] and channel_format != 'none':
+            if isinstance(input_shapes, str):
+                input_shapes = str2shape(input_shapes)
+            self.batch_size = input_shapes[0][0]
+            self.net_input_dims = input_shapes[0][-2:]
+            if channel_format == 'nhwc':
+                if len(input_shapes[0]) >= 4:
+                    self.net_input_dims = input_shapes[0][-3:-1]
+                else:
+                    self.net_input_dims = input_shapes[0][:-1]
+        else:
+            self.net_input_dims = None
         if resize_dims:
             if isinstance(resize_dims, str):
                 self.resize_dims = [int(s) for s in resize_dims.split(',')]
@@ -287,8 +288,11 @@ class preprocess(object):
         self.keep_ratio_mode = Operation.str(attrs['keep_ratio_mode'])
         self.pad_value = Operation.int(attrs['pad_value'])
         self.pad_type = Operation.str(attrs['pad_type'])
-        self.resize_dims = Operation.int_array(attrs['resize_dims'])
-        if len(self.resize_dims) == 0:
+        try:
+            self.resize_dims = Operation.int_array(attrs['resize_dims'])
+        except KeyError:
+            self.resize_dims = self.net_input_dims
+        if len(self.resize_dims) == 0 or self.resize_dims is None:
             self.resize_dims = self.net_input_dims
         self.mean = np.array(Operation.fp_array(
             attrs['mean'])).astype(np.float32)
