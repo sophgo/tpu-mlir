@@ -204,6 +204,26 @@ public:
                isa<top::SoftmaxOp>(op)) {
       min = 0;
       max = 1;
+    } else if (isa<top::MulOp>(op)) {
+      bool same = true;
+      bool positive = true;
+      auto in0 = op->getOperands()[0];
+      for (auto in : op->getOperands()) {
+        if (in0 != in) {
+          same = false;
+        }
+
+        if (!isa<top::SigmoidOp, top::ReluOp>(in.getDefiningOp())) {
+          positive = false;
+        }
+      }
+      if (same || positive) {
+        min = 0;
+        max = info.threshold;
+      } else {
+        min = info.min < 0 ? (-info.threshold) : 0;
+        max = info.threshold;
+      }
     } else if (isAsymmetric == false) {
       min = info.min < 0 ? (-info.threshold) : 0;
       max = info.threshold;
