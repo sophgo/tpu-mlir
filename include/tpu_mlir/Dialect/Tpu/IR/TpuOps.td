@@ -2598,4 +2598,25 @@ def Tpu_Batch2SpaceOp: Tpu_Op<"Batch2Space"> {
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_AbsAddOp : Tpu_Op<"AbsAdd"> {
+  let summary = "AbsAdd operator";
+
+  let description = [{
+    y = abs(x) + b_val
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$b_val,
+    // quant param
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
+    DefaultValuedAttr<SI32Attr, "0">:$rshift
+  );
+
+  let results = (outs
+    AnyTensor:$output
+  );
+}
+
+
 #endif // TPU_OPS

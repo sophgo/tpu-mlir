@@ -14,17 +14,17 @@
 
 using namespace tpu_mlir::backend;
 
-// typedef struct {
-//   float b_val;
-// } absadd_param_t;
+typedef struct {
+  float b_val;
+} absadd_param_t;
 
-// // ======================================
-// // GlobalGenInterface
-// // ======================================
-// void tpu::AbsAddOp::codegen_global_bm1684x() {
-//   //Todo
-// }
+// ======================================
+// GlobalGenInterface
+// ======================================
+void tpu::AbsAddOp::codegen_global_bm1684x() {
+  llvm_unreachable("implement codegen part of tpu absadd");
+}
 
-// int64_t tpu::AbsAddOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::AbsAddOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
 
-// int64_t tpu::AbsAddOp::get_fw_type_bm1684x() { return FW_LAYER_UNKNOWN; }
+int64_t tpu::AbsAddOp::get_fw_type_bm1684x() { return FW_LAYER_UNKNOWN; }

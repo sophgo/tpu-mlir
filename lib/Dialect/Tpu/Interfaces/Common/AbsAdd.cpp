@@ -12,9 +12,9 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-// LogicalResult tpu::AbsAddOp::init(InferenceParameter &p) { return success(); }
-// void tpu::AbsAddOp::deinit(InferenceParameter &p) {}
+LogicalResult tpu::AbsAddOp::init(InferenceParameter &p) { return success(); }
+void tpu::AbsAddOp::deinit(InferenceParameter &p) {}
 
-// LogicalResult tpu::AbsAddOp::inference(InferenceParameter &p) {
-//   return success();
-// }
+LogicalResult tpu::AbsAddOp::inference(InferenceParameter &p) {
+  llvm_unreachable("implement tpu absadd inference function");
+}

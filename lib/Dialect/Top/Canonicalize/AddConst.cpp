@@ -21,7 +21,8 @@ struct ToAbsAdd : public OpRewritePattern<AddConstOp> {
 
   LogicalResult matchAndRewrite(AddConstOp op,
                                 PatternRewriter &rewriter) const override {
-    // Todo: add pattern
+    // Todo:
+    // Impelemnt a pattern to simplify AbsOp->AddConstOp to AbsAddOp
     return success();
   }
 };

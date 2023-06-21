@@ -126,7 +126,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       InstanceNormLowering,
       GroupNormLowering,
       DetectionOutputLowering,
-      ShuffleChannelLowering
+      ShuffleChannelLowering,
+      AbsAddLowering
       // clang-format on
       >(patterns->getContext());
 }

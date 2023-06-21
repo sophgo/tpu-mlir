@@ -2675,4 +2675,21 @@ def Top_CustomOp: Top_Op<"Custom"> {
   let results = (outs Variadic<AnyTensor>:$output);
 }
 
+def Top_AbsAddOp : Top_Op<"AbsAdd"> {
+  let summary = "AbsAdd operator";
+
+  let description = [{
+    y = abs(x) + b_val
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$b_val
+  );
+
+  let results = (outs
+    AnyTensor:$output
+  );
+}
+
 #endif // Top_OPS
