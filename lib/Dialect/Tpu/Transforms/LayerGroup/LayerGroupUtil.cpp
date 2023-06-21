@@ -493,7 +493,7 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
   secs = shape_secs.nsecs;
   int64_t n_align = 32 / bitwidth;
   if (Arch::ALIGN_4N && n_align != 1) {
-    step = align_up(n / secs, n_align);
+    step = align_up(ceiling_func(n, secs), n_align);
     for (int64_t i = 0; i < secs; ++i) {
       idx = i == 0 ? 0 : idx + slice;
       slice = (n - idx) > step ? step : (n - idx);
