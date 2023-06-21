@@ -28,20 +28,6 @@ using namespace llvm;
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
-
-class SubFunction {
-public:
-  SubFunction(RunMode mode) : mode(mode) {
-    count++;
-    have_none = false;
-  }
-  RunMode mode; // tpu/cpu/control
-  std::vector<Operation *> ops;
-  bool have_none;
-  static int count;
-};
-int SubFunction::count = 0;
-
 void getInputsOutputs(std::vector<Operation *> &ops, std::vector<Value> &inputs,
                       std::vector<Value> &outputs, bool &has_NoneOp) {
   std::vector<Value> allValues;
@@ -98,97 +84,6 @@ void getInputsOutputs(std::vector<Operation *> &ops, std::vector<Value> &inputs,
   }
 }
 
-void buildSubFunction(std::shared_ptr<SubFunction> sf) {
-  // std::vector<Operation *> fnOps;
-  std::vector<Value> fnInputs;
-  std::vector<Value> fnOutputs;
-  bool has_NoneOp = false;
-  getInputsOutputs(sf->ops, fnInputs, fnOutputs, has_NoneOp);
-  std::vector<Type> argType;
-  std::vector<Type> resType;
-  std::vector<Location> argLoc;
-  for (auto input : fnInputs) {
-    argType.push_back(input.getType());
-    auto ori_input = module::getOriValue(input);
-    if (auto op = ori_input.getDefiningOp()) {
-      argLoc.push_back(op->getLoc());
-    } else {
-      argLoc.push_back(module::getLoc());
-    }
-  }
-  for (auto output : fnOutputs) {
-    resType.push_back(output.getType());
-  }
-  int64_t id = SubFunction::count - 1;
-  std::string func_name = "subfunc_" + std::to_string(id);
-  OpBuilder builder(module::getCtx());
-  std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("id", builder.getI64IntegerAttr(id)));
-  attrs.push_back(builder.getNamedAttr(
-      "mode", RunModeAttr::get(module::getCtx(), sf->mode)));
-  auto fnType = builder.getFunctionType(llvm::ArrayRef<Type>{argType},
-                                        llvm::ArrayRef<Type>{resType});
-  auto fnOp = FuncOp::create(module::getLoc(), func_name, fnType,
-                             ArrayRef<NamedAttribute>(attrs));
-  auto block = fnOp.addEntryBlock();
-  builder.setInsertionPointAfterValue(fnOutputs.back());
-  func::CallOp callOp = builder.create<func::CallOp>(
-      module::getLoc(), func_name, resType, fnInputs);
-  for (auto it : llvm::enumerate(callOp.getResults())) {
-    fnOutputs[it.index()].replaceUsesWithIf(
-        it.value(), [&](OpOperand &operand) {
-          Operation *user = operand.getOwner();
-          return find(sf->ops.begin(), sf->ops.end(), user) == sf->ops.end();
-        });
-  }
-  builder.setInsertionPointToStart(block);
-  top::NoneOp noneOp;
-  if (sf->have_none) {
-    noneOp =
-        builder.create<top::NoneOp>(module::getLoc(), builder.getNoneType());
-  }
-  auto retOp = builder.create<ReturnOp>(module::getLoc(), fnOutputs);
-  for (auto op : sf->ops) {
-    if (isa<top::NoneOp>(op)) {
-      continue;
-    }
-    for (auto it : llvm::enumerate(op->getOperands())) {
-      if (!it.value().isa<BlockArgument>() &&
-          isa<top::NoneOp>(it.value().getDefiningOp())) {
-        op->setOperand(it.index(), noneOp);
-      }
-    }
-    op->moveBefore(retOp);
-  }
-  module::push_back(fnOp);
-  for (auto it : llvm::enumerate(fnInputs)) {
-    auto arg = block->getArgument(it.index());
-    arg.setLoc(argLoc[it.index()]);
-    it.value().replaceUsesWithIf(arg, [&](OpOperand &operand) {
-      /* bugfix:according to the value's def-use,
-         check the proper ancestor's operand's owner */
-      return fnOp->isProperAncestor(operand.getOwner());
-    });
-  }
-}
-
-static void insert_subop(std::shared_ptr<SubFunction> &subf, Operation *op) {
-  for (auto opd : op->getOperands()) {
-    if (!opd.isa<BlockArgument>()) {
-      auto op_ = opd.getDefiningOp();
-      if (isa<top::WeightOp>(op_)) {
-        if (std::find(subf->ops.begin(), subf->ops.end(), op_) ==
-            subf->ops.end()) {
-          subf->ops.push_back(op_);
-        }
-      } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
-        subf->have_none = true;
-      }
-    }
-  }
-  subf->ops.push_back(op);
-}
-
 struct subnet_basic_info;
 using InfoVec = llvm::SmallVector<subnet_basic_info *>;
 struct subnet_basic_info{
@@ -223,7 +118,7 @@ public:
     if (!module::isState(module::State::TPU_REORDERED)) {
       llvm_unreachable("module should be reordered");
     }
-    //divide_func();
+
     InfoVec subnet_infos = base_subnet_split();
     auto sorted_subnet_infos = sort_subnets(subnet_infos);
     sorted_subnet_infos = merge_sorted_subnets(sorted_subnet_infos);
@@ -935,46 +830,6 @@ public:
           return fnOp->isProperAncestor(operand.getOwner());
         });
       }
-    }
-  }
-
-  void divide_func() {
-    auto mainFunc = module::getMainFuncOp();
-    std::shared_ptr<SubFunction> subf = nullptr;
-    bool seperate;
-    // for to traverse the nested regions, walk by preorder preferred.
-    mainFunc.walk<WalkOrder::PreOrder>([&](Operation *op) {
-      if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, ReturnOp,
-              func::CallOp>(op)) {
-        // do nothing
-      } else {
-        auto mode = getOpMode(op, seperate);
-        if (seperate) {
-          if (subf != nullptr) {
-            buildSubFunction(subf);
-          }
-
-          if (mode != RunMode::UNKNOW) {
-            subf = std::make_shared<SubFunction>(mode);
-            insert_subop(subf, op);
-            buildSubFunction(subf);
-          }
-          subf = nullptr;
-        } else if (subf == nullptr) {
-          subf = std::make_shared<SubFunction>(mode);
-          insert_subop(subf, op);
-        } else if (subf->mode == mode) {
-          insert_subop(subf, op);
-        } else {
-          buildSubFunction(subf);
-          subf = std::make_shared<SubFunction>(mode);
-          insert_subop(subf, op);
-        }
-      }
-    });
-    if (subf != nullptr) {
-      buildSubFunction(subf);
-      subf = nullptr;
     }
   }
 };
