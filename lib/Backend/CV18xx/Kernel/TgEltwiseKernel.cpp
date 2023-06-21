@@ -681,6 +681,7 @@ void TgBf16EltwiseAddKernel::compute(int32_t step_idx) {
     p4.lshift_bits = 0;
     p4.rshift_bits = 0;
     p4.relu_enable = (opd_idx != operand_num - 1) ? 0 : do_relu;
+    p4.layer_id = layer_id;
     CV18xx::tiu_mac(&p4);
     output_flip = (opd_idx != operand_num - 1) ? output_flip : 1 - output_flip;
   }
