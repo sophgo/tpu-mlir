@@ -223,6 +223,7 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
     if dump_all:
         return tensors
     outputs = dict()
+    temp_file_name = g_mlir_module.get_tempfile()
     for name in g_mlir_module.output_names:
         outputs[name] = tensors[name]
         # assume output of op has the same name
@@ -233,9 +234,11 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
                 outputs[pre_op] = tensors[pre_op]
             else:
                 #if file exists,read tensor for compare
-                if os.path.isfile("./value2disk.npz"):
-                  x = np.load("./value2disk.npz")
+                if temp_file_name!="Default" and os.path.isfile(temp_file_name):
+                  x = np.load(temp_file_name)
                   outputs[pre_op]=x[pre_op]
+    if temp_file_name!="Default" and os.path.isfile(temp_file_name):
+        os.remove(temp_file_name)
     return outputs
 
 
