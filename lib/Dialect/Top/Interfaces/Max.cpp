@@ -50,4 +50,11 @@ LogicalResult top::MaxOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::MaxOp::shape_inference() {}
+
+void top::MaxOp::shape_inference() {
+  broadcast_shape_inference(getOperation());
+  for (int i = 0; i < getNumOperands(); i++) {
+    auto value = getInputs()[i];
+    broadcast_tensor_reshape(getOutput(), value);
+  }
+ }
