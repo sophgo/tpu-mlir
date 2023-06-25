@@ -56,6 +56,32 @@ void top::ReshapeOp::shape_inference() {
     /* for unranked tensor as below, sema is ok, don;t check it
       %294 = "top.Reshape"(%293) : (tensor<1xf32>) -> tensor<*xf32> loc(#loc294) */
     //assert(module::isUnranked(getOutput()) == false);
+    auto output_shape = module::getShape(getOutput());
+    int element_num  = 1;
+    [&](llvm::ArrayRef<int64_t> &shape) {
+      int unranked_shape_num = 0;
+      for (int i = 0; i < shape.size(); i++) {
+        if (shape[i] == 0)
+          unranked_shape_num++;
+        else
+          element_num *= shape[i];
+        out_shape.push_back(shape[i]);
+      }
+      assert(unranked_shape_num < 2);
+    }(output_shape);
+
+    if (out_shape.empty()) {
+      out_shape.push_back(num);
+      module::setShapeOrVerify(getOutput(), out_shape);
+    } else {
+      for (int i = 0; i < out_shape.size(); i++) {
+        if (out_shape[i] == 0) {
+          out_shape[i] = num/element_num;
+          module::setShapeOrVerify(getOutput(), out_shape);
+          break;
+        }
+      }
+    }
   }
 
   if (!module::isUnranked(getOutput())) {

@@ -86,5 +86,4 @@ void top::ConcatOp::shape_inference() {
   std::vector<int64_t> out_shape(in0_shape);
   out_shape[axis_] = shape_axis;
   module::setShapeOrVerify(getOutput(), out_shape);
-
 }

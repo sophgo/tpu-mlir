@@ -56,6 +56,27 @@ LogicalResult top::TopKOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::TopKOp::shape_inference() {}
+void top::TopKOp::shape_inference() {
+  auto input_shape = module::getShape(getInput());
+  auto value_shape = module::getShape(getValues());
+  int64_t K = getK();
+  int64_t axis = getAxis();
+  int64_t rank = input_shape.size();
+  axis = axis < 0 ? axis + rank : axis;
+  if (K <= 0 || K != value_shape[axis]) {
+      K = 200;
+      setK(K);
+  }
+  std::vector<int64_t> output_shape(input_shape.size());
+  for (int i =0; i < input_shape.size(); i++) {
+    if (i == axis) {
+      output_shape[i] = K;
+    } else {
+      output_shape[i] = input_shape[i];
+    }
+  }
+  module::setShapeOrVerify(getValues(), output_shape);
+  module::setShapeOrVerify(getIndices(), output_shape);
+}
 
 

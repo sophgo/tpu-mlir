@@ -70,4 +70,22 @@ LogicalResult top::NonZeroOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::NonZeroOp::shape_inference() {}
+void top::NonZeroOp::shape_inference() {
+  const int order = getOrder().str() == "ColMajor" ? 0 : 1;
+  int64_t num_elem = module::getNumElements(getInput());
+  const auto shape = module::getShape(getInput());
+  int64_t dims = shape.size();
+  std::vector<int64_t> output_shape;
+  if (dims > 1) {
+    if (order) {
+      output_shape.push_back(dims);
+      output_shape.push_back(num_elem);
+    } else {
+      output_shape.push_back(num_elem);
+      output_shape.push_back(dims);
+    }
+  } else {
+    output_shape.push_back(num_elem);
+  }
+  module::setShapeOrVerify(getOutput(), output_shape);
+}

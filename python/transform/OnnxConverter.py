@@ -449,298 +449,21 @@ class OnnxConverter(BaseConverter):
             self.model, self.node_name_mapping = onnx_opt(self.model, True)
 
     def add_shape_info(self, graph, flag=True):
-        unk_op = []
-        nodes_with_shape = []
-        constants = []
-        for n in graph.node:
-            if n.op_type == "Constant":
-                constants.append(n.name)
         for info in graph.value_info:
             shape = [i.dim_value for i in info.type.tensor_type.shape.dim]
-            if np.any(np.array(shape) <= 0):
-                unk_op.append(info.name)
-            elif shape == [] and info.name not in constants:
-                # infer incomplete shape information
-                unk_op.append(info.name)
-            else:
-                self.addShape(info.name, shape)
-            nodes_with_shape.append(info.name)
+            self.addShape(info.name, shape)
         for output in graph.output:
             if not self.isWeight(output.name):
                 self.output_names.append(output.name)
                 shape = [i.dim_value for i in output.type.tensor_type.shape.dim]
             var_exists = 'shape' in locals() or 'shape' in globals()
             if var_exists:
-                if flag and (np.any(np.array(shape) <= 0) or len(shape) == 0):
-                    unk_op.append(output.name)
-                else:
-                    self.addShape(output.name, shape)
-                nodes_with_shape.append(output.name)
-        # get unknow shape
-        full_nodes = []
-        no_list = ["Cast", "Constant", "Dropout", "Loop", "TopK", "NonMaxSuppression"]
+                self.addShape(output.name, shape)
         for n in graph.node:
-            if n.op_type == 'Loop':
-                #special handle: get the shape of loop op
-                for out in n.output:
-                    shape = self.get_shape_from_value_info_proto(onnx.ValueInfoProto(name=out))
-                    self.addShape(out, shape)
-            if n.op_type in no_list:
-                continue
-            for name in n.output:
-                if not name:
-                    continue
-                full_nodes.append(name)
-        unk_op.extend(set(full_nodes) - set(nodes_with_shape))
-        if (flag and unk_op):
-            unk_shape = self.get_unk_shape(unk_op)
-
-    def get_slice_unk_shape(self, onnx_node):
-        input_shape = self.getShape(onnx_node.inputs[0])
-        starts = []
-        ends = []
-        axes = []
-        num_input = len(onnx_node.inputs)
-        num_dims = len(input_shape)
-        if num_input > 1:
-            starts = self.getWeight(onnx_node.inputs[1]).astype(int)
-            ends = self.getWeight(onnx_node.inputs[2]).astype(int)
-            axes = self.getWeight(onnx_node.inputs[3]).astype(int) if num_input > 3 else list(
-                np.arange(num_dims))
-            steps = self.getWeight(
-                onnx_node.inputs[4]).astype(int) if num_input > 4 else [1] * len(axes)
-        else:
-            starts = onnx_node.attrs.get('starts')
-            ends = onnx_node.attrs.get('ends')
-            axes = onnx_node.attrs.get('axes')
-            if axes == None:
-                axes_len = num_dims
-                axes = [i for i in range(axes_len)]
-            steps = [1] * len(axes)
-
-        slice_shape = list(input_shape)
-        slice_offset = [0] * num_dims
-        slice_step = [1] * num_dims
-        slice_end = [input_shape[i] for i in range(num_dims)]
-        for start, end, axis, step in zip(starts, ends, axes, steps):
-            start, end, axis, step = int(start), int(end), int(axis), int(step)
-            if axis < 0:
-                axis = axis + num_dims
-            if end < 0:
-                end = end + input_shape[axis]
-            if start < 0:
-                start = start + input_shape[axis]
-            if end > input_shape[axis]:
-                end = input_shape[axis]
-            elif end < 0:
-                if step < 0:
-                    end = -1
-                else:
-                    end = input_shape[axis]
-            slice_shape[axis] = (abs(end - start) + abs(step) - 1) // abs(step)
-            slice_offset[axis] = start
-            slice_step[axis] = step
-            slice_end[axis] = end
-        return slice_shape
-
-    def get_gather_unk_shape(self, onnx_node):
-        in0_shape = self.getShape(onnx_node.inputs[0])
-        axis = onnx_node.attrs.get('axis', 0)
-        if (axis < 0):
-            axis += in0_shape.size()
-        slice_shape = []
-        indices_shape = self.getShape(onnx_node.inputs[1])
-        for i in range(axis):
-            slice_shape.append(in0_shape[i])
-        for i in range(len(indices_shape)):
-            slice_shape.append(indices_shape[i])
-        for i in range(axis+1, len(in0_shape), 1):
-            slice_shape.append(in0_shape[i])
-        out_shape = []
-        for i in range(len(slice_shape)):
-            if slice_shape[i] != 1:
-                out_shape.append(slice_shape[i])
-        return out_shape
-
-    def get_binary_op_unk_shape(self, onnx_node):
-        in0_shape = self.getShape(onnx_node.inputs[0])
-        return in0_shape
-
-    def get_topk_unk_shape(self, onnx_node):
-        in_shape = self.getShape(onnx_node.inputs[0])
-        out_shape = copy.deepcopy(in_shape)
-        if not self.isScalar(onnx_node.inputs[1]) and \
-           len(self.getShape(onnx_node.inputs[1])) == 1:
-            K = self.getShape(onnx_node.inputs[1])[0]
-        else:
-            K = self.getScalar(onnx_node.inputs[1])
-
-        K = 200 if K <= 1 else K
-        axis = onnx_node.attrs.get('axis', -1)
-        num_dim = len(in_shape)
-        if axis < 0:
-            axis += num_dim
-        out_shape[axis] = K
-        return out_shape
-
-    def get_reduce_unk_shape(self, onnx_node):
-        input_shape = self.getShape(onnx_node.inputs[0])
-        keepdims = onnx_node.attrs.get('keepdims', 1) != 0
-        num_dims = len(input_shape)
-        axis = onnx_node.attrs.get('axes', list(range(num_dims))) \
-            if len(onnx_node.inputs) == 1 else self.getWeight(onnx_node.inputs[1])
-        out_shape = []
-        for i in range(len(input_shape)):
-            if i in axis:
-                if keepdims:
-                    out_shape.append(1)
-            else:
-                out_shape.append(input_shape[i])
-        return out_shape
-
-    def get_unsqueeze_unk_shape(self, onnx_node):
-        input_shape = self.getShape(onnx_node.inputs[0])
-        axes = onnx_node.attrs.get('axes')
-        out_shape = copy.deepcopy(input_shape)
-        for i in range(len(axes)):
-            out_shape.insert(axes[i], 1)
-        return out_shape
-
-    def infer_sugraph(self, input_node, input_tensor: List[np.ndarray], output_nodes):
-        found_start_node = False
-        subgraph = onnx.GraphProto(initializer=self.model.graph.initializer)
-        subgraph.output.extend(output_nodes)
-        self.all_values = {}
-        for x in self.model.graph.value_info:
-            self.all_values[x.name] = x
-        feed_subgraph_input = {}
-        for node in self.model.graph.node:
-            if found_start_node:
-                subgraph.node.extend([node])
-            if node.name == input_node.name:
-                found_start_node = True
-                assert len(node.output) == len(input_tensor)
-                for i in range(len(input_tensor)):
-                    feed_subgraph_input[node.output[i]] = input_tensor[i]
-                subgraph.input.extend([self.all_values[o] for o in node.output])
-        missing_inputs = []
-        node_outputs_set = set()
-        subgraph_inputs_set = set()
-        subgraph_init_set = set()
-        for node in subgraph.node:
-            node_outputs_set.update(node.output)
-        for inp in subgraph.input:
-            subgraph_inputs_set.update([inp.name])
-        for initial in subgraph.initializer:
-            subgraph_init_set.update([initial.name])
-        for node in subgraph.node:
-            for input_name in node.input:
-                if input_name not in subgraph_inputs_set and \
-                        input_name not in subgraph_init_set and \
-                        input_name not in node_outputs_set:
-                    missing_inputs.append((input_name,
-                                           self.getShape(input_name),
-                                           self.all_values[input_name]))
-
-        for mi in missing_inputs:
-            feed_subgraph_input[mi[0]] = np.ones(mi[1])
-        subgraph.input.extend([self.all_values[i[0]] for i in missing_inputs])
-        submodel = onnx.helper.make_model(subgraph,
-                                          opset_imports=self.model.opset_import)
-
-        for (k, v), t in zip(feed_subgraph_input.items(), subgraph.input):
-            dtype = self.np_onnx_dt_map[t.type.tensor_type.elem_type]
-            feed_subgraph_input[k] = v.astype(dtype)
-        options = onnxruntime.SessionOptions()
-        options.log_severity_level = 4
-        sess = onnxruntime.InferenceSession(submodel.SerializeToString(), sess_options=options)
-        sub_outs = sess.run(None, feed_subgraph_input)
-        return sub_outs
-
-    def get_unk_shape(self, unk_op):
-        # Notice this not always right. For some op in onnx
-        # the shape of the output changes with the input data, such as nonzeroOp
-        # gen fake model
-
-        def create_value_info_by_names(names):
-            value_infos = []
-            for name in names:
-                value_info = onnx.helper.ValueInfoProto()
-                value_info.name = name
-                value_infos.append(value_info)
-            return value_infos
-
-        intermediate_layer_value_infos = create_value_info_by_names(unk_op)
-        nms_flag = False
-        known_op = []
-        for v in unk_op:
-            for node in self.model.graph.node:
-                if v in node.output:
-                    if node.op_type == "NonMaxSuppression":
-                        nms_flag = True
-                        max_output_size = self.getWeight(node.input[2]).astype(np.int64)
-                        nms_outs_shape = [max_output_size[0] * self.getShape(node.input[1])[1], 3]
-                        input_tenasor = [np.ones(nms_outs_shape)]
-                        subgraph_outs = self.infer_sugraph(node, input_tenasor, intermediate_layer_value_infos)
-                        for proto, arr in zip(intermediate_layer_value_infos, subgraph_outs):
-                            self.addShape(proto.name, list(arr.shape))
-                            known_op.append(proto.name)
-        unk_op = list(set(unk_op) - set(known_op))
-        if len(unk_op) == 0:
-            return
-        model = copy.deepcopy(self.model)
-        outnode = model.graph.output
-        for _ in range(len(outnode)):
-            model.graph.output.remove(outnode[0])
-        intermediate_layer_value_infos = create_value_info_by_names(unk_op)
-        model.graph.output.extend(intermediate_layer_value_infos)
-        onnx_file = "generate_onnx_with_unk.onnx"
-        file_mark(onnx_file)
-        onnx.save(model, onnx_file)
-        session = onnxruntime.InferenceSession(onnx_file)
-        os.remove(onnx_file)
-        # gen fake input
-        inputs = {}
-        inp = session.get_inputs()
-        for i in inp:
-            shape = i.shape
-            name = i.name
-            dtype = np.float32
-            if i.type == 'tensor(int64)':
-                dtype = np.int64
-            elif i.type == 'tensor(bool)':
-                dtype = np.bool
-            elif i.type == 'tensor(int32)':
-                dtype = np.int32
-            inputs[name] = np.ones(shape).astype(dtype)
-        outs = session.run(None, inputs)
-        outs_shape = [o.shape if o is not None else [] for o in outs]
-
-        for i, v in enumerate(unk_op):
-            for idx, n in enumerate(model.graph.node):
-                if v in n.output:
-                    onnx_node = OnnxNode(n)
-                    # dirty trick for NonMaxSuppression
-                    if n.op_type == "NonMaxSuppression":
-                        max_output_size = self.getWeight(onnx_node.inputs[2]).astype(np.int64)
-                        outs_shape[i] = [max_output_size[0] * self.getShape(onnx_node.inputs[1])[1], 3]
-                    elif nms_flag:
-                        #if have nms op, need to infer the successor's op shape
-                        if n.op_type == "Slice":
-                            outs_shape[i] = self.get_slice_unk_shape(onnx_node)
-                        elif n.op_type == "Gather":
-                            outs_shape[i] = self.get_gather_unk_shape(onnx_node)
-                        elif n.op_type == "Mul" or n.op_type == "Add":
-                            outs_shape[i] = self.get_binary_op_unk_shape(onnx_node)
-                        elif n.op_type == "TopK":
-                            outs_shape[i] = self.get_topk_unk_shape(onnx_node)
-                        elif n.op_type == "ReduceMin":
-                            outs_shape[i] = self.get_reduce_unk_shape(onnx_node)
-                        elif n.op_type == "Unsqueeze":
-                            outs_shape[i] = self.get_unsqueeze_unk_shape(onnx_node)
-                    self.addShape(v, outs_shape[i])
-        assert (len(outs_shape) == len(unk_op))
-        return zip(unk_op, outs_shape)
+            for o in n.output:
+                if not self.isWeight(o) \
+                   and o not in self.shapes:
+                    self.addShape(o, [])
 
     def input_shape_assign(self, input_shapes):
         inputs = self.get_inputs(self.model)
@@ -1487,6 +1210,7 @@ class OnnxConverter(BaseConverter):
                              op,
                              loc=self.get_loc(mid_name),
                              ip=self.mlir.insert_point).output
+        self.setShape(onnx_node.name, [input_dims])
         if not no_slice:
             new_op = top.SliceOp(self.mlir.get_tensor_type([end - start]),
                                  new_op,
@@ -1599,7 +1323,7 @@ class OnnxConverter(BaseConverter):
             if end > input_shape[axis]:
                 end = input_shape[axis]
             elif end < 0:
-                if step < 0:
+                if step < 0 or output_shape[axis] == 0:
                     end = -1
                 else:
                     end = input_shape[axis]
@@ -1607,7 +1331,7 @@ class OnnxConverter(BaseConverter):
             slice_offset[axis] = start
             slice_step[axis] = step
             slice_end[axis] = end
-        assert (slice_shape == output_shape)
+        #assert (slice_shape == output_shape)
         new_op = top.SliceOp(self.mlir.get_tensor_type(output_shape),
                              op,
                              self.mlir.none_op,
@@ -2258,7 +1982,10 @@ class OnnxConverter(BaseConverter):
             slice_offset[axis] = offset
             slice_ends[axis] = offset + 1
             slice_shape = list(np.take(np.ones(in0_shape), np.array([offset]), axis=axis).shape)
-
+            for i in range(len(in0_shape)):
+                if i != axis and in0_shape[i] == 0 \
+                   and slice_shape[i] == 0:
+                    slice_ends[i] = -1
             slice_op = top.SliceOp(self.mlir.get_tensor_type(slice_shape),
                                    in0,
                                    self.mlir.none_op,
@@ -2502,9 +2229,6 @@ class OnnxConverter(BaseConverter):
                     max_output_size = data.astype(np.int64)
             else:
                 operands.append(self.getOperand(x))
-        classes = self.getShape(onnx_node.inputs[1])[1]
-        tmp = [max_output_size[0] * classes, 3]
-        self.setShape(onnx_node.name, tmp)
         output_shape = self.getShape(onnx_node.name)
         p = {'name': name, 'center_point_box': 0}
         if len(onnx_node.inputs) < 3:

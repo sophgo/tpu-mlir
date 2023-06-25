@@ -69,7 +69,12 @@ void top::SliceOp::shape_inference() {
   std::vector<int64_t> output_shape(input_shape.size());
   for (size_t i = 0; i < dims; ++i) {
     if (i < slice_dims) {
-      output_shape[i] = abs_ceiling_func(ends_v->at(i) - offset_v->at(i), steps_v->at(i));
+      if (ends_v->at(i) == -1) {
+        output_shape[i] = input_shape[i];
+        ends_v->at(i) = output_shape[i];
+      }
+      else
+        output_shape[i] = abs_ceiling_func(ends_v->at(i) - offset_v->at(i), steps_v->at(i));
     } else {
       output_shape[i] = input_shape[i];
     }
