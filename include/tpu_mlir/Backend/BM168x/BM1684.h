@@ -207,6 +207,7 @@ typedef void (*nodechip_masked_fill_global)(uint64_t input_global_addr, uint64_t
 typedef void (*nodechip_masked_fill_local)(uint32_t input_addr, uint32_t mask_addr, uint32_t buffer_addr, uint32_t output_addr, const int *input_shape, const int *mask_shape, int input_dims, int mask_dims, uint32_t value, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_float_to_int32_global)(uint64_t bottom_addr, uint64_t top_addr, uint32_t *bottom_shape, int bottom_shape_dims, int sign_A, int sign_C, TENSOR_STORAGE_MODE mode_A, TENSOR_STORAGE_MODE mode_C, ROUND_MODE_T round_mode, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_float_to_int32_local)(uint64_t input_offset, uint64_t output_offset, uint64_t buffer_offset, uint32_t *input_shape, int sign_A, int sign_C, TENSOR_STORAGE_MODE mode_A, TENSOR_STORAGE_MODE mode_C, ROUND_MODE_T round_mode, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_deconv_forward_local_v2)(int bottom_local_offset, int weight_local_offset, int bias_local_offset, int top_local_offset, int* bottom_dim, int* top_dim, int groups, int kh, int kw, int dh, int dw, int up_pad_h, int down_pad_h, int left_pad_w, int right_pad_w, int ins_h, int ins_w, int using_bias, int result_add, int if_relu, int using_depthwise, void*  id_node);
 
 // clang-format on
 namespace tpu_mlir {
@@ -425,6 +426,7 @@ public:
   nodechip_masked_fill_local dl_nodechip_masked_fill_local;
   nodechip_float_to_int32_global dl_nodechip_float_to_int32_global;
   nodechip_float_to_int32_local dl_nodechip_float_to_int32_local;
+  nodechip_deconv_forward_local_v2 dl_nodechip_deconv_forward_local_v2;
   // clang-format on
 public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;
