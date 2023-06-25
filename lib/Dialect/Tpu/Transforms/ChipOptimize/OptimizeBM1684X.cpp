@@ -10,7 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Backend/Arch.h"
-
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace llvm;
 namespace tpu_mlir {
@@ -189,15 +189,30 @@ public:
       // if (!module::isWeight(inB)) {
       //   return failure();
       // }
-      auto inB_shape = module::getShape(inB);
-      if (inB_shape[1] != 1) {
-        return failure();
-      }
+      std::vector<int64_t> inB_shape = module::getShape(inB);
       std::vector<int64_t> new_inB_shape = {inB_shape[0], inB_shape[2],
                                             inB_shape[1], inB_shape[3]};
       auto newType =
           RankedTensorType::get(new_inB_shape, module::getElementType(inB));
-      inB.setType(newType);
+      auto weight_op = inB.getDefiningOp<top::WeightOp>();
+      auto weight_type = module::getElementType(weight_op.getOutput());
+      if (weight_type.isF16() || weight_type.isBF16()) {
+        auto weight_data = weight_op.read<uint16_t>();
+        auto weight_tp =
+            std::make_shared<std::vector<uint16_t>>(weight_data->size(), 0);
+        function_permute(weight_data->data(), weight_tp->data(), inB_shape, ps);
+        auto weight = tpu_mlir::top::WeightOp::create<uint16_t>(
+            add_op, "transposed_add_weight", *weight_tp, newType);
+        add_op.setOperand(1, weight);
+      } else {
+        auto weight_data = weight_op.read<float>();
+        auto weight_tp =
+            std::make_shared<std::vector<float>>(weight_data->size(), 0);
+        function_permute(weight_data->data(), weight_tp->data(), inB_shape, ps);
+        auto weight = tpu_mlir::top::WeightOp::create<float>(
+            add_op, "transposed_add_weight", *weight_tp, newType);
+        add_op.setOperand(1, weight);
+      }
 
       newType = RankedTensorType::get(
           in_shape, module::getElementType(add_op.getOutput()));
