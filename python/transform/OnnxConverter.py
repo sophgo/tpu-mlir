@@ -714,7 +714,7 @@ class OnnxConverter(BaseConverter):
                 dtype = np.int32
             inputs[name] = np.ones(shape).astype(dtype)
         outs = session.run(None, inputs)
-        outs_shape = [o.shape for o in outs]
+        outs_shape = [o.shape if o is not None else [] for o in outs]
 
         for i, v in enumerate(unk_op):
             for idx, n in enumerate(model.graph.node):
