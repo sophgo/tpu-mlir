@@ -1,3 +1,5 @@
+.. _fuse preprocess:
+
 Use TPU for Preprocessing
 ==============================
 At present, the two main series of chips supported by TPU-MLIR are BM168x and CV18xx. Both of them support common image preprocessing fusion. The developer can pass the preprocessing arguments during the compilation process, and the compiler will directly insert the corresponding preprocessing operators into the generated model. The generated bmodel or cvimodel can directly use the unpreprocessed image as input and use TPU to do the preprocessing.
@@ -80,7 +82,7 @@ The "YUV*" type format is the special input format of CV18xx series chips. When 
 
 Model Deployment Example
 -------------------------
-Take the mobilenet_v2 model as an example, use the model_transform tool to generate the original mlir, and the run_calibration tool to generate the calibration table in the tpu-mlir/regression/regression_out/ directory (refer to the chapter "Compiling the Caffe Model" for more details).
+Take the mobilenet_v2 model as an example, use the model_transform tool to generate the original mlir, and the run_calibration tool to generate the calibration table (refer to the chapter "Compiling the Caffe Model" for more details).
 
 
 Deploy to BM168x
@@ -121,7 +123,9 @@ The command to generate the preprocess-fused symmetric INT8 quantized cvimodel m
        --customization_format RGB_PLANAR \
        --model mobilenet_v2_cv183x_int8_sym_fuse_preprocess.cvimodel
 
-When the input data comes from the video post-processing module VPSS provided by CV18xx (for details on how to use VPSS for preprocessing, please refer to "CV18xx Media Software Development Reference"), data alignment is required (e.g., 32-bit aligned width). The command to generate the preprocessed-fused cvimodel model is as follows:
+vpss input
+^^^^^^^^^^^^^
+When the input data comes from the video post-processing module VPSS provided by CV18xx (for details on how to use VPSS for preprocessing, please refer to "CV18xx Media Software Development Reference"), data alignment is required (e.g., 32-bit aligned width), fuse_preprocess and aligned_input need to be set at the same time. The command to generate the preprocessed-fused cvimodel model is as follows:
 
 .. code-block:: shell
 
@@ -138,4 +142,6 @@ When the input data comes from the video post-processing module VPSS provided by
        --aligned_input \
        --model mobilenet_v2_cv183x_int8_sym_fuse_preprocess_aligned.cvimodel
 
-In the above command, aligned_input specifies the alignment that the model input needs to do. It should be noted that both fuse_preprocess and aligned_input need to be done for input data in YUV format. The rest formats can do both or only one of the two operations. If you only do aligned_input operation, you need to set test_input to the preprocessed ``${model_name}_in_f32.npz`` format, which is consistent with the setting in the chapter "Compile ONNX model".
+In the above command, aligned_input specifies the alignment that the model input needs to do.
+
+Note that with vpss as input, runtime can use CVI_NN_SetTensorPhysicalAddr to reduce memory data copy.

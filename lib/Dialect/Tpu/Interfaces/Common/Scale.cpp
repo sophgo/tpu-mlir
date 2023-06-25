@@ -41,6 +41,7 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
     }
   } else if (asym == false) {
     const float *lshift = p.inputs[3];
+    auto res_sign = module::isSign(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int64_t i = 0; i < c; ++i) {
       int32_t scale_val = scale[i];
@@ -50,7 +51,12 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
         for (int64_t k = 0; k < h * w; ++k) {
           int64_t idx = j * c * h * w + i * h * w + k;
           int64_t res = (int64_t)src[idx] * scale_val + bias_val;
-          res = RightShiftRound(res, rshift_val, ROUNDING_HALF_UP);
+          if (module::isBM1684Family()) {
+            //sature to INT16/UINT16
+            if (res_sign) res = to_int16(res);
+            else res = to_uint16(res);
+          }
+          res = RightShiftRound(res, rshift_val, ROUNDING_DOWN);
           if (getDoRelu() && res < 0) {
             res = 0;
           }
@@ -71,7 +77,7 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
         for (int64_t k = 0; k < h * w; ++k) {
           int64_t idx = j * c * h * w + i * h * w + k;
           int64_t res = (int64_t)src[idx] * scale_val + bias_val;
-          res = RightShiftRound(res, rshift_val, ROUNDING_HALF_UP) + out_zp;
+          res = RightShiftRound(res, rshift_val, ROUNDING_DOWN) + out_zp;
           if (getDoRelu() && res < 0) {
             res = 0;
           }

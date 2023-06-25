@@ -18,10 +18,8 @@ using namespace tpu_mlir::backend;
 void tpu::TileOp::codegen_global_bm1684() {
   auto input = getInput();
   auto output = getOutput();
-  auto input_dtype = BM1684::getDataType(input);
-  auto input_format = BM168x::getGdmaFormat(input_dtype);
-  auto output_dtype = BM1684::getDataType(output);
-  auto output_format = BM168x::getGdmaFormat(output_dtype);
+  auto input_format = BM1684::getStoreMode(input);
+  auto output_format = BM1684::getStoreMode(output);
   auto output_shape = module::getShape(getOutput());
   auto input_shape = module::getShape(getInput());
   int input_dim = input_shape.size();
@@ -36,7 +34,7 @@ void tpu::TileOp::codegen_global_bm1684() {
   }
   if (module::isUniformQuantized(getInput())) {
     BM1684::instance().dl_nodechip_tile_full_fix8b(
-        input_addr, output_addr, 0, NULL, (const uint32_t *)in_shape,
+        input_addr, output_addr, buffer_global_addr, NULL, (const uint32_t *)in_shape,
         (const int *)tile_coeff, input_dim, input_format, output_format, 0,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {

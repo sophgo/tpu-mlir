@@ -30,7 +30,7 @@ def buffer_to_bits(buffer):
 
 
 class Decoder:
-    CMD = namedtuple("cmd", ["bdc", "dma", "all"])
+    CMD = namedtuple("cmd", ["tiu", "dma", "all"])
 
     def __init__(self, context):
         self.context = context
@@ -68,10 +68,10 @@ class Decoder:
                     "Can not decode cmd, with opcode: {}, at {}.".format(cmd_key, cur)
                 )
 
-    def decode_bdc_buf(self, cmd_buf):
+    def decode_tiu_bug(self, cmd_buf):
         if cmd_buf:
             # input is a buffer
-            return self.decode_bdc_bits(buffer_to_bits(cmd_buf))
+            return self.decode_tiu_bits(buffer_to_bits(cmd_buf))
         return cmd_buf
 
     def decode_dma_buf(self, cmd_buf):
@@ -80,13 +80,13 @@ class Decoder:
             return self.decode_dma_bits(buffer_to_bits(cmd_buf))
         return cmd_buf
 
-    def decode_bdc_bits(self, cmd_buf_bits):
+    def decode_tiu_bits(self, cmd_buf_bits):
         # input is a bits vector
         return self._decode_base(
             cmd_buf_bits,
-            self.context.opdef.bdc_base.opcode_bits,
-            self.context.opdef.bdc_cmd,
-            self.context.opdef.bdc_sys,
+            self.context.opdef.tiu_base.opcode_bits,
+            self.context.opdef.tiu_cls,
+            self.context.opdef.tiu_sys,
         )
 
     def decode_dma_bits(self, cmd_buf_bits):
@@ -94,17 +94,17 @@ class Decoder:
         return self._decode_base(
             cmd_buf_bits,
             self.context.opdef.dma_base.opcode_bits,
-            self.context.opdef.dma_cmd,
+            self.context.opdef.dma_cls,
             self.context.opdef.dma_sys,
         )
 
-    def merge_instruction(self, bdc, dma, subnet_id=None):
-        main_cmd, inserted_cmd = dma, bdc
+    def merge_instruction(self, tiu, dma, subnet_id=None):
+        main_cmd, inserted_cmd = dma, tiu
         # remove the system command
         def get_end(cmd):
             if len(cmd) == 0:
                 return 0
-            sys = (self.context.opdef.bdc_sys, self.context.opdef.dma_sys)
+            sys = (self.context.opdef.tiu_sys, self.context.opdef.dma_sys)
             if all(sys):
                 if isinstance(cmd[-1], sys):
                     return -1
@@ -121,15 +121,15 @@ class Decoder:
         return [x[1] for x in cmd_sorted]
 
     def decode_bmodel_cmd(self, bmodel_cmd, subnet_id):
-        bdc = itertools.islice(
-            self.decode_bdc_buf(bmodel_cmd.bdc_cmd), bmodel_cmd.bdc_num
+        tiu = itertools.islice(
+            self.decode_tiu_bug(bmodel_cmd.tiu_cls), bmodel_cmd.tiu_num
         )
         dma = itertools.islice(
             self.decode_dma_buf(bmodel_cmd.dma_cmd), bmodel_cmd.dma_num
         )
-        bdc = list(bdc)
+        tiu = list(tiu)
         dma = list(dma)
-        return self.CMD(bdc, dma, self.merge_instruction(bdc, dma, subnet_id))
+        return self.CMD(tiu, dma, self.merge_instruction(tiu, dma, subnet_id))
 
 
 class BModelReader:
@@ -145,13 +145,13 @@ class BModelReader:
 
     class cmd_group_cls:
         def __init__(self, fbs: bmodel_fbs.CmdGroup, cmd_buf_bits):
-            self.bdc_num = fbs.BdcNum()
+            self.tiu_num = fbs.BdcNum()
             self.dma_num = fbs.GdmaNum()
             if fbs.BinaryBdc():
-                binary_bdc = (fbs.BinaryBdc().Start(), fbs.BinaryBdc().Size())
-                self.bdc_cmd = cmd_buf_bits[binary_bdc[0] : sum(binary_bdc)]
+                binary_tiu = (fbs.BinaryBdc().Start(), fbs.BinaryBdc().Size())
+                self.tiu_cls = cmd_buf_bits[binary_tiu[0] : sum(binary_tiu)]
             else:
-                self.bdc_cmd = []
+                self.tiu_cls = []
             if fbs.BinaryGdma():
                 binary_dma = (fbs.BinaryGdma().Start(), fbs.BinaryGdma().Size())
                 self.dma_cmd = cmd_buf_bits[binary_dma[0] : sum(binary_dma)]
@@ -159,7 +159,7 @@ class BModelReader:
                 self.dma_cmd = []
 
         def __repr__(self):
-            return f"bdc_num: {self.bdc_num}\ndma_num: {self.dma_num}"
+            return f"tiu_num: {self.tiu_num}\ndma_num: {self.dma_num}"
 
     class data_cls:
         def __init__(self, fbs: bmodel_fbs.CoeffMem, buffer):

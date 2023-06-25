@@ -73,6 +73,8 @@ class TorchInterpreter():
         assert node.op_type.split('::')[0] == 'prim'
         if node.op_type == "prim::ListConstruct" or node.op_type == "prim::TupleConstruct":
             self.ref_tensor[node.outputs[0]] = [self.get_input(name) for name in node.inputs]
+        elif node.op_type == "prim::DictConstruct":
+            pass
         elif node.op_type in ["prim::TupleUnpack", "prim::ListUnpack"]:
             for i in range(len(node.outputs)):
                 self.ref_tensor[node.outputs[i]] = self.get_input(node.inputs[0])[i]
@@ -88,7 +90,9 @@ class TorchInterpreter():
     def run_aten(self, node: TorchNode):
         ParamMap = {
             "aten::ones": ['dtype', 'layout', 'device', 'pin_memory'],
+            "aten::ones_like": ['dtype', 'layout', 'device', 'pin_memory', 'memory_format'],
             "aten::zeros": ['dtype', 'layout', 'device', 'pin_memory'],
+            "aten::zeros_like": ['dtype', 'layout', 'device', 'pin_memory', 'memory_format'],
             "aten::mean": ['dtype'],
             "aten::sum": ['dtype'],
             "aten::gelu": ['approximate'],

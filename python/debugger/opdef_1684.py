@@ -9,19 +9,19 @@
 # keep This file clean and neat.
 
 try:
-    from .regdef_1684 import bdc_reg_def, dma_reg_def
+    from .regdef_1684 import tiu_reg_def, dma_reg_def
     from .opparam_1684 import opparam_converter
     from .op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg
 except:
-    from regdef_1684 import bdc_reg_def, dma_reg_def
+    from regdef_1684 import tiu_reg_def, dma_reg_def
     from opparam_1684x import opparam_converter
     from op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg
 
 # global data and type
 # ------------------------------------------------------------
-bdc_cmd = dict()
-dma_cmd = dict()
-bdc_sys = None
+tiu_cls = dict()
+dma_cls = dict()
+tiu_sys = None
 dma_sys = None
 
 # ------------------------------------------------------------
@@ -38,18 +38,18 @@ def base_registry(cmd_type, reg_def, cls):
     return cls
 
 
-def bdc_registry(cls):
-    return base_registry(bdc_cmd, bdc_reg_def, cls)
+def tiu_registry(cls):
+    return base_registry(tiu_cls, tiu_reg_def, cls)
 
 
 def dma_registry(cls):
-    return base_registry(dma_cmd, dma_reg_def, cls)
+    return base_registry(dma_cls, dma_reg_def, cls)
 
 
 # ------------------------------------------------------------
-# BDC definition
+# TIU definition
 # ------------------------------------------------------------
-class bdc_base(TIUBase):
+class tiu_base(TIUBase):
     length = 1024
     opcode_bits = (37, 41)
     # extension
@@ -88,15 +88,15 @@ class bdc_base(TIUBase):
         )
 
 
-@bdc_registry
-class conv_op(bdc_base):
+@tiu_registry
+class conv_op(tiu_base):
     description = "convolution neuron"
     opcode = 0
     eu_type = {0: "conv", 1: "conv"}
 
 
-@bdc_registry
-class pord_op(bdc_base):
+@tiu_registry
+class pord_op(tiu_base):
     description = "depthwise or pooling"
     opcode = 1
     eu_type = {1: "pord", 4: "pord.maxpooling"}
@@ -110,15 +110,15 @@ class pord_op(bdc_base):
                 self.op_name = "pord.avgpooling"
 
 
-@bdc_registry
-class mm_op(bdc_base):
+@tiu_registry
+class mm_op(tiu_base):
     description = "matrix multiply"
     opcode = 2
     eu_type = {0: "mm.mul", 1: "mm.mac"}
 
 
-@bdc_registry
-class ar_op(bdc_base):
+@tiu_registry
+class ar_op(tiu_base):
     description = "tensor arithmetic"
     opcode = 3
     eu_type = {
@@ -150,15 +150,15 @@ class ar_op(bdc_base):
     }
 
 
-@bdc_registry
-class mm2_op(bdc_base):
+@tiu_registry
+class mm2_op(tiu_base):
     description = "matrix multiply2"
     opcode = 4
     eu_type = {18: "mm2"}
 
 
-@bdc_registry
-class cc_op(bdc_base):
+@tiu_registry
+class cc_op(tiu_base):
     opcode = 5
     eu_type = {
         0: "mul",
@@ -190,22 +190,22 @@ class cc_op(bdc_base):
     description = "convolution correlation"
 
 
-@bdc_registry
-class lut_op(bdc_base):
+@tiu_registry
+class lut_op(tiu_base):
     description = "table lookup"
     opcode = 6
     eu_type = {0: "lut", 19: "lut"}
 
 
-@bdc_registry
-class md_sum_op(bdc_base):
+@tiu_registry
+class md_sum_op(tiu_base):
     description = "md sum"
     opcode = 7
     eu_type = {18: "mdsum"}
 
 
-@bdc_registry
-class md_scalar_op(bdc_base):
+@tiu_registry
+class md_scalar_op(tiu_base):
     description = "md scalar"
     opcode = 8
     eu_type = {
@@ -233,8 +233,8 @@ class md_scalar_op(bdc_base):
     }
 
 
-@bdc_registry
-class md_sfu_op(bdc_base):
+@tiu_registry
+class md_sfu_op(tiu_base):
     description = "md sfu"
     opcode = 9
     eu_type = {
@@ -266,8 +266,8 @@ class md_sfu_op(bdc_base):
     }
 
 
-@bdc_registry
-class md_linear_op(bdc_base):
+@tiu_registry
+class md_linear_op(tiu_base):
     description = "md linear"
     opcode = 10
     eu_type = {
@@ -277,29 +277,29 @@ class md_linear_op(bdc_base):
     }
 
 
-@bdc_registry
-class lma_op(bdc_base):
+@tiu_registry
+class lma_op(tiu_base):
     description = "local memory arrangement"
     opcode = 11
     eu_type = {19: "lmem_arrangement"}
 
 
-@bdc_registry
-class decompress_op(bdc_base):
+@tiu_registry
+class decompress_op(tiu_base):
     description = "decompress"
     opcode = 12
     eu_type = {19: "decompress"}
 
 
-@bdc_registry
-class md_cmp_op(bdc_base):
+@tiu_registry
+class md_cmp_op(tiu_base):
     description = "md cmp"
     opcode = 13
     eu_type = {22: "mdcmp.cmp", 23: "mdcmp.select", 24: "mdcmp.cmp_select"}
 
 
-@bdc_registry
-class vc_op(bdc_base):
+@tiu_registry
+class vc_op(tiu_base):
     description = "vector correlation"
     opcode = 14
     eu_type = {

@@ -159,9 +159,22 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
     // param.common.end_index[i] = ends->at(i);
     param.common.end_index[i] = output_shape[i] * steps->at(i) + offset->at(i);
   }
+
+  /* for dynamic input shape, it need the begin_mask/end_mask
+    to deduction the actual output shape */
+  for (int i = 0; i < num_dims; i++) {
+    if (input_shape[i] == output_shape[i]) {
+      param.common.begin_mask |= (1 << i);
+      param.common.end_mask |= (1 << i);
+    }
+  }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 int64_t tpu::SliceOp::get_fw_type_bm1684x() {
   return FW_BMNET_STRIDESLICE;
+}
+
+int64_t tpu::SliceOp::dyn_codegen_local_bm1684x(void* buffer) {
+  llvm_unreachable("not implement");
 }

@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
 #include "tpu_mlir/Support/Float16.h"
@@ -33,9 +33,7 @@ static inline double gelu(double x) {
   return 0.5 * x * (1.0 + std::erf(x / std::sqrt(2.0)));
 }
 
-static inline double square(double x) {
-  return x * x;
-}
+static inline double square(double x) { return x * x; }
 
 static inline double hswish(double x) {
   if (t.isBF16()) {
@@ -162,4 +160,17 @@ LogicalResult tpu::ActiveOp::LocalGenSupport() {
     }
   }
   return success();
+}
+
+void tpu::ActiveOp::assign_fw_param(void *param) {
+  fw_active_layer_param_t layer_param = {0};
+  layer_param.active_type = (int)getMode();
+  layer_param.if_relu = 0; //not implement
+  layer_param.relu_upper_limit = -1.f;
+  layer_param.ic = module::getShape(getInput())[1];
+  layer_param.input_scale_back2float = 1.f; //not implement
+  layer_param.output_scale_back2float = 1.f; //not implement
+  layer_param.opd_sign = module::isSign(getInput());
+  layer_param.res_sign = module::isSign(getOutput());
+  memcpy(param, &layer_param, sizeof(fw_active_layer_param_t));
 }

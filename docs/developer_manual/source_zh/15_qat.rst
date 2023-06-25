@@ -69,7 +69,7 @@ tpu-mlir QAT实现方案及特点
 
 1、权重量化方案为： per-chan对称8bit量化，scale系数不是power-of-2，而是任意的
 
-2、激活量化方案为：per-layer非对称8bit量化
+2、激活量化方案为：per-layer对称8bit量化
 
 3/4、权重和激活伪量化方案均为：LearnableFakeQuantize即LSQ算法
 

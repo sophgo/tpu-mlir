@@ -11,7 +11,7 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::MinOp::init(InferenceParameter &p) {
@@ -91,4 +91,8 @@ void tpu::MinOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_idx = gi.w_idx;
   sec_info.out_w_slice = gi.w_slice;
+}
+
+void tpu::MinOp::assign_fw_param(void *param) {
+  IR_PARAM_BROADCAST_BINARY(BINARY_MIN);
 }

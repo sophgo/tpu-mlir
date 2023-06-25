@@ -84,7 +84,7 @@ class MODEL_RUN(object):
         }
         self.do_test = "test_input" in self.ini_content
         if self.ini_content["model_path"].endswith(".tflite"):
-            self.quant_modes["int8_asym"] = 1
+            self.quant_modes["int8_sym"] = 1
         else:
             if self.mode != "all" and self.mode != "basic":
                 self.quant_modes[self.mode] = 1
@@ -94,7 +94,6 @@ class MODEL_RUN(object):
                     self.quant_modes["f16"] = 1
                     self.quant_modes["bf16"] = 1
                     self.quant_modes["f32"] = 1
-                    self.quant_modes["int8_asym"] = 1
         for idx, quant_mode in enumerate(self.quant_modes.keys()):
             if f"do_{quant_mode}" in self.ini_content:
                 self.quant_modes[quant_mode] &= int(self.ini_content[f"do_{quant_mode}"])
@@ -266,7 +265,7 @@ class MODEL_RUN(object):
                         self.ini_content["use_quantize_table"]):
                     qtable = self.cali_table.replace("_cali_table", "_qtable")
                     cmd += [f"--quantize_table {qtable}"]
-            if quant_mode == "int8_asym":
+            if self.ini_content["model_path"].endswith(".tflite"):
                 cmd += ["--asymmetric"]
             else:
                 if not ("quant_input" in self.ini_content

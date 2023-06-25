@@ -66,6 +66,14 @@ def get_continuous_stride(shape):
     return np.cumprod([1] + list(shape[-1:0:-1]), dtype=int)[::-1]
 
 
+def DIV_UP(x, a):
+    return (x + a - 1) // a
+
+
+def ALIGN(x, a):
+    return DIV_UP(x, a) * a
+
+
 # ------------------------------------------------------------
 class InsBase:
     # shared information

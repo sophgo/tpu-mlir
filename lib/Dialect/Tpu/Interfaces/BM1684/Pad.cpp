@@ -22,36 +22,27 @@ void tpu::PadOp::codegen_global_bm1684() {
   uint64_t in_addr = module::getAddress(getInput());
   uint64_t out_addr = module::getAddress(getOutput());
   int dims = getPaddings().size() / 2;
-  assert(dims == 3 || dims == 4 || dims == 5);
-  std::vector<int64_t> shape_n;
+  assert(dims == 2 || dims == 3 || dims == 4 || dims == 5);
   std::vector<int64_t> pads_n;
-  std::vector<int64_t> shape = module::getShape(getInput());
   auto pads = module::getI64Array(getPaddings());
-  auto ret = pad_reset(shape, *pads, shape_n, pads_n);
-  if (ret == false) {
-    dump();
-    llvm_unreachable("Not Implemented");
+  for (int i = 0; i < 2 * dims; i++) {
+    pads_n.push_back(pads->at(i));
   }
   int type = getMode();
-  if (type > 1) {
-    llvm_unreachable("not support");
-  }
   float constant = getVal().convertToDouble();
-  if (dims == 3 || dims == 4) {
+  if (dims <= 4) {
     int in_shape[4] = {0};
     module::getGlobalShape(getInput(), in_shape);
     int(*p_pad)[2] = new int[4][2];
     for (int i = 0; i < 4; i++) {
-      p_pad[i][0] = pads_n[i];
-      p_pad[i][1] = pads_n[i + 4];
-    }
-    if (dims == 3) {
-      p_pad[0][0] = 0;
-      p_pad[0][1] = 0;
-      in_shape[3] = in_shape[2];
-      in_shape[2] = in_shape[1];
-      in_shape[1] = in_shape[0];
-      in_shape[0] = 1;
+      if (i < dims) {
+        p_pad[i][0] = pads_n[i];
+        p_pad[i][1] = pads_n[i + dims];
+      }
+      else {
+        p_pad[i][0] = 0;
+        p_pad[i][1] = 0;
+      }
     }
     if (false == module::isUniformQuantized(getOutput())) {
       BM1684::instance().dl_nodechip_pad(
@@ -88,12 +79,10 @@ void tpu::PadOp::codegen_global_bm1684() {
     int in_shape[5] = {0};
     module::getGlobalShape(getInput(), in_shape);
     int(*p_pad)[2] = new int[dims][2];
-    for (int i = 1; i < dims; i++) {
-      p_pad[i][0] = pads_n[i - 1];
-      p_pad[i][1] = pads_n[i - 1 + 4];
+    for (int i = 0; i < dims; i++) {
+      p_pad[i][0] = pads_n[i];
+      p_pad[i][1] = pads_n[i + dims];
     }
-    p_pad[0][0] = 0;
-    p_pad[0][1] = 0;
     uint64_t buffer_addr = module::getAddress(getBuffer());
     if (false == module::isUniformQuantized(getOutput())) {
       BM1684::instance().dl_nodechip_pad3d(
@@ -126,42 +115,28 @@ void tpu::PadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                       local_sec_info_t &sec_info) {
   auto in_g_info = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
-  int in_shape[4];
-  module::getLocalShape(getInput(), n_step, h_step, in_shape);
-  std::vector<int64_t> shape_4;
-  std::vector<int64_t> pads_4;
-  std::vector<int64_t> shape;
   int dims = getPaddings().size() / 2;
-  assert(dims == 3 || dims == 4 || dims == 5);
-  for (int i = 0; i < 4; i++) {
-    shape.push_back(int64_t(in_shape[i]));
-  }
+  assert(dims == 2 || dims == 3 || dims == 4 || dims == 5);
+  std::vector<int64_t> pads_n;
   auto pads = module::getI64Array(getPaddings());
-  auto ret = pad_reset(shape, *pads, shape_4, pads_4);
-  if (ret == false) {
-    dump();
-    llvm_unreachable("Not Implemented");
+  for (int i = 0; i < 2 * dims; i++) {
+    pads_n.push_back(pads->at(i));
   }
   int type = getMode();
-  if (type > 1) {
-    llvm_unreachable("not support");
-  }
   float constant = getVal().convertToDouble();
-  if (dims == 3 || dims == 4) {
+  if (dims <= 4) {
     int in_shape[4] = {0};
     module::getGlobalShape(getInput(), in_shape);
     int(*p_pad)[2] = new int[4][2];
     for (int i = 0; i < 4; i++) {
-      p_pad[i][0] = pads_4[i];
-      p_pad[i][1] = pads_4[i + 4];
-    }
-    if (dims == 3) {
-      p_pad[0][0] = 0;
-      p_pad[0][1] = 0;
-      in_shape[3] = in_shape[2];
-      in_shape[2] = in_shape[1];
-      in_shape[1] = in_shape[0];
-      in_shape[0] = 1;
+      if (i < dims) {
+        p_pad[i][0] = pads_n[i];
+        p_pad[i][1] = pads_n[i + dims];
+      }
+      else {
+        p_pad[i][0] = 0;
+        p_pad[i][1] = 0;
+      }
     }
     if (false == module::isUniformQuantized(getOutput())) {
       BM1684::instance().dl_nodechip_pad_local(

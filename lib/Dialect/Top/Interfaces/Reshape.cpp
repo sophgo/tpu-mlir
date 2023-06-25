@@ -53,10 +53,16 @@ void top::ReshapeOp::shape_inference() {
     }
     module::setShapeOrVerify(getOutput(), out_shape);
   } else {
-    assert(module::isUnranked(getOutput()) == false);
+    /* for unranked tensor as below, sema is ok, don;t check it
+      %294 = "top.Reshape"(%293) : (tensor<1xf32>) -> tensor<*xf32> loc(#loc294) */
+    //assert(module::isUnranked(getOutput()) == false);
   }
-  auto num_input = module::getNumElements(getInput());
-  auto num_output = module::getNumElements(getOutput());
-  assert(num_input == num_output);
+
+  if (!module::isUnranked(getOutput())) {
+    auto num_input = module::getNumElements(getInput());
+    auto num_output = module::getNumElements(getOutput());
+    assert(num_input == num_output);
+  }
+
   removeShapeAttr();
 }

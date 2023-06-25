@@ -1,13 +1,29 @@
 编译ONNX模型
 ============
 
-本章以 ``yolov5s.onnx`` 为例, 介绍如何编译迁移一个onnx模型至BM1684X TPU平台运行。
+本章以 ``yolov5s.onnx`` 为例, 介绍如何编译迁移一个onnx模型至TPU平台运行。
 
 该模型来自yolov5的官网: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
 本章需要如下文件(其中xxxx对应实际的版本信息):
 
 **tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
+
+.. list-table::
+   :widths: 35 20 30
+   :header-rows: 1
+
+   * - 平台
+     - 文件名
+     - 说明
+   * - cv183x/cv182x/cv181x/cv180x
+     - xxx.cvimodel
+     - 请参考: :ref:`CV18xx芯片使用指南 <onnx to cvimodel>`
+   * - 其它
+     - xxx.bmodel
+     - :ref:`继续本章节 <onnx to bmodel>`
+
+.. _onnx to bmodel:
 
 加载tpu-mlir
 ------------------
@@ -28,7 +44,7 @@
    :linenos:
 
    $ mkdir yolov5s_onnx && cd yolov5s_onnx
-   $ cp $TPUC_ROOT/regression/model/yolov5s.onnx .
+   $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace
@@ -69,6 +85,7 @@ ONNX转MLIR
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
 
+.. _model_transform param:
 
 ``model_transform.py`` 主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
 
@@ -106,7 +123,10 @@ ONNX转MLIR
      - 图片每个通道的比值, 默认为1.0,1.0,1.0
    * - pixel_format
      - 否
-     - 图片类型, 可以是rgb、bgr、gray、rgbd四种情况
+     - 图片类型, 可以是rgb、bgr、gray、rgbd四种情况, 默认为bgr
+   * - channel_format
+     - 否
+     - 通道类型, 对于图片输入可以是nhwc或nchw, 非图片输入则为none, 默认为nchw
    * - output_names
      - 否
      - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后用该指定名称做输出
@@ -142,6 +162,7 @@ MLIR转F16模型
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_1684x_f16.bmodel
 
+.. _model_deploy param:
 
 ``model_deploy.py`` 的主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
 
@@ -180,6 +201,9 @@ MLIR转F16模型
    * - excepts
      - 否
      - 指定需要排除验证的网络层的名称, 多个用,隔开
+   * - op_divide
+     - 否
+     - cv183x/cv182x/cv181x/cv180x only, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 适用少数特定模型
    * - model
      - 是
      - 指定输出的model文件名称和路径

@@ -71,7 +71,7 @@ In the above figure, items in the dict behind sophgo_tpu in order of top to bott
 
 1、The weight quantization scheme is: per-chan symmetric 8bit quantization, the scale coefficient is not power-of-2, but arbitrary
 
-2、The activation quantization scheme is per-layer asymmetric 8bit quantization
+2、The activation quantization scheme is per-layer symmetric 8bit quantization
 
 3/4、The weights and activation pseudo-quantization schemes are: LearnableFakeQuantize, namely LSQ algorithm
 

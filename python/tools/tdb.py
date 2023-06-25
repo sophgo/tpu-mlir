@@ -308,7 +308,7 @@ class Tdb(cmd.Cmd):
                 _offset += size
         elif file.endswith(".npz"):
             inputs = np.load(file)
-            self.set_inputs(*inputs.value())
+            self.set_inputs(*inputs.values())
 
     def set_inputs(self, *inputs):
         # args = self.file.module.functions[0].signature[0]

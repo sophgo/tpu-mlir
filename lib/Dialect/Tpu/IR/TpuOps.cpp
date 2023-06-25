@@ -84,6 +84,16 @@ RunMode getRunMode(FuncOp func) {
   return func->getAttrOfType<tpu::RunModeAttr>("mode").getValue();
 }
 
+RunMode getRunMode(Operation *op) {
+  FuncOp funcOp;
+  if (isa<FuncOp>(op)) {
+    funcOp = cast<FuncOp>(op);
+  } else {
+    funcOp = cast<FuncOp>(op->getParentOp());
+  }
+  return getRunMode(funcOp);
+}
+
 void IfOp::getSuccessorRegions(std::optional<unsigned> index,
                                ArrayRef<Attribute> operands,
                                SmallVectorImpl<RegionSuccessor> &regions) {

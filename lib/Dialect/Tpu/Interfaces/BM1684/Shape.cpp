@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -20,10 +20,16 @@ void tpu::ShapeOp::codegen_global_bm1684() {
 }
 
 uint32_t tpu::ShapeOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+  int fw_ir_length = 0;
+  ir_layer_info_t *add_layer_info = (ir_layer_info_t *)ir_layer_info;
+  fw_shape_ref_layer_param_t fw_shape_ref_layer_param = {0};
+  fw_shape_ref_layer_param.input_is_shape = 0;
+  dynamic_common_ir_layer_info(add_layer_info, getInput(), getOutput());
+  add_layer_info->fw_layer_param_u.fw_shape_ref_layer_param =
+      fw_shape_ref_layer_param;
+  fw_ir_length += sizeof(fw_shape_ref_layer_param_t);
+  return fw_ir_length;
 }
-
 int64_t tpu::ShapeOp::get_fw_type_bm1684() {
-  return -1;
+   return FW_BMNET_SHAPE_REF;
 }

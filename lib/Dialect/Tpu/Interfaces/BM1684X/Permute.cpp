@@ -53,7 +53,7 @@ int64_t tpu::PermuteOp::dyn_codegen_global_bm1684x(void *buffer) {
   int input_neuron_tensors = 0;
   auto op = getOperation();
   for (auto v : op->getOperands()) {
-    if (!isa<top::WeightOp, top::NoneOp>(v.getDefiningOp())) {
+    if (!isa<top::WeightOp, top::NoneOp, tpu::BufferOp>(v.getDefiningOp())) {
       input_neuron_tensors++;
     }
   }

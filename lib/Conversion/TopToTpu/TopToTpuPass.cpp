@@ -38,6 +38,8 @@ static void Backward(Value in) {
   } else if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
     BackwardOp(permuteOp);
     // Backward(permuteOp.getInput());
+  } else if (auto d2s = dyn_cast<top::Depth2SpaceOp>(in.getDefiningOp())) {
+    BackwardOp(d2s);
   }
 }
 
@@ -485,6 +487,9 @@ public:
     if (module::isBM1684XFamily()) {
       bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
     }
+    else if (module::isBM1684Family()) {
+      bm1684::populateTopShapeToTpuConversionPatterns(&patterns);
+    }
 
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
 
@@ -559,6 +564,7 @@ protected:
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
                  BackwardCalibartion<top::MaxPoolWithMaskOp>,
+                 BackwardCalibartion<top::Depth2SpaceOp>,
                  //BackwardCalibartion<top::LeakyReluOp, true>,
                 //  BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
@@ -757,27 +763,41 @@ protected:
               return;
             }
             int input_ok = 0;
+            int type = 0;
             for (auto opd : addop.getOperands()) {
               if (auto layernormop =
                       dyn_cast<top::LayerNormOp>(opd.getDefiningOp())) {
                 input_ok++;
               } else if (auto matmulop =
                              dyn_cast<top::MatMulOp>(opd.getDefiningOp())) {
-                if (LoweringConfig::quantize_map.find(
-                        module::getName(opd.getDefiningOp()).str()) ==
-                    LoweringConfig::quantize_map.end()) {
-                  LoweringConfig::quantize_map.insert(
-                      {module::getName(opd.getDefiningOp()).str(),
-                       module::Mode::F16});
-                }
-                input_ok++;
-              } else if (auto addop = dyn_cast<top::AddOp>(opd.getDefiningOp())) {
-                if (addop.getNumOperands() == 2) {
-                  if (isa<top::AttentionOp>(addop.getOperand(0).getDefiningOp()) ||
-                      isa<top::AttentionOp>(addop.getOperand(1).getDefiningOp())) {
-                    input_ok++;
+                int input_mm = 0;
+                int weight_num = 0;
+                int tensor_num = 0;
+                for ( auto opdm : matmulop.getOperands()) {
+                  if ( auto w = dyn_cast<top::WeightOp>(opdm.getDefiningOp())) {
+                    weight_num ++;
+                  }
+                  else if (auto mm = dyn_cast<top::GELUOp>(opdm.getDefiningOp())) {
+                    input_mm ++;
+                  }
+                  else {
+                    tensor_num ++;
                   }
                 }
+                if (input_mm == 1) {
+                  input_ok ++;
+                  type ++;
+                }
+                else if (tensor_num == 1 ){
+                  input_ok ++;
+                }
+                else {
+                  input_ok = 0;
+                  return;
+                }
+                input_ok++;
+              } else if (auto attenop = dyn_cast<top::AttentionOp>(opd.getDefiningOp())) {
+                input_ok++;
               } else {
                 input_ok = 0;
                 return;
@@ -790,6 +810,18 @@ protected:
               } else {
                 input_ok = 0;
                 return;
+              }
+            }
+
+            for (auto opd : addop.getOperands()) {
+              if (auto matmulop = dyn_cast<top::MatMulOp>(opd.getDefiningOp())) {
+                if (type == 1 && LoweringConfig::quantize_map.find(
+                        module::getName(opd.getDefiningOp()).str()) ==
+                    LoweringConfig::quantize_map.end()) {
+                  LoweringConfig::quantize_map.insert(
+                      {module::getName(opd.getDefiningOp()).str(),
+                       module::Mode::F16});
+                }
               }
             }
 

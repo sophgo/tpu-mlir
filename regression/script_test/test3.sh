@@ -40,17 +40,6 @@ model_deploy.py \
   --compare_all \
   --model test3_1684x_int8.bmodel
 
-model_deploy.py \
-  --mlir test3.mlir \
-  --quantize INT8 \
-  --asymmetric \
-  --chip bm1684x \
-  --calibration_table test3_cali_table \
-  --test_input test3_input.npz \
-  --test_reference test3_top_outputs.npz \
-  --compare_all \
-  --model test3_1684x_int8_asym.bmodel
-
 model_transform.py \
   --model_name test3_i16 \
   --model_def test3.pt \
@@ -78,14 +67,3 @@ model_deploy.py \
   --test_reference test3_top_outputs.npz \
   --compare_all \
   --model test3_i16_1684x_int8.bmodel
-
-model_deploy.py \
-  --mlir test3_i16.mlir \
-  --quantize INT8 \
-  --asymmetric \
-  --chip bm1684x \
-  --calibration_table test3_cali_table \
-  --test_input test3_input.npz \
-  --test_reference test3_top_outputs.npz \
-  --compare_all \
-  --model test3_i16_1684x_int8_asym.bmodel

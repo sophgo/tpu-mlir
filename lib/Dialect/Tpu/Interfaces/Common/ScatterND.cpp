@@ -10,6 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/GenericCpuFunc.h"
 
 LogicalResult tpu::ScatterNDOp::init(InferenceParameter &p) {
   return success();
@@ -17,62 +18,34 @@ LogicalResult tpu::ScatterNDOp::init(InferenceParameter &p) {
 void tpu::ScatterNDOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ScatterNDOp::inference(InferenceParameter &p) {
-  const float *data = p.inputs[0];
-  const float *indices = p.inputs[1];
-  const float *updates = p.inputs[2];
-  float *dst = p.outputs[0];
+  ScatterNDParam param;
+  param.op_code = (CPU_SCATTER_OP_T)getReduction();
+  tensor_list_t input;
+  input.ptr = p.inputs[0];
+  input.shape = module::getShape(getInputData());
+  input.size = module::getNumElements(getInputData());
+  param.inputs.push_back(input);
 
-  auto data_shape = module::getShape(getInputData());
-  auto indices_shape = module::getShape(getIndices());
-  auto updates_shape = module::getShape(getUpdates());
-  auto dtype_size = sizeof(float);
-  int r = data_shape.size();
-  int q = indices_shape.size();
-  int k = indices_shape[q - 1];
-  int updates_dims = updates_shape.size();
-  assert(updates_dims == q + r - k - 1);
-  int updates_elems = 1;
-  int slice_elems = 1;
-  for (int i = 0; i < q - 1; ++i) {
-    assert(updates_shape[i] == indices_shape[i]);
-    updates_elems *= indices_shape[i];
-  }
-  for (int j = k; j < r; ++j) {
-    assert(updates_shape[j] == data_shape[j]);
-    slice_elems *= updates_shape[j];
-  }
-  auto data_elems = module::getNumElements(getOutput());
+  tensor_list_t indices;
+  indices.ptr = p.inputs[1];
+  indices.shape = module::getShape(getIndices());
+  indices.size = module::getNumElements(getIndices());
+  param.inputs.push_back(indices);
 
-  memcpy(dst, data, data_elems * dtype_size);
+  tensor_list_t updates;
+  updates.ptr = p.inputs[2];
+  updates.shape = module::getShape(getUpdates());
+  updates.size = module::getNumElements(getUpdates());
+  param.inputs.push_back(updates);
 
-  int data_strides[k];
-  for (int dim = k - 1; dim >= 0; --dim) {
-    if (dim == k - 1) {
-      data_strides[dim] = slice_elems;
-    } else {
-      data_strides[dim] = data_strides[dim + 1] * data_shape[dim + 1];
-    }
-  }
-  int64_t idx = 0;
-  if (r == k) {
-    // #pragma omp parallel for schedule(static, omp_schedule(updates_elems))
-    for (int64_t loc = 0; loc < updates_elems; ++loc) {
-      idx = 0;
-      for (int64_t i = 0; i < k; ++i) {
-        idx += indices[loc * k + i] * data_strides[i];
-      }
-      dst[idx] = updates[loc];
-    }
-  } else if (k < r) {
-    // #pragma omp parallel for schedule(static, omp_schedule(updates_elems))
-    for (int64_t loc = 0; loc < updates_elems; ++loc) {
-      idx = 0;
-      for (int64_t i = 0; i < k; ++i) {
-        idx += indices[loc * k + i] * data_strides[i];
-      }
-      memcpy(dst + idx, updates + loc * slice_elems, slice_elems * dtype_size);
-    }
-  }
+  tensor_list_t output;
+  output.ptr = p.outputs[0];
+  output.shape = module::getShape(getOutput());
+  output.size = module::getNumElements(getOutput());
+  param.output = output;
+
+  ScatterNDFunc func(param);
+  func.invoke();
 
   return success();
 }

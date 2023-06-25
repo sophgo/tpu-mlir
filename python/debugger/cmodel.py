@@ -180,7 +180,7 @@ class BM1684X:
             engine_type,
         )
 
-    def bdc_compute(self, command):
+    def tiu_compute(self, command):
         return self.compute(command, 0)
 
     def dma_compute(self, command):
@@ -385,7 +385,7 @@ class BM1684:
         ).ctypes.data
         return self.lib.get_atomic_function(cmd, engine_type)(0, cmd)
 
-    def bdc_compute(self, command):
+    def tiu_compute(self, command):
         return self.compute(command, 0)
 
     def dma_compute(self, command):

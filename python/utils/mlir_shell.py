@@ -72,10 +72,7 @@ def mlir_lowering(top_mlir: str,
                   aligned_input: bool = False):
     cmd = ["tpuc-opt", top_mlir, "--chip-assign=\"chip={}\"".format(chip.lower())]
     mode = mode.upper()
-    if mode != 'INT8':
-        asymmetric = True
-    if mode == 'INT4':
-        asymmetric = False
+    asymmetric = False # TODO: always using symmetric, as asymmetric not good
     if cali_table != None:
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)

@@ -10,9 +10,9 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/ErrorHandling.h"
-
 
 using namespace tpu_mlir::backend;
 
@@ -34,6 +34,7 @@ void tpu::ActiveOp::codegen_global_bm1684() {
 
     int activate_type = (int)getMode();
     switch(getMode()){
+       case ActiveMode::ELU:
        case ActiveMode::EXP:
        case ActiveMode::ABSVAL:
        case ActiveMode::FLOOR:
@@ -41,7 +42,11 @@ void tpu::ActiveOp::codegen_global_bm1684() {
        case ActiveMode::LN:
        case ActiveMode::GELU:
        case ActiveMode::SQRT:
+       case ActiveMode::MISH:
        case ActiveMode::SQUARE:
+       case ActiveMode::SOFT_PLUS:
+       case ActiveMode::SOFT_SIGN:
+       case ActiveMode::LOG_SIGMOID:
        case ActiveMode::SIGMOID: break;
        case ActiveMode::SILU:
            activate_type = (int)ActiveMode::SWISH;
@@ -75,7 +80,9 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684(
             case ActiveMode::LN:
             case ActiveMode::TANH:
             case ActiveMode::SQRT:
+            case ActiveMode::SOFT_PLUS:
             case ActiveMode::SIGMOID: buffer_size = tensor_size; break;
+            case ActiveMode::ELU:
             case ActiveMode::FLOOR:
             case ActiveMode::GELU:
             case ActiveMode::SILU:
@@ -118,6 +125,7 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
     int activate_type = (int)getMode();
     float prelu_slope = 0.0;
     switch(getMode()){
+        case ActiveMode::ELU:
         case ActiveMode::EXP:
         case ActiveMode::ABSVAL:
         case ActiveMode::FLOOR:
@@ -144,15 +152,45 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
 }
 
 uint32_t tpu::ActiveOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+  GLOBAL_IR_COMMON(active);
 }
 
 int64_t tpu::ActiveOp::get_fw_type_bm1684() {
-  return -1;
+  return FW_BMNET_ACTIVE;
 }
 
-int32_t tpu::ActiveOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+int32_t tpu::ActiveOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
+  int32_t fw_ir_length = 0;
+  IR_PARAM_COMMON(active);
+  // input tensor
+  dynamic_push_back_local_tensor(layer_info->ir_tensor_info_v, getInput());
+  // output
+  dynamic_push_back_local_tensor(layer_info->ir_tensor_info_v, getOutput());
+  // compute fw ir info length for loc active input and output
+  fw_ir_length += (sizeof(uint32_t) + 2 * sizeof(uint32_t));
+  bool need_buffer = false;
+  if (!module::isUniformQuantized(getOutput())) {
+    switch (getMode()) {
+    case ActiveMode::SQUARE: break;
+    case ActiveMode::EXP:
+    case ActiveMode::ABSVAL:
+    case ActiveMode::LN:
+    case ActiveMode::TANH:
+    case ActiveMode::SQRT:
+    case ActiveMode::SIGMOID: need_buffer = true; break;
+    case ActiveMode::FLOOR:
+    case ActiveMode::GELU:
+    case ActiveMode::SILU: need_buffer = true; break;
+    default:
+            llvm_unreachable("Not Implement such activate type, please add it.");
+            break;
+    }
+  }
+  if (need_buffer) {
+    dynamic_push_back_local_buffer(layer_info->ir_tensor_info_v,
+                                   get_tensor_id(getInput()), getOutput());
+    fw_ir_length += sizeof(uint32_t);
+  }
+  fw_ir_length += sizeof(uint32_t);
+  return fw_ir_length;
 }

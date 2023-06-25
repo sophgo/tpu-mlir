@@ -233,6 +233,12 @@ LogicalResult tpu::CastOp::LocalGenSupport() {
     }
     return failure();
   }
+  if (module::isBM1684Family()) {
+    auto in_dtype = BM168x::getDataType(getInput());
+    if (in_dtype == DTYPE_INT32) {
+      return failure();
+    }
+  }
   return success();
 }
 

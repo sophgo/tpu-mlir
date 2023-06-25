@@ -44,12 +44,9 @@ void tpu::LoadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int64_t n_idx = gi.n_idx;
   int64_t local_N = gi.n_slice, local_C = C, local_H = gi.h_slice, local_W = W;
   if (fmt_bytes != 4) {
-    if (!module::isWeight(getInput()) ||
-        (cast<top::WeightOp>(getInput().getDefiningOp())
-             .getStoreMode()
-             .has_value() &&
-         cast<top::WeightOp>(getInput().getDefiningOp()).getStoreMode() ==
-             "4N")) {
+    auto castOp = dyn_cast_or_null<top::WeightOp>(getInput().getDefiningOp());
+    if (!module::isWeight(getInput()) || (castOp.getStoreMode().has_value() &&
+        castOp.getStoreMode() == "4N")) {
       int64_t N_align = 4 / fmt_bytes;
       fmt_bytes = 4;
       gdma_format = BM168x::GDMA_VALUE_FORMAT_FLOAT32;
@@ -57,6 +54,16 @@ void tpu::LoadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       local_N = ceiling_func(gi.n_slice, N_align);
       n_idx = gi.n_idx / 4;
       assert(gi.n_idx % 4 == 0);
+    } else if (castOp.getStoreMode().has_value() && castOp.getStoreMode() == "2N") {
+      int64_t N_align = 4 / fmt_bytes;
+      fmt_bytes = 4;
+      gdma_format = BM168x::GDMA_VALUE_FORMAT_FLOAT32;
+      N = ceiling_func(N, N_align);
+      local_N = ceiling_func(gi.n_slice, N_align);
+      n_idx = gi.n_idx / 2;
+      assert(gi.n_idx % 2 == 0);
+    } else {
+      // do nothing
     }
   }
   auto g_stride = BM168x::getGlobalStride(N, C, H, W);

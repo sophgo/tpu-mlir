@@ -79,6 +79,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       PReluLowering,
       PreprocessLowering,
       PowLowering,
+      Pow2Lowering,
       ReciprocalLowering,
       ReluLowering,
       ReshapeLowering,
@@ -126,7 +127,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       InstanceNormLowering,
       GroupNormLowering,
       DetectionOutputLowering,
-      ShuffleChannelLowering
+      ShuffleChannelLowering,
+      NmsLowering
       // clang-format on
       >(patterns->getContext());
 }

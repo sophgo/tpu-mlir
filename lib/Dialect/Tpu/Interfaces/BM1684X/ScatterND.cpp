@@ -28,6 +28,8 @@ void tpu::ScatterNDOp::codegen_global_bm1684x() {
   param.data_dims = data_shape.size();
   param.indices_dims = indices_shape.size();
   param.updates_dims = updates_shape.size();
+  param.intermediate_buffer_global_addr = module::getAddress(getBuffer());
+  param.with_hw_trans = false;
   // assert(module::getStorageType(getIndices()).isInteger(32));
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);

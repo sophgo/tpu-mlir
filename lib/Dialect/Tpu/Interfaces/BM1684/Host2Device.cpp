@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -20,10 +20,22 @@ void tpu::Host2DeviceOp::codegen_global_bm1684() {
 }
 
 uint32_t tpu::Host2DeviceOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+  int fw_ir_length = 0;
+  ir_layer_info_t *add_layer_info = (ir_layer_info_t *)ir_layer_info;
+  dynamic_common_ir_layer_info(add_layer_info, getInput(), getOutput());
+  auto extra_len     = sizeof(int);
+  u8   extra_version = 0; //for upgrade
+  auto extra_buffer  = (int*)add_layer_info->set_extra_buffer(extra_len, extra_version);
+  extra_buffer[0] = 0;
+  if(add_layer_info->extra_len>0) {
+    fw_ir_length += sizeof(u32);
+    fw_ir_length += add_layer_info->extra_len;
+  }
+  fw_ir_length += sizeof(int);
+  return fw_ir_length;
+
 }
 
 int64_t tpu::Host2DeviceOp::get_fw_type_bm1684() {
-  return -1;
+  return FW_BMNET_HOST2DEVICE;
 }

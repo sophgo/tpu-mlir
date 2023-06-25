@@ -79,7 +79,6 @@
     $ model_deploy.py \
        --mlir resnet.mlir \
        --quantize INT8 \
-       # --asymmetric \
        --calibration_table somenet_cali_table \
        --chip bm1684x \
        --test_input somenet_in_f32.npz \
@@ -135,7 +134,6 @@
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \
        --quantize INT8 \
-       --asymmetric \
        --chip bm1684x \
        --test_input resnet50_tf_in_f32.npz \
        --test_reference resnet50_tf_top_outputs.npz \
@@ -207,7 +205,10 @@ model_transform.py
      - 图片每个通道的比值, 默认为1.0,1.0,1.0
    * - pixel_format
      - 否
-     - 图片类型, 可以是rgb、bgr、gray、rgbd四种情况
+     - 图片类型, 可以是rgb、bgr、gray、rgbd四种情况, 默认为bgr
+   * - channel_format
+     - 否
+     - 通道类型，对于图片输入可以是nhwc或nchw, 非图片输入则为none, 默认是nchw
    * - output_names
      - 否
      - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后用该指定名称做输出
@@ -408,6 +409,9 @@ model_deploy.py
    * - excepts
      - 否
      - 指定需要排除验证的网络层的名称, 多个用,隔开
+   * - op_divide
+     - 否
+     - cv183x/cv182x/cv181x/cv180x only, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 适用少数特定模型
    * - model
      - 是
      - 指定输出的model文件名称和路径

@@ -86,8 +86,8 @@ class CviSampleGenerator:
 
         if chip != "cv180x":
             self.run_sample_net("yolox_s", os.path.join(tmp_dir, "yolox_s.cvimodel"), chip, "int8_sym")
-            self.run_sample_net("yolov5s_with_trans", os.path.join(tmp_dir, "yolov5s_fused_preprocess.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True)
-            self.run_sample_net("yolov5s_with_trans", os.path.join(tmp_dir, "yolov5s_fused_preprocess_aligned_input.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True, True)
+            self.run_sample_net("yolov5s", os.path.join(tmp_dir, "yolov5s_fused_preprocess.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True)
+            self.run_sample_net("yolov5s", os.path.join(tmp_dir, "yolov5s_fused_preprocess_aligned_input.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True, True)
             self.run_sample_net("alphapose_res50", os.path.join(tmp_dir, "alphapose_fused_preprocess.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True)
             self.run_sample_net("arcface_res50", os.path.join(tmp_dir, "arcface_res50_fused_preprocess.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True)
             self.run_sample_net("arcface_res50", os.path.join(tmp_dir, "arcface_res50_fused_preprocess_aligned_input.cvimodel"), chip, "int8_sym", "RGB_PLANAR", True, True)

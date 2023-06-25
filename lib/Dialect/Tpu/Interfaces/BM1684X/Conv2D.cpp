@@ -92,10 +92,12 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int oc_per_npu = ceiling_func(p.oc, BM168x::NPU_NUM);
   int ic_per_npu = ceiling_func(p.ic / p.groups, BM168x::NPU_NUM);
   int int32_size = out_lmem_bytes * sizeof(int32_t) / out_type_len;
+  int use_3ic_optimize = getUse_3icOptimize();
   if (module::isBM1686() && getCoeffMerged()) {
     if (module::isUniformQuantized(getInput()) && p.kernel_zp != 0)
       return int32_size * 2;
-    return 0;
+    if(use_3ic_optimize == 0)
+      return 0;
   }
   if (getCoeffMerged()) {
     sz += int32_size;
@@ -111,11 +113,11 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     sz += oc_per_npu * p.kh * p.kw;
   }
 
-  if (getUse_3icOptimize() & 0x20) {
+  if (use_3ic_optimize & 0x20) {
     // used for broadcast input
     sz += in_lmem_bytes;
   }
-  int use_3ic = (getUse_3icOptimize() & 0x3);
+  int use_3ic = (use_3ic_optimize & 0x3);
   if (use_3ic == 1) { // merge kh to ic
     sz += align_up(out_hslice * in_wslice, eu_num) * in_nslice * in_type_len;
     sz += 64 * 2;

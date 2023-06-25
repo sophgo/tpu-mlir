@@ -101,3 +101,7 @@ uint32_t tpu::SoftmaxOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
 }
 
 int64_t tpu::SoftmaxOp::get_fw_type_bm1684() { return FW_BMNET_SOFTMAX; }
+
+int32_t tpu::SoftmaxOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
+  llvm_unreachable("not implement");
+}

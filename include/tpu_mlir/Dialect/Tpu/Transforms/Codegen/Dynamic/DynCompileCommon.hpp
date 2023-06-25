@@ -29,6 +29,8 @@ typedef signed char s8;
 #define MAX_ELET_INPUT_NUM 10
 #define MAX_SPLIT_OUTPUT_NUM 8
 #define MAX_SHAPE_DIMS 8
+#define MAX_YOLO_INPUT_NUM 8
+#define MAX_YOLO_ANCHOR_NUM 8
 typedef int LayerId;
 #ifdef __cplusplus
 extern "C" {
@@ -189,6 +191,8 @@ typedef enum fw_layer_type {
   FW_BMNET_SHAPE_UNSQUEEZE  = 143,
   FW_BMNET_UNSQUEEZE = 144,
   FW_BMNET_DECONV3D = 145,
+  FW_BMNET_YOLOV5_DETECT_OUT = 146,
+  FW_BMNET_ONNX_NMS = 147,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;
@@ -1238,6 +1242,27 @@ typedef struct fw_yolov3_detect_out_layer_param {
   float scale;       // used for paddle yolo_box
 } fw_yolov3_detect_out_layer_param_t;
 
+typedef struct fw_yolov5_detect_out_layer_param {
+    int keep_top_k;
+    int agnostic_nms;
+    int max_hw;
+    float nms_threshold;
+    float confidence_threshold;
+} fw_yolov5_detect_out_layer_param_t;
+
+typedef struct fw_yolov5_decode_detect_out_layer_param {
+    int input_num;
+    int batch_num;
+    int num_classes;
+    int num_boxes;
+    int keep_top_k;
+    float nms_threshold;
+    float confidence_threshold;
+    float anchors[2 * MAX_YOLO_INPUT_NUM * MAX_YOLO_ANCHOR_NUM];
+    float anchor_scale[MAX_YOLO_ANCHOR_NUM];
+    int agnostic_nms;
+} fw_yolov5_decode_detect_out_layer_param_t;
+
 typedef struct {
   int num_classes;
   int share_location;
@@ -1547,6 +1572,7 @@ typedef struct {
 } fw_dynamic_output_info_t;
 
 // must be same as TENSOR_TYPE_T in bmcompiler_net_param.h
+// must be same as include/tpu_mlir/Backend/BM168x/Param.h
 typedef enum {
   FW_BMNET_NEURON = 0,
   FW_BMNET_COEFF = 1,

@@ -114,6 +114,7 @@ struct tensor_info_t {
 
 using ValueSet = std::set<Value, value_compare>;
 using ValueIntMap = std::map<Value, int64_t, value_compare>;
+using IntValueIntMap = std::map<int64_t, ValueIntMap>;
 using TensorInfo = std::map<Value, tensor_info_t, value_compare>;
 using MemBuff = std::map<mem_buffer_key_t, mem_buffer_value_t>;
 using MemBuffElt = std::pair<mem_buffer_key_t, mem_buffer_value_t>;

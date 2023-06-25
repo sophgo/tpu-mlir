@@ -1103,6 +1103,7 @@ def Top_TopKOp:Top_Op<"TopK"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
+    AnyTensorOrNone:$K_tensor,
     I64Attr:$axis,
     I64Attr:$K,
     DefaultValuedAttr<BoolAttr, "true">:$largest,
@@ -1716,6 +1717,19 @@ def Top_PowOp : Top_Op<"Pow"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_Pow2Op : Top_Op<"Pow2"> {
+  let summary = "Pow2 operation";
+  let description = [{
+    output = n ^ input
+  }];
+  let arguments = (ins
+    F64Attr: $const_val,
+    AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+  //let hasCanonicalizer = 1;
+}
+
 def Top_SqrtOp : Top_Op<"Sqrt"> {
   let summary = "Sqrt operation";
   let description = [{
@@ -1884,7 +1898,8 @@ def Top_YoloDetectionOp : Top_Op<"YoloDetection"> {
     I64ArrayAttr:$anchors,
     YoloVersionAttr:$version,
     DefaultValuedAttr<I64Attr, "80">:$class_num,
-    DefaultValuedAttr<I64Attr, "3">:$num_boxes
+    DefaultValuedAttr<I64Attr, "3">:$num_boxes,
+    DefaultValuedAttr<BoolAttr, "false">:$agnostic_nms
   );
 
   let results = (outs AnyTensor:$output);
@@ -1920,9 +1935,7 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
     F64Attr:$eps
   );
   let results = (outs
-    AnyTensor:$output,
-    AnyTensorOrNone:$mean,
-    AnyTensorOrNone:$rstd
+    AnyTensor:$output
   );
   let hasCanonicalizer = 1;
 }

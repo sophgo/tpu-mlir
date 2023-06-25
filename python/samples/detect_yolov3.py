@@ -91,6 +91,48 @@ def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
     return img, res_line[:-2]
 
 
+def vis2(img, dets, input_shape, conf=0.5, class_names=None):
+    shape = dets.shape
+    num = shape[-2]
+    img_h, img_w = img.shape[0:2]
+    for i in range(num):
+        d = dets[0][0][i]
+        cls_id = int(d[1])
+        score = d[2]
+        if score < conf:
+            continue
+        x, y, w, h = d[3] * input_shape[1], d[4] * input_shape[0], d[5] * input_shape[1], d[
+            6] * input_shape[0]
+
+        r = min(input_shape[0] / img.shape[0], input_shape[1] / img.shape[1])
+        new_img_h = img_h * r
+        new_img_w = img_w * r
+        x -= ((input_shape[1] - new_img_w) / 2)
+        y -= ((input_shape[0] - new_img_h) / 2)
+        x /= r
+        y /= r
+        w /= r
+        h /= r
+        x0 = int(x - w / 2)
+        y0 = int(y - h / 2)
+        x1 = int(x + w / 2)
+        y1 = int(y + h / 2)
+        color = (_COLORS[cls_id] * 255).astype(np.uint8).tolist()
+        text = '{}:{:.1f}%'.format(class_names[cls_id], score * 100)
+        txt_color = (0, 0, 0) if np.mean(_COLORS[cls_id]) > 0.5 else (255, 255, 255)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
+        txt_size = cv2.getTextSize(text, font, 0.4, 1)[0]
+        cv2.rectangle(img, (x0, y0), (x1, y1), color, 1)
+
+        txt_bk_color = (_COLORS[cls_id] * 255 * 0.7).astype(np.uint8).tolist()
+        cv2.rectangle(img, (x0, y0 + 1), (x0 + txt_size[0] + 1, y0 + int(1.5 * txt_size[1])),
+                      txt_bk_color, -1)
+        cv2.putText(img, text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
+
+    return img
+
+
 def nms(boxes, box_confidences, iou_thres, conf_thres):
     x_coord = boxes[:, 0]
     y_coord = boxes[:, 1]
@@ -137,12 +179,14 @@ def letterbox_image(image, size):
     return new_image
 
 
-def preprocess(img, input_shape):
+def preprocess(img, input_shape, fuse_pre=False):
     boxed_image = letterbox_image(img, tuple(reversed(input_shape)))
-    image_data = np.array(boxed_image, dtype='float32')
-    image_data /= 255.
+    image_data = np.array(boxed_image, dtype=np.float32 if not fuse_pre else np.uint8)
     image_data = np.transpose(image_data, [2, 0, 1])
     image_data = np.expand_dims(image_data, 0)
+    if not fuse_pre:
+        image_data /= 255.
+
     return image_data
 
 
@@ -229,6 +273,7 @@ def postprocess(outputs,
                 max_boxes=20):
     outputs_reshaped = []
     for output in outputs.values():
+        output = output.transpose([0, 2, 3, 1])
         _, height, width, channels = output.shape
         dim1, dim2 = height, width
         dim3 = 3
@@ -277,14 +322,10 @@ def postprocess(outputs,
     confidences = np.concatenate(nscores)
     return boxes, categories, confidences
 
-def refine_cvi_output(output):
-    new_output = {}
-    for k in output.keys():
-        if k.endswith("_f32"):
-            new_output[k] = output[k]
-    return new_output
+
 
 def parse_args():
+    # yapf: disable
     parser = argparse.ArgumentParser(description='Inference Keras Yolo3 network.')
     parser.add_argument("--model", type=str, required=True, help="Model definition file")
     parser.add_argument("--net_input_dims", type=str, default="416,416", help="(h,w) of net input")
@@ -293,6 +334,9 @@ def parse_args():
     parser.add_argument("--conf_thres", type=float, default=0.001, help="Confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.5, help="NMS IOU threshold")
     parser.add_argument("--score_thres", type=float, default=0.6, help="Score of the result")
+    parser.add_argument("--fuse_preprocess", action='store_true', help="if the model fused preprocess")
+    parser.add_argument("--fuse_postprocess", action='store_true', help="if the model fused postprocess")
+    # yapf: enable
     args = parser.parse_args()
     return args
 
@@ -304,18 +348,20 @@ def main():
     image_datas, file_list = [], []
     if Path(args.input).is_file():
         origin_image = Image.open(args.input)
-        image_data = preprocess(origin_image, input_shape)
+        image_data = preprocess(origin_image, input_shape, args.fuse_preprocess)
         image_datas.append(image_data)
         file_list.append(args.input)
     else:
         dir_or_files = os.listdir(args.input)
         for dir_file in dir_or_files:
-            dir_file_path = os.path.join(args.input,dir_file)
+            dir_file_path = os.path.join(args.input, dir_file)
             ext_name = os.path.splitext(dir_file)[-1]
-            if not os.path.isdir(dir_file_path) and ext_name in ['.jpg','.png','.jpeg','.bmp','.JPEG','.JPG','.BMP']:
+            if not os.path.isdir(dir_file_path) and ext_name in [
+                    '.jpg', '.png', '.jpeg', '.bmp', '.JPEG', '.JPG', '.BMP'
+            ]:
                 file_list.append(dir_file_path)
                 origin_image = Image.open(dir_file_path)
-                image_data = preprocess(origin_image, input_shape)
+                image_data = preprocess(origin_image, input_shape, args.fuse_preprocess)
                 image_datas.append(image_data)
 
     fname = args.model
@@ -323,11 +369,14 @@ def main():
     file = open(f'{fname}_image_dir_result', 'w')
     for file_name, image_data in zip(file_list, image_datas):
         image_size = np.array([origin_image.size[1], origin_image.size[0]],
-                            dtype=np.float32).reshape(1, 2)
-        data = {"input_1": image_data, "image_shape": image_size}  # input name from model
+                              dtype=np.float32).reshape(1, 2)
+        data = {}
+        data["input_1"] = image_data # input name from the model
 
         output = dict()
+        boxes, confidences, categories, dets = [], [], [], []
         if args.model.endswith('.onnx'):
+            data["image_shape"] = image_size  # onnx model needs 2 inputs
             output = onnx_inference(data, args.model, False)
             all_boxes, scores, indices = None, None, None
             for out in output.values():
@@ -337,8 +386,9 @@ def main():
                     scores = out
                 else:
                     indices = out
-            boxes, confidences, categories = [], [], []
-            for idx_ in indices[0]:
+            # rank of indices in yolov3_tiny is 3
+            indices = indices[0] if len(indices.shape) == 3 else indices
+            for idx_ in indices:
                 idx_ = tuple(map(int, idx_))
                 categories.append(idx_[1])
                 confidences.append(scores[idx_])
@@ -348,26 +398,37 @@ def main():
         else:
             if args.model.endswith('.mlir'):
                 output = mlir_inference(data, args.model, False)
-            elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
+            elif args.model.endswith(".bmodel"):
                 output = model_inference(data, args.model)
+            elif args.model.endswith(".cvimodel"):
+                output = model_inference(data, args.model, False)
             else:
                 raise RuntimeError("not support modle file:{}".format(args.model))
-            if args.model.endswith(".cvimodel"):
-                output = refine_cvi_output(output)
+            if not args.fuse_postprocess:
+                boxes, categories, confidences = postprocess(output, input_shape, origin_image.size,
+                                                             args.score_thres, args.iou_thres,
+                                                             args.conf_thres)
+            else:
+                dets = output['yolo_post']
 
-            boxes, categories, confidences = postprocess(output, input_shape, origin_image.size,
-                                                        args.score_thres, args.iou_thres,
-                                                        args.conf_thres)
         image = cv2.imread(file_name)
         res_line = ''
         tmpstr = file_name.split('/')[-1].replace(' ', '_')
         if boxes is not None:
-            fix_img, res_line = vis(image,
-                        boxes,
-                        confidences,
-                        categories,
-                        conf=args.score_thres,
-                        class_names=COCO_CLASSES)
+            if not args.fuse_postprocess:
+                fix_img, res_line = vis(image,
+                                        boxes,
+                                        confidences,
+                                        categories,
+                                        conf=args.score_thres,
+                                        class_names=COCO_CLASSES)
+            else:
+                fix_img = vis2(image,
+                               dets,
+                               input_shape,
+                               conf=args.score_thres,
+                               class_names=COCO_CLASSES)
+
             if Path(args.input).is_file():
                 output_file = args.output
             else:
@@ -375,7 +436,7 @@ def main():
             cv2.imwrite(output_file, fix_img)
         else:
             print('No object was detected')
-        file.write(tmpstr +': '+res_line + '\n')
+        file.write(tmpstr + ': ' + res_line + '\n')
     file.close()
 
 

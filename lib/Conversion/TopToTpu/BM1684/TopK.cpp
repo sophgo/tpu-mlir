@@ -37,6 +37,12 @@ void TopKLowering::LoweringF32(PatternRewriter &rewriter,
   }
   std::vector<Value> operands;
   operands.push_back(op.getInput());
+  if (!module::isNone(op.getKTensor()))
+    operands.push_back(op.getKTensor());
+  else {
+    auto noneOp = module::getNoneOp(op);
+    operands.push_back(noneOp);
+  }
   rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, new_types, operands,
                                                  attrs);
 }

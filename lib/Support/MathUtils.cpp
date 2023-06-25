@@ -1193,9 +1193,9 @@ void function_permute(T *from, T *to, const std::vector<int64_t> &shape,
   }
 }
 
-template
-void function_permute(float *from, float *to, const std::vector<int64_t> &shape,
-                      const std::vector<int64_t> &order);
+template void function_permute(float *from, float *to,
+                               const std::vector<int64_t> &shape,
+                               const std::vector<int64_t> &order);
 
 bool compare(float a, float b, llvm::StringRef mode) {
   if (mode == "Equal" || mode == "Not") {
@@ -1298,8 +1298,7 @@ int32_t exp_on_negative_values(int input, int int_bits) {
   return result;
 }
 
-void swap_dim_data(float *input, float *output,
-                   std::vector<int64_t> &ishape,
+void swap_dim_data(float *input, float *output, std::vector<int64_t> &ishape,
                    std::vector<int64_t> &offsets) {
   int axis = offsets.size();
   int64_t outer_size = 1, inner_size = 1;
@@ -1337,12 +1336,13 @@ binary_add(float *a, float *b, const llvm::ArrayRef<int64_t> &a_shape,
   for (int i = 0; i < max_ndim; i++) {
     o_shape.push_back(std::max(a_shape_[i], b_shape_[i]));
   }
-  auto num_output = std::accumulate(o_shape.begin(), o_shape.end(), 1, std::multiplies<int64_t>());
+  auto num_output = std::accumulate(o_shape.begin(), o_shape.end(), 1,
+                                    std::multiplies<int64_t>());
   auto output = std::make_shared<std::vector<float>>(num_output);
   Binary add;
   add.lhs(a, a_shape_)
       .rhs(b, b_shape_)
-      .dst(output->data(),o_shape)
+      .dst(output->data(), o_shape)
       .algorithem(algorithm::binary_add)
       .setup();
   add.run();
@@ -1360,28 +1360,30 @@ binary_mul(float *a, float *b, const llvm::ArrayRef<int64_t> &a_shape,
   for (int i = 0; i < max_ndim; i++) {
     o_shape.push_back(std::max(a_shape_[i], b_shape_[i]));
   }
-  auto num_output = std::accumulate(o_shape.begin(), o_shape.end(), 1, std::multiplies<int64_t>());
+  auto num_output = std::accumulate(o_shape.begin(), o_shape.end(), 1,
+                                    std::multiplies<int64_t>());
   auto output = std::make_shared<std::vector<float>>(num_output);
   Binary mul;
   mul.lhs(a, a_shape_)
       .rhs(b, b_shape_)
-      .dst(output->data(),o_shape)
+      .dst(output->data(), o_shape)
       .algorithem(algorithm::binary_mul)
       .setup();
   mul.run();
   return std::move(output);
 }
-//Accoring to output_index, get thr broadcast input_index
-int getBcastIndex(int out_index, std::vector<int64_t> &output_shape, std::vector<int64_t> &input_shape) {
+// Accoring to output_index, get thr broadcast input_index
+int getBcastIndex(int out_index, std::vector<int64_t> &output_shape,
+                  std::vector<int64_t> &input_shape) {
   int dim = output_shape.size();
   std::vector<int64_t> out_slice_index(dim);
   std::vector<int64_t> input_slice_index(dim);
-  //calculate each dim index from out_index
+  // calculate each dim index from out_index
   int multiplies = 1;
-  //int mod = 1;
+  // int mod = 1;
   int input_index = 0;
   for (int i = dim - 1; i >= 0; i--) {
-    //mod = output_shape[i];
+    // mod = output_shape[i];
     out_slice_index[i] = out_index / multiplies % output_shape[i];
     if (input_shape[i] == 1) {
       input_slice_index[i] = 0;
@@ -1398,4 +1400,37 @@ int getBcastIndex(int out_index, std::vector<int64_t> &output_shape, std::vector
   return input_index;
 }
 
+bool is_all_int8(const std::vector<float> &data, float scale, bool sign) {
+  if (sign == false) {
+    // all uint8 ?
+    for (auto d : data) {
+      d *= scale;
+      if (d != (uint8_t)(d)) {
+        return false;
+      }
+    }
+  } else {
+    // all int8 ?
+    for (auto d : data) {
+      d *= scale;
+      if (d != (int8_t)(d)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool to_all_int8(const std::vector<float> &data, float &scale, bool sign) {
+  float s = 0;
+  for (int i = 0; i < 7; i++) {
+    s = std::pow(2, i);
+    auto ret = is_all_int8(data, s, sign);
+    if (ret) {
+      scale = s;
+      return true;
+    }
+  }
+  return false;
+}
 } // namespace tpu_mlir
