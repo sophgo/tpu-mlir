@@ -48,11 +48,21 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   std::vector<int64_t> rshift_v;
   std::vector<int64_t> multiplier_v;
   int64_t multiplier, rshift;
+  bool use_weight_scale = false;
+  f64_array_t weight_scales;
+  if (filterOp.getScale().has_value()) {
+    weight_scales = module::getF64Array(filterOp.getScale().value());
+    assert(weight_scales->size() == 0 || weight_scales->size() == attr.oc);
+    use_weight_scale = weight_scales->size() == attr.oc ? true : false;
+  }
   int inner_dim = filter_f32->size() / attr.oc;
   // per-channel
   for (int c = 0; c < attr.oc; c++) { // per-channel quantize
     float *p_filter = filter_f32->data() + c * inner_dim;
     float w_max = findMaxabs(p_filter, inner_dim);
+    if (use_weight_scale) {
+      w_max = weight_scales->at(c) * 127;
+    }
     double qscale = getQscaleForFilter(w_max, out_thr, in_thr);
     if (qscale >= 1) {
       // Now cv18xx not support lshift, if qscale > 1, rshift <= 0 not working
