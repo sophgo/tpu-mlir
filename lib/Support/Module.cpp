@@ -695,19 +695,21 @@ bool isNone(Value v) { return v.getType().isa<mlir::NoneType>(); }
 
 bool isUnranked(Value v) { return v.getType().isa<mlir::UnrankedTensorType>(); }
 
-void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
-  if (isUnranked(v)) {
-    auto newType = RankedTensorType::get(shape, getElementType(v));
-    v.setType(newType);
-  } else {
-    auto s = getShape(v);
-    /* unranked tensor is okay, for example:
-       tensor<*xf32>->tensor<1xf32> */
-    if ((std::max(s.size(), shape.size()) > 1) && s != shape) {
-      v.dump();
-      llvm_unreachable("Shape Verify failed");
+bool isDynamicShape(Value v) {
+  int ret = false;
+  auto tensorTy = v.getType().dyn_cast<RankedTensorType>();
+  if (tensorTy) {
+    for (int64_t dim : tensorTy.getShape()) {
+      if (ShapedType::isDynamic(dim) || dim == 0)
+        ret = true;
     }
   }
+  return ret;
+}
+
+void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
+  auto newType = RankedTensorType::get(shape, getElementType(v));
+  v.setType(newType);
 }
 
 bool isGlobalBuffer(Value v) {
