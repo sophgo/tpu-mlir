@@ -709,7 +709,6 @@ class LearningGptqWeight:
         in_num = shape[0]
         if op not in self.H:
             weight_shape = self.orig_weights[op].shape
-            print(f'init shape of weight {weight_shape}')
             if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
                 weight_shape = self.orig_weights[op].reshape(weight_shape[0],-1).shape
             elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
@@ -1232,6 +1231,8 @@ class LearningAdaWeight:
                 input = self.op_first_input(op, loop)
                 shape = input.shape
                 input = input.reshape(-1,shape[-1]).transpose()
+                if len(grd_dst.shape) == 1:
+                    grd_dst=grd_dst.reshape(1,grd_dst.shape[0])
                 shape = grd_dst.shape
                 grd_d = grd_dst.reshape(-1,shape[-1])
                 grd_w = np.matmul(input, grd_d)
