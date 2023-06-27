@@ -106,6 +106,8 @@ class TorchInterpreter():
             "aten::new_zeros": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::new_ones": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::meshgrid": ['indexing'],
+            "aten::empty": ['dtype', 'layout', 'device', 'pin_memory','memory_format'],
+            "aten::baddbmm": ['beta','alpha'],
         }
         assert node.op_type.split('::')[0] == 'aten'
         # get input list
