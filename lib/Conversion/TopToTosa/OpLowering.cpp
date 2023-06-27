@@ -19,7 +19,9 @@ void populateTopToTosaConversionPatterns(RewritePatternSet *patterns) {
         ConvLowering,
         AvgPoolLowering,
         MaxPoolLowering,
-        SoftmaxLowering
+        SoftmaxLowering,
+        ReshapeLowering,
+        MatMulLowering
       // clang-format on
       >(patterns->getContext());
 }
@@ -110,7 +112,6 @@ void ConvLowering::Lowering(PatternRewriter &rewriter, top::ConvOp op) const {
   auto group = op.getGroup();
   // depth_wise conv
   if (ic == oc && oc == group && kc == 1) {
-    // auto weight = op->getOperand(1).getDefiningOp()->getResult(0);
     auto weight = op->getOperand(1);
     auto weightTy = weight.getType().cast<RankedTensorType>(); // NCHW
     // NCHW -> HWCM(HWCN)  In this case, "N"->"C", "C"="M"=1
@@ -137,8 +138,16 @@ void ConvLowering::Lowering(PatternRewriter &rewriter, top::ConvOp op) const {
             ->getResult(0);
     operands.push_back(op->getOperand(0));
     operands.push_back(newweight);
-    for (unsigned i = 2; i < op->getNumOperands(); i++) {
-      operands.push_back(op->getOperand(i));
+    if (op->getOperand(2).getType().isa<mlir::NoneType>()) {
+      std::vector<float> bias(oc, 0);
+      auto const_ty = RankedTensorType::get({oc}, rewriter.getF32Type());
+      DenseElementsAttr attr = DenseElementsAttr::get(
+              const_ty, llvm::ArrayRef(bias.data(), bias.size()));
+      auto constop =
+              rewriter.create<mlir::tosa::ConstOp>(op->getLoc(), const_ty, attr);
+      operands.push_back(constop->getResult(0));
+    } else {
+      operands.push_back(op->getOperand(2));
     }
     // do_relu
     if (op.getDoRelu()) {
@@ -161,7 +170,17 @@ void ConvLowering::Lowering(PatternRewriter &rewriter, top::ConvOp op) const {
   // normal conv
   else if (group == 1) {
     for (auto in : op->getOperands()) {
-      operands.push_back(in);
+      if (in.getType().isa<mlir::NoneType>()){  //bias
+        std::vector<float> bias(oc, 0);
+        auto const_ty = RankedTensorType::get({oc}, rewriter.getF32Type());
+        DenseElementsAttr attr = DenseElementsAttr::get(
+                const_ty, llvm::ArrayRef(bias.data(), bias.size()));
+        auto constop =
+                rewriter.create<mlir::tosa::ConstOp>(op->getLoc(), const_ty, attr);
+        operands.push_back(constop->getResult(0));
+      } else {
+        operands.push_back(in);
+      }
     }
     // do_Relu
     if (op.getDoRelu()) {
@@ -360,6 +379,74 @@ void SoftmaxLowering::Lowering(PatternRewriter &rewriter,
         op->getLoc(), newType, exp->getResult(0), reciprocal->getResult(0),
         rewriter.getI32IntegerAttr(0));
     rewriter.replaceOp(op, mul->getResults());
+  }
+}
+
+
+//===------------------------------------------------------------===//
+// ReshapeLowering
+//===------------------------------------------------------------===//
+void ReshapeLowering::Lowering(PatternRewriter &rewriter,
+                               top::ReshapeOp op) const {
+  assert(op->getNumResults() == 1);
+  auto newType = change_dataformat(op->getResult(0).getType());
+  auto newShape = newType.cast<RankedTensorType>().getShape();
+  //auto attr = rewriter.getNamedAttr("new_shape", rewriter.getDenseI64ArrayAttr(newShape));
+  rewriter.replaceOpWithNewOp<mlir::tosa::ReshapeOp>(op, newType, op->getOperand(0), newShape);
+}
+
+
+//===------------------------------------------------------------===//
+// MatMulLowering
+//===------------------------------------------------------------===//
+void MatMulLowering::Lowering(PatternRewriter &rewriter,
+                               top::MatMulOp op) const{
+  assert(op->getNumResults() == 1);
+  // top::MatMulOp m*k  k*n -> m*n
+  auto m = op->getOperand(0).getType().cast<RankedTensorType>().getShape()[0];
+  auto kl = op->getOperand(0).getType().cast<RankedTensorType>().getShape()[1];
+  auto kr = op->getOperand(1).getType().cast<RankedTensorType>().getShape()[0];
+  auto n = op->getOperand(1).getType().cast<RankedTensorType>().getShape()[1];
+  assert(kl == kr);
+  // ReshapeOp1
+  auto ty1 = RankedTensorType::get({1, m, kl}, rewriter.getF32Type());
+  auto reshape1 = rewriter.create<mlir::tosa::ReshapeOp>(op->getLoc(), ty1, op->getOperand(0), ty1.getShape());
+  // ReshapeOp2
+  auto ty2 = RankedTensorType::get({1, kr, n}, rewriter.getF32Type());
+  auto reshape2 = rewriter.create<mlir::tosa::ReshapeOp>(op->getLoc(), ty2, op->getOperand(1), ty2.getShape());
+  // MatMulOp (right_transpose/left_transpose/... are false by default)
+  auto matmul_ty = RankedTensorType::get({1, m, n}, rewriter.getF32Type());
+  auto matmul = rewriter.create<mlir::tosa::MatMulOp>(op->getLoc(), matmul_ty, reshape1->getResult(0), reshape2->getResult(0));
+  // ReshapeOp [1,m,n] -> [m,n]
+  auto newType = RankedTensorType::get({m, n}, rewriter.getF32Type());
+  auto reshape3 = rewriter.create<mlir::tosa::ReshapeOp>(op->getLoc(), newType, matmul->getResult(0), newType.getShape());
+  auto for_relu = reshape3->getResults();
+  // AddOp  bias!=none
+  if (!op->getOperand(2).getType().isa<mlir::NoneType>()){
+    std::vector<Value> operands;
+    operands.push_back(reshape3->getResult(0));   // 2-dim
+    // ensure rank of the other operand be 2, same as the first operand
+    auto biasTy = op->getOperand(2).getType().cast<RankedTensorType>();
+    if (biasTy.getShape().size() != 2) {
+      auto new_biasTy = RankedTensorType::get({1, biasTy.getShape()[0]}, rewriter.getF32Type());
+      auto reshape4 = rewriter.create<mlir::tosa::ReshapeOp>(op->getLoc(), new_biasTy, op->getOperand(2), new_biasTy.getShape());
+      operands.push_back(reshape4->getResult(0));
+    } else {
+      operands.push_back(op->getOperand(2));
+    }
+    // add_ty = newType
+    auto add = rewriter.create<mlir::tosa::AddOp>(op->getLoc(), newType, operands);
+    for_relu = add->getResults();
+  }
+  // do_relu
+  if (op.getDoRelu()){
+    auto relu_limit = op.getReluLimit();
+    std::vector<NamedAttribute> clamp_attr = gen_clamp_attr(rewriter, newType, relu_limit);
+    auto clamp = rewriter.create<mlir::tosa::ClampOp>(
+                  op->getLoc(), newType, for_relu, clamp_attr);
+    rewriter.replaceOp(op, clamp->getResults());
+  } else {
+    rewriter.replaceOp(op, for_relu);
   }
 }
 

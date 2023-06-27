@@ -27,5 +27,7 @@ OpLowering(Conv)
 OpLowering(AvgPool)
 OpLowering(MaxPool)
 OpLowering(Softmax)
+OpLowering(Reshape)
+OpLowering(MatMul)
 // clang-format on
 } // namespace tpu_mlir

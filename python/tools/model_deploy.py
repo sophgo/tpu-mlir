@@ -55,6 +55,7 @@ class DeployTool:
     def __init__(self, args):
         self.mlir_file = args.mlir
         self.chip = args.chip
+        self.includeWeight = args.includeWeight
         self.excepts = args.excepts
         self.tolerance = args.tolerance
         self.test_input = args.test_input
@@ -94,14 +95,25 @@ class DeployTool:
         file_clean()
 
     def lowering(self):
-        self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
-        file_mark(self.tpu_mlir)
-        self.final_mlir = "{}_final.mlir".format(self.prefix)
-        mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
-                      self.asymmetric, self.quantize_table, self.customization_format,
-                      self.fuse_preprocess, self.aligned_input, self.avoid_f16_overflow)
-        if self.do_validate:
-            tool.validate_tpu_mlir()
+        if self.chip == 'cpu':
+            top_to_tosa(self.mlir_file, "tmp_tosa.mlir", self.includeWeight)
+            # replace func name from "main" to "model"
+            self.tosa_mlir = "{}_tosa.mlir".format(self.prefix)
+            with open("tmp_tosa.mlir", "r", encoding="utf-8") as file:
+                content = file.read()
+            content = content.replace("main", "model")
+            with open(self.tosa_mlir, "w", encoding="utf-8") as file:
+                file.write(content)
+            delete_file("tmp_tosa.mlir")
+        else:
+            self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
+            file_mark(self.tpu_mlir)
+            self.final_mlir = "{}_final.mlir".format(self.prefix)
+            mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
+                          self.asymmetric, self.quantize_table, self.customization_format,
+                          self.fuse_preprocess, self.aligned_input, self.avoid_f16_overflow)
+            if self.do_validate:
+                tool.validate_tpu_mlir()
 
     def _prepare_input_npz(self):
         num_inputs = len(self.test_input)
@@ -193,11 +205,14 @@ class DeployTool:
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
 
     def build_model(self):
-        mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic, self.quant_input,
-                      self.quant_output, self.disable_layer_group, self.merge_weight,
-                      self.op_divide)
-        if self.do_validate:
-            tool.validate_model()
+        if self.chip == 'cpu':
+            tosa_to_llvm(self.tosa_mlir, self.model)
+        else:
+            mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
+                          self.quant_input, self.quant_output, self.disable_layer_group,
+                          self.merge_weight, self.op_divide)
+            if self.do_validate:
+                tool.validate_model()
 
     def validate_model(self):
         size = os.path.getsize(self.model)
@@ -234,11 +249,14 @@ if __name__ == '__main__':
                         help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm")
     parser.add_argument("--chip", required=True, type=str.lower,
                         choices=['bm1686', 'bm1684x', 'bm1684',
-                                 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x'],
+                                 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--model", required=True, help='output model')
     parser.add_argument("--dynamic", action='store_true',
                         help="do compile dynamic")
+    # tosa includeWeight
+    parser.add_argument("--includeWeight", action='store_true',
+                        help="include weight in tosa.mlir")
     # fuse preprocess
     parser.add_argument("--fuse_preprocess", action='store_true',
                         help="add tpu preprocesses (mean/scale/channel_swap) in the front of model")
@@ -277,7 +295,7 @@ if __name__ == '__main__':
     if not args.fuse_preprocess and args.customization_format:
         assert (0 and "Error! If not fuse_preprocess, customization_format shouldn't be set.")
     tool = DeployTool(args)
-    # lowering to tpu
+    # lowering to tpu/tosa
     tool.lowering()
     # generate model
     tool.build_model()
