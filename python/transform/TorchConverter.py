@@ -76,6 +76,7 @@ class TorchConverter(BaseConverter):
             "aten::avg_pool3d": lambda node: self.convert_avgpool_op(node),
             "aten::batch_norm": lambda node: self.convert_batch_norm_op(node),
             "aten::bmm": lambda node: self.convert_matmul_op(node),
+            "aten::baddbmm": lambda node: self.convert_baddbmm_op(node),
             "aten::cat": lambda node: self.convert_concat_op(node),
             "aten::channel_shuffle": lambda node: self.convert_channel_shuffle_op(node),
             "aten::chunk": lambda node: self.convert_chunk_op(node),
@@ -92,6 +93,7 @@ class TorchConverter(BaseConverter):
             "aten::dropout": lambda node: self.convert_skip_op(node),
             "aten::elu": lambda node: self.convert_elu_op(node),
             "aten::embedding": lambda node: self.convert_embedding_op(node),
+            "aten::empty": lambda node: self.convert_skip_op(node),
             "aten::exp": lambda node: self.convert_math_op(node, "exp"),
             "aten::expand": lambda node: self.convert_expand_op(node),
             "aten::expand_as": lambda node: self.convert_expand_as_op(node),
@@ -1792,3 +1794,78 @@ class TorchConverter(BaseConverter):
 
     def convert_dict_construct(self, torch_node: TorchNode):
         pass
+
+    def convert_baddbmm_op(self, torch_node: TorchNode):
+        """baddbmm: val4*op0 + val3*op1@op2"""
+        op0 = self.getOp(torch_node.inputs[0])
+        op1 = self.getOp(torch_node.inputs[1])
+        op2 = self.getOp(torch_node.inputs[2])
+        val4= self.const_val[torch_node.inputs[3]]
+        val3= self.const_val[torch_node.inputs[4]]
+        if val4 == 0 and val3 == 0:# only zero is need
+            new_op3 = top.MulConstOp(self.unranked_type,
+                                    op0,
+                                    val4,
+                                    loc=self.get_loc(torch_node.name+"_mul2"),
+                                    ip=self.mlir.insert_point).output
+            self.addOperand(torch_node.name, new_op3)
+            return
+        elif val3 == 0: # only alpha*op0 is need
+            new_op3 = top.MulConstOp(self.unranked_type,
+                                    op0,
+                                    val4,
+                                    loc=self.get_loc(torch_node.name+"_mul2"),
+                                    ip=self.mlir.insert_point).output
+            self.addOperand(torch_node.name, new_op3)
+            return
+        elif val4 == 0: # only beta*op1*op2 is need
+            new_op = top.MatMulOp(self.unranked_type,
+                                    op1,
+                                    op2,
+                                    self.mlir.none_op,
+                                    loc=self.get_loc(torch_node.name+"_matmul"),
+                                    ip=self.mlir.insert_point).output
+            new_op2 = top.MulConstOp(self.unranked_type,
+                                    new_op,
+                                    val3,
+                                    loc=self.get_loc(torch_node.name+"_mul"),
+                                    ip=self.mlir.insert_point).output
+            self.addOperand(torch_node.name, new_op2)
+            return
+        elif val4 == 1 and val3 == 1: # only op1*op2 + op0 is need
+            new_op = top.MatMulOp(self.unranked_type,
+                                        op1,
+                                        op2,
+                                        self.mlir.none_op,
+                                        loc=self.get_loc(torch_node.name+"_matmul"),
+                                        ip=self.mlir.insert_point).output
+            new_op2 = top.AddOp(self.unranked_type, [new_op, op0],
+                            do_relu=False,
+                            loc=self.get_loc(torch_node.name+"_add"),
+                            ip=self.mlir.insert_point).output
+            self.addOperand(torch_node.name, new_op2)
+            return
+        new_op = top.MatMulOp(self.unranked_type,
+                                    op1,
+                                    op2,
+                                    self.mlir.none_op,
+                                    loc=self.get_loc(torch_node.name+"_matmul"),
+                                    ip=self.mlir.insert_point).output
+        # new_op2: new_op * op3
+        new_op2 = top.MulConstOp(self.unranked_type,
+                                new_op,
+                                val3,
+                                loc=self.get_loc(torch_node.name+"_mul"),
+                                ip=self.mlir.insert_point).output
+        # new_op3: op4 * op0
+        new_op3 = top.MulConstOp(self.unranked_type,
+                                op0,
+                                val4,
+                                loc=self.get_loc(torch_node.name+"_mul2"),
+                                ip=self.mlir.insert_point).output
+        # new_op4: new_op2 + new_op3
+        new_op4 = top.AddOp(self.unranked_type, [new_op2, new_op3],
+                            do_relu=False,
+                            loc=self.get_loc(torch_node.name+"_add"),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op4)
