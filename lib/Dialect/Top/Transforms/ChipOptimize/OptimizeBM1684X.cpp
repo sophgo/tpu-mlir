@@ -7,10 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "llvm/ADT/ArrayRef.h"
+#include <cstdint>
+#include <string>
 
 namespace tpu_mlir {
 
@@ -367,6 +372,38 @@ public:
     return failure();
   }
 };
+class ConvertMultiInputAdd : public OpRewritePattern<top::AddOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::AddOp op,
+                                PatternRewriter &rewriter) const override {
+    auto inputs = op.getInputs();
+    auto name = module::getName(op.getOperation()).str();
+    if (inputs.size() <= 2) {
+      return failure();
+    }
+
+    // Start accumulating from the first input
+    Value accumulated = inputs[0];
+    auto coeffArrayAttr = op.getCoeffAttr().cast<ArrayAttr>();
+    for (int i = 1; i < inputs.size(); ++i) {
+      Location ori_loc = op.getLoc();
+      if (i != inputs.size() - 1) {
+        ori_loc =
+            NameLoc::get(rewriter.getStringAttr(name + std::to_string(i)));
+      }
+      auto newCoeffArrayAttr =
+          rewriter.getArrayAttr({coeffArrayAttr[i - 1], coeffArrayAttr[i]});
+      accumulated = rewriter.create<top::AddOp>(
+          ori_loc, accumulated.getType(), ValueRange{accumulated, inputs[i]},
+          op.getDoReluAttr(), op.getReluLimitAttr(), newCoeffArrayAttr);
+    }
+
+    rewriter.replaceOp(op, accumulated);
+    return success();
+  }
+};
 
 class ConvertScaleOp : public OpRewritePattern<top::ScaleOp> {
 public:
@@ -500,7 +537,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
       ConvertMatMul2Attention,
       ReshapeReorderPattern,
       MergeScale2Conv,
-      ConvertScaleOp
+      ConvertScaleOp,
+      ConvertMultiInputAdd
   >(patterns->getContext());
   // clang-format on
 }
