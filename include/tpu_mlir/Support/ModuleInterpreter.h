@@ -35,7 +35,8 @@ public:
     // else use ALL_TENSOR_IN_MEM
     ALL_TENSOR_IN_MEM,
     ALL_TENSOR_IN_DISK,
-    PART_TENSOR_IN_MEM
+    PART_TENSOR_IN_MEM,
+    PART_SMALL_TENSOR_IN_MEM
   };
   // Interpret the given MLIR module expressed in MLIR TPU IR dialect
   explicit ModuleInterpreter(ModuleOp module);
@@ -49,6 +50,8 @@ public:
   void backward_weight_at(std::string name, const void *dst_grd, const int dst_grd_len, const void *weight_grd, const int weight_grd_len);
   void setTensor(const std::string &name, const void *data, size_t size,
                  bool is_integer = false);
+  bool hasTensorMem(const std::string &name);
+
   std::shared_ptr<std::vector<float>> getTensor(const std::string &name,
                                                 bool express_type = false);
   bool getTensorQuantInfo(const std::string name, std::string &dtype,
@@ -60,6 +63,7 @@ private:
   void allocate_part_tensor_in_mem();
   void allocate_all_tensor_in_mem();
   void allocate_all_tensor_in_disk();
+  void allocate_small_tensor_in_mem();
   bool check_op_in_mem(Operation *op);
   void invoke_part_in_mem(bool express_type = true);
   void invoke_all_in_mem(bool express_type = true);

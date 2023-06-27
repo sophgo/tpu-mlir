@@ -8,15 +8,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/ModuleInterpreter.h"
+#include "cnpy.h"
+#include "progressbar.hpp"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include <llvm/Support/Debug.h>
-#include "progressbar.hpp"
-#include "cnpy.h"
 #include <algorithm>
 #include <functional>
+#include <llvm/Support/Debug.h>
 #include <memory>
 #include <numeric>
 
@@ -43,6 +43,7 @@ ModuleInterpreter::ModuleInterpreter(ModuleOp module) : module(module) {
   LLVM_DEBUG(llvm::dbgs() << "Allocate size: "
                           << total_count * sizeof(float) / 1024 << " KB\n");
   if (total_count >= MAX_COUNT_LIMIT) {
+    // if not work, try rebuild with mem_mode_t::PART_SMALL_TENSOR_IN_MEM
     mem_mode = mem_mode_t::PART_TENSOR_IN_MEM;
   }
 }
@@ -79,6 +80,9 @@ void ModuleInterpreter::allocate_resources() {
   case mem_mode_t::ALL_TENSOR_IN_DISK:
     allocate_all_tensor_in_disk();
     break;
+  case mem_mode_t::PART_SMALL_TENSOR_IN_MEM:
+    allocate_small_tensor_in_mem();
+    break;
   }
 }
 
@@ -88,7 +92,8 @@ bool ModuleInterpreter::check_op_in_mem(Operation *op) {
       continue;
     } else {
       auto name = module::getName(r).str();
-      if (mem_map.find(name) == mem_map.end()) {
+      if (mem_map.find(name) == mem_map.end() ||
+          mem_map[name].use_count() == 0) {
         return false;
       }
     }
@@ -98,7 +103,8 @@ bool ModuleInterpreter::check_op_in_mem(Operation *op) {
       continue;
     } else {
       auto name = module::getName(i).str();
-      if (mem_map.find(name) == mem_map.end()) {
+      if (mem_map.find(name) == mem_map.end() ||
+          mem_map[name].use_count() == 0) {
         return false;
       }
     }
@@ -322,6 +328,95 @@ void ModuleInterpreter::allocate_all_tensor_in_mem() {
   }
 }
 
+void ModuleInterpreter::allocate_small_tensor_in_mem() {
+  all_tensor_names.clear();
+  value_map.clear();
+  mem_map.clear();
+  num_infer_op = 0;
+  for (auto func : module.getOps<FuncOp>()) {
+    // alloce buffer for all value
+    func.walk([&](Operation *op) {
+      if (op == func.getOperation() || isa<top::NoneOp>(op)) {
+        // self
+      } else if (isa<ReturnOp>(op)) {
+        for (auto v : op->getOperands()) {
+          collect_tensor(v);
+          auto name = module::getName(v).str();
+          output_names.push_back(name);
+        }
+      } else if (auto in_op = dyn_cast<top::InputOp>(op)) {
+        auto v = in_op.getOutput();
+        collect_tensor(v);
+        auto name = module::getName(v).str();
+        input_names.push_back(name);
+      } else if (auto wOp = dyn_cast<top::WeightOp>(op)) {
+        auto v = wOp.getOutput();
+        auto name = module::getName(v).str();
+        mem_map[name] = wOp.read_as_float();
+        all_weight_names.push_back(name);
+        value_map[name] = v;
+      } else if (is_no_mem_op(op)) {
+        auto v = op->getResult(0);
+        auto name = module::getName(v).str();
+        auto in = module::getName(op->getOperand(0)).str();
+        mem_map[name] = mem_map[in];
+        all_tensor_names.push_back(name);
+        value_map[name] = v;
+      } else {
+        for (auto r : op->getResults()) {
+          auto count = module::getNumElements(r);
+          auto name = module::getName(r).str();
+          if (count >= 6127616) {
+            // skip op larger than 187MB
+            continue;
+          }
+          collect_tensor(r);
+        }
+      }
+    });
+    module::detachWeightFile(); // to free weight memory
+
+    // input output buffers for all ops
+    func.walk([&](Operation *op) {
+      if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
+        if (check_op_in_mem(op)) {
+          num_infer_op++;
+          auto name = module::getName(op).str();
+          auto param = std::make_shared<InferenceParameter>();
+          for (auto result : op->getResults()) {
+            if (result.getType().isa<NoneType>()) {
+              param->outputs.push_back(nullptr);
+            } else {
+              auto o_name = module::getName(result).str();
+              auto data = mem_map[o_name];
+              param->outputs.push_back(data->data());
+            }
+          }
+          for (auto input : op->getOperands()) {
+            if (module::isNone(input)) {
+              param->inputs.push_back(nullptr);
+              continue;
+            }
+            auto input_name = module::getName(input).str();
+            if (mem_map.find(input_name) == mem_map.end()) {
+              input.dump();
+              llvm_unreachable("input operands not allocated");
+            } else {
+              param->inputs.push_back(mem_map[input_name]->data());
+            }
+          }
+          LLVM_DEBUG(llvm::dbgs() << "init: '" << name << "'\n");
+          if (failed(infer_op.init(*param))) {
+            op->dump();
+            llvm_unreachable("op inferece init failed");
+          }
+          inference_map[name] = param;
+        }
+      }
+    });
+  }
+}
+
 void ModuleInterpreter::fake_quant_weight() {
   module::init(module);
   LLVM_DEBUG(llvm::errs() << "start fake_quant_weight\n");
@@ -359,6 +454,7 @@ void ModuleInterpreter::invoke(bool express_type) {
     invoke_all_in_mem(express_type);
     break;
   case mem_mode_t::PART_TENSOR_IN_MEM:
+  case mem_mode_t::PART_SMALL_TENSOR_IN_MEM:
     invoke_part_in_mem(express_type);
     break;
   default:
@@ -560,7 +656,8 @@ void ModuleInterpreter::invoke_part_in_mem(bool express_type) {
             continue;
           }
           auto name = module::getName(in).str();
-          if (mem_map.find(name) == mem_map.end()) {
+          if (mem_map.find(name) == mem_map.end() ||
+              mem_map[name].use_count() == 0) {
             in.dump();
             llvm_unreachable("input operands not allocated");
           } else {
@@ -582,12 +679,15 @@ void ModuleInterpreter::invoke_part_in_mem(bool express_type) {
           }
           auto name = module::getName(out).str();
           auto mem_iter = mem_map.find(name);
-          if (mem_iter != mem_map.end()) {
+          if (mem_iter != mem_map.end() && mem_map[name].use_count() > 0) {
             p.outputs.push_back(mem_iter->second->data());
             continue;
           }
           auto count = module::getNumElements(out);
           auto mem = std::make_shared<std::vector<float>>(count);
+          if (mem.use_count() == 0) {
+            llvm_unreachable("allocate failed again!");
+          }
           mem_map[name] = mem;
           p.outputs.push_back(mem->data());
           int num_uses = std::distance(out.user_begin(), out.user_end());
@@ -615,6 +715,11 @@ void ModuleInterpreter::invoke_part_in_mem(bool express_type) {
   llvm::errs() << "\n";
   if (express_type && module::isState(module::State::TPU_LOWERED)) {
     for (auto &name : all_tensor_names) {
+      if (value_map.find(name) == value_map.end() ||
+          mem_map.find(name) == mem_map.end() ||
+          mem_map[name].use_count() == 0) {
+        continue;
+      }
       auto value = value_map.at(name);
       auto mem = mem_map.at(name);
       if (module::isUniformQuantized(value)) {
@@ -672,7 +777,10 @@ void ModuleInterpreter::invoke_from(const std::string op_name) {
 // gradent of weight in conv input is the grd of dst, and returns the gradent of
 // weight
 void ModuleInterpreter::backward_weight_at(const std::string op_name,
-                                      const void *dst_grd, const int dst_grd_len, const void *weight_grd, const int weight_grd_len) {
+                                           const void *dst_grd,
+                                           const int dst_grd_len,
+                                           const void *weight_grd,
+                                           const int weight_grd_len) {
   module::init(module);
   if (value_map.find(op_name) == value_map.end()) {
     llvm::errs() << "Can't find op:" << op_name << "\n";
@@ -692,7 +800,7 @@ void ModuleInterpreter::backward_weight_at(const std::string op_name,
     auto type = result.getType().cast<RankedTensorType>();
     auto name = module::getName(result).str();
     size_t count = type.getNumElements();
-    if (count != dst_grd_len){
+    if (count != dst_grd_len) {
       llvm_unreachable("output size mis-match");
     }
   }
@@ -704,11 +812,11 @@ void ModuleInterpreter::backward_weight_at(const std::string op_name,
     }
     auto type = opd.getType().cast<RankedTensorType>();
     size_t count = type.getNumElements();
-    if (count != weight_grd_len){
+    if (count != weight_grd_len) {
       llvm_unreachable("weight grd size mis-match!");
     }
   }
-  back_param->outputs.push_back((float*)weight_grd);
+  back_param->outputs.push_back((float *)weight_grd);
 
   if (op == nullptr || false == isa<InferenceInterface>(op)) {
     llvm::errs() << "Op :" << op_name << " can't do backward";
@@ -752,10 +860,18 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
   }
 }
 
+bool ModuleInterpreter::hasTensorMem(const std::string &name) {
+  auto it = mem_map.find(name);
+  if (it == mem_map.end() || it->second.use_count() == 0) {
+    return false;
+  }
+  return true;
+}
+
 std::shared_ptr<std::vector<float>>
 ModuleInterpreter::getTensor(const std::string &name, bool express_type) {
   auto it = mem_map.find(name);
-  if (it == mem_map.end()) {
+  if (it == mem_map.end() || mem_map[name].use_count() == 0) {
     llvm::errs() << "Can't find op name: " << name << "\n";
     llvm_unreachable("Error, getTensor failed");
   }
