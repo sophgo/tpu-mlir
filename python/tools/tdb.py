@@ -308,7 +308,21 @@ class Tdb(cmd.Cmd):
                 _offset += size
         elif file.endswith(".npz"):
             inputs = np.load(file)
-            self.set_inputs(*inputs.values())
+            self.set_inputs_dict(inputs)
+
+    def set_inputs_dict(self, inputs):
+        args = self.current_function.signature[0]
+        from utils.lowering import lowering
+
+        for id, arg in enumerate(args):  # type: List[int, tensor_cls]
+            input = lowering(
+                inputs[arg.name],
+                pdtype=arg.dtype.name,
+                pshape=arg.shape,
+                pzero_point=arg.zero_point,
+                pscale=arg.scale,
+            )
+            self.set_input(id, input)
 
     def set_inputs(self, *inputs):
         # args = self.file.module.functions[0].signature[0]
@@ -419,7 +433,6 @@ def __main():
 
 
 if __name__ == "__main__":
-
     args = __main()
     tdb = Tdb()
     if args.bmodel:

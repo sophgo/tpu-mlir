@@ -100,6 +100,7 @@ class Decoder:
 
     def merge_instruction(self, tiu, dma, subnet_id=None):
         main_cmd, inserted_cmd = dma, tiu
+
         # remove the system command
         def get_end(cmd):
             if len(cmd) == 0:
@@ -198,6 +199,11 @@ class BModelReader:
                 list(fbs.Shape(i).DimAsNumpy()) for i in range(fbs.ShapeLength())
             ]
             self.scale = fbs.Scale()
+            self.zero_point = fbs.ZeroPoint()
+
+        @property
+        def dtype_name(self):
+            return self.dtype.name
 
         def __repr__(self):
             return f"{self.name}: {self.shape}({self.device_addr})"
@@ -263,7 +269,6 @@ class BModelReader:
 
 
 def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
-
     chip = bmodel_net.nets["Chip"][0]
     assert chip.upper() == decoder.context.device.name
     context = decoder.context

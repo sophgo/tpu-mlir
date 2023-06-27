@@ -15,32 +15,7 @@ import os
 import struct
 import shutil
 from utils.misc import str2bool
-
-
-def round_away_from_zero(x):
-    a = np.floor(np.abs(x) + 0.5)
-    return np.sign(x) * a
-
-
-def bf16_to_fp32(d_bf16):
-    s = d_bf16.shape
-    d_bf16 = d_bf16.flatten()
-    assert d_bf16.dtype == np.uint16
-    d_fp32 = np.empty_like(d_bf16, dtype=np.float32)
-    for i in range(len(d_bf16)):
-        d_fp32[i] = struct.unpack('<f', struct.pack('<HH', 0, d_bf16[i]))[0]
-    return d_fp32.reshape(s)
-
-
-def fp32_to_bf16(d_fp32):
-    s = d_fp32.shape
-    d_fp32 = d_fp32.flatten()
-    assert d_fp32.dtype == np.float32
-    d_bf16 = np.empty_like(d_fp32, dtype=np.uint16)
-    for i in range(len(d_bf16)):
-        bytes = struct.pack('f', d_fp32[i])
-        d_bf16[i] = struct.unpack('<H', struct.pack('BB', bytes[2], bytes[3]))[0]
-    return d_bf16.reshape(s)
+from utils.lowering import lowering, round_away_from_zero, bf16_to_fp32
 
 
 def show_fake_cmd(in_npz: str, model: str, out_npz: str):
@@ -116,41 +91,7 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
                 input_shapes.append(input.shape)
             else:
                 input_shapes.append(i.data.shape)
-        zp = i.qzero_point
-        if i.data.dtype == input.dtype:
-            i.data[:] = input.reshape(i.data.shape)
-        elif i.dtype == "i8" and input.dtype == np.float32:
-            data = round_away_from_zero(input * i.qscale + zp)
-            i.data[:] = np.clip(data, -128, 127).astype(np.int8).reshape(i.data.shape)
-        elif i.dtype == "i8" and input.dtype == np.int32:
-            data = round_away_from_zero(input * i.qscale + zp)
-            i.data[:] = np.clip(data, -128, 127).astype(np.int8).reshape(i.data.shape)
-        elif i.dtype == "u8" and input.dtype == np.int32:
-            data = round_away_from_zero(input * i.qscale + zp)
-            i.data[:] = np.clip(data,  0, 255).astype(np.int8).reshape(i.data.shape)
-        elif i.dtype == "u8" and input.dtype == np.float32:
-            data = round_away_from_zero(input * i.qscale + zp)
-            i.data[:] = np.clip(data, 0, 255).astype(np.uint8).reshape(i.data.shape)
-        elif i.dtype == "u16" and (input.dtype == np.float32 or input.dtype == np.int32):
-            i.data[:] = input.astype(np.uint16).reshape(i.data.shape)
-        elif i.dtype == "i16" and (input.dtype == np.float32 or input.dtype == np.int32):
-            i.data[:] = input.astype(np.int16).reshape(i.data.shape)
-        elif i.dtype == "f16" and input.dtype == np.float32:
-            i.data[:] = input.astype(np.float16)
-        elif i.dtype == "bf16" and input.dtype == np.float32:
-            i.data[:] = fp32_to_bf16(input).reshape(i.data.shape)
-        elif i.dtype == "i32" and (input.dtype == np.float32 or input.dtype == np.int64):
-            i.data[:] = input.astype(np.int32).reshape(i.data.shape)
-        elif i.dtype == "i4" and input.dtype == np.float32:
-            data = round_away_from_zero(input * i.qscale + zp)
-            i.data[:] = np.clip(data, -8, 7).astype(np.int8).reshape(i.data.shape)
-        elif i.dtype == "u4" and input.dtype == np.float32:
-            data = round_away_from_zero(input * i.qscale + zp)
-            i.data[:] = np.clip(data, 0, 15).astype(np.uint8).reshape(i.data.shape)
-        elif i.dtype == "f32":
-            i.data[:] = input.astype(np.float32)
-        else:
-            raise ValueError(f"unknown type: form {input.dtype} to {i.data.dtype}")
+        i.data[:] = lowering(input, pdtype=i.dtype, pshape=i.data.shape,pzero_point=i.qzero_point, pscale=i.qscale)
 
     size = os.path.getsize(model_file)
     pack_bmodel_context = (iter([None]) if is_cv18xx else pack_bmodel_context_generator(
