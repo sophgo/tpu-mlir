@@ -119,6 +119,17 @@ private:
   bool include_weight;
 };
 
+struct EraseTopNoneOp : public OpRewritePattern<top::NoneOp> {
+public:
+  using OpRewritePattern<top::NoneOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::NoneOp op,
+                                PatternRewriter &rewriter) const override {
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 struct ConvertTopToTosa
     : public ::impl::ConvertTopToTosaBase<ConvertTopToTosa> {
 public:
@@ -142,10 +153,10 @@ public:
     config.maxIterations = 1;
     applyPatternsAndFoldGreedily(module_, std::move(patterns), config);
 
-    // Erase TOP::InputOp
-    // patterns.clear();
-    // patterns.add<EraseTopInputOp>(ctx_);
-    // applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    // Erase TOP::NoneOp
+    patterns.clear();
+    patterns.add<EraseTopNoneOp>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
 
     module::updateModuleTypes();
     module::setState(module::State::TOSA_F32);

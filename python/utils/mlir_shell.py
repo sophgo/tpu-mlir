@@ -171,16 +171,69 @@ def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show
 
 
 # TOPTOTOSA
-def top2tosa(
-    top_mlir: str,
-    tosa_mlir: str,
-):
+def top_to_tosa(top_mlir: str,
+                tosa_mlir: str,
+                includeWeight: bool = False):
     cmd = ["tpuc-opt", top_mlir]
-    lower_param = "--convert-top-to-tosa"
+    lower_param = "--convert-top-to-tosa=\"includeWeight="
+    if includeWeight:
+        lower_param += "True\""
+    else:
+        lower_param += "False\""
     cmd.extend([
         lower_param,
         "--canonicalize",
         "-o",
-        tosa_mlir,
+        tosa_mlir
     ])
+    _os_system(cmd)
+
+# TOSATOObj
+def tosa_to_llvm(tosa_mlir: str,
+                 objfile: str):
+    cmd = ["mlir-opt", tosa_mlir]
+    lower_param = ("--pass-pipeline=\"builtin.module("
+                   "func.func(tosa-to-linalg-named, tosa-to-linalg, tosa-to-arith, tosa-to-tensor, tosa-to-scf), "
+                   "convert-tensor-to-linalg, "
+                   "func.func(canonicalize, linalg-bufferize, convert-linalg-to-affine-loops, affine-loop-fusion, affine-simplify-structures, lower-affine), "
+                   "func-bufferize, "
+                   "func.func(tensor-bufferize, llvm-request-c-wrappers), "
+                   "arith-expand, arith-bufferize, normalize-memrefs, convert-scf-to-cf, "
+                   "convert-math-to-llvm, convert-arith-to-llvm, convert-func-to-llvm, convert-cf-to-llvm, "
+                   "convert-bufferization-to-memref, memref-expand, expand-strided-metadata, finalize-memref-to-llvm, "
+                   "canonicalize, llvm-legalize-for-export, reconcile-unrealized-casts)\""
+                   "| mlir-translate --mlir-to-llvmir "
+                   "| llc -mtriple=x86_64-unknown-linux-gnu --filetype=obj")
+    cmd.extend([
+        lower_param,
+        "-o",
+        objfile
+    ])
+    _os_system(cmd)
+
+# Model inference on CPU
+def model_inference_cpu(objfile: str,
+                        output_size: str):
+    # generate executable file: a.out
+    print("Generating executable file a.out ...")
+    ccompiler = "clang"
+    cfile = "/workspace/tpu-mlir/capi/runtime_cpu.c"
+    model = objfile
+    lib1 = "/workspace/tpu-mlir/capi/lib/libmlir_c_runner_utils.so.17git"
+    lib2 = "/workspace/tpu-mlir/capi/lib/libmlir_runner_utils.so.17git"
+    lib3 = "/workspace/tpu-mlir/capi/lib/libmlir_float16_utils.so.17git"
+    lib4 = "-lm"
+    cflag = "-fPIC"
+    cmd = [ccompiler, cfile, model, lib1, lib2, lib3, lib4, cflag]
+    _os_system(cmd)
+    print("Successfully generate executable file a.out!")
+    # execute model inference
+    print("Runing ...")
+    cmd1 = ["./a.out", output_size]
+    _os_system(cmd1)
+    print("Inference ends successfully! Results are saved in inference_result.txt.")
+
+# Extra tool: delete file in current directory
+def delete_file(file: str):
+    cmd = ["rm -f", file]
     _os_system(cmd)
