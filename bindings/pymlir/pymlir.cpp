@@ -111,6 +111,10 @@ public:
   py::dict getAllTensor() {
     py::dict py_ret;
     for (auto &name : interpreter_->all_tensor_names) {
+      if(!interpreter_->hasTensorMem(name)){
+        // skip when part mem or memory allocated failed.
+        continue;
+      }
       auto tensor = interpreter_->getTensor(name);
       auto shape = interpreter_->getTensorShape(name);
       py::str py_s(name);
