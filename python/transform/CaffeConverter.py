@@ -757,6 +757,7 @@ class CaffeConverter(BaseConverter):
             'pads': padding * dim,
             'group': g,
             'do_relu': False,
+            'output_padding': dim * [0]
         }
         output_shape = self.getShape(layer.top[0])
         new_op = top.DeconvOp(self.mlir.get_tensor_type(output_shape),
