@@ -117,3 +117,11 @@ LogicalResult tpu::WhereOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+LogicalResult tpu::WhereOp::LocalGenSupport() {
+  if (module::isBM1684Family()) {
+    llvm::errs() << "1684 Where not support local\n";
+    return failure();
+  }
+  return success();
+}

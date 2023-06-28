@@ -208,7 +208,10 @@ typedef void (*nodechip_masked_fill_local)(uint32_t input_addr, uint32_t mask_ad
 typedef void (*nodechip_float_to_int32_global)(uint64_t bottom_addr, uint64_t top_addr, uint32_t *bottom_shape, int bottom_shape_dims, int sign_A, int sign_C, TENSOR_STORAGE_MODE mode_A, TENSOR_STORAGE_MODE mode_C, ROUND_MODE_T round_mode, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_float_to_int32_local)(uint64_t input_offset, uint64_t output_offset, uint64_t buffer_offset, uint32_t *input_shape, int sign_A, int sign_C, TENSOR_STORAGE_MODE mode_A, TENSOR_STORAGE_MODE mode_C, ROUND_MODE_T round_mode, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_deconv_forward_local_v2)(int bottom_local_offset, int weight_local_offset, int bias_local_offset, int top_local_offset, int* bottom_dim, int* top_dim, int groups, int kh, int kw, int dh, int dw, int up_pad_h, int down_pad_h, int left_pad_w, int right_pad_w, int ins_h, int ins_w, int using_bias, int result_add, int if_relu, int using_depthwise, void*  id_node);
-
+typedef void (*nodechip_select_all)(uint64_t cond_global_addr, uint32_t* cond_shape, uint64_t in0_global_addr, int in0_is_const, float in0_value, uint64_t in1_global_addr, int in1_is_const, float in1_value, uint64_t out_global_addr, uint32_t* top_shape, int if_relu, float relu_limit, int cond_is_int, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_select_fix8b)(uint64_t cond_global_offset, uint64_t then_global_offset, uint64_t else_global_offset, uint64_t select_global_offset, uint64_t arm_reserved_addr, int n, int c, int h, int w,int cond_bcast_n, int cond_bcast_c, int cond_bcast_h, int cond_bcast_w,int then_bcast_n, int then_bcast_c, int then_bcast_h, int then_bcast_w,int else_bcast_n, int else_bcast_c, int else_bcast_h, int else_bcast_w,int cond_is_constant, float cond_value, int cond_sign,int then_is_constant, float then_value, int then_sign, int scalea, int nshifta,int else_is_constant, float else_value, int else_sign, int scaleb, int nshiftb, CMD_ID_NODE *id_node);
+typedef void (*nodechip_select_local)(uint32_t cond_lo, uint32_t* cond_dims, uint32_t imm_lo, uint32_t in0_lo, int in0_is_const, float in0_value, uint32_t in1_lo, int in1_is_const, float in1_value, uint32_t out_lo, uint32_t* tensor_dims, int if_relu, float relu_limit, int cond_is_int, void *pid_node);
+typedef void (*nodechip_select_fix8b_local)(uint32_t cond_lo, uint32_t* cond_dims, uint32_t imm_lo, uint32_t in0_lo, int in0_is_const, int in0_value, uint32_t in1_lo, int in1_is_const, int in1_value, uint32_t out_lo, uint32_t* tensor_dims, int in_sign, int s0_sign, int s1_sign, int scalea, int nshifta, int scaleb, int nshiftb, int if_relu, float relu_limit, void *id_node);
 // clang-format on
 namespace tpu_mlir {
 namespace backend {
@@ -427,6 +430,10 @@ public:
   nodechip_float_to_int32_global dl_nodechip_float_to_int32_global;
   nodechip_float_to_int32_local dl_nodechip_float_to_int32_local;
   nodechip_deconv_forward_local_v2 dl_nodechip_deconv_forward_local_v2;
+  nodechip_select_all dl_nodechip_select_all;
+  nodechip_select_fix8b dl_nodechip_select_fix8b;
+  nodechip_select_local dl_nodechip_select_local;
+  nodechip_select_fix8b_local dl_nodechip_select_fix8b_local;
   // clang-format on
 public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;
