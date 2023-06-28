@@ -49,6 +49,7 @@ void SetNetIO(vector<Value> &inputs, vector<Value> &outputs) {
 }
 
 vector<Value> &get_net_output() { return net_output_tensors; }
+vector<Value> &get_net_input() { return net_input_tensors; }
 bool is_net_input(Value v) { return v.isa<BlockArgument>(); }
 
 bool is_net_output(Value v) {

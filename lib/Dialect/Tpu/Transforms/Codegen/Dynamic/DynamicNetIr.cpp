@@ -912,6 +912,25 @@ bool SubnetIr::check_output_order_swap(const vector<Value> &sub_out) {
   return reoder_flag;
 }
 
+/* note: Error might occurs when subnet input order differ from model's input.
+    Is slightly similiar to case when output order differ */
+vector<int32_t> SubnetIr::model_input_order(const vector<Value> &sub_in) {
+  const vector<Value> &net_input = get_net_input();
+  vector<int32_t> order;
+  if (sub_in.size() <= net_input.size()) {
+    std::map<std::string, int> sub_in_order_map;
+    for (int32_t i = 0; i < sub_in.size(); i++) {
+      sub_in_order_map[module::getName(sub_in[i]).str()] = i;
+    }
+    for (int32_t i = 0; i < net_input.size(); i++) {
+      std::string net_in_name = module::getName(net_input[i]).str();
+      if (sub_in_order_map.count(net_in_name))
+        order.push_back(sub_in_order_map[net_in_name]);
+    }
+  }
+  return order;
+}
+
 void SubnetIr::generate_compiler_ir(
     ModuleOp &module, func::CallOp &call,
     std::function<void(Operation *, SubnetIr *)> task) {
@@ -923,7 +942,9 @@ void SubnetIr::generate_compiler_ir(
   subnet_ = &call;
   net_input_tensor_id.clear();
   net_output_tensor_id.clear();
-  for (auto &v : inputs) {
+  vector<int32_t> order = model_input_order(inputs);
+  for (int32_t i = 0; i < inputs.size(); i++) {
+    Value v = order.size() == inputs.size() ? inputs[order[i]] : inputs[i];
     net_input_tensor_id.push_back(get_tensor_id(v));
     fw_ir_length += sizeof(uint32_t);
   }
