@@ -11,6 +11,7 @@ import ctypes
 import numpy as np
 import os
 from ctypes import Structure, POINTER
+from itertools import chain
 
 
 class local_mem(Structure):
@@ -231,7 +232,7 @@ class BM1684X:
             0x76482254, 0x77080156, 0x77B8D9AA, 0x787B3CCF, 0x792ABBCE, 0x79E80D11,
             0x7A9DB1ED, 0x7B56546B, 0x7C11A6F5, 0x7CC5F63B, 0x7D86876D, 0x7E36D809,
             0x7EF882B7
-        ] + [0] * 64 # 256 sits
+        ]
         LOG_COEFF = [
             0x0, 0x3F800000, 0xBF000000, 0x3EAAAAAB, 0xBE800000, 0x3E4CCCCD,
             0xBE2AAAAB, 0x3E124925, 0xBE000000, 0x3DE38E39, 0xBDCCCCCD, 0x3DBA2E8C,
@@ -248,7 +249,7 @@ class BM1684X:
         ERF_COEFF = [
             0xBFA1FC4E, 0x3F8000C7, 0x3EBF88FB, 0x3DC636C9, 0xBE3EC24C, 0x3E8EC7CC,
             0xBF914E5D, 0x3FBE87B0, 0xBF527892, 0x3E2EF945
-        ] + [0] * 6
+        ]
         SEQ_COEFF = [
             0x0, 0x1, 0x2, 0x3, 0x4, 0x5,
             0x6, 0x7, 0x8, 0x9, 0xA, 0xB,
@@ -299,18 +300,35 @@ class BM1684X:
             0x5822F983, 0x5922F983, 0x5A22F983, 0x5B22F983, 0x5C22F983, 0x5D22F983,
             0x5E22F983, 0x5F22F983
         ]
+        EXP_FP16_COEFF = [
+            0x3C00, 0x3C00, 0x3800, 0x3155, 0x2955, 0x2044, 0x15B0, 0xA80, 0x1A0, 0x2E
+        ]
+        EXP_BF16_COEFF = [
+            0x3f80, 0x3f80, 0x3f00, 0x3e2b, 0x3d2b, 0x3c09, 0x3ab6, 0x3950, 0x37d0, 0x3639
+        ]
         # fmt: on
-        return (
-            EXP_TABLE
-            + EXP_COEFF
-            + LOG_COEFF
-            + ERF_COEFF
-            + SEQ_COEFF
-            + SIN_COEFF
-            + COS_COEFF
-            + ARCSIN_COEFF
-            + TAN_COEFF
+        table = (
+            # table, space BUT we have to align :(
+            (EXP_TABLE, 256),
+            (EXP_COEFF, 32),
+            (EXP_FP16_COEFF, 10),
+            (EXP_BF16_COEFF, 10),
+            (LOG_COEFF, 64),
+            (ERF_COEFF, 16),
+            (SEQ_COEFF, 64),
+            (SIN_COEFF, 32),
+            (COS_COEFF, 32),
+            (ARCSIN_COEFF, 64),
+            (TAN_COEFF, 32),
         )
+
+        def align_to_64bytes(x):
+            x_len = len(x[0])
+            space = x[1]
+            padding = int(np.ceil(space / 16) * 16) - x_len
+            return x[0] + [0] * padding
+
+        return list(chain.from_iterable((align_to_64bytes(x) for x in table)))
 
 
 class BM1684:
