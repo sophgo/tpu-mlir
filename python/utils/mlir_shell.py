@@ -69,7 +69,8 @@ def mlir_lowering(top_mlir: str,
                   quantize_table: str = None,
                   customization_format: str = None,
                   fuse_preprocess: bool = False,
-                  aligned_input: bool = False):
+                  aligned_input: bool = False,
+                  avoid_f16_overflow: bool = False):
     cmd = ["tpuc-opt", top_mlir, "--chip-assign=\"chip={}\"".format(chip.lower())]
     mode = mode.upper()
     asymmetric = False # TODO: always using symmetric, as asymmetric not good
@@ -88,8 +89,8 @@ def mlir_lowering(top_mlir: str,
         assert (tpu_mlir.endswith(".mlir"))
         weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"
         qtable = "qtable={} weightFileName={}".format(quantize_table, weight_name)
-    lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={}\"".format(
-        mode, qtable, asymmetric)
+    lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={} avoid_f16_overflow={}\"".format(
+        mode, qtable, asymmetric, avoid_f16_overflow)
     cmd.extend([
         lower_param,
         "--canonicalize",

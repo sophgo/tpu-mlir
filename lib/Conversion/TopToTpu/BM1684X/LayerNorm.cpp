@@ -84,23 +84,6 @@ void LayerNormLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void LayerNormLowering::LoweringF16(PatternRewriter &rewriter,
                                     top::LayerNormOp op) const {
-  if (module::isCalibratedType(op.getInput()) == false) {
-    LoweringLayerNorm(rewriter, op, rewriter.getF32Type());
-    return;
-  }
-  auto cali_type = module::getCalibratedType(op.getInput());
-  auto max = cali_type.getMax();
-  auto min = cali_type.getMin();
-  auto shape = module::getShape(op.getInput());
-  auto axis = op.getAxis();
-  auto inner_size = std::accumulate(shape.begin() + axis, shape.end(), 1,
-                                    std::multiplies<int64_t>());
-  // assume half distance is (max - min)
-  auto limit = std::pow((max - min) / 2, 2) * inner_size / 2;
-  if (limit > 65504.0) { // F16 Max
-    LoweringLayerNorm(rewriter, op, rewriter.getF32Type());
-    return;
-  }
   LoweringLayerNorm(rewriter, op, rewriter.getF16Type());
 }
 

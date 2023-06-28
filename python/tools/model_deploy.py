@@ -75,6 +75,7 @@ class DeployTool:
         self.disable_layer_group = args.disable_layer_group
         self.merge_weight = args.merge_weight
         self.op_divide = args.op_divide
+        self.avoid_f16_overflow = args.avoid_f16_overflow
         self.correctness = "0.99,0.90"
         if self.quantize_table:
             self.correctness = "0.99,0.85"
@@ -98,7 +99,7 @@ class DeployTool:
         self.final_mlir = "{}_final.mlir".format(self.prefix)
         mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
                       self.asymmetric, self.quantize_table, self.customization_format,
-                      self.fuse_preprocess, self.aligned_input)
+                      self.fuse_preprocess, self.aligned_input, self.avoid_f16_overflow)
         if self.do_validate:
             tool.validate_tpu_mlir()
 
@@ -137,8 +138,8 @@ class DeployTool:
                     if self.fuse_preprocess:
                         #fuse_preprocess should input origin image format
                         if self.customization_format == '':
-                            self.customization_format = getCustomFormat(ppa.pixel_format,
-                                                                        ppa.channel_format)
+                            self.customization_format = getCustomFormat(
+                                ppa.pixel_format, ppa.channel_format)
                         config = {
                             'input_shapes': input_shape,
                             'resize_dims': ppa.resize_dims,
@@ -169,7 +170,8 @@ class DeployTool:
                 else:
                     raise TypeError("Unsupport input type *{}".format(os.path.splitext(infile)))
         if self.aligned_input and not self.fuse_preprocess:
-            raise RuntimeError("Not support now, aligned_input requires fuse_preprocess to be set to True.")
+            raise RuntimeError(
+                "Not support now, aligned_input requires fuse_preprocess to be set to True.")
         np.savez(self.in_f32_npz, **self.inputs)
         if gen_ref:
             gen_in_f32_npz = self.module_name + '_in_f32.npz'
@@ -190,17 +192,9 @@ class DeployTool:
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
 
     def build_model(self):
-        mlir_to_model(
-            self.tpu_mlir,
-            self.model,
-            self.final_mlir,
-            self.dynamic,
-            self.quant_input,
-            self.quant_output,
-            self.disable_layer_group,
-            self.merge_weight,
-            self.op_divide
-        )
+        mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic, self.quant_input,
+                      self.quant_output, self.disable_layer_group, self.merge_weight,
+                      self.op_divide)
         if self.do_validate:
             tool.validate_model()
 
@@ -216,11 +210,9 @@ class DeployTool:
         model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
-            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts,
-                              True)
+            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, True)
         else:
-            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts,
-                              True)
+            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts, True)
 
 
 if __name__ == '__main__':
@@ -237,6 +229,8 @@ if __name__ == '__main__':
                         help="set default qauntization type: F32/BF16/F16/INT8")
     parser.add_argument("--asymmetric", action='store_true',
                         help="do INT8 asymmetric quantization")
+    parser.add_argument("--avoid_f16_overflow", action='store_true',
+                        help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm")
     parser.add_argument("--chip", required=True, type=str.lower,
                         choices=['bm1686', 'bm1684x', 'bm1684',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x'],

@@ -25,7 +25,8 @@ cmake -G Ninja \
   $BUILD_FLAG \
   -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH \
   ${PROJECT_ROOT}
-cmake --build . --target install -j8
+cpu_num=`cat /proc/stat | grep cpu[0-9] -c`
+cmake --build . --target install -j${cpu_num}
 popd
 
 # Clean up some files for release build

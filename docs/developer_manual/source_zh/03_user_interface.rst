@@ -397,6 +397,9 @@ model_deploy.py
    * - calibration_table
      - 否
      - 指定校准表路径, 当存在INT8量化的时候需要校准表
+   * - avoid_f16_overflow
+     - 否
+     - 打开时则部分走F16量化的op, 为了避免溢出, 采用F32实现, 如LayerNorm
    * - tolerance
      - 否
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度
