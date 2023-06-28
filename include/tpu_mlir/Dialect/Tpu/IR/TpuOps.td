@@ -2009,7 +2009,7 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
 }
 
 def Tpu_WhereOp: Tpu_Op<"Where", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Where operator";
   let description = [{
