@@ -486,8 +486,7 @@ public:
     // process shape related ops
     if (module::isBM1684XFamily()) {
       bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
-    }
-    else if (module::isBM1684Family()) {
+    } else if (module::isBM1684Family()) {
       bm1684::populateTopShapeToTpuConversionPatterns(&patterns);
     }
 
@@ -509,7 +508,7 @@ public:
         signalPassFailure();
       patterns.clear();
     }
-    hd_convert_process();
+    host2device_convert_process();
 
     // process other ops
     if (module::isBM1684XFamily()) {
@@ -619,12 +618,13 @@ protected:
     // keep sign for some ops
     // backend not support in out not the same sign
     patterns.clear();
-    patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
+    patterns.add<KeepSignPattern<top::AvgPoolOp>,
+                 KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
                  SetSubConstSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
   }
 
-  void hd_convert_process() {
+  void host2device_convert_process() {
     // return types
     auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
@@ -773,30 +773,28 @@ protected:
                 int input_mm = 0;
                 int weight_num = 0;
                 int tensor_num = 0;
-                for ( auto opdm : matmulop.getOperands()) {
-                  if ( auto w = dyn_cast<top::WeightOp>(opdm.getDefiningOp())) {
-                    weight_num ++;
-                  }
-                  else if (auto mm = dyn_cast<top::GELUOp>(opdm.getDefiningOp())) {
-                    input_mm ++;
-                  }
-                  else {
-                    tensor_num ++;
+                for (auto opdm : matmulop.getOperands()) {
+                  if (auto w = dyn_cast<top::WeightOp>(opdm.getDefiningOp())) {
+                    weight_num++;
+                  } else if (auto mm =
+                                 dyn_cast<top::GELUOp>(opdm.getDefiningOp())) {
+                    input_mm++;
+                  } else {
+                    tensor_num++;
                   }
                 }
                 if (input_mm == 1) {
-                  input_ok ++;
-                  type ++;
-                }
-                else if (tensor_num == 1 ){
-                  input_ok ++;
-                }
-                else {
+                  input_ok++;
+                  type++;
+                } else if (tensor_num == 1) {
+                  input_ok++;
+                } else {
                   input_ok = 0;
                   return;
                 }
                 input_ok++;
-              } else if (auto attenop = dyn_cast<top::AttentionOp>(opd.getDefiningOp())) {
+              } else if (auto attenop =
+                             dyn_cast<top::AttentionOp>(opd.getDefiningOp())) {
                 input_ok++;
               } else {
                 input_ok = 0;
@@ -814,10 +812,12 @@ protected:
             }
 
             for (auto opd : addop.getOperands()) {
-              if (auto matmulop = dyn_cast<top::MatMulOp>(opd.getDefiningOp())) {
-                if (type == 1 && LoweringConfig::quantize_map.find(
+              if (auto matmulop =
+                      dyn_cast<top::MatMulOp>(opd.getDefiningOp())) {
+                if (type == 1 &&
+                    LoweringConfig::quantize_map.find(
                         module::getName(opd.getDefiningOp()).str()) ==
-                    LoweringConfig::quantize_map.end()) {
+                        LoweringConfig::quantize_map.end()) {
                   LoweringConfig::quantize_map.insert(
                       {module::getName(opd.getDefiningOp()).str(),
                        module::Mode::F16});
@@ -946,6 +946,15 @@ protected:
 
   void init_qtable() {
     LoweringConfig::quantize_map.clear();
+    if (avoid_f16_overflow && module::getMode() == module::Mode::F16) {
+      mainFunc_.walk([&](Operation *op) {
+        // if have other op need convert from f16 to f32, add here
+        if (isa<top::LayerNormOp>(op)) {
+          auto name = module::getName(op).str();
+          LoweringConfig::quantize_map[name] = module::Mode::F32;
+        }
+      });
+    }
     if (qtable.empty()) {
       return;
     }

@@ -68,8 +68,8 @@ class ConstantFolding(object):
                 self.model.graph.value_info.remove(v)
         try:
             onnx.checker.check_model(self.model)
-        except onnx.onnx_cpp2py_export.checker.ValidationError:
-            print("WARNING: Field 'shape' of type is required but missing.")
+        except:
+            print("WARNING: onnx model check failed")
         self.const_tensors = []
 
     def get_inputs(self):
