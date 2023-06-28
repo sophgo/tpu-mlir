@@ -179,7 +179,7 @@ struct NoKeepDimsAddReshape : public OpRewritePattern<MatMulOp> {
   }
 };
 
-// Matmul + Reshape + Permute0 + Permute1 + n*(slice + squeeze) => Matmul + Reshape + n*(slice + squeeze + Permute2)
+// Matmul + Reshape + Permute0 + (Permute1) + n*(slice + squeeze) => Matmul + Reshape + n*(slice + squeeze + Permute2)
 struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -200,13 +200,14 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
     auto order0 = *module::getI64Array(permute0.getOrder());
     auto permute1 =
         dyn_cast<PermuteOp>(*permute0.getOutput().getUsers().begin());
-    if (!permute1) {
-      return failure();
+    mlir::TypedValue<mlir::TensorType> permute_output;
+    if (permute1) {
+      permute_output = permute1.getOutput();
+    } else {
+      permute_output = permute0.getOutput();
     }
-
     std::vector<SliceOp> slice_vec;
     int slice_axis;
-    auto permute_output = permute1.getOutput();
     for (auto user : permute_output.getUsers()) {
       auto slice = dyn_cast<SliceOp>(user);
       if (!slice) {
@@ -244,49 +245,36 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
     }
 
     // check-2: trans_dim is the same as split_dim
-
-    auto order1 = *module::getI64Array(permute1.getOrder());
     std::vector<int> order_final(order0.size());
-    for (int i = 0; i < order0.size(); ++i) {
-      order_final[i] = order0[order1[i]];
+    if (permute1) {
+      auto order1 = *module::getI64Array(permute1.getOrder());
+      for (int i = 0; i < order0.size(); ++i) {
+        order_final[i] = order0[order1[i]];
+      }
+    } else {
+      for (int i = 0; i < order0.size(); ++i) {
+        order_final[i] = order0[i];
+      }
     }
+
     if (order_final[slice_axis] == slice_axis) {
       return failure();
     }
-    // check-3: sliceops are adjoining
-    int slice_num = slice_vec.size();
-    int64_t start = -1;
-    int64_t end = 0;
-    for (int i = 0; i < slice_num; i++) {
-      auto slice_op = slice_vec[i];
-      const auto steps = module::getI64Array(slice_op.getSteps());
-      const auto offset = module::getI64Array(slice_op.getOffset());
-      const auto ends = module::getI64Array(slice_op.getEnds());
-      if (i == 0) {
-        start = offset->at(slice_axis);
-        end = ends->at(slice_axis);
-      } else {
-        if (offset->at(slice_axis) != end) {
-          return failure();
-        }
-      }
-      const auto &output_shape = module::getShape(slice_op.getOutput());
-      end = offset->at(slice_axis) + output_shape[slice_axis];
-    }
 
     // rewrite
-
+    int slice_num = slice_vec.size();
     auto num_dims = reshape_output_shape.size();
     int new_slice_axis = order_final[slice_axis];
     for (int i = 0; i < slice_num; i++) {
       auto slice_op = slice_vec[i];
+      auto old_offset = module::getI64Array(slice_op.getOffsetAttr());
+      auto old_ends = module::getI64Array(slice_op.getEndsAttr());
       std::vector<int64_t> new_offset(num_dims, 0);
       std::vector<int64_t> new_ends(num_dims, 0);
       auto in_steps = module::getI64Array(slice_op.getSteps());
       for (int j = 0; j < num_dims; j++) {
-        new_offset[j] = (j == new_slice_axis) ? i : 0;
-        new_ends[j] = (j == new_slice_axis) ? new_offset[j] + in_steps->at(j)
-                                            : reshape_output_shape[j];
+        new_offset[order_final[j]] = old_offset->at(j);
+        new_ends[order_final[j]] = old_ends->at(j);
       }
       slice_op->setAttr("offset", rewriter.getI64ArrayAttr(new_offset));
       slice_op->setAttr("ends", rewriter.getI64ArrayAttr(new_ends));

@@ -1575,7 +1575,8 @@ def Tpu_UnsqueezeOp: Tpu_Op<"Unsqueeze"> {
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_SqueezeOp: Tpu_Op<"Squeeze"> {
+def Tpu_SqueezeOp: Tpu_Op<"Squeeze", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "Onnx-Style Squeeze operator";
 
   let description = [{
