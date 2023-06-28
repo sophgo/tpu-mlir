@@ -155,6 +155,7 @@ protected:
   bool tensor_allow_slice_diff(const LgInfo &layer_group, Value &tensor,
                                int &hslice_diff_flag);
   bool check_output_order_swap(const vector<Value> &sub_out);
+  vector<int32_t> model_input_order(const vector<Value> &sub_in);
   void set_ir_offset_len(uint32_t offset, uint32_t len) {
     ir_offset = offset;
     ir_len = len;

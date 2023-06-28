@@ -35,6 +35,7 @@ extern int get_tensor_id(Value v);
 extern bool is_net_input(Value v);
 extern bool is_net_output(Value v);
 extern vector<Value>& get_net_output();
+extern vector<Value>& get_net_input();
 uint32_t push_back_layer_global_tensor(Value v, vector<ir_tensor_info_t>& ir_tensor_info_v, bool is_layer_in);
 void dynamic_push_back_local_tensor(vector<ir_tensor_info_t> &ir_tensor_info_v, Value v);
 void dynamic_push_back_local_buffer(vector<ir_tensor_info_t> &ir_tensor_info_v, int tensor_id, Value output);
