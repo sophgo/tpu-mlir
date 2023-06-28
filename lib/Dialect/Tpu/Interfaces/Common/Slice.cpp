@@ -218,6 +218,19 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
         return failure();
     }
     if (num_dims > 4) {
+      if(num_dims == 5){
+        int64_t in_shape[5];
+        int64_t out_shape[5];
+        tpu_mlir::group_type_t group_type = GROUP_3D;
+        module::getNCDHW(getInput(), in_shape[0],in_shape[1],in_shape[2],in_shape[3], in_shape[4],group_type);
+        module::getNCDHW(getOutput(), out_shape[0],out_shape[1],out_shape[2],out_shape[3], out_shape[4], group_type);
+        for(int i=0; i<5; ++i){
+          if(in_shape[i]!=out_shape[i] && (i!=2)){
+            return failure();
+          }
+        }
+        return success();
+      }
       return failure();
     }
   } else if (module::isBM1684Family()) {
