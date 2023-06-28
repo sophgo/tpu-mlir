@@ -770,7 +770,7 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
     max_dslice = ceiling_func(d, shape_secs.dsecs); // ?no max?
     max_hslice = ceiling_func(h, shape_secs.hsecs);
     max_wslice = ceiling_func(w, shape_secs.wsecs);
-    max_cslice = align_up(ceiling_func(w, shape_secs.wsecs), Arch::NPU_NUM);
+    max_cslice = align_up(ceiling_func(c, shape_secs.csecs), Arch::NPU_NUM);
     si.n.clear();
     si.h.clear();
     si.d.clear();
