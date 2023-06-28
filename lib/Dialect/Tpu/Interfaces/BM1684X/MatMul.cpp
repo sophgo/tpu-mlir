@@ -102,8 +102,9 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
     int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
     int64_t out_dslice, int64_t out_wslice, group_type_t group_type) {
   auto p = parseParam();
-  int64_t n0, c0, h0, w0, n1, c1, h1, w1;
+  int64_t n0, c0, h0, w0;
   module::getNCHW(getInput(), n0, c0, h0, w0, group_type);
+  int64_t n1, c1, h1, w1;
   module::getNCHW(getRight(), n1, c1, h1, w1, group_type);
   // batch dim is 1
   int64_t oshape[4] = {1, 1, 1, 1};
@@ -136,7 +137,7 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
   auto out_type = BM168x::getDataType(getOutput());
   int in_type_len = BM168x::getFmtBytes(in_type);
   int out_type_len = BM168x::getFmtBytes(out_type);
-  if (p.hdim_is_batch && h0 > 1) {
+  if (p.hdim_is_batch && in_hslice > 1) {
     /// if use buffer optimize, L_row_slice == NPU_NUM
     int64_t mm2_cycle =
         (ceiling_func(p.left_transpose ? oshape[1] : w0, BM168x::eu_num(in_type_len)) *
