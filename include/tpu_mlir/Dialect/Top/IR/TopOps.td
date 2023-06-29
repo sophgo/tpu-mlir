@@ -1758,6 +1758,7 @@ def Top_WhereOp : Top_Op<"Where"> {
     DefaultValuedAttr<F64Attr, "0.0">:$y_const_val
   );
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_MaskedFillOp : Top_Op<"MaskedFill"> {
