@@ -204,12 +204,20 @@ public:
         auto weight = tpu_mlir::top::WeightOp::create<uint16_t>(
             add_op, "transposed_add_weight", *weight_tp, newType);
         add_op.setOperand(1, weight);
-      } else {
+      } else if(weight_type.isF32()){
         auto weight_data = weight_op.read<float>();
         auto weight_tp =
             std::make_shared<std::vector<float>>(weight_data->size(), 0);
         function_permute(weight_data->data(), weight_tp->data(), inB_shape, ps);
         auto weight = tpu_mlir::top::WeightOp::create<float>(
+            add_op, "transposed_add_weight", *weight_tp, newType);
+        add_op.setOperand(1, weight);
+      }else if(weight_type.isInteger(8)){
+        auto weight_data = weight_op.read<uint8_t>();
+        auto weight_tp =
+            std::make_shared<std::vector<uint8_t>>(weight_data->size(), 0);
+        function_permute(weight_data->data(), weight_tp->data(), inB_shape, ps);
+        auto weight = tpu_mlir::top::WeightOp::create<uint8_t>(
             add_op, "transposed_add_weight", *weight_tp, newType);
         add_op.setOperand(1, weight);
       }
@@ -302,6 +310,28 @@ public:
       // op.replaceAllUsesWith(op.geInput());
       rewriter.eraseOp(permute_op);
       rewriter.eraseOp(op);
+      return success();
+    } else if (auto mulshift_op = dyn_cast<tpu::MulShiftOp>(nextOp)){
+      auto newType = RankedTensorType::get(
+          in_shape, module::getElementType(mulshift_op.getOutput()));
+      mulshift_op.getOutput().setType(newType);
+      op.replaceAllUsesWith(op.getInput());
+      rewriter.setInsertionPointAfter(mulshift_op);
+      newType = RankedTensorType::get(
+          out_shape, module::getElementType(mulshift_op.getOutput()));
+      auto out_loc = mulshift_op.getLoc(); // keep out location unchanged.
+      auto name = module::getName(mulshift_op.getOutput());
+      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
+      mulshift_op->setLoc(loc);
+      std::vector<NamedAttribute> attrs;
+      attrs.push_back(
+          rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
+      auto new_op = rewriter.create<tpu::PermuteOp>(
+          out_loc, newType,
+          ValueRange{mulshift_op.getOutput(), module::getNoneOp(mulshift_op)},
+          attrs);
+      mulshift_op.getOutput().replaceAllUsesExcept(new_op.getOutput(),
+                                                   {new_op});
       return success();
     }
 

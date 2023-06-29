@@ -1201,6 +1201,10 @@ template void function_permute(uint16_t *from, uint16_t *to,
                                const std::vector<int64_t> &shape,
                                const std::vector<int64_t> &order);
 
+template void function_permute(uint8_t *from, uint8_t *to,
+                               const std::vector<int64_t> &shape,
+                               const std::vector<int64_t> &order);
+
 bool compare(float a, float b, llvm::StringRef mode) {
   if (mode == "Equal" || mode == "Not") {
     return a == b;
