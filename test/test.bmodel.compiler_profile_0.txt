@@ -1,0 +1,22 @@
+--------------------------------------
+s: start time, b: bd_id, g: gdma_id, e: end time, t: cmd cost time, dr: direction, sz: memsize, bw: bandwidth
+--------------------------------------
+ENGINE_BD                                                                      ENGINE_GDMA                                                                    
+                                                                               Conv2D_12|GDMA_TENSOR|s:0|b:0|g:1|e:173|t:174|dr:0|sz:2352|bw:12.59            
+                                                                               Conv2D_12|GDMA_TENSOR|s:174|b:0|g:2|e:229|t:56|dr:0|sz:12|bw:0.20              
+                                                                               Conv2D_12|GDMA_TENSOR|s:230|b:0|g:3|e:285|t:56|dr:0|sz:12|bw:0.20              
+Conv2D_12|PorD|s:286|b:1|g:3|e:299|t:14                                                                                                                       
+                                                                               Conv2D_12|GDMA_TENSOR|s:300|b:1|g:4|e:528|t:229|dr:1|sz:2352|bw:9.57           
+                                                                               AbsAdd_13|GDMA_TENSOR|s:529|b:1|g:5|e:702|t:174|dr:0|sz:2352|bw:12.59          
+AbsAdd_13|AR|s:703|b:2|g:5|e:715|t:13                                                                                                                         
+AbsAdd_13|AR|s:716|b:3|g:5|e:728|t:13                                                                                                                         
+                                                                               AbsAdd_13|GDMA_TENSOR|s:729|b:3|g:6|e:957|t:229|dr:1|sz:2352|bw:9.57           
+--------------------------------------
+API_END total_cycle:958|b:3|g:6
+TCYC : 958
+GDMA SUMMARY : |dr[0] S2L:4728|dr[1] L2S:4704|dr[2] S2S:0|dr[3] L2L:0
+DDR BW USAGE : 14.32710485%
+#######################################
+
+
+flops: 2352, runtime: 0.000958ms, ComputationAbility: 0.002455T

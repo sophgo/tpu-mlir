@@ -1,0 +1,86 @@
+ir_version: 8
+producer_name: "PermuteMove_AddConst"
+graph {
+  node {
+    input: "input"
+    output: "e"
+    op_type: "Abs"
+  }
+  node {
+    input: "e"
+    input: "w"
+    output: "output"
+    op_type: "Add"
+  }
+  name: "PermuteMove_AddConst"
+  input {
+    name: "input"
+    type {
+      tensor_type {
+        elem_type: 1
+        shape {
+          dim {
+            dim_value: 1
+          }
+          dim {
+            dim_value: 16
+          }
+          dim {
+            dim_value: 28
+          }
+          dim {
+            dim_value: 28
+          }
+        }
+      }
+    }
+  }
+  output {
+    name: "output"
+    type {
+      tensor_type {
+        elem_type: 1
+        shape {
+          dim {
+            dim_value: 1
+          }
+          dim {
+            dim_value: 16
+          }
+          dim {
+            dim_value: 28
+          }
+          dim {
+            dim_value: 28
+          }
+        }
+      }
+    }
+  }
+  value_info {
+    name: "e"
+    type {
+      tensor_type {
+        elem_type: 1
+        shape {
+          dim {
+            dim_value: 1
+          }
+          dim {
+            dim_value: 16
+          }
+          dim {
+            dim_value: 28
+          }
+          dim {
+            dim_value: 28
+          }
+        }
+      }
+    }
+  }
+}
+opset_import {
+  domain: ""
+  version: 13
+}

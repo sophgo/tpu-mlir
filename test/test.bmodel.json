@@ -1,0 +1,90 @@
+[
+  {
+    "file-line": 12,
+    "subnet_id": 0,
+    "opcode": "tpu.Conv2D",
+    "bdc_gdma_id(before)": [
+      0,
+      0
+    ],
+    "bdc_gdma_id(after)": [
+      1,
+      4
+    ],
+    "operands": [
+      {
+        "address": 4294975488,
+        "layout": "continuous",
+        "memory_type": "<1x3x14x14xf32>",
+        "name": "input0",
+        "reshape": "",
+        "slice": "[...]",
+        "type": "tensor<1x3x14x14xf32, 4294975488 : i64>"
+      },
+      {
+        "address": 4294967296,
+        "layout": "continuous",
+        "memory_type": "<1x3x1x1xf32>",
+        "name": "input0_bn_merged_to_weight",
+        "reshape": "",
+        "slice": "[...]",
+        "type": "tensor<1x3x1x1xf32, 4294967296 : i64>"
+      },
+      {
+        "address": 4294971392,
+        "layout": "continuous",
+        "memory_type": "<1x3x1x1xf32>",
+        "name": "input0_bn_merged_to_bias",
+        "reshape": "",
+        "slice": "[...]",
+        "type": "tensor<1x3x1x1xf32, 4294971392 : i64>"
+      }
+    ],
+    "results": [
+      {
+        "address": 4294979584,
+        "layout": "continuous",
+        "memory_type": "<1x3x14x14xf32>",
+        "name": "input0_bn",
+        "reshape": "",
+        "slice": "[...]",
+        "type": "tensor<1x3x14x14xf32, 4294979584 : i64>"
+      }
+    ]
+  },
+  {
+    "file-line": 13,
+    "subnet_id": 0,
+    "opcode": "tpu.AbsAdd",
+    "bdc_gdma_id(before)": [
+      1,
+      4
+    ],
+    "bdc_gdma_id(after)": [
+      3,
+      6
+    ],
+    "operands": [
+      {
+        "address": 4294979584,
+        "layout": "continuous",
+        "memory_type": "<1x3x14x14xf32>",
+        "name": "input0_bn",
+        "reshape": "",
+        "slice": "[...]",
+        "type": "tensor<1x3x14x14xf32, 4294979584 : i64>"
+      }
+    ],
+    "results": [
+      {
+        "address": 4294983680,
+        "layout": "continuous",
+        "memory_type": "<1x3x14x14xf32>",
+        "name": "absadd",
+        "reshape": "",
+        "slice": "[...]",
+        "type": "tensor<1x3x14x14xf32, 4294983680 : i64>"
+      }
+    ]
+  }
+]

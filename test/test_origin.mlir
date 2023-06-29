@@ -1,0 +1,17 @@
+#loc = loc(unknown)
+module attributes {module.chip = "ALL", module.name = "test", module.platform = "ONNX", module.state = "TOP_F32", module.weight_file = "test_top_f32_all_origin_weight.npz"} {
+  func.func @main(%arg0: tensor<1x3x14x14xf32> loc(unknown)) -> tensor<1x3x14x14xf32> {
+    %0 = "top.None"() : () -> none loc(#loc)
+    %1 = "top.Input"(%arg0) {channel_format = "nchw", keep_aspect_ratio = false, keep_ratio_mode = "letterbox", mean = [0.000000e+00, 0.000000e+00, 0.000000e+00], pad_type = "center", pad_value = 0 : i64, pixel_format = "bgr", resize_dims = [14, 14], scale = [1.000000e+00, 1.000000e+00, 1.000000e+00]} : (tensor<1x3x14x14xf32>) -> tensor<1x3x14x14xf32> loc(#loc1)
+    %2 = "top.Weight"() : () -> tensor<3xf32> loc(#loc2)
+    %3 = "top.Weight"() : () -> tensor<3xf32> loc(#loc3)
+    %4 = "top.BatchNorm"(%1, %2, %3, %0, %0) {epsilon = 9.9999997473787516E-6 : f64} : (tensor<1x3x14x14xf32>, tensor<3xf32>, tensor<3xf32>, none, none) -> tensor<1x3x14x14xf32> loc(#loc4)
+    %5 = "top.AbsAdd"(%4) {b_val = 1.200000e+00 : f64} : (tensor<1x3x14x14xf32>) -> tensor<1x3x14x14xf32> loc(#loc5)
+    return %5 : tensor<1x3x14x14xf32> loc(#loc)
+  } loc(#loc)
+} loc(#loc)
+#loc1 = loc("input0")
+#loc2 = loc("input0_bn_mean")
+#loc3 = loc("input0_bn_var")
+#loc4 = loc("input0_bn")
+#loc5 = loc("absadd")
