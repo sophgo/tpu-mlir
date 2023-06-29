@@ -436,8 +436,8 @@ void ModelCtx::read_binary(const Binary *binary, uint8_t *buffer) {
 }
 
 // read binary from offset
-void ModelCtx::read_binary(const Binary *binary, uint32_t offset,
-                           uint8_t *buffer, uint32_t size) {
+void ModelCtx::read_binary(const Binary *binary, uint64_t offset,
+                           uint8_t *buffer, uint64_t size) {
   ASSERT(binary != NULL);
   ASSERT(buffer != NULL);
   ASSERT(size + offset <= binary->size());

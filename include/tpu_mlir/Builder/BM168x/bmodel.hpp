@@ -65,7 +65,7 @@ class ModelGen {
   void AddNet(std::string net_name, const flatbuffers::Offset<NetParameter> &parameter,
               uint32_t *net_idx = NULL, uint32_t *stage_idx = NULL);
   // firmware_core.so save into bmodel
-  void AddKernelModule(std::string &version, Binary &tpu_module);
+  void AddKernelModule(std::string &filename, Binary &tpu_module);
   // finish and save to file
   void Finish(const std::string &filename);
 
@@ -112,7 +112,7 @@ class ModelCtx {
   // read binary data to buffer
   void read_binary(const bmodel::Binary *binary, uint8_t *buffer);
   // read binary from offset
-  void read_binary(const bmodel::Binary *binary, uint32_t offset, uint8_t *buffer, uint32_t size);
+  void read_binary(const bmodel::Binary *binary, uint64_t offset, uint8_t *buffer, uint64_t size);
 
   // model buffer data for parse
   const void *data() const;
