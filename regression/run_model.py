@@ -191,13 +191,24 @@ class MODEL_RUN(object):
 
         # generate tpu mlir
         tpu_mlir = f"{self.model_name}_bm1686_tpu_int4_sym.mlir"
-        cmd = [
-            "tpuc-opt", f"{self.model_name}.mlir", "--chip-assign=\"chip=bm1686\"",
-            "--chip-top-optimize",
-            f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
-            "--convert-top-to-tpu=\"mode=INT4 asymmetric=false\"", "--canonicalize",
-            f"-o {tpu_mlir}"
-        ]
+        if "use_quantize_table" in self.ini_content and int(
+                self.ini_content["use_quantize_table"]):
+            qtable=self.cali_table.replace("_cali_table","_qtable")
+            cmd = [
+                "tpuc-opt", f"{self.model_name}.mlir", "--chip-assign=\"chip=bm1686\"",
+                "--chip-top-optimize",
+                f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
+                f"--convert-top-to-tpu=\"mode=INT4 qtable={qtable} asymmetric=false\"", "--canonicalize",
+                f"-o {tpu_mlir}"
+            ]
+        else:
+            cmd = [
+                "tpuc-opt", f"{self.model_name}.mlir", "--chip-assign=\"chip=bm1686\"",
+                "--chip-top-optimize",
+                f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
+                "--convert-top-to-tpu=\"mode=INT4 asymmetric=false\"", "--canonicalize",
+                f"-o {tpu_mlir}"
+            ]
         _os_system(cmd, self.save_log)
 
         # inference and compare
@@ -210,6 +221,8 @@ class MODEL_RUN(object):
         cmd = ["npz_tool.py", "compare", output_npz, self.ini_content["test_reference"], "-v"]
         if "int4_sym_tolerance" in self.ini_content:
             cmd += "--tolerance {}".format(self.ini_content["int4_sym_tolerance"]),
+        if "excepts" in self.ini_content:
+            cmd += ["--excepts {}".format(self.ini_content["excepts"])]
 
         _os_system(cmd, self.save_log)
 
