@@ -294,3 +294,5 @@ template LogicalResult WeightOp::update(const std::vector<uint16_t> &data,
                                         size_t cont);
 template LogicalResult WeightOp::update(const std::vector<uint32_t> &data,
                                         size_t cont);
+template LogicalResult WeightOp::update(const std::vector<float> &data,
+                                        size_t cont);
