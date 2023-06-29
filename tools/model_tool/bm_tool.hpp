@@ -30,9 +30,9 @@ using namespace std;
     exit(-1);                                                                  \
   } while (0)
 
-static const char *type_name_array[] = {"float32", "float16", "int8",
-                                        "uint8",   "int16",   "uint16",
-                                        "int32",   "uint32", "bfloat16", "int4", "uint4"};
+static const char *type_name_array[] = {
+    "float32", "float16", "int8",     "uint8", "int16", "uint16",
+    "int32",   "uint32",  "bfloat16", "int4",  "uint4"};
 static const int type_size_array[] = {4, 2, 1, 1, 2, 2, 4, 4};
 static const int DATA_TYPE_NUM = sizeof(type_name_array) / sizeof(char *);
 
@@ -134,7 +134,8 @@ void bm_show(const string &filename) {
     size_t module_size = module_binary->size();
     std::unique_ptr<uint8_t[]> binary(new uint8_t[module_size]);
     model_ctx.read_binary(module_binary, binary.get());
-    cout << "kernel_module name: " << kernel_module->file_name()->c_str() << endl;
+    cout << "kernel_module name: " << kernel_module->file_name()->c_str()
+         << endl;
     cout << "kernel_module size: " << module_size << endl;
   }
   for (uint32_t idx = 0; idx < model->net()->size(); idx++) {
@@ -158,23 +159,23 @@ void bm_show(const string &filename) {
       }
       show(parameter->Get(i), is_dynamic);
     }
-    auto mem_info = model_ctx.get_bmodel_mem_info();
-    cout << std::endl;
-    cout << "device mem size: "
-         << mem_info.coeff_mem_size + mem_info.neuron_mem_size +
-                mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
-                mem_info.middle_buffer_size + mem_info.dynamic_ir_mem_size
-         << " (coeff: " << mem_info.coeff_mem_size << ", instruct: "
-         << mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
-                mem_info.dynamic_ir_mem_size
-         << ", runtime: "
-         << mem_info.neuron_mem_size + mem_info.middle_buffer_size << ")"
-         << std::endl;
-    cout << "host mem size: "
-         << mem_info.host_coeff_mem_size + mem_info.host_neuron_mem_size
-         << " (coeff: " << mem_info.host_coeff_mem_size
-         << ", runtime: " << mem_info.host_neuron_mem_size << ")" << std::endl;
   }
+  cout << std::endl;
+  auto mem_info = model_ctx.get_bmodel_mem_info();
+  cout << "device mem size: "
+       << mem_info.coeff_mem_size + mem_info.neuron_mem_size +
+              mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
+              mem_info.middle_buffer_size + mem_info.dynamic_ir_mem_size
+       << " (coeff: " << mem_info.coeff_mem_size << ", instruct: "
+       << mem_info.bd_cmd_mem_size + mem_info.gdma_cmd_mem_size +
+              mem_info.dynamic_ir_mem_size
+       << ", runtime: "
+       << mem_info.neuron_mem_size + mem_info.middle_buffer_size << ")"
+       << std::endl;
+  cout << "host mem size: "
+       << mem_info.host_coeff_mem_size + mem_info.host_neuron_mem_size
+       << " (coeff: " << mem_info.host_coeff_mem_size
+       << ", runtime: " << mem_info.host_neuron_mem_size << ")" << std::endl;
 }
 
 // print chip of model
@@ -195,9 +196,10 @@ void bm_show_dynamic(const string &filename) {
   auto model = model_ctx.model();
   auto dyn_subnet_check = [&]() {
     auto subnet = model->net()->Get(0)->parameter()->Get(0)->sub_net();
-    return subnet->Get(subnet->size()-1)->is_dynamic();};
-  if (model->net()->Get(0)->parameter()->Get(0)->is_dynamic()
-      || dyn_subnet_check()) {
+    return subnet->Get(subnet->size() - 1)->is_dynamic();
+  };
+  if (model->net()->Get(0)->parameter()->Get(0)->is_dynamic() ||
+      dyn_subnet_check()) {
     cout << "true";
   } else {
     cout << "false";

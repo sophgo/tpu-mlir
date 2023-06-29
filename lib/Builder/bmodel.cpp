@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include <memory.h>
 #include <stdlib.h>
@@ -33,35 +32,28 @@ const char *BMODEL_TYPE = "B";
 // net compiler bmodel magic is 0xFF55AAEE
 const uint32_t BMODEL_MAGIC = 0xFF55AAEE;
 
-#define BMODEL_LOG(severity) \
-  std::cout << "[BMODEL][" << __func__ << ":" << __LINE__ << "] " << #severity << ": "
+#define BMODEL_LOG(severity)                                                   \
+  std::cout << "[BMODEL][" << __func__ << ":" << __LINE__ << "] " << #severity \
+            << ": "
 
-#define ASSERT(_cond)                           \
-  do {                                          \
-    if (!(_cond)) {                             \
-      BMODEL_LOG(FATAL) << #_cond << std::endl; \
-      exit(-1);                                 \
-    }                                           \
+#define ASSERT(_cond)                                                          \
+  do {                                                                         \
+    if (!(_cond)) {                                                            \
+      BMODEL_LOG(FATAL) << #_cond << std::endl;                                \
+      exit(-1);                                                                \
+    }                                                                          \
   } while (0)
 
-ModelGen::ModelGen(uint32_t reserved_size)
-{
+ModelGen::ModelGen(uint32_t reserved_size) {
   binary_.reserve(reserved_size);
   max_neuron_size_ = 0;
 }
 
-FlatBufferBuilder &ModelGen::Builder()
-{
-  return builder_;
-}
+FlatBufferBuilder &ModelGen::Builder() { return builder_; }
 
-ModelGen::~ModelGen()
-{
-  builder_.Release();
-}
+ModelGen::~ModelGen() { builder_.Release(); }
 
-Binary ModelGen::WriteBinary(size_t size, uint8_t *data)
-{
+Binary ModelGen::WriteBinary(size_t size, uint8_t *data) {
   // ASSERT(size != 0 && data != NULL);
   for (auto &binary : binary_vector_) {
     if (binary.size() != size) {
@@ -79,17 +71,15 @@ Binary ModelGen::WriteBinary(size_t size, uint8_t *data)
   return new_bin;
 }
 
-void ModelGen::AddNet(const flatbuffers::Offset<bmodel::Net> &net)
-{
+void ModelGen::AddNet(const flatbuffers::Offset<bmodel::Net> &net) {
   nets_.push_back(net);
 }
 
-void ModelGen::AddNet(string net_name, const Offset<NetParameter> &parameter, uint32_t *net_idx,
-                      uint32_t *stage_idx)
-{
+void ModelGen::AddNet(string net_name, const Offset<NetParameter> &parameter,
+                      uint32_t *net_idx, uint32_t *stage_idx) {
   ASSERT(net_name.empty() == false);
-  auto net_new = reinterpret_cast<const NetParameter *>(builder_.GetCurrentBufferPointer() +
-                                                        builder_.GetSize() - parameter.o);
+  auto net_new = reinterpret_cast<const NetParameter *>(
+      builder_.GetCurrentBufferPointer() + builder_.GetSize() - parameter.o);
   if (net_new->ctx_size() > max_neuron_size_) {
     max_neuron_size_ = net_new->ctx_size();
   }
@@ -102,7 +92,7 @@ void ModelGen::AddNet(string net_name, const Offset<NetParameter> &parameter, ui
   if (net_idx != NULL) {
     *net_idx = idx;
   }
-  if (idx == net_vector_.size()) {  // if not found
+  if (idx == net_vector_.size()) { // if not found
     NET_INFO_T net_info;
     net_info.name = net_name;
     net_info.parameters.push_back(parameter);
@@ -110,32 +100,39 @@ void ModelGen::AddNet(string net_name, const Offset<NetParameter> &parameter, ui
     if (stage_idx != NULL) {
       *stage_idx = 0;
     }
-  } else {  // if found
+  } else { // if found
     auto &parameters = net_vector_[idx].parameters;
     for (auto &net_offset : parameters) {
       // check whether conflict
-      auto net_old = reinterpret_cast<const NetParameter *>(builder_.GetCurrentBufferPointer() +
-                                                            builder_.GetSize() - net_offset.o);
+      auto net_old = reinterpret_cast<const NetParameter *>(
+          builder_.GetCurrentBufferPointer() + builder_.GetSize() -
+          net_offset.o);
       if (net_old->is_dynamic() != net_new->is_dynamic()) {
         BMODEL_LOG(FATAL) << "net[" << net_name
-                          << "] cannot has dynamic and static at the same time" << std::endl;
+                          << "] cannot has dynamic and static at the same time"
+                          << std::endl;
         exit(-1);
       }
       if (IsTensorConflict(net_old->input_tensor(), net_new->input_tensor())) {
-        BMODEL_LOG(FATAL) << "net[" << net_name << "] input tensors is conflict" << std::endl;
+        BMODEL_LOG(FATAL) << "net[" << net_name << "] input tensors is conflict"
+                          << std::endl;
         exit(-1);
       }
       if (net_old->h_w_dynamic() != net_new->h_w_dynamic() ||
           net_old->n_dynamic() != net_new->n_dynamic()) {
-        BMODEL_LOG(FATAL) << "net[" << net_name << "] dynamic is conflict." << std::endl;
+        BMODEL_LOG(FATAL) << "net[" << net_name << "] dynamic is conflict."
+                          << std::endl;
         exit(-1);
       }
-      bool old_have_subnet =
-          (net_old->sub_net() != NULL) ? (net_old->sub_net()->size() > 1) : false;
-      bool new_have_subnet =
-          (net_new->sub_net() != NULL) ? (net_new->sub_net()->size() > 1) : false;
+      bool old_have_subnet = (net_old->sub_net() != NULL)
+                                 ? (net_old->sub_net()->size() > 1)
+                                 : false;
+      bool new_have_subnet = (net_new->sub_net() != NULL)
+                                 ? (net_new->sub_net()->size() > 1)
+                                 : false;
       if (old_have_subnet != new_have_subnet) {
-        BMODEL_LOG(FATAL) << "net[" << net_name << "] sub net is conflict." << std::endl;
+        BMODEL_LOG(FATAL) << "net[" << net_name << "] sub net is conflict."
+                          << std::endl;
         exit(-1);
       }
     }
@@ -146,8 +143,8 @@ void ModelGen::AddNet(string net_name, const Offset<NetParameter> &parameter, ui
   }
 }
 
-bool ModelGen::IsShapeSame(const bmodel::Shape *left, const bmodel::Shape *right)
-{
+bool ModelGen::IsShapeSame(const bmodel::Shape *left,
+                           const bmodel::Shape *right) {
   if (left->dim()->size() != right->dim()->size()) {
     return false;
   }
@@ -160,11 +157,10 @@ bool ModelGen::IsShapeSame(const bmodel::Shape *left, const bmodel::Shape *right
 }
 
 bool ModelGen::IsTensorConflict(const Vector<Offset<Tensor>> *left,
-                                const Vector<Offset<Tensor>> *right)
-{
+                                const Vector<Offset<Tensor>> *right) {
   if (left->size() != right->size()) {
-    BMODEL_LOG(ERROR) << "tensor size is not the same, [" << left->size() << "] vs ["
-                      << right->size() << "]" << std::endl;
+    BMODEL_LOG(ERROR) << "tensor size is not the same, [" << left->size()
+                      << "] vs [" << right->size() << "]" << std::endl;
     return true;
   }
   bool shape_same = true;
@@ -172,36 +168,41 @@ bool ModelGen::IsTensorConflict(const Vector<Offset<Tensor>> *left,
     auto left_i = left->Get(index);
     auto right_i = right->Get(index);
     if (left_i->name()->str() != right_i->name()->str()) {
-      BMODEL_LOG(ERROR) << "tensor name is not the same, [" << left_i->name() << "] vs ["
-                        << right_i->name() << "]" << std::endl;
+      BMODEL_LOG(ERROR) << "tensor name is not the same, [" << left_i->name()
+                        << "] vs [" << right_i->name() << "]" << std::endl;
       return true;
     }
     if (left_i->data_type() != right_i->data_type()) {
-      BMODEL_LOG(ERROR) << "tensor type is not the same, [" << left_i->data_type() << "] vs ["
+      BMODEL_LOG(ERROR) << "tensor type is not the same, ["
+                        << left_i->data_type() << "] vs ["
                         << right_i->data_type() << "]" << std::endl;
       return true;
     }
     if (left_i->scale() != right_i->scale()) {
-      BMODEL_LOG(ERROR) << "tensor scale is not the same, [" << left_i->scale() << "] vs ["
-                        << right_i->scale() << "]" << std::endl;
+      BMODEL_LOG(ERROR) << "tensor scale is not the same, [" << left_i->scale()
+                        << "] vs [" << right_i->scale() << "]" << std::endl;
       return true;
     }
     if (left_i->zero_point() != right_i->zero_point()) {
-      BMODEL_LOG(ERROR) << "tensor zero_point is not the same, [" << left_i->zero_point() << "] vs ["
+      BMODEL_LOG(ERROR) << "tensor zero_point is not the same, ["
+                        << left_i->zero_point() << "] vs ["
                         << right_i->zero_point() << "]" << std::endl;
       return true;
     }
     // if (left_i->gmem_stmode() != right_i->gmem_stmode()) {
-    //  BMODEL_LOG(ERROR) << "tensor stmode is not the same, [" << left_i->gmem_stmode() << "] vs ["
+    //  BMODEL_LOG(ERROR) << "tensor stmode is not the same, [" <<
+    //  left_i->gmem_stmode() << "] vs ["
     //  << right_i->gmem_stmode() << "]" << std::endl; return true;
     //}
     if (left_i->shape()->size() != right_i->shape()->size()) {
-      BMODEL_LOG(ERROR) << "tensor shape count is not the same, [" << left_i->shape()->size()
-                        << "] vs [" << right_i->shape()->size() << "]" << std::endl;
+      BMODEL_LOG(ERROR) << "tensor shape count is not the same, ["
+                        << left_i->shape()->size() << "] vs ["
+                        << right_i->shape()->size() << "]" << std::endl;
       return true;
     }
     for (uint32_t i = 0; i < left_i->shape()->size(); i++) {
-      if (false == IsShapeSame(left_i->shape()->Get(i), right_i->shape()->Get(i))) {
+      if (false ==
+          IsShapeSame(left_i->shape()->Get(i), right_i->shape()->Get(i))) {
         shape_same = false;
       }
     }
@@ -213,8 +214,7 @@ bool ModelGen::IsTensorConflict(const Vector<Offset<Tensor>> *left,
   return false;
 }
 
-void ModelGen::AddChip(const std::string &arch_name)
-{
+void ModelGen::AddChip(const std::string &arch_name) {
   ASSERT(!arch_name.empty());
   chip_ = arch_name;
 }
@@ -224,14 +224,12 @@ void ModelGen::AddKernelModule(std::string &file_name, Binary &tpu_module) {
   kernel_module_.binary = tpu_module;
 }
 
-void ModelGen::Finish(const string &filename)
-{
+void ModelGen::Finish(const string &filename) {
   this->Finish();
   this->Save(filename);
 }
 
-size_t ModelGen::Finish()
-{
+size_t ModelGen::Finish() {
   // create net
   for (auto net_info : net_vector_) {
     Offset<Vector<Offset<NetParameter>>> parameter = 0;
@@ -283,15 +281,12 @@ size_t ModelGen::Finish()
   return size;
 }
 
-uint8_t *ModelGen::GetBufferPointer()
-{
-  return builder_.GetBufferPointer();
-}
+uint8_t *ModelGen::GetBufferPointer() { return builder_.GetBufferPointer(); }
 
-void ModelGen::Save(const string &filename)
-{
+void ModelGen::Save(const string &filename) {
   ASSERT(!filename.empty());
-  std::ofstream fout(filename, std::ios::out | std::ios::trunc | std::ios::binary);
+  std::ofstream fout(filename,
+                     std::ios::out | std::ios::trunc | std::ios::binary);
   if (!fout) {
     BMODEL_LOG(FATAL) << "Save file[" << filename << "] failed." << std::endl;
     exit(-1);
@@ -308,8 +303,7 @@ void ModelGen::Save(const string &filename)
   fout.close();
 }
 
-void ModelGen::Save(void *buffer)
-{
+void ModelGen::Save(void *buffer) {
   ASSERT(buffer != NULL);
   MODEL_HEADER_T *p_header = (MODEL_HEADER_T *)buffer;
   memset(p_header, 0, sizeof(MODEL_HEADER_T));
@@ -323,8 +317,8 @@ void ModelGen::Save(void *buffer)
   memcpy(p_binary, binary_.data(), p_header->binary_size);
 }
 
-ModelCtx::ModelCtx(const string &filename) : model_gen_(NULL), model_(NULL), bmodel_pointer_(NULL)
-{
+ModelCtx::ModelCtx(const string &filename)
+    : model_gen_(NULL), model_(NULL), bmodel_pointer_(NULL) {
   // read file
   file_.open(filename, std::ios::binary | std::ios::in);
   if (!file_) {
@@ -346,7 +340,8 @@ ModelCtx::ModelCtx(const string &filename) : model_gen_(NULL), model_(NULL), bmo
     BMODEL_LOG(FATAL) << "File[" << filename << "] is broken .." << std::endl;
     exit(-1);
   }
-  if (length < header_.header_size + header_.flatbuffers_size + header_.binary_size) {
+  if (length <
+      header_.header_size + header_.flatbuffers_size + header_.binary_size) {
     BMODEL_LOG(FATAL) << "File[" << filename << "] is broken ..." << std::endl;
     exit(-1);
   }
@@ -356,10 +351,12 @@ ModelCtx::ModelCtx(const string &filename) : model_gen_(NULL), model_(NULL), bmo
   file_.read((char *)model_buffer_, header_.flatbuffers_size);
   flatbuffers::Verifier v((uint8_t *)model_buffer_, header_.flatbuffers_size);
   if (!bmodel::VerifyModelBuffer(v)) {
-    BMODEL_LOG(FATAL) << "Model file[" << filename << "] is broken." << std::endl;
+    BMODEL_LOG(FATAL) << "Model file[" << filename << "] is broken."
+                      << std::endl;
     model_ = bmodel::GetModel(model_buffer_);
     if (model_ != NULL) {
-      BMODEL_LOG(FATAL) << "=========== More Information ===========" << std::endl;
+      BMODEL_LOG(FATAL) << "=========== More Information ==========="
+                        << std::endl;
       BMODEL_LOG(FATAL) << "Version: " << model_->type()->c_str() << "."
                         << model_->version()->c_str() << std::endl;
       BMODEL_LOG(FATAL) << "Chip: " << model_->chip()->c_str() << std::endl;
@@ -373,8 +370,8 @@ ModelCtx::ModelCtx(const string &filename) : model_gen_(NULL), model_(NULL), bmo
 }
 
 ModelCtx::ModelCtx(const void *bmodel_data, size_t size)
-    : model_gen_(NULL), model_(NULL), model_buffer_(NULL), bmodel_pointer_(NULL)
-{
+    : model_gen_(NULL), model_(NULL), model_buffer_(NULL),
+      bmodel_pointer_(NULL) {
   ASSERT(bmodel_data != NULL);
   if (size <= sizeof(header_)) {
     BMODEL_LOG(FATAL) << "Bmodel data is broken ." << std::endl;
@@ -387,20 +384,23 @@ ModelCtx::ModelCtx(const void *bmodel_data, size_t size)
     BMODEL_LOG(FATAL) << "Bmodel data is broken .." << std::endl;
     exit(-1);
   }
-  if (size < header_.header_size + header_.flatbuffers_size + header_.binary_size) {
+  if (size <
+      header_.header_size + header_.flatbuffers_size + header_.binary_size) {
     BMODEL_LOG(FATAL) << "Bmodel data is broken ..." << std::endl;
     exit(-1);
   }
   binary_offset_ = header_.header_size + header_.flatbuffers_size;
   model_buffer_ = (void *)malloc(header_.flatbuffers_size);
   ASSERT(model_buffer_ != NULL);
-  memcpy(model_buffer_, (uint8_t *)bmodel_data + header_.header_size, header_.flatbuffers_size);
+  memcpy(model_buffer_, (uint8_t *)bmodel_data + header_.header_size,
+         header_.flatbuffers_size);
   flatbuffers::Verifier v((uint8_t *)model_buffer_, header_.flatbuffers_size);
   if (!bmodel::VerifyModelBuffer(v)) {
     BMODEL_LOG(FATAL) << "Model data is broken ...." << std::endl;
     model_ = bmodel::GetModel(model_buffer_);
     if (model_ != NULL) {
-      BMODEL_LOG(FATAL) << "=========== More Information ===========" << std::endl;
+      BMODEL_LOG(FATAL) << "=========== More Information ==========="
+                        << std::endl;
       BMODEL_LOG(FATAL) << "Version: " << model_->type()->c_str() << "."
                         << model_->version()->c_str() << std::endl;
       BMODEL_LOG(FATAL) << "Chip: " << model_->chip()->c_str() << std::endl;
@@ -414,18 +414,11 @@ ModelCtx::ModelCtx(const void *bmodel_data, size_t size)
   bmodel_pointer_ = bmodel_data;
 }
 
-ModelCtx::operator bool()
-{
-  return model_ != NULL;
-}
+ModelCtx::operator bool() { return model_ != NULL; }
 
-const Model *ModelCtx::model()
-{
-  return model_;
-}
+const Model *ModelCtx::model() { return model_; }
 
-ModelCtx::~ModelCtx()
-{
+ModelCtx::~ModelCtx() {
   if (model_gen_ != NULL) {
     delete model_gen_;
   }
@@ -434,38 +427,33 @@ ModelCtx::~ModelCtx()
   }
 }
 
-const void *ModelCtx::data() const
-{
-  return model_buffer_;
-}
+const void *ModelCtx::data() const { return model_buffer_; }
 
-const bmodel::MODEL_HEADER_T &ModelCtx::header() const
-{
-    return header_;
-}
+const bmodel::MODEL_HEADER_T &ModelCtx::header() const { return header_; }
 
-void ModelCtx::read_binary(const Binary *binary, uint8_t *buffer)
-{
+void ModelCtx::read_binary(const Binary *binary, uint8_t *buffer) {
   read_binary(binary, 0, buffer, binary->size());
 }
 
 // read binary from offset
-void ModelCtx::read_binary(const Binary *binary, uint32_t offset, uint8_t *buffer, uint32_t size)
-{
+void ModelCtx::read_binary(const Binary *binary, uint32_t offset,
+                           uint8_t *buffer, uint32_t size) {
   ASSERT(binary != NULL);
   ASSERT(buffer != NULL);
   ASSERT(size + offset <= binary->size());
-  if (bmodel_pointer_ == NULL) {  // from file
+  if (bmodel_pointer_ == NULL) { // from file
     file_.seekg(binary_offset_ + binary->start() + offset, std::ios::beg);
     file_.read((char *)buffer, size);
-  } else {  // from buffer
-    memcpy(buffer, (uint8_t *)bmodel_pointer_ + binary_offset_ + binary->start() + offset, size);
+  } else { // from buffer
+    memcpy(buffer,
+           (uint8_t *)bmodel_pointer_ + binary_offset_ + binary->start() +
+               offset,
+           size);
   }
 }
 
 template <typename T>
-static Offset<T> Pack(ModelGen *model_gen, const T *item)
-{
+static Offset<T> Pack(ModelGen *model_gen, const T *item) {
   if (item == NULL) {
     return 0;
   }
@@ -476,8 +464,8 @@ static Offset<T> Pack(ModelGen *model_gen, const T *item)
 }
 
 template <typename T>
-static Offset<Vector<Offset<T>>> Pack(ModelGen *model_gen, const Vector<Offset<T>> *item)
-{
+static Offset<Vector<Offset<T>>> Pack(ModelGen *model_gen,
+                                      const Vector<Offset<T>> *item) {
   if (item == NULL || item->size() == 0) {
     return 0;
   }
@@ -488,8 +476,8 @@ static Offset<Vector<Offset<T>>> Pack(ModelGen *model_gen, const Vector<Offset<T
   return model_gen->Builder().CreateVector(item_v);
 }
 
-void ModelCtx::update_net(const string &net_name, const Vector<Offset<NetStatic>> *net_static)
-{
+void ModelCtx::update_net(const string &net_name,
+                          const Vector<Offset<NetStatic>> *net_static) {
   if (net_static == NULL || net_static->size() == 0) {
     return;
   }
@@ -514,8 +502,8 @@ void ModelCtx::update_net(const string &net_name, const Vector<Offset<NetStatic>
   }
 }
 
-void ModelCtx::update_net(const string &net_name, const Vector<Offset<NetDynamic>> *net_dynamic)
-{
+void ModelCtx::update_net(const string &net_name,
+                          const Vector<Offset<NetDynamic>> *net_dynamic) {
   if (net_dynamic == NULL || net_dynamic->size() == 0) {
     return;
   }
@@ -525,7 +513,8 @@ void ModelCtx::update_net(const string &net_name, const Vector<Offset<NetDynamic
     auto output_offset = Pack(model_gen_, net_param->output_tensor());
     auto stageir_offset = Pack(model_gen_, net_param->stage_ir());
     ASSERT(net_param->binary_ir() != NULL);
-    bmodel::Binary binaryIR(net_param->binary_ir()->start(), net_param->binary_ir()->size());
+    bmodel::Binary binaryIR(net_param->binary_ir()->start(),
+                            net_param->binary_ir()->size());
 
     auto subnet_offset = Pack(model_gen_, net_param->sub_net());
     auto coeff_offset = Pack(model_gen_, net_param->coeff_mem());
@@ -546,8 +535,7 @@ void ModelCtx::update_net(const string &net_name, const Vector<Offset<NetDynamic
   }
 }
 
-void ModelCtx::update_bmodel()
-{
+void ModelCtx::update_bmodel() {
   bool need_update = false;
   for (uint32_t net_idx = 0; net_idx < model_->net()->size(); net_idx++) {
     auto net = model_->net()->Get(net_idx);
@@ -616,22 +604,25 @@ void sha256_final(SHA256_CTX *ctx, uint8_t hash[]);
 
 /**************************** VARIABLES *****************************/
 static const uint32_t k[64] = {
-    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+    0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+    0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+    0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+    0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+    0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+    0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+    0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
 /*********************** FUNCTION DEFINITIONS ***********************/
-void sha256_transform(SHA256_CTX *ctx, const uint8_t data[])
-{
+void sha256_transform(SHA256_CTX *ctx, const uint8_t data[]) {
   uint32_t a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
 
   for (i = 0, j = 0; i < 16; ++i, j += 4)
-    m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
+    m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) |
+           (data[j + 3]);
   for (; i < 64; ++i)
     m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
 
@@ -667,8 +658,7 @@ void sha256_transform(SHA256_CTX *ctx, const uint8_t data[])
   ctx->state[7] += h;
 }
 
-void sha256_init(SHA256_CTX *ctx)
-{
+void sha256_init(SHA256_CTX *ctx) {
   ctx->datalen = 0;
   ctx->bitlen = 0;
   ctx->state[0] = 0x6a09e667;
@@ -681,8 +671,7 @@ void sha256_init(SHA256_CTX *ctx)
   ctx->state[7] = 0x5be0cd19;
 }
 
-void sha256_update(SHA256_CTX *ctx, const uint8_t data[], size_t len)
-{
+void sha256_update(SHA256_CTX *ctx, const uint8_t data[], size_t len) {
   uint32_t i;
 
   for (i = 0; i < len; ++i) {
@@ -696,8 +685,7 @@ void sha256_update(SHA256_CTX *ctx, const uint8_t data[], size_t len)
   }
 }
 
-void sha256_final(SHA256_CTX *ctx, uint8_t hash[])
-{
+void sha256_final(SHA256_CTX *ctx, uint8_t hash[]) {
   uint32_t i;
 
   i = ctx->datalen;
@@ -727,8 +715,9 @@ void sha256_final(SHA256_CTX *ctx, uint8_t hash[])
   ctx->data[56] = ctx->bitlen >> 56;
   sha256_transform(ctx, ctx->data);
 
-  // Since this implementation uses little endian uint8_t ordering and SHA uses big endian,
-  // reverse all the uint8_ts when copying the final state to the output hash.
+  // Since this implementation uses little endian uint8_t ordering and SHA uses
+  // big endian, reverse all the uint8_ts when copying the final state to the
+  // output hash.
   for (i = 0; i < 4; ++i) {
     hash[i] = (ctx->state[0] >> (24 - i * 8)) & 0x000000ff;
     hash[i + 4] = (ctx->state[1] >> (24 - i * 8)) & 0x000000ff;
@@ -741,125 +730,132 @@ void sha256_final(SHA256_CTX *ctx, uint8_t hash[])
   }
 }
 
-void bmodel::CalcSha256(const uint8_t *buffer, uint64_t size, uint8_t sha256[bmodel::SHA256_LEN])
-{
+void bmodel::CalcSha256(const uint8_t *buffer, uint64_t size,
+                        uint8_t sha256[bmodel::SHA256_LEN]) {
   SHA256_CTX ctx;
   sha256_init(&ctx);
   sha256_update(&ctx, buffer, size);
   sha256_final(&ctx, sha256);
 }
 
-static size_t get_tensor_buffer_size(const bmodel::Tensor* tensor){
+static size_t get_tensor_buffer_size(const bmodel::Tensor *tensor) {
   auto dims = tensor->shape()->Get(0)->dim()->size();
   // use sizeof(int) instead of the concrete data type byte size
   //   to guarantee the size is proper for any case
-  auto mem_size = sizeof (int);
+  auto mem_size = sizeof(int);
   for (size_t i = 0; i < dims; i++) {
     mem_size *= tensor->shape()->Get(0)->dim()->Get(i);
   }
   return mem_size;
 }
 
-bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info()
-{
-    ASSERT(model_!= nullptr);
-    bmodel_mem_info_t info;
-    memset(&info, 0, sizeof(info));
-    size_t load_net_num = model()->net()->size();
-    uint64_t net_max_neuron_size = 0;
-    for (size_t net_idx = 0; net_idx < load_net_num; net_idx++) {
-      auto net_params = model()->net()->Get(net_idx)->parameter();
+bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info() {
+  ASSERT(model_ != nullptr);
+  bmodel_mem_info_t info;
+  memset(&info, 0, sizeof(info));
+  size_t load_net_num = model()->net()->size();
+  uint64_t net_max_neuron_size = 0;
+  std::set<std::vector<uint8_t>> device_check_codes;
+  std::set<std::vector<uint8_t>> host_check_codes;
+  for (size_t net_idx = 0; net_idx < load_net_num; net_idx++) {
+    auto net_params = model()->net()->Get(net_idx)->parameter();
 
-      assert(net_params && net_params->size() > 0);
+    assert(net_params && net_params->size() > 0);
 
-      auto stage_num = net_params->size();
-      info.neuron_mem_size= 0;
-      std::set<std::vector<uint8_t>> device_check_codes;
-      std::set<std::vector<uint8_t>> host_check_codes;
-      uint64_t max_neuron_size = 0;
-      bool multi_subnet = false;
-      for(size_t stage_idx=0; stage_idx < stage_num; stage_idx++){
-        auto param = net_params->Get(0);
-        auto subnets = param->sub_net();
-        auto num_subnets = subnets == nullptr ? 0 : subnets->size();
-        uint64_t neuron_size = param->ctx_size();
-        if (neuron_size > max_neuron_size) {
-          max_neuron_size = neuron_size;
+    auto stage_num = net_params->size();
+    info.neuron_mem_size = 0;
+    uint64_t max_neuron_size = 0;
+    bool multi_subnet = false;
+    for (size_t stage_idx = 0; stage_idx < stage_num; stage_idx++) {
+      auto param = net_params->Get(0);
+      auto subnets = param->sub_net();
+      auto num_subnets = subnets == nullptr ? 0 : subnets->size();
+      uint64_t neuron_size = param->ctx_size();
+      if (neuron_size > max_neuron_size) {
+        max_neuron_size = neuron_size;
+      }
+      if (num_subnets > 1) {
+        multi_subnet = true;
+      }
+
+      auto device_coeff_mem = param->coeff_mem();
+      if (device_coeff_mem) {
+        std::vector<uint8_t> device_check_code(
+            device_coeff_mem->check_code()->begin(),
+            device_coeff_mem->check_code()->end());
+        if (device_check_codes.count(device_check_code) == 0) {
+          device_check_codes.insert(device_check_code);
+          info.coeff_mem_size += device_coeff_mem->binary_coeff()->size();
         }
-        if(num_subnets >1) {
-          multi_subnet = true;
-        }
+      }
 
-        auto device_coeff_mem = param->coeff_mem();
-        if(device_coeff_mem){
-            std::vector<uint8_t> device_check_code(device_coeff_mem->check_code()->begin(), device_coeff_mem->check_code()->end());
-            if(device_check_codes.count(device_check_code) == 0){
-              device_check_codes.insert(device_check_code);
-              info.coeff_mem_size += device_coeff_mem->binary_coeff()->size();
+      for (size_t subnet_idx = 0; subnet_idx < num_subnets; subnet_idx++) {
+        auto subnet = subnets->Get(subnet_idx);
+        if (subnet->subnet_mode() == 1) { // cpu subnet
+          auto cpu_param = subnet->cpu_param()->Get(0);
+          if (!cpu_param->cpu_const())
+            continue;
+          int cpu_const_num = cpu_param->cpu_const()->size();
+          for (int i = 0; i < cpu_const_num; i++) {
+            auto host_coeff_mem = cpu_param->cpu_const()->Get(i);
+            if (!host_coeff_mem)
+              continue;
+            std::vector<uint8_t> host_check_code(
+                host_coeff_mem->check_code()->begin(),
+                host_coeff_mem->check_code()->end());
+            if (host_check_codes.count(host_check_code) == 0) {
+              host_check_codes.insert(host_check_code);
+              info.host_coeff_mem_size += host_coeff_mem->const_data()->size();
             }
-        }
-
-        for(size_t subnet_idx=0; subnet_idx< num_subnets; subnet_idx++){
-            auto subnet = subnets->Get(subnet_idx);
-            if(subnet->subnet_mode() == 1) { // cpu subnet
-                auto cpu_param = subnet->cpu_param()->Get(0);
-                if(!cpu_param->cpu_const()) continue;
-                int cpu_const_num = cpu_param->cpu_const()->size();
-                for (int i = 0; i < cpu_const_num; i++) {
-                  auto host_coeff_mem = cpu_param->cpu_const()->Get(i);
-                  if(!host_coeff_mem) continue;
-                  std::vector<uint8_t> host_check_code(host_coeff_mem->check_code()->begin(), host_coeff_mem->check_code()->end());
-                  if(host_check_codes.count(host_check_code) == 0){
-                    host_check_codes.insert(host_check_code);
-                    info.host_coeff_mem_size += host_coeff_mem->const_data()->size();
-                  }
-                }
-            } else if(subnet->subnet_mode() == 0) { // run on TPU static/dynamic
-                if(subnet->is_dynamic()){
-                    info.dynamic_ir_mem_size += subnet->ir_len()*sizeof(uint32_t);
-                } else {
-                    int group_num = subnet->cmd_group()->size();
-                    for (int group_idx = 0; group_idx < group_num; group_idx++) {
-                      auto cmd_group = subnet->cmd_group()->Get(group_idx);
-                      // just for bm1684. bm1684x instructions may be of variable length
-                      if(model()->chip()->str() == "BM1682"){
-                        info.bd_cmd_mem_size += cmd_group->bdc_num()*(1<<8);
-                        info.gdma_cmd_mem_size += cmd_group->gdma_num()*(1<<8);
-                      } else if(model()->chip()->str() == "BM1684"){
-                        info.bd_cmd_mem_size += cmd_group->bdc_num()*(1<<7);
-                        info.gdma_cmd_mem_size += cmd_group->gdma_num()*(1<<7);
-                      }
-                    }
-                }
-            }
-
-        }
-
-        info.host_neuron_mem_size  += param->cpu_mem_size()*sizeof(float);
-
-        for (size_t i = 0; i < param->input_tensor()->size(); i++) {
-          auto tensor = param->input_tensor()->Get(i);
-          auto tensor_buffer_size = get_tensor_buffer_size(tensor);
-          if(info.middle_buffer_size < tensor_buffer_size){
-              info.middle_buffer_size = tensor_buffer_size;
           }
-        }
-        for (size_t i = 0; i < param->output_tensor()->size(); i++) {
-          auto tensor = param->output_tensor()->Get(i);
-          auto tensor_buffer_size = get_tensor_buffer_size(tensor);
-          if(info.middle_buffer_size < tensor_buffer_size){
-              info.middle_buffer_size = tensor_buffer_size;
+        } else if (subnet->subnet_mode() == 0) { // run on TPU static/dynamic
+          if (subnet->is_dynamic()) {
+            info.dynamic_ir_mem_size += subnet->ir_len() * sizeof(uint32_t);
+          } else {
+            int group_num = subnet->cmd_group()->size();
+            for (int group_idx = 0; group_idx < group_num; group_idx++) {
+              auto cmd_group = subnet->cmd_group()->Get(group_idx);
+              // just for bm1684. bm1684x instructions may be of variable length
+              if (model()->chip()->str() == "BM1682") {
+                info.bd_cmd_mem_size += cmd_group->bdc_num() * (1 << 8);
+                info.gdma_cmd_mem_size += cmd_group->gdma_num() * (1 << 8);
+              } else if (model()->chip()->str() == "BM1684") {
+                info.bd_cmd_mem_size += cmd_group->bdc_num() * (1 << 7);
+                info.gdma_cmd_mem_size += cmd_group->gdma_num() * (1 << 7);
+              } else {
+                info.bd_cmd_mem_size += cmd_group->binary_bdc()->size();
+                info.gdma_cmd_mem_size += cmd_group->binary_gdma()->size();
+              }
+            }
           }
         }
       }
-      if(multi_subnet){
-          info.neuron_mem_size += max_neuron_size;
-      } else {
-          if(net_max_neuron_size<max_neuron_size){
-              net_max_neuron_size = max_neuron_size;
-          }
+
+      info.host_neuron_mem_size += param->cpu_mem_size() * sizeof(float);
+
+      for (size_t i = 0; i < param->input_tensor()->size(); i++) {
+        auto tensor = param->input_tensor()->Get(i);
+        auto tensor_buffer_size = get_tensor_buffer_size(tensor);
+        if (info.middle_buffer_size < tensor_buffer_size) {
+          info.middle_buffer_size = tensor_buffer_size;
+        }
+      }
+      for (size_t i = 0; i < param->output_tensor()->size(); i++) {
+        auto tensor = param->output_tensor()->Get(i);
+        auto tensor_buffer_size = get_tensor_buffer_size(tensor);
+        if (info.middle_buffer_size < tensor_buffer_size) {
+          info.middle_buffer_size = tensor_buffer_size;
+        }
       }
     }
-    info.neuron_mem_size += net_max_neuron_size;
-    return info;
+    if (multi_subnet) {
+      info.neuron_mem_size += max_neuron_size;
+    } else {
+      if (net_max_neuron_size < max_neuron_size) {
+        net_max_neuron_size = max_neuron_size;
+      }
+    }
+  }
+  info.neuron_mem_size += net_max_neuron_size;
+  return info;
 }
