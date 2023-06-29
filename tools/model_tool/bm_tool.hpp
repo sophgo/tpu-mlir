@@ -251,6 +251,7 @@ static void update_table(Table *table, const StructDef *struct_def,
             model_ctx.read_binary(binary, data);
             auto new_binary = model_gen.WriteBinary(binary->size(), data);
             binary->mutate_start(new_binary.start());
+            delete[] data;
           }
         }
         break;
@@ -419,9 +420,23 @@ static void combine_bmodels(ModelGen &model_gen,
                             bool is_dir = false) {
   model_gen.AddChip(model_vec[0]->model_ctx->model()->chip()->str());
   auto &builder = model_gen.Builder();
+  bool kernel_load = false;
   for (uint32_t model_idx = 0; model_idx < model_vec.size(); model_idx++) {
     auto &model_info = model_vec[model_idx];
     auto model = model_info->model_ctx->model();
+    if (kernel_load == false) {
+      auto km = model->kernel_module();
+      if (km) {
+        auto binary = km->binary();
+        uint8_t *data = new uint8_t[binary->size()];
+        model_info->model_ctx->read_binary(binary, data);
+        auto new_binary = model_gen.WriteBinary(binary->size(), data);
+        auto filename = km->file_name()->str();
+        model_gen.AddKernelModule(filename, new_binary);
+        kernel_load = true;
+        delete[] data;
+      }
+    }
     for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
       auto net = model->net()->Get(net_idx);
       if (net->parameter() == NULL || net->parameter()->size() == 0) {

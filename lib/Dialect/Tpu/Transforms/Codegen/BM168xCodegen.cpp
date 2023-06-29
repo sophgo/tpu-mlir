@@ -319,7 +319,9 @@ BMCodegen::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
     llvm::errs() << "Warning: coeff size is not correct\n";
   }
   std::vector<uint8_t> sha256(bmodel::SHA256_LEN, 0);
-  bmodel::CalcSha256(data_u8->data(), coeff_size, sha256.data());
+  if (coeff_size <= 0x40000000ull) {
+    bmodel::CalcSha256(data_u8->data(), coeff_size, sha256.data());
+  }
   auto binary_coeff = model_gen->WriteBinary(coeff_size, data_u8->data());
   auto coeff_sha256 = model_gen->Builder().CreateVector(sha256);
   bmodel::CoeffMemBuilder cmb(model_gen->Builder());
@@ -697,11 +699,10 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
-  auto next_index =
-       func->getAttrOfType<DenseI32ArrayAttr>("next_index");
+  auto next_index = func->getAttrOfType<DenseI32ArrayAttr>("next_index");
   std::vector<int> next_id_v(next_index.asArrayRef());
   // for net input directly link to cpu subnet
-  for(auto v : llvm::enumerate(inputs)) {
+  for (auto v : llvm::enumerate(inputs)) {
     auto v_name = module::getName(v.value()).str();
     // if v_name do not in tensor_is_cpu, means it is a net input
     if (tensor_is_cpu.count(v_name) && !tensor_is_cpu[v_name].empty()) {
@@ -766,13 +767,12 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
   inputs.clear();
   func.walk([&](tpu::GenericCpuOp op) {
     for (auto opd : op.getOperands()) {
-      if(!module::isNone(opd))
+      if (!module::isNone(opd))
         inputs.push_back(opd);
     }
   });
 
-  auto next_index =
-       func->getAttrOfType<DenseI32ArrayAttr>("next_index");
+  auto next_index = func->getAttrOfType<DenseI32ArrayAttr>("next_index");
   std::vector<int> next_id_v(next_index.asArrayRef());
 
   for (auto input : inputs) {
@@ -843,8 +843,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(func::CallOp call) {
   auto func = module::getFuncOp(call.getCallee());
   std::vector<Value> inputs;
   std::vector<Value> outputs;
-  auto next_index =
-       func->getAttrOfType<DenseI32ArrayAttr>("next_index");
+  auto next_index = func->getAttrOfType<DenseI32ArrayAttr>("next_index");
   std::vector<int> next_id_v(next_index.asArrayRef());
   func.walk<WalkOrder::PreOrder>([&](Operation *op) {
     if (isa<tpu::IfOp>(op)) {
@@ -882,8 +881,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(func::CallOp call) {
   auto func = module::getFuncOp(call.getCallee());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
-  auto next_index =
-       func->getAttrOfType<DenseI32ArrayAttr>("next_index");
+  auto next_index = func->getAttrOfType<DenseI32ArrayAttr>("next_index");
   std::vector<int> next_id_v(next_index.asArrayRef());
 
   module::getInputsOutputs(call, inputs, outputs);
@@ -901,7 +899,8 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(func::CallOp call) {
       }
     }
   }
-  auto ifOp = dyn_cast<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp());
+  auto ifOp =
+      dyn_cast<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp());
   inputs.clear();
   outputs.clear();
   for (int k = 0; k < ifOp.getNumResults(); k++) {
@@ -954,11 +953,10 @@ BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
-  auto next_index =
-       func->getAttrOfType<DenseI32ArrayAttr>("next_index");
+  auto next_index = func->getAttrOfType<DenseI32ArrayAttr>("next_index");
   std::vector<int> next_id_v(next_index.asArrayRef());
   // for net input directly link to cpu subnet
-  for(auto v : llvm::enumerate(inputs)) {
+  for (auto v : llvm::enumerate(inputs)) {
     auto v_name = module::getName(v.value()).str();
     // if v_name do not in tensor_is_cpu, means it is a net input
     if (tensor_is_cpu.count(v_name) && !tensor_is_cpu[v_name].empty()) {
