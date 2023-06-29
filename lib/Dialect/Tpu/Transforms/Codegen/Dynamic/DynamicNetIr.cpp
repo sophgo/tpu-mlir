@@ -914,19 +914,33 @@ bool SubnetIr::check_output_order_swap(const vector<Value> &sub_out) {
 
 /* note: Error might occurs when subnet input order differ from model's input.
     Is slightly similiar to case when output order differ */
-vector<int32_t> SubnetIr::model_input_order(const vector<Value> &sub_in) {
+vector<int32_t> SubnetIr::align_model_input_order(const vector<Value> &sub_in) {
   const vector<Value> &net_input = get_net_input();
   vector<int32_t> order;
-  if (sub_in.size() <= net_input.size()) {
-    std::map<std::string, int> sub_in_order_map;
-    for (int32_t i = 0; i < sub_in.size(); i++) {
-      sub_in_order_map[module::getName(sub_in[i]).str()] = i;
-    }
-    for (int32_t i = 0; i < net_input.size(); i++) {
-      std::string net_in_name = module::getName(net_input[i]).str();
-      if (sub_in_order_map.count(net_in_name))
-        order.push_back(sub_in_order_map[net_in_name]);
-    }
+  std::map<std::string, int> sub_in_order_map;
+  for (int32_t i = 0; i < sub_in.size(); i++) {
+    sub_in_order_map[module::getName(sub_in[i]).str()] = i;
+  }
+  for (int32_t i = 0; i < net_input.size(); i++) {
+    std::string net_in_name = module::getName(net_input[i]).str();
+    if (sub_in_order_map.count(net_in_name))
+      order.push_back(sub_in_order_map[net_in_name]);
+  }
+  return order;
+}
+
+vector<int32_t> SubnetIr::align_model_output_order(const vector<Value> &sub_out) {
+  const vector<Value> &net_output = get_net_output();
+  assert(sub_out.size() <= net_output.size());
+  vector<int32_t> order;
+  std::map<std::string, int> sub_out_order_map;
+  for (int32_t i = 0; i < sub_out.size(); i++) {
+    sub_out_order_map[module::getName(sub_out[i]).str()] = i;
+  }
+  for (int32_t i = 0; i < net_output.size(); i++) {
+    std::string net_out_name = module::getName(net_output[i]).str();
+    if (sub_out_order_map.count(net_out_name))
+      order.push_back(sub_out_order_map[net_out_name]);
   }
   return order;
 }
@@ -942,16 +956,17 @@ void SubnetIr::generate_compiler_ir(
   subnet_ = &call;
   net_input_tensor_id.clear();
   net_output_tensor_id.clear();
-  vector<int32_t> order = model_input_order(inputs);
+  vector<int32_t> order = align_model_input_order(inputs);
   for (int32_t i = 0; i < inputs.size(); i++) {
     Value v = order.size() == inputs.size() ? inputs[order[i]] : inputs[i];
     net_input_tensor_id.push_back(get_tensor_id(v));
     fw_ir_length += sizeof(uint32_t);
   }
 
-  bool reverse_flag = check_output_order_swap(outputs);
+  // bool reverse_flag = check_output_order_swap(outputs);
+  order = align_model_output_order(outputs);
   for (int32_t i = 0; i < outputs.size(); i++) {
-    Value v = reverse_flag ? outputs[outputs.size() - 1 - i] : outputs[i];
+    Value v = order.size() == outputs.size() ? outputs[order[i]] : outputs[i];
     net_output_tensor_id.push_back(get_tensor_id(v));
     fw_ir_length += sizeof(uint32_t);
   }
