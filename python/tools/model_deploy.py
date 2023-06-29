@@ -158,10 +158,11 @@ class DeployTool:
                         ppb.config(**config)
                         self.inputs[op.name + "_raw"] = ppb.run(infile)
                         self.in_f32_npz = self.module_name + "_in_ori.npz"
+                    else:
+                        self.inputs[ppa.input_name] = ppa.run(infile)
                     if gen_ref:
                         gen_input_f32[ppa.input_name] = ppa.run(infile)
-                        if not self.fuse_preprocess:
-                            self.inputs[ppa.input_name] = gen_input_f32[ppa.input_name]
+
                 elif infile.endswith(".npy"):
                     data = np.load(infile)
                     self.inputs[op.name] = data
