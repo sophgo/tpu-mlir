@@ -106,5 +106,6 @@ LOWERING_BM1684(Mish)
 LOWERING_BM1684(Softsign)
 LOWERING_BM1684(MaskedFill)
 LOWERING_BM1684(Where)
+LOWERING_BM1684(GatherElements)
 } // namespace bm1684
 } // namespace tpu_mlir

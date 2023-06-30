@@ -91,6 +91,7 @@ class ONNX_IR_TESTER(object):
             "Expand2":      (self.test_Expand2,       Y, Y, Y, Y),
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y),
+            "GatherElements": (self.test_GatherElements,      Y, N, N, N),
             "GatherND":     (self.test_GatherND,      Y, N, N, Y),
             "Gather2":      (self.test_Gather2,       N, Y, Y, N),
             "Gather3":      (self.test_Gather3,       Y, Y, Y, N),
@@ -3735,6 +3736,39 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input1, input2], [output],
                                       initializer=[token_data])
         self.onnx_and_test(graph_def, input_data=input_data)
+
+    def test_GatherElements(self, case_name):
+        input_data = {
+            "data": np.array([[[1, 1], [2, 2]], [[3, 3], [4, 4]]], dtype=np.float32)
+        }
+
+        indices = np.array([[[0, 0], [0, 0]], [[1, 1], [0, 0]]], dtype=np.int64)
+        input = helper.make_tensor_value_info('data', TensorProto.FLOAT, input_data["data"].shape)
+        output_shape = [2,2,2]
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        axis = 2
+        indices = helper.make_tensor(
+            "indices",
+            TensorProto.INT64,
+            indices.shape,
+            indices,
+        )
+        add_const = helper.make_tensor(name='const_add',
+                                data_type=TensorProto.FLOAT,
+                                dims=[],
+                                vals=[2.0])
+        gather_node = onnx.helper.make_node("GatherElements",
+                                            inputs=["data", "indices"],
+                                            outputs=["gather_output"],
+                                            axis=axis)
+        add_node = onnx.helper.make_node("Add",
+                                    inputs=["gather_output", "const_add"],
+                                    outputs=["output"])
+
+        graph_def = helper.make_graph([gather_node,add_node],
+                                      case_name, [input], [output],
+                                      initializer=[indices,add_const])
+        self.onnx_and_test(graph_def,input_data=input_data)
 
     def test_GatherND(self, case_name):
         input_datas = [{
