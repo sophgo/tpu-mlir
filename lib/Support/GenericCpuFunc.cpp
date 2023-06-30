@@ -2058,6 +2058,7 @@ int BMCpuOp::getCpuOpType() {
       .Case("topk", CPU_TOPK)
       .Case("onnx_nms", CPU_ONNX_NMS)
       .Case("gathernd_tf", CPU_GATHERND_TF)
+      .Case("gatherelements_pt", CPU_GATHER_PT)
       .Case("tensor_scatter", CPU_TENSOR_SCATTER_OP)
       .Case("grid_sampler", CPU_GRID_SAMPLER)
       .Case("deform_gather", CPU_DEFORM_GATHER)
@@ -2095,6 +2096,16 @@ void BMCpuOp::get_gather_nd_tf_param() {
   cpu_param.batch_dims =
       paramDic.get("batch_dims").cast<IntegerAttr>().getInt();
   this->param_size = sizeof(cpu_gathernd_t);
+  this->param = (void *)malloc(this->param_size);
+  memcpy(this->param, &cpu_param, this->param_size);
+}
+
+void BMCpuOp::get_gatherelements_pt_param() {
+  cpu_gather_t cpu_param{};
+  mlir::DictionaryAttr paramDic = op_.getParam().value();
+  cpu_param.axis =
+      paramDic.get("axis").cast<IntegerAttr>().getInt();
+  this->param_size = sizeof(cpu_gather_t);
   this->param = (void *)malloc(this->param_size);
   memcpy(this->param, &cpu_param, this->param_size);
 }
@@ -2155,6 +2166,9 @@ void BMCpuOp::getCpuParam() {
     break;
   case CPU_GATHERND_TF:
     get_gather_nd_tf_param();
+    break;
+  case CPU_GATHER_PT:
+    get_gatherelements_pt_param();
     break;
   case CPU_TENSOR_SCATTER_OP:
     get_tensor_scatter_param();
@@ -2787,6 +2801,208 @@ void GatherndFunc::invoke() {
     }
   }
 }
+
+//tianjia
+GatherElementsFunc::GatherElementsFunc(GatherElementsParam &param) : param_(param) {}
+
+static inline void gather_dim1_0(
+    float *dst, const float *src,  const int *idx, int64_t *shape, int64_t *org_shape) {
+    for (int i = 0; i < shape[0]; ++i) {
+        *dst = src[*idx];
+        ++dst;
+        ++idx;
+    }
+}
+static inline void gather_dim2_0(
+    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
+    for (int i = 0; i < shape[0]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
+            *dst = src[*idx * org_shape[1] + j];
+            ++dst;
+            ++idx;
+        }
+    }
+}
+static inline void gather_dim2_1(
+    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
+    for (int i = 0; i < shape[0]; ++i) {
+        int idx_i = i * org_shape[1];
+        for (int j = 0; j < shape[1]; ++j) {
+            *dst = src[idx_i + *idx];
+            ++dst;
+            ++idx;
+        }
+    }
+}
+static inline void gather_dim3_0(
+    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
+    int shape_1_2 = org_shape[1] * org_shape[2];
+    for (int i = 0; i < shape[0]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
+            int idx_j = j * org_shape[2];
+            for (int k = 0; k < shape[2]; ++k) {
+                *dst = src[*idx * shape_1_2 + idx_j + k];
+                ++dst;
+                ++idx;
+            }
+        }
+    }
+}
+static inline void gather_dim3_1(
+    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
+    int shape_1_2 = org_shape[1] * org_shape[2];
+    for (int i = 0; i < shape[0]; ++i) {
+        int idx_i = i * shape_1_2;
+        for (int j = 0; j < shape[1]; ++j) {
+            for (int k = 0; k < shape[2]; ++k) {
+                *dst = src[idx_i + *idx * org_shape[2] + k];
+                ++dst;
+                ++idx;
+            }
+        }
+    }
+}
+static inline void gather_dim3_2(
+    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
+    int shape_1_2 = org_shape[1] * org_shape[2];
+    for (int i = 0; i < shape[0]; ++i) {
+        int idx_i = i * shape_1_2;
+        for (int j = 0; j < shape[1]; ++j) {
+            int idx_j = idx_i + j * org_shape[2];
+            for (int k = 0; k < shape[2]; ++k) {
+                *dst = src[idx_j + *idx];
+                ++dst;
+                ++idx;
+            }
+        }
+    }
+}
+static inline void gather_dim4_0(
+    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
+    int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
+    int shape_2_3 = org_shape[2] * org_shape[3];
+    for (int i = 0; i < shape[0]; ++i) {
+        for (int j = 0; j < shape[1]; ++j) {
+            int idx_j = j * shape_2_3;
+            for (int k = 0; k < shape[2]; ++k) {
+                int idx_k = idx_j + k * org_shape[3];
+                for (int g = 0; g < shape[3]; ++g) {
+                    *dst = src[*idx * shape_1_2_3 + idx_k + g];
+                    ++dst;
+                    ++idx;
+                }
+            }
+        }
+    }
+}
+static inline void gather_dim4_1(
+    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
+    int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
+    int shape_2_3 = org_shape[2] * org_shape[3];
+    for (int i = 0; i < shape[0]; ++i) {
+        int idx_i = i * shape_1_2_3;
+        for (int j = 0; j < shape[1]; ++j) {
+            for (int k = 0; k < shape[2]; ++k) {
+                int idx_k = k * org_shape[3];
+                for (int g = 0; g < shape[3]; ++g) {
+                    *dst = src[idx_i + *idx * shape_2_3 + idx_k + g];
+                    ++dst;
+                    ++idx;
+                }
+            }
+        }
+    }
+}
+static inline void gather_dim4_2(
+    float *dst, const float *src, const int *idx, int64_t *shape, int64_t *org_shape) {
+    int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
+    int shape_2_3 = org_shape[2] * org_shape[3];
+    for (int i = 0; i < shape[0]; ++i) {
+        int idx_i = i * shape_1_2_3;
+        for (int j = 0; j < shape[1]; ++j) {
+            int idx_j = idx_i + j * shape_2_3;
+            for (int k = 0; k < shape[2]; ++k) {
+                for (int g = 0; g < shape[3]; ++g) {
+                    *dst = src[idx_j + *idx * org_shape[3] + g];
+                    ++dst;
+                    ++idx;
+                }
+            }
+        }
+    }
+}
+static inline void gather_dim4_3(
+    float *dst, const float *src, const int *idx, int64_t  *shape, int64_t *org_shape) {
+    int shape_1_2_3 = org_shape[1] * org_shape[2] * org_shape[3];
+    int shape_2_3 = org_shape[2] * org_shape[3];
+    for (int i = 0; i < shape[0]; ++i) {
+        int idx_i = i * shape_1_2_3;
+        for (int j = 0; j < shape[1]; ++j) {
+            int idx_j = idx_i + j * shape_2_3;
+            for (int k = 0; k < shape[2]; ++k) {
+                int idx_k = idx_j + k * org_shape[3];
+                for (int g = 0; g < shape[3]; ++g) {
+                    *dst = src[idx_k + *idx];
+                    ++dst;
+                    ++idx;
+                }
+            }
+        }
+    }
+}
+void GatherElementsFunc::invoke() {
+  auto axis = param_.axis;
+  auto input_info = param_.inputs[0];
+  auto indices_info = param_.inputs[1];
+  auto indices_shape = indices_info.shape;
+  auto input_shape = input_info.shape;
+  const float *input = input_info.ptr;
+  float *indices = indices_info.ptr;
+  std::vector<int> indices_v(indices_info.size);
+  for (int i = 0; i < indices_info.size; ++i) {
+    indices_v[i] = (int)indices[i];
+  }
+  auto output_info = param_.output;
+  auto output_shape = output_info.shape;
+  float *output = output_info.ptr;
+  // float *output = param_.output.ptr;
+  switch (input_shape.size()) {
+    case 1:
+        gather_dim1_0(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
+        break;
+    case 2:
+        if (axis == 0)
+            gather_dim2_0(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
+        else if (axis == 1)
+            gather_dim2_1(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
+        break;
+    case 3:
+        if (axis == 0)
+            gather_dim3_0(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
+        else if (axis == 1)
+            gather_dim3_1(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
+        else if (axis == 2)
+            gather_dim3_2(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
+        break;
+    case 4:
+        if (axis == 0)
+            gather_dim4_0(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
+        else if (axis == 1)
+            gather_dim4_1(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
+        else if (axis == 2)
+            gather_dim4_2(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
+        else if (axis == 3)
+            gather_dim4_3(output, input, indices_v.data(), indices_shape.data(), input_shape.data());
+        break;
+    default:
+        printf("error: %s: %d: invalid input dimension: %d. \n",
+               __FILE__, __LINE__, static_cast<int>(input_shape.size()));
+        exit(-1);
+    }
+    output_shape = indices_shape;
+    return;
+}
+
 
 ScatterNDFunc::ScatterNDFunc(ScatterNDParam &param) : param_(param) {}
 

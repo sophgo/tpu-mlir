@@ -541,6 +541,7 @@ private:
   void get_topk_param();
   void get_onnx_nms_param();
   void get_gather_nd_tf_param();
+  void get_gatherelements_pt_param();
   void get_tensor_scatter_param();
   void get_grid_sampler_param();
   void get_deform_gather_param();
@@ -573,6 +574,7 @@ struct GatherNDParam {
   int batch_dims;
 };
 
+
 class GatherndFunc {
 public:
   GatherndFunc(GatherNDParam &param);
@@ -583,6 +585,22 @@ private:
                          std::vector<int> gather_index);
   GatherNDParam param_;
 };
+
+struct GatherElementsParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  int axis;
+};
+
+class GatherElementsFunc {
+public:
+  GatherElementsFunc(GatherElementsParam &param);
+  void invoke();
+
+private:
+  GatherElementsParam param_;
+};
+
 
 struct GridSamplerParam {
   std::vector<tensor_list_t> inputs;
