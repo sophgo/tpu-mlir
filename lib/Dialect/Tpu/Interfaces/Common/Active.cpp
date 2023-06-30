@@ -59,6 +59,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::ABSVAL:
     active_func(p, num_element, [](double val) { return std::abs(val); });
     break;
+  case ActiveMode::CEIL:
+    active_func(p, num_element, [](double val) { return std::ceil(val); });
+    break;
   case ActiveMode::ELU: {
     const auto coeffs_ = module::getF64Array(getCoeffs(), 1, 0);
     const double alpha = coeffs_->at(0);

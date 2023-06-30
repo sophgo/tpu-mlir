@@ -2690,5 +2690,30 @@ def Top_CustomOp: Top_Op<"Custom"> {
   let results = (outs Variadic<AnyTensor>:$output);
 }
 
+def Top_CeilOp : Top_Op<"Ceil"> {
+  let summary = " Ceil operator";
+  let description = [{
+     y = ceil(x)
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
 
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_RemainderOp: Top_Op<"Remainder"> {
+  let summary = " Remainder operator";
+  let description = [{
+     z = torch.remainder(x, y);
+     quo = x / y;
+     floor_quo = floor(quo);
+     z = x - y * floor_quo.
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs AnyTensor:$output);
+}
 #endif // Top_OPS
