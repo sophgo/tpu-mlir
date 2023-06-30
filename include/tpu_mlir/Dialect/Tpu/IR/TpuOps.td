@@ -2041,6 +2041,7 @@ def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
     F64Attr:$const_val
   );
   let results = (outs AnyRankedTensor:$output);
+  let hasCanonicalizeMethod = 1;
 }
 
 def Tpu_CompareOp: Tpu_Op<"Compare", [

@@ -129,6 +129,7 @@ class TORCH_IR_TESTER(object):
             "Where":            (self.test_Where,             N, Y, Y, N),
             ## Special Case
             "SplitReshape":     (self.test_SplitReshape,      N, Y, Y, Y),
+            "InfError":         (self.test_InfError,          N, Y, Y, N),
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -836,6 +837,24 @@ class TORCH_IR_TESTER(object):
                 return a, b, c, d
 
         self.trace_and_test([(1, 4, 16, 30)], Model())
+
+    #######################################################################
+    # InfError
+    # ------------
+    def test_InfError(self):
+
+        class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x, mask):
+                    x = torch.masked_fill(x, mask, float("-inf"))
+                    y = torch.softmax(x, -1)
+                    return y
+
+        self.trace_and_test([(1, 32, 128, 128), (1, 1, 128, 128)], Model(),
+                                [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
 
     #######################################################################
     # MatMul
