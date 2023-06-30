@@ -151,10 +151,96 @@ struct ReshapeInstanceNormPattern : public OpRewritePattern<ReshapeOp> {
   }
 };
 
+// merge some tanh and power(x,3) comprised gelu to gelu, first found in pytorch traced gpt2
+struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ReshapeOp op,
+                                PatternRewriter &rewriter) const override {
+    auto input = op.getInput();
+    MulOp mul_op = dyn_cast<MulOp>(op.getInput().getDefiningOp());
+    if (mul_op == NULL || !mul_op.getOutput().hasOneUse())
+      return failure();
+
+    MulConstOp mulconst_op = NULL;
+    AddConstOp addconst_op = NULL;
+
+    for (auto in:mul_op.getInputs()) {
+      if (isa<MulConstOp>(in.getDefiningOp()))
+        mulconst_op = dyn_cast<MulConstOp>(in.getDefiningOp());
+      else if (isa<AddConstOp>(in.getDefiningOp()))
+        addconst_op = dyn_cast<AddConstOp>(in.getDefiningOp());
+      else
+        return failure();
+    }
+    if (!mulconst_op.getOutput().hasOneUse() || !addconst_op.getOutput().hasOneUse())
+      return failure();
+
+    TanhOp tanh_op = NULL;
+    if (!isa<TanhOp>(addconst_op.getInput().getDefiningOp()))
+      return failure();
+    else
+      tanh_op = dyn_cast<TanhOp>(addconst_op.getInput().getDefiningOp());
+    if (!tanh_op.getOutput().hasOneUse())
+      return failure();
+
+    MulConstOp mulconst_op1 = NULL;
+    AddOp add_op = NULL;
+    if (!isa<MulConstOp>(tanh_op.getInput().getDefiningOp()))
+      return failure();
+    else
+      mulconst_op1 = dyn_cast<MulConstOp>(tanh_op.getInput().getDefiningOp());
+    if (!isa<AddOp>(mulconst_op1.getInput().getDefiningOp()))
+      return failure();
+    else
+      add_op = dyn_cast<AddOp>(mulconst_op1.getInput().getDefiningOp());
+    if (!mulconst_op1.getOutput().hasOneUse() || !add_op.getOutput().hasOneUse())
+      return failure();
+
+    MulConstOp mulconst_op2 = NULL;
+    PowOp pow_op = NULL;
+    ReshapeOp reshape_op = NULL;
+    for (auto in:add_op.getInputs()) {
+      if (isa<MulConstOp>(in.getDefiningOp()))
+        mulconst_op2 = dyn_cast<MulConstOp>(in.getDefiningOp());
+      else if (isa<ReshapeOp>(in.getDefiningOp()))
+        reshape_op = dyn_cast<ReshapeOp>(in.getDefiningOp());
+      else
+        return failure();
+    }
+    if (!isa<PowOp>(mulconst_op2.getInput().getDefiningOp()))
+        return failure();
+    else
+        pow_op = dyn_cast<PowOp>(mulconst_op2.getInput().getDefiningOp());
+    if (!mulconst_op2.getOutput().hasOneUse() || !pow_op.getOutput().hasOneUse())
+      return failure();
+
+    if (pow_op.getInput().getDefiningOp() != reshape_op || mulconst_op.getInput().getDefiningOp() != reshape_op)
+      return failure();
+    int cnt = 0;
+    int all = 0;
+    for (auto out:reshape_op.getOutput().getUsers()) {
+      if (out == mulconst_op || out == pow_op || out == add_op)
+        cnt ++;
+      all ++;
+    }
+    if (cnt != 3 || all != 3)
+      return failure();
+    if (pow_op.getExponent().convertToDouble() != 3.0 || fabs(mulconst_op2.getConstVal().convertToDouble()-0.044714998453855515)>1e-4 ||
+        addconst_op.getConstVal().convertToDouble() != 1.0 || fabs(mulconst_op1.getConstVal().convertToDouble()-0.79788458347320556)>1e-4 ||
+        fabs(mulconst_op.getConstVal().convertToDouble()-0.5)>1e-4)
+      return failure();
+    rewriter.replaceOpWithNewOp<GELUOp>(op, op.getResult().getType(),
+             ValueRange{reshape_op.getInput()});
+    return success();
+  }
+};
+
 void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopFuseReshape,
                  TopFuseReshape2,
                  TopFuseReshape3,
-                 ReshapeInstanceNormPattern>(context);
+                 ReshapeInstanceNormPattern,
+                 MergeGeluPattern>(context);
 }
