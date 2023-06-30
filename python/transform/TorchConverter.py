@@ -78,6 +78,7 @@ class TorchConverter(BaseConverter):
             "aten::bmm": lambda node: self.convert_matmul_op(node),
             "aten::baddbmm": lambda node: self.convert_baddbmm_op(node),
             "aten::cat": lambda node: self.convert_concat_op(node),
+            "aten::ceil": lambda node: self.convert_ceil_op(node),
             "aten::channel_shuffle": lambda node: self.convert_channel_shuffle_op(node),
             "aten::chunk": lambda node: self.convert_chunk_op(node),
             "aten::copy": lambda node: self.convert_skip_op(node),
@@ -151,6 +152,7 @@ class TorchConverter(BaseConverter):
             "aten::reflection_pad1d": lambda node: self.convert_pad_op(node, mode='reflect'),
             "aten::reflection_pad2d": lambda node: self.convert_pad_op(node, mode='reflect'),
             "aten::relu": lambda node: self.convert_relu_op(node),
+            "aten::remainder": lambda node: self.convert_remainder_op(node),
             "aten::replication_pad1d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::replication_pad2d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::reshape": lambda node: self.convert_reshape_op(node),
@@ -1790,6 +1792,22 @@ class TorchConverter(BaseConverter):
                             do_relu=False,
                             loc=self.get_loc(torch_node.name),
                             ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_ceil_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        new_op = top.CeilOp(self.unranked_type,
+                           op,
+                           loc=self.get_loc(torch_node.name),
+                           ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_remainder_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        op1 = self.getOp(torch_node.inputs[1])
+        new_op = top.RemainderOp(self.unranked_type, [op0, op1],
+                           loc=self.get_loc(torch_node.name),
+                           ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
 
     def convert_dict_construct(self, torch_node: TorchNode):

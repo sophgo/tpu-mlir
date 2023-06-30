@@ -54,6 +54,7 @@ class TORCH_IR_TESTER(object):
             "AvgPool3d":        (self.test_AvgPool3d,         N, Y, Y, Y),
             "BatchNorm":        (self.test_BatchNorm,         N, Y, Y, Y),
             "BMM":              (self.test_BatchMatMul,       N, Y, Y, Y),
+            "Ceil":             (self.test_Ceil,              N, Y, N, N),
             "ChannelShuffle":   (self.test_ChannelShuffle,    N, Y, Y, Y),
             "Chunk":            (self.test_Chunk,             N, Y, Y, Y),
             "Clamp":            (self.test_Clamp,             Y, Y, Y, N),
@@ -99,6 +100,7 @@ class TORCH_IR_TESTER(object):
             "Mul":              (self.test_Mul,               N, Y, Y, Y),
             "NewZeros":         (self.test_NewZeros,          N, Y, Y, Y),
             "Reduce":           (self.test_Reduce,            N, Y, Y, Y),
+            "Remainder":        (self.test_Remainder,         N, Y, N, N),
             "Repeat":           (self.test_Repeat,            N, Y, Y, Y),
             "Reshape":          (self.test_Reshape,           N, Y, Y, Y),
             "PixelShuffle":     (self.test_PixelShuffle,      N, Y, Y, Y),
@@ -2577,6 +2579,48 @@ class TORCH_IR_TESTER(object):
 
         self.trace_and_test([(1, 3, 28, 28)], Model0())
         self.trace_and_test([(1, 3, 28, 28)], Model1())
+
+    #######################################################################
+    # Ceil
+    # ------------
+    def test_Ceil(self):
+        """Ceil"""
+
+        def _test_ceil(input_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return torch.ceil(x)
+
+            self.trace_and_test([input_shape], Model())
+
+        _test_ceil((1, 16, 32, 32))
+
+    #######################################################################
+    # Remainder
+    # ------------
+    def test_Remainder(self):
+        """Remainder"""
+
+        def _test_remainder(op_type,in0_shape,in1_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.weight = torch.randn(in1_shape)
+
+                def forward(self, x):
+                    y2 = op_type(x, self.weight)
+                    return y2
+
+            self.trace_and_test([in0_shape], Model(), [self.Desc('float32')])
+
+        _test_remainder(torch.remainder, (1, 16, 32, 32), (1, 16, 32, 32))
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     try:
