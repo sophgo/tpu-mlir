@@ -154,6 +154,10 @@ class TensorCompare():
 
             d1_loop[np.isnan(d1_loop)] = 0.0
             d2_loop[np.isnan(d2_loop)] = 0.0
+            d1_loop[np.isposinf(d1_loop)] = 10000.0
+            d1_loop[np.isneginf(d1_loop)] = -10000.0
+            d2_loop[np.isposinf(d2_loop)] = 10000.0
+            d2_loop[np.isneginf(d2_loop)] = -10000.0
             # check similarity
             # cosine similarity
             # cosine_similarity_my = self.cosine_similarity(d1.flatten(), d2.flatten())

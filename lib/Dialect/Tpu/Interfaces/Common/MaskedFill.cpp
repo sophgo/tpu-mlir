@@ -14,9 +14,9 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 
-
-
-LogicalResult tpu::MaskedFillOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::MaskedFillOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::MaskedFillOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::MaskedFillOp::inference(InferenceParameter &p) {
@@ -54,5 +54,21 @@ LogicalResult tpu::MaskedFillOp::inference(InferenceParameter &p) {
     const float fbrn = getInversed() ? brn[brn_index] : const_val_;
     p.outputs[0][i] = in[in_index] ? tbrn : fbrn;
   }
+  return success();
+}
+
+// const to large, to 10k
+
+LogicalResult tpu::MaskedFillOp::canonicalize(tpu::MaskedFillOp op,
+                                              PatternRewriter &rewriter) {
+  double const_val = op.getConstVal().convertToDouble();
+  if (const_val >= 1e10) {
+    const_val = 10000;
+  } else if (const_val <= -1e10) {
+    const_val = -10000;
+  } else {
+    return failure();
+  }
+  op.setConstVal(APFloat(const_val));
   return success();
 }
