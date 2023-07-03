@@ -125,8 +125,9 @@ LogicalResult tpu::Pool3DOp::LocalGenSupport() {
   }
   if (module::isBM1684XFamily()) {
     return success();
+  } else if (module::isBM1684Family() && !module::isUniformQuantized(getInput())) {
+    return success();
   }
-
   // do not support 3D local layer now
   return failure();
 }
