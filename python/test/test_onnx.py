@@ -69,6 +69,7 @@ class ONNX_IR_TESTER(object):
             "Conv2d":       (self.test_Conv2d,        Y, Y, Y, Y),
             "Conv2dbigd":   (self.test_Conv2d_bigd,   Y, N, N, N),
             "Conv3d":       (self.test_Conv3d,        N, Y, Y, Y),
+            "ConvPool3d":   (self.test_ConvPool3d,    Y, Y, Y, N),
             "ConvStride":   (self.test_ConvStride,    Y, Y, Y, Y),
             "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y),
             "ConvTrans":    (self.test_ConvTrans,     N, Y, Y, Y),
@@ -1081,6 +1082,45 @@ class ONNX_IR_TESTER(object):
                       stride=[1, 1, 1],
                       dilation=[1, 1, 1],
                       groups=1)
+
+    def test_ConvPool3d(self, case_name):
+        # oc = 32
+        input_shape = [1, 3, 16, 112, 112]
+        filter_shape = [64, 3, 3, 3, 3]
+        output_shape = [1, 64, 16, 56, 56]
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        bias_data = np.random.randn(output_shape[1]).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
+
+        conv_def = helper.make_node(
+            "Conv",
+            inputs=['input', 'weight', 'bias'],
+            outputs=['conv_output'],
+            kernel_shape=[3, 3, 3],
+            pads=[1, 1, 1, 1, 1, 1],
+            strides=[1, 1, 1],
+            dilations=[1, 1, 1],
+            group=1,
+        )
+
+        relu_def = helper.make_node("Relu", inputs=['conv_output'], outputs=['relu_output'])
+        pool_def = helper.make_node(
+            'MaxPool',
+            inputs=['relu_output'],
+            outputs=['output'],
+            kernel_shape=[1,2,2],
+            pads=[0,0,0,0,0,0],
+            strides=[1,2,2],
+        )
+
+        graph_def = helper.make_graph([conv_def, relu_def, pool_def],
+                                      case_name, [input], [output],
+                                      initializer=[weight, bias])
+        self.onnx_and_test(graph_def)
 
     def test_SiLU(self, case_name):
         input_shape = [1, 16, 64, 64]

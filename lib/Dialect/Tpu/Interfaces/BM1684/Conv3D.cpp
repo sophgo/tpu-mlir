@@ -65,14 +65,25 @@ int64_t tpu::Conv3DOp::getBufferSize_bm1684(
 
 void tpu::Conv3DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                          local_sec_info_t &sec_info) {
+  auto out_gi = getGroupInfo(n_step, h_step, 0, 0, 0);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto f_gi = LocalGenInterface::getGroupInfo(getFilter());
+  auto b_gi = LocalGenInterface::getGroupInfo(getBias());
   auto attr = parseParam();
-  auto in_addr = module::getAddress(getInput());
-  auto out_addr = module::getAddress(getOutput());
-  auto filter_addr = module::getAddress(getFilter());
-  auto bias_addr = module::getAddress(getBias());
-  int input_shape[MAX_SHAPE_DIMS], output_shape[MAX_SHAPE_DIMS];
-  module::getGlobalShape(getInput(), input_shape);
-  module::getGlobalShape(getInput(), output_shape);
+  auto in_addr = in_gi.out_addr;
+  auto out_addr = out_gi.out_addr;
+  auto filter_addr = f_gi.out_addr;
+  auto bias_addr = b_gi.out_addr;
+  int input_shape[5] = {(int)in_gi.n_slice, (int)attr.ic, (int)in_gi.d_slice,
+                        (int)in_gi.h_slice, (int)attr.iw};
+  int output_shape[5] = {(int)in_gi.n_slice, (int)attr.oc, (int)out_gi.d_slice,
+                         (int)out_gi.h_slice, (int)attr.ow};
+  int pad_d = (in_gi.d_idx == 0 ? attr.pdf : 0);
+  int pad_d_after = (in_gi.d_idx + in_gi.d_slice == attr.id ? attr.pdb : 0);
+  int pad_h = (in_gi.h_idx == 0 ? attr.pht : 0);
+  int pad_h_after = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
+  int pad_w = (in_gi.w_idx == 0 ? attr.pwl : 0);
+  int pad_w_after = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pwr : 0);
   if (module::isUniformQuantized(getInput())) {
     auto in_sign = module::isSign(getInput());
     auto filter_sign = module::isSign(getFilter());
@@ -82,16 +93,16 @@ void tpu::Conv3DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     auto shift = shift_v->at(0);
     BM1684::instance().dl_nodechip_conv3d_fix8b_local(
         in_addr, filter_addr, bias_addr, out_addr, input_shape, output_shape,
-         attr.kd, attr.kh, attr.kw, attr.dd, attr.dh, attr.dw,
-        attr.pdf, attr.pdb, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sd,
-        attr.sh, attr.sw, attr.has_bias ? 1 : 0, attr.do_relu ? 1 : 0, in_sign,
+        attr.kd, attr.kh, attr.kw, attr.dd, attr.dh, attr.dw, pad_d,
+        pad_d_after, pad_h, pad_h_after, pad_w, pad_w_after, attr.sd, attr.sh,
+        attr.sw, attr.has_bias ? 1 : 0, attr.do_relu ? 1 : 0, in_sign,
         filter_sign, bias_sign, out_sign, shift,
         (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   } else {
     BM1684::instance().dl_nodechip_conv3d_local(
         in_addr, filter_addr, bias_addr, out_addr, input_shape, output_shape,
         attr.groups, attr.kd, attr.kh, attr.kw, attr.dd, attr.dh, attr.dw,
-        attr.pdf, attr.pdb, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sd,
+        pad_d, pad_d_after, pad_h, pad_h_after, pad_w, pad_w_after, attr.sd,
         attr.sh, attr.sw, attr.has_bias ? 1 : 0, attr.do_relu ? 1 : 0,
         attr.relu_limit, (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   }

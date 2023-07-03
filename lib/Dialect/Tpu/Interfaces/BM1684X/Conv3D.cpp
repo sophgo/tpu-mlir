@@ -115,9 +115,6 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                           group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
-  auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op, group_type);
-  auto output_spec = BM168x::get_output_spec(op, group_type);
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step,
                                                d_step, w_step, c_step);

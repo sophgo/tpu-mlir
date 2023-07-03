@@ -143,30 +143,30 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
   if (!module::getStorageType(op.getFilter()).isF32())
     return failure();
   auto attr = op.parseParam();
-  const int method = attr.ic / attr.groups > 10 || attr.dh > 1;
-  auto type_bytes = 4;
   auto out_type = module::getStorageType(op.getOutput());
   // filter reorder
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
-  auto weight_data = filterOp.read_as_byte();
-  std::vector<int64_t> new_shape = {1, attr.oc, attr.kd * attr.kh * attr.kw,
-                                    align_up(attr.ic / attr.groups, 2l)};
-  int new_count = align_up(attr.ic / attr.groups, 2l) * attr.oc * attr.kd *
-                  attr.kh * attr.kw;
-  auto filter_new = std::make_shared<std::vector<float>>(new_count, 0);
-  conv3d_weight_transform_bm1684(attr.ic / attr.groups, attr.oc, attr.kd,
-                                 attr.kh, attr.kw, weight_data->data(),
-                                 filter_new->data(), method, type_bytes);
-  auto new_type = RankedTensorType::get(new_shape, out_type);
-  auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
-                                          "reorderd", *filter_new, new_type);
-  op->setOperand(1, new_filter);
-
+  int64_t filter_shape[5];
+  if (out_type.isF32()) {
+    // f32 local layer shape, only change shape info for layer group,
+    // the real weight reorder will be done in GroupPostTransformPass
+    filter_shape[0] = attr.kd;
+    filter_shape[1] = attr.oc;
+    filter_shape[2] = attr.kh * attr.kw;
+    filter_shape[3] = align_up(attr.ic / attr.groups, 2l);
+    filter_shape[4] = 1;
+    auto new_type = RankedTensorType::get(filter_shape, out_type);
+    op.getFilter().setType(new_type);
+  } else {
+    op.dump();
+    llvm_unreachable("op type not support");
+  }
   // bias op
   if (attr.has_bias) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    auto bias_type = module::getElementType(op.getBias());
     int64_t bias_shape[5] = {1, attr.oc, 1, 1, 1};
-    auto new_type = RankedTensorType::get(bias_shape, out_type);
+    auto new_type = RankedTensorType::get(bias_shape, bias_type);
     op.getBias().setType(new_type);
   }
   return success();

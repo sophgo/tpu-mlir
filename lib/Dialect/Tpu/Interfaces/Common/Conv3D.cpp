@@ -208,7 +208,10 @@ void tpu::Conv3DOp::assign_sec_info(int64_t n_step, int64_t c_step,
 LogicalResult tpu::Conv3DOp::LocalGenSupport() {
   if (module::isBM1684XFamily()) {
     return success();
-  } else {
+  } else if (module::isBM1684Family() && !module::isUniformQuantized(getInput())) {
+    return success();
+  }
+  else {
     return failure();
   }
 }
