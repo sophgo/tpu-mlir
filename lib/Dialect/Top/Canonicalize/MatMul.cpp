@@ -192,6 +192,9 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
     if (!reshape_after_matmul) {
       return failure();
     }
+    if (!reshape_after_matmul.getOutput().hasOneUse()) {
+      return failure();
+    }
     auto permute0 = dyn_cast<PermuteOp>(
         *reshape_after_matmul.getOutput().getUsers().begin());
     if (!permute0) {
