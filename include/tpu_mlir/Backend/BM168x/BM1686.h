@@ -16,29 +16,50 @@ typedef void (*set_gdma_bw_s2s)(float GBps);
 typedef void (*set_gdma_bw_s2l)(float GBps);
 typedef void (*set_gdma_bw_l2s)(float GBps);
 typedef void (*set_gdma_bw_l2l)(float GBps);
+typedef void (*tpu_sync_all)();
+typedef void (*tpu_core_context_setup)(int, int, int);
+
 namespace tpu_mlir {
 namespace backend {
-template<typename type>
+
 class BM1686 : public BM1684X {
 public:
-  static BM1686 &instance() {
-    static BM1686<type> BM1686;
+  static bool classof(const BM168x *bm168x) {
+    return bm168x->getTypeID() == TypeID::get<BM1686>();
+  }
+
+  static BM1686 &instance(int frequency) {
+    static BM1686 BM1686;
+    BM1686.set_simulation_freq(frequency);
     return BM1686;
   }
+  virtual void before_codegen() override;
+  virtual void after_codegen(int64_t flops = 0) override;
+
   set_tiu_freq dl_set_tiu_freq;
   set_gdma_bw_s2s dl_set_gdma_bw_s2s;
   set_gdma_bw_s2l dl_set_gdma_bw_s2l;
   set_gdma_bw_l2s dl_set_gdma_bw_l2s;
   set_gdma_bw_l2l dl_set_gdma_bw_l2l;
+  tpu_sync_all dl_tpu_sync_all;
+  tpu_core_context_setup dl_tpu_core_context_setup;
+
+  void setCoreNum(int core = 1);
+  void useCore(int coreID = 0);
+
+  std::vector<std::shared_ptr<BM168x::Code>> const &getCodebuffer() {
+    return multiCodes;
+  }
+
 private:
-  void set_simulation_freq(void) {
+  void set_simulation_freq(int frequency) {
     CAST_FUNCTION(set_tiu_freq);
-    if(get_frequance() == 0) {
+    if (get_frequance() == 0) {
       CAST_FUNCTION(set_gdma_bw_s2s);
       CAST_FUNCTION(set_gdma_bw_s2l);
       CAST_FUNCTION(set_gdma_bw_l2s);
       CAST_FUNCTION(set_gdma_bw_l2l);
-      if(type::value == 375) //cv186
+      if (frequency == A2_2::value) // cv186
       {
         dl_set_gdma_bw_s2s(12.0f);
         dl_set_gdma_bw_s2l(12.0f);
@@ -50,14 +71,16 @@ private:
         dl_set_gdma_bw_l2s(24.0f);
         dl_set_gdma_bw_l2l(12.0f);
       }
-      dl_set_tiu_freq(static_cast<float>(type::value));
+      dl_set_tiu_freq(static_cast<float>(A2_2::value));
 
     } else {
       dl_set_tiu_freq(static_cast<float>(get_frequance()));
     }
   }
+
 protected:
   BM1686() {
+    typeID = TypeID::get<BM1686>();
     NPU_NUM = 32;
     EU_BYTES = 16;
     LMEM_BYTES = 1 << 17; // 128KB
@@ -77,11 +100,15 @@ protected:
     GDMA_VALUE_FORMAT_BFLOAT16 = 5;
     GDMA_VALUE_FORMAT_INT4 = 6;
     GDMA_VALUE_FORMAT_NUM = 7;
-
+    multiCodes.push_back(std::make_unique<BM168x::Code>());
+    code = multiCodes.back();
     start_env();
-    set_simulation_freq();
   };
+  virtual void load_functions() override;
   virtual ~BM1686(){};
+  bool useCode0 = true;
+  std::vector<std::shared_ptr<BM168x::Code>> multiCodes;
 };
+
 } // namespace backend
 } // namespace tpu_mlir

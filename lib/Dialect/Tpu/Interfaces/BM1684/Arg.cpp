@@ -55,7 +55,7 @@ void tpu::ArgOp::codegen_global_bm1684() {
             index_global_offset,
             n, c, h, w,
             axis, method, 1, getSelectLastIndex(),
-            (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+            (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }else {
     int w = 1;
     for (int i = axis + 1; i < shape_size; ++i)
@@ -70,7 +70,7 @@ void tpu::ArgOp::codegen_global_bm1684() {
             index_global_offset,
             n, bottom_dim[axis - 1], bottom_dim[axis], w,
             2, method, 1, getSelectLastIndex(),
-            (CMD_ID_NODE*)BM1684::instance().cmdid_node);
+            (CMD_ID_NODE*)BM1684::instance()->cmdid_node);
   }
 }
 

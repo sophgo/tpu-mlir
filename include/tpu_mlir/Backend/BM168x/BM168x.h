@@ -209,7 +209,8 @@ public:
   bmcpu_reshape dl_bmcpu_reshape;
   bmcpu_dtype dl_bmcpu_dtype;
 
-  template <typename FPtrTy> FPtrTy CpuCastToFPtr(const char *symbolName) {
+  template <typename FPtrTy>
+  FPtrTy CpuCastToFPtr(const char *symbolName) {
     assert(cpuopDL.isValid());
     auto fPtr = cpuopDL.getAddressOfSymbol(symbolName);
     if (fPtr == nullptr) {
@@ -258,33 +259,43 @@ public:
   // }
 
 public:
-  std::vector<uint32_t> bdc_buffer;
-  std::vector<uint32_t> gdma_buffer;
-  uint32_t gdma_total_id;
-  uint32_t bdc_total_id;
-  std::vector<uint32_t> gdma_group_id;
-  std::vector<uint32_t> bdc_group_id;
-  std::vector<uint32_t> gdma_bytes;
-  std::vector<uint32_t> bdc_bytes;
-  int cmdid_groupnum;
-  void *cmdid_node;
-  void *bdc_node;
-  void *gdma_node;
-  void *bmcpu_handle;
+  struct Code {
+    std::vector<uint32_t> bdc_buffer;
+    std::vector<uint32_t> gdma_buffer;
+    uint32_t gdma_total_id = 0;
+    uint32_t bdc_total_id = 0;
+    std::vector<uint32_t> gdma_group_id;
+    std::vector<uint32_t> bdc_group_id;
+    std::vector<uint32_t> gdma_bytes;
+    std::vector<uint32_t> bdc_bytes;
+    int cmdid_groupnum = 0;
+    void *cmdid_node = nullptr;
+    void *bdc_node = nullptr;
+    void *gdma_node = nullptr;
+    void *bmcpu_handle = nullptr;
+    BM168x *bm168x;
+  };
+  virtual Code *operator->() const {
+    assert(code && "Please initialize the command buffer.");
+    return code.get();
+  }
   std::map<int, uint32_t> net_cpu_mem_size;
   llvm::sys::DynamicLibrary cpuopDL;
   llvm::StringRef libcpuop = "libcpuop.so";
+  TypeID getTypeID() const { return typeID; }
 
 protected:
-  BM168x(){};
+  BM168x(TypeID typeID) : typeID(typeID){};
   virtual ~BM168x() = 0;
   virtual void load_functions();
   virtual void start_env();
   virtual void end_env();
 
 protected:
+  std::shared_ptr<Code> code;
   static BM168x *bm168x;
   bool really_issue_command;
+  TypeID typeID;
 };
 
 } // namespace backend

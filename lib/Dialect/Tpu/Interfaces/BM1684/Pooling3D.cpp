@@ -35,7 +35,7 @@ void tpu::Pool3DOp::codegen_global_bm1684() {
           attr.pad_h, attr.pad_h_after, attr.pad_w, attr.pad_w_after, attr.sd,
           attr.sh, attr.sw, is_avg_pooling, avg_pooling_mode, 0, 0, 0, in_sign,
           0, 0, out_sign, attr.do_relu ? 1 : 0, attr.relu_limit,
-          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     } else {
       llvm_unreachable("nodechip currently not supported.");
     }
@@ -46,7 +46,7 @@ void tpu::Pool3DOp::codegen_global_bm1684() {
         attr.pad_d, attr.pad_d_after, attr.pad_h, attr.pad_h_after, attr.pad_w,
         attr.pad_w_after, attr.sd, attr.sh, attr.sw, is_avg_pooling,
         avg_pooling_mode, attr.do_relu ? 1 : 0, attr.relu_limit,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 

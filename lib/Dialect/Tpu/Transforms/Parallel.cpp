@@ -250,8 +250,7 @@ bool forAll(IndexingMapsInterface op, int core = 1) {
   }
   rewriter.create<tpu::YieldOp>(op->getLoc(), joinValues);
   // cleanup
-  op->remove();
-  op->destroy();
+  rewriter.eraseOp(op);
   return true;
 };
 
@@ -259,6 +258,7 @@ class ParallelPass : public ParallelBase<ParallelPass> {
 public:
   ParallelPass() {}
   void runOnOperation() override {
+    module::setCoreNum(core);
     if (core < 2)
       return;
     auto mOp = getOperation();

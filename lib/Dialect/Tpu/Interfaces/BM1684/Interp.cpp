@@ -66,7 +66,7 @@ void tpu::InterpOp::codegen_global_bm1684() {
             align_corners,
             half_pixel_centers,
             platform_sp,
-            (CMD_ID_NODE*)BM1684::instance().cmdid_node);
+            (CMD_ID_NODE*)BM1684::instance()->cmdid_node);
 
 }
 

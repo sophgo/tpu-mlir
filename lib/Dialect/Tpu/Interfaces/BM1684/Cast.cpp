@@ -27,20 +27,20 @@ void tpu::CastOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_global_int2float(
         module::getAddress(getInput()), module::getAddress(getOutput()), n, c,
         h, w, input_dtype == DTYPE_INT8 ? 1 : 0, 1.f, STORAGE_MODE_4N_INT8,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else if (input_dtype == DTYPE_FP32 &&
              (output_dtype == DTYPE_INT8 || output_dtype == DTYPE_UINT8)) {
     // fp32 => int8
     BM1684::instance().dl_nodechip_float2int8_v2(
         module::getAddress(getInput()), module::getAddress(getOutput()), n, c,
         h, w, output_dtype == DTYPE_INT8 ? 1 : 0, 1.f, STORAGE_MODE_4N_INT8,
-        ROUND_INF, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        ROUND_INF, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else if (input_dtype == DTYPE_INT32 && output_dtype == DTYPE_FP32) {
     // int32 => fp32
     BM1684::instance().dl_nodechip_unary(
         module::getAddress(getInput()), module::getAddress(getOutput()),
         module::getNumElements(getInput()), UNARY_I32_TO_F32, NULL,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else if (input_dtype == DTYPE_FP32 && output_dtype == DTYPE_INT32) {
     // fp32 => int32
     uint32_t input_shape[MAX_SHAPE_DIMS];
@@ -49,7 +49,7 @@ void tpu::CastOp::codegen_global_bm1684() {
         module::getAddress(getInput()), module::getAddress(getOutput()),
         input_shape, module::getShape(getInput()).size(), 1 /*input sign*/,
         1 /*output sign*/, STORAGE_MODE_1N_FP32, STORAGE_MODE_1N_FP32,
-        ROUND_INF, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        ROUND_INF, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     dump();
     llvm_unreachable("CastOp type error");
@@ -98,7 +98,7 @@ void tpu::CastOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         input_group_info.out_addr, output_group_info.out_addr,
         output_group_info.buffer_addr, input_shape[0], input_shape[1],
         input_shape[2], input_shape[3], true, input_dtype == DTYPE_INT8 ? 1 : 0,
-        STORAGE_MODE_4N_INT8, BM1684::instance().bdc_node);
+        STORAGE_MODE_4N_INT8, BM1684::instance()->bdc_node);
   } else if (input_dtype == DTYPE_FP32 &&
              (output_dtype == DTYPE_INT8 || output_dtype == DTYPE_UINT8)) {
     // fp32 => fix8b
@@ -106,14 +106,14 @@ void tpu::CastOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         input_group_info.out_addr, output_group_info.out_addr,
         output_group_info.buffer_addr, input_shape[0], input_shape[1],
         input_shape[2], input_shape[3], output_dtype == DTYPE_INT8 ? 1 : 0, 0,
-        ROUND_INF, BM1684::instance().bdc_node);
+        ROUND_INF, BM1684::instance()->bdc_node);
   } else if (input_dtype == DTYPE_FP32 && output_dtype == DTYPE_INT32) {
     // fp32 => int32
     BM1684::instance().dl_nodechip_float_to_int32_local(
         input_group_info.out_addr, output_group_info.out_addr,
         output_group_info.buffer_addr, input_shape, 1 /*input sign*/,
         1 /*output sign*/, STORAGE_MODE_1N_FP32, STORAGE_MODE_1N_FP32,
-        ROUND_INF, (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        ROUND_INF, (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   } else {
     llvm_unreachable("CastOp type error");
   }

@@ -35,7 +35,7 @@ void tpu::MaskedFillOp::codegen_global_bm1684() {
   BM1684::instance().dl_nodechip_masked_fill_global(
       input_addr, mask_addr, top_addr, (uint32_t *)input_shape,
       (uint32_t *)mask_shape, input_dims, mask_dims, *((uint32_t *)&value),
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
 }
 
 int64_t tpu::MaskedFillOp::getBufferSize_bm1684(
@@ -77,7 +77,7 @@ void tpu::MaskedFillOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   BM1684::instance().dl_nodechip_masked_fill_local(
       input_ginfo.out_addr, mask_ginfo.out_addr, top_ginfo.buffer_addr,
       top_ginfo.out_addr, input_shape, mask_shape, 4, 4, *((uint32_t *)&value),
-      (CMD_ID_NODE *)BM1684::instance().bdc_node);
+      (CMD_ID_NODE *)BM1684::instance()->bdc_node);
 }
 
 uint32_t tpu::MaskedFillOp::dyn_codegen_global_bm1684(void *ir_layer_info) {

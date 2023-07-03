@@ -61,7 +61,7 @@ void tpu::ActiveOp::codegen_global_bm1684() {
     }else{
         BM1684::instance().dl_nodechip_active_forward_parallel(
                 bottom_global_offset, top_global_offset, length,
-                activate_type, coeffs, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+                activate_type, coeffs, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
 
 }
@@ -146,7 +146,7 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
         BM1684::instance().dl_nodechip_active_forward_local(
                 bottom_local_offset, top_local_offset, imm_buffer_local_offet,
                 bottom_dim[0] * depth, bottom_dim[1], bottom_dim[2], bottom_dim[3],
-                activate_type, &prelu_slope, (CMD_ID_NODE *)BM1684::instance().bdc_node
+                activate_type, &prelu_slope, (CMD_ID_NODE *)BM1684::instance()->bdc_node
                 );
     }
 }

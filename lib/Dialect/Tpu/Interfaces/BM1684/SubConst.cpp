@@ -34,14 +34,14 @@ void tpu::SubConstOp::codegen_global_bm1684() {
         module::getAddress(getInput()), module::getAddress(getOutput()), b1_val,
         b0_shape, 4, BINARY_SUB, b0_mulpiler, 1, b0_rshift, 0, getIsReverse(),
         getDoRelu(), is_int8s, is_signs,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_const_binary(
         module::getAddress(getInput()), n * c * h * w,
         getConstVal().convertToDouble(), module::getAddress(getOutput()),
         BINARY_SUB, getIsReverse(), getDoRelu(),
         getReluLimit().convertToDouble(),
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node,
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node,
         module::getStorageType(getInput()).isa<IntegerType>());
   }
 }
@@ -87,12 +87,12 @@ void tpu::SubConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     BM1684::instance().dl_nodechip_const_binary_fix8b_forward_local(
         in_g_info.out_addr, out_g_info.out_addr, out_g_info.buffer_addr, b1_val,
         b0_shape, 4, BINARY_SUB, b0_mul, 1, b0_rshift, 0, getIsReverse(),
-        getDoRelu(), is_int8s, is_signs, BM1684::instance().bdc_node);
+        getDoRelu(), is_int8s, is_signs, BM1684::instance()->bdc_node);
   } else {
     BM1684::instance().dl_nodechip_const_binary_local(
         in_g_info.out_addr, (uint32_t *)b0_shape, b1_val, out_g_info.out_addr,
         BINARY_SUB, getIsReverse(), if_relu, relu_limit,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   }
 }
 

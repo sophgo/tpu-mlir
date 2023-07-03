@@ -41,13 +41,13 @@ void tpu::WhereOp::codegen_global_bm1684() {
                                               0,0,0,0,
                                               0, 0, cond_sign, spec.sel0_is_const, spec.sel0_const_val, cond_sign,
                                               1, 0, spec.sel1_is_const, spec.sel1_const_val, cond_sign,
-                                              1, 0, (CMD_ID_NODE*)BM1684::instance().cmdid_node);
+                                              1, 0, (CMD_ID_NODE*)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_select_all(module::getAddress(getCond()), cond_shape, module::getAddress(getTbrn()),
                                             spec.sel0_is_const, spec.sel0_const_val, module::getAddress(getFbrn()),
                                             spec.sel1_is_const, spec.sel1_const_val, module::getAddress(getOutput()),
                                             out_shape, 0, 0.0, cond_sign,
-                                            (CMD_ID_NODE*)BM1684::instance().cmdid_node);
+                                            (CMD_ID_NODE*)BM1684::instance()->cmdid_node);
   }
   delete[] cond_shape;
   delete[] out_shape;
@@ -89,14 +89,14 @@ void tpu::WhereOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                               tbrn_gi.out_addr, spec.sel0_is_const, spec.sel0_const_val,
                                               fbrn_gi.out_addr, spec.sel1_is_const, spec.sel1_const_val,
                                               out_gi.out_addr, cond_shape, cond_sign, cond_sign, cond_sign, 1, 0, 1, 0,
-                                              0, 0.0, (CMD_ID_NODE*)BM1684::instance().cmdid_node);
+                                              0, 0.0, (CMD_ID_NODE*)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_select_local(cond_gi.out_addr, cond_shape,
                                         out_gi.buffer_addr, tbrn_gi.out_addr,
                                         spec.sel0_is_const, spec.sel0_const_val, fbrn_gi.out_addr,
                                         spec.sel1_is_const, spec.sel1_const_val, out_gi.out_addr,
                                         out_shape, 0, 0.0, cond_sign,
-                                        (CMD_ID_NODE*)BM1684::instance().cmdid_node);
+                                        (CMD_ID_NODE*)BM1684::instance()->cmdid_node);
   }
   delete[] cond_shape;
   delete[] out_shape;

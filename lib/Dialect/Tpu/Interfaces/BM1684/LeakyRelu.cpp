@@ -30,12 +30,12 @@ void tpu::LeakyReluOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_prelu_forward_fix8b(
         bottom_global_addr, 0, top_global_addr, slope_val, channel_shared, n, c,
         h, w, input_sign, slope_sign, output_sign, rshift_bit,
-        1, 1, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        1, 1, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     slope_val = static_cast<float>(getAlpha().value().convertToDouble());
     BM1684::instance().dl_nodechip_prelu_forward(
         bottom_global_addr, 0, top_global_addr, slope_val, channel_shared, n, c,
-        h, w, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        h, w, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -101,13 +101,13 @@ void tpu::LeakyReluOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     BM1684::instance().dl_nodechip_prelu_forward_local_fix8b_v3(
         la_input, la_output, 0, la_buffer, channel_shared, slope_val,
         bottom_dim_fix8b, 0, input_sign, slope_sign, output_sign, rshift_bit,
-        upper_limit, (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        upper_limit, (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   } else {
     slope_val = static_cast<float>(getAlpha().value().convertToDouble());
     int bottom_dim[4] = {(int)n, (int)c, (int)h, (int)w};
     BM1684::instance().dl_nodechip_prelu_forward_local_v2(
         la_input, la_output, 0, la_buffer, channel_shared, slope_val,
-        bottom_dim, 0, (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        bottom_dim, 0, (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   }
 }
 

@@ -42,11 +42,11 @@ void tpu::Space2BatchOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_space2batch_fix8b(
         in_addr, out_addr, buffer_addr, NULL, input_shape, 4,
         2 /*STORE_MODE_4N*/, 2 /*STORE_MODE_4N*/, block_size, pad_sizes,
-        output_shape, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        output_shape, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_space2batch(
         in_addr, out_addr, buffer_addr, input_shape, 4, block_size, pad_sizes,
-        NULL, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        NULL, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
   delete[] input_shape;
   delete[] output_shape;

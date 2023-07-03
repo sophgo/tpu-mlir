@@ -46,7 +46,7 @@ void tpu::PadOp::codegen_global_bm1684() {
     if (false == module::isUniformQuantized(getOutput())) {
       BM1684::instance().dl_nodechip_pad(
           in_addr, out_addr, in_shape[0], in_shape[1], in_shape[2], in_shape[3],
-          p_pad, type, constant, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          p_pad, type, constant, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     } else {
       STORE_MODE_T in_stmode = BM1684::getStoreMode(getInput());
       STORE_MODE_T out_stmode = BM1684::getStoreMode(getOutput());
@@ -72,7 +72,7 @@ void tpu::PadOp::codegen_global_bm1684() {
           input_1N_global_offset, out_stmode == STORE_MODE_4N ? 1 : 0,
           output_1N_global_offset, in_shape[0], in_shape[1], in_shape[2],
           in_shape[3], p_pad, type, constant,
-          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
   } else if (dims == 5) {
     int in_shape[5] = {0};
@@ -87,7 +87,7 @@ void tpu::PadOp::codegen_global_bm1684() {
       BM1684::instance().dl_nodechip_pad3d(
           in_addr, out_addr, buffer_addr, in_shape[0], in_shape[1], in_shape[2],
           in_shape[3], in_shape[4], p_pad, type, constant,
-          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     } else {
       STORE_MODE_T in_stmode = BM1684::getStoreMode(getInput());
       STORE_MODE_T out_stmode = BM1684::getStoreMode(getOutput());
@@ -97,7 +97,7 @@ void tpu::PadOp::codegen_global_bm1684() {
           in_stmode == STORE_MODE_4N ? 1 : 0,
           out_stmode == STORE_MODE_4N ? 1 : 0, in_shape[0], in_shape[1],
           in_shape[2], in_shape[3], in_shape[4], p_pad, type, constant,
-          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
   }
 }
@@ -140,7 +140,7 @@ void tpu::PadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       BM1684::instance().dl_nodechip_pad_local(
           (int)in_g_info.out_addr, (int)gi.out_addr, in_shape[0], in_shape[1],
           in_shape[2], in_shape[3], p_pad, type, constant,
-          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     } else {
       STORE_MODE_T in_stmode = BM1684::getStoreMode(getInput());
       STORE_MODE_T out_stmode = BM1684::getStoreMode(getOutput());
@@ -164,7 +164,7 @@ void tpu::PadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       BM1684::instance().dl_nodechip_pad_fix8b_local(
           (int)in_g_info.out_addr, (int)gi.out_addr, in_shape[0], in_shape[1],
           in_shape[2], in_shape[3], p_pad, type, (unsigned char)constant,
-          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
   } else if (dims == 5) {
     llvm_unreachable("Not Implemented");

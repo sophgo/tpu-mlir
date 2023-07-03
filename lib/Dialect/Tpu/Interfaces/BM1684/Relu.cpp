@@ -24,7 +24,7 @@ void tpu::ReluOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_relu_forward_32bit_parallel(
         bottom_global_offset, top_global_offset, 0.0f,
         (float)getReluLimit().convertToDouble(), n, c, h, w,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_prelu_forward_fix8b(
         bottom_global_offset,
@@ -32,7 +32,7 @@ void tpu::ReluOp::codegen_global_bm1684() {
         c, h, w, module::isSign(getInput()),
         /*slope sign*/ 1, module::isSign(getOutput()),
         /*rshift num*/ 0, /*store mode*/ 1, 1,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -61,7 +61,7 @@ void tpu::ReluOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   if (!module::isUniformQuantized(output)) {
     BM1684::instance().dl_nodechip_relu_forward_local(
         in_g_info.out_addr, out_g_info.out_addr, input_shape, (float)relu_limit,
-        BM1684::instance().bdc_node);
+        BM1684::instance()->bdc_node);
   } else {
     BM1684::instance().dl_nodechip_prelu_forward_local_fix8b_v3(
         in_g_info.out_addr, out_g_info.out_addr,
@@ -70,7 +70,7 @@ void tpu::ReluOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         /*shared_slope*/ 0, (uint32_t *)input_shape,
         /*st_by_fcway*/ 0, input_sign,
         /*not use slope_sign*/ 1, output_sign,
-        /*rshift_bit*/ 0, int(relu_limit), BM1684::instance().bdc_node);
+        /*rshift_bit*/ 0, int(relu_limit), BM1684::instance()->bdc_node);
   }
   delete[] input_shape;
 }

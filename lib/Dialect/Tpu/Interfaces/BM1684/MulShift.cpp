@@ -27,7 +27,7 @@ void tpu::MulShiftOp::codegen_global_bm1684() {
   BM1684::instance().dl_nodechip_mulshift_fix8b_forward(
       in_addr, out_addr, in_shape[0], in_shape[1], in_shape[2], in_shape[3],
       getMultiplier(), getRshift(), sign[0], sign[1], sign[2],
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
 }
 
 int64_t tpu::MulShiftOp::getBufferSize_bm1684(
@@ -59,7 +59,7 @@ void tpu::MulShiftOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   BM1684::instance().dl_nodechip_mulshift_fix8b_forward_local(
       in_g_info.out_addr, gi.buffer_addr, gi.out_addr, out_shape[0],
       out_shape[1], out_shape[2], out_shape[3], getMultiplier(), getRshift(),
-      sign[0], sign[1], sign[2], (CMD_ID_NODE *)BM1684::instance().bdc_node);
+      sign[0], sign[1], sign[2], (CMD_ID_NODE *)BM1684::instance()->bdc_node);
 }
 
 uint32_t tpu::MulShiftOp::dyn_codegen_global_bm1684(void *ir_layer_info) {

@@ -33,7 +33,7 @@ void tpu::Depth2SpaceOp::codegen_global_bm1684() {
       input_addr, output_addr, input_shape, input_dims, block_sizes,
       getInIs_NCHW(), getOutIs_NCHW(), getIsInversed(), getIs_CRD(),
       getSwapCr(), module::getDtypeSize(input),
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
 }
 
 // ======================================

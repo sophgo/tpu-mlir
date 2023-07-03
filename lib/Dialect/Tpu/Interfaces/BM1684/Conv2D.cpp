@@ -37,7 +37,7 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
           attr.sh, attr.sw, attr.ins_h, attr.ins_w, shift,
           attr.has_bias ? 1 : 0, /*shift_sign*/ 0, in_sign, filter_sign,
           bias_sign, out_sign, attr.do_relu ? 1 : 0, attr.relu_limit,
-          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     } else {
       BM1684::instance()
           .dl_nodechip_conv_forward_parallel_fix8b_with_data_split(
@@ -46,7 +46,7 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
               attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
               attr.has_bias ? 1 : 0, 0, attr.do_relu ? 1 : 0, 0, 1, 0, 0, shift,
               in_sign, filter_sign, bias_sign, 3, 0, 0, 0, 0, 0,
-              (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+              (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
   } else {
     // F32
@@ -56,14 +56,14 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
           attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl, attr.pwr,
           attr.sh, attr.sw, attr.dh, attr.dw, attr.has_bias ? 1 : 0,
           attr.do_relu ? 1 : 0, attr.relu_limit,
-          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     } else {
       BM1684::instance().dl_nodechip_conv_forward_parallel_with_data_split(
           in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic, attr.ih,
           attr.iw, attr.groups, attr.oc, attr.kh, attr.kw, attr.dh, attr.dw,
           attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
           attr.has_bias ? 1 : 0, 0 /* result_add*/, attr.do_relu ? 1 : 0,
-          attr.relu_limit, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          attr.relu_limit, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
   }
 }
@@ -102,7 +102,7 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
           0, shift, p.has_bias,
           1, // shift type, useless param, but must be set...
           in_sign, filter_sign, bias_sign, out_sign, p.do_relu,
-          BM1684::instance().bdc_node);
+          BM1684::instance()->bdc_node);
     } else {
       BM1684::instance().dl_nodechip_conv_forward_local_fix8b(
           in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
@@ -110,7 +110,7 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
           pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw, p.has_bias, 0, p.do_relu,
           p.relu_limit, /*unused_ht*/ 0, 0, 0, 0, /* insert h*/ p.ins_h,
           p.ins_w, shift, in_sign, filter_sign, bias_sign, true, /*mulshift*/ 0,
-          0, 0, 0, BM1684::instance().bdc_node);
+          0, 0, 0, BM1684::instance()->bdc_node);
     }
   } else {
     BM1684::instance().dl_nodechip_conv_forward_local(
@@ -118,7 +118,7 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         gi.buffer_addr, bottom_dim, top_dim, p.groups, p.kh, p.kw, p.dh, p.dw,
         pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw, p.has_bias ? 1 : 0,
         /* result_add*/ 0, p.do_relu ? 1 : 0, p.relu_limit, 0, 0, 0, 0,
-        BM1684::instance().bdc_node);
+        BM1684::instance()->bdc_node);
   }
 }
 

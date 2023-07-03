@@ -44,7 +44,7 @@ void tpu::GatherOp::codegen_global_bm1684() {
                          out_offset * block_size * DTYPE_SIZE;
       BM1684::instance().dl_nodechip_global_memcpy_ex(
           input_addr, output_addr, 1, block_size, block_size, DTYPE, DTYPE,
-          block_size, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          block_size, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
   } else {
     llvm_unreachable("need dynamic");

@@ -44,13 +44,13 @@ void tpu::ScaleOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_scale_forward(
       input_addr, scale_addr, bias_addr, output_addr,
       input_shape[0], input_shape[1], input_shape[2], input_shape[3],
-      1, 1, 1, getDoRelu(), (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      1, 1, 1, getDoRelu(), (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     lshift_addr = module::getAddress(getLshift());
     BM1684::instance().dl_nodechip_bnscale_forward_parallel_fix8b_with_src_storage_mode(
       input_addr, output_addr, scale_addr, bias_addr, lshift_addr, input_shape[0], input_shape[1],
       input_shape[2], input_shape[3], input_sign, scale_sign, bias_sign, 2, getDoRelu(),
-      int(relu_limit), (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      int(relu_limit), (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -107,14 +107,14 @@ void tpu::ScaleOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       input_g_info.out_addr, out_g_info.buffer_addr, scale_g_info.out_addr, bias_addr,
       lshift_g_info.out_addr, out_g_info.out_addr, input_shape[0], input_shape[1],
       input_shape[2], input_shape[3], input_sign, scale_sign, bias_sign, 3, 3, 3,
-      getDoRelu(), int(relu_limit), BM1684::instance().bdc_node);
+      getDoRelu(), int(relu_limit), BM1684::instance()->bdc_node);
   } else {
     input_shape[0] *= depth;
     int scale_is_coeff = isa_and_nonnull<tpu::LoadOp>(getScale().getDefiningOp());
     BM1684::instance().dl_nodechip_scale_forward_local(
       input_g_info.out_addr, scale_g_info.out_addr, bias_addr, out_g_info.out_addr,
       input_shape, scale_shape, has_bias, getDoRelu(), relu_limit, scale_is_coeff,
-      bias_is_coeff, BM1684::instance().bdc_node);
+      bias_is_coeff, BM1684::instance()->bdc_node);
   }
 }
 

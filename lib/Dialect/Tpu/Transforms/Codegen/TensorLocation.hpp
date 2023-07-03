@@ -49,8 +49,8 @@ public:
 
   template <typename... Args>
   void before_codegen_local(Args...) {
-    cmd_before[0] = BM168x::instance()->bdc_total_id;
-    cmd_before[1] = BM168x::instance()->gdma_total_id;
+    cmd_before[0] = (*BM168x::instance())->bdc_total_id;
+    cmd_before[1] = (*BM168x::instance())->gdma_total_id;
   };
 
   void after_codegen_local(Operation *op, int64_t n_step, int64_t c_step,
@@ -58,8 +58,8 @@ public:
                            group_type_t group_type, local_sec_info_t &sec_info);
 
   void before_codegen_global(Operation *op) {
-    cmd_before[0] = BM168x::instance()->bdc_total_id;
-    cmd_before[1] = BM168x::instance()->gdma_total_id;
+    cmd_before[0] = (*BM168x::instance())->bdc_total_id;
+    cmd_before[1] = (*BM168x::instance())->gdma_total_id;
   };
   void after_codegen_global(Operation *op);
 

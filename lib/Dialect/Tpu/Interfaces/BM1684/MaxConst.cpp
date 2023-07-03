@@ -28,13 +28,13 @@ void tpu::MaxConstOp::codegen_global_bm1684() {
         module::getShape(getInput()).size(), BINARY_MAX, getMultiplier(), 1,
         getRshift(), 0,
         /*inversed*/ 0, getDoRelu(), is_int8, is_sign,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_const_binary(
         module::getAddress(getInput()), n * c * h * w,
         getConstVal().convertToDouble(), module::getAddress(getOutput()),
         BINARY_MAX, 0, getDoRelu(), getReluLimit().convertToDouble(),
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node,
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node,
         module::getStorageType(getInput()).isa<IntegerType>());
   }
 }
@@ -65,24 +65,22 @@ void tpu::MaxConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         getConstVal().convertToDouble(), b0_shape,
         module::getShape(getInput()).size(), BINARY_MAX, getMultiplier(), 1,
         getRshift(), 0, /*inversed*/ 0, getDoRelu(), is_int8s, is_signs,
-        BM1684::instance().bdc_node);
+        BM1684::instance()->bdc_node);
   } else {
     BM1684::instance().dl_nodechip_const_binary_local(
         in_g_info.out_addr, (uint32_t *)b0_shape, b1_val, out_g_info.out_addr,
         BINARY_MAX, 0, if_relu, relu_limit,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   }
 }
 
-uint32_t tpu::MaxConstOp::dyn_codegen_global_bm1684(void* ir_layer_info) {
+uint32_t tpu::MaxConstOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");
   return 0;
 }
-int64_t tpu::MaxConstOp::get_fw_type_bm1684() {
-  return -1;
-}
+int64_t tpu::MaxConstOp::get_fw_type_bm1684() { return -1; }
 
-int32_t tpu::MaxConstOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+int32_t tpu::MaxConstOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");
   return 0;
 }

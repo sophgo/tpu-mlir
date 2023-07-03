@@ -41,7 +41,7 @@ void tpu::SliceOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_stride_slice_md(
         input_addr, output_addr, input_shape, shape_dim, begin_mask, end_mask,
         begin_index, end_index, stride,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
     auto buffer_addr = module::getAddress(getBuffer());
     uint64_t input_size = ceiling_func(input_shape[0], 4) * 4 * input_shape[1] *
@@ -51,7 +51,7 @@ void tpu::SliceOp::codegen_global_bm1684() {
         input_addr, output_addr, buffer_addr, imm_buffer_addr, NULL,
         input_shape, shape_dim, STORE_MODE_4N, STORE_MODE_4N, begin_mask,
         end_mask, begin_index, end_index, stride, 0,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     llvm_unreachable("Not Implemented.");
   }
@@ -108,12 +108,12 @@ void tpu::SliceOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     BM1684::instance().dl_nodechip_stride_slice_forward_local(
         in_g_info.out_addr, out_g_info.out_addr, input_shape, num_dims,
         begin_mask, end_mask, begin_index, end_index, strides,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   } else if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
     BM1684::instance().dl_nodechip_stride_slice_forward_local_fix8b(
         in_g_info.out_addr, out_g_info.out_addr, input_shape, num_dims,
         begin_mask, end_mask, begin_index, end_index, strides,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   } else {
     llvm_unreachable("Not Implemented.");
   }

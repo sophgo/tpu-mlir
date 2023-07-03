@@ -30,7 +30,7 @@ void tpu::CompareOp::codegen_global_bm1684() {
         module::getAddress(getRhs()), (uint32_t *)r_shape, r_dim,
         module::getAddress(getOutput()), 0 /*buffer_addr*/,
         BM168x::compare_mode(getMode()), 0 /*relu*/, -1 /*relu limit*/,
-        gdma_format, (CMD_ID_NODE *)BM1684::instance().cmdid_node, src_int32);
+        gdma_format, (CMD_ID_NODE *)BM1684::instance()->cmdid_node, src_int32);
   } else {
     auto l_dtype = BM1684::getDataType(getLhs());
     auto r_dtype = BM1684::getDataType(getRhs());
@@ -48,7 +48,7 @@ void tpu::CompareOp::codegen_global_bm1684() {
         module::isWeight(getLhs()), module::isWeight(getRhs()),
         BM168x::compare_mode(getMode()), 1, 1, 0,
         0, /*int scale_A, int scale_B, int rshift_A, int rshift_B*/
-        is_int8, is_sign, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        is_int8, is_sign, 0, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -81,7 +81,7 @@ void tpu::CompareOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         l_gi.out_addr, r_gi.out_addr, out_gi.out_addr, out_gi.buffer_addr,
         l_shape, r_shape, shape_dim, module::isWeight(getLhs()),
         module::isWeight(getRhs()), BM168x::compare_mode(getMode()), 1, 1, 0, 0,
-        is_int8, is_sign, 0, BM1684::instance().bdc_node);
+        is_int8, is_sign, 0, BM1684::instance()->bdc_node);
   } else {
     int l_stride[shape_dim], r_stride[shape_dim], o_stride[shape_dim],
         o_shape[shape_dim];
@@ -104,7 +104,7 @@ void tpu::CompareOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         l_gi.out_addr, l_shape, l_stride, r_gi.out_addr, r_shape, r_stride,
         out_gi.out_addr, o_stride, BM168x::compare_mode(getMode()), 0, -1,
         l_shape[1] > r_shape[1] ? r_gi.out_addr : l_gi.out_addr,
-        BM1684::instance().bdc_node);
+        BM1684::instance()->bdc_node);
   }
 }
 

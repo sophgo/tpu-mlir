@@ -25,13 +25,13 @@ void tpu::LRNOp::codegen_global_bm1684() {
   BM1684::instance().dl_nodechip_lrn_forward_parallel(
       in_addr, out_addr, n, c, h, w, getAlpha().convertToDouble(), getSize(),
       getBeta().convertToDouble(), getBias().convertToDouble(),
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     int in_sign = module::isSign(getInput());
     BM1684::instance().dl_nodechip_lrn_fix8b_forward_parallel(
       in_addr, out_addr, n, c, h, w, in_sign, getAlpha().convertToDouble(), getSize(),
       getBeta().convertToDouble(), getBias().convertToDouble(), 1, 1,
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 

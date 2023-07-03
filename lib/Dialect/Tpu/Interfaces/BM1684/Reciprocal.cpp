@@ -36,7 +36,7 @@ void tpu::ReciprocalOp::codegen_global_bm1684() {
   BM1684::instance().dl_nodechip_const_binary(
       bottom_global_offset, length, B_const_val, top_global_offset, binary_type,
       inversed, if_relu, relu_limit,
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node,
+      (CMD_ID_NODE *)BM1684::instance()->cmdid_node,
       module::getStorageType(getInput()).isa<IntegerType>());
 }
 
@@ -65,7 +65,7 @@ void tpu::ReciprocalOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   BM1684::instance().dl_nodechip_const_binary_local(
       in_g_info.out_addr, (uint32_t *)b0_shape, b1_val, out_g_info.out_addr,
       BINARY_DIV, inversed, if_relu, relu_limit,
-      (CMD_ID_NODE *)BM1684::instance().bdc_node);
+      (CMD_ID_NODE *)BM1684::instance()->bdc_node);
 }
 
 uint32_t tpu::ReciprocalOp::dyn_codegen_global_bm1684(void* ir_layer_info) {

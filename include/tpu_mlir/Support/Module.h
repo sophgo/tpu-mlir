@@ -65,6 +65,8 @@ int64_t getGmemPrivateSize();
 void setGmemPrivateSize(int64_t size);
 int64_t getCoeffAddr();
 void setCoeffAddr(int64_t addr);
+int64_t getCoreNum();
+void setCoreNum(int64_t core_num = 1);
 int64_t getNeuronSize();
 void setNeuronSize(int64_t size);
 int64_t getNeuronAddr();

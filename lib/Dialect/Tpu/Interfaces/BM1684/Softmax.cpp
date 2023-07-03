@@ -55,7 +55,7 @@ void tpu::SoftmaxOp::codegen_global_bm1684() {
       in_addr, out_addr, outer_num, softmax_num, inner_num, 1, input_shape[0],
       input_shape[1], input_shape[2], input_shape[3],
       in_tensor_global_store_mode, buffer_addr, bottom_prec, (float)in_scale,
-      log, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      log, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   delete[] input_shape;
 }
 

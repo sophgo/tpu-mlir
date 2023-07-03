@@ -44,7 +44,7 @@ void tpu::DivOp::codegen_global_bm1684() {
         a_addr, (uint32_t *)a_shape, a_dims, b_addr, (uint32_t *)b_shape,
         b_dims, o_addr, 0 /*buffer_addr, special case may use*/, op_code,
         getDoRelu(), getReluLimit().convertToDouble(), gdma_format,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node, src_int32);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node, src_int32);
   }
 }
 
@@ -105,7 +105,7 @@ void tpu::DivOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         b1_stride, out_gi.out_addr, top_stride, op_code, getDoRelu(),
         getReluLimit().convertToDouble(),
         b0_shape[1] > b1_shape[1] ? input_addrs[1] : input_addrs[0],
-        BM1684::instance().bdc_node);
+        BM1684::instance()->bdc_node);
   }
 }
 

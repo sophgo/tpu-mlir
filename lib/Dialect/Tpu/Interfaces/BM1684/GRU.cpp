@@ -34,7 +34,7 @@ void tpu::GRUOp::codegen_global_bm1684() {
     attr.batch_first, //bool batchfirst,
     (attr.num_direction == 2), //bool bidirectional,
     1, //int numLayers
-    (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+    (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
 }
 
 uint32_t tpu::GRUOp::dyn_codegen_global_bm1684(void* ir_layer_info) {

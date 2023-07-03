@@ -37,7 +37,7 @@ void tpu::MinOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_broadcast_binary_full(
         b0_addr, (uint32_t *)b0_shape, b0_dims, b1_addr, (uint32_t *)b1_shape,
         b1_dims, top_addr, 0, op_code, getDoRelu(), -1.f, 0,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node, DTYPE_FP32);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node, DTYPE_FP32);
   } else {
     int is_sign[3] = {isInt8(getInputs()[0]), isInt8(getInputs()[1]),
                       isInt8(getOutput())};
@@ -51,7 +51,7 @@ void tpu::MinOp::codegen_global_bm1684() {
         module::getShape(getInputs()[0]).size(),
         module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
         op_code, muls->at(0), muls->at(1), rs->at(0), rs->at(1), is_int8,
-        is_sign, getDoRelu(), (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        is_sign, getDoRelu(), (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -94,7 +94,7 @@ void tpu::MinOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         /*top buffer_addr*/ 0, b0_shape, b1_shape, b0_dims,
         module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
         op_code, muls->at(0), muls->at(1), rs->at(0), rs->at(1), is_int8,
-        is_sign, getDoRelu(), BM1684::instance().bdc_node);
+        is_sign, getDoRelu(), BM1684::instance()->bdc_node);
   } else {
     int b0_stride[4];
     int b1_stride[4];
@@ -118,7 +118,7 @@ void tpu::MinOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         b1_stride, top_ginfo.out_addr, top_stride, op_code, getDoRelu(),
         (float)getReluLimit().convertToDouble(),
         b0_shape[1] > b1_shape[1] ? b1_ginfo.out_addr : b0_ginfo.out_addr,
-        BM1684::instance().bdc_node);
+        BM1684::instance()->bdc_node);
   }
 }
 
@@ -134,7 +134,7 @@ uint32_t tpu::MinOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
 
 int64_t tpu::MinOp::get_fw_type_bm1684() { return FW_BMNET_BROADCAST_BINARY; }
 
-int32_t tpu::MinOp::dyn_codegen_local_bm1684(void* ir_layer_info) {
+int32_t tpu::MinOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   llvm_unreachable("Not Implemented");
   return 0;
 }
