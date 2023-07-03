@@ -186,9 +186,9 @@ public:
       return success();
     } else if (auto add_op = dyn_cast<tpu::AddOp>(nextOp)) {
       auto inB = add_op.getInputs()[1];
-      // if (!module::isWeight(inB)) {
-      //   return failure();
-      // }
+      if (!module::isWeight(inB)) {
+        return failure();
+      }
       std::vector<int64_t> inB_shape = module::getShape(inB);
       std::vector<int64_t> new_inB_shape = {inB_shape[0], inB_shape[2],
                                             inB_shape[1], inB_shape[3]};
