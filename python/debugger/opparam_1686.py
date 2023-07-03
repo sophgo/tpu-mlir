@@ -34,6 +34,7 @@ BANK_NUM = 16
 LANE_SIZE = 1 << 17
 BANK_SIZE = LANE_SIZE / BANK_NUM
 LMEM_SIZE = LANE_SIZE * NPU_NUM
+ALIGN_EU_BASE = 16
 
 opparam_converter = {}
 
@@ -69,16 +70,10 @@ def opparam_converter_regitstry(sheet_name):
 
 # TPU1686/bm1686/spec/include/memmap.h
 memmap = {
-    MType.R: (int("0x25000000", 16), int("0x25400000", 16)),  # lmen_base 16M
+    MType.R: (int("0x25000000", 16), int("0x25400000", 16)),  # lmen_base 8M
     MType.S: (int("0x25800000", 16), int("0x25804000", 16)),  # static memory 16KB
     MType.G: (int("0x100000000", 16), int("0x200000000", 16)),  # global memory
 }
-
-# memmap = {
-#     MType.R: (int("0x25000000", 16), int("0x25400000", 16)),  # lmen_base
-#     MType.S: (int("0x25400000", 16), int("0x25410000", 16)),  # static memory
-#     MType.G: (int("0x100000000", 16), int("0x200000000", 16)),  # global memory
-# }
 
 def local_layout_to_stride(memref):
     """
@@ -86,15 +81,15 @@ def local_layout_to_stride(memref):
     """
     def alignEU_stride():
         _, c, h, w = memref.shape
-        align_type = 16 // memref.itemsize
+        align_type = ALIGN_EU_BASE // memref.itemsize
         c_stride = (w * h + align_type - 1) // align_type * align_type
-        n_stride = (c + memref.mtype.npu_offset + 31) // 32 * c_stride
+        n_stride = (c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM * c_stride
         return (n_stride, c_stride, w, 1)
 
     def compact_stride():
         _, c, h, w = memref.shape
         c_stride = w * h
-        n_stride = (c + memref.mtype.npu_offset + 31) // 32 * c_stride
+        n_stride = (c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM * c_stride
         return (n_stride, c_stride, w, 1)
 
     def offset_stride():
@@ -102,21 +97,21 @@ def local_layout_to_stride(memref):
 
     def t3_stride():
         _, c, h, w = memref.shape
-        eu_num = 16 // memref.itemsize
+        eu_num = ALIGN_EU_BASE // memref.itemsize
         h_stride = (w + eu_num - 1) / eu_num * eu_num
         c_stride = h * h_stride
-        n_stride = c_stride * (c + memref.mtype.npu_offset + 31) // 32
+        n_stride = c_stride * (c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM
         return (n_stride, c_stride, h_stride, 1)
 
     def t4_stride():
         _, _, _, w = memref.shape
-        eu_num = 16 // memref.itemsize
+        eu_num = ALIGN_EU_BASE // memref.itemsize
         h_stride = (w + eu_num - 1) / eu_num * eu_num
         return (0, 0, h_stride, 1)
 
     def t5_stride():
         _, _, _, w = memref.shape
-        eu_num = 16 // memref.itemsize
+        eu_num = ALIGN_EU_BASE // memref.itemsize
         c_stride = (w + eu_num - 1) / eu_num * eu_num
         n_stride = LANE_SIZE // 8 // memref.itemsize
         return (n_stride, c_stride, w, 1)
@@ -164,8 +159,8 @@ class MemRef(op_support.MemRef):
                     r_addr = address - v[0]
                     npu_offset = r_addr // LANE_SIZE
                     addr_len = r_addr - npu_offset * LANE_SIZE
-                    bank_index = addr_len // BANK_SIZE
-                    bank_offset = addr_len % BANK_SIZE
+                    bank_index = int(addr_len // BANK_SIZE)
+                    bank_offset = int(addr_len % BANK_SIZE)
                     # Local memory Type
                     return MType.R(
                         npu_offset=npu_offset,
@@ -230,7 +225,7 @@ class MemRef(op_support.MemRef):
 
         def get_eu_align_stride(shape):
             _, _c, _h, _w = shape
-            align_type = 64 // self.itemsize
+            align_type = ALIGN_EU_BASE // self.itemsize
             c_stride = (_w * _h + align_type - 1) // align_type * align_type
             n_stride = (_c + NPU_OFFSET + NPU_NUM - 1) // NPU_NUM * c_stride
             return n_stride, c_stride, _w, 1
@@ -282,7 +277,7 @@ class Memory:
         def get_stride_data_base(shape, stride):
             n, c, h, w = shape
             n_s, c_s, h_s, w_s = stride
-            _shape = [n, (NPU_OFFSET + c + 63) // 64, 64, h, w]
+            _shape = [n, (NPU_OFFSET + c + NPU_NUM - 1) // NPU_NUM, NPU_NUM, h, w]
             _stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
             return data_view(_shape, _stride).reshape(n, -1, h, w)[
                 :n, NPU_OFFSET : NPU_OFFSET + c, :, :
@@ -375,7 +370,7 @@ class Memory:
 
         def get_dma_stride_data(_memref=memref):
             n, c, h, w = _memref.shape
-            shape = (n, (NPU_OFFSET + c + 63) // 64, 64, h, w)
+            shape = (n, (NPU_OFFSET + c + NPU_NUM - 1) // NPU_NUM, NPU_NUM, h, w)
             n_s, c_s, h_s, w_s = _memref.stride
             stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
             index = _lane_mask_filter(c, _memref.layout.args[0])
