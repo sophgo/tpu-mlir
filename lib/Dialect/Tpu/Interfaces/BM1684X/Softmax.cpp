@@ -169,6 +169,8 @@ int64_t tpu::SoftmaxOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(softmax_local_param_t);
   softmax_local_param_t param{0};
+  auto gi = getGroupInfo(0, 0, 0, 0, 0);
+  param.buffer_addr = gi.buffer_addr;
   auto &common = param.common;
   common.zero_point = 0.f;
   common.scale_val = 1.f;
