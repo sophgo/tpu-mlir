@@ -128,7 +128,7 @@ public:
         BM1684::instance().dl_nodechip_reduce_full_v3(
             in_addr, out_addr, (const uint32_t *)input_shape, input_dims,
             axis_list, axis_num, method, buffer_addr, buffer_size_ptr,
-            (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+            (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
       } else {
         int keep_dims = reduceOp.getKeepdims() ? 1 : 0;
         buffer_size =
@@ -321,14 +321,14 @@ public:
         BM1684::instance().dl_nodechip_transpose(
             input_addr, output_addr, input_shape, order, input_dims, type_len,
             store_mode, 0, buffer_size_ptr,
-            (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+            (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
       } else if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
         store_mode = STORE_MODE_4N;
         assert(output_dtype == DTYPE_INT8 || output_dtype == DTYPE_UINT8);
         BM1684::instance().dl_nodechip_transpose_fix8b(
             input_addr, output_addr, input_shape, order, input_dims, store_mode,
             store_mode, 0, buffer_size_ptr,
-            (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+            (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
       } else {
         llvm_unreachable("Not Implemented");
         return failure();
@@ -634,7 +634,7 @@ public:
         auto output_format = BM1684::getStoreMode(output);
         BM1684::instance().dl_nodechip_tile_full_fix8b(
             0, 0, 0, &buffer_size, (const uint32_t *)in_shape, (const int *)tile_coeff, input_dim, input_format, output_format, 0,
-            (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+            (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
         if (buffer_size > 0) {
           std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
           auto buffer_type = RankedTensorType::get(buffer_shape, type);

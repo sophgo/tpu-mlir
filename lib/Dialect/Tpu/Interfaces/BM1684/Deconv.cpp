@@ -39,7 +39,7 @@ void tpu::DeconvOp::codegen_global_bm1684() {
           kw_ext - 1 - attr.pad_w_after, 1, 1, attr.sw - 1, attr.sh - 1, shift,
           attr.with_bias, 0 /*rshft_type*/, in_sign, filter_sign, bias_sign,
           module::isSign(getOutput()), attr.do_relu, attr.relu_limit,
-          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     } else {
       BM1684::instance().dl_nodechip_deconv_fix8b_forward_parallel(
         in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic, attr.ih,
@@ -47,7 +47,7 @@ void tpu::DeconvOp::codegen_global_bm1684() {
         attr.pad_h, attr.pad_h_after, attr.pad_w, attr.pad_w_after, attr.sh,
         attr.sw, attr.output_pad_h, attr.output_pad_w, attr.with_bias ? 1 : 0,
         attr.do_relu ? 1 : 0, shift, 1, in_sign, filter_sign, bias_sign,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     }
   } else {
       BM1684::instance().dl_nodechip_deconv_forward_parallel_with_data_split_v2(
@@ -56,7 +56,7 @@ void tpu::DeconvOp::codegen_global_bm1684() {
           attr.pad_h, attr.pad_h_after, attr.pad_w, attr.pad_w_after, attr.sh,
           attr.sw, attr.output_pad_h, attr.output_pad_w, attr.with_bias ? 1 : 0,
           0, attr.do_relu ? 1 : 0, 1, 1,
-          (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+          (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -100,21 +100,21 @@ void tpu::DeconvOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
           top_dim, p.kh, p.kw, p.pad_h, p.pad_h_after, p.pad_w, p.pad_w_after,
           1, 1, p.sh - 1, p.sw - 1, 2 /*is depthwise*/, 0, shift, p.with_bias,
           1 /*shift type*/, in_sign, filter_sign, bias_sign, 0 /*res sign*/,
-          p.do_relu, (CMD_ID_NODE *)BM1684::instance().bdc_node);
+          p.do_relu, (CMD_ID_NODE *)BM1684::instance()->bdc_node);
     } else {
       BM1684::instance().dl_nodechip_deconv_fix8b_forward_local(
         in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr, bottom_dim,
         top_dim, p.g, p.kh, p.kw, p.dh, p.dw, p.pad_h, p.pad_h_after, p.pad_w,
         p.pad_w_after, p.sh - 1, p.sw - 1, p.with_bias ? 1 : 0,
         p.do_relu ? 1 : 0, shift, in_sign, filter_sign, bias_sign,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node);
     }
   } else {
     BM1684::instance().dl_nodechip_deconv_forward_local_v2(
         in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr, bottom_dim,
         top_dim, p.g, p.kh, p.kw, p.dh, p.dw, p.pad_h, p.pad_h_after, p.pad_w,
         p.pad_w_after, p.sh - 1, p.sw - 1, p.with_bias, 0, p.do_relu ? 1 : 0, 1,
-        BM1684::instance().bdc_node);
+        BM1684::instance()->bdc_node);
   }
 }
 

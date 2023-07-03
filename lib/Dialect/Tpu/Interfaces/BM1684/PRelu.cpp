@@ -36,14 +36,14 @@ void tpu::PReluOp::codegen_global_bm1684() {
         channel_shared, n, c, h, w, input_sign, slope_sign, output_sign,
         rshift_bit, 1,
         slopeOp.getStoreMode().has_value() && slopeOp.getStoreMode() == "4N",
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     auto slopeOp = cast<top::WeightOp>(getSlope().getDefiningOp());
     float slope_val = slopeOp.read<float>()->at(0);
     BM1684::instance().dl_nodechip_prelu_forward(
         bottom_global_addr, slope_global_addr, top_global_addr, slope_val,
         channel_shared, n, c, h, w,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -89,12 +89,12 @@ void tpu::PReluOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     BM1684::instance().dl_nodechip_prelu_forward_local_fix8b_v3(
         la_input, la_output, la_slope, la_buffer, 0, 0, bottom_dim_fix8b, 0,
         input_sign, slope_sign, output_sign, rshift_bit, upper_limit,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   } else {
     int bottom_dim[4] = {(int)n, (int)c, (int)h, (int)w};
     BM1684::instance().dl_nodechip_prelu_forward_local_v2(
         la_input, la_output, la_slope, la_buffer, 0, 0.f, bottom_dim, 0,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   }
 }
 

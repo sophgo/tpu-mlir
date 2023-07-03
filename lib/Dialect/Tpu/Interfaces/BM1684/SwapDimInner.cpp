@@ -38,12 +38,12 @@ void tpu::SwapDimInnerOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_swap_dim(
       in_addr, out_addr, in_shape, in_dims,
       axis_num, axis_list, offset_list,
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {//FP32
     BM1684::instance().dl_nodechip_swap_dim(
       in_addr, out_addr, in_shape, in_dims,
       axis_num, axis_list, offset_list,
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 

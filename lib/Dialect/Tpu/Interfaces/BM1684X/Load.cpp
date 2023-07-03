@@ -32,7 +32,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
                                         int64_t h_step, int64_t d_step,
                                         int64_t w_step, group_type_t group_type,
                                         local_sec_info_t &sec_info) {
-  auto pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
+  auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
   auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
   assert(false == gi.overstepped);
 

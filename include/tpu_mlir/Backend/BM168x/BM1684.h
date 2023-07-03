@@ -448,7 +448,8 @@ public:
       (1 << GDMA_CMD_ALIGNED_BIT) / sizeof(uint32_t);
 
 protected:
-  BM1684() {
+  BM1684() : BM168x(TypeID::get<BM1684>()) {
+    code = std::make_unique<BM168x::Code>();
     NPU_NUM = 64;
     EU_BYTES = 128;       // only for int8; 128 for fp32
     LMEM_BYTES = 1 << 19; // 512KB

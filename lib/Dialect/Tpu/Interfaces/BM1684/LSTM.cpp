@@ -37,7 +37,7 @@ void tpu::LSTMOp::codegen_global_bm1684() {
     attr.batch_first,//bool batchFirst,
     attr.num_direction, //bool bidirectional,
     1,// int numLayers,
-    (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+    (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
 
 }
 

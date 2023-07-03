@@ -56,7 +56,7 @@ void tpu::MatMulOp::codegen_global_bm1684() {
         p.N, /*transpose*/ 0, using_bias, in_sign, right_sign, bias_sign,
         rshift_v->at(0), /*res_16b*/ 0, if_relu, /*in_4N*/ 1, if_right_active,
         /*out_4N*/ 1, /*perlayer bias*/ 0, FcPerLayerShift, &quant_param,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_batch_matmul_forward_parallel_v2(
         in_addr,
@@ -71,7 +71,7 @@ void tpu::MatMulOp::codegen_global_bm1684() {
         if_relu, //relu = 0
         (float)relu_upper_limit,
         NULL, NULL,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node
     );
   }
 }

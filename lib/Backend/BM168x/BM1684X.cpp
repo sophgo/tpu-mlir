@@ -9,8 +9,8 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/Module.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace tpu_mlir::backend;
 
@@ -18,16 +18,16 @@ uint32_t BM1684X::get_bdc_len(int bdc_num, int group_id) {
   if (bdc_num == 0) {
     return 0;
   }
-  assert(group_id < bdc_bytes.size());
-  return bdc_bytes[group_id];
+  assert(group_id < code->bdc_bytes.size());
+  return code->bdc_bytes[group_id];
 }
 
 uint32_t BM1684X::get_gdma_len(int gdma_num, int group_id) {
   if (gdma_num == 0) {
     return 0;
   }
-  assert(group_id < gdma_bytes.size());
-  return gdma_bytes[group_id];
+  assert(group_id < code->gdma_bytes.size());
+  return code->gdma_bytes[group_id];
 }
 
 void BM1684X::load_functions() {
@@ -48,7 +48,7 @@ void BM1684X::load_functions() {
 void BM1684X::start_env() {
   BM168x::start_env();
   dl_load_lookup_tables();
-  dl_set_cmd_len_ptr((void *)&gdma_bytes, (void *)&bdc_bytes);
+  dl_set_cmd_len_ptr((void *)&code->gdma_bytes, (void *)&code->bdc_bytes);
 }
 
 void BM1684X::after_codegen(int64_t flops) {

@@ -49,11 +49,11 @@ void BM168x::value_d2s(Value v, void *dst) {
 }
 
 void BM168x::divide_sync_id() {
-  dl_cmd_id_divide(cmdid_node, bdc_node, gdma_node);
+  dl_cmd_id_divide(code->cmdid_node, code->bdc_node, code->gdma_node);
 }
 
 void BM168x::merge_sync_id() {
-  dl_cmd_id_merge(cmdid_node, bdc_node, gdma_node);
+  dl_cmd_id_merge(code->cmdid_node, code->bdc_node, code->gdma_node);
 }
 
 DATA_TYPE_T BM168x::getDataType(Value v) {
@@ -276,13 +276,13 @@ typedef int (*backend_api_t)(void *params, int param_size, void *pid_node);
 void BM168x::call_global_func(const char *symbolName, void *params,
                               int param_size) {
   auto func = instance()->CastToFPtr<backend_api_t>(symbolName);
-  func(params, param_size, instance()->cmdid_node);
+  func(params, param_size, (*instance())->cmdid_node);
 }
 
 void BM168x::call_local_func(const char *symbolName, void *params,
                              int param_size) {
   auto func = instance()->CastToFPtr<backend_api_t>(symbolName);
-  func(params, param_size, instance()->bdc_node);
+  func(params, param_size, (*instance())->bdc_node);
 }
 
 typedef int (*global_backend_api_t)(void *params, int param_size, void *input,
@@ -290,7 +290,7 @@ typedef int (*global_backend_api_t)(void *params, int param_size, void *input,
 void BM168x::call_global_func(const char *symbolName, void *params,
                               int param_size, void *input, void *output) {
   auto func = instance()->CastToFPtr<global_backend_api_t>(symbolName);
-  func(params, param_size, input, output, instance()->cmdid_node);
+  func(params, param_size, input, output, (*instance())->cmdid_node);
 }
 
 typedef int (*local_backend_api_t)(void *params, int param_size, void *input,
@@ -299,7 +299,7 @@ void BM168x::call_local_func(const char *symbolName, void *params,
                              int param_size, void *info, void *input,
                              void *output) {
   auto func = instance()->CastToFPtr<local_backend_api_t>(symbolName);
-  func(params, param_size, info, input, output, instance()->bdc_node);
+  func(params, param_size, info, input, output, (*instance())->bdc_node);
 }
 
 typedef int (*global_custom_api_t)(void *params, int param_size, void *input,
@@ -308,16 +308,16 @@ void BM168x::call_global_custom_func(const char *symbolName, void *params,
                                      int param_size, void *input,
                                      void *output) {
   auto func = instance()->CastToCustomFPtr<global_custom_api_t>(symbolName);
-  func(params, param_size, input, output, instance()->cmdid_node);
+  func(params, param_size, input, output, (*instance())->cmdid_node);
 }
 
 typedef int (*local_custom_api_t)(void *params, int param_size, void *info,
-                                   void *input, void *output, void *pid_node);
+                                  void *input, void *output, void *pid_node);
 void BM168x::call_local_custom_func(const char *symbolName, void *params,
                                     int param_size, void *info, void *input,
                                     void *output) {
   auto func = instance()->CastToCustomFPtr<local_custom_api_t>(symbolName);
-  func(params, param_size, info, input, output, instance()->bdc_node);
+  func(params, param_size, info, input, output, (*instance())->bdc_node);
 }
 
 typedef int64_t (*global_bfsz_backend_api_t)(void *params, int param_size,
@@ -384,8 +384,8 @@ void BM168x::load_functions() {
 }
 
 BM168x::~BM168x() {
-  if (bmcpu_handle != nullptr) {
-    dl_bmcpu_uninit(bmcpu_handle);
+  if (code->bmcpu_handle != nullptr) {
+    dl_bmcpu_uninit(code->bmcpu_handle);
   }
 }
 
@@ -396,16 +396,16 @@ void BM168x::start_env() {
   if (0 != dl_cmodel_init(0, CMODEL_GMEM_SIZE)) {
     llvm_unreachable("cmodel init failed");
   }
-  bmcpu_handle = dl_bmcpu_init();
-  cmdid_node = dl_create_cmd_id_node();
-  bdc_node = dl_create_cmd_id_node();
-  gdma_node = dl_create_cmd_id_node();
-  gdma_buffer.reserve(0x1000000);
-  bdc_buffer.reserve(0x1000000);
-  dl_set_cmd_buffer_ptr((void *)&gdma_buffer, (void *)&bdc_buffer);
-  dl_set_total_id_ptr(&gdma_total_id, &bdc_total_id, cmdid_node,
-                      (void *)&gdma_group_id, (void *)&bdc_group_id,
-                      &cmdid_groupnum);
+  code->bmcpu_handle = dl_bmcpu_init();
+  code->cmdid_node = dl_create_cmd_id_node();
+  code->bdc_node = dl_create_cmd_id_node();
+  code->gdma_node = dl_create_cmd_id_node();
+  code->gdma_buffer.reserve(0x1000000);
+  code->bdc_buffer.reserve(0x1000000);
+  dl_set_cmd_buffer_ptr((void *)&code->gdma_buffer, (void *)&code->bdc_buffer);
+  dl_set_total_id_ptr(&code->gdma_total_id, &code->bdc_total_id,
+                      code->cmdid_node, (void *)&code->gdma_group_id,
+                      (void *)&code->bdc_group_id, &code->cmdid_groupnum);
   dl_allow_store_cmd();
   dl_forbid_atomic_cmodel(); // TODO:(no compare)
 }
@@ -413,10 +413,10 @@ void BM168x::start_env() {
 void BM168x::end_env() {
   BM168x::instance()->reset_command_flag();
   if (DL.isValid()) {
-    if (cmdid_node != nullptr) {
-      dl_destroy_cmd_id_node(gdma_node);
-      dl_destroy_cmd_id_node(bdc_node);
-      dl_destroy_cmd_id_node(cmdid_node);
+    if (code->cmdid_node != nullptr) {
+      dl_destroy_cmd_id_node(code->gdma_node);
+      dl_destroy_cmd_id_node(code->bdc_node);
+      dl_destroy_cmd_id_node(code->cmdid_node);
     }
     dl_cmodel_deinit(0);
   }
@@ -518,21 +518,21 @@ void BM168x::before_codegen() {
   dl_sg_set_profile_path("./");
   dl_sg_set_profile_dump(true);
   reset_cmd_id_node();
-  gdma_group_id.clear();
-  gdma_group_id.push_back(0);
-  bdc_group_id.clear();
-  bdc_group_id.push_back(0);
-  gdma_bytes.clear();
-  bdc_bytes.clear();
-  gdma_buffer.clear();
-  bdc_buffer.clear();
-  cmdid_groupnum = 1;
+  code->gdma_group_id.clear();
+  code->gdma_group_id.push_back(0);
+  code->bdc_group_id.clear();
+  code->bdc_group_id.push_back(0);
+  code->gdma_bytes.clear();
+  code->bdc_bytes.clear();
+  code->gdma_buffer.clear();
+  code->bdc_buffer.clear();
+  code->cmdid_groupnum = 1;
 }
 
 void BM168x::after_codegen(int64_t flops) {
-  dl_sg_stas_dump(cmdid_node);
+  dl_sg_stas_dump(code->cmdid_node);
   if (flops) {
-    dl_sg_flops_dump(flops, cmdid_node);
+    dl_sg_flops_dump(flops, code->cmdid_node);
   }
 }
 
@@ -550,13 +550,17 @@ void BM168x::set_command_issue_flag(bool value) {
 }
 
 void BM168x::reset_cmd_id_node() {
-  dl_reset_cmd_id(cmdid_node);
-  dl_reset_cmd_id(bdc_node);
-  dl_reset_cmd_id(gdma_node);
+  dl_reset_cmd_id(code->cmdid_node);
+  dl_reset_cmd_id(code->bdc_node);
+  dl_reset_cmd_id(code->gdma_node);
 }
 
-int64_t BM168x::get_gdma_cycle() { return dl_get_cmd_id_cycle(gdma_node); }
+int64_t BM168x::get_gdma_cycle() {
+  return dl_get_cmd_id_cycle(code->gdma_node);
+}
 
-int64_t BM168x::get_bdc_cycle() { return dl_get_cmd_id_cycle(bdc_node); }
+int64_t BM168x::get_bdc_cycle() { return dl_get_cmd_id_cycle(code->bdc_node); }
 
-int64_t BM168x::get_cmd_cycle() { return dl_get_cmd_id_cycle(cmdid_node); }
+int64_t BM168x::get_cmd_cycle() {
+  return dl_get_cmd_id_cycle(code->cmdid_node);
+}

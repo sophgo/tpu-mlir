@@ -33,7 +33,7 @@ void tpu::ReduceOp::codegen_global_bm1684() {
   if (false == module::isUniformQuantized(getInput())) {
     BM1684::instance().dl_nodechip_reduce_full_v3(
         in_addr, out_addr, input_shape, i_dims, axis_list, axis_num, method,
-        buffer_addr, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        buffer_addr, 0, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     int keep_dims = getKeepdims() ? 1 : 0;
     int bottom_sign = module::isSign(getInput()) ? 1 : 0;
@@ -43,7 +43,7 @@ void tpu::ReduceOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_reduce_full_fix8b(
         in_addr, out_addr, buffer_addr, input_shape, i_dims, axis_list,
         axis_num, method, keep_dims, bottom_sign, store_mode, bottom_scale,
-        top_scale, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        top_scale, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 

@@ -14,6 +14,7 @@
 #include "TensorLocation.hpp"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Backend/BM168x/BM1686.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicNetIr.hpp"
@@ -190,6 +191,17 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
   // create subnet
   npb.add_sub_net(subnets);
   npb.add_cpu_mem_size(0);
+  // multi-core
+  if (auto bm1686 = dyn_cast<BM1686>(bm168x)) {
+    auto bufferNum = bm1686->getCodebuffer().size();
+    if (module::getCoreNum() > 1 && bufferNum > 1) {
+      assert(module::getCoreNum() == bufferNum &&
+             "The code buffer size does not match the core number defined in "
+             "Module.");
+      npb.add_core_num(module::getCoreNum());
+    }
+  }
+
   if (true) {
     auto save_profile_info = [&](StringRef pfname, auto fun) -> bool {
       llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
@@ -333,12 +345,12 @@ BMCodegen::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
 std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>>
 BMCodegen::CreateCmdGroupVector() {
   auto cmd_group_v = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
-  auto gdma_ptr = (uint8_t *)bm168x->gdma_buffer.data();
-  auto bdc_ptr = (uint8_t *)bm168x->bdc_buffer.data();
+  auto gdma_ptr = (uint8_t *)(*bm168x)->gdma_buffer.data();
+  auto bdc_ptr = (uint8_t *)(*bm168x)->bdc_buffer.data();
   int bdc_offset = 0, gdma_offset = 0;
-  for (int group_idx = 0; group_idx < bm168x->cmdid_groupnum; group_idx++) {
-    auto bdc_num = bm168x->bdc_group_id[group_idx];
-    auto gdma_num = bm168x->gdma_group_id[group_idx];
+  for (int group_idx = 0; group_idx < (*bm168x)->cmdid_groupnum; group_idx++) {
+    auto bdc_num = (*bm168x)->bdc_group_id[group_idx];
+    auto gdma_num = (*bm168x)->gdma_group_id[group_idx];
     bmodel::Binary binary_bdc;
     bmodel::Binary binary_gdma;
     auto bdc_len = bm168x->get_bdc_len(bdc_num, group_idx);
@@ -417,9 +429,9 @@ void BMCodegen::codegen_for_overlap_ops(
       for (auto op : cur_ops) {
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
         auto ginfo = lgOp.getGroupInfo(0l, 0l, 0l, 0l, 0l);
-        auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
+        auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->bdc_node;
         if (isa<LoadOp, StoreOp>(op)) {
-          pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
+          pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
         }
         BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
                                                  gen_op_id(op).c_str());
@@ -448,9 +460,9 @@ void BMCodegen::codegen_for_overlap_ops(
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
         auto ginfo = lgOp.getGroupInfo(nsecs - 1, hsecs - 1, dsecs - 1,
                                        wsecs - 1, csecs - 1);
-        auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
+        auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->bdc_node;
         if (isa<LoadOp, StoreOp>(op)) {
-          pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
+          pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
         }
         BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
                                                  gen_op_id(op).c_str());
@@ -604,9 +616,9 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
                                   tensor_step->dstep, tensor_step->wstep,
                                   tensor_step->cstep);
         if (ginfo.overstepped == false) {
-          auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
+          auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->bdc_node;
           if (isa<LoadOp, StoreOp>(*group_ops[id])) {
-            pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
+            pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
           }
           BM168x::instance()->dl_set_cmd_id_prefix(
               pid_node, gen_op_id(group_ops[id]).c_str());
@@ -679,13 +691,40 @@ void BMCodegen::codegen(Operation *op) {
   } else if (module::isOpInGroup(op)) {
     return;
   } else if (auto parallelOp = dyn_cast<ParallelOp>(op)) {
-    op->walk([&](GlobalGenInterfaceDecorator globalOp) {
-      auto pid_node = (CMD_ID_NODE *)BM168x::instance()->cmdid_node;
-      BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op).c_str());
-      globalOp.codegen_global_bm168x();
-    });
+    if (auto bm1686 = dyn_cast<BM1686>(bm168x)) {
+      // For the sync-all method, we can use two message IDs to represent all
+      // the dependencies in a single run. We can try the following sequence:
+      // send0, wait0, send1, wait1. If any of the wait0 operations succeed, it
+      // confirms that all the send0 operations have finished. Similarly, if any
+      // of the wait1 operations succeed, it confirms that all the send1
+      // operations have finished, which also implies that all the wait0
+      // operations have been completed. After this, it is safe to reuse
+      // message0.
+      auto core_num = module::getCoreNum();
+      bm1686->dl_tpu_core_context_setup(0, core_num, 0);
+      bm1686->setCoreNum(module::getCoreNum());
+      int id = 0;
+      op->walk([&](GlobalGenInterfaceDecorator globalOp) {
+        bm1686->useCore(id++);
+        bm1686->dl_tpu_sync_all(); // begin compute sync-all
+        auto pid_node = (CMD_ID_NODE *)(*bm1686)->cmdid_node;
+        BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
+                                                 gen_op_id(op).c_str());
+        globalOp.codegen_global_bm168x();
+        bm1686->dl_tpu_sync_all(); // end compute sync-all
+      });
+      for (; id < core_num; id++) { // consume all the MSG send/wait.
+        bm1686->useCore(id++);
+        bm1686->dl_tpu_sync_all();
+        bm1686->dl_tpu_sync_all();
+      }
+      bm1686->useCore(0); // reset the command buffer to 0
+    } else {
+      llvm_unreachable("The backend is missing configuration.");
+    }
+
   } else if (auto castOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
-    auto pid_node = (CMD_ID_NODE *)BM168x::instance()->cmdid_node;
+    auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->cmdid_node;
     BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op).c_str());
     LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(op) << "'\n");
     profile_ctx.log_global_layer(op);
@@ -743,13 +782,35 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
   auto output_tensor = CreateTensorVector(outputs);
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
-  auto cmd_group_v = CreateCmdGroupVector();
-  for (auto &c : *cmd_group_v) {
-    cmd_group_all->push_back(c);
+
+  std::vector<Offset<bmodel::CmdGroup>> cmd_group_vs;
+  std::vector<Offset<bmodel::CoreCommands>> core_commands;
+  auto bm1686 = dyn_cast<BM1686>(bm168x);
+  if (bm1686 && bm1686->getCodebuffer().size() > 1) {
+    auto code_buffers = bm1686->getCodebuffer();
+    for (int i = 0, n = code_buffers.size(); i < n; i++) {
+      bm1686->useCore(i);
+      auto cmd_group_v = CreateCmdGroupVector();
+      auto cmd_group = builder.CreateVector(*cmd_group_v);
+      bmodel::CoreCommandsBuilder ccb(builder);
+      ccb.add_gdma_tiu_commands(cmd_group);
+      core_commands.push_back(ccb.Finish());
+    }
+  } else {
+    auto cmd_group_v = CreateCmdGroupVector();
+    cmd_group_vs.insert(cmd_group_vs.end(), cmd_group_v->begin(),
+                        cmd_group_v->end());
   }
-  auto cmd_group = model_gen->Builder().CreateVector(*cmd_group_v);
+
+  cmd_group_all->insert(cmd_group_all->end(), cmd_group_vs.begin(),
+                        cmd_group_vs.end());
+  auto cmd_group = builder.CreateVector(cmd_group_vs);
+  auto core_cmds = builder.CreateVector(core_commands);
   bmodel::SubNetBuilder snb(builder);
-  snb.add_cmd_group(cmd_group);
+  if (cmd_group_vs.size() > 0)
+    snb.add_cmd_group(cmd_group);
+  if (core_commands.size() > 0)
+    snb.add_core_commands(core_cmds);
   snb.add_is_dynamic(false);
   snb.add_subnet_mode(SUBNET_MODE_TPU);
   snb.add_input_tensor(input_tensor);

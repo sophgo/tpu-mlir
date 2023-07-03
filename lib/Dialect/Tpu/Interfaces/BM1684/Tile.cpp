@@ -36,12 +36,12 @@ void tpu::TileOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_tile_full_fix8b(
         input_addr, output_addr, buffer_global_addr, NULL, (const uint32_t *)in_shape,
         (const int *)tile_coeff, input_dim, input_format, output_format, 0,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_tile_full(
         input_addr, buffer_global_addr, output_addr, (const uint32_t *)in_shape,
         (const int *)tile_coeff, input_dim, input_format, output_format, 0,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -100,13 +100,13 @@ void tpu::TileOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     BM1684::instance().dl_nodechip_tile_fix8b_local(
         la_input, la_output, la_buffer, (const int *)input_shape,
         (const int *)tile_coeff, input_dim, in_gdma_format, out_gdma_format, 0,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node,
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_tile_local(
         la_input, la_output, (const int *)input_shape, (const int *)tile_coeff,
         input_dim, in_gdma_format, out_gdma_format, 0,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   }
 }
 

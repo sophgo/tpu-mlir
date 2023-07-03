@@ -42,7 +42,7 @@ void tpu::SubOp::codegen_global_bm1684() {
         a_addr, (uint32_t *)a_shape, a_dims, b_addr, (uint32_t *)b_shape,
         b_dims, o_addr, 0 /*buffer_addr, special case may use*/, op_code,
         getDoRelu(), getReluLimit().convertToDouble(), gdma_format,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node, src_int32);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node, src_int32);
   } else {
     int sign[3] = {0};
     int is_int8[3] = {0};
@@ -69,7 +69,7 @@ void tpu::SubOp::codegen_global_bm1684() {
         is_coeff[1], op_code, (int)multiplier_v->at(0),
         (int)multiplier_v->at(1), (uint8_t)rshift_v->at(0),
         (uint8_t)rshift_v->at(1), is_int8, sign, getDoRelu() ? 1 : 0,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -139,7 +139,7 @@ void tpu::SubOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
         op_code, (int)multiplier_v->at(0), (int)multiplier_v->at(1),
         (uint8_t)rshift_v->at(0), (uint8_t)rshift_v->at(1), is_int8, sign,
-        getDoRelu(), BM1684::instance().bdc_node);
+        getDoRelu(), BM1684::instance()->bdc_node);
   } else {
     int b0_stride[4] = {0};
     int b1_stride[4] = {0};
@@ -165,7 +165,7 @@ void tpu::SubOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         b1_stride, out_gi.out_addr, top_stride, op_code, getDoRelu(),
         getReluLimit().convertToDouble(),
         b0_shape[1] > b1_shape[1] ? input_addrs[1] : input_addrs[0],
-        BM1684::instance().bdc_node);
+        BM1684::instance()->bdc_node);
   }
 }
 

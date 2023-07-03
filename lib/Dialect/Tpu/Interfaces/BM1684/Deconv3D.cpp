@@ -28,7 +28,7 @@ void tpu::Deconv3DOp::codegen_global_bm1684() {
       attr.pad_h_after, attr.pad_w, attr.pad_w_after, attr.sd, attr.sh, attr.sw,
       attr.output_pad_d, attr.output_pad_h, attr.output_pad_w, attr.with_bias,
       attr.do_relu, attr.relu_limit,
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
 }
 
 int64_t tpu::Deconv3DOp::getBufferSize_bm1684(

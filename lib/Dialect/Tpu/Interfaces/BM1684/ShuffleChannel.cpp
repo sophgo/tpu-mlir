@@ -23,11 +23,11 @@ void tpu::ShuffleChannelOp::codegen_global_bm1684() {
   if (module::isUniformQuantized(getInput())) {
     BM1684::instance().dl_nodechip_shuffle_channel_fix8b_forward(
         input_addr, out_addr, n, c, h, w, getGroup(),
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_shuffle_channel_forward(
         input_addr, out_addr, n, c, h, w, getGroup(),
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 

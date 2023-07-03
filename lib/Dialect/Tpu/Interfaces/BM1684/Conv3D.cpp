@@ -37,7 +37,7 @@ void tpu::Conv3DOp::codegen_global_bm1684() {
         attr.dd, attr.dh, attr.dw, attr.pdf, attr.pdb, attr.pht, attr.phb,
         attr.pwl, attr.pwr, attr.sd, attr.sh, attr.sw, attr.has_bias ? 1 : 0,
         attr.do_relu ? 1 : 0, attr.relu_limit, in_sign, out_sign, filter_sign,
-        bias_sign, shift, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        bias_sign, shift, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     // F32
     // refer to
@@ -55,7 +55,7 @@ void tpu::Conv3DOp::codegen_global_bm1684() {
         attr.dd, attr.dh, attr.dw, attr.pdf, attr.pdb, attr.pht, attr.phb,
         attr.pwl, attr.pwr, attr.sd, attr.sh, attr.sw, attr.has_bias ? 1 : 0,
         attr.do_relu ? 1 : 0, attr.relu_limit, method,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -89,14 +89,14 @@ void tpu::Conv3DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         attr.pdf, attr.pdb, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sd,
         attr.sh, attr.sw, attr.has_bias ? 1 : 0, attr.do_relu ? 1 : 0, in_sign,
         filter_sign, bias_sign, out_sign, shift,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   } else {
     BM1684::instance().dl_nodechip_conv3d_local(
         in_addr, filter_addr, bias_addr, out_addr, input_shape, output_shape,
         attr.groups, attr.kd, attr.kh, attr.kw, attr.dd, attr.dh, attr.dw,
         attr.pdf, attr.pdb, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sd,
         attr.sh, attr.sw, attr.has_bias ? 1 : 0, attr.do_relu ? 1 : 0,
-        attr.relu_limit, (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        attr.relu_limit, (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   }
 }
 

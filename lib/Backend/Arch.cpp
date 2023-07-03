@@ -18,6 +18,7 @@
 #include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
+#include <type_traits>
 
 using namespace tpu_mlir::backend;
 
@@ -51,9 +52,9 @@ void Arch::init(uint64_t freq) {
     } else if (chip == module::Chip::BM1684X) {
       inst = &BM1684X::instance();
     } else if (chip == module::Chip::BM1686) {
-      inst = &BM1686<A2_1>::instance();
+      inst = &BM1686::instance(A2_1::value);
     } else if (chip == module::Chip::CV186X) {
-      inst = &BM1686<A2_2>::instance();
+      inst = &BM1686::instance(A2_2::value);
     } else if (module::isCV18xx()) {
       inst = &CV18xx::instance(chip);
     } else {
@@ -84,8 +85,8 @@ size_t Arch::get_gmem_bytes(Value v) {
                              std::multiplies<int64_t>());
 }
 
-int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t d, int64_t h,
-                                    int64_t w, bool eu_align) {
+int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t d,
+                                    int64_t h, int64_t w, bool eu_align) {
   auto type = module::getStorageType(v);
   int type_bits = type.getIntOrFloatBitWidth();
   double dbytes = (double)type_bits / 8;
@@ -107,8 +108,10 @@ int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t d, in
   }
 }
 
-int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_c, int64_t slice_h, int64_t slice_d, int64_t slice_w,
-                                    group_type_t group_type, bool eu_align) {
+int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_c,
+                                    int64_t slice_h, int64_t slice_d,
+                                    int64_t slice_w, group_type_t group_type,
+                                    bool eu_align) {
   int64_t n, c, d, h, w;
   module::getNCDHW(v, n, c, d, h, w, group_type);
   if (slice_n > 0) {
@@ -129,7 +132,8 @@ int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_c, i
   return get_tensor_lmem_bytes(v, n, c, d, h, w, eu_align);
 }
 
-int64_t Arch::get_weight_lmem_bytes(Value v, group_type_t group_type, bool eu_align) {
+int64_t Arch::get_weight_lmem_bytes(Value v, group_type_t group_type,
+                                    bool eu_align) {
   int64_t n, c, d, h, w;
   module::getNCDHW(v, n, c, d, h, w, group_type);
   auto type = module::getStorageType(v);
@@ -139,7 +143,8 @@ int64_t Arch::get_weight_lmem_bytes(Value v, group_type_t group_type, bool eu_al
   int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
   int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
   if (type_bits == 4)
-    return align_up((int64_t)(n * d * c_per_npu * eu_aligned), (int64_t)2) * dbytes;
+    return align_up((int64_t)(n * d * c_per_npu * eu_aligned), (int64_t)2) *
+           dbytes;
   return (int64_t)n * d * c_per_npu * eu_aligned * dbytes;
 }
 
@@ -148,7 +153,8 @@ Arch::~Arch() {}
 void Arch::load_library() {
   if (!DL.isValid()) {
     std::string Err;
-    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(LIB_BACKEND_NAME.data(), &Err);
+    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(LIB_BACKEND_NAME.data(),
+                                                        &Err);
     if (DL.isValid() == false) {
       llvm_unreachable(Err.c_str());
     }

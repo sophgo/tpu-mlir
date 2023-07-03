@@ -41,7 +41,7 @@ void tpu::AddOp::codegen_global_bm1684() {
         a_addr, (uint32_t *)a_shape, a_dims, b_addr, (uint32_t *)b_shape,
         b_dims, o_addr, 0 /*buffer_addr, special case may use*/, BINARY_ADD,
         getDoRelu(), getReluLimit().convertToDouble(), gdma_format,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node, src_int32);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node, src_int32);
   } else {
     int is_sign[input_num + 1];
     memset(is_sign, 0, sizeof(int) * (input_num + 1));
@@ -69,7 +69,7 @@ void tpu::AddOp::codegen_global_bm1684() {
         a_addr, b_addr, o_addr, a_shape, b_shape, out_dims, is_coeff[0],
         is_coeff[1], BINARY_ADD, muls->at(0), muls->at(1), rs->at(0), rs->at(1),
         is_int8, is_sign, getDoRelu(),
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -129,7 +129,7 @@ void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         out_gi.buffer_addr, b0_shape, b1_shape, shape_dim,
         module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
         BINARY_ADD, muls->at(0), muls->at(1), rs->at(0), rs->at(1), is_int8,
-        is_sign, getDoRelu(), BM1684::instance().bdc_node);
+        is_sign, getDoRelu(), BM1684::instance()->bdc_node);
   } else {
     int b0_stride[shape_dim], b1_stride[shape_dim], top_stride[shape_dim],
         top_shape[shape_dim];
@@ -153,7 +153,7 @@ void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         b1_stride, out_gi.out_addr, top_stride, BINARY_ADD, getDoRelu(),
         getReluLimit().convertToDouble(),
         b0_shape[1] > b1_shape[1] ? in1_g_info.out_addr : in0_g_info.out_addr,
-        BM1684::instance().bdc_node);
+        BM1684::instance()->bdc_node);
   }
 }
 

@@ -25,7 +25,7 @@ void tpu::CompareConstOp::codegen_global_bm1684() {
         module::getAddress(getInput()), n * c * h * w,
         getConstVal().convertToDouble(), module::getAddress(getOutput()),
         binary_type, getInversed(), 0, -1.0f,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node,
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node,
         module::getStorageType(getInput()).isa<IntegerType>());
   } else {
     int is_signs[3] = {module::isSign(getInput()), 0,
@@ -38,7 +38,7 @@ void tpu::CompareConstOp::codegen_global_bm1684() {
         getConstVal().convertToDouble(), b0_shape,
         module::getShape(getInput()).size(), binary_type, 1, 1, 0, 0,
         getInversed(), 0, is_int8s, is_signs,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }
 
@@ -65,7 +65,7 @@ void tpu::CompareConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     BM1684::instance().dl_nodechip_const_binary_local(
         in_g_info.out_addr, (uint32_t *)b0_shape, const_val,
         out_g_info.out_addr, binary_type, getInversed(), 0, -1.0f,
-        (CMD_ID_NODE *)BM1684::instance().bdc_node);
+        (CMD_ID_NODE *)BM1684::instance()->bdc_node);
   } else {
     int is_signs[3] = {module::isSign(getInput()), 0,
                        module::isSign(getOutput())};
@@ -75,7 +75,7 @@ void tpu::CompareConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         in_g_info.out_addr, out_g_info.out_addr, out_g_info.buffer_addr,
         const_val, b0_shape, module::getShape(getInput()).size(), binary_type,
         1, 1, 0, 0, getInversed(), 0, is_int8s, is_signs,
-        BM1684::instance().bdc_node);
+        BM1684::instance()->bdc_node);
   }
 }
 

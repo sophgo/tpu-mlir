@@ -29,6 +29,7 @@ struct Attr {
   static constexpr llvm::StringRef CHIP = "module.chip";
   static constexpr llvm::StringRef WEIGHT_FILE = "module.weight_file";
   static constexpr llvm::StringRef FLOPS = "module.FLOPs";
+  static constexpr llvm::StringRef CORES = "module.cores";
   static constexpr llvm::StringRef COEFF_ADDR = "module.coeff_addr";
   static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
   static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
@@ -736,6 +737,17 @@ int64_t getGmemPrivateSize() {
 void setGmemPrivateSize(int64_t size) {
   m->setAttr(Attr::GMEM_PRIVATE_SIZE, Builder(ctx).getI64IntegerAttr(size));
 }
+
+int64_t getCoreNum() {
+  if (auto cores = m->getAttrOfType<IntegerAttr>(Attr::CORES))
+    return cores.getInt();
+  return 1;
+}
+
+void setCoreNum(int64_t core_num) {
+  m->setAttr(Attr::CORES, Builder(ctx).getI64IntegerAttr(core_num));
+}
+
 int64_t getCoeffAddr() {
   return m->getAttrOfType<IntegerAttr>(Attr::COEFF_ADDR).getInt();
 }

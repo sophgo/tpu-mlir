@@ -44,11 +44,12 @@ public:
       "libbm1684x_kernel_module.so";
 
 protected:
-  BM1684X() {
+  BM1684X() : BM168x(TypeID::get<BM1684X>()) {
     if (chip != module::Chip::BM1684X) {
       // avoid bm1686 construct
       return;
     }
+    code = std::make_unique<BM168x::Code>();
     NPU_NUM = 64;
     EU_BYTES = 64;
     LMEM_BYTES = 1 << 18; // 256KB

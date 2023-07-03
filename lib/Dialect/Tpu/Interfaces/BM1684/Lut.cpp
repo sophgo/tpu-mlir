@@ -27,7 +27,7 @@ void tpu::LutOp::codegen_global_bm1684() {
       module::getAddress(getInput()), module::getAddress(getOutput()),
       module::getAddress(getTable()), n, c, h, w,
       /*in store_mode*/ 0, out_dtype,
-      /*out store_mode*/ 1, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      /*out store_mode*/ 1, (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
 }
 
 int64_t tpu::LutOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
@@ -63,7 +63,7 @@ void tpu::LutOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   BM1684::instance().dl_nodechip_lut_local_v2(
       in_g_info.out_addr, tb_g_info.out_addr, out_g_info.buffer_addr,
       out_g_info.out_addr, b0_shape, module::getShape(getOutput()).size(), 0,
-      out_dtype, 1, (CMD_ID_NODE *)BM1684::instance().bdc_node);
+      out_dtype, 1, (CMD_ID_NODE *)BM1684::instance()->bdc_node);
 }
 
 uint32_t tpu::LutOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
