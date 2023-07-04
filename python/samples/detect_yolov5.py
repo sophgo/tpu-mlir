@@ -268,7 +268,10 @@ def postproc(outputs, imsize, top, left, anchors=ANCHORS):
             elif out.ndim == 4 and (out.shape[0], out.shape[3]) == (1, 255):
                 out = out.reshape(1, out.shape[1], out.shape[2], 3, 85)
                 out = out.transpose(0, 3, 1, 2, 4)
+            elif out.ndim == 4 and (out.shape[0], out.shape[1], out.shape[3] % 85) == (1, 3, 0):
+                out = out.reshape(1, 3, out.shape[2], -1, 85)
             else:
+                print("Warning: Output node with shape {} is not vaild, please check.".format(out.shape))
                 continue
         # 1, 3, y, x, 85
         _, _, ny, nx, _ = out.shape

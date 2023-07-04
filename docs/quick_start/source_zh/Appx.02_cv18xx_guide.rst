@@ -61,7 +61,7 @@ ONNX转MLIR
        --scale 0.0039216,0.0039216,0.0039216 \
        --keep_aspect_ratio \
        --pixel_format rgb \
-       --output_names 350,498,646 \
+       --output_names 326,474,622 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
@@ -199,7 +199,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --scale 0.0039216,0.0039216,0.0039216 \
        --keep_aspect_ratio \
        --pixel_format rgb \
-       --output_names 350,498,646 \
+       --output_names 326,474,622 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s_bs1.mlir
@@ -236,7 +236,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --scale 0.0039216,0.0039216,0.0039216 \
        --keep_aspect_ratio \
        --pixel_format rgb \
-       --output_names 350,498,646 \
+       --output_names 326,474,622 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s_bs2.mlir

@@ -57,7 +57,7 @@ The model conversion command is as follows:
        --scale 0.0039216,0.0039216,0.0039216 \
        --keep_aspect_ratio \
        --pixel_format rgb \
-       --output_names 350,498,646 \
+       --output_names 326,474,622 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
@@ -195,7 +195,7 @@ Please refer to the previous section to create a new workspace directory and con
        --scale 0.0039216,0.0039216,0.0039216 \
        --keep_aspect_ratio \
        --pixel_format rgb \
-       --output_names 350,498,646 \
+       --output_names 326,474,622 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s_bs1.mlir
@@ -231,7 +231,7 @@ Generate mlir fp32 file in the same workspace:
        --scale 0.0039216,0.0039216,0.0039216 \
        --keep_aspect_ratio \
        --pixel_format rgb \
-       --output_names 350,498,646 \
+       --output_names 326,474,622 \
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s_bs2.mlir
