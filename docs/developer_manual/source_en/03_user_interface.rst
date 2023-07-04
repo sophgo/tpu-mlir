@@ -204,9 +204,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - calibration_table
      - N
      - The quantization table path. Required when it is INT8 quantization
-   * - avoid_f16_overflow
+   * - ignore_f16_overflow
      - N
-     - Part of the F16 quantized op will be implemented with F32, to avoid overflow such as LayerNorm
+     - Operators with F16 overflow risk are still implemented according to F16; otherwise, F32 will be implemented by default, such as LayerNorm
    * - tolerance
      - N
      - Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results

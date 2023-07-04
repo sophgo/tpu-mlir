@@ -111,6 +111,41 @@ struct subnet_basic_info{
 };
 int subnet_basic_info::__next_id = 0;
 
+template <typename TyOp>
+struct ConvertToReshape : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(TyOp op,
+                                PatternRewriter &rewriter) const override {
+    auto mode = tpu::getRunMode(op);
+    if (mode != tpu::RunMode::TPU_STATIC) {
+      return failure();
+    }
+    std::vector<Value> operands;
+    operands.emplace_back(op.getInput());
+    operands.emplace_back(module::getNoneOp(op));
+    rewriter.replaceOpWithNewOp<tpu::ReshapeOp>(op, op.getResult().getType(),
+                                                operands);
+    return success();
+  }
+};
+
+struct MergeReshape : public OpRewritePattern<tpu::ReshapeOp> {
+  using OpRewritePattern<tpu::ReshapeOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::ReshapeOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in_op = op.getInput().getDefiningOp();
+    if (nullptr == in_op || in_op->hasOneUse() == false) {
+      return failure();
+    }
+    if (!isa<tpu::ReshapeOp>(in_op)) {
+      return failure();
+    }
+    op.setOperand(0, in_op->getOperand(0));
+    in_op->erase();
+    return success();
+  }
+};
+
 class SubnetDividePass : public SubnetDivideBase<SubnetDividePass> {
 public:
   SubnetDividePass() {}
@@ -127,6 +162,12 @@ public:
     for (auto info : sorted_subnet_infos)
       delete info;
     toposort();
+    // for static ops
+    auto &ctx = getContext();
+    RewritePatternSet patterns(&ctx);
+    patterns.add<ConvertToReshape<tpu::UnsqueezeOp>,
+                 ConvertToReshape<tpu::SqueezeOp>, MergeReshape>(&ctx);
+    applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
     module::removeUnusedOp();
     module::setState(module::State::TPU_DIVIDED);
   }

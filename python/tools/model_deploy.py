@@ -76,7 +76,7 @@ class DeployTool:
         self.disable_layer_group = args.disable_layer_group
         self.merge_weight = args.merge_weight
         self.op_divide = args.op_divide
-        self.avoid_f16_overflow = args.avoid_f16_overflow
+        self.ignore_f16_overflow = args.ignore_f16_overflow
         self.core = args.core
         self.correctness = "0.99,0.90"
         if self.quantize_table:
@@ -112,7 +112,7 @@ class DeployTool:
             self.final_mlir = "{}_final.mlir".format(self.prefix)
             mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
                           self.asymmetric, self.quantize_table, self.customization_format,
-                          self.fuse_preprocess, self.aligned_input, self.avoid_f16_overflow)
+                          self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow)
             if self.do_validate:
                 tool.validate_tpu_mlir()
 
@@ -246,7 +246,7 @@ if __name__ == '__main__':
                         help="set default qauntization type: F32/BF16/F16/INT8")
     parser.add_argument("--asymmetric", action='store_true',
                         help="do INT8 asymmetric quantization")
-    parser.add_argument("--avoid_f16_overflow", action='store_true',
+    parser.add_argument("--ignore_f16_overflow", action='store_true',
                         help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm")
     parser.add_argument("--chip", required=True, type=str.lower,
                         choices=['bm1686', 'bm1684x', 'bm1684',

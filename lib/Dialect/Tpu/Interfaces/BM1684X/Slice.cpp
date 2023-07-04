@@ -17,7 +17,12 @@ using namespace tpu_mlir::backend;
 void tpu::SliceOp::codegen_global_bm1684x() {
   auto p = parseParam();
   if (p.fusible) {
-    return;
+    auto in_addr = module::getAddress(getInput());
+    auto in_size = module::getBytes(getInput());
+    auto out_addr = module::getAddress(getOutput());
+    if (in_addr <= out_addr && (in_addr + in_size) >= out_addr) {
+      return;
+    }
   }
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
@@ -171,10 +176,8 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::SliceOp::get_fw_type_bm1684x() {
-  return FW_BMNET_STRIDESLICE;
-}
+int64_t tpu::SliceOp::get_fw_type_bm1684x() { return FW_BMNET_STRIDESLICE; }
 
-int64_t tpu::SliceOp::dyn_codegen_local_bm1684x(void* buffer) {
+int64_t tpu::SliceOp::dyn_codegen_local_bm1684x(void *buffer) {
   llvm_unreachable("not implement");
 }
