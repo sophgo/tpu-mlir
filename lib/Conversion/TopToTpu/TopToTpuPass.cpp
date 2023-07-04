@@ -946,7 +946,7 @@ protected:
 
   void init_qtable() {
     LoweringConfig::quantize_map.clear();
-    if (avoid_f16_overflow && module::getMode() == module::Mode::F16) {
+    if (ignore_f16_overflow == false && module::getMode() == module::Mode::F16) {
       mainFunc_.walk([&](Operation *op) {
         // if have other op need convert from f16 to f32, add here
         if (isa<top::LayerNormOp>(op)) {
