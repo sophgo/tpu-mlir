@@ -693,11 +693,6 @@ class OnnxConverter(BaseConverter):
         operands = list()
         weight_data = None
         for x in onnx_node.inputs:
-            x_shape = self.getShape(x)
-            num_elem = np.prod(x_shape)
-            if num_elem == 0:
-                print("WARNING:{}'s shape is strange {}".format(x, x_shape))
-                continue
             if self.isWeight(x):
                 data = self.getWeight(x)
                 if weight_data is not None:
