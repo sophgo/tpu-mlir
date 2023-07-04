@@ -16,12 +16,6 @@ static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  if (!module::isNone(op.getKTensor()))
-    operands.push_back(op.getKTensor());
-  else {
-    auto noneOp = module::getNoneOp(op);
-    operands.push_back(noneOp);
-  }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);

@@ -315,8 +315,6 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     mlir::DictionaryAttr dic_param = this->getParam().value();
     int axis = dic_param.get("axis").cast<IntegerAttr>().getInt();
     int K = dic_param.get("K").cast<IntegerAttr>().getInt();
-    if (!module::isNone(getInputs()[1]))
-      K = (int)p.inputs[1][0];
     int is_sorted = dic_param.get("sorted").cast<IntegerAttr>().getInt();
     if (is_sorted == false) {
       llvm_unreachable("Not supported");
