@@ -21,8 +21,6 @@ LogicalResult top::TopKOp::inference(InferenceParameter &p) {
   auto axis = getAxis();
   auto is_largest = getLargest();
   auto K = getK();
-  if (!module::isNone(getKTensor()))
-      K = (int)p.inputs[1][0];
   auto is_sorted = getSorted();
   if (is_sorted == false) {
     llvm_unreachable("Not supported");

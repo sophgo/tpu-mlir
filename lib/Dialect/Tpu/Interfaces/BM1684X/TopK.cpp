@@ -38,11 +38,7 @@ int64_t tpu::TopKOp::dyn_codegen_global_bm1684x(void *buffer) {
     return sizeof(topk_spec_t);
   }
   topk_spec_t spec = {0};
-  if (!module::isNone(getKTensor())) {
-    assert(0 && "BM1684X api Not Support K as tensor");
-  } else {
-    spec.k = getK();
-  }
+  spec.k = getK();
   spec.dim = getAxis();
   spec.descending = getLargest();
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
