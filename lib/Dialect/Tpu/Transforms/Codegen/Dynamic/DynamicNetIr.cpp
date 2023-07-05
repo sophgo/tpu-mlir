@@ -931,7 +931,6 @@ vector<int32_t> SubnetIr::align_model_input_order(const vector<Value> &sub_in) {
 
 vector<int32_t> SubnetIr::align_model_output_order(const vector<Value> &sub_out) {
   const vector<Value> &net_output = get_net_output();
-  assert(sub_out.size() <= net_output.size());
   vector<int32_t> order;
   std::map<std::string, int> sub_out_order_map;
   for (int32_t i = 0; i < sub_out.size(); i++) {
