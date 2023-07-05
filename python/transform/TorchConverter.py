@@ -156,6 +156,7 @@ class TorchConverter(BaseConverter):
             "aten::replication_pad1d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::replication_pad2d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::reshape": lambda node: self.convert_reshape_op(node),
+            "aten::rsqrt": lambda node: self.convert_rsqrt_op(node),
             "aten::rsub": lambda node: self.convert_sub_op(node, is_reverse=True),
             "aten::ScalarImplicit": lambda node: self.convert_skip_op(node),
             "aten::scatter": lambda node: self.convert_scatter_op(node),
@@ -1801,6 +1802,21 @@ class TorchConverter(BaseConverter):
                            loc=self.get_loc(torch_node.name),
                            ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
+
+    def convert_rsqrt_op(self, torch_node: TorchNode):
+        # rsqrt = sqrt + reciprocal (const_val = 1.0)
+        op = self.getOp(torch_node.inputs[0])
+        sqrt_name = torch_node.name + "_sqrt"
+        sqrt_op = top.SqrtOp(self.unranked_type,
+                           op,
+                           loc=self.get_loc(sqrt_name),
+                           ip=self.mlir.insert_point).output
+        self.addOperand(sqrt_name, sqrt_op)
+        reciprocal_op = top.ReciprocalOp(self.unranked_type,
+                           sqrt_op,
+                           loc=self.get_loc(torch_node.name),
+                           ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, reciprocal_op)
 
     def convert_remainder_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])

@@ -204,6 +204,7 @@ class ONNX_IR_TESTER(object):
             "TorchMaskedFill":      (self.test_TorchMaskedFill,     N, Y, Y, N),
             "TorchNonZero":         (self.test_TorchNonZero,        N, Y, Y, N),
             "TorchReflectionPad":   (self.test_TorchReflectionPad,  N, Y, Y, Y),
+            "TorchRMSNorm":         (self.test_TorchRMSNorm,        N, Y, Y, N),
             "TorchRoiAlign":        (self.test_TorchRoiAlign,       N, Y, Y, N),
             "TorchScatterND":       (self.test_TorchScatterND,      N, Y, Y, Y),
             "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y),
@@ -2747,6 +2748,27 @@ class ONNX_IR_TESTER(object):
                 return y
 
         input_shape = [4, 32, 25, 25]
+        input_data = torch.randn(input_shape)
+        self.torch_and_test(input_data, Model(), case_name)
+
+    def test_TorchRMSNorm(self, case_name):
+        normalize_shape = [25]
+        eps = 1e-5
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super(Model, self).__init__()
+                self.weight = torch.nn.Parameter(torch.randn(normalize_shape))
+                self.prelu = nn.PReLU()
+
+            def forward(self, hidden_states: torch.Tensor):
+                input_dtype = hidden_states.dtype
+                variance = hidden_states.to(torch.float32).pow(2).mean(-1, keepdim=True)
+                hidden_states = hidden_states * torch.rsqrt(variance + eps)
+                rmsnorm_out = self.weight * hidden_states
+
+                return self.prelu(rmsnorm_out)
+
+        input_shape = [4, 32, 25] + normalize_shape
         input_data = torch.randn(input_shape)
         self.torch_and_test(input_data, Model(), case_name)
 
