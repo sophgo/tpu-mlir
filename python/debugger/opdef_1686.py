@@ -10,12 +10,14 @@
 
 try:
     from . import regdef_1686
-    from .opparam_1686 import opparam_converter, NPU_NUM, EU_NUM
-    from .op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg, ALIGN
+    from .opparam_1686 import opparam_converter
+    from .op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, NamedDict, Engine
 except:
     import regdef_1686
-    from opparam_1686 import opparam_converter, NPU_NUM, EU_NUM
-    from op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg, ALIGN
+    from opparam_1686 import opparam_converter
+    from op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, NamedDict, Engine
+
+import ctypes
 
 # global data and type
 # ------------------------------------------------------------
@@ -27,10 +29,10 @@ dma_cls = dict()
 # ------------------------------------------------------------
 def base_registry(cmd_type, sheet_name, cls):
     attr = regdef_1686.reg_def[sheet_name]
-    fields, bits = zip(*attr)
+    _, bits = zip(*attr)
     # high bit is the upper bit (open interval).
-    setattr(cls, "reg_def", {"fields": fields, "high_bit": bits})
     setattr(cls, "length", bits[-1])
+    setattr(cls, "reg_def", reg_decoder_factory(regdef_1686.reg_def[sheet_name]))
     cmd_type.setdefault(cls.opcode, set()).add(cls)
     if sheet_name in opparam_converter:
         setattr(cls, "_set_op", staticmethod(opparam_converter[sheet_name]))
@@ -49,40 +51,10 @@ def dma_registry(sheet_name):
         return base_registry(dma_cls, sheet_name, cls)
 
     return decorate
-
-
-class CMDID:
-    def __init__(self):
-        self.cmd_id = 1
-
-
-    def set_cmd_id(self, id):
-        self.cmd_id = id
-
-
-    def reset(self):
-        self.cmd_id = 1
-
-
-class TIUCmdId(CMDID):
-    pass
-
-
-class DMACmdId(CMDID):
-    pass
-
-
-# These two instances should not be used externally.
-_tiu_cmd_id = TIUCmdId()
-_dma_cmd_id = DMACmdId()
 # ------------------------------------------------------------
 # TIU definition
 # ------------------------------------------------------------
 class tiu_base(TIUBase):
-
-
-    def __init__(self):
-        self.tiu_cmd_id = _tiu_cmd_id
 
 
     opcode_bits = (41, 45)
@@ -92,9 +64,8 @@ class tiu_base(TIUBase):
     short_cmd = False  # long_code by default
 
     def _decode(self):
-        self.reg = NamedDict(decode_reg(self.cmd, self.reg_def))
-        self.cmd_id = self.tiu_cmd_id.cmd_id
-        self.tiu_cmd_id.set_cmd_id(self.cmd_id + 1)
+        self.reg = ctypes.cast(self.cmd, ctypes.POINTER(self.reg_def)).contents
+        self.reg = NamedDict(self.reg.asdict())
         if self.opcode == 12:
             self.cmd_id_dep = 0
         else:
@@ -102,13 +73,13 @@ class tiu_base(TIUBase):
         self.op_name = self.eu_type[self.reg.tsk_eu_typ]
 
     def _is_comp(self, cmd_reg):
-        if cmd_reg.size < self.length:
+        if len(cmd_reg) * 8 < self.length:
             return False
-        if self.short_cmd is not None and bool(cmd_reg[0]) != self.short_cmd:
+        if self.short_cmd is not None and bool(extract_buf(cmd_reg, [0, 1])) != self.short_cmd:
             return False
-        if packbits(cmd_reg[self.opcode_bits[0] : self.opcode_bits[1]]) != self.opcode:
+        if extract_buf(cmd_reg, self.opcode_bits) != self.opcode:
             return False
-        if packbits(cmd_reg[self.eu_bits[0] : self.eu_bits[1]]) not in self.eu_type:
+        if extract_buf(cmd_reg, self.eu_bits) not in self.eu_type:
             return False
         return True
 
@@ -480,10 +451,6 @@ class tiu_sys(tiu_base):
 class dma_base(DMABase):
 
 
-    def __init__(self):
-        self.dma_cmd_id = _dma_cmd_id
-
-
     description = "GDMA Operation."
     opcode_bits = (32, 36)
     fun_bits = (36, 39)
@@ -491,21 +458,19 @@ class dma_base(DMABase):
     short_cmd = False  # long_code by default
 
     def _decode(self):
-        self.reg = NamedDict(decode_reg(self.cmd, self.reg_def))
-        self.cmd_id = self.dma_cmd_id.cmd_id
-        self.dma_cmd_id.set_cmd_id(self.cmd_id + 1)
+        self.reg = ctypes.cast(self.cmd, ctypes.POINTER(self.reg_def)).contents
         self.cmd_id_dep = self.reg.cmd_id_dep
         if self.sp_fun:
             self.op_name = self.sp_fun[self.reg.cmd_special_function]
 
     def _is_comp(self, cmd_reg):
-        if cmd_reg.size < self.length:
+        if len(cmd_reg) * 8 < self.length:
             return False
-        if self.short_cmd is not None and bool(cmd_reg[3]) != self.short_cmd:
+        if self.short_cmd is not None and bool(extract_buf(cmd_reg, [3, 4])) != self.short_cmd:
             return False
-        if packbits(cmd_reg[self.opcode_bits[0] : self.opcode_bits[1]]) != self.opcode:
+        if extract_buf(cmd_reg, self.opcode_bits) != self.opcode:
             return False
-        sp_fun_id = packbits(cmd_reg[self.fun_bits[0] : self.fun_bits[1]])
+        sp_fun_id = extract_buf(cmd_reg, self.fun_bits)
         if self.sp_fun and (sp_fun_id not in self.sp_fun):
             return False
         return True
@@ -647,3 +612,66 @@ class dma_scatter(dma_base):
         1: "dma.decompress.random_access",
     }
     description = "DMA decompress"
+
+
+def op_factory(engine_type):
+    cmd_id = 1
+    if engine_type == Engine.TIU:
+        opcode_bits = tiu_base.opcode_bits
+        cmd_set = tiu_cls
+        sys_end = tiu_sys
+    elif engine_type == Engine.DMA:
+        opcode_bits = dma_base.opcode_bits
+        cmd_set = dma_cls
+        sys_end = dma_sys
+    else:
+        raise ValueError(f"cannot decode engine type: {engine_type}")
+
+    def end_symbol(cmd_buf, operation):
+        nonlocal sys_end
+        is_sys = isinstance(operation, sys_end)
+        is_less_1024 = len(cmd_buf) * 8 < 1025
+        if is_sys and is_less_1024 and not int.from_bytes(cmd_buf, "little") == 0:
+            return True
+
+
+    def decoder(cmd_buf):
+        nonlocal opcode_bits, cmd_set, cmd_id
+        cmd_key = extract_buf(cmd_buf, opcode_bits)
+        if cmd_key in cmd_set:
+            for op in cmd_set[cmd_key]:
+                if op.is_comp(cmd_buf):
+                    operation = op.decode(cmd_buf)
+                    operation.cmd_id = cmd_id
+                    cmd_id += 1
+                    return operation
+        raise ValueError(f"cannot decode cmd: {cmd_buf}")
+
+    return decoder, end_symbol
+
+
+def merge_instruction(tiu, dma):
+    main_cmd, inserted_cmd = dma, tiu
+    # remove the system command
+    def get_end(cmd):
+        if len(cmd) == 0:
+            return 0
+        sys = (tiu_sys, dma_sys)
+        if all(sys):
+            if isinstance(cmd[-1], sys):
+                return -1
+        else:
+            return len(cmd)
+    def fix_tgcr_cmd_id_dp(tiu_cmd):
+        for i, v in enumerate(tiu_cmd):
+            if v.opcode == 12:
+                v.cmd_id_dep = tiu_cmd[i + 1].cmd_id_dep if tiu_cmd[i + 1].cmd_id_dep != 0 else tiu_cmd[i + 2].cmd_id_dep
+    fix_tgcr_cmd_id_dp(inserted_cmd[:get_end(inserted_cmd)])
+    # remove system instruction
+    main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
+    inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
+    # "sorted" is stable, which keeps the inserted commands
+    # after the main instructions.
+    cmd = main_id + inserted_id
+    cmd_sorted = sorted(cmd, key=lambda x: x[0])
+    return [x[1] for x in cmd_sorted]

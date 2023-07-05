@@ -122,6 +122,9 @@ to_dtype = {
     "si32": op_support.DType.si32,
     "ui32": op_support.DType.ui32,
     "u32": op_support.DType.ui32,
+    "i4": op_support.DType.i4,
+    "si4": op_support.DType.si4,
+    "ui4": op_support.DType.ui4,
 }
 
 

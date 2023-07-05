@@ -49,8 +49,12 @@ class Context:
             self.opdef = opdef_1684
             self.opparam = opparam_1684
         elif self.device == Device.BM1686:
-            from . import opdef_1686
-            from . import opparam_1686
+            try:
+                from . import opdef_1686
+                from . import opparam_1686
+            except:
+                import opdef_1686
+                import opparam_1686
 
             self.opdef = opdef_1686
             self.opparam = opparam_1686

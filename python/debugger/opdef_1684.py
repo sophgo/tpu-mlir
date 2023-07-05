@@ -11,11 +11,14 @@
 try:
     from .regdef_1684 import tiu_reg_def, dma_reg_def
     from .opparam_1684 import opparam_converter
-    from .op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg
+    from .op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, NamedDict, Engine
 except:
     from regdef_1684 import tiu_reg_def, dma_reg_def
     from opparam_1684x import opparam_converter
-    from op_support import packbits, TIUBase, DMABase, NamedDict, decode_reg
+    from op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, NamedDict, Engine
+
+import numpy as np
+import ctypes
 
 # global data and type
 # ------------------------------------------------------------
@@ -57,17 +60,18 @@ class tiu_base(TIUBase):
     eu_bits = (41, 46)
 
     def _decode(self):
-        self.reg = NamedDict(decode_reg(self.cmd, self.reg_def))
+        cmd_bits = buffer_to_bits(self.cmd)
+        self.reg = NamedDict(decode_reg(cmd_bits, self.reg_def))
         self.cmd_id = self.reg.cmd_id_tpu
         self.cmd_id_dep = self.reg.cmd_id_gdma
         self.op_name = self.eu_type[self.reg.tsk_eu_typ]
 
-    def _is_comp(self, cmd_bits):
-        if cmd_bits.size < self.length:
+    def _is_comp(self, cmd_buf):
+        if len(cmd_buf) * 8 < self.length:
             return False
-        if packbits(cmd_bits[self.opcode_bits[0] : self.opcode_bits[1]]) != self.opcode:
+        if extract_buf(cmd_buf, self.opcode_bits) != self.opcode:
             return False
-        if packbits(cmd_bits[self.eu_bits[0] : self.eu_bits[1]]) not in self.eu_type:
+        if extract_buf(cmd_buf, self.eu_bits) not in self.eu_type:
             return False
         return True
 
@@ -338,18 +342,19 @@ class dma_base(DMABase):
     sp_fun = ()
 
     def _decode(self):
-        self.reg = NamedDict(decode_reg(self.cmd, self.reg_def))
+        cmd_bits = buffer_to_bits(self.cmd)
+        self.reg = NamedDict(decode_reg(cmd_bits, self.reg_def))
         self.cmd_id = self.reg.cmd_id
         self.cmd_id_dep = self.reg.eng0_sync_id
         if self.sp_fun:
             self.op_name = self.sp_fun[self.reg.special_func]
 
-    def _is_comp(self, cmd_bits):
-        if cmd_bits.size < self.length:
+    def _is_comp(self, cmd_buf):
+        if len(cmd_buf) * 8 < self.length:
             return False
-        if packbits(cmd_bits[self.opcode_bits[0] : self.opcode_bits[1]]) != self.opcode:
+        if extract_buf(cmd_buf, self.opcode_bits) != self.opcode:
             return False
-        sp_fun_id = packbits(cmd_bits[self.fun_bits[0] : self.fun_bits[1]])
+        sp_fun_id = extract_buf(cmd_buf, self.fun_bits)
         if self.sp_fun and (sp_fun_id not in self.sp_fun):
             return False
         return True
@@ -385,3 +390,71 @@ class dma_tensor(dma_base):
         6: "dma.winograd",
         7: "dma.filter",
     }
+
+
+# cache for convert binary to unsigned integer.
+_TABLE = 2 ** np.arange(64, dtype=np.uint64)
+
+def buffer_to_bits(buffer):
+    cmmand_buf = np.frombuffer(buffer, dtype=np.uint8)
+    return np.unpackbits(cmmand_buf, bitorder="little")
+
+def packbits(arr):
+    if arr.size > 64:
+        return 0
+    return int(arr.dot(_TABLE[: arr.size]))
+
+def decode_reg(buffer, des_reg):
+    bits_sec = np.split(buffer, des_reg["high_bit"])  # slow
+    value = (packbits(x) for x in bits_sec)  # slow
+    return dict(zip(des_reg["fields"], value))
+
+def op_factory(engine_type):
+
+    if engine_type == Engine.TIU:
+        opcode_bits = tiu_base.opcode_bits
+        cmd_set = tiu_cls
+    elif engine_type == Engine.DMA:
+        opcode_bits = dma_base.opcode_bits
+        cmd_set = dma_cls
+    else:
+        raise ValueError(f"cannot decode engine type: {engine_type}")
+
+    def end_symbol(cmd_buf, operation):
+        cmd_buf_bits = buffer_to_bits(cmd_buf)
+        is_less_1024 = len(cmd_buf_bits) < 1025
+        if is_less_1024 and not np.any(cmd_buf_bits):
+            return True
+        return False
+
+    def decoder(cmd_buf):
+        nonlocal opcode_bits, cmd_set
+        cmd_key = extract_buf(cmd_buf, opcode_bits)
+        if cmd_key in cmd_set:
+            for op in cmd_set[cmd_key]:
+                if op.is_comp(cmd_buf):
+                    return op.decode(cmd_buf)
+        raise ValueError(f"cannot decode cmd: {cmd_buf}")
+    return decoder, end_symbol
+
+
+def merge_instruction(tiu, dma):
+    main_cmd, inserted_cmd = dma, tiu
+    # remove the system command
+    def get_end(cmd):
+        if len(cmd) == 0:
+            return 0
+        sys = (tiu_sys, dma_sys)
+        if all(sys):
+            if isinstance(cmd[-1], sys):
+                return -1
+        else:
+            return len(cmd)
+    # remove system instruction
+    main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
+    inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
+    # "sorted" is stable, which keeps the inserted commands
+    # after the main instructions.
+    cmd = main_id + inserted_id
+    cmd_sorted = sorted(cmd, key=lambda x: x[0])
+    return [x[1] for x in cmd_sorted]

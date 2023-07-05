@@ -24,106 +24,52 @@ def read_file_to_bits(cmd_file):
     return np.unpackbits(cmmand_buf, bitorder="little")
 
 
-def buffer_to_bits(buffer):
-    cmmand_buf = np.frombuffer(buffer, dtype=np.uint8)
-    return np.unpackbits(cmmand_buf, bitorder="little")
-
-
 class Decoder:
     CMD = namedtuple("cmd", ["tiu", "dma", "all"])
 
     def __init__(self, context):
         self.context = context
 
-    def _decode_base(self, cmd_buf_bits, opcode_bits, cmd_set, sys_end=None):
+    def _decode_base(self, cmd_buf, engine):
         operation = None
-        cur = 0
-        l, h = opcode_bits
-        while cmd_buf_bits.size > 0:
-            cmd_key = op_support.packbits(cmd_buf_bits[l:h])
-            if cmd_key in cmd_set:
-                recognize = False
-                for op in cmd_set[cmd_key]:
-                    if op.is_comp(cmd_buf_bits):
-                        # check whether this command is recognized by the decoder
-                        operation = op.decode(cmd_buf_bits)
-                        yield operation
-                        # consume this command_code
-                        cmd_buf_bits = cmd_buf_bits[op.length :]
-                        cur += op.length
-                        recognize = True
-                        break
-                is_sys = sys_end is None or isinstance(operation, sys_end)
-                is_less_1024 = cmd_buf_bits.size < 1025
-                if is_sys and is_less_1024 and not np.any(cmd_buf_bits):
-                    break  # all the code have been processed
-                if not recognize:
-                    raise ValueError(
-                        "Can not decode cmd, with opcode: {}, at {}.".format(
-                            cmd_key, cur
-                        )
-                    )
-            else:
-                raise ValueError(
-                    "Can not decode cmd, with opcode: {}, at {}.".format(cmd_key, cur)
-                )
+        op_factory, end_symbol = self.context.opdef.op_factory(engine)
+        cmd_buf = np.frombuffer(cmd_buf, dtype=np.uint8)
+        while len(cmd_buf) > 0:
+            operation = op_factory(cmd_buf)
+            yield operation
+            btyes_slice = operation.length // 8
+            cmd_buf = cmd_buf[btyes_slice :]
+            if end_symbol(cmd_buf, operation):
+                break
 
     def decode_tiu_buf(self, cmd_buf):
         if cmd_buf:
             # input is a buffer
-            return self.decode_tiu_bits(buffer_to_bits(cmd_buf))
+            return self.decode_tiu_bits(cmd_buf)
         return cmd_buf
 
     def decode_dma_buf(self, cmd_buf):
         if cmd_buf:
             # input is a buffer
-            return self.decode_dma_bits(buffer_to_bits(cmd_buf))
+            return self.decode_dma_bits(cmd_buf)
         return cmd_buf
 
-    def decode_tiu_bits(self, cmd_buf_bits):
+    def decode_tiu_bits(self, cmd_buf):
         # input is a bits vector
         return self._decode_base(
-            cmd_buf_bits,
-            self.context.opdef.tiu_base.opcode_bits,
-            self.context.opdef.tiu_cls,
-            self.context.opdef.tiu_sys,
+            cmd_buf,
+            self.context.opdef.Engine.TIU
         )
 
-    def decode_dma_bits(self, cmd_buf_bits):
+    def decode_dma_bits(self, cmd_buf):
         # input is a bits vector
         return self._decode_base(
-            cmd_buf_bits,
-            self.context.opdef.dma_base.opcode_bits,
-            self.context.opdef.dma_cls,
-            self.context.opdef.dma_sys,
+            cmd_buf,
+            self.context.opdef.Engine.DMA
         )
 
-    def merge_instruction(self, tiu, dma, subnet_id=None):
-        main_cmd, inserted_cmd = dma, tiu
-
-        # remove the system command
-        def get_end(cmd):
-            if len(cmd) == 0:
-                return 0
-            sys = (self.context.opdef.tiu_sys, self.context.opdef.dma_sys)
-            if all(sys):
-                if isinstance(cmd[-1], sys):
-                    return -1
-            else:
-                return len(cmd)
-        def fix_tgcr_cmd_id_dp(tiu_cmd):
-            for i, v in enumerate(tiu_cmd):
-                if v.opcode == 12:
-                    v.cmd_id_dep = tiu_cmd[i + 1].cmd_id_dep if tiu_cmd[i + 1].cmd_id_dep != 0 else tiu_cmd[i + 2].cmd_id_dep
-        fix_tgcr_cmd_id_dp(inserted_cmd[:get_end(inserted_cmd)])
-        # remove system instruction
-        main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
-        inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
-        # "sorted" is stable, which keeps the inserted commands
-        # after the main instructions.
-        cmd = main_id + inserted_id
-        cmd_sorted = sorted(cmd, key=lambda x: x[0])
-        return [x[1] for x in cmd_sorted]
+    def merge_instruction(self, tiu, dma, subnet_id = 0):
+        return self.context.opdef.merge_instruction(tiu, dma)
 
     def decode_bmodel_cmd(self, bmodel_cmd, subnet_id):
         tiu = itertools.islice(

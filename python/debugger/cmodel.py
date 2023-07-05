@@ -169,15 +169,12 @@ class BM1684X:
         self.lib.cmodel_deinit(0)
 
     def compute(self, command, engine_type):
+        command = np.frombuffer(command, dtype=np.uint8)
         assert isinstance(command, np.ndarray)
         assert command.dtype == np.uint8
         return self.lib.execute_command(
             0,
-            np.packbits(
-                command.reshape(-1, 8),
-                axis=-1,
-                bitorder="little",
-            ).ctypes.data,
+            command.ctypes.data,
             engine_type,
         )
 
@@ -404,14 +401,10 @@ class BM1684:
         self.lib.cmodel_deinit(0)
 
     def compute(self, command, engine_type):
+        command = np.frombuffer(command, dtype=np.uint8)
         assert isinstance(command, np.ndarray)
         assert command.dtype == np.uint8
-        cmd = np.packbits(
-            command.reshape(-1, 8),
-            axis=-1,
-            bitorder="little",
-        ).ctypes.data
-        return self.lib.get_atomic_function(cmd, engine_type)(0, cmd)
+        return self.lib.get_atomic_function(command, engine_type)(0, command)
 
     def tiu_compute(self, command):
         return self.compute(command, 0)
@@ -480,15 +473,12 @@ class BM1686:
         self.lib.cmodel_deinit(0)
 
     def compute(self, command, engine_type):
+        command = np.frombuffer(command, dtype=np.uint8)
         assert isinstance(command, np.ndarray)
         assert command.dtype == np.uint8
         return self.lib.execute_command(
             0,
-            np.packbits(
-                command.reshape(-1, 8),
-                axis=-1,
-                bitorder="little",
-            ).ctypes.data,
+            command.ctypes.data,
             engine_type,
         )
 
