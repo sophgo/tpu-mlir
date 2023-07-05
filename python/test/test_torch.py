@@ -103,6 +103,7 @@ class TORCH_IR_TESTER(object):
             "Remainder":        (self.test_Remainder,         N, Y, N, N),
             "Repeat":           (self.test_Repeat,            N, Y, Y, Y),
             "Reshape":          (self.test_Reshape,           N, Y, Y, Y),
+            "RMSNorm":          (self.test_RMSNorm,           N, Y, Y, N),
             "PixelShuffle":     (self.test_PixelShuffle,      N, Y, Y, Y),
             "PRelu":            (self.test_PRelu,             N, Y, Y, Y),
             "Permute":          (self.test_Permute,           N, Y, Y, Y),
@@ -773,6 +774,30 @@ class TORCH_IR_TESTER(object):
                 return x, y
 
         input_shape = [14, 25] + normalize_shape
+        self.trace_and_test([input_shape], Model())
+
+    #######################################################################
+    # RMSNorm
+    # ------------
+    def test_RMSNorm(self):
+        normalize_shape = [80]
+        eps = 1e-5
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super(Model, self).__init__()
+                self.weight = torch.nn.Parameter(torch.randn(normalize_shape))
+                self.prelu = nn.PReLU()
+
+            def forward(self, hidden_states: torch.Tensor):
+                input_dtype = hidden_states.dtype
+                variance = hidden_states.to(torch.float32).pow(2).mean(-1, keepdim=True)
+                hidden_states = hidden_states * torch.rsqrt(variance + eps)
+                rmsnorm_out = self.weight * hidden_states
+
+                return rmsnorm_out, self.prelu(rmsnorm_out)
+
+        input_shape = [14, 25, 40] + normalize_shape
         self.trace_and_test([input_shape], Model())
 
     #######################################################################

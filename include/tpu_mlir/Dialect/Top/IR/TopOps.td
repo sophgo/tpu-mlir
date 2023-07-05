@@ -664,6 +664,7 @@ def Top_ReciprocalOp: Top_Op<"Reciprocal", [SupportFuseRelu]> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
@@ -2700,6 +2701,26 @@ def Top_CeilOp : Top_Op<"Ceil"> {
   );
 
   let results = (outs AnyTensor:$output);
+}
+
+def Top_RMSNormOp : Top_Op<"RMSNorm"> {
+  let summary = "RMSNorm operation";
+  let description = [{
+    A simplification of the original layer normalization (LayerNorm).
+    Only normalize the last dimension of tensor.
+
+    RMSNorm(x) = gamma * x / sqrt(mean(x^2) + epsilon)
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$gamma,
+    F64Attr:$eps
+  );
+
+  let results = (outs
+    AnyTensor:$output
+  );
 }
 
 def Top_RemainderOp: Top_Op<"Remainder"> {

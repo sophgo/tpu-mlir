@@ -770,6 +770,20 @@ typedef struct layer_norm_local_spec {
   uint32_t buffer_addr;
 } layer_norm_local_spec_t;
 
+typedef struct rms_norm_common_spec {
+    float  eps;
+    int    affine;
+} rms_norm_common_spec_t;
+
+typedef struct rms_norm_global_spec {
+    rms_norm_common_spec_t common;
+} rms_norm_global_spec_t;
+
+typedef struct rms_norm_local_spec {
+    rms_norm_common_spec_t common;
+    uint32_t buffer_addr;
+} rms_norm_local_spec_t;
+
 typedef struct instance_norm_common_spec {
     float  eps;
     int    affine;

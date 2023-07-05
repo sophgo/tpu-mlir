@@ -130,7 +130,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       GroupNormLowering,
       DetectionOutputLowering,
       ShuffleChannelLowering,
-      NmsLowering
+      NmsLowering,
+      RMSNormLowering
       // clang-format on
       >(patterns->getContext());
 }

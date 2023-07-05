@@ -2715,4 +2715,27 @@ def Tpu_NmsOp : Tpu_Op<"Nms"> {
 
   let results = (outs AnyTensor:$output);
 }
+
+
+def Tpu_RMSNormOp : Tpu_Op<"RMSNorm"> {
+  let summary = "RMSNorm operation";
+  let description = [{
+    A simplification of the original layer normalization (LayerNorm).
+    Only normalize the last dimension of tensor.
+
+    RMSNorm(x) = gamma * x / sqrt(mean(x^2) + epsilon)
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$gamma,
+    F64Attr:$eps
+  );
+
+  let results = (outs
+    AnyTensor:$output
+  );
+}
+
 #endif // TPU_OPS
+
