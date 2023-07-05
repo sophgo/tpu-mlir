@@ -14,6 +14,11 @@
 
 using namespace tpu_mlir::backend;
 
+#define DYN_BMM_CONDITION(param, spec)                                         \
+  (((param.hdim_is_batch)) || ((param.batch != 1)) ||                          \
+   (param.batch == 1 && spec->at(0).shape[0] == 1 &&                           \
+    spec->at(1).shape[0] == 1))
+
 void tpu::MatMulOp::codegen_global_bm1684x() {
   auto p = parseParam();
   auto op = getOperation();
@@ -252,14 +257,14 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 // ======================================
 int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
   auto p = parseParam();
-  if (!buffer)
-    return ((p.hdim_is_batch || p.batch != 1)
-                ? sizeof(batch_matmul_common_spec_t)
-                : sizeof(fc_global_spec_t));
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  if (p.hdim_is_batch || p.batch != 1) {
+  if (!buffer)
+    return (DYN_BMM_CONDITION(p, input_spec))
+                ? sizeof(batch_matmul_common_spec_t)
+                : sizeof(fc_global_spec_t);
+  if (DYN_BMM_CONDITION(p, input_spec)) {
     batch_matmul_common_spec_t spec{0};
     spec.Y_dtype = output_spec->at(0).dtype;
     spec.L_trans = p.left_transpose;
@@ -317,9 +322,12 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
 }
 
 int64_t tpu::MatMulOp::get_fw_type_bm1684x() {
+  auto op = getOperation();
   auto p = parseParam();
-  return ((p.hdim_is_batch || p.batch != 1) ? FW_BMNET_BATCH_MATMUL
-                                            : FW_BMNET_FC);
+  auto input_spec = BM168x::get_input_spec(op);
+  return (DYN_BMM_CONDITION(p, input_spec)
+              ? FW_BMNET_BATCH_MATMUL
+              : FW_BMNET_FC);
 }
 
 int64_t tpu::MatMulOp::dyn_codegen_local_bm1684x(void *buffer) {
