@@ -29,6 +29,7 @@ except:
 # Number: int | float
 # MemRef: address, shape, Dtype, stride, offset?
 
+NPU_SHIFT = 5
 NPU_NUM = 32
 BANK_NUM = 16
 LANE_SIZE = 1 << 17
@@ -82,14 +83,14 @@ def local_layout_to_stride(memref):
     def alignEU_stride():
         _, c, h, w = memref.shape
         align_type = ALIGN_EU_BASE // memref.itemsize
-        c_stride = (w * h + align_type - 1) // align_type * align_type
-        n_stride = (c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM * c_stride
+        c_stride = int((w * h + align_type - 1) // align_type * align_type)
+        n_stride = int((c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM * c_stride)
         return (n_stride, c_stride, w, 1)
 
     def compact_stride():
         _, c, h, w = memref.shape
-        c_stride = w * h
-        n_stride = (c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM * c_stride
+        c_stride = int(w * h)
+        n_stride = int((c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM * c_stride)
         return (n_stride, c_stride, w, 1)
 
     def offset_stride():
@@ -121,6 +122,9 @@ def local_layout_to_stride(memref):
         if lane_mask == (2**64 - 1):
             memref.layout = Layout.stride
         return memref.stride
+
+    if memref.dtype in (DType.i4, DType.si4, DType.ui4):
+        memref.itemsize = 0.5
 
     if memref.layout == Layout.alignEU:
         return alignEU_stride()
@@ -169,7 +173,6 @@ class MemRef(op_support.MemRef):
                         r_addr=r_addr,
                     )
                 return k(r_addr=address - v[0])
-        assert(0)
         return MType.UNKNOWN
 
     @property
@@ -265,6 +268,30 @@ class Memory:
         NPU_OFFSET = memref.mtype.npu_offset
         itemsize = memref.itemsize
 
+        # referece: TPU1686/bm1686/cmodel/src/cmodel_common.cpp
+        # improve me: use cmodel interface to get data
+        def data_view_int4(shape, stride):
+            result = np.zeros(shape, dtype=np.uint8).reshape([shape[0], shape[1], -1])
+            laddr = memref.mtype.r_addr
+            start_npu_idx = NPU_OFFSET
+            start_offset = laddr % LANE_SIZE
+            for nidx in range(0, shape[0]):
+                n_offset = nidx * stride[0]
+                for cidx in range(0, shape[1]):
+                    npu_idx = (start_npu_idx + cidx) % NPU_NUM
+                    LMEM = self.LMEM[npu_idx * LANE_SIZE: (npu_idx + 1) * LANE_SIZE]
+                    c_offset = ((start_npu_idx + cidx) >> NPU_SHIFT) * stride[1]
+                    h_offset = np.arange(0, shape[2]) * stride[2]
+                    w_offset = np.arange(0, shape[3]) * stride[3]
+                    dst_offset = np.add.outer(n_offset, np.add.outer(c_offset, np.add.outer(h_offset, w_offset))).ravel()
+                    index = start_offset + (dst_offset >> 1)
+                    values = LMEM[index].view(np.uint8)
+                    result[nidx][cidx] = np.where(dst_offset & 1 == 0, values & 0xf, values >> 4)
+            result.reshape(shape)
+            if memref.dtype == DType.si4:
+                return np.where(result > 7, result - 16, result).astype(np.int8)
+            return data
+
         def data_view(shape, stride):
             offset = memref.mtype.r_addr - NPU_OFFSET * LANE_SIZE
             return np.lib.stride_tricks.as_strided(
@@ -284,6 +311,8 @@ class Memory:
             ]
 
         def get_stride_data():
+            if memref.dtype in (DType.i4, DType.si4, DType.ui4):
+                return data_view_int4(memref.shape, memref.stride)
             return get_stride_data_base(memref.shape, memref.stride)
 
         def get_64ic_data():
@@ -411,11 +440,26 @@ class Memory:
         return data
 
     def _ddr_to_numpy(self, memref):
+        def _ddr_to_numpy_int4(shape, stride):
+            result = np.zeros(shape, dtype=np.uint8)
+            n_offset = np.arange(shape[0]) * stride[0]
+            c_offset = np.arange(shape[1]) * stride[1]
+            h_offset = np.arange(shape[2]) * stride[2]
+            w_offset = np.arange(shape[3]) * stride[3]
+            dst_offset = np.add.outer(n_offset, np.add.outer(c_offset, np.add.outer(h_offset, w_offset))).ravel()
+            index = memref.mtype.r_addr + (dst_offset >> 1)
+            values = self.DDR[index].view(np.uint8)
+            result = np.where(dst_offset & 1 == 0, values & 0xf, values >> 4).reshape(shape)
+            if memref.dtype == DType.si4:
+                return np.where(result > 7, result - 16, result).astype(np.int8)
+            return result
         assert memref.shape is not None
         assert memref.stride is not None
         assert all(memref.shape)
         assert any(memref.stride)
         offset = memref.mtype.r_addr
+        if memref.dtype in (DType.i4, DType.si4, DType.ui4):
+            return _ddr_to_numpy_int4(memref.shape, memref.stride)
         data = np.lib.stride_tricks.as_strided(
             self.DDR[offset : offset + 4].view(memref.np_dtype),
             np.ctypeslib.as_array(memref.shape),
@@ -549,7 +593,7 @@ def _converter(reg):
         layout=Layout.alignEU,
     )
     opds = [opd0, opd1, opd2, opd3, opd4, opd5]
-    if reg.opt_opd0_prec == INT4 and reg.opd1_prec == INT4:
+    if reg.opt_opd0_prec == INT4 and reg.opt_opd1_prec == INT4:
         opd1["layout"] = Layout._64IC
         opd3["shape"] = [1, reg.res0_c, 1, 1]
         opd3["dtype"] = (DType.i8, 1)

@@ -12,54 +12,56 @@ import functools, ctypes
 import numpy as np
 from collections import OrderedDict
 
-__all__ = ["InsBase", "TIUBase", "DMABase", "NamedDict", "MType", "DType", "Scalar"]
+__all__ = ["InsBase", "TIUBase", "DMABase", "NamedDict", "MType", "DType", "Scalar", "Engine"]
 
 # ------------------------------------------------------------
 # utility function
 
-# cache for convert binary to unsigned integer.
-_TABLE = 2 ** np.arange(64, dtype=np.uint64)
+
+class Engine(Enum):
+    TIU = "TIU"
+    DMA = "DMA"
+    HAU = "HAU"
 
 
-def packbits1(arr):
-    if arr.size > 64:
-        return 0
-    return int(arr.dot(_TABLE[: arr.size]))
-
-
-def packbits2(arr):
-    if arr.size > 64:
-        return 0
-    return np.bitwise_or.reduce(np.left_shift(arr, np.arange(arr.size)))
-
-
-packbits = packbits1
-
-
-# Please improve this function.
-# It is called many times and it should be super fast.
-def decode_reg(buffer, des_reg):
-    bits_sec = np.split(buffer, des_reg["high_bit"])  # slow
-    value = (packbits(x) for x in bits_sec)  # slow
-    return dict(zip(des_reg["fields"], value))
-
-
-def decoder_factory(fileds_def):
-    key, high_bits = zip(*fileds_def)
-    # check register definition is 64bits aligned.
+def reg_decoder_factory(fileds):
+    key, high_bits = zip(*fileds)
+    # check reg define is 64bits align
     assert all(64 * x in high_bits for x in range(1, high_bits[-1] // 64 + 1))
     bits_width = np.diff(high_bits, prepend=0)
 
     class REG(ctypes.Structure):
+
         _fields_ = [(k, ctypes.c_uint64, v) for k, v in zip(key, bits_width)]
 
-        def asdict(self):
+        def asdict(self) -> dict:
             return {field[0]: getattr(self, field[0]) for field in self._fields_}
 
         def __repr__(self):
             return str(self.asdict())
 
+        def __getitem__(self, key):
+            return getattr(self, key)
+
+        def __setitem__(self, key, value):
+            setattr(self, key, value)
+
     return REG
+
+
+def extract_buf(buffer, range):
+    l, h = range
+    bit_len = h - l
+    byte_begin = l // 8
+    byte_end = (l + bit_len + 7) // 8
+    bit_offset = l % 8
+    byte_slice = buffer[byte_begin:byte_end]
+    total_val = 0
+    for v in byte_slice[::-1]:
+        total_val = total_val << 8 | v
+    total_val = total_val >> bit_offset
+    total_val = total_val & ((1 << bit_len) - 1)
+    return total_val
 
 
 def get_continuous_stride(shape):
@@ -94,7 +96,7 @@ class InsBase:
         "cmd_id_dep",
     )
 
-    def _is_comp(self, cmd_bits):
+    def _is_comp(self, cmd_buf):
         raise NotImplementedError(self.__class__)
 
     def _decode(self):
@@ -112,13 +114,14 @@ class InsBase:
         }
 
     @classmethod
-    def is_comp(cls, cmd_bits):
-        return cls._is_comp(cls, cmd_bits)
+    def is_comp(cls, cmd_buf):
+        return cls._is_comp(cls, cmd_buf)
 
     @classmethod
-    def decode(cls, cmd_bits):
+    def decode(cls, cmd_buf):
         cls = cls()
-        cls.cmd = cmd_bits[: cls.length]
+        bytes_length = cls.length // 8
+        cls.cmd = bytes(cmd_buf[: bytes_length])
         cls._cache = {}
         cls._decode()
         return cls
@@ -201,6 +204,8 @@ class DType(IntEnum):
 
     @property
     def itemsize(self):
+        if self in (DType.i4, DType.ui4, DType.si4):
+            return 0.5
         return to_np_dtype[self]().itemsize
 
 
@@ -280,6 +285,9 @@ to_np_dtype = {
     DType.i16: np.uint16,
     DType.i32: np.uint32,
     DType.bf16: np.uint16,
+    DType.i4: np.uint8,
+    DType.ui4: np.uint8,
+    DType.si4: np.uint8,
 }
 
 
