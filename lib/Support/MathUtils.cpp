@@ -9,11 +9,13 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 #include "float.h"
+#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/PatternMatch.h"
 #include "omp.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "llvm/Support/Debug.h"
 #include <algorithm>
+#include <cstdint>
 #include <map>
 #include <numeric>
 #include <queue>
@@ -70,7 +72,8 @@ void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,
   scale = (int)std::round(scale_f * std::pow(2, shift));
 }
 
-template <typename Dtype> float findMaxabs(const Dtype *pSrcData, int len) {
+template <typename Dtype>
+float findMaxabs(const Dtype *pSrcData, int len) {
   float fmax = 0.0;
   float dataTmp;
   for (int i = 0; i < len; i++) {
@@ -123,13 +126,15 @@ int calRightShiftNum(float fmax, double thBottom, double thTop, int numBits) {
   return m;
 }
 
-template <typename T> void func_abs(int n, T *src, T *dst) {
+template <typename T>
+void func_abs(int n, T *src, T *dst) {
   for (int i = 0; i < n; i++) {
     dst[i] = std::abs(src[i]);
   }
 }
 
-template <typename T> void func_log(int n, T *src, T *dst) {
+template <typename T>
+void func_log(int n, T *src, T *dst) {
   for (int i = 0; i < n; i++) {
     dst[i] = std::log(src[i]);
   }
@@ -166,6 +171,37 @@ float func_log2(double dataInput) {
   return result;
 }
 
+template <typename T>
+int64_t to_int(T v, RoundingMode round_mode) {
+  int64_t i64_val;
+  if (round_mode == ROUNDING_HALF_AWAY_FROM_ZERO) {
+    i64_val = std::round(v);
+  } else if (round_mode == ROUNDING_DOWN) {
+    i64_val = (int64_t)v;
+  } else if (round_mode == ROUNDING_HALF_TO_EVEN) {
+    float fraction, integer;
+    float abs_v = std::abs(v);
+    fraction = std::modf(abs_v, &integer);
+    i64_val = (int64_t)integer;
+    if (fraction > 0.5) {
+      i64_val = i64_val + 1;
+    } else if (fraction == 0.5) {
+      if (i64_val & 0x01) {
+        i64_val = i64_val + 1;
+      }
+    }
+    if (v < 0) {
+      i64_val = -i64_val;
+    }
+  } else if (round_mode == ROUNDING_HALF_UP) {
+    i64_val = std::floor(v + 0.5);
+  } else if (round_mode == ROUNDING_HALF_DOWN) {
+    i64_val = std::ceil(v - 0.5);
+  } else {
+    llvm_unreachable("not support round_mode.");
+  }
+  return i64_val;
+}
 void quantizeToInt32(const float *pSrc, int32_t *pDst, int len, float scale) {
   // used in CV18xx bias quant
   int32_t qmax = INT_MAX;
@@ -708,6 +744,44 @@ void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
   }
 }
 
+template <typename T>
+int64_t saturate(T v, mlir::Type type, RoundingMode round_mode) {
+  auto itype = dyn_cast<mlir::IntegerType>(type);
+  if (!itype) {
+    type.dump();
+    llvm_unreachable("not support type");
+  }
+  int64_t max, min;
+  auto N = itype.getWidth();
+  if (itype.isUnsigned()) {
+    max = llvm::maxUIntN(N);
+    min = 0;
+  } else {
+    max = llvm::maxIntN(N);
+    min = llvm::minIntN(N);
+  }
+  v = to_int(v, round_mode);
+  if (v > max) {
+    v = max;
+  } else if (v < min) {
+    v = min;
+  }
+  return v;
+}
+
+template int64_t to_int<float>(float v, RoundingMode round_mode);
+template int64_t to_int<long>(long v, RoundingMode round_mode);
+template int64_t to_int<double>(double v, RoundingMode round_mode);
+template int64_t to_int<int>(int v, RoundingMode round_mode);
+
+template int64_t saturate<float>(float v, mlir::Type type,
+                                 RoundingMode round_mode);
+
+template int64_t saturate<int>(int v, mlir::Type type, RoundingMode round_mode);
+template int64_t saturate<long>(long v, mlir::Type type,
+                                RoundingMode round_mode);
+template int64_t saturate<double>(double v, mlir::Type type,
+                                  RoundingMode round_mode);
 int omp_schedule(int count) {
   return (count + omp_get_num_threads() - 1) / omp_get_num_threads();
 }
@@ -1034,7 +1108,8 @@ void tile(T *input, T *output, llvm::ArrayRef<int64_t> in_shape, int axis,
 template void tile(float *input, float *output,
                    llvm::ArrayRef<int64_t> in_shape, int axis, int times);
 
-template <typename T> static int remove_value(std::vector<T> &v, int value) {
+template <typename T>
+static int remove_value(std::vector<T> &v, int value) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
     if (*iter == value) {
@@ -1440,5 +1515,33 @@ bool to_all_int8(const std::vector<float> &data, float &scale, bool sign) {
     }
   }
   return false;
+}
+
+void idx_to_list(int64_t idx, const std::vector<int64_t> &dim,
+                 std::vector<int64_t> &idx_res) {
+  int l = dim.size();
+  idx_res.resize(l, 0);
+  for (int i = l - 1; i >= 0; --i) {
+    idx_res[i] = idx % dim[i];
+    idx /= dim[i];
+  }
+}
+int64_t list_to_idx(const std::vector<int64_t> &list,
+                    const std::vector<int64_t> &stride) {
+  return std::inner_product(list.begin(), list.end(), stride.begin(), 0);
+}
+
+// get the stride for the gaven shape
+void get_stride(const std::vector<int64_t> &shape,
+                std::vector<int64_t> &stride) {
+  stride.clear();
+  stride.resize(shape.size(), 1);
+  for (int i = shape.size() - 2; i >= 0; --i) {
+    stride[i] = stride[i + 1] * shape[i + 1];
+  }
+  // set stride to 0 if shape need broadcast
+  for (int i = 0; i < shape.size(); ++i) {
+    stride[i] = shape[i] != 1 ? stride[i] : 0;
+  }
 }
 } // namespace tpu_mlir

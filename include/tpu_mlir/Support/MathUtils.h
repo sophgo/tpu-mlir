@@ -80,12 +80,15 @@ void get_scale_and_shift_positive(float scale_f, int &scale, int &shift,
 void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,
                                            int &shift, int bitwidth,
                                            int max_shift = 8);
-template <typename Dtype> float findMaxabs(const Dtype *pSrcData, int len);
+template <typename Dtype>
+float findMaxabs(const Dtype *pSrcData, int len);
 template <typename Dtype>
 void findMinMax(const Dtype *pSrcData, int len, Dtype *minVal, Dtype *maxVal);
 int calRightShiftNum(float fmax, double thBottom, double thTop, int numBits);
-template <typename T> void func_abs(int n, T *src, T *dst);
-template <typename T> void func_log(int n, T *src, T *dst);
+template <typename T>
+void func_abs(int n, T *src, T *dst);
+template <typename T>
+void func_log(int n, T *src, T *dst);
 int calRightShiftNumUseCblas(float fmax, double thBottom, double thTop,
                              int numBits);
 float func_log2(double dataInput);
@@ -210,74 +213,25 @@ bool compare(float lhs, float rhs, llvm::StringRef mode);
 // to compilable with gemmlowp
 int32_t exp_on_negative_values(int input, int int_bits);
 
-template <typename T> static int64_t to_int(T v, RoundingMode round_mode) {
-  int64_t i64_val;
-  if (round_mode == ROUNDING_HALF_AWAY_FROM_ZERO) {
-    i64_val = std::round(v);
-  } else if (round_mode == ROUNDING_DOWN) {
-    i64_val = (int64_t)v;
-  } else if (round_mode == ROUNDING_HALF_TO_EVEN) {
-    float fraction, integer;
-    float abs_v = std::abs(v);
-    fraction = std::modf(abs_v, &integer);
-    i64_val = (int64_t)integer;
-    if (fraction > 0.5) {
-      i64_val = i64_val + 1;
-    } else if (fraction == 0.5) {
-      if (i64_val & 0x01) {
-        i64_val = i64_val + 1;
-      }
-    }
-    if (v < 0) {
-      i64_val = -i64_val;
-    }
-  } else if (round_mode == ROUNDING_HALF_UP) {
-    i64_val = std::floor(v + 0.5);
-  } else if (round_mode == ROUNDING_HALF_DOWN) {
-    i64_val = std::ceil(v - 0.5);
-  } else {
-    llvm_unreachable("not support round_mode.");
-  }
-  return i64_val;
-}
-
 template <typename T>
-static int64_t
-saturate(T v, mlir::Type type,
-         RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
-  auto itype = dyn_cast<mlir::IntegerType>(type);
-  if (!itype) {
-    type.dump();
-    llvm_unreachable("not support type");
-  }
-  int64_t max, min;
-  auto N = itype.getWidth();
-  if (itype.isUnsigned()) {
-    max = llvm::maxUIntN(N);
-    min = 0;
-  } else {
-    max = llvm::maxIntN(N);
-    min = llvm::minIntN(N);
-  }
-  v = to_int(v, round_mode);
-  if (v > max) {
-    v = max;
-  } else if (v < min) {
-    v = min;
-  }
-  return v;
-}
-
+int64_t to_int(T v, RoundingMode round_mode);
+template <typename T>
+int64_t saturate(T v, mlir::Type type,
+                 RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO);
+extern template int64_t saturate<float>(float v, mlir::Type type,
+                                        RoundingMode round_mode);
+extern template int64_t saturate<double>(double v, mlir::Type type,
+                                         RoundingMode round_mode);
 template <typename T>
 int16_t to_int16(T value,
-               RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+                 RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
   auto v = to_int(value, round_mode);
   return v > 32767 ? 32767 : v < -32768 ? -32768 : v;
 };
 
 template <typename T>
 uint16_t to_uint16(T value,
-                 RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+                   RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
   auto v = to_int(value, round_mode);
   return v > 65535 ? 65535 : v < 0 ? 0 : v;
 }
@@ -319,35 +273,16 @@ bool to_all_int8(const std::vector<float> &data, float &scale,
 void swap_dim_data(float *input, float *output, std::vector<int64_t> &ishape,
                    std::vector<int64_t> &offsets);
 
-inline void idx_to_list(int64_t idx, const std::vector<int64_t> &dim,
-                        std::vector<int64_t> &idx_res) {
-  int l = dim.size();
-  idx_res.resize(l, 0);
-  for (int i = l - 1; i >= 0; --i) {
-    idx_res[i] = idx % dim[i];
-    idx /= dim[i];
-  }
-}
+void idx_to_list(int64_t idx, const std::vector<int64_t> &dim,
+                 std::vector<int64_t> &idx_res);
 
 // convert shape to index for gaven stride
-inline int64_t list_to_idx(const std::vector<int64_t> &list,
-                           const std::vector<int64_t> &stride) {
-  return std::inner_product(list.begin(), list.end(), stride.begin(), 0);
-}
+int64_t list_to_idx(const std::vector<int64_t> &list,
+                    const std::vector<int64_t> &stride);
 
 // get the stride for the gaven shape
-inline void get_stride(const std::vector<int64_t> &shape,
-                       std::vector<int64_t> &stride) {
-  stride.clear();
-  stride.resize(shape.size(), 1);
-  for (int i = shape.size() - 2; i >= 0; --i) {
-    stride[i] = stride[i + 1] * shape[i + 1];
-  }
-  // set stride to 0 if shape need broadcast
-  for (int i = 0; i < shape.size(); ++i) {
-    stride[i] = shape[i] != 1 ? stride[i] : 0;
-  }
-}
+void get_stride(const std::vector<int64_t> &shape,
+                std::vector<int64_t> &stride);
 
 int getBcastIndex(int out_index, std::vector<int64_t> &output_shape,
                   std::vector<int64_t> &input_shape);
