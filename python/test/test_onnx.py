@@ -84,6 +84,8 @@ class ONNX_IR_TESTER(object):
             "Einsum":       (self.test_Einsum,        Y, Y, Y, Y),
             "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y),
             "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y),
+            "Einsum4":      (self.test_Einsum4,       N, Y, Y, N),
+            "Einsum5":      (self.test_Einsum5,       N, Y, Y, N),
             "Elu":          (self.test_Elu,           Y, Y, Y, N),
             "Erf":          (self.test_Erf,           N, Y, Y, N),
             "Exp":          (self.test_Exp,           Y, Y, Y, Y),
@@ -1183,27 +1185,35 @@ class ONNX_IR_TESTER(object):
 
     def test_Where(self, case_name):
         # real case
-        shape = [10, 40, 224]
-        cond_data = np.zeros(shape).astype(np.bool_)
-        cond_data[:, :, :100] = 1
-        tbrn_data = np.random.randn(*shape).astype(np.float32)
-        fbrn_data = np.random.randn(*shape).astype(np.float32)
-        cond = helper.make_tensor_value_info('cond', TensorProto.BOOL, shape)
-        tbrn = helper.make_tensor_value_info('tbrn', TensorProto.FLOAT, shape)
-        fbrn = helper.make_tensor_value_info('fbrn', TensorProto.FLOAT, shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, shape)
-        where_node = helper.make_node(
-            'Where',
-            ['cond', 'tbrn', 'fbrn'],
-            ['output'],
-        )
-        graph_def = helper.make_graph([where_node], case_name, [cond, tbrn, fbrn], [output])
-        self.onnx_and_test(graph_def,
-                           input_data={
-                               "cond": cond_data,
-                               "tbrn": tbrn_data,
-                               "fbrn": fbrn_data
-                           })
+        # normal case, broadcast case
+        cond_shape = [10, 40, 224], [1, 1, 2, 1]
+        tbrn_shape = [10, 40, 224], [1, 256]
+        fbrn_shape = [10, 40, 224], [1, 1, 2, 256]
+        out_shape = [10, 40, 224], [1, 1, 2, 256]
+
+        cond_data = [np.zeros(e).astype(np.bool_) for e in cond_shape]
+        cond_data[0][:, :, :100] = 1
+        cond_data[1][..., 1:, :] = 1
+
+        for idx in range(len(cond_shape)):
+            tbrn_data = np.random.randn(*tbrn_shape[idx]).astype(np.float32)
+            fbrn_data = np.random.randn(*fbrn_shape[idx]).astype(np.float32)
+            cond = helper.make_tensor_value_info('cond', TensorProto.BOOL, cond_shape[idx])
+            tbrn = helper.make_tensor_value_info('tbrn', TensorProto.FLOAT, tbrn_shape[idx])
+            fbrn = helper.make_tensor_value_info('fbrn', TensorProto.FLOAT, fbrn_shape[idx])
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, out_shape[idx])
+            where_node = helper.make_node(
+                'Where',
+                ['cond', 'tbrn', 'fbrn'],
+                ['output'],
+            )
+            graph_def = helper.make_graph([where_node], "{}_{}".format(case_name, idx), [cond, tbrn, fbrn], [output])
+            self.onnx_and_test(graph_def,
+                            input_data={
+                                "cond": cond_data[idx],
+                                "tbrn": tbrn_data,
+                                "fbrn": fbrn_data
+                            })
 
     def test_Relu(self, case_name):
         oc = 64
@@ -4412,6 +4422,49 @@ class ONNX_IR_TESTER(object):
 
         graph_def = helper.make_graph([einsum_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def)
+
+    def test_Einsum4(self, case_name):
+        for i, equation in enumerate(['bhwc,hkc->bhwk', 'bhwc,wkc->bhwk']):
+            input_shape = [5, 15, 15, 64]
+            filter_shape = [15, 14, 64]
+            output_shape = [5, 15, 15, 14]
+
+            weight_data = np.random.randn(*filter_shape).astype(np.float32)
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+            einsum_def = helper.make_node(
+                "Einsum",
+                inputs=['input', 'weight'],
+                outputs=['output'],
+                equation=equation,
+            )
+
+            graph_def = helper.make_graph([einsum_def],
+                                        "{}_{}".format(case_name, i), [input], [output],
+                                        initializer=[weight])
+            self.onnx_and_test(graph_def)
+
+    def test_Einsum5(self, case_name):
+        for i, equation in enumerate(['bhwc,hkc->bhwk', 'bhwc,wkc->bhwk']):
+            input_shape = {"input1": [5, 15, 15, 64], "input2": [15, 14, 64]}
+            output_shape = [5, 15, 15, 14]
+
+            inputs = [
+                helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+            ]
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+            einsum_def = helper.make_node(
+                "Einsum",
+                inputs=['input1', 'input2'],
+                outputs=['output'],
+                equation=equation,
+            )
+
+            graph_def = helper.make_graph([einsum_def], "{}_{}".format(case_name, i), inputs, [output])
+            self.onnx_and_test(graph_def)
 
     def test_Elu(self, case_name):
         oc = 32
