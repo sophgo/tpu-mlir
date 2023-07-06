@@ -27,9 +27,9 @@ public:
     }
     auto pads_v = module::getI64Array(op.getPads());
     auto pad_top = pads_v->at(0);
-    auto pad_left = pads_v->at(1);
-    auto pad_bottom = pads_v->at(2);
-    auto pad_right = pads_v->at(3);
+    auto pad_left = pads_v->size() > 2 ? pads_v->at(1) : 0;
+    auto pad_bottom = pads_v->size() > 2 ? pads_v->at(2) : pads_v->at(1);
+    auto pad_right = pads_v->size() > 2 ? pads_v->at(3) : 0;
     int64_t max_pad =
         std::max(std::max(pad_top, pad_bottom), std::max(pad_left, pad_right));
     const int64_t max_pad_threshold = 15;
@@ -53,10 +53,12 @@ public:
       std::vector<NamedAttribute> attrs_pad;
       // pad_paddings[0/1/4/5]: n/c paddings for new pad layer, are always 0
       // pad_paddings[2/3/6/7]: h/w paddings for new pad layer
-      llvm::SmallVector<int64_t> pad_paddings(8, 0);
-      for (size_t j = 0; j < conv_paddings.size(); j++) {
+      auto input_shape = module::getShape(input_value);
+      llvm::SmallVector<int64_t> pad_paddings(input_shape.size() * 2, 0);
+      int64_t pad_limit = (input_shape.size() == 3 ? 2 : 4);
+      for (size_t j = 0; j < pad_limit; j++) {
         int padding = std::min(conv_paddings[j], max_pad_threshold);
-        pad_paddings[(j < 2 ? 2 : 3) + (j % 2 == 0 ? 0 : 4)] = padding;
+        pad_paddings[(j < 2 ? 2 : 3) + (j % 2 == 0 ? 0 : input_shape.size())] = padding;
         conv_paddings[j] -= padding;
       }
       attrs_pad.push_back(rewriter.getNamedAttr(
@@ -64,10 +66,14 @@ public:
       attrs_pad.push_back(rewriter.getNamedAttr(
           "mode", tpu::PaddingModeAttr::get(getContext(),tpu::PaddingMode::constant)));
 
-      auto input_shape = module::getShape(input_value);
       auto output_shape_pad = llvm::SmallVector<int64_t>(input_shape);
-      output_shape_pad[2] += (pad_paddings[2] + pad_paddings[6]);
-      output_shape_pad[3] += (pad_paddings[3] + pad_paddings[7]);
+      if (input_shape.size() == 3){
+        output_shape_pad[2] += (pad_paddings[2] + pad_paddings[5]);
+      }
+      if (input_shape.size() == 4){
+        output_shape_pad[2] += (pad_paddings[2] + pad_paddings[6]);
+        output_shape_pad[3] += (pad_paddings[3] + pad_paddings[7]);
+      }
 
       auto op_pad = rewriter.create<tpu::PadOp>(
           loc_pad, RankedTensorType::get(output_shape_pad, input_ele_type),
