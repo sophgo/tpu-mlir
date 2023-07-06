@@ -22,8 +22,9 @@
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "llvm/Support/MemoryBuffer.h"
+#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/SHA256.h>
 #include <stdlib.h>
 
 #include <fstream>
@@ -318,12 +319,10 @@ BMCodegen::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
   if (offset != coeff_size) {
     llvm::errs() << "Warning: coeff size is not correct\n";
   }
-  std::vector<uint8_t> sha256(bmodel::SHA256_LEN, 0);
-  if (coeff_size <= 0x40000000ull) {
-    bmodel::CalcSha256(data_u8->data(), coeff_size, sha256.data());
-  }
+  auto sha256 = llvm::SHA256::hash(llvm::ArrayRef(data_u8->data(), coeff_size));
   auto binary_coeff = model_gen->WriteBinary(coeff_size, data_u8->data());
-  auto coeff_sha256 = model_gen->Builder().CreateVector(sha256);
+  auto coeff_sha256 =
+      model_gen->Builder().CreateVector(sha256.data(), sha256.size());
   bmodel::CoeffMemBuilder cmb(model_gen->Builder());
   cmb.add_address(coeff_addr);
   cmb.add_check_code(coeff_sha256);
