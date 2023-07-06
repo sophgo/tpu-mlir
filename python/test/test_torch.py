@@ -1709,7 +1709,7 @@ class TORCH_IR_TESTER(object):
                     self.v_b = torch.randn((1, 1, d*head))
                     self.o_w = torch.randn((d*head, shape[2])) / np.sqrt(d)
                     self.o_b = torch.randn((1, 1, shape[2]))
-                    self.musk = -((torch.randn((shape[0],1,1,shape[1])) > 0) * 1000)
+                    self.musk = -((torch.randn((shape[0],1,1,shape[1])) > 0) * 10000)
 
                 def forward(self, x):
                     q = torch.matmul(x, self.q_w) + self.q_b
