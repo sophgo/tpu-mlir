@@ -49,9 +49,6 @@ typedef struct {
    uint64_t host_coeff_mem_size;   // total mem size for cpu layer coeff on host
 } bmodel_mem_info_t;
 
-const int SHA256_LEN = 32;
-void CalcSha256(const uint8_t *buffer, uint64_t size, uint8_t sha256[SHA256_LEN]);
-
 class ModelGen {
  public:
   ModelGen(uint32_t reserved_size = 0x1000000);
