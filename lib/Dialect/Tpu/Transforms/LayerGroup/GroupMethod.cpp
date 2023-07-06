@@ -54,6 +54,10 @@ static bool can_be_group_3d(std::vector<Operation *> &group_ops) {
 // 2. C is too small to fully utilize NPU and H is better
 //    or N*C*H could be divided by NPU_NUM
 static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
+  auto ranmode = getRunMode(group_ops[0]);
+  if (ranmode == RunMode::TPU_DYNAMIC) {
+    return false;
+  }
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp,
              SoftmaxOp>(op)) {
