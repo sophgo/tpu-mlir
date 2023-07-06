@@ -118,7 +118,19 @@ void top::MatMulOp::shape_inference() {
     assert(in1_shape[0] == k);
     out_shape.pop_back();
   } else if (in1_shape[k_idx] == k) {
-    out_shape[in0_dims - 1] = n;
+    auto sum = 1;
+    for(int i=0; i<in0_dims; i++){
+      sum *= out_shape[i];
+    }
+    //shape case:[1, 1, 1, 4832] * [4832, 126] = [1, 126]
+    if(sum == k){
+      while (out_shape.size() > 1 ){
+        out_shape.pop_back();
+      }
+      out_shape.push_back(n);
+    }else{
+      out_shape[in0_dims - 1] = n;
+    }
   } else if (in1_dims == 2) {
     auto sum = in1_shape[k_idx];
     while (out_shape.size() > 0 && sum % out_shape.back() == 0 && sum != 1) {
