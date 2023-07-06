@@ -238,6 +238,57 @@ mlir::Type tpu::DeconvOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return type_verify_case_i32(getOperation(), opd_idx, mode);
 }
 
+LogicalResult tpu::DeconvOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
+                                          int64_t out_idx, int64_t out_slice) {
+  auto &attr = getDeconvParam(*this);
+  int kh_ext = (attr.kh - 1) * attr.dh + 1;
+  auto ret = DeconvSlice(out_idx, out_slice, attr.sh, kh_ext, attr.ih, attr.pad_h);
+  in_idx = ret.value()[2];
+  in_slice = ret.value()[3];
+  return success();
+}
+
+LogicalResult tpu::DeconvOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
+  /*auto &attr = getDeconvParam(*this);
+  int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
+  int val = (out_kh - std::max(kh_with_dh, attr.sh)) > 0 ? (out_kh - std::max(kh_with_dh, attr.sh)) : 0;
+  in_kh = std::ceil(val / attr.sh) + 1;*/
+  in_kh = out_kh;
+  return success();
+}
+
+LogicalResult tpu::DeconvOp::DynBackwardStrideH(int64_t &in_stride_h,
+                                                int64_t out_stride_h) {
+  /*auto &attr = getDeconvParam(*this);
+  in_stride_h = std::ceil( out_stride_h / attr.sh);*/
+  in_stride_h = out_stride_h;
+  return success();
+}
+
+LogicalResult tpu::DeconvOp::DynBackwardUpPadH(int64_t &in_up_pad_h,
+                                               int64_t out_up_pad_h) {
+  /*auto &attr = getDeconvParam(*this);
+  in_up_pad_h = out_up_pad_h / attr.sh + attr.pad_h;*/
+  in_up_pad_h = out_up_pad_h;
+  return success();
+}
+
+LogicalResult tpu::DeconvOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
+                                                 int64_t out_down_pad_h) {
+  /*auto &attr = getDeconvParam(*this);
+  in_down_pad_h = out_down_pad_h / attr.sh + attr.pad_h_after;*/
+  in_down_pad_h = out_down_pad_h;
+  return success();
+}
+
+int64_t tpu::DeconvOp::DynForwardHeight(int64_t in_height) {
+  auto &attr = getDeconvParam(*this);
+  int out_height = 0;
+  int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
+  out_height = (in_height - 1) * attr.sh + kh_with_dh - attr.pad_h - attr.pad_h_after + attr.output_pad_h;
+  return out_height;
+}
+
 LogicalResult tpu::DeconvOp::LocalGenSupport() {
   auto attr = parseParam();
   int kh_ext = (attr.kh - 1) * attr.dh + 1;
@@ -288,8 +339,9 @@ void tpu::DeconvOp::assign_fw_param(void *param) {
 
 LogicalResult tpu::DeconvOp::AllowDataSplit(int64_t axis,
                                             group_type_t group_type) {
-  if (module::isBM1684Family() &&
-      getRunMode(getOperation()) == RunMode::TPU_DYNAMIC) {
+  /* because backward slice_h 、stride_h、kh, pad_up, pad_down calc formula
+    is very complex, don;t split when dynamic mode */
+  if (getRunMode(getOperation()) == RunMode::TPU_DYNAMIC) {
     return failure();
   } else {
     return success();

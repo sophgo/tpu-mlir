@@ -1688,7 +1688,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "BackwardW", "LocalGenSupport", "AllowDataSplit"]>,
-    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
+    DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
   let summary = "deconvolution operator";
 
   let description = [{
