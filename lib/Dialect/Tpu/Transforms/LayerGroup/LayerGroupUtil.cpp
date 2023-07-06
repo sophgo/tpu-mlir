@@ -1009,7 +1009,7 @@ bool is_eu_align_bm168x(Value opd) {
   auto op = *opd.getUsers().begin();
   if (module::isWeight(opd)) {
     if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp,
-            tpu::LayerNormOp>(op)) {
+            tpu::LayerNormOp, tpu::PixelNormOp>(op)) {
       if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
         return false;
       }

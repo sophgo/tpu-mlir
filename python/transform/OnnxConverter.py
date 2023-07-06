@@ -1144,7 +1144,7 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Resize")
         mode = onnx_node.attrs.get("mode", "nearest")
 
-        op = self.getOperand(onnx_node.inputs[0])
+        op = self.getOp(onnx_node.inputs[0])
         input_shape = self.getShape(onnx_node.inputs[0])
         scale_factor = []
         sizes = []
@@ -1174,7 +1174,7 @@ class OnnxConverter(BaseConverter):
             raise RuntimeError("Resize only support h/w")
         output_shape = [int(i) for i in sizes]
         scale_h = scale_factor[2]
-        scale_w = scale_factor[3]
+        scale_w = scale_factor[3] if len(scale_factor) == 4 else 1.0 # for some weird 3-dim data
         if scale_h == 1.0 and scale_w == 1.0:
             self.addOperand(onnx_node.name, op)
             return
@@ -1478,6 +1478,106 @@ class OnnxConverter(BaseConverter):
                                              ip=self.mlir.insert_point).output
                     self.addOperand(onnx_node.name, matmul_op)
                     return
+        if equation == b'bhwc,hkc->bhwk':
+            lhs = self.getOperand(onnx_node.inputs[0])
+            rhs = self.getOp(onnx_node.inputs[1])
+            lhs_shape = self.getShape(onnx_node.inputs[0])
+            rhs_shape = self.getShape(onnx_node.inputs[1])
+            output_shape = self.getShape(onnx_node.name)
+            if not self.isWeight(lhs):
+                # [h, k, c] -> [1, h, k, c]
+                rhs_reshape_rst = [1, rhs_shape[0], rhs_shape[1], rhs_shape[2]]
+                if not self.isWeight(rhs):
+                    rhs_reshape_op = top.ReshapeOp(self.mlir.get_tensor_type(rhs_reshape_rst),
+                                                   rhs,
+                                                   loc=self.get_loc("{}_{}".format(
+                                                       onnx_node.name, "rhs_reshape")),
+                                                   ip=self.mlir.insert_point).output
+                else:
+                    rhs_reshape_op = self.getWeightOp(onnx_node.inputs[1], rhs_reshape_rst)
+
+                # batch matmul does not support broadcast
+                # temporary solution
+                # [1, h, k, c] -> [b, h, k, c]
+                tile_shape = [lhs_shape[0], rhs_shape[0], rhs_shape[1], rhs_shape[2]]
+                tile_op = top.TileOp(self.mlir.get_tensor_type(tile_shape),
+                                     rhs_reshape_op,
+                                     axis=0,
+                                     tile=int(lhs_shape[0]),
+                                     loc=self.get_loc("{}_{}".format(onnx_node.name, "_tile")),
+                                     ip=self.mlir.insert_point).output
+
+                # [b, h, w, c] * [b, h, k, c]^T -> [b, h, w, c]
+                matmul_shape = [lhs_shape[0], lhs_shape[1], lhs_shape[2], rhs_shape[1]]
+                matmul_op = top.MatMulOp(self.mlir.get_tensor_type(matmul_shape),
+                                         lhs,
+                                         tile_op,
+                                         self.mlir.none_op,
+                                         do_relu=False,
+                                         right_transpose=True,
+                                         loc=self.get_loc("{}_{}".format(
+                                            onnx_node.name, onnx_node.op_type)),
+                                         ip=self.mlir.insert_point).output
+                self.addOperand(onnx_node.name, matmul_op)
+                return
+        if equation == b'bhwc,wkc->bhwk':
+            lhs = self.getOperand(onnx_node.inputs[0])
+            rhs = self.getOp(onnx_node.inputs[1])
+            lhs_shape = self.getShape(onnx_node.inputs[0])
+            rhs_shape = self.getShape(onnx_node.inputs[1])
+            output_shape = self.getShape(onnx_node.name)
+            if not self.isWeight(lhs):
+                # dumb implementation
+                # [b, h, w, c] -> [b, w, h, c]
+                trans_shape = [lhs_shape[0], lhs_shape[2], lhs_shape[1], lhs_shape[3]]
+                trans_op = top.PermuteOp(self.mlir.get_tensor_type(trans_shape),
+                                         lhs,
+                                         order=[0, 2, 1, 3],
+                                         loc=self.get_loc("{}_{}".format(onnx_node.name, "_permute")),
+                                         ip=self.mlir.insert_point).output
+
+                rhs_reshape_rst = [1, rhs_shape[0], rhs_shape[1], rhs_shape[2]]
+                # [w, k, c] -> [1, w, k, c]
+                if not self.isWeight(rhs):
+                    rhs_reshape_op = top.ReshapeOp(self.mlir.get_tensor_type(rhs_reshape_rst),
+                                                   rhs,
+                                                   loc=self.get_loc("{}_{}".format(
+                                                       onnx_node.name, "rhs_reshape")),
+                                                   ip=self.mlir.insert_point).output
+                else:
+                    rhs_reshape_op = self.getWeightOp(onnx_node.inputs[1], rhs_reshape_rst)
+
+                # batch matmul does not support broadcast
+                # temporary solution
+                # [1, w, k, c] -> [b, w, k, c]
+                tile_shape = [lhs_shape[0], rhs_shape[0], rhs_shape[1], rhs_shape[2]]
+                tile_op = top.TileOp(self.mlir.get_tensor_type(tile_shape),
+                                     rhs_reshape_op,
+                                     axis=0,
+                                     tile=int(lhs_shape[0]),
+                                     loc=self.get_loc("{}_{}".format(onnx_node.name, "_tile")),
+                                     ip=self.mlir.insert_point).output
+
+                # [b, w, h, c] * [b, w, k, c]^T -> [b, w, h, k]
+                matmul_shape = [lhs_shape[0], lhs_shape[1], lhs_shape[2], rhs_shape[1]]
+                matmul_op = top.MatMulOp(self.mlir.get_tensor_type(matmul_shape),
+                                         trans_op,
+                                         tile_op,
+                                         self.mlir.none_op,
+                                         do_relu=False,
+                                         right_transpose=True,
+                                         loc=self.get_loc("{}_{}".format(
+                                            onnx_node.name, "matmul")),
+                                         ip=self.mlir.insert_point).output
+
+                # [b, w, h, k] -> [b, h, w, k]
+                trans_op = top.PermuteOp(self.mlir.get_tensor_type(output_shape),
+                                         matmul_op,
+                                         order=[0, 2, 1, 3],
+                                         loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                         ip=self.mlir.insert_point).output
+                self.addOperand(onnx_node.name, trans_op)
+                return
         raise RuntimeError("Einsum {}, {} not support now".format(onnx_node.name, equation))
 
     def convert_exp_op(self, onnx_node):

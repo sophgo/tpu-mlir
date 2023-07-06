@@ -531,6 +531,89 @@ public:
   }
 };
 
+
+// Same as lib/Dialect/Top/Canonicalize/Where.cpp:expand_dim_and_tile
+mlir::Value expand_dim_and_tile(mlir::Value tensor,
+                                llvm::ArrayRef<int64_t> out_shape,
+                                PatternRewriter &rewriter) {
+  auto out_dim = out_shape.size();
+  auto tensor_shape = module::getShape(tensor);
+  auto tensor_dim = tensor_shape.size();
+  auto tensor_reshape = shape_expand_dim(tensor_shape, out_dim);
+  auto tensor_stype = module::getStorageType(tensor);
+  auto tensor_last_op = tensor;
+  if (tensor_dim < out_dim) {
+    // reshape to out dim
+    auto tensorType = RankedTensorType::get(tensor_reshape, tensor_stype);
+    std::string in_name = module::getName(tensor).str() + "_ToOutDim";
+    auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
+    rewriter.setInsertionPointAfterValue(tensor_last_op);
+    tensor_last_op = rewriter.create<top::ReshapeOp>(loc, tensorType, ValueRange{tensor_last_op});
+  }
+  auto tensor_last_shape = std::vector<int64_t>(tensor_reshape);
+
+  // tile to expand shape
+  int last_i = 0;
+  for (int i = out_dim - 1; i >= 0; --i) {
+    last_i = i;
+    if (tensor_reshape[last_i] != out_shape[last_i]) {
+      break;
+    }
+  }
+
+  for (int i = 0; i <= last_i; ++i) {
+    if (out_shape[i] == tensor_reshape[i])
+      continue;
+    int64_t tile = out_shape[i] / tensor_reshape[i];
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(i)));
+    attrs.push_back(
+        rewriter.getNamedAttr("tile", rewriter.getI64IntegerAttr(tile)));
+
+    tensor_last_shape[i] = out_shape[i];
+    auto newType = RankedTensorType::get(tensor_last_shape, tensor_stype);
+    auto new_name = module::getName(tensor).str() + "_tile_" +
+                    std::to_string(i);
+    auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+    rewriter.setInsertionPointAfterValue(tensor_last_op);
+    tensor_last_op = rewriter.create<top::TileOp>(
+        name_loc, newType, ValueRange{tensor_last_op}, attrs);
+  }
+  return tensor_last_op;
+}
+
+
+class WhereBroadcastToTile : public OpRewritePattern<top::WhereOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::WhereOp op,
+                                PatternRewriter &rewriter) const override {
+    auto out_shape = module::getShape(op.getOutput());
+    bool process = false;
+
+    if (!op.getXIsConst()) {
+      auto tbrn = op.getTbrn();
+      auto tbrn_ = expand_dim_and_tile(tbrn, out_shape, rewriter);
+      if (tbrn != tbrn_) {
+        op.setOperand(1, tbrn_);
+        process = true;
+      }
+    }
+    if (!op.getYIsConst()) {
+      auto fbrn = op.getFbrn();
+      auto fbrn_ = expand_dim_and_tile(fbrn, out_shape, rewriter);
+      if (fbrn != fbrn_) {
+        op.setOperand(2, fbrn_);
+        process = true;
+      }
+    }
+
+    return process ? success() : failure();
+  }
+
+};
+
 } // namespace bm1684x
 
 namespace top {
@@ -543,7 +626,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
       ReshapeReorderPattern,
       MergeScale2Conv,
       ConvertScaleOp,
-      ConvertMultiInputAdd
+      ConvertMultiInputAdd,
+      WhereBroadcastToTile
   >(patterns->getContext());
   // clang-format on
 }
