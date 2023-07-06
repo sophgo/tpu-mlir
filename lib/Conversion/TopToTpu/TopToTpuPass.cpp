@@ -475,9 +475,8 @@ public:
     }
     init_qtable();
 
-    if (module::isBM1684XFamily() && is_bert_model() &&
-        !LoweringConfig::isQuantized) {
-      set_bert_mix_precision_process();
+    if (module::isBM1684XFamily() && !LoweringConfig::isQuantized) {
+      qtable_process();
       module::updateModuleTypes();
     }
 
@@ -834,6 +833,65 @@ protected:
         }
       });
     }
+  }
+
+  void set_add_before_softmax_fp16() {
+    auto mOp = getOperation();
+    for (auto func : mOp.getOps<FuncOp>()) {
+      if (module::isAsymmetric())
+        return;
+      func.walk([&](Operation *op) {
+        if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
+          if (auto addop = dyn_cast<top::AddOp>(op)) {
+            if (isa<top::InputOp>(addop)) {
+              return;
+            }
+            if (LoweringConfig::quantize_map.find(module::getName(op).str()) !=
+                        LoweringConfig::quantize_map.end())
+              return;
+            int idx = 0;
+            float th[2] = {0.0};
+            for (auto in : addop.getInputs()) {
+              if (!module::isUniformQuantized(in))
+                return;
+              if (isa<top::WeightOp>(in.getDefiningOp())){
+                auto weight = dyn_cast<top::WeightOp>(in.getDefiningOp()).read<float>();
+                float absmax = fabs(weight.get()->at(0));
+                for (int i=0;i<weight.get()->size();i++) {
+                  float value = fabs(weight.get()->at(i));
+                  absmax = value >absmax?value:absmax;
+                }
+                th[idx++] = absmax;
+              }
+              else {
+                double in_scale;
+                int64_t in_zp;
+                module::getScaleAndZeroPoint(in, in_scale, in_zp, module::isAsymmetric());
+                th[idx++] = in_scale;
+              }
+              if (idx>2)
+                return;
+            }
+            if (th[0] < 1e-8 || th[1] < 1e-8)
+              return;
+            if (th[0]/th[1] > 64 || th[1]/th[0] > 64){
+              if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
+                  LoweringConfig::quantize_map.end()) {
+                LoweringConfig::quantize_map.insert(
+                    {module::getName(op).str(), module::Mode::F16});
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  void qtable_process() {
+    if (is_bert_model()) {
+      set_bert_mix_precision_process();
+    }
+    set_add_before_softmax_fp16();
   }
 
   Value do_cast(Value v, Type to, TypeCastMode mode) {
