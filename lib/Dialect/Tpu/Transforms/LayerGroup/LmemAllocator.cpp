@@ -600,7 +600,7 @@ void membuf_heap_create(
           }
           elt.value = in;
           elt.type = (in.getDefiningOp() != nullptr &&
-                      isa<top::WeightOp>(in.getDefiningOp()))
+                      module::isWeight(in))
                          ? LMEM_WEIGHT
                          : LMEM_ACTIVATION;
           membuf_heap.insert(pointers[elt]);
@@ -634,7 +634,7 @@ void membuf_heap_create(
         if (is_lmem_ldst(ts_tensors[i].second.mode)) {
           elt.value = ts_tensors[i].first;
           if (elt.value.getDefiningOp() &&
-              isa<top::WeightOp>(elt.value.getDefiningOp())) {
+              module::isWeight(elt.value)) {
             elt.type = LMEM_WEIGHT;
           } else {
             elt.type = LMEM_ACTIVATION;

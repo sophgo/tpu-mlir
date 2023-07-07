@@ -18,7 +18,7 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op, Type typ
   assert(nInputs == 2);
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
-    if (isa<top::WeightOp>(opd.getDefiningOp())) {
+    if (module::isWeight(opd)) {
       //remove target_shape operands of top::InterpOp op
       opd.dropAllUses();
       opd.getDefiningOp()->erase();

@@ -20,7 +20,7 @@ static void LoweringLayerNorm(PatternRewriter &rewriter, top::LayerNormOp op,
   const int nInputs = op->getNumOperands();
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
-    if (isa<top::WeightOp>(opd.getDefiningOp())) {
+    if (module::isWeight(opd)) {
       auto weightOp = opd.getDefiningOp<top::WeightOp>();
       if (type.isBF16()) {
         opds.push_back(weightOp.clone_bf16(op));

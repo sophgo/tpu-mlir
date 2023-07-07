@@ -24,7 +24,8 @@ void tpu::AddOp::codegen_global_bm1684x() {
   std::vector<int64_t> rshift_v(2, 0);
 
   if (module::isUniformQuantized(getInputs()[0], getOutput()) ||
-      (isa<top::WeightOp>(getInputs()[0].getDefiningOp()) && module::isUniformQuantized(getInputs()[1], getOutput()))) {
+      (module::isWeight(getInputs()[0]) &&
+       module::isUniformQuantized(getInputs()[1], getOutput()))) {
     auto m_v = module::getI64Array(getMultipliers(), 2, 1);
     auto r_v = module::getI64Array(getRshifts(), 2, 0);
     multi_v = *m_v.get();
@@ -75,7 +76,8 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   std::vector<int64_t> multi_v(2, 1);
   std::vector<int64_t> rshift_v(2, 0);
   if (module::isUniformQuantized(getInputs()[0], getOutput()) ||
-      (isa<top::WeightOp>(getInputs()[0].getDefiningOp()) && module::isUniformQuantized(getInputs()[1], getOutput()))) {
+      (module::isWeight(getInputs()[0]) &&
+       module::isUniformQuantized(getInputs()[1], getOutput()))) {
     auto m_v = module::getI64Array(getMultipliers(), 2, 1);
     auto r_v = module::getI64Array(getRshifts(), 2, 0);
     multi_v = *m_v.get();
@@ -107,7 +109,8 @@ int64_t tpu::AddOp::dyn_codegen_local_bm1684x(void *buffer) {
   std::vector<int64_t> rshift_v(2, 0);
 
   if (module::isUniformQuantized(getInputs()[0], getOutput()) ||
-      (isa<top::WeightOp>(getInputs()[0].getDefiningOp()) && module::isUniformQuantized(getInputs()[1], getOutput()))) {
+      (module::isWeight(getInputs()[0]) &&
+       module::isUniformQuantized(getInputs()[1], getOutput()))) {
     auto m_v = module::getI64Array(getMultipliers(), 2, 1);
     auto r_v = module::getI64Array(getRshifts(), 2, 0);
     multi_v = *m_v.get();

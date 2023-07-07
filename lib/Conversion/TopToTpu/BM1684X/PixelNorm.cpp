@@ -20,7 +20,7 @@ static void LoweringPixelNorm_FP(PatternRewriter &rewriter, top::PixelNormOp op,
   const int nInputs = op->getNumOperands();
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
-    if (isa<top::WeightOp>(opd.getDefiningOp())) {
+    if (module::isWeight(opd)) {
       auto weightOp = opd.getDefiningOp<top::WeightOp>();
       if (type.isBF16()) {
         opds.push_back(weightOp.clone_bf16(op));
@@ -60,7 +60,7 @@ static void LoweringPixelNorm_INT8(PatternRewriter &rewriter, top::PixelNormOp o
   const int nInputs = op->getNumOperands();
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
-    if (isa<top::WeightOp>(opd.getDefiningOp())) {
+    if (module::isWeight(opd)) {
       auto weightOp = opd.getDefiningOp<top::WeightOp>();
       if (type.isBF16()) {
         opds.push_back(weightOp.clone_bf16(op));

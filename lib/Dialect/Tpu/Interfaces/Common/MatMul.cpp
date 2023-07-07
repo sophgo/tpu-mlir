@@ -168,7 +168,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     if (is_cv18xx) {
       auto a = parseParam();
       auto full_batch = a.batch * a.batch_low;
-      bool is_fc = isa<top::WeightOp>(getRight().getDefiningOp());
+      bool is_fc = module::isWeight(getRight());
       i64_array_t rshift_v;
       i64_array_t multiplier_v;
       if (is_fc) {

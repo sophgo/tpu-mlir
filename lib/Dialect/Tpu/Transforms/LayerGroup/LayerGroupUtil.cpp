@@ -1047,7 +1047,7 @@ bool need_bcast(Value opd) {
   } else if (auto cast_op = dyn_cast<tpu::LRNOp>(use_op)) {
     return opd == cast_op.getTable() || opd == cast_op.getMantissa();
   } else if (auto cast_op = dyn_cast<tpu::LayerNormOp>(use_op)) {
-    return module::isCV18xx() && isa<top::WeightOp>(opd.getDefiningOp());
+    return module::isCV18xx() && module::isWeight(opd);
   } else {
     return false;
   }

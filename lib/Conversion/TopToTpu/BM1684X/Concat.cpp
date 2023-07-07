@@ -47,7 +47,7 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
                                   bool asymmetric) const {
   // checkout whether weight exist
   for (auto in : concatOp.getInputs()) {
-    if (isa<top::WeightOp>(in.getDefiningOp())) {
+    if (module::isWeight(in)) {
       LoweringF16(rewriter, concatOp);
       return;
     }

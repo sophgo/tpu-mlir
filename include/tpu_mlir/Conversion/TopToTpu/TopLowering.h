@@ -218,7 +218,7 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
   }
   for (int i = 0; i < in_num_ops; ++i) {
     auto in = from->getOperand(i);
-    if (isa<top::WeightOp>(in.getDefiningOp())) {
+    if (module::isWeight(in)) {
       auto wOp = in.getDefiningOp<top::WeightOp>();
       auto wtype = module::getStorageType(in);
       if (stype.isF16()) {

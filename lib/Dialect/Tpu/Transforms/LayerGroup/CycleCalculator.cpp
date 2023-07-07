@@ -509,7 +509,7 @@ int64_t Cv18xxCycleCalculator::getLoadCycle(Value v,
   auto l_addr = 0;
 
   bool isNeuron = true;
-  if (isa<top::WeightOp>(module::getOriValue(v).getDefiningOp())) {
+  if (module::isWeight(module::getOriValue(v))) {
     isNeuron = false;
   }
   if (isNeuron) {
@@ -563,7 +563,7 @@ int64_t Cv18xxCycleCalculator::getStoreCycle(Value v,
   auto l_addr = 0;
 
   bool isNeuron = true;
-  if (isa<top::WeightOp>(module::getOriValue(v).getDefiningOp())) {
+  if (module::isWeight(module::getOriValue(v))) {
     isNeuron = false;
   }
   if (isNeuron) {

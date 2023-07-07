@@ -73,7 +73,7 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
       }
     } else if (auto fcOp = dyn_cast_or_null<top::MatMulOp>(formerOp)) {
       if ((fcOp.getDoRelu() && const_val < 0) ||
-          !(isa<top::WeightOp>(fcOp.getRight().getDefiningOp()))) {
+          !(module::isWeight(fcOp.getRight()))) {
         return failure();
       }
     } else {

@@ -45,7 +45,7 @@ void tpu::LoadOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   bool bcompressed = false;
   bool transpose = false;
   bool isNeuron = true;
-  if (isa<top::WeightOp>(module::getOriValue(getInput()).getDefiningOp())) {
+  if (module::isWeight(module::getOriValue(getInput()))) {
     isNeuron = false;
   }
 

@@ -23,7 +23,7 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter, top::ConcatOp op,
 
   // checkout whether weight exist
   for (auto in : op.getInputs()) {
-    if (isa<top::WeightOp>(in.getDefiningOp())) {
+    if (module::isWeight(in)) {
       LoweringF32(rewriter, op);
       return;
     }

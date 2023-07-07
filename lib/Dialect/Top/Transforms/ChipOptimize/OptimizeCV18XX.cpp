@@ -650,7 +650,7 @@ public:
       // convert for embedding
       bool need_convert =
           (axis == 1 && indices_shape.size() == 0 && input_shape.size() == 3 &&
-           input_shape[0] == 1 && !(isa<top::WeightOp>(input.getDefiningOp())));
+           input_shape[0] == 1 && !(module::isWeight(input)));
       if (need_convert) {
         // conver to reshapeOp + new GatherOp
         rewriter.setInsertionPointAfterValue(ori_out);
@@ -908,7 +908,7 @@ public:
     auto out = module::getNextOp(op);
 
     // if right is weight and need transpose, do it here.
-    if (op.getRightTranspose() && isa<top::WeightOp>(right.getDefiningOp())) {
+    if (op.getRightTranspose() && module::isWeight(right)) {
       std::string filter_name = module::getName(right).str();
       auto filterOp = dyn_cast<top::WeightOp>(right.getDefiningOp());
       auto filter_f32 = filterOp.read<float>();
@@ -1469,7 +1469,7 @@ public:
     } else if (bcast == 1) {
       auto left_operand = op.getOperands()[0];
       auto right_operand = op.getOperands()[1];
-      assert(!isa<top::WeightOp>(right_operand.getDefiningOp()));
+      assert(!module::isWeight(right_operand));
       rewriter.setInsertionPointAfterValue(right_operand);
       std::vector<Value> operands;
       attrs.emplace_back(

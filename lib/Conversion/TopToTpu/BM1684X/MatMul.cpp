@@ -486,7 +486,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   OpBuilder builder(ctx);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  if (isa<top::WeightOp>(op.getRight().getDefiningOp())) {
+  if (module::isWeight(op.getRight())) {
     auto right_stype = module::getStorageType(op.getRight());
     auto right_new_type =
         RankedTensorType::get(module::getShape(op.getRight()), right_stype);
@@ -513,7 +513,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
 
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
   bool can_merge_izp =
-      input_zeroPoint == 0 || isa<top::WeightOp>(op.getRight().getDefiningOp());
+      input_zeroPoint == 0 || module::isWeight(op.getRight());
   auto right_type = op.getRight().getType().cast<RankedTensorType>();
   int K_idx = op.getRightTranspose() ? 1 : 0;
   int N_idx = op.getRightTranspose() ? 0 : 1;
@@ -524,7 +524,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   int64_t row_size = p.K;
   int64_t col_size = p.N;
   i32_array_t bias_quant;
-  if (isa<top::WeightOp>(op.getBias().getDefiningOp())) {
+  if (module::isWeight(op.getBias())) {
     bias_quant =
         cast<top::WeightOp>(op.getBias().getDefiningOp()).read<int32_t>();
   } else {
