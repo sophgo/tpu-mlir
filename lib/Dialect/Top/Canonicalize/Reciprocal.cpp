@@ -27,20 +27,20 @@ struct MergeToRMSNormPattern : public OpRewritePattern<ReciprocalOp> {
     }
 
     // check input of ReciprocalOp
-    auto sqrt_op = dyn_cast<SqrtOp>(op.getOperand().getDefiningOp());
+    auto sqrt_op = dyn_cast<SqrtOp>(op.getInput().getDefiningOp());
     if (!sqrt_op) {
       return failure();
     }
     auto add_const_op =
-        dyn_cast<AddConstOp>(sqrt_op.getOperand().getDefiningOp());
+        dyn_cast<AddConstOp>(sqrt_op.getInput().getDefiningOp());
     auto eps = add_const_op.getConstVal().convertToDouble();
     if (!add_const_op || eps <= 0) {
       return failure();
     }
     auto reduce_op =
-        dyn_cast<ReduceOp>(add_const_op.getOperand().getDefiningOp());
+        dyn_cast<ReduceOp>(add_const_op.getInput().getDefiningOp());
     auto axes = module::getI64Array(reduce_op.getAxes());
-    auto dim_size = module::getShape(reduce_op.getOperand()).size();
+    auto dim_size = module::getShape(reduce_op.getInput()).size();
     auto axis = axes->at(0);
     if (axis < 0) {
       axis += dim_size;
@@ -51,7 +51,7 @@ struct MergeToRMSNormPattern : public OpRewritePattern<ReciprocalOp> {
       return failure();
     }
     // pow op is transformed to mul in canonicalize pass
-    auto pow_op = dyn_cast<MulOp>(reduce_op.getOperand().getDefiningOp());
+    auto pow_op = dyn_cast<MulOp>(reduce_op.getInput().getDefiningOp());
     if (!pow_op || pow_op.getNumOperands() != 2 ||
         pow_op.getOperand(0) != pow_op.getOperand(1) || pow_op.getDoRelu()) {
       return failure();
@@ -65,6 +65,9 @@ struct MergeToRMSNormPattern : public OpRewritePattern<ReciprocalOp> {
       return failure();
     }
     auto weight_mul_op = dyn_cast_or_null<MulOp>(module::getNextOp(mul_op));
+    if (!weight_mul_op) {
+      return failure();
+    }
     auto operand0 = weight_mul_op.getOperand(0).getDefiningOp();
     auto operand1 = weight_mul_op.getOperand(1).getDefiningOp();
     auto weight = isa<WeightOp>(operand0) ? dyn_cast<WeightOp>(operand0)
@@ -76,18 +79,12 @@ struct MergeToRMSNormPattern : public OpRewritePattern<ReciprocalOp> {
     }
 
     std::vector<NamedAttribute> attrs;
-    NamedAttribute eps_attr =
-        rewriter.getNamedAttr("eps", rewriter.getF64FloatAttr(eps));
+    auto eps_attr = rewriter.getNamedAttr("eps", rewriter.getF64FloatAttr(eps));
     attrs.push_back(eps_attr);
-
     rewriter.setInsertionPointAfter(weight_mul_op);
-    auto rmsnorm_loc = NameLoc::get(rewriter.getStringAttr(
-        module::getName(weight_mul_op.getResult()).str() + "_RMSNorm"));
-    auto rmsnorm_op = rewriter.create<RMSNormOp>(
-        rmsnorm_loc, weight_mul_op.getOutput().getType(),
+    rewriter.replaceOpWithNewOp<top::RMSNormOp>(
+        weight_mul_op, weight_mul_op.getOutput().getType(),
         ValueRange{pow_op.getOperand(0), weight.getResult()}, attrs);
-    weight_mul_op.replaceAllUsesWith(rmsnorm_op.getOperation());
-
     return success();
   }
 };
