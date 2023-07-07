@@ -949,7 +949,7 @@ protected:
     if (ignore_f16_overflow == false && module::getMode() == module::Mode::F16) {
       mainFunc_.walk([&](Operation *op) {
         // if have other op need convert from f16 to f32, add here
-        if (isa<top::LayerNormOp>(op)) {
+        if (isa<top::LayerNormOp, top::RMSNormOp>(op)) {
           auto name = module::getName(op).str();
           LoweringConfig::quantize_map[name] = module::Mode::F32;
         }
