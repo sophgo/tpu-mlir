@@ -68,7 +68,7 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
   if (!getRight().getDefiningOp()) {
     is_fc = false;
   } else {
-    is_fc = isa<top::WeightOp>(getRight().getDefiningOp());
+    is_fc = module::isWeight(getRight());
   }
   if (is_fc) {
     int batch_high = 1;      // fixme

@@ -47,7 +47,7 @@ void tpu::MatMulOp::codegen_global_bm1684() {
     int right_sign = module::isSign(getRight());
     int bias_sign = p.with_bias ? module::isSign(getBias()) : 0;
     int if_right_active =
-        isa<top::WeightOp>(getRight().getDefiningOp()) ? 0 : 1;
+        module::isWeight(getRight()) ? 0 : 1;
     auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
     assert(rshift_v->size() == 1);
     FcQParams quant_param{0, 0, 0, 0, 0};

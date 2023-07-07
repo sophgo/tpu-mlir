@@ -147,7 +147,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
 
   for (int i = 0; i < nInputs; ++i) {
     auto input = subOp->getOperand(i);
-    if (isa<top::WeightOp>(input.getDefiningOp())) {
+    if (module::isWeight(input)) {
       // do weight dequant in here
       int64_t num_elem = module::getNumElements(input);
       if (num_elem != 1) {

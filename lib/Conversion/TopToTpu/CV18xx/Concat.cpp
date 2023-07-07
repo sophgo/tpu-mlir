@@ -102,7 +102,7 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
   for (int i = 0; i < nInputs; ++i) {
     auto in = concatOp->getOperand(i);
     operands.push_back(in);
-    if (isa<top::WeightOp>(in.getDefiningOp())) {
+    if (module::isWeight(in)) {
       // not test now
       LoweringBF16(rewriter, concatOp);
       return;

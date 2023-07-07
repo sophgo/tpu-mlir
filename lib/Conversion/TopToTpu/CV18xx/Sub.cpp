@@ -20,7 +20,7 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   for (auto v : op->getOperands()) {
-    if (isa<top::WeightOp>(v.getDefiningOp())) {
+    if (module::isWeight(v)) {
       LoweringBF16(rewriter, op);
       return;
     }

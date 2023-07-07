@@ -86,7 +86,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   std::vector<int64_t> rshifts;
   Value right_operand = op.getRight();
   Value bias_operand = op.getBias();
-  bool is_fc = isa<top::WeightOp>(op.getRight().getDefiningOp());
+  bool is_fc = module::isWeight(op.getRight());
   if (is_fc) {
     // fc
     auto p = op.parseParam();

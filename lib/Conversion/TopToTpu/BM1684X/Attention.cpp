@@ -197,7 +197,7 @@ Value lowering_attention_float(PatternRewriter &rewriter,
   // bool bias_use_fp32 = module::isBM1686();
   for (int i = 0; i < in_num_ops; ++i) {
     auto in = op->getOperand(i);
-    if (isa<top::WeightOp>(in.getDefiningOp())) {
+    if (module::isWeight(in)) {
       auto wOp = in.getDefiningOp<top::WeightOp>();
       // if (i == 4 && bias_use_fp32) {
       //   operands.push_back(in);

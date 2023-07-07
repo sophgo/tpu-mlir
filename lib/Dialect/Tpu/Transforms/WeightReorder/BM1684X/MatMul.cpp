@@ -20,7 +20,7 @@ canonicalize_matmul_operand_shape(tpu::MatMulOp op, PatternRewriter &rewriter) {
   auto right_shape = module::getShape(op.getRight());
   auto res = failure();
   // modify right shape from (K, N) to (1, K, N) if left is (B, M, K)
-  if (isa<top::WeightOp>(op.getRight().getDefiningOp())) {
+  if (module::isWeight(op.getRight())) {
     if (left_shape.size() == 3 && right_shape.size() == 2) {
       std::vector<int64_t> new_shape{1, right_shape[0], right_shape[1]};
       auto newType = RankedTensorType::get(
@@ -31,7 +31,7 @@ canonicalize_matmul_operand_shape(tpu::MatMulOp op, PatternRewriter &rewriter) {
   }
   // if left_transpose, bias_shape = (1, X, 1, 1)
   // if !left_transpose, bias_shape = (1, 1, 1, X)
-  if (isa<top::WeightOp>(op.getBias().getDefiningOp())) {
+  if (module::isWeight(op.getBias())) {
     auto bias_shape = module::getShape(op.getBias());
     if (bias_shape.size() == 1) {
       std::vector<int64_t> new_shape(4, 1);
@@ -83,7 +83,7 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
     }
   }
   i32_array_t bias_quant;
-  if (isa<top::WeightOp>(op.getBias().getDefiningOp())) {
+  if (module::isWeight(op.getBias())) {
     bias_quant =
         cast<top::WeightOp>(op.getBias().getDefiningOp()).read<int32_t>();
     for (size_t i = 0; i < p.N; ++i) {
@@ -91,7 +91,7 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
     }
   } else {
     i32_array_t bias_quant;
-    if (isa<top::WeightOp>(op.getBias().getDefiningOp())) {
+    if (module::isWeight(op.getBias())) {
       bias_quant =
           cast<top::WeightOp>(op.getBias().getDefiningOp()).read<int32_t>();
       for (size_t i = 0; i < p.N; ++i) {

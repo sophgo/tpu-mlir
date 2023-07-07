@@ -27,7 +27,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   o_scale = module::getThreshold(op.getOutput());
   bool hasConst = false;
   for (int i = 0; i < nInputs; ++i) {
-    if (isa<top::WeightOp>(op->getOperand(i).getDefiningOp())) {
+    if (module::isWeight(op->getOperand(i))) {
       hasConst = true;
       break;
     }
@@ -40,7 +40,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
       return LoweringBF16(rewriter, op);
     } else {
       auto opd0 = op->getOperand(0);
-      assert(!isa<top::WeightOp>(opd0.getDefiningOp()));
+      assert(!module::isWeight(opd0));
       double i_scale = module::getThreshold(opd0);
 
       int const_idx = 1;

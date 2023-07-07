@@ -15,7 +15,7 @@ namespace tpu_mlir {
 namespace cv18xx {
 void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter, top::ScatterNDOp op,
                                    bool asymmetric) const {
-  if (!isa<top::WeightOp>(op.getIndices().getDefiningOp())) {
+  if (!module::isWeight(op.getIndices())) {
     llvm_unreachable("Not support activation indices.");
   }
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
@@ -30,7 +30,7 @@ void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter, top::ScatterNDOp
 
 void ScatterNDLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::ScatterNDOp op) const {
-  if (!isa<top::WeightOp>(op.getIndices().getDefiningOp())) {
+  if (!module::isWeight(op.getIndices())) {
     llvm_unreachable("Not support activation indices.");
   }
   auto newType = getQuantBF16Type(op.getOutput());
