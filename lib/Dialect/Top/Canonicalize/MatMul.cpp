@@ -215,6 +215,12 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
       auto slice = dyn_cast<SliceOp>(user);
       if (!slice) {
         return failure();
+      } else {
+        auto squeeze = dyn_cast<SqueezeOp>(
+             *slice.getOutput().getUsers().begin());
+        if (!squeeze) {
+          return failure();
+        }
       }
       auto slice_in_shape = module::getShape(slice.getInput());
       auto slice_out_shape = module::getShape(slice.getOutput());
