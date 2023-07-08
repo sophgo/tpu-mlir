@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
+
 static void lrn_inference_cv18xx(InferenceParameter &p, int64_t size,
                                  double alpha, double bias, int64_t n,
                                  int64_t c, int64_t h, int64_t w) {
