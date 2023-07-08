@@ -16,7 +16,6 @@
 #include "mlir/IR/TypeUtilities.h"
 #include <numeric>
 
-
 using namespace tpu_mlir::tpu;
 
 //===----------------------------------------------------------------------===//
@@ -81,7 +80,10 @@ const slice_attr_t &getSliceParam(tpu::SliceOp &op) {
 }
 
 RunMode getRunMode(FuncOp func) {
-  return func->getAttrOfType<tpu::RunModeAttr>("mode").getValue();
+  if (func->hasAttr("mode")) {
+    return func->getAttrOfType<tpu::RunModeAttr>("mode").getValue();
+  }
+  return tpu::RunMode::UNKNOW;
 }
 
 RunMode getRunMode(Operation *op) {
@@ -101,7 +103,7 @@ void IfOp::getSuccessorRegions(std::optional<unsigned> index,
   if (index) {
     regions.push_back(RegionSuccessor(getResults()));
     return;
-}
+  }
 
   // Don't consider the else region if it is empty.
   Region *elseRegion = &this->getElseBranch();

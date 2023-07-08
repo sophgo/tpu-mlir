@@ -86,65 +86,30 @@ void getInputsOutputs(std::vector<Operation *> &ops, std::vector<Value> &inputs,
 
 struct subnet_basic_info;
 using InfoVec = llvm::SmallVector<subnet_basic_info *>;
-struct subnet_basic_info{
-    subnet_basic_info(): id(__next_id){
-        index = -1;
-        __next_id++;
-    }
-    subnet_basic_info(int index_, std::vector<int> &&next_index_, RunMode type_, const int id_ = 0) :
-                 index(index_), next_index(std::move(next_index_)), type(type_), id(id_){
-      __next_id++;
-    }
-    static void reset_id(){
-        __next_id = 0;
-    }
-    RunMode type;
-    std::vector<Operation *> ops;
-    std::vector<Value> ins;
-    std::vector<Value> outs;
-    const int id;
-    int index;
-    static int __next_id;
-    InfoVec next_subnets;
-    InfoVec prev_subnets;
-    std::vector<int> next_index;
+struct subnet_basic_info {
+  subnet_basic_info() : id(__next_id) {
+    index = -1;
+    __next_id++;
+  }
+  subnet_basic_info(int index_, std::vector<int> &&next_index_, RunMode type_,
+                    const int id_ = 0)
+      : index(index_), next_index(std::move(next_index_)), type(type_),
+        id(id_) {
+    __next_id++;
+  }
+  static void reset_id() { __next_id = 0; }
+  RunMode type;
+  std::vector<Operation *> ops;
+  std::vector<Value> ins;
+  std::vector<Value> outs;
+  const int id;
+  int index;
+  static int __next_id;
+  InfoVec next_subnets;
+  InfoVec prev_subnets;
+  std::vector<int> next_index;
 };
 int subnet_basic_info::__next_id = 0;
-
-template <typename TyOp>
-struct ConvertToReshape : public OpRewritePattern<TyOp> {
-  using OpRewritePattern<TyOp>::OpRewritePattern;
-  LogicalResult matchAndRewrite(TyOp op,
-                                PatternRewriter &rewriter) const override {
-    auto mode = tpu::getRunMode(op);
-    if (mode != tpu::RunMode::TPU_STATIC) {
-      return failure();
-    }
-    std::vector<Value> operands;
-    operands.emplace_back(op.getInput());
-    operands.emplace_back(module::getNoneOp(op));
-    rewriter.replaceOpWithNewOp<tpu::ReshapeOp>(op, op.getResult().getType(),
-                                                operands);
-    return success();
-  }
-};
-
-struct MergeReshape : public OpRewritePattern<tpu::ReshapeOp> {
-  using OpRewritePattern<tpu::ReshapeOp>::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
-    auto in_op = op.getInput().getDefiningOp();
-    if (nullptr == in_op || in_op->hasOneUse() == false) {
-      return failure();
-    }
-    if (!isa<tpu::ReshapeOp>(in_op)) {
-      return failure();
-    }
-    op.setOperand(0, in_op->getOperand(0));
-    in_op->erase();
-    return success();
-  }
-};
 
 class SubnetDividePass : public SubnetDivideBase<SubnetDividePass> {
 public:
@@ -164,18 +129,31 @@ public:
     toposort();
     // for static ops
     auto &ctx = getContext();
+    auto mOp = getOperation();
+    for (auto func : mOp.getOps<FuncOp>()) {
+      if (getRunMode(func) != tpu::RunMode::TPU_STATIC) {
+        continue;
+      }
+      RewritePatternSet patterns(&ctx);
+      patterns.add<patterns::ConvertPattern<tpu::UnsqueezeOp, tpu::ReshapeOp>,
+                   patterns::ConvertPattern<tpu::SqueezeOp, tpu::ReshapeOp>>(
+          &ctx);
+      applyPatternsAndFoldGreedily(func, std::move(patterns));
+    }
+
     RewritePatternSet patterns(&ctx);
-    patterns.add<ConvertToReshape<tpu::UnsqueezeOp>,
-                 ConvertToReshape<tpu::SqueezeOp>, MergeReshape,
+    // clang-format off
+    patterns.add<patterns::FuseRepeatPattern<tpu::ReshapeOp>,
                  patterns::FuseSameOp>(&ctx);
+    // clang-format on
     applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
     module::removeUnusedOp();
     module::setState(module::State::TPU_DIVIDED);
   }
 
   static bool force_dynamic_run(Operation *op) {
-    if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp, NmsOp>(
-            op)) {
+    if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp,
+            NmsOp>(op)) {
       return true;
     } else if (op->hasTrait<trait::ShapeProducer>()) {
       return true;
@@ -210,26 +188,27 @@ public:
   }
 
   bool toposortAction(Block *block, llvm::iterator_range<Block::iterator> ops) {
-    auto isOpReady = [&](Operation *op, llvm::DenseSet<Operation *> &unscheduledOps) -> bool {
-        // An operation is ready to be scheduled if all its operands are ready. An
-        const auto isReady = [&](Value value) {
-          Operation *parent = value.getDefiningOp();
-          if (!parent)
-            return true;
-          do {
-            if (parent == op)
-              return true;
-            if (unscheduledOps.contains(parent))
-              return false;
-          } while ((parent = parent->getParentOp()));
+    auto isOpReady = [&](Operation *op,
+                         llvm::DenseSet<Operation *> &unscheduledOps) -> bool {
+      // An operation is ready to be scheduled if all its operands are ready. An
+      const auto isReady = [&](Value value) {
+        Operation *parent = value.getDefiningOp();
+        if (!parent)
           return true;
-        };
+        do {
+          if (parent == op)
+            return true;
+          if (unscheduledOps.contains(parent))
+            return false;
+        } while ((parent = parent->getParentOp()));
+        return true;
+      };
 
-        WalkResult readyToSchedule = op->walk([&](Operation *nestedOp) {
-          return llvm::all_of(nestedOp->getOperands(),
+      WalkResult readyToSchedule = op->walk([&](Operation *nestedOp) {
+        return llvm::all_of(nestedOp->getOperands(),
                             [&](Value operand) { return isReady(operand); })
-                  ? WalkResult::advance()
-                  : WalkResult::interrupt();
+                   ? WalkResult::advance()
+                   : WalkResult::interrupt();
       });
       return !readyToSchedule.wasInterrupted();
     };
@@ -246,7 +225,7 @@ public:
       bool scheduledAtLeastOnce = false;
 
       for (Operation &op :
-          llvm::make_early_inc_range(llvm::make_range(nextScheduledOp, end))) {
+           llvm::make_early_inc_range(llvm::make_range(nextScheduledOp, end))) {
         if (!isOpReady(&op, unscheduledOps))
           continue;
 
@@ -277,13 +256,13 @@ public:
             toposortAction(&block, block.without_terminator());
           else
             toposortAction(&block,
-              llvm::make_range(block.begin(), block.end()));
+                           llvm::make_range(block.begin(), block.end()));
         }
       }
     });
   }
 
-  bool op_can_run(Operation *op, llvm::DenseSet<Value>& valid_values) {
+  bool op_can_run(Operation *op, llvm::DenseSet<Value> &valid_values) {
     int valid_num = 0;
     for (int i = 0; i < op->getNumOperands(); i++) {
       Operation *parent = op->getOperand(i).getDefiningOp();
@@ -291,8 +270,8 @@ public:
         valid_num++;
         continue;
       }
-      if (isa<top::WeightOp, top::NoneOp>(parent)
-          || valid_values.count(op->getOperand(i)))
+      if (isa<top::WeightOp, top::NoneOp>(parent) ||
+          valid_values.count(op->getOperand(i)))
         valid_num++;
     }
     return valid_num == op->getNumOperands();
@@ -307,9 +286,9 @@ public:
       return false;
   }
 
-  void erase_yieldop(InfoVec& subnets) {
-    //erase the yieldOp for to rebuild the ir
-    for (auto &subnet: subnets) {
+  void erase_yieldop(InfoVec &subnets) {
+    // erase the yieldOp for to rebuild the ir
+    for (auto &subnet : subnets) {
       if (subnet_have_terminator(subnet->ops)) {
         auto &ops = subnet->ops;
         auto it = std::find_if(ops.begin(), ops.end(), [&](Operation *op) {
@@ -329,11 +308,11 @@ public:
     return false;
   }
 
-  bool subnet_can_run(subnet_basic_info *subnet, const InfoVec& run_group) {
+  bool subnet_can_run(subnet_basic_info *subnet, const InfoVec &run_group) {
     auto valid_count = subnet->prev_subnets.size();
-    for (auto &in: subnet->prev_subnets) {
-      if (std::find(run_group.begin(), run_group.end(), in)
-           == std::end(run_group))
+    for (auto &in : subnet->prev_subnets) {
+      if (std::find(run_group.begin(), run_group.end(), in) ==
+          std::end(run_group))
         valid_count--;
     }
 
@@ -342,16 +321,16 @@ public:
 
   void gen_subnet_data_depence(InfoVec &subnet_infos) {
     llvm::DenseMap<Value, subnet_basic_info *> value_from_subnets;
-    for (const auto& info: subnet_infos) {
+    for (const auto &info : subnet_infos) {
       info->prev_subnets.clear();
       info->next_subnets.clear();
-      for (auto &&out: info->outs) {
+      for (auto &&out : info->outs) {
         value_from_subnets[out] = info;
       }
     }
 
-    for (const auto &info: subnet_infos) {
-      for (auto &&in: info->ins) {
+    for (const auto &info : subnet_infos) {
+      for (auto &&in : info->ins) {
         auto from_subnet = value_from_subnets[in];
         if (from_subnet) {
           from_subnet->next_subnets.emplace_back(info);
@@ -371,22 +350,24 @@ public:
     bool noUse;
 
     toposort();
-    WalkResult ret = module::getMainFuncOp()
-        .walk<WalkOrder::PreOrder, ForwardDominanceIterator<true>>([&](Operation * op) {
-          if (isa<func::FuncOp, ReturnOp, top::NoneOp> (op))
-            return WalkResult::advance();
-          else if (isa<top::InputOp>(op)) {
-            valid_values.insert(op->getResult(0));
-            return WalkResult::advance();
-          } else if (isa<top::WeightOp>(op)) {
-            valid_values.insert(op->getResult(0));
-          }
-          all_ops.emplace_back(op);
-          return WalkResult::advance();
-    });
+    WalkResult ret =
+        module::getMainFuncOp()
+            .walk<WalkOrder::PreOrder, ForwardDominanceIterator<true>>(
+                [&](Operation *op) {
+                  if (isa<func::FuncOp, ReturnOp, top::NoneOp>(op))
+                    return WalkResult::advance();
+                  else if (isa<top::InputOp>(op)) {
+                    valid_values.insert(op->getResult(0));
+                    return WalkResult::advance();
+                  } else if (isa<top::WeightOp>(op)) {
+                    valid_values.insert(op->getResult(0));
+                  }
+                  all_ops.emplace_back(op);
+                  return WalkResult::advance();
+                });
 
     bool has_switch_op = false;
-    auto dfs = [&]() noexcept ->void {
+    auto dfs = [&]() noexcept -> void {
       while (!all_ops.empty()) {
         subnet_infos.emplace_back(new subnet_basic_info);
         auto &info = subnet_infos.back();
@@ -409,8 +390,10 @@ public:
                   break;
                 }
                 continue;
-              } else if (info->type != RunMode::TPU_DYNAMIC && force_dynamic_run(op)) {
-                if (!info->ops.empty()) continue;
+              } else if (info->type != RunMode::TPU_DYNAMIC &&
+                         force_dynamic_run(op)) {
+                if (!info->ops.empty())
+                  continue;
                 info->type = RunMode::TPU_DYNAMIC;
                 info->ops.emplace_back(op);
                 valid_values.insert(op->result_begin(), op->result_end());
@@ -422,15 +405,16 @@ public:
                 }
               } else {
                 if (has_switch_op &&
-                    (info->ops.empty()
-                      || info->ops[0]->getParentRegion() == op->getParentRegion())) {
+                    (info->ops.empty() || info->ops[0]->getParentRegion() ==
+                                              op->getParentRegion())) {
                   info->ops.emplace_back(op);
                   valid_values.insert(op->result_begin(), op->result_end());
-                  if (isa<tpu::YieldOp>(op)
-                      && isa<tpu::IfOp>(op->getBlock()->getParentOp())) {
+                  if (isa<tpu::YieldOp>(op) &&
+                      isa<tpu::IfOp>(op->getBlock()->getParentOp())) {
                     if (op->getParentRegion()->getRegionNumber()) {
-                      valid_values.insert(op->getBlock()->getParentOp()->result_begin(),
-                                    op->getBlock()->getParentOp()->result_end());
+                      valid_values.insert(
+                          op->getBlock()->getParentOp()->result_begin(),
+                          op->getBlock()->getParentOp()->result_end());
                       has_switch_op = false;
                     }
                     updated = false;
@@ -447,7 +431,7 @@ public:
             }
           }
 
-          for (auto op: info->ops) {
+          for (auto op : info->ops) {
             auto it = std::find(all_ops.begin(), all_ops.end(), op);
             if (it != all_ops.end())
               all_ops.erase(it);
@@ -468,23 +452,26 @@ public:
            it != subnet_infos[i]->ops.end();) {
         if (!isa<top::WeightOp, top::NoneOp>(*it)) {
           for (int k = 0; k < (*it)->getNumResults(); k++) {
-            for (auto user: (*it)->getResult(k).getUsers()) {
-              if (std::find(subnet_infos[i]->ops.begin(), subnet_infos[i]->ops.end(), user)
-                   == subnet_infos[i]->ops.end())
+            for (auto user : (*it)->getResult(k).getUsers()) {
+              if (std::find(subnet_infos[i]->ops.begin(),
+                            subnet_infos[i]->ops.end(),
+                            user) == subnet_infos[i]->ops.end())
                 subnet_infos[i]->outs.emplace_back((*it)->getResult(k));
             }
           }
 
           auto op = *it;
-          for (int k = 0 ; k < op->getNumOperands(); k++) {
-            if (!op->getOperand(k).isa<BlockArgument>()
-                 && std::find(subnet_infos[i]->ops.begin(),
-                       subnet_infos[i]->ops.end(), op->getOperand(k).getDefiningOp())
-                          == subnet_infos[i]->ops.end()) {
+          for (int k = 0; k < op->getNumOperands(); k++) {
+            if (!op->getOperand(k).isa<BlockArgument>() &&
+                std::find(subnet_infos[i]->ops.begin(),
+                          subnet_infos[i]->ops.end(),
+                          op->getOperand(k).getDefiningOp()) ==
+                    subnet_infos[i]->ops.end()) {
               auto iit = std::find(to_move_ops.begin(), to_move_ops.end(),
-                  op->getOperand(k).getDefiningOp());
+                                   op->getOperand(k).getDefiningOp());
               if (iit != to_move_ops.end()) {
-                it = subnet_infos[i]->ops.insert(it+1, op->getOperand(k).getDefiningOp());
+                it = subnet_infos[i]->ops.insert(
+                    it + 1, op->getOperand(k).getDefiningOp());
                 to_move_ops.erase(iit);
               } else
                 subnet_infos[i]->ins.emplace_back(op->getOperand(k));
@@ -493,9 +480,10 @@ public:
           ++it;
         } else {
           bool move_flag = true;
-          for (auto user: (*it)->getResult(0).getUsers()) {
-            if (std::find(subnet_infos[i]->ops.begin(), subnet_infos[i]->ops.end(), user)
-                != subnet_infos[i]->ops.end())
+          for (auto user : (*it)->getResult(0).getUsers()) {
+            if (std::find(subnet_infos[i]->ops.begin(),
+                          subnet_infos[i]->ops.end(),
+                          user) != subnet_infos[i]->ops.end())
               move_flag = false;
           }
           if (move_flag) {
@@ -508,7 +496,7 @@ public:
       }
     }
 
-    //eliminate empty subnet
+    // eliminate empty subnet
     for (auto it = subnet_infos.begin(); it < subnet_infos.end();) {
       if ((*it)->ops.empty()) {
         it = subnet_infos.erase(it);
@@ -517,31 +505,29 @@ public:
       }
     }
 
-    //remove the unused op
+    // remove the unused op
     for (auto op : to_move_ops)
       op->erase();
     return subnet_infos;
   }
 
-
-
-  InfoVec sort_subnets(InfoVec& subnet_infos) {
+  InfoVec sort_subnets(InfoVec &subnet_infos) {
     gen_subnet_data_depence(subnet_infos);
 
     InfoVec sorted_subnets;
     int latest_switch_index = 0;
-    for (auto& subnet: subnet_infos) {
+    for (auto &subnet : subnet_infos) {
       if (subnet_can_run(subnet, sorted_subnets)) {
         if (subnet->type == RunMode::SWITCH) {
           subnet->index = sorted_subnets.size();
-          subnet->next_index.push_back(subnet->index+1);
-          auto it = std::find(subnet_infos.begin(),subnet_infos.end(), subnet);
+          subnet->next_index.push_back(subnet->index + 1);
+          auto it = std::find(subnet_infos.begin(), subnet_infos.end(), subnet);
           latest_switch_index = std::distance(subnet_infos.begin(), it);
           for (auto iit = std::next(it, 1); iit < subnet_infos.end(); ++iit) {
-            if (subnet_have_terminator((*iit)->ops)
-                && (*iit)->outs.empty()
-                 && (*iit)->next_subnets.empty()) {
-              subnet->next_index.push_back(std::distance(subnet_infos.begin(), iit+1));
+            if (subnet_have_terminator((*iit)->ops) && (*iit)->outs.empty() &&
+                (*iit)->next_subnets.empty()) {
+              subnet->next_index.push_back(
+                  std::distance(subnet_infos.begin(), iit + 1));
               break;
             }
           }
@@ -549,24 +535,27 @@ public:
         } else {
           subnet->index = sorted_subnets.size();
           if (subnet_have_terminator(subnet->ops)) {
-            //find the merge position
-            auto it = std::find(subnet_infos.begin(),subnet_infos.end(), subnet);
+            // find the merge position
+            auto it =
+                std::find(subnet_infos.begin(), subnet_infos.end(), subnet);
             for (auto iit = std::next(it, 1); iit < subnet_infos.end(); ++iit) {
-              auto &next_subnets = subnet_infos[latest_switch_index]->next_subnets;
-              if (!next_subnets.empty()
-                  && std::find(next_subnets.begin(), next_subnets.end(), *iit)
-                      != next_subnets.end()) {
-                subnet->next_index.push_back(std::distance(subnet_infos.begin(), iit));
+              auto &next_subnets =
+                  subnet_infos[latest_switch_index]->next_subnets;
+              if (!next_subnets.empty() &&
+                  std::find(next_subnets.begin(), next_subnets.end(), *iit) !=
+                      next_subnets.end()) {
+                subnet->next_index.push_back(
+                    std::distance(subnet_infos.begin(), iit));
                 break;
               }
             }
           } else {
-            subnet->next_index.push_back(subnet->index+1);
+            subnet->next_index.push_back(subnet->index + 1);
           }
           sorted_subnets.emplace_back(subnet);
         }
       } else {
-        //can;t run to here, if happen, pls let us know ASAP
+        // can;t run to here, if happen, pls let us know ASAP
         llvm_unreachable("Fatal error, pls let us know ASAP.");
       }
     }
@@ -577,29 +566,34 @@ public:
 
   bool has_special_dyn_op_static_shape(subnet_basic_info *&subnet,
                                        InfoVec &subnets) {
-    auto it = std::find_if(subnet->ops.begin(), subnet->ops.end(), [&](const Operation *op) {
-                            return isa<tpu::TopKOp, tpu::GatherOp>(op);});
+    auto it = std::find_if(subnet->ops.begin(), subnet->ops.end(),
+                           [&](const Operation *op) {
+                             return isa<tpu::TopKOp, tpu::GatherOp>(op);
+                           });
     if (it == subnet->ops.end())
       return false;
-    //check the type of previous subnet of current dynamic subnet
+    // check the type of previous subnet of current dynamic subnet
     auto iit = std::find(subnets.begin(), subnets.end(), subnet);
     if (iit == subnets.begin())
       return false;
     else {
       int index = std::distance(subnets.begin(), iit);
-      auto previous_static_subnet = [&](auto &&Me, InfoVec &subnets, int current_index) noexcept -> InfoVec {
+      auto previous_static_subnet = [&](auto &&Me, InfoVec &subnets,
+                                        int current_index) noexcept -> InfoVec {
         InfoVec prevs;
         std::copy_if(std::begin(subnets), std::end(subnets),
-                    std::back_inserter(prevs), [&](subnet_basic_info *&subnet){
-                            auto gg = std::find_if(subnet->next_index.begin(), subnet->next_index.end(), [&](int vv) {
-                                        return vv == current_index;});
-                            return gg != subnet->next_index.end();});
+                     std::back_inserter(prevs),
+                     [&](subnet_basic_info *&subnet) {
+                       auto gg = std::find_if(
+                           subnet->next_index.begin(), subnet->next_index.end(),
+                           [&](int vv) { return vv == current_index; });
+                       return gg != subnet->next_index.end();
+                     });
 
-        if (!(prevs[0]->type == RunMode::SWITCH
-            || prevs[0]->type == RunMode::MERGE)) {
+        if (!(prevs[0]->type == RunMode::SWITCH ||
+              prevs[0]->type == RunMode::MERGE)) {
           return prevs;
-        }
-        else {
+        } else {
           auto kk = std::find(subnets.begin(), subnets.end(), prevs[0]);
           if (kk == subnets.begin())
             return prevs;
@@ -612,9 +606,10 @@ public:
         static, don't transfer dynamic to succeccors,
         if previous subnet is switch/merge, need to check
         the previous subnet of switch/merge continuously */
-      auto pre_subnets = previous_static_subnet(previous_static_subnet, subnets, index);
-      if (pre_subnets.size() == 1
-          && pre_subnets[0]->type == RunMode::TPU_STATIC)
+      auto pre_subnets =
+          previous_static_subnet(previous_static_subnet, subnets, index);
+      if (pre_subnets.size() == 1 &&
+          pre_subnets[0]->type == RunMode::TPU_STATIC)
         return true;
       else if (pre_subnets.size() >= 2) {
         /* merge subnet have at least two previous subnet,
@@ -625,24 +620,24 @@ public:
             return false;
         }
         return true;
-      }
-      else
+      } else
         return false;
     }
   }
 
-  InfoVec merge_sorted_subnets(InfoVec& subnets) {
+  InfoVec merge_sorted_subnets(InfoVec &subnets) {
     int size = subnets.size();
     std::map<subnet_basic_info *, int> subnet_prev_count;
-    std::map<subnet_basic_info *, std::vector<subnet_basic_info *>> subnet_prev_map;
-    for (auto &subnet: subnets) {
-      for (auto next: subnet->next_index) {
+    std::map<subnet_basic_info *, std::vector<subnet_basic_info *>>
+        subnet_prev_map;
+    for (auto &subnet : subnets) {
+      for (auto next : subnet->next_index) {
         subnet_prev_count[subnets[next]]++;
         subnet_prev_map[subnets[next]].emplace_back(subnet);
       }
     }
 
-    //broadcast the subnet type to successors
+    // broadcast the subnet type to successors
     for (int i = 1; i < size; i++) {
       for (int j = 0; j < subnet_prev_count[subnets[i]]; j++) {
         if (subnets[i]->type == RunMode::SWITCH)
@@ -650,8 +645,8 @@ public:
         auto &prev_subnets = subnet_prev_map[subnets[i]];
         if (prev_subnets[0]->type == RunMode::SWITCH)
           break;
-        if (subnets[i]->type == RunMode::TPU_STATIC
-            && prev_subnets[j]->type == RunMode::TPU_DYNAMIC) {
+        if (subnets[i]->type == RunMode::TPU_STATIC &&
+            prev_subnets[j]->type == RunMode::TPU_DYNAMIC) {
           /* dynamic subnet which has GatherOp/Topk op
              and the previous of this dynamic subnet has static shape,
              then don;t transfer the dynamic to successors */
@@ -663,38 +658,36 @@ public:
       }
     }
 
-    for (int i= 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
       auto subnet = subnets[i];
-      if (subnet == nullptr) continue;
-      if (subnet->type == RunMode::SWITCH
-          || subnet->type == RunMode::CPU) {
+      if (subnet == nullptr)
+        continue;
+      if (subnet->type == RunMode::SWITCH || subnet->type == RunMode::CPU) {
         continue;
       }
 
-      for (int j = i+1; j < size; j++) {
+      for (int j = i + 1; j < size; j++) {
         auto next_subnet = subnets[j];
-        if (!next_subnet) continue;
-        if (next_subnet->type == subnet->type
-           && !subnet->next_index.empty()
-           && subnet->next_index[0] == j
-           && subnet_prev_count[next_subnet] == 1) {
-          subnet->ops.insert(subnet->ops.end(),
-                              next_subnet->ops.begin(),
-                              next_subnet->ops.end());
+        if (!next_subnet)
+          continue;
+        if (next_subnet->type == subnet->type && !subnet->next_index.empty() &&
+            subnet->next_index[0] == j && subnet_prev_count[next_subnet] == 1) {
+          subnet->ops.insert(subnet->ops.end(), next_subnet->ops.begin(),
+                             next_subnet->ops.end());
           subnet->ins.clear();
           subnet->outs.clear();
           subnet->next_index = next_subnet->next_index;
           next_subnet->ops.clear();
           delete next_subnet;
           subnets[j] = nullptr;
-          //no need to update the ins/outs
+          // no need to update the ins/outs
         }
       }
     }
 
     InfoVec merged_subnets;
-    std::map<subnet_basic_info*, int> merged_index;
-    for (auto subnet: subnets) {
+    std::map<subnet_basic_info *, int> merged_index;
+    for (auto subnet : subnets) {
       if (subnet) {
         subnet->index = merged_subnets.size();
         merged_index[subnet] = subnet->index;
@@ -702,8 +695,8 @@ public:
       }
     }
 
-    for (auto subnet: merged_subnets) {
-      for (auto& index: subnet->next_index) {
+    for (auto subnet : merged_subnets) {
+      for (auto &index : subnet->next_index) {
         if (index < size) {
           index = merged_index[subnets[index]];
         } else {
@@ -715,10 +708,11 @@ public:
     return merged_subnets;
   }
 
-  void insert_merge_subnet(InfoVec& subnets) {
-    auto it= std::find_if(subnets.begin(), subnets.end(),
-                         [&](const subnet_basic_info* item) {
-                              return item->type == RunMode::SWITCH;});
+  void insert_merge_subnet(InfoVec &subnets) {
+    auto it = std::find_if(subnets.begin(), subnets.end(),
+                           [&](const subnet_basic_info *item) {
+                             return item->type == RunMode::SWITCH;
+                           });
     if (it == subnets.end()) {
       subnets.back()->next_index.assign({-1});
       erase_yieldop(subnets);
@@ -727,24 +721,29 @@ public:
 
     for (auto it = subnets.begin(); it < subnets.end();) {
       if ((*it)->type == RunMode::SWITCH) {
-        //insert merge subnet to nearest position
-        for (auto iit = it+1; iit < subnets.end(); iit++) {
+        // insert merge subnet to nearest position
+        for (auto iit = it + 1; iit < subnets.end(); iit++) {
           if (subnet_have_terminator((*iit)->ops)) {
             if (!(*iit)->next_index.empty()) {
               int next_merge_pos = (*iit)->next_index[0];
-              auto merged_subnet = subnets.insert(subnets.begin()+next_merge_pos,
-                        new subnet_basic_info(next_merge_pos, {next_merge_pos+1}, RunMode::MERGE));
+              auto merged_subnet = subnets.insert(
+                  subnets.begin() + next_merge_pos,
+                  new subnet_basic_info(next_merge_pos, {next_merge_pos + 1},
+                                        RunMode::MERGE));
               std::copy((*it)->outs.begin(), (*it)->outs.end(),
                         std::back_inserter((*merged_subnet)->ins));
-              for (int i = next_merge_pos+1; i < subnets.size(); i++) {
+              for (int i = next_merge_pos + 1; i < subnets.size(); i++) {
                 subnets[i]->index++;
                 if (!subnets[i]->next_index.empty())
-                  std::for_each(subnets[i]->next_index.begin(), subnets[i]->next_index.end(), [&](int &v) {v++;});
+                  std::for_each(subnets[i]->next_index.begin(),
+                                subnets[i]->next_index.end(),
+                                [&](int &v) { v++; });
               }
             } else {
               int next_merge_pos = subnets.size();
-              auto merged_subnet = subnets.insert(subnets.begin()+next_merge_pos,
-                        new subnet_basic_info(next_merge_pos, {-1}, RunMode::MERGE));
+              auto merged_subnet = subnets.insert(
+                  subnets.begin() + next_merge_pos,
+                  new subnet_basic_info(next_merge_pos, {-1}, RunMode::MERGE));
               std::copy((*it)->outs.begin(), (*it)->outs.end(),
                         std::back_inserter((*merged_subnet)->ins));
               for (auto kk = iit; kk < subnets.end(); kk++) {
@@ -765,8 +764,8 @@ public:
     return;
   }
 
-  void reconstruct_ir(InfoVec& subnets) {
-    for (auto &subnet: subnets) {
+  void reconstruct_ir(InfoVec &subnets) {
+    for (auto &subnet : subnets) {
       std::vector<Type> argType;
       std::vector<Type> resType;
       std::vector<Value> fnInputs;
@@ -777,20 +776,24 @@ public:
       OpBuilder builder(module::getCtx());
 
       if (subnet->type == RunMode::MERGE) {
-        auto funcOp = cast<FuncOp>(subnet->ins[0].getDefiningOp()->getParentOp());
+        auto funcOp =
+            cast<FuncOp>(subnet->ins[0].getDefiningOp()->getParentOp());
         func::CallOp callee = module::getCallOp(funcOp);
-        for(auto &&result: callee.getResults()) {
+        for (auto &&result : callee.getResults()) {
           fnInputs.emplace_back(result);
         }
 
         builder.setInsertionPointAfter(callee.getOperation());
-        auto new_name = module::getName(module::getOriValue(fnInputs[0]).getDefiningOp()).str()
-                           + "_id_" + std::to_string(subnet->index);
+        auto new_name =
+            module::getName(module::getOriValue(fnInputs[0]).getDefiningOp())
+                .str() +
+            "_id_" + std::to_string(subnet->index);
         auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
         std::vector<Type> outType;
-        for (auto &v: fnInputs)
+        for (auto &v : fnInputs)
           outType.emplace_back(v.getType());
-        auto identityOp = builder.create<tpu::IdentityOp>(name_loc, outType, fnInputs);
+        auto identityOp =
+            builder.create<tpu::IdentityOp>(name_loc, outType, fnInputs);
         subnet->ops.emplace_back(identityOp.getOperation());
         for (auto &&v : identityOp.getOperation()->getResults()) {
           fnOutputs.emplace_back(v);
@@ -818,22 +821,23 @@ public:
       int64_t id = subnet->index;
       std::string func_name = "subfunc_" + std::to_string(id);
       std::vector<NamedAttribute> attrs;
-      attrs.push_back(builder.getNamedAttr("id", builder.getI64IntegerAttr(id)));
+      attrs.push_back(
+          builder.getNamedAttr("id", builder.getI64IntegerAttr(id)));
       attrs.push_back(builder.getNamedAttr(
           "mode", RunModeAttr::get(module::getCtx(), subnet->type)));
-      attrs.push_back(builder.getNamedAttr("next_index",
-              builder.getDenseI32ArrayAttr(subnet->next_index)));
+      attrs.push_back(builder.getNamedAttr(
+          "next_index", builder.getDenseI32ArrayAttr(subnet->next_index)));
 
       auto fnType = builder.getFunctionType(llvm::ArrayRef<Type>{argType},
                                             llvm::ArrayRef<Type>{resType});
       auto fnOp = FuncOp::create(module::getLoc(), func_name, fnType,
-                                ArrayRef<NamedAttribute>(attrs));
+                                 ArrayRef<NamedAttribute>(attrs));
       auto block = fnOp.addEntryBlock();
       top::NoneOp noneOp;
       if (has_NoneOp) {
         builder.setInsertionPointToStart(block);
-        noneOp =
-            builder.create<top::NoneOp>(module::getLoc(), builder.getNoneType());
+        noneOp = builder.create<top::NoneOp>(module::getLoc(),
+                                             builder.getNoneType());
       }
 
       builder.setInsertionPoint(subnet->ops.back());
@@ -844,7 +848,8 @@ public:
         fnOutputs[it.index()].replaceUsesWithIf(
             it.value(), [&](OpOperand &operand) {
               Operation *user = operand.getOwner();
-              return find(subnet->ops.begin(), subnet->ops.end(), user) == subnet->ops.end();
+              return find(subnet->ops.begin(), subnet->ops.end(), user) ==
+                     subnet->ops.end();
             });
       }
 
@@ -853,8 +858,9 @@ public:
       auto retOp = builder.create<ReturnOp>(module::getLoc(), fnOutputs);
       for (auto &op : subnet->ops) {
         for (auto it : llvm::enumerate(op->getOperands())) {
-          if (!it.value().isa<BlockArgument>()
-              && isa<top::NoneOp>(module::getOriValue(it.value()).getDefiningOp())) {
+          if (!it.value().isa<BlockArgument>() &&
+              isa<top::NoneOp>(
+                  module::getOriValue(it.value()).getDefiningOp())) {
             op->setOperand(it.index(), noneOp);
           }
         }
