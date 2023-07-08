@@ -675,7 +675,8 @@ bool isShapeRelatedOp(Value v) {
   if (op == nullptr) {
     return false;
   }
-  if (isa<top::ShapeOp, tpu::ShapeOp, tpu::ShapeSliceOp, tpu::ShapeCastOp>(op)) {
+  if (isa<top::ShapeOp, tpu::ShapeOp, tpu::ShapeSliceOp, tpu::ShapeCastOp>(
+          op)) {
     return true;
   }
   return false;
@@ -977,6 +978,35 @@ void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs) {
       outputs.push_back(return_op.getOperand(result.getResultNumber()));
     }
   });
+}
+
+bool isSameOp(Operation *op0, Operation *op1) {
+  if (op0 == nullptr || op1 == nullptr) {
+    return false;
+  }
+  if (op0->getName() != op1->getName()) {
+    return false;
+  }
+  if (op0->getNumOperands() != op1->getNumOperands()) {
+    return false;
+  }
+  for (auto it : llvm::zip(op0->getOperands(), op1->getOperands())) {
+    if (std::get<0>(it) != std::get<1>(it)) {
+      return false;
+    }
+  }
+  if (op0->getNumResults() != op1->getNumResults()) {
+    return false;
+  }
+  for (auto it : llvm::zip(op0->getResultTypes(), op1->getResultTypes())) {
+    if (std::get<0>(it) != std::get<1>(it)) {
+      return false;
+    }
+  }
+  if (false == op0->getAttrs().equals(op1->getAttrs())) {
+    return false;
+  }
+  return true;
 }
 
 void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,

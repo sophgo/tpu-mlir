@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/Patterns.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -166,7 +166,8 @@ public:
     auto &ctx = getContext();
     RewritePatternSet patterns(&ctx);
     patterns.add<ConvertToReshape<tpu::UnsqueezeOp>,
-                 ConvertToReshape<tpu::SqueezeOp>, MergeReshape>(&ctx);
+                 ConvertToReshape<tpu::SqueezeOp>, MergeReshape,
+                 patterns::FuseSameOp>(&ctx);
     applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
     module::removeUnusedOp();
     module::setState(module::State::TPU_DIVIDED);

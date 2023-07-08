@@ -9,6 +9,7 @@
 
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
+#include "tpu_mlir/Support/Patterns.h"
 
 using namespace llvm;
 
@@ -38,8 +39,8 @@ public:
     MLIRContext *ctx = &getContext();
     // remove unuse output
     RewritePatternSet patterns(ctx);
-    patterns.add<RemoveUnuseOutput<top::LSTMOp>, RemoveUnuseOutput<top::GRUOp>>(
-        ctx);
+    patterns.add<RemoveUnuseOutput<top::LSTMOp>, RemoveUnuseOutput<top::GRUOp>,
+                 patterns::FuseSameOp>(ctx);
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
     // mark flops
     int64_t flops = 0;
