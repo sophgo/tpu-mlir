@@ -9,27 +9,11 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Module.h"
-#include "mlir/IR/PatternMatch.h"
+#include "tpu_mlir/Support/Patterns.h"
 #include "mlir/Pass/Pass.h"
 
 
 using namespace tpu_mlir::top;
-
-// reshape + reshape
-struct TopFuseReshape : public OpRewritePattern<ReshapeOp> {
-  using OpRewritePattern::OpRewritePattern;
-
-  LogicalResult matchAndRewrite(ReshapeOp op,
-                                PatternRewriter &rewriter) const override {
-    auto in_op = op.getInput().getDefiningOp();
-    if (in_op->hasOneUse() && isa<ReshapeOp>(in_op)) {
-      op->setOperand(0, in_op->getOperand(0));
-      rewriter.eraseOp(in_op);
-      return success();
-    }
-    return failure();
-  }
-};
 
 // reshape (in == out)
 struct TopFuseReshape2 : public OpRewritePattern<ReshapeOp> {
@@ -238,7 +222,7 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
 
 void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
-  results.insert<TopFuseReshape,
+  results.insert<patterns::FuseRepeatPattern<top::ReshapeOp>,
                  TopFuseReshape2,
                  TopFuseReshape3,
                  ReshapeInstanceNormPattern,

@@ -7,10 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/Patterns.h"
+
 namespace tpu_mlir {
 
 namespace cv18xx {
@@ -401,9 +402,8 @@ public:
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "paddings", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{new_pad_v})));
-    attrs.push_back(rewriter.getNamedAttr(
-        "mode",
-        rewriter.getStringAttr("constant")));
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("constant")));
     auto op_name = module::getName(op.getOperation()).str();
     auto loc = NameLoc::get(rewriter.getStringAttr(op_name + "_pad"));
     auto type = op.getInput().getType().cast<RankedTensorType>();
@@ -1667,30 +1667,6 @@ public:
   }
 };
 
-class ConvertUnsqueezeOp : public OpRewritePattern<top::UnsqueezeOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::UnsqueezeOp op,
-                                PatternRewriter &rewriter) const override {
-    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, op.getOutput().getType(),
-                                                op->getOperands(),
-                                                std::vector<NamedAttribute>());
-    return success();
-  }
-};
-
-class ConvertSqueezeOp : public OpRewritePattern<top::SqueezeOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(top::SqueezeOp op,
-                                PatternRewriter &rewriter) const override {
-    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, op.getOutput().getType(),
-                                                op->getOperands(),
-                                                std::vector<NamedAttribute>());
-    return success();
-  }
-};
-
 class ConvertClipOp : public OpRewritePattern<top::ClipOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -1822,8 +1798,8 @@ void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
         convertMaxPool3D,
         ConvertSqrtOp,
         ConvertAvgPoolOp,
-        ConvertSqueezeOp,
-        ConvertUnsqueezeOp,
+        patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
+        patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
         ConvertClipOp
         >(patterns->getContext());
   // clang-format on

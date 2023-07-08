@@ -15,18 +15,6 @@
 
 using namespace tpu_mlir::top;
 
-// reshape + reshape
-struct Unsqueeze2Reshape : public OpRewritePattern<UnsqueezeOp> {
-  using OpRewritePattern::OpRewritePattern;
-
-  LogicalResult matchAndRewrite(UnsqueezeOp op,
-                                PatternRewriter &rewriter) const override {
-    // rewriter.replaceOpWithNewOp<ReshapeOp>(op, op.getOutput().getType(),
-    //                                       op->getOperands(),
-    //                                       std::vector<NamedAttribute>());
-    return failure();
-  }
-};
 
 // squeeze + unsqueeze && in == out
 struct TopFuseUnsqueeze : public OpRewritePattern<UnsqueezeOp> {
@@ -120,5 +108,5 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
 };
 void UnsqueezeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {
-  results.insert<Unsqueeze2Reshape, TopFuseUnsqueeze, TopGatherToSliceByUnsqueeze>(context);
+  results.insert<TopFuseUnsqueeze, TopGatherToSliceByUnsqueeze>(context);
 }

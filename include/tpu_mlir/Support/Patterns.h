@@ -14,11 +14,29 @@
 // Common Patterns
 namespace tpu_mlir {
 namespace patterns {
-class FuseSameOp : public RewritePattern {
-public:
+
+// if op0 == op1, remove op1
+struct FuseSameOp : public RewritePattern {
   FuseSameOp(MLIRContext *context)
       : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
   LogicalResult matchAndRewrite(Operation *op,
+                                PatternRewriter &rewriter) const override;
+};
+
+// if op =  op + op, fuse to one op. such as top::Reshape
+template <typename OpTy>
+struct FuseRepeatPattern : public OpRewritePattern<OpTy> {
+  using OpRewritePattern<OpTy>::OpRewritePattern;
+  LogicalResult matchAndRewrite(OpTy op,
+                                PatternRewriter &rewriter) const override;
+};
+
+// convert op a to op b, not care attributes. such as top::Sequence to
+// top::Reshape
+template <typename From, typename To>
+struct ConvertPattern : public OpRewritePattern<From> {
+  using OpRewritePattern<From>::OpRewritePattern;
+  LogicalResult matchAndRewrite(From op,
                                 PatternRewriter &rewriter) const override;
 };
 
