@@ -102,6 +102,7 @@ top::NoneOp getNoneOp(Operation *op);
 Value getOriValue(Value v);
 Operation *getNextOp(Operation *op, int i = 0);
 Value getOperand(Operation *op, int i);
+bool isSameOp(Operation *op0, Operation *op1);
 void updateModuleTypes();
 void removeUnusedOp();
 int64_t getAddress(Value v);
