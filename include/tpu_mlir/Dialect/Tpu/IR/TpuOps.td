@@ -941,6 +941,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let hasCanonicalizeMethod = 1;
   let extraClassDeclaration = [{
     matmul_attr_t parseParam();
     void assign_fw_param(void *param);

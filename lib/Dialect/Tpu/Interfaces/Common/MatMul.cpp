@@ -51,7 +51,7 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
     b_dims += 1;
     o_dims += 1;
   }
-  if (a_dims == 1){
+  if (a_dims == 1) {
     assert(p.left_transpose == false);
     a_s.insert(a_s.begin(), 1);
     o_s.insert(o_s.begin(), 1);
@@ -226,11 +226,49 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   return success();
 }
 
+// MatMul(fp16) + Add(fp16) => MatMul
+LogicalResult tpu::MatMulOp::canonicalize(tpu::MatMulOp op,
+                                          PatternRewriter &rewriter) {
+  auto out = op.getOutput();
+  if (!out.hasOneUse() || !module::isNone(op.getBias())) {
+    return failure();
+  }
+  auto out_stype = module::getStorageType(out);
+  if (!out_stype.isa<FloatType>()) {
+    return failure();
+  }
+  if (module::isBM1686() && !out_stype.isF32()) {
+    // only f32 support
+    return failure();
+  }
+  auto user = *out.getUsers().begin();
+  auto add_op = dyn_cast_or_null<tpu::AddOp>(user);
+  if (!add_op || add_op.getNumOperands() != 2) {
+    return failure();
+  }
+  auto another = add_op.getInputs()[0];
+  if (another == out) {
+    another = add_op.getInputs()[1];
+  }
+  auto o_shape = module::getShape(out);
+  auto a_shape = module::getShape(another);
+  auto num_elem = module::getNumElements(another);
+  if (a_shape.back() != num_elem || o_shape.back() != num_elem) {
+    return failure();
+  }
+  op->setOperand(2, another);
+  op->setLoc(add_op.getLoc());
+  add_op->replaceAllUsesWith(op);
+  add_op->erase();
+  return success();
+};
+
 LogicalResult tpu::MatMulOp::LocalGenSupport() {
   if (module::isCV18xx()) {
     return failure();
   }
-  if(module::isBM1684XFamily() && (int)getRunMode(getOperation()) == 1) {
+  if (module::isBM1684XFamily() &&
+      getRunMode(getOperation()) == tpu::RunMode::TPU_DYNAMIC) {
     return failure();
   }
 

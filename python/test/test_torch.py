@@ -872,13 +872,13 @@ class TORCH_IR_TESTER(object):
 
         class Model(nn.Module):
 
-                def __init__(self):
-                    super(Model, self).__init__()
+            def __init__(self):
+                super(Model, self).__init__()
 
-                def forward(self, x, mask):
-                    x = torch.masked_fill(x, mask, float("-inf"))
-                    y = torch.softmax(x, -1)
-                    return y
+            def forward(self, x, mask):
+                x = torch.masked_fill(x, mask, float("-inf"))
+                y = torch.softmax(x, -1)
+                return y
 
         self.trace_and_test([(1, 32, 128, 128), (1, 1, 128, 128)], Model(),
                                 [self.Desc('float', -10, 10), self.Desc('int', 0, 2)])
@@ -893,11 +893,11 @@ class TORCH_IR_TESTER(object):
             def __init__(self):
                 super(Model, self).__init__()
 
-            def forward(self, x, y):
-                z = torch.matmul(x, y)
-                return z
+            def forward(self, x, y, z):
+                out = torch.matmul(x, y) + z
+                return out
 
-        self.trace_and_test([(4, 8, 49, 32), (4, 8, 32, 49)], Model())
+        self.trace_and_test([(4, 8, 49, 32), (4, 8, 32, 49), (1, 1, 1, 49)], Model())
 
     #######################################################################
     # ConstantFill
