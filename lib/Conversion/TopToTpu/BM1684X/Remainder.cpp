@@ -49,7 +49,7 @@ void RemainderLowering::LoweringF32(PatternRewriter &rewriter, top::RemainderOp 
   auto sub_op = rewriter.create<tpu::SubOp>(sub_loc, type, op_values, attrs);
 
   op.replaceAllUsesWith(sub_op.getOperation());
-  op.erase();
+  rewriter.eraseOp(op);
 }
 
 void RemainderLowering::LoweringF16(PatternRewriter& rewriter,

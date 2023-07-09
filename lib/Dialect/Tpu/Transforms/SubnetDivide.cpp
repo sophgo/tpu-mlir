@@ -131,22 +131,17 @@ public:
     auto &ctx = getContext();
     auto mOp = getOperation();
     for (auto func : mOp.getOps<FuncOp>()) {
-      if (getRunMode(func) != tpu::RunMode::TPU_STATIC) {
-        continue;
-      }
       RewritePatternSet patterns(&ctx);
-      patterns.add<patterns::ConvertPattern<tpu::UnsqueezeOp, tpu::ReshapeOp>,
-                   patterns::ConvertPattern<tpu::SqueezeOp, tpu::ReshapeOp>>(
-          &ctx);
+      // clang-format off
+      if (getRunMode(func) == tpu::RunMode::TPU_STATIC) {
+        patterns.add<patterns::ConvertPattern<tpu::UnsqueezeOp, tpu::ReshapeOp>,
+                     patterns::ConvertPattern<tpu::SqueezeOp, tpu::ReshapeOp>>(&ctx);
+      }
+      patterns.add<patterns::FuseRepeatPattern<tpu::ReshapeOp>,
+                   patterns::FuseSameOp>(&ctx);
+      // clang-format on
       applyPatternsAndFoldGreedily(func, std::move(patterns));
     }
-
-    RewritePatternSet patterns(&ctx);
-    // clang-format off
-    patterns.add<patterns::FuseRepeatPattern<tpu::ReshapeOp>,
-                 patterns::FuseSameOp>(&ctx);
-    // clang-format on
-    applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
     module::removeUnusedOp();
     module::setState(module::State::TPU_DIVIDED);
   }

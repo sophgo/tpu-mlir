@@ -87,7 +87,7 @@ void DeformConv2DLowering::LoweringF32(PatternRewriter &rewriter,
   auto deform_gather_op = rewriter.create<tpu::DeformGatherOp>(
       deform_gather_loc, gather_type, gather_operands, gather_attrs);
 
-  
+
   conv_operands.push_back(deform_gather_op.getOutput()); // gather output
   conv_operands.push_back(op->getOperand(1)); //weight
   conv_operands.push_back(op->getOperand(4)); //bias
@@ -96,7 +96,7 @@ void DeformConv2DLowering::LoweringF32(PatternRewriter &rewriter,
   auto conv_op = rewriter.create<tpu::Conv2DOp>(
       conv_loc, out_type, conv_operands, conv_attrs);
   op.replaceAllUsesWith(conv_op.getOperation());
-  op.erase();
+  rewriter.eraseOp(op);
 }
 
 void DeformConv2DLowering::LoweringF16(PatternRewriter& rewriter,

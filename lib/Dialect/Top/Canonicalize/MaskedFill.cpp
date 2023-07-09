@@ -101,7 +101,7 @@ struct MaskedFillBroadcast : public OpRewritePattern<MaskedFillOp> {
     auto maskedfill_op = rewriter.create<MaskedFillOp>(
         op.getLoc(), op.getType(), ValueRange{cond, input}, attrs);
     op.replaceAllUsesWith(maskedfill_op.getOperation());
-    op.erase();
+    rewriter.eraseOp(op);
     return success();
   }
 };

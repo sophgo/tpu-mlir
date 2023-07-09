@@ -105,7 +105,7 @@ void DeformConv2DLowering::LoweringF32(PatternRewriter &rewriter, top::DeformCon
   auto conv_op = rewriter.create<tpu::Conv2DOp>(
       conv_loc, out_type, conv_operands, conv_attrs);
   op.replaceAllUsesWith(conv_op.getOperation());
-  op.erase();
+  rewriter.eraseOp(op);
 
 }
 

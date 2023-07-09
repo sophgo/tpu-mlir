@@ -174,7 +174,7 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
     if (false == is_qtype_out && false == is_qtype_pre_in) {
       // for example, int32 cast int8 cast f16 => int32 cast f16
       op->setOperand(0, pre_in);
-      castInputOp.erase();
+      rewriter.eraseOp(castInputOp);
       return success();
     }
     if (is_qtype_out && false == is_qtype_in && false == is_qtype_pre_in) {
@@ -183,7 +183,7 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
       if (pre_stype.isa<mlir::FloatType>()) {
         // for example, f32 cast f16, f16 cast int8 => f32 cast int8
         op->setOperand(0, pre_in);
-        castInputOp.erase();
+        rewriter.eraseOp(castInputOp);
         return success();
       }
       if (pre_stype.isIntOrIndex()) {

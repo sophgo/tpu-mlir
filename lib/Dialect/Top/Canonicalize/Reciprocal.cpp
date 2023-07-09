@@ -33,12 +33,18 @@ struct MergeToRMSNormPattern : public OpRewritePattern<ReciprocalOp> {
     }
     auto add_const_op =
         dyn_cast<AddConstOp>(sqrt_op.getInput().getDefiningOp());
+    if (!add_const_op) {
+      return failure();
+    }
     auto eps = add_const_op.getConstVal().convertToDouble();
-    if (!add_const_op || eps <= 0) {
+    if (eps <= 0) {
       return failure();
     }
     auto reduce_op =
         dyn_cast<ReduceOp>(add_const_op.getInput().getDefiningOp());
+    if (!reduce_op) {
+      return failure();
+    }
     auto axes = module::getI64Array(reduce_op.getAxes());
     auto dim_size = module::getShape(reduce_op.getInput()).size();
     auto axis = axes->at(0);

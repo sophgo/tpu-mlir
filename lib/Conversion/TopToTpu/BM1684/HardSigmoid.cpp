@@ -40,7 +40,7 @@ void HardSigmoidLowering::LoweringF32(PatternRewriter &rewriter,
       rewriter.create<tpu::MinConstOp>(op.getLoc(), op.getOutput().getType(),
                                        ValueRange{max_op.getOutput()}, attrs);
   op.replaceAllUsesWith(min_op.getOperation());
-  op.erase();
+  rewriter.eraseOp(op);
 }
 
 void HardSigmoidLowering::LoweringINT8(PatternRewriter &rewriter,

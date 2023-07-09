@@ -32,7 +32,7 @@ void ClipLowering::LoweringF32(PatternRewriter &rewriter, top::ClipOp op) const 
 
   op.replaceAllUsesWith(min_op.getOperation());
 
-  op.erase();
+  rewriter.eraseOp(op);
 }
 
 void ClipLowering::LoweringINT8(PatternRewriter &rewriter, top::ClipOp op,
@@ -56,7 +56,7 @@ void ClipLowering::LoweringINT8(PatternRewriter &rewriter, top::ClipOp op,
 
   op.replaceAllUsesWith(min_op.getOperation());
 
-  op.erase();
+  rewriter.eraseOp(op);
 }
 
 } // namespace bm1684
