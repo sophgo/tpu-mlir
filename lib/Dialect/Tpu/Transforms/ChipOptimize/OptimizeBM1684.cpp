@@ -82,7 +82,7 @@ public:
       auto mul_op = rewriter.create<tpu::MulConstOp>(
           op.getLoc(), new_type, ValueRange{cast_op.getOutput()}, attrs);
       op.replaceAllUsesWith(mul_op.getOperation());
-      op.erase();
+      rewriter.eraseOp(op);
       return success();
     } else if (!qInput && qOutput) {
       auto orin_scale = module::getUniformQuantizedType(output).getScale();
@@ -105,7 +105,7 @@ public:
       auto cast_op = rewriter.create<tpu::CastOp>(
           op.getLoc(), new_type, ValueRange{mul_op.getOutput()}, attrs);
       op.replaceAllUsesWith(cast_op.getOperation());
-      op.erase();
+      rewriter.eraseOp(op);
       return success();
     }
     return failure();

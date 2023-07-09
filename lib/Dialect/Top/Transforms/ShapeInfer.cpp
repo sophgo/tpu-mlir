@@ -36,7 +36,7 @@ public:
       out.replaceAllUsesWith(in);
       module::setLoc(in, loc);
     }
-    op.erase();
+    rewriter.eraseOp(op);
     return success();
   }
 };
@@ -61,7 +61,7 @@ public:
       }
       user->setOperands(operands);
     }
-    op.erase();
+    rewriter.eraseOp(op);
     return success();
   }
 };

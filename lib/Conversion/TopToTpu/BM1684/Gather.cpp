@@ -32,7 +32,7 @@ void GatherLowering::LoweringF32(PatternRewriter &rewriter,
                    module::getNoneOp(op)},
         attrs);
     op.getResult().replaceAllUsesWith(new_gather_op.getOutput());
-    op.erase();
+    rewriter.eraseOp(op);
     return;
   }
   std::vector<Value> operands;

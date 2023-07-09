@@ -36,7 +36,7 @@ void PowLowering::LoweringF32(PatternRewriter &rewriter, top::PowOp op) const {
   auto ex_op = rewriter.create<tpu::ActiveOp>(
       ex_loc, type, ValueRange{mul_op.getOutput()}, attrs);
   op.replaceAllUsesWith(ex_op.getOperation());
-  op.erase();
+  rewriter.eraseOp(op);
 }
 
 static double g_ex = 0;

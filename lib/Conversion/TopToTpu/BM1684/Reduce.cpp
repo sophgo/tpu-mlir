@@ -49,7 +49,7 @@ void ReduceLowering::LoweringF32(PatternRewriter &rewriter,
     sqrt_op->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                       tpu::ActiveMode::SQRT));
     op.replaceAllUsesWith(sqrt_op.getOperation());
-    op.erase();
+    rewriter.eraseOp(op);
   }
 }
 

@@ -17,7 +17,7 @@ namespace patterns {
 // if 2 op is same, fuse it.
 LogicalResult FuseSameOp::matchAndRewrite(Operation *op,
                                           PatternRewriter &rewriter) const {
-  if (isa<top::NoneOp, top::WeightOp>(op)) {
+  if (isa_and_nonnull<top::NoneOp, top::WeightOp>(op)) {
     return failure();
   }
   auto users = op->getUsers();
@@ -34,10 +34,10 @@ LogicalResult FuseSameOp::matchAndRewrite(Operation *op,
       if (module::isSameOp(*first, *it)) {
         if ((*first)->isBeforeInBlock(*it)) {
           (*it)->replaceAllUsesWith(*first);
-          (*it)->erase();
+          rewriter.eraseOp(*it);
         } else {
           (*first)->replaceAllUsesWith(*it);
-          (*first)->erase();
+          rewriter.eraseOp(*first);
         }
         return success();
       }
@@ -58,7 +58,7 @@ FuseRepeatPattern<OpTy>::matchAndRewrite(OpTy op,
     return failure();
   }
   op->setOperand(0, in_op->getOperand(0));
-  in_op->erase();
+  rewriter.eraseOp(in_op);
   return success();
 }
 

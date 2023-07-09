@@ -77,7 +77,7 @@ void LayerNormLowering::LoweringF32(PatternRewriter &rewriter,
     last_op_value = bias_op.getOutput();
   }
   op.getResult().replaceAllUsesWith(last_op_value);
-  op.erase();
+  rewriter.eraseOp(op);
 }
 
 void LayerNormLowering::LoweringINT8(PatternRewriter &rewriter,

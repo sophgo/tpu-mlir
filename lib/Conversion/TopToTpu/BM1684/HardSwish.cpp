@@ -46,7 +46,7 @@ void HardSwishLowering::LoweringF32(PatternRewriter &rewriter,
       op.getLoc(), op.getOutput().getType(),
       ValueRange{op.getInput(), mul_op.getOutput()}, attrs);
   op.replaceAllUsesWith(mul2_op.getOperation());
-  op.erase();
+  rewriter.eraseOp(op);
 }
 
 void HardSwishLowering::LoweringINT8(PatternRewriter &rewriter,

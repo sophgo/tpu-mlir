@@ -21,7 +21,7 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op, Type typ
     if (module::isWeight(opd)) {
       //remove target_shape operands of top::InterpOp op
       opd.dropAllUses();
-      opd.getDefiningOp()->erase();
+      rewriter.eraseOp(opd.getDefiningOp());
       auto v = module::getNoneOp(op);
       operands.push_back(v);
     } else {
