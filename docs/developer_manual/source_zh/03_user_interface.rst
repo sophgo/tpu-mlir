@@ -418,6 +418,9 @@ model_deploy.py
    * - model
      - 是
      - 指定输出的model文件名称和路径
+   * - debug
+     - 否
+     - 是否保留中间文件
 
 model_runner.py
 ~~~~~~~~~~~~~~~~~~
@@ -511,3 +514,4 @@ visual.py
    * - manual_run
      - 启动后是否自动进行网络推理比较, 默认False, 会自动推理比较
 
+注意：需要在model_deploy.py阶段打开 ``--debug`` 选项保留中间文件供visual.py使用，工具的详细使用说明见(:ref:`visual-usage`)。
