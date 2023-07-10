@@ -10,7 +10,7 @@ static void usage() {
   std::cout<<"Paramter3: input.npz.\n";
   std::cout<<"Paramter4: output.npz.\n";
   std::cout<<"Paramter5: ref.npz, compared with the debug output.npz.\n";
-  std::cout<<"Paramter6: tolerance, default as 0.99,0.99 \n";
+  std::cout<<"Paramter6: tolerance, default as 0.98,0.95 \n";
   std::cout << "Usage Example: \n";
   std::cout<<"cvimodel_debug mobilenet_v2_cv183x_int8_sym.cvimodel mobilenet_v2_cv183x_int8_sym_tensor_info.txt "
            <<"mobilenet_v2_in_f32.npz output_int8.npz mobilenet_v2_cv183x_int8_sym_tpu_outputs.npz 0.99,0.99 \n";
