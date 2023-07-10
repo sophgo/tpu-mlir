@@ -222,6 +222,8 @@ int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.common.pad[1] = attr.pad_h_after;
   param.common.pad[2] = attr.pad_w;
   param.common.pad[3] = attr.pad_w_after;
+  param.common.output_pad[0] = attr.output_pad_h;
+  param.common.output_pad[1] = attr.output_pad_w;
   param.common.has_bias = attr.with_bias;
   param.common.input_dtype = BM168x::getDataType(getInput());
   param.common.weight_dtype = BM168x::getDataType(getFilter());
@@ -268,8 +270,8 @@ int64_t tpu::DeconvOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.common.pad[1] = attr.pad_h_after;
   param.common.pad[2] = attr.pad_w;
   param.common.pad[3] = attr.pad_w_after;
-  param.output_pad[0] = attr.output_pad_h;
-  param.output_pad[1] = attr.output_pad_w;
+  param.common.output_pad[0] = param.output_pad[0] = attr.output_pad_h;
+  param.common.output_pad[1] = param.output_pad[1] = attr.output_pad_w;
   param.common.has_bias = attr.with_bias;
   param.common.input_dtype = BM168x::getDataType(getInput());
   param.common.weight_dtype = BM168x::getDataType(getFilter());
