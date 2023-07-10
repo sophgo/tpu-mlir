@@ -1395,9 +1395,24 @@ class OnnxConverter(BaseConverter):
     # https://pytorch.org/docs/1.13/generated/torch.einsum.html?highlight=einsum#torch.einsum
     def convert_einsum_op(self, onnx_node):
         assert (onnx_node.op_type == "Einsum")
-        equation = onnx_node.attrs.get("equation")
-
-        if equation == b"i,j->ij": # outer product
+        equation = onnx_node.attrs.get("equation").decode()
+        def normalize_equation(equation_c):
+            equation = equation_c
+            new_equation = ''
+            start = 'a'
+            translate_map = {}
+            for s in equation:
+                if s == ' ':
+                    continue
+                elif not ((s>='a' and s<='z') or (s>='A' and s<='Z')):
+                    translate_map[s] = s
+                elif s not in translate_map:
+                    translate_map[s] = start
+                    start = chr(ord(start) + 1)
+                new_equation += translate_map[s]
+            return new_equation
+        equation = normalize_equation(equation)
+        if equation == "a,b->ab": # outer product
             lhs = self.getOperand(onnx_node.inputs[0])
             rhs = self.getOp(onnx_node.inputs[1])
             lhs_shape = self.getShape(onnx_node.inputs[0])
@@ -1428,7 +1443,7 @@ class OnnxConverter(BaseConverter):
                                         ip=self.mlir.insert_point).output
             self.addOperand(onnx_node.name, matmul_op)
             return
-        if equation == b"bfnd,ndh->bfh":
+        if equation == "abcd,cde->abe":
             lhs = self.getOperand(onnx_node.inputs[0])
             rhs = self.getOp(onnx_node.inputs[1])
             lhs_shape = self.getShape(onnx_node.inputs[0])
@@ -1478,7 +1493,7 @@ class OnnxConverter(BaseConverter):
                                              ip=self.mlir.insert_point).output
                     self.addOperand(onnx_node.name, matmul_op)
                     return
-        if equation == b'bhwc,hkc->bhwk':
+        if equation == 'abcd,bed->abce':
             lhs = self.getOperand(onnx_node.inputs[0])
             rhs = self.getOp(onnx_node.inputs[1])
             lhs_shape = self.getShape(onnx_node.inputs[0])
@@ -1520,7 +1535,7 @@ class OnnxConverter(BaseConverter):
                                          ip=self.mlir.insert_point).output
                 self.addOperand(onnx_node.name, matmul_op)
                 return
-        if equation == b'bhwc,wkc->bhwk':
+        if equation == 'abcd,ced->abce':
             lhs = self.getOperand(onnx_node.inputs[0])
             rhs = self.getOp(onnx_node.inputs[1])
             lhs_shape = self.getShape(onnx_node.inputs[0])
