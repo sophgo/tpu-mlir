@@ -58,6 +58,18 @@ struct op_info_t {
   std::vector<float> bias;
 };
 
+struct debug_info_t {
+  int layer_id;
+  std::string name;
+  bool inGroup = false;
+  bool ignore = false;
+  uint64_t gaddr;
+  uint32_t laddr;
+  std::vector<int64_t> g_shape;
+  std::vector<int64_t> lg_idx_slice;
+  double qscale;
+  std::string qtype;
+};
 class CviRoutine {
 public:
   CviRoutine(flatbuffers::FlatBufferBuilder &fbb, bool isTpuRoutine,
@@ -86,6 +98,9 @@ public:
   flatbuffers::Offset<Routine> build();
 
   std::vector<uint8_t> cmdbuf;
+  std::vector<debug_info_t> debug_infos;
+  bool isIgnore(Operation *op);
+  bool isCodegen(Operation *op);
 
 private:
   int *layer_id;
@@ -115,6 +130,7 @@ public:
       delete it;
     }
   }
+  std::vector<std::vector<debug_info_t>> tpu_debug_infos;
 
 private:
   std::vector<uint8_t> cmdbuf;

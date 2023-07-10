@@ -98,6 +98,102 @@ static std::string getStrOfCurrentTime() {
   return ssTime.str();
 }
 
+static void getTypeAndQscale(Value v, std::string &qtype, double &qscale) {
+  if (module::isUniformQuantized(v)) {
+    auto utype = module::getUniformQuantizedType(v);
+    qscale = utype.getScale();
+  } else {
+    qscale = 1.0;
+  }
+  auto type = module::getStorageType(v);
+  auto bits = type.getIntOrFloatBitWidth();
+  if (type.isUnsignedInteger()) {
+    switch(bits) {
+      case 8:
+        qtype = "uint8";
+        break;
+      case 16:
+        qtype = "uint16";
+        break;
+      case 32:
+        llvm::errs()<<"type:"<<type<<"\n";
+        llvm_unreachable("unsupported uint32 data type");
+        break;
+      default:
+        break;
+    }
+  } else if (type.isSignedInteger() || type.isSignlessInteger()) {
+    switch(bits) {
+      case 8:
+        qtype = "int8";
+        break;
+      case 16:
+        qtype = "int16";
+        break;
+      case 32:
+        qtype = "int32";
+        break;
+      default:
+        break;
+    }
+  } else if (type.isBF16()) {
+    qtype = "bf16";
+  } else if (type.isF32()) {
+    qtype = "fp32";
+  } else {
+    llvm::errs()<<"type:"<<type<<"\n";
+    llvm_unreachable("unsupported data type");
+  }
+}
+
+static void writeDebugInfos(std::string fileName, std::vector<std::vector<debug_info_t>> debug_infos) {
+  std::ofstream ofs;
+  ofs.open(fileName, std::ios::out);
+  int i = 1;
+  for (auto &tpu_infos : debug_infos) {
+    ofs<<"Cmdbuf"<<i<<": layer_id, tensor_name, inGroup, ignore, gaddr, g_shape, lg_idx_slice, laddr, qtype, qscale. \n";
+    for (auto &info : tpu_infos) {
+      ofs<<std::to_string(info.layer_id)<< " ";
+      ofs<<info.name<<" ";
+      if (info.inGroup) {
+        ofs << "true ";
+        if (info.ignore) {
+          ofs << "true x x x x x x\n";
+        } else {
+          ofs << "false ";
+          ofs << "x "; //set gaddr as x
+          for (int i = 0; i < info.g_shape.size() - 1; i++) {
+            ofs << std::to_string(info.g_shape[i]) << ",";
+          }
+          ofs << std::to_string(info.g_shape[info.g_shape.size() - 1]);
+          ofs << " ";
+          for (int i = 0; i < info.lg_idx_slice.size() - 1; i++) {
+            ofs << std::to_string(info.lg_idx_slice[i]) << ",";
+          }
+          ofs << std::to_string(info.lg_idx_slice[info.lg_idx_slice.size() - 1]);
+          ofs << " ";
+          ofs << std::to_string(info.laddr) << " ";
+          ofs << info.qtype << " ";
+          ofs << std::to_string(info.qscale) << "\n";
+        }
+      } else {
+        ofs << "false false ";
+        ofs << std::to_string(info.gaddr) << " ";
+        for (int i = 0; i < info.g_shape.size() - 1; i++) {
+          ofs << std::to_string(info.g_shape[i]) << ",";
+        }
+        ofs << std::to_string(info.g_shape[info.g_shape.size() - 1]);
+        ofs << " ";
+        ofs << "x x "; //set lg_idx_slice and laddr as x
+        ofs << info.qtype << " ";
+        ofs << std::to_string(info.qscale) << "\n";
+      }
+    }
+    i++;
+  }
+  ofs.close();
+}
+
 CviCpuRoutine::CviCpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
                              func::CallOp &call, std::string chip)
     : CviRoutine(fbb, false, chip) {
@@ -208,6 +304,32 @@ flatbuffers::Offset<Routine> CviCpuRoutine::build() {
                        fbRoutine);
 }
 
+bool CviTpuRoutine::isIgnore(Operation *op) {
+  if (isa<tpu::StoreOp>(op)) {
+    return true;
+  }
+  if (isa<tpu::LoadOp>(op)) {
+    auto opd = module::getOperand(op, 0);
+    Operation *lastOp = opd.getDefiningOp();
+    if (isa<top::WeightOp>(lastOp)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool CviTpuRoutine::isCodegen(Operation *op) {
+  if (isa<tpu::ReshapeOp>(op)) {
+    return false;
+  }
+  if (auto concatOp = dyn_cast_or_null<tpu::ConcatOp>(op)) {
+    if (concatOp.getOnlyMerge() && !module::isOpInGroup(op)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 CviTpuRoutine::CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
                              func::CallOp &call, int *layer_id,
                              std::string chip)
@@ -297,6 +419,30 @@ void CviTpuRoutine::codegen_for_group(GroupOp gOp) {
           lgOp.codegen_local_cv18xx(tensor_step->nstep, tensor_step->hstep,
                                     tensor_step->dstep, tensor_step->wstep,
                                     group_type, sec_info, *layer_id);
+          auto cur_op = group_ops[id];
+          if (!isCodegen(cur_op)) {
+            ++(*layer_id);
+            continue;
+          }
+          for (int i = 0; i < cur_op->getNumResults(); i++) {
+            Value result = cur_op->getResult(i);
+            debug_info_t dinfo;
+            dinfo.name = module::getName(result).str();
+            dinfo.layer_id = *layer_id;
+            dinfo.inGroup = true;
+            if (isIgnore(cur_op)) {
+              dinfo.ignore = true;
+              debug_infos.emplace_back(dinfo);
+              continue;
+            }
+            int64_t gn, gc, gh, gw;
+            module::getNCHW(result, gn, gc, gh, gw);
+            dinfo.g_shape = {gn, gc, gh, gw};
+            dinfo.lg_idx_slice = {ginfo.n_idx, ginfo.n_slice, ginfo.h_idx, ginfo.h_slice};
+            dinfo.laddr = ginfo.out_addr;
+            getTypeAndQscale(result, dinfo.qtype, dinfo.qscale);
+            debug_infos.emplace_back(dinfo);
+          }
           ++(*layer_id);
         }
       } // ops, include Load/Store op
@@ -332,6 +478,26 @@ void CviTpuRoutine::codeGen() {
     } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
       CV18xx::set_layer_id(*layer_id);
       castOp.codegen_global_cv18xx(*layer_id);
+      if (!isCodegen(op)) {
+        ++(*layer_id);
+        continue;
+      }
+      for (int i = 0; i < op->getNumResults(); i++) {
+        debug_info_t dinfo;
+        Value result = op->getResult(i);
+        if (module::isNone(result)) {
+          continue;
+        }
+        dinfo.name = module::getName(result);
+        dinfo.layer_id = *layer_id;
+        dinfo.inGroup = false;
+        dinfo.gaddr = module::getAddress(result);
+        int64_t n, c, h, w;
+        module::getNCHW(result, n, c, h, w);
+        dinfo.g_shape = {n, c, h, w};
+        getTypeAndQscale(result, dinfo.qtype, dinfo.qscale);
+        debug_infos.emplace_back(dinfo);
+      }
       ++(*layer_id);
     }
     // sotre neuron
@@ -390,9 +556,12 @@ void CviModelBuilder::addRoutine(func::CallOp &call, int *layer_id) {
   auto run_mode = getRunMode(func);
   CviRoutine *rt = nullptr;
   switch (run_mode) {
-  case RunMode::TPU_STATIC:
+  case RunMode::TPU_STATIC: {
     rt = new CviTpuRoutine(fbb_, call, layer_id, chip);
+    CviTpuRoutine *tpu_rt = (CviTpuRoutine *)rt;
+    tpu_debug_infos.emplace_back(tpu_rt->debug_infos);
     break;
+  }
   case RunMode::CPU:
     rt = new CviCpuRoutine(fbb_, call, chip);
     break;
@@ -762,4 +931,8 @@ void CviModelBuilder::storeModel(std::string filename) {
   output->os().write(reinterpret_cast<char *>(modelData.data()),
                      modelData.size());
   output->keep();
+
+  //write debug txt
+  std::string debugFileName = filename.replace(filename.end() - 9, filename.end(), "_tensor_info.txt");
+  writeDebugInfos(debugFileName, this->tpu_debug_infos);
 }
