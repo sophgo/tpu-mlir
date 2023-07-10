@@ -332,6 +332,7 @@ void cvi_backend_bf16_tl_lut_slope_method(
   input_i8.int8_rnd_mode = 1;
   p3.dst = &input_i8;
   p3.src = tl_tmp;
+  p3.layer_id = layer_id;
   if (enable_parallel) {
     CV18xx::parallel_disable();
   }
@@ -442,6 +443,7 @@ void cvi_backend_bf16_tl_lut_mantissa_method(
   p.tbl_answer_mantissa = &tl_mantissa;
   p.ofmap = &tl_ofmap;
   p.is_scientific = 1;
+  p.layer_id = layer_id;
   if (enable_parallel) {
     CV18xx::parallel_disable();
   }
