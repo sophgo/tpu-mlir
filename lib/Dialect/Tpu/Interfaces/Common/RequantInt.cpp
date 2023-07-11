@@ -37,6 +37,10 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
   int64_t multi = getMultiplier();
   int64_t zero_point = o_qtype.getZeroPoint();
 
+  if (shape.size() == 1) {
+    return success();
+  }
+
   if (mode == tpu::RequantMode::TFLite_LShift ||
       mode == tpu::RequantMode::TFLite) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
