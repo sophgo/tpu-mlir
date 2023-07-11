@@ -2778,7 +2778,7 @@ class ONNX_IR_TESTER(object):
 
                 return self.prelu(rmsnorm_out)
 
-        input_shape = [4, 32, 25] + normalize_shape
+        input_shape = [4, 32] + normalize_shape
         input_data = torch.randn(input_shape)
         self.torch_and_test(input_data, Model(), case_name)
 
