@@ -63,7 +63,7 @@ void tpu::LutOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                   (int)in_g_info.h_slice, (int)w};
   BM1684::instance().dl_nodechip_lut_local_v2(
       in_g_info.out_addr, tb_g_info.out_addr, out_g_info.buffer_addr,
-      out_g_info.out_addr, b0_shape, module::getShape(getOutput()).size(), 0,
+      out_g_info.out_addr, b0_shape, 4, 0,
       out_dtype, 1, (CMD_ID_NODE *)BM1684::instance()->bdc_node);
 }
 
