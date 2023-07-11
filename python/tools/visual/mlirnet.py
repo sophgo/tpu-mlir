@@ -263,8 +263,10 @@ class analysis_data():
                         fmax = np.max(np.abs(f32))
                         if self.quant_net.tensor_qtype(name) == "I8":
                             quant = quant.astype(np.float32)* (fmax/127.0)
-                        if self.quant_net.tensor_qtype(name) == "U8":
+                        elif self.quant_net.tensor_qtype(name) == "U8":
                             quant = quant.astype(np.float32)* (fmax/255.0)
+                        elif self.quant_net.tensor_qtype(name) == "I4":
+                            quant = quant.astype(np.float32)* (fmax/7.0)
         return f32, quant
 
     def run_metrics(self):

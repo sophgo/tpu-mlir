@@ -101,6 +101,31 @@ def dist_plot(data, name=None, scale=1.0, dtype='I8'):
         fig = plt.plot_dist_fp_fixpoint( fig,
             index, (hist_fp, hist_quant, q_range),
             subplot_titles=(name, "dist fp vs uint8\t "))
+    elif dtype == 'I4':
+        min_ = -8*scale
+        max_ = 7*scale
+        max = np.maximum(max_,d_max)
+        min = np.minimum(min_,d_min)
+        min_bin = int(np.abs(np.floor(min/scale)))
+        max_bin = int(np.ceil(max/scale))
+        bins = min_bin+max_bin
+        xticklabels=['']*bins
+        xticklabels[min_bin-8] = '-8/{:.4f}'.format(-8.0*scale)
+        xticklabels[min_bin] = '0/0.0'
+        xticklabels[min_bin+6] = '7/{:.4f}'.format(7.0*scale)
+
+        hist = np.histogram(blob_fp, bins=bins,
+                        range=(-min_bin*scale, max_bin*scale))
+        hist_fp = hist[0]
+        hist = np.histogram(blob_int, bins=bins,
+                        range=(-min_bin*scale, max_bin*scale))
+        hist_quant = hist[0]
+        q_range = np.zeros(bins)
+        q_range[min_bin-8:min_bin+7] = np.ones(15)*np.maximum(np.max(hist_fp),np.max(hist_quant))
+        index = np.arange(bins)
+        fig = plt.plot_dist_fp_fixpoint( fig,
+            index, (hist_fp, hist_quant, q_range),
+            subplot_titles=(name, "dist fp vs int4\t "))
     else:
         index = np.arange(255)
         hist = np.histogram(blob_fp, bins=255,
