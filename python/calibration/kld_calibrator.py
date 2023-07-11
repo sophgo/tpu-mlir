@@ -834,7 +834,10 @@ class ActivationCalibrator2(BaseKldCalibrator):
             min_value = inf
             max_value = -inf
             abs_value = None
-            all_data = []
+            max_abs_value = -inf
+            tensor_size = (self.get_ref_tensor(0, evaled_op)).size
+            all_data = np.zeros(tensor_size * self.args.input_num, dtype = np.float32)
+
             for idx in range(self.args.input_num):
                 activation = self.get_ref_tensor(idx, evaled_op)
                 if activation is None:
@@ -847,19 +850,16 @@ class ActivationCalibrator2(BaseKldCalibrator):
                     max_value = max(np.max(activation), max_value)
                     abs_value = max(abs(min_value), abs(max_value))
                     if 'use_percentile9999' in self.debug_cmd:
-                        all_data.extend(activation.flatten().tolist())
-                    if 'use_max' in self.debug_cmd:
-                        all_data.extend(activation.flatten().tolist())
+                        all_data[idx * tensor_size : (idx + 1) * tensor_size] = activation.flatten()
+                    elif 'use_max' in self.debug_cmd:
+                        max_abs_value = max(np.max(np.abs(activation)), max_abs_value)
+
             if 'use_percentile9999' in self.debug_cmd:
                 #t0 = time.time()
-                all_data = np.abs(np.array(all_data))
-                abs_value2 = np.percentile(all_data, 99.99 + i * step)
-                abs_value = abs_value2
-            if 'use_max' in self.debug_cmd:
+                abs_value = np.percentile(np.abs(all_data), 99.99 + i * step)
+            elif 'use_max' in self.debug_cmd:
                 #t0 = time.time()
-                all_data = np.abs(np.array(all_data))
-                abs_value2 = np.max(all_data)
-                abs_value = abs_value2
+                abs_value = max_abs_value
             if abs_value != None and abs_value <= 1e-5:
                 # if op's outputs are all close to zero, change it to 1e-5 for them.
                 min_value = -1e-5
