@@ -218,6 +218,8 @@ void ProfileCtx::set_profile_end() {
   log_str("[bmprofile] end to run subnet_id=%d\n", get_cur_net_idx());
   if (fp_profile[cur_net_idx]) {
     fclose(fp_profile[cur_net_idx]);
+    // disable profile to mitigate leaking, set "b_enable_profile" to false.
+    BM168x::instance()->dl_enable_profile(false, fp_profile[cur_net_idx]);
   }
 }
 
