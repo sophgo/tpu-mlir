@@ -203,20 +203,26 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos) {
     auto ins = get_input_values(op);
     for (auto in : ins) {
       if (auto src_op = dyn_cast_or_null<top::WeightOp>(in.getDefiningOp())) {
-        ti.eu_align = is_eu_align(in);
-        ti.need_bcast = need_bcast(in);
-        module::getNCDHW(in, n, c, d, h, w, lg_info.type);
-        ti.slice_info.n.clear();
-        ti.slice_info.h.clear();
-        ti.slice_info.d.clear();
-        ti.slice_info.w.clear();
-        ti.slice_info.c.clear();
-        ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
-        ti.slice_info.h.push_back(std::make_pair((int64_t)0, (int64_t)h));
-        ti.slice_info.d.push_back(std::make_pair((int64_t)0, (int64_t)d));
-        ti.slice_info.w.push_back(std::make_pair((int64_t)0, (int64_t)w));
-        ti.slice_info.c.push_back(std::make_pair((int64_t)0, (int64_t)c));
-        tensor_infos[in] = ti;
+        bool allow_split = false;
+        if(src_op.getAllowSplitAttr() != nullptr){
+          allow_split = true;
+        }
+        if (allow_split == false) {
+          ti.eu_align = is_eu_align(in);
+          ti.need_bcast = need_bcast(in);
+          module::getNCDHW(in, n, c, d, h, w, lg_info.type);
+          ti.slice_info.n.clear();
+          ti.slice_info.h.clear();
+          ti.slice_info.d.clear();
+          ti.slice_info.w.clear();
+          ti.slice_info.c.clear();
+          ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
+          ti.slice_info.h.push_back(std::make_pair((int64_t)0, (int64_t)h));
+          ti.slice_info.d.push_back(std::make_pair((int64_t)0, (int64_t)d));
+          ti.slice_info.w.push_back(std::make_pair((int64_t)0, (int64_t)w));
+          ti.slice_info.c.push_back(std::make_pair((int64_t)0, (int64_t)c));
+          tensor_infos[in] = ti;
+        }
       }
     }
   }
@@ -714,8 +720,24 @@ static bool backward_update_slice(const LgInfo &lg_info,
 
   for (auto in : op->getOperands()) {
     auto pre_op = in.getDefiningOp();
-    if (pre_op != nullptr && isa<top::WeightOp, top::NoneOp>(pre_op)) {
+    if (pre_op != nullptr && isa<top::NoneOp>(pre_op)) {
       continue;
+    }
+    if (auto weight_op = dyn_cast_or_null<top::WeightOp>(pre_op)) {
+      if(weight_op.getAllowSplit() == std::nullopt){
+        continue;
+      }
+      bool allow_split = true;
+      auto weight_op_allow_split_attr =weight_op.getAllowSplitAttr();
+      auto num_dims = weight_op_allow_split_attr.size();
+      auto allow_split_array = module::getI64Array(weight_op_allow_split_attr);
+      for (int i = 0; i < num_dims; ++i) {
+        if (allow_split_array->at(i) == 0)
+          allow_split = false;
+      }
+      if (allow_split == false) {
+        continue;
+      }
     }
     slice_info_t si;
     bool hold_in_lmem = false;
@@ -876,7 +898,14 @@ int64_t get_buffer_size(Value v, const tensor_info_t &ti,
   int64_t buf_size = 0;
   int64_t n, c, d, h, w;
   module::getNCDHW(v, n, c, d, h, w, group_type);
+  bool allow_split = false;
   if (module::isWeight(v)) {
+    auto weight_op = dyn_cast<top::WeightOp>(v.getDefiningOp());
+    if (weight_op.getAllowSplit() != std::nullopt){
+      allow_split = true;
+    }
+  }
+  if (module::isWeight(v) && allow_split == false) {
     if (group_type == GROUP_SMALL_C) {
       buf_size = Arch::get_tensor_lmem_bytes(v, n, c, d, h, w, ti.eu_align);
     } else {
@@ -912,6 +941,37 @@ void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
       builder.getDenseI64ArrayAttr({widx}),
       builder.getDenseI64ArrayAttr({wslice}), 0, 0, group_type);
   op->setAttr(LocalGenInterface::kLayerGroupAttrName, lg_attr);
+}
+
+void set_weight_allow_split_attr(Operation *op) {
+  auto ctx = op->getContext();
+  auto builder = OpBuilder(ctx);
+  if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp,
+          tpu::MaxOp, tpu::CompareOp>(op) &&
+      (module::isWeight(op->getOperand(0)) ||
+       module::isWeight(op->getOperand(1)))) {
+    top::WeightOp weight_op;
+    if (module::isWeight(op->getOperand(0))) {
+      weight_op = dyn_cast<top::WeightOp>(op->getOperand(0).getDefiningOp());
+    } else if (module::isWeight(op->getOperand(1))) {
+      weight_op = dyn_cast<top::WeightOp>(op->getOperand(1).getDefiningOp());
+    }
+    if (weight_op.getAllowSplit() != std::nullopt) {
+      return;
+    }
+    auto out_shape = module::getShape(weight_op.getResult());
+    std::vector<int64_t> AllowSplitVector(out_shape.size(), 1);
+    weight_op.setAllowSplitAttr(builder.getI64ArrayAttr(AllowSplitVector));
+  }
+}
+
+void delete_weight_allow_split_attr(Operation *op) {
+  if (auto weight_op = dyn_cast<top::WeightOp>(op)) {
+    if (weight_op.getAllowSplit() == std::nullopt) {
+      return;
+    }
+    op->removeAttr("allow_split");
+  }
 }
 
 void delete_fake_local_layer_param(Operation *op) {

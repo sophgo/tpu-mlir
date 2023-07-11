@@ -175,7 +175,16 @@ void BasicTimeStep::gen_hold_coeff() {
       v = gdma_field[i].first;
       auto &tensor_info = gdma_field[i].second;
       if (tensor_info.mode == TIMESTEP_LOAD) {
-        if (module::isWeight(v) || tensor_info.hold_in_lmem) {
+        if (auto src_op = dyn_cast_or_null<top::WeightOp>(v.getDefiningOp())) {
+          bool allow_split = false;
+          if (src_op.getAllowSplitAttr() != nullptr){
+            allow_split = true;
+          }
+          if (allow_split == false) {
+            this->hold_coeff_[v] = ts;
+          }
+        }
+        if (tensor_info.hold_in_lmem) {
           this->hold_coeff_[v] = ts;
         }
       }

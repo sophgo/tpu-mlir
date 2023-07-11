@@ -64,6 +64,11 @@ void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
                                 int64_t cidx, int64_t cslice, int64_t dslice,
                                 int64_t widx, int64_t wslice);
 void delete_fake_local_layer_param(Operation *op);
+
+void set_weight_allow_split_attr(Operation *op);
+
+void delete_weight_allow_split_attr(Operation *op);
+
 void generate_fake_global_addr(Operation *op);
 
 void delete_fake_global_addr(Operation *op);

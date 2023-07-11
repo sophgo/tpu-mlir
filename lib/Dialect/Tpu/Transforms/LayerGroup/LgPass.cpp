@@ -35,6 +35,7 @@ void LgPassManager::add_pass(std::unique_ptr<LgPass> pass) {
 
 void LgPassManager::run(LgPassIR *pass_ir) {
   for (auto op : pass_ir->subnet_ops) {
+    set_weight_allow_split_attr(op);
     generate_fake_global_addr(op);
     set_fake_local_layer_param(op, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1);
   }
@@ -44,6 +45,7 @@ void LgPassManager::run(LgPassIR *pass_ir) {
   }
 
   for (auto op : pass_ir->subnet_ops) {
+    delete_weight_allow_split_attr(op);
     delete_fake_global_addr(op);
     delete_fake_local_layer_param(op);
   }

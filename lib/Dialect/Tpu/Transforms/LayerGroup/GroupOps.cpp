@@ -320,10 +320,20 @@ void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
   }
 
   mem_buffer_key_t buffer_key = {LMEM_ACTIVATION, input, nullptr};
-  if (dyn_cast_or_null<top::WeightOp>(inputOp)) {
+  if (auto weightop = dyn_cast_or_null<top::WeightOp>(inputOp)) {
+    bool allow_split = false;
+    auto allow_split_array = weightop.getAllowSplitAttr();
     buffer_key.type = LMEM_WEIGHT;
-    attrs.push_back(builder.getNamedAttr(
-        "lmem_type", builder.getI64IntegerAttr(LMEM_WEIGHT)));
+    if (weightop.getAllowSplitAttr() != nullptr){
+      allow_split = true;
+    }
+    if (allow_split == false) {
+      attrs.push_back(builder.getNamedAttr(
+          "lmem_type", builder.getI64IntegerAttr(LMEM_WEIGHT)));
+    } else {
+      attrs.push_back(builder.getNamedAttr(
+          "lmem_type", builder.getI64IntegerAttr(LMEM_ACTIVATION)));
+    }
   } else {
     attrs.push_back(builder.getNamedAttr(
         "lmem_type", builder.getI64IntegerAttr(LMEM_ACTIVATION)));
