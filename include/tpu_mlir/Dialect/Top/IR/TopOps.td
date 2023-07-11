@@ -578,7 +578,7 @@ def Top_SubConstOp: Top_Op<"SubConst", [SupportFuseRelu]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu]> {
+def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, SupportPermuteMove]> {
   let summary = "Mul Const operator";
 
   let description = [{
