@@ -7,12 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "detection-output"
 

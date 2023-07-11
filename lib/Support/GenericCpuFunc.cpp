@@ -9,19 +9,9 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/DeformConv2D.h"
-#include <algorithm>
-#include <assert.h>
-#include <cmath>
-#include <cstring>
-#include <map>
-#include <math.h>
 #include <queue>
-#include <sstream>
 
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {

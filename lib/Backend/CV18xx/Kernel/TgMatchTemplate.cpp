@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
-#include <llvm/Support/Debug.h>
 #define DEBUG_TYPE "match_template_kernel"
 
 #define ASSERT(x) assert(x)

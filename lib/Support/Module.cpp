@@ -7,17 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Backend/Arch.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Interfaces/LocalGenInterface.h"
 
-#include "float.h"
-#include "mlir/Dialect/Quant/FakeQuantSupport.h"
-#include "mlir/IR/PatternMatch.h"
-#include <map>
 
 #include "tpu_mlir/Support/ModuleEnum.cpp.inc"
 

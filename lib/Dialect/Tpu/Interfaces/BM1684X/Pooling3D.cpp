@@ -7,12 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include <string.h>
 using namespace tpu_mlir::backend;
 
 static bool has_pad(const pool_attr_t &attr) {

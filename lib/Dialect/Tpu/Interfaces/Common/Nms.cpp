@@ -7,12 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
-#include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::NmsOp::init(InferenceParameter &p) {
   return success();

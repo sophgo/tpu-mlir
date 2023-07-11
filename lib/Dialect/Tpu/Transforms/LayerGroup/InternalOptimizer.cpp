@@ -11,7 +11,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupPostTransform.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LmemAllocator.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepCombine.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOverlap.h"
 

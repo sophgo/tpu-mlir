@@ -7,10 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 
 LogicalResult tpu::GatherElementsOp::init(InferenceParameter &p) {
   return success();

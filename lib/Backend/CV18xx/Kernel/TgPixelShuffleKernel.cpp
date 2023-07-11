@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
-#include "tpu_mlir/Support/TPUCompressUtil.h"
 #include <llvm/Support/Debug.h>
 #define DEBUG_TYPE "pixelshuffle_kernel"
 

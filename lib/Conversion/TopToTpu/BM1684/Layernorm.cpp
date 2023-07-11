@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
-#include "tpu_mlir/Support/Module.h"
 
 namespace tpu_mlir {
 namespace bm1684 {

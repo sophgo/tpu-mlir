@@ -7,11 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 using namespace llvm;
 

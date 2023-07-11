@@ -9,7 +9,6 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/Debug.h>
-#include <numeric>
 
 #define DEBUG_TYPE "cvi_backend_bf16_conv3d_kernel"
 

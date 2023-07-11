@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include "llvm/Support/FormatVariadic.h"
-#include <assert.h>
 #include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "interp_top2tpu"

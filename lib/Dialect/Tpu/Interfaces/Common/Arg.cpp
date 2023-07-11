@@ -7,12 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Interfaces/TypeInterface.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 
 LogicalResult tpu::ArgOp::init(InferenceParameter &p) { return success(); }
 void tpu::ArgOp::deinit(InferenceParameter &p) {}

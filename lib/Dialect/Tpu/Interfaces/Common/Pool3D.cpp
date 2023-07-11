@@ -7,12 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
 
-#include "tpu_mlir/Support/MathUtils.h"
 
 pool_attr_t tpu::Pool3DOp::parseParam() {
   pool_attr_t p = {0};

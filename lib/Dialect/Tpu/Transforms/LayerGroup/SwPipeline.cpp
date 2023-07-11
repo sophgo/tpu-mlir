@@ -7,9 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
-#include "tpu_mlir/Support/Module.h"
 using namespace tpu_mlir::tpu;
 
 namespace tpu_mlir {

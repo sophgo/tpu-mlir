@@ -8,16 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "GmemAllocator.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
 
-#include <fstream>
-#include <set>
-#include <sstream>
-#include <vector>
 
 using namespace llvm;
 

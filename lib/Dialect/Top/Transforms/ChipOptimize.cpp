@@ -7,10 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "tpu_mlir/Support/Module.h"
 
 using namespace llvm;
 

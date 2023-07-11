@@ -8,8 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
-#include "tpu_mlir/Support/TPUCompressUtil.h"
-#include <llvm/Support/Debug.h>
 #define DEBUG_TYPE "reverse_kernel"
 
 namespace tpu_mlir {

@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/TPUCompressUtil.h"
-#include "llvm/Support/raw_ostream.h"
 
 namespace tpu_mlir {
 

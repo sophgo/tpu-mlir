@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
 int64_t top::TransposeOp::getFLOPs() { return 0; }

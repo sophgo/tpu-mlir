@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
-#include "llvm/Support/Debug.h"
 
 #define DEBUG_TYPE "lowering-ScaleLut"
 namespace tpu_mlir {

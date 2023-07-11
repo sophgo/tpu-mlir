@@ -7,10 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
 
 #include "tpu_mlir/Support/MathUtils.h"
 

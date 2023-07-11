@@ -8,8 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgZeroMaskKernel.hpp"
-#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "cvi_backend_zero_mask_kernel"
 

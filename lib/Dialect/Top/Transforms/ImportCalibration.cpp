@@ -8,15 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 
-#include "mlir/IR/PatternMatch.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
-#include <fstream>
 #include <regex>
-#include <sstream>
 
 using namespace llvm;
 

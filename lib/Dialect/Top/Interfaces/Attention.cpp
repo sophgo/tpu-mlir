@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Dnnl/Attention.h"
 

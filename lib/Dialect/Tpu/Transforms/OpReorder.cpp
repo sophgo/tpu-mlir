@@ -7,16 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Module.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
 
-#include <fstream>
-#include <set>
-#include <sstream>
 
 using namespace llvm;
 

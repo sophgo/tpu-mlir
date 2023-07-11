@@ -6,19 +6,10 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include <type_traits>
-#include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/BM168x/BM1686.h"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
-#include <type_traits>
 
 using namespace tpu_mlir::backend;
 

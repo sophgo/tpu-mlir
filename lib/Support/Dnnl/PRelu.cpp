@@ -8,8 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Dnnl/PRelu.h"
-#include "oneapi/dnnl/dnnl.hpp"
-#include <string.h>
 using namespace dnnl;
 
 namespace tpu_mlir {

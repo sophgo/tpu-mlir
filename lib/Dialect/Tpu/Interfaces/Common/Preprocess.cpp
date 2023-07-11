@@ -7,12 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 #include <llvm/Support/Debug.h>
 #define DEBUG_TYPE "preprocess_inference"
 

@@ -8,10 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/TensorFile.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/Support/LogicalResult.h"
-#include <memory>
-#include <vector>
 
 namespace mlir {
 

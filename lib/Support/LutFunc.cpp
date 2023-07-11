@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/LutFunc.h"
-#include "tpu_mlir/Support/Float16.h"
 
 namespace tpu_mlir {
 

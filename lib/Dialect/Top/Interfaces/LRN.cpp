@@ -7,10 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/Dnnl/LRN.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
 
 int64_t top::LRNOp::getFLOPs() {
   int64_t n, c, h, w;

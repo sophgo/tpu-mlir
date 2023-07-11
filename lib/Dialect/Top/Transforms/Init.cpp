@@ -8,11 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Backend/Arch.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
-#include <set>
 
 using namespace llvm;
 

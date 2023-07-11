@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Patterns.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 namespace tpu_mlir {

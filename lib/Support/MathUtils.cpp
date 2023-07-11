@@ -7,18 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "float.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/PatternMatch.h"
 #include "omp.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "llvm/Support/Debug.h"
-#include <algorithm>
-#include <cstdint>
-#include <map>
-#include <numeric>
-#include <queue>
 
 #define DEBUG_TYPE "math_utils"
 namespace tpu_mlir {

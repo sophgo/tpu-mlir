@@ -7,9 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/DeformConv2D.h"
 
 deform_conv2d_attr_t top::DeformConv2DOp::parseParam() {

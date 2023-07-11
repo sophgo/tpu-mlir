@@ -8,11 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LmemAllocator.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include <queue>
-#include <vector>
 
 using namespace tpu_mlir::backend;
 

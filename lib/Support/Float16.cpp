@@ -9,9 +9,7 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "bitcasts.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 #include <float.h>
-#include <math.h>
 
 namespace tpu_mlir {
 

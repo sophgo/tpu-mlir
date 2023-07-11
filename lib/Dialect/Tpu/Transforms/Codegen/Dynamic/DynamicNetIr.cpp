@@ -8,10 +8,6 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicNetIr.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynGdmaIrgen.hpp"
-#include <fstream>
-#include <set>
-#include <sstream>
-#include <vector>
 
 using namespace llvm;
 

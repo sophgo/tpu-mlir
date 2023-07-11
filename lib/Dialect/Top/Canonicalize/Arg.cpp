@@ -7,9 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Pass/Pass.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;

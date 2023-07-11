@@ -7,10 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Patterns.h"
-#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 
 namespace tpu_mlir {
 namespace bm1684 {

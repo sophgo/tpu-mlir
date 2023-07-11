@@ -7,13 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Support/LogicalResult.h"
-#include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include "tpu_mlir/Support/Dnnl/Deconv.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 

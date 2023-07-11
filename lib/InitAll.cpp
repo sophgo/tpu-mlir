@@ -7,17 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/InitAll.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Conversion/Passes.h"
 #include "mlir/Transforms/Passes.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/Quant/QuantOps.h"
-#include "mlir/IR/Dialect.h"
-#include "mlir/Dialect/Tosa/IR/TosaOps.h"
 
 namespace tpu_mlir {
 void registerAllDialects(mlir::DialectRegistry &registry) {

@@ -7,14 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
-#include <algorithm>
-#include <queue>
-#include <vector>
 
 LogicalResult tpu::DetectionOutputOp::init(InferenceParameter &p) { return success(); }
 void tpu::DetectionOutputOp::deinit(InferenceParameter &p) {}

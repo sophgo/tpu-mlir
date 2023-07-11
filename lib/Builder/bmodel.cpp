@@ -8,9 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
-#include <memory.h>
-#include <stdlib.h>
-#include <ctime>
 #include <iostream>
 
 using bmodel::Binary;

@@ -8,11 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOps.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include <numeric>
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/InternalOptimizer.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LgPass.h"
 
 
 using namespace tpu_mlir::tpu;

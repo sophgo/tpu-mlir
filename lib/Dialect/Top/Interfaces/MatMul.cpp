@@ -7,9 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
 
 // clang-format off
 // case 1: [5, 6] * [6, 7] = [5, 7] => batch = 1, M = 5, K = 6, N = 7

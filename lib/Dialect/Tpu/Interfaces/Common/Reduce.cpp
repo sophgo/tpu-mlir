@@ -7,13 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
 
 #include "tpu_mlir/Support/MathUtils.h"
-#include <float.h>
 
 typedef enum reduce_type {
   REDUCE_MEAN = 0,

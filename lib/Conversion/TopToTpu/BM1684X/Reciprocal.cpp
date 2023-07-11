@@ -7,11 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/IR/TypeRange.h"
-#include "mlir/IR/ValueRange.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Module.h"
 
 
 namespace tpu_mlir {

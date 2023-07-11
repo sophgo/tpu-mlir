@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
 int64_t top::SwapChannelOp::getFLOPs() {

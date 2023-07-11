@@ -8,19 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "CVAddressAssign.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
 
-#include <fstream>
-#include <iostream>
-#include <set>
-#include <sstream>
-#include <tuple>
-#include <unordered_map>
-#include <vector>
 
 #include <openssl/md5.h>
 

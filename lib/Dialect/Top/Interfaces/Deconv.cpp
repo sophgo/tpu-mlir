@@ -7,9 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
 
 deconv_attr_t top::DeconvOp::parseParam() {
   deconv_attr_t p = {0};

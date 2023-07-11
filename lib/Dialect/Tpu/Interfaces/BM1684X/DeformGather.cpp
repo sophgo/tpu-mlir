@@ -7,11 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include "tpu_mlir/Support/DeformConv2D.h"
-#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 //using namespace tpu_mlir::bm1684x;
