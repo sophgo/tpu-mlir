@@ -217,11 +217,70 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
   }
 };
 
+/**
+ * Op1 -> reshape -> next  => Op1 -> next -> reshape
+ * copied from Permute.cpp
+ **/
+struct ReshapeMovePattern : public OpRewritePattern<ReshapeOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ReshapeOp op,
+                                PatternRewriter &rewriter) const override {
+    // check topo
+    // have one user only
+    if (!op.getOutput().hasOneUse()) {
+      return failure();
+    }
+    // move trait
+    auto nextOp = *op.getOutput().user_begin();
+    // ops that support permute move should also support reshape move
+    if (!nextOp->hasTrait<trait::SupportPermuteMove>()) {
+      return failure();
+    }
+    // permute only accept one argument
+    // thus the output of 'next' should be exactly one
+    // otherwise, we need to construct new permutation op
+    if (nextOp->getResults().size() != 1) {
+      return failure();
+    }
+
+    // rewrite
+    auto input = op.getInput();
+    auto inputType = input.getType();
+    // input -> next
+    rewriter.updateRootInPlace(nextOp, [&] {
+      nextOp->setOperands(input);
+      // should be the same type as the input
+      nextOp->getResult(0).setType(inputType);
+      // rewrite loc for tests
+      auto loc = NameLoc::get(
+          rewriter.getStringAttr(module::getName(input).str() + "_" +
+                                 nextOp->getName().getStringRef()));
+      nextOp->setLoc(loc);
+    });
+    // replace all uses of next to perm
+    rewriter.replaceAllUsesWith(nextOp->getResult(0), op->getResult(0));
+    // next -> perm
+    rewriter.updateRootInPlace(op, [&] {
+      op->setOperands(nextOp->getResults());
+      // linear IR, tweak order
+      op->moveAfter(nextOp);
+      // rewrite loc for tests
+      auto loc = NameLoc::get(
+          rewriter.getStringAttr(module::getName(nextOp).str() + "_" +
+                                 op->getName().getStringRef()));
+      op->setLoc(loc);
+    });
+    return success();
+  }
+};
+
 void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<patterns::FuseRepeatPattern<top::ReshapeOp>,
                  TopFuseReshape2,
                  TopFuseReshape3,
                  ReshapeInstanceNormPattern,
-                 MergeGeluPattern>(context);
+                 MergeGeluPattern,
+                 ReshapeMovePattern>(context);
 }

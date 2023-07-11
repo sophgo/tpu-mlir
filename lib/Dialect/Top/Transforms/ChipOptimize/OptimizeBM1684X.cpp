@@ -309,7 +309,8 @@ public:
       auto new_reshape_op = rewriter.create<top::ReshapeOp>(
           ori_loc, ori_out_type, ValueRange{next_out});
       next_out.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
-
+      rewriter.eraseOp(op);
+      rewriter.eraseOp(right_op);
       return success();
     } else if (isa<top::MulConstOp, top::CastOp, top::SoftmaxOp>(next_op_)) {
       // check input is Reshape(n, c, h, w) --> (nxc, h, w)
@@ -352,7 +353,7 @@ public:
       if (auto next_op = dyn_cast<top::SoftmaxOp>(next_op_)) {
         next_op->setAttr("axis", rewriter.getSI32IntegerAttr(3));
       }
-
+      rewriter.eraseOp(op);
       return success();
     } else if (auto next_op = dyn_cast<top::ReshapeOp>(next_op_)) {
       auto ishape = module::getShape(op.getInput());
@@ -363,6 +364,7 @@ public:
 
       op.replaceAllUsesWith(op.getInput());
       next_op.replaceAllUsesWith(next_op.getInput());
+      rewriter.eraseOp(op);
       return success();
     }
 

@@ -707,10 +707,266 @@ struct PermuteBinaryPattern : public OpRewritePattern<PermuteOp> {
   }
 };
 
+// decomposed relative position embeddings
+// this should be after MatMul.cpp:MatmulWithPermuteAndSplit
+// wonder whether it should be in ChipOptimize
+// topo
+//                                           ...-MatMul-Reshape
+//                                                         |
+//                      ---------MatMul---------Unsqueeze-Add-
+// ...-Permute-Reshape-{                                      }-Add-...
+//                      -Permute-MatMul-Permute-Unsqueeze-----
+// ==>
+//
+//                                                                                  ...MatMul
+//      -Reshape-Permute-MatMul-Permute-Reshape-Unsqueeze-                               |
+// ...-{                                                  }-Add-Reshape-Permute-Reshape-Add-...
+//      -Reshape-Permute-MatMul-Permute-Reshape-Unsqueeze-
+struct TopDecomposedRelPosEmb : public OpRewritePattern<PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    // check topo
+    if (!op->hasOneUse())
+      return failure();
+    auto reshape_op = dyn_cast_or_null<ReshapeOp>(*op.getOutput().getUsers().begin());
+    if (!reshape_op)
+      return failure();
+    std::vector<mlir::Operation *> users;
+    for (auto user: reshape_op.getOutput().getUsers()) {
+      users.emplace_back(user);
+    }
+    if (users.size() != 2)
+      return failure();
+    auto matmul_h_op = dyn_cast_or_null<MatMulOp>(users[0]);
+    auto permute_before_w_op = dyn_cast_or_null<PermuteOp>(users[1]);
+    if (!(matmul_h_op && permute_before_w_op))
+    {
+      matmul_h_op = dyn_cast_or_null<MatMulOp>(users[1]);
+      permute_before_w_op = dyn_cast_or_null<PermuteOp>(users[0]);
+      if (!(matmul_h_op && permute_before_w_op))
+        return failure();
+    }
+    if (!permute_before_w_op->hasOneUse() || !matmul_h_op->hasOneUse() )
+      return failure();
+    auto matmul_w_op = dyn_cast_or_null<MatMulOp>(*permute_before_w_op.getOutput().getUsers().begin());
+    if (!matmul_w_op || !matmul_w_op->hasOneUse())
+      return failure();
+    if (!module::isWeight(matmul_h_op.getRight()) || !module::isWeight(matmul_w_op.getRight()) )
+      return failure();
+    auto permute_after_w_op = dyn_cast_or_null<PermuteOp>(*matmul_w_op.getOutput().getUsers().begin());
+    if (!permute_after_w_op || !permute_after_w_op->hasOneUse())
+      return failure();
+    auto unsqueeze_h_op = dyn_cast_or_null<UnsqueezeOp>(*matmul_h_op.getOutput().getUsers().begin());
+    if (!unsqueeze_h_op || !unsqueeze_h_op->hasOneUse())
+      return failure();
+    auto unsqueeze_w_op = dyn_cast_or_null<UnsqueezeOp>(*permute_after_w_op.getOutput().getUsers().begin());
+    if (!unsqueeze_w_op || !unsqueeze_w_op->hasOneUse())
+      return failure();
+    auto add_h_op = dyn_cast_or_null<AddOp>(*unsqueeze_h_op.getOutput().getUsers().begin());
+    if (!add_h_op || !add_h_op->hasOneUse())
+      return failure();
+    auto add_w_op = dyn_cast_or_null<AddOp>(*unsqueeze_w_op.getOutput().getUsers().begin());
+    if (!add_w_op || !add_w_op->hasOneUse())
+      return failure();
+    auto reshape_other_out = add_h_op.getOperand(0);
+    if (reshape_other_out == unsqueeze_h_op.getOutput()) {
+      reshape_other_out = add_h_op.getOperand(1);
+    }
+    auto reshape_other_op = dyn_cast_or_null<ReshapeOp>(reshape_other_out.getDefiningOp());
+    if (!reshape_other_op || !reshape_other_op->hasOneUse())
+      return failure();
+    auto matmul_other_op = dyn_cast_or_null<MatMulOp>(reshape_other_op.getInput().getDefiningOp());
+    if (!matmul_other_op || !matmul_other_op->hasOneUse())
+      return failure();
+
+    // check params
+    auto order = *module::getI64Array(op.getOrder());
+    std::vector<int64_t> order_0213{0, 2, 1, 3};
+    if (order != order_0213)
+      return failure();
+    auto permute_outshape = module::getShape(op.getOutput());
+    int64_t batch, head_n, hw, head_sz;
+    batch = permute_outshape[0];
+    head_n = permute_outshape[1];
+    hw = permute_outshape[2];
+    head_sz = permute_outshape[3];
+    auto reshape_outshape = module::getShape(reshape_op.getOutput());
+    if (reshape_outshape.size()!= 4 ||
+        reshape_outshape[0] != batch * head_n ||
+        hw != reshape_outshape[1] * reshape_outshape[2] ||
+        head_sz != reshape_outshape[3])
+      return failure();
+    int64_t h = reshape_outshape[1];
+    int64_t w = reshape_outshape[2];
+    auto matmul_h_output = matmul_h_op.getOutput();
+    auto matmul_h_shape = module::getShape(matmul_h_output);
+    if (h != matmul_h_shape[2])
+      return failure();
+    auto permute_before_w_order = *module::getI64Array(permute_before_w_op.getOrder());
+    if (permute_before_w_order != order_0213)
+      return failure();
+    auto matmul_w_output = matmul_w_op.getOutput();
+    auto matmul_w_shape = module::getShape(matmul_w_output);
+    if (w != matmul_w_shape[2])
+      return failure();
+    auto permute_after_w_order = *module::getI64Array(permute_after_w_op.getOrder());
+    if (permute_after_w_order != order_0213)
+      return failure();
+    if (*module::getI64Array(unsqueeze_h_op.getAxes()) != std::vector<int64_t>{4})
+      return failure();
+    if (*module::getI64Array(unsqueeze_w_op.getAxes()) != std::vector<int64_t>{3})
+      return failure();
+    if (module::getShape(matmul_other_op.getOutput()).vec() != std::vector<int64_t>{batch * head_n, hw, hw})
+      return failure();
+    if (module::getShape(reshape_other_op.getOutput()).vec() != std::vector<int64_t>{batch * head_n, h, w, h, w})
+      return failure();
+
+    // rewrite
+    // squeeze_out: 25x196x12x64
+    // get rid of this permute op
+    auto output = op.getInput();
+    auto name = module::getName(output);
+    op.getOutput().replaceAllUsesWith(output);
+    rewriter.eraseOp(op);
+    // h part
+    // reshape_h: (25x14)x14x12x64
+    rewriter.setInsertionPointAfterValue(output);
+    auto reshape_h_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_reshape_h"));
+    std::vector<int64_t> reshape_h_shape{batch*h, w, head_n, head_sz};
+    auto reshape_h_type = RankedTensorType::get(reshape_h_shape, module::getElementType(output));
+    auto new_reshape_h_op = rewriter.create<ReshapeOp>(reshape_h_loc, reshape_h_type, ValueRange{output});
+    // permute_h: (25x14)x12x14x64
+    rewriter.setInsertionPointAfter(new_reshape_h_op);
+    auto permute_h_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_permute_h"));
+    std::vector<int64_t> permute_h_shape{batch*h, head_n, w, head_sz};
+    auto permute_h_type = RankedTensorType::get(permute_h_shape, module::getElementType(new_reshape_h_op.getOutput()));
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order_0213)));
+    auto new_permute_h_op = rewriter.create<PermuteOp>(permute_h_loc, permute_h_type, ValueRange{new_reshape_h_op.getOutput()}, attrs);
+    // rewrite h_weight: 300x14x14x64 => 25x(12)x(14)x14x64 => 25x(14)x(12)x14x64 => (25x14)x12x14x64
+    auto h_weight_op = matmul_h_op.getRight().getDefiningOp<WeightOp>();
+    auto h_weight_data = h_weight_op.read<float>();
+    auto h_weight_trans = std::make_shared<std::vector<float>>(h_weight_data->size(), 0);
+    function_permute(h_weight_data->data(), h_weight_trans->data(), {batch, head_n, h, w, head_sz}, {0, 2, 1, 3, 4});
+    std::vector<int64_t> h_weight_new_shape{batch*h, head_n, w, head_sz};
+    auto h_weight_type = RankedTensorType::get(h_weight_new_shape, rewriter.getF32Type());
+    auto new_weight_h = WeightOp::create(matmul_h_op, "rewrited", *h_weight_trans, h_weight_type);
+    matmul_h_op->setOperand(0, new_permute_h_op.getOutput());
+    matmul_h_op->setOperand(1, new_weight_h);
+    // matmul_h_out: (25x14)x12x14x14
+    matmul_h_output.setType(
+          UnrankedTensorType::get(module::getElementType(matmul_h_output)));
+    matmul_h_output.setLoc(NameLoc::get(rewriter.getStringAttr(
+          module::getName(matmul_h_output).str() + "_new")));
+    matmul_h_op.shape_inference();
+    auto k_h = module::getShape(matmul_h_op.getOutput()).back();
+    // permute_h_after: (25x14)x14x12x14
+    auto permute_h_after_inshape = module::getShape(matmul_h_op.getOutput()).vec();
+    std::vector<int64_t> permute_h_after_shape{batch*h, w, head_n, k_h};
+    auto permute_h_after_type = RankedTensorType::get(permute_h_after_shape, module::getElementType(matmul_h_op.getOutput()));
+    auto permute_h_after_loc =
+            NameLoc::get(rewriter.getStringAttr(module::getName(matmul_h_op.getOutput()).str() + "_permute_h"));
+    rewriter.setInsertionPointAfter(matmul_h_op);
+    auto permute_h_after_op = rewriter.create<PermuteOp>(permute_h_after_loc, permute_h_after_type, ValueRange{matmul_h_output}, attrs);
+    // reshape_h_after: 25x196x12x14
+    std::vector<int64_t> reshape_h_after_shape{batch, h*w, head_n, k_h};
+    auto reshape_h_after_type = RankedTensorType::get(reshape_h_after_shape, module::getElementType(permute_h_after_op.getOutput()));
+    auto reshape_h_after_loc =
+            NameLoc::get(rewriter.getStringAttr(module::getName(matmul_h_op.getOutput()).str() + "_reshape_h"));
+    rewriter.setInsertionPointAfter(permute_h_after_op);
+    auto reshape_h_after_op = rewriter.create<ReshapeOp>(reshape_h_after_loc, reshape_h_after_type, ValueRange{permute_h_after_op.getOutput()});
+    // unsqueeze_h: 25x196x12x14x1
+    unsqueeze_h_op->setOperand(0, reshape_h_after_op.getOutput());
+    auto unsqueeze_h_output = unsqueeze_h_op.getOutput();
+    unsqueeze_h_output.setType(UnrankedTensorType::get(module::getElementType(unsqueeze_h_output)));
+    unsqueeze_h_output.setLoc(NameLoc::get(rewriter.getStringAttr(module::getName(unsqueeze_h_output).str() + "_new")));
+    unsqueeze_h_op.shape_inference();
+    // w part
+    // reshape_w: 25x14x(14x12)x64
+    rewriter.setInsertionPointAfterValue(output);
+    auto reshape_w_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_reshape_w"));
+    std::vector<int64_t> reshape_w_shape{batch, h, w*head_n, head_sz};
+    auto reshape_w_type = RankedTensorType::get(reshape_w_shape, module::getElementType(output));
+    auto new_reshape_w_op = rewriter.create<ReshapeOp>(reshape_w_loc, reshape_w_type, ValueRange{output});
+    // permute_w: 25x(14x12)x14x64
+    rewriter.setInsertionPointAfter(new_reshape_w_op);
+    auto permute_w_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_permute_w"));
+    std::vector<int64_t> permute_w_shape{batch, w*head_n, h, head_sz};
+    auto permute_w_type = RankedTensorType::get(permute_w_shape, module::getElementType(new_reshape_w_op.getOutput()));
+    auto new_permute_w_op = rewriter.create<PermuteOp>(permute_w_loc, permute_w_type, ValueRange{new_reshape_w_op.getOutput()}, attrs);
+    // rewrite w_weight: 300x14x14x64 => 25x(12)x(14)x[14]x64 => 25x(14)x(12)x14x64 => 25x(14x12)x14x64
+    auto w_weight_op = matmul_w_op.getRight().getDefiningOp<WeightOp>();
+    auto w_weight_data = w_weight_op.read<float>();
+    auto w_weight_trans = std::make_shared<std::vector<float>>(w_weight_data->size(), 0);
+    function_permute(w_weight_data->data(), w_weight_trans->data(), {batch, head_n, h, w, head_sz}, {0, 2, 1, 3, 4});
+    std::vector<int64_t> w_weight_new_shape{batch, w*head_n, h, head_sz};
+    auto w_weight_type = RankedTensorType::get(w_weight_new_shape, rewriter.getF32Type());
+    auto new_weight_w = WeightOp::create(matmul_w_op, "rewrited", *w_weight_trans, w_weight_type);
+    matmul_w_op->setOperand(0, new_permute_w_op.getOutput());
+    matmul_w_op->setOperand(1, new_weight_w);
+    // matmul_w_out: 25x(14x12)x14x14
+    matmul_w_output.setType(UnrankedTensorType::get(module::getElementType(matmul_w_output)));
+    matmul_w_output.setLoc(NameLoc::get(rewriter.getStringAttr(module::getName(matmul_w_output).str() + "_new")));
+    matmul_w_op.shape_inference();
+    auto k_w = module::getShape(matmul_w_op.getOutput()).back();
+    // permute_w_after: 25x14x(14x12)x14
+    auto permute_w_after_inshape = module::getShape(matmul_w_op.getOutput()).vec();
+    std::vector<int64_t> permute_w_after_shape{batch, h, w*head_n, k_w};
+    auto permute_w_after_type = RankedTensorType::get(permute_w_after_shape, module::getElementType(matmul_w_op.getOutput()));
+    auto permute_w_after_loc = NameLoc::get(rewriter.getStringAttr(module::getName(matmul_w_op.getOutput()).str() + "_permute_w"));
+    rewriter.setInsertionPointAfter(matmul_w_op);
+    auto permute_w_after_op = rewriter.create<PermuteOp>(permute_w_after_loc, permute_w_after_type, ValueRange{matmul_w_output}, attrs);
+    // reshape_w_after: 25x196x12x14
+    std::vector<int64_t> reshape_w_after_shape{batch, h*w, head_n, k_w};
+    auto reshape_w_after_type = RankedTensorType::get(reshape_w_after_shape, module::getElementType(permute_w_after_op.getOutput()));
+    auto reshape_w_after_loc = NameLoc::get(rewriter.getStringAttr(module::getName(matmul_w_op.getOutput()).str() + "_reshape_w"));
+    rewriter.setInsertionPointAfter(permute_w_after_op);
+    auto reshape_w_after_op = rewriter.create<ReshapeOp>(reshape_w_after_loc, reshape_w_after_type, ValueRange{permute_w_after_op.getOutput()});
+    // unsqueeze_w: 25x196x12x1x14
+    unsqueeze_w_op->setOperand(0, reshape_w_after_op.getOutput());
+    auto unsqueeze_w_output = unsqueeze_w_op.getOutput();
+    unsqueeze_w_output.setType(UnrankedTensorType::get(module::getElementType(unsqueeze_w_output)));
+    unsqueeze_w_output.setLoc(NameLoc::get(rewriter.getStringAttr(module::getName(unsqueeze_w_output).str() + "_new")));
+    unsqueeze_w_op.shape_inference();
+    // add part
+    // add_hw: unsqueeze_h + unsqueeze_w => 25x196x12x14x14
+    auto add_hw_loc = NameLoc::get(rewriter.getStringAttr(module::getName(add_h_op.getOutput()).str() + "_add_hw"));
+    auto add_hw_type = RankedTensorType::get({batch, h*w, head_n, k_h, k_w}, module::getElementType(unsqueeze_h_op.getOutput()));
+    rewriter.setInsertionPointAfter(unsqueeze_w_op);
+    auto add_hw_op = rewriter.create<AddOp>(add_hw_loc, add_hw_type, ValueRange{unsqueeze_h_op.getOutput(), unsqueeze_w_op.getOutput()});
+    // reshape_add_hw: 25x196x12x196
+    auto reshape_add_loc = NameLoc::get(rewriter.getStringAttr(module::getName(add_h_op.getOutput()).str() + "_reshape_add_hw"));
+    auto reshape_add_type = RankedTensorType::get({batch, h*w, head_n, k_h*k_w}, module::getElementType(add_hw_op.getOutput()));
+    rewriter.setInsertionPointAfter(add_hw_op);
+    auto reshape_add_op = rewriter.create<ReshapeOp>(reshape_add_loc, reshape_add_type, ValueRange{add_hw_op.getOutput()});
+    // permute_add_hw: 25x12x196x196
+    auto permute_add_loc = NameLoc::get(rewriter.getStringAttr(module::getName(add_h_op.getOutput()).str() + "_permute_add_hw"));
+    auto permute_add_type = RankedTensorType::get({batch, head_n, h*w, k_h*k_w}, module::getElementType(reshape_add_op.getOutput()));
+    rewriter.setInsertionPointAfter(reshape_add_op);
+    auto permute_add_op = rewriter.create<PermuteOp>(permute_add_loc, permute_add_type, ValueRange{reshape_add_op.getOutput()}, attrs);
+    // reshape_permute_add_hw: 300x196x196
+    auto reshape_permute_add_loc = NameLoc::get(rewriter.getStringAttr(module::getName(add_h_op.getOutput()).str() + "_reshape_permute_add_hw"));
+    auto reshape_permute_add_type = RankedTensorType::get({batch * head_n, h*w, k_h*k_w}, module::getElementType(permute_add_op.getOutput()));
+    rewriter.setInsertionPointAfter(permute_add_op);
+    auto reshape_permute_add_op = rewriter.create<ReshapeOp>(reshape_permute_add_loc, reshape_permute_add_type, ValueRange{permute_add_op.getOutput()});
+    // matmul_other_out: 300x196x196
+    // add_qk: reshape_permute_add_hw + matmul_other_out: 300x196x196
+    auto add_qk_loc = NameLoc::get(rewriter.getStringAttr(module::getName(add_w_op.getOutput()).str() + "_add_qk"));
+    auto add_qk_type = RankedTensorType::get({batch * head_n, h*w, k_h*k_w}, module::getElementType(reshape_permute_add_op.getOutput()));
+    rewriter.setInsertionPointAfter(reshape_permute_add_op);
+    auto add_qk_op = rewriter.create<AddOp>(add_qk_loc, add_qk_type, ValueRange{reshape_permute_add_op.getOutput(), matmul_other_op.getOutput()});
+    add_w_op.getOutput().replaceAllUsesExcept(add_qk_op.getOutput(), add_qk_op);
+    return success();
+  }
+};
+
+
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopPermuteToPixelShuffle, TopPermuteToReorg, Permute5dSplit,
                  PermuteFuse, PermuteMovePattern, TopPermuteToReshape,
                  SoftmaxPermutePattern, NonZeroPermutePattern, PermutePadSwap,
-                 PermuteBinaryPattern>(context);
+                 PermuteBinaryPattern, TopDecomposedRelPosEmb>(context);
 }

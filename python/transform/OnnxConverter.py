@@ -1424,7 +1424,7 @@ class OnnxConverter(BaseConverter):
                                      rhs_reshape_op,
                                      axis=0,
                                      tile=int(lhs_shape[0]),
-                                     loc=self.get_loc("{}_{}".format(onnx_node.name, "_tile")),
+                                     loc=self.get_loc("{}_{}".format(onnx_node.name, "tile")),
                                      ip=self.mlir.insert_point).output
 
                 # [b, h, w, c] * [b, h, k, c]^T -> [b, h, w, c]
@@ -1475,7 +1475,7 @@ class OnnxConverter(BaseConverter):
                                      rhs_reshape_op,
                                      axis=0,
                                      tile=int(lhs_shape[0]),
-                                     loc=self.get_loc("{}_{}".format(onnx_node.name, "_tile")),
+                                     loc=self.get_loc("{}_{}".format(onnx_node.name, "tile")),
                                      ip=self.mlir.insert_point).output
 
                 # [b, w, h, c] * [b, w, k, c]^T -> [b, w, h, k]

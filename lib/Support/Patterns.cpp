@@ -59,6 +59,26 @@ FuseRepeatPattern<OpTy>::matchAndRewrite(OpTy op,
   op->setOperand(0, in_op->getOperand(0));
   rewriter.eraseOp(in_op);
   return success();
+
+  // handle situations like
+  //           -reshape
+  // reshape -{
+  //           -reshape
+
+  // maybe not for now, just record here
+
+  // std::vector<mlir::Operation *> users;
+  // for (auto user: op->getUsers()) {
+  //   if (!isa<OpTy>(user)) {
+  //     return failure();
+  //   }
+  //   users.emplace_back(user);
+  // }
+  // for(auto user: users) {
+  //   user->setOperand(0, op->getOperand(0));
+  // }
+  // rewriter.eraseOp(op);
+  // return success();
 }
 
 template LogicalResult FuseRepeatPattern<top::ReshapeOp>::matchAndRewrite(
