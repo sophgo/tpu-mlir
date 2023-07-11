@@ -803,8 +803,8 @@ public:
       for (auto &input : fnInputs) {
         argType.push_back(input.getType());
         auto ori_input = module::getOriValue(input);
-        if (auto op = ori_input.getDefiningOp()) {
-          argLoc.push_back(op->getLoc());
+        if (!module::isNone(ori_input)) {
+          argLoc.push_back(module::getLoc(ori_input));
         } else {
           argLoc.push_back(module::getLoc());
         }
