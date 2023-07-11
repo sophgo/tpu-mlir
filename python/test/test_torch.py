@@ -800,6 +800,7 @@ class TORCH_IR_TESTER(object):
         input_shape = [14, 25, 40] + normalize_shape
         self.trace_and_test([input_shape], Model())
 
+
     #######################################################################
     # Chunk
     # ------------
