@@ -8,12 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "TensorLocation.hpp"
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
-#include <llvm/Support/JSON.h>
-#include <variant>
 
 namespace mlir {
 using namespace llvm;

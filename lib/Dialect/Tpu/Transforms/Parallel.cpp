@@ -7,9 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/FormatVariadic.h"
 
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"

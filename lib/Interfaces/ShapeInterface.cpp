@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/IR/BuiltinTypes.h"
 #include "tpu_mlir/Interfaces/ShapeInterface.h"
 #include "tpu_mlir/Interfaces/ShapeInterface.cpp.inc"
 #include "tpu_mlir/Support/Module.h"

@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "mlir/IR/PatternMatch.h"
 
 using namespace llvm;
 

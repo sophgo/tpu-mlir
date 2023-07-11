@@ -7,13 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
 #include "float.h"
-#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 
 pool_attr_t tpu::MaxPoolWithMaskOp::parseParam() {
   pool_attr_t p = {0};

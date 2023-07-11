@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include "llvm/Support/Debug.h"
 #define DEBUG_TYPE "lowering-log"
 namespace tpu_mlir {
 namespace cv18xx {

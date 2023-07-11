@@ -8,9 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgPermuteKernel.hpp"
-#include "tpu_mlir/Support/TPUCompressUtil.h"
-#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
-#include <numeric>
 
 #define DEBUG_TYPE "cvi_backend_permute_kernel"
 

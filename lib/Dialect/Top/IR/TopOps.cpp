@@ -7,10 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-#include <numeric>
 
 
 using namespace tpu_mlir::top;
@@ -20,12 +18,10 @@ using namespace tpu_mlir::top;
 // Dialect initialize method.
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Top/IR/TopOpsDialect.cpp.inc"
-#include "tpu_mlir/Dialect/Top/IR/TopAttr.cpp.inc"
 
 void TopDialect::initialize() {
   addAttributes<
 #define GET_ATTRDEF_LIST
-#include "tpu_mlir/Dialect/Top/IR/TopAttr.cpp.inc"
       >();
   addOperations<
 #define GET_OP_LIST
@@ -37,7 +33,6 @@ void TopDialect::initialize() {
 // Top Operator Definitions.
 //===----------------------------------------------------------------------===//
 #define GET_ATTRDEF_CLASSES
-#include "tpu_mlir/Dialect/Top/IR/TopAttr.cpp.inc"
 
 #define GET_OP_CLASSES
 #include "tpu_mlir/Dialect/Top/IR/TopOps.cpp.inc"

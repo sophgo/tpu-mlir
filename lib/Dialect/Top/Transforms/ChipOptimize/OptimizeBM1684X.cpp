@@ -7,15 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
-#include "llvm/ADT/ArrayRef.h"
-#include <cstdint>
-#include <string>
 
 namespace tpu_mlir {
 

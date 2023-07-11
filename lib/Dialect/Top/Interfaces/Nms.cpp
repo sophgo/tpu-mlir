@@ -7,9 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
-#include "tpu_mlir/Support/MathUtils.h"
 int64_t top::NmsOp::getFLOPs() { return 0; }
 
 LogicalResult top::NmsOp::init(InferenceParameter &p) { return success(); }

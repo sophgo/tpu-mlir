@@ -8,20 +8,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Patterns.h"
-#include "tpu_mlir/Support/MathUtils.h"
 
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
 #include "mlir/IR/Iterators.h"
-#include "mlir/IR/Block.h"
-#include "llvm/ADT/DenseSet.h"
-#include <fstream>
-#include <set>
-#include <sstream>
 
 using namespace llvm;
 

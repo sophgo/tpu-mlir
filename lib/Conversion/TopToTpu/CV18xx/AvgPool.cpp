@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 
 namespace tpu_mlir {
 namespace cv18xx {

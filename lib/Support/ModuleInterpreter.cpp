@@ -8,17 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/ModuleInterpreter.h"
-#include "cnpy.h"
 #include "progressbar.hpp"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
-#include <algorithm>
-#include <functional>
-#include <llvm/Support/Debug.h>
-#include <memory>
-#include <numeric>
 
 #define DEBUG_TYPE "interpreter"
 

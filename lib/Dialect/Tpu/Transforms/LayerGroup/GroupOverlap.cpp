@@ -8,13 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOverlap.h"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/CycleCalculator.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 

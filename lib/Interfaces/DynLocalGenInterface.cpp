@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 

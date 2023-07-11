@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Pass/Pass.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;

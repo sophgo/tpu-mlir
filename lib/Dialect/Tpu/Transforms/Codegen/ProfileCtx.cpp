@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "ProfileCtx.h"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 
 using namespace tpu_mlir::backend;

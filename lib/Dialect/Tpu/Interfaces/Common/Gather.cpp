@@ -7,9 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 
 LogicalResult tpu::GatherOp::init(InferenceParameter &p) { return success(); }
 void tpu::GatherOp::deinit(InferenceParameter &p) {}

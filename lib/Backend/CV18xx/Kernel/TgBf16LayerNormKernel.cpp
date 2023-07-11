@@ -7,10 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgConcatKernel.hpp"
-#include <llvm/Support/Debug.h>
-#include <numeric>
 
 #define DEBUG_TYPE "cvi_backend_layernorm_kernel"
 

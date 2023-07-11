@@ -10,8 +10,6 @@
 #include "AddressAssign/CVAddressAssign.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 

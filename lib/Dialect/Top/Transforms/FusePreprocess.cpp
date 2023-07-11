@@ -8,10 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/PixelHelper.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 

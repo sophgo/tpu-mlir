@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Traits/Traits.h"
 #include "tpu_mlir/Support/Module.h"
 
 namespace tpu_mlir {

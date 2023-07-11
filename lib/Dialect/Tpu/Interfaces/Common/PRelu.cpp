@@ -7,12 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
 
-#include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::PReluOp::init(InferenceParameter &p) {
   auto w_shape = module::getShape(getSlope());

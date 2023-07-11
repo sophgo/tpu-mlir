@@ -7,9 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace llvm;

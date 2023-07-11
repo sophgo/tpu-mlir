@@ -10,10 +10,7 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include "tpu_mlir/Support/Module.h"
-#include <fstream>
 #include <regex>
-#include <sstream>
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTTOPTOTPU

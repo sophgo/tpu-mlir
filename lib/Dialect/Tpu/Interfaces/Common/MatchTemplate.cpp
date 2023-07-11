@@ -7,13 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/LutFunc.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
-#include <algorithm>
-#include <vector>
 
 LogicalResult tpu::MatchTemplateOp::init(InferenceParameter &p) {
   return success();

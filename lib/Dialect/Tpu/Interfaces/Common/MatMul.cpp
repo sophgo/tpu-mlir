@@ -7,14 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
 
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include "tpu_mlir/Support/MathUtils.h"
 
 // clang-format off
 // case 1: [5, 6] * [6, 7] = [5, 7] => batch = 1, M = 5, K = 6, N = 7

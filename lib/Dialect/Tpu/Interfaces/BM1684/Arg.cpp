@@ -7,11 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 
 // in TPU1684's Arg Definition, Nullptr is not 0.
 // which can be found in TPU1684/fireware_core/src/global_layer/nodechip_arg.c:6

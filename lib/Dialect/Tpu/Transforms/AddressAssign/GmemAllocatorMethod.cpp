@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "GmemAllocatorMethod.h"
-#include <limits>
 #include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "gmem-allocator"

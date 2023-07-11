@@ -7,10 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/BasicTimeStep.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
-#include "tpu_mlir/Support/Module.h"
 
 namespace tpu_mlir {
 namespace tpu {

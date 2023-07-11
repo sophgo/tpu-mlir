@@ -10,11 +10,6 @@
 #include "Codegen/CV18xxCodegen.hpp"
 #include "Codegen/BM168xCodegen.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Module.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include <fstream>
-#include <set>
-#include <sstream>
 
 using namespace llvm;
 

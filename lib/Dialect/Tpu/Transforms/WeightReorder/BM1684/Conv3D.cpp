@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "../WeightReorder.h"
-#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace bm1684;

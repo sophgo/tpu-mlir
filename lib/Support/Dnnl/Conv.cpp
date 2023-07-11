@@ -10,7 +10,6 @@
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include <string.h>
 
 using namespace dnnl;
 using namespace tpu_mlir;

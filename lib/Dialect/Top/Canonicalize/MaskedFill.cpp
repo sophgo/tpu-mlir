@@ -7,10 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/Pass/Pass.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #define TILE_COND 1
 #define TILE_BRN 2

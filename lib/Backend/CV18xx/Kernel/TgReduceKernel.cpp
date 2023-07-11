@@ -8,8 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgReduceKernel.hpp"
-#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
-#include <numeric>
 
 #define DEBUG_TYPE "cvi_backend_reduce_kernel"
 

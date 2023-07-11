@@ -8,30 +8,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "BM168xCodegen.hpp"
-#include "bmcpu_common.h"
 
-#include "ProfileCtx.h"
-#include "TensorLocation.hpp"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/BM168x/BM1686.h"
-#include "tpu_mlir/Builder/BM168x/bmodel.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicNetIr.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 #include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/Debug.h>
 #include <llvm/Support/SHA256.h>
-#include <stdlib.h>
 
-#include <fstream>
-#include <set>
-#include <sstream>
-#include <unordered_set>
 
 #define DEBUG_TYPE "bm_codegen"
 

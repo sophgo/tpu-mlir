@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "bmcpu_common.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 
 namespace tpu_mlir {

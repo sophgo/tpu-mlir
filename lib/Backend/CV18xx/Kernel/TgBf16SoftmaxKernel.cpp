@@ -9,13 +9,10 @@
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgBf16SoftmaxKernel.hpp"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Support/LutFunc.h"
-#include "tpu_mlir/Support/TPUCompressUtil.h"
 
 
-#include <llvm/Support/Debug.h>
 
 
-#include <numeric>
 
 #define DEBUG_TYPE "cvi_backend_softmax_kernel"
 

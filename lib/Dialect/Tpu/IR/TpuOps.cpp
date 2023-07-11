@@ -7,14 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-#include "llvm/ADT/TypeSwitch.h"
-#include "mlir/IR/DialectImplementation.h"
-#include "mlir/IR/OpImplementation.h"
-#include "mlir/IR/TypeUtilities.h"
-#include <numeric>
 
 using namespace tpu_mlir::tpu;
 

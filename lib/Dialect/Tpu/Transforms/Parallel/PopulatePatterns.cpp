@@ -8,8 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "Parallel.hpp"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
 
 namespace tpu_mlir {
 namespace tpu {

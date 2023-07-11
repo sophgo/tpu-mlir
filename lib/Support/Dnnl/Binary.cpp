@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Dnnl/Binary.h"
-#include "oneapi/dnnl/dnnl.hpp"
 #include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
 using namespace dnnl;
 

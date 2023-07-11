@@ -7,9 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/Arch.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupDefs.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LmemAllocator.h"
 #include "tpu_mlir/Support/MathUtils.h"
 

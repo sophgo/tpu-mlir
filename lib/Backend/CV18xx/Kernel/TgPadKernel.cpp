@@ -8,7 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "cvi_backend_pad_kernel"
 

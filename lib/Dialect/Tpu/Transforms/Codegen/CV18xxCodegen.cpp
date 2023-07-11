@@ -11,22 +11,10 @@
 #include "mlir/Support/FileUtilities.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/PixelHelper.h"
-#include "llvm/Support/Debug.h"
 #include "llvm/Support/ToolOutputFile.h"
-#include "llvm/Support/raw_ostream.h"
-#include <elf.h>
-#include <fstream>
-#include <map>
-#include <memory>
 #include <openssl/md5.h>
-#include <regex>
-#include <set>
-#include <sstream>
-#include <unordered_map>
 #include <unordered_set>
-// #include "tpu_mlir/Support/Helper/PixeHelper.h"
 
 #define DEBUG_TYPE "mlir-to-cvimodel"
 #define VERSION(V0, V1, V2) (uint32_t)((V0) << 24 | (V1) << 16 | (V2) << 8)

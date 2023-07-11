@@ -8,8 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Dnnl/Attention.h"
-#include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Dnnl/MatMul.h"
 #include "tpu_mlir/Support/Dnnl/Softmax.h"
 #include "tpu_mlir/Support/Dnnl/Binary.h"

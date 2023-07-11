@@ -7,11 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/LutFunc.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 
 static void normlize_f32(const float *input_data, float *output_data,
                          const float *weight_data, const float *bias_data,

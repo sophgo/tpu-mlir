@@ -8,20 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "BMAddressAssign.h"
-#include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
 
-#include <fstream>
-#include <set>
-#include <sstream>
-#include <tuple>
-#include <vector>
 
 using namespace llvm;
 

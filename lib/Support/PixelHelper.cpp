@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Support/PixelHelper.h"
 #include "tpu_mlir/Support/Module.h"
-#include <iostream>
 namespace tpu_mlir {
 // namespace pixel_helper {
 void setPixelAlign(std::string &pixel_format, int64_t &y_align,

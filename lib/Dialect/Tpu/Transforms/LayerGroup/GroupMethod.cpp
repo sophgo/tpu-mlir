@@ -7,19 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "omp.h"
 #include "progressbar.hpp"
-#include "tpu_mlir/Backend/Arch.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Module.h"
 #include <llvm/Support/Debug.h>
-#include "mlir/Support/LLVM.h"
-#include <list>
-#include <map>
-#include <set>
 
 #define DEBUG_TYPE "layer-group"
 using namespace tpu_mlir::backend;

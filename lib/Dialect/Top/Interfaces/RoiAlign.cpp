@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
 int64_t top::RoiAlignOp::getFLOPs() {

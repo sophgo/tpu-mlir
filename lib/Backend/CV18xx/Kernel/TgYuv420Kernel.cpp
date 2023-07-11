@@ -7,11 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/TPUCompressUtil.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgYuv420Kernel.hpp"
-#include <numeric>
 
 #define DEBUG_TYPE "cvi_backend_tgYuv420Kernel_kernel"
 // yuv_type 1--yuv420_planar  2--yuv_nv12  3--yuv_nv21
