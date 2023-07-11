@@ -174,7 +174,11 @@ class MixPrecSearcher:
         self.num_sample = 0
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
         log_level = "DEBUG" if 'debug_log' in self.debug_cmd else "INFO"
-        self.logger = logger('MixPrecSearcher', log_level=log_level)
+        try:
+            if args.inference_num > 0:
+                self.logger = logger('SensitiveLayerSearcher', log_level=log_level)
+        except:
+            self.logger = logger('MixPrecSearcher', log_level=log_level)
         self._init_inputs(args)
 
     def disable_print(self):
