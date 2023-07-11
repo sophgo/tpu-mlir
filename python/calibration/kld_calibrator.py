@@ -817,6 +817,11 @@ class ActivationCalibrator2(BaseKldCalibrator):
         thresholds_map_absmax = {}
         thresholds_map_scale = {}
         thresholds_map_zp = {}
+        thresholds_map4 = {}
+        thresholds_map_absmax4 = {}
+        thresholds_map_scale4 = {}
+        thresholds_map_zp4 = {}
+
         all_tensors = self.parser.get_op_name_list()
         step = (99.999999 - 99.99) / len(all_tensors)
         pbar = tqdm(all_tensors, total=len(all_tensors), position=0, leave=True)
@@ -855,7 +860,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 all_data = np.abs(np.array(all_data))
                 abs_value2 = np.max(all_data)
                 abs_value = abs_value2
-            if abs_value <= 1e-5:
+            if abs_value != None and abs_value <= 1e-5:
                 # if op's outputs are all close to zero, change it to 1e-5 for them.
                 min_value = -1e-5
                 max_value = 1e-5
@@ -883,6 +888,23 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 thresholds_map_absmax[evaled_op] = threshold
                 thresholds_map_scale[evaled_op] = scale.numpy()[0]
                 thresholds_map_zp[evaled_op] = zp.numpy()[0]
+                if 'int4' in self.debug_cmd: # give when int4 selected, give symeetric value like in qat, both for int4 and int8
+                    qmin, qmax = -128, 127
+                    scale, zp = self.torchObserver_dict[evaled_op].calculate_qparams()
+                    threshold = float(scale * max(-(qmin-zp), (qmax-zp)))
+                    threshold = 1e-5 if (threshold <= 1e-5) else threshold  # fix me
+                    thresholds_map[evaled_op] = threshold
+                    thresholds_map_absmax[evaled_op] = threshold
+                    thresholds_map_scale[evaled_op] = threshold/127.5
+                    thresholds_map_zp[evaled_op] = 0
+                    qmin, qmax = -8, 7
+                    scale, zp = self.torchObserver_dict[evaled_op].calculate_qparams()
+                    threshold = float(scale * max(-(qmin-zp), (qmax-zp)))
+                    threshold = 1e-5 if (threshold <= 1e-5) else threshold
+                    thresholds_map4[evaled_op] = threshold
+                    thresholds_map_absmax4[evaled_op] = threshold
+                    thresholds_map_scale4[evaled_op] = threshold/127.5
+                    thresholds_map_zp4[evaled_op] = 0
 
             for idx in range(self.args.input_num):
                 self.clear_ref_tensor(idx, evaled_op)
@@ -890,16 +912,20 @@ class ActivationCalibrator2(BaseKldCalibrator):
 
         if 'use_torch_observer_for_cali' not in self.debug_cmd:
             thresholds_map = self.find_threshold(histogram_data_map, histogram_width_map)
+            thresholds_map4 = thresholds_map.copy()
             for k, v in self.activations_statistics.items():
                 _, _, abs_val = v
                 thresholds_map_absmax[k] = abs_val
                 if thresholds_map[k] > abs_val:
                     thresholds_map[k] = abs_val
+                    thresholds_map4[k] = abs_val
                 if 'use_percentile9999' in self.debug_cmd:
                     thresholds_map[k] = abs_val
+                    thresholds_map4[k] = abs_val
                 elif 'use_max' in self.debug_cmd:
                     thresholds_map[k] = abs_val
-        return thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp
+                    thresholds_map4[k] = abs_val
+        return thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, thresholds_map4, thresholds_map_absmax4, thresholds_map_scale4, thresholds_map_zp4
 
     def run(self):
         layer_name_list = []
@@ -917,7 +943,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 print('input_calibration_table error')
                 exit(1)
         else:
-            thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp = self.activation_collect_and_calc_th()
+            thresholds_map, thresholds_map_absmax, thresholds_map_scale, thresholds_map_zp, thresholds_map4, thresholds_map_absmax4, thresholds_map_scale4, thresholds_map_zp4 = self.activation_collect_and_calc_th()
             self._clean_resource()
             # step 3: dump threshold table of default histogram bins
             cali_table = self.args.calibration_table
@@ -929,22 +955,54 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 f.write("# sample number: {}\n###\n".format(self.num_samples))
                 f.write("# op_name    threshold    min    max\n")
                 for i, op_name in enumerate(op_layers):
-                    if 'use_torch_observer_for_cali' in self.debug_cmd:
-                        qmin, qmax = -128, 127
-                        scale = thresholds_map_scale[op_name]
-                        zp = thresholds_map_zp[op_name]
-                        threshold = float(scale * max(-(qmin-zp), qmax-zp))
-                        min_value = float(scale * (qmin - zp))
-                        max_value = float(scale * (qmax - zp))
-                    else:
-                        threshold = thresholds_map[op_name]
-                        min_value, max_value, _ = self.activations_statistics[op_name]
-                    thresholds_map_list.append(threshold)
-                    f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
+                    if 'int4' in self.debug_cmd:
+                        if 'use_torch_observer_for_cali' in self.debug_cmd:
+                            qmin, qmax = -128, 127
+                            scale = thresholds_map_scale[op_name]
+                            zp = thresholds_map_zp[op_name]
+                            threshold = float(scale * max(-(qmin-zp), qmax-zp))
+                            min_value = -threshold*128.0/127.0
+                            max_value = threshold
+                        else:
+                            threshold = thresholds_map[op_name]
+                            min_value, max_value = -threshold*128.0/127.0, threshold
+                        thresholds_map_list.append(threshold)
+                        f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
                                                                max_value))
+                    else:
+                        if 'use_torch_observer_for_cali' in self.debug_cmd:
+                            qmin, qmax = -128, 127
+                            scale = thresholds_map_scale[op_name]
+                            zp = thresholds_map_zp[op_name]
+                            threshold = float(scale * max(-(qmin-zp), qmax-zp))
+                            min_value = float(scale * (qmin - zp))
+                            max_value = float(scale * (qmax - zp))
+                        else:
+                            threshold = thresholds_map[op_name]
+                            min_value, max_value, _ = self.activations_statistics[op_name]
+                        thresholds_map_list.append(threshold)
+                        f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
+                                                               max_value))
+                if 'int4' in self.debug_cmd and ('use_torch_observer_for_cali' in self.debug_cmd or 'use_percentile9999' in self.debug_cmd or 'use_max' in self.debug_cmd):
+                    f.write("\n")
+                    f.write("#int4_th\n")
+                    for i, op_name in enumerate(op_layers):
+                        if 'use_torch_observer_for_cali' in self.debug_cmd:
+                            qmin, qmax = -8, 7
+                            scale = thresholds_map_scale4[op_name]
+                            zp = thresholds_map_zp4[op_name]
+                            threshold = float(scale * max(-(qmin-zp), qmax-zp))
+                            min_value = -threshold*128.0/127.0
+                            max_value = threshold
+                        else:
+                            threshold = thresholds_map4[op_name]
+                            min_value, max_value = -threshold*128.0/127.0, threshold
+                        f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
+                                                                max_value))
+
             # if 'use_torch_observer_for_cali' in self.debug_cmd:
             #     exit(0)
-        if self.args.tune_num <= 0:
+        if self.args.tune_num <= 0 or 'int4' in self.debug_cmd:
             return
 
         # setp 4: tune to get better threshold of each layers.

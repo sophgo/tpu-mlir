@@ -88,15 +88,15 @@ def remote_show(op, alpha, iter):
     '''
     return
 
-def quant_requant_active(data, scale, unsigned=False):
+def quant_requant_active(data, scale, unsigned=False,bits=8):
     if unsigned:
-        d = data/scale*255.0
+        d = data/scale*(2**bits-1)
         dout = np.round(d)
-        return np.clip(dout, 0, 255)/255.0 * scale
+        return np.clip(dout, 0, 2**bits)/(2**bits) * scale
     else:
-        d = data/scale*127.0
+        d = data/scale*(2**(bits-1))
         dout = np.round(d)
-        return np.clip(dout, -128, 127)/127.0 * scale
+        return np.clip(dout, -(2**(bits-1)), 2**(bits-1)-1)/(2**(bits-1)) * scale
 
 def cal_loss(target, ref):
     mse_diff = ((target - ref)**2).mean()
@@ -410,6 +410,8 @@ class CaliTable:
                     continue
                 self.table[s[0]] = [
                     float(s[1]), float(s[2]), float(s[3])]
+            if line.startswith("#int4_th"):
+                break
 
     def update(self, new_table):
         for op in new_table:
@@ -537,6 +539,7 @@ class LearningGptqWeight:
         self.pre_loss = {}
         self.post_loss = {}
         self.loss = {}
+        self.chip = args.chip
         self.orig_weights = {}
         self.weight_file = self.parser.module_weight_file
         self.param_back = {}
@@ -544,7 +547,7 @@ class LearningGptqWeight:
         self.compare_quanted = True
         print(f'Learning GptqWeight')
         self.support_unsigned = False
-        self.get_finetune_ops()
+        self.get_finetune_ops(args.excepts)
         self.backup_weights()
         self.H = {}
         if self.mini_batch <= self.batch_size:
@@ -555,10 +558,11 @@ class LearningGptqWeight:
         for k in w:
             self.param_back[k] = w[k]
 
-    def get_finetune_ops(self):
+    def get_finetune_ops(self, excepts):
         top_ops = {op.name: op for op in self.parser.ops}
+        exclude = excepts.split(',')
         for op in top_ops:
-            if top_ops[op].type in LEARNING_WEIGHT_OPERATION:
+            if top_ops[op].type in LEARNING_WEIGHT_OPERATION and top_ops[op].name not in exclude:
                 if top_ops[op].type == 'top.Conv':
                     if int(top_ops[op].attrs['group'].split(':')[0]) > 1:
                         continue
@@ -581,7 +585,7 @@ class LearningGptqWeight:
                 print("not support!")
                 sys.exit(1)
 
-    def quant_requant_weight(self, op, blocksize=128, percdamp=0.01, groupsize=-1):
+    def quant_requant_weight(self, op, blocksize=128, percdamp=0.01, groupsize=-1, bitwidth=8):
         W = torch.Tensor(self.orig_weights[op].copy())
 
         tick  = time.time()
@@ -591,13 +595,13 @@ class LearningGptqWeight:
             shape = W.shape
             rows = W.reshape(shape[0],-1).shape[0]
             columns = W.reshape(shape[0],-1).shape[1]
-            quanter = self.GptqQuantizer(shape, bits=8, perchannel=True, sym=True, mse=False)
+            quanter = self.GptqQuantizer(shape, bits=bitwidth, perchannel=True, sym=True, mse=False)
         elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
             W = W.t()
             shape = W.shape
             rows = W.shape[0]
             columns = W.reshape(W.shape[0],-1).shape[1]
-            quanter = self.GptqQuantizer(shape, bits=8, perchannel=False, sym=True, mse=False)
+            quanter = self.GptqQuantizer(shape, bits=bitwidth, perchannel=False, sym=True, mse=False)
         quanter.find_params(W, weight=True)
 
         H = torch.Tensor(self.H[op])
@@ -658,15 +662,15 @@ class LearningGptqWeight:
             self.update_weight(op, Q.numpy().transpose().reshape(shape))
             self.module.set_tensor(self.finetune_layer_weights[op], Q.numpy().transpose().reshape(shape))
 
-    def quant_requant_weight_orig(self, op):
+    def quant_requant_weight_orig(self, op, bits=8):
         weight_tmp = copy.deepcopy(self.orig_weights[op])
-        scales = self.weights_scales[op]/127.0
+        scales = self.weights_scales[op]/(2**(bits-1)-1)
         shape=weight_tmp.shape
         if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
             weight_tmp = (weight_tmp.reshape(shape[0],-1)/scales[:,None]).reshape(shape)
         if self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
             weight_tmp = weight_tmp/scales
-        weight = np.clip(np.round(weight_tmp), -128.0, 127.0)
+        weight = np.clip(np.round(weight_tmp), -(2**(bits-1)), (2**(bits-1)-1))
         if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
             self.module.set_tensor(self.finetune_layer_weights[op], (weight.reshape(shape[0],-1)*scales[:,None]).reshape(shape))
         elif self.parser.get_op_type_by_op_name(op) == 'top.MatMul':
@@ -675,7 +679,7 @@ class LearningGptqWeight:
             print("not support!")
             sys.exit(1)
 
-    def set_op_inputs(self, op, loop):
+    def set_op_inputs(self, op, loop, bitwidth=8):
         pre_ops = self.parser.get_pre_op_by_op_name(op)
         for pop in pre_ops:
             shape = ref_all_tensor.get(pop, loop).shape
@@ -691,9 +695,9 @@ class LearningGptqWeight:
             unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
             if scale != 1.0:
                 if self.support_unsigned:
-                    d = quant_requant_active(d, scale, unsigned)
+                    d = quant_requant_active(d, scale, unsigned, bits=bitwidth)
                 else:
-                    d = quant_requant_active(d, scale, False)
+                    d = quant_requant_active(d, scale, False, bits=bitwidth)
             self.module.set_tensor(pop, d)
 
     def update_weight(self, op, weight):
@@ -760,7 +764,7 @@ class LearningGptqWeight:
             d = ref_all_tensor.get(pop, loop).reshape(shape)
             return d.copy()
 
-    def op_first_input(self, op, loop):
+    def op_first_input(self, op, loop, bitwidth=8):
         pre_ops = self.parser.get_pre_op_by_op_name(op)
         if len(pre_ops) != 1:
             print(f'input num not 1! {op}')
@@ -779,9 +783,9 @@ class LearningGptqWeight:
         unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
         if scale != 1.0:
             if self.support_unsigned:
-                d = quant_requant_active(d, scale, unsigned)
+                d = quant_requant_active(d, scale, unsigned, bits=bitwidth)
             else:
-                d = quant_requant_active(d, scale, False)
+                d = quant_requant_active(d, scale, False, bits=bitwidth)
         return d
 
     def learning_one(self, epoch, op, total):
@@ -794,21 +798,29 @@ class LearningGptqWeight:
         pbar_detail = tqdm(np.arange(self.num_sample*sub_total))
         pbar_detail.set_description("Learning Gptq Weight, op %s" % op)
 
+        if self.chip == 'bm1686':
+            input_bw = 4
+            weight_bw = 4
+            output_bw = 8
+        else:
+            input_bw = 8
+            weight_bw = 8
+            output_bw = 8
         if epoch == 0:
-            self.quant_requant_weight_orig(op)
+            self.quant_requant_weight_orig(op, bits=weight_bw)
             for loop in np.arange(self.num_sample):
                 pbar_detail.set_postfix_str(
                     f"Cal orig loss {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
                 pbar_detail.update()
-                self.set_op_inputs(op, loop)
+                self.set_op_inputs(op, loop, bitwidth = input_bw)
                 outputs = self.module.invoke_at(op)
                 scale = self.scales[op][0]
                 unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
                 if self.compare_quanted:
                     if self.support_unsigned:
-                        outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
+                        outputs[0] = quant_requant_active(outputs[0], scale, unsigned, bits = output_bw)
                     else:
-                        outputs[0] = quant_requant_active(outputs[0], scale, False)
+                        outputs[0] = quant_requant_active(outputs[0], scale, False, bits = output_bw)
                 ref = ref_all_tensor.get(op, loop)
                 if op in self.pre_loss:
                     pre_loss = self.pre_loss[op] + cal_loss(outputs, ref)
@@ -827,21 +839,21 @@ class LearningGptqWeight:
             self.update_H(op, input, None)
 
         if epoch == self.epoch-1:
-            self.quant_requant_weight(op)
+            self.quant_requant_weight(op, bitwidth = weight_bw)
             for loop in np.arange(self.num_sample):
                 pbar_detail.set_postfix_str(
                     f"Comparing {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
                 pbar_detail.update()
-                self.set_op_inputs(op, loop)
+                self.set_op_inputs(op, loop, bitwidth=input_bw)
                 self.module.invoke_at(op)
                 outputs = self.module.get_tensor(op)
                 scale = self.scales[op][0]
                 unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
                 if self.compare_quanted:
                     if self.support_unsigned:
-                        outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
+                        outputs[0] = quant_requant_active(outputs[0], scale, unsigned, bits=output_bw)
                     else:
-                        outputs[0] = quant_requant_active(outputs[0], scale, False)
+                        outputs[0] = quant_requant_active(outputs[0], scale, False, bits=output_bw)
                 ref = ref_all_tensor.get(op, loop)
                 if op in self.post_loss:
                     post_loss = self.post_loss[op] + cal_loss(outputs, ref)
@@ -1531,7 +1543,6 @@ class LearningScale:
         for n in top_ops:
             if top_ops[n].type not in SKIP_OPERATION:
                 self.finetune_layers.append(n)
-        loger.logging(f'Learning Scale running on layers: {self.finetune_layers}')
 
     def set_op_inputs(self, op, loop):
         pre_ops = self.parser.get_pre_op_by_op_name(op)
@@ -1754,7 +1765,7 @@ if __name__ == '__main__':
     parser.add_argument('--calibration_table', required=True,
                         help='calibration table generated by calibration or tune tool')
     parser.add_argument('--chip', required=False, type=str,default='bm1684x',
-                        choices=['bm1684x', 'bm1684', 'cv183x',
+                        choices=['bm1684x', 'bm1686', 'cv183x',
                                  'cv182x', 'cv181x', 'cv180x'],
                         help='chip platform name')
     parser.add_argument('--opt', required=False, type=str,default='SGD',
@@ -1765,10 +1776,12 @@ if __name__ == '__main__':
                         help='to learn scale or weight or both')
     parser.add_argument('-o', '--output_calibration_table', required=False, default="./new_cali",
                         help='output of calibration table after learning')
+    parser.add_argument('-excepts', '--excepts', required=False, default="",
+                        help='learning excepts these layers, split with comma')
 
     args = parser.parse_args()
-    if args.chip != "bm1684x":
-        print("only support bm1684x till now!")
+    if args.chip != "bm1684x" and args.chip != "bm1686":
+        print("only support bm1684x and bm1686 till now!")
         sys.exit(1)
     if args.data_seg > args.input_num:
         args.data_seg = args.input_num
