@@ -493,7 +493,10 @@ visual.py
 .. code-block:: shell
 
    # 以使用9999端口为例
-   $ visual.py --fp32_mlir f32.mlir --quant_mlir quant.mlir --input top_input_f32.npz --port 9999
+   $ visual.py \
+     --f32_mlir netname.mlir \
+     --quant_mlir netname_int8_sym_tpu.mlir \
+     --input top_input_f32.npz --port 9999
 
 支持的功能如下:
 
