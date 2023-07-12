@@ -476,7 +476,7 @@ public:
     }
     init_qtable();
 
-    if (module::isBM1684XFamily() && !LoweringConfig::isQuantized) {
+    if (module::isBM1684XFamily() && !LoweringConfig::isQuantized && (module::getMode() == module::Mode::INT8 || module::getMode() == module::Mode::UINT8)) {
       qtable_process();
       module::updateModuleTypes();
     }
