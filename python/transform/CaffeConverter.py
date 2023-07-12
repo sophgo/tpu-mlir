@@ -65,6 +65,7 @@ class CaffeConverter(BaseConverter):
                 self.preprocess_args = preprocess_args
         self.caffeop_factory = {
             #pls add the Op alphabetically
+            "AbsVal": lambda layer: self.convert_absval_op(layer),
             'ArgMax': lambda layer: self.convert_argmax_op(layer),
             'BatchNorm': lambda layer: self.convert_batchnorm_op(layer),
             'BN': lambda layer: self.convert_bn_op(layer),
@@ -948,6 +949,19 @@ class CaffeConverter(BaseConverter):
                            ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
 
+    def convert_absval_op(self, layer):
+        assert (self.layerType(layer) ==  "AbsVal")
+        in_op = self.getOperand(layer.bottom[0])
+        output_shape = self.getShape(layer.top[0])
+        param = {
+            'loc': self.get_loc(layer.top[0])
+        }
+        new_op = top.AbsOp(self.mlir.get_tensor_type(output_shape),
+                           in_op,
+                           **param,
+                           ip=self.mlir.insert_point).output
+        self.addOperand(layer.top[0], new_op)
+   
     def convert_lstm_op(self, layer):
         assert (self.layerType(layer) == 'LSTM')
         op = self.getOperand(layer.bottom[0])
@@ -1520,7 +1534,7 @@ class CaffeConverter(BaseConverter):
         input_shape = self.getShape(layer.bottom[0])
         output_shape = input_shape
         attrs = {'loc': self.get_loc(layer.top[0])}
-        new_op = top.TanHOp(self.mlir.get_tensor_type(output_shape),
+        new_op = top.TanhOp(self.mlir.get_tensor_type(output_shape),
                             in_op,
                             **attrs,
                             ip=self.mlir.insert_point).output
