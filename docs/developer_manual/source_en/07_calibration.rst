@@ -174,9 +174,9 @@ when starting the docker, and the tool must be start in the same directory where
    * - --port
      - the TCP port used to listen to browser as server, default value is 10000
    * - --f32_mlir
-     - the float mlir net to compare to
+     - the float mlir net to compare to， this file is produced by model_transform, and usually with the name of netname.mlir, it is the base  float32 mlir net.
    * - --quant_mlir
-     - the quantized mlir net to compare with float net
+     - the quantized mlir net to compare with float net, this file is generated in model_deploy, usually with netname_int8_sym_tpu.mlir, _final.mlir to generate bmodel can't be used here.
    * - --input
      - input data to run the float net and quantized net for data compare, can be image or npy/npz file, can be the test_input when graph_transform
    * - --manual_run
