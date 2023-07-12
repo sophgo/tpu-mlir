@@ -225,6 +225,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - model
      - Y
      - Name of output model file (including path)
+   * - debug
+     - N
+     - to keep all intermediate files for debug
 
 .. _tools:
 
@@ -304,7 +307,10 @@ Example:
 .. code-block:: shell
 
    # use TCP port 9999 in this example
-   $ visual.py --fp32_mlir f32.mlir --quant_mlir quant.mlir --input top_input_f32.npz --port 9999
+   $ visual.py \
+     --f32_mlir netname.mlir \
+     --quant_mlir netname_int8_sym_tpu.mlir \
+     --input top_input_f32.npz --port 9999
 
 Supported functions:
 
@@ -324,3 +330,5 @@ Supported functions:
      - TCP port used for UI, default port is 10000，the port should be mapped when starting docker
    * - manual_run
      - if net will be automaticall inferenced when UI is opened, default is false for auto inference
+
+Notice: ``--debug`` flag should be opened during model_deploy.py to save intermediate files for visual.py. More details refer to (:ref:`visual-usage`)

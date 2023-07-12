@@ -151,6 +151,7 @@ The result is shown in the following figure (:ref:`yolov5s_cali`).
 
    yolov5s_cali calibration result
 
+.. _visual-usage:
 
 visual tool introduction
 ------------------------------
