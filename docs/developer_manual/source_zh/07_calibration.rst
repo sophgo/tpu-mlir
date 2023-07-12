@@ -204,9 +204,9 @@ auto-tune算法
    * - --port
      - 服务程序的TCP监听端口，默认值为10000
    * - --f32_mlir
-     - 量化前的浮点mlir网络的文件名
+     - 量化前的浮点mlir网络的文件名, 此文件为model_transform生成，一般为netname.mlir，是初始float32网络
    * - --quant_mlir
-     - 量化后的定点mlir网络的文件名
+     - 量化后的定点mlir网络的文件名，此文件为model_deploy生成，一般文件名为netname_int8_sym_tpu.mlir，生成bmodel用的_final.mlir不适用此工具。
    * - --input
      - 运行网络比较的输入样本数据，可以是jpeg图片文件或者npy/npz数据文件，一般可使用网络转换时的test_input
    * - --manual_run
