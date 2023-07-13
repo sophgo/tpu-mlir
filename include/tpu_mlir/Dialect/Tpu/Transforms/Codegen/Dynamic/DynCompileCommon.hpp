@@ -803,7 +803,7 @@ typedef struct {
   u64 buffer_addr;
   u8 scale[2];
   s8 rshift_num[2];
-  u8 opd_sign[2];
+  u8 opd_sign[3];
 } fw_broadcast_binary_layer_param_t;
 
 typedef struct {
