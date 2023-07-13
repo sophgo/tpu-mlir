@@ -95,7 +95,7 @@ protected:
   int64_t group_cost_;
   int64_t MAX_COST;
   int64_t opt_;
-  RunMode ranmode_;
+  RunMode runmode_;
 };
 
 std::unique_ptr<LgPass> CreateLayerGroupSearchPass(const LgOptions &options);
