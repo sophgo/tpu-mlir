@@ -39,7 +39,6 @@ struct TopFusePad : public OpRewritePattern<PadOp> {
     for (auto nextOp_iter = op->getUsers().begin();
          nextOp_iter != op->getUsers().end(); nextOp_iter++) {
       auto nextOp = *nextOp_iter;
-      auto op_name = nextOp->getName().getStringRef();
       if (isa<ConvOp>(nextOp)) {
         if (pad_value != 0)
           return failure();

@@ -52,7 +52,6 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
     else
       return failure();
 
-    auto inds_shape = module::getShape(op.getIndices());
     auto inds_elems = module::getNumElements(op.getIndices());
     auto ax = op.getAxis();
     // if indices are regular, try to convert to SliceOp

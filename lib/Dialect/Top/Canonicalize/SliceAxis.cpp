@@ -18,7 +18,6 @@ struct SliceAxisToStridedSlice : public OpRewritePattern<SliceAxisOp> {
   LogicalResult matchAndRewrite(SliceAxisOp op,
                                 PatternRewriter &rewriter) const override {
 
-    auto out_shape = module::getShape(op.getOutput());
     auto in_shape = module::getShape(op.getInput());
     int64_t dims = in_shape.size();
 

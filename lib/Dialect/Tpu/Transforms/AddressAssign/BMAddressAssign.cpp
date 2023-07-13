@@ -232,7 +232,6 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       for (auto joinOp_withType :
            llvm::zip(yieldOp->getOperands(), op->getResultTypes())) {
         auto joinOpValue = std::get<0>(joinOp_withType);
-        auto opType = std::get<1>(joinOp_withType);
         joinOpValue.setType(op.getResult(0).getType());
         address = module::getAddress(joinOpValue);
         for (auto v : joinOpValue.getDefiningOp()->getOperands()) {

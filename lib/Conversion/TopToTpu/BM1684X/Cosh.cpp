@@ -26,7 +26,6 @@ void CoshLowering::LoweringF32(PatternRewriter &rewriter,
 
 void CoshLowering::LoweringINT8(PatternRewriter &rewriter, top::CoshOp op,
                                 bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     [](double val) { return std::cosh(val); });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);

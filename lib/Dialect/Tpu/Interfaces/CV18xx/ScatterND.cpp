@@ -21,7 +21,6 @@ void tpu::ScatterNDOp::codegen_global_cv18xx(int64_t layer_id) {
   std::shared_ptr<std::vector<float>> indices;
   auto inputShape = module::getShape(getInputData());
   auto indicesShape = module::getShape(getIndices());
-  auto updatesShape = module::getShape(getUpdates());
   if (auto indicesOp = cast<top::WeightOp>(getIndices().getDefiningOp())) {
     indices = indicesOp.read<float>();
   } else {

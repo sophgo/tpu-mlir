@@ -25,7 +25,6 @@ void SqrtLowering::LoweringINT4(PatternRewriter &rewriter, top::SqrtOp op,
 }
 void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
                                 bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   auto table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                    [](double val) { return std::sqrt(val); });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);

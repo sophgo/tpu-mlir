@@ -274,7 +274,6 @@ LogicalResult tpu::MatMulOp::LocalGenSupport() {
   }
 
   auto Lshape = module::getShape(ins[0]);
-  auto Rshape = module::getShape(ins[1]);
   int left_num_dims = module::getShape(ins[0]).size();
   int right_num_dims = module::getShape(ins[1]).size();
   if (((left_num_dims == 4 && Lshape[1] < Lshape[2]) ||

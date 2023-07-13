@@ -22,7 +22,6 @@ void SoftplusLowering::LoweringF32(PatternRewriter &rewriter,
 
 void SoftplusLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::SoftplusOp op, bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   auto table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
       [](double val) { return std::log1pl(std::exp(val)); }, 32);

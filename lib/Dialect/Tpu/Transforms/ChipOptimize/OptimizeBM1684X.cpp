@@ -25,7 +25,6 @@ public:
 
     auto left = op.getInput();
     auto right = op.getRight();
-    auto out = op.getResult();
 
     auto stype = module::getStorageType(left);
     if (stype.isF32()) {

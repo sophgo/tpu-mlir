@@ -25,7 +25,6 @@ void SiLULowering::LoweringINT4(PatternRewriter &rewriter, top::SiLUOp op,
 }
 void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
                                 bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   auto table =
       create_lookup_table(op.getInput(), op.getOutput(), asymmetric, [](double val) {
         return val / (1 + std::exp(-val));

@@ -14,7 +14,6 @@ namespace cv18xx {
 static double active_softplus(double val) { return std::log(std::exp(val) + 1); }
 void SoftplusLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::SoftplusOp op, bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
       [](double val) { return std::log(std::exp(val) + 1); });

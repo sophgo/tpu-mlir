@@ -27,7 +27,7 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
     WeightOp weight_op[2] = {NULL};
     SoftmaxOp softmax_op = NULL;
     for (auto opd:op.getOperands()){
-      if (weight_op[weight_cnt] = dyn_cast<WeightOp>(opd.getDefiningOp())) {
+      if ((weight_op[weight_cnt] = dyn_cast<WeightOp>(opd.getDefiningOp()))) {
         weight_cnt ++;
         if (weight_cnt > 2)
           return failure();
@@ -38,7 +38,7 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
       return failure();
 
     for (auto out:op.getOutput().getUsers())
-      if (softmax_op = dyn_cast<SoftmaxOp>(out))
+      if ((softmax_op = dyn_cast<SoftmaxOp>(out)))
         break;
     if (softmax_op == NULL)
       return failure();

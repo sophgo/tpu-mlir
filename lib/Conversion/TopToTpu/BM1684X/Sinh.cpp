@@ -26,7 +26,6 @@ void SinhLowering::LoweringF32(PatternRewriter &rewriter,
 
 void SinhLowering::LoweringINT8(PatternRewriter &rewriter, top::SinhOp op,
                                 bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     [](double val) { return std::sinh(val); });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);

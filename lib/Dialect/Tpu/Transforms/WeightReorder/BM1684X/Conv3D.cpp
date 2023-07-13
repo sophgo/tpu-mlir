@@ -53,7 +53,6 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
 
   auto attr = op.parseParam();
   // filter reorder
-  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_type = module::getStorageType(op.getFilter());
   auto data_type = BM168x::getDataType(op.getFilter());
   auto fmt_bytes = BM168x::getFmtBytes(data_type);

@@ -286,7 +286,6 @@ flatbuffers::Offset<Routine> CviCpuRoutine::build() {
   buildInputsOutputs(fbb_, inputs, outputs, fbInputs, fbOutputs);
   std::vector<uint8_t> args;
   serializeFuncArgs(args);
-  auto fbName = fbb_.CreateString(name);
   auto fbRoutine = CreateCpuRoutineDirect(fbb_, name.c_str(), &args);
   return CreateRoutine(fbb_, RoutineType_CPU, fbInputs, fbOutputs, 0,
                        fbRoutine);
@@ -830,7 +829,7 @@ FBTensorVector CviModelBuilder::buildNeuronMap() {
                        << "  y aligned:" << y_align << "  w aligned:" << w_align
                        << "  c aligned:" << channel_align
                        << "  tensor size:" << op_info.size
-                       << " tensor dtype:" << op_info.dtype
+                       << " tensor dtype:" << std::to_string(op_info.dtype)
                        << "  dsize:" << dsize << "\n";
         }
       }

@@ -12,7 +12,6 @@ LogicalResult top::ReduceOp::inference(InferenceParameter &p) {
   float *output_v = p.outputs[0];
   auto type_val = getMode().str();
   auto axes_val = module::getI64Array(getAxes());
-  auto out_shape = module::getShape(getOutput());
   auto input_shape = module::getShape(getInput());
   // calc dims
   int num_dims = input_shape.size();

@@ -44,7 +44,6 @@ int64_t tpu::RMSNormOp::getBufferSize_bm1684x(
   const bool have_weight = !getGamma().getType().isa<NoneType>();
 
   if (group_type == GROUP_SMALL_C) {
-    auto shape = module::getShape(getInput());
   }
   param.common.eps = getEps().convertToDouble();
   param.common.affine = have_weight;

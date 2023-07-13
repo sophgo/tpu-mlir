@@ -176,7 +176,6 @@ int64_t tpu::Pool2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   auto attrs = parseParam();
   auto &common = spec.common;
   SpecAssign(attrs, common);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
   auto gi = getGroupInfo(0, 0, 0, 0, 0);
 
   spec.buffer_addr = gi.buffer_addr;

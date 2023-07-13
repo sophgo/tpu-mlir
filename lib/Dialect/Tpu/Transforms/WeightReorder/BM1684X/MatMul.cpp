@@ -100,7 +100,6 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
       for (size_t i = 0; i < p.N; ++i) {
         bias_quant->data()[i] += p.input_zp * p.right_zp * p.K;
       }
-      auto stype = module::getStorageType(op.getBias());
       int64_t left_num_dims = module::getShape(op.getInput()).size();
       std::vector<int64_t> bias_shape(left_num_dims, 1);
       bias_shape[left_num_dims - 1] = p.N;

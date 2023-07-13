@@ -212,7 +212,6 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
 
   auto attr = op.parseParam();
   // first lower weight
-  auto shape = module::getShape(op.getFilter());
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                        attr.kw};

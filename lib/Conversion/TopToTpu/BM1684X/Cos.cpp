@@ -25,7 +25,6 @@ void CosLowering::LoweringF32(PatternRewriter &rewriter, top::CosOp op) const {
 
 void CosLowering::LoweringINT8(PatternRewriter &rewriter, top::CosOp op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     [](double val) { return std::cos(val); });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);

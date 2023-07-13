@@ -99,7 +99,6 @@ int64_t tpu::DequantIntOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(dyn_dequant_int_local_spec_t);
   dyn_dequant_int_local_spec_t param = {0};
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
   auto gi = getGroupInfo(0, 0, 0, 0, 0);
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;
   auto qtype = module::getUniformQuantizedType(getInput());

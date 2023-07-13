@@ -97,7 +97,6 @@ LogicalResult tpu::Conv3DOp::inference(InferenceParameter &p) {
   } else if (module::isUniformQuantized(getOutput()) &&
              out_type.isInteger(8) /* for BM1684 Conv3D */) {
     auto o_s = getOutput().getType().cast<RankedTensorType>().getShape();
-    auto sType = module::getStorageType(getOutput());
     int64_t n = o_s[0], c = o_s[1], d = o_s[2], h = o_s[3], w = o_s[4];
     auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto rshift_v = module::getI64Array(getRshift().value());

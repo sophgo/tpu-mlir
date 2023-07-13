@@ -86,6 +86,8 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
   case ActiveMode::HSIGMOID:
     buffer_size = in_lmem_bytes;
     break;
+  default:
+  break;
   }
   return buffer_size;
 }

@@ -13,7 +13,6 @@ namespace tpu_mlir {
 namespace cv18xx {
 void SubConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::SubConstOp op, bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   double const_val = op.getConstVal().convertToDouble();
   bool reverse = op.getIsReverse();
   auto active_subconst = [const_val, reverse](double val) {

@@ -66,7 +66,6 @@ size_t Arch::get_gmem_bytes(Value v) {
   if (module::isWeight(v)) {
     return module::getBytes(v);
   }
-  auto type = v.getType().cast<RankedTensorType>();
   std::vector<int64_t> shape = module::getShape(v);
   auto stype = module::getStorageType(v);
   int elm_bytes = stype.getIntOrFloatBitWidth() / 8;

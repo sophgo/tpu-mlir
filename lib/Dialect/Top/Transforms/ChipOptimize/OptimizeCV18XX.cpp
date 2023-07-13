@@ -655,7 +655,6 @@ public:
         double in_thr, out_thr;
         RankedTensorType type1, type2;
         if (module::isCalibratedType(ori_out)) {
-          auto itype = module::getCalibratedType(input);
           auto otype = module::getCalibratedType(ori_out);
           auto caliType1 = quant::CalibratedQuantizedType::get(
               rewriter.getF32Type(), -in_thr, in_thr);

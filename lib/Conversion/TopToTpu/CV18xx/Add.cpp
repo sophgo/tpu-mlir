@@ -46,7 +46,6 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
       auto weightOp =
           cast<top::WeightOp>(op->getOperand(const_idx).getDefiningOp());
       auto const_f32 = weightOp.read<float>();
-      auto const_shape = module::getShape(weightOp.getResult());
       auto const_size = const_f32->size();
       auto max_elem = findMaxabs(const_f32->data(), const_size);
 

@@ -75,7 +75,6 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   auto filter_i8 = filterOp.read<int8_t>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
-  auto filter_type = module::getStorageType(op.getFilter());
   int use_3ic_optimize = 0;
   if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
       attr.kw > 1) {

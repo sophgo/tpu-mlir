@@ -213,7 +213,6 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
         rewriter.create<tpu::SubOp>(name_loc, newType, operands, attrs);
     subout = newOp.getOutput();
   }
-  auto newOp = rewriter.create<tpu::SubOp>(name_loc, newType, operands, attrs);
   // requant to int8
   QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei,
                      &shifti);

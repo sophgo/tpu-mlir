@@ -29,7 +29,6 @@ struct MeshGrid2Mul : public OpRewritePattern<MeshGridOp> {
     std::vector<float> data(length, 1);
     int64_t input_num = op.getInputs().size();
     auto weight_type = RankedTensorType::get(out_shape, stype);
-    auto new_op = top::WeightOp::create(op, "const", data, weight_type);
     std::vector<NamedAttribute> attrs;
     for (int64_t i = 0; i < input_num; ++i) {
       int64_t idx = op.getIsReverse() ? (input_num - 1 - i) : i;

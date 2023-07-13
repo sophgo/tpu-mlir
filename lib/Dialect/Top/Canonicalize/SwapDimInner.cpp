@@ -17,7 +17,6 @@ struct TopMultiSwapDimMergeToOne : public OpRewritePattern<SwapDimInnerOp> {
   LogicalResult matchAndRewrite(SwapDimInnerOp op,
                                 PatternRewriter &rewriter) const override {
     auto nextOp = *op->getUsers().begin();
-    auto users = op->getUsers();
     if (!isa<SwapDimInnerOp>(nextOp)) {
       return failure();
     }

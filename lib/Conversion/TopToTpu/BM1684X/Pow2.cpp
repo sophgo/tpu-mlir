@@ -36,7 +36,6 @@ void Pow2Lowering::LoweringF32(PatternRewriter &rewriter, top::Pow2Op op) const 
 
 void Pow2Lowering::LoweringINT8(PatternRewriter &rewriter, top::Pow2Op op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   double g_x = op.getConstVal().convertToDouble();
   auto table =
       create_lookup_table(op.getInput(), op.getOutput(), asymmetric,

@@ -156,7 +156,6 @@ int32_t tpu::Conv2DOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
   fw_conv_layer_param_t fw_conv_layer_param = {0};
   assign_fw_param((void *)&fw_conv_layer_param);
 
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
   fw_conv_layer_param.c_idx = 0; // not support c_slice now

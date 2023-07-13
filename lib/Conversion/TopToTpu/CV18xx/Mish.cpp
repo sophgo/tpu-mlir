@@ -14,7 +14,6 @@ namespace cv18xx {
 
 void MishLowering::LoweringINT8(PatternRewriter &rewriter, top::MishOp op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     activate_f(my_mish_activate));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);

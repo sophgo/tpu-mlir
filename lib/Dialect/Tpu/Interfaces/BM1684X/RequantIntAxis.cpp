@@ -101,8 +101,6 @@ int64_t tpu::RequantIntAxisOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(dyn_requant_int_local_param_t);
   auto gi = getGroupInfo(0, 0, 0, 0, 0);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
-  auto quant_gi = LocalGenInterface::getGroupInfo(getQuant(), 0, 0);
 
   dyn_requant_int_local_param_t param = {0};
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;

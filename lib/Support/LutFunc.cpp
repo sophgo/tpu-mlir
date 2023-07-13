@@ -88,7 +88,7 @@ Value create_lookup_table(Operation *owner, const std::vector<int> &table) {
 static void gen_bf16_base_table(float start, float end, int table_hw,
                                 float *table, activate_f &func) {
   int half = table_hw / 2;
-  int range = abs(end - start);
+  int range = std::abs(end - start);
   float interval = (float)range / (float)table_hw;
   float x_value;
   float y_value;

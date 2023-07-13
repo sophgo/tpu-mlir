@@ -166,7 +166,6 @@ void attention_reorder(PatternRewriter &rewriter, top::AttentionOp op, Type w_ty
   }
   auto q_shape = module::getShape(op.getQueriesWeight());
   auto k_shape = module::getShape(op.getKeysWeight());
-  auto o_shape = module::getShape(op.getOutWeight());
 
   auto new_op = weight_reorder<T1>(op, w_type, q_shape[0], k_shape[0], k_shape[1]);
   op->setOperand(3, new_op);

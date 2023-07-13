@@ -28,7 +28,6 @@ static void tans_shape(std::vector<int64_t> &order, int64_t axis, bool front) {
 static mlir::RankedTensorType
 getQuantInt8TypeNewShape(Value v, std::vector<int64_t> new_shape,
                          bool asymmetric) {
-  auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto cali_type = module::getCalibratedType(v);
   auto min = cali_type.getMin();

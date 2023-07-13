@@ -96,7 +96,6 @@ void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
                                          local_sec_info_t &sec_info,
                                          int64_t layer_id) {
   auto attr = parseParam();
-  auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
   auto w_gi = LocalGenInterface::getGroupInfo(getFilter());

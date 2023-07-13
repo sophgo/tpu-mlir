@@ -208,7 +208,6 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
     BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
   }
   auto gi = getGroupInfo(0, 0, 0, 0, 0);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
 
   param.spec.buffer_local_addr = gi.buffer_addr;
   auto &common = param.spec.common;

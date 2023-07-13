@@ -64,7 +64,6 @@ int64_t top::DeformConv2DOp::getFLOPs() {
 }
 
 LogicalResult top::DeformConv2DOp::init(InferenceParameter &p) {
-  auto attr = parseParam();
   auto num = module::getNumElements(getOutput());
   float* buffer = new float[num];
   p.handle = (void *)buffer;

@@ -57,7 +57,6 @@ deform_gather_attr_t tpu::DeformGatherOp::parseParam() {
 }
 
 LogicalResult tpu::DeformGatherOp::init(InferenceParameter& p) {
-  auto attr = parseParam();
   auto num = module::getNumElements(getOutput()); // output size, buffer size
   float *buffer = new float[num];
   p.handle = (void *)buffer;

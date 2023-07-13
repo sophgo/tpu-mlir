@@ -129,7 +129,6 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
 
   // bias op
   if (attr.has_bias) {
-    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     auto bias_type = module::getElementType(op.getBias());
     int64_t bias_shape[5] = {1, attr.oc, 1, 1, 1};
     auto new_type = RankedTensorType::get(bias_shape, bias_type);

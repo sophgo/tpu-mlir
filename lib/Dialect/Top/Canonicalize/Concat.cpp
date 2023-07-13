@@ -51,7 +51,6 @@ struct ConcatToSwapDimInner : public OpRewritePattern<ConcatOp> {
     auto offset1 = module::getI64Array(slice1_op.getOffset());
     // auto oshape0 = module::getShape(slice0_op.getOutput());
     auto oshape1 = module::getShape(slice1_op.getOutput());
-    auto ishape = module::getShape(slice0_op.getInput());
 
     int axis = concat_op.getAxis();
     if (offset0->at(axis) != oshape1[axis] || offset1->at(axis) != 0) {

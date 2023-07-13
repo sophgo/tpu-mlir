@@ -201,9 +201,6 @@ int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) {
     BM168x::fix_shape(output_spec->at(0), {attr.n, attr.oc, attr.oh, attr.ow});
   }
   auto gi = getGroupInfo(0, 0, 0, 0, 0);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
-  auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), 0, 0);
-  auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), 0, 0);
 
   dyn_deconv_local_spec_t param = {0};
   param.buffer_local_addr = gi.buffer_addr;
