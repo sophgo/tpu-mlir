@@ -267,7 +267,7 @@ static bool group_type_check(const LgInfo &lg_info) {
 
 bool GroupMethod::dynamic_group_valid_check(const LgInfo &lg_info) {
   auto res = true;
-  if (ranmode_ == RunMode::TPU_DYNAMIC && lg_info.group_ops.size() > 1) {
+  if (runmode_ == RunMode::TPU_DYNAMIC && lg_info.group_ops.size() > 1) {
     // Condition 1
     // Dynamic Backend will choose the first op's batch as the whole group's batch
     // Need make sure dynamic group's ops have the same batch
@@ -785,7 +785,7 @@ void GroupMethod::simple_layer_group(
 void GroupMethod::process(std::vector<LgInfo> &lg_infos,
                           const std::vector<Operation *> &subnet_ops) {
   auto funcOp = cast<FuncOp>(subnet_ops[0]->getParentOp());
-  ranmode_ = getRunMode(funcOp);
+  runmode_ = getRunMode(funcOp);
   switch (opt_) {
   case 1:
     simple_layer_group(lg_infos, subnet_ops);
