@@ -25,7 +25,6 @@ void SinLowering::LoweringF32(PatternRewriter &rewriter, top::SinOp op) const {
 
 void SinLowering::LoweringINT8(PatternRewriter &rewriter, top::SinOp op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     [](double val) { return std::sin(val); });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);

@@ -236,9 +236,9 @@ struct MergeGelu : public OpRewritePattern<MulOp> {
     for (auto in:op.getInputs()) {
       if (auto weight_op = dyn_cast<WeightOp>(in.getDefiningOp()))
         return failure();
-      else if (addconst_op = dyn_cast<AddConstOp>(in.getDefiningOp()))
+      else if ((addconst_op = dyn_cast<AddConstOp>(in.getDefiningOp())))
         continue;
-      else if (mulconst_op = dyn_cast<MulConstOp>(in.getDefiningOp()))
+      else if ((mulconst_op = dyn_cast<MulConstOp>(in.getDefiningOp())))
         continue;
       else
         return failure();

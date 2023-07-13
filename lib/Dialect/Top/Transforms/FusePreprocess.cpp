@@ -20,7 +20,6 @@ public:
   FusePreprocessPass() {}
   void runOnOperation() override {
     llvm::errs() << "Entering FusePreprocessPass.\n";
-    auto module_ = getOperation();
     auto ctx_ = &getContext();
     auto fn = module::getMainFuncOp();
     auto builder = OpBuilder(ctx_);

@@ -19,7 +19,6 @@ LogicalResult tpu::AttentionOp::init(InferenceParameter &p) {
   auto in_shape = module::getShape(getInput());
   auto key_shape = module::isNone(getKeys()) ? in_shape : module::getShape(getKeys());
   auto queries_shape = module::getShape(getQueriesWeight());
-  auto out_shape = module::getShape(getOutput());
   auto out_type = module::getStorageType(getOutput());
   int batch = in_shape[0];
   int M_q = in_shape[1];

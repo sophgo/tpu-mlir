@@ -13,7 +13,6 @@ namespace tpu_mlir {
 namespace cv18xx {
 void GELULowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::GELUOp op, bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
       [](double val) {return 0.5 * val * (1.0 + std::erf(val / std::sqrt(2.0)));});

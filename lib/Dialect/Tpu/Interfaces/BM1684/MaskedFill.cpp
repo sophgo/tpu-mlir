@@ -67,8 +67,6 @@ void tpu::MaskedFillOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       LocalGenInterface::getGroupInfo(getBrn(), n_step, h_step, 0, 0, 0);
   auto mask_ginfo =
       LocalGenInterface::getGroupInfo(getCond(), n_step, h_step, 0, 0, 0);
-  auto output_ginfo =
-      LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step, 0, 0, 0);
 
   float value = getConstVal().convertToDouble();
   BM1684::instance().dl_nodechip_masked_fill_local(

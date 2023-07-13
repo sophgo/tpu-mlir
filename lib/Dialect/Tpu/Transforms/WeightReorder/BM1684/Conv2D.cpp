@@ -88,7 +88,6 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
       new_kw = (attr.kw - 1) * factor_dw + 1;
     }
     auto input_shape = module::getShape(op->getOperand(0));
-    auto output_shape = module::getShape(op->getResult(0));
     auto filter_op = op.getFilter().getDefiningOp<top::WeightOp>();
     auto filter_type = module::getStorageType(op.getFilter());
     auto filter_i8 = filter_op.read<int8_t>();

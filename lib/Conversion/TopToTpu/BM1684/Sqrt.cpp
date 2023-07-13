@@ -22,7 +22,6 @@ void SqrtLowering::LoweringF32(PatternRewriter &rewriter,
 
 void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
                                 bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   auto table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
       [](double val) { return std::sqrt(val); }, 32);

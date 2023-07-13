@@ -52,7 +52,6 @@ void HardSwishLowering::LoweringF32(PatternRewriter &rewriter,
 void HardSwishLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::HardSwishOp op,
                                      bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
       [](double x) { return x * std::min(std::max(x + 3, 0.), 6.) / 6.; }, 32);

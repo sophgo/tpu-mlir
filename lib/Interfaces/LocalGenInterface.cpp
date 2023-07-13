@@ -134,7 +134,6 @@ static int bcast_type(int s0, int s1) {
 }
 
 LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
-  auto out_shape = module::getShape(op->getResult(0));
   auto lhs_shape = module::getShape(op->getOperand(0));
   auto rhs_shape = module::getShape(op->getOperand(1));
   if (lhs_shape.size() != rhs_shape.size())

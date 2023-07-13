@@ -17,7 +17,6 @@ static inline double elu(double x, double alpha) {
 void EluLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::EluOp op, bool asymmetric) const {
   const double alpha_ = op.getAlpha().convertToDouble();
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric,
       [alpha_](double val) { return elu(val, alpha_); });

@@ -14,7 +14,6 @@
 namespace tpu_mlir {
 namespace cv18xx {
 void loweringRetinaFaceDetection(PatternRewriter &rewriter, top::RetinaFaceDetectionOp op) {
-  auto o_shape = module::getShape(op.getOutput());
   // lowering to cpu op
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> param;

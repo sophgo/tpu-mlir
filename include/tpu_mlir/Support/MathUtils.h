@@ -45,7 +45,7 @@ typedef enum {
 // =======================
 template <typename T>
 static inline T abs_ceiling_func(T numerator, T denominator) {
-  return (abs(numerator + denominator) - 1) / abs(denominator);
+  return (std::abs(numerator + denominator) - 1) / std::abs(denominator);
 }
 
 template <typename U, typename V>

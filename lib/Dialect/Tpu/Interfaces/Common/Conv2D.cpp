@@ -96,7 +96,6 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     }
   } else if (module::isUniformQuantized(getOutput())) {
     int64_t n, c, h, w;
-    auto sType = module::getStorageType(getOutput());
     module::getNCHW(getOutput(), n, c, h, w);
     auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto rshift_v = module::getI64Array(getRshift().value());

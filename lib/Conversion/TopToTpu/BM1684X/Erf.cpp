@@ -24,7 +24,6 @@ void ErfLowering::LoweringINT4(PatternRewriter &rewriter, top::ErfOp op,
 }
 void ErfLowering::LoweringINT8(PatternRewriter &rewriter, top::ErfOp op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     [](double val) { return std::erf(val); });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);

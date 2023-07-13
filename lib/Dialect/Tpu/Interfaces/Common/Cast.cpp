@@ -181,7 +181,6 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
     }
     if (is_qtype_out && false == is_qtype_in && false == is_qtype_pre_in) {
       auto pre_stype = module::getStorageType(pre_in);
-      auto in_stype = module::getStorageType(in);
       if (pre_stype.isa<mlir::FloatType>()) {
         // for example, f32 cast f16, f16 cast int8 => f32 cast int8
         op->setOperand(0, pre_in);

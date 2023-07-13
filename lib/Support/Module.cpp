@@ -267,7 +267,6 @@ size_t getBytes(Value v) {
 }
 
 double getDtypeSize(Value v) {
-  auto type = v.getType().cast<RankedTensorType>();
   auto etype = getStorageType(v);
   double elm_bytes = (double)etype.getIntOrFloatBitWidth() / 8;
   return elm_bytes;

@@ -18,7 +18,6 @@ static double active_logsigmoid(double val) {
 
 void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
                                    bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table =
       create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                           op.getLog() ? active_logsigmoid : active_sigmoid);

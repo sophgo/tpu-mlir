@@ -18,7 +18,6 @@ LogicalResult tpu::RequantFpAxisOp::init(InferenceParameter &p) {
 void tpu::RequantFpAxisOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
-  auto i_sType = module::getStorageType(getInput());
   auto o_sType = module::getStorageType(getOutput());
   auto o_qtype = module::getUniformQuantizedType(getOutput());
 

@@ -97,7 +97,6 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
   auto neuron_sizes_fb = builder.CreateVector(neuron_sizes);
   // codegen all subnet
   cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
-  auto main_func = module::getMainFuncOp();
   std::vector<Offset<bmodel::SubNet>> subnet_v;
   auto context = std::make_unique<Context>();
   int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;

@@ -139,7 +139,6 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
 
   LogicalResult matchAndRewrite(ReshapeOp op,
                                 PatternRewriter &rewriter) const override {
-    auto input = op.getInput();
     MulOp mul_op = dyn_cast<MulOp>(op.getInput().getDefiningOp());
     if (mul_op == NULL || !mul_op.getOutput().hasOneUse())
       return failure();

@@ -16,7 +16,6 @@ namespace cv18xx {
 
 void loweringDetectionOutput(PatternRewriter &rewriter,
                              top::DetectionOutputOp op) {
-  auto o_shape = module::getShape(op.getOutput());
   // lowering to cpu op
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> param;

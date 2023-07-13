@@ -158,7 +158,6 @@ public:
     if (this->isInt8 || castOp1) {
       quant::UniformQuantizedType qtype;
       if (castOp0) { // FP --> INT8 mix precision case
-        auto cali_type = module::getCalibratedType(op.getOutput());
         int64_t zeropoint = 0;
         module::getScaleAndZeroPoint(op.getOutput(), qscale, zeropoint,
                                      this->sign, module::isAsymmetric());

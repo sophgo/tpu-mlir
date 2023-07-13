@@ -16,7 +16,6 @@ void tpu::TileOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::TileOp::LocalGenSupport() { return failure(); }
 
 LogicalResult tpu::TileOp::inference(InferenceParameter &p) {
-  auto out_shape = module::getShape(getOutput());
   auto in_shape = module::getShape(getInput());
   auto signed_axis = getAxisAttr().getValue().getSExtValue();
   auto axis_ = signed_axis > 0 ? signed_axis : 0;

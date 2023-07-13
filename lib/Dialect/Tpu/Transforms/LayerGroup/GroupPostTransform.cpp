@@ -44,7 +44,6 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
   auto ori_type = RankedTensorType::get(ori_filter_shape, filter_type);
   conv3d_op.getFilter().setType(ori_type);
   if (attr.has_bias) {
-    auto biasOp = conv3d_op.getBias().getDefiningOp<top::WeightOp>();
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
     auto bias_type = module::getStorageType(conv3d_op.getBias());
     auto new_type = RankedTensorType::get(bias_shape, bias_type);

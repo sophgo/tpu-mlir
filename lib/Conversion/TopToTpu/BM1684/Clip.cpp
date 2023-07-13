@@ -23,7 +23,6 @@ void ClipLowering::LoweringF32(PatternRewriter &rewriter, top::ClipOp op) const 
   auto max_op = rewriter.create<tpu::MaxConstOp>(max_loc, type,
                                                ValueRange{op.getInputs()}, attrs);
 
-  auto min_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_min"));
   attrs.clear();
   attrs.push_back(rewriter.getNamedAttr(
       "const_val", op.getMaxAttr()));

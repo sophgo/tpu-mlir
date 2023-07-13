@@ -42,7 +42,6 @@ void PowLowering::LoweringF32(PatternRewriter &rewriter, top::PowOp op) const {
 void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
                                bool asymmetric) const {
   double g_ex = 0;
-  auto stype = module::getStorageType(op.getOutput());
   g_ex = op.getExponent().convertToDouble();
   auto table =
       create_lookup_table(op.getInput(), op.getOutput(), asymmetric,

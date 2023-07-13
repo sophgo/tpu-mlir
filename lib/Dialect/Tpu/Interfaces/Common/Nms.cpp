@@ -33,14 +33,14 @@ LogicalResult tpu::NmsOp::inference(InferenceParameter &p) {
   param.score = p.inputs[1];
   int output_size = module::getNumElements(getOutput());
   ;
-  float output_tensor_data[output_size] = {0};
+std::vector<float> output_tensor_data(output_size, 0);
   param.inputs = input_list;
-  param.output = output_tensor_data;
+  param.output = output_tensor_data.data();
   param.iou_threshold = p.inputs[3][0];
   param.score_threshold = p.inputs[4][0];
   NmsFunc func(param);
   auto true_num = func.invoke();
-  auto tmp = (int *)output_tensor_data;
+  auto tmp = (int *)output_tensor_data.data();
   for (int64_t j = 0; j < true_num; ++j) {
     p.outputs[0][j] = (float)tmp[j];
   }

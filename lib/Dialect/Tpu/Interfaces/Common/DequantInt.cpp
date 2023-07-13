@@ -18,7 +18,6 @@ LogicalResult tpu::DequantIntOp::init(InferenceParameter &p) {
 void tpu::DequantIntOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
-  auto o_sType = module::getStorageType(getOutput());
   auto qtype = module::getUniformQuantizedType(getInput());
   int64_t num_elem = module::getNumElements(getInput());
   int64_t shift_val = getShift();

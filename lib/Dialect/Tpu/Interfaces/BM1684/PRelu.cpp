@@ -19,7 +19,6 @@ void tpu::PReluOp::codegen_global_bm1684() {
   auto slope_global_addr = module::getAddress(slope);
   auto top_global_addr = module::getAddress(getOutput());
   auto slope_num = module::getNumElements(slope);
-  auto slope_type = module::getStorageType(slope);
   int channel_shared = slope_num == 1 ? 1 : 0;
 
   if (module::isUniformQuantized(getOutput())) {

@@ -83,8 +83,6 @@ static void LoweringArg(PatternRewriter &rewriter, top::ArgOp &op,
   if (with_conf) {
     cpu_result_types.emplace_back(RankedTensorType::get(
         module::getShape(op.getValues()), rewriter.getF32Type()));
-    auto cpu_op = rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(
-        op, cpu_result_types, operands, attrs);
 
   } else {
     auto cpu_op = rewriter.create<tpu::GenericCpuOp>(

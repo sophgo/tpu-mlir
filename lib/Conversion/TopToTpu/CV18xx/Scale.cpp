@@ -13,7 +13,6 @@ namespace tpu_mlir {
 namespace cv18xx {
 
 static void ConvertToDw(PatternRewriter &rewriter, top::ScaleOp op) {
-  auto input_shape = module::getShape(op.getInput());
 
   auto cur_scale = dyn_cast<top::WeightOp>(op.getScale().getDefiningOp());
   auto cur_bias = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());

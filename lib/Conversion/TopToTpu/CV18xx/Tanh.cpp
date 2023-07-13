@@ -15,7 +15,6 @@ static double active_tanh(double val) { return std::tanh(val); }
 
 void TanhLowering::LoweringINT8(PatternRewriter &rewriter, top::TanhOp op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     activate_f(active_tanh));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);

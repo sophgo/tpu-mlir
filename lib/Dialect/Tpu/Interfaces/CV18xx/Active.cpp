@@ -43,6 +43,7 @@ void tpu::ActiveOp::codegen_global_cv18xx(int64_t layer_id) {
           CVK_FMT_BF16);
     }
   } break;
+    default: break;
   }
 }
 
@@ -68,7 +69,6 @@ void tpu::ActiveOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   auto shape = module::getShape(getInput());
   module::getNCHW(shape, n, c, h, w);
 
-  auto gi = getGroupInfo(n_step, h_step, 0, 0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
   std::vector<laddr_t> la_input(1);

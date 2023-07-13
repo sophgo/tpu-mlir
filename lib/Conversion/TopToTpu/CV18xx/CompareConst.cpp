@@ -28,7 +28,7 @@ void CompareConstLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void CompareConstLowering::LoweringBF16(
     PatternRewriter &rewriter, top::CompareConstOp CompareConstOp) const {
-  if (!is_valid) {
+  if (!is_valid(CompareConstOp)) {
     llvm_unreachable("Not support now.");
   }
   lowering_common_bf16<tpu::CompareConstOp>(rewriter, CompareConstOp);

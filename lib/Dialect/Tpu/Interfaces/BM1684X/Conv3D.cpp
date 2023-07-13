@@ -181,7 +181,6 @@ int64_t tpu::Conv3DOp::dyn_codegen_local_bm1684x(void *buffer) {
     return sizeof(dyn_conv3d_local_param_t);
   auto attr = parseParam();
   auto gi = getGroupInfo(0, 0, 0, 0, 0);
-  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
 
   dyn_conv3d_local_param_t param = {0};
   if (attr.has_bias) {

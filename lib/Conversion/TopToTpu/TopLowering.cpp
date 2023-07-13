@@ -43,7 +43,6 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getSI32IntegerAttr(rshift)));
     auto in_type = in.getType().cast<RankedTensorType>();
-    auto in_shape = in_type.getShape();
     builder.setInsertionPointAfterValue(in);
     auto mrOp = builder.create<tpu::MulShiftOp>(name_loc, new_type,
                                                 ValueRange{in}, attrs);
@@ -81,7 +80,7 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   float offset = out_zp;
   auto in_shape = module::getShape(in);
   auto rq_in = in;
-  if (in_stype.isInteger(8) || in_zp != 0 && out_zp != 0) {
+  if (in_stype.isInteger(8) || (in_zp != 0 && out_zp != 0)) {
     auto add_name = in_name + "_add_zp";
     auto add_type = RankedTensorType::get(in_shape, builder.getI32Type());
     std::vector<NamedAttribute> attrs;

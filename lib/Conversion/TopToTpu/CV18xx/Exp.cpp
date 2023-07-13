@@ -15,7 +15,6 @@ static double active_exp(double val) { return std::exp(val); }
 
 void ExpLowering::LoweringINT8(PatternRewriter &rewriter, top::ExpOp op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     activate_f(active_exp));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);

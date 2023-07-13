@@ -19,7 +19,6 @@ static void LoweringLSTM(PatternRewriter &rewriter, top::LSTMOp op, Type type) {
   for (auto i = 0; i < nInputs; ++i) {
     auto opd = op->getOperand(i);
     if (module::isWeight(opd)) {
-      auto weightOp = opd.getDefiningOp<top::WeightOp>();
         operands.push_back(opd);
     } else {
       operands.push_back(opd);

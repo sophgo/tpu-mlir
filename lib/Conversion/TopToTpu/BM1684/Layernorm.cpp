@@ -25,7 +25,6 @@ void LayerNormLowering::LoweringF32(PatternRewriter &rewriter,
   opds.push_back(module::getNoneOp(op));
   opds.push_back(module::getNoneOp(op));
   // table for cv18xx no use
-  auto none_op = module::getNoneOp(op);
   opds.push_back(module::getNoneOp(op));
   opds.push_back(module::getNoneOp(op));
   auto name = module::getName(op.getOutput());

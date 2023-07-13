@@ -51,7 +51,6 @@ int64_t tpu::LayerNormOp::getBufferSize_bm1684x(
 
   param.common.axis = (int)getAxis();
   if (group_type == GROUP_SMALL_C) {
-    auto shape = module::getShape(getInput());
     param.common.axis = 2;
   }
   param.common.eps = getEps().convertToDouble();

@@ -27,7 +27,6 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
 
-  Value newValue;
   if (op.getKernelShape().size() == 3) {
     rewriter.replaceOpWithNewOp<tpu::Conv3DOp>(op, op.getOutput().getType(),
                                                operands, attrs);

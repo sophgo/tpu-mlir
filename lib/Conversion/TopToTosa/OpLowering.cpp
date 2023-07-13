@@ -50,7 +50,6 @@ void InputLowering::Lowering(PatternRewriter &rewriter, top::InputOp op) const {
 void AddLowering::Lowering(PatternRewriter &rewriter, top::AddOp op) const {
   assert(op->getNumResults() == 1);
   auto newType = change_dataformat(op->getResult(0).getType());
-  auto coeff = op.getCoeffAttr();
   // TODO: coeff -> constOp
   /*
   if (!coeff) {

@@ -626,7 +626,6 @@ protected:
 
   void host2device_convert_process() {
     // return types
-    auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
       if (!isa<ReturnOp>(op))
         return;

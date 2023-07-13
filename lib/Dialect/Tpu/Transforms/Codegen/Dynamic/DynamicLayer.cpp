@@ -407,7 +407,7 @@ uint32_t dynamic_layer::get_global_ir_length(ir_layer_info_t *ir_layer_info) {
   if (auto tpuOp = dyn_cast<DynGlobalGenInterface>(op_)) {
     fw_ir_length += tpuOp.dyn_codegen_global_bm1684((void *)ir_layer_info);
     ir_layer_info->fw_layer_type = (FW_LAYER_TYPE_T)tpuOp.get_fw_type_bm1684();
-    if (ir_layer_info->fw_layer_type == -1) {
+    if (tpuOp.get_fw_type_bm1684() == -1) {
       llvm_unreachable("Dynamic Layer Type Error");
     }
     if (!fw_ir_length) {
@@ -431,10 +431,11 @@ int32_t dynamic_layer::get_local_ir_length(ir_layer_info_t *ir_layer_info) {
   }
   if (auto tpuOp = dyn_cast<DynGlobalGenInterface>(op_)) {
     ir_layer_info->fw_layer_type = (FW_LAYER_TYPE_T)tpuOp.get_fw_type_bm1684();
-  }
-  if (ir_layer_info->fw_layer_type == -1) {
+      if (tpuOp.get_fw_type_bm1684() == -1) {
     llvm_unreachable("Dynamic Layer Type Error");
   }
+  }
+
   return fw_ir_length;
 }
 

@@ -15,7 +15,6 @@ static double active_softsign(double val) { return val / (1 + std::abs(val)); }
 
 void SoftsignLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftsignOp op,
                                    bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table =
       create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                           active_softsign);

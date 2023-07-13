@@ -32,7 +32,6 @@ void SigmoidLowering::LoweringINT4(PatternRewriter &rewriter, top::SigmoidOp op,
 }
 void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
                                    bool asymmetric) const {
-  auto stype = module::getStorageType(op.getOutput());
   bool log = op.getLog();
   Value table = create_lookup_table(
       op.getInput(), op.getOutput(), asymmetric, [&](double val) {

@@ -16,9 +16,7 @@ LogicalResult tpu::RequantIntAxisOp::init(InferenceParameter &p) {
 void tpu::RequantIntAxisOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
-  auto i_sType = module::getStorageType(getInput());
   auto o_sType = module::getStorageType(getOutput());
-  auto o_qtype = module::getUniformQuantizedType(getOutput());
 
   auto shape = module::getShape(getOutput());
   auto mode = getQuantMode();

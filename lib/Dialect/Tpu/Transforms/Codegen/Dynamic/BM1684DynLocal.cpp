@@ -1251,8 +1251,8 @@ void *static_loc_stridecalc_irbuf_write(void *p_ir_buf,
   *(fw_stridecalc_layer_param_t *)p_ir_addr = fw_stridecalc_layer_param;
   p_ir_addr = (fw_stridecalc_layer_param_t *)p_ir_addr + 1;
 
-  int A_is_const = (fw_stridecalc_layer_param.input_info >> 16) && 0xff;
-  int B_is_const = (fw_stridecalc_layer_param.input_info >> 24) && 0xff;
+  int A_is_const = (fw_stridecalc_layer_param.input_info >> 16) & 0xff;
+  int B_is_const = (fw_stridecalc_layer_param.input_info >> 24) & 0xff;
   int input_num = 1;
   if (!A_is_const && !B_is_const && fw_stridecalc_layer_param.op_code != 5)
     input_num = 2;

@@ -15,7 +15,6 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
                                  bool asymmetric) const {
   int64_t N, C, H, W;
   module::getNCHW(op.getOutput(), N, C, H, W);
-  auto src_shape = module::getShape(op.getInput());
   auto slope_shape = module::getShape(op.getSlope());
   auto num_slope = module::getNumElements(op.getSlope());
   assert(num_slope == C);

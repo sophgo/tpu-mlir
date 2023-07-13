@@ -20,7 +20,6 @@ void tpu::SoftmaxOp::codegen_global_bm1684() {
   auto out_addr = module::getAddress(output);
   uint64_t buffer_addr = 0;
   auto in_dtype = module::getStorageType(input);
-  auto out_dtype = module::getStorageType(output);
   double in_scale = 0.f;
   int in_tensor_global_store_mode = 0;
   int bottom_prec = 0;

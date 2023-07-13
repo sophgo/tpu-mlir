@@ -55,7 +55,7 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
         op, newType, ValueRange{poolOp.getInput()}, attrs);
 
   } else if (kernel_size == 2) {
-    auto final_op = rewriter.replaceOpWithNewOp<tpu::Pool2DOp>(
+        auto final_op = rewriter.replaceOpWithNewOp<tpu::Pool2DOp>(
         op, newType, ValueRange{poolOp.getInput()}, attrs);
   } else {
     llvm_unreachable("Not support 3d avg pool now.");
