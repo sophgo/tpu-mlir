@@ -78,6 +78,12 @@ private:
     }
   }
 
+  enum TagType {
+    TAG_USERS = 0,
+    TAG_WEIGHT = (1ul << 36),
+    TAG_ACTIVATION = (2ul << 36),
+  };
+
 protected:
   BM1686() {
     typeID = TypeID::get<BM1686>();
@@ -87,9 +93,10 @@ protected:
     LMEM_BANKS = 16;
     IC_PARALLEL = 32;
     ALIGNMENT = 0x1000;
-    GMEM_START_ADDR = 0x100000000ull;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
-    CTX_START_ADDR = GMEM_START_ADDR;
+    GMEM_START_ADDR = 0x1ul << 39; // tag for global memory address
+    COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
+    CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
     LIB_BACKEND_NAME = "libbackend_1686.so";
     // GDMA format
     GDMA_VALUE_FORMAT_INT8 = 0;

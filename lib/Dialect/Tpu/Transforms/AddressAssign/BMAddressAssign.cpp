@@ -42,7 +42,7 @@ bool BMAddressAssign::is_next_subnet_input(Operation *op, int index) {
 
 void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   int64_t alignment = BM168x::ALIGNMENT;
-  int64_t start_addr = BM168x::CTX_START_ADDR;
+  int64_t start_addr = BM168x::COEFF_START_ADDR;
   Builder builder(module.getContext());
   // assign weight first
   auto addr = start_addr;
@@ -81,7 +81,11 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   }
   module::setCoeffAddr(start_addr);
   module::setCoeffSize(addr - start_addr);
+
   // assign activation
+  if (module::isBM1686()) {
+    addr = BM168x::CTX_START_ADDR;
+  }
   start_addr = addr;
   uint32_t loc = 0;
   // key: the operation pointer + output index, convert the result to type

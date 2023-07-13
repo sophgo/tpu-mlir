@@ -10,7 +10,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ```
 
 ## TPU1686 2023-07-20
-sha256: fd07b049caf80daba9a3bd3e2ee0c2f8258c1ae9
+sha256: 09943ea0115c3d63dbaecfe2957cb7c9842b635e
 
 ``` bash
 pushd  nntoolchain/net_compiler/
@@ -29,11 +29,11 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 popd
 ```
 
-2023-06-121
-build from tpu-runtime a609d2b722dbd6aa924bee0e39ed4eaea47fa548
+2023-07-20
+build from tpu-runtime 8dfe19265a34602bfbdb38303a98d93fcabe92a6
 2023-03-03
 build from nntoolchain 8308714678f92122c2b3bb1989cfa978feb13c71
-2023-05-16
-build from libsophon   721d98b749901481d5f1fbc4594d6d588ac165ea
+2023-07-20
+build from libsophon   4c14fcc26f7f0df454205d832a7d7fbf21196811
 2023-04-26
 build from tpu-cpuop   a158817d0260990d7a7aa6486cfacfab552b7ced

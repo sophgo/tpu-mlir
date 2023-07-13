@@ -53,44 +53,5 @@ void BM1684X::start_env() {
 
 void BM1684X::after_codegen(int64_t flops) {
   BM168x::after_codegen(flops);
-  if (module::getChip() == module::Chip::BM1686 || module::getChip() == module::Chip::CV186X) {
-    int cmd_type = (code->gdma_buffer[1] & 0x0f);
-    if(cmd_type != 6) {
-      uint64_t src_addr = ((uint64_t)(code->gdma_buffer[17] & 0xff) << 32) | ((uint64_t)code->gdma_buffer[16]);
-      uint64_t dst_addr = ((uint64_t)(code->gdma_buffer[19] & 0xff) << 32) | ((uint64_t)code->gdma_buffer[18]);
-      bool src_in_global = (src_addr >> 39) & 0x1;
-      bool dst_in_global = (dst_addr >> 39) & 0x1;
-      if (src_in_global) {
-        uint64_t origin_addr = src_addr & ((1ull << 35) - 1);
-        if (origin_addr >= module::getCoeffAddr() && origin_addr < module::getNeuronAddr()) {
-          code->gdma_buffer[17] = (code->gdma_buffer[17] & 0x9f) | 0x10;
-        } else if (origin_addr >= module::getNeuronAddr() && origin_addr < module::getNeuronAddr() + module::getNeuronSize()) {
-          code->gdma_buffer[17] = (code->gdma_buffer[17] & 0xaf) | 0x20;
-        }
-      }
-      if (dst_in_global) {
-        uint64_t origin_addr =  dst_addr & ((1ull << 35) - 1);
-        if (origin_addr >= module::getCoeffAddr() && origin_addr < module::getNeuronAddr()) {
-          code->gdma_buffer[19] = (code->gdma_buffer[19] & 0x9f) | 0x10;
-        } else if (origin_addr >= module::getNeuronAddr() && origin_addr < module::getNeuronAddr() + module::getNeuronSize()) {
-          code->gdma_buffer[19] = (code->gdma_buffer[19] & 0xaf) | 0x20;
-        }
-      }
-      // cmd type: 0:DMA_tensor, 1:DMA_matrix, 2:DMA_masked_select, 3:DMA_general
-      // 4:DMA_cw_trans, 5:DMA_nonzero, 6:DMA_sys, 7:DMA_gather, 8:DMA_scatter
-      // 9:DMA_reverse 10:DMA_compress 11: DMA_decompress
-      if (cmd_type == 2 || cmd_type == 7 || cmd_type == 8 || cmd_type == 0xa || cmd_type == 0xb) {
-          uint64_t index_addr = ((uint64_t)(code->gdma_buffer[21] & 0xff) << 32) | ((uint64_t)code->gdma_buffer[20]);
-          if ((index_addr >> 39) & 0x1) {
-            uint64_t origin_addr = index_addr & ((1ull << 35) - 1);
-            if (origin_addr >= module::getCoeffAddr() && origin_addr < module::getNeuronAddr()) {
-              code->gdma_buffer[21] = (code->gdma_buffer[21] & 0x9f) | 0x10;
-            } else if (origin_addr >= module::getNeuronAddr() && origin_addr < module::getNeuronAddr() + module::getNeuronSize()) {
-              code->gdma_buffer[21] = (code->gdma_buffer[21] & 0xaf) | 0x20;
-            }
-          }
-        }
-    }
-  }
   dl_store_cmd_end();
 }

@@ -331,6 +331,7 @@ int BM168x::call_local_bfsz_func(const char *symbolName, void *params,
   return func(params, param_size, info, input, output);
 }
 
+uint64_t BM168x::COEFF_START_ADDR = 0;
 uint64_t BM168x::CTX_START_ADDR = 0;
 int64_t BM168x::IC_PARALLEL = 0;
 uint64_t BM168x::GMEM_START_ADDR = 0;
