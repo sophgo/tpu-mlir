@@ -45,7 +45,6 @@ void MishLowering::LoweringF16(PatternRewriter &rewriter,
 
 void MishLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::MishOp op) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(op.getInput(), op.getOutput(), true,
                                     activate_f(my_mish_activate));
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, op.getOutput().getType(),

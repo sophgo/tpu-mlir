@@ -85,7 +85,6 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
   if (out_type.isInteger(8)) {
-    auto o_qtype = module::getUniformQuantizedType(getOutput());
 
     if (module::isAsymmetric() == false) {
       auto rmode =
@@ -134,7 +133,6 @@ LogicalResult tpu::Pool2DOp::LocalGenSupport() {
   if (module::isCV18xx()) {
     return success();
   }
-  auto attr = parseParam();
   auto stride = module::getI64Array(getStrides());
   if ((stride->at(0) > 15 || stride->at(1) > 15)) {
     return failure();

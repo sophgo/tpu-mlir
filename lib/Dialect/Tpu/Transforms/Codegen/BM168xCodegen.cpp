@@ -410,7 +410,6 @@ void BMCodegen::codegen_for_overlap_ops(
       auto &cur_ops = iter->second;
       for (auto op : cur_ops) {
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
-        auto ginfo = lgOp.getGroupInfo(0l, 0l, 0l, 0l, 0l);
         auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->bdc_node;
         if (isa<LoadOp, StoreOp>(op)) {
           pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
@@ -440,8 +439,6 @@ void BMCodegen::codegen_for_overlap_ops(
       auto &cur_ops = iter->second;
       for (auto op : cur_ops) {
         auto lgOp = cast<LocalGenInterfaceDecorator>(op);
-        auto ginfo = lgOp.getGroupInfo(nsecs - 1, hsecs - 1, dsecs - 1,
-                                       wsecs - 1, csecs - 1);
         auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->bdc_node;
         if (isa<LoadOp, StoreOp>(op)) {
           pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;

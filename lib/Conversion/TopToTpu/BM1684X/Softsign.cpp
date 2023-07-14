@@ -46,7 +46,6 @@ void SoftsignLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SoftsignLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::SoftsignOp op) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table =
       create_lookup_table(op.getInput(), op.getOutput(), true,
                           [](double val) { return val / (1 + std::abs(val)); });

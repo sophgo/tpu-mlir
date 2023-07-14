@@ -84,7 +84,6 @@ LogicalResult tpu::Pool1DOp::inference(InferenceParameter &p) {
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
   if (out_type.isInteger(8)) {
-    auto o_qtype = module::getUniformQuantizedType(getOutput());
 
     if (module::isAsymmetric() == false) {
       auto multi = getMultiplier().value();

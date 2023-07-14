@@ -365,8 +365,6 @@ void SoftmaxLowering::Lowering(PatternRewriter &rewriter,
     operands.clear();
     operands.push_back(sub->getResult(0));
     operands.push_back(log->getResult(0));
-    auto sub2 =
-        rewriter.create<mlir::tosa::SubOp>(op->getLoc(), newType, operands);
     rewriter.replaceOp(op, sub->getResults());
   } else {
     // ReciprocalOp

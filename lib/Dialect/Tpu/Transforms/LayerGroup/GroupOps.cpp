@@ -316,7 +316,6 @@ void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
   mem_buffer_key_t buffer_key = {LMEM_ACTIVATION, input, nullptr};
   if (auto weightop = dyn_cast_or_null<top::WeightOp>(inputOp)) {
     bool allow_split = false;
-    auto allow_split_array = weightop.getAllowSplitAttr();
     buffer_key.type = LMEM_WEIGHT;
     if (weightop.getAllowSplitAttr() != nullptr){
       allow_split = true;

@@ -655,7 +655,6 @@ public:
         double in_thr, out_thr;
         RankedTensorType type1, type2;
         if (module::isCalibratedType(ori_out)) {
-          auto otype = module::getCalibratedType(ori_out);
           auto caliType1 = quant::CalibratedQuantizedType::get(
               rewriter.getF32Type(), -in_thr, in_thr);
           auto caliType2 = quant::CalibratedQuantizedType::get(
@@ -1349,7 +1348,6 @@ public:
   LogicalResult matchAndRewrite(top::DivOp op,
                                 PatternRewriter &rewriter) const override {
     std::vector<Value> operands;
-    auto input_shape1 = module::getShape(op.getInputs()[0]);
     auto input_shape2 = module::getShape(op.getInputs()[1]);
 
     auto weight_op = dyn_cast<top::WeightOp>(op.getInputs()[1].getDefiningOp());
@@ -1447,7 +1445,6 @@ public:
     // if not bcast,convert it to AddOp
     // if left_bcast, convert it to MulConstOp + AddOp
     // if right_bcast, not convert
-    auto fn = module::getMainFuncOp();
     assert(op.getNumOperands() == 2);
     int bcast = is_bcast(op);
     auto coeff_v = module::getF64Array(op.getCoeff(), 2, 1.0);

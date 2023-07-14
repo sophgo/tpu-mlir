@@ -104,7 +104,6 @@ struct ReduceFusePattern : public OpRewritePattern<ReduceOp> {
     if (formerOp.getKeepdims() != op.getKeepdims()) {
       return failure();
     }
-    auto output_shape = module::getShape(op.getOutput());
     auto axis_list_former = module::getI64Array(formerOp.getAxes());
     auto axis_list_current = module::getI64Array(op.getAxes());
     int axis_num_former = axis_list_former->size();

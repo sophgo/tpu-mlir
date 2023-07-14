@@ -895,7 +895,6 @@ protected:
   }
 
   Value do_cast(Value v, Type to, TypeCastMode mode) {
-    auto from_stype = module::getStorageType(v);
     auto to_stype = module::getStorageType(to);
     // check whether value has been casted
     for (auto user : v.getUsers()) {

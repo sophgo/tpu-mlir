@@ -460,7 +460,7 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
   int flag = 0;
   std::string if_name;
   for (auto func : module.getOps<FuncOp>()) {
-    WalkResult result = func.walk<WalkOrder::PreOrder>([&](Operation *op) {
+    [[maybe_unused]]WalkResult result = func.walk<WalkOrder::PreOrder>([&](Operation *op) {
       if (isa<func::FuncOp>(*op)) {
         return WalkResult::advance();
       }

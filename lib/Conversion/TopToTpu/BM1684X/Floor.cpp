@@ -50,7 +50,6 @@ void FloorLowering::LoweringF16(PatternRewriter &rewriter,
 
 void FloorLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::FloorOp op) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(op.getInput(), op.getOutput(), true,
                                     [](double val) { return std::floor(val); });
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, op.getOutput().getType(),

@@ -92,7 +92,6 @@ void tpu::LayerNormOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 
   param.common.axis = (int)getAxis();
   if (group_type == GROUP_SMALL_C) {
-    auto shape = module::getShape(getInput());
     param.common.axis = 2;
   }
   param.common.eps = getEps().convertToDouble();
@@ -141,7 +140,6 @@ int64_t tpu::LayerNormOp::dyn_codegen_local_bm1684x(void *buffer) {
 
   param.common.axis = (int)getAxis();
   if (group_type == GROUP_SMALL_C) {
-    auto shape = module::getShape(getInput());
     param.common.axis = 2;
   }
   param.common.eps = getEps().convertToDouble();

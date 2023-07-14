@@ -442,12 +442,10 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
   bool bias_use_fp32 = module::isBM1686();
   auto newType = getQuantF16Type(op->getResult(0));
-  auto stype = module::getStorageType(newType);
   std::vector<Value> operands;
   for (int i = 0; i < op->getNumOperands(); ++i) {
     auto in = op->getOperand(i);
     if (auto wOp = dyn_cast<top::WeightOp>(in.getDefiningOp())) {
-      auto wtype = module::getStorageType(in);
       if (i == 2 && bias_use_fp32) {
         operands.push_back(in);
       } else {
@@ -512,7 +510,6 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
   bool can_merge_izp =
       input_zeroPoint == 0 || module::isWeight(op.getRight());
-  auto right_type = op.getRight().getType().cast<RankedTensorType>();
   int K_idx = op.getRightTranspose() ? 1 : 0;
   int N_idx = op.getRightTranspose() ? 0 : 1;
   if (p.batch > 1) {

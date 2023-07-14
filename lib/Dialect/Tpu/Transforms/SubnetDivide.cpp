@@ -336,7 +336,7 @@ public:
     bool noUse;
 
     toposort();
-    WalkResult ret =
+    [[maybe_unused]]WalkResult ret =
         module::getMainFuncOp()
             .walk<WalkOrder::PreOrder, ForwardDominanceIterator<true>>(
                 [&](Operation *op) {
