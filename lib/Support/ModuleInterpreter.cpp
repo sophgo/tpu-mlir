@@ -19,6 +19,8 @@
 #include <llvm/Support/Debug.h>
 #include <memory>
 #include <numeric>
+#include <fstream>
+#include <llvm/Support/FileSystem.h>
 
 #define DEBUG_TYPE "interpreter"
 
@@ -246,6 +248,7 @@ void ModuleInterpreter::allocate_all_tensor_in_disk() {
       }
     });
     module::detachWeightFile(); // to free weight memory
+    func.walk([&](InferenceInterface infer_op) { num_infer_op++; });
   }
 }
 void ModuleInterpreter::allocate_all_tensor_in_mem() {
@@ -457,6 +460,20 @@ void ModuleInterpreter::invoke(bool express_type) {
   case mem_mode_t::PART_SMALL_TENSOR_IN_MEM:
     invoke_part_in_mem(express_type);
     break;
+  case mem_mode_t::ALL_TENSOR_IN_DISK:
+    llvm::Twine str1 = "inference_value_in_disk_%%%%.npz";
+    auto tempfile = llvm::sys::fs::TempFile::create(str1, 146);
+    if (tempfile) {
+      llvm::sys::fs::TempFile &tmp = tempfile.get();
+      invoke_to_disk(tmp.TmpName.c_str(), express_type);
+      setTempFile(tmp.TmpName.c_str());
+      if (tmp.keep()) {
+        llvm_unreachable("tmp.keep failed!");
+      }
+    } else {
+      llvm_unreachable("create tempfile failed!");
+    }
+    break;
   default:
     llvm_unreachable("Mem not enough, please use invoke_to_disk");
     break;
@@ -546,17 +563,19 @@ void ModuleInterpreter::value_to_disk(const std::string &filename,
                                       const std::string &name,
                                       std::vector<float> &data,
                                       bool express_type) {
-  // auto value = value_map.at(name);
-  // if (express_type && module::isState(module::State::TPU_LOWERED)) {
-  //   if (module::isUniformQuantized(value)) {
-  //     auto qtype = module::getUniformQuantizedType(value);
-  //     for (auto &d : data) {
-  //       d = (d - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
-  //     }
-  //   }
-  // }
-  // cnpy::npz_save(filename, name, data, "a");
-  llvm_unreachable("Not Implemented");
+  auto value = value_map.at(name);
+  if (express_type && module::isState(module::State::TPU_LOWERED)) {
+    if (module::isUniformQuantized(value)) {
+      auto qtype = module::getUniformQuantizedType(value);
+      for (auto &d : data) {
+        d = (d - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
+      }
+    }
+  }
+  if (store_disk_shape.cbegin() != store_disk_shape.cend())
+    store_disk_shape.clear();
+  store_disk_shape.push_back(data.size());
+  cnpy::npz_save(filename, name, &data[0], store_disk_shape, "a");
 }
 
 void ModuleInterpreter::invoke_to_disk(const std::string &filename,
@@ -583,7 +602,15 @@ void ModuleInterpreter::invoke_to_disk(const std::string &filename,
         }
         auto iter = mem_uses.find(name);
         if (iter == mem_uses.end()) {
-          continue;
+          if (auto WeightOp = dyn_cast<top::WeightOp>(in.getDefiningOp())) {
+            int num_uses = std::distance(in.user_begin(), in.user_end());
+            if (num_uses = 1) {
+              to_free.push_back(name);
+              continue;
+            } else
+              mem_uses[name] = num_uses - 1;
+          } else
+            continue;
         }
         iter->second--;
         if (iter->second == 0) {
@@ -977,4 +1004,9 @@ ModuleInterpreter::getTensorShape(const std::string &name) {
   return it->second.getType().cast<RankedTensorType>().getShape();
 }
 
+void ModuleInterpreter::setTempFile(std::string filename) {
+  temp_file_name = filename;
+}
+
+std::string ModuleInterpreter::getTempFile() { return temp_file_name; }
 } // namespace tpu_mlir

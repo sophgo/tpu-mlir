@@ -144,6 +144,11 @@ public:
     return getPyArray(std::move(tensor), shape);
   }
 
+  py::str get_tempfile() {
+    auto filename = interpreter_->getTempFile();
+    return filename;
+  }
+
   // Tip: not using copy in python, since independent mem
   py::array get_fp32_tensor(std::string name) {
     auto tensor = interpreter_->getTensor(name, true);
@@ -250,6 +255,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def("set_tensor", &py_module::set_tensor)
       .def("set_tensor_from_int", &py_module::set_tensor_from_int)
       .def("get_tensor", &py_module::get_tensor, "get one tensor data")
+      .def("get_tempfile", &py_module::get_tempfile, "get file in value to disk mode")
       .def("get_fp32_tensor", &py_module::get_fp32_tensor, "get one fp32 tensor data")
       .def("get_all_tensor", &py_module::getAllTensor, "dump all tensor data")
       .def("invoke", &py_module::invoke)

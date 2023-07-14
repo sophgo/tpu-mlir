@@ -58,6 +58,8 @@ public:
                           float &scale, int &zp);
   llvm::ArrayRef<int64_t> getTensorShape(const std::string &name);
   bool is_no_mem_op(Operation *op);
+  std::string getTempFile();
+  void setTempFile(std::string filename);
 
 private:
   void allocate_part_tensor_in_mem();
@@ -77,7 +79,7 @@ public:
   std::vector<std::string>
       all_tensor_names; // activation tensor, without weight
   std::vector<std::string> all_weight_names; // weight tensor
-
+  std::string temp_file_name = "Default";
 private:
   ModuleOp module;
   int64_t num_infer_op;
@@ -86,6 +88,7 @@ private:
   std::map<std::string, Value> value_map;
   std::map<std::string, std::shared_ptr<InferenceParameter>> inference_map;
   std::map<std::string, std::shared_ptr<std::vector<float>>> mem_map;
+  std::vector<size_t> store_disk_shape;
 };
 
 } // namespace tpu_mlir
