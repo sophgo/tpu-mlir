@@ -85,7 +85,8 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
 
   auto num_elem = module::getNumElements(getOutput());
   if (getDoRelu()) {
-    function_relu(p.outputs[0], p.outputs[0], num_elem);
+    auto relu_limit = getReluLimit().convertToDouble();
+    function_relu(p.outputs[0], p.outputs[0], num_elem, relu_limit);
   }
 
   return success();
