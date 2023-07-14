@@ -7,7 +7,8 @@
 #
 # ==============================================================================
 from collections import namedtuple
-import itertools, functools
+import itertools
+import functools
 import numpy as np
 
 try:
@@ -24,36 +25,37 @@ class Decoder:
     def __init__(self, context):
         self.context = context
 
-    def _decode_base(self, cmd_buf, engine):
+    def _decode_base(self, cmd_buf, engine, core_id):
         op_factory, is_end = self.context.opdef.op_factory(engine)
         cmd_buf = np.frombuffer(cmd_buf, dtype=np.uint8)
         while len(cmd_buf) > 0:
             operation = op_factory(cmd_buf)
+            operation.core_id = core_id
             yield operation
             btyes_slice = operation.length // 8
             cmd_buf = cmd_buf[btyes_slice:]
             if is_end(cmd_buf, operation):
                 break
 
-    def decode_tiu_buf(self, cmd_buf):
+    def decode_tiu_buf(self, cmd_buf, core_id=0):
         if cmd_buf:
-            return self._decode_base(cmd_buf, self.context.opdef.Engine.TIU)
+            return self._decode_base(cmd_buf, self.context.opdef.Engine.TIU, core_id)
         return cmd_buf
 
-    def decode_dma_buf(self, cmd_buf):
+    def decode_dma_buf(self, cmd_buf, core_id=0):
         if cmd_buf:
-            return self._decode_base(cmd_buf, self.context.opdef.Engine.DMA)
+            return self._decode_base(cmd_buf, self.context.opdef.Engine.DMA, core_id)
         return cmd_buf
 
     def merge_instruction(self, tiu, dma, subnet_id=0):
         return self.context.opdef.merge_instruction(tiu, dma)
 
-    def decode_bmodel_cmd(self, bmodel_cmd, subnet_id):
+    def decode_bmodel_cmd(self, bmodel_cmd, subnet_id, core_id=0):
         tiu = itertools.islice(
-            self.decode_tiu_buf(bmodel_cmd.tiu_cmd), bmodel_cmd.tiu_num
+            self.decode_tiu_buf(bmodel_cmd.tiu_cmd, core_id), bmodel_cmd.tiu_num
         )
         dma = itertools.islice(
-            self.decode_dma_buf(bmodel_cmd.dma_cmd), bmodel_cmd.dma_num
+            self.decode_dma_buf(bmodel_cmd.dma_cmd, core_id), bmodel_cmd.dma_num
         )
         tiu = list(tiu)
         dma = list(dma)
@@ -76,18 +78,53 @@ class FBSArray:
     def __getitem__(self, index):
         return self.items[index]
 
+    def __len__(self):
+        return len(self.items)
+
     def __iter__(self):
         return self.items.__iter__()
 
     def serialize(self, builder, save_binary_fun):
-        array = [t.serialize(builder, save_binary_fun) for t in self.items]
-        getattr(self.fbs, f"Start{self.field_name}Vector")(builder, len(self.items))
-        for t in reversed(array):
-            builder.PrependUOffsetTRelative(t)
-        return builder.EndVector(len(self.items))
+        if self:
+            array = [t.serialize(builder, save_binary_fun) for t in self.items]
+            getattr(self.fbs, f"Start{self.field_name}Vector")(builder, len(self.items))
+            for t in reversed(array):
+                builder.PrependUOffsetTRelative(t)
+            return builder.EndVector(len(self.items))
+        return None
 
-    def __repr__(self) -> str:
+    def __bool__(self):
+        return len(self) != 0
+
+    def __repr__(self):
         return str(self.items)
+
+
+class FBSHas:
+    def __init__(self, fbs, *args):
+        self.has = bool(fbs)
+
+    def __bool__(self):
+        return self.has
+
+
+def safeInit(init_func):
+    def wrapper(self, *args, **kwargs):
+        super(self.__class__, self).__init__(*args, **kwargs)
+        if self:
+            return init_func(self, *args, **kwargs)
+        return None
+
+    return wrapper
+
+
+def serialize(func):
+    def wrapper(self, *args, **kwargs):
+        if self:
+            return func(self, *args, **kwargs)
+        return None
+
+    return wrapper
 
 
 class BModel:
@@ -101,21 +138,23 @@ class BModel:
         ]
     )
 
-    class CmdGroup:
-        def __init__(self, fbs: bmodel_fbs.CmdGroup, cmd_buf_bits):
+    class CmdGroup(FBSHas):
+        @safeInit
+        def __init__(self, fbs: bmodel_fbs.CmdGroup, buffer):
             self.tiu_num = fbs.BdcNum()
             self.dma_num = fbs.GdmaNum()
             if fbs.BinaryBdc():
                 binary_tiu = (fbs.BinaryBdc().Start(), fbs.BinaryBdc().Size())
-                self.tiu_cmd = cmd_buf_bits[binary_tiu[0] : sum(binary_tiu)]
+                self.tiu_cmd = buffer[binary_tiu[0] : sum(binary_tiu)]
             else:
                 self.tiu_cmd = []
             if fbs.BinaryGdma():
                 binary_dma = (fbs.BinaryGdma().Start(), fbs.BinaryGdma().Size())
-                self.dma_cmd = cmd_buf_bits[binary_dma[0] : sum(binary_dma)]
+                self.dma_cmd = buffer[binary_dma[0] : sum(binary_dma)]
             else:
                 self.dma_cmd = []
 
+        @serialize
         def serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.CmdGroup
             module.Start(builder)
@@ -134,15 +173,40 @@ class BModel:
             return module.End(builder)
 
         def __repr__(self):
-            return f"tiu_num: {self.tiu_num}\ndma_num: {self.dma_num}"
+            if self:
+                return f"tiu_num: {self.tiu_num}\ndma_num: {self.dma_num}"
 
-    class ROData:
+    class CoreCmdGroup(FBSHas):
+        @safeInit
+        def __init__(self, fbs: bmodel_fbs.CoreCommands, buffer):
+            self.gdma_tiu_commands = FBSArray(
+                fbs, ("GdmaTiuCommands", BModel.CmdGroup), buffer
+            )
+
+        @serialize
+        def serialize(self, builder, save_binary_fun):
+            module = bmodel_fbs.CoreCommands
+            gdma_tiu_commands = self.gdma_tiu_commands.serialize(
+                builder, save_binary_fun
+            )
+            module.Start(builder)
+            if gdma_tiu_commands:
+                module.AddGdmaTiuCommands(builder, gdma_tiu_commands)
+            return module.End(builder)
+
+        def __repr__(self):
+            if self:
+                return f"gdma_tiu_commands: {self.gdma_tiu_commands}"
+
+    class ROData(FBSHas):
+        @safeInit
         def __init__(self, fbs: bmodel_fbs.CoeffMem, buffer):
             self.address = fbs.Address()
             self.check_code = fbs.CheckCodeAsNumpy()
             binary_data = (fbs.BinaryCoeff().Start(), fbs.BinaryCoeff().Size())
             self.data = buffer[binary_data[0] : sum(binary_data)]
 
+        @serialize
         def serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.CoeffMem
 
@@ -159,10 +223,11 @@ class BModel:
             return module.End(builder)
 
         def __repr__(self):
-            check_code = "".join(f"{x:0>2x}" for x in self.check_code)
-            return f"data: {self.address}\nshr256: {check_code}"
+            if self:
+                check_code = "".join(f"{x:0>2x}" for x in self.check_code)
+                return f"data: {self.address}\nshr256: {check_code}"
 
-    class Tensor:
+    class Tensor(FBSHas):
         # fmt: off
         to_DType = {
             0: op_support.DType.f32, op_support.DType.f32: 0,
@@ -175,6 +240,7 @@ class BModel:
             7: op_support.DType.ui32, op_support.DType.ui32: 7,
         }
         # fmt: on
+        @safeInit
         def __init__(self, fbs: bmodel_fbs.Tensor, _):
             self.name = fbs.Name().decode()
             self.dtype = self.to_DType[fbs.DataType()]
@@ -189,6 +255,7 @@ class BModel:
             self.zero_point = fbs.ZeroPoint()
             self.size = fbs.Size()
 
+        @serialize
         def serialize(self, builder, _):
             module = bmodel_fbs.Tensor
 
@@ -224,16 +291,16 @@ class BModel:
         def __repr__(self):
             return f"{self.name}: {self.shape} {self.dtype.name} ({self.device_addr})"
 
-    class KernelModule:
-        module = bmodel_fbs.KernelModule
-
-        def __init__(self, fbs: bmodel_fbs.KernelModule, buffer) -> None:
+    class KernelModule(FBSHas):
+        @safeInit
+        def __init__(self, fbs: bmodel_fbs.KernelModule, buffer):
             self.file_name = fbs.FileName().decode()
             binary_data = (fbs.Binary().Start(), fbs.Binary().Size())
             self.data = buffer[binary_data[0] : sum(binary_data)]
 
+        @serialize
         def serialize(self, builder, save_binary_fun):
-            module = self.module
+            module = bmodel_fbs.KernelModule
             file_name = builder.CreateString(self.file_name)
             module.Start(builder)
             module.AddFileName(builder, file_name)
@@ -246,14 +313,19 @@ class BModel:
         def __repr__(self) -> str:
             return f"kernel: {self.file_name}"
 
-    class SubNet:
+    class SubNet(FBSHas):
+        @safeInit
         def __init__(self, fbs: bmodel_fbs.SubNet, buffer):
             self.input_tensor = FBSArray(fbs, ("InputTensor", BModel.Tensor), buffer)
             self.output_tensor = FBSArray(fbs, ("OutputTensor", BModel.Tensor), buffer)
             self.cmd_group = FBSArray(fbs, ("CmdGroup", BModel.CmdGroup), buffer)
             self.next_subnet_ids = fbs.NextSubnetIdsAsNumpy()
             self.id = fbs.Id()
+            self.core_commands = FBSArray(
+                fbs, ("CoreCommands", BModel.CoreCmdGroup), buffer
+            )
 
+        @serialize
         def serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.SubNet
             cmd_group = self.cmd_group.serialize(builder, save_binary_fun)
@@ -270,10 +342,12 @@ class BModel:
             module.AddNextSubnetIds(builder, next_id)
             return module.End(builder)
 
-        def __repr__(self) -> str:
-            return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())
+        def __repr__(self):
+            if self:
+                return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())
 
-    class Parameter:
+    class Parameter(FBSHas):
+        @safeInit
         def __init__(self, fbs: bmodel_fbs.NetParameter, buffer):
             self.input_tensor = FBSArray(fbs, ("InputTensor", BModel.Tensor), buffer)
             self.output_tensor = FBSArray(fbs, ("OutputTensor", BModel.Tensor), buffer)
@@ -282,7 +356,9 @@ class BModel:
             self.ctx_addr = fbs.CtxAddr()
             self.ctx_size = fbs.CtxSize()
             self.coeff_mem = BModel.ROData(fbs.CoeffMem(), buffer)
+            self.core_num = fbs.CoreNum()
 
+        @serialize
         def serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.NetParameter
             input_tensor = self.input_tensor.serialize(builder, save_binary_fun)
@@ -296,12 +372,14 @@ class BModel:
             module.AddOutputTensor(builder, output_tensor)
             module.AddCtxAddr(builder, self.ctx_addr)
             module.AddCtxSize(builder, self.ctx_size)
-            module.AddCoeffMem(builder, coeff_mem)
+            if coeff_mem:
+                module.AddCoeffMem(builder, coeff_mem)
             module.AddIsDynamic(builder, 0)
             module.AddNDynamic(builder, 0)
             module.AddHWDynamic(builder, 0)
             module.AddSubNet(builder, sub_net)
             module.AddCmdGroup(builder, cmd_group)
+            module.AddCoreNum(builder, self.core_num)
             return module.End(builder)
 
         def __repr__(self) -> str:
@@ -345,6 +423,7 @@ class BModel:
         self.neuron_size = bmodel.NeuronSize()
         self.time = bmodel.Time().decode()
         self.net = FBSArray(bmodel, ("Net", self.Net), binary)
+        self.core_num = self.net[0].parameter[0].core_num
 
     def __repr__(self):
         return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())
@@ -406,12 +485,21 @@ def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
         def __init__(self, subnet, indent=0):
             self.label = subnet.id
             self.indent = indent
-            self.cmds = [
-                decoder.decode_bmodel_cmd(x, self.label) for x in subnet.cmd_group
-            ]
             self.operations = []
-            for x in self.cmds:
-                self.operations.extend(x.all)
+            if bmodel_net.core_num > 1:
+                self.cmds = [
+                    decoder.decode_bmodel_cmd(i, self.label, index)
+                    for index, x in enumerate(subnet.core_commands)
+                    for i in x.gdma_tiu_commands
+                ]
+                sorter = context.opdef.MultiCoreCmd([i.all for i in self.cmds])
+                self.operations = sorter.consume_cmd()
+            else:
+                self.cmds = [
+                    decoder.decode_bmodel_cmd(x, self.label) for x in subnet.cmd_group
+                ]
+                for x in self.cmds:
+                    self.operations.extend(x.all)
             self.args = subnet.input_tensor
             self.terminator = subnet.output_tensor
             self.successor = subnet.next_subnet_ids

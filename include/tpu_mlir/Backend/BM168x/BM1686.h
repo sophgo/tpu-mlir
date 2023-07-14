@@ -46,6 +46,7 @@ public:
 
   void setCoreNum(int core = 1);
   int getCoreNum() { return multiCodes.size(); };
+  int getCurrentCoreID();
   void useCore(int coreID = 0);
   void sync_all() {
     dl_tpu_set_id_node(code->cmdid_node);
