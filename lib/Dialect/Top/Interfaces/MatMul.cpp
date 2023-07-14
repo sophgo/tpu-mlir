@@ -36,7 +36,7 @@ matmul_attr_t top::MatMulOp::parseParam() {
     b_dims += 1;
     o_dims += 1;
   }
-  if (a_dims == 1){
+  if (a_dims == 1) {
     assert(p.left_transpose == false);
     a_s.insert(a_s.begin(), 1);
     o_s.insert(o_s.begin(), 1);
@@ -116,17 +116,22 @@ void top::MatMulOp::shape_inference() {
     assert(in1_shape[0] == k);
     out_shape.pop_back();
   } else if (in1_shape[k_idx] == k) {
-    auto sum = 1;
-    for(int i=0; i<in0_dims; i++){
-      sum *= out_shape[i];
-    }
-    //shape case:[1, 1, 1, 4832] * [4832, 126] = [1, 126]
-    if(sum == k){
-      while (out_shape.size() > 1 ){
-        out_shape.pop_back();
+    if (module::getPlatform() == module::Platform::CAFFE) {
+      // for caffe case
+      auto sum = 1;
+      for (int i = 0; i < in0_dims; i++) {
+        sum *= out_shape[i];
       }
-      out_shape.push_back(n);
-    }else{
+      // shape case:[1, 1, 1, 4832] * [4832, 126] = [1, 126]
+      if (sum == k) {
+        while (out_shape.size() > 1) {
+          out_shape.pop_back();
+        }
+        out_shape.push_back(n);
+      } else {
+        out_shape[in0_dims - 1] = n;
+      }
+    } else {
       out_shape[in0_dims - 1] = n;
     }
   } else if (in1_dims == 2) {
