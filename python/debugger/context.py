@@ -70,11 +70,13 @@ class Context:
         # bind compute
         for _, v in self.opdef.tiu_cls.items():
             for op in v:
-                setattr(op, "compute", lambda c: cmodel.tiu_compute(c.cmd))
+                setattr(op, "compute", lambda c: cmodel.tiu_compute(
+                    c.cmd, c.core_id))
 
         for _, v in self.opdef.dma_cls.items():
             for op in v:
-                setattr(op, "compute", lambda c: cmodel.dma_compute(c.cmd))
+                setattr(op, "compute", lambda c: cmodel.dma_compute(
+                    c.cmd, c.core_id))
 
         # bind memory operation
         memory = self.opparam.Memory(cmodel.LMEM, cmodel.DDR)

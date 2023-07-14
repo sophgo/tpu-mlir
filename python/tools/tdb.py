@@ -358,6 +358,9 @@ class Tdb(cmd.Cmd):
             raise ValueError("Ahead of execution.")
         return ops[line]
 
+    def get_all_ops(self):
+        return self.module.functions[0].regions[0].blocks[0].operations
+
     def push_status(self):
         if not self.record_status:
             return
@@ -412,7 +415,12 @@ class Tdb(cmd.Cmd):
         self.push_status()
         try:
             op = self.get_op()
-            op.compute()
+            sys = (self.context.opdef.dma_sys, self.context.opdef.tiu_sys)
+            if sys != (None, None):
+                if not isinstance(op, sys):
+                    op.compute()
+            else:
+                op.compute()
             self.current_line += 1
         except ValueError as e:
             raise e

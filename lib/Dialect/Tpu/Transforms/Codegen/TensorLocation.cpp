@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "TensorLocation.hpp"
+#include "tpu_mlir/Backend/BM168x/BM1686.h"
 
 namespace mlir {
 using namespace llvm;
@@ -200,11 +201,11 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
   return json::Object{
       {"name", name},     {"address", address}, {"memory_type", memory_type},
       {"layout", layout}, {"type", type},       {"reshape", reshape},
-      {"slice", slice},
-  };
+      {"slice", slice}};
 }
 
 json::Object record_tensor(Value v, const group_type_t group_type) {
+
   auto v_spc = BM168x::value_to_spec(v, group_type);
   std::string type;
   llvm::raw_string_ostream os(type);
@@ -239,6 +240,10 @@ int getSubNetId(Operation *op) {
 void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
                                     const json::Array &results) {
   int64_t line_num = -1; // unknown location
+  int core_id = 0;
+  if (auto bm1686 = dyn_cast<BM1686>(BM168x::instance())) {
+    core_id = bm1686->getCurrentCoreID();
+  }
   auto it = opToLineCol.find(op);
   if (it != opToLineCol.end()) {
     line_num = it->second.first;
@@ -248,6 +253,7 @@ void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
   J.object([&] {
     J.attribute("file-line", line_num);
     J.attribute("subnet_id", subnet_id);
+    J.attribute("core_id", core_id);
     J.attribute("opcode", op->getName().getStringRef());
     J.attributeArray("tiu_dma_id(before)", [&] {
       J.value(cmd_before[0]);

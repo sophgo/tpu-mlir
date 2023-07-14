@@ -72,7 +72,7 @@ def opparam_converter_regitstry(sheet_name):
 
 # TPU1686/bm1686/spec/include/memmap.h
 memmap = {
-    MType.R: (int("0x25000000", 16), int("0x25400000", 16)),  # lmen_base 8M
+    MType.R: (int("0x0", 16), int("0x400000", 16)),  # lmen_base 8M
     # static memory 16KB
     MType.S: (int("0x25800000", 16), int("0x25804000", 16)),
     MType.G: (int("0x100000000", 16), int("0x200000000", 16)),  # global memory
@@ -534,8 +534,6 @@ def get_value(
         _layout = layout
         if not isinstance(layout, ExtEnum):
             _layout = Layout(layout)
-        if address < LMEM_SIZE:
-            address += memmap[MType.R][0]
         return MemRef(address, shape, _dtype, stride, _layout)
 
 
@@ -1406,6 +1404,21 @@ def _converter(reg):
     return ([], attrs, [])
 
 
+@opparam_converter_regitstry("SYS")
+def _converter(reg):
+    des_imm = reg.imm
+    msg_id = des_imm & 0x7f
+    cnt = des_imm >> 16 & 0x7
+    if reg.tsk_eu_typ in (8, 9):
+        attrs = dict(
+            msg_id=msg_id,
+            cnt=cnt,
+        )
+    else:
+        raise KeyError("Should not be here.")
+    return ([], attrs, [])
+
+
 def dma_addr(H, L):
     return H * 2 ** 32 + L
 
@@ -1729,3 +1742,16 @@ def _converter(reg):
 @opparam_converter_regitstry("DMA_decompress ")
 def _converter(reg):
     return ([] * 3)
+
+
+@opparam_converter_regitstry("sDMA_sys")
+def _converter(reg):
+    des_imm = reg.constant_value
+    msg_id = des_imm & 0x7f
+    cnt = (des_imm >> 8) & 0x7f
+    if reg.cmd_special_function in (3, 4):
+        attr = dict(msg_id=msg_id, cnt=cnt)
+    else:
+        raise KeyError(
+            f"cmd_special_function {reg.cmd_special_function} not supported")
+    return ([], attr, [])
