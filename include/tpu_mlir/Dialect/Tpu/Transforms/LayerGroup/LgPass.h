@@ -29,14 +29,14 @@ struct LgPassIR {
   void clear();
 
   /**
-   * @brief the layers in the current subnet graph
+   * @brief the operation in the current subnet graph
    */
-  std::vector<Operation *> subnet_ops;
+  SetVector<Operation *> subnet_ops;
 
   /**
-   * @brief the layers in the current subnet graph
+   * @brief the value in the current subnet graph
    */
-  std::vector<Value> subnet_values;
+  SetVector<Value> subnet_values;
 
   /**
    * @brief the layer groups.

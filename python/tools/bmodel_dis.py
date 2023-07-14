@@ -12,15 +12,15 @@ import debugger.disassembler as dis
 
 
 def decode_tiu_file(tiu_file, device):
-    tiu = dis.read_file_to_bits(tiu_file)
+    tiu = open(tiu_file, "rb").read()
     context = Context(device.upper())
-    return context.decoder.decode_tiu_bits(tiu)
+    return context.decoder.decode_tiu_buf(tiu)
 
 
 def decode_dma_file(dma_file, device):
-    dma = dis.read_file_to_bits(dma_file)
+    dma = open(dma_file, "rb").read()
     context = Context(device.upper())
-    return context.decoder.decode_dma_bits(dma)
+    return context.decoder.decode_dma_buf(dma)
 
 
 def BModel2MLIR(bmodel_file):

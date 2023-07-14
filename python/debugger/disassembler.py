@@ -19,11 +19,6 @@ except:
     import bmodel_fbs
 
 
-def read_file_to_bits(cmd_file):
-    cmmand_buf = np.fromfile(cmd_file, dtype=np.uint8)
-    return np.unpackbits(cmmand_buf, bitorder="little")
-
-
 class Decoder:
     CMD = namedtuple("cmd", ["tiu", "dma", "all"])
 
@@ -31,44 +26,27 @@ class Decoder:
         self.context = context
 
     def _decode_base(self, cmd_buf, engine):
-        operation = None
-        op_factory, end_symbol = self.context.opdef.op_factory(engine)
+        op_factory, is_end = self.context.opdef.op_factory(engine)
         cmd_buf = np.frombuffer(cmd_buf, dtype=np.uint8)
         while len(cmd_buf) > 0:
             operation = op_factory(cmd_buf)
             yield operation
             btyes_slice = operation.length // 8
-            cmd_buf = cmd_buf[btyes_slice :]
-            if end_symbol(cmd_buf, operation):
+            cmd_buf = cmd_buf[btyes_slice:]
+            if is_end(cmd_buf, operation):
                 break
 
     def decode_tiu_buf(self, cmd_buf):
         if cmd_buf:
-            # input is a buffer
-            return self.decode_tiu_bits(cmd_buf)
+            return self._decode_base(cmd_buf, self.context.opdef.Engine.TIU)
         return cmd_buf
 
     def decode_dma_buf(self, cmd_buf):
         if cmd_buf:
-            # input is a buffer
-            return self.decode_dma_bits(cmd_buf)
+            return self._decode_base(cmd_buf, self.context.opdef.Engine.DMA)
         return cmd_buf
 
-    def decode_tiu_bits(self, cmd_buf):
-        # input is a bits vector
-        return self._decode_base(
-            cmd_buf,
-            self.context.opdef.Engine.TIU
-        )
-
-    def decode_dma_bits(self, cmd_buf):
-        # input is a bits vector
-        return self._decode_base(
-            cmd_buf,
-            self.context.opdef.Engine.DMA
-        )
-
-    def merge_instruction(self, tiu, dma, subnet_id = 0):
+    def merge_instruction(self, tiu, dma, subnet_id=0):
         return self.context.opdef.merge_instruction(tiu, dma)
 
     def decode_bmodel_cmd(self, bmodel_cmd, subnet_id):

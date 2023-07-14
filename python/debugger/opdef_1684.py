@@ -11,14 +11,13 @@
 try:
     from .regdef_1684 import tiu_reg_def, dma_reg_def
     from .opparam_1684 import opparam_converter
-    from .op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, NamedDict, Engine
+    from .op_support import extract_buf, TIUBase, DMABase, NamedDict, Engine
 except:
     from regdef_1684 import tiu_reg_def, dma_reg_def
     from opparam_1684x import opparam_converter
-    from op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, NamedDict, Engine
+    from op_support import extract_buf, TIUBase, DMABase, NamedDict, Engine
 
 import numpy as np
-import ctypes
 
 # global data and type
 # ------------------------------------------------------------
@@ -420,7 +419,7 @@ def op_factory(engine_type):
     else:
         raise ValueError(f"cannot decode engine type: {engine_type}")
 
-    def end_symbol(cmd_buf, operation):
+    def is_end(cmd_buf, operation):
         cmd_buf_bits = buffer_to_bits(cmd_buf)
         is_less_1024 = len(cmd_buf_bits) < 1025
         if is_less_1024 and not np.any(cmd_buf_bits):
@@ -435,7 +434,9 @@ def op_factory(engine_type):
                 if op.is_comp(cmd_buf):
                     return op.decode(cmd_buf)
         raise ValueError(f"cannot decode cmd: {cmd_buf}")
-    return decoder, end_symbol
+
+    return decoder, is_end
+
 
 
 def merge_instruction(tiu, dma):

@@ -34,19 +34,18 @@ class GroupMethod {
 public:
   GroupMethod(int64_t opt);
   void process(std::vector<LgInfo> &lg_infos,
-               const std::vector<Operation *> &subnet_ops);
+               const SetVector<Operation *> &subnet_ops);
   void simple_layer_group(std::vector<LgInfo> &lg_infos,
-                          const std::vector<Operation *> &subnet_ops);
+                          const SetVector<Operation *> &subnet_ops);
   void dynamic_programming_layer_group_with_cluster(
-      std::vector<LgInfo> &lg_infos,
-      const std::vector<Operation *> &subnet_ops);
+      std::vector<LgInfo> &lg_infos, const SetVector<Operation *> &subnet_ops);
 
   void
   get_final_groups(std::vector<LgInfo> &lg_infos,
                    const std::vector<std::vector<Operation *>> &base_groups);
 
   void get_base_groups(std::vector<std::vector<Operation *>> &base_groups,
-                       const std::vector<Operation *> &subnet_ops);
+                       const SetVector<Operation *> &subnet_ops);
 
   int64_t get_max_cluster_size(int64_t layer_num);
   void get_group_clusters(std::vector<std::pair<int64_t, int64_t>> &clusters,
@@ -77,13 +76,13 @@ public:
   bool update_sequence_group_cost(LgInfo *left_layer_group,
                                   LgInfo *right_layer_group, bool *left_first,
                                   SequenceGroupsInfo &seq_info,
-                                  const std::vector<Operation *> &subnet_ops);
+                                  const SetVector<Operation *> &subnet_ops);
   bool merge_cut_idx_to_reduce_gdma_cost(
       const std::vector<std::vector<Operation *>> &base_groups,
-      const std::vector<Operation *> &subnet_ops);
+      const SetVector<Operation *> &subnet_ops);
   bool consider_redundant_computation_and_gdma_cost(
       const std::vector<std::vector<Operation *>> &base_groups,
-      const std::vector<Operation *> &subnet_ops);
+      const SetVector<Operation *> &subnet_ops);
 
   void show_cut_results();
 

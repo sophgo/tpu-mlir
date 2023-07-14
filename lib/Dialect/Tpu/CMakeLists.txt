@@ -27,6 +27,7 @@ add_llvm_library(TPUMLIRTpu
   ${PROJECT_SOURCE_DIR}/include/tpu_mlir/Dialect/Tpu
 
   DEPENDS
+  CV18xx_Builder
   MLIRTopOpsIncGen
   MLIRTpuOpsIncGen
   MLIRTpuPassIncGen
