@@ -11,13 +11,14 @@
 try:
     from . import regdef_1686
     from .opparam_1686 import opparam_converter
-    from .op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, NamedDict, Engine
+    from .op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, Engine
 except:
     import regdef_1686
     from opparam_1686 import opparam_converter
-    from op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, NamedDict, Engine
+    from op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, Engine
 
 import ctypes
+import numpy as np
 
 # global data and type
 # ------------------------------------------------------------
@@ -28,11 +29,9 @@ dma_cls = dict()
 # registry function
 # ------------------------------------------------------------
 def base_registry(cmd_type, sheet_name, cls):
-    attr = regdef_1686.reg_def[sheet_name]
-    _, bits = zip(*attr)
-    # high bit is the upper bit (open interval).
-    setattr(cls, "length", bits[-1])
-    setattr(cls, "reg_def", reg_decoder_factory(regdef_1686.reg_def[sheet_name]))
+    reg_def = regdef_1686.reg_def[sheet_name]
+    setattr(cls, "length", reg_def[-1][-1])
+    setattr(cls, "reg_def", reg_decoder_factory(reg_def))
     cmd_type.setdefault(cls.opcode, set()).add(cls)
     if sheet_name in opparam_converter:
         setattr(cls, "_set_op", staticmethod(opparam_converter[sheet_name]))
@@ -65,7 +64,6 @@ class tiu_base(TIUBase):
 
     def _decode(self):
         self.reg = ctypes.cast(self.cmd, ctypes.POINTER(self.reg_def)).contents
-        self.reg = NamedDict(self.reg.asdict())
         if self.opcode == 12:
             self.cmd_id_dep = 0
         else:
@@ -550,7 +548,7 @@ class dma_cw_transpose(dma_base):
 @dma_registry("DMA_nonzero")
 class dma_nonzero(dma_base):
     opcode = 5
-    sp_fun = {0:"dma.nonzero"}
+    sp_fun = {0: "dma.nonzero"}
     description = "DMA nonzero"
 
 
@@ -571,7 +569,7 @@ class dma_sys(dma_base):
 @dma_registry("DMA_gather")
 class dma_gather(dma_base):
     opcode = 7
-    sp_fun = {0:"gdma.gather"}
+    sp_fun = {0: "gdma.gather"}
     description = "DMA gather"
 
 
@@ -627,13 +625,13 @@ def op_factory(engine_type):
     else:
         raise ValueError(f"cannot decode engine type: {engine_type}")
 
-    def end_symbol(cmd_buf, operation):
+    def is_end(cmd_buf, operation):
         nonlocal sys_end
         is_sys = isinstance(operation, sys_end)
         is_less_1024 = len(cmd_buf) * 8 < 1025
-        if is_sys and is_less_1024 and not int.from_bytes(cmd_buf, "little") == 0:
+        if is_sys and is_less_1024 and not np.any(np.frombuffer(cmd_buf, np.uint8)):
             return True
-
+        return False
 
     def decoder(cmd_buf):
         nonlocal opcode_bits, cmd_set, cmd_id
@@ -647,7 +645,7 @@ def op_factory(engine_type):
                     return operation
         raise ValueError(f"cannot decode cmd: {cmd_buf}")
 
-    return decoder, end_symbol
+    return decoder, is_end
 
 
 def merge_instruction(tiu, dma):
@@ -662,11 +660,17 @@ def merge_instruction(tiu, dma):
                 return -1
         else:
             return len(cmd)
+
     def fix_tgcr_cmd_id_dp(tiu_cmd):
         for i, v in enumerate(tiu_cmd):
             if v.opcode == 12:
-                v.cmd_id_dep = tiu_cmd[i + 1].cmd_id_dep if tiu_cmd[i + 1].cmd_id_dep != 0 else tiu_cmd[i + 2].cmd_id_dep
-    fix_tgcr_cmd_id_dp(inserted_cmd[:get_end(inserted_cmd)])
+                v.cmd_id_dep = (
+                    tiu_cmd[i + 1].cmd_id_dep
+                    if tiu_cmd[i + 1].cmd_id_dep != 0
+                    else tiu_cmd[i + 2].cmd_id_dep
+                )
+
+    fix_tgcr_cmd_id_dp(inserted_cmd[: get_end(inserted_cmd)])
     # remove system instruction
     main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
     inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]

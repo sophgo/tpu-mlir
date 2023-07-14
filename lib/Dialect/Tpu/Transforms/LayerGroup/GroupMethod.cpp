@@ -224,7 +224,7 @@ bool GroupMethod::isLgSupport(Operation *op) {
 
 void GroupMethod::get_base_groups(
     std::vector<std::vector<Operation *>> &base_groups,
-    const std::vector<Operation *> &subnet_ops) {
+    const SetVector<Operation *> &subnet_ops) {
   std::vector<Operation *> group;
   for (auto op : subnet_ops) {
     if (isLgSupport(op)) {
@@ -441,7 +441,7 @@ void GroupMethod::sweep_for_min_cost(
 }
 
 void GroupMethod::dynamic_programming_layer_group_with_cluster(
-    std::vector<LgInfo> &lg_infos, const std::vector<Operation *> &subnet_ops) {
+    std::vector<LgInfo> &lg_infos, const SetVector<Operation *> &subnet_ops) {
   llvm::errs() << "\n"
                << "=======================================================\n"
                << "***** Dynamic Programming layer group with cluster ****\n"
@@ -542,7 +542,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
 bool GroupMethod::update_sequence_group_cost(
     LgInfo *left_layer_group, LgInfo *right_layer_group, bool *left_first,
     SequenceGroupsInfo &opt_seq_info,
-    const std::vector<Operation *> &subnet_ops) {
+    const SetVector<Operation *> &subnet_ops) {
   assert(left_layer_group->group_ops.size() > 0);
   assert(right_layer_group->group_ops.size() > 0);
   LgInfo *groups[2];
@@ -644,7 +644,7 @@ bool GroupMethod::update_sequence_group_cost(
 
 bool GroupMethod::consider_redundant_computation_and_gdma_cost(
     const std::vector<std::vector<Operation *>> &base_groups,
-    const std::vector<Operation *> &subnet_ops) {
+    const SetVector<Operation *> &subnet_ops) {
 
   int64_t left_cut_idx;
   int64_t optimal_cut_idx;
@@ -687,7 +687,7 @@ bool GroupMethod::consider_redundant_computation_and_gdma_cost(
 
 bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
     const std::vector<std::vector<Operation *>> &base_groups,
-    const std::vector<Operation *> &subnet_ops) {
+    const SetVector<Operation *> &subnet_ops) {
   LgInfo sub_group;
   bool lg_valid;
   bool take_effective = false;
@@ -736,8 +736,8 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
   return take_effective;
 }
 
-void GroupMethod::simple_layer_group(
-    std::vector<LgInfo> &lg_infos, const std::vector<Operation *> &subnet_ops) {
+void GroupMethod::simple_layer_group(std::vector<LgInfo> &lg_infos,
+                                     const SetVector<Operation *> &subnet_ops) {
   llvm::errs() << "\n"
                << "=======================================================\n"
                << "*********** Group layers as many as possible **********\n"
@@ -783,7 +783,7 @@ void GroupMethod::simple_layer_group(
 }
 
 void GroupMethod::process(std::vector<LgInfo> &lg_infos,
-                          const std::vector<Operation *> &subnet_ops) {
+                          const SetVector<Operation *> &subnet_ops) {
   auto funcOp = cast<FuncOp>(subnet_ops[0]->getParentOp());
   runmode_ = getRunMode(funcOp);
   switch (opt_) {

@@ -25,29 +25,23 @@ GroupOps::GroupOps(::mlir::func::FuncOp func) {
     if (isa<FuncOp, top::NoneOp, top::WeightOp>(op)) {
       // do nothing
     } else {
-      lg_pass_ir_->subnet_ops.push_back(op);
+      lg_pass_ir_->subnet_ops.insert(op);
       for (auto v : op->getOperands()) {
         if (v.getType().isa<NoneType>()) {
           continue;
         }
-        if (std::find(lg_pass_ir_->subnet_values.begin(),
-                      lg_pass_ir_->subnet_values.end(),
-                      v) == lg_pass_ir_->subnet_values.end()) {
-          lg_pass_ir_->subnet_values.push_back(v);
-        }
+        lg_pass_ir_->subnet_values.insert(v);
       }
       for (auto v : op->getResults()) {
         bool is_used = false;
         for (auto dst_op : v.getUsers()) {
-          if (std::find(lg_pass_ir_->subnet_ops.begin(),
-                        lg_pass_ir_->subnet_ops.end(),
-                        dst_op) != lg_pass_ir_->subnet_ops.end()) {
+          if (lg_pass_ir_->subnet_ops.contains(dst_op)) {
             is_used = true;
             break;
           }
         }
         if (!is_used) {
-          lg_pass_ir_->subnet_values.push_back(v);
+          lg_pass_ir_->subnet_values.insert(v);
         }
       }
     }

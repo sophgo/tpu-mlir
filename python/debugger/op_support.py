@@ -12,7 +12,16 @@ import functools, ctypes
 import numpy as np
 from collections import OrderedDict
 
-__all__ = ["InsBase", "TIUBase", "DMABase", "NamedDict", "MType", "DType", "Scalar", "Engine"]
+__all__ = [
+    "InsBase",
+    "TIUBase",
+    "DMABase",
+    "NamedDict",
+    "MType",
+    "DType",
+    "Scalar",
+    "Engine",
+]
 
 # ------------------------------------------------------------
 # utility function
@@ -121,7 +130,7 @@ class InsBase:
     def decode(cls, cmd_buf):
         cls = cls()
         bytes_length = cls.length // 8
-        cls.cmd = bytes(cmd_buf[: bytes_length])
+        cls.cmd = bytes(cmd_buf[:bytes_length])
         cls._cache = {}
         cls._decode()
         return cls

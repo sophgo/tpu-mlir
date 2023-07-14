@@ -11,13 +11,28 @@
 try:
     from . import regdef_1684x
     from .opparam_1684x import opparam_converter, NPU_NUM, EU_NUM
-    from .op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, Engine, ALIGN
+    from .op_support import (
+        extract_buf,
+        reg_decoder_factory,
+        TIUBase,
+        DMABase,
+        Engine,
+        ALIGN,
+    )
 except:
     import regdef_1684x
     from opparam_1684x import opparam_converter, NPU_NUM, EU_NUM
-    from op_support import extract_buf, reg_decoder_factory, TIUBase, DMABase, Engine, ALIGN
+    from op_support import (
+        extract_buf,
+        reg_decoder_factory,
+        TIUBase,
+        DMABase,
+        Engine,
+        ALIGN,
+    )
 
 import ctypes
+import numpy as np
 
 # global data and type
 # ------------------------------------------------------------
@@ -28,11 +43,9 @@ dma_cls = dict()
 # registry function
 # ------------------------------------------------------------
 def base_registry(cmd_type, sheet_name, cls):
-    attr = regdef_1684x.reg_def[sheet_name]
-    _, bits = zip(*attr)
-    # high bit is the upper bit (open interval).
-    setattr(cls, "length", bits[-1])
-    setattr(cls, "reg_def", reg_decoder_factory(regdef_1684x.reg_def[sheet_name]))
+    reg_def = regdef_1684x.reg_def[sheet_name]
+    setattr(cls, "length", reg_def[-1][-1])
+    setattr(cls, "reg_def", reg_decoder_factory(reg_def))
     cmd_type.setdefault(cls.opcode, set()).add(cls)
     if sheet_name in opparam_converter:
         setattr(cls, "_set_op", staticmethod(opparam_converter[sheet_name]))
@@ -784,13 +797,13 @@ def op_factory(engine_type):
     else:
         raise ValueError(f"cannot decode engine type: {engine_type}")
 
-    def end_symbol(cmd_buf, operation):
+    def is_end(cmd_buf, operation):
         nonlocal sys_end
         is_sys = isinstance(operation, sys_end)
         is_less_1024 = len(cmd_buf) * 8 < 1025
-        if is_sys and is_less_1024 and not int.from_bytes(cmd_buf, "little") == 0:
+        if is_sys and is_less_1024 and not np.any(np.frombuffer(cmd_buf, np.uint8)):
             return True
-
+        return False
 
     def decoder(cmd_buf):
         nonlocal opcode_bits, cmd_set
@@ -800,7 +813,8 @@ def op_factory(engine_type):
                 if op.is_comp(cmd_buf):
                     return op.decode(cmd_buf)
         raise ValueError(f"cannot decode cmd: {cmd_buf}")
-    return decoder, end_symbol
+
+    return decoder, is_end
 
 
 def merge_instruction(tiu, dma):
