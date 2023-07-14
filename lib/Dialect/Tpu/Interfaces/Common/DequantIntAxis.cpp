@@ -18,8 +18,6 @@ LogicalResult tpu::DequantIntAxisOp::init(InferenceParameter &p) {
 void tpu::DequantIntAxisOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
-  auto o_sType = module::getStorageType(getOutput());
-  auto o_qtype = module::getUniformQuantizedType(getOutput());
 
   auto shape = module::getShape(getOutput());
   auto mode = getQuantMode();

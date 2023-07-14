@@ -72,8 +72,6 @@ void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
     need_reshape = true;
   }
 
-  auto in_type =
-      RankedTensorType::get(in_shape, module::getElementType(op.getInput()));
   auto in_reshaped_type =
       getQuantInt8TypeNewShape(op.getInput(), new_shape, asymmetric);
   auto out_type = getQuantInt8Type(op.getOutput(), asymmetric);
@@ -249,7 +247,6 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     int64_t odr[] = {0, 3, 1, 2};
     std::vector<int64_t> order(odr, odr + 4);
-    auto to_type = module::getElementType(op.getInput());
     auto TransOp = do_transpose(name_loc, op.getInput(), order);
     // softmax
     rewriter.setInsertionPointAfter(op);

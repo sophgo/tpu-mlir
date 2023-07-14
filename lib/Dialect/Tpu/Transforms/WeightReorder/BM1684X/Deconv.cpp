@@ -108,7 +108,6 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
 
   // bias op
   if (attr.with_bias) {
-    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     auto bias_type = module::getStorageType(op.getBias());
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
@@ -142,7 +141,6 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
   auto attr = op.parseParam();
 
   // filter op
-  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_type = module::getStorageType(op.getFilter());
   std::vector<int64_t> filter_shape = {1, attr.oc, attr.ic / attr.g,
                                        attr.kh * attr.kw};
@@ -151,7 +149,6 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
 
   // bias op
   if (attr.with_bias) {
-    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     auto bias_type = module::getStorageType(op.getBias());
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);

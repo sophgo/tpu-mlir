@@ -88,8 +88,6 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     use_3ic_optimize = 0;
   }
 
-  auto stype = module::getStorageType(op.getFilter());
-  auto new_type = RankedTensorType::get(filter_shape, stype);
   int weight_size = align_up(gic, IC_PARALLEL) * output_c * kh * kw * 1;
   auto data_i8 = std::make_shared<std::vector<int8_t>>(weight_size);
 
@@ -273,7 +271,6 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   auto none = module::getNoneOp(op);
   op->setOperand(2, none.getResult());
 
-  auto new_type_ = RankedTensorType::get(coeff_shape, in_stype);
   if (isINT4Conv) {
     op.getFilter().setType(coeff_type);
   }
@@ -534,7 +531,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
   auto attr = op.parseParam();
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_f32 = filterOp.read<float>();
-  auto filter_type = module::getStorageType(op.getFilter());
+  [[maybe_unused]]auto filter_type = module::getStorageType(op.getFilter());
   int input_c = attr.ic;
   int output_c = attr.oc;
   int kh = attr.kh;
@@ -687,7 +684,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
 
   // bias op
   if (attr.has_bias) {
-    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    [[maybe_unused]]auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_type = RankedTensorType::get(bias_shape, out_type);
     op.getBias().setType(new_type);

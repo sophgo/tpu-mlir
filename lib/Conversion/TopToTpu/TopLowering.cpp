@@ -42,7 +42,6 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
         "multiplier", builder.getSI32IntegerAttr(multiplier)));
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getSI32IntegerAttr(rshift)));
-    auto in_type = in.getType().cast<RankedTensorType>();
     builder.setInsertionPointAfterValue(in);
     auto mrOp = builder.create<tpu::MulShiftOp>(name_loc, new_type,
                                                 ValueRange{in}, attrs);
@@ -120,8 +119,8 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
 Value do_dequant(Location name_loc, Value input, Type to_type,
                  int64_t multiplier, int64_t shift, tpu::DequantMode mode,
                  int64_t lshift) {
-  auto from_stype = module::getStorageType(input);
-  auto to_stype = module::getStorageType(to_type);
+  [[maybe_unused]]auto from_stype = module::getStorageType(input);
+  [[maybe_unused]]auto to_stype = module::getStorageType(to_type);
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
   auto newType = to_type;
@@ -147,7 +146,6 @@ Value do_dequant(Location name_loc, Value input, Type to_type,
 
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
                  int64_t multiplier, int64_t shift, tpu::RequantMode mode) {
-  auto from_stype = module::getStorageType(input);
   auto to_stype = module::getStorageType(to_type);
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
@@ -172,7 +170,7 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, tpu::RequantMode mode) {
-  auto from_stype = module::getStorageType(input);
+  [[maybe_unused]]auto from_stype = module::getStorageType(input);
   auto to_stype = module::getStorageType(to_type);
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
@@ -195,8 +193,8 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
 
 Value do_requantFp(Value input, double scale, double offset, Type to_type,
                    std::string &to_name, tpu::RequantMode mode) {
-  auto from_stype = module::getStorageType(input);
-  auto ctx = input.getContext();
+  [[maybe_unused]]auto from_stype = module::getStorageType(input);
+  [[maybe_unused]]auto ctx = input.getContext();
   OpBuilder builder(ctx);
   builder.setInsertionPointAfterValue(input);
   auto in_name = module::getName(input).str() + "_" + to_name;

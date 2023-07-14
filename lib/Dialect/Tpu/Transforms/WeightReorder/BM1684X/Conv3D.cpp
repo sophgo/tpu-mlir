@@ -85,7 +85,6 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
     llvm_unreachable("depthwise should support !!");
   }
   // filter reorder
-  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_type = module::getStorageType(op.getFilter());
   auto data_type = BM168x::getDataType(op.getFilter());
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
@@ -108,7 +107,6 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
   }
   // bias op
   if (attr.has_bias) {
-    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
     auto bias_type = module::getStorageType(op.getBias());
     auto new_type = RankedTensorType::get(bias_shape, bias_type);
@@ -142,7 +140,6 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
   auto attr = op.parseParam();
   auto out_type = module::getStorageType(op.getOutput());
   // filter reorder
-  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   int64_t filter_shape[5];
   if (out_type.isF32()) {
     // (oc, ic, kd, kh, kw) -> (kd, oc,ic, kh, kw)
@@ -161,7 +158,6 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
 
   // bias op
   if (attr.has_bias) {
-    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
     auto new_type = RankedTensorType::get(bias_shape, out_type);
     op.getBias().setType(new_type);

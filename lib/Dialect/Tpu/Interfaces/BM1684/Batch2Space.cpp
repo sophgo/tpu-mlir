@@ -26,7 +26,6 @@ void tpu::Batch2SpaceOp::codegen_global_bm1684() {
   auto in_addr = module::getAddress(input);
   auto out_addr = module::getAddress(output);
   auto buffer_addr = module::getAddress(buffer);
-  auto out_dtype = module::getStorageType(output);
   int *input_shape = new int[MAX_SHAPE_DIMS];
   for (auto v : llvm::enumerate(module::getShape(input)))
     input_shape[v.index()] = (int)v.value();

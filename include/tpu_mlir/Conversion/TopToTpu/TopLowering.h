@@ -219,8 +219,8 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
   for (int i = 0; i < in_num_ops; ++i) {
     auto in = from->getOperand(i);
     if (module::isWeight(in)) {
-      auto wOp = in.getDefiningOp<top::WeightOp>();
-      auto wtype = module::getStorageType(in);
+      [[maybe_unused]]auto wOp = in.getDefiningOp<top::WeightOp>();
+      [[maybe_unused]]auto wtype = module::getStorageType(in);
       if (stype.isF16()) {
         operands.push_back(wOp.clone_f16(from));
       } else if (stype.isBF16()) {
@@ -332,8 +332,8 @@ Value do_requantFp(Value input, double scale, double offset, Type to_type,
 template <typename OpTy>
 Value do_binary_saclar(Value input, Type to_type, int64_t scalar,
                        const char *suffix = "_binary") {
-  auto from_stype = module::getStorageType(input);
-  auto to_stype = module::getStorageType(to_type);
+  [[maybe_unused]]auto from_stype = module::getStorageType(input);
+  [[maybe_unused]]auto to_stype = module::getStorageType(to_type);
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
   auto newType = to_type;

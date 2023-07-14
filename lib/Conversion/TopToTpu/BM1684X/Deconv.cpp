@@ -171,7 +171,8 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
 
   if (output_int32) {
     // to int32, and then requant to int8
-    auto name_loc = NameLoc::get(rewriter.getStringAttr(deconv_name));
+    [[maybe_unused]]auto name_loc = NameLoc::get(rewriter.getStringAttr(deconv_name));
+
   }
 
   int q_size = module::isBM1686() ? 2 : 3;

@@ -47,7 +47,6 @@ void SoftplusLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SoftplusLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::SoftplusOp op) const {
-  auto stype = module::getStorageType(op.getOutput());
   Value table =
       create_lookup_table(op.getInput(), op.getOutput(), true, [](double val) {
         return std::log(std::exp(val) + 1);

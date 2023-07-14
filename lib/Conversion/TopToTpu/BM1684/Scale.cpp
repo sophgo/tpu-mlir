@@ -16,7 +16,6 @@ void ScaleLowering::LoweringF32(PatternRewriter &rewriter, top::ScaleOp op) cons
 
   auto ctx = op->getContext();
   auto output = op->getResult(0);
-  auto shape = module::getShape(output);
   Type newType = output.getType();
   OpBuilder builder(ctx);
   std::vector<Value> operands;

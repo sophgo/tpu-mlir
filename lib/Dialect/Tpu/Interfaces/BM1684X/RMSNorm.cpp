@@ -76,7 +76,7 @@ void tpu::RMSNormOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   const bool have_weight = !getGamma().getType().isa<NoneType>();
 
   if (group_type == GROUP_SMALL_C) {
-    auto shape = module::getShape(getInput());
+    [[maybe_unused]]auto shape = module::getShape(getInput());
   }
   param.common.eps = getEps().convertToDouble();
   param.common.affine = have_weight;

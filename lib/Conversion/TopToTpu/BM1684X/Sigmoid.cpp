@@ -55,7 +55,6 @@ void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SigmoidOp op) const {
-  auto stype = module::getStorageType(op.getOutput());
   bool log = op.getLog();
   Value table =
       create_lookup_table(op.getInput(), op.getOutput(), true, [&](double val) {

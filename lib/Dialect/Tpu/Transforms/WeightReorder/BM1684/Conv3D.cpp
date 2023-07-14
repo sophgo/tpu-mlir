@@ -145,7 +145,6 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
   auto attr = op.parseParam();
   auto out_type = module::getStorageType(op.getOutput());
   // filter reorder
-  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   int64_t filter_shape[5];
   if (out_type.isF32()) {
     // f32 local layer shape, only change shape info for layer group,
@@ -163,7 +162,6 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
   }
   // bias op
   if (attr.has_bias) {
-    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     auto bias_type = module::getElementType(op.getBias());
     int64_t bias_shape[5] = {1, attr.oc, 1, 1, 1};
     auto new_type = RankedTensorType::get(bias_shape, bias_type);
