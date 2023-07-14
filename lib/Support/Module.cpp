@@ -10,7 +10,6 @@
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 #include "tpu_mlir/Support/ModuleEnum.cpp.inc"
 
 namespace tpu_mlir {
@@ -701,8 +700,18 @@ bool isDynamicShape(Value v) {
 }
 
 void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
-  auto newType = RankedTensorType::get(shape, getElementType(v));
-  v.setType(newType);
+  if (isUnranked(v) || isDynamicShape(v)) {
+    auto newType = RankedTensorType::get(shape, getElementType(v));
+    v.setType(newType);
+  } else {
+    auto s = getShape(v);
+    /* unranked tensor is okay, for example:
+       tensor<*xf32>->tensor<1xf32> */
+    if ((std::max(s.size(), shape.size()) > 1) && s != shape) {
+      v.dump();
+      llvm_unreachable("Shape Verify failed");
+    }
+  }
 }
 
 bool isGlobalBuffer(Value v) {
