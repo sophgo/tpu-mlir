@@ -23,8 +23,9 @@ class figure_cache():
 def linear_plot(data, name=None, max_sampling=1000, weight=False, f32weight=None):
     import numpy as np
     from . import plot_utils as plt
+    shape = None
     if weight:
-        blob_fp, blob_int = data.weight(f32weight, name)
+        blob_fp, blob_int, shape = data.weight(f32weight, name)
     else:
         blob_fp, blob_int = data.tensor(name)
     data_size = blob_fp.size
@@ -33,13 +34,24 @@ def linear_plot(data, name=None, max_sampling=1000, weight=False, f32weight=None
     else:
         step = 1
     index = np.arange(0, data_size, step)
-    fig = plt.plot_float_vs_fixpoint(
-        index, (blob_fp.flatten()[::step], blob_int.flatten()[::step]),
-        subplot_titles=(name, "float - int8\t "))
-    fig.update_layout(legend=dict(yanchor="top", y=0.99,
-                      xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
-    fig.update_layout(margin=dict(l=10, r=10, t=20, b=20),
-                      hovermode='x unified')
+    if shape != None and len(shape) == 2: # matmul
+        blob_fp_t = blob_fp.transpose()
+        blob_int_t = blob_int.transpose()
+        fig = plt.plot_weight_and_transposed(
+            index, (blob_fp.flatten()[::step], blob_int.flatten()[::step], blob_fp_t.flatten()[::step], blob_int_t.flatten()[::step]),
+            subplot_titles=(name, name+"-transposed"))
+        fig.update_layout(legend=dict(yanchor="top", y=0.99,
+                        xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
+        fig.update_layout(margin=dict(l=10, r=10, t=20, b=20),
+                        hovermode='x unified')
+    else:
+        fig = plt.plot_float_vs_fixpoint(
+            index, (blob_fp.flatten()[::step], blob_int.flatten()[::step]),
+            subplot_titles=(name, "float - int8\t "))
+        fig.update_layout(legend=dict(yanchor="top", y=0.99,
+                        xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
+        fig.update_layout(margin=dict(l=10, r=10, t=20, b=20),
+                        hovermode='x unified')
     return fig
 
 
@@ -101,31 +113,6 @@ def dist_plot(data, name=None, scale=1.0, dtype='I8'):
         fig = plt.plot_dist_fp_fixpoint( fig,
             index, (hist_fp, hist_quant, q_range),
             subplot_titles=(name, "dist fp vs uint8\t "))
-    elif dtype == 'I4':
-        min_ = -8*scale
-        max_ = 7*scale
-        max = np.maximum(max_,d_max)
-        min = np.minimum(min_,d_min)
-        min_bin = int(np.abs(np.floor(min/scale)))
-        max_bin = int(np.ceil(max/scale))
-        bins = min_bin+max_bin
-        xticklabels=['']*bins
-        xticklabels[min_bin-8] = '-8/{:.4f}'.format(-8.0*scale)
-        xticklabels[min_bin] = '0/0.0'
-        xticklabels[min_bin+6] = '7/{:.4f}'.format(7.0*scale)
-
-        hist = np.histogram(blob_fp, bins=bins,
-                        range=(-min_bin*scale, max_bin*scale))
-        hist_fp = hist[0]
-        hist = np.histogram(blob_int, bins=bins,
-                        range=(-min_bin*scale, max_bin*scale))
-        hist_quant = hist[0]
-        q_range = np.zeros(bins)
-        q_range[min_bin-8:min_bin+7] = np.ones(15)*np.maximum(np.max(hist_fp),np.max(hist_quant))
-        index = np.arange(bins)
-        fig = plt.plot_dist_fp_fixpoint( fig,
-            index, (hist_fp, hist_quant, q_range),
-            subplot_titles=(name, "dist fp vs int4\t "))
     else:
         index = np.arange(255)
         hist = np.histogram(blob_fp, bins=255,
