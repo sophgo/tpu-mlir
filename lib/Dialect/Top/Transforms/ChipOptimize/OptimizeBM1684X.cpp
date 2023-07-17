@@ -535,12 +535,19 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
   auto tensor_stype = module::getStorageType(tensor);
   auto tensor_last_op = tensor;
   if (tensor_dim < out_dim) {
-    // reshape to out dim
-    auto tensorType = RankedTensorType::get(tensor_reshape, tensor_stype);
+    // reshape to out
     std::string in_name = module::getName(tensor).str() + "_ToOutDim";
     auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
     rewriter.setInsertionPointAfterValue(tensor_last_op);
-    tensor_last_op = rewriter.create<top::ReshapeOp>(loc, tensorType, ValueRange{tensor_last_op});
+    if (tensor.getType().cast<RankedTensorType>().getElementType().isa<quant::CalibratedQuantizedType>()) {
+      auto i_type = module::getCalibratedType(tensor);
+      auto tensorType = RankedTensorType::get(tensor_reshape, i_type);
+      tensor_last_op = rewriter.create<top::ReshapeOp>(loc, tensorType, ValueRange{tensor_last_op});
+    }
+    else {
+      auto tensorType = RankedTensorType::get(tensor_reshape, tensor_stype);
+      tensor_last_op = rewriter.create<top::ReshapeOp>(loc, tensorType, ValueRange{tensor_last_op});
+    }
   }
   auto tensor_last_shape = std::vector<int64_t>(tensor_reshape);
 
@@ -586,18 +593,42 @@ public:
 
     if (!op.getXIsConst()) {
       auto tbrn = op.getTbrn();
-      auto tbrn_ = expand_dim_and_tile(tbrn, out_shape, rewriter);
-      if (tbrn != tbrn_) {
-        op.setOperand(1, tbrn_);
+      if (isa<top::WeightOp>(tbrn.getDefiningOp()) && tbrn.getType().cast<RankedTensorType>().getNumElements() == 1) {
+        // single value in tensor, set to const
+        float value = dyn_cast<top::WeightOp>(tbrn.getDefiningOp()).read_as_float()->at(0);
+        op.setXConstValAttr(rewriter.getF64FloatAttr(value));
+        op.setXIsConst(true);
+        auto fbrn = op.getFbrn();
+        op.setOperand(1,module::getNoneOp(op));
+        op.setOperand(2,fbrn);
         process = true;
+      }
+      else if (!isa<top::WeightOp>(tbrn.getDefiningOp())) {
+        auto tbrn_ = expand_dim_and_tile(tbrn, out_shape, rewriter);
+        if (tbrn != tbrn_) {
+          op.setOperand(1, tbrn_);
+          process = true;
+        }
       }
     }
     if (!op.getYIsConst()) {
       auto fbrn = op.getFbrn();
-      auto fbrn_ = expand_dim_and_tile(fbrn, out_shape, rewriter);
-      if (fbrn != fbrn_) {
-        op.setOperand(2, fbrn_);
-        process = true;
+      if (isa<top::WeightOp>(fbrn.getDefiningOp()) && fbrn.getType().cast<RankedTensorType>().getNumElements() == 1) {
+        // single value in tensor, set to const
+        float value = dyn_cast<top::WeightOp>(fbrn.getDefiningOp()).read_as_float()->at(0);
+        op.setYConstValAttr(rewriter.getF64FloatAttr(value));
+        op.setYIsConst(true);
+        auto tbrn = op.getTbrn();
+        op.setOperand(1,tbrn);
+        op.setOperand(2,module::getNoneOp(op));
+        process |= true;
+      }
+      else if (!isa<top::WeightOp>(fbrn.getDefiningOp())) {
+        auto fbrn_ = expand_dim_and_tile(fbrn, out_shape, rewriter);
+        if (fbrn != fbrn_) {
+          op.setOperand(2, fbrn_);
+          process |= true;
+        }
       }
     }
 
