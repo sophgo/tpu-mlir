@@ -15,7 +15,7 @@ tags
 onnx_test_bm1686/
 onnx_test_bm1684x/
 onnx_test_bm1684/
-
+.cache
 third_party/llvm/bin/clang
 third_party/llvm/bin/clang++
 third_party/llvm/bin/clang-17
