@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Backend/BM168x/BM1686.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 
@@ -755,6 +756,78 @@ public:
   }
 };
 
+class NmsGlobalBuffer : public OpRewritePattern<tpu::NmsOp> {
+public:
+  using OpRewritePattern<tpu::NmsOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::NmsOp NmsOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(NmsOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684XFamily()
+        || (module::isBM1684XFamily() && !module::isBM1686())) {
+      return failure();
+    }
+
+    int64_t  buffer_size = BUFFER_SIZE;
+    auto type = module::getStorageType(NmsOp.getInputs()[0]);
+    std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(NmsOp, buffer_type);
+    NmsOp.setOperand(NmsOp.getNumOperands() - 1, buffer);
+    return success();
+  }
+};
+
+class YoloDetectionGlobalBuffer : public OpRewritePattern<tpu::YoloDetectionOp> {
+public:
+  using OpRewritePattern<tpu::YoloDetectionOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::YoloDetectionOp yoloDetectionOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(yoloDetectionOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684XFamily()
+        || (module::isBM1684XFamily() && !module::isBM1686())) {
+      return failure();
+    }
+
+    int64_t  buffer_size = BUFFER_SIZE;
+    auto type = module::getStorageType(yoloDetectionOp.getInputs()[0]);
+    std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(yoloDetectionOp, buffer_type);
+    yoloDetectionOp.setOperand(yoloDetectionOp.getNumOperands() - 1, buffer);
+    return success();
+  }
+};
+
+class DetectionOutputGlobalBuffer : public OpRewritePattern<tpu::DetectionOutputOp> {
+public:
+  using OpRewritePattern<tpu::DetectionOutputOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::DetectionOutputOp detectionOutputOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(detectionOutputOp.getBuffer())) {
+      return failure();
+    }
+
+    if (!module::isBM1684XFamily()
+        || (module::isBM1684XFamily() && !module::isBM1686())) {
+      return failure();
+    }
+
+    int64_t  buffer_size = BUFFER_SIZE;
+    auto type = module::getStorageType(detectionOutputOp.getInputs()[0]);
+    std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(detectionOutputOp, buffer_type);
+    detectionOutputOp.setOperand(detectionOutputOp.getNumOperands() - 1, buffer);
+    return success();
+  }
+};
 } // namespace bm168x
 
 namespace tpu {
@@ -778,7 +851,10 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       PadGlobalBuffer,
       Space2BatchGlobalBuffer,
       Batch2SpaceGlobalBuffer,
-      ScatterNDGlobalBuffer
+      ScatterNDGlobalBuffer,
+      NmsGlobalBuffer,
+      YoloDetectionGlobalBuffer,
+      DetectionOutputGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }

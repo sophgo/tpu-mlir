@@ -23,23 +23,25 @@ void tpu::NmsOp::codegen_global_bm1684x() {
 // ======================================
 int64_t tpu::NmsOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer)
-    return sizeof(nms_common_spec_t);
-  nms_common_spec_t spec = {0};
-  spec.input_num = 2;
-  spec.keep_topk_per_class = getMaxOutputSize();
-  spec.center_point_box = getCenterPointBox();
-  spec.onnx_nms = 1;
-  if (getInputs().size() == 5) {
+    return sizeof(dyn_nms_global_spec_t);
+  dyn_nms_global_spec_t spec = {0};
+  spec.common.input_num = 2;
+  spec.common.keep_topk_per_class = getMaxOutputSize();
+  spec.common.center_point_box = getCenterPointBox();
+  spec.common.onnx_nms = 1;
+  if (getInputs().size() >= 5) {
     auto iou = dyn_cast<top::WeightOp>(getInputs()[3].getDefiningOp());
     auto data = iou.read_as_float();
-    spec.iou_threshold = data->data()[0];
+    spec.common.iou_threshold = data->data()[0];
     auto score_th = dyn_cast<top::WeightOp>(getInputs()[4].getDefiningOp());
     data = score_th.read_as_float();
-    spec.score_threshold = data->data()[0];
+    spec.common.score_threshold = data->data()[0];
   } else {
-    spec.iou_threshold = 0.5;
-    spec.score_threshold = 0.5;
+    spec.common.iou_threshold = 0.5;
+    spec.common.score_threshold = 0.5;
   }
+
+  spec.buffer_addr = module::isBM1686() ? module::getAddress(getBuffer()) : 0;
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 

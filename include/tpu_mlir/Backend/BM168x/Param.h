@@ -1686,6 +1686,11 @@ typedef struct nms_common_spec {
   int onnx_nms;//1: onnx_nms
 } nms_common_spec_t;
 
+typedef struct dyn_nms_global_spec {
+    nms_common_spec_t common;
+    unsigned long long buffer_addr;
+    int detected_box_num;
+} dyn_nms_global_spec_t;
 #ifdef __cplusplus
 }
 #endif

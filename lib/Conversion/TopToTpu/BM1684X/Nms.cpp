@@ -13,7 +13,19 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void NmsLowering::LoweringF32(PatternRewriter &rewriter, top::NmsOp op) const {
-  lowering_common_f32<tpu::NmsOp>(rewriter, op);
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  for (auto&& in: op.getOperands())
+    operands.emplace_back(in);
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp);
+  mlir::Type new_type = getQuantFloatType(op.getOutput());
+  rewriter.replaceOpWithNewOp<tpu::NmsOp>(op, new_type, operands, attrs);
+  return;
 }
 
 void NmsLowering::LoweringINT4(PatternRewriter &rewriter, top::NmsOp op,
