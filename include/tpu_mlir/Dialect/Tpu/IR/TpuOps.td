@@ -2490,7 +2490,8 @@ def Tpu_YoloDetectionOp : Tpu_Op<"YoloDetection"> {
     YoloVersionAttr:$version,
     DefaultValuedAttr<I64Attr, "80">:$class_num,
     DefaultValuedAttr<I64Attr, "3">:$num_boxes,
-    DefaultValuedAttr<BoolAttr, "false">:$agnostic_nms
+    DefaultValuedAttr<BoolAttr, "false">:$agnostic_nms,
+    AnyTensorOrNone:$buffer
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -2513,7 +2514,9 @@ def Tpu_DetectionOutputOp : Tpu_Op<"DetectionOutput"> {
     DefaultValuedAttr<BoolAttr, "true">:$share_location,
     DefaultValuedAttr<F64Attr, "0">:$variance_encoded_in_target,
     DefaultValuedAttr<F64Attr, "1">:$eta,
-    DefaultValuedAttr<I64Attr, "1">:$onnx_nms
+    DefaultValuedAttr<I64Attr, "1">:$onnx_nms,
+    AnyTensorOrNone:$buffer
+
   );
   let results = (outs AnyTensor:$output);
 }
@@ -2723,7 +2726,8 @@ def Tpu_NmsOp : Tpu_Op<"Nms"> {
   let arguments = (ins
     Variadic<AnyTensor>: $inputs,
     I64Attr: $center_point_box,
-    I64Attr: $max_output_size
+    I64Attr: $max_output_size,
+    AnyTensorOrNone:$buffer
   );
 
   let results = (outs AnyTensor:$output);

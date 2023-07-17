@@ -28,6 +28,11 @@ typedef struct ssd_detect_out_spec {
   int  onnx_nms;// 1: onnx_nms
 } ssd_detect_out_spec_t;
 
+typedef struct ssd_detect_out_dyn_param {
+    ssd_detect_out_spec_t spec;
+    unsigned long long buffer_addr;
+    int detected_box_num;
+} ssd_detect_out_dyn_param_t;
 #ifdef __cplusplus
 }
 #endif
@@ -42,29 +47,30 @@ void tpu::DetectionOutputOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::DetectionOutputOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(ssd_detect_out_spec_t);
-  ssd_detect_out_spec_t spec = {0};
-  spec.num_classes = getNumClasses();
-  spec.share_location = getShareLocation();
-  spec.background_label_id = getBackgroundLabelId();
+  if (!buffer) return sizeof(ssd_detect_out_dyn_param_t);
+  ssd_detect_out_dyn_param_t param = {0};
+  param.spec.num_classes = getNumClasses();
+  param.spec.share_location = getShareLocation();
+  param.spec.background_label_id = getBackgroundLabelId();
   std::string str_code_type = this->getCodeType().str();
   if (str_code_type == "CORNER") {
-    spec.code_type = 1;
+    param.spec.code_type = 1;
   } else if (str_code_type == "CENTER_SIZE") {
-    spec.code_type = 2;
+    param.spec.code_type = 2;
   } else if (str_code_type == "CORNER_SIZE") {
-    spec.code_type = 3;
+    param.spec.code_type = 3;
   } else {
     llvm_unreachable("code type wrong");
   }
-  spec.variance_encoded_in_target = getVarianceEncodedInTarget().convertToDouble();
-  spec.keep_top_k = getKeepTopK();
-  spec.confidence_threshold = getConfidenceThreshold().convertToDouble();
-  spec.nms_threshold = getNmsThreshold().convertToDouble();
-  spec.eta = getEta().convertToDouble();
-  spec.top_k = getTopK();
-  spec.onnx_nms = getOnnxNms();
-  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+  param.spec.variance_encoded_in_target = getVarianceEncodedInTarget().convertToDouble();
+  param.spec.keep_top_k = getKeepTopK();
+  param.spec.confidence_threshold = getConfidenceThreshold().convertToDouble();
+  param.spec.nms_threshold = getNmsThreshold().convertToDouble();
+  param.spec.eta = getEta().convertToDouble();
+  param.spec.top_k = getTopK();
+  param.spec.onnx_nms = getOnnxNms();
+  param.buffer_addr = module::isBM1686() ? module::getAddress(getBuffer()) : 0;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 int64_t tpu::DetectionOutputOp::get_fw_type_bm1684x() {

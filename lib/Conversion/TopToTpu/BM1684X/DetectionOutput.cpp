@@ -21,6 +21,8 @@ static void LoweringDetectionOutput(PatternRewriter &rewriter, top::DetectionOut
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp);
   mlir::Type new_type = getQuantFloatType(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::DetectionOutputOp>(op, new_type, operands, attrs);
   return;

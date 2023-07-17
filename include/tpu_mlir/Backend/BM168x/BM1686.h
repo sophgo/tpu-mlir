@@ -21,7 +21,7 @@ typedef void (*tpu_core_context_setup)(int, int, int);
 
 namespace tpu_mlir {
 namespace backend {
-
+#define BUFFER_SIZE (4 *1024 * 1024)
 class BM1686 : public BM1684X {
 public:
   static bool classof(const BM168x *bm168x) {

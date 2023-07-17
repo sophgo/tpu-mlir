@@ -32,6 +32,12 @@ typedef struct yolov3_detect_out_spec {
   int clip_im_width;
 } yolov3_detect_out_spec_t;
 
+typedef struct yolov3_detect_out_dyn_param {
+    yolov3_detect_out_spec_t spec;
+    unsigned long long buffer_addr;
+    int detected_box_num;
+} yolov3_detect_out_dyn_param_t;
+
 typedef struct yolov5_detect_out_spec {
   int keep_top_k;
   float nms_threshold;
@@ -106,30 +112,31 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
 
   } else { // default
     if (!buffer)
-      return sizeof(yolov3_detect_out_spec_t);
-    yolov3_detect_out_spec_t spec = {0};
-    spec.input_num = getInputs().size();
-    spec.batch_num = module::getShape(getInputs()[0])[0];
-    spec.num_classes = getClassNum();
-    spec.num_boxes = getNumBoxes();
-    spec.mask_group_size = spec.num_boxes;
-    spec.keep_top_k = getKeepTopk();
-    spec.nms_threshold = getNmsThreshold().convertToDouble();
-    spec.confidence_threshold = getObjThreshold().convertToDouble();
+      return sizeof(yolov3_detect_out_dyn_param_t);
+    yolov3_detect_out_dyn_param_t param = {0};
+    param.spec.input_num = getInputs().size();
+    param.spec.batch_num = module::getShape(getInputs()[0])[0];
+    param.spec.num_classes = getClassNum();
+    param.spec.num_boxes = getNumBoxes();
+    param.spec.mask_group_size = param.spec.num_boxes;
+    param.spec.keep_top_k = getKeepTopk();
+    param.spec.nms_threshold = getNmsThreshold().convertToDouble();
+    param.spec.confidence_threshold = getObjThreshold().convertToDouble();
     auto anchors = module::getI64Array(getAnchors());
     double width = (double)getNetInputW();
-    for (uint32_t i = 0; i < spec.input_num; i++) {
+    for (uint32_t i = 0; i < param.spec.input_num; i++) {
       auto s = module::getShape(getInputs()[i]);
       assert(s.size() == 4);
-      spec.anchor_scale[i] = (float)(width / s[3]);
+      param.spec.anchor_scale[i] = (float)(width / s[3]);
     }
-    for (uint32_t i = 0; i < spec.input_num * spec.num_boxes; i++) {
-      spec.mask[i] = (float)(i);
+    for (uint32_t i = 0; i < param.spec.input_num * param.spec.num_boxes; i++) {
+      param.spec.mask[i] = (float)(i);
     }
     for (uint32_t i = 0; i < anchors->size(); i++) {
-      spec.bias[i] = (float)(anchors->at(i));
+      param.spec.bias[i] = (float)(anchors->at(i));
     }
-    return BM168x::dynamic_spec_to_buffer(buffer, spec);
+    param.buffer_addr = module::isBM1686() ? module::getAddress(getBuffer()) : 0;
+    return BM168x::dynamic_spec_to_buffer(buffer, param);
   }
 }
 
