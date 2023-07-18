@@ -84,8 +84,10 @@ RunMode getRunMode(Operation *op) {
   FuncOp funcOp;
   if (isa<FuncOp>(op)) {
     funcOp = cast<FuncOp>(op);
+  } else if (op->getParentOp()) {
+    return getRunMode(op->getParentOp());
   } else {
-    funcOp = cast<FuncOp>(op->getParentOp());
+    llvm_unreachable("top level has no FuncOp!");
   }
   return getRunMode(funcOp);
 }

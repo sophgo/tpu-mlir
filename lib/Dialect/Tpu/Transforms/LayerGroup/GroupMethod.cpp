@@ -784,8 +784,7 @@ void GroupMethod::simple_layer_group(std::vector<LgInfo> &lg_infos,
 
 void GroupMethod::process(std::vector<LgInfo> &lg_infos,
                           const SetVector<Operation *> &subnet_ops) {
-  auto funcOp = cast<FuncOp>(subnet_ops[0]->getParentOp());
-  runmode_ = getRunMode(funcOp);
+  runmode_ = getRunMode(subnet_ops[0]);
   switch (opt_) {
   case 1:
     simple_layer_group(lg_infos, subnet_ops);
