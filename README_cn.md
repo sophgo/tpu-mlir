@@ -69,12 +69,6 @@ cd tpu-mlir
 source ./envsetup.sh
 ./build.sh
 ```
-我们的最新Docker镜像已经内置了CLANG，它具备更好的诊断信息和更快的编译速度。如果您使用的是旧版本的Docker镜像，脚本将默认使用GCC进行编译，或者您可以选择手动安装CLANG：
-``` shell
-apt update
-apt install clang
-```
-使用CLANG，编译速度相比GCC会提升一倍左右。
 # 使用方法
 
 以`yolov5s.onnx`为例，介绍如何编译迁移一个onnx模型至BM1684X TPU平台运行。

@@ -70,12 +70,6 @@ cd tpu-mlir
 source ./envsetup.sh
 ./build.sh
 ```
-If you are using the latest docker image, CLANG is already included, providing better diagnostic information and faster compilation speed. In case you are using an older version of the docker image, the script will default to using GCC for compilation. Alternatively, you can install CLANG on your own：
-``` shell
-apt update
-apt install clang
-```
-Using CLANG, the compilation speed can be improved by approximately double.
 # Usage
 
 Introduce the usage of `TPU-MLIR` by a simple example of compiling `yolov5s.onnx` and running it on the BM1684X TPU platform.
