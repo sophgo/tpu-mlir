@@ -43,11 +43,12 @@ def reg_decoder_factory(fileds):
 
         _fields_ = [(k, ctypes.c_uint64, v) for k, v in zip(key, bits_width)]
 
-        def asdict(self) -> dict:
-            return {field[0]: getattr(self, field[0]) for field in self._fields_}
-
         def __repr__(self):
-            return str(self.asdict())
+            return str(dict(self))
+
+        def __iter__(self):
+            for field in self._fields_:
+                yield (field[0], getattr(self, field[0]))
 
         def __getitem__(self, key):
             return getattr(self, key)

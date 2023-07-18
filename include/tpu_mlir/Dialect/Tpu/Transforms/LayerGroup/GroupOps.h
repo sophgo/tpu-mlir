@@ -59,10 +59,6 @@ protected:
   BasicTimeStepPtr time_step;
   LgPassIR *lg_pass_ir_;
 
-  std::shared_ptr<std::vector<Operation *>> group_ops_;
-  std::vector<std::shared_ptr<std::vector<mlir::Operation *>>> groups_ops_;
-  std::vector<Operation *> all_ops_;
-  std::vector<Value> all_tensors_;
   mlir::MLIRContext *ctx_;
   Operation *current_op_;
   Block *body_;

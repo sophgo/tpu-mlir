@@ -516,14 +516,13 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
   llvm::errs() << "-------------------------------------------------------\n";
   llvm::errs() << "Consider redundant computation and gdma cost\n";
   llvm::errs() << "-------------------------------------------------------\n";
-  consider_redundant_computation_and_gdma_cost(base_groups, subnet_ops);
+  consider_redundant_computation_and_gdma_cost(base_groups);
   show_cut_results();
 
   llvm::errs() << "-------------------------------------------------------\n";
   llvm::errs() << "Merge cut idx to reduce gdma cost\n";
   llvm::errs() << "-------------------------------------------------------\n";
-  bool take_effective =
-      merge_cut_idx_to_reduce_gdma_cost(base_groups, subnet_ops);
+  bool take_effective = merge_cut_idx_to_reduce_gdma_cost(base_groups);
   show_cut_results();
 
   if (take_effective) {
@@ -531,7 +530,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
     llvm::errs() << "Consider redundant computation and gdma cost again\n"
                  << "due to cut idx merged in the previous step\n";
     llvm::errs() << "-------------------------------------------------------\n";
-    consider_redundant_computation_and_gdma_cost(base_groups, subnet_ops);
+    consider_redundant_computation_and_gdma_cost(base_groups);
     show_cut_results();
   }
 
@@ -539,10 +538,10 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
   get_final_groups(lg_infos, base_groups);
 }
 
-bool GroupMethod::update_sequence_group_cost(
-    LgInfo *left_layer_group, LgInfo *right_layer_group, bool *left_first,
-    SequenceGroupsInfo &opt_seq_info,
-    const SetVector<Operation *> &subnet_ops) {
+bool GroupMethod::update_sequence_group_cost(LgInfo *left_layer_group,
+                                             LgInfo *right_layer_group,
+                                             bool *left_first,
+                                             SequenceGroupsInfo &opt_seq_info) {
   assert(left_layer_group->group_ops.size() > 0);
   assert(right_layer_group->group_ops.size() > 0);
   LgInfo *groups[2];
@@ -643,8 +642,7 @@ bool GroupMethod::update_sequence_group_cost(
 }
 
 bool GroupMethod::consider_redundant_computation_and_gdma_cost(
-    const std::vector<std::vector<Operation *>> &base_groups,
-    const SetVector<Operation *> &subnet_ops) {
+    const std::vector<std::vector<Operation *>> &base_groups) {
 
   int64_t left_cut_idx;
   int64_t optimal_cut_idx;
@@ -669,9 +667,8 @@ bool GroupMethod::consider_redundant_computation_and_gdma_cost(
                           cut_result[j]);
           get_layer_group(right_sub_group, base_group, cut_result[j] + 1,
                           cut_result[j + 1]);
-          bool is_better =
-              update_sequence_group_cost(&left_sub_group, &right_sub_group,
-                                         &left_first, seq_info, subnet_ops);
+          bool is_better = update_sequence_group_cost(
+              &left_sub_group, &right_sub_group, &left_first, seq_info);
           if (is_better) {
             optimal_cut_idx = cut_result[j];
             llvm::errs() << "//// Group cost " << seq_info.min_cost
@@ -686,8 +683,7 @@ bool GroupMethod::consider_redundant_computation_and_gdma_cost(
 }
 
 bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
-    const std::vector<std::vector<Operation *>> &base_groups,
-    const SetVector<Operation *> &subnet_ops) {
+    const std::vector<std::vector<Operation *>> &base_groups) {
   LgInfo sub_group;
   bool lg_valid;
   bool take_effective = false;

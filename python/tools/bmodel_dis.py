@@ -135,8 +135,8 @@ def __main():
             module = BModel2Reg(args.bmodels[0])
             outs = {
                 _id: {
-                    "tiu": [x.reg for x in ops.tiu],
-                    "dma": [x.reg for x in ops.dma],
+                    "tiu": [dict(x.reg) for x in ops.tiu],
+                    "dma": [dict(x.reg) for x in ops.dma],
                 }
                 for _id, ops in module
             }
