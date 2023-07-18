@@ -889,6 +889,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(func::CallOp call) {
   std::vector<Value> outputs;
   auto next_index = func->getAttrOfType<DenseI32ArrayAttr>("next_index");
   std::vector<int> next_id_v(next_index.asArrayRef());
+  std::reverse(next_id_v.begin(), next_id_v.end());
   func.walk<WalkOrder::PreOrder>([&](Operation *op) {
     if (isa<tpu::IfOp>(op)) {
       inputs.emplace_back(module::getOriValue(op->getOperand(0)));
@@ -955,9 +956,9 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(func::CallOp call) {
     }
   }
 
-  for (int i = 0; i < ifOp.getNumResults(); i++) {
-    outputs.emplace_back(module::getOriValue(ifOp.getResult(i)));
-  }
+  func.walk<WalkOrder::PreOrder>([&](tpu::IdentityOp op) {
+     outputs.push_back(op.getResult(0));
+  });
 
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);

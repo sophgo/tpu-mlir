@@ -24,15 +24,27 @@
 using namespace llvm;
 
 namespace tpu_mlir {
+// ================================
+// Lowering Helper Apis
+// ================================
+
+mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);
+mlir::Type getQuantIntType(Value v, double scale, double offset, int bits = 8);
+mlir::Type getQuantInt4Type(Value v, bool asymmetric = false);
+mlir::Type getQuantBoolType(Value v);
+
+template <typename ElemTy = Float32Type>
+static mlir::Type getQuantFloatType(Value v);
+
 class ScfTypeConverter : public TypeConverter {
 public:
   ScfTypeConverter() {
     // The order of type conversion is important: later ones are tried earlier.
     addConversion([](Type type) { return type; });
-    addConversion([](TensorType tensorType) {
-      assert(tensorType.hasRank() && "expected only ranked shapes");
-      return MemRefType::get(tensorType.getShape(),
-                             tensorType.getElementType());
+    addConversion([&](TensorType type) -> Optional<Type> {
+      if (isLegal(type.getElementType()))
+        return type;
+      return std::nullopt;
     });
 
     addSourceMaterialization([&](OpBuilder &builder, Type resultType,
@@ -77,8 +89,31 @@ public:
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const final {
+    std::vector<mlir::Type> new_types;
+    auto real_mode = module::getMode();
+    for (int i = 0; i < op->getNumResults(); i++)
+    {
+      switch (real_mode) {
+        case module::Mode::INT8:
+          new_types.push_back(getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
+          break;
+        case module::Mode::INT4:
+          new_types.push_back(getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
+          break;
+        case module::Mode::F16:
+          new_types.push_back(getQuantFloatType<mlir::Float16Type>(op->getResult(i)));
+          break;
+        case module::Mode::BF16:
+          new_types.push_back(getQuantFloatType<mlir::BFloat16Type>(op->getResult(i)));
+          break;
+        default:
+          new_types.emplace_back(op->getResultTypes()[i]);
+          break;
+      }
+    }
+
     auto tpuIfOp = rewriter.create<tpu::IfOp>(
-        op->getLoc(), op->getResultTypes(), op->getOperands(), op->getAttrs());
+        op->getLoc(), new_types, op->getOperands(), op->getAttrs());
     rewriter.createBlock(&(tpuIfOp.getThenBranch()));
     rewriter.createBlock(&(tpuIfOp.getElseBranch()));
     auto ifOp = dyn_cast<top::IfOp>(op);
@@ -86,7 +121,8 @@ public:
                      tpuIfOp.getThenBranch());
     graphToTpuBranch(rewriter, op->getLoc(), ifOp.getElseBranch(),
                      tpuIfOp.getElseBranch());
-    rewriter.replaceOp(op, tpuIfOp->getResults());
+    op->replaceAllUsesWith(tpuIfOp.getOperation());
+    rewriter.eraseOp(op);
     return success();
   }
 
@@ -195,15 +231,6 @@ public:
     llvm_unreachable("Not Implemented");
   }
 };
-
-// ================================
-// Lowering Helper Apis
-// ================================
-
-mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);
-mlir::Type getQuantIntType(Value v, double scale, double offset, int bits = 8);
-mlir::Type getQuantInt4Type(Value v, bool asymmetric = false);
-mlir::Type getQuantBoolType(Value v);
 
 // Lowering to a new Operation, with the same operands and same attrs, and
 // newType

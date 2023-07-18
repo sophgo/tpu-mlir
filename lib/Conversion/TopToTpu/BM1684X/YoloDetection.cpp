@@ -18,14 +18,10 @@ void YoloDetectionLowering::LoweringF32(PatternRewriter &rewriter,
   std::vector<Value> operands;
   for (auto&& in: op.getOperands())
     operands.emplace_back(in);
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
   mlir::Type new_type = getQuantFloatType(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::YoloDetectionOp>(op, new_type, operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::YoloDetectionOp>(op, new_type, operands, op.getOperation()->getAttrs());
   return;
 }
 

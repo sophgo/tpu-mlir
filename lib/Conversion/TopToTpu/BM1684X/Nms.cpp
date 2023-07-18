@@ -17,14 +17,10 @@ void NmsLowering::LoweringF32(PatternRewriter &rewriter, top::NmsOp op) const {
   std::vector<Value> operands;
   for (auto&& in: op.getOperands())
     operands.emplace_back(in);
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
   mlir::Type new_type = getQuantFloatType(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::NmsOp>(op, new_type, operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::NmsOp>(op, new_type, operands, op.getOperation()->getAttrs());
   return;
 }
 
