@@ -87,8 +87,7 @@ LogicalResult tpu::ConcatOp::LocalGenSupport() {
     }
   } else if (module::isBM1684Family()) {
     auto status = success();
-    auto funcOp = cast<FuncOp>(getOperation()->getParentOp());
-    auto runMode = getRunMode(funcOp);
+    auto runMode = getRunMode(getOperation());
     if (ax > 3 ||
         (!module::getStorageType(getOutput()).isInteger(32) && ax == 0)) {
       status = failure();
