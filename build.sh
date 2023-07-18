@@ -24,6 +24,9 @@ do
         DEBUG_FLAG="-DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-ggdb"
         OPTIMIZE_FLAG=""  # Don't use O2 optimization for debug builds
     fi
+    if [ "$var" = "GCC" ]; then
+        COMPILER_FLAG="-DCMAKE_C_COMPILER=$(command -v gcc) -DCMAKE_CXX_COMPILER=$(command -v g++)"
+    fi
 done
 
 BUILD_FLAG="$COMPILER_FLAG $DEBUG_FLAG $OPTIMIZE_FLAG"
