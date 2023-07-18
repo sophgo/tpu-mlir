@@ -75,14 +75,11 @@ public:
 
   bool update_sequence_group_cost(LgInfo *left_layer_group,
                                   LgInfo *right_layer_group, bool *left_first,
-                                  SequenceGroupsInfo &seq_info,
-                                  const SetVector<Operation *> &subnet_ops);
+                                  SequenceGroupsInfo &seq_info);
   bool merge_cut_idx_to_reduce_gdma_cost(
-      const std::vector<std::vector<Operation *>> &base_groups,
-      const SetVector<Operation *> &subnet_ops);
+      const std::vector<std::vector<Operation *>> &base_groups);
   bool consider_redundant_computation_and_gdma_cost(
-      const std::vector<std::vector<Operation *>> &base_groups,
-      const SetVector<Operation *> &subnet_ops);
+      const std::vector<std::vector<Operation *>> &base_groups);
 
   void show_cut_results();
 
