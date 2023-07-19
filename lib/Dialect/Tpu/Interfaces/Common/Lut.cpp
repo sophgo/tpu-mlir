@@ -32,10 +32,6 @@ LogicalResult tpu::LutOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::LutOp::LocalGenSupport() {
-  if (module::isBM1684Family() &&
-      getRunMode(getOperation()) == RunMode::TPU_DYNAMIC) {
-    return failure();
-  }
   return success();
 }
 

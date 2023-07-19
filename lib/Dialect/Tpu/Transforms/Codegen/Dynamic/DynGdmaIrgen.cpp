@@ -330,5 +330,39 @@ int static_st_neuron_irgen_ctrl(Operation *op, int tensor_id,
   }
   return fw_ir_length;
 }
+
+int static_ld_g2l2_irgen_ctrl(Operation *op, int tensor_id,
+                              uint64_t global_addr, uint64_t local_addr,
+                              ir_tensor_gdma_info_t &ir_tensor_gdma_info,
+                              int dynamic_ver) {
+  int fw_ir_length = 0;
+  // set gdma type
+  ir_tensor_gdma_info.fw_tensor_gdma_type = LD_G2L2;
+  fw_gdma_ld_g2l2_t fw_gdma_ld_g2l2 = {0};
+  fw_gdma_ld_g2l2.global_offset = global_addr;
+  fw_gdma_ld_g2l2.l2_offset = local_addr;
+  std::vector<int> local_shape(MAX_SHAPE_DIMS);
+  module::getLocalShape(op->getOperand(0), 0, 0, (int *)local_shape.data());
+  fw_gdma_ld_g2l2.length = std::accumulate(
+      local_shape.begin(), local_shape.begin() + 4, 1, std::multiplies<int>{}) * sizeof(int);
+  fw_gdma_ld_g2l2.data_size = get_dynamic_compiler_tensor_datasize(
+      BM168x::getDataType(op->getResult(0)));
+  if (dynamic_ver) {
+    fw_gdma_ld_g2l2.dtype = BM168x::getDataType(op->getResult(0));
+  }
+  fw_gdma_ld_g2l2.tensor_id = (uint32_t)tensor_id;
+  if (module::isWeight(op->getOperand(0))) {
+    fw_gdma_ld_g2l2.tensor_type = (uint8_t)2;
+  } else {
+    if (is_net_input(op->getOperand(0))) {
+      fw_gdma_ld_g2l2.tensor_type = (uint8_t)0;
+    } else {
+      fw_gdma_ld_g2l2.tensor_type = (uint8_t)1;
+    }
+  }
+  ir_tensor_gdma_info.fw_tensor_gdma_param_u.fw_gdma_ld_g2l2 = fw_gdma_ld_g2l2;
+  fw_ir_length += sizeof(fw_gdma_ld_g2l2_t);
+  return fw_ir_length;
+}
 } // namespace tpu
 } // namespace tpu_mlir
