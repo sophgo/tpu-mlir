@@ -947,7 +947,6 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(func::CallOp call) {
   auto ifOp =
       dyn_cast<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp());
   inputs.clear();
-  outputs.clear();
   for (int k = 0; k < ifOp.getNumResults(); k++) {
     for (int i = 0; i < ifOp.getNumRegions(); i++) {
       Region &region = ifOp.getRegion(i);
@@ -955,10 +954,6 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(func::CallOp call) {
       inputs.emplace_back(module::getOriValue(yieldOp->getOperand(k)));
     }
   }
-
-  func.walk<WalkOrder::PreOrder>([&](tpu::IdentityOp op) {
-     outputs.push_back(op.getResult(0));
-  });
 
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);
