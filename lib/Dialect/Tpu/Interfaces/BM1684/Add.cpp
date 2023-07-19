@@ -137,20 +137,30 @@ void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                            32);
     module::get128BtyeAlignedStrideForNBit(top_stride, top_shape,
                                            BM1684::NPU_NUM, 32);
+    bool is_eltwise = true;
     for (int i = 0; i < shape_dim; i++) {
       if (b0_shape[i] != b1_shape[i]) {
+        is_eltwise = false;
         if (b0_shape[i] == 1)
           b0_stride[i] = 0;
         if (b1_shape[i] == 1)
           b1_stride[i] = 0;
       }
     }
-    BM1684::instance().dl_nodechip_broadcast_binary_local(
-        in0_g_info.out_addr, b0_shape, b0_stride, in1_g_info.out_addr, b1_shape,
-        b1_stride, out_gi.out_addr, top_stride, BINARY_ADD, getDoRelu(),
-        getReluLimit().convertToDouble(),
-        b0_shape[1] > b1_shape[1] ? in1_g_info.out_addr : in0_g_info.out_addr,
-        BM1684::instance()->bdc_node);
+    if (is_eltwise) {
+      BM1684::instance().dl_nodechip_eltwise_binary_local(
+          in0_g_info.out_addr, in1_g_info.out_addr, out_gi.out_addr,
+          module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
+          b0_shape, BINARY_ADD, getDoRelu(), getReluLimit().convertToDouble(),
+          BM1684::instance()->bdc_node);
+    } else {
+      BM1684::instance().dl_nodechip_broadcast_binary_local(
+          in0_g_info.out_addr, b0_shape, b0_stride, in1_g_info.out_addr,
+          b1_shape, b1_stride, out_gi.out_addr, top_stride, BINARY_ADD,
+          getDoRelu(), getReluLimit().convertToDouble(),
+          b0_shape[1] > b1_shape[1] ? in1_g_info.out_addr : in0_g_info.out_addr,
+          BM1684::instance()->bdc_node);
+    }
   }
 }
 
