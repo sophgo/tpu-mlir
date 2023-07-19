@@ -9,7 +9,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1686.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -79,13 +79,25 @@ public:
       auto type = module::getStorageType(reduceOp.getInput());
       auto input_spec = BM168x::get_input_spec(reduceOp);
       auto output_spec = BM168x::get_output_spec(reduceOp);
-      BM168x::fix_shape(input_spec->at(0), {attr.outer_n, attr.outer_c,
-                                            attr.axis_dims, attr.inner_dims});
-      BM168x::fix_shape(output_spec->at(0),
-                        {attr.outer_n, attr.outer_c, 1, attr.inner_dims});
       reduce_full_global_param_t param = {0};
-      param.spec.common.axis_num = 1;
-      param.spec.common.axis[0] = 2;
+      //need to check if it is dynamic mode
+      auto run_mode = tpu::getRunMode(reduceOp.getOperation());
+      if (run_mode == tpu::RunMode::TPU_STATIC) {
+        BM168x::fix_shape(input_spec->at(0), {attr.outer_n, attr.outer_c,
+                                              attr.axis_dims, attr.inner_dims});
+        BM168x::fix_shape(output_spec->at(0),
+                          {attr.outer_n, attr.outer_c, 1, attr.inner_dims});
+        param.spec.common.axis_num = 1;
+        param.spec.common.axis[0] = 2;
+      } else if (run_mode == tpu::RunMode::TPU_DYNAMIC) {
+        auto&& axes = reduceOp.getAxes();
+        param.spec.common.axis_num = axes.size();
+        for (int i = 0; i < axes.size(); i++) {
+          param.spec.common.axis[i] = (axes[i].cast<IntegerAttr>().getInt());
+        }
+        param.spec.common.keep_dims = reduceOp.getKeepdims() ? 1 : 0;
+      }
+
       param.spec.common.method = BM168x::get_reduce_type(reduceOp.getMode());
       param.if_getting_buffer_size = true;
       uint64_t buffer_size = 0;
