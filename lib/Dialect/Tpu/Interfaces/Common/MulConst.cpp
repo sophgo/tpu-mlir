@@ -57,7 +57,7 @@ LogicalResult tpu::MulConstOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::MulConstOp::LocalGenSupport() { return failure(); }
+LogicalResult tpu::MulConstOp::LocalGenSupport() { return success(); }
 
 void tpu::MulConstOp::assign_fw_param(void *param) {
   IR_PARAM_CONST_BINARY(BINARY_MUL);
