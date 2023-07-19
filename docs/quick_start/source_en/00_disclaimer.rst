@@ -34,15 +34,27 @@
    * - Version
      - Release date
      - Explanation
+   * - v1.2.0
+     - 2023.06.14
+     - Adjusted the mixed quantization example
+   * - v1.1.0
+     - 2023.05.26
+     - Added using TPU for post-processing
+   * - v1.0.0
+     - 2023.04.10
+     - Support for PyTorch, added section introducing the conversion to PyTorch models
+   * - v0.8.0
+     - 2023.02.28
+     - Added using TPU for pre-processing
    * - v0.6.0
      - 2022.11.05
-     - support mix precision
+     - Support mix precision
    * - v0.5.0
      - 2022.10.20
-     - support test model_zoo models
+     - Support test model_zoo models
    * - v0.4.0
      - 2022.09.20
-     - support convert caffe model
+     - Support convert caffe model
    * - v0.3.0
      - 2022.08.24
      - Support TFLite. Add the chapter on TFLite model conversion.
