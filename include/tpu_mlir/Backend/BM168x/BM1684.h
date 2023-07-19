@@ -228,6 +228,7 @@ public:
   std::shared_ptr<std::vector<int16_t>>
   Convert1NTo2N(Value v, std::shared_ptr<std::vector<int16_t>> data);
 
+  bool isL2Load(Operation *op);
   // -------------------------------------------------------------------
   // functions from nodechip
   // -------------------------------------------------------------------

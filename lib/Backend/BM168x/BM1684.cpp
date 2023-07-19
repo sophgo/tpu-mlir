@@ -58,6 +58,19 @@ BM1684::Convert1NTo2N(Value v, std::shared_ptr<std::vector<int16_t>> src) {
   return dst;
 }
 
+bool BM1684::isL2Load(Operation *op) {
+  bool res = false;
+  if (auto load_op = dyn_cast_or_null<tpu::LoadOp>(op)) {
+    if (module::isWeight(load_op.getInput()) &&
+        llvm::any_of(load_op.getOutput().getUsers(), [](Operation *use_op) {
+          return isa<tpu::LutOp>(use_op);
+        })) {
+      res = true;
+    }
+  }
+  return res;
+}
+
 void BM1684::load_functions() {
   BM168x::load_functions();
   // clang-format off

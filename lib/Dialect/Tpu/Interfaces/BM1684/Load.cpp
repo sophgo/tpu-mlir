@@ -56,9 +56,7 @@ void tpu::LoadOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   auto g_addr = module::getAddress(getInput());
 
   // table in lut have to be store in L2 SRAM
-  if (module::isBM1684Family() && module::isWeight(getInput()) &&
-      llvm::any_of(getOutput().getUsers(),
-                   [](Operation *op) { return isa<tpu::LutOp>(op); })) {
+  if (BM1684::instance().isL2Load(getOperation())) {
     BM1684::instance().dl_tensor_general_move_gen_cmd(
         g_addr,                         /*local_addr or global_addr*/
         0, 1, 1, 1, 256, 1, 1, 1, 1, 0, /*GDMA_VALUE_FORMAT_FLOAT32*/

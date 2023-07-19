@@ -35,5 +35,10 @@ int static_st_neuron_irgen_ctrl(Operation *op, int tensor_id,
                                 uint64_t global_addr, uint64_t local_addr,
                                 ir_tensor_gdma_info_t &ir_tensor_gdma_info,
                                 int dynamic_ver);
+
+int static_ld_g2l2_irgen_ctrl(Operation *op, int tensor_id,
+                              uint64_t global_addr, uint64_t local_addr,
+                              ir_tensor_gdma_info_t &ir_tensor_gdma_info,
+                              int dynamic_ver);
 } // namespace tpu
 } // namespace tpu_mlir

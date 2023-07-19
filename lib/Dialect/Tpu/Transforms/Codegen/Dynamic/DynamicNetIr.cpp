@@ -575,7 +575,11 @@ void SubnetIr::gdma_tensor_ir_generate(
   tensor_id = get_tensor_id(opd);
   if (isa<tpu::LoadOp>(op)) {
     uint64_t global_addr = module::getAddress(opd);
-    if (isa_and_nonnull<top::WeightOp>(opd.getDefiningOp())) {
+    if (module::isBM1684Family() && BM1684::instance().isL2Load(op)) {
+      fw_ir_length += static_ld_g2l2_irgen_ctrl(op, tensor_id, global_addr,
+                                                local_addr, ir_tensor_gdma_info,
+                                                get_dynamic_version() >= 2);
+    } else if (isa_and_nonnull<top::WeightOp>(opd.getDefiningOp())) {
       fw_ir_length += static_ld_coeff_irgen_ctrl(
           op, tensor_id, global_addr, local_addr, ir_tensor_gdma_info,
           get_dynamic_version() >= 2);
