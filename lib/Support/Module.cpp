@@ -300,13 +300,19 @@ void getGlobalShape(Value v, int *shape, int dim) {
 }
 
 void getLocalShape(Value v, int64_t n_step, int64_t h_step, int *shape) {
-  int64_t n, c, h, w;
-  module::getNCHW(v, n, c, h, w);
   group_info_t gi = LocalGenInterface::getGroupInfo(v, n_step, h_step);
+  int64_t n, c, d, h, w;
+  module::getNCDHW(v, n, c, d, h, w, (group_type_t)gi.type);
   shape[0] = (int)gi.n_slice;
   shape[1] = (int)c;
   shape[2] = (int)gi.h_slice;
   shape[3] = (int)w;
+  if (module::isBM1684Family() && module::isUniformQuantized(v))
+  {
+    shape[1] *= d;
+  } else {
+    shape[0] *= d;
+  }
 }
 
 void get128BtyeAlignedStrideForNBit(int *stride, int *shape, int npu_num,

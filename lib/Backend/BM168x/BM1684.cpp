@@ -112,6 +112,7 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_broadcast_binary_local);
   CAST_FUNCTION(nodechip_broadcast_binary_fix8b_forward_local);
   CAST_FUNCTION(nodechip_broadcast_binary_full);
+  CAST_FUNCTION(nodechip_eltwise_binary_local);
   CAST_FUNCTION(nodechip_eltwise_fix8b_forward_local);
   CAST_FUNCTION(nodechip_fc_forward_local);
   CAST_FUNCTION(nodechip_prelu_forward_local_v2);
