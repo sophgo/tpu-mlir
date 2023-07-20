@@ -416,6 +416,126 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   }
 };
 
+struct SelectiveWhere : public OpRewritePattern<top::WhereOp> {
+  using OpRewritePattern<top::WhereOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::WhereOp op,
+                                PatternRewriter &rewriter) const override {
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(out)) {
+      return failure();
+    }
+
+    float const_v = 0.0;
+    bool const_signed = false;
+    if (op.getYIsConst()) {
+      float c = op.getYConstVal().convertToDouble();
+      const_signed = c < 0.;
+      const_v = std::abs(c);
+    }
+    if (op.getXIsConst()) {
+      float c = op.getXConstVal().convertToDouble();
+      const_signed |= c < 0.;
+      const_v = std::max(std::abs(c), const_v);
+    }
+
+    auto out_qtype = module::getCalibratedType(out);
+    // if output th is less than const(if exists), make it larger to include const val
+    if (out_qtype.getMax() < const_v) {
+      auto out_qtype = module::getCalibratedType(out);
+      auto new_qtype = quant::CalibratedQuantizedType::get(out_qtype.getExpressedType(), (const_signed || out_qtype.getMin() < 0.) ? -const_v*0.1:0.0f, const_v);
+      auto new_type = RankedTensorType::get(out.getType().cast<RankedTensorType>().getShape(), new_qtype);
+      out.setType(new_type);
+    }
+    // if input is not the same with out, set the input to follow output
+    // don't backward to condition
+    bool changed = false;
+    if (!op.getXIsConst()) {
+      auto in = op.getTbrn();
+      if (!module::isCalibratedType(in))
+         return failure();
+      if (module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
+          module::getCalibratedType(in).getMax() != out_qtype.getMax()) {
+            auto in_qtype = module::getCalibratedType(in);
+            auto new_qtype = quant::CalibratedQuantizedType::get(in_qtype.getExpressedType(), out_qtype.getMin(), out_qtype.getMax());
+            auto new_type = RankedTensorType::get(in.getType().cast<RankedTensorType>().getShape(), new_qtype);
+            in.setType(new_type);
+            changed |= true;
+          }
+    }
+    if (!op.getYIsConst()) {
+      auto in = op.getFbrn();
+      if (!module::isCalibratedType(in))
+         return failure();
+      if (module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
+          module::getCalibratedType(in).getMax() != out_qtype.getMax()) {
+            auto in_qtype = module::getCalibratedType(in);
+            auto new_qtype = quant::CalibratedQuantizedType::get(in_qtype.getExpressedType(), out_qtype.getMin(), out_qtype.getMax());
+            auto new_type = RankedTensorType::get(in.getType().cast<RankedTensorType>().getShape(), new_qtype);
+            in.setType(new_type);
+            changed |= true;
+          }
+    }
+    if (changed)
+      return success();
+    else
+      return failure();
+  }
+};
+
+struct SelectiveMaskedFill : public OpRewritePattern<top::MaskedFillOp> {
+  using OpRewritePattern<top::MaskedFillOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::MaskedFillOp op,
+                                PatternRewriter &rewriter) const override {
+    // TODO: need to be more clever
+    for (auto in : op->getOperands()) {
+      if (!module::isCalibratedType(in)) {
+        return failure();
+      }
+      if (!in.hasOneUse()) {
+        return failure();
+      }
+    }
+
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(out)) {
+      return failure();
+    }
+
+    float const_v = 0.0;
+    bool const_signed = false;
+    float c = op.getConstVal().convertToDouble();
+    const_signed = c<0.;
+    const_v = std::abs(c);
+
+    auto out_qtype = module::getCalibratedType(out);
+    // if output th is less than const(if exists), make it larger to include const val
+    if (out_qtype.getMax() < const_v) {
+      auto out_qtype = module::getCalibratedType(out);
+      auto new_qtype = quant::CalibratedQuantizedType::get(out_qtype.getExpressedType(), (const_signed || out_qtype.getMin() < 0.) ? -const_v*0.1:0.0f, const_v);
+      auto new_type = RankedTensorType::get(out.getType().cast<RankedTensorType>().getShape(), new_qtype);
+      out.setType(new_type);
+    }
+    // if input is not the same with out, set the input to follow output
+    // don't backward to condition
+    bool changed = false;
+    auto in = op.getOperand(1);
+    if (module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
+        module::getCalibratedType(in).getMax() != out_qtype.getMax()) {
+          auto in_qtype = module::getCalibratedType(in);
+          auto new_qtype = quant::CalibratedQuantizedType::get(in_qtype.getExpressedType(), out_qtype.getMin(), out_qtype.getMax());
+          auto new_type = RankedTensorType::get(in.getType().cast<RankedTensorType>().getShape(), new_qtype);
+          in.setType(new_type);
+          changed |= true;
+        }
+    if (changed)
+      return success();
+    else
+      return failure();
+  }
+};
+
 struct CastInputCV18xxPattern : public OpRewritePattern<tpu::CastOp> {
   using OpRewritePattern<tpu::CastOp>::OpRewritePattern;
 
@@ -579,6 +699,10 @@ protected:
     patterns.add<CompareCalibartion>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
+    patterns.add<SelectiveWhere,
+		SelectiveMaskedFill>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    patterns.clear();
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
                  ForwardCalibartion<top::MinConstOp>,
@@ -619,6 +743,11 @@ protected:
                  KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
                  SetSubConstSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    patterns.clear();
+    patterns.add<SelectiveWhere,
+		SelectiveMaskedFill>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    patterns.clear();
   }
 
   void host2device_convert_process() {

@@ -32,12 +32,12 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
   std::vector<int64_t> in0_stride, in1_stride, in2_stride;
   if (x_const && y_const == false) {
     auto const_val = getXConstVal().convertToDouble();
-    auto in1_shape = shape_expand_dim(module::getShape(getTbrn()), out_dim);
-    const auto tbrn_element = module::getNumElements(getTbrn());
-    if (num_element == cond_element && num_element == tbrn_element) {
+    auto in1_shape = shape_expand_dim(module::getShape(getFbrn()), out_dim);
+    const auto fbrn_element = module::getNumElements(getFbrn());
+    if (num_element == cond_element && num_element == fbrn_element) {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
       for (int64_t i = 0; i < num_element; ++i) {
-        p.outputs[0][i] = p.inputs[0][i] ? const_val : p.inputs[1][i];
+        p.outputs[0][i] = p.inputs[0][i] ? const_val : p.inputs[2][i];
       }
     } else {
       get_stride(in0_shape, in0_stride);
@@ -48,14 +48,14 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
         idx_to_list(i, out_shape, list_);
         int64_t cond_idx = list_to_idx(list_, in0_stride);
         int64_t tbrn_idx = list_to_idx(list_, in1_stride);
-        p.outputs[0][i] = p.inputs[0][cond_idx] ? const_val : p.inputs[1][tbrn_idx];
+        p.outputs[0][i] = p.inputs[0][cond_idx] ? const_val : p.inputs[2][tbrn_idx];
       }
     }
   } else if (y_const && x_const == false) {
-    auto const_val = getXConstVal().convertToDouble();
-    auto in1_shape = shape_expand_dim(module::getShape(getFbrn()), out_dim);
-    const auto fbrn_element = module::getNumElements(getFbrn());
-    if (num_element == cond_element && num_element == fbrn_element) {
+    auto const_val = getYConstVal().convertToDouble();
+    auto in1_shape = shape_expand_dim(module::getShape(getTbrn()), out_dim);
+    const auto tbrn_element = module::getNumElements(getTbrn());
+    if (num_element == cond_element && num_element == tbrn_element) {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
       for (int64_t i = 0; i < num_element; ++i) {
         p.outputs[0][i] = p.inputs[0][i] ? p.inputs[1][i] : const_val;

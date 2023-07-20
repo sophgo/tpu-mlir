@@ -26,6 +26,7 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
     int weight_cnt = 0;
     WeightOp weight_op[2] = {NULL};
     SoftmaxOp softmax_op = NULL;
+    AddOp add_op = NULL;
     for (auto opd:op.getOperands()){
       if ((weight_op[weight_cnt] = dyn_cast<WeightOp>(opd.getDefiningOp()))) {
         weight_cnt ++;
@@ -40,9 +41,20 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
     for (auto out:op.getOutput().getUsers())
       if ((softmax_op = dyn_cast<SoftmaxOp>(out)))
         break;
+      else if (add_op = dyn_cast<AddOp>(out))
+        break;
+    if (softmax_op == NULL && add_op == NULL)
+      return failure();
+    else if (add_op != NULL) {
+      if (!add_op.getOutput().hasOneUse())
+        return failure();
+      else if(!isa<SoftmaxOp>(*add_op.getOutput().getUsers().begin()))
+        return failure();
+      else
+        softmax_op = dyn_cast<SoftmaxOp>(*add_op.getOutput().getUsers().begin());
+    }
     if (softmax_op == NULL)
       return failure();
-
     for (int i=0;i<2;i++) {
       auto w = weight_op[i].read<float>();
       for (int i=0;i<w.get()->size();i++){
@@ -127,7 +139,47 @@ struct WhereBroadcastToTile : public OpRewritePattern<WhereOp> {
   }
 };
 
+struct WhereTooLarge : public OpRewritePattern<WhereOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(WhereOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!op.getResult().hasOneUse())
+      return failure();
+    if (!op.getXIsConst() && ! op.getYIsConst()) {
+      return failure();
+    }
+    if (isa<AddOp>(*op.getOutput().getUsers().begin())) {
+      auto addop = dyn_cast<AddOp>(*op.getOutput().getUsers().begin());
+      if (!addop.getOutput().hasOneUse())
+        return failure();
+      if (isa<SoftmaxOp>(*addop.getOutput().getUsers().begin())) {
+        bool updated = false;
+        if (op.getXIsConst()) {
+          float val = op.getXConstVal().convertToDouble();
+          if (val < -3e30) {
+            op.setXConstVal(APFloat(-10000.));
+            updated = true;
+          }
+        }
+        if (op.getYIsConst()) {
+          float val = op.getYConstVal().convertToDouble();
+          if (val < -3e30) {
+            op.setYConstVal(APFloat(-10000.));
+            updated = true;
+          }
+        }
+        if (updated)
+          return success();
+        else
+          return failure();
+      }
+    }
+    return failure();
+  }
+};
+
 void WhereOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                          MLIRContext *context) {
-  results.insert<FilterWhereWeightPattern, WhereBroadcastToTile>(context);
+  results.insert<FilterWhereWeightPattern, WhereBroadcastToTile, WhereTooLarge>(context);
 }

@@ -2303,21 +2303,33 @@ class OnnxConverter(BaseConverter):
                                                                  onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
         elif num_const == 1:
-            brn_opd = fbrn_opd if self.isScalar(tbrn) else tbrn_opd
+            x_is_const = False
+            y_is_const = False
             if self.isScalar(tbrn):
-                inversed = True
-                const_val = self.getScalar(tbrn)
+                x_is_const = True
+                x_const_val = self.getScalar(tbrn)
+                t_opd = self.mlir.none_op
             else:
-                inversed = False
-                const_val = self.getScalar(fbrn)
-            new_op = top.MaskedFillOp(self.unranked_type,
-                                      cond_opd,
-                                      brn_opd,
-                                      inversed=inversed,
-                                      const_val=const_val,
-                                      loc=self.get_loc("{}_{}".format(onnx_node.name,
-                                                                      onnx_node.op_type)),
-                                      ip=self.mlir.insert_point).output
+                t_opd = tbrn_opd
+                x_const_val = 0
+            if self.isScalar(fbrn):
+                y_is_const = True
+                y_const_val = self.getScalar(fbrn)
+                f_opd = self.mlir.none_op
+            else:
+                f_opd = fbrn_opd
+                y_const_val = 0
+            new_op = top.WhereOp(self.unranked_type,
+                                 cond_opd,
+                                 t_opd,
+                                 f_opd,
+                                 x_is_const=x_is_const,
+                                 y_is_const=y_is_const,
+                                 x_const_val=x_const_val,
+                                 y_const_val=y_const_val,
+                                 loc=self.get_loc("{}_{}".format(onnx_node.name,
+                                                                 onnx_node.op_type)),
+                                 ip=self.mlir.insert_point).output
         else:
             assert (0)  # TODO: to be implement
         self.addOperand(onnx_node.name, new_op)
