@@ -47,4 +47,17 @@ LogicalResult top::MinOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::MinOp::shape_inference() {}
+void top::MinOp::shape_inference() {
+  auto  op = getOperation();
+  auto in_shape = module::getShape(op->getOperand(0)).vec();
+  for (uint32_t n = 1; n < op->getNumOperands(); n++) {
+    auto _shape = module::getShape(op->getOperand(n));
+    assert(in_shape.size() == _shape.size() && "Input rank mismatch.");
+    for (uint32_t i = 0; i < in_shape.size(); i++) {
+      if ((in_shape[i] == 1 || _shape[i] == 1) && (_shape[i] != in_shape[i])) {
+        in_shape[i] = in_shape[i] > _shape[i] ? in_shape[i]: _shape[i];
+      }
+    }
+  }
+  module::setShapeOrVerify(getOutput(), in_shape);
+}

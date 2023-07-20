@@ -125,11 +125,11 @@ class OnnxTransformer(ModelTransformer):
                  input_shapes: list = [],
                  output_names: list = [],
                  preprocessor: dict = {},
-                 use_onnxsim=True):
+                 static_shape=True):
         super().__init__(model_name, model_def)
         from transform.OnnxConverter import OnnxConverter
         self.converter = OnnxConverter(self.model_name, self.model_def, input_shapes, output_names,
-                                       preprocessor, use_onnxsim)
+                                       preprocessor, static_shape)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import onnx_inference

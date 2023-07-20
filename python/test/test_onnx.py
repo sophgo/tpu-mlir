@@ -330,13 +330,13 @@ class ONNX_IR_TESTER(object):
                 inputs[name] = np.random.randint(0, 2, shape).astype(np.bool_)
         return inputs
 
-    def onnx_convert(self, input_data: dict, graph_def, model_name: str, use_onnxsim=True):
+    def onnx_convert(self, input_data: dict, graph_def, model_name: str, static_shape=True):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
         model_def.opset_import[0].version = 13
         onnx.checker.check_model(model_def)
-        tool = OnnxTransformer(model_name, model_def, use_onnxsim=use_onnxsim)
+        tool = OnnxTransformer(model_name, model_def, static_shape=static_shape)
         node_name_mapping = tool.converter.node_name_mapping
         tool.model_transform(fp32_mlir)
 
@@ -474,7 +474,7 @@ class ONNX_IR_TESTER(object):
             self.compare(origin_output.data.numpy().ravel(), onnx_outs[0].ravel())
         print("* Torch and Onnx result compared *")
 
-    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str, use_onnxsim=True):
+    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str, static_shape=True):
         if isinstance(inputs, tuple):
             origin_output = torch_model(*inputs)
         else:
@@ -504,19 +504,19 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(onnx_model.graph,
                            name=model_name,
                            input_data=in_data,
-                           use_onnxsim=use_onnxsim)
+                           static_shape=static_shape)
 
     def onnx_and_test(self,
                       graph_def,
                       name: str = "",
                       input_data: dict = None,
-                      use_onnxsim=True,
+                      static_shape=True,
                       check_last: bool = False):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
-            input_data, graph_def, model_name, use_onnxsim=use_onnxsim)
+            input_data, graph_def, model_name, static_shape=static_shape)
         # this assumes that outputs are in order, i.e. the last one is the output
         if check_last:
             top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
@@ -5278,7 +5278,7 @@ class ONNX_IR_TESTER(object):
             ["out"])
         # The final graph.
         graph_def = make_graph([cond, if_node, sub2_node, topk2_node, add2_node], "if", [X, Y, Z, M, N, J], [out], [zero, axes, k])
-        self.onnx_and_test(graph_def)
+        self.onnx_and_test(graph_def, static_shape=False)
 
     def test_Loop(self, case_name):
         from onnx import numpy_helper
@@ -5437,7 +5437,7 @@ class ONNX_IR_TESTER(object):
             ['shapeinfo'],  # outputs
         )
         graph_def = helper.make_graph([shape_node], case_name, [input], [shapeinfo])
-        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+        self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_ShapeSlice(self, case_name):
         shape = [10,1000]
@@ -5453,7 +5453,7 @@ class ONNX_IR_TESTER(object):
         shape_node = helper.make_node('Shape', inputs=['X'], outputs=['X_Shape'])
         slice_node = helper.make_node("Slice",   inputs=['X_Shape','starts', 'ends', 'axes', 'steps'], outputs=['K'])
         graph_def = helper.make_graph([shape_node, slice_node],case_name, [X],[K], initializer=[starts, ends, axes, steps])
-        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+        self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_ShapeCast(self, case_name):
         shape = [10,1000]
@@ -5472,7 +5472,7 @@ class ONNX_IR_TESTER(object):
         slice_node = helper.make_node("Slice",   inputs=['X_Shape','starts', 'ends', 'axes', 'steps'], outputs=['K'])
         topk_node = helper.make_node('TopK', inputs= ['X','K'],outputs=['Y_Value','Y_Index'], axis=-1, largest=True)
         graph_def = helper.make_graph([shape_node, slice_node, topk_node],case_name, [X],[Y_Value, Y_Index], initializer=[starts, ends, axes, steps])
-        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+        self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_ConstOfShape(self, case_name):
         input_shape = [4, 10, 27, 27]
@@ -5494,7 +5494,7 @@ class ONNX_IR_TESTER(object):
             [input],
             [output],
         )
-        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+        self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_ShapeUnsqueeze(self, case_name):
         from onnx import numpy_helper
@@ -5526,7 +5526,7 @@ class ONNX_IR_TESTER(object):
                     outputs=['unsqueezeinfo'],  # outputs
                 )
             ])
-        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+        self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_ShapeSqueeze(self, case_name):
         from onnx import numpy_helper
@@ -5565,7 +5565,7 @@ class ONNX_IR_TESTER(object):
                     outputs=['squeezeinfo'],  # outputs
                 )
             ])
-        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+        self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_Gather2(self, case_name):
         indices_data = [1]
@@ -5589,7 +5589,7 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([shape_node, gather_node],
                                       case_name, [input], [output],
                                       initializer=[indices])
-        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+        self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_Gather3(self, case_name):
 
@@ -5628,7 +5628,7 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([shape_node, concat_node],
                                       case_name, [input], [output],
                                       initializer=[input2])
-        self.onnx_and_test(graph_def, case_name, use_onnxsim=False)
+        self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_Range(self, case_name):
 
@@ -5644,7 +5644,7 @@ class ONNX_IR_TESTER(object):
                 return y
 
         x = torch.randn(4, 8, 32, 32).float()
-        self.torch_and_test(x, Model(), case_name, use_onnxsim=False)
+        self.torch_and_test(x, Model(), case_name, static_shape=False)
 
     def test_PermuteBinary(self, case_name):
 

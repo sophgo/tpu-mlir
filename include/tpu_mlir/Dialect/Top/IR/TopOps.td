@@ -59,7 +59,7 @@ def ArgModeAttr: AnyStrAttrOf<["ArgMin","ArgMax"]>;
 def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual", "NotEqual", "And", "Not"]>;
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
 def InterpModeAttr: AnyStrAttrOf<["nearest","linear"]>;
-def InterpCoordModeAttr: AnyStrAttrOf<["align_corners", "half_pixel", "pytorch_half_pixel"]>;
+def InterpCoordModeAttr: AnyStrAttrOf<["align_corners", "half_pixel", "pytorch_half_pixel", "asymmetric"]>;
 def PixelFormatAttr: AnyStrAttrOf<["rgb","bgr","gray","rgba"]>;
 def ChannelFormatAttr: AnyStrAttrOf<["nhwc","nchw"]>;
 def PadModeAttr: AnyStrAttrOf<["normal","center"]>;
@@ -2389,7 +2389,7 @@ def Top_IfOp : Top_Op<"If"> {
     If conditional
   }];
   let arguments = (ins AnyTensor:$cond);
-  let results = (outs Variadic<AnyRankedTensor>:$output);
+  let results = (outs Variadic<AnyTensor>:$output);
   let regions = (region SizedRegion<1>:$then_branch,
     SizedRegion<1>:$else_branch);
   let extraClassDeclaration = [{

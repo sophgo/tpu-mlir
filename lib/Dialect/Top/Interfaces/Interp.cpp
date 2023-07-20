@@ -236,6 +236,11 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
         coord = 1;
     else if (getCoordMode() == "align_corners")
         coord = 2;
+    else if (getCoordMode() == "asymmetric") {
+        coord = 3;
+    } else {
+        llvm_unreachable("Unsupport coord mode.");
+    }
     const int in_hw = ih * iw;
     const int out_hw = oh * ow;
     if (getMode() == "nearest") {
@@ -260,6 +265,9 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
         }
         align_corners = true;
         half_pixel = false;
+        if (coord == 3) {
+            align_corners = false;
+        }
     } else if (getMode() == "linear") {
         auto platform = module::getPlatform();
         switch (platform)
@@ -303,8 +311,8 @@ void top::InterpOp::shape_inference() {
             setScaleH(APFloat((double) out_shape[2] / in_shape[2]));
             setScaleW(APFloat((double) out_shape[3] / in_shape[3]));
         } else if (scale_h_ > 0 && scale_h_ > 0) {
-            out_shape[2] = round(out_shape[2] * scale_h_);
-            out_shape[3] = round(out_shape[3] * scale_w_);
+            out_shape[2] = floor(out_shape[2] * scale_h_);
+            out_shape[3] = floor(out_shape[3] * scale_w_);
         } else {
             llvm::errs() << "You must specify either target shape or scale.\n";
             llvm_unreachable("You must specify either target shape or scale.\n");

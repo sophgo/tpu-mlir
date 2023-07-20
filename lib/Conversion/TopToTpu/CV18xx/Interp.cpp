@@ -66,9 +66,8 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
       rewriter.getNamedAttr("paddings", rewriter.getI64ArrayAttr(pads)));
   pad_attrs.emplace_back(
       rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(const_val)));
-  pad_attrs.push_back(rewriter.getNamedAttr(
-      "mode",
-       rewriter.getStringAttr("edge")));
+  pad_attrs.push_back(
+      rewriter.getNamedAttr("mode", rewriter.getStringAttr("edge")));
   auto pad_type = RankedTensorType::get(
       shape_after_pad, op.getInput().getType().getElementType());
   auto pad_op = rewriter.create<top::PadOp>(
@@ -822,6 +821,9 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   case tpu::ResizeCoordMode::pytorch_half_pixel:
     coordinate_transformation_mode = "pytorch_half_pixel";
     break;
+  case tpu::ResizeCoordMode::asymmetric:
+    coordinate_transformation_mode = "asymmetric";
+    break;
   default:
     llvm_unreachable("Unsupport interp coord type \n");
   }
@@ -850,7 +852,8 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
         std::ceil(scale_w) == std::floor(scale_w)) {
       assert(0 && "it should be already converted in onnx_convert.\n");
     }
-    if (coordinate_transformation_mode == "pytorch_half_pixel") {
+    if (coordinate_transformation_mode == "pytorch_half_pixel" ||
+        coordinate_transformation_mode == "asymmetric") {
       // when pytorch use nearest method, coordinate_transformation_mode is
       // actually nearest.
       coordinate_transformation_mode = "nearest";

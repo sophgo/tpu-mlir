@@ -1154,6 +1154,10 @@ class TORCH_IR_TESTER(object):
                     super(Model, self).__init__()
                     c = input_shape[1]
                     self.bm = op_type(c, affine=affine, eps=eps)
+                    if self.bm.weight is not None:
+                        torch.nn.init.uniform_(self.bm.weight.data)
+                    if self.bm.bias is not None:
+                        torch.nn.init.uniform_(self.bm.bias.data)
 
                 def forward(self, x):
                     y = self.bm(x)
