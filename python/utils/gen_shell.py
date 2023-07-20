@@ -10,19 +10,19 @@
 
 import os
 import torch
+from torch import nn
 import numpy as np
 import inspect
+from torch import nn
+import shutil
+from typing import List, Union, Dict
 
-mlir_repo_root = os.environ["PROJECT_ROOT"]
 
 sh_template = r"""
-source {mlir_repo_root}/envsetup.sh
-
-python py_{model_name}.py
 
 model_transform.py \
    --model_name {model_name} \
-   --model_def {model_name}.pt \
+   --model_def {model_name}.{suf} \
    --input_shapes {shape_str} \
    --test_input data.npz \
    --keep_aspect_ratio \
@@ -47,7 +47,7 @@ model_deploy.py \
   --debug \
   --test_input {model_name}_in_f32.npz \
   --test_reference {model_name}_top_output.npz \
-  --model {model_name}_f32.bmodel
+  --model {model_name}_f16.bmodel
 
 model_deploy.py \
   --mlir {model_name}.mlir \
@@ -56,18 +56,18 @@ model_deploy.py \
   --debug \
   --test_input {model_name}_in_f32.npz \
   --test_reference {model_name}_top_output.npz \
-  --model {model_name}_f32.bmodel
+  --model {model_name}_bf16.bmodel
 
 run_calibration.py {model_name}.mlir \
   --dataset cali_data/ \
   --input_num 100 \
-  -o {model_name}_cali_table \
+  -o {model_name}_cali_table
 
 model_deploy.py \
   --quantize int8 \
   --mlir {model_name}.mlir \
   --chip bm1684x \
-  --tolerance 0.85,0.8 \
+  --tolerance 0.8,0.4 \
   --debug \
   --test_input {model_name}_in_f32.npz \
   --calibration_table {model_name}_cali_table \
@@ -82,32 +82,30 @@ yaml_template = r"""
 name: {model_name}
 pure_name: {model_name}
 
-gops: [1, 1]
+gops: [1]
 shapes:
 {shape_list}
 
-model: $(home)/{model_name}.pt
+model: $(home)/{model_name}.{suf}
 
-cali_input_key: cali_{model_name}
+cali_input_key: {model_name}/cali_data
 
 time_rountds: 50
 time: true
 precision: true
 
-excepts: ""
 
 mlir_transform: model_transform.py
   --model_name $(name)
   --model_def $(model)
   --tolerance 0.99,0.9
-  --test_input __test_input__
+  --test_input $(root)/dataset/{model_name}/test_input.npz
   --input_shapes [$(shape_param)]
-  --excepts $(excepts)
   --test_result $(workdir)/$(pure_name)_top_outputs.npz
   --mlir $(workdir)/$(pure_name).mlir
 
 mlir_calibration: run_calibration.py $(workdir)/$(pure_name).mlir
-  --dataset $(root)/dataset/basicvsr/$(cali_input_key)
+  --dataset $(root)/dataset/$(cali_input_key)
   --input_num 10
   -o $(workdir)/$(pure_name)_cali_table
 
@@ -129,7 +127,6 @@ BM1684:
       --test_input $(workdir)/$(pure_name)_in_f32.npz
       --test_reference $(workdir)/$(pure_name)_top_outputs.npz
       --model $(workdir)/$(pure_name)_$(target)_int8_sym.bmodel
-      --quantize_table $(home)/$(name)_qtable
       --calibration_table $(workdir)/$(pure_name)_cali_table
 
 BM1684X:
@@ -166,11 +163,10 @@ BM1684X:
       --test_input $(workdir)/$(pure_name)_in_f32.npz
       --test_reference $(workdir)/$(pure_name)_top_outputs.npz
       --model $(workdir)/$(pure_name)_$(target)_int8_sym.bmodel
-      --quantize_table $(home)/$(name)_qtable
       --calibration_table $(workdir)/$(pure_name)_cali_table
 
 harness:
-  type: __harness__
+  type: {model_name}
   args:
     - name: FP32
       bmodel: $(workdir)/$(pure_name)_$(target)_f32.bmodel
@@ -181,12 +177,60 @@ harness:
     - name: INT8
       bmodel: $(workdir)/$(pure_name)_$(target)_int8_sym.bmodel
 
-val_file: __val_file__
-
 """
 
 
-def generate(model_name, model, input_lis, workspace_root):
+def get_ordered_input_names(callable, without_first=True):
+    tensor_args = inspect.getargspec(callable).args
+    if without_first:
+        tensor_args = tensor_args[1:]
+    return tensor_args
+
+
+def shape_list_to_str(shape_list: List[List[int]]) -> List[str]:
+    """_summary_
+
+    Args:
+        shape_list (List[List[int]]): [[1,3,224,224],[1,3,224,224]]
+
+    Returns:
+        List[str]: ["[1,3,224,224]","[1,3,224,224]"]
+    """
+    res = []
+    for shape in shape_list:
+        shape_str = ",".join([str(i) for i in shape])
+        res.append(f"[{shape_str}]")
+    return res
+
+
+def generate_shell(
+    model_name: str, shape_list: List[List[int]], workspace_root: str, suf: str = "pt"
+):
+    shape_str = ",".join(shape_list_to_str(shape_list))
+    sh = sh_template.format(model_name=model_name, shape_str=f"[{shape_str}]", suf=suf)
+    with open(os.path.join(workspace_root, f"convert.sh"), "w") as w:
+        w.write(sh)
+
+
+def generate_yaml(
+    model_name: str, shape_list: List[List[int]], workspace_root: str, suf: str = "pt"
+):
+    shape_str = ",".join(shape_list_to_str(shape_list))
+    shape_list_str = shape_list_str = f" - {shape_str}"
+    yaml = yaml_template.format(
+        model_name=model_name, gops=[1, 1], shape_list=shape_list_str, suf=suf
+    )
+    with open(os.path.join(workspace_root, f"{model_name}.mlir.config.yaml"), "w") as w:
+        w.write(yaml)
+
+
+def generate(
+    model_name: str,
+    model: nn.Module,
+    data: Union[List[torch.Tensor], Dict[str, torch.Tensor]],
+    workspace_root: str,
+    input_names: list = None,
+):
     """
     generate onnx/jit model, transform/deploy scripts and model-zoo yaml config files by given pytorch model and input tensor list.
 
@@ -217,39 +261,35 @@ def generate(model_name, model, input_lis, workspace_root):
     """
     os.makedirs(workspace_root, exist_ok=True)
 
-    shapes = []
-    for i in input_lis:
-        ishape = ",".join([f"{x}" for x in i.shape])
-        shapes.append(f"[{ishape}]")
-    shape_str = ",".join(shapes)
+    if input_names is None:
+        if isinstance(model, nn.Module):
+            input_names = get_ordered_input_names(model.forward)
+        elif callable(model):
+            input_names = get_ordered_input_names(model.forward, without_first=False)
+        else:
+            raise NotImplementedError()
 
-    sh = sh_template.format(
-        model_name=model_name, mlir_repo_root=mlir_repo_root, shape_str=shape_str
-    )
+    if isinstance(data, (list, tuple)):
+        input_lis = data
+    elif isinstance(data, dict):
+        input_lis = [data[k] for k in input_names]
 
-    shape_list = "\n".join([f" - {shape_str}\n"] * 2)
+    shape_list = [list(i.shape) for i in input_lis]
+    # generate convert.sh + mlir.config.yaml
+    generate_shell(model_name, shape_list, workspace_root)
+    generate_yaml(model_name, shape_list, workspace_root)
 
-    yaml = yaml_template.format(
-        model_name=model_name, gops=[1, 1], shape_list=shape_list
-    )
+    input_names = inspect.getargspec(model.forward).args[1:]
+    data_dic = {f"{k}.1": v for k, v in zip(input_names, input_lis)}
 
-    tensor_args = inspect.getargspec(model.forward).args[1:]
-    data_dic = {f"{k}.1": v for k, v in zip(tensor_args, input_lis)}
-
-    traced = torch.jit.trace(model, input_lis)
-    torch.jit.save(traced, os.path.join(workspace_root, f"{model_name}.pt"))
-
-    np.savez(os.path.join(workspace_root, "data.npz"), **data_dic)
-
+    # Make npz
     os.makedirs(os.path.join(workspace_root, f"cali_data"), exist_ok=True)
     np.savez(os.path.join(workspace_root, f"cali_data/data.npz"), **data_dic)
-    with open(os.path.join(workspace_root, f"{model_name}.mlir.yaml"), "w") as w:
-        w.write(yaml)
+    np.savez(os.path.join(workspace_root, "data.npz"), **data_dic)
 
-    with open(os.path.join(workspace_root, f"convert.sh"), "w") as w:
-        w.write(sh)
-
-    # Export the model
+    # Export model
+    traced = torch.jit.trace(model, input_lis)
+    torch.jit.save(traced, os.path.join(workspace_root, f"{model_name}.pt"))
     torch.onnx.export(
         model,  # model being run
         tuple(input_lis),  # model input (or a tuple for multiple inputs)
@@ -260,3 +300,23 @@ def generate(model_name, model, input_lis, workspace_root):
         opset_version=10,  # the ONNX version to export the model to
         do_constant_folding=True,
     )  # whether to execute constant folding for optimization)
+
+
+def generate_onnx(
+    model_name: str,
+    model_path: str,
+    workspace_root: str,
+    data_path: str = None,
+    fake_npz: bool = False,
+):
+    import onnx
+
+    model = onnx.load(model_path)
+    initializer_names = [x.name for x in model.graph.initializer]
+    inputs = [ipt for ipt in model.graph.input if ipt.name not in initializer_names]
+    shape_list = []
+    for v in inputs:
+        shape_list.append([dim.dim_value for dim in v.type.tensor_type.shape.dim])
+    shutil.copy(model_path, os.path.join(workspace_root, f"{model_name}.onnx"))
+    generate_shell(model_name, shape_list, workspace_root, suf="onnx")
+    generate_yaml(model_name, shape_list, workspace_root, suf="onnx")
