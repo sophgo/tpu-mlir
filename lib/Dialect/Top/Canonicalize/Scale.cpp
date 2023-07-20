@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
@@ -281,9 +280,87 @@ struct TopScaleMergeToMatMul : public OpRewritePattern<ScaleOp> {
   }
 };
 
+struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
+  using OpRewritePattern::OpRewritePattern;
+  FuseScaleIntoConv(MLIRContext *context, PatternBenefit benefit = 1)
+      : OpRewritePattern<ScaleOp>(context, benefit) {}
+  LogicalResult matchAndRewrite(ScaleOp op,
+                                PatternRewriter &rewriter) const override {
+    auto preOp = op.getInput().getDefiningOp();
+    if (!preOp->hasOneUse() || !isa<ConvOp>(preOp)) {
+      return failure();
+    }
+    auto convOp = cast<ConvOp>(preOp);
+    if (convOp.getDoRelu()) {
+      return failure();
+    }
+    auto c = module::getShape(convOp.getOutput())[1];
+    auto scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
+    auto sBias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
+    if (!sBias) {
+      return failure();
+    }
+    std::vector<float_t> scaleVec(c, 1);
+    if (scale) {
+      auto scaleShape = module::getShape(scale);
+      auto scaleData = scale.read<float>();
+      scaleVec.assign(scaleData->begin(), scaleData->end());
+      if (std::find(scaleShape.begin(), scaleShape.end(), c) ==
+              scaleShape.end() &&
+          scaleVec.size() != c) {
+        return failure();
+      }
+      auto filterOp = dyn_cast<WeightOp>(convOp.getFilter().getDefiningOp());
+      auto filterData = filterOp.read<float>();
+      std::vector<float_t> newFilter(filterData->size(), 0);
+      uint32_t innerSize = filterData->size() / c;
+      for (uint32_t i = 0; i < c; ++i) {
+        for (uint32_t j = 0; j < innerSize; ++j) {
+          newFilter.at(i * innerSize + j) =
+              filterData->at(i * innerSize + j) * scaleVec.at(i);
+        }
+      }
+      filterOp.update(newFilter, newFilter.size());
+    }
+    if (sBias) {
+      // merge SBias into conv's bias
+      auto sBiasShape = module::getShape(sBias);
+      auto sBiasData = sBias.read<float>();
+      if (std::find(sBiasShape.begin(), sBiasShape.end(), c) ==
+              sBiasShape.end() &&
+          sBiasData->size() != c) {
+        return failure();
+      }
+      std::vector<float_t> newBiasVec(c, 0);
+      newBiasVec.assign(sBiasData->begin(), sBiasData->end());
+      auto newBiasType = RankedTensorType::get({c}, rewriter.getF32Type());
+      if (!module::isNone(convOp.getBias())) {
+        auto cBiasOp = dyn_cast<WeightOp>(convOp.getBias().getDefiningOp());
+        auto cBiasData = cBiasOp.read<float>();
+        for (int i = 0; i < c; ++i) {
+          newBiasVec[i] += cBiasData->at(i) * scaleVec[i];
+        }
+        cBiasOp.update(newBiasVec, c);
+      } else {
+        auto newBiasOp = WeightOp::create(
+            convOp, module::getName(sBias, 0).str(), newBiasVec, newBiasType);
+        convOp.setOperand(2, newBiasOp);
+      }
+    }
+    // update attrs
+    preOp->setLoc(op.getLoc());
+    preOp->setAttr("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
+    preOp->setAttr("relu_limit", rewriter.getF64FloatAttr(
+                                     op.getReluLimit().convertToDouble()));
+    // remove scale Op
+    rewriter.replaceOp(op, {op.getInput()});
+    return success();
+  }
+};
+
 void ScaleOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<TopMultiScaleMergeToOne,
-                 TopScaleMergeToBatchNorm, ScaleShapeAlign,
-                 ConstbinaryMergeToTopScale, TopScaleMergeToMatMul>(context);
+  results.insert<TopMultiScaleMergeToOne, TopScaleMergeToBatchNorm,
+                 ScaleShapeAlign, ConstbinaryMergeToTopScale,
+                 TopScaleMergeToMatMul, FuseScaleIntoConv>(context);
 }

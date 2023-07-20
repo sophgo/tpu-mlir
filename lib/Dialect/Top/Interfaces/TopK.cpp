@@ -55,12 +55,14 @@ LogicalResult top::TopKOp::inference(InferenceParameter &p) {
 
 void top::TopKOp::shape_inference() {
   auto input_shape = module::getShape(getInput());
-  auto value_shape = module::getShape(getValues());
+  // auto value_shape = module::getShape(getValues());
   int64_t K = getK();
   int64_t axis = getAxis();
   int64_t rank = input_shape.size();
   axis = axis < 0 ? axis + rank : axis;
-  if (K <= 0 || K != value_shape[axis]) {
+  setAxis(axis);
+  // if (K <= 0 || K != value_shape[axis]) {
+  if (K <= 0) {
       K = 200;
       setK(K);
   }

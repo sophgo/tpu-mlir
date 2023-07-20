@@ -31,6 +31,8 @@ void top::ConstantFillOp::shape_inference() {
     std::vector<int64_t> shape_(shape->begin(), shape->end());
     module::setShapeOrVerify(getOutput(), shape_);
   } else {
-    // do nothing
+    auto preOp = getInput().getDefiningOp();
+    auto shape = module::getShape(preOp->getOperand(0));
+    module::setShapeOrVerify(getOutput(), shape);
   }
 }

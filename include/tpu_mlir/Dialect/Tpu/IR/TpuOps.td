@@ -243,6 +243,7 @@ def Tpu_ResizeCoordMode : I32EnumAttr<"ResizeCoordMode",
       I32EnumAttrCase<"align_corners", 0>,
       I32EnumAttrCase<"half_pixel", 1>,
       I32EnumAttrCase<"pytorch_half_pixel", 2>,
+      I32EnumAttrCase<"asymmetric", 3>,
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";

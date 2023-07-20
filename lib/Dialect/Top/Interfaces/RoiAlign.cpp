@@ -41,4 +41,12 @@ LogicalResult top::RoiAlignOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::RoiAlignOp::shape_inference() {}
+void top::RoiAlignOp::shape_inference() {
+  auto batch = module::getShape(getRois())[0];
+  auto shape = module::getShape(getInput()).vec();
+  uint32_t ndims = shape.size();
+  shape[0] = batch;
+  shape[ndims - 1] = getOutputWidth();
+  shape[ndims - 2] = getOutputHeight();
+  module::setShapeOrVerify(getOutput(), shape);
+}
