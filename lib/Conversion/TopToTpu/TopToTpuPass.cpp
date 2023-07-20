@@ -691,7 +691,7 @@ protected:
             target_type = type_verify_case_same(op, idx, mode);
           }
           if (mode != TypeCastMode::DO_NOTHING) {
-            auto castOp = do_cast(opd, target_type, mode);
+            auto castOp = do_cast(opd, target_type, mode, op);
             op->setOperand(idx, castOp);
           }
         }
@@ -894,7 +894,7 @@ protected:
     set_add_before_softmax_fp16();
   }
 
-  Value do_cast(Value v, Type to, TypeCastMode mode) {
+  Value do_cast(Value v, Type to, TypeCastMode mode, Operation *user_op = nullptr) {
     auto to_stype = module::getStorageType(to);
     // check whether value has been casted
     for (auto user : v.getUsers()) {
@@ -928,6 +928,9 @@ protected:
     OpBuilder builder(ctx);
     builder.setInsertionPointAfterValue(v);
     auto name = module::getName(v).str();
+    if (user_op && !isa<ReturnOp>(user_op)) {
+      name += module::getName(user_op).str();
+    }
     switch (mode) {
     case TypeCastMode::DO_DEQUANTIZE:
     case TypeCastMode::DO_CAST: {
