@@ -26,41 +26,41 @@
   :linenos:
 
    $ mkdir mobilenet-v2 && cd mobilenet-v2
-   $ cp -rf $TPUC_ROOT/regression/dataset/ILSVCR2012 .
+   $ cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
    $ mkdir workspace && cd workspace
 
 这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
-注意如果 ``mobilenet-v2.pt`` 需要自己从nnmodels下载后放到 ``mobilenet-v2`` 目录。
+注意 ``mobilenet-v2.pt`` 需要自己从nnmodels下载后放到 ``mobilenet-v2`` 目录。
 
-测试Float和INT8对称量化模型精度
------------------------------
+测试Float和INT8对称量化模型分类效果
+---------------------------------
 
 如前面章节介绍的转模型方法, 这里不做参数说明, 只有操作过程。
 
-第一步: 转成F32 mlir
+第一步: 转成FP32 mlir
 ~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
    $ model_transform.py \
-       --model_name mobilenet \
+       --model_name mobilenet_v2 \
        --model_def ../mobilenet_v2.pt \
        --input_shapes [[1,3,224,224]] \
        --resize_dims 256,256 \
        --mean 123.675,116.28,103.53 \
        --scale 0.0171,0.0175,0.0174 \
        --pixel_format rgb \
-       --mlir mobilenet.mlir
+       --mlir mobilenet_v2.mlir
 
 第二步: 生成calibartion table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
-   $ run_calibration.py mobilenet.mlir \
+   $ run_calibration.py mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
-       -o mobilenet_cali_table
+       -o mobilenet_v2_cali_table
 
 第三步: 转FP32 bmodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -68,12 +68,10 @@
 .. code-block:: shell
 
    $ model_deploy.py \
-       --mlir mobilenet.mlir \
+       --mlir mobilenet_v2.mlir \
        --quantize F32 \
        --chip bm1684 \
-       --test_input mobilenet_in_f32.npz \
-       --test_reference mobilenet_pt_top.npz \
-       --model mobilenet_1684_f32.bmodel
+       --model mobilenet_v2_bm1684_f32.bmodel
 
 第四步: 转对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,52 +79,56 @@
 .. code-block:: shell
 
    $ model_deploy.py \
-       --mlir mobilenet.mlir \
+       --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --chip bm1684 \
-       --calibration_table mobilenet_cali_table \
-       --model mobilenet_bm1684_int8_sym.bmodel
+       --calibration_table mobilenet_v2_cali_table \
+       --model mobilenet_v2_bm1684_int8_sym.bmodel
 
-第五步: 验证FP32模型和INT8对称量化模型的精度
----------------------------------------
+第五步: 验证FP32模型和INT8对称量化模型
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-model-zoo中有对mobilenet-v2进行精度验证的程序topk，可以在mlir.config.yaml中使用harness字段调用topk：
-
-.. code-block:: shell
-
-   $ dataset:
-        image_path: $(imagenet2012_val_set)
-        image_label: $(imagenet2012_caffe_val_ground_truth)
-        mean: [123.675, 116.28, 103.53]
-        scale: [0.0171, 0.0175, 0.0174]
-        resize_dims: 256
-        size: 224
-        trans: true
-        bgr2rgb: true
-
-      harness:
-        type: topk
-        args:
-          - name: FP32
-            bmodel: $(workdir)/$(name)_bm1684_f32.bmodel
-          - name: INT8
-            bmodel: $(workdir)/$(name)_bm1684_int8_sym.bmodel
-
-切换到model-zoo顶层目录，使用tpu_perf.precision_benchmark进行精度测试，命令如下：
+classify_mobilenet_v2.py是已经写好的验证程序，可以用来对mobilenet_v2网络进行验证。执行过程如下，FP32模型：
 
 .. code-block:: shell
 
-   $ python3 -m tpu_perf.precision_benchmark mobilenet_v2_path --mlir --target BM1684 --devices 0
+   $ classify_mobilenet_v2.py \
+       --model_def mobilenet_v2_bm1684_f32.bmodel \
+       --input ../ILSVRC2012/n01440764_9572.JPEG \
+       --output mobilenet_v2_fp32_bmodel.JPEG \
+       --category_file ../ILSVRC2012/synset_words.txt
 
-执行完后，精度测试的结果存放在output/topk.csv中:
+在输出结果图片上可以看到如下分类信息，正确结果tench排在第一名：
 
 .. code-block:: shell
 
-    name,top1,top5
-    mobilenet-v2-FP32,70.72%,89.81%
-    mobilenet-v2-INT8,67.53%,87.84%
+    Top-5
+    n01440764 tench, Tinca tinca
+    n02536864 coho, cohoe, coho salmon, blue jack, silver salmon, Oncorhynchus kisutch
+    n02422106 hartebeest
+    n02749479 assault rifle, assault gun
+    n02916936 bulletproof vest
 
-使用INT8量化后，top1精度损失3.2%，top5精度损失2%。
+INT8对称量化模型：
+
+.. code-block:: shell
+
+   $ classify_mobilenet_v2.py \
+       --model_def mobilenet_v2_bm1684_int8_sym.bmodel \
+       --input ../ILSVRC2012/n01440764_9572.JPEG \
+       --output mobilenet_v2_INT8_sym_bmodel.JPEG \
+       --category_file ../ILSVRC2012/synset_words.txt
+
+在输出结果图片上可以看到如下分类信息，正确结果tench排在第二名：
+
+.. code-block:: shell
+
+    Top-5
+    n02408429 water buffalo, water ox, Asiatic buffalo, Bubalus bubalis
+    n01440764 tench, Tinca tinca
+    n01871265 tusker
+    n02396427 wild boar, boar, Sus scrofa
+    n02074367 dugong, Dugong dugon
 
 转成混精度量化模型
 -----------------------
@@ -181,6 +183,9 @@ model-zoo中有对mobilenet-v2进行精度验证的程序topk，可以在mlir.co
    * - histogram_bin_num
      - 否
      - 指定用于kld方法中使用的bin数量，默认为2048
+   * - post_process
+     - 否
+     - 用户自定义后处理文件路径, 默认为空
    * - expected_cos
      - 否
      - 指定期望网络最终输出层的最小cos值,一般默认为0.99即可，越小时可能会设置更多层为浮点计算
@@ -197,17 +202,27 @@ model-zoo中有对mobilenet-v2进行精度验证的程序topk，可以在mlir.co
      - 否
      - 指定混合精度的浮点类型
 
-本例中采用默认100张图片校准, 30张图片推理，执行命令如下（对于CV18xx系列的芯片，将chip设置为对应的芯片名称即可）:
+本例中采用100张图片做量化, 30张图片做推理，执行命令如下（对于CV18xx系列的芯片，将chip设置为对应的芯片名称即可）:
 
 .. code-block:: shell
 
-   $ run_sensitive_layer.py mobilenet.mlir \
+   $ run_sensitive_layer.py mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
        --inference_num 30 \
        --calibration_table mobilenet_cali_table \
        --chip bm1684 \
-       -o mobilenet_qtable
+       --post_process post_process_func.py \
+       -o mobilenet_v2_qtable
+
+敏感层搜索支持用户自定义的后处理方法post_process_func.py，可以放在当前工程目录下，也可以放在其他位置，如果放在其他位置需要在post_process中指明文件的完整路径。
+后处理方法函数名称需要定义为PostProcess，输入数据为网络的输出，输出数据为后处理结果：
+
+.. code-block:: shell
+
+   $ def PostProcess(data):
+       print("in post process")
+       return data
 
 执行完后最后输出如下打印:
 
@@ -233,7 +248,7 @@ model-zoo中有对mobilenet-v2进行精度验证的程序topk，可以在mlir.co
     success sensitive layer search
 
 上面int8 outputs_cos表示int8模型原本网络输出和fp32的cos相似度，mix model outputs_cos表示前五个敏感层使用混精度后网络输出的cos相似度，total time表示搜索时间为402秒，
-另外，生成的混精度量化表 ``mobilenet_qtable``, 内容如下:
+另外，生成的混精度量化表 ``mobilenet_v2_qtable``, 内容如下:
 
 .. code-block:: shell
 
@@ -252,13 +267,13 @@ model-zoo中有对mobilenet-v2进行精度验证的程序topk，可以在mlir.co
 
     INFO:root:start to handle layer: input3.1, type: top.Conv
     INFO:root:adjust layer input3.1 th, with method MAX, and threshlod 5.5119305
-    INFO:root:run int8 mode: mobilenet.mlir
+    INFO:root:run int8 mode: mobilenet_v2.mlir
     INFO:root:outputs_cos_los = 0.014830573787862011
     INFO:root:adjust layer input3.1 th, with method Percentile9999, and threshlod 4.1202815
-    INFO:root:run int8 mode: mobilenet.mlir
+    INFO:root:run int8 mode: mobilenet_v2.mlir
     INFO:root:outputs_cos_los = 0.011843443367980822
     INFO:root:adjust layer input3.1 th, with method KL, and threshlod 2.6186381997094728
-    INFO:root:run int8 mode: mobilenet.mlir
+    INFO:root:run int8 mode: mobilenet_v2.mlir
     INFO:root:outputs_cos_los = 0.008808857469573828
     INFO:root:layer input3.1, layer type is top.Conv, best_th = 2.6186381997094728, best_method = KL, best_cos_loss = 0.008808857469573828
 
@@ -266,7 +281,7 @@ model-zoo中有对mobilenet-v2进行精度验证的程序topk，可以在mlir.co
 日志文件记录了每个op在每种量化方法（MAX/Percentile9999/KL）得到的threshold下，设置为int8后，混精度模型与原始float模型输出的相似度的loss（1-余弦相似度）。
 同时也包含了屏幕端输出的每个op的loss信息以及最后的混精度模型与原始float模型的余弦相似度。
 用户可以使用程序输出的qtable，也可以根据loss信息对qtable进行修改，然后生成混精度模型。
-在敏感层搜索结束后，最优的threshold会被更新到一个新的量化表new_cali_table，该量化表存储在当前工程目录下，在生成混精度模型时需要调用新量化表。
+在敏感层搜索结束后，最优的threshold会被更新到一个新的量化表new_cali_table.txt，该量化表存储在当前工程目录下，在生成混精度模型时需要调用新量化表。
 在本例中，根据输出的loss信息，观察到input3.1的loss比其他op高很多，可以在qtable中只设置input3.1为FP32。
 
 第二步: 生成混精度量化模型
@@ -275,29 +290,31 @@ model-zoo中有对mobilenet-v2进行精度验证的程序topk，可以在mlir.co
 .. code-block:: shell
 
    $ model_deploy.py \
-       --mlir mobilenet.mlir \
+       --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --chip bm1684 \
-       --calibration_table new_cali_table \
-       --quantize_table mobilenet_qtable \
-       --model mobilenet_bm1684_int8_mix.bmodel
+       --calibration_table new_cali_table.txt \
+       --quantize_table mobilenet_v2_qtable \
+       --model mobilenet_v2_bm1684_mix.bmodel
 
 第三步: 验证混精度模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
-   $ harness:
-        type: topk
-        args:
-          - name: INT8
-            bmodel: $(workdir)/$(name)_bm1684_int8_mix.bmodel
+   $ classify_mobilenet_v2.py \
+       --model_def mobilenet_v2_bm1684_mix.bmodel \
+       --input ../ILSVRC2012/n01440764_9572.JPEG \
+       --output mobilenet_v2_INT8_sym_bmodel.JPEG \
+       --category_file ../ILSVRC2012/synset_words.txt
 
-执行完后打印结果为:
+在输出结果图片上可以看到如下分类信息，可以看出混精度后, 正确结果tench排到了第一名。
 
 .. code-block:: shell
 
-    name,top1,top5
-    mobilenet-v2-INT8,69.07%,88.73%
-
-可以看出混精度后, top1的精度提升了1.5%，检测结果更接近float模型的结果。
+    Top-5
+    n01440764 tench, Tinca tinca
+    n02749479 assault rifle, assault gun
+    n02916936 bulletproof vest
+    n02536864 coho, cohoe, coho salmon, blue jack, silver salmon, Oncorhynchus kisutch
+    n04090263 rifle

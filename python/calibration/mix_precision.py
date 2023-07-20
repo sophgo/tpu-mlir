@@ -189,6 +189,9 @@ class MixPrecSearcher:
                 else:
                     self.post_process_name = self.post_process_path
                 self.post_process_name = self.post_process_name[:-3]
+            else:
+                self.post_process_path = None
+                self.post_process_name = None
         except:
             self.post_process_path = None
             self.post_process_name = None
