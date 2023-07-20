@@ -13,7 +13,6 @@ import mlir
 import re
 from mlir.ir import *
 from mlir.dialects import quant
-
 class Operation:
     cache_map = {}
     def __init__(self, op, body, idx):
@@ -210,7 +209,7 @@ class MlirParser:
                     if opd in self.get_op_name_list():
                         op_input_tensor.append(opd)
         return op_input_tensor
-
+ 
     def get_next_op_by_op_name(self, op_name):
         op_output_tensor = []
         for op in self.ops:
@@ -218,6 +217,42 @@ class MlirParser:
                 if op.name in self.get_op_name_list():
                     op_output_tensor.append(op.name)
         return op_output_tensor
+
+    def get_all_pre_ops_by_op_name(self, op_name):
+        all_pre_ops = [op_name] + self.get_pre_op_by_op_name(op_name)
+        cur_pre_ops = self.get_pre_op_by_op_name(op_name)
+        while cur_pre_ops:
+            tmp = cur_pre_ops.pop(0)
+            new_pre_ops = self.get_pre_op_by_op_name(tmp)
+            for new_pre_op in new_pre_ops:
+                if new_pre_op not in all_pre_ops:
+                    cur_pre_ops.append(new_pre_op)
+                    if self.get_pre_op_by_op_name(new_pre_op):
+                        all_pre_ops.append(new_pre_op)
+        return all_pre_ops
+    
+    def get_all_next_ops_by_op_name(self, op_name):
+        all_next_ops = [op_name] + self.get_next_op_by_op_name(op_name)
+        cur_next_ops = self.get_next_op_by_op_name(op_name)
+        while cur_next_ops:
+            tmp = cur_next_ops.pop(0)
+            new_next_ops = self.get_next_op_by_op_name(tmp)
+            for new_next_op in new_next_ops:
+                if new_next_op not in all_next_ops:
+                    cur_next_ops.append(new_next_op)
+                    all_next_ops.append(new_next_op)
+        return all_next_ops
+
+    def get_block_ops_by_op_name(self, name_list1, name_list2):
+        all_pre_ops = set(self.get_all_pre_ops_by_op_name(name_list2))
+        for name_list in name_list2:
+            all_pre_ops.update(set(self.get_all_pre_ops_by_op_name(name_list)))
+
+        all_next_ops = set(self.get_all_next_ops_by_op_name(name_list1))
+        for name_list in name_list1:
+            all_next_ops.update(set(self.get_all_next_ops_by_op_name(name_list)))       
+        block_ops =all_pre_ops.union(all_next_ops)
+        return list(block_ops)
 
     def get_user_count_by_op_name(self, op_name):
         count = 0
