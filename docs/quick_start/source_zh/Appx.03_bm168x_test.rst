@@ -78,7 +78,7 @@ model-zoo的目录结构如下：
    sudo yum install make automake gcc gcc-c++ kernel-devel
    sudo yum install python-devel
    sudo yum install mesa-libGL
-   # 再执行以下操作
+   # 精度测试需要执行以下操作，性能测试不执行
    cd path/to/model-zoo
    pip3 install -r requirements.txt
 
