@@ -67,27 +67,50 @@ struct MergeToRMSNormPattern : public OpRewritePattern<ReciprocalOp> {
          (mul_op.getOperand(1) != pow_op.getOperand(0)))) {
       return failure();
     }
-    auto weight_mul_op = dyn_cast_or_null<MulOp>(module::getNextOp(mul_op));
-    if (!weight_mul_op) {
-      return failure();
-    }
-    auto operand0 = weight_mul_op.getOperand(0).getDefiningOp();
-    auto operand1 = weight_mul_op.getOperand(1).getDefiningOp();
-    auto weight = isa<WeightOp>(operand0) ? dyn_cast<WeightOp>(operand0)
-                                          : dyn_cast<WeightOp>(operand1);
 
-    if (!weight_mul_op || mul_op.getDoRelu() ||
-        weight_mul_op.getNumOperands() != 2 || !weight) {
+    auto next_op = module::getNextOp(mul_op);
+    auto weight_mul_op = dyn_cast_or_null<MulOp>(next_op);
+    auto scale_op = dyn_cast_or_null<ScaleOp>(next_op);
+    Value weight_value;
+    Value output;
+
+    if (weight_mul_op) {
+      auto operand0 = weight_mul_op.getOperand(0).getDefiningOp();
+      auto operand1 = weight_mul_op.getOperand(1).getDefiningOp();
+      auto weight = isa<WeightOp>(operand0) ? dyn_cast<WeightOp>(operand0)
+                                            : dyn_cast<WeightOp>(operand1);
+
+      if (mul_op.getDoRelu() || weight_mul_op.getNumOperands() != 2 ||
+          !weight) {
+        return failure();
+      }
+      weight_value = weight.getResult();
+      output = weight_mul_op.getOutput();
+    } else if (scale_op) {
+      // weight multiplication will be converted to scale when
+      // weight element num == activation channel
+      // refer to convert_mul_op in OnnxConvert
+      auto scale = cast<top::WeightOp>(scale_op.getScale().getDefiningOp());
+      auto bias = cast<top::WeightOp>(scale_op.getBias().getDefiningOp());
+      auto bias_data = bias.read<float>();
+      bool all_zero = std::all_of(bias_data->begin(), bias_data->end(),
+                                  [](float value) { return value == 0.0f; });
+      if (scale_op.getDoRelu() || !all_zero) {
+        return failure();
+      }
+      weight_value = scale.getResult();
+      output = scale_op.getOutput();
+    } else {
       return failure();
     }
 
     std::vector<NamedAttribute> attrs;
     auto eps_attr = rewriter.getNamedAttr("eps", rewriter.getF64FloatAttr(eps));
     attrs.push_back(eps_attr);
-    rewriter.setInsertionPointAfter(weight_mul_op);
+    rewriter.setInsertionPointAfterValue(output);
     rewriter.replaceOpWithNewOp<top::RMSNormOp>(
-        weight_mul_op, weight_mul_op.getOutput().getType(),
-        ValueRange{pow_op.getOperand(0), weight.getResult()}, attrs);
+        weight_mul_op ? weight_mul_op : scale_op, output.getType(),
+        ValueRange{pow_op.getOperand(0), weight_value}, attrs);
     return success();
   }
 };
