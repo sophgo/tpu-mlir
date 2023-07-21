@@ -168,6 +168,18 @@ def Tpu_PoolMode: I32EnumAttr<"PoolMode",
 }
 def Tpu_PoolModeAttr : EnumAttr<Tpu_Dialect, Tpu_PoolMode, "pool_mode">;
 
+def Tpu_ConnectMode: I32EnumAttr<"ConnectMode",
+    "connect mode of distribution",
+    [
+      I32EnumAttrCase<"Add", 0>,
+      I32EnumAttrCase<"Concat", 1>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_ConnectModeAttr : EnumAttr<Tpu_Dialect, Tpu_ConnectMode, "connect_mode">;
+
+
 def Tpu_LutBF16Mode : I32EnumAttr<"LutBF16Mode",
     "bf16 look up table mode",
     [
@@ -1275,6 +1287,33 @@ def Tpu_JoinOp:Tpu_BaseOp<"Join"> {
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_DistributeOp:Tpu_BaseOp<"Distribute"> {
+  let summary = "Distribute tensors to multi device";
+  let description = [{
+    Tensors split to distributed device
+  }];
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_slice,
+    DefaultValuedAttr<SI32Attr, "-1">:$axis,
+    DefaultValuedAttr<I64ArrayAttr, "{}">: $slices
+  );
+  let results = (outs Variadic<AnyRankedTensor>:$outputs);
+}
+
+def Tpu_ConnectOp:Tpu_BaseOp<"Connect"> {
+  let summary = "Connect tensors from distribution outputs";
+  let description = [{
+    Tensors from distributed device connect together
+  }];
+  let arguments = (ins
+    Variadic<AnyRankedTensor>:$inputs,
+    Tpu_ConnectModeAttr:$mode,
+    DefaultValuedAttr<SI32Attr, "-1">:$axis
   );
   let results = (outs AnyRankedTensor:$output);
 }

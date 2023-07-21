@@ -533,6 +533,11 @@ void npz_add_array(npz_t &map, std::string fname,
     map[fname] = array;
 }
 
+void npz_clone_array(npz_t &map, std::string fname, std::string new_name) {
+    auto array = map[fname];
+    map[new_name] = array;
+}
+
 template void npz_add_array<std::complex<double> >(npz_t &, std::string,
         const std::complex<double>*, const std::vector<size_t>);
 template void npz_add_array<float>(npz_t &, std::string,

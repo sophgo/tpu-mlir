@@ -110,6 +110,8 @@ template<typename T>
 void npz_add_array(npz_t &map, std::string fname,
         const std::vector<T> &data);
 
+void npz_clone_array(npz_t &map, std::string fname, std::string new_name);
+
 void npz_save_all(std::string zipname, npz_t &map);
 
 } // namespace cnpy

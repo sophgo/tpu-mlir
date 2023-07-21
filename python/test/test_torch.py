@@ -131,8 +131,10 @@ class TORCH_IR_TESTER(object):
             "View":             (self.test_View,              N, Y, Y, Y),
             "Where":            (self.test_Where,             N, Y, Y, N),
             ## Special Case
-            "SplitReshape":     (self.test_SplitReshape,      N, Y, Y, Y),
+            "Connect":          (self.test_Connect,           N, N, N, N),
             "InfError":         (self.test_InfError,          N, Y, Y, N),
+            "SplitReshape":     (self.test_SplitReshape,      N, Y, Y, Y),
+            "WeightMultiUse":   (self.test_WeightMultiUse,    Y, Y, Y, Y),
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -899,6 +901,48 @@ class TORCH_IR_TESTER(object):
                 return out
 
         self.trace_and_test([(4, 8, 49, 32), (4, 8, 32, 49), (1, 1, 1, 49)], Model())
+
+    #######################################################################
+    # test Connect Pass
+    # ------------
+    def test_Connect(self):
+
+        def test_connect_(x_shape: tuple, filter_shape: tuple, bias_shape: tuple):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.filter = torch.randn(*filter_shape)
+                    self.bias = torch.randn(*bias_shape)
+
+                def forward(self, x):
+                    out = torch.matmul(x, self.filter) + self.bias
+                    return out
+
+            self.trace_and_test([x_shape], Model())
+
+        test_connect_((2, 4096, 1024), (2, 1024, 4096), (1, 1, 4096))
+        test_connect_((2, 1024, 4096), (2, 4096, 1024), (1, 1, 1024))
+
+    #######################################################################
+    # test Weight multiple use Pass
+    # ------------
+    def test_WeightMultiUse(self):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.filter = torch.randn(32, 64)
+                self.bias = torch.randn(1, 64)
+
+            def forward(self, x, y):
+                a = torch.matmul(x, self.filter) + self.bias
+                b = y + self.filter + self.bias
+                return a + b
+
+        self.trace_and_test([(32, 32), (32, 64)], Model())
 
     #######################################################################
     # ConstantFill

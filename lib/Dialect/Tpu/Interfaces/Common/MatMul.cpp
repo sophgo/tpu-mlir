@@ -254,6 +254,7 @@ LogicalResult tpu::MatMulOp::canonicalize(tpu::MatMulOp op,
   }
   op->setOperand(2, another);
   op->setLoc(add_op.getLoc());
+  op->moveAfter(add_op);
   add_op->replaceAllUsesWith(op);
   rewriter.eraseOp(add_op);
   return success();

@@ -44,12 +44,22 @@ def LayerGroup : Pass<"layer-group", "FuncOp"> {
   ];
 }
 
+def Distribute : Pass<"distribute", "ModuleOp"> {
+  let summary = "distribute module to multi modules to run in multi devices";
+  let constructor = "createDistributePass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+      Option<"num_device", "num_device", "uint64_t", /*default=*/"1",
+             "num of devices to distributed.">
+  ];
+}
+
 def Parallel : Pass<"parallel", "FuncOp"> {
   let summary = "split the operation to fine-grained and run it in parallel on TPU";
   let constructor = "createParallelPass()";
   let dependentDialects = ["TpuDialect"];
   let options = [
-    Option<"core", "core", "int64_t", /*default=*/"1",
+    Option<"num_core", "num_core", "int64_t", /*default=*/"1",
            "core_num=1: Set how many cores will be used to run model in parallel.">,
   ];
 }

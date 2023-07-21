@@ -1,8 +1,8 @@
 {
     "files.associations": {
-        "*.go": "go",
         "*.inc": "cpp",
         "*.txt": "makefile",
+        "*.go": "go",
         "*.def": "cpp",
         "functional": "cpp",
         "memory": "cpp",
@@ -73,7 +73,10 @@
         "typeindex": "cpp",
         "valarray": "cpp",
         "codecvt": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "numbers": "cpp"
     },
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,
