@@ -64,6 +64,7 @@ class TORCH_IR_TESTER(object):
             "Conv1d":           (self.test_Conv1d,            N, Y, Y, Y),
             "Conv2d":           (self.test_Conv2d,            N, Y, Y, Y),
             "Conv3d":           (self.test_Conv3d,            Y, Y, Y, N),
+            "ConvMerge":        (self.test_ConvMerge,         N, Y, Y, Y),
             "ConvGroup":        (self.test_ConvGroup,         N, Y, Y, Y),
             "ConvTrans":        (self.test_ConvTrans,         N, Y, Y, Y),
             "ConstantFill":     (self.test_ConstantFill,      Y, Y, Y, Y),
@@ -244,7 +245,6 @@ class TORCH_IR_TESTER(object):
     def torch_convert(self, in_shapes, torch_model, model_name: str, descs: List[Desc]):
         # torch --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
-
         # input_dtype = [] if len(descs) == 0 else [d.dtype for d in descs]
         input_descs = {}
         for i in range(len(descs)):
@@ -417,7 +417,56 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([input_shape], Model())
 
-        return dict(case1=case1, case2=case2)
+        def case3(conv_fun,
+                  input_shape,
+                  kernel_shape_0,
+                  oc_0,
+                  kernel_shape_1,
+                  oc_1,
+                  has_bias_0=False,
+                  padding_0: Union[int, str, List[int]] = 0,
+                  stride_0: Union[int, List[int]] = 1,
+                  dilation_0: Union[int, List[int]] = 1,
+                  group_0=1,
+                  has_bias_1=False,
+                  padding_1: Union[int, str, List[int]] = 0,
+                  stride_1: Union[int, List[int]] = 1,
+                  dilation_1: Union[int, List[int]] = 1,
+                  group_1=1):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    filter_shape_0 = (oc_0, input_shape[1] // group_0, *kernel_shape_0)
+                    self.filter_0 = torch.randn(filter_shape_0)
+                    self.bias_0 = torch.randn(oc_0) if has_bias_0 else None
+
+                    filter_shape_1 = (oc_1, oc_0 // group_1, *kernel_shape_1)
+                    self.filter_1 = torch.randn(filter_shape_1)
+                    self.bias_1 = torch.randn(oc_1) if has_bias_1 else None
+
+                def forward(self, x):
+                    y = conv_fun(x,
+                                 self.filter_0,
+                                 bias=self.bias_0,
+                                 padding=padding_0,
+                                 stride=stride_0,
+                                 dilation=dilation_0,
+                                 groups=group_0)
+
+                    z = conv_fun(y,
+                                 self.filter_1,
+                                 bias=self.bias_1,
+                                 padding=padding_1,
+                                 stride=stride_1,
+                                 dilation=dilation_1,
+                                 groups=group_1)
+                    return z
+
+            self.trace_and_test([input_shape], Model())
+
+        return dict(case1=case1, case2=case2, case3=case3)
 
     def test_Conv1d(self):
         """Conv 1D"""
@@ -427,7 +476,7 @@ class TORCH_IR_TESTER(object):
         test["case2"](F.conv1d, (1, 3, 32), [3], 12, has_bias=True, group=1, padding="same")
         test["case2"](F.conv1d, (2, 32, 16), [5], 64, padding=2, stride=2, dilation=1)
         # Tpu/Interfaces/BM1684X/Conv1D.cpp::152 Not supported yet.
-        # test["case2"](F.conv1d, (1, 3, 32), 3, 12, group=3, padding=1, stride=2)
+        test["case2"](F.conv1d, (1, 3, 32), [3], 12, group=3, padding=1, stride=2)
 
     def test_Conv2d(self):
         """Conv 2D"""
@@ -454,6 +503,15 @@ class TORCH_IR_TESTER(object):
         test["case2"](F.conv3d, (2, 32, 8, 10, 10), (5, 5, 3), 64, padding=2, stride=2, dilation=1)
         # Tpu/Interfaces/BM1684X/Conv3D.cpp::94 Not supported yet.
         # test["case2"](F.conv3d, (1, 3, 32, 32, 32), (3, 3, 3), 12, group=3, padding=(1, 1, 2), stride=(2, 1, 1))
+
+    def test_ConvMerge(self):
+        """Conv Merge"""
+        test = self._test_Conv()
+        test["case3"](F.conv2d, (1, 3, 4, 4), (1, 1), 2, (3, 3), 4, has_bias_0=False,  padding_0=0, has_bias_1=False, padding_1=0)
+        test["case3"](F.conv2d, (2, 32, 16, 16), (1, 1), 64, (3, 3), 16, has_bias_0=True,  padding_0=0, has_bias_1=True, padding_1=0)
+        test["case3"](F.conv2d, (2, 32, 32, 32), (1, 1), 12, (3, 3), 64, has_bias_0=True,  padding_0=1, has_bias_1=True, padding_1=1)
+
+
 
     #######################################################################
     # Transposed Convolution
