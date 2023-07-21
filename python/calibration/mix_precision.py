@@ -27,6 +27,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from utils.net_dot_log import net_dot_log
 from utils.log_setting import logger
+import importlib.util
 
 SKIP_OPERATION = [
     'top.Input', 'top.Reshape', 'top.Softmax', 'top.Weight', 'top.MaxPool', 'top.Slice', 'top.Tile',
@@ -180,6 +181,17 @@ class MixPrecSearcher:
         except:
             self.logger = logger('MixPrecSearcher', log_level=log_level)
         self._init_inputs(args)
+        try:
+            if args.post_process is not None:
+                self.post_process_path = args.post_process
+                if self.post_process_path.find('/') != -1:
+                    self.post_process_name = self.post_process_path.split('/')[-1]
+                else:
+                    self.post_process_name = self.post_process_path
+                self.post_process_name = self.post_process_name[:-3]
+        except:
+            self.post_process_path = None
+            self.post_process_name = None
 
     def disable_print(self):
         if 'debug_log' not in self.debug_cmd:
@@ -567,6 +579,13 @@ class MixPrecSearcher:
             for name in list(self.ref_activations[idx].keys()):
                 data.append(self.ref_activations[idx][name][0])
             outputs = model.infer(data, global_compare_layers)
+            if self.post_process_path:
+                module_path = self.post_process_path
+                module_name = self.post_process_name
+                spec = importlib.util.spec_from_file_location(module_name, module_path)
+                modulevar = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(modulevar)
+                outputs = modulevar.PostProcess(outputs)
             if float_type:
                 predictions_gt.append(outputs)
             else:

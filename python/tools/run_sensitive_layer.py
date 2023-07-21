@@ -44,6 +44,8 @@ if __name__ == '__main__':
                         help='float type of mix precision')
     parser.add_argument('--histogram_bin_num', type=int, default=2048,
                         help='Specify histogram bin numer for kld calculate')
+    parser.add_argument('--post_process', type=str, default=None,
+                        help='post_process program path')
     parser.add_argument('-o', '--quantize_table', required=True,
                         help='output searched sensitive layers table')
     parser.add_argument('--debug_cmd', type=str, default='', help='debug cmd')
