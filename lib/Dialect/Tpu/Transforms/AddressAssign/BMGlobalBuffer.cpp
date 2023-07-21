@@ -805,7 +805,10 @@ public:
         || (module::isBM1684XFamily() && !module::isBM1686())) {
       return failure();
     }
-
+    auto process = module::getPostprocess();
+    if (process.starts_with("yolov5")) {
+      return failure();
+    }
     int64_t  buffer_size = BUFFER_SIZE;
     auto type = module::getStorageType(yoloDetectionOp.getInputs()[0]);
     std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};

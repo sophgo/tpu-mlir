@@ -29,7 +29,8 @@ LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
   param.anchors = *module::getI64Array(getAnchors());
   param.num_boxes = getNumBoxes();
   param.agnostic_nms = getAgnosticNms();
-  auto num_input = getInputs().size();
+  auto inputs = getInputs();
+  auto num_input = inputs.size();
   param.version = getVersion().str();
   for (int i = 0; i < param.num_boxes * num_input; i++) {
     param.mask.push_back(i);
@@ -37,8 +38,8 @@ LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
   for (size_t i = 0; i < num_input; ++i) {
     tensor_list_t tensor_list;
     tensor_list.ptr = p.inputs[i];
-    tensor_list.size = module::getNumElements(getInputs()[i]);
-    tensor_list.shape = module::getShape(getInputs()[i]);
+    tensor_list.size = module::getNumElements(inputs[i]);
+    tensor_list.shape = module::getShape(inputs[i]);
     param.inputs.emplace_back(std::move(tensor_list));
   }
   param.output.ptr = p.outputs[0];
@@ -51,7 +52,7 @@ LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
   if (process.empty()) {
     YoloDetectionFunc yolo_func(param);
     yolo_func.invoke();
-  } else if (process.starts_with("yolov5") && p.inputs.size() == 1 &&
+  } else if (process.starts_with("yolov5") && param.inputs.size() == 1 &&
       param.inputs[0].shape.size() == 3) {
     Yolov5DetectionFunc yolo_func(param);
     yolo_func.invoke();
