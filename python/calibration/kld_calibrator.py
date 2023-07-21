@@ -113,6 +113,13 @@ def import_quant_bias(value, threshold):
     return value
 
 
+def sort_distr(array, length):
+    def first_k(a, k):
+        a_sort = np.sort(a)
+        return a_sort[-k:]
+    return first_k(array, length)
+
+
 def cosine_sim(x, y):
     x[np.isnan(x)] = 0.0
     y[np.isnan(y)] = 0.0
@@ -837,6 +844,10 @@ class ActivationCalibrator2(BaseKldCalibrator):
             max_abs_value = -inf
             tensor_size = (self.get_ref_tensor(0, evaled_op)).size
             all_data = np.zeros(tensor_size * self.args.input_num, dtype = np.float32)
+            num = self.args.input_num
+            per = 99.99 + i * step
+            res_length = int(num * tensor_size * (1 - per / 100)) + 1
+            all_data_test = np.zeros(self.args.input_num * res_length)
 
             for idx in range(self.args.input_num):
                 activation = self.get_ref_tensor(idx, evaled_op)
@@ -851,12 +862,27 @@ class ActivationCalibrator2(BaseKldCalibrator):
                     abs_value = max(abs(min_value), abs(max_value))
                     if 'use_percentile9999' in self.debug_cmd:
                         all_data[idx * tensor_size : (idx + 1) * tensor_size] = activation.flatten()
+                        tmp = np.abs(activation.flatten())
+                        tmp = sort_distr(tmp, res_length)
+                        all_data_test[idx * res_length : (idx + 1) * res_length] = tmp
                     elif 'use_max' in self.debug_cmd:
                         max_abs_value = max(np.max(np.abs(activation)), max_abs_value)
 
             if 'use_percentile9999' in self.debug_cmd:
-                #t0 = time.time()
-                abs_value = np.percentile(np.abs(all_data), 99.99 + i * step)
+                # t0 = time.time()
+                # time1 = time.time()
+                # abs_value = np.percentile(np.abs(all_data), 99.99 + i * step)
+                # time2 = time.time()
+                res = np.sort(all_data_test)[-res_length:]
+                inter = num * tensor_size - 1
+                idx = int((per / 100) * inter)
+                ratio = (per / 100) * inter - idx
+                abs_value = res[0] + ratio * (res[1] - res[0]) if res_length != 1 else res[0]
+                # time3 = time.time()
+                # print(abs_value)
+                # print(abs_value_test)
+                # print("并行方法时间： {}s".format(time3 - time2))
+                # print("numpy percentile方法时间： {}s".format(time2 - time1))
             elif 'use_max' in self.debug_cmd:
                 #t0 = time.time()
                 abs_value = max_abs_value
