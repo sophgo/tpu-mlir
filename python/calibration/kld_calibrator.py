@@ -789,8 +789,9 @@ class ActivationCalibrator2(BaseKldCalibrator):
             return
         input_ops = self.parser.get_pre_op_by_op_name(op_name)
         for input_op in input_ops:
-            data = self.ref_activations[i][input_op][0]
-            self.module.set_tensor(input_op, data)
+            if input_op in self.ref_activations[i]:
+                data = self.ref_activations[i][input_op][0]
+                self.module.set_tensor(input_op, data)
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
             count = self.parser.get_use_count_by_op_name(op_name)
@@ -842,6 +843,9 @@ class ActivationCalibrator2(BaseKldCalibrator):
             max_value = -inf
             abs_value = None
             max_abs_value = -inf
+            tensor = self.get_ref_tensor(0, evaled_op)
+            if tensor is None:
+                continue
             tensor_size = (self.get_ref_tensor(0, evaled_op)).size
             all_data = np.zeros(tensor_size * self.args.input_num, dtype = np.float32)
             num = self.args.input_num
@@ -1004,8 +1008,14 @@ class ActivationCalibrator2(BaseKldCalibrator):
                             min_value = float(scale * (qmin - zp))
                             max_value = float(scale * (qmax - zp))
                         else:
-                            threshold = thresholds_map[op_name]
-                            min_value, max_value, _ = self.activations_statistics[op_name]
+                            if op_name in thresholds_map:
+                                threshold = thresholds_map[op_name]
+                            else:
+                                threshold = 1.0
+                            if op_name in self.activations_statistics:
+                                min_value, max_value, _ = self.activations_statistics[op_name]
+                            else:
+                                min_value, max_value = -1,1
                         thresholds_map_list.append(threshold)
                         f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
                                                                max_value))
