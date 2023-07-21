@@ -12,8 +12,8 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Support/PixelHelper.h"
+#include "llvm/Support/MD5.h"
 #include "llvm/Support/ToolOutputFile.h"
-#include <openssl/md5.h>
 #include <unordered_set>
 
 #define DEBUG_TYPE "mlir-to-cvimodel"
@@ -72,10 +72,8 @@ static void buildInputsOutputs(flatbuffers::FlatBufferBuilder &fbb,
 }
 
 static void genMD5Hash(std::vector<uint8_t> &totalBin, uint8_t *resData) {
-  MD5_CTX ctx;
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, totalBin.data(), totalBin.size());
-  MD5_Final(resData, &ctx);
+  auto hash = llvm::MD5::hash(totalBin);
+  memcpy(resData, hash.data(), 16);
 }
 
 static std::string getStrOfCurrentTime() {
