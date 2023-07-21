@@ -9,9 +9,7 @@
 
 #include "CVAddressAssign.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
-
-#include <openssl/md5.h>
+#include "llvm/Support/MD5.h"
 
 using namespace llvm;
 
@@ -19,17 +17,10 @@ namespace tpu_mlir {
 namespace tpu {
 
 std::string CVAddressAssign::calcMD5(std::vector<uint8_t> &data) {
-  MD5_CTX ctx;
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, data.data(), data.size());
-  unsigned char res[16];
-  MD5_Final(res, &ctx);
-  std::string s;
-  llvm::raw_string_ostream os(s);
-  for (int i = 0; i < 16; ++i) {
-    os << llvm::format_hex_no_prefix((int)res[i], 2);
-  }
-  return os.str();
+  auto md5 = llvm::MD5::hash(data);
+  SmallString<32> res;
+  MD5::stringifyResult(md5, res);
+  return std::string(res);
 }
 
 bool CVAddressAssign::loadAddressMapping(
