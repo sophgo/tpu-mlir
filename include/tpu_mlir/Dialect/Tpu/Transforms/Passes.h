@@ -28,6 +28,7 @@ std::unique_ptr<OperationPass<FuncOp>> createLayerGroupPass();
 std::unique_ptr<OperationPass<ModuleOp>> createDynCodegenPass();
 std::unique_ptr<OperationPass<ModuleOp>> createChipOptimizePass();
 std::unique_ptr<OperationPass<ModuleOp>> createOpDividePass();
+std::unique_ptr<OperationPass<ModuleOp>> createDistributePass();
 std::unique_ptr<OperationPass<FuncOp>> createParallelPass();
 
 #define GEN_PASS_REGISTRATION

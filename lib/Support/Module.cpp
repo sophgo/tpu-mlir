@@ -21,6 +21,7 @@ struct Attr {
   static constexpr llvm::StringRef WEIGHT_FILE = "module.weight_file";
   static constexpr llvm::StringRef FLOPS = "module.FLOPs";
   static constexpr llvm::StringRef CORES = "module.cores";
+  static constexpr llvm::StringRef DEVICES = "module.devices";
   static constexpr llvm::StringRef COEFF_ADDR = "module.coeff_addr";
   static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
   static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
@@ -754,6 +755,17 @@ void setCoreNum(int64_t core_num) {
   m->setAttr(Attr::CORES, Builder(ctx).getI64IntegerAttr(core_num));
 }
 
+int64_t getDeviceNum() {
+  if (auto devices = m->getAttrOfType<IntegerAttr>(Attr::DEVICES)) {
+    return devices.getInt();
+  }
+  return 1;
+}
+
+void setDeviceNum(int64_t device_num) {
+  m->setAttr(Attr::DEVICES, Builder(ctx).getI64IntegerAttr(device_num));
+}
+
 int64_t getCoeffAddr() {
   return m->getAttrOfType<IntegerAttr>(Attr::COEFF_ADDR).getInt();
 }
@@ -1184,6 +1196,62 @@ quant::UniformQuantizedType getUniformQuantizedType(Type t) {
   return t.cast<RankedTensorType>()
       .getElementType()
       .cast<quant::UniformQuantizedType>();
+}
+
+//-----------------------------------------------------------------
+// Helper Functions for op translate
+//-----------------------------------------------------------------
+mlir::Value opSliceAxis(mlir::Value v, int64_t axis, int64_t offset,
+                        int64_t length) {
+  auto stype = module::getStorageType(v);
+  auto shape = module::getShape(v);
+  std::vector<int64_t> new_shape(shape);
+  new_shape[axis] = length;
+  assert(offset + length <= shape[axis]);
+  auto new_type = RankedTensorType::get(new_shape, module::getElementType(v));
+  auto suffix = std::to_string(axis) + "_" + std::to_string(offset);
+  if (isWeight(v)) {
+    auto op = v.getDefiningOp<top::WeightOp>();
+    if (stype.isBF16() || stype.isF16()) {
+      auto data = op.read<uint16_t>();
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      return top::WeightOp::create<uint16_t>(op, suffix, *new_data, new_type);
+    } else if (stype.isSignedInteger(8) || stype.isSignlessInteger(8)) {
+      auto data = op.read<int8_t>();
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      return top::WeightOp::create<int8_t>(op, suffix, *new_data, new_type);
+    } else if (stype.isF32()) {
+      auto data = op.read<float>();
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      return top::WeightOp::create<float>(op, suffix, *new_data, new_type);
+    }
+    op.dump();
+    llvm_unreachable("Not Implemented");
+  } else {
+    auto ctx = v.getContext();
+    OpBuilder builder(ctx);
+    std::string name = getName(v).str() + "_" + suffix;
+    auto loc = NameLoc::get(builder.getStringAttr(name));
+    std::vector<NamedAttribute> attrs;
+    std::vector<int64_t> offsets(shape.size(), 0);
+    offsets[axis] = offset;
+    attrs.emplace_back(
+        builder.getNamedAttr("offset", builder.getI64ArrayAttr(offset)));
+    attrs.emplace_back(
+        builder.getNamedAttr("steps", builder.getI64ArrayAttr({1, 1, 1, 1})));
+    attrs.emplace_back(builder.getNamedAttr(
+        "ends", builder.getI64ArrayAttr({-1, -1, -1, -1})));
+    std::vector<Value> operands;
+    operands.emplace_back(v);
+    auto none = module::getNoneOp(v.getDefiningOp());
+    operands.emplace_back(none);
+    operands.emplace_back(none);
+    operands.emplace_back(none);
+    operands.emplace_back(none);
+    builder.setInsertionPointAfterValue(v);
+    auto sliceOp = builder.create<tpu::SliceOp>(loc, new_type, operands, attrs);
+    return sliceOp.getOutput();
+  }
 }
 
 //-----------------------------------------------------------------

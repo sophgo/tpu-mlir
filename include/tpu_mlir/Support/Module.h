@@ -67,6 +67,8 @@ int64_t getCoeffAddr();
 void setCoeffAddr(int64_t addr);
 int64_t getCoreNum();
 void setCoreNum(int64_t core_num = 1);
+int64_t getDeviceNum();
+void setDeviceNum(int64_t device_num = 1);
 int64_t getNeuronSize();
 void setNeuronSize(int64_t size);
 int64_t getNeuronAddr();
@@ -172,6 +174,12 @@ bool isBM1684Family();
 bool isBM1684XFamily();
 bool isBM1686();
 bool isBM1684X();
+
+//-----------------------------------------------------------------
+// Helper Functions for op translate
+//-----------------------------------------------------------------
+mlir::Value opSliceAxis(mlir::Value v, int64_t axis, int64_t offset,
+                        int64_t length);
 
 //-----------------------------------------------------------------
 // Helper Functions for weight

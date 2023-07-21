@@ -129,6 +129,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   mlir::Value clone_bf16(mlir::Operation * OwnerOp, std::string name = "");
   mlir::Value clone_f16(mlir::Operation * OwnerOp);
   mlir::Value clone_int(mlir::Operation *OwnerOp);
+  mlir::Value clone(llvm::StringRef suffix);
   }];
 }
 

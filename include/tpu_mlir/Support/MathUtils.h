@@ -80,15 +80,12 @@ void get_scale_and_shift_positive(float scale_f, int &scale, int &shift,
 void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,
                                            int &shift, int bitwidth,
                                            int max_shift = 8);
-template <typename Dtype>
-float findMaxabs(const Dtype *pSrcData, int len);
+template <typename Dtype> float findMaxabs(const Dtype *pSrcData, int len);
 template <typename Dtype>
 void findMinMax(const Dtype *pSrcData, int len, Dtype *minVal, Dtype *maxVal);
 int calRightShiftNum(float fmax, double thBottom, double thTop, int numBits);
-template <typename T>
-void func_abs(int n, T *src, T *dst);
-template <typename T>
-void func_log(int n, T *src, T *dst);
+template <typename T> void func_abs(int n, T *src, T *dst);
+template <typename T> void func_log(int n, T *src, T *dst);
 int calRightShiftNumUseCblas(float fmax, double thBottom, double thTop,
                              int numBits);
 float func_log2(double dataInput);
@@ -153,6 +150,10 @@ void tensor_hc_transpose(float *dst, float *src, int64_t N, int64_t C,
                          int64_t H, int64_t W);
 void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
                   std::vector<int64_t> &shape, int slice_num, int axis);
+template <typename T>
+std::shared_ptr<std::vector<T>>
+tensor_slice(T *src_data, const std::vector<int64_t> &shape, int64_t axis,
+             int64_t offset, int64_t length);
 
 int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
             int k, int n, bool transpose);
@@ -213,8 +214,7 @@ bool compare(float lhs, float rhs, llvm::StringRef mode);
 // to compilable with gemmlowp
 int32_t exp_on_negative_values(int input, int int_bits);
 
-template <typename T>
-int64_t to_int(T v, RoundingMode round_mode);
+template <typename T> int64_t to_int(T v, RoundingMode round_mode);
 template <typename T>
 int64_t saturate(T v, mlir::Type type,
                  RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO);
