@@ -43,6 +43,8 @@ void BM1684X::load_functions() {
   CAST_FUNCTION(sg_flops_dump);
   CAST_FUNCTION(sg_stas_reset);
   CAST_FUNCTION(tensor_broadcast_move_gen_cmd);
+  CAST_FUNCTION(tpu_set_id_node);
+  CAST_FUNCTION(tpu_get_id_node);
 }
 
 void BM1684X::start_env() {

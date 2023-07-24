@@ -574,16 +574,33 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   SoftwarePipeline timestep_swpipl;
   local_sec_info_t sec_info;
   int64_t timestep_num = timestep_table.size();
+  // multi-core-setup
+  auto core_num = module::getCoreNum();
+  bool useMuliCore = core_num > 1;
+  auto secs = nsecs * csecs * dsecs * hsecs * wsecs;
+  auto max_task_per_core = (secs + core_num - 1) / core_num;
+  int coreId = 0;
+  auto bm1686 = dyn_cast<BM1686>(bm168x);
+  useMuliCore &= (secs > 1) && bm1686;
+  if (useMuliCore) {
+    bm1686->dl_tpu_core_context_setup(0, core_num, 0);
+    bm1686->setCoreNum(module::getCoreNum());
+  }
+  // multi-core-setup END
   for (uint64_t nstep = 0, cstep = 0, hstep = 0, dstep = 0, wstep = 0;
        nstep < nsecs || draining_period;) {
+    if (useMuliCore && stage_idx == 0) {
+      bm1686->useCore(coreId++);
+      bm1686->sync_all();
+    }
     /* add for software pipeline */
     timestep_swpipl.write_swloop_buffer(nstep, cstep, hstep, dstep, wstep,
                                         swpipl_stage_num);
     for (int64_t ts = 0; ts < timestep_num; ++ts) {
       bm168x->divide_sync_id();
-
       auto cur_op_ids = timestep_table[ts];
       for (auto id : cur_op_ids) {
+
         auto lgOp = cast<LocalGenInterfaceDecorator>(group_ops[id]);
         auto ginfo = lgOp.getGroupInfo(nstep, hstep, dstep, wstep, cstep);
         if ((!draining_period && ginfo.stage > stage_idx) ||
@@ -611,7 +628,8 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
         ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep,
                                   tensor_step->dstep, tensor_step->wstep,
                                   tensor_step->cstep);
-        if (ginfo.overstepped == false) {
+        if (ginfo.overstepped == false || stage_idx == ginfo.stage) {
+          ginfo.overstepped = true;
           auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->bdc_node;
           if (isa<LoadOp, StoreOp>(*group_ops[id])) {
             pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
@@ -662,18 +680,36 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
           draining_period = true;
         }
       }
+      if (useMuliCore && ((stage_idx + 1) % max_task_per_core) == 0 &&
+          nstep < nsecs) {
+        draining_period = true;
+        draining_idx = 0;
+      }
     }
+    stage_idx++;
     if (draining_period) {
       draining_idx++;
       if (draining_idx >= swpipl_stage_num) {
         draining_period = false;
+        stage_idx = 0;
+        draining_idx = 0;
+        if (useMuliCore) {
+          bm1686->sync_all();
+        }
       }
     }
-    stage_idx++;
+  }
+  for (; useMuliCore && coreId < core_num;
+       coreId++) { // consume all the MSG send/wait.
+    bm1686->useCore(coreId++);
+    bm1686->sync_all();
+    bm1686->sync_all();
   }
 }
 
 void BMCodegen::codegen(Operation *op) {
+  if (module::isOpInGroup(op) || module::isOpInParallel(op))
+    return;
   if (auto castOp = dyn_cast<GroupOp>(op)) {
     Operation *prev_op = op->getPrevNode();
     while (prev_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(prev_op)) {
@@ -684,42 +720,45 @@ void BMCodegen::codegen(Operation *op) {
       next_op = next_op->getNextNode();
     }
     codegen_for_group(castOp, prev_op, next_op);
-  } else if (module::isOpInGroup(op)) {
     return;
-  } else if (auto parallelOp = dyn_cast<ParallelOp>(op)) {
+  }
+  if (auto parallelOp = dyn_cast<ParallelOp>(op)) {
     if (auto bm1686 = dyn_cast<BM1686>(bm168x)) {
       // For the sync-all method, we can use two message IDs to represent all
       // the dependencies in a single run. We can try the following sequence:
-      // send0, wait0, send1, wait1. If any of the wait0 operations succeed, it
-      // confirms that all the send0 operations have finished. Similarly, if any
-      // of the wait1 operations succeed, it confirms that all the send1
-      // operations have finished, which also implies that all the wait0
+      // send0, wait0, send1, wait1. If any of the wait0 operations succeed,
+      // it confirms that all the send0 operations have finished. Similarly,
+      // if any of the wait1 operations succeed, it confirms that all the
+      // send1 operations have finished, which also implies that all the wait0
       // operations have been completed. After this, it is safe to reuse
       // message0.
       auto core_num = module::getCoreNum();
       bm1686->dl_tpu_core_context_setup(0, core_num, 0);
       bm1686->setCoreNum(module::getCoreNum());
       int id = 0;
-      op->walk([&](GlobalGenInterfaceDecorator globalOp) {
-        bm1686->useCore(id++);
-        bm1686->dl_tpu_sync_all(); // begin compute sync-all
-        auto pid_node = (CMD_ID_NODE *)(*bm1686)->cmdid_node;
-        BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
-                                                 gen_op_id(op).c_str());
-        globalOp.codegen_global_bm168x();
-        bm1686->dl_tpu_sync_all(); // end compute sync-all
-      });
+      for (auto &op : parallelOp.getRegion().getOps()) {
+        if (auto globalOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
+          bm1686->useCore(id++);
+          bm1686->sync_all(); // begin compute sync-all
+          auto pid_node = (CMD_ID_NODE *)(*bm1686)->cmdid_node;
+          BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
+                                                   gen_op_id(&op).c_str());
+          globalOp.codegen_global_bm168x();
+          bm1686->sync_all(); // end compute sync-all
+        };
+      }
       for (; id < core_num; id++) { // consume all the MSG send/wait.
         bm1686->useCore(id++);
-        bm1686->dl_tpu_sync_all();
-        bm1686->dl_tpu_sync_all();
+        bm1686->sync_all();
+        bm1686->sync_all();
       }
       bm1686->useCore(0); // reset the command buffer to 0
     } else {
       llvm_unreachable("The backend is missing configuration.");
     }
-
-  } else if (auto castOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
+    return;
+  }
+  if (auto castOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
     auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->cmdid_node;
     BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op).c_str());
     LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(op) << "'\n");

@@ -198,13 +198,13 @@ void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t c_step,
     int64_t pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
     int64_t pad_w_r = (in_gi.w_idx + in_gi.w_slice == attr.iw ? attr.pwr : 0);
     if (sec_info.is_h_split) {
-      sec_info.h_idx = h_step == 0 ? -attr.pht : in_gi.h_idx;
+      sec_info.h_idx = in_gi.h_idx == 0 ? -attr.pht : in_gi.h_idx;
       sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
                                             : sec_info.h_slice;
       sec_info.h_slice = sec_info.h_slice + pad_h_b;
     }
     if (sec_info.is_w_split) {
-      sec_info.w_idx = w_step == 0 ? -attr.pwl : in_gi.w_idx;
+      sec_info.w_idx = in_gi.w_idx == 0 ? -attr.pwl : in_gi.w_idx;
       sec_info.w_slice = sec_info.w_idx < 0 ? sec_info.w_slice - sec_info.w_idx
                                             : sec_info.w_slice;
       sec_info.w_slice = sec_info.w_slice + pad_w_r;
@@ -356,5 +356,6 @@ ArrayAttr tpu::Conv2DOp::getIndexingMaps() {
       indexingMaps.push_back(filterMap);
   }
   indexingMaps.push_back(identity2Map);
+  return Builder(getContext()).getAffineMapArrayAttr({});
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
