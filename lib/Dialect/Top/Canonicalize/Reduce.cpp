@@ -104,6 +104,9 @@ struct ReduceFusePattern : public OpRewritePattern<ReduceOp> {
     if (formerOp.getKeepdims() != op.getKeepdims()) {
       return failure();
     }
+    if (!formerOp->getResult(0).hasOneUse()) {
+      return failure();
+    }
     auto axis_list_former = module::getI64Array(formerOp.getAxes());
     auto axis_list_current = module::getI64Array(op.getAxes());
     int axis_num_former = axis_list_former->size();
@@ -148,7 +151,67 @@ struct ReduceFusePattern : public OpRewritePattern<ReduceOp> {
   }
 };
 
+struct ReduceToReshapePattern : public OpRewritePattern<ReduceOp> {
+
+  using OpRewritePattern::OpRewritePattern;
+  ReduceToReshapePattern(MLIRContext *context, PatternBenefit benefit = 10)
+      : OpRewritePattern<ReduceOp>(context, benefit) {}
+  LogicalResult matchAndRewrite(ReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto nofInputElts = module::getNumElements(op.getInput());
+    auto nofOutputElts = module::getNumElements(op.getOutput());
+    if (nofInputElts != nofOutputElts) {
+      return failure();
+    }
+    rewriter.replaceOpWithNewOp<ReshapeOp>(op, op.getType(), op.getInput(),
+                                           std::vector<NamedAttribute>());
+    return success();
+  }
+};
+
+struct ReduceToRPoolPattern : public OpRewritePattern<ReduceOp> {
+
+  using OpRewritePattern::OpRewritePattern;
+  ReduceToRPoolPattern(MLIRContext *context, PatternBenefit benefit = 10)
+      : OpRewritePattern<ReduceOp>(context, benefit) {}
+  LogicalResult matchAndRewrite(ReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto iShape = module::getShape(op.getInput());
+    auto num_dims = iShape.size();
+    auto mode = op.getMode().str();
+    auto axes = module::getI64Array(op.getAxes());
+    if ((mode == "ReduceMean" || mode == "ReduceMax") && num_dims == 4 &&
+        axes->size() == 2 && axes->at(0) == num_dims - 2 &&
+        axes->at(1) == num_dims - 1) {
+      // prepare attrs
+      std::vector<NamedAttribute> pool_attrs;
+      pool_attrs.emplace_back(rewriter.getNamedAttr(
+          "kernel_shape", rewriter.getI64ArrayAttr(
+                              {iShape[num_dims - 2], iShape[num_dims - 1]})));
+      pool_attrs.emplace_back(
+          rewriter.getNamedAttr("strides", rewriter.getI64ArrayAttr({1, 1})));
+      pool_attrs.emplace_back(rewriter.getNamedAttr(
+          "pads", rewriter.getI64ArrayAttr({0, 0, 0, 0})));
+      pool_attrs.emplace_back(rewriter.getNamedAttr(
+          "count_include_pad", rewriter.getBoolAttr(true)));
+      pool_attrs.emplace_back(
+          rewriter.getNamedAttr("keepdims", op.getKeepdimsAttr()));
+      if (mode == "ReduceMean") {
+        rewriter.replaceOpWithNewOp<AvgPoolOp>(op, op.getType(), op.getInput(),
+                                               pool_attrs);
+      } else {
+        rewriter.replaceOpWithNewOp<MaxPoolOp>(op, op.getType(), op.getInput(),
+                                               pool_attrs);
+      }
+      return success();
+    } else {
+      return failure();
+    }
+  }
+};
+
 void ReduceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<TopReduceTranspose, ReduceFusePattern>(context);
+  results.insert<ReduceToReshapePattern, ReduceToRPoolPattern,
+                 TopReduceTranspose, ReduceFusePattern>(context);
 }

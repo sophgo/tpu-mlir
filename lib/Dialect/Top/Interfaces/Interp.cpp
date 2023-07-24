@@ -302,22 +302,27 @@ void top::InterpOp::shape_inference() {
     auto target_shape_ = getTargetShape();
     auto scale_h_ = getScaleH().convertToDouble();
     auto scale_w_ = getScaleW().convertToDouble();
+    auto nof_dims = in_shape.size();
+    int32_t hidx = nof_dims - 2, widx = nof_dims - 1;
     std::vector<int64_t> out_shape(in_shape);
     if (getMode() == "nearest" || getMode() == "linear") {
         if (!module::isNone(target_shape_)) {
             auto target_shape = target_shape_.getDefiningOp<top::WeightOp>().read<float>();
-            out_shape[2] = (int)target_shape->at(0);
-            out_shape[3] = (int)target_shape->at(1);
-            setScaleH(APFloat((double) out_shape[2] / in_shape[2]));
-            setScaleW(APFloat((double) out_shape[3] / in_shape[3]));
-        } else if (scale_h_ > 0 && scale_h_ > 0) {
-            out_shape[2] = floor(out_shape[2] * scale_h_);
-            out_shape[3] = floor(out_shape[3] * scale_w_);
+            out_shape[hidx] = (int)target_shape->at(0);
+            out_shape[widx] = (int)target_shape->at(1);
+            setScaleH(APFloat((double) out_shape[hidx] / in_shape[hidx]));
+            setScaleW(APFloat((double) out_shape[widx] / in_shape[widx]));
+            setOperand(1, module::getNoneOp(getOperation()));
+        } else if (scale_h_ > 0 && scale_w_ > 0) {
+            out_shape[hidx] = floor(out_shape[hidx] * scale_h_);
+            out_shape[widx] = floor(out_shape[widx] * scale_w_);
         } else {
             llvm::errs() << "You must specify either target shape or scale.\n";
             llvm_unreachable("You must specify either target shape or scale.\n");
         }
         module::setShapeOrVerify(getOutput(), out_shape);
+    } else {
+        llvm_unreachable("Unsupport Interp mode type.\n");
     }
 }
 

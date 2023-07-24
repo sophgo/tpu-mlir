@@ -99,6 +99,12 @@ void top::ReduceOp::shape_inference() {
       fixed = true;
     }
   }
+  if (axes->size() == 0) {
+    // for onnx whithout axes attr
+    axes->resize(num_dims);
+    std::iota(axes->begin(), axes->end(), 0);
+    fixed = true;
+  }
   if (fixed) {
     Builder builder(getContext());
     setAxesAttr(builder.getI64ArrayAttr(*axes));
