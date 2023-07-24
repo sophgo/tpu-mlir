@@ -52,11 +52,10 @@ message(STATUS "Using MLIR_INCLUDE_DIRS in: ${MLIR_INCLUDE_DIRS}")
 #-------------------------------------------------------------------------------
 # oneDNN Configuration
 #-------------------------------------------------------------------------------
-set(DNNL_PATH ${PROJECT_SOURCE_DIR}/third_party/oneDNN)
-set(DNNL_DIR ${DNNL_PATH}/lib/cmake/dnnl)
-find_package(DNNL REQUIRED CONFIG)
-include_directories(${DNNL_PATH}/include)
-link_directories(${DNNL_PATH}/lib)
+find_package(DNNL REQUIRED)
+include_directories(${DNNL_INCLUDE_DIRS})
+link_libraries(${DNNL_LIBS})
+message(STATUS "Using oneDNN in: ${DNNL_DIR}")
 #-------------------------------------------------------------------------------
 # cnpy Configuration
 #-------------------------------------------------------------------------------
@@ -65,9 +64,11 @@ include_directories(${CNPY_PATH})
 #-------------------------------------------------------------------------------
 # flatbuffers Configuration
 #-------------------------------------------------------------------------------
-set(FLATBUFFERS_PATH ${PROJECT_SOURCE_DIR}/third_party/flatbuffers)
-include_directories(${FLATBUFFERS_PATH}/include)
-link_directories(${FLATBUFFERS_PATH}/lib)
+find_program(FLATBUFFERS_CMD flatc REQUIRED)
+find_package(FLATBUFFERS REQUIRED)
+include_directories(${FLATBUFFERS_INCLUDE_DIRS})
+link_libraries(${FLATBUFFERS_LIBS})
+message(STATUS "Using flatbuffer in: ${FLATBUFFERS_DIR}")
 #-------------------------------------------------------------------------------
 # nntoolchain Configuration
 #-------------------------------------------------------------------------------
