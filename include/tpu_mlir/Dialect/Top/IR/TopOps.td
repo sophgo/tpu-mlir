@@ -1161,6 +1161,7 @@ def Top_UpsampleOp : Top_Op<"Upsample", [SupportFuseRelu]> {
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );
+  let hasCanonicalizer=1;
   let results = (outs AnyTensor:$output);
 }
 

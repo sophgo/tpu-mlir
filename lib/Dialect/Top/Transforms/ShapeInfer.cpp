@@ -148,6 +148,7 @@ static void WeightFolder(Operation *op) {
   for (int i = 0; i < num_in; i++) {
     if (false == module::isWeight(ins[i])) {
       inputs.push_back(nullptr);
+      continue;
     }
     auto in_op = cast<top::WeightOp>(ins[i].getDefiningOp());
     auto d = in_op.read<float>();

@@ -174,12 +174,16 @@ class ConstantFolding(object):
         dynamic_tensors = []
         self.const_tensors = [x.name for x in self.model.graph.initializer]
         self.const_tensors.extend([node.output[0] for node in self.model.graph.node if node.op_type == "Constant"])
+        self.const_tensors.extend([''])
         for node in self.model.graph.node:
-            if any(x in dynamic_tensors for x in node.input):
-                dynamic_tensors.extend(node.output)
-            elif node.op_type == "Shape":
+            if node.op_type == "Shape":
                 const_nodes.append(node)
                 self.const_tensors.extend(node.output)
+            elif node.op_type == "Resize" and all([x in self.const_tensors for x in node.input]):
+                const_nodes.append(node)
+                self.const_tensors.extend(node.output)
+            elif any(x in dynamic_tensors for x in node.input):
+                dynamic_tensors.extend(node.output)
             elif self.is_dynamic(node):
                 dynamic_tensors.extend(node.output)
             elif self.is_quantizeLinear(node):
@@ -188,6 +192,9 @@ class ConstantFolding(object):
                 pass
             elif len(node.input) > 0 and all([x in self.const_tensors for x in node.input]) \
                     and not self.is_non_determinstic_node(node):
+                const_nodes.append(node)
+                self.const_tensors.extend(node.output)
+            elif node.op_type == "Transpose" and all([x in self.const_tensors for x in node.input]):
                 const_nodes.append(node)
                 self.const_tensors.extend(node.output)
         return copy.deepcopy(const_nodes)
