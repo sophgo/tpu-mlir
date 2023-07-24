@@ -1,0 +1,18 @@
+--extra-index-url https://pypi.org/simple
+--extra-index-url https://download.pytorch.org/whl
+--extra-index-url https://download.pytorch.org/whl/cpu
+pybind11==2.*
+pillow==9.*
+six==1.*
+cython==0.29.*
+plotly==5.*
+scipy==1.*
+tqdm==4.*
+opencv-python
+numpy==1.*
+torch==1.*
+torchvision==0.1.*
+onnx==1.13.*
+PyYAML
+dataclasses
+onnxruntime==1.*

@@ -6,7 +6,7 @@
 # ==============================================================================
 
 from mlir.ir import *
-import mlir.dialects.top as top
+import tpu_mlir.dialects.top as top
 
 
 class State:

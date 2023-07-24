@@ -6,16 +6,24 @@
 #
 # ==============================================================================
 
-from mlir.ir import _f32ArrayAttr, _i64ArrayAttr
+from mlir.ir import register_attribute_builder
 from transform.CaffeConverter import CaffeConverter
 import argparse
 import pymlir
 from utils.mlir_shell import mlir_opt_for_top
 from utils.misc import *
-import mlir.dialects.top as top
+import tpu_mlir.dialects.top as top
 from mlir.ir import *
 import my_layer
 
+@register_attribute_builder("I64Attr")
+def _i64Attr(x, context):
+  return IntegerAttr.get(
+      IntegerType.get_signless(64, context=context), x)
+
+@register_attribute_builder("F32ArrayAttr")
+def _f32ArrayAttr(x, context):
+  return ArrayAttr.get([FloatAttr.get_f32(v, context=context) for v in x])
 
 def dict_attr_convert(param_dict: dict):
     '''

@@ -1,16 +1,8 @@
-set(LIBS
-  TPUMLIRBuilder
-  flatbuffers
+file(GLOB_RECURSE _sources *.cpp)
+tpu_add_executable(model_tool ${_sources}
+	LIBS
+	TpuLibBuilder
+	flatbuffers
 	stdc++fs
 )
-
-add_llvm_executable(model_tool
-  model_tool.cpp
-	md5.cpp
-  )
-target_link_libraries(model_tool PRIVATE ${LIBS})
-llvm_update_compile_flags(model_tool)
-
-mlir_check_all_link_libraries(model_tool)
-
 install(TARGETS model_tool DESTINATION bin)

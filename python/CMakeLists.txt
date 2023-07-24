@@ -1,5 +1,3 @@
-include(AddMLIRPython)
-
 set(TOP_MLIR_PYTHON_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mlir")
 set(TOP_MLIR_PYTHON_PACKAGES_DIR "${CMAKE_BINARY_DIR}/python")
 
@@ -29,8 +27,8 @@ set(_source_components
   TopMLIRPythonSources
 )
 add_mlir_python_modules(TopMLIRPythonModules
-  ROOT_PREFIX "${TOP_MLIR_PYTHON_PACKAGES_DIR}/mlir"
-  INSTALL_PREFIX "python/mlir/"
+  ROOT_PREFIX "${TOP_MLIR_PYTHON_PACKAGES_DIR}/tpu_mlir"
+  INSTALL_PREFIX "python/tpu_mlir/"
   DECLARED_SOURCES ${_source_components}
   )
 

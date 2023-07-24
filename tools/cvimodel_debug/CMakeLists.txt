@@ -1,17 +1,9 @@
-set(LIBS
-TPUMLIRBuilder
-TPUMLIRInitAll
-TPUMLIRSupport
-cviruntime
+file(GLOB_RECURSE _sources *.cpp)
+tpu_add_executable(cvimodel_debug ${_sources}
+	LIBS
+	TpuLibBuilder
+	TpuLibInitAll
+	TpuLibSupport
+	cviruntime
 )
-add_llvm_executable(cvimodel_debug
-  cvimodel_debug.cpp
-  cpu_func.cpp
-  utils.cpp
-  )
-target_link_libraries(cvimodel_debug PRIVATE ${LIBS})
-llvm_update_compile_flags(cvimodel_debug)
-
-mlir_check_all_link_libraries(cvimodel_debug)
-
 install(TARGETS cvimodel_debug DESTINATION bin)

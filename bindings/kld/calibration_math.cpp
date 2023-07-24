@@ -8,7 +8,11 @@
 //===----------------------------------------------------------------------===//
 
 #include <stdio.h>
+#include <features.h>
+#ifdef __USE_GNU
 #include <execinfo.h>
+#define HAVE_EXECINFO
+#endif
 #include <stdlib.h>
 #include <math.h>
 
@@ -33,18 +37,23 @@ struct mul_thread_inputs{
 
 static inline void print_trace(void)
 {
-  void *array[10];
-  size_t i;
+  size_t size = 0;
 
-  size_t size = backtrace (array, 10);
-  char **strings = backtrace_symbols (array, size);
+#ifdef HAVE_EXECINFO
+  size = backtrace (array, 10);
+#endif
 
   printf ("Obtained %lu stack frames.\n", size);
 
-  for (i = 0; i < size; i++)
+#ifdef HAVE_EXECINFO
+  void *array[10];
+  char **strings = backtrace_symbols (array, size);
+
+  for (size_t i = 0; i < size; i++)
     printf ("%s\n", strings[i]);
 
   free (strings);
+#endif
 }
 
 static inline void hang(long long ret)

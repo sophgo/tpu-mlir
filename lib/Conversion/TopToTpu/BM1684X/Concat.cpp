@@ -56,8 +56,8 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
   std::vector<Value> operands;
   llvm::SmallDenseMap<Value, Value> valueMap;
   for (auto in : concatOp.getInputs()) {
-    if (valueMap.contains(in)) {
-      operands.push_back(valueMap.at(in));
+    if (valueMap.count(in) == 1) {
+      operands.push_back(valueMap.lookup(in));
     } else {
       auto new_in = do_transfer(in, concatOp.getOutput(), asymmetric);
       valueMap[in] = new_in;

@@ -11,6 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/FormatVariadic.h"
+#include <llvm/ADT/STLExtras.h>
 
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
@@ -178,14 +179,16 @@ bool forAll(IndexingMapsInterface op, int core = 1) {
   auto body = new Block();
   parallelOp.getBody().push_back(body);
   rewriter.setInsertionPointToStart(body);
-  rewriter.replaceAllUsesWith(op->getResults(), parallelOp.getResults());
+	for (auto [x, y] : llvm::zip_equal(op->getResults(), parallelOp.getResults())) rewriter.replaceAllUsesWith(x, y);
 
   // Travel the multi-dimensional iteration space.
   // 1. build split operation for each operand.
   SmallVector<Operation *, 4> splitOps;
   SmallVector<SmallVector<int64_t, 4>, 4> operandsStride;
-  for (auto [index, valueMap, value] :
-       llvm::enumerate(operandsMap, op->getOperands())) {
+
+	size_t index = 0;
+  for (auto [valueMap, value] :
+       llvm::zip_equal(operandsMap, op->getOperands())) {
     if (auto outTypes = getSplitTypes(valueMap, value, ArrayRef(shapeParallel),
                                       splitDim, splitMax)) {
       auto name = module::getName(value) + "_" + Twine(index);
@@ -198,6 +201,7 @@ bool forAll(IndexingMapsInterface op, int core = 1) {
     }
     operandsStride.push_back(
         getValidStride(valueMap, ArrayRef(iterationShape)));
+		index++;
   }
 
   // 2. build distributing compute operation for each core.

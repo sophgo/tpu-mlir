@@ -15,7 +15,7 @@ import torch
 from caffe.proto import caffe_pb2
 from google.protobuf import text_format
 from utils.pad_setting import set_caffe_pad
-import mlir.dialects.top as top
+import tpu_mlir.dialects.top as top
 from mlir.ir import *
 
 

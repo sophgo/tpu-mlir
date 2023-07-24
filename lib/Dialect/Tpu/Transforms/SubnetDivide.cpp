@@ -10,18 +10,49 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Patterns.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/Patterns.h"
 
+#include "mlir/IR/Block.h"
+#include "mlir/IR/Visitors.h"
+#include "mlir/IR/RegionGraphTraits.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "llvm/ADT/DenseSet.h"
+#include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
-#include "mlir/IR/Iterators.h"
-#include "mlir/IR/Block.h"
-#include "llvm/ADT/DenseSet.h"
 #include <fstream>
+#include <llvm/ADT/iterator.h>
 #include <set>
 #include <sstream>
+
+// TODO: move to mlir official impl in the next release
+// example, walk<WalkOrder::PreOrder, ForwardDominanceIterator<true>>
+WalkResult walk_pre(Operation *op, function_ref<WalkResult(Operation *)> callback) {
+  WalkResult result = callback(op);
+  if (result.wasSkipped())
+    return WalkResult::advance();
+  if (result.wasInterrupted())
+    return WalkResult::interrupt();
+  for (auto &region : op->getRegions()) {
+    auto regionKindOp =
+      dyn_cast_if_present<RegionKindInterface>(region.getParentOp());
+    assert(regionKindOp && regionKindOp.hasSSADominance(region.getRegionNumber())
+      && "graph regions are not allowed");
+    Block *null = nullptr;
+    auto it = llvm::make_pointee_range(region.empty()
+                  ? llvm::make_range(llvm::df_end(null), llvm::df_end(null))
+                  : llvm::depth_first(&region.front()));
+    for (auto &block : it) {
+      for (auto &nestedOp : block) {
+        if (walk_pre(&nestedOp, callback).wasInterrupted())
+          return WalkResult::interrupt();
+      }
+    }
+  }
+  return WalkResult::advance();
+}
 
 using namespace llvm;
 
@@ -346,8 +377,8 @@ public:
 
     toposort();
     WalkResult ret =
-        module::getMainFuncOp()
-            .walk<WalkOrder::PreOrder, ForwardDominanceIterator<true>>(
+            walk_pre(
+							module::getMainFuncOp(),
                 [&](Operation *op) {
                   if (isa<func::FuncOp, ReturnOp, top::NoneOp>(op))
                     return WalkResult::advance();

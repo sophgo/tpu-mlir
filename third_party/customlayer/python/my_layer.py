@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import caffe
 import numpy as np
 

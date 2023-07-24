@@ -21,7 +21,7 @@ import numpy as np
 from utils.pad_setting import set_auto_pad
 from utils.auto_remove import file_mark, file_clean
 import copy
-import mlir.dialects.top as top
+import tpu_mlir.dialects.top as top
 from mlir.ir import *
 from typing import List
 

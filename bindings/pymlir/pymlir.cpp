@@ -224,11 +224,7 @@ void debug_only(std::vector<std::string> debug_types) {
 
 void debug(bool enable) { llvm::DebugFlag = enable; }
 
-#ifndef MLIR_VERSION
-#define MLIR_VERSION "version unknown"
-#endif
-
-std::string py_module::version = MLIR_VERSION;
+std::string py_module::version = TPU_MLIR_VERSION;
 
 // wrap as Python module
 PYBIND11_MODULE(pymlir, m) {

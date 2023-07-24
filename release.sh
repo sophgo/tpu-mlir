@@ -6,7 +6,7 @@ rm -rf ${INSTALL_PATH}
 rm -rf ${PROJECT_ROOT}/regression/regression_out
 source build.sh RELEASE
 
-mlir_version="$(grep MLIR_VERSION ${BUILD_PATH}/CMakeCache.txt | cut -d "=" -f2)"
+mlir_version="$(grep TPU_MLIR_VERSION ${BUILD_PATH}/CMakeCache.txt | cut -d "=" -f2)"
 release_archive="./tpu-mlir_${mlir_version}"
 
 rm -rf ${release_archive}*

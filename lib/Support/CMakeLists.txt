@@ -1,20 +1,15 @@
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -Werror -Wno-pedantic -fno-strict-aliasing -Wno-maybe-uninitialized")
-file(GLOB _sources *.cpp Dnnl/*.cpp Helper/*.cpp)
-
-add_llvm_library(TPUMLIRSupport
-  ${_sources}
-
-  DEPENDS
-  ModuleAttrGen
-  MLIRTopOpsIncGen
-
-  LINK_LIBS PUBLIC
+file(GLOB_RECURSE _sources *.cpp)
+tpu_add_library(Support ${_sources}
+	DEPENDS 
+	TpuEnumModuleIncGen
+	TpuDialectTopOpsIncGen
+	LIBS
   MLIRIR
   MLIRSupport
   MLIRQuantDialect
   MLIRQuantUtils
-  MLIRInferenceInterface
-  cnpy
-  dnnl
-  z
+	TpuLibInterfaceInferenceInterface
+	cnpy
+	dnnl
+	z
 )

@@ -18,20 +18,20 @@ LogicalResult tpu::ArgOp::init(InferenceParameter &p) { return success(); }
 void tpu::ArgOp::deinit(InferenceParameter &p) {}
 
 typedef enum {
-  ARG_MAX,
-  ARG_MIN,
+  ARG_MAXT,
+  ARG_MINT,
 } arg_mode_t;
 
 template<typename T>
 std::function<bool(T, T)> get_compare_op(arg_mode_t mode, bool select_last) {
   if (select_last) {
-    if (mode == ARG_MAX) {
+    if (mode == ARG_MAXT) {
       return std::greater_equal<T>();
     } else {
       return std::less_equal<T>();
     }
   } else {
-    if (mode == ARG_MAX) {
+    if (mode == ARG_MAXT) {
       return std::greater<T>();
     } else {
       return std::less<T>();
@@ -46,7 +46,7 @@ LogicalResult tpu::ArgOp::inference(InferenceParameter &p) {
   float *output_val = need_val ? p.outputs[1] : nullptr;
   const auto type_val = getMode().str();
   assert(type_val == "ArgMax" || type_val == "ArgMin");
-  const arg_mode_t mode = (type_val == "ArgMax") ? ARG_MAX : ARG_MIN;
+  const arg_mode_t mode = (type_val == "ArgMax") ? ARG_MAXT : ARG_MINT;
   auto axis = getAxis();
   const auto input_shape = module::getShape(getInput());
   const int input_dims = input_shape.size();

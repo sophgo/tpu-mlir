@@ -203,12 +203,7 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
     auto order0 = *module::getI64Array(permute0.getOrder());
     auto permute1 =
         dyn_cast<PermuteOp>(*permute0.getOutput().getUsers().begin());
-    mlir::TypedValue<mlir::TensorType> permute_output;
-    if (permute1) {
-      permute_output = permute1.getOutput();
-    } else {
-      permute_output = permute0.getOutput();
-    }
+    auto permute_output = permute1 ? permute1.getOutput() : permute0.getOutput();
     std::vector<SliceOp> slice_vec;
     int slice_axis;
     for (auto user : permute_output.getUsers()) {

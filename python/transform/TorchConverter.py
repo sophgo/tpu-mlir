@@ -9,7 +9,7 @@ from .MLIRImporter import MLIRImporter, Platform
 from .BaseConverter import BaseConverter
 from .TorchHelper import *
 from mlir.ir import *
-import mlir.dialects.top as top
+import tpu_mlir.dialects.top as top
 import numpy as np
 import torchvision
 

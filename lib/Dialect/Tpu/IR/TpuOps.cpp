@@ -30,17 +30,17 @@ void TpuDialect::initialize() {
       >();
   addAttributes<
 #define GET_ATTRDEF_LIST
-#include "tpu_mlir/Dialect/Tpu/IR/TpuAttr.cpp.inc"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOpsAttr.cpp.inc"
       >();
 }
 
 //===----------------------------------------------------------------------===//
 // Tpu Operator Definitions.
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Dialect/Tpu/IR/TpuEnum.cpp.inc"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOpsEnum.cpp.inc"
 
 #define GET_ATTRDEF_CLASSES
-#include "tpu_mlir/Dialect/Tpu/IR/TpuAttr.cpp.inc"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOpsAttr.cpp.inc"
 
 #define GET_OP_CLASSES
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.cpp.inc"

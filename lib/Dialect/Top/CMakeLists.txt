@@ -1,26 +1,11 @@
-file(GLOB _sources
-          IR/*.cpp
-          Interfaces/*.cpp
-          Canonicalize/*.cpp
-          Transforms/*.cpp
-          Transforms/ChipOptimize/*.cpp
-    )
+file(GLOB_RECURSE _sources *.cpp)
 
-add_mlir_library(TPUMLIRTop
-  ${_sources}
-
-  ADDITIONAL_HEADER_DIRS
-  ${PROJECT_SOURCE_DIR}/include/tpu_mlir/Dialect/Top
-
-  DEPENDS
-  MLIRTopAttrGen
-  MLIRTopOpsIncGen
-  MLIRTopPassIncGen
-  MLIRInferenceInterfaceIncGen
-  MLIRFlopsInterfaceIncGen
-  MLIRShapeInterfaceIncGen
-
-  LINK_LIBS PUBLIC
+tpu_add_library(DialectTop ${_sources}
+	DEPENDS
+	BuilderHeader
+	TpuDialectTopOpsIncGen
+	TpuPassTopIncGen
+	LIBS
   MLIRIR
   MLIRPass
   MLIRSupport
@@ -29,9 +14,9 @@ add_mlir_library(TPUMLIRTop
   MLIRQuantDialect
   MLIRRewrite
   MLIRTransforms
-  MLIRInferenceInterface
-  MLIRFlopsInterface
-  MLIRShapeInterface
-  TPUMLIRSupport
-  TPUMLIRTrait
+	TpuLibInterfaceInferenceInterface
+	TpuLibInterfaceFlopsInterface
+	TpuLibInterfaceShapeInterface
+	TpuLibTrait
+	TpuLibSupport
 )

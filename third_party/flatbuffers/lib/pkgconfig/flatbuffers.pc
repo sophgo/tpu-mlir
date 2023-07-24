@@ -1,9 +1,0 @@
-libdir=/work/third-party/flatbuffers/build/install/lib
-includedir=/work/third-party/flatbuffers/build/install/include
-
-Name: FlatBuffers
-Description: Memory Efficient Serialization Library
-Version: 2.0.6
-
-Libs: -L${libdir} -lflatbuffers
-Cflags: -I${includedir}

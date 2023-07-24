@@ -1,8 +1,2 @@
 file(GLOB _sources *.cpp)
-
-add_llvm_library(TPUMLIRTrait
-  ${_sources}
-  LINK_LIBS PUBLIC
-  MLIRIR
-  MLIRQuantDialect
-)
+tpu_add_library(Trait ${_sources} LIBS MLIRIR MLIRQuantDialect)

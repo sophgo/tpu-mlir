@@ -1,0 +1,125 @@
+二进制文件 build/_deps/caffe-src/.git/index 和 g/.git/index 不同
+diff '--color=auto' -ru build/_deps/caffe-src/.git/logs/HEAD g/.git/logs/HEAD
+--- build/_deps/caffe-src/.git/logs/HEAD	2023-07-26 01:49:40.367402146 +0800
++++ g/.git/logs/HEAD	2023-07-26 01:48:05.694498272 +0800
+@@ -1,2 +1,2 @@
+-0000000000000000000000000000000000000000 e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8 xhe <xw897002528@gmail.com> 1690307380 +0800	clone: from https://github.com/sophgo/caffe
+-e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8 e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8 xhe <xw897002528@gmail.com> 1690307380 +0800	checkout: moving from master to e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8
++0000000000000000000000000000000000000000 e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8 xhe <xw897002528@gmail.com> 1690307285 +0800	clone: from https://github.com/sophgo/caffe
++e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8 e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8 xhe <xw897002528@gmail.com> 1690307285 +0800	checkout: moving from master to e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8
+diff '--color=auto' -ru build/_deps/caffe-src/.git/logs/refs/heads/master g/.git/logs/refs/heads/master
+--- build/_deps/caffe-src/.git/logs/refs/heads/master	2023-07-26 01:49:40.291401530 +0800
++++ g/.git/logs/refs/heads/master	2023-07-26 01:48:05.620497451 +0800
+@@ -1 +1 @@
+-0000000000000000000000000000000000000000 e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8 xhe <xw897002528@gmail.com> 1690307380 +0800	clone: from https://github.com/sophgo/caffe
++0000000000000000000000000000000000000000 e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8 xhe <xw897002528@gmail.com> 1690307285 +0800	clone: from https://github.com/sophgo/caffe
+diff '--color=auto' -ru build/_deps/caffe-src/.git/logs/refs/remotes/origin/HEAD g/.git/logs/refs/remotes/origin/HEAD
+--- build/_deps/caffe-src/.git/logs/refs/remotes/origin/HEAD	2023-07-26 01:49:40.289401514 +0800
++++ g/.git/logs/refs/remotes/origin/HEAD	2023-07-26 01:48:05.618497429 +0800
+@@ -1 +1 @@
+-0000000000000000000000000000000000000000 e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8 xhe <xw897002528@gmail.com> 1690307380 +0800	clone: from https://github.com/sophgo/caffe
++0000000000000000000000000000000000000000 e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8 xhe <xw897002528@gmail.com> 1690307285 +0800	clone: from https://github.com/sophgo/caffe
+diff '--color=auto' -ru build/_deps/caffe-src/cmake/Dependencies.cmake g/cmake/Dependencies.cmake
+--- build/_deps/caffe-src/cmake/Dependencies.cmake	2023-07-26 01:49:40.295401562 +0800
++++ g/cmake/Dependencies.cmake	2023-07-26 01:48:05.720498560 +0800
+@@ -44,10 +44,6 @@
+ include(cmake/ProtoBuf.cmake)
+ 
+ # ---[ HDF5
+-find_package(HDF5 COMPONENTS HL REQUIRED)
+-list(APPEND Caffe_INCLUDE_DIRS PUBLIC ${HDF5_INCLUDE_DIRS})
+-list(APPEND Caffe_LINKER_LIBS PUBLIC ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
+-
+ # This code is taken from https://github.com/sh1r0/caffe-android-lib
+ if(USE_HDF5)
+   find_package(HDF5 COMPONENTS HL REQUIRED)
+diff '--color=auto' -ru build/_deps/caffe-src/include/caffe/layers/region_loss_layer.hpp g/include/caffe/layers/region_loss_layer.hpp
+--- build/_deps/caffe-src/include/caffe/layers/region_loss_layer.hpp	2023-07-26 01:49:40.335401886 +0800
++++ g/include/caffe/layers/region_loss_layer.hpp	2023-07-26 01:49:08.599129929 +0800
+@@ -12,10 +12,22 @@
+ 
+ namespace caffe {
+ template <typename Dtype>
+-Dtype Overlap(Dtype x1, Dtype w1, Dtype x2, Dtype w2);
++Dtype Overlap(Dtype x1, Dtype w1, Dtype x2, Dtype w2) {
++    Dtype left = std::max(x1 - w1 / 2, x2 - w2 / 2);
++    Dtype right = std::min(x1 + w1 / 2, x2 + w2 / 2);
++    return right - left;
++}
+ 
+ template <typename Dtype>
+-Dtype Calc_iou(const vector<Dtype>& box, const vector<Dtype>& truth);
++Dtype Calc_iou(const vector<Dtype>& box, const vector<Dtype>& truth) {
++    Dtype w = Overlap(box[0], box[2], truth[0], truth[2]);
++    Dtype h = Overlap(box[1], box[3], truth[1], truth[3]);
++    if (w < 0 || h < 0) return 0;
++    Dtype inter_area = w * h;
++    Dtype union_area = box[2] * box[3] + truth[2] * truth[3] - inter_area;
++    return inter_area / union_area;
++}
++
+ 
+ template <typename Dtype>
+ void disp(Blob<Dtype>& swap);
+只在 g/python/caffe 存在：_caffe.so
+只在 g/python/caffe 存在：proto
+diff '--color=auto' -ru build/_deps/caffe-src/src/caffe/layers/detection_output_layer.cpp g/src/caffe/layers/detection_output_layer.cpp
+--- build/_deps/caffe-src/src/caffe/layers/detection_output_layer.cpp	2023-07-26 01:49:40.349401999 +0800
++++ g/src/caffe/layers/detection_output_layer.cpp	2023-07-26 01:48:05.720498560 +0800
+@@ -40,6 +40,7 @@
+ #include <map>
+ #include <string>
+ #include <utility>
++#include <cfloat>
+ #include <vector>
+ 
+ #include "boost/filesystem.hpp"
+diff '--color=auto' -ru build/_deps/caffe-src/src/caffe/layers/region_loss_layer.cpp g/src/caffe/layers/region_loss_layer.cpp
+--- build/_deps/caffe-src/src/caffe/layers/region_loss_layer.cpp	2023-07-26 01:49:40.353402032 +0800
++++ g/src/caffe/layers/region_loss_layer.cpp	2023-07-26 01:49:08.599129929 +0800
+@@ -13,22 +13,6 @@
+ int iter = 0;
+ 
+ namespace caffe {
+-template <typename Dtype>
+-Dtype Overlap(Dtype x1, Dtype w1, Dtype x2, Dtype w2) {
+-    Dtype left = std::max(x1 - w1 / 2, x2 - w2 / 2);
+-    Dtype right = std::min(x1 + w1 / 2, x2 + w2 / 2);
+-    return right - left;
+-}
+-
+-template <typename Dtype>
+-Dtype Calc_iou(const vector<Dtype>& box, const vector<Dtype>& truth) {
+-    Dtype w = Overlap(box[0], box[2], truth[0], truth[2]);
+-    Dtype h = Overlap(box[1], box[3], truth[1], truth[3]);
+-    if (w < 0 || h < 0) return 0;
+-    Dtype inter_area = w * h;
+-    Dtype union_area = box[2] * box[3] + truth[2] * truth[3] - inter_area;
+-    return inter_area / union_area;
+-}
+ 
+ template <typename Dtype>
+ inline Dtype sigmoid(Dtype x)
+diff '--color=auto' -ru build/_deps/caffe-src/src/caffe/util/bbox_util.cpp g/src/caffe/util/bbox_util.cpp
+--- build/_deps/caffe-src/src/caffe/util/bbox_util.cpp	2023-07-26 01:49:40.361402097 +0800
++++ g/src/caffe/util/bbox_util.cpp	2023-07-26 01:48:05.722498582 +0800
+@@ -36,6 +36,7 @@
+ */
+ 
+ #include <algorithm>
++#include <cfloat>
+ #include <csignal>
+ #include <ctime>
+ #include <functional>
+diff '--color=auto' -ru build/_deps/caffe-src/src/caffe/util/io.cpp g/src/caffe/util/io.cpp
+--- build/_deps/caffe-src/src/caffe/util/io.cpp	2023-07-26 01:49:40.361402097 +0800
++++ g/src/caffe/util/io.cpp	2023-07-26 01:48:05.722498582 +0800
+@@ -65,7 +65,7 @@
+   CHECK_NE(fd, -1) << "File not found: " << filename;
+   ZeroCopyInputStream* raw_input = new FileInputStream(fd);
+   CodedInputStream* coded_input = new CodedInputStream(raw_input);
+-  coded_input->SetTotalBytesLimit(kProtoReadBytesLimit, 536870912);
++  coded_input->SetTotalBytesLimit(kProtoReadBytesLimit);
+ 
+   bool success = proto->ParseFromCodedStream(coded_input);
+ 

@@ -107,7 +107,8 @@ public:
     } else {
       J.attribute("function", op->getName().getStringRef());
     }
-    J.attribute("line", opToLineCol.at(op).first);
+		assert(opToLineCol.count(op) == 1 && "failed due to a missing key");
+    J.attribute("line", opToLineCol.lookup(op).first);
     J.attributeBegin("body");
     J.arrayBegin();
   };

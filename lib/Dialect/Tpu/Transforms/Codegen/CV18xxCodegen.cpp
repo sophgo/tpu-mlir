@@ -634,7 +634,7 @@ FBModel CviModelBuilder::build() {
   auto fbModelName = fbb_.CreateString(modelName_);
   auto fbBuildTime = fbb_.CreateString(getStrOfCurrentTime());
   auto fbTarget = fbb_.CreateString(chip);
-  auto fbMlirVersion = fbb_.CreateString(MLIR_VERSION);
+  auto fbMlirVersion = fbb_.CreateString(TPU_MLIR_VERSION);
   auto fbWeightMap = buildWeightMap();
   auto fbSections = buildSections();
   auto fbProgram = buildProgram();
