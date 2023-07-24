@@ -2385,6 +2385,7 @@ def Top_YieldOp : Top_BaseOp<"Yield", [Terminator, HasParent<"IfOp">]> {
 
 def Top_IfOp : Top_Op<"If"> {
   let summary = "if operation";
+  let hasVerifier = 1;
   let description = [{
     If conditional
   }];

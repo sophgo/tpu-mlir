@@ -46,3 +46,44 @@ void top::IfOp::shape_inference() {
   }
   return;
 }
+
+static inline bool areCompatibleIfTypes(Type ifResultType, Type branchResultType) {
+  if (ShapedType ifShapedType = ifResultType.dyn_cast<ShapedType>()) {
+    if (ShapedType branchShapedType = branchResultType.dyn_cast<ShapedType>()) {
+      //if quantizedType, just check branch result type if it is also quantizedType
+      if (ifShapedType.getElementType().isa<mlir::quant::QuantizedType>())
+        return branchShapedType.getElementType().isa<mlir::quant::QuantizedType>();
+      else
+        return ifShapedType.getElementType() == branchShapedType.getElementType();
+    } else {
+      return false;
+    }
+  }
+
+  llvm_unreachable("areCompatibleIfTypes called with non tensor type");
+}
+
+LogicalResult top::IfOp::verify() {
+  size_t ifNumResults = getNumResults();
+  assert(ifNumResults == getOutput().size() && "output() != all results");
+  auto thenResults = getThenBranch().back().getTerminator()->getOperands();
+  if (ifNumResults != thenResults.size())
+    return emitOpError() << "then branch #results=" << thenResults.size()
+                         << " differ from if #results=" << ifNumResults;
+  auto elseResults = getElseBranch().back().getTerminator()->getOperands();
+  if (ifNumResults != elseResults.size())
+    return emitOpError() << "else branch #results=" << elseResults.size()
+                         << " differ from if #results=" << ifNumResults;
+  auto thenResultTypes = thenResults.getTypes();
+  auto elseResultTypes = elseResults.getTypes();
+  for (size_t i = 0; i < ifNumResults; ++i) {
+    Type ifResultType = getResultTypes()[i];
+    if (!areCompatibleIfTypes(ifResultType, thenResultTypes[i]))
+      emitOpError() << "then branch disagrees on result type #" << (i + 1)
+                    << " of " << ifNumResults;
+    if (!areCompatibleIfTypes(ifResultType, elseResultTypes[i]))
+      emitOpError() << "else branch disagrees on result type #" << (i + 1)
+                    << " of " << ifNumResults;
+  }
+  return success();
+}
