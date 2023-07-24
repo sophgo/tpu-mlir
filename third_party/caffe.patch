@@ -1,0 +1,52 @@
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index 534f285..47c48e6 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -44,10 +44,6 @@ list(APPEND Caffe_LINKER_LIBS PUBLIC ${GFLAGS_LIBRARIES})
+ include(cmake/ProtoBuf.cmake)
+ 
+ # ---[ HDF5
+-find_package(HDF5 COMPONENTS HL REQUIRED)
+-list(APPEND Caffe_INCLUDE_DIRS PUBLIC ${HDF5_INCLUDE_DIRS})
+-list(APPEND Caffe_LINKER_LIBS PUBLIC ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
+-
+ # This code is taken from https://github.com/sh1r0/caffe-android-lib
+ if(USE_HDF5)
+   find_package(HDF5 COMPONENTS HL REQUIRED)
+diff --git a/src/caffe/layers/detection_output_layer.cpp b/src/caffe/layers/detection_output_layer.cpp
+index da250c3..2e16a16 100644
+--- a/src/caffe/layers/detection_output_layer.cpp
++++ b/src/caffe/layers/detection_output_layer.cpp
+@@ -40,6 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <map>
+ #include <string>
+ #include <utility>
++#include <cfloat>
+ #include <vector>
+ 
+ #include "boost/filesystem.hpp"
+diff --git a/src/caffe/util/bbox_util.cpp b/src/caffe/util/bbox_util.cpp
+index 9582321..ae2e593 100644
+--- a/src/caffe/util/bbox_util.cpp
++++ b/src/caffe/util/bbox_util.cpp
+@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+ 
+ #include <algorithm>
++#include <cfloat>
+ #include <csignal>
+ #include <ctime>
+ #include <functional>
+diff --git a/src/caffe/util/io.cpp b/src/caffe/util/io.cpp
+index e258b06..8320432 100644
+--- a/src/caffe/util/io.cpp
++++ b/src/caffe/util/io.cpp
+@@ -65,7 +65,7 @@ bool ReadProtoFromBinaryFile(const char* filename, Message* proto) {
+   CHECK_NE(fd, -1) << "File not found: " << filename;
+   ZeroCopyInputStream* raw_input = new FileInputStream(fd);
+   CodedInputStream* coded_input = new CodedInputStream(raw_input);
+-  coded_input->SetTotalBytesLimit(kProtoReadBytesLimit, 536870912);
++  coded_input->SetTotalBytesLimit(kProtoReadBytesLimit);
+ 
+   bool success = proto->ParseFromCodedStream(coded_input);
+ 

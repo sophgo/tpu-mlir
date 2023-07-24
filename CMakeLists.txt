@@ -10,6 +10,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
+include(FetchContent)
+
 find_program(CCACHE ccache)
 if(CCACHE)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
@@ -58,10 +60,42 @@ find_package(DNNL REQUIRED CONFIG)
 include_directories(${DNNL_PATH}/include)
 link_directories(${DNNL_PATH}/lib)
 #-------------------------------------------------------------------------------
+# caffe Configuration
+#-------------------------------------------------------------------------------
+set(CPU_ONLY ON)
+set(USE_HDF5 OFF)
+FetchContent_Declare(caffe
+	GIT_REPOSITORY https://github.com/sophgo/caffe
+	GIT_TAG e188c0ee5491fbd4c5dc9ea35248b8580a65f4f8
+	GIT_SHALLOW true
+  INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/caffe
+	PATCH_COMMAND patch -f -Np1 -i ${CMAKE_CURRENT_SOURCE_DIR}/third_party/caffe.patch || true
+	UPDATE_DISCONNECTED 1
+)
+FetchContent_MakeAvailable(caffe)
+#-------------------------------------------------------------------------------
 # cnpy Configuration
 #-------------------------------------------------------------------------------
-set(CNPY_PATH ${PROJECT_SOURCE_DIR}/third_party/cnpy)
-include_directories(${CNPY_PATH})
+FetchContent_Declare(cnpy
+	GIT_REPOSITORY https://github.com/rogersce/cnpy
+	GIT_TAG 4e8810b1a8637695171ed346ce68f6984e585ef4
+	GIT_SHALLOW true
+	PATCH_COMMAND patch -f -Np1 -i ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cnpy.patch || true
+	UPDATE_DISCONNECTED 1
+)
+FetchContent_MakeAvailable(cnpy)
+include_directories(${cnpy_SOURCE_DIR})
+#-------------------------------------------------------------------------------
+# PROGRESSBAR Configuration
+#-------------------------------------------------------------------------------
+FetchContent_Declare(progressbar
+	GIT_REPOSITORY https://github.com/gipert/progressbar
+	GIT_TAG a67ccda1712d572e24cdfd02938e6a782e779787
+	GIT_SHALLOW true
+	UPDATE_DISCONNECTED 1
+)
+FetchContent_MakeAvailable(progressbar)
+include_directories(${progressbar_SOURCE_DIR}/include)
 #-------------------------------------------------------------------------------
 # flatbuffers Configuration
 #-------------------------------------------------------------------------------
@@ -80,11 +114,6 @@ link_directories(${NNTOOLCHAIN_PATH}/lib)
 set(CV18XX_PATH ${PROJECT_SOURCE_DIR}/third_party/CV18xx)
 include_directories(${CV18XX_PATH}/include)
 link_directories(${CV18XX_PATH}/lib)
-#-------------------------------------------------------------------------------
-# PROGRESSBAR Configuration
-#-------------------------------------------------------------------------------
-set(PROGRESSBAR_PATH ${PROJECT_SOURCE_DIR}/third_party/progressbar)
-include_directories(${PROGRESSBAR_PATH}/include)
 
 OPTION (USE_OpenMP "Use OpenMP" ON)
 IF(USE_OpenMP)
