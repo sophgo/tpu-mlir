@@ -44,7 +44,7 @@ The operation is as follows:
 .. code-block:: shell
    :linenos:
 
-   $ mkdir yolov5s_onnx && cd yolov5s_onnx
+   $ mkdir model_yolov5s && cd model_yolov5s
    $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .

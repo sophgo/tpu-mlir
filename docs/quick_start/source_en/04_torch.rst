@@ -27,7 +27,7 @@ The operation is as follows:
 .. code-block:: shell
    :linenos:
 
-   $ mkdir yolov5s_torch && cd yolov5s_torch
+   $ mkdir model_yolov5s_pt && cd model_yolov5s_pt
    $ wget https://github.com/sophgo/model-zoo/raw/main/vision/detection/yolov5/yolov5s-5.0.pt
    $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
    $ cp -rf $TPUC_ROOT/regression/image .
