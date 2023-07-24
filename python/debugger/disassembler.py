@@ -51,7 +51,7 @@ class Decoder:
 
     def decode_bmodel_cmd(self, bmodel_cmd, subnet_id):
         tiu = itertools.islice(
-            self.decode_tiu_buf(bmodel_cmd.tiu_cls), bmodel_cmd.tiu_num
+            self.decode_tiu_buf(bmodel_cmd.tiu_cmd), bmodel_cmd.tiu_num
         )
         dma = itertools.islice(
             self.decode_dma_buf(bmodel_cmd.dma_cmd), bmodel_cmd.dma_num
@@ -78,9 +78,9 @@ class BModelReader:
             self.dma_num = fbs.GdmaNum()
             if fbs.BinaryBdc():
                 binary_tiu = (fbs.BinaryBdc().Start(), fbs.BinaryBdc().Size())
-                self.tiu_cls = cmd_buf_bits[binary_tiu[0] : sum(binary_tiu)]
+                self.tiu_cmd = cmd_buf_bits[binary_tiu[0] : sum(binary_tiu)]
             else:
-                self.tiu_cls = []
+                self.tiu_cmd = []
             if fbs.BinaryGdma():
                 binary_dma = (fbs.BinaryGdma().Start(), fbs.BinaryGdma().Size())
                 self.dma_cmd = cmd_buf_bits[binary_dma[0] : sum(binary_dma)]
