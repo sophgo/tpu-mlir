@@ -14,6 +14,9 @@
 typedef void (*load_lookup_tables)();
 typedef void (*store_cmd_end)();
 typedef void (*set_cmd_len_ptr)(void *gdma_cmd_len_ptr, void *bdc_cmd_len_ptr);
+// tpu-kernel
+typedef void (*tpu_set_id_node)(void *node);
+typedef void (*tpu_get_id_node)(void *node);
 
 namespace tpu_mlir {
 namespace backend {
@@ -31,6 +34,8 @@ public:
   load_lookup_tables dl_load_lookup_tables;
   store_cmd_end dl_store_cmd_end;
   set_cmd_len_ptr dl_set_cmd_len_ptr;
+  tpu_set_id_node dl_tpu_set_id_node;
+  tpu_get_id_node dl_tpu_get_id_node;
 
 public:
   virtual void after_codegen(int64_t flops = 0) override;

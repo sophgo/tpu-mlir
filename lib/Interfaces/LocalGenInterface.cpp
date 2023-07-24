@@ -108,6 +108,16 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
         d_step >= (int64_t)d_idx_v.size() ||
         w_step >= (int64_t)w_idx_v.size()) {
       ginfo.overstepped = true;
+      ginfo.n_idx = n_idx_v[n_step % n_idx_v.size()];
+      ginfo.c_idx = c_idx_v[c_step % c_idx_v.size()];
+      ginfo.h_idx = h_idx_v[h_step % h_idx_v.size()];
+      ginfo.d_idx = d_idx_v[d_step % d_idx_v.size()];
+      ginfo.w_idx = w_idx_v[w_step % w_idx_v.size()];
+      ginfo.n_slice = n_slice_v[n_step % n_slice_v.size()];
+      ginfo.c_slice = c_slice_v[c_step % c_slice_v.size()];
+      ginfo.h_slice = h_slice_v[h_step % h_slice_v.size()];
+      ginfo.d_slice = d_slice_v[d_step % d_slice_v.size()];
+      ginfo.w_slice = w_slice_v[w_step % w_slice_v.size()];
     } else {
       ginfo.n_idx = n_idx_v[n_step];
       ginfo.c_idx = c_idx_v[c_step];

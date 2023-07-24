@@ -25,11 +25,12 @@ extern void populateParalleBM1684XPatterns(RewritePatternSet *patterns,
 // (1, 2)
 template <typename T, class Func>
 void invokeInIterationSpace(ArrayRef<T> shape, Func &&func,
-                            SmallVector<T> dims = {}) {
+                            SmallVector<T, 8> dims = {}) {
   auto dim = dims.size();
-  for (int64_t i = 0, n = shape[dim]; i < n; i++) {
-    SmallVector dimN(dims);
-    dimN.push_back(i);
+  SmallVector dimN(dims);
+  dimN.push_back(0);
+  for (T i = 0, n = shape[dim]; i < n; i++) {
+    dimN.back() = i;
     if (dimN.size() < shape.size()) {
       invokeInIterationSpace(shape, func, dimN);
     } else {
@@ -243,7 +244,7 @@ bool forAll(IndexingMapsInterface op, int num_core = 1) {
     joinValues.push_back(rewriter
                              .create<tpu::JoinOp>(op->getLoc(),
                                                   op->getResultTypes()[i],
-                                                  operands, op->getAttrs())
+                                                  operands)
                              .getResult());
   }
   rewriter.create<tpu::YieldOp>(op->getLoc(), joinValues);

@@ -55,8 +55,9 @@ void BM1686::setCoreNum(int core) {
 }
 
 void BM1686::useCore(int coreID) {
-  if (code == multiCodes[coreID])
+  if (code == multiCodes[coreID]) {
     return;
+  }
 
   // We can not configure the backend to switch to another command buffer. This
   // is a workaround solution: swapping the buffer and "use codes[0]" only.

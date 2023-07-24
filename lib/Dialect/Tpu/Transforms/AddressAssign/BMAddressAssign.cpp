@@ -208,7 +208,39 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     }
   }
 
-  // 3.set group op address
+  // 3. set parallel Op address
+  for (auto func : m.getOps<FuncOp>()) {
+    func.walk<WalkOrder::PreOrder>([&](tpu::ParallelOp parallelOp) {
+      for (auto &op : parallelOp.getRegion().getOps()) {
+        llvm::TypeSwitch<Operation &>(op)
+            .Case([](tpu::SplitOp splitOp) {
+              int64_t address = module::getAddress(splitOp->getOperand(0));
+              for (auto v : splitOp->getResults()) {
+                module::setAddress(v, address);
+                address += module::getBytes(v);
+              }
+            })
+            .Case([&](tpu::YieldOp yieldOp) {
+              for (auto joinOp_withType : llvm::zip(
+                       yieldOp->getOperands(), parallelOp->getResultTypes())) {
+                auto joinOpValue = std::get<0>(joinOp_withType);
+                joinOpValue.setType(parallelOp->getResultTypes()[0]);
+                int64_t address = module::getAddress(joinOpValue);
+                for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
+                  module::setAddress(v, address);
+                  if (isa<tpu::GroupOp>(v.getDefiningOp())) {
+                    group_ops.push_back(ValueInfo(v.getDefiningOp(), 0));
+                  } else {
+                    address += module::getBytes(v);
+                  }
+                }
+              }
+            });
+      }
+    });
+  }
+
+  // 4.set group op address
   for (auto &op_value : group_ops) {
     auto op = static_cast<Operation *>(op_value.op);
     if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {

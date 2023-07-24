@@ -145,13 +145,13 @@ void tpu::MaxPoolWithMaskOp::assign_sec_info(int64_t n_step, int64_t c_step,
   sec_info.is_w_split = !(in_gi.w_idx == 0 && in_gi.w_slice == attr.iw);
   // to be compatible with nntoolchain
   if (sec_info.is_h_split) {
-    sec_info.h_idx = h_step == 0 ? -attr.pad_h : in_gi.h_idx;
+    sec_info.h_idx = in_gi.h_idx == 0 ? -attr.pad_h : in_gi.h_idx;
     sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
                                           : sec_info.h_slice;
     sec_info.h_slice = sec_info.h_slice + pad_h_b;
   }
   if (sec_info.is_w_split) {
-    sec_info.w_idx = w_step == 0 ? -attr.pad_w : in_gi.w_idx;
+    sec_info.w_idx = in_gi.w_idx == 0 ? -attr.pad_w : in_gi.w_idx;
     sec_info.w_slice = sec_info.w_idx < 0 ? sec_info.w_slice - sec_info.w_idx
                                           : sec_info.w_slice;
     sec_info.w_slice = sec_info.w_slice + pad_w_r;

@@ -46,6 +46,11 @@ public:
 
   void setCoreNum(int core = 1);
   void useCore(int coreID = 0);
+  void sync_all() {
+    dl_tpu_set_id_node(code->cmdid_node);
+    dl_tpu_sync_all();
+    dl_tpu_get_id_node(code->cmdid_node);
+  }
 
   std::vector<std::shared_ptr<BM168x::Code>> const &getCodebuffer() {
     return multiCodes;
