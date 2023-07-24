@@ -1,9 +1,6 @@
 add_subdirectory(cnpy)
 
-install(FILES oneDNN/lib/libdnnl.so
-              oneDNN/lib/libdnnl.so.3
-              oneDNN/lib/libdnnl.so.3.1
-              caffe/lib/libboost_filesystem.so.1.65.1
+install(FILES caffe/lib/libboost_filesystem.so.1.65.1
               caffe/lib/libboost_python3-py36.so.1.65.1
               caffe/lib/libboost_regex.so.1.65.1
               caffe/lib/libboost_system.so.1.65.1
