@@ -219,10 +219,10 @@ class MLIRImporter(object):
                               results=self.get_tensor_type(output_shape),
                               operands=operands,
                               loc=Location.fused([Location.name(kargs['name'])]),
-                              attributes=kargs,
+                              attributes=dict(),
                               regions=region)
         self.insert_point.insert(op)
-        return op.result
+        return op.results
 
     def create_subgraph_input_op(self, name, type, val, **kargs):
         param = {}
