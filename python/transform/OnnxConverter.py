@@ -1159,6 +1159,7 @@ class OnnxConverter(BaseConverter):
                                  offset=[start],
                                  steps=[1],
                                  ends=[end],
+                                 axes=[0],
                                  loc=self.get_loc("{}_{}".format(onnx_node.name,
                                                                  onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
@@ -1241,37 +1242,15 @@ class OnnxConverter(BaseConverter):
             self.addWeight(onnx_node.name, tensor_data)
             return
         op = self.getOperand(onnx_node.inputs[0])
-        slice_shape = list(input_shape)
-        slice_offset = [0] * num_dims
-        slice_step = [1] * num_dims
-        slice_end = [input_shape[i] for i in range(num_dims)]
-        for start, end, axis, step in zip(starts, ends, axes, steps):
-            start, end, axis, step = int(start), int(end), int(axis), int(step)
-            if axis < 0:
-                axis = axis + num_dims
-            if end < 0:
-                end = end + input_shape[axis]
-            if start < 0:
-                start = start + input_shape[axis]
-            if end > input_shape[axis]:
-                end = input_shape[axis]
-            elif end < 0:
-                if step < 0 or output_shape[axis] == 0:
-                    end = -1
-                else:
-                    end = input_shape[axis]
-            slice_shape[axis] = (abs(end - start) + abs(step) - 1) // abs(step)
-            slice_offset[axis] = start
-            slice_step[axis] = step
-            slice_end[axis] = end
         new_op = top.SliceOp(self.unranked_type,
                              op,
                              self.mlir.none_op,
                              self.mlir.none_op,
                              self.mlir.none_op,
-                             offset=list(slice_offset),
-                             steps=list(slice_step),
-                             ends=list(slice_end),
+                             offset=list(starts),
+                             steps=list(steps),
+                             ends=list(ends),
+                             axes=list(axes),
                              loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                              ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
@@ -1766,25 +1745,19 @@ class OnnxConverter(BaseConverter):
         offset = 0
         # replace the split with slice
         for i, name in zip(split, onnx_node.outputs):
-            output_shape = list(input_shape)
-            output_shape[axis] = i
-            slice_offset = [0] * num_dims
-            slice_offset[axis] = offset
-            slice_step = [1] * num_dims
-            slice_end = [input_shape[i] for i in range(num_dims)]
-            offset = offset + i
-            slice_end[axis] = offset
             new_op = top.SliceOp(self.unranked_type,
                                  op,
                                  self.mlir.none_op,
                                  self.mlir.none_op,
                                  self.mlir.none_op,
-                                 offset=list(slice_offset),
-                                 steps=list(slice_step),
-                                 ends=list(slice_end),
+                                 offset=[offset],
+                                 steps=[1],
+                                 ends=[offset+i],
+                                 axes=[axis],
                                  loc=self.get_loc("{}_{}".format(name, onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
             self.addOperand(name, new_op)
+            offset += i
 
     # support max ndims to 6
     def convert_reduce_op(self, onnx_node):
@@ -1946,26 +1919,15 @@ class OnnxConverter(BaseConverter):
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         if self.isScalar(onnx_node.inputs[1]):
             offset = int(self.getScalar(onnx_node.inputs[1]))
-            if offset < 0:
-                offset = in0_shape[axis] + offset
-            slice_offset = [0] * len(in0_shape)
-            slice_steps = [1] * len(in0_shape)
-            slice_ends = [in0_shape[i] for i in range(len(in0_shape))]
-            slice_offset[axis] = offset
-            slice_ends[axis] = offset + 1
-            slice_shape = list(np.take(np.ones(in0_shape), np.array([offset]), axis=axis).shape)
-            for i in range(len(in0_shape)):
-                if i != axis and in0_shape[i] == 0 \
-                   and slice_shape[i] == 0:
-                    slice_ends[i] = -1
             slice_op = top.SliceOp(self.unranked_type,
                                    in0,
                                    self.mlir.none_op,
                                    self.mlir.none_op,
                                    self.mlir.none_op,
-                                   offset=list(slice_offset),
-                                   steps=list(slice_steps),
-                                   ends=list(slice_ends),
+                                   offset=[offset],
+                                   steps=[1],
+                                   ends=[offset + 1],
+                                   axes=[axis],
                                    loc=self.get_loc("{}_Slice".format(onnx_node.name)),
                                    ip=self.mlir.insert_point).output
             new_op = top.ReshapeOp(self.unranked_type,

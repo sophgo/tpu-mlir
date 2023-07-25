@@ -69,6 +69,7 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
       attrs.set("ends", rewriter.getI64ArrayAttr(ends));
+      attrs.set("axes", rewriter.getI64ArrayAttr(std::nullopt));
       auto none = module::getNoneOp(op);
       std::vector<Value> operands;
       operands.push_back(op.getInput());
@@ -104,6 +105,7 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
       attrs.set("ends", rewriter.getI64ArrayAttr(ends));
+      attrs.set("axes", rewriter.getI64ArrayAttr(std::nullopt));
       auto none = module::getNoneOp(op);
       std::vector<Value> operands;
       operands.push_back(op.getInput());
