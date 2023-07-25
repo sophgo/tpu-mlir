@@ -167,7 +167,7 @@ model_deploy.py的相关参数说明如下：
 | excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开 |
 | debug | 否 | 指定后保留中间临时文件；否则会清理掉中间临时文件 |
 | model               | 是    | 指定输出的model文件路径                                  |
-
+| dynamic             | 否    | 动态编译，支持动态shape                           |
 
 ## MLIR转INT8模型
 
