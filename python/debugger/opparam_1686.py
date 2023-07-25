@@ -69,12 +69,15 @@ def opparam_converter_regitstry(sheet_name):
 
     return add_converter
 
+
 # TPU1686/bm1686/spec/include/memmap.h
 memmap = {
     MType.R: (int("0x25000000", 16), int("0x25400000", 16)),  # lmen_base 8M
-    MType.S: (int("0x25800000", 16), int("0x25804000", 16)),  # static memory 16KB
+    # static memory 16KB
+    MType.S: (int("0x25800000", 16), int("0x25804000", 16)),
     MType.G: (int("0x100000000", 16), int("0x200000000", 16)),  # global memory
 }
+
 
 def local_layout_to_stride(memref):
     """
@@ -84,13 +87,15 @@ def local_layout_to_stride(memref):
         _, c, h, w = memref.shape
         align_type = ALIGN_EU_BASE // memref.itemsize
         c_stride = int((w * h + align_type - 1) // align_type * align_type)
-        n_stride = int((c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM * c_stride)
+        n_stride = int((c + memref.mtype.npu_offset +
+                       NPU_NUM - 1) // NPU_NUM * c_stride)
         return (n_stride, c_stride, w, 1)
 
     def compact_stride():
         _, c, h, w = memref.shape
         c_stride = int(w * h)
-        n_stride = int((c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM * c_stride)
+        n_stride = int((c + memref.mtype.npu_offset +
+                       NPU_NUM - 1) // NPU_NUM * c_stride)
         return (n_stride, c_stride, w, 1)
 
     def offset_stride():
@@ -101,7 +106,8 @@ def local_layout_to_stride(memref):
         eu_num = ALIGN_EU_BASE // memref.itemsize
         h_stride = (w + eu_num - 1) / eu_num * eu_num
         c_stride = h * h_stride
-        n_stride = c_stride * (c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM
+        n_stride = c_stride * \
+            (c + memref.mtype.npu_offset + NPU_NUM - 1) // NPU_NUM
         return (n_stride, c_stride, h_stride, 1)
 
     def t4_stride():
@@ -154,9 +160,18 @@ class MemRef(op_support.MemRef):
         if self.mtype == MType.R and layout != Layout.stride:
             self.stride = local_layout_to_stride(self)
 
+    @staticmethod
+    def fix_tag(address, base_addr):
+        assert (len(base_addr) == 2)
+        fixed_addr = address
+        if address & (1 << 39):
+            base_addr_idx = (address >> 36) & 0x7
+            fixed_addr = (
+                address + base_addr[base_addr_idx - 1]) & ((1 << 35) - 1)
+        return fixed_addr
+
     def get_mtype(self, address):
-        if address & (1<<39):
-            address = (address) & ((1<<35) - 1)
+        address = self.fix_tag(address, self.base_addr)
         for k, v in memmap.items():
             if address >= v[0] and address < v[1]:
                 if k == MType.R:
@@ -271,7 +286,8 @@ class Memory:
         # referece: TPU1686/bm1686/cmodel/src/cmodel_common.cpp
         # improve me: use cmodel interface to get data
         def data_view_int4(shape, stride):
-            result = np.zeros(shape, dtype=np.uint8).reshape([shape[0], shape[1], -1])
+            result = np.zeros(shape, dtype=np.uint8).reshape(
+                [shape[0], shape[1], -1])
             laddr = memref.mtype.r_addr
             start_npu_idx = NPU_OFFSET
             start_offset = laddr % LANE_SIZE
@@ -279,14 +295,18 @@ class Memory:
                 n_offset = nidx * stride[0]
                 for cidx in range(0, shape[1]):
                     npu_idx = (start_npu_idx + cidx) % NPU_NUM
-                    LMEM = self.LMEM[npu_idx * LANE_SIZE: (npu_idx + 1) * LANE_SIZE]
-                    c_offset = ((start_npu_idx + cidx) >> NPU_SHIFT) * stride[1]
+                    LMEM = self.LMEM[npu_idx *
+                                     LANE_SIZE: (npu_idx + 1) * LANE_SIZE]
+                    c_offset = ((start_npu_idx + cidx)
+                                >> NPU_SHIFT) * stride[1]
                     h_offset = np.arange(0, shape[2]) * stride[2]
                     w_offset = np.arange(0, shape[3]) * stride[3]
-                    dst_offset = np.add.outer(n_offset, np.add.outer(c_offset, np.add.outer(h_offset, w_offset))).ravel()
+                    dst_offset = np.add.outer(n_offset, np.add.outer(
+                        c_offset, np.add.outer(h_offset, w_offset))).ravel()
                     index = start_offset + (dst_offset >> 1)
                     values = LMEM[index].view(np.uint8)
-                    result[nidx][cidx] = np.where(dst_offset & 1 == 0, values & 0xf, values >> 4)
+                    result[nidx][cidx] = np.where(
+                        dst_offset & 1 == 0, values & 0xf, values >> 4)
             result.reshape(shape)
             if memref.dtype == DType.si4:
                 return np.where(result > 7, result - 16, result).astype(np.int8)
@@ -295,7 +315,7 @@ class Memory:
         def data_view(shape, stride):
             offset = memref.mtype.r_addr - NPU_OFFSET * LANE_SIZE
             return np.lib.stride_tricks.as_strided(
-                self.LMEM[offset : offset + 4].view(memref.np_dtype),
+                self.LMEM[offset: offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
                 writeable=False,
@@ -304,10 +324,11 @@ class Memory:
         def get_stride_data_base(shape, stride):
             n, c, h, w = shape
             n_s, c_s, h_s, w_s = stride
-            _shape = [n, (NPU_OFFSET + c + NPU_NUM - 1) // NPU_NUM, NPU_NUM, h, w]
+            _shape = [n, (NPU_OFFSET + c + NPU_NUM - 1) //
+                      NPU_NUM, NPU_NUM, h, w]
             _stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
             return data_view(_shape, _stride).reshape(n, -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+                :n, NPU_OFFSET: NPU_OFFSET + c, :, :
             ]
 
         def get_stride_data():
@@ -327,7 +348,7 @@ class Memory:
                 64,
             )
             return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+                :n, NPU_OFFSET: NPU_OFFSET + c, :, :
             ]
 
         def get_32ic_data():
@@ -342,7 +363,7 @@ class Memory:
                 32,
             )
             return data_view(shape, stride).reshape(shape[0] * shape[1], -1, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+                :n, NPU_OFFSET: NPU_OFFSET + c, :, :
             ]
 
         def get_1ic_data():
@@ -356,7 +377,7 @@ class Memory:
                 1,
             )
             return data_view(shape, stride).reshape(-1, c, h, w)[
-                :n, NPU_OFFSET : NPU_OFFSET + c, :, :
+                :n, NPU_OFFSET: NPU_OFFSET + c, :, :
             ]
 
         def get_matrix_data():
@@ -384,7 +405,7 @@ class Memory:
             )
             _c = (NPU_OFFSET + c + 63) // 64
             index = np.zeros(_c * 64, bool)
-            index[NPU_OFFSET : NPU_OFFSET + c] = True
+            index[NPU_OFFSET: NPU_OFFSET + c] = True
             index = index.reshape(_c, 64)
             index[:, lane_mask == 0] = False
             return index.flatten()
@@ -399,7 +420,8 @@ class Memory:
 
         def get_dma_stride_data(_memref=memref):
             n, c, h, w = _memref.shape
-            shape = (n, (NPU_OFFSET + c + NPU_NUM - 1) // NPU_NUM, NPU_NUM, h, w)
+            shape = (n, (NPU_OFFSET + c + NPU_NUM - 1) //
+                     NPU_NUM, NPU_NUM, h, w)
             n_s, c_s, h_s, w_s = _memref.stride
             stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
             index = _lane_mask_filter(c, _memref.layout.args[0])
@@ -446,10 +468,12 @@ class Memory:
             c_offset = np.arange(shape[1]) * stride[1]
             h_offset = np.arange(shape[2]) * stride[2]
             w_offset = np.arange(shape[3]) * stride[3]
-            dst_offset = np.add.outer(n_offset, np.add.outer(c_offset, np.add.outer(h_offset, w_offset))).ravel()
+            dst_offset = np.add.outer(n_offset, np.add.outer(
+                c_offset, np.add.outer(h_offset, w_offset))).ravel()
             index = memref.mtype.r_addr + (dst_offset >> 1)
             values = self.DDR[index].view(np.uint8)
-            result = np.where(dst_offset & 1 == 0, values & 0xf, values >> 4).reshape(shape)
+            result = np.where(dst_offset & 1 == 0, values &
+                              0xf, values >> 4).reshape(shape)
             if memref.dtype == DType.si4:
                 return np.where(result > 7, result - 16, result).astype(np.int8)
             return result
@@ -461,7 +485,7 @@ class Memory:
         if memref.dtype in (DType.i4, DType.si4, DType.ui4):
             return _ddr_to_numpy_int4(memref.shape, memref.stride)
         data = np.lib.stride_tricks.as_strided(
-            self.DDR[offset : offset + 4].view(memref.np_dtype),
+            self.DDR[offset: offset + 4].view(memref.np_dtype),
             np.ctypeslib.as_array(memref.shape),
             np.ctypeslib.as_array(memref.stride) * memref.itemsize,
             writeable=False,
@@ -486,7 +510,7 @@ class Memory:
             offset = m_type.r_addr
             assert data.dtype == value.np_dtype
             src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
-            self.DDR[offset : offset + src_u8.size] = src_u8.flatten()
+            self.DDR[offset: offset + src_u8.size] = src_u8.flatten()
             return
         raise NotImplementedError(f"Not support setting {m_type} memory data.")
 
@@ -517,7 +541,6 @@ def get_value(
 
 class TGCR:
 
-
     def __init__(self):
         self.regs = dict(
             T5=0,
@@ -527,16 +550,15 @@ class TGCR:
             T127=0,
         )
 
-
     def setter(self, index, value):
         self.regs["T" + str(index)] = value
-
 
     def getter(self, index):
         return int(self.regs["T" + str(index)])
 
 
 tgcr = TGCR()
+
 
 @opparam_converter_regitstry("sCONV")
 def _converter(reg):
@@ -589,7 +611,8 @@ def _converter(reg):
     res0 = dict(
         address=reg.res0_addr,
         shape=[reg[f"res0_{i}"] for i in "nchw"],
-        dtype=(reg.opt_res0_prec, reg.opt_opd0_sign or reg.opt_opd1_sign or reg.opt_opd2_sign),
+        dtype=(reg.opt_res0_prec,
+               reg.opt_opd0_sign or reg.opt_opd1_sign or reg.opt_opd2_sign),
         layout=Layout.alignEU,
     )
     opds = [opd0, opd1, opd2, opd3, opd4, opd5]
@@ -619,7 +642,7 @@ def _converter(reg):
         do_rq=bool(reg.opt_rq),
         round_mode=reg.opd2_n_str,
     )
-    if bool(reg.opt_rq) == False :
+    if bool(reg.opt_rq) == False:
         opds.remove(opd4)
         opds.remove(opd5)
     else:
@@ -629,8 +652,10 @@ def _converter(reg):
         if bool(reg.opt_opd5_const):
             opds.remove(opd5)
             attr["multiplier"] = tgcr.getter(6)
-            attr["shift"] = int(np.binary_repr(tgcr.getter(32), width=32)[-8:-1], 2)
-            attr["yzp"] = int(np.binary_repr(tgcr.getter(33), width=32)[-15:-1], 2)
+            attr["shift"] = int(np.binary_repr(
+                tgcr.getter(32), width=32)[-8:-1], 2)
+            attr["yzp"] = int(np.binary_repr(
+                tgcr.getter(33), width=32)[-15:-1], 2)
     operands = [get_value(**x) for x in opds]
     return (results, attr, operands)
 
@@ -678,7 +703,7 @@ def _converter(reg):
         shift=int(np.binary_repr(tgcr.getter(32), width=32)[-7:-1], 2),
         yzp=int(np.binary_repr(tgcr.getter(33), width=32)[-16:-1], 2),
     )
-    assert(reg.tsk_eu_typ == 1)  # mm_normal
+    assert (reg.tsk_eu_typ == 1)  # mm_normal
     if reg.opt_opd0_prec == DType.f32:
         opd2["dtype"] = opd0["dtype"]  # bias
     else:
@@ -765,12 +790,15 @@ def _converter(reg):
         opds = [opd0, opd1, opd2, opd4, opd5]
         if reg.opt_opd4_const:
             opds.remove(opd4)
-            attr["zp"] = int(np.binary_repr(tgcr.getter(5), width=32)[-16:-1], 2)
+            attr["zp"] = int(np.binary_repr(
+                tgcr.getter(5), width=32)[-16:-1], 2)
         if reg.opt_opd5_const:
             opds.remove(opd5)
             attr["multiplier"] = tgcr.getter(6)
-            attr["shift"] = int(np.binary_repr(tgcr.getter(32), width=32)[-8:-1], 2)
-            attr["yzp"] = int(np.binary_repr(tgcr.getter(33), width=32)[-16:-1], 2)
+            attr["shift"] = int(np.binary_repr(
+                tgcr.getter(32), width=32)[-8:-1], 2)
+            attr["yzp"] = int(np.binary_repr(
+                tgcr.getter(33), width=32)[-16:-1], 2)
     else:
         opd2["dtype"] = DType.f32
         opds = [opd0, opd1, opd2]
@@ -958,6 +986,7 @@ def restore_org_shape(operand_def):
                 shape[i] = 1
     return shape
 
+
 @opparam_converter_regitstry("sAR")
 def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
@@ -1091,8 +1120,10 @@ def _converter(reg):
         if bool(reg.opt_opd5_const):
             opds.remove(opd5)
             attr["multiplier"] = tgcr.getter(6)
-            attr["shift"] = int(np.binary_repr(tgcr.getter(32), width=32)[-8:-1], 2)
-            attr["yzp"] = int(np.binary_repr(tgcr.getter(33), width=32)[-16:-1], 2)
+            attr["shift"] = int(np.binary_repr(
+                tgcr.getter(32), width=32)[-8:-1], 2)
+            attr["yzp"] = int(np.binary_repr(
+                tgcr.getter(33), width=32)[-16:-1], 2)
 
     operands = [get_value(**x) for x in opds]
     results = [get_value(**res0)]
@@ -1237,6 +1268,7 @@ def _converter(reg):
 
     return (results, attr, operands)
 
+
 @opparam_converter_regitstry("sSG")
 def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
@@ -1334,7 +1366,7 @@ def _converter(reg):
         opd0["layout"] = Layout.T4
 
     rets = [res0]
-    assert(reg.tsk_eu_typ in [17, 18])
+    assert (reg.tsk_eu_typ in [17, 18])
     opd1_h = reg.res0_h if reg.tsk_eu_typ == 17 else reg.opd0_h
     opd1["shape"] = (n, c, opd1_h, 1)
     res0["layout"] = Layout.T3
@@ -1372,6 +1404,7 @@ def _converter(reg):
         des_imm1_l32=des_imm1_l32,
     )
     return ([], attrs, [])
+
 
 def dma_addr(H, L):
     return H * 2 ** 32 + L
@@ -1648,6 +1681,7 @@ def dma_gather_base(reg):
     results = [get_value(**res0)]
 
     return (results, attr, operands)
+
 
 @opparam_converter_regitstry("DMA_gather")
 def _converter(reg):

@@ -293,4 +293,9 @@ def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
             attrs = f'attributes {{chip = "{self.chip}", version = {self.version}}}'
             return f"module {attrs} {{\n{funs}\n}}"
 
+    if context.device.name == "BM1686":
+        coeff = Module(bmodel_net.nets).functions[0].regions[0].data
+        if coeff:
+            context.base_addr[1] += len(coeff.data)
+
     return Module(bmodel_net.nets)

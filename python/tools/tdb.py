@@ -10,7 +10,11 @@
 from debugger.op_support import MType
 from debugger.disassembler import BModelReader
 from debugger.context import Context
-import cmd, sys, pprint, code, traceback
+import cmd
+import sys
+import pprint
+import code
+import traceback
 import numpy as np
 from rich import print
 from os import path
@@ -131,11 +135,14 @@ class Tdb(cmd.Cmd):
         for i in lines:
             ri = i - self.current_line  # relative line number
             if i == self.current_line and i in self.breakpoint:
-                msg.append(f"[bold red]B+> {i:{width}} [/bold red] {self.get_op(ri)}")
+                msg.append(
+                    f"[bold red]B+> {i:{width}} [/bold red] {self.get_op(ri)}")
             elif i == self.current_line:
-                msg.append(f"[bold blue]--> {i:{width}} [/bold blue] {self.get_op(ri)}")
+                msg.append(
+                    f"[bold blue]--> {i:{width}} [/bold blue] {self.get_op(ri)}")
             elif i in self.breakpoint:
-                msg.append(f"[bold red] BB {i:{width}} [/bold red] {self.get_op(ri)}")
+                msg.append(
+                    f"[bold red] BB {i:{width}} [/bold red] {self.get_op(ri)}")
             else:
                 msg.append(
                     f"[bold green]{' '*4}{i:{width}} [/bold green] {self.get_op(ri)}"
@@ -156,7 +163,8 @@ class Tdb(cmd.Cmd):
                 arg = int(arg)
                 assert arg > 0
             except:
-                self.error(f"invalid input: {arg}. input should be a positive integer.")
+                self.error(
+                    f"invalid input: {arg}. input should be a positive integer.")
                 return
         self.print_context(arg)
 
@@ -304,7 +312,7 @@ class Tdb(cmd.Cmd):
             for arg in self.current_function.signature[0]:
                 mem = self.context.tensor2memref(arg)
                 size = int(np.prod(mem.shape) * mem.itemsize)
-                mem.data = inputs[_offset : _offset + size].view(mem.np_dtype)
+                mem.data = inputs[_offset: _offset + size].view(mem.np_dtype)
                 _offset += size
         elif file.endswith(".npz"):
             inputs = np.load(file)
@@ -372,9 +380,13 @@ class Tdb(cmd.Cmd):
         self.__reset()
         coeff = self.module.functions[0].regions[0].data
         if coeff:
-            addr = coeff.address - self.context.memmap[MType.G][0]
+            address = coeff.address
+            if self.context.device.name == "BM1686":
+                address = self.context.opparam.MemRef.fix_tag(
+                    address, self.context.base_addr)
+            addr = address - self.context.memmap[MType.G][0]
             # load constant data
-            self.DDR[addr : addr + len(coeff.data)] = memoryview(coeff.data)
+            self.DDR[addr: addr + len(coeff.data)] = memoryview(coeff.data)
         if self.module is None:
             raise Exception("please load one file.")
         self.current_function = self.module.functions[0]
