@@ -365,13 +365,26 @@ class OnnxConverter(BaseConverter):
         else:
             raise RuntimeError("Unknown names:{}".format(names))
 
-    def clean_up_shape_info(self):
-        # uncomplete shape info may cause onnxsim.simplify failed.
-        if self.model.graph.value_info:
-            n = len(self.model.graph.value_info)
-            for _ in range(n):
-                v = self.model.graph.value_info[0]
-                self.model.graph.value_info.remove(v)
+    def model_simplify(self):
+        # Do constantFolding before onnxsim to avoid onnxsim bug (such as run yolox)
+        try:
+            self.model = ConstantFolding(self.model).run()
+        except:
+            print("WARNING: ConstantFolding failed.")
+        print("ConstantFolding finished")
+        try:
+            self.model, _ = onnxsim.simplify(self.model,
+                                            skip_constant_folding=True,
+                                            skip_shape_inference=True)
+        except:
+            print("WARNING: onnxsim opt failed.")
+        print("Onnxsim opt finished")
+        # Do constantFolding after onnxsim to avoid onnxsim bug (such as run ppyolo_tiny)
+        try:
+            self.model = ConstantFolding(self.model).run()
+        except:
+            print("WARNING: ConstantFolding failed.")
+        print("ConstantFolding finished")
 
     def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list, static_shape=True):
         if isinstance(onnx_file, str):
@@ -385,19 +398,7 @@ class OnnxConverter(BaseConverter):
         self.input_shape_assign(input_shapes)
         print("Input_shape assigned")
         if static_shape:
-            # Do constantFolding before onnx-sim to avoid onnx-sim bug (such as run yolox)
-            try:
-                self.model = ConstantFolding(self.model).run()
-            except:
-                print("WARNING: ConstantFolding failed.")
-            print("ConstantFolding finished")
-            try:
-                self.model, _ = onnxsim.simplify(self.model,
-                                                skip_constant_folding=True,
-                                                skip_shape_inference=True)
-            except:
-                print("WARNING: onnxsim opt failed.")
-            print("Onnxsim opt finished")
+            self.model_simplify()
 
         self.input_shapes = self.get_input_shapes(self.model)
         self.input_types = self.get_input_types(self.model)
@@ -1118,7 +1119,8 @@ class OnnxConverter(BaseConverter):
             return
         if (use_size):
             scale_h, scale_w = -1, -1
-            self.addWeight(onnx_node.name + "_target_shape", np.array(scale_factor[-2:], dtype=np.int64))
+            self.addWeight(onnx_node.name + "_target_shape",
+                           np.array(scale_factor[-2:], dtype=np.int64))
             target_shape = self.getWeightOp(onnx_node.name + "_target_shape")
         coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
         self.resize_to_interp(onnx_node,
