@@ -161,7 +161,7 @@ Use ``run_sensitive_layer.py`` and bad cases to search sensitive layers, paramet
      - Name of calibration table file
    * - chip
      - Y
-     - The platform that the model will use. Support bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program

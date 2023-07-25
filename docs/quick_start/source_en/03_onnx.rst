@@ -184,7 +184,7 @@ The main parameters of ``model_deploy.py`` are as follows (for a complete introd
      - Quantization type (F32/F16/BF16/INT8)
    * - chip
      - Y
-     - The platform that the model will use. Support bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
      - N
      - The calibration table path. Required when it is INT8 quantization
@@ -209,6 +209,9 @@ The main parameters of ``model_deploy.py`` are as follows (for a complete introd
    * - model
      - Y
      - Name of output model file (including path)
+   * - core
+     - N
+     - When the target is selected as bm1686 or cv186x, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
 
 
 After compilation, a file named ``yolov5s_1684x_f16.bmodel`` is generated.
