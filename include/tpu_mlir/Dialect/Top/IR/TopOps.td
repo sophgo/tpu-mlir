@@ -2372,7 +2372,7 @@ def Top_EluOp : Top_Op<"Elu"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_YieldOp : Top_BaseOp<"Yield", [Terminator, HasParent<"IfOp">]> {
+def Top_YieldOp : Top_BaseOp<"Yield", [Terminator, HasParent<"IfOp, LoopOp">]> {
   let summary = "Yield operation";
   let description = [{
     The `top.Yield` operation represents a return operation within an subgraph.
@@ -2551,10 +2551,10 @@ def Top_LoopOp : Top_Op<"Loop"> {
 
   The input/output of subgraph (produced by loop node) matching is based on order instead of name. The implementation will figure out the names based on this order.
   }];
-  let arguments = (ins AnyTypeOf<[TensorOf<[I64]>, NoneType]>:$M,
-    AnyTypeOf<[AnyTensor, NoneType]>:$cond,
-    Variadic<AnyTypeOf<[TensorOf<[UI8]>, TensorOf<[UI16]>, TensorOf<[UI32]>, TensorOf<[UI64]>, TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>, TensorOf<[F64]>, TensorOf<[I1]>, TensorOf<[Complex<F32>]>, TensorOf<[Complex<F64>]>]>>:$v_initial);
-  let results = (outs Variadic<AnyTypeOf<[TensorOf<[UI8]>, TensorOf<[UI16]>, TensorOf<[UI32]>, TensorOf<[UI64]>, TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>, TensorOf<[F64]>, TensorOf<[I1]>, TensorOf<[Complex<F32>]>, TensorOf<[Complex<F64>]>]>>:$v_final_and_scan_outputs);
+  let arguments = (ins AnyTypeOf<[TensorOf<[I32]>, TensorOf<[F32]>, NoneType]>:$M,
+    AnyTypeOf<[TensorOf<[I32]>, TensorOf<[F32]>, NoneType]>:$cond,
+    Variadic<AnyTypeOf<[TensorOf<[UI8]>, TensorOf<[UI16]>, TensorOf<[UI32]>, TensorOf<[UI64]>, TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>, TensorOf<[F64]>, TensorOf<[I1]>]>>:$v_initial);
+  let results = (outs Variadic<AnyTypeOf<[TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>]>>:$v_final_and_scan_outputs);
   let regions = (region SizedRegion<1>:$body);
   let extraClassDeclaration = [{
     static int getNumberOfOperands() {

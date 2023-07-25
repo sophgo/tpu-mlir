@@ -171,7 +171,7 @@ The arguments of `model_deploy.py`:
 | excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma |
 | debug               | No    | if open debug, immediate model file will keep; or will remove after conversion done |
 | model               | Yes    | Name of output model file (including path)                                  |
-
+| dynamic             | No     | dynamic codegen for to support dynamic shape                                |
 
 ## MLIR to INT8 bmodel
 

@@ -258,7 +258,7 @@ class ONNX_IR_TESTER(object):
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y),
             "If":               (self.test_If,    N, Y, Y, N)
-            #"Loop" :            (self.test_Loop,    Y, N, N)
+            #"Loop" :            (self.test_Loop,   N, Y, N, N)
         }
         # yapf: enable
 
@@ -5334,7 +5334,7 @@ class ONNX_IR_TESTER(object):
                         "while_cond_158_while_Less__13_0",
                         "Const_0",
                     ],
-                    outputs=["while_loop_0", "while_loop_1"],
+                    outputs=["while_loop_0", "while_loop_1", "while_loop_2"],
                     name="while_loop",
                     body=helper.make_graph(
                         name="while_body",
@@ -5364,6 +5364,9 @@ class ONNX_IR_TESTER(object):
                             helper.make_tensor_value_info("while_add_const_0_0",
                                                           TensorProto.INT32,
                                                           shape=[1]),
+                            helper.make_tensor_value_info("while_placeholder_0",
+                                                          TensorProto.INT32,
+                                                          shape=[1])
                         ],
                         initializer=[
                             numpy_helper.from_array(

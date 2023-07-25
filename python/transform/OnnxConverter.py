@@ -2718,13 +2718,14 @@ class OnnxConverter(BaseConverter):
         for input in graph_node.input:
             if input.name not in initializer_names:
                 shape = self.get_shape_from_value_info_proto(input)
+                #if int64/int32/bool, replace it with int32
                 if input.type.tensor_type.elem_type in [
-                        onnx.TensorProto.INT64, onnx.TensorProto.INT32
+                        onnx.TensorProto.INT64, onnx.TensorProto.INT32, onnx.TensorProto.BOOL
                 ]:
                     dtype = "INT32"
                 else:
                     dtype = "F32"
-                arg_types.append(self.mlir.get_tensor_type(shape, self.mlir.mlir_type[dtype]))
+                arg_types.append(self.mlir.get_tensor_type(shape if len(shape) > 0 else [1] , self.mlir.mlir_type[dtype]))
                 self.input_names.append(input.name)
                 subgraph_input_names.append(input.name)
         self.mlir.buildBlock(region, arg_types)
