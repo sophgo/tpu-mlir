@@ -308,8 +308,7 @@ void getLocalShape(Value v, int64_t n_step, int64_t h_step, int *shape) {
   shape[1] = (int)c;
   shape[2] = (int)gi.h_slice;
   shape[3] = (int)w;
-  if (module::isBM1684Family() && module::isUniformQuantized(v))
-  {
+  if (module::isBM1684Family() && module::isUniformQuantized(v)) {
     shape[1] *= d;
   } else {
     shape[0] *= d;
@@ -367,7 +366,7 @@ i32_array_t getI32Array(ArrayAttr arrayAttr) {
   return std::move(data);
 }
 
-i32_array_t getI32Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+i32_array_t getI32Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         int32_t default_value) {
   if (arrayAttr.has_value()) {
     auto arr = getI32Array(arrayAttr.value());
@@ -391,7 +390,7 @@ i64_array_t getI64Array(ArrayAttr arrayAttr) {
   return std::move(data);
 }
 
-i64_array_t getI64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+i64_array_t getI64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         int64_t default_value) {
   if (arrayAttr.has_value()) {
     auto arr = getI64Array(arrayAttr.value());
@@ -410,7 +409,7 @@ f64_array_t getF64Array(ArrayAttr arrayAttr) {
   return std::move(data);
 }
 
-f64_array_t getF64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value) {
   if (arrayAttr.has_value()) {
     auto arr = getF64Array(arrayAttr.value());

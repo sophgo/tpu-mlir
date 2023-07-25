@@ -116,7 +116,7 @@ def get_image_list(image_dir, count=0):
 
 
 def depth(seq):
-    from collections import Sequence
+    from collections.abc import Sequence
     from itertools import chain, count
 
     seq = iter(seq)

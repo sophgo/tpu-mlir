@@ -145,13 +145,13 @@ bool isNone(Value v);
 bool isGlobalBuffer(Value v);
 FuncOp getMainFuncOp();
 i32_array_t getI32Array(ArrayAttr arrayAttr);
-i32_array_t getI32Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+i32_array_t getI32Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         int32_t default_value);
 i64_array_t getI64Array(ArrayAttr arrayAttr);
-i64_array_t getI64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+i64_array_t getI64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         int64_t default_value);
 f64_array_t getF64Array(ArrayAttr arrayAttr);
-f64_array_t getF64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value);
 bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
 bool isOpInParallel(Operation *Op);

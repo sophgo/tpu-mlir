@@ -89,7 +89,7 @@ class ConstantFolding(object):
                                    "onnx".format(key, shape))
             elem_type = self.get_elem_type(key)
             elem_type = self.get_np_type_from_elem_type(elem_type)
-            if elem_type == np.bool :  # for mask
+            if elem_type == np.bool_ :  # for mask
                 inputs.update({key: np.random.randint(0, 2, shape, dtype=elem_type)})
             # elif elem_type == np.int64:
             #     inputs.update({key: np.random.randint(0, 10, size=shape, dtype=elem_type)})
@@ -125,7 +125,7 @@ class ConstantFolding(object):
     @staticmethod
     def get_np_type_from_elem_type(elem_type):
         types = (None, np.float32, np.uint8, np.int8, np.uint16, np.int16, np.int32,
-                np.int64, str, np.bool, np.float16, np.double, np.uint32, np.uint64,
+                np.int64, str, np.bool_, np.float16, np.double, np.uint32, np.uint64,
                 np.complex64, np.complex128, np.float16)
         assert len(types) == 17
         _type = types[elem_type]

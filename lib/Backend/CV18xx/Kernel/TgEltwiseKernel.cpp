@@ -66,7 +66,7 @@ void TgEltwiseKernel::allocLmem(cvk_tl_shape_t &input_shape,
                                 cvk_tl_shape_t &output_shape) {
   tl_input[0] = CV18xx::lmem_alloc_tensor(input_shape, fmt, 1);
   tl_input[1] = CV18xx::lmem_alloc_tensor(input_shape, fmt, 1);
-  if (dynamic_cast<TgBf16EltwiseMinMaxKernel *>(this) && fmt == CVK_FMT_BF16) {
+  if (isa<TgBf16EltwiseMinMaxKernel>(this) && fmt == CVK_FMT_BF16) {
     tl_output[0] = tl_input[0];
     tl_output[1] = tl_input[1];
     tl_output_h[0] = nullptr;
@@ -81,7 +81,7 @@ void TgEltwiseKernel::allocLmem(cvk_tl_shape_t &input_shape,
 }
 
 void TgEltwiseKernel::deallocLmem() {
-  if (dynamic_cast<TgBf16EltwiseMinMaxKernel *>(this) && fmt == CVK_FMT_BF16) {
+  if (isa<TgBf16EltwiseMinMaxKernel>(this) && fmt == CVK_FMT_BF16) {
     // no allocate output
     CV18xx::lmem_free_tensor(tl_input[1]);
     CV18xx::lmem_free_tensor(tl_input[0]);
@@ -105,7 +105,7 @@ void TgEltwiseKernel::selectTilePolicy() {
 void TgEltwiseKernel::doTileForNormalCase() {
   int32_t block_num = 5;
 
-  if (dynamic_cast<TgBf16EltwiseMinMaxKernel *>(this) && fmt == CVK_FMT_BF16) {
+  if (isa<TgBf16EltwiseMinMaxKernel>(this) && fmt == CVK_FMT_BF16) {
     block_num = 2; // 2 for ping pong buffer and reuse activation
   }
   std::vector<CV18xx::tiling_info_t> ts;
