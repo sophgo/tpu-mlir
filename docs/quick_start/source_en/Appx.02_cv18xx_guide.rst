@@ -329,8 +329,8 @@ and how to compile and run samples in docker. The following 4 samples are includ
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The following files are required:
 
-* cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv|cv181x_glibc_riscv64].tar.gz
-* cvimodel_samples_[cv182x|cv183x|cv181x|cv180x].tar.gz
+* cvitek_tpu_sdk_[cv186x|cv183x|cv182x|cv182x_uclibc|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv|cv181x_glibc_riscv64].tar.gz
+* cvimodel_samples_[cv186x|cv183x|cv182x|cv181x|cv180x].tar.gz
 
 Select the required files according to the chip type and load them into the EVB file system.
 Execute them on the Linux console of EVB. Here, we take CV183x as an example.
@@ -459,7 +459,7 @@ run them on EVB board according to the following instructions.
 
 The following files are required in this part:
 
-* cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv].tar.gz
+* cvitek_tpu_sdk_[cv186x|cv183x|cv182x|cv182x_uclibc|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv].tar.gz
 * cvitek_tpu_samples.tar.gz
 
 aarch 64-bit  (such as cv183x aarch64-bit platform)
@@ -647,7 +647,7 @@ Compile samples and install them into ``install_samples`` directory:
 The following files are required:
 
 * cvitek_tpu_sdk_x86_64.tar.gz
-* cvimodel_samples_[cv182x|cv183x|cv181x|cv180x].tar.gz
+* cvimodel_samples_[cv186x|cv183x|cv182x|cv181x|cv180x].tar.gz
 * cvitek_tpu_samples.tar.gz
 
 Prepare TPU sdk:

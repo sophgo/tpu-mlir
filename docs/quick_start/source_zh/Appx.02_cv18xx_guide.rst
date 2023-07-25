@@ -333,8 +333,8 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 需要如下文件:
 
-* cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv|cv181x_glibc_riscv64].tar.gz
-* cvimodel_samples_[cv182x|cv183x|cv181x|cv180x].tar.gz
+* cvitek_tpu_sdk_[cv186x|cv183x|cv182x|cv182x_uclibc|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv|cv181x_glibc_riscv64].tar.gz
+* cvimodel_samples_[cv186x|cv183x|cv182x|cv181x|cv180x].tar.gz
 
 将根据chip类型选择所需文件加载至EVB的文件系统,于evb上的linux console执行,以cv183x为例:
 
@@ -460,7 +460,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 本节需要如下文件:
 
-* cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv].tar.gz
+* cvitek_tpu_sdk_[cv186x|cv183x|cv182x|cv182x_uclibc|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv].tar.gz
 * cvitek_tpu_samples.tar.gz
 
 aarch 64位  (如cv183x aarch64位平台)
@@ -651,7 +651,7 @@ docker环境仿真运行的samples程序
 需要如下文件:
 
 * cvitek_tpu_sdk_x86_64.tar.gz
-* cvimodel_samples_[cv182x|cv183x|cv181x|cv180x].tar.gz
+* cvimodel_samples_[cv186x|cv183x|cv182x|cv181x|cv180x].tar.gz
 * cvitek_tpu_samples.tar.gz
 
 

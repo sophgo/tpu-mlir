@@ -315,7 +315,7 @@ run_qtable.py
      - 输入校准表
    * - chip
      - 是
-     - 指定模型将要用到的平台, 支持bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台, 支持bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - input_num
      - 否
      - 指定输入样本数量, 默认用10个
@@ -387,7 +387,7 @@ model_deploy.py
      - 指定mlir文件
    * - chip
      - 是
-     - 指定模型将要用到的平台, 支持bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台, 支持bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - quantize
      - 是
      - 指定默认量化类型, 支持F32/F16/BF16/INT8
@@ -421,6 +421,9 @@ model_deploy.py
    * - debug
      - 否
      - 是否保留中间文件
+   * - core
+     - 否
+     - 当target选择为bm1686或cv186x时,用于选择并行计算的tpu核心数量,默认设置为1个tpu核心
 
 model_runner.py
 ~~~~~~~~~~~~~~~~~~
