@@ -681,22 +681,23 @@ class CaffeConverter(BaseConverter):
         axis_index = p.axis
         start_axis = axis_index
         offset_size = len(p.offset)
-        crop_offset = [0] * input_dim
-        crop_step = [1] * input_dim
+        crop_n = input_dim - axis_index
+        crop_offset = [0] * crop_n
+        crop_step = [1] * crop_n
+        crop_axes = [x + start_axis for x in range(crop_n)]
         if offset_size > 1:
             assert (offset_size + axis_index <= input_dim)
-        for i in range(input_dim):
+        for i in range(crop_n):
             offset = 0
-            if i >= start_axis:
-                if offset_size == 1:
-                    # If only one offset is given, all crops have the same offset.
-                    offset = p.offset[0]
-                elif offset_size > 1:
-                    # For several offsets, the number of offsets must be equal to the
-                    # number of dimensions to crop, that is dimensions after the axis.
-                    offset = p.offset[i - start_axis]
+            if offset_size == 1:
+                # If only one offset is given, all crops have the same offset.
+                offset = p.offset[0]
+            elif offset_size > 1:
+                # For several offsets, the number of offsets must be equal to the
+                # number of dimensions to crop, that is dimensions after the axis.
+                offset = p.offset[i]
             crop_offset[i] = offset
-        crop_ends = [a + b for a, b in zip(crop_offset, output_shape)]
+        crop_ends = [a + b for a, b in zip(crop_offset, output_shape[start_axis:])]
         new_op = top.SliceOp(self.mlir.get_tensor_type(output_shape),
                              in_op,
                              self.mlir.none_op,
@@ -705,6 +706,7 @@ class CaffeConverter(BaseConverter):
                              offset=list(crop_offset),
                              steps=list(crop_step),
                              ends=list(crop_ends),
+                             axes=list(crop_axes),
                              loc=self.get_loc(layer.top[0]),
                              ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
@@ -961,7 +963,7 @@ class CaffeConverter(BaseConverter):
                            **param,
                            ip=self.mlir.insert_point).output
         self.addOperand(layer.top[0], new_op)
-   
+
     def convert_lstm_op(self, layer):
         assert (self.layerType(layer) == 'LSTM')
         op = self.getOperand(layer.bottom[0])

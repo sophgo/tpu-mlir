@@ -58,8 +58,10 @@ struct SliceAxisToStridedSlice : public OpRewritePattern<SliceAxisOp> {
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(steps)));
     attrs.push_back(
         rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(ends)));
-    rewriter.replaceOpWithNewOp<SliceOp>(op, op.getResult().getType(),
-                                         operands, attrs);
+    attrs.push_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(std::nullopt)));
+    rewriter.replaceOpWithNewOp<SliceOp>(op, op.getResult().getType(), operands,
+                                         attrs);
     return success();
   }
 };

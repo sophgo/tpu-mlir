@@ -10,12 +10,46 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include <valarray>
 
-
-
 int64_t top::SliceOp::getFLOPs() { return 0; }
 
 LogicalResult top::SliceOp::init(InferenceParameter &p) { return success(); }
 void top::SliceOp::deinit(InferenceParameter &p) {}
+
+void top::SliceOp::paramConvert() {
+  auto context = getContext();
+  mlir::Builder builder(context);
+  auto offset_ori = module::getI64Array(getOffset());
+  auto steps_ori = module::getI64Array(getSteps());
+  auto ends_ori = module::getI64Array(getEnds());
+  auto axes_ori = module::getI64Array(getAxes());
+  auto input_shapes = module::getShape(getInput());
+
+  auto input_dims = input_shapes.size();
+  auto slice_n = axes_ori->size();
+  assert(offset_ori->size() == slice_n && steps_ori->size() == slice_n &&
+         ends_ori->size() == slice_n);
+  auto offset_v = std::make_shared<std::vector<int64_t>>(input_dims, 0);
+  auto steps_v = std::make_shared<std::vector<int64_t>>(input_dims, 1);
+  auto ends_v = std::make_shared<std::vector<int64_t>>(input_shapes);
+  for (int i = 0; i < slice_n; ++i) {
+    int axis =
+        axes_ori->at(i) >= 0 ? axes_ori->at(i) : axes_ori->at(i) + input_dims;
+    int end = ends_ori->at(i) >= 0 ? ends_ori->at(i)
+                                   : ends_ori->at(i) + input_shapes[axis];
+    end = end < input_shapes[axis] ? end : input_shapes[axis];
+    int offset = offset_ori->at(i) >= 0
+                     ? offset_ori->at(i)
+                     : offset_ori->at(i) + input_shapes[axis];
+    int step = steps_ori->at(i);
+    offset_v->at(axis) = offset;
+    ends_v->at(axis) = end;
+    steps_v->at(axis) = step;
+  }
+  setOffsetAttr(builder.getI64ArrayAttr(*offset_v));
+  setStepsAttr(builder.getI64ArrayAttr(*steps_v));
+  setEndsAttr(builder.getI64ArrayAttr(*ends_v));
+  setAxesAttr(builder.getI64ArrayAttr(std::nullopt));
+}
 
 LogicalResult top::SliceOp::inference(InferenceParameter &p) {
   auto out_num_elem = module::getNumElements(getOutput());
@@ -25,7 +59,7 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
   std::vector<int64_t> in_shape = module::getShape(getInput());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
-  while(out_dims < in_dims) {
+  while (out_dims < in_dims) {
     out_shape.insert(out_shape.begin(), 1);
     out_dims++;
   }
@@ -57,6 +91,7 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
 }
 
 void top::SliceOp::shape_inference() {
+  paramConvert();
   const auto input_shape = module::getShape(getInput());
   const size_t dims = input_shape.size();
   const auto offset_v = module::getI64Array(getOffset());
@@ -69,9 +104,9 @@ void top::SliceOp::shape_inference() {
       if (ends_v->at(i) == -1) {
         output_shape[i] = input_shape[i];
         ends_v->at(i) = output_shape[i];
-      }
-      else
-        output_shape[i] = abs_ceiling_func(ends_v->at(i) - offset_v->at(i), steps_v->at(i));
+      } else
+        output_shape[i] =
+            abs_ceiling_func(ends_v->at(i) - offset_v->at(i), steps_v->at(i));
     } else {
       output_shape[i] = input_shape[i];
     }

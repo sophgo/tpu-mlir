@@ -92,6 +92,7 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
       attrs.set("ends", rewriter.getI64ArrayAttr(ends));
+      attrs.set("axes", rewriter.getI64ArrayAttr(std::nullopt));
       op.getOperation()->setLoc(reshape_op.getLoc());
       rewriter.replaceOpWithNewOp<SliceOp>(op, reshape_op.getOutput().getType(),
                                            ValueRange{op.getInput()}, attrs);

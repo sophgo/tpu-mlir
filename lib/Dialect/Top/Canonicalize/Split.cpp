@@ -38,6 +38,8 @@ struct SplitToSlice : public OpRewritePattern<SplitOp> {
           rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(steps)));
       attrs.push_back(
           rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(ends)));
+      attrs.push_back(
+          rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(std::nullopt)));
       auto none = module::getNoneOp(op);
       std::vector<Value> operands;
       const auto& opd = op->getOperand(0);

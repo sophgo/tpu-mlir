@@ -392,6 +392,8 @@ struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(*steps0)));
     attrs.push_back(
         rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(*ends0)));
+    attrs.push_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(std::nullopt)));
     auto none = module::getNoneOp(concat_op);
     std::vector<Value> operands;
     operands.push_back(from);
@@ -463,6 +465,5 @@ void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
                  ConcatToDepth2SpacePattern, ConcatToDepth2SpacePattern2,
-                 MergeSliceConcatPattern,
-                 ConcatToSwapDimInner>(context);
+                 MergeSliceConcatPattern, ConcatToSwapDimInner>(context);
 }

@@ -1020,10 +1020,14 @@ def Top_SliceOp: Top_Op<"Slice"> {
     AnyTensorOrNone:$stepsT,
     I64ArrayAttr:$offset,
     I64ArrayAttr:$steps,
-    I64ArrayAttr:$ends
+    I64ArrayAttr:$ends,
+    I64ArrayAttr:$axes
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+  let extraClassDeclaration = [{
+    void paramConvert();
+  }];
 }
 
 def Top_StridedSliceOp: Top_Op<"StridedSlice"> {
