@@ -25,37 +25,33 @@ static char BigEndianTest() {
     return (((char *)&x)[0]) ? '<' : '>';
 }
 
-static char map_type(const std::type_info& t)
-{
-    if( t == typeid(float) ) return 'f';
-    if( t == typeid(double) ) return 'f';
-    if( t == typeid(long double) ) return 'f';
+template <typename T>
+struct mapType;
 
-    if( t == typeid(int) ) return 'i';
-    if( t == typeid(char) ) return 'i';
-    if( t == typeid(signed char) ) return 'i';
-    if( t == typeid(short) ) return 'i';
-    if( t == typeid(long) ) return 'i';
-    if( t == typeid(long long) ) return 'i';
+#define DEFMAPTYPE(type, typeIdentifier)                                       \
+  template <>                                                                  \
+  struct mapType<type> {                                                       \
+    static constexpr char value = typeIdentifier;                              \
+  };
 
-    if( t == typeid(unsigned char) ) return 'u';
-    if( t == typeid(unsigned short) ) return 'u';
-    if( t == typeid(unsigned long) ) return 'u';
-    if( t == typeid(unsigned long long) ) return 'u';
-    if( t == typeid(unsigned int) ) return 'u';
-
-    if( t == typeid(bool) ) return 'b';
-
-    if( t == typeid(std::complex<float>) ) return 'c';
-    if( t == typeid(std::complex<double>) ) return 'c';
-    if( t == typeid(std::complex<long double>) ) return 'c';
-
-    std::cout << "libcnpy error: unknown type_id "
-              << t.name() << "\n";
-    // ref: https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-builtin
-    assert(0);
-    return '?';
-}
+DEFMAPTYPE(float, 'f')
+DEFMAPTYPE(double, 'f')
+DEFMAPTYPE(long double, 'f')
+DEFMAPTYPE(int, 'i')
+DEFMAPTYPE(char, 'i')
+DEFMAPTYPE(signed char, 'i')
+DEFMAPTYPE(short, 'i')
+DEFMAPTYPE(long, 'i')
+DEFMAPTYPE(long long, 'i')
+DEFMAPTYPE(unsigned char, 'u')
+DEFMAPTYPE(unsigned short, 'u')
+DEFMAPTYPE(unsigned long, 'u')
+DEFMAPTYPE(unsigned long long, 'u')
+DEFMAPTYPE(unsigned int, 'u')
+DEFMAPTYPE(bool, 'b')
+DEFMAPTYPE(std::complex<float>, 'c')
+DEFMAPTYPE(std::complex<double>, 'c')
+DEFMAPTYPE(std::complex<long double>, 'c')
 
 template<typename T>
 std::vector<char>& operator+=(std::vector<char>& lhs, const T rhs) {
@@ -152,7 +148,7 @@ void parse_npy_header(unsigned char* buffer, size_t& word_size,  char& type,
     assert(littleEndian);
 
     type = header[loc1+1];
-    //assert(type == map_type(T));
+    //assert(type == mapType(T)::value);
 
     std::string str_ws = header.substr(loc1+2);
     loc2 = str_ws.find("'");
@@ -207,7 +203,7 @@ void parse_npy_header(FILE* fp, size_t& word_size, char& type,
     assert(littleEndian);
 
     type = header[loc1+1];
-    //assert(type == map_type(T));
+    //assert(type == mapType(T));
 
     std::string str_ws = header.substr(loc1+2);
     loc2 = str_ws.find("'");
@@ -288,7 +284,7 @@ void npy_save(std::string fname, const T* data,
     }
 
     size_t word_size = sizeof(T);
-    char type = map_type(typeid(T));
+    char type = mapType<T>::value;
     std::vector<char> header = create_npy_header(true_data_shape, word_size, type);
     size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
 
@@ -353,7 +349,7 @@ void npz_save(std::string zipname, std::string fname,
     }
 
     size_t word_size = sizeof(T);
-    char type = map_type(typeid(T));
+    char type = mapType<T>::value;
     std::vector<char> npy_header;
     if(shape.size() != 0){
         npy_header = create_npy_header(shape, word_size, type);
@@ -530,7 +526,7 @@ template<typename T>
 void npz_add_array(npz_t &map, std::string fname,
         const T* data, const std::vector<size_t> shape) {
     size_t word_size = sizeof(T);
-    char type = map_type(typeid(T));
+    char type = mapType<T>::value;
     bool fortran_order = false;
     NpyArray array(shape, word_size, type, fortran_order);
     memcpy(array.data<unsigned char>(), data, array.num_bytes());
