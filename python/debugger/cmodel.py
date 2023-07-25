@@ -143,7 +143,8 @@ class BM1684X:
         lib.cmodel_get_global_mem_size.restype = ctypes.c_ulonglong
 
         # computing function
-        lib.execute_command.argtypes = [ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint]
+        lib.execute_command.argtypes = [
+            ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint]
 
         self.lib = lib
         self.__setup(memory_size)
@@ -151,7 +152,8 @@ class BM1684X:
     def __setup(self, memory_size):
         self.lib.cmodel_init(0, memory_size)
         # self.lib.cmodel_multi_thread_cxt_deinit(0)
-        self.DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
+        self.DDR = c_array_to_ndarray(
+            self.lib.get_global_memaddr(0), memory_size)
         self.LMEM = c_array_to_ndarray(
             self.lib.get_local_mem(0).contents.raw_ptr, (64, 16, 1024 * 16)
         )
@@ -385,11 +387,13 @@ class BM1684:
 
     def __setup(self, memory_size):
         self.lib.cmodel_init(0, memory_size)
-        self.DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
+        self.DDR = c_array_to_ndarray(
+            self.lib.get_global_memaddr(0), memory_size)
         self.LMEM = c_array_to_ndarray(
             self.lib.get_local_mem(0).contents.raw_ptr, (64, 8, 1024 * 64)
         )
-        self.L2SRAM = c_array_to_ndarray(self.lib.get_l2_sram(0), (4096 * 1024,))
+        self.L2SRAM = c_array_to_ndarray(
+            self.lib.get_l2_sram(0), (4096 * 1024,))
 
     def clear_memory(self):
         self.DDR.fill(0)
@@ -419,8 +423,12 @@ class BM1684:
 
 class BM1686:
     lib_name = "libcmodel_1686.so"
+    ENGINE_GDMA = 1
+    TAG_WEIGHT = 1
+    ENGINE_HAU = 2
+    TAG_ACTIVATION = 2
 
-    def __init__(self, memory_size):
+    def __init__(self, memory_size, base_addr):
         lib = _lib_wrapper(open_lib(self.lib_name))
         lib.cmodel_init.argtypes = [ctypes.c_int32, ctypes.c_int64]
         lib.cmodel_init.restype = ctypes.c_int32
@@ -446,16 +454,24 @@ class BM1686:
         lib.cmodel_get_global_mem_size.restype = ctypes.c_ulonglong
 
         # computing function
-        lib.execute_command.argtypes = [ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint]
+        lib.execute_command.argtypes = [
+            ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint]
+
+        lib.atomic_set_base_ddr.argtypes = [ctypes.POINTER(
+            ctypes.c_int32), ctypes.POINTER(ctypes.c_uint64), ctypes.c_int32, ctypes.c_uint]
+        lib.atomic_set_base_ddr.restype = ctypes.c_void_p
 
         self.lib = lib
-        self.__setup(memory_size)
+        self.__setup(memory_size, base_addr)
 
-
-    def __setup(self, memory_size):
+    def __setup(self, memory_size, base_addr):
+        base_idx = (ctypes.c_int32 * 2)(self.TAG_WEIGHT, self.TAG_ACTIVATION)
+        base_addr = (ctypes.c_uint64 * 2)(base_addr[0], base_addr[1])
         self.lib.cmodel_init(0, memory_size)
-        # self.lib.cmodel_multi_thread_cxt_deinit(0)
-        self.DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
+        self.lib.atomic_set_base_ddr(base_idx, base_addr, 2, self.ENGINE_GDMA)
+        self.lib.atomic_set_base_ddr(base_idx, base_addr, 2, self.ENGINE_HAU)
+        self.DDR = c_array_to_ndarray(
+            self.lib.get_global_memaddr(0), memory_size)
         self.LMEM = c_array_to_ndarray(
             self.lib.get_local_mem(0).contents.raw_ptr, (32, 16, 1024 * 8)
         )
@@ -470,6 +486,10 @@ class BM1686:
         self.SMEM[: len(lut)] = lut[...]
 
     def __del__(self):
+        base_idx = (ctypes.c_int32 * 2)(1, 2)
+        base_addr = (ctypes.c_int64 * 2)(0, 0)
+        self.lib.atomic_set_base_ddr(base_idx, base_addr, 2, self.ENGINE_GDMA)
+        self.lib.atomic_set_base_ddr(base_idx, base_addr, 2, self.ENGINE_HAU)
         self.lib.cmodel_deinit(0)
 
     def compute(self, command, engine_type):
