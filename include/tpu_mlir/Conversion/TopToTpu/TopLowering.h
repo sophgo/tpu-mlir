@@ -41,7 +41,7 @@ public:
   ScfTypeConverter() {
     // The order of type conversion is important: later ones are tried earlier.
     addConversion([](Type type) { return type; });
-    addConversion([&](TensorType type) -> Optional<Type> {
+    addConversion([&](TensorType type) -> std::optional<Type> {
       if (isLegal(type.getElementType()))
         return type;
       return std::nullopt;
@@ -49,7 +49,7 @@ public:
 
     addSourceMaterialization([&](OpBuilder &builder, Type resultType,
                                  ValueRange inputs,
-                                 Location loc) -> Optional<Value> {
+                                 Location loc) -> std::optional<Value> {
       if (inputs.size() != 1)
         return std::nullopt;
 
@@ -59,7 +59,7 @@ public:
 
     addTargetMaterialization([&](OpBuilder &builder, Type resultType,
                                  ValueRange inputs,
-                                 Location loc) -> Optional<Value> {
+                                 Location loc) -> std::optional<Value> {
       if (inputs.size() != 1)
         return std::nullopt;
 

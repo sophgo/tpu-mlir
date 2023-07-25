@@ -267,12 +267,19 @@ typedef struct cpu_topk_param {
 #define MX_TOPK_RET_VALUE   1
 #define MX_TOPK_RET_BOTH    2
 #define MX_TOPK_RET_MASK    3
-typedef struct {
-    int k = 1;
-    int axis = -1;
-    int ret_type = MX_TOPK_RET_INDICES;
-    int is_ascend = 0;
-    int dtype = 0; //0: DTYPE_FP32, 6: DTYPE_INT32, 7: DTYPE_UINT32;
+typedef struct cpu_topk_mx_param {
+  cpu_topk_mx_param() {
+    k = 1;
+    axis = -1;
+    ret_type = MX_TOPK_RET_INDICES;
+    is_ascend = 0;
+    dtype = 0; // 0: DTYPE_FP32, 6: DTYPE_INT32, 7: DTYPE_UINT32;
+  }
+  int k;
+  int axis;
+  int ret_type;
+  int is_ascend;
+  int dtype; // 0: DTYPE_FP32, 6: DTYPE_INT32, 7: DTYPE_UINT32;
 } cpu_topk_mx_param_t;
 
 typedef enum {

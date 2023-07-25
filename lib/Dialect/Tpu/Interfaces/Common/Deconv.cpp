@@ -167,7 +167,7 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
   return success();
 }
 
-Optional<SmallVector<float, 4>>
+std::optional<SmallVector<float, 4>>
 tpu_mlir::DeconvSlice(int64_t out_idx, int64_t out_slice, int64_t stride,
                       int64_t filter, int64_t ih, int64_t pad) {
   // pad top with (kh_ext - pad_h - 1), ins with (stride - 1)
@@ -189,7 +189,7 @@ tpu_mlir::DeconvSlice(int64_t out_idx, int64_t out_slice, int64_t stride,
   float pad_t = (pad_th + real_in_idx * stride - in_idx);
   float pad_b = (in_end_idx - (pad_th + real_in_end_idx * stride));
   assert(pad_t >= 0 && pad_b >= 0);
-  return Optional<SmallVector<float, 4>>(
+  return std::optional<SmallVector<float, 4>>(
       {pad_t, pad_b, real_in_idx, real_in_end_idx - real_in_idx + 1});
 }
 

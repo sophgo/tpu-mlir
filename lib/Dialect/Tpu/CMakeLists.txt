@@ -61,6 +61,4 @@ add_llvm_library(TPUMLIRTpu
   TPUMLIRTrait
   TPUMLIRBackend
   TPUMLIRBuilder
-  ssl
-  crypto
 )

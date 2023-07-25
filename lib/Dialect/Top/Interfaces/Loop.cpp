@@ -60,7 +60,7 @@ static inline LogicalResult runShapeInferenceOnRegion(Region &r) {
         && !returnsDynamicOrUnknownShape(op))
       continue;
     if (auto shape_op = llvm::dyn_cast<ShapeInterface>(op)) {
-      Optional<RegisteredOperationName> registeredInfo =
+      std::optional<RegisteredOperationName> registeredInfo =
           op.getName().getRegisteredInfo();
       if (registeredInfo && failed(registeredInfo->verifyInvariants(&op)))
         return op.emitError("verification failed");
@@ -101,7 +101,6 @@ static inline void updateType(Value val, ArrayRef<int64_t> shape, Type elementTy
 }
 
 void top::LoopOp::shape_inference() {
-  auto builder = Builder(getContext());
   auto &loopBody = getRegion();
   assert(loopBody.getNumArguments() >= 2 &&
          "Loop body must take at least 2 inputs.");

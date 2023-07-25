@@ -111,7 +111,7 @@ class OnnxConverter(BaseConverter):
         self.node_name_mapping = {}  # used in onnx opt
         self.np_onnx_dt_map = [
             None, np.float32, np.uint8, np.int8, np.int16, np.int16, np.int32, np.int64, None,
-            np.bool, np.float16, np.float64, np.uint32, np.uint64, None, None, None
+            np.bool_, np.float16, np.float64, np.uint32, np.uint64, None, None, None
         ]
         self.load_onnx_model(onnx_file, input_shapes, output_names, static_shape)
         self.init_MLIRImporter()

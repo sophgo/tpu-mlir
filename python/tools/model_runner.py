@@ -228,7 +228,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         if node.type == 'tensor(int64)':
             dtype = np.int64
         elif node.type == 'tensor(bool)':
-            dtype = np.bool
+            dtype = np.bool_
         elif node.type == 'tensor(int32)':
             dtype = np.int32
         if not only_one:
