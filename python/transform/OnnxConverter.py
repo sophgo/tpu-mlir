@@ -783,8 +783,10 @@ class OnnxConverter(BaseConverter):
     def convert_flatten_op(self, onnx_node):
         assert (onnx_node.op_type == "Flatten")
         op = self.getOperand(onnx_node.inputs[0])
-        new_op = top.ReshapeOp(self.unranked_type,
+        axis = onnx_node.attrs.get('axis', 0)
+        new_op = top.FlattenOp(self.unranked_type,
                                op,
+                               start_dim=axis,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
