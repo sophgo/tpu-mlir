@@ -2561,6 +2561,7 @@ def Top_LoopOp : Top_Op<"Loop"> {
     Variadic<AnyTypeOf<[TensorOf<[UI8]>, TensorOf<[UI16]>, TensorOf<[UI32]>, TensorOf<[UI64]>, TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>, TensorOf<[F64]>, TensorOf<[I1]>]>>:$v_initial);
   let results = (outs Variadic<AnyTypeOf<[TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>]>>:$v_final_and_scan_outputs);
   let regions = (region SizedRegion<1>:$body);
+  let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     static int getNumberOfOperands() {
       return -1;
