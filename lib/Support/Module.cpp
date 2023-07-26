@@ -293,6 +293,11 @@ llvm::ArrayRef<int64_t> getShape(Value v) {
   }
 }
 
+void setShape(Value v, llvm::ArrayRef<int64_t> shape) {
+  auto newType = RankedTensorType::get(shape, getElementType(v));
+  v.setType(newType);
+}
+
 void getGlobalShape(Value v, int *shape, int dim) {
   for (auto v : llvm::enumerate(getShape(v)))
     shape[v.index()] = (int)v.value();
@@ -452,6 +457,10 @@ Type getElementType(Value v) {
     return rtype.getElementType();
   }
   return type;
+}
+
+RankedTensorType getTypeLike(Value v, llvm::ArrayRef<int64_t> shape) {
+  return RankedTensorType::get(shape, getElementType(v));
 }
 
 static void getNCHW_align_right(llvm::ArrayRef<int64_t> &shape, int64_t &n,
@@ -614,6 +623,19 @@ bool isOpInParallel(Operation *Op) {
   auto parent = Op->getParentOp();
   if (isa_and_nonnull<tpu::ParallelOp>(parent)) {
     return true;
+  }
+  return false;
+}
+
+bool isOpInDistribution(Operation *op) {
+  while (!op->use_empty()) {
+    op = *op->user_begin();
+    if (isa<func::ReturnOp, tpu::DistributionBeginOp>(op)) {
+      return false;
+    }
+    if (isa<tpu::DistributionEndOp>(op)) {
+      return true;
+    }
   }
   return false;
 }
@@ -972,6 +994,18 @@ NameLoc getLoc(Value v) {
   return nullptr;
 }
 
+NameLoc getLocLike(Operation *op, llvm::StringRef suffix) {
+  auto name = getName(op);
+  auto new_name = name.str() + "_" + suffix.str();
+  Builder builder(op->getContext());
+  return NameLoc::get(builder.getStringAttr(new_name));
+}
+
+void setLocSuffix(Operation *op, llvm::StringRef suffix) {
+  auto loc = getLocLike(op, suffix);
+  op->setLoc(loc);
+}
+
 StringRef getName(Operation *op, int index) {
   if (auto module = dyn_cast<ModuleOp>(op)) {
     return getName(module);
@@ -1288,7 +1322,7 @@ void saveWeight() {
   for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
       if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op) &&
-          !module::isOpInParallel(op)) {
+          !module::isOpInParallel(op) && !module::isOpInDistribution(op)) {
         auto name = module::getName(op);
         // if op have more than two regions, it can have the same op Name
         if (all_names.find(name) != all_names.end() &&

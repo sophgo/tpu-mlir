@@ -26,7 +26,7 @@ public:
       return failure();
     }
     if (op->hasOneUse()) {
-      auto user = *op->getUsers().begin();
+      auto user = *op->user_begin();
       if (isa<tpu::ConnectOp>(user)) {
         return failure();
       }

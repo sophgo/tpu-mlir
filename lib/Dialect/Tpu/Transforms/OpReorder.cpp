@@ -85,7 +85,7 @@ struct AttentionReorderPattern : public RewritePattern {
       if (user->hasOneUse() == false) {
         return failure();
       }
-      auto user2 = *user->getUsers().begin();
+      auto user2 = *user->user_begin();
       if (false == isa<tpu::ReshapeOp>(user2)) {
         return failure();
       }

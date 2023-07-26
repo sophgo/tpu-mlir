@@ -93,9 +93,7 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
     auto r_shape = module::getShape(op.getRecurrence());
     std::vector<int64_t> new_r_shape = {num_dir, r_shape[0] / num_dir,
                                         hidden_size};
-    auto gru_r_weight_type = RankedTensorType::get(
-        new_r_shape, module::getElementType(op.getRecurrence()));
-    gru_r_weight_op.getResult().setType(gru_r_weight_type);
+    module::setShape(op.getRecurrence(), new_r_shape);
   }
 
   auto gru_h_weight_op =

@@ -23,7 +23,8 @@ struct Conv1dTo2d : public OpRewritePattern<ConvOp> {
     }
     std::vector<int64_t> vfilterShape = module::getShape(op.getFilter());
     vfilterShape.push_back(1);
-      // new_type: mlir::RankedTensorType   rewriter: mlir::PatternRewriter &rewriter
+    // new_type: mlir::RankedTensorType   rewriter: mlir::PatternRewriter
+    // &rewriter
     auto new_type = RankedTensorType::get(vfilterShape, rewriter.getF32Type());
     op.getFilter().setType(new_type);
 
@@ -153,134 +154,146 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
   LogicalResult matchAndRewrite(ConvOp op,
                                 PatternRewriter &rewriter) const override {
 
-  auto kernel = module::getI64Array(op.getKernelShape());
-  if (kernel->size() != 2) {
-    return failure();
-  }
-
-  auto inputOperand = op.getInput();
-  auto prevOp = inputOperand.getDefiningOp();
-  auto prevConvOp = dyn_cast<ConvOp>(prevOp);
-  if (!prevConvOp ) {
-    // There is no previous ConvOp
-    return failure();
-  } else {
-    // 'prevConvOp' is the previous ConvOp
-    std::vector<int64_t> pre_kernel_shape =*module::getI64Array(prevConvOp.getKernelShape());
-    if(pre_kernel_shape.size() != 2 || pre_kernel_shape[0] != 1 || pre_kernel_shape[1] != 1){
+    auto kernel = module::getI64Array(op.getKernelShape());
+    if (kernel->size() != 2) {
       return failure();
     }
 
-    if(!prevConvOp.getResult().hasOneUse()){
+    auto inputOperand = op.getInput();
+    auto prevOp = inputOperand.getDefiningOp();
+    auto prevConvOp = dyn_cast<ConvOp>(prevOp);
+    if (!prevConvOp) {
+      // There is no previous ConvOp
       return failure();
-    }
+    } else {
+      // 'prevConvOp' is the previous ConvOp
+      std::vector<int64_t> pre_kernel_shape =
+          *module::getI64Array(prevConvOp.getKernelShape());
+      if (pre_kernel_shape.size() != 2 || pre_kernel_shape[0] != 1 ||
+          pre_kernel_shape[1] != 1) {
+        return failure();
+      }
 
-    // can't have padding now
-    auto p = op.parseParam();
-    auto prep = prevConvOp.parseParam();
-    if(p.pht != 0 || p.phb != 0 || p.pwl != 0 || p.pwr != 0 ||
-        prep.pht != 0 || prep.phb != 0 || prep.pwl != 0 || prep.pwr != 0 ){
-      return failure();
-    }
+      if (!prevConvOp.getResult().hasOneUse()) {
+        return failure();
+      }
 
-    if(p.do_relu || prep.do_relu){
-      return failure();
-    }
+      // can't have padding now
+      auto p = op.parseParam();
+      auto prep = prevConvOp.parseParam();
+      if (p.pht != 0 || p.phb != 0 || p.pwl != 0 || p.pwr != 0 ||
+          prep.pht != 0 || prep.phb != 0 || prep.pwl != 0 || prep.pwr != 0) {
+        return failure();
+      }
 
-    auto Filterop = op.getFilter().getDefiningOp<top::WeightOp>();
-    auto Filterop_f32 = Filterop.read<float>();
-    std::vector<int64_t> filterShape = module::getShape(op.getFilter());
+      if (p.do_relu || prep.do_relu) {
+        return failure();
+      }
 
-    auto preFilterop = prevConvOp.getFilter().getDefiningOp<top::WeightOp>();
-    auto preFilterop_f32 = preFilterop.read<float>();
-    std::vector<int64_t> prefilterShape = module::getShape(prevConvOp.getFilter());
+      auto Filterop = op.getFilter().getDefiningOp<top::WeightOp>();
+      auto Filterop_f32 = Filterop.read<float>();
+      std::vector<int64_t> filterShape = module::getShape(op.getFilter());
 
-    // transform prefilterShape, exchange dim ic and oc
-    std::vector<int64_t> ps = {1, 0, 2, 3};
-    auto prefilter_f32_tp =
-        std::make_shared<std::vector<float>>(preFilterop_f32->size(), 0);
-    function_permute(preFilterop_f32->data(), prefilter_f32_tp->data(), prefilterShape, ps);
+      auto preFilterop = prevConvOp.getFilter().getDefiningOp<top::WeightOp>();
+      auto preFilterop_f32 = preFilterop.read<float>();
+      std::vector<int64_t> prefilterShape =
+          module::getShape(prevConvOp.getFilter());
 
-    // calculate merge filter's weight
-    //  Convkxk = [E, D, K, K], Conv1x1_trans = [C, D, 1, 1], Conv1x1 = [D, C, 1, 1]
-    int E = filterShape.at(0), D = filterShape.at(1), K = filterShape.at(2), C = prefilterShape.at(1);
-    auto filter_merge = std::make_shared<std::vector<float>>(size_t(E * C * K * K), 0);
-    int eckk = E * C * K * K;
-    int ckk = C * K * K;
-    int kk = K * K;
+      // transform prefilterShape, exchange dim ic and oc
+      std::vector<int64_t> ps = {1, 0, 2, 3};
+      auto prefilter_f32_tp =
+          std::make_shared<std::vector<float>>(preFilterop_f32->size(), 0);
+      function_permute(preFilterop_f32->data(), prefilter_f32_tp->data(),
+                       prefilterShape, ps);
+
+      // calculate merge filter's weight
+      //  Convkxk = [E, D, K, K], Conv1x1_trans = [C, D, 1, 1], Conv1x1 = [D, C,
+      //  1, 1]
+      int E = filterShape.at(0), D = filterShape.at(1), K = filterShape.at(2),
+          C = prefilterShape.at(1);
+      auto filter_merge =
+          std::make_shared<std::vector<float>>(size_t(E * C * K * K), 0);
+      int eckk = E * C * K * K;
+      int ckk = C * K * K;
+      int kk = K * K;
 #pragma omp parallel for schedule(static, omp_schedule(eckk))
-    for (int i = 0; i < eckk; ++i) {
+      for (int i = 0; i < eckk; ++i) {
         int e = i / ckk;
         int c = (i % ckk) / kk;
         int k1 = (i % kk) / K;
         int k2 = i % K;
         float sum = 0.0;
-        for(int d = 0; d < D; ++d){
-            sum += (*Filterop_f32)[e*D*K*K + d*K*K + k1*K + k2] * (*prefilter_f32_tp)[c*D + d];
+        for (int d = 0; d < D; ++d) {
+          sum += (*Filterop_f32)[e * D * K * K + d * K * K + k1 * K + k2] *
+                 (*prefilter_f32_tp)[c * D + d];
         }
-        (*filter_merge)[e*C*K*K + c*K*K + k1*K + k2] = sum;
-    }
+        (*filter_merge)[e * C * K * K + c * K * K + k1 * K + k2] = sum;
+      }
 
-    auto bias_merge = std::make_shared<std::vector<float>>((size_t)E, 0);
-    if(p.has_bias){
-      auto Biasop = op.getBias().getDefiningOp<top::WeightOp>();
-      auto Biasop_f32 = Biasop.read<float>();
-      bias_merge = Biasop_f32;
-    }
+      auto bias_merge = std::make_shared<std::vector<float>>((size_t)E, 0);
+      if (p.has_bias) {
+        auto Biasop = op.getBias().getDefiningOp<top::WeightOp>();
+        auto Biasop_f32 = Biasop.read<float>();
+        bias_merge = Biasop_f32;
+      }
 
-    if(prep.has_bias){
-      // calcute merge filter's bias
-      auto preBiasop = prevConvOp.getBias().getDefiningOp<top::WeightOp>();
-      auto preBiasop_f32 = preBiasop.read<float>();
+      if (prep.has_bias) {
+        // calcute merge filter's bias
+        auto preBiasop = prevConvOp.getBias().getDefiningOp<top::WeightOp>();
+        auto preBiasop_f32 = preBiasop.read<float>();
 #pragma omp parallel for schedule(static, omp_schedule(E))
-      for(int e = 0; e < E; ++e){
-        float sum = 0.0;
-        for(int d = 0; d < D; ++d){
-          for(int u = 0; u < K; ++u){
-            for(int v = 0; v < K; ++v){
-              sum += (*preBiasop_f32)[d] * (*Filterop_f32)[e*D*K*K + d*K*K + u*K + v];
+        for (int e = 0; e < E; ++e) {
+          float sum = 0.0;
+          for (int d = 0; d < D; ++d) {
+            for (int u = 0; u < K; ++u) {
+              for (int v = 0; v < K; ++v) {
+                sum += (*preBiasop_f32)[d] *
+                       (*Filterop_f32)[e * D * K * K + d * K * K + u * K + v];
+              }
             }
           }
+          (*bias_merge)[e] += sum;
         }
-        (*bias_merge)[e] += sum;
       }
-    }
 
-    // remove prevConvOp
-    prevConvOp.getOutput().replaceAllUsesWith(prevConvOp.getInput());
-    rewriter.eraseOp(prevConvOp);
+      // remove prevConvOp
+      prevConvOp.getOutput().replaceAllUsesWith(prevConvOp.getInput());
+      rewriter.eraseOp(prevConvOp);
 
-    // Set op
-    // setup merige_filter_shape
-    std::vector<int64_t> mfilterShape = module::getShape(op.getFilter());
-    mfilterShape[1] = C;
-    auto mnew_type = RankedTensorType::get(mfilterShape, rewriter.getF32Type());
-    op.getFilter().setType(mnew_type);
+      // Set op
+      // setup merige_filter_shape
+      std::vector<int64_t> mfilterShape = module::getShape(op.getFilter());
+      mfilterShape[1] = C;
+      auto mnew_type =
+          RankedTensorType::get(mfilterShape, rewriter.getF32Type());
+      op.getFilter().setType(mnew_type);
 
-    // setup merige_filter_weight
-    auto mnew_op =
-          top::WeightOp::create(op, "merge_filter_weight", *filter_merge, mnew_type);
-    op->setOperand(1, mnew_op);
+      // setup merige_filter_weight
+      auto mnew_op = top::WeightOp::create(op, "merge_filter_weight",
+                                           *filter_merge, mnew_type);
+      op->setOperand(1, mnew_op);
 
-    // setup merige_bias_weight
-    if(p.has_bias || prep.has_bias){
-      std::vector<int64_t> biasShape= {E};
-      if(p.has_bias){
-        biasShape = module::getShape(op.getBias());
+      // setup merige_bias_weight
+      if (p.has_bias || prep.has_bias) {
+        std::vector<int64_t> biasShape = {E};
+        if (p.has_bias) {
+          biasShape = module::getShape(op.getBias());
+        }
+        std::vector<int64_t> mbiasShape = biasShape;
+        auto mbnew_type =
+            RankedTensorType::get(mbiasShape, rewriter.getF32Type());
+        auto mbnew_op = top::WeightOp::create(op, "merge_bias_weight",
+                                              *bias_merge, mbnew_type);
+        op->setOperand(2, mbnew_op);
       }
-      std::vector<int64_t> mbiasShape = biasShape;
-      auto mbnew_type = RankedTensorType::get(mbiasShape, rewriter.getF32Type());
-      auto mbnew_op =
-            top::WeightOp::create(op, "merge_bias_weight", *bias_merge, mbnew_type);
-      op->setOperand(2, mbnew_op);
-    }
     }
     return success();
   }
 };
 
-
 void ConvOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                          MLIRContext *context) {
-  results.insert<Conv3dTranspose, Conv3dTo2d, Conv1dTo2d, Conv1x1Convkxk2dMerge>(context);
+  results
+      .insert<Conv3dTranspose, Conv3dTo2d, Conv1dTo2d, Conv1x1Convkxk2dMerge>(
+          context);
 }

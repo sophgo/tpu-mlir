@@ -35,7 +35,7 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
     if (inds_elems == 1) {
       // e.g. Gather(indices=[1],axis=ax) + Unsqueeze(axis=ax)
       //            -> Slice(start=1, end=2, step=1, axes=ax)
-      auto nextOp = op->getUsers().begin();
+      auto nextOp = op->user_begin();
       if (!op->hasOneUse() || !isa<ReshapeOp>(*nextOp)) {
         return failure();
       }

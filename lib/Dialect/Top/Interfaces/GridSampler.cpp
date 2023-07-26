@@ -9,14 +9,11 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-
-
 int64_t top::GridSamplerOp::getFLOPs() {
   tensor_list_t input;
   input.shape = module::getShape(getInput());
   auto grid_shape = module::getShape(getGrid());
-  if (0 == getMode())
-  {
+  if (0 == getMode()) {
     // (x1, y1) = floor(x*w, y*h), (x2, y2) = ceil(x*w, y*h)
     // f(x, y) = (1 / ((x2 - x1) * (y2 - y1))) *
     //           (f(Q11) * (x2 - x) * (y2 - y) + f(Q21) * (x - x1) * (y2 - y) +
@@ -28,7 +25,9 @@ int64_t top::GridSamplerOp::getFLOPs() {
   }
 }
 
-LogicalResult top::GridSamplerOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::GridSamplerOp::init(InferenceParameter &p) {
+  return success();
+}
 
 void top::GridSamplerOp::deinit(InferenceParameter &p) {}
 
@@ -79,9 +78,6 @@ void top::GridSamplerOp::shape_inference() {
       grid_shape[grid_shape.size() - 1] == 1) {
     std::vector<int64_t> new_shape(grid_shape.begin(),
                                    grid_shape.begin() + input_shape.size());
-    auto newType = RankedTensorType::get(new_shape, module::getElementType(getGrid()));
-    getGrid().setType(newType);
-    // module::setShapeOrVerify(getGrid(), new_shape);
+    module::setShape(getGrid(), new_shape);
   }
-  
 }

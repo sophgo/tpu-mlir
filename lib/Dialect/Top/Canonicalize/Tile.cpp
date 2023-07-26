@@ -18,7 +18,7 @@ struct TopFuseTile : public OpRewritePattern<TileOp> {
   LogicalResult matchAndRewrite(TileOp op,
                                 PatternRewriter &rewriter) const override {
 
-    auto next_op = *op->getUsers().begin();
+    auto next_op = *op->user_begin();
     if (isa<AddOp, SubOp, MulOp, MinOp, MaxOp>(next_op)) {
       auto shape0 = module::getShape(op.getInput());
       auto shape1 = module::getShape(op.getOutput());

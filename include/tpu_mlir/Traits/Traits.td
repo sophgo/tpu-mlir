@@ -21,6 +21,7 @@ def ShapeConsumer : TPUMLIROpTrait<"ShapeConsumer">;
 def SupportPermuteMove : TPUMLIROpTrait<"SupportPermuteMove">;
 def SupportFuseRelu : TPUMLIROpTrait<"SupportFuseRelu">;
 def SupportEarlyStride : TPUMLIROpTrait<"SupportEarlyStride">;
+def SupportElementwise : TPUMLIROpTrait<"SupportElementwise">;
 def TpuTypeRestrict: TPUMLIROpTrait<"TpuTypeRestrict">;
 def InOutSameShape: TPUMLIROpTrait<"InOutSameShape">;
 

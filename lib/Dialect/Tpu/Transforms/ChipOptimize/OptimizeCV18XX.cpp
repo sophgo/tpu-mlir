@@ -11,7 +11,6 @@
 #include "llvm/Support/Debug.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 
-
 #define DEBUG_TYPE "optimize_cv18xx"
 
 using namespace llvm;
@@ -86,14 +85,10 @@ public:
     op->setAttr("do_early_stride", rewriter.getBoolAttr(true));
     op->setAttr("early_stride_h", rewriter.getI32IntegerAttr(strideH));
     op->setAttr("early_stride_w", rewriter.getI32IntegerAttr(strideW));
-    auto tensorType = op->getResult(0).getType().cast<RankedTensorType>();
-    auto type =
-        RankedTensorType::get({on, oc, oh, ow}, tensorType.getElementType());
-    op->getResult(0).setType(type); // rewrite inputShape
-    //Rename this op to pass the similarity comparison, because its output shape changed
-    std::string ori_name = module::getName(op->getResult(0)).str();
-    auto new_loc = NameLoc::get(rewriter.getStringAttr(ori_name + "_early_stride"));
-    op->setLoc(new_loc);
+    module::setShape(op->getResult(0), {on, oc, oh, ow});
+    // Rename this op to pass the similarity comparison, because its output
+    // shape changed
+    module::setLocSuffix(op, "early_stride");
     return success();
   }
 };
@@ -196,7 +191,6 @@ public:
 
     // creat Op
     rewriter.setInsertionPointAfter(reduceOp);
-    auto op_name = module::getName(reduceOp.getOperation()).str();
     std::vector<Value> operands;
     std::vector<NamedAttribute> attrs;
     auto eltType = module::getElementType(reduceOp.getOutput());
@@ -207,11 +201,10 @@ public:
     Value newValue = reduceOp.getOutput();
     for (uint32_t i = 0; i < new_axes_v.size(); i++) {
       auto newType = RankedTensorType::get(outputs_shape_v[i], eltType);
-      auto name = op_name + "_" + std::to_string(i);
-      if (i == new_axes_v.size() - 1) {
-        name = op_name;
+      Location loc = reduceOp.getLoc();
+      if (i != new_axes_v.size() - 1) {
+        loc = module::getLocLike(reduceOp, std::to_string(i));
       }
-      auto loc = NameLoc::get(rewriter.getStringAttr(name));
       auto newOp = rewriter.create<tpu::ReduceOp>(loc, newType, operands,
                                                   reduceOp->getAttrs());
       newOp->setAttr("axes", rewriter.getI64ArrayAttr(new_axes_v[i]));
@@ -239,7 +232,6 @@ public:
       if (max == -1 || !op->getAttr("do_relu")) {
         return failure();
       }
-      auto op_name = module::getName(op).str();
       op->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.));
       auto uses = op->getResult(0).getUses();
       std::vector<NamedAttribute> attrs;
@@ -252,7 +244,7 @@ public:
           RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
       auto newOp = rewriter.create<tpu::ClipOp>(op->getLoc(), newType,
                                                 op->getResults(), attrs);
-      op->setLoc(NameLoc::get(rewriter.getStringAttr(op_name + "_0")));
+      module::setLocSuffix(op, "0");
       for (auto &use : uses) {
         auto useOp = use.getOwner();
         int32_t num = useOp->getNumOperands();

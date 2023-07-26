@@ -127,6 +127,9 @@ int64_t getNumElements(Value v);
 Type getStorageType(Value v); // storage type
 Type getStorageType(Type type);
 Type getElementType(Value v);
+RankedTensorType getTypeLike(Value v, llvm::ArrayRef<int64_t> shape);
+
+void setShape(Value v, llvm::ArrayRef<int64_t> shape);
 llvm::ArrayRef<int64_t> getShape(Value v);
 void getGlobalShape(Value v, int *shape, int dim = 4);
 void getLocalShape(Value v, int64_t n_step, int64_t h_step, int *shape);
@@ -155,6 +158,7 @@ f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value);
 bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
 bool isOpInParallel(Operation *Op);
+bool isOpInDistribution(Operation *Op);
 FuncOp getFuncOp(StringRef func_name);
 func::CallOp getCallOp(FuncOp func);
 llvm::StringRef getModuleName();
@@ -162,6 +166,8 @@ llvm::StringRef getName(Operation *op, int index = 0);
 llvm::StringRef getName(Value v);
 uint32_t getIdx(Value v);
 NameLoc getLoc(Value v);
+NameLoc getLocLike(Operation *op, llvm::StringRef suffix);
+void setLocSuffix(Operation *op, llvm::StringRef suffix);
 void setLoc(Value v, NameLoc loc);
 void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs);
 void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,

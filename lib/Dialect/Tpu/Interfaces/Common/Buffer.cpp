@@ -7,19 +7,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-
 
 Value tpu::BufferOp::create(mlir::Operation *OwnerOp,
                             mlir::RankedTensorType &type) {
-  auto ctx = OwnerOp->getContext();
-  OpBuilder builder(ctx);
+  OpBuilder builder(OwnerOp->getContext());
   builder.setInsertionPoint(OwnerOp);
-  std::string op_name = module::getName(OwnerOp).str();
-  std::string buffer_name = op_name + "_buffer";
-  auto nameAttr = builder.getStringAttr(buffer_name);
-  auto newOp = builder.create<tpu::BufferOp>(NameLoc::get(nameAttr), type);
+  auto loc = module::getLocLike(OwnerOp, "buffer");
+  auto newOp = builder.create<tpu::BufferOp>(loc, type);
   return newOp.getResult();
 }

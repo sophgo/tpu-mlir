@@ -97,7 +97,7 @@ struct ReshapeInstanceNormPattern : public OpRewritePattern<ReshapeOp> {
     auto output = op.getOutput();
     if (!output.hasOneUse())
       return failure();
-    auto next_op_ = *output.getUsers().begin();
+    auto next_op_ = *output.user_begin();
     if (!isa<InstanceNormOp>(next_op_))
       return failure();
     auto next_op = dyn_cast<InstanceNormOp>(next_op_);
