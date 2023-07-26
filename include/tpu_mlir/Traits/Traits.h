@@ -49,6 +49,10 @@ class SupportEarlyStride
     : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportEarlyStride> {};
 
 template <typename ConcreteType>
+class SupportElementwise
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportElementwise> {};
+
+template <typename ConcreteType>
 class TpuTypeRestrict
     : public ::mlir::OpTrait::TraitBase<ConcreteType, TpuTypeRestrict> {
 public:

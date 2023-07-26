@@ -135,7 +135,7 @@ public:
             value.setType(new_type);
           }
         } else if (isa<WeightOp>(op)) {
-          auto user = op->getUsers().begin();
+          auto user = op->user_begin();
           std::string str = module::getName(*user).str() + "_weight";
           if (per_chan_scales_map.count(str)) {
             op->setAttr("scale", builder.getF64ArrayAttr(ArrayRef<double>{

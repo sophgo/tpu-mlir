@@ -1014,7 +1014,7 @@ void delete_fake_global_addr(Operation *op) {
 }
 
 bool is_eu_align_cv18xx(Value opd) {
-  auto op = *opd.getUsers().begin();
+  auto op = *opd.user_begin();
   if (module::isWeight(opd)) {
     if (isa<tpu::LutOp>(op)) {
       if (opd == op->getOperand(1)) {
@@ -1064,7 +1064,7 @@ bool is_eu_align_cv18xx(Value opd) {
 }
 
 bool is_eu_align_bm168x(Value opd) {
-  auto op = *opd.getUsers().begin();
+  auto op = *opd.user_begin();
   if (module::isWeight(opd)) {
     if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp,
             tpu::LayerNormOp, tpu::PixelNormOp>(op)) {
@@ -1097,7 +1097,7 @@ bool need_bcast(Value opd) {
   if (opd.hasOneUse() == false) {
     return false;
   }
-  auto use_op = *opd.getUsers().begin();
+  auto use_op = *opd.user_begin();
   if (auto cast_op = dyn_cast<tpu::LutOp>(use_op)) {
     return opd == cast_op.getTable();
   } else if (auto cast_op = dyn_cast<tpu::LutBF16Op>(use_op)) {

@@ -74,9 +74,7 @@ public:
     auto loc = NameLoc::get(rewriter.getStringAttr(op_name + "_permute"));
     attrs.emplace_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
-    auto cali_type =
-        op.getInput().getType().cast<RankedTensorType>().getElementType();
-    auto type = RankedTensorType::get(output_shape, cali_type);
+    auto type = module::getTypeLike(op.getInput(), output_shape);
     auto permute_op =
         rewriter.create<top::PermuteOp>(loc, type, operands, attrs);
 
@@ -442,9 +440,8 @@ public:
       return failure();
     }
     auto input = op.getInput();
-    auto input_type = input.getType().cast<RankedTensorType>().getElementType();
-    auto out_type =
-        op.getResult().getType().cast<RankedTensorType>().getElementType();
+    auto input_type = module::getElementType(input);
+    auto out_type = module::getElementType(op.getOutput());
     std::vector<Value> operands;
     std::vector<NamedAttribute> attrs;
     std::string op_name = module::getName(op.getResult()).str();
@@ -1011,8 +1008,7 @@ public:
     auto strides = module::getI64Array(op.getStrides());
     auto pads = module::getI64Array(op.getPads());
     auto op_name = module::getName(op.getOperation()).str();
-    auto type =
-        op.getOutput().getType().cast<RankedTensorType>().getElementType();
+    auto type = module::getElementType(op.getOutput());
     // 0. reshape [n c f h w] -> [n*c h w f].
     module::getNCHW(input_shape, tmp_shape0[0], tmp_shape0[1], tmp_shape0[2],
                     tmp_shape0[3], false);
@@ -1153,8 +1149,7 @@ public:
     operands.emplace_back(op.getInput());
     attrs.emplace_back(rewriter.getNamedAttr("scale_h", op.getScaleHAttr()));
     attrs.emplace_back(rewriter.getNamedAttr("scale_w", op.getScaleWAttr()));
-    auto new_type = RankedTensorType::get(
-        mask_shape, op.getOutput().getType().getElementType());
+    auto new_type = module::getTypeLike(op.getOutput(), mask_shape);
     auto upsample_op =
         rewriter.create<top::UpsampleOp>(loc, new_type, operands, attrs);
 

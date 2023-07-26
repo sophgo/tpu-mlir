@@ -14,12 +14,11 @@ namespace bm1684 {
 // y = n ^ x = e ^ (x * log(n))
 // TODO: dangerous as need x > 0
 void Pow2Lowering::LoweringF32(PatternRewriter &rewriter, top::Pow2Op op) const {
-  auto name = module::getName(op.getOutput());
   auto type = op.getOutput().getType();
   rewriter.setInsertionPointAfter(op);
   std::vector<NamedAttribute> attrs;
   auto n = std::log(op.getConstVal().convertToDouble());
-  auto mul_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_mul"));
+  auto mul_loc = module::getLocLike(op, "mul");
   attrs.clear();
   attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(n)));
   auto mul_op = rewriter.create<tpu::MulConstOp>(

@@ -254,7 +254,7 @@ public:
     if (!output.hasOneUse()) {
       return failure();
     }
-    auto next_op_ = *output.getUsers().begin();
+    auto next_op_ = *output.user_begin();
 
     if (auto next_op = dyn_cast<top::MatMulOp>(next_op_)) {
       // right is from Reshape too
@@ -292,20 +292,15 @@ public:
       // and update loc to avoid comparing
       auto next_out = next_op.getOutput();
       auto ori_out_type = next_out.getType();
+      auto ori_loc = next_op.getLoc();
       auto oshape = module::getShape(next_out);
       std::vector<int64_t> new_oshape{lshape_[0], lshape_[1], oshape[1],
                                       oshape[2]};
-      auto new_out_type =
-          RankedTensorType::get(new_oshape, module::getElementType(next_out));
-      next_out.setType(new_out_type);
-      auto ori_name = module::getName(next_out).str();
-      auto new_loc =
-          NameLoc::get(rewriter.getStringAttr(ori_name + "_Reshape"));
-      next_op->setLoc(new_loc);
+      module::setShape(next_out, new_oshape);
+      module::setLocSuffix(next_op, "Reshape");
 
       // Add ReshapeOp after MatMul
       rewriter.setInsertionPointAfterValue(next_out);
-      auto ori_loc = NameLoc::get(rewriter.getStringAttr(ori_name));
       auto new_reshape_op = rewriter.create<top::ReshapeOp>(
           ori_loc, ori_out_type, ValueRange{next_out});
       next_out.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
@@ -335,17 +330,12 @@ public:
       // update next_op output shape and modify loc name to avoid comparing
       auto next_out = next_op_->getResult(0);
       auto ori_out_type = next_out.getType();
-      auto new_out_type =
-          RankedTensorType::get(ishape, module::getElementType(next_out));
-      next_out.setType(new_out_type);
-      auto ori_name = module::getName(next_out).str();
-      auto new_loc =
-          NameLoc::get(rewriter.getStringAttr(ori_name + "_Reshape"));
-      next_op_->setLoc(new_loc);
+      auto ori_loc = next_op_->getLoc();
+      module::setShape(next_out, ishape);
+      module::setLocSuffix(next_op_, "Reshape");
 
       // Add ReshapeOp after MulConst/Cast/Softmax
       rewriter.setInsertionPointAfterValue(next_out);
-      auto ori_loc = NameLoc::get(rewriter.getStringAttr(ori_name));
       auto new_reshape_op = rewriter.create<top::ReshapeOp>(
           ori_loc, ori_out_type, ValueRange{next_out});
       next_out.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);

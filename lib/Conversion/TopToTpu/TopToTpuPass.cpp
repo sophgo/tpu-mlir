@@ -22,9 +22,7 @@ namespace tpu_mlir {
 template <typename OpTy> static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
-  auto in_type = in.getType().cast<RankedTensorType>();
-  auto out_qtype = module::getCalibratedType(out);
-  auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
+  auto new_type = module::getTypeLike(out, module::getShape(in));
   in.setType(new_type);
 }
 
@@ -43,9 +41,7 @@ static void Backward(Value in) {
 template <typename OpTy> static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
-  auto out_type = out.getType().cast<RankedTensorType>();
-  auto in_qtype = module::getCalibratedType(in);
-  auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+  auto new_type = module::getTypeLike(in, module::getShape(out));
   out.setType(new_type);
 }
 
@@ -86,8 +82,7 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
         return failure();
       }
     }
-    auto out_type = out.getType().cast<RankedTensorType>();
-    auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+    auto new_type = RankedTensorType::get(module::getShape(out), in_qtype);
     out.setType(new_type);
     Forward(out);
     return success();
@@ -476,7 +471,9 @@ public:
     }
     init_qtable();
 
-    if (module::isBM1684XFamily() && !LoweringConfig::isQuantized && (module::getMode() == module::Mode::INT8 || module::getMode() == module::Mode::UINT8)) {
+    if (module::isBM1684XFamily() && !LoweringConfig::isQuantized &&
+        (module::getMode() == module::Mode::INT8 ||
+         module::getMode() == module::Mode::UINT8)) {
       qtable_process();
       module::updateModuleTypes();
     }
@@ -847,35 +844,37 @@ protected:
               return;
             }
             if (LoweringConfig::quantize_map.find(module::getName(op).str()) !=
-                        LoweringConfig::quantize_map.end())
+                LoweringConfig::quantize_map.end())
               return;
             int idx = 0;
             float th[2] = {0.0};
             for (auto in : addop.getInputs()) {
               if (!module::isUniformQuantized(in))
                 return;
-              if (isa<top::WeightOp>(in.getDefiningOp())){
-                auto weight = dyn_cast<top::WeightOp>(in.getDefiningOp()).read<float>();
+              if (isa<top::WeightOp>(in.getDefiningOp())) {
+                auto weight =
+                    dyn_cast<top::WeightOp>(in.getDefiningOp()).read<float>();
                 float absmax = fabs(weight.get()->at(0));
-                for (int i=0;i<weight.get()->size();i++) {
+                for (int i = 0; i < weight.get()->size(); i++) {
                   float value = fabs(weight.get()->at(i));
-                  absmax = value >absmax?value:absmax;
+                  absmax = value > absmax ? value : absmax;
                 }
                 th[idx++] = absmax;
-              }
-              else {
+              } else {
                 double in_scale;
                 int64_t in_zp;
-                module::getScaleAndZeroPoint(in, in_scale, in_zp, module::isAsymmetric());
+                module::getScaleAndZeroPoint(in, in_scale, in_zp,
+                                             module::isAsymmetric());
                 th[idx++] = in_scale;
               }
-              if (idx>2)
+              if (idx > 2)
                 return;
             }
             if (th[0] < 1e-8 || th[1] < 1e-8)
               return;
-            if (th[0]/th[1] > 64 || th[1]/th[0] > 64){
-              if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
+            if (th[0] / th[1] > 64 || th[1] / th[0] > 64) {
+              if (LoweringConfig::quantize_map.find(
+                      module::getName(op).str()) ==
                   LoweringConfig::quantize_map.end()) {
                 LoweringConfig::quantize_map.insert(
                     {module::getName(op).str(), module::Mode::F16});
@@ -894,7 +893,8 @@ protected:
     set_add_before_softmax_fp16();
   }
 
-  Value do_cast(Value v, Type to, TypeCastMode mode, Operation *user_op = nullptr) {
+  Value do_cast(Value v, Type to, TypeCastMode mode,
+                Operation *user_op = nullptr) {
     auto to_stype = module::getStorageType(to);
     // check whether value has been casted
     for (auto user : v.getUsers()) {
@@ -1006,7 +1006,8 @@ protected:
 
   void init_qtable() {
     LoweringConfig::quantize_map.clear();
-    if (ignore_f16_overflow == false && module::getMode() == module::Mode::F16) {
+    if (ignore_f16_overflow == false &&
+        module::getMode() == module::Mode::F16) {
       mainFunc_.walk([&](Operation *op) {
         // if have other op need convert from f16 to f32, add here
         if (isa<top::LayerNormOp, top::RMSNormOp>(op)) {

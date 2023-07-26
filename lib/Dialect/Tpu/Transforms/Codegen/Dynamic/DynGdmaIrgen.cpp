@@ -67,7 +67,7 @@ int static_ld_coeff_irgen_ctrl(Operation *op, int tensor_id,
     fw_gdma_coeff.dtype = BM168x::getDataType(op->getOperand(0));
   }
 
-  auto use_op = *op->getUsers().begin();
+  auto use_op = *op->user_begin();
   int64_t layer_type = -1;
   if (auto castOp = dyn_cast<DynGlobalGenInterface>(use_op)) {
     layer_type = castOp.get_fw_type_bm1684x();
@@ -137,7 +137,7 @@ int static_ld_neuron_irgen_ctrl(Operation *op, int tensor_id,
     if (auto cast_op = dyn_cast<tpu::LoadOp>(*op)) {
       int64_t use_3ic = cast_op.getUse_3icOptimize();
       if (use_3ic < 4 && use_3ic > 0) {
-        auto use_op = *cast_op.getOutput().getUsers().begin();
+        auto use_op = *cast_op.getOutput().user_begin();
         auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
         auto kernel = module::getI64Array(conv_op.getKernelShape());
         int64_t to_ic = use_3ic == 1
@@ -175,7 +175,7 @@ int static_ld_neuron_irgen_ctrl(Operation *op, int tensor_id,
     if (auto cast_op = dyn_cast<tpu::LoadOp>(*op)) {
       int64_t use_3ic = cast_op.getUse_3icOptimize();
       if (use_3ic < 4 && use_3ic > 0) {
-        auto use_op = *cast_op.getOutput().getUsers().begin();
+        auto use_op = *cast_op.getOutput().user_begin();
         auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
         auto kernel = module::getI64Array(conv_op.getKernelShape());
         int64_t to_ic = use_3ic == 1

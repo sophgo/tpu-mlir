@@ -36,7 +36,7 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Value v, int64_t n_step,
     if (v.getType().isa<NoneType>()) {
       return ginfo;
     }
-    auto dst_op = *v.getUsers().begin();
+    auto dst_op = *v.user_begin();
     auto dst_lg_op = cast<LocalGenInterface>(dst_op);
     auto g_param = dst_op->getAttr(LocalGenInterface::kLayerGroupAttrName)
                        .cast<tpu::LayerGroupAttr>();

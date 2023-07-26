@@ -27,7 +27,7 @@ struct MatMulWithBias : public OpRewritePattern<MatMulOp> {
     if (op->hasOneUse() == false) {
       return failure();
     }
-    auto user = *op->getUsers().begin();
+    auto user = *op->user_begin();
     auto add_op = dyn_cast<AddOp>(user);
     if (!add_op) {
       return failure();
@@ -183,7 +183,7 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
                                 PatternRewriter &rewriter) const override {
 
     // check topo
-    auto nextOp = *op->getUsers().begin();
+    auto nextOp = *op->user_begin();
     auto reshape_after_matmul = dyn_cast_or_null<ReshapeOp>(nextOp);
     if (!reshape_after_matmul) {
       return failure();

@@ -44,7 +44,7 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
     if (!reshape_before) {
       return failure();
     }
-    auto nextOp = *op.getOutput().getUsers().begin();
+    auto nextOp = *op.getOutput().user_begin();
     auto reshape_after = dyn_cast_or_null<ReshapeOp>(nextOp);
     if (!reshape_after) {
       return failure();
@@ -113,7 +113,7 @@ struct TopPermuteToReorg : public OpRewritePattern<PermuteOp> {
     if (!reshape_before) {
       return failure();
     }
-    auto nextOp = *op.getOutput().getUsers().begin();
+    auto nextOp = *op.getOutput().user_begin();
     auto reshape_after = dyn_cast_or_null<ReshapeOp>(nextOp);
     if (!reshape_after) {
       return failure();
@@ -261,9 +261,7 @@ struct Permute5dSplit : public OpRewritePattern<PermuteOp> {
     operands.emplace_back(input);
     attrs.emplace_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order0)));
-    auto eltType =
-        op.getResult().getType().cast<RankedTensorType>().getElementType();
-    auto outType = RankedTensorType::get(new_shape0, eltType);
+    auto outType = module::getTypeLike(op.getOutput(), new_shape0);
     auto permute0_op =
         rewriter.create<top::PermuteOp>(loc, outType, operands, attrs);
     auto permute0_out = permute0_op.getOutput();
@@ -415,7 +413,7 @@ struct SoftmaxPermutePattern : public OpRewritePattern<PermuteOp> {
     if (out.hasOneUse() == false) {
       return failure();
     }
-    auto user = *out.getUsers().begin();
+    auto user = *out.user_begin();
     auto softmax_op = dyn_cast<SoftmaxOp>(user);
     if (!softmax_op) {
       return failure();
@@ -501,7 +499,7 @@ struct PermutePadSwap : public OpRewritePattern<PermuteOp> {
     if (out.hasOneUse() == false) {
       return failure();
     }
-    auto user = *out.getUsers().begin();
+    auto user = *out.user_begin();
     auto pad_op = dyn_cast<PadOp>(user);
     if (!pad_op) {
       return failure();
@@ -662,7 +660,7 @@ struct PermuteBinaryPattern : public OpRewritePattern<PermuteOp> {
     if (!output.hasOneUse()) {
       return failure();
     }
-    auto p_next_op = *output.getUsers().begin();
+    auto p_next_op = *output.user_begin();
     if (!isa<AddOp, SubOp, MulOp>(p_next_op)) {
       return failure();
     }

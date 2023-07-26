@@ -32,9 +32,7 @@ struct TopLayerNormReshape : public OpRewritePattern<LayerNormOp> {
         for (int64_t i = axis; i < num_dims; ++i) {
           new_shape[i] = weight_shape[i - axis];
         }
-        auto new_type =
-            RankedTensorType::get(new_shape, module::getElementType(weight));
-        weight.setType(new_type);
+        module::setShape(weight, new_shape);
         res = success();
       }
     }
@@ -47,9 +45,7 @@ struct TopLayerNormReshape : public OpRewritePattern<LayerNormOp> {
         for (int64_t i = axis; i < num_dims; ++i) {
           new_shape[i] = bias_shape[i - axis];
         }
-        auto new_type =
-            RankedTensorType::get(new_shape, module::getElementType(bias));
-        bias.setType(new_type);
+        module::setShape(bias, new_shape);
         res = success();
       }
     }

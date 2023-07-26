@@ -49,9 +49,9 @@ public:
 
       auto l_order = module::getI64Array(l_trans_op.getOrder());
       auto r_order = module::getI64Array(r_trans_op.getOrder());
-      if (false ==
-          (l_order->size() == 4 && l_order->at(0) == 0 && l_order->at(1) == 2 &&
-          r_order->size() == 4 && r_order->at(0) == 0 && r_order->at(1) == 2)) {
+      if (false == (l_order->size() == 4 && l_order->at(0) == 0 &&
+                    l_order->at(1) == 2 && r_order->size() == 4 &&
+                    r_order->at(0) == 0 && r_order->at(1) == 2)) {
         return failure();
       }
       auto l_trans = op.getLeftTranspose();
@@ -75,8 +75,11 @@ public:
       rewriter.eraseOp(l_trans_op);
       rewriter.eraseOp(r_trans_op);
     } else { // left or right is weight
-      auto trans_op = r_is_weight ? dyn_cast<tpu::PermuteOp>(left.getDefiningOp()) : dyn_cast<tpu::PermuteOp>(right.getDefiningOp());
-      auto weight_op = l_is_weight ? left.getDefiningOp<top::WeightOp>() : right.getDefiningOp<top::WeightOp>();
+      auto trans_op = r_is_weight
+                          ? dyn_cast<tpu::PermuteOp>(left.getDefiningOp())
+                          : dyn_cast<tpu::PermuteOp>(right.getDefiningOp());
+      auto weight_op = l_is_weight ? left.getDefiningOp<top::WeightOp>()
+                                   : right.getDefiningOp<top::WeightOp>();
       if (!weight_op->hasOneUse()) {
         return failure();
       }
@@ -105,24 +108,32 @@ public:
       // transpose the weight
       auto weight_type = module::getElementType(weight_op.getOutput());
       auto weight_shape = module::getShape(weight_op.getOutput());
-      if (weight_type.isInteger(8)){
+      if (weight_type.isInteger(8)) {
         auto weight_data = weight_op.read<uint8_t>();
-        auto weight_trans = std::make_shared<std::vector<uint8_t>>(weight_data->size(), 0);
-        function_permute(weight_data->data(), weight_trans->data(), weight_shape, {0, 2, 1, 3});
-        std::vector<int64_t> weight_new_shape = {weight_shape[0], weight_shape[2], weight_shape[1], weight_shape[3]};
+        auto weight_trans =
+            std::make_shared<std::vector<uint8_t>>(weight_data->size(), 0);
+        function_permute(weight_data->data(), weight_trans->data(),
+                         weight_shape, {0, 2, 1, 3});
+        std::vector<int64_t> weight_new_shape = {
+            weight_shape[0], weight_shape[2], weight_shape[1], weight_shape[3]};
         rewriter.setInsertionPointAfter(op);
         auto type = RankedTensorType::get(weight_new_shape, weight_type);
-        auto new_weight = top::WeightOp::create<uint8_t>(op, "transposed", *weight_trans, type);
+        auto new_weight = top::WeightOp::create<uint8_t>(op, "transposed",
+                                                         *weight_trans, type);
         op->setOperand(0, l_is_weight ? new_weight : trans_op.getInput());
         op->setOperand(1, r_is_weight ? new_weight : trans_op.getInput());
       } else if (weight_type.isF16() || weight_type.isBF16()) {
         auto weight_data = weight_op.read<uint16_t>();
-        auto weight_trans = std::make_shared<std::vector<uint16_t>>(weight_data->size(), 0);
-        function_permute(weight_data->data(), weight_trans->data(), weight_shape, {0, 2, 1, 3});
-        std::vector<int64_t> weight_new_shape = {weight_shape[0], weight_shape[2], weight_shape[1], weight_shape[3]};
+        auto weight_trans =
+            std::make_shared<std::vector<uint16_t>>(weight_data->size(), 0);
+        function_permute(weight_data->data(), weight_trans->data(),
+                         weight_shape, {0, 2, 1, 3});
+        std::vector<int64_t> weight_new_shape = {
+            weight_shape[0], weight_shape[2], weight_shape[1], weight_shape[3]};
         rewriter.setInsertionPointAfter(op);
         auto type = RankedTensorType::get(weight_new_shape, weight_type);
-        auto new_weight = top::WeightOp::create<uint16_t>(op, "transposed", *weight_trans, type);
+        auto new_weight = top::WeightOp::create<uint16_t>(op, "transposed",
+                                                          *weight_trans, type);
         op->setOperand(0, l_is_weight ? new_weight : trans_op.getInput());
         op->setOperand(1, r_is_weight ? new_weight : trans_op.getInput());
       } else {
@@ -146,13 +157,9 @@ public:
     new_out_shape[1] = out_shape[2];
     new_out_shape[2] = out_shape[1];
     new_out_shape[3] = out_shape[3];
-    auto new_out_type =
-        RankedTensorType::get(new_out_shape, module::getElementType(mat_out));
-    mat_out.setType(new_out_type);
-    auto out_name = module::getName(mat_out).str();
-    auto new_loc =
-        NameLoc::get(rewriter.getStringAttr(out_name + "_hdim_is_batch"));
-    op->setLoc(new_loc);
+    module::setShape(mat_out, new_out_shape);
+    auto ori_loc = op->getLoc();
+    module::setLocSuffix(op, "hdim_is_batch");
 
     // Add Transpose(0,2,1,3) to output
     rewriter.setInsertionPointAfter(op);
@@ -160,10 +167,8 @@ public:
     std::vector<int64_t> out_order = {0, 2, 1, 3};
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(out_order)));
-    auto trans_loc = NameLoc::get(rewriter.getStringAttr(out_name));
     auto trans_op = rewriter.create<tpu::PermuteOp>(
-        trans_loc, trans_type, ValueRange{mat_out, module::getNoneOp(op)},
-        attrs);
+        ori_loc, trans_type, ValueRange{mat_out, module::getNoneOp(op)}, attrs);
     rewriter.replaceAllUsesExcept(mat_out, trans_op->getResult(0), trans_op);
     return success();
   }
@@ -296,7 +301,7 @@ public:
 
     auto in_shape = module::getShape(op.getInput());
     auto out_shape = module::getShape(op.getOutput());
-    auto nextOp = *op.getOutput().getUsers().begin();
+    auto nextOp = *op.getOutput().user_begin();
     if (nextOp->hasOneUse() == false) {
       return failure();
     }
@@ -332,9 +337,7 @@ public:
       newType = RankedTensorType::get(
           out_shape, module::getElementType(cast_op.getOutput()));
       auto out_loc = cast_op.getLoc(); // keep out location unchanged.
-      auto name = module::getName(cast_op.getOutput());
-      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
-      cast_op->setLoc(loc);
+      module::setLocSuffix(cast_op, "trans");
       std::vector<NamedAttribute> attrs;
       attrs.push_back(
           rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
@@ -353,8 +356,7 @@ public:
       std::vector<int64_t> inB_shape = module::getShape(inB);
       std::vector<int64_t> new_inB_shape = {inB_shape[0], inB_shape[2],
                                             inB_shape[1], inB_shape[3]};
-      auto newType =
-          RankedTensorType::get(new_inB_shape, module::getElementType(inB));
+      auto newType = module::getTypeLike(inB, new_inB_shape);
       auto weight_op = inB.getDefiningOp<top::WeightOp>();
       auto weight_type = module::getElementType(weight_op.getOutput());
       if (weight_type.isF16() || weight_type.isBF16()) {
@@ -365,7 +367,7 @@ public:
         auto weight = tpu_mlir::top::WeightOp::create<uint16_t>(
             add_op, "transposed_add_weight", *weight_tp, newType);
         add_op.setOperand(1, weight);
-      } else if(weight_type.isF32()){
+      } else if (weight_type.isF32()) {
         auto weight_data = weight_op.read<float>();
         auto weight_tp =
             std::make_shared<std::vector<float>>(weight_data->size(), 0);
@@ -373,7 +375,7 @@ public:
         auto weight = tpu_mlir::top::WeightOp::create<float>(
             add_op, "transposed_add_weight", *weight_tp, newType);
         add_op.setOperand(1, weight);
-      }else if(weight_type.isInteger(8)){
+      } else if (weight_type.isInteger(8)) {
         auto weight_data = weight_op.read<uint8_t>();
         auto weight_tp =
             std::make_shared<std::vector<uint8_t>>(weight_data->size(), 0);
@@ -391,9 +393,7 @@ public:
       newType = RankedTensorType::get(
           out_shape, module::getElementType(add_op.getOutput()));
       auto out_loc = add_op.getLoc(); // keep out location unchanged.
-      auto name = module::getName(add_op.getOutput());
-      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
-      add_op->setLoc(loc);
+      module::setLocSuffix(add_op, "_trans");
       std::vector<NamedAttribute> attrs;
       attrs.push_back(
           rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
@@ -414,28 +414,22 @@ public:
       }
       std::vector<int64_t> new_inB_shape = {inB_shape[0], inB_shape[2],
                                             inB_shape[1], inB_shape[3]};
-      auto newType =
-          RankedTensorType::get(new_inB_shape, module::getElementType(inB));
-      inB.setType(newType);
+      module::setShape(inB, new_inB_shape);
+      Value mul_out = mul_op.getOutput();
+      module::setShape(mul_out, in_shape);
 
-      newType = RankedTensorType::get(
-          in_shape, module::getElementType(mul_op.getOutput()));
-      mul_op.getOutput().setType(newType);
       op.replaceAllUsesWith(op.getInput());
       rewriter.setInsertionPointAfter(mul_op);
-      newType = RankedTensorType::get(
-          out_shape, module::getElementType(mul_op.getOutput()));
+      auto newType = module::getTypeLike(mul_out, out_shape);
       auto out_loc = mul_op.getLoc(); // keep out location unchanged.
-      auto name = module::getName(mul_op.getOutput());
-      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
-      mul_op->setLoc(loc);
+      module::setLocSuffix(mul_op, "trans");
       std::vector<NamedAttribute> attrs;
       attrs.push_back(
           rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
       auto new_op = rewriter.create<tpu::PermuteOp>(
-          out_loc, newType,
-          ValueRange{mul_op.getOutput(), module::getNoneOp(mul_op)}, attrs);
-      mul_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
+          out_loc, newType, ValueRange{mul_out, module::getNoneOp(mul_op)},
+          attrs);
+      mul_out.replaceAllUsesExcept(new_op.getOutput(), {new_op});
       rewriter.eraseOp(op);
       return success();
 
@@ -452,9 +446,7 @@ public:
       newType = RankedTensorType::get(
           out_shape, module::getElementType(softmax_op.getOutput()));
       auto out_loc = softmax_op.getLoc(); // keep out location unchanged.
-      auto name = module::getName(softmax_op.getOutput());
-      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
-      softmax_op->setLoc(loc);
+      module::setLocSuffix(softmax_op, "trans");
       std::vector<NamedAttribute> attrs;
       attrs.push_back(
           rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
@@ -478,7 +470,7 @@ public:
       rewriter.eraseOp(permute_op);
       rewriter.eraseOp(op);
       return success();
-    } else if (auto mulshift_op = dyn_cast<tpu::MulShiftOp>(nextOp)){
+    } else if (auto mulshift_op = dyn_cast<tpu::MulShiftOp>(nextOp)) {
       auto newType = RankedTensorType::get(
           in_shape, module::getElementType(mulshift_op.getOutput()));
       mulshift_op.getOutput().setType(newType);
@@ -487,9 +479,7 @@ public:
       newType = RankedTensorType::get(
           out_shape, module::getElementType(mulshift_op.getOutput()));
       auto out_loc = mulshift_op.getLoc(); // keep out location unchanged.
-      auto name = module::getName(mulshift_op.getOutput());
-      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
-      mulshift_op->setLoc(loc);
+      module::setLocSuffix(mulshift_op, "trans");
       std::vector<NamedAttribute> attrs;
       attrs.push_back(
           rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
@@ -514,26 +504,27 @@ public:
                                 PatternRewriter &rewriter) const override {
     auto input_shape = module::getShape(op.getBrn());
     auto condition_shape = module::getShape(op.getCond());
-    if(input_shape != condition_shape){
+    if (input_shape != condition_shape) {
       return failure();
     }
     auto op_name = module::getName(op.getOutput()).str();
     if (op_name.find("_masked_fill") != std::string::npos) {
       return failure();
     }
+    auto none_op = module::getNoneOp(op);
     std::vector<bool> is_permute;
     assert(op->getNumOperands() == 2);
     tpu::PermuteOp permute_op;
     for (auto opd : op->getOperands()) {
       Operation *op_ = opd.getDefiningOp();
-      if(isa<tpu::PermuteOp>(op_)){
+      if (isa<tpu::PermuteOp>(op_)) {
         is_permute.push_back(true);
         permute_op = dyn_cast<tpu::PermuteOp>(op_);
       } else {
         is_permute.push_back(false);
       }
     }
-    if(is_permute[0] == is_permute[1]){
+    if (is_permute[0] == is_permute[1]) {
       return failure();
     }
     auto permute_attr = permute_op->getAttrs();
@@ -549,21 +540,25 @@ public:
     auto name = module::getName(need_permute_op);
     std::vector<NamedAttribute> attrs;
 
-    attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(inv_order)));
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(inv_order)));
 
     int user_count = 0;
-    for(auto j : need_permute_op.getUsers()){
-      if(isa<tpu::PermuteOp>(j)){
+    for (auto j : need_permute_op.getUsers()) {
+      if (isa<tpu::PermuteOp>(j)) {
         user_count++;
       }
     }
-    auto loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_permute" + std::to_string(user_count)));
-    auto new_permute_op = rewriter.create<tpu::PermuteOp>(loc, type, ValueRange{need_permute_op, module::getNoneOp(need_permute_op.getDefiningOp())}, attrs);
+    auto loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_permute" +
+                                                   std::to_string(user_count)));
+    auto new_permute_op = rewriter.create<tpu::PermuteOp>(
+        loc, type, ValueRange{need_permute_op, none_op}, attrs);
     auto masked_fill_attrs = op->getAttrs();
-    loc = NameLoc::get(rewriter.getStringAttr(
-        module::getName(need_permute_op).str() + "_masked_fill" + std::to_string(user_count)));
+    loc = NameLoc::get(
+        rewriter.getStringAttr(module::getName(need_permute_op).str() +
+                               "_masked_fill" + std::to_string(user_count)));
     Value cond, brn;
-    if(is_permute[0]){
+    if (is_permute[0]) {
       cond = permute_op.getInput();
       brn = new_permute_op.getOutput();
     } else {
@@ -572,11 +567,13 @@ public:
     }
     rewriter.setInsertionPointAfterValue(new_permute_op.getOutput());
     auto new_masked_fill_op = rewriter.create<tpu::MaskedFillOp>(
-      loc, type, ValueRange{cond, brn}, masked_fill_attrs);
+        loc, type, ValueRange{cond, brn}, masked_fill_attrs);
     rewriter.replaceAllUsesWith(permute_op, new_masked_fill_op.getOutput());
     rewriter.eraseOp(permute_op);
     rewriter.setInsertionPointAfterValue(new_masked_fill_op.getOutput());
-    auto post_permute_op = rewriter.create<tpu::PermuteOp>(op.getLoc(), op.getOutput().getType(), ValueRange{new_masked_fill_op.getOutput(), module::getNoneOp(new_masked_fill_op)}, permute_attr);
+    auto post_permute_op = rewriter.create<tpu::PermuteOp>(
+        op.getLoc(), op.getOutput().getType(),
+        ValueRange{new_masked_fill_op.getOutput(), none_op}, permute_attr);
     rewriter.replaceAllUsesWith(op.getOutput(), post_permute_op.getOutput());
     rewriter.eraseOp(op);
     return success();
@@ -606,16 +603,18 @@ public:
     op.setOperand(0, l_permute_op.getInput());
     op.setOperand(1, r_permute_op.getInput());
     auto output = op.getOutput();
-    auto add_type = RankedTensorType::get(l_shape, module::getElementType(output));
-    output.setType(add_type);
-    output.setLoc(NameLoc::get(rewriter.getStringAttr(module::getName(op.getOutput()).str() + "_before_permute")));
+    module::setShape(output, l_shape);
+    module::setLocSuffix(op, "befor_permute");
 
     rewriter.setInsertionPointAfterValue(output);
     auto outshape = module::getShape(l_permute_op.getOutput()).vec();
-    auto permute_type = RankedTensorType::get(outshape, module::getElementType(output));
+    auto permute_type =
+        RankedTensorType::get(outshape, module::getElementType(output));
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(l_order)));
-    auto new_permute_op = rewriter.create<tpu::PermuteOp>(loc, permute_type, ValueRange{output, module::getNoneOp(op)}, attrs);
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(l_order)));
+    auto new_permute_op = rewriter.create<tpu::PermuteOp>(
+        loc, permute_type, ValueRange{output, module::getNoneOp(op)}, attrs);
     output.replaceAllUsesExcept(new_permute_op.getOutput(), new_permute_op);
     return success();
   }
@@ -642,13 +641,13 @@ public:
     op.setOperand(0, l_reshape_op.getInput());
     op.setOperand(1, r_reshape_op.getInput());
     auto output = op.getOutput();
-    auto add_type = RankedTensorType::get(l_in_shape, module::getElementType(output));
-    output.setType(add_type);
-    output.setLoc(NameLoc::get(rewriter.getStringAttr(module::getName(op.getOutput()).str() + "_before_reshape")));
+    module::setShape(output, l_in_shape);
+    module::setLocSuffix(op, "before_reshape");
 
     rewriter.setInsertionPointAfterValue(output);
-    auto reshape_type = RankedTensorType::get(l_out_shape, module::getElementType(output));
-    auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(loc, reshape_type, ValueRange{output});
+    auto reshape_type = module::getTypeLike(output, l_out_shape);
+    auto new_reshape_op =
+        rewriter.create<tpu::ReshapeOp>(loc, reshape_type, ValueRange{output});
     output.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
     return success();
   }
@@ -666,7 +665,7 @@ public:
     if (!output.hasOneUse()) {
       return failure();
     }
-    auto next_op_ = *output.getUsers().begin();
+    auto next_op_ = *output.user_begin();
 
     if (auto next_op = dyn_cast<tpu::MatMulOp>(next_op_)) {
       // right is from Reshape too
@@ -707,17 +706,12 @@ public:
       auto oshape = module::getShape(next_out);
       std::vector<int64_t> new_oshape{lshape_[0], lshape_[1], oshape[1],
                                       oshape[2]};
-      auto new_out_type =
-          RankedTensorType::get(new_oshape, module::getElementType(next_out));
-      next_out.setType(new_out_type);
-      auto ori_name = module::getName(next_out).str();
-      auto new_loc =
-          NameLoc::get(rewriter.getStringAttr(ori_name + "_Reshape"));
-      next_op->setLoc(new_loc);
+      module::setShape(next_out, new_oshape);
+      auto ori_loc = next_op.getLoc();
+      module::setLocSuffix(next_op, "Reshape");
 
       // Add ReshapeOp after MatMul
       rewriter.setInsertionPointAfterValue(next_out);
-      auto ori_loc = NameLoc::get(rewriter.getStringAttr(ori_name));
       auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
           ori_loc, ori_out_type, ValueRange{next_out});
       next_out.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
@@ -747,17 +741,12 @@ public:
       // update next_op output shape and modify loc name to avoid comparing
       auto next_out = next_op_->getResult(0);
       auto ori_out_type = next_out.getType();
-      auto new_out_type =
-          RankedTensorType::get(ishape, module::getElementType(next_out));
-      next_out.setType(new_out_type);
-      auto ori_name = module::getName(next_out).str();
-      auto new_loc =
-          NameLoc::get(rewriter.getStringAttr(ori_name + "_Reshape"));
-      next_op_->setLoc(new_loc);
+      auto ori_loc = next_op_->getLoc();
+      module::setShape(next_out, ishape);
+      module::setLocSuffix(next_op_, "Reshape");
 
       // Add ReshapeOp after MulConst/Cast/Softmax
       rewriter.setInsertionPointAfterValue(next_out);
-      auto ori_loc = NameLoc::get(rewriter.getStringAttr(ori_name));
       auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
           ori_loc, ori_out_type, ValueRange{next_out});
       next_out.replaceAllUsesExcept(new_reshape_op.getOutput(), new_reshape_op);
@@ -859,9 +848,8 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
     if (out1_shape == in0_shape) {
       op.getOutput().replaceAllUsesWith(permute_op.getInput());
     } else {
-      std::string in_name =
-          module::getName(permute_op.getInput()).str() + "_Reshape";
-      auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
+      auto loc =
+          module::getLocLike(permute_op.getInput().getDefiningOp(), "Reshape");
       rewriter.setInsertionPoint(op);
       auto rs_op = rewriter.create<tpu::ReshapeOp>(
           loc, op.getOutput().getType(), ValueRange{permute_op.getInput()});

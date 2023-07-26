@@ -19,7 +19,7 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
 
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
-    auto nextOp = *op->getUsers().begin();
+    auto nextOp = *op->user_begin();
     if (!op->hasOneUse() || !isa<ScaleOp>(nextOp)) {
       return failure();
     }
@@ -199,9 +199,7 @@ struct ScaleShapeAlign : public OpRewritePattern<ScaleOp> {
       if (auto weight = dyn_cast<WeightOp>(op.getScale().getDefiningOp())) {
         auto weight_shape = module::getShape(operand);
         if (weight_shape.size() == 1 && input_shape[1] == weight_shape[0]) {
-          auto expand_shape = RankedTensorType::get(
-              {1, weight_shape[0]}, module::getElementType(operand));
-          operand.setType(expand_shape);
+          module::setShape(operand, {1, weight_shape[0]});
           changed = true;
         }
       }

@@ -13,10 +13,9 @@ namespace tpu_mlir {
 namespace bm1684 {
 
 void ClipLowering::LoweringF32(PatternRewriter &rewriter, top::ClipOp op) const {
-  auto name = module::getName(op.getOutput());
   auto type = op.getOutput().getType();
   rewriter.setInsertionPointAfter(op);
-  auto max_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_max"));
+  auto max_loc = module::getLocLike(op, "max");
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr(
       "const_val", op.getMinAttr()));
@@ -36,10 +35,9 @@ void ClipLowering::LoweringF32(PatternRewriter &rewriter, top::ClipOp op) const 
 
 void ClipLowering::LoweringINT8(PatternRewriter &rewriter, top::ClipOp op,
                                bool asymmetric) const {
-  auto name = module::getName(op.getOutput());
   auto type = op.getOutput().getType();
   rewriter.setInsertionPointAfter(op);
-  auto max_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_max"));
+  auto max_loc = module::getLocLike(op, "max");
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr(
       "const_val", op.getMinAttr()));

@@ -37,7 +37,7 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
       if (!module::isUniformQuantized(op.getOutput()) && !isF32toF16(op)) {
         // special case for 18xx MatchTemplateOp
         if (module::getStorageType(op.getOutput()).isUnsignedInteger(8)) {
-          auto nextOp = *op->getUsers().begin();
+          auto nextOp = *op->user_begin();
           if (!module::isCV18xx() || !isa<tpu::MatchTemplateOp>(nextOp)) {
             return failure();
           }
