@@ -374,8 +374,8 @@ class OnnxConverter(BaseConverter):
         print("ConstantFolding finished")
         try:
             self.model, _ = onnxsim.simplify(self.model,
-                                            skip_constant_folding=True,
-                                            skip_shape_inference=True)
+                                             skip_constant_folding=True,
+                                             skip_shape_inference=True)
         except:
             print("WARNING: onnxsim opt failed.")
         print("Onnxsim opt finished")
@@ -2689,7 +2689,9 @@ class OnnxConverter(BaseConverter):
                     dtype = "INT32"
                 else:
                     dtype = "F32"
-                arg_types.append(self.mlir.get_tensor_type(shape if len(shape) > 0 else [1] , self.mlir.mlir_type[dtype]))
+                arg_types.append(
+                    self.mlir.get_tensor_type(shape if len(shape) > 0 else [1],
+                                              self.mlir.mlir_type[dtype]))
                 self.input_names.append(input.name)
                 subgraph_input_names.append(input.name)
         self.mlir.buildBlock(region, arg_types)

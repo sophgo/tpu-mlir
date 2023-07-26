@@ -278,5 +278,5 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
 
 void ConvOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                          MLIRContext *context) {
-  results.insert<Conv3dTranspose, Conv3dTo2d, Conv1dTo2d, Conv1x1Convkxk2dMerge>(context);
+  results.insert<Conv3dTranspose, Conv3dTo2d, Conv1dTo2d>(context);
 }
