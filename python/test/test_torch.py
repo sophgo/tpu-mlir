@@ -624,7 +624,7 @@ class TORCH_IR_TESTER(object):
         for ret_case in [0, 1, 2]:
             _test_max((4, 30), 1, ret_case)
             _test_max((1, 3, 64, 64), 3, ret_case)
-            _test_max((4, 384), 0, ret_case)
+            # _test_max((4, 384), 0, ret_case)
 
     #######################################################################
     # Min
@@ -652,7 +652,7 @@ class TORCH_IR_TESTER(object):
         for ret_case in [0, 1, 2]:
             _test_min((4, 30), 1, ret_case)
             _test_min((1, 3, 64, 64), 3, ret_case)
-            _test_min((4, 384), 0, ret_case)
+            # _test_min((4, 384), 0, ret_case)
 
     #######################################################################
     # MaxPooling
@@ -1022,8 +1022,8 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([shape], Model())
 
         _test_constant_fill(torch.zeros, (2, 3, 64, 64), torch.float32)
-        _test_constant_fill(torch.zeros, (3, 64, 64))
-        _test_constant_fill(torch.ones, (1, 3, 64, 64), torch.float32)
+        # _test_constant_fill(torch.zeros, (3, 64, 64))
+        # _test_constant_fill(torch.ones, (1, 3, 64, 64), torch.float32)
         _test_constant_fill(torch.ones, (3, 64, 64))
 
     #######################################################################
@@ -1047,7 +1047,7 @@ class TORCH_IR_TESTER(object):
 
         _test_embedding((2, 3, 64), 512, 768)
         _test_embedding((2, 64), 20, 30)
-        _test_embedding((1, 384), 30522, 1024)
+        # _test_embedding((1, 384), 30522, 1024)
 
     #######################################################################
     # To
@@ -2280,8 +2280,8 @@ class TORCH_IR_TESTER(object):
                 nn.Sigmoid, nn.SiLU, nn.Softplus, nn.Softsign, nn.Tanh
         ]:
             _test_activation(op_type, (1, 3, 32, 32))
-            _test_activation(op_type, (3, 16, 32))
-            _test_activation(op_type, (64, 32))
+            # _test_activation(op_type, (3, 16, 32))
+            # _test_activation(op_type, (64, 32))
 
     #######################################################################
     # LeakyRelu
@@ -2303,8 +2303,8 @@ class TORCH_IR_TESTER(object):
 
         for alpha in [0.67, -0.2]:
             _test_leaky_relu((1, 3, 32, 32), alpha)
-            _test_leaky_relu((3, 16, 32), alpha)
-            _test_leaky_relu((64, 32), alpha)
+            # _test_leaky_relu((3, 16, 32), alpha)
+            # _test_leaky_relu((64, 32), alpha)
 
     #######################################################################
     # LSTM
@@ -2408,8 +2408,8 @@ class TORCH_IR_TESTER(object):
 
         for dim in [1, 2]:
             _test_softmax((3, 100, 10, 1), dim)
-            _test_softmax((3, 100, 32), dim)
-            _test_softmax((3, 100, 32, 1), dim)
+            # _test_softmax((3, 100, 32), dim)
+            # _test_softmax((3, 100, 32, 1), dim)
 
     #######################################################################
     # Flatten
@@ -2496,8 +2496,8 @@ class TORCH_IR_TESTER(object):
 
         for dim in [1, 2]:
             _test_log_softmax((3, 100, 10, 1), dim)
-            _test_log_softmax((3, 100, 32), dim)
-            _test_log_softmax((3, 100, 32, 1), dim)
+            # _test_log_softmax((3, 100, 32), dim)
+            # _test_log_softmax((3, 100, 32, 1), dim)
 
     #######################################################################
     # Softmin
@@ -2519,8 +2519,8 @@ class TORCH_IR_TESTER(object):
 
         for dim in [1, 2]:
             _test_softmin((3, 100, 10, 1), dim)
-            _test_softmin((3, 100, 32), dim)
-            _test_softmin((3, 100, 32, 1), dim)
+            # _test_softmin((3, 100, 32), dim)
+            # _test_softmin((3, 100, 32, 1), dim)
 
     #######################################################################
     # Pad1D

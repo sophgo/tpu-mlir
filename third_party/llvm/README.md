@@ -10,7 +10,7 @@ git am 0001-ajust-for-tpu-mlir.patch
 cd llvm-project/build
 cmake -G Ninja ../llvm \
    -DLLVM_ENABLE_PROJECTS="mlir" \
-   -DLLVM_TARGETS_TO_BUILD="" \
+   -DLLVM_TARGETS_TO_BUILD="host" \
    -DLLVM_ENABLE_RTTI=ON \
    -DLLVM_ENABLE_EH=ON \
    -DLLVM_ENABLE_ASSERTIONS=ON \
