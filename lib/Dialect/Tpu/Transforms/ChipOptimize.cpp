@@ -7,11 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 
 using namespace llvm;
-
 
 namespace tpu_mlir {
 namespace tpu {
@@ -20,6 +19,7 @@ extern void populateOptimizeBM1684Patterns(RewritePatternSet *patterns);
 extern void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns);
 extern void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns);
 extern void populateOptimizeBM168xPatterns(RewritePatternSet *patterns);
+extern void populateOptimizePermutePatterns(RewritePatternSet *patterns);
 
 class ChipOptimizePass : public ChipOptimizeBase<ChipOptimizePass> {
 public:
@@ -36,6 +36,7 @@ public:
       populateOptimizeBM168xPatterns(&patterns);
       populateOptimizeBM1684Patterns(&patterns);
     }
+    populateOptimizePermutePatterns(&patterns);
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
   }
 };

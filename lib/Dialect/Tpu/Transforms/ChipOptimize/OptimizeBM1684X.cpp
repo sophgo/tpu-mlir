@@ -7,9 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Patterns.h"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -253,7 +253,8 @@ private:
 };
 
 // reorder op when transpose is before mulconst/cast/softmax to optimize bert
-class PermuteReorderPattern : public OpRewritePattern<tpu::PermuteOp> {
+// TODO: may be merged into PermuteReorderPattern
+class PermuteAddWeightReorderPattern : public OpRewritePattern<tpu::PermuteOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::PermuteOp op,
@@ -277,50 +278,13 @@ public:
     if (nextOp->hasOneUse() == false) {
       return failure();
     }
-    if (auto mulconst_op = dyn_cast<tpu::MulConstOp>(nextOp)) {
-      auto newType = RankedTensorType::get(
-          in_shape, module::getElementType(mulconst_op.getOutput()));
-      mulconst_op.getOutput().setType(newType);
-      op.replaceAllUsesWith(op.getInput());
-      rewriter.setInsertionPointAfter(mulconst_op);
-      newType = RankedTensorType::get(
-          out_shape, module::getElementType(mulconst_op.getOutput()));
-      auto out_loc = mulconst_op.getLoc(); // keep out location unchanged.
-      auto name = module::getName(mulconst_op.getOutput());
-      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_trans"));
-      mulconst_op->setLoc(loc);
-      std::vector<NamedAttribute> attrs;
-      attrs.push_back(
-          rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
-      auto new_op = rewriter.create<tpu::PermuteOp>(
-          out_loc, newType,
-          ValueRange{mulconst_op.getOutput(), module::getNoneOp(mulconst_op)},
-          attrs);
-      mulconst_op.getOutput().replaceAllUsesExcept(new_op.getOutput(),
-                                                   {new_op});
-      rewriter.eraseOp(op);
-      return success();
-    } else if (auto cast_op = dyn_cast<tpu::CastOp>(nextOp)) {
-      auto newType = RankedTensorType::get(
-          in_shape, module::getElementType(cast_op.getOutput()));
-      cast_op.getOutput().setType(newType);
-      op.replaceAllUsesWith(op.getInput());
-      rewriter.setInsertionPointAfter(cast_op);
-      newType = RankedTensorType::get(
-          out_shape, module::getElementType(cast_op.getOutput()));
-      auto out_loc = cast_op.getLoc(); // keep out location unchanged.
-      module::setLocSuffix(cast_op, "trans");
-      std::vector<NamedAttribute> attrs;
-      attrs.push_back(
-          rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
-      auto new_op = rewriter.create<tpu::PermuteOp>(
-          out_loc, newType,
-          ValueRange{cast_op.getOutput(), module::getNoneOp(cast_op)}, attrs);
-      cast_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
-      // if do not erase, Permute+Permute->null pattern can not recognize
-      rewriter.eraseOp(op);
-      return success();
-    } else if (auto add_op = dyn_cast<tpu::AddOp>(nextOp)) {
+    if (auto add_op = dyn_cast<tpu::AddOp>(nextOp)) {
+      /**
+       * weight        ->         permuted_weight   ->
+       *               -> Add =>                    -> Add -> perm
+       * input -> perm ->         input             ->
+       *
+       */
       auto inB = add_op.getInputs()[1];
       if (!module::isWeight(inB)) {
         return failure();
@@ -404,71 +368,17 @@ public:
       mul_out.replaceAllUsesExcept(new_op.getOutput(), {new_op});
       rewriter.eraseOp(op);
       return success();
-
-    } else if (auto softmax_op = dyn_cast<tpu::SoftmaxOp>(nextOp)) {
-      int64_t axis = softmax_op.getAxis();
-      if (!(axis == -1 || axis == out_shape.size() - 1)) {
-        return failure();
-      }
-      auto newType = RankedTensorType::get(
-          in_shape, module::getElementType(softmax_op.getOutput()));
-      softmax_op.getOutput().setType(newType);
-      op.replaceAllUsesWith(op.getInput());
-      rewriter.setInsertionPointAfter(softmax_op);
-      newType = RankedTensorType::get(
-          out_shape, module::getElementType(softmax_op.getOutput()));
-      auto out_loc = softmax_op.getLoc(); // keep out location unchanged.
-      module::setLocSuffix(softmax_op, "trans");
-      std::vector<NamedAttribute> attrs;
-      attrs.push_back(
-          rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
-      auto new_op = rewriter.create<tpu::PermuteOp>(
-          out_loc, newType,
-          ValueRange{softmax_op.getOutput(), module::getNoneOp(softmax_op)},
-          attrs);
-      softmax_op.getOutput().replaceAllUsesExcept(new_op.getOutput(), {new_op});
-      rewriter.eraseOp(op);
-      return success();
-    } else if (auto permute_op = dyn_cast<tpu::PermuteOp>(nextOp)) {
-      auto next_order = module::getI64Array(op.getOrder());
-      if (*next_order != ps) {
-        return failure();
-      }
-      auto out_loc = permute_op.getLoc();
-      permute_op.replaceAllUsesWith(op.getInput());
-      // op.replaceAllUsesWith(op.geInput());
-      // set loc to the output of nextOp otherwise it cannot compare
-      op.getInput().setLoc(out_loc);
-      rewriter.eraseOp(permute_op);
-      rewriter.eraseOp(op);
-      return success();
-    } else if (auto mulshift_op = dyn_cast<tpu::MulShiftOp>(nextOp)) {
-      auto newType = RankedTensorType::get(
-          in_shape, module::getElementType(mulshift_op.getOutput()));
-      mulshift_op.getOutput().setType(newType);
-      op.replaceAllUsesWith(op.getInput());
-      rewriter.setInsertionPointAfter(mulshift_op);
-      newType = RankedTensorType::get(
-          out_shape, module::getElementType(mulshift_op.getOutput()));
-      auto out_loc = mulshift_op.getLoc(); // keep out location unchanged.
-      module::setLocSuffix(mulshift_op, "trans");
-      std::vector<NamedAttribute> attrs;
-      attrs.push_back(
-          rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(ps)));
-      auto new_op = rewriter.create<tpu::PermuteOp>(
-          out_loc, newType,
-          ValueRange{mulshift_op.getOutput(), module::getNoneOp(mulshift_op)},
-          attrs);
-      mulshift_op.getOutput().replaceAllUsesExcept(new_op.getOutput(),
-                                                   {new_op});
-      rewriter.eraseOp(op);
-      return success();
     }
 
     return failure();
   }
 };
 
+/**
+ * input0 + Permute \              => input0           \
+ *                   => MaskedFill =>                   => MaskedFill + Permute
+ * input1           /              => input1 + Permute /
+*/
 class MaskedFillPermuteMove : public OpRewritePattern<tpu::MaskedFillOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -545,53 +455,28 @@ public:
     rewriter.setInsertionPointAfterValue(new_masked_fill_op.getOutput());
     auto post_permute_op = rewriter.create<tpu::PermuteOp>(
         op.getLoc(), op.getOutput().getType(),
-        ValueRange{new_masked_fill_op.getOutput(), none_op}, permute_attr);
+        ValueRange{new_masked_fill_op.getOutput(),
+                   module::getNoneOp(new_masked_fill_op)},
+        permute_attr);
     rewriter.replaceAllUsesWith(op.getOutput(), post_permute_op.getOutput());
     rewriter.eraseOp(op);
     return success();
   }
 };
-} // namespace bm1684x
 
-// TODO: generalize the following 2 patterns for other bcbinary
-class MovePermuteAfterAdd : public OpRewritePattern<tpu::AddOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::AddOp op,
-                                PatternRewriter &rewriter) const override {
-    auto l_permute_op = op.getOperand(0).getDefiningOp<tpu::PermuteOp>();
-    auto r_permute_op = op.getOperand(1).getDefiningOp<tpu::PermuteOp>();
-    if (!l_permute_op || !r_permute_op)
-      return failure();
-    auto l_order = *module::getI64Array(l_permute_op.getOrder());
-    auto r_order = *module::getI64Array(r_permute_op.getOrder());
-    if (l_order != r_order)
-      return failure();
-    auto l_shape = module::getShape(l_permute_op.getInput()).vec();
-    auto r_shape = module::getShape(r_permute_op.getInput()).vec();
-    if (l_shape != r_shape)
-      return failure();
-    auto loc = op.getLoc();
-    op.setOperand(0, l_permute_op.getInput());
-    op.setOperand(1, r_permute_op.getInput());
-    auto output = op.getOutput();
-    module::setShape(output, l_shape);
-    module::setLocSuffix(op, "befor_permute");
-
-    rewriter.setInsertionPointAfterValue(output);
-    auto outshape = module::getShape(l_permute_op.getOutput()).vec();
-    auto permute_type =
-        RankedTensorType::get(outshape, module::getElementType(output));
-    std::vector<NamedAttribute> attrs;
-    attrs.push_back(
-        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(l_order)));
-    auto new_permute_op = rewriter.create<tpu::PermuteOp>(
-        loc, permute_type, ValueRange{output, module::getNoneOp(op)}, attrs);
-    output.replaceAllUsesExcept(new_permute_op.getOutput(), new_permute_op);
-    return success();
-  }
-};
-
+/**
+ * reshape \
+ *          => Add => Add -> reshape
+ * reshape /
+ *
+ * NOTE: may have performance problem, for example:
+ *  reshape(* -> 1,64,1,1) \
+ *                          => Add(1,64,1,1) => Add(1,1,1,64) -> reshape
+ *  reshape(* -> 1,64,1,1) /
+ *
+ * Optimized pattern can not make full use of lanes.
+ *
+ */
 class MoveReshapeAfterAdd : public OpRewritePattern<tpu::AddOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -628,7 +513,7 @@ public:
 // reorder op when reshapeOp is before matmul/mulconst/cast/softmax op to
 // eliminate reshapeOp
 // copied from lib/Dialect/Top/Transforms/ChipOptimize/OptimizeBM1684X.cpp
-class ReshapeReorderPattern : public OpRewritePattern<tpu::ReshapeOp> {
+class TpuReshapeReorderPattern : public OpRewritePattern<tpu::ReshapeOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::ReshapeOp op,
@@ -746,7 +631,7 @@ public:
 };
 
 // permute + permute or permute + reshape + permute
-// copied from lib/Dialect/Top/Canonicalize/Permute.cpp
+// copied from lib/Dialect/Top/Canonicalize/Permute.cpp (e41cc7c5)
 struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -819,17 +704,20 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
     // bingoo !
     if (out1_shape == in0_shape) {
       op.getOutput().replaceAllUsesWith(permute_op.getInput());
+      rewriter.eraseOp(op);
+      rewriter.eraseOp(permute_op);
     } else {
       auto loc = module::getLocLike(permute_op.getInput(), "Reshape");
       rewriter.setInsertionPoint(op);
       auto rs_op = rewriter.create<tpu::ReshapeOp>(
           loc, op.getOutput().getType(), ValueRange{permute_op.getInput()});
       op.getOutput().replaceAllUsesWith(rs_op.getOutput());
+      rewriter.eraseOp(op);
     }
-    rewriter.eraseOp(op);
     return success();
   }
 };
+} // namespace bm1684x
 
 namespace tpu {
 using namespace bm1684x;
@@ -840,9 +728,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
       MatMulLeftReusePattern,
       MoveReshapeAfterAdd,
       GroupConv2NormalConv,
-      MovePermuteAfterAdd,
-      PermuteReorderPattern,
-      ReshapeReorderPattern,
+      TpuReshapeReorderPattern,
+      PermuteAddWeightReorderPattern,
       MaskedFillPermuteMove,
       PermuteFuse,
       patterns::FuseRepeatPattern<tpu::ReshapeOp>
