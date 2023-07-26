@@ -946,7 +946,7 @@ void set_weight_allow_split_attr(Operation *op) {
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
   if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp,
-          tpu::MaxOp, tpu::CompareOp>(op) &&
+          tpu::MaxOp, tpu::CompareOp, tpu::ConcatOp>(op) &&
       (module::isWeight(op->getOperand(0)) ||
        module::isWeight(op->getOperand(1)))) {
     top::WeightOp weight_op;
