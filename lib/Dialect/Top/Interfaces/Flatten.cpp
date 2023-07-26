@@ -31,20 +31,26 @@ void top::FlattenOp::shape_inference() {
   if (end_dim < 0) {
     end_dim += rank;
   }
-
-  int64_t flatten_dim = 1;
-  for (int i = start_dim; i <= end_dim; i++) {
-    flatten_dim *= input_shape[i];
-  }
-
   std::vector<int64_t> shape;
+  if (module::isPlatform(module::Platform::ONNX)) {
+    auto outer_dims = std::accumulate(input_shape.begin(), input_shape.begin() + start_dim,
+                                      1, std::multiplies<int64_t>());
+    auto inner_dims = std::accumulate(input_shape.begin() + start_dim, input_shape.end(), 1,
+                                      std::multiplies<int64_t>());
+    shape = {outer_dims, inner_dims};
+  } else {
+    int64_t flatten_dim = 1;
+    for (int i = start_dim; i <= end_dim; i++) {
+      flatten_dim *= input_shape[i];
+    }
 
-  for (int i = 0; i < start_dim; i++) {
-    shape.emplace_back(input_shape[i]);
-  }
-  shape.emplace_back(flatten_dim);
-  for (int i = end_dim + 1; i < rank; i++) {
-    shape.emplace_back(input_shape[i]);
+    for (int i = 0; i < start_dim; i++) {
+      shape.emplace_back(input_shape[i]);
+    }
+    shape.emplace_back(flatten_dim);
+    for (int i = end_dim + 1; i < rank; i++) {
+      shape.emplace_back(input_shape[i]);
+    }
   }
 
   auto op = getOperation();

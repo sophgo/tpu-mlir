@@ -871,7 +871,7 @@ def Top_ViewOp:Top_Op<"View"> {
 def Top_FlattenOp:Top_Op<"Flatten"> {
   let summary = "Flatten operation";
   let description = [{
-    gen by torch aten::flatten
+    gen by torch aten::flatten or onnx
   }];
   let arguments = (ins
     AnyTensor:$input,

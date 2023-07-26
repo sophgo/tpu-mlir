@@ -92,6 +92,7 @@ class ONNX_IR_TESTER(object):
             "Exp":          (self.test_Exp,           Y, Y, Y, Y),
             "Expand":       (self.test_Expand,        Y, Y, Y, Y),
             "Expand2":      (self.test_Expand2,       Y, Y, Y, Y),
+            "Flatten":      (self.test_Flatten,       Y, Y, Y, Y),
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y),
             "GatherElements": (self.test_GatherElements,      Y, N, N, N),
@@ -1747,6 +1748,16 @@ class ONNX_IR_TESTER(object):
             x1_node, roi_def, scales_def, sizes1_def, resize1_node, sizes2_def, resize2_node,
             sizes3_def, resize3_node, sizes4_def, resize4_node, sizes5_def, resize5_node
         ], case_name, [input], [output1, output2, output3, output4, output5])
+        self.onnx_and_test(graph_def)
+
+    def test_Flatten(self, case_name):
+        input_shape =  (2, 3, 4, 5)
+        output_shape = [6, 20]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        flatten_def = helper.make_node(case_name, inputs=['input'], outputs=['x'], axis=2,)
+        softmax_def = helper.make_node('Softmax', inputs=['x'], outputs=['output'], axis=-1)
+        graph_def = helper.make_graph([flatten_def, softmax_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
     def test_Reshape(self, case_name):
