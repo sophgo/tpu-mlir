@@ -103,9 +103,7 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
   auto oldNextOpName = module::getName(nextOp).str();
 
   auto input = op.getInput();
-  auto inputType = input.getType();
   auto output = nextOp->getResult(0);
-  auto outputType = output.getType();
   auto outputDtype = module::getElementType(output);
 
   // input -> unary
@@ -214,7 +212,6 @@ PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
     }
 
     auto bi_out = nextOp->getResult(0);
-    auto bi_old_type = bi_out.getType();
     auto bi_out_shape = module::getShape(bi_out);
     std::vector<int64_t> new_bi_out_shape(
         {bi_out_shape[0], bi_out_shape[2], bi_out_shape[1], bi_out_shape[3]});

@@ -33,7 +33,7 @@ mlir::Type getQuantIntType(Value v, double scale, double offset, int bits = 8);
 mlir::Type getQuantInt4Type(Value v, bool asymmetric = false);
 mlir::Type getQuantBoolType(Value v);
 
-template <typename ElemTy = Float32Type>
+template <typename ElemTy>
 static mlir::Type getQuantFloatType(Value v);
 
 class ScfTypeConverter : public TypeConverter {
