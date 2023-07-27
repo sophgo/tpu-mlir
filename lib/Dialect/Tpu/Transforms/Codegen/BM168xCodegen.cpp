@@ -49,7 +49,8 @@ static bmodel::Binary CreateBinaryFromFile(bmodel::ModelGen *model_gen,
   return CreateBinaryFromFile(model_gen, fp);
 }
 
-void BMCodegen::run(ModuleOp &module, std::string &filename) {
+void BMCodegen::run(ModuleOp &module, std::string &filename,
+                    bool embed_debug_info) {
   // record the line number of operation in module.
   llvm::raw_null_ostream os;
   AsmState state(module, OpPrintingFlags(), &opToLineCol);
@@ -184,7 +185,7 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
     }
   }
 
-  if (true) {
+  if (embed_debug_info) {
     auto save_profile_info = [&](StringRef pfname, auto fun) -> bool {
       llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
           llvm::MemoryBuffer::getFileOrSTDIN(pfname);

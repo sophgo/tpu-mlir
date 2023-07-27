@@ -31,7 +31,7 @@ public:
       builder.storeModel(filename);
     } else {
       BMCodegen bm_codegen;
-      bm_codegen.run(module, filename);
+      bm_codegen.run(module, filename, embed_debug_info);
     }
   }
 };

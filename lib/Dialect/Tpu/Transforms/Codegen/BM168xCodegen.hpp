@@ -22,7 +22,8 @@ namespace tpu {
 class BMCodegen {
 public:
   BMCodegen() {}
-  void run(ModuleOp &module, std::string &filename);
+  void run(ModuleOp &module, std::string &filename,
+           bool embed_debug_info = false);
 
 private:
   u32 max_cpu_mem_size = 0;
