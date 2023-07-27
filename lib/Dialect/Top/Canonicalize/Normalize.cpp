@@ -117,7 +117,7 @@ struct NormalizeConvert : public OpRewritePattern<NormalizeOp> {
     scale_op.setOperand(1, scale_weight_op);
     scale_op.setOperand(2, scale_bias_op);
     //replace the origin NormalizeOp
-    rewriter.replaceOp(op, {scale_op});
+    rewriter.replaceOp(op, scale_op);
     return success();
   }
 };

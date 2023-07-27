@@ -15,6 +15,6 @@ add_llvm_library(TPUMLIRSupport
   MLIRQuantUtils
   MLIRInferenceInterface
   cnpy
-  dnnl
+  DNNL::dnnl
   z
 )

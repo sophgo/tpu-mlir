@@ -1,7 +1,3 @@
-if (NOT DEFINED FLATBUFFERS_PATH)
-  message(FATAL_ERROR "Please set FLATBUFFERS_PATH")
-endif()
-message(STATUS "FLATBUFFERS_PATH: ${FLATBUFFERS_PATH}")
 function(compile_fbs)
   get_filename_component(CMAKE_INSTALL_PREFIX_ABS "${CMAKE_INSTALL_PREFIX}" ABSOLUTE)
   foreach(fbs_file IN LISTS ARGN)
@@ -11,7 +7,7 @@ function(compile_fbs)
     message(STATUS "To compile fbs files ${fbs_file} for ${target_header}")
     add_custom_command(OUTPUT ${target_header}
       DEPENDS ${fbs_file}
-      COMMAND ${FLATBUFFERS_PATH}/bin/flatc -o .  --gen-mutable --gen-object-api  --cpp ${fbs_file}
+      COMMAND flatc -o .  --gen-mutable --gen-object-api  --cpp ${fbs_file}
     )
 		set(targets ${targets} ${target_header})
 		add_custom_command(OUTPUT ${fbs_header}
@@ -22,7 +18,7 @@ function(compile_fbs)
     add_custom_command(
       OUTPUT ${python_targets}
       DEPENDS ${fbs_file}
-      COMMAND ${FLATBUFFERS_PATH}/bin/flatc -o ${CMAKE_CURRENT_BINARY_DIR} --python ${fbs_file}
+      COMMAND flatc -o ${CMAKE_CURRENT_BINARY_DIR} --python ${fbs_file}
       COMMAND ${CMAKE_SOURCE_DIR}/python/utils/merge_pyfbs.py ${CMAKE_CURRENT_BINARY_DIR}/bmodel ${python_targets}
     )
     set(targets ${targets} ${fbs_header} ${python_targets})

@@ -77,7 +77,7 @@ struct TopMoveReluAheadConcatPattern : public OpRewritePattern<ReluOp> {
     concatOp->setLoc(NameLoc::get(
         rewriter.getStringAttr(module::getName(formerOp).str() + "_relu")));
 
-    rewriter.replaceOp(op, {concatOp});
+    rewriter.replaceOp(op, concatOp);
     return success();
   }
 };

@@ -400,7 +400,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
         }
       }
     }
-    rewriter.replaceOp(op, {matmul_int32_out});
+    rewriter.replaceOp(op, matmul_int32_out);
   } else {
     attrs.push_back(
         rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shift)));

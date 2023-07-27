@@ -98,7 +98,7 @@ static bool convertDepth2Space(PatternRewriter &rewriter, top::Depth2SpaceOp d2s
     auto newFilterOp = top::WeightOp::create(convOp, filter_name + "_shufflechannel",
                                               new_filter_data, filter_type);
     convOp.setOperand(1, newFilterOp);
-    rewriter.replaceOp(d2sOp.getOperation(), {newReorgOp});
+    rewriter.replaceOp(d2sOp.getOperation(), newReorgOp);
   } else {
     //insert shuffle channel
     llvm::errs()<<"insert shuffle channel.\n";
@@ -109,7 +109,7 @@ static bool convertDepth2Space(PatternRewriter &rewriter, top::Depth2SpaceOp d2s
     auto loc = NameLoc::get(rewriter.getStringAttr(name));
     rewriter.setInsertionPointAfterValue(reorg_out);
     auto scOp = rewriter.create<top::ShuffleChannelOp>(loc, reorg_out.getType(), operands, attrs);
-    rewriter.replaceOp(d2sOp.getOperation(), {scOp});
+    rewriter.replaceOp(d2sOp.getOperation(), scOp);
   }
   return true;
 }

@@ -273,7 +273,7 @@ struct Permute5dSplit : public OpRewritePattern<PermuteOp> {
     auto outType1 = op.getResult().getType().cast<RankedTensorType>();
     auto permute1_op =
         rewriter.create<top::PermuteOp>(op.getLoc(), outType1, operands, attrs);
-    rewriter.replaceOp(op, {permute1_op.getResult()});
+    rewriter.replaceOp(op, permute1_op);
     return success();
   }
 };
@@ -455,6 +455,7 @@ struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
 // decomposed relative position embeddings
 // this should be after MatMul.cpp:MatmulWithPermuteAndSplit
 // wonder whether it should be in ChipOptimize
+// clang-format off
 // topo
 //                                           ...-MatMul-Reshape
 //                                                         |
@@ -467,6 +468,7 @@ struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
 //      -Reshape-Permute-MatMul-Permute-Reshape-Unsqueeze- |
 // ...-{ }-Add-Reshape-Permute-Reshape-Add-...
 //      -Reshape-Permute-MatMul-Permute-Reshape-Unsqueeze-
+// clang-format on
 struct TopDecomposedRelPosEmb : public OpRewritePattern<PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
 
