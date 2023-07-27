@@ -12,6 +12,202 @@
 namespace tpu_mlir {
 
 namespace bm1684x {
+
+// Unsqueeze -> Expand(Tile) -> Reshape -> Transpose(Permute) --> MatMul
+//                                                       Left -->
+// To
+// Right -> Transpose(Permute) -> Reshape -> Slice --> MatMul -> Concat
+// Left  ->                                  Slice -->
+class ConvertGLMTilePermute : public OpRewritePattern<top::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+
+    // 1. match the pattern with
+    // Unsqueeze -> Expand(Tile) -> Reshape -> Transpose(Permute) --> MatMul
+    auto left = op.getOperand(0); // [32,1,513]
+    auto right = op.getOperand(1);
+    auto eleType = module::getElementType(left);
+    auto right_op = dyn_cast<top::PermuteOp>(right.getDefiningOp());
+    if (!right_op) {
+      return failure();
+    }
+    auto reshape_op =
+        dyn_cast<top::ReshapeOp>(right_op.getInput().getDefiningOp());
+    if (!reshape_op) {
+      return failure();
+    }
+    auto tile_op = dyn_cast<top::TileOp>(reshape_op.getInput().getDefiningOp());
+    if (!tile_op) {
+      return failure();
+    }
+    auto unsqueeze_op =
+        dyn_cast<top::UnsqueezeOp>(tile_op.getInput().getDefiningOp());
+    if (!unsqueeze_op) {
+      return failure();
+    }
+    // not support quant
+    if (module::isCalibratedType(op.getOutput().getType())) {
+      return failure();
+    }
+
+    // 2. Get Params
+    auto top = unsqueeze_op.getInput(); // [513,1,2,128]
+    auto order = module::getI64Array(right_op.getOrder());
+    for (int i = 0; i < order->size(); i++) {
+      if (order->at(i) == order->size() - 1) {
+        order->at(i) += 1;
+      }
+    }
+    auto op_name = module::getName(op.getOperation()).str();
+    std::vector<int64_t> left_shape = module::getShape(left);
+    std::vector<int64_t> top_shape = module::getShape(top);
+    if (top_shape.size() != 4 || top_shape[2] != 2) {
+      return failure();
+    }
+    std::vector<NamedAttribute> attrs;
+    std::vector<Value> operands;
+    auto none_op = module::getNoneOp(op);
+
+    // 3. <Left> SliceOp [32,1,513] -> [16,1,513], [16,1,513]
+    attrs.clear();
+    operands.clear();
+    operands.emplace_back(left);
+    operands.emplace_back(none_op);
+    operands.emplace_back(none_op);
+    operands.emplace_back(none_op);
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(0)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr({0, 0, 0})));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1})));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "ends", rewriter.getI64ArrayAttr(
+                    {left_shape[0] / 2, left_shape[1], left_shape[2]})));
+    auto left_slice_type = RankedTensorType::get(
+        {left_shape[0] / 2, left_shape[1], left_shape[2]}, eleType);
+    auto left_slice_op_0 = rewriter.create<top::SliceOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_left_slice_0")),
+        left_slice_type, operands, attrs);
+
+    attrs.clear();
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(0)));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "offset", rewriter.getI64ArrayAttr({left_shape[0] / 2, 0, 0})));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1})));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "ends", rewriter.getI64ArrayAttr(
+                    {left_shape[0], left_shape[1], left_shape[2]})));
+    auto left_slice_op_1 = rewriter.create<top::SliceOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_left_slice_1")),
+        left_slice_type, operands, attrs);
+
+    // 4. <Right> PermuteOp [513,1,2,128] -> [2,1,513,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "order", rewriter.getI64ArrayAttr(
+                     {2, order->at(0), order->at(1), order->at(2)})));
+    auto permute_type = RankedTensorType::get(
+        {top_shape[2], top_shape[order->at(0)], top_shape[order->at(1)],
+         top_shape[order->at(2)]},
+        eleType);
+    auto permute_op = rewriter.create<top::PermuteOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_permute")),
+        permute_type, top, attrs);
+
+    // 5. <Right> ReshapeOp [2,1,513,128] -> [2,513,128]
+    attrs.clear();
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "shape", rewriter.getI64ArrayAttr(
+                     {2, top_shape[order->at(1)], top_shape[order->at(2)]})));
+    auto right_reshape_op = rewriter.create<top::ReshapeOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_reshape")),
+        RankedTensorType::get(
+            {2, top_shape[order->at(1)], top_shape[order->at(2)]}, eleType),
+        permute_op->getResult(0), attrs);
+
+    // 6. <Right> SliceOp [2,513,128] -> [1,513,128], [1,513,128]
+    attrs.clear();
+    operands.clear();
+    operands.emplace_back(right_reshape_op->getResult(0));
+    operands.emplace_back(none_op);
+    operands.emplace_back(none_op);
+    operands.emplace_back(none_op);
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(0)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr({0, 0, 0})));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1})));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "ends", rewriter.getI64ArrayAttr(
+                    {1, top_shape[order->at(1)], top_shape[order->at(2)]})));
+    auto right_slice_type = RankedTensorType::get(
+        {1, top_shape[order->at(1)], top_shape[order->at(2)]}, eleType);
+    auto right_slice_op_0 = rewriter.create<top::SliceOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_right_slice_0")),
+        right_slice_type, operands, attrs);
+
+    attrs.clear();
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(0)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr({1, 0, 0})));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1})));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "ends", rewriter.getI64ArrayAttr(
+                    {2, top_shape[order->at(1)], top_shape[order->at(2)]})));
+    auto right_slice_op_1 = rewriter.create<top::SliceOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_right_slice_1")),
+        right_slice_type, operands, attrs);
+
+    // 7. MatMulOp [16,1,513] @ [1,513,128] -> [16,1,128]
+    attrs.clear();
+    operands.clear();
+    operands.emplace_back(left_slice_op_0->getResult(0));
+    operands.emplace_back(right_slice_op_0->getResult(0));
+    operands.emplace_back(none_op);
+    auto matmul_type = RankedTensorType::get(
+        {left_shape[0] / 2, left_shape[1], top_shape[order->at(2)]}, eleType);
+    auto matmul_op_0 = rewriter.create<top::MatMulOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_matmul_0")),
+        matmul_type, operands, attrs);
+
+    attrs.clear();
+    operands.clear();
+    operands.emplace_back(left_slice_op_1->getResult(0));
+    operands.emplace_back(right_slice_op_1->getResult(0));
+    operands.emplace_back(none_op);
+    auto matmul_op_1 = rewriter.create<top::MatMulOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_matmul_1")),
+        matmul_type, operands, attrs);
+
+    // 8. ConcatOp [16,1,128],[16,1,128] -> [32,1,128]
+    attrs.clear();
+    operands.clear();
+    operands.emplace_back(matmul_op_0->getResult(0));
+    operands.emplace_back(matmul_op_1->getResult(0));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(0)));
+    auto concat_type = RankedTensorType::get(
+        {left_shape[0], left_shape[1], top_shape[order->at(2)]}, eleType);
+    auto concat_op = rewriter.create<top::ConcatOp>(
+        NameLoc::get(rewriter.getStringAttr(op_name + "_concat")), concat_type,
+        operands, attrs);
+
+    // 8. Replace
+    rewriter.setInsertionPointAfter(op);
+    rewriter.replaceAllUsesWith(op, concat_op->getResult(0));
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 class ConvertMatMulWithRightTranspose : public OpRewritePattern<top::MatMulOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -178,7 +374,7 @@ public:
         return failure();
       }
     } else if (module::isBM1684X()) {
-      if (len > 2048 * 320 * 4||
+      if (len > 2048 * 320 * 4 ||
           (len_weight0 + len_weight1 + len_weight2) > 1024 * 160 * 3 * 4) {
         return failure();
       }
@@ -515,7 +711,6 @@ public:
   }
 };
 
-
 // Same as lib/Dialect/Top/Canonicalize/Where.cpp:expand_dim_and_tile
 mlir::Value expand_dim_and_tile(mlir::Value tensor,
                                 llvm::ArrayRef<int64_t> out_shape,
@@ -531,14 +726,18 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
     std::string in_name = module::getName(tensor).str() + "_ToOutDim";
     auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
     rewriter.setInsertionPointAfterValue(tensor_last_op);
-    if (tensor.getType().cast<RankedTensorType>().getElementType().isa<quant::CalibratedQuantizedType>()) {
+    if (tensor.getType()
+            .cast<RankedTensorType>()
+            .getElementType()
+            .isa<quant::CalibratedQuantizedType>()) {
       auto i_type = module::getCalibratedType(tensor);
       auto tensorType = RankedTensorType::get(tensor_reshape, i_type);
-      tensor_last_op = rewriter.create<top::ReshapeOp>(loc, tensorType, ValueRange{tensor_last_op});
-    }
-    else {
+      tensor_last_op = rewriter.create<top::ReshapeOp>(
+          loc, tensorType, ValueRange{tensor_last_op});
+    } else {
       auto tensorType = RankedTensorType::get(tensor_reshape, tensor_stype);
-      tensor_last_op = rewriter.create<top::ReshapeOp>(loc, tensorType, ValueRange{tensor_last_op});
+      tensor_last_op = rewriter.create<top::ReshapeOp>(
+          loc, tensorType, ValueRange{tensor_last_op});
     }
   }
   auto tensor_last_shape = std::vector<int64_t>(tensor_reshape);
@@ -564,8 +763,8 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
 
     tensor_last_shape[i] = out_shape[i];
     auto newType = RankedTensorType::get(tensor_last_shape, tensor_stype);
-    auto new_name = module::getName(tensor).str() + "_tile_" +
-                    std::to_string(i);
+    auto new_name =
+        module::getName(tensor).str() + "_tile_" + std::to_string(i);
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfterValue(tensor_last_op);
     tensor_last_op = rewriter.create<top::TileOp>(
@@ -573,7 +772,6 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
   }
   return tensor_last_op;
 }
-
 
 class WhereBroadcastToTile : public OpRewritePattern<top::WhereOp> {
 public:
@@ -585,17 +783,19 @@ public:
 
     if (!op.getXIsConst()) {
       auto tbrn = op.getTbrn();
-      if (isa<top::WeightOp>(tbrn.getDefiningOp()) && tbrn.getType().cast<RankedTensorType>().getNumElements() == 1) {
+      if (isa<top::WeightOp>(tbrn.getDefiningOp()) &&
+          tbrn.getType().cast<RankedTensorType>().getNumElements() == 1) {
         // single value in tensor, set to const
-        float value = dyn_cast<top::WeightOp>(tbrn.getDefiningOp()).read_as_float()->at(0);
+        float value = dyn_cast<top::WeightOp>(tbrn.getDefiningOp())
+                          .read_as_float()
+                          ->at(0);
         op.setXConstValAttr(rewriter.getF64FloatAttr(value));
         op.setXIsConst(true);
         auto fbrn = op.getFbrn();
-        op.setOperand(1,module::getNoneOp(op));
-        op.setOperand(2,fbrn);
+        op.setOperand(1, module::getNoneOp(op));
+        op.setOperand(2, fbrn);
         process = true;
-      }
-      else if (!isa<top::WeightOp>(tbrn.getDefiningOp())) {
+      } else if (!isa<top::WeightOp>(tbrn.getDefiningOp())) {
         auto tbrn_ = expand_dim_and_tile(tbrn, out_shape, rewriter);
         if (tbrn != tbrn_) {
           op.setOperand(1, tbrn_);
@@ -605,17 +805,19 @@ public:
     }
     if (!op.getYIsConst()) {
       auto fbrn = op.getFbrn();
-      if (isa<top::WeightOp>(fbrn.getDefiningOp()) && fbrn.getType().cast<RankedTensorType>().getNumElements() == 1) {
+      if (isa<top::WeightOp>(fbrn.getDefiningOp()) &&
+          fbrn.getType().cast<RankedTensorType>().getNumElements() == 1) {
         // single value in tensor, set to const
-        float value = dyn_cast<top::WeightOp>(fbrn.getDefiningOp()).read_as_float()->at(0);
+        float value = dyn_cast<top::WeightOp>(fbrn.getDefiningOp())
+                          .read_as_float()
+                          ->at(0);
         op.setYConstValAttr(rewriter.getF64FloatAttr(value));
         op.setYIsConst(true);
         auto tbrn = op.getTbrn();
-        op.setOperand(1,tbrn);
-        op.setOperand(2,module::getNoneOp(op));
+        op.setOperand(1, tbrn);
+        op.setOperand(2, module::getNoneOp(op));
         process |= true;
-      }
-      else if (!isa<top::WeightOp>(fbrn.getDefiningOp())) {
+      } else if (!isa<top::WeightOp>(fbrn.getDefiningOp())) {
         auto fbrn_ = expand_dim_and_tile(fbrn, out_shape, rewriter);
         if (fbrn != fbrn_) {
           op.setOperand(2, fbrn_);
@@ -626,7 +828,6 @@ public:
 
     return process ? success() : failure();
   }
-
 };
 
 } // namespace bm1684x
@@ -636,6 +837,7 @@ using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
+      ConvertGLMTilePermute,
       ConvertMatMulWithRightTranspose,
       ConvertMatMul2Attention,
       ReshapeReorderPattern,
