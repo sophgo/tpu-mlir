@@ -184,6 +184,97 @@ public:
   }
 };
 
+// transform group conv to normal conv, when int8/f16/bf16 && input_c<=ic_parallel && isBM1684XFamily()
+class GroupConv2NormalConv : public OpRewritePattern<tpu::Conv2DOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::Conv2DOp op,
+                                PatternRewriter &rewriter) const override {
+    auto data_type = module::getStorageType(op.getFilter());
+    if (data_type.isBF16() || data_type.isF16() || data_type.isInteger(8)){
+      auto attrs = op.parseParam();
+      int groups = attrs.groups;
+      if (groups == 1){
+        return failure();
+      }
+      int input_c = attrs.ic;
+      int ic_parallel = 0;
+      if (module::isBM1684X()){
+        if (data_type.isInteger(8)){
+          ic_parallel = 64;
+        } else{
+          ic_parallel = 32;
+        }
+      } else if(module::isBM1686()){
+        if (data_type.isInteger(8)){
+          ic_parallel = 32;
+        } else{
+          ic_parallel = 16;
+        }
+      } else{
+        return failure();
+      }
+      if (input_c > ic_parallel){
+        return failure();
+      }
+
+      int output_c = attrs.oc;
+      int kh = attrs.kh;
+      int kw = attrs.kw;
+      int gic = input_c / groups;
+      int goc = output_c / groups;
+      int ori_single_kernel = gic*kh*kw; 
+      int new_single_kernel = input_c*kh*kw;      
+      op->setAttr("group", rewriter.getI64IntegerAttr(1));
+      auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
+      std::vector<int64_t> filter_shape = module::getShape(op.getFilter());
+
+      if (data_type.isInteger(8)) {
+        auto filter_data = *(filterOp.read<int8_t>());
+        auto filter_size = filter_data.size();
+        auto new_filter_data = std::make_shared<std::vector<int8_t>>(filter_size*groups);
+        for (int i=0; i<output_c; i++){
+        auto begin = filter_data.begin() + ori_single_kernel*i;
+        auto end = begin + ori_single_kernel;
+        int group_num = i/goc;
+        auto to = new_filter_data->begin() + new_single_kernel*i + ori_single_kernel*group_num;
+        std::copy(begin, end, to);
+        }
+        std::vector<int64_t> new_filter_shape(4, 0);
+        new_filter_shape[0] = filter_shape[0];
+        new_filter_shape[1] = input_c;
+        new_filter_shape[2] = filter_shape[2];
+        new_filter_shape[3] = filter_shape[3];
+        auto new_type = RankedTensorType::get(new_filter_shape, data_type);
+        auto new_filter = top::WeightOp::create(op, "filter_int8", *new_filter_data, new_type);
+        op->setOperand(1,new_filter);
+      } else {
+        auto filter_data = *(filterOp.read<uint16_t>());
+        auto filter_size = filter_data.size();
+        auto new_filter_data = std::make_shared<std::vector<uint16_t>>(filter_size*groups);
+        for (int i=0; i<output_c; i++){
+        auto begin = filter_data.begin() + ori_single_kernel*i;
+        auto end = begin + ori_single_kernel;
+        int group_num = i/goc;
+        auto to = new_filter_data->begin() + new_single_kernel*i + ori_single_kernel*group_num;
+        std::copy(begin, end, to);
+        }
+        std::vector<int64_t> new_filter_shape(4, 0);
+        new_filter_shape[0] = filter_shape[0];
+        new_filter_shape[1] = input_c;
+        new_filter_shape[2] = filter_shape[2];
+        new_filter_shape[3] = filter_shape[3];
+        auto new_type = RankedTensorType::get(new_filter_shape, data_type);
+        auto new_filter = top::WeightOp::create(op, "filter_f16/bf16", *new_filter_data, new_type);
+        op->setOperand(1,new_filter);
+      }
+      return success();
+    } else {
+      return failure();
+    }  
+  }
+};
+
 // reorder op when transpose is before mulconst/cast/softmax to optimize bert
 class PermuteReorderPattern : public OpRewritePattern<tpu::PermuteOp> {
 public:
@@ -789,6 +880,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
       MatMulHdimBatchPattern,
       MatMulLeftReusePattern,
       MoveReshapeAfterAdd,
+      GroupConv2NormalConv,
       MovePermuteAfterAdd,
       PermuteReorderPattern,
       ReshapeReorderPattern,
