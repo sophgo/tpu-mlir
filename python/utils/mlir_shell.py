@@ -110,7 +110,8 @@ def mlir_to_model(tpu_mlir: str,
                   merge_weight: bool = False,
                   op_divide: bool = False,
                   num_device: int = 1,
-                  num_core: int = 1):
+                  num_core: int = 1,
+                  embed_debug_info: bool = False):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
@@ -149,7 +150,9 @@ def mlir_to_model(tpu_mlir: str,
     _os_system(cmd)
 
     # codegen based on final mlir
-    codegen_param = '--codegen="model_file={}"'.format(model)
+    codegen_param = (
+        f'--codegen="model_file={model} embed_debug_info={str(embed_debug_info).lower()}"'
+    )
     cmd = [
         "tpuc-opt",
         final_mlir,

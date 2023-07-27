@@ -86,7 +86,9 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
   let options = [
     Option<"model_file", "model_file", "std::string", /*default=*/"",
-           "save to model file">
+           "save to model file">,
+    Option<"embed_debug_info", "embed_debug_info", "bool", /*default=*/"false",
+           "embed debug and profiling data to model file.">
   ];
 }
 

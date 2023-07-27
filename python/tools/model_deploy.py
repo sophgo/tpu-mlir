@@ -65,6 +65,7 @@ class DeployTool:
         self.quant_input = args.quant_input
         self.quant_output = args.quant_output
         self.quantize_table = args.quantize_table
+        self.embed_debug_info = args.debug
         self.model = args.model
         self.ref_npz = args.test_reference
         self.customization_format = args.customization_format
@@ -212,7 +213,8 @@ class DeployTool:
         else:
             mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
                           self.quant_input, self.quant_output, self.disable_layer_group,
-                          self.merge_weight, self.op_divide, self.num_device, self.num_core)
+                          self.merge_weight, self.op_divide, self.num_device, self.num_core,
+                          self.embed_debug_info)
             if self.do_validate:
                 tool.validate_model()
 
