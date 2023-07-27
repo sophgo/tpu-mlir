@@ -73,7 +73,7 @@ class ModelTransformer(object):
                     assert (name in npz_in.files)
                     batch_size = self.converter.getShape(name)[0]
                     inputs[name] = self.ensure_batch_size(npz_in[name], batch_size)
-        elif file_list[0].endswith(('.jpg', '.jpeg', '.png')):  #todo add isPicture in util
+        elif file_list[0].endswith(('.jpg', '.jpeg', '.png', '.JPEG')):  #todo add isPicture in util
             ppa = preprocess()
             for i in range(self.input_num):
                 pic_path = file_list[i] if i < len(file_list) else file_list[-1]
