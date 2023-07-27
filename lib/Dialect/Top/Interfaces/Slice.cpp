@@ -34,13 +34,16 @@ void top::SliceOp::paramConvert() {
   for (int i = 0; i < slice_n; ++i) {
     int axis =
         axes_ori->at(i) >= 0 ? axes_ori->at(i) : axes_ori->at(i) + input_dims;
-    int end = ends_ori->at(i) >= 0 ? ends_ori->at(i)
-                                   : ends_ori->at(i) + input_shapes[axis];
-    end = end < input_shapes[axis] ? end : input_shapes[axis];
-    int offset = offset_ori->at(i) >= 0
-                     ? offset_ori->at(i)
-                     : offset_ori->at(i) + input_shapes[axis];
     int step = steps_ori->at(i);
+    int64_t end = ends_ori->at(i) >= 0 ? ends_ori->at(i)
+                                       : ends_ori->at(i) + input_shapes[axis];
+    end = step > 0 ? std::clamp(end, 0L, input_shapes[axis])
+                   : std::clamp(end, -1L, input_shapes[axis] - 1);
+    int64_t offset = offset_ori->at(i) >= 0
+                         ? offset_ori->at(i)
+                         : offset_ori->at(i) + input_shapes[axis];
+    offset = step > 0 ? std::clamp(offset, 0L, input_shapes[axis])
+                      : std::clamp(offset, 0L, input_shapes[axis] - 1);
     offset_v->at(axis) = offset;
     ends_v->at(axis) = end;
     steps_v->at(axis) = step;
@@ -91,7 +94,8 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
 }
 
 void top::SliceOp::shape_inference() {
-  paramConvert();
+  if (!getAxes().empty())
+    paramConvert();
   const auto input_shape = module::getShape(getInput());
   const size_t dims = input_shape.size();
   const auto offset_v = module::getI64Array(getOffset());

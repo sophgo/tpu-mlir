@@ -145,8 +145,6 @@ public:
           "steps", rewriter.getI64ArrayAttr({1, 1, 1, 1})));
       slice_attrs.emplace_back(rewriter.getNamedAttr(
           "ends", rewriter.getI64ArrayAttr({-1, -1, -1, -1})));
-      slice_attrs.emplace_back(rewriter.getNamedAttr(
-          "axes", rewriter.getI64ArrayAttr(std::nullopt)));
       offset += slice;
       std::string slice_name = "slice_" + name + std::to_string(offset);
       auto slice_loc = NameLoc::get(rewriter.getStringAttr(slice_name));
@@ -601,8 +599,6 @@ public:
             "steps", rewriter.getI64ArrayAttr(slice_steps)));
         attrs.emplace_back(rewriter.getNamedAttr(
             "ends", rewriter.getI64ArrayAttr(slice_ends)));
-        attrs.emplace_back(rewriter.getNamedAttr(
-            "axes", rewriter.getI64ArrayAttr(std::nullopt)));
         rewriter.replaceOpWithNewOp<top::SliceOp>(op, ori_out.getType(),
                                                   operands, attrs);
         return success();
@@ -643,8 +639,6 @@ public:
               "steps", rewriter.getI64ArrayAttr(slice_steps)));
           attrs.emplace_back(rewriter.getNamedAttr(
               "ends", rewriter.getI64ArrayAttr(slice_ends)));
-          attrs.emplace_back(rewriter.getNamedAttr(
-              "axes", rewriter.getI64ArrayAttr(std::nullopt)));
           rewriter.replaceOpWithNewOp<top::SliceOp>(op, ori_out.getType(),
                                                     operands, attrs);
           return success();
@@ -1194,8 +1188,6 @@ public:
           "steps", rewriter.getI64ArrayAttr(ArrayRef<int64_t>({steps}))));
       attrs.emplace_back(rewriter.getNamedAttr(
           "ends", rewriter.getI64ArrayAttr(ArrayRef<int64_t>({ends}))));
-      attrs.emplace_back(rewriter.getNamedAttr(
-          "axes", rewriter.getI64ArrayAttr(std::nullopt)));
       operands.emplace_back(mul_op);
       auto none = module::getNoneOp(mul_op);
       operands.push_back(none);
