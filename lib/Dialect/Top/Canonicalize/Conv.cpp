@@ -183,6 +183,10 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
       return failure();
     }
 
+    if(p.do_relu || prep.do_relu){
+      return failure();
+    }
+
     auto Filterop = op.getFilter().getDefiningOp<top::WeightOp>();
     auto Filterop_f32 = Filterop.read<float>();
     std::vector<int64_t> filterShape = module::getShape(op.getFilter());
@@ -278,5 +282,5 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
 
 void ConvOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                          MLIRContext *context) {
-  results.insert<Conv3dTranspose, Conv3dTo2d, Conv1dTo2d>(context);
+  results.insert<Conv3dTranspose, Conv3dTo2d, Conv1dTo2d, Conv1x1Convkxk2dMerge>(context);
 }
