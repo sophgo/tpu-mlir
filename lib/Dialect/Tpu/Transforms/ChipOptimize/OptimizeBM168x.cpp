@@ -23,6 +23,7 @@ public:
     if (!(module::isBM1684Family() || module::isBM1684XFamily())) {
       return failure();
     }
+
     auto pads_v = module::getI64Array(op.getPads());
     auto pad_top = pads_v->at(0);
     auto pad_left = pads_v->size() > 2 ? pads_v->at(1) : 0;
@@ -34,6 +35,21 @@ public:
     if (max_pad <= max_pad_threshold) {
       return failure();
     }
+
+    if (module::isBM1684XFamily()) {
+      auto strides = module::getI64Array(op.getStrides());
+      auto dilations = module::getI64Array(op.getDilations(), 2, 1);
+      bool h_support_large_pad =
+          (strides->at(0) > 15) || (dilations->at(0) > 15) ||
+          (std::max(pad_top, pad_bottom) <= max_pad_threshold);
+      bool w_support_large_pad =
+          (strides->at(1) > 15) || (dilations->at(1) > 15) ||
+          (std::max(pad_left, pad_right) <= max_pad_threshold);
+      if (h_support_large_pad && w_support_large_pad) {
+        return failure();
+      }
+    }
+
     llvm::SmallVector<int64_t> conv_paddings = {pad_top, pad_bottom, pad_left,
                                                 pad_right};
     Value input_value = op->getOperand(0);
