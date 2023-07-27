@@ -1021,7 +1021,7 @@ def Top_SliceOp: Top_Op<"Slice"> {
     I64ArrayAttr:$offset,
     I64ArrayAttr:$steps,
     I64ArrayAttr:$ends,
-    I64ArrayAttr:$axes
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$axes
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;

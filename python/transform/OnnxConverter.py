@@ -1218,7 +1218,8 @@ class OnnxConverter(BaseConverter):
         num_dims = len(input_shape)
         if num_input > 1:
             starts = self.getWeight(onnx_node.inputs[1]).astype(int)
-            ends = self.getWeight(onnx_node.inputs[2]).astype(int)
+            ends = self.getWeight(onnx_node.inputs[2])
+            ends = list(map(lambda x: np.iinfo(np.int64).max if x >= np.iinfo(np.int64).max else x, ends))
             axes = self.getWeight(onnx_node.inputs[3]).astype(int) if num_input > 3 else list(
                 np.arange(num_dims))
             steps = self.getWeight(

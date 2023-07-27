@@ -31,7 +31,6 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
     const auto& offset = op->getAttr("offset");
     const auto& steps = op->getAttr("steps");
     const auto& ends = op->getAttr("ends");
-    const auto& axes = op->getAttr("axes");
     rewriter.setInsertionPointAfterValue(opd);
     for (const auto user: users) {
       const std::string name_slice = module::getName(user->getOperand(0)).str() + "_slice";
@@ -40,7 +39,6 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
       attrs.push_back(rewriter.getNamedAttr("offset", offset));
       attrs.push_back(rewriter.getNamedAttr("steps", steps));
       attrs.push_back(rewriter.getNamedAttr("ends", ends));
-      attrs.push_back(rewriter.getNamedAttr("axes", axes));
       auto none = module::getNoneOp(op);
       std::vector<Value> operands;
       operands.push_back(opd);
