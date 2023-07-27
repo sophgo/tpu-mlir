@@ -2,6 +2,7 @@
 set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+python docs/generate_operation.py ${DIR}/build/supported_ops.rst
 
 # generate tpu-mlir_quick_start
 # ------------------------------------------------------------------------------

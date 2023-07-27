@@ -23,4 +23,4 @@ TPU-MLIR Quick Start
    Appx.01_to_onnx_convert
    Appx.02_cv18xx_guide
    Appx.03_bm168x_test
-
+   Appx.04_supported_ops
