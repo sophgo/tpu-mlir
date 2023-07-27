@@ -228,6 +228,7 @@ class ONNX_IR_TESTER(object):
             "Div2Mul":          (self.test_Div2Mul,         Y, Y, Y, Y),
             "ConvSlice":        (self.test_ConvSlice,       Y, Y, Y, N),
             "GaToSlice":        (self.test_GaToSlice,       Y, Y, Y, Y),
+            "GLMTilePermute":   (self.test_GLMTilePermute,  N, Y, N, N),
             "Mul2Scale":        (self.test_Mul2Scale,       Y, Y, Y, Y),
             "MatMulTranspose":  (self.test_MatMulTranspose, N, Y, Y, Y),
             "MatMulTranspose2":  (self.test_MatMulTranspose2, N, Y, Y, Y),
@@ -3069,6 +3070,23 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(3, 36, 12, 49, 32).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_GLMTilePermute(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y):
+                y = y.unsqueeze(3).repeat(1,1,1,2,1)
+                y = y.reshape(13,4,8).transpose(1,0)
+                res = torch.matmul(x, y)
+                return res
+
+        x = 0.1*torch.randn(4, 1, 13).float()
+        y = 0.1*torch.randn(13, 1, 2, 8)
+        self.torch_and_test((x, y), Model(), case_name)
 
     def test_PermuteFuse(self, case_name):
 
