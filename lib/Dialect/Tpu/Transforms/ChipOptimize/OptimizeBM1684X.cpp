@@ -228,8 +228,8 @@ public:
       int kw = attrs.kw;
       int gic = input_c / groups;
       int goc = output_c / groups;
-      int ori_single_kernel = gic*kh*kw; 
-      int new_single_kernel = input_c*kh*kw;      
+      int ori_single_kernel = gic*kh*kw;
+      int new_single_kernel = input_c*kh*kw;
       op->setAttr("group", rewriter.getI64IntegerAttr(1));
       auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
       std::vector<int64_t> filter_shape = module::getShape(op.getFilter());
@@ -276,7 +276,7 @@ public:
       return success();
     } else {
       return failure();
-    }  
+    }
   }
 };
 
@@ -849,7 +849,7 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
       op.getOutput().replaceAllUsesWith(permute_op.getInput());
     } else {
       auto loc =
-          module::getLocLike(permute_op.getInput().getDefiningOp(), "Reshape");
+          module::getLocLike(permute_op.getInput(), "Reshape");
       rewriter.setInsertionPoint(op);
       auto rs_op = rewriter.create<tpu::ReshapeOp>(
           loc, op.getOutput().getType(), ValueRange{permute_op.getInput()});

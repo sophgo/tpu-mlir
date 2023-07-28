@@ -167,6 +167,7 @@ llvm::StringRef getName(Value v);
 uint32_t getIdx(Value v);
 NameLoc getLoc(Value v);
 NameLoc getLocLike(Operation *op, llvm::StringRef suffix);
+NameLoc getLocLike(Value v, llvm::StringRef suffix);
 void setLocSuffix(Operation *op, llvm::StringRef suffix);
 void setLoc(Value v, NameLoc loc);
 void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs);

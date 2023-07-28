@@ -98,7 +98,7 @@ void DeformConv2DLowering::LoweringF32(PatternRewriter &rewriter,
   auto gather_type = module::getTypeLike(
       op.getOutput(), {shape_on, shape_oc, shape_oh, shape_ow});
 
-  auto deform_gather_loc = module::getLocLike(op, "deform_gather");
+  auto deform_gather_loc = module::getLocLike(op.getOutput(), "deform_gather");
   cpu_params.push_back(
       rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(gather_attrs)));
   auto deform_gather_op = rewriter.create<tpu::GenericCpuOp>(
