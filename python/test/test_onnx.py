@@ -259,8 +259,10 @@ class ONNX_IR_TESTER(object):
             "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N),
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y),
-            "If":               (self.test_If,    N, Y, Y, N)
-            #"Loop" :            (self.test_Loop,   N, Y, N, N)
+            "If":               (self.test_If,              N, Y, Y, N)
+            #"Loop" :            (self.test_Loop,            N, Y, N, N),
+            #"Loop2" :           (self.test_Loop2,           N, Y, N, N)
+
         }
         # yapf: enable
 
@@ -5455,6 +5457,154 @@ class ONNX_IR_TESTER(object):
                     name="Reshape",
                 ),
             ],
+        )
+        self.onnx_and_test(graph_def)
+
+    def test_Loop2(self, case_name):
+        from onnx import numpy_helper
+        from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
+        x = np.array(10000).astype(np.int64)
+        graph_def=helper.make_graph(
+            name="test-loop2",
+            inputs=[
+                helper.make_tensor_value_info(
+                    "input_0", TensorProto.FLOAT, shape=[1]
+                ),
+            ],
+            outputs=[
+                helper.make_tensor_value_info(
+                    "up_bound", TensorProto.INT32, shape=[1]),
+                helper.make_tensor_value_info(
+                    "new_start_v2", TensorProto.INT32, shape=[1]),
+            ],
+            initializer=[
+                numpy_helper.from_array(
+                    np.array([10.0], dtype=np.float32), name="const_fold_opt__17"
+                ),
+                numpy_helper.from_array(
+                    np.array([0], dtype=np.int64), name="reshape"
+                ),
+
+                numpy_helper.from_array(
+                    np.array(101, dtype=np.int32), name="up_value"
+                ),
+
+                numpy_helper.from_array(
+                    np.array(10, dtype=np.int32), name="start_value"
+                ),
+            ],
+            nodes=[
+                onnx.helper.make_node(
+                    "Constant",
+                    inputs=[],
+                    outputs=["while_maximum_iterations_0"],
+                    value=onnx.helper.make_tensor(
+                        name="const_tensor_x",
+                        data_type=onnx.TensorProto.INT64,
+                        dims=(),
+                        vals=x.flatten().astype(np.int64))
+                ),
+                helper.make_node(
+                    "Less",
+                    inputs=[
+                        "input_0",
+                        "const_fold_opt__17",
+                    ],
+                    outputs=["while_cond_158_while_Less_0"],
+                    name="while_cond_158_while_Less",
+                    domain="",
+                ),
+                helper.make_node(
+                    "Squeeze",
+                    inputs=["while_cond_158_while_Less_0", "reshape"],
+                    outputs=["while_cond_158_while_Squeeze_0"],
+                    name="while_cond_158_while_Squeeze",
+                    domain="",
+                ),
+                helper.make_node(
+                    "Loop",
+                    inputs=[
+                        "while_maximum_iterations_0",
+                        "while_cond_158_while_Squeeze_0",
+                        "up_value",
+                        "start_value",
+                    ],
+                    outputs=["up", "new_cout"],
+                    name="while_loop",
+                    body=helper.make_graph(
+                        name="while_body",
+                        inputs=[
+                            helper.make_tensor_value_info(
+                                "while_while_loop_counter_0",
+                                TensorProto.INT64,
+                                shape=[],
+                            ),
+                            helper.make_tensor_value_info(
+                                "cond__15_0", TensorProto.BOOL, shape=[]
+                            ),
+                            helper.make_tensor_value_info(
+                                "while_placeholder_0", TensorProto.INT32, shape=[1]
+                            ),
+                            helper.make_tensor_value_info(
+                                "while_add_const_0_0", TensorProto.INT32, shape=[1]
+                            ),
+                        ],
+                        outputs=[
+                            helper.make_tensor_value_info(
+                                "cond___while_Less_0",
+                                TensorProto.BOOL,
+                                shape=[1],
+                            ),
+                            helper.make_tensor_value_info(
+                                "while_placeholder_0", TensorProto.INT32, shape=[1]
+                            ),
+                            helper.make_tensor_value_info(
+                                "while_Identity_2_0", TensorProto.INT32, shape=[1]
+                            ),
+                        ],
+                        initializer=[
+                            numpy_helper.from_array(
+                                np.array(2, dtype=np.int32),
+                                name="step_value",
+                            ),
+                        ],
+                        nodes=[
+                            helper.make_node(
+                                "Add",
+                                inputs=[
+                                    "while_add_const_0_0",
+                                    "step_value",
+                                ],
+                                outputs=["while_Identity_2_0"],
+                                name="while_Add",
+                            ),
+
+                            helper.make_node(
+                                "Less",
+                                inputs=[
+                                    "while_Identity_2_0",
+                                    "while_placeholder_0",
+                                ],
+                                outputs=["cond___while_Less_0"],
+                                name="cond___while_Less",
+                                domain="",
+                            )
+                        ],
+                    ),
+                ),
+                helper.make_node(
+                    "Unsqueeze",
+                    inputs=["up", "reshape"],
+                    outputs=["up_bound"],
+                    name="upsqueeze",
+                ),
+                helper.make_node(
+                    "Unsqueeze",
+                    inputs=["new_cout", "reshape"],
+                    outputs=["new_start_v2"],
+                    name="upsqueeze2",
+                ),
+            ]
         )
         self.onnx_and_test(graph_def)
 
