@@ -174,8 +174,8 @@ public:
     Operation *next_op = in_op;
     do {
       next_op = module::getNextOp(next_op);
-    } while (next_op != nullptr && false == support(next_op));
-    if (next_op == nullptr) {
+    } while (next_op != nullptr && !isa<ReturnOp>(next_op) && false == support(next_op));
+    if (next_op == nullptr || isa<ReturnOp>(next_op)) {
       return false;
     }
 
