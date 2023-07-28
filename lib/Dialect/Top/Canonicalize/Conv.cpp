@@ -153,7 +153,9 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
 
   LogicalResult matchAndRewrite(ConvOp op,
                                 PatternRewriter &rewriter) const override {
-
+    if (module::isUniformQuantized(op.getOutput())) {
+      return failure();
+    }
     auto kernel = module::getI64Array(op.getKernelShape());
     if (kernel->size() != 2) {
       return failure();

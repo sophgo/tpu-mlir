@@ -17,7 +17,8 @@ void GatherLowering::LoweringF32(PatternRewriter &rewriter,
   rewriter.setInsertionPointAfter(op);
   if (module::isWeight(op.getInput())) {
     // need insert Weight2ActivationOp before Gather's input
-    auto insert_loc = module::getLocLike(op.getInput().getDefiningOp(), "convert_to_activation");
+    auto insert_loc =
+        module::getLocLike(op.getInput(), "convert_to_activation");
     auto weight2activation_op = rewriter.create<tpu::Weight2ActivationOp>(
         insert_loc, op.getInput().getType(), ValueRange{op.getInput()});
 

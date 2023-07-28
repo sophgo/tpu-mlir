@@ -203,7 +203,7 @@ public:
       auto newType = RankedTensorType::get(outputs_shape_v[i], eltType);
       Location loc = reduceOp.getLoc();
       if (i != new_axes_v.size() - 1) {
-        loc = module::getLocLike(reduceOp, std::to_string(i));
+        loc = module::getLocLike(reduceOp.getOutput(), std::to_string(i));
       }
       auto newOp = rewriter.create<tpu::ReduceOp>(loc, newType, operands,
                                                   reduceOp->getAttrs());

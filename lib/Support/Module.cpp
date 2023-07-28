@@ -995,15 +995,29 @@ NameLoc getLoc(Value v) {
 }
 
 NameLoc getLocLike(Operation *op, llvm::StringRef suffix) {
-  auto name = getName(op);
+  return getLocLike(op->getResult(0), suffix);
+}
+
+NameLoc getLocLike(Value v, llvm::StringRef suffix) {
+  auto name = getName(v);
   auto new_name = name.str() + "_" + suffix.str();
-  Builder builder(op->getContext());
+  Builder builder(v.getContext());
   return NameLoc::get(builder.getStringAttr(new_name));
 }
 
 void setLocSuffix(Operation *op, llvm::StringRef suffix) {
-  auto loc = getLocLike(op, suffix);
-  op->setLoc(loc);
+  if (op->getNumResults() > 1) {
+    std::vector<Location> locs;
+    for (auto r : op->getResults()) {
+      auto loc = getLocLike(r, suffix);
+      locs.push_back(loc);
+    }
+    auto new_loc = FusedLoc::get(op->getContext(), locs);
+    op->setLoc(new_loc);
+  } else {
+    auto loc = getLocLike(op->getResult(0), suffix);
+    op->setLoc(loc);
+  }
 }
 
 StringRef getName(Operation *op, int index) {
