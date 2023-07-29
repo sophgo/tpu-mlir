@@ -41,7 +41,7 @@ void DoDistribution<MatMulTopK>(PatternRewriter &rewriter,
   auto filterOp = mm.getRight().getDefiningOp<top::WeightOp>();
   auto filterShape = module::getShape(filterOp.getOutput());
   auto outputShape = module::getShape(mm.getOutput());
-  auto attrs = op->getAttrs();
+  auto mm_attrs = mm->getAttrs();
   auto has_bias = !module::isNone(mm.getBias());
   auto num_dims = filterShape.size();
   auto N = filterShape[num_dims - 1];
@@ -70,7 +70,7 @@ void DoDistribution<MatMulTopK>(PatternRewriter &rewriter,
     auto new_type = module::getTypeLike(mm.getOutput(), new_shape);
     rewriter.setInsertionPointAfter(mm);
     auto new_mm =
-        rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands, attrs);
+        rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands, mm_attrs);
     Value cur_output = new_mm.getOutput();
     next_op = *mm->user_begin();
     while (!isa<tpu::TopKOp>(next_op)) {
@@ -107,6 +107,7 @@ void DoDistribution<MatMulTopK>(PatternRewriter &rewriter,
     }
   }
   end_op->setOperands(t_operands);
+  eraseForward(rewriter, mm);
 }
 
 } // namespace tpu

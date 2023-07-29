@@ -188,6 +188,7 @@ void DoDistribution<MatMulSliceMerge>(PatternRewriter &rewriter,
   }
   assert(isa<tpu::DistributionEndOp>(end_op));
   end_op->setOperands(end_operands);
+  eraseForward(rewriter, mm0);
 }
 
 } // namespace tpu

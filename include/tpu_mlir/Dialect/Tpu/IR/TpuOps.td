@@ -1320,7 +1320,8 @@ def Tpu_DistributionEndOp:Tpu_BaseOp<"DistributionEnd"> {
     Tensors from distributed device connect together
   }];
   let arguments = (ins
-    Variadic<AnyRankedTensor>:$inputs
+    Variadic<AnyRankedTensor>:$inputs,
+    Tpu_DistributionPatternAttr:$pattern
   );
   let results = (outs AnyRankedTensor:$output);
 }
