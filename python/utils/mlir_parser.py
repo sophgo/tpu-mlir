@@ -13,8 +13,11 @@ import mlir
 import re
 from mlir.ir import *
 from mlir.dialects import quant
+
+
 class Operation:
     cache_map = {}
+
     def __init__(self, op, body, idx):
         self.name = Operation.name(op)
         self.type = Operation.type(op)
@@ -36,20 +39,14 @@ class Operation:
         loc = op.location
         if loc == "loc(unknown)":
             return None
-        # loc(fused["pool1", "pool1_mask"]) => pool1
-        return re.search(r'\"(.+?)\"', str(loc)).group(1)
+        return re.findall(r'\"(.+?)\"', str(loc))[0]
 
     @staticmethod
     def outputs(op):
         loc = op.location
         if loc == "loc(unknown)":
             return None
-        loc = str(loc)
-        if 'loc(fused[' in loc:
-            loc = eval(loc[9:-1])
-        else:
-            loc = [re.search(r'\"(\S+?)\"', loc).group(1)]
-        return loc
+        return re.findall(r'\"(.+?)\"', str(loc))
 
     @staticmethod
     def type(op):
@@ -140,7 +137,7 @@ class Operation:
 
         for opd in op.operands:
             if opd in Operation.cache_map:
-                for i,prev_op_name in Operation.cache_map[opd]:
+                for i, prev_op_name in Operation.cache_map[opd]:
                     if i < idx:
                         opds.append(prev_op_name)
 
@@ -173,7 +170,10 @@ class MlirParser:
                     "tpu.load_weight",
                     "tpu.weight_file",
             ] and len(prev_op.results) > 0:
-                cache_map.setdefault(prev_op.results[0],[]).append([i, Operation.name(prev_op)])
+                for idx, r in enumerate(prev_op.results):
+                    if str(r.type) == 'none':
+                        continue
+                    cache_map.setdefault(r, []).append([i, Operation.outputs(prev_op)[idx]])
         Operation.cache_map = cache_map
 
         for i in range(len(self.body.operations)):
@@ -209,7 +209,7 @@ class MlirParser:
                     if opd in self.get_op_name_list():
                         op_input_tensor.append(opd)
         return op_input_tensor
- 
+
     def get_next_op_by_op_name(self, op_name):
         op_output_tensor = []
         for op in self.ops:
@@ -230,7 +230,7 @@ class MlirParser:
                     if self.get_pre_op_by_op_name(new_pre_op):
                         all_pre_ops.append(new_pre_op)
         return all_pre_ops
-    
+
     def get_all_next_ops_by_op_name(self, op_name):
         all_next_ops = [op_name] + self.get_next_op_by_op_name(op_name)
         cur_next_ops = self.get_next_op_by_op_name(op_name)
@@ -250,8 +250,8 @@ class MlirParser:
 
         all_next_ops = set(self.get_all_next_ops_by_op_name(name_list1))
         for name_list in name_list1:
-            all_next_ops.update(set(self.get_all_next_ops_by_op_name(name_list)))       
-        block_ops =all_pre_ops.union(all_next_ops)
+            all_next_ops.update(set(self.get_all_next_ops_by_op_name(name_list)))
+        block_ops = all_pre_ops.union(all_next_ops)
         return list(block_ops)
 
     def get_user_count_by_op_name(self, op_name):
