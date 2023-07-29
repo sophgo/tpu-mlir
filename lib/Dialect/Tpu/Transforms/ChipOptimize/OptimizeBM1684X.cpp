@@ -9,8 +9,10 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Patterns.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 
 using namespace llvm;
+using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 
 namespace bm1684x {
@@ -189,94 +191,64 @@ public:
   }
 };
 
-// transform group conv to normal conv, when int8/f16/bf16 && input_c<=ic_parallel && isBM1684XFamily()
+// transform group conv to normal conv, when int8/f16/bf16 &&
+// input_c<=ic_parallel && isBM1684XFamily()
 class GroupConv2NormalConv : public OpRewritePattern<tpu::Conv2DOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::Conv2DOp op,
                                 PatternRewriter &rewriter) const override {
-    auto data_type = module::getStorageType(op.getFilter());
-    if (data_type.isBF16() || data_type.isF16() || data_type.isInteger(8)){
-      auto attrs = op.parseParam();
-      int groups = attrs.groups;
-      if (groups == 1){
-        return failure();
-      }
-      int input_c = attrs.ic;
-      int ic_parallel = 0;
-      if (module::isBM1684X()){
-        if (data_type.isInteger(8)){
-          ic_parallel = 64;
-        } else{
-          ic_parallel = 32;
-        }
-      } else if(module::isBM1686()){
-        if (data_type.isInteger(8)){
-          ic_parallel = 32;
-        } else{
-          ic_parallel = 16;
-        }
-      } else{
-        return failure();
-      }
-      if (input_c > ic_parallel){
-        return failure();
-      }
-
-      int output_c = attrs.oc;
-      int kh = attrs.kh;
-      int kw = attrs.kw;
-      int gic = input_c / groups;
-      int goc = output_c / groups;
-      int ori_single_kernel = gic*kh*kw;
-      int new_single_kernel = input_c*kh*kw;
-      op->setAttr("group", rewriter.getI64IntegerAttr(1));
-      auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
-      std::vector<int64_t> filter_shape = module::getShape(op.getFilter());
-
-      if (data_type.isInteger(8)) {
-        auto filter_data = *(filterOp.read<int8_t>());
-        auto filter_size = filter_data.size();
-        auto new_filter_data = std::make_shared<std::vector<int8_t>>(filter_size*groups);
-        for (int i=0; i<output_c; i++){
-        auto begin = filter_data.begin() + ori_single_kernel*i;
-        auto end = begin + ori_single_kernel;
-        int group_num = i/goc;
-        auto to = new_filter_data->begin() + new_single_kernel*i + ori_single_kernel*group_num;
-        std::copy(begin, end, to);
-        }
-        std::vector<int64_t> new_filter_shape(4, 0);
-        new_filter_shape[0] = filter_shape[0];
-        new_filter_shape[1] = input_c;
-        new_filter_shape[2] = filter_shape[2];
-        new_filter_shape[3] = filter_shape[3];
-        auto new_type = RankedTensorType::get(new_filter_shape, data_type);
-        auto new_filter = top::WeightOp::create(op, "filter_int8", *new_filter_data, new_type);
-        op->setOperand(1,new_filter);
-      } else {
-        auto filter_data = *(filterOp.read<uint16_t>());
-        auto filter_size = filter_data.size();
-        auto new_filter_data = std::make_shared<std::vector<uint16_t>>(filter_size*groups);
-        for (int i=0; i<output_c; i++){
-        auto begin = filter_data.begin() + ori_single_kernel*i;
-        auto end = begin + ori_single_kernel;
-        int group_num = i/goc;
-        auto to = new_filter_data->begin() + new_single_kernel*i + ori_single_kernel*group_num;
-        std::copy(begin, end, to);
-        }
-        std::vector<int64_t> new_filter_shape(4, 0);
-        new_filter_shape[0] = filter_shape[0];
-        new_filter_shape[1] = input_c;
-        new_filter_shape[2] = filter_shape[2];
-        new_filter_shape[3] = filter_shape[3];
-        auto new_type = RankedTensorType::get(new_filter_shape, data_type);
-        auto new_filter = top::WeightOp::create(op, "filter_f16/bf16", *new_filter_data, new_type);
-        op->setOperand(1,new_filter);
-      }
-      return success();
-    } else {
+    if (!module::isBM1684XFamily() || !module::isWeight(op.getFilter())) {
       return failure();
     }
+    auto data_type = module::getStorageType(op.getFilter());
+    if (!(data_type.isBF16() || data_type.isF16() || data_type.isInteger(8))) {
+      return failure();
+    }
+    auto attrs = op.parseParam();
+    if (attrs.groups == 1) {
+      return failure();
+    }
+    int ic_parallel = BM168x::ic_num(data_type.getIntOrFloatBitWidth() / 8);
+    if (attrs.ic > ic_parallel) {
+      return failure();
+    }
+
+    if (data_type.isUnsignedInteger(8)) {
+      updateFilter<uint8_t>(op, attrs);
+    } else if (data_type.isInteger(8)) {
+      updateFilter<int8_t>(op, attrs);
+    } else {
+      updateFilter<uint16_t>(op, attrs);
+    }
+    op.setGroup(1);
+    return success();
+  }
+
+private:
+  template <typename T>
+  void updateFilter(tpu::Conv2DOp op, const conv_attr_t &p) const {
+    int gic = p.ic / p.groups;
+    int goc = p.oc / p.groups;
+    int old_ic_num = gic * p.kh * p.kw;
+    int new_ic_num = p.ic * p.kh * p.kw;
+    auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
+    auto filter_data = filterOp.read<T>();
+    auto filter_size = filter_data->size();
+    auto new_data = std::make_shared<std::vector<T>>(filter_size * p.groups,
+                                                     op.getKernelZp());
+    for (int i = 0; i < p.oc; i++) {
+      auto begin = filter_data->begin() + old_ic_num * i;
+      auto end = begin + old_ic_num;
+      int group_idx = i / goc;
+      auto to = new_data->begin() + new_ic_num * i + old_ic_num * group_idx;
+      std::copy(begin, end, to);
+    }
+    auto new_type =
+        module::getTypeLike(op.getFilter(), {p.oc, p.ic, p.kh, p.kw});
+    auto new_filter =
+        top::WeightOp::create(op, "filter_g2normal", *new_data, new_type);
+    op->setOperand(1, new_filter);
   }
 };
 
@@ -848,8 +820,7 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
     if (out1_shape == in0_shape) {
       op.getOutput().replaceAllUsesWith(permute_op.getInput());
     } else {
-      auto loc =
-          module::getLocLike(permute_op.getInput(), "Reshape");
+      auto loc = module::getLocLike(permute_op.getInput(), "Reshape");
       rewriter.setInsertionPoint(op);
       auto rs_op = rewriter.create<tpu::ReshapeOp>(
           loc, op.getOutput().getType(), ValueRange{permute_op.getInput()});
