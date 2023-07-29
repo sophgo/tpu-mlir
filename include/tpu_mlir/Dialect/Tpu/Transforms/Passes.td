@@ -49,7 +49,7 @@ def Distribute : Pass<"distribute", "ModuleOp"> {
   let constructor = "createDistributePass()";
   let dependentDialects = ["TpuDialect"];
   let options = [
-      Option<"num_device", "num_device", "uint64_t", /*default=*/"1",
+      Option<"num_device", "num_device", "int64_t", /*default=*/"1",
              "num of devices to distributed.">
   ];
 }

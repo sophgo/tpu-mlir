@@ -26,6 +26,15 @@ bool isLargeMatMul(Operation *op);
 bool isBinaryOp(Operation *op);
 Operation *cloneOp(PatternRewriter &rewriter, Operation *op,
                    llvm::ArrayRef<int64_t> new_shape, llvm::StringRef suffix);
+// erase op and its uers
+void eraseForward(PatternRewriter &rewriter, Operation *op);
+
+template <typename T> static void applyPattern(ModuleOp m) {
+  auto ctx = m.getContext();
+  RewritePatternSet patterns(ctx);
+  patterns.add<T>(ctx);
+  applyPatternsAndFoldGreedily(m, std::move(patterns));
+}
 
 // ===================================
 // patterns for distribution
@@ -47,6 +56,11 @@ public:
 template <typename T>
 void DoDistribution(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
                     int64_t num_devices);
+
+// ===================================
+// split module to multi modules for devices
+// ===================================
+void DistributeModules(ModuleOp module, int64_t num_device);
 
 } // namespace tpu
 } // namespace tpu_mlir

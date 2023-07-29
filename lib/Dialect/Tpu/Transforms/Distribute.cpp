@@ -38,7 +38,7 @@ void distribute(PatternRewriter &rewriter, Operation *op_begin,
   auto end_loc = module::getLocLike(output, "end");
   rewriter.setInsertionPointAfter(op_end);
   auto end = rewriter.create<tpu::DistributionEndOp>(end_loc, output.getType(),
-                                                     ValueRange{output});
+                                                     ValueRange{output}, attrs);
   output.replaceAllUsesExcept(end.getOutput(), end);
 }
 
@@ -68,6 +68,15 @@ Operation *cloneOp(PatternRewriter &rewriter, Operation *op,
   }
   module::setLocSuffix(new_op, suffix);
   return new_op;
+}
+
+void eraseForward(PatternRewriter &rewriter, Operation *op) {
+  if (!op->use_empty()) {
+    for (auto u : op->getUsers()) {
+      eraseForward(rewriter, u);
+    }
+  }
+  rewriter.eraseOp(op);
 }
 
 // ===================================
@@ -116,9 +125,10 @@ public:
     module::setDeviceNum(num_device);
     mOp = getOperation();
     ctx = &getContext();
-    applyPattern<MatMulSliceMerge>();
-    applyPattern<MatMulTopK>();
-    applyPattern<DoDistributePattern>();
+    applyPattern<MatMulSliceMerge>(mOp);
+    applyPattern<MatMulTopK>(mOp);
+    applyPattern<DoDistributePattern>(mOp);
+    DistributeModules(mOp, num_device);
     // OpBuilder builder(&getContext());
     // auto oriModule = getOperation();
     // auto attrs = oriModule->getAttrs();
@@ -138,11 +148,6 @@ public:
 private:
   mlir::MLIRContext *ctx;
   ModuleOp mOp;
-  template <typename T> void applyPattern() {
-    RewritePatternSet patterns(ctx);
-    patterns.add<T>(ctx);
-    applyPatternsAndFoldGreedily(mOp, std::move(patterns));
-  }
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createDistributePass() {
