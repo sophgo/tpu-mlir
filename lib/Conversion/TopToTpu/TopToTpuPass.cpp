@@ -440,11 +440,16 @@ struct SelectiveWhere : public OpRewritePattern<top::WhereOp> {
     }
 
     auto out_qtype = module::getCalibratedType(out);
-    // if output th is less than const(if exists), make it larger to include const val
+    // if output th is less than const(if exists), make it larger to include
+    // const val
     if (out_qtype.getMax() < const_v) {
       auto out_qtype = module::getCalibratedType(out);
-      auto new_qtype = quant::CalibratedQuantizedType::get(out_qtype.getExpressedType(), (const_signed || out_qtype.getMin() < 0.) ? -const_v*0.1:0.0f, const_v);
-      auto new_type = RankedTensorType::get(out.getType().cast<RankedTensorType>().getShape(), new_qtype);
+      auto new_qtype = quant::CalibratedQuantizedType::get(
+          out_qtype.getExpressedType(),
+          (const_signed || out_qtype.getMin() < 0.) ? -const_v * 0.1 : 0.0f,
+          const_v);
+      auto new_type = RankedTensorType::get(
+          out.getType().cast<RankedTensorType>().getShape(), new_qtype);
       out.setType(new_type);
     }
     // if input is not the same with out, set the input to follow output
@@ -453,28 +458,34 @@ struct SelectiveWhere : public OpRewritePattern<top::WhereOp> {
     if (!op.getXIsConst()) {
       auto in = op.getTbrn();
       if (!module::isCalibratedType(in))
-         return failure();
+        return failure();
       if (module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
           module::getCalibratedType(in).getMax() != out_qtype.getMax()) {
-            auto in_qtype = module::getCalibratedType(in);
-            auto new_qtype = quant::CalibratedQuantizedType::get(in_qtype.getExpressedType(), out_qtype.getMin(), out_qtype.getMax());
-            auto new_type = RankedTensorType::get(in.getType().cast<RankedTensorType>().getShape(), new_qtype);
-            in.setType(new_type);
-            changed |= true;
-          }
+        auto in_qtype = module::getCalibratedType(in);
+        auto new_qtype = quant::CalibratedQuantizedType::get(
+            in_qtype.getExpressedType(), out_qtype.getMin(),
+            out_qtype.getMax());
+        auto new_type = RankedTensorType::get(
+            in.getType().cast<RankedTensorType>().getShape(), new_qtype);
+        in.setType(new_type);
+        changed |= true;
+      }
     }
     if (!op.getYIsConst()) {
       auto in = op.getFbrn();
       if (!module::isCalibratedType(in))
-         return failure();
+        return failure();
       if (module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
           module::getCalibratedType(in).getMax() != out_qtype.getMax()) {
-            auto in_qtype = module::getCalibratedType(in);
-            auto new_qtype = quant::CalibratedQuantizedType::get(in_qtype.getExpressedType(), out_qtype.getMin(), out_qtype.getMax());
-            auto new_type = RankedTensorType::get(in.getType().cast<RankedTensorType>().getShape(), new_qtype);
-            in.setType(new_type);
-            changed |= true;
-          }
+        auto in_qtype = module::getCalibratedType(in);
+        auto new_qtype = quant::CalibratedQuantizedType::get(
+            in_qtype.getExpressedType(), out_qtype.getMin(),
+            out_qtype.getMax());
+        auto new_type = RankedTensorType::get(
+            in.getType().cast<RankedTensorType>().getShape(), new_qtype);
+        in.setType(new_type);
+        changed |= true;
+      }
     }
     if (changed)
       return success();
@@ -506,15 +517,20 @@ struct SelectiveMaskedFill : public OpRewritePattern<top::MaskedFillOp> {
     float const_v = 0.0;
     bool const_signed = false;
     float c = op.getConstVal().convertToDouble();
-    const_signed = c<0.;
+    const_signed = c < 0.;
     const_v = std::abs(c);
 
     auto out_qtype = module::getCalibratedType(out);
-    // if output th is less than const(if exists), make it larger to include const val
+    // if output th is less than const(if exists), make it larger to include
+    // const val
     if (out_qtype.getMax() < const_v) {
       auto out_qtype = module::getCalibratedType(out);
-      auto new_qtype = quant::CalibratedQuantizedType::get(out_qtype.getExpressedType(), (const_signed || out_qtype.getMin() < 0.) ? -const_v*0.1:0.0f, const_v);
-      auto new_type = RankedTensorType::get(out.getType().cast<RankedTensorType>().getShape(), new_qtype);
+      auto new_qtype = quant::CalibratedQuantizedType::get(
+          out_qtype.getExpressedType(),
+          (const_signed || out_qtype.getMin() < 0.) ? -const_v * 0.1 : 0.0f,
+          const_v);
+      auto new_type = RankedTensorType::get(
+          out.getType().cast<RankedTensorType>().getShape(), new_qtype);
       out.setType(new_type);
     }
     // if input is not the same with out, set the input to follow output
@@ -523,12 +539,14 @@ struct SelectiveMaskedFill : public OpRewritePattern<top::MaskedFillOp> {
     auto in = op.getOperand(1);
     if (module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
         module::getCalibratedType(in).getMax() != out_qtype.getMax()) {
-          auto in_qtype = module::getCalibratedType(in);
-          auto new_qtype = quant::CalibratedQuantizedType::get(in_qtype.getExpressedType(), out_qtype.getMin(), out_qtype.getMax());
-          auto new_type = RankedTensorType::get(in.getType().cast<RankedTensorType>().getShape(), new_qtype);
-          in.setType(new_type);
-          changed |= true;
-        }
+      auto in_qtype = module::getCalibratedType(in);
+      auto new_qtype = quant::CalibratedQuantizedType::get(
+          in_qtype.getExpressedType(), out_qtype.getMin(), out_qtype.getMax());
+      auto new_type = RankedTensorType::get(
+          in.getType().cast<RankedTensorType>().getShape(), new_qtype);
+      in.setType(new_type);
+      changed |= true;
+    }
     if (changed)
       return success();
     else
@@ -572,7 +590,7 @@ public:
   void runOnOperation() override {
     module_ = getOperation();
     ctx_ = &getContext();
-    mainFunc_ = module::getMainFuncOp();
+    mainFunc_ = module::getMainFuncOp(module_);
     LoweringConfig::isQuantized = false;
     auto mode_ = StringRef(mode).upper();
     auto mode = module::symbolizeMode(mode_);
@@ -744,8 +762,7 @@ protected:
                  SetSubConstSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
-    patterns.add<SelectiveWhere,
-		SelectiveMaskedFill>(ctx_);
+    patterns.add<SelectiveWhere, SelectiveMaskedFill>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
   }

@@ -11,7 +11,6 @@
 
 using namespace llvm;
 
-
 namespace tpu_mlir {
 namespace top {
 
@@ -19,6 +18,7 @@ class ChipAssignPass : public ChipAssignBase<ChipAssignPass> {
 public:
   ChipAssignPass() {}
   void runOnOperation() override {
+    auto mOp = getOperation();
     auto chip_ = StringRef(chip).lower();
     auto chip = module::symbolizeChip(chip_);
     assert(chip.has_value());
@@ -26,14 +26,14 @@ public:
 
     // for cv18xx , input only support fp32
     if (module::isCV18xx()) {
-      input_type_process();
+      input_type_process(mOp);
     }
     module::updateModuleTypes();
   }
 
 private:
-  void input_type_process() {
-    auto mainFunc = module::getMainFuncOp();
+  void input_type_process(ModuleOp mOp) {
+    auto mainFunc = module::getMainFuncOp(mOp);
     mainFunc.walk([&](Operation *op) {
       if (isa<top::InputOp>(op)) {
         auto output_value = op->getResult(0);

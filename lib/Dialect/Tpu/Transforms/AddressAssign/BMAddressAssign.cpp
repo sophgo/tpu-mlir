@@ -11,8 +11,6 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace llvm;
 
 using namespace tpu_mlir::backend;
@@ -40,13 +38,13 @@ bool BMAddressAssign::is_next_subnet_input(Operation *op, int index) {
   return ret;
 }
 
-void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
+void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   int64_t alignment = BM168x::ALIGNMENT;
   int64_t start_addr = BM168x::COEFF_START_ADDR;
-  Builder builder(module.getContext());
+  Builder builder(m.getContext());
   // assign weight first
   auto addr = start_addr;
-  for (auto func : module.getOps<FuncOp>()) {
+  for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
       const auto out_value = op.getOutput();
       auto elm_bits = module::getStorageType(out_value).getIntOrFloatBitWidth();
@@ -79,8 +77,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       addr = align_up(addr + bytes, alignment);
     });
   }
-  module::setCoeffAddr(start_addr);
-  module::setCoeffSize(addr - start_addr);
+  module::setCoeffAddr(m, start_addr);
+  module::setCoeffSize(m, addr - start_addr);
 
   // assign activation
   if (module::isBM1686()) {
@@ -96,7 +94,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   std::vector<ValueInfo> inplace_ops;
   std::vector<Operation *> all_ops;
   // 0.update liverange of ops and choose ops to allocate.
-  for (auto func : module.getOps<FuncOp>()) {
+  for (auto func : m.getOps<FuncOp>()) {
     func.walk<WalkOrder::PreOrder>([&](Operation *op) {
       ops_loc[op] = loc;
       ++loc;
@@ -227,7 +225,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   }
 
   // 4. set parallel Op address
-  for (auto func : module.getOps<FuncOp>()) {
+  for (auto func : m.getOps<FuncOp>()) {
     func.walk<WalkOrder::PreOrder>([&](tpu::ParallelOp op) {
       auto splitOp = &op.getBody().front().front();
       int64_t address = module::getAddress(splitOp->getOperand(0));
@@ -249,10 +247,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
     });
   }
 
-  module::setNeuronAddr(start_addr);
-  module::setNeuronSize(addr - start_addr);
-  module::updateModuleTypes();
-  module::setState(module::State::TPU_ADDRESSED);
+  module::setNeuronAddr(m, start_addr);
+  module::setNeuronSize(m, addr - start_addr);
 }
 
 void BMAddressAssign::updateLiveRangeofBMOps(
@@ -406,8 +402,8 @@ void BMAddressAssign::findInPlaceOpMaxUsePosition(
 bool BMAddressAssign::isInPlaceOp(Operation *op) {
   if (auto ReshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
     if (Arch::ALIGN_4N &&
-        module::getStorageType(ReshapeOp.getInput()).getIntOrFloatBitWidth()==8)
-    {
+        module::getStorageType(ReshapeOp.getInput()).getIntOrFloatBitWidth() ==
+            8) {
       int64_t in, ic, ih, iw, on, oc, oh, ow;
       module::getNCHW(ReshapeOp.getInput(), in, ic, ih, iw);
       module::getNCHW(ReshapeOp.getOutput(), on, oc, oh, ow);

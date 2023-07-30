@@ -58,6 +58,7 @@ void top::GatherOp::shape_inference() {
   auto input_shape = module::getShape(getInput());
   if (ax < 0) {
     ax += input_shape.size();
+    setAxis(ax);
   }
   std::vector<int64_t> out_shape;
   for (int i = 0; i < ax; ++i) {

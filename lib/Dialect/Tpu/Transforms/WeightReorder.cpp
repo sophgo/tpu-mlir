@@ -12,10 +12,7 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Backend/Arch.h"
 
-
-
 using namespace llvm;
-
 
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
@@ -28,21 +25,23 @@ class WeightReorderPass : public WeightReorderBase<WeightReorderPass> {
 public:
   WeightReorderPass() {}
   void runOnOperation() override {
-    auto mOp = getOperation();
     if (!module::isState(module::State::TPU_LOWERED)) {
       llvm_unreachable("module should be tpu quantized");
     }
-    RewritePatternSet patterns(mOp.getContext());
-    if (module::isBM1684Family()) {
-      populateWeightReorderBM1684Patterns(&patterns);
-    } else if (module::isBM1684XFamily()) {
-      populateWeightReorderBM1684XPatterns(&patterns);
-    } else if (module::isCV18xx()) {
-      populateWeightReorderCV18xxPatterns(&patterns);
+    auto modules = module::getAllModules();
+    for (auto sub : *modules) {
+      RewritePatternSet patterns(&getContext());
+      if (module::isBM1684Family()) {
+        populateWeightReorderBM1684Patterns(&patterns);
+      } else if (module::isBM1684XFamily()) {
+        populateWeightReorderBM1684XPatterns(&patterns);
+      } else if (module::isCV18xx()) {
+        populateWeightReorderCV18xxPatterns(&patterns);
+      }
+      auto config = GreedyRewriteConfig();
+      config.maxIterations = 1; // apply each pattern only once.
+      applyPatternsAndFoldGreedily(sub, std::move(patterns), config);
     }
-    auto config = GreedyRewriteConfig();
-    config.maxIterations = 1; // apply each pattern only once.
-    applyPatternsAndFoldGreedily(mOp, std::move(patterns), config);
     module::updateModuleTypes();
     module::setState(module::State::TPU_REORDERED);
   }

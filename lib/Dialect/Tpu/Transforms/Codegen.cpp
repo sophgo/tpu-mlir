@@ -20,19 +20,24 @@ class CodegenPass : public CodegenBase<CodegenPass> {
 public:
   CodegenPass() {}
   void runOnOperation() override {
-    auto module = getOperation();
     assert(module::isState(module::State::TPU_ADDRESSED));
     std::string filename = this->model_file;
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
+    auto mOp = getOperation();
+    auto modules = module::getAllModules();
     if (module::isCV18xx()) {
-      CviModelBuilder builder(module);
+      CviModelBuilder builder(modules->at(0));
       builder.storeModel(filename);
-    } else {
-      BMCodegen bm_codegen;
-      bm_codegen.run(module, filename, embed_debug_info);
+      return;
     }
+    BMCodegen bm_codegen;
+    bm_codegen.init(mOp, filename);
+    for (auto s : *modules) {
+      bm_codegen.run(s, embed_debug_info);
+    }
+    bm_codegen.store();
   }
 };
 

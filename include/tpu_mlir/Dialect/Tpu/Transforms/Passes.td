@@ -12,7 +12,7 @@
 
 include "mlir/Pass/PassBase.td"
 
-def OpReorder : Pass<"op-reorder", "FuncOp"> {
+def OpReorder : Pass<"op-reorder", "ModuleOp"> {
   let summary = "op reorder in tpu by tpuc-opt";
   let constructor = "createOpReorderPass()";
   let dependentDialects = ["TpuDialect"];
@@ -34,7 +34,7 @@ def SubnetDivide : Pass<"subnet-divide", "ModuleOp"> {
   ];
 }
 
-def LayerGroup : Pass<"layer-group", "FuncOp"> {
+def LayerGroup : Pass<"layer-group", "ModuleOp"> {
   let summary = "convert to layer group in tpu by tpuc-opt";
   let constructor = "createLayerGroupPass()";
   let dependentDialects = ["TpuDialect"];
@@ -54,7 +54,7 @@ def Distribute : Pass<"distribute", "ModuleOp"> {
   ];
 }
 
-def Parallel : Pass<"parallel", "FuncOp"> {
+def Parallel : Pass<"parallel", "ModuleOp"> {
   let summary = "split the operation to fine-grained and run it in parallel on TPU";
   let constructor = "createParallelPass()";
   let dependentDialects = ["TpuDialect"];

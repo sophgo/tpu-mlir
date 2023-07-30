@@ -46,7 +46,8 @@ public:
     if (post_type.empty()) {
       return;
     }
-    auto func = module::getMainFuncOp();
+    auto mOp = getOperation();
+    auto func = module::getMainFuncOp(mOp);
     terminator = func.getBody().back().getTerminator();
     auto arg_type = func.getArgumentTypes();
     in_shape = arg_type[0].cast<RankedTensorType>().getShape();

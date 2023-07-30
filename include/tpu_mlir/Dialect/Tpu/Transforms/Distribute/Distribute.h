@@ -29,11 +29,13 @@ Operation *cloneOp(PatternRewriter &rewriter, Operation *op,
 // erase op and its uers
 void eraseForward(PatternRewriter &rewriter, Operation *op);
 
-template <typename T> static void applyPattern(ModuleOp m) {
+template <typename T> static void applyPatternOnce(ModuleOp m) {
   auto ctx = m.getContext();
   RewritePatternSet patterns(ctx);
+  auto config = GreedyRewriteConfig();
+  config.maxIterations = 1; // apply each pattern only once.
   patterns.add<T>(ctx);
-  applyPatternsAndFoldGreedily(m, std::move(patterns));
+  applyPatternsAndFoldGreedily(m, std::move(patterns), config);
 }
 
 // ===================================
@@ -54,13 +56,13 @@ public:
 };
 
 template <typename T>
-void DoDistribution(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
+void splitByDevices(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
                     int64_t num_devices);
 
 // ===================================
 // split module to multi modules for devices
 // ===================================
-void DistributeModules(ModuleOp module, int64_t num_device);
+void distributeModules(ModuleOp module, int64_t num_device);
 
 } // namespace tpu
 } // namespace tpu_mlir

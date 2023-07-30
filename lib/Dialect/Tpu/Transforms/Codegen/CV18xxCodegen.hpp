@@ -93,8 +93,8 @@ protected:
 
 class CviTpuRoutine : public CviRoutine {
 public:
-  CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb, func::CallOp &call,
-                int *layer_id, std::string chip);
+  CviTpuRoutine(ModuleOp s, flatbuffers::FlatBufferBuilder &fbb,
+                func::CallOp &call, int *layer_id, std::string chip);
   flatbuffers::Offset<Routine> build();
 
   std::vector<uint8_t> cmdbuf;
@@ -110,8 +110,8 @@ private:
 
 class CviCpuRoutine : public CviRoutine {
 public:
-  CviCpuRoutine(flatbuffers::FlatBufferBuilder &fbb, func::CallOp &call,
-                std::string chip);
+  CviCpuRoutine(ModuleOp s, flatbuffers::FlatBufferBuilder &fbb,
+                func::CallOp &call, std::string chip);
   flatbuffers::Offset<Routine> build();
 
 private:
@@ -155,7 +155,7 @@ private:
   std::vector<Value> outputs;
   std::vector<top::WeightOp> weights;
 
-  void addRoutine(func::CallOp &call, int *layer_id);
+  void addRoutine(ModuleOp s, func::CallOp &call, int *layer_id);
   FBModel build();
   FBWeightVector buildWeightMap();
   FBTensorVector buildNeuronMap();

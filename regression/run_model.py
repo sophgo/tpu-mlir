@@ -455,6 +455,7 @@ if __name__ == "__main__":
                         help='if the input frame is width/channel aligned')
     parser.add_argument("--save_log", action="store_true", help='if true, save the log to file')
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
+    parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
 
     # yapf: enable
     args = parser.parse_args()
@@ -464,5 +465,5 @@ if __name__ == "__main__":
     os.chdir(dir)
     runner = MODEL_RUN(args.model_name, args.chip, args.mode, args.dyn_mode, args.merge_weight,
                        args.fuse_preprocess, args.customization_format, args.aligned_input,
-                       args.save_log, args.disable_thread)
+                       args.save_log, args.disable_thread, args.debug)
     runner.run_full()

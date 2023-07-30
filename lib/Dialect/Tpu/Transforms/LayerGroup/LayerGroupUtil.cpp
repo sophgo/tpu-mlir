@@ -928,7 +928,6 @@ void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
   int64_t group_type = 0;
-  module::isOpInGroup(op, &group_type);
   auto lg_attr = LayerGroupAttr::get(
       ctx, 0, 0, 0, 0, true, builder.getDenseI64ArrayAttr({nidx}),
       builder.getDenseI64ArrayAttr({nslice}),

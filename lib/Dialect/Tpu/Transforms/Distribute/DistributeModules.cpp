@@ -13,17 +13,17 @@ namespace tpu {
 
 class SubFunction {
 public:
-  SubFunction(int devid) : devid(devid) {
-    count++;
-    have_none = false;
+  SubFunction(int64_t devid, int64_t step) : devid(devid), step(step) {
+    need_none = false;
   }
-  int devid;
+  int64_t devid;
+  int64_t step;
+  bool need_none;
   std::vector<Operation *> ops;
-  bool have_none;
-  static int count;
 };
 
-int SubFunction::count = 0;
+static constexpr llvm::StringRef DEVICE_ID = "device_id";
+static constexpr llvm::StringRef STEP = "step";
 
 static void getInputsOutputs(std::vector<Operation *> &ops,
                              std::vector<Value> &inputs,
@@ -61,43 +61,51 @@ static void getInputsOutputs(std::vector<Operation *> &ops,
   }
 }
 
-static void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
+static void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp m) {
   if (sf == nullptr || sf->ops.empty()) {
     return;
   }
-  // std::vector<Operation *> fnOps;
+  auto ctx = m.getContext();
   std::vector<Value> fnInputs;
   std::vector<Value> fnOutputs;
   getInputsOutputs(sf->ops, fnInputs, fnOutputs);
   std::vector<Type> argType;
   std::vector<Type> resType;
   std::vector<Location> argLoc;
+  std::vector<Location> retLoc;
   for (auto input : fnInputs) {
     argType.push_back(input.getType());
-    if (auto op = input.getDefiningOp()) {
-      argLoc.push_back(op->getLoc());
-    } else {
-      argLoc.push_back(module.getLoc());
-    }
+    argLoc.push_back(module::getLoc(input));
   }
   for (auto output : fnOutputs) {
     resType.push_back(output.getType());
+    retLoc.push_back(module::getLoc(output));
   }
-  int64_t id = SubFunction::count - 1;
-  std::string func_name = "subfunc_" + std::to_string(id);
-  OpBuilder builder(module.getContext());
+  auto name = module::getName(m).str();
+  std::string func_name = name;
+  if (sf->devid != 0 || sf->step != 0) {
+    func_name +=
+        "_" + std::to_string(sf->devid) + "_" + std::to_string(sf->step);
+  }
+  OpBuilder builder(m.getContext());
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("id", builder.getI64IntegerAttr(id)));
   attrs.push_back(
-      builder.getNamedAttr("device_id", builder.getI64IntegerAttr(sf->devid)));
+      builder.getNamedAttr(STEP, builder.getI64IntegerAttr(sf->step)));
+  attrs.push_back(
+      builder.getNamedAttr(DEVICE_ID, builder.getI64IntegerAttr(sf->devid)));
   auto fnType = builder.getFunctionType(llvm::ArrayRef<Type>{argType},
                                         llvm::ArrayRef<Type>{resType});
-  auto fnOp = FuncOp::create(module.getLoc(), func_name, fnType,
-                             ArrayRef<NamedAttribute>(attrs));
+  auto fnOp =
+      FuncOp::create(NameLoc::get(builder.getStringAttr(func_name)), func_name,
+                     fnType, ArrayRef<NamedAttribute>(attrs));
   auto block = fnOp.addEntryBlock();
   builder.setInsertionPointAfterValue(fnOutputs.back());
-  func::CallOp callOp = builder.create<func::CallOp>(module.getLoc(), func_name,
-                                                     resType, fnInputs);
+  Location call_loc = retLoc[0];
+  if (retLoc.size() > 1) {
+    call_loc = FusedLoc::get(ctx, retLoc);
+  }
+  func::CallOp callOp =
+      builder.create<func::CallOp>(call_loc, func_name, resType, fnInputs);
   for (auto it : llvm::enumerate(callOp.getResults())) {
     fnOutputs[it.index()].replaceUsesWithIf(
         it.value(), [&](OpOperand &operand) {
@@ -107,11 +115,10 @@ static void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
   }
   builder.setInsertionPointToStart(block);
   top::NoneOp noneOp;
-  if (sf->have_none) {
-    noneOp =
-        builder.create<top::NoneOp>(module.getLoc(), builder.getNoneType());
+  if (sf->need_none) {
+    noneOp = builder.create<top::NoneOp>(m.getLoc(), builder.getNoneType());
   }
-  auto retOp = builder.create<func::ReturnOp>(module.getLoc(), fnOutputs);
+  auto retOp = builder.create<func::ReturnOp>(call_loc, fnOutputs);
   for (auto op : sf->ops) {
     if (isa<top::NoneOp>(op)) {
       continue;
@@ -123,11 +130,20 @@ static void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
     }
     op->moveBefore(retOp);
   }
-  module.push_back(fnOp);
+  m.push_back(fnOp);
+  if (sf->need_none) {
+    builder.setInsertionPointAfter(noneOp);
+  } else {
+    builder.setInsertionPointToStart(block);
+  }
   for (auto it : llvm::enumerate(fnInputs)) {
-    auto arg = block->getArgument(it.index());
-    arg.setLoc(argLoc[it.index()]);
-    it.value().replaceUsesWithIf(arg, [&](OpOperand &operand) {
+    auto v = it.value();
+    auto idx = it.index();
+    auto arg = block->getArgument(idx);
+    arg.setLoc(argLoc[idx]);
+    auto input =
+        builder.create<top::InputOp>(argLoc[idx], v.getType(), ValueRange{arg});
+    v.replaceUsesWithIf(input, [&](OpOperand &operand) {
       Operation *user = operand.getOwner();
       return find(sf->ops.begin(), sf->ops.end(), user) != sf->ops.end();
     });
@@ -139,8 +155,8 @@ static void insert_subop(std::shared_ptr<SubFunction> &subf, Operation *op) {
     auto op_ = opd.getDefiningOp();
     if (isa<top::WeightOp>(op_)) {
       subf->ops.push_back(op_);
-    } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
-      subf->have_none = true;
+    } else if (isa<top::NoneOp>(op_) && subf->need_none == false) {
+      subf->need_none = true;
     }
   }
   subf->ops.push_back(op);
@@ -159,8 +175,8 @@ static void collect_ops_backward(std::shared_ptr<SubFunction> &subf,
       collect_ops_backward(subf, op_);
     } else if (isa<top::WeightOp>(op_)) {
       subf->ops.push_back(op_);
-    } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
-      subf->have_none = true;
+    } else if (isa<top::NoneOp>(op_) && subf->need_none == false) {
+      subf->need_none = true;
     }
   }
   subf->ops.push_back(op);
@@ -184,11 +200,11 @@ static void Scollect_ops_forward(std::shared_ptr<SubFunction> &subf,
 
 static void buildDistibution(tpu::DistributionBeginOp begin,
                              tpu::DistributionEndOp end, ModuleOp m,
-                             int64_t num_devices) {
+                             int64_t num_devices, int64_t step) {
   std::vector<Operation *> begins(begin->user_begin(), begin->user_end());
   std::vector<Value> ends(end->operand_begin(), end->operand_end());
   for (int i = 0; i < num_devices; i++) {
-    auto subf = std::make_shared<SubFunction>(i);
+    auto subf = std::make_shared<SubFunction>(i, step);
     if (begins.size() == num_devices) {
       Scollect_ops_forward(subf, begins[i]);
     } else if (ends.size() == num_devices) {
@@ -200,6 +216,7 @@ static void buildDistibution(tpu::DistributionBeginOp begin,
   }
 }
 
+// translate tpu::DistributionEndOp to executive op
 class EndOpTranslate : public OpRewritePattern<tpu::DistributionEndOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -218,9 +235,10 @@ public:
             mlir::ValueRange{output, op.getOperand(i)});
         output = add.getOutput();
       }
+      module::setLoc(output, module::getLoc(op.getOutput()));
       rewriter.replaceOp(op, {output});
     } break;
-    case tpu::DistributionPattern::MatMulTopK:
+    case tpu::DistributionPattern::MatMulTopK: {
       auto value = op.getOperand(0);
       auto indice = op.getOperand(1);
       for (int i = 1; i < num_devices; i++) {
@@ -243,18 +261,78 @@ public:
             ValueRange{cmp.getOutput(), indice, indice2});
         indice = indice_select.getOutput();
       }
+      module::setLoc(indice, module::getLoc(op.getOutput()));
       rewriter.replaceOp(op, {indice});
+    } break;
+    default:
+      llvm_unreachable("Not Implemented");
       break;
     }
     return success();
   }
 };
 
-void DistributeModules(ModuleOp m, int64_t num_device) {
-  auto main = module::getMainFuncOp();
+static int64_t getDeviceId(FuncOp func) {
+  return func->getAttrOfType<IntegerAttr>(DEVICE_ID).getInt();
+}
+
+static int64_t getStep(FuncOp func) {
+  return func->getAttrOfType<IntegerAttr>(STEP).getInt();
+}
+
+class Function2Module : public OpRewritePattern<func::CallOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(func::CallOp op,
+                                PatternRewriter &rewriter) const override {
+    auto m = module::getModuleOp();
+    auto func = module::getFuncOp(m, op.getCallee());
+    auto device_id = getDeviceId(func);
+    auto step = getStep(func);
+    rewriter.setInsertionPointToStart(m.getBody());
+    auto sub_m = rewriter.create<ModuleOp>(func.getLoc(), op.getCallee());
+    module::setSubModuleId(sub_m, device_id, step);
+    func->removeAttr(DEVICE_ID);
+    func->removeAttr(STEP);
+    func->moveBefore(sub_m.getBody(), sub_m.getBody()->begin());
+    func.setName("main");
+    return success();
+  }
+};
+
+static void distributeToOneModule(ModuleOp m) {
+  auto func = module::getFuncOp(m, "main");
+  OpBuilder builder(m.getContext());
+  builder.setInsertionPointToStart(m.getBody());
+  auto sub_m = builder.create<ModuleOp>(m.getLoc(), module::getName(m));
+  module::setSubModuleId(sub_m, 0, 0);
+  func->moveBefore(sub_m.getBody(), sub_m.getBody()->begin());
+}
+
+void distributeModules(ModuleOp m, int64_t num_device) {
+  auto main = module::getMainFuncOp(m);
+  std::vector<StringRef> input_names;
+  std::vector<StringRef> output_names;
+  for (auto in : main.getOps<top::InputOp>()) {
+    input_names.push_back(module::getName(in.getOutput()));
+  }
+  for (auto ret : main.getOps<func::ReturnOp>()) {
+    for (auto v : ret.getOperands()) {
+      output_names.push_back(module::getName(v));
+    }
+  }
+  module::setInputs(input_names);
+  module::setOutputs(output_names);
+  if (num_device == 1) {
+    distributeToOneModule(m);
+    return;
+  }
+
   std::shared_ptr<SubFunction> subf = nullptr;
   bool in_distribution = false;
+  int64_t step = 0;
   tpu::DistributionBeginOp begin;
+  // split to different functions
   main.walk([&](Operation *op) {
     if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, func::ReturnOp,
             func::CallOp>(op)) {
@@ -267,13 +345,14 @@ void DistributeModules(ModuleOp m, int64_t num_device) {
         begin = cast<tpu::DistributionBeginOp>(op);
       } else if (isa<tpu::DistributionEndOp>(op)) {
         auto end = cast<tpu::DistributionEndOp>(op);
-        buildDistibution(begin, end, m, num_device);
+        buildDistibution(begin, end, m, num_device, step++);
         in_distribution = false;
-        subf = std::make_shared<SubFunction>(0);
+        subf = std::make_shared<SubFunction>(0, step++);
         insert_subop(subf, op);
       } else if (in_distribution) {
+        // do nothing
       } else if (subf == nullptr) {
-        subf = std::make_shared<SubFunction>(0);
+        subf = std::make_shared<SubFunction>(0, step++);
         insert_subop(subf, op);
       } else {
         insert_subop(subf, op);
@@ -284,7 +363,15 @@ void DistributeModules(ModuleOp m, int64_t num_device) {
     buildSubFunction(subf, m);
     subf = nullptr;
   }
-  applyPattern<EndOpTranslate>(m);
+  applyPatternOnce<EndOpTranslate>(m);
+  // each function create one module
+  applyPatternOnce<Function2Module>(m);
+  // remove main, and functions
+  auto ops = m.getOps<FuncOp>();
+  std::vector<FuncOp> funcs(ops.begin(), ops.end());
+  for (auto f : funcs) {
+    f.erase();
+  }
 }
 
 } // namespace tpu
