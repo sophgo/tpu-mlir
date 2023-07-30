@@ -24,32 +24,32 @@ def decode_dma_file(dma_file, device):
 
 
 def BModel2MLIR(bmodel_file):
-    bmodel = dis.BModelReader(bmodel_file)
-    chip = bmodel.nets["Chip"][0]
+    bmodel = dis.BModel(bmodel_file)
+    chip = bmodel.chip
     context = Context(chip)
     return context.BModel2MLIR(bmodel)
 
 
 def BModel2Reg(bmodel_file):
-    bmodel = dis.BModelReader(bmodel_file)
-    chip = bmodel.nets["Chip"][0]
+    bmodel = dis.BModel(bmodel_file)
+    chip = bmodel.chip
     context = Context(chip)
     decoder = context.decoder
-    for net in bmodel.nets["Net"]:
-        for param in net["Parameter"]:
-            for subnet in param["SubNet"]:
-                _id = subnet["Id"][0]
-                for _net in subnet["CmdGroup"]:
+    for net in bmodel.net:
+        for param in net.parameter:
+            for subnet in param.sub_net:
+                _id = subnet.id
+                for _net in subnet.cmd_group:
                     yield _id, decoder.decode_bmodel_cmd(_net, _id)
 
 
 def BModel2Bin(bmodel_file):
-    bmodel = dis.BModelReader(bmodel_file)
-    for net in bmodel.nets["Net"]:
-        for param in net["Parameter"]:
-            for subnet in param["SubNet"]:
-                _id = subnet["Id"][0]
-                for _net in subnet["CmdGroup"]:
+    bmodel = dis.BModel(bmodel_file)
+    for net in bmodel.net:
+        for param in net.parameter:
+            for subnet in param.sub_net:
+                _id = subnet.id
+                for _net in subnet.cmd_group:
                     with open(bmodel_file + f".{_id}.tiu.bin", "wb") as f:
                         f.write(_net.tiu_cmd)
                     with open(bmodel_file + f".{_id}.dma.bin", "wb") as f:

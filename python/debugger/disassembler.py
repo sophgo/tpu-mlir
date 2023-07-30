@@ -10,7 +10,6 @@ from collections import namedtuple
 import itertools, functools
 import numpy as np
 
-
 try:
     from . import op_support
     from . import bmodel_fbs
@@ -61,7 +60,37 @@ class Decoder:
         return self.CMD(tiu, dma, self.merge_instruction(tiu, dma, subnet_id))
 
 
-class BModelReader:
+class FBSArray:
+    # flatbuffer array adapter, act like a list.
+    def __init__(self, fbs, field, binary):
+        self.field_name, self.field_cls = field
+        self.fbs = fbs
+        name = self.field_name
+        assert hasattr(fbs, name + "Length")
+        items = []
+        for s in range(getattr(fbs, name + "Length")()):
+            cmd = getattr(fbs, name)(s)
+            items.append(self.field_cls(cmd, binary))
+        self.items = items
+
+    def __getitem__(self, index):
+        return self.items[index]
+
+    def __iter__(self):
+        return self.items.__iter__()
+
+    def serialize(self, builder, save_binary_fun):
+        array = [t.serialize(builder, save_binary_fun) for t in self.items]
+        getattr(self.fbs, f"Start{self.field_name}Vector")(builder, len(self.items))
+        for t in reversed(array):
+            builder.PrependUOffsetTRelative(t)
+        return builder.EndVector(len(self.items))
+
+    def __repr__(self) -> str:
+        return str(self.items)
+
+
+class BModel:
     header_t = np.dtype(
         [
             ("magic", np.uint32),
@@ -72,7 +101,7 @@ class BModelReader:
         ]
     )
 
-    class cmd_group_cls:
+    class CmdGroup:
         def __init__(self, fbs: bmodel_fbs.CmdGroup, cmd_buf_bits):
             self.tiu_num = fbs.BdcNum()
             self.dma_num = fbs.GdmaNum()
@@ -87,130 +116,305 @@ class BModelReader:
             else:
                 self.dma_cmd = []
 
+        def serialize(self, builder, save_binary_fun):
+            module = bmodel_fbs.CmdGroup
+            module.Start(builder)
+            module.AddBdcNum(builder, self.tiu_num)
+            module.AddGdmaNum(builder, self.dma_num)
+            tiu_range = save_binary_fun(self.tiu_cmd)
+            bmodel_fbs.CmdGroup.AddBinaryBdc(
+                builder, bmodel_fbs.Binary.CreateBinary(builder, *tiu_range)
+            )
+            dma_range = save_binary_fun(self.dma_cmd)
+            bmodel_fbs.CmdGroup.AddBinaryGdma(
+                builder, bmodel_fbs.Binary.CreateBinary(builder, *dma_range)
+            )
+            module.AddBdcCmdByte(builder, tiu_range[1])
+            module.AddGdmaCmdByte(builder, dma_range[1])
+            return module.End(builder)
+
         def __repr__(self):
             return f"tiu_num: {self.tiu_num}\ndma_num: {self.dma_num}"
 
-    class data_cls:
+    class ROData:
         def __init__(self, fbs: bmodel_fbs.CoeffMem, buffer):
             self.address = fbs.Address()
             self.check_code = fbs.CheckCodeAsNumpy()
             binary_data = (fbs.BinaryCoeff().Start(), fbs.BinaryCoeff().Size())
             self.data = buffer[binary_data[0] : sum(binary_data)]
 
+        def serialize(self, builder, save_binary_fun):
+            module = bmodel_fbs.CoeffMem
+
+            check_code = builder.CreateNumpyVector(
+                np.array(self.check_code, dtype=np.uint8)
+            )
+            module.Start(builder)
+            module.AddAddress(builder, self.address)
+            module.AddCheckCode(builder, check_code)
+            coeff_range = save_binary_fun(self.data)
+            module.AddBinaryCoeff(
+                builder, bmodel_fbs.Binary.CreateBinary(builder, *coeff_range)
+            )
+            return module.End(builder)
+
         def __repr__(self):
             check_code = "".join(f"{x:0>2x}" for x in self.check_code)
             return f"data: {self.address}\nshr256: {check_code}"
 
-    class tensor_cls:
+    class Tensor:
+        # fmt: off
         to_DType = {
-            0: op_support.DType.f32,
-            1: op_support.DType.f16,
-            2: op_support.DType.si8,
-            3: op_support.DType.ui8,
-            4: op_support.DType.si16,
-            5: op_support.DType.ui16,
-            6: op_support.DType.si32,
-            7: op_support.DType.ui32,
+            0: op_support.DType.f32, op_support.DType.f32: 0,
+            1: op_support.DType.f16, op_support.DType.f16: 1,
+            2: op_support.DType.si8, op_support.DType.si8: 2,
+            3: op_support.DType.ui8, op_support.DType.ui8: 3,
+            4: op_support.DType.si16, op_support.DType.si16: 4,
+            5: op_support.DType.ui16, op_support.DType.ui16: 5,
+            6: op_support.DType.si32, op_support.DType.si32: 6,
+            7: op_support.DType.ui32, op_support.DType.ui32: 7,
         }
-
-        def __init__(self, fbs: bmodel_fbs.Tensor, buffer):
+        # fmt: on
+        def __init__(self, fbs: bmodel_fbs.Tensor, _):
             self.name = fbs.Name().decode()
             self.dtype = self.to_DType[fbs.DataType()]
             self.device_addr = fbs.DeviceAddr()
             self.st_mode = fbs.GmemStmode()  # 0->1N, 1->2N, 2->4N
+            self.mem_type = fbs.MemType()
             self.pad_h = fbs.PadH()  # 1684
             self.shape = [
                 list(fbs.Shape(i).DimAsNumpy()) for i in range(fbs.ShapeLength())
             ]
             self.scale = fbs.Scale()
             self.zero_point = fbs.ZeroPoint()
+            self.size = fbs.Size()
+
+        def serialize(self, builder, _):
+            module = bmodel_fbs.Tensor
+
+            def build_shape(shape):
+                dims = builder.CreateNumpyVector(np.array(shape, dtype=np.uint64))
+                bmodel_fbs.Shape.Start(builder)
+                bmodel_fbs.Shape.AddDim(builder, dims)
+                return bmodel_fbs.Shape.End(builder)
+
+            shapes = [build_shape(shape) for shape in self.shape]
+            name = builder.CreateString(self.name)
+            bmodel_fbs.Tensor.StartShapeVector(builder, len(self.shape))
+            for shape in reversed(shapes):
+                builder.PrependUOffsetTRelative(shape)
+            shapes = builder.EndVector(len(self.shape))
+            module.Start(builder)
+            module.AddName(builder, name)
+            module.AddDataType(builder, self.to_DType[self.dtype])
+            module.AddGmemStmode(builder, self.st_mode)
+            module.AddDeviceAddr(builder, self.device_addr)
+            module.AddPadH(builder, self.pad_h)
+            module.AddShape(builder, shapes)
+            module.AddScale(builder, self.scale)
+            module.AddZeroPoint(builder, self.zero_point)
+            module.AddSize(builder, self.size)
+            module.AddMemType(builder, self.mem_type)
+            return module.End(builder)
 
         @property
         def dtype_name(self):
             return self.dtype.name
 
         def __repr__(self):
-            return f"{self.name}: {self.shape}({self.device_addr})"
+            return f"{self.name}: {self.shape} {self.dtype.name} ({self.device_addr})"
+
+    class KernelModule:
+        module = bmodel_fbs.KernelModule
+
+        def __init__(self, fbs: bmodel_fbs.KernelModule, buffer) -> None:
+            self.file_name = fbs.FileName().decode()
+            binary_data = (fbs.Binary().Start(), fbs.Binary().Size())
+            self.data = buffer[binary_data[0] : sum(binary_data)]
+
+        def serialize(self, builder, save_binary_fun):
+            module = self.module
+            file_name = builder.CreateString(self.file_name)
+            module.Start(builder)
+            module.AddFileName(builder, file_name)
+            binary_range = save_binary_fun(self.data)
+            module.AddBinary(
+                builder, bmodel_fbs.Binary.CreateBinary(builder, *binary_range)
+            )
+            return module.End(builder)
+
+        def __repr__(self) -> str:
+            return f"kernel: {self.file_name}"
+
+    class SubNet:
+        def __init__(self, fbs: bmodel_fbs.SubNet, buffer):
+            self.input_tensor = FBSArray(fbs, ("InputTensor", BModel.Tensor), buffer)
+            self.output_tensor = FBSArray(fbs, ("OutputTensor", BModel.Tensor), buffer)
+            self.cmd_group = FBSArray(fbs, ("CmdGroup", BModel.CmdGroup), buffer)
+            self.next_subnet_ids = fbs.NextSubnetIdsAsNumpy()
+            self.id = fbs.Id()
+
+        def serialize(self, builder, save_binary_fun):
+            module = bmodel_fbs.SubNet
+            cmd_group = self.cmd_group.serialize(builder, save_binary_fun)
+            input_tensor = self.input_tensor.serialize(builder, save_binary_fun)
+            output_tensor = self.output_tensor.serialize(builder, save_binary_fun)
+            next_id = builder.CreateNumpyVector(
+                np.array(self.next_subnet_ids, dtype=np.int32)
+            )
+            module.Start(builder)
+            module.AddSubnetMode(builder, 0)
+            module.AddCmdGroup(builder, cmd_group)
+            module.AddInputTensor(builder, input_tensor)
+            module.AddOutputTensor(builder, output_tensor)
+            module.AddNextSubnetIds(builder, next_id)
+            return module.End(builder)
+
+        def __repr__(self) -> str:
+            return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())
+
+    class Parameter:
+        def __init__(self, fbs: bmodel_fbs.NetParameter, buffer):
+            self.input_tensor = FBSArray(fbs, ("InputTensor", BModel.Tensor), buffer)
+            self.output_tensor = FBSArray(fbs, ("OutputTensor", BModel.Tensor), buffer)
+            self.sub_net = FBSArray(fbs, ("SubNet", BModel.SubNet), buffer)
+            self.cmd_group = FBSArray(fbs, ("CmdGroup", BModel.CmdGroup), buffer)
+            self.ctx_addr = fbs.CtxAddr()
+            self.ctx_size = fbs.CtxSize()
+            self.coeff_mem = BModel.ROData(fbs.CoeffMem(), buffer)
+
+        def serialize(self, builder, save_binary_fun):
+            module = bmodel_fbs.NetParameter
+            input_tensor = self.input_tensor.serialize(builder, save_binary_fun)
+            output_tensor = self.output_tensor.serialize(builder, save_binary_fun)
+            sub_net = self.sub_net.serialize(builder, save_binary_fun)
+            cmd_group = self.cmd_group.serialize(builder, save_binary_fun)
+            coeff_mem = self.coeff_mem.serialize(builder, save_binary_fun)
+
+            module.Start(builder)
+            module.AddInputTensor(builder, input_tensor)
+            module.AddOutputTensor(builder, output_tensor)
+            module.AddCtxAddr(builder, self.ctx_addr)
+            module.AddCtxSize(builder, self.ctx_size)
+            module.AddCoeffMem(builder, coeff_mem)
+            module.AddIsDynamic(builder, 0)
+            module.AddNDynamic(builder, 0)
+            module.AddHWDynamic(builder, 0)
+            module.AddSubNet(builder, sub_net)
+            module.AddCmdGroup(builder, cmd_group)
+            return module.End(builder)
+
+        def __repr__(self) -> str:
+            return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())
+
+    class Net:
+        def __init__(self, fbs: bmodel_fbs.Net, buffer):
+            self.name = fbs.Name().decode()
+            self.parameter = FBSArray(fbs, ("Parameter", BModel.Parameter), buffer)
+
+        def serialize(self, builder, save_binary_fun):
+            module = bmodel_fbs.Net
+            name = builder.CreateString(self.name)
+            parameter = self.parameter.serialize(builder, save_binary_fun)
+            module.Start(builder)
+            module.AddName(builder, name)
+            module.AddParameter(builder, parameter)
+            return module.End(builder)
+
+        def __repr__(self) -> str:
+            return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())
 
     def __init__(self, bmodel_file):
         self.head = None
-        self.binary_desc = None
-        self.binary = None
+        binary_desc = None
+        binary = None
         self.file_name = bmodel_file
         with open(bmodel_file, "rb") as file_obj:
             file_obj.seek(0, 0)
             self.head = np.frombuffer(
                 file_obj.read(self.header_t.itemsize), dtype=self.header_t
             )
-            self.binary_desc = file_obj.read(self.head["flatbuffers_size"][0])
-            self.binary = file_obj.read(self.head["binary_size"][0])
-        bmodel = bmodel_fbs.Model.GetRootAsModel(self.binary_desc, 0)
+            binary_desc = file_obj.read(self.head["flatbuffers_size"][0])
+            binary = file_obj.read(self.head["binary_size"][0])
+        bmodel = bmodel_fbs.Model.GetRootAsModel(binary_desc, 0)
 
-        def fbs_adaptor(param, _fields):
-            records = {}
-            for field, _cls in _fields.items():
-                if not hasattr(param, field + "Length"):
-                    cmd = getattr(param, field)()
-                    if isinstance(_cls, dict):
-                        mult = [fbs_adaptor(cmd, _cls)]
-                    elif cmd is None:
-                        mult = []
-                    else:
-                        mult = [_cls(cmd, self.binary)]
-                else:
-                    mult = []
-                    for s in range(getattr(param, field + "Length")()):
-                        cmd = getattr(param, field)(s)
-                        if isinstance(_cls, dict):
-                            mult.append(fbs_adaptor(cmd, _cls))
-                        else:
-                            mult.append(_cls(cmd, self.binary))
-                records[field] = mult
-            return records
+        self.chip = bmodel.Chip().decode()
+        self.version = bmodel.Version().decode()
+        self.type = bmodel.Type().decode()
+        self.kernel_module = self.KernelModule(bmodel.KernelModule(), binary)
+        self.neuron_size = bmodel.NeuronSize()
+        self.time = bmodel.Time().decode()
+        self.net = FBSArray(bmodel, ("Net", self.Net), binary)
 
-        fields = {  # module
-            "Chip": lambda x, _: x.decode(),
-            "Version": lambda x, _: x.decode(),
-            "Type": lambda x, _: x.decode(),
-            "Net": {  # function
-                "Name": lambda x, _: x.decode(),
-                "Parameter": {  # region
-                    "InputTensor": self.tensor_cls,  # signature
-                    "OutputTensor": self.tensor_cls,
-                    "SubNet": {  # block
-                        "CmdGroup": self.cmd_group_cls,
-                        "Id": lambda x, _: x,  # label
-                        "InputTensor": self.tensor_cls,  # block-arg
-                        "OutputTensor": self.tensor_cls,  # terminator
-                        "NextSubnetIds": lambda x, _: x,  # successor
-                    },
-                    "CoeffMem": self.data_cls,
-                },
-            },
-        }
+    def __repr__(self):
+        return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())
 
-        self.nets = fbs_adaptor(bmodel, fields)
+    def serialize(self, file_name):
+        import flatbuffers
+
+        builder = flatbuffers.Builder(1024)
+        payload = []
+
+        def save_binary(data):
+            start = len(payload)
+            size = len(data)
+            payload.extend(data)
+            return start, size
+
+        module = bmodel_fbs.Model
+        chip = builder.CreateString(self.chip)
+        version = builder.CreateString(self.version)
+        type_ = builder.CreateString(self.type)
+        time = builder.CreateString(self.time)
+
+        kernel_module = self.kernel_module.serialize(builder, save_binary)
+
+        net = self.net.serialize(builder, save_binary)
+        module.Start(builder)
+        module.AddType(builder, type_)
+        module.AddVersion(builder, version)
+        module.AddChip(builder, chip)
+        module.AddTime(builder, time)
+        module.AddNet(builder, net)
+        module.AddNeuronSize(builder, self.neuron_size)
+        module.AddKernelModule(builder, kernel_module)
+        model = bmodel_fbs.Model.End(builder)
+
+        builder.Finish(model)
+        buffer = builder.Output()
+        magic = self.head["magic"]
+        header_size = self.head["header_size"]
+        reserved = self.head["reserved"]
+
+        header = np.array(
+            (magic, header_size, len(buffer), len(payload), reserved),
+            dtype=self.header_t,
+        )
+
+        with open(file_name, "w") as f:
+            header.tofile(f)
+            np.array(buffer).tofile(f)
+            np.array(payload, np.uint8).tofile(f)
 
 
 def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
-    chip = bmodel_net.nets["Chip"][0]
+    chip = bmodel_net.chip
     assert chip.upper() == decoder.context.device.name
     context = decoder.context
 
     class Block:
         def __init__(self, subnet, indent=0):
-            assert subnet["Id"] != []
-            self.label = subnet["Id"][0]
+            self.label = subnet.id
             self.indent = indent
             self.cmds = [
-                decoder.decode_bmodel_cmd(x, self.label) for x in subnet["CmdGroup"]
+                decoder.decode_bmodel_cmd(x, self.label) for x in subnet.cmd_group
             ]
             self.operations = []
             for x in self.cmds:
                 self.operations.extend(x.all)
-            self.args = subnet["InputTensor"]
-            self.terminator = subnet["OutputTensor"]
-            self.successor = subnet["NextSubnetIds"]
+            self.args = subnet.input_tensor
+            self.terminator = subnet.output_tensor
+            self.successor = subnet.next_subnet_ids
 
         def __repr__(self):
             indent = " " * indenr_size * (self.indent + 1)
@@ -235,9 +439,9 @@ def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
     class Region:
         def __init__(self, net_stage, indent=0):
             self.indent = indent
-            self.blocks = [Block(x, indent) for x in net_stage["SubNet"]]
-            self.signature = (net_stage["InputTensor"], net_stage["OutputTensor"])
-            self.data = net_stage["CoeffMem"][0] if net_stage["CoeffMem"] else None
+            self.blocks = [Block(x, indent) for x in net_stage.sub_net]
+            self.signature = (net_stage.input_tensor, net_stage.output_tensor)
+            self.data = net_stage.coeff_mem if net_stage.coeff_mem else None
 
         def __repr__(self):
             blocks = "\n".join((f"{b}" for b in self.blocks))
@@ -246,8 +450,8 @@ def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
     class Function:
         def __init__(self, net, indent=0):
             self.indent = indent
-            self.name = net["Name"][0]
-            self.regions = [Region(x, indent) for x in net["Parameter"]]
+            self.name = net.name
+            self.regions = [Region(x, indent) for x in net.parameter]
             self.signature = self.regions[0].signature
 
         def __repr__(self):
@@ -277,16 +481,16 @@ def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
             )
 
     class Module:
-        def __init__(self, nets):
-            self.__nets = nets
-            self.chip = nets["Chip"][0]
-            self.version = nets["Version"][0]
-            self.type = nets["Type"][0]
+        def __init__(self, bmodel):
+            self.bmodel = bmodel
+            self.chip = bmodel.chip
+            self.version = bmodel.version
+            self.type = bmodel.type
 
         @property
         @functools.lru_cache()
         def functions(self):  # lazy eval
-            return [Function(x, 1) for x in self.__nets["Net"]]
+            return [Function(x, 1) for x in self.bmodel.net]
 
         def __repr__(self):
             funs = "\n".join((f"{x}" for x in self.functions))
@@ -294,8 +498,8 @@ def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
             return f"module {attrs} {{\n{funs}\n}}"
 
     if context.device.name == "BM1686":
-        coeff = Module(bmodel_net.nets).functions[0].regions[0].data
+        coeff = Module(bmodel_net).functions[0].regions[0].data
         if coeff:
             context.base_addr[1] += len(coeff.data)
 
-    return Module(bmodel_net.nets)
+    return Module(bmodel_net)

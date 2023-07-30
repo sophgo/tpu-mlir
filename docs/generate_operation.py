@@ -29,7 +29,7 @@ class Table(Node):
     """
     .. doctest::
 
-        >>> tbl = rst.Table('My friends', ['Name', 'Major Project'])
+        >>> tbl = Table('My friends', ['Name', 'Major Project'])
         >>> tbl.add_item(('Ramki', 'Python'))
         >>> tbl.add_item(('Pradeepto', 'Kde'))
         >>> print(tbl)
