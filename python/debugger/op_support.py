@@ -212,6 +212,12 @@ class DType(IntEnum):
     def is_int(self):
         return not self.is_float()
 
+    def __hash__(self):
+        # This is an enumeration type, not an integer type, even though it behaves
+        # like an integer. It's beneficial to distinguish between this type and
+        # integers when using them together as keys in a dictionary.
+        return id(self)
+
     @property
     def itemsize(self):
         if self in (DType.i4, DType.ui4, DType.si4):
