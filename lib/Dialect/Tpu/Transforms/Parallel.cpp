@@ -257,26 +257,29 @@ public:
   ParallelPass() {}
   void runOnOperation() override {
     module::setCoreNum(num_core);
-    if (num_core < 2)
+    if (num_core < 2) {
       return;
-    auto mOp = getOperation();
-
-    RewritePatternSet patterns(mOp.getContext());
-    if (module::isBM1684XFamily()) {
-      populateParalleBM1684XPatterns(&patterns, num_core);
     }
-    auto config = GreedyRewriteConfig();
-    config.maxIterations = 1; // apply each pattern only once.
-    applyPatternsAndFoldGreedily(mOp, std::move(patterns), config);
-    mOp->walk([&](IndexingMapsInterface op) {
-      if (module::isOpInGroup(op) || module::isOpInParallel(op))
-        return;
-      forAll(op, num_core);
-    });
+    auto modules = module::getAllModules();
+    for (auto m : *modules) {
+      // run each submodule
+      RewritePatternSet patterns(&getContext());
+      if (module::isBM1684XFamily()) {
+        populateParalleBM1684XPatterns(&patterns, num_core);
+      }
+      auto config = GreedyRewriteConfig();
+      config.maxIterations = 1; // apply each pattern only once.
+      applyPatternsAndFoldGreedily(m, std::move(patterns), config);
+      m->walk([&](IndexingMapsInterface op) {
+        if (module::isOpInGroup(op) || module::isOpInParallel(op))
+          return;
+        forAll(op, num_core);
+      });
+    }
   }
 };
 
-std::unique_ptr<OperationPass<FuncOp>> createParallelPass() {
+std::unique_ptr<OperationPass<ModuleOp>> createParallelPass() {
   return std::make_unique<ParallelPass>();
 }
 } // namespace tpu

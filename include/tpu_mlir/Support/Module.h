@@ -59,20 +59,10 @@ void init(ModuleOp module);
 //-----------------------------------------------------------------
 // Helper for get/set Attributes
 //-----------------------------------------------------------------
-int64_t getCoeffSize();
-void setCoeffSize(int64_t size);
-int64_t getGmemPrivateSize();
-void setGmemPrivateSize(int64_t size);
-int64_t getCoeffAddr();
-void setCoeffAddr(int64_t addr);
 int64_t getCoreNum();
 void setCoreNum(int64_t core_num = 1);
 int64_t getDeviceNum();
 void setDeviceNum(int64_t device_num = 1);
-int64_t getNeuronSize();
-void setNeuronSize(int64_t size);
-int64_t getNeuronAddr();
-void setNeuronAddr(int64_t addr);
 
 Chip getChip();
 void setChip(Chip chip);
@@ -82,6 +72,11 @@ void setMode(Mode mode);
 State getState();
 void setState(State state);
 bool isState(State state);
+void setInputs(ArrayRef<StringRef> inputs);
+std::shared_ptr<std::vector<StringRef>> getInputs();
+void setOutputs(ArrayRef<StringRef> outputs);
+std::shared_ptr<std::vector<StringRef>> getOutputs();
+
 Platform getPlatform();
 bool isPlatform(Platform plt);
 
@@ -99,8 +94,6 @@ void setPostprocess(StringRef post);
 ModuleOp getModuleOp();
 Location getLoc();
 MLIRContext *getCtx();
-
-void push_back(FuncOp funcOp);
 
 top::NoneOp getNoneOp(Operation *op);
 Value getOriValue(Value v);
@@ -146,7 +139,7 @@ bool isShapeRelatedOp(Value v);
 bool isAllWeight(Operation *op);
 bool isNone(Value v);
 bool isGlobalBuffer(Value v);
-FuncOp getMainFuncOp();
+FuncOp getMainFuncOp(ModuleOp module);
 i32_array_t getI32Array(ArrayAttr arrayAttr);
 i32_array_t getI32Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         int32_t default_value);
@@ -159,9 +152,8 @@ f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
 bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
 bool isOpInParallel(Operation *Op);
 bool isOpInDistribution(Operation *Op);
-FuncOp getFuncOp(StringRef func_name);
+FuncOp getFuncOp(ModuleOp module, StringRef func_name);
 func::CallOp getCallOp(FuncOp func);
-llvm::StringRef getModuleName();
 llvm::StringRef getName(Operation *op, int index = 0);
 llvm::StringRef getName(Value v);
 uint32_t getIdx(Value v);
@@ -170,7 +162,8 @@ NameLoc getLocLike(Operation *op, llvm::StringRef suffix);
 NameLoc getLocLike(Value v, llvm::StringRef suffix);
 void setLocSuffix(Operation *op, llvm::StringRef suffix);
 void setLoc(Value v, NameLoc loc);
-void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs);
+void getInputsOutputs(ModuleOp submodule, std::vector<Value> &inputs,
+                      std::vector<Value> &outputs);
 void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
                       std::vector<Value> &outputs);
 
@@ -182,6 +175,24 @@ bool isBM1684XFamily();
 bool isBM1686();
 bool isBM1684X();
 
+//-----------------------------------------------------------------
+// Helper Functions for submodule
+//-----------------------------------------------------------------
+bool hasSubModule();
+bool isEndModule(ModuleOp submodule); // is module with main function
+std::shared_ptr<std::vector<ModuleOp>> getAllModules();
+void setSubModuleId(ModuleOp submodule, int64_t device_id, int64_t step);
+void getSubModuleId(ModuleOp submodule, int64_t &device_id, int64_t &step);
+int64_t getNeuronSize(ModuleOp submodule);
+void setNeuronSize(ModuleOp submodule, int64_t size);
+int64_t getNeuronAddr(ModuleOp submodule);
+void setNeuronAddr(ModuleOp submodule, int64_t addr);
+int64_t getCoeffSize(ModuleOp submodule);
+void setCoeffSize(ModuleOp submodule, int64_t size);
+int64_t getGmemPrivateSize(ModuleOp submodule);
+void setGmemPrivateSize(ModuleOp submodule, int64_t size);
+int64_t getCoeffAddr(ModuleOp submodule);
+void setCoeffAddr(ModuleOp submodule, int64_t addr);
 //-----------------------------------------------------------------
 // Helper Functions for op translate
 //-----------------------------------------------------------------

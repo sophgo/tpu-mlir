@@ -11,9 +11,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOps.h"
 
-
 using namespace llvm;
-
 
 namespace tpu_mlir {
 namespace tpu {
@@ -22,16 +20,20 @@ class LayerGroupPass : public LayerGroupBase<LayerGroupPass> {
 public:
   LayerGroupPass() {}
   void runOnOperation() override {
-    auto func = getOperation();
-    if (func.getName() == "main") {
-      return;
+    auto modules = module::getAllModules();
+    for (auto s : *modules) {
+      for (auto f : s.getOps<FuncOp>()) {
+        if (f.getName() == "main") {
+          continue;
+        }
+        GroupOps gOps(f);
+        gOps.process(opt);
+      }
     }
-    GroupOps gOps(func);
-    gOps.process(opt);
   }
 };
 
-std::unique_ptr<OperationPass<FuncOp>> createLayerGroupPass() {
+std::unique_ptr<OperationPass<ModuleOp>> createLayerGroupPass() {
   return std::make_unique<LayerGroupPass>();
 }
 } // namespace tpu

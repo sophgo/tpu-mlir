@@ -1986,7 +1986,7 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
     AnyRankedTensor:$input,
     AnyRankedTensor:$indices,
     AnyTensorOrNone:$buffer, //for BM1684
-    DefaultValuedAttr<I64Attr, "0">:$axis
+    DefaultValuedAttr<SI32Attr, "0">:$axis
   );
 
   let results = (outs AnyRankedTensor:$output);

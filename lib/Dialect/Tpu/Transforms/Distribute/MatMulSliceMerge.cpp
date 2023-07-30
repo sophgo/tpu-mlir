@@ -90,7 +90,7 @@ MatMulSliceMerge::matchAndRewrite(tpu::MatMulOp op,
 }
 
 template <>
-void DoDistribution<MatMulSliceMerge>(PatternRewriter &rewriter,
+void splitByDevices<MatMulSliceMerge>(PatternRewriter &rewriter,
                                       tpu::DistributionBeginOp op,
                                       int64_t num_devices) {
   auto next_op = *op->user_begin();

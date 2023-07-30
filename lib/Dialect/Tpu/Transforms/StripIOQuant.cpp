@@ -155,7 +155,8 @@ class StripIOQuantPass : public StripIOQuantBase<StripIOQuantPass> {
 public:
   StripIOQuantPass() {}
   void runOnOperation() override {
-    auto func = module::getMainFuncOp();
+    auto mOp = getOperation();
+    auto func = module::getMainFuncOp(mOp);
     auto ctx = func.getContext();
     RewritePatternSet patterns(ctx);
     if (quant_input) {

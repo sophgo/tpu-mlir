@@ -22,10 +22,9 @@ void distribute(PatternRewriter &rewriter, Operation *op_begin,
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr(
       "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
-  auto begin_loc = module::getLocLike(op_begin, "begin");
   rewriter.setInsertionPoint(op_begin);
   auto begin = rewriter.create<tpu::DistributionBeginOp>(
-      begin_loc, types, ValueRange{input}, attrs);
+      op_begin->getLoc(), types, ValueRange{input}, attrs);
   op_begin->setOperand(0, begin.getOutput());
 
   Value output;
@@ -35,10 +34,9 @@ void distribute(PatternRewriter &rewriter, Operation *op_begin,
       break;
     }
   }
-  auto end_loc = module::getLocLike(output, "end");
   rewriter.setInsertionPointAfter(op_end);
-  auto end = rewriter.create<tpu::DistributionEndOp>(end_loc, output.getType(),
-                                                     ValueRange{output}, attrs);
+  auto end = rewriter.create<tpu::DistributionEndOp>(
+      module::getLoc(output), output.getType(), ValueRange{output}, attrs);
   output.replaceAllUsesExcept(end.getOutput(), end);
 }
 
@@ -96,10 +94,10 @@ public:
     }
     switch (op.getPattern()) {
     case tpu::DistributionPattern::MatMulSliceMerge:
-      DoDistribution<MatMulSliceMerge>(rewriter, op, num_devices);
+      splitByDevices<MatMulSliceMerge>(rewriter, op, num_devices);
       break;
     case tpu::DistributionPattern::MatMulTopK:
-      DoDistribution<MatMulTopK>(rewriter, op, num_devices);
+      splitByDevices<MatMulTopK>(rewriter, op, num_devices);
       break;
     default:
       return failure();
@@ -116,37 +114,23 @@ class DistributePass : public DistributeBase<DistributePass> {
 public:
   DistributePass() {}
   void runOnOperation() override {
-    if (num_device <= 1) {
+    if (module::hasSubModule()) {
       return;
     }
-    if (module::isBM1684XFamily() == false) {
-      return;
+    if (!module::isBM1684XFamily()) {
+      num_device = 1;
     }
     module::setDeviceNum(num_device);
-    mOp = getOperation();
-    ctx = &getContext();
-    applyPattern<MatMulSliceMerge>(mOp);
-    applyPattern<MatMulTopK>(mOp);
-    applyPattern<DoDistributePattern>(mOp);
-    DistributeModules(mOp, num_device);
-    // OpBuilder builder(&getContext());
-    // auto oriModule = getOperation();
-    // auto attrs = oriModule->getAttrs();
-    // StringRef name0 = "device0";
-    // builder.setInsertionPointToEnd(oriModule.getBody());
-    // auto loc0 = NameLoc::get(builder.getStringAttr(name0));
-    // auto module0 = builder.create<ModuleOp>(loc0);
-    // OpBuilder build0(module0.getBody(), module0.getBody()->begin());
-    // StringRef id0 = "id0";
-    // auto loc0id0 = NameLoc::get(builder.getStringAttr(id0));
-    // auto module0id0 = build0.create<ModuleOp>(loc0id0);
-    // module0id0->setAttrs(attrs);
-    // OpBuilder build0id0(module0id0.getBody(),
-    // module0id0.getBody()->begin());
+    auto mOp = getOperation();
+    if (num_device > 1) {
+      applyPatternOnce<MatMulSliceMerge>(mOp);
+      applyPatternOnce<MatMulTopK>(mOp);
+      applyPatternOnce<DoDistributePattern>(mOp);
+    }
+    distributeModules(mOp, num_device);
   }
 
 private:
-  mlir::MLIRContext *ctx;
   ModuleOp mOp;
 };
 

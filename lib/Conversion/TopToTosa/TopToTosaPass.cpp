@@ -135,7 +135,7 @@ public:
   void runOnOperation() override {
     module_ = getOperation();
     ctx_ = &getContext();
-    mainFunc_ = module::getMainFuncOp();
+    mainFunc_ = module::getMainFuncOp(module_);
 
     RewritePatternSet patterns(ctx_);
     ConversionTarget target(*ctx_);

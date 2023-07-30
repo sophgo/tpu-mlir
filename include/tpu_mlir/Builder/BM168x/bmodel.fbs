@@ -69,6 +69,7 @@ table Tensor {
     cpu_addr:uint32 (id: 8);       // tensor cpu mem. for cpu layer, recode every tensor's offset
     pad_h:uint32 (id: 9);          // this item is for conv 3ic(hack for BM1684 to improve efficiency): higher 16bit: pad_h_top, lower 16bit: pad_h_down
     zero_point:int32 = 0 (id: 10); // zero point for requant or dequant
+    hidden:int32 (id: 11);         // hidden tensor, from bmodel to bmodel
 }
 
 table CpuConst {
@@ -114,29 +115,9 @@ table SubNet {
     core_commands: [CoreCommands] (id: 14);
 }
 
-table NetStatic {      // for old bmodel, not use any more
-    input_tensor:[Tensor] (required, id: 0);
-    output_tensor:[Tensor] (required, id: 1);
-    cmd_group:[CmdGroup] (id: 2);
-    ctx_addr:uint64 (id: 3);
-    ctx_size:uint64 (id: 4);
-    coeff_mem:CoeffMem (id: 5);
-    sub_net:[SubNet] (id: 6);
-    net_profile:Binary (id: 7);
-}
+table NetStatic {}      // for old bmodel, not use any more
 
-table NetDynamic {    // for old bmodel, not use any more
-    input_tensor:[Tensor] (required, id: 0);
-    output_tensor:[Tensor] (required, id: 1);
-    n_dynamic:int32 (id: 2); // n_dynamic
-    h_w_dynamic:int32 (id: 3); // h_w_dynamic
-    stage_ir:[StageIR] (id: 4);
-    binary_ir:Binary (id: 5); // ir binary data
-    ctx_addr:uint64 (id: 6);
-    ctx_size:uint64 (id: 7);
-    coeff_mem:CoeffMem (id: 8);
-    sub_net:[SubNet] (id: 9);
-}
+table NetDynamic {}    // for old bmodel, not use any more
 
 table NetParameter {
     input_tensor:[Tensor] (required, id: 0);   /* per net input  tensor */
@@ -165,11 +146,18 @@ table NetParameter {
     core_num: uint32 (id: 16);
 }
 
+table Cascade {
+   device_id:uint32  (id: 0);        // which device to run
+   step:uint32       (id: 1);        // step to run: if multi, run in parallel; if none, end
+   main_name:string  (id: 2);        // net belong to
+}
+
 table Net {
     name:string (required, id: 0);     // net name
     net_static:[NetStatic] (id: 1);    // for old bmodel, not use any more
     net_dynamic:[NetDynamic] (id: 2);  // for old bmodel, not use any more
     parameter:[NetParameter] (id: 3);  // one net can one or more stages
+    cascade:Cascade (id: 4);           // may run in multi devices or multi steps
 }
 
 table KernelModule {
@@ -185,6 +173,7 @@ table Model {
     net:[Net] (required, id: 4);
     neuron_size:uint64 (id: 5);    // max neuron size
     kernel_module:KernelModule (id: 6);
+    device_num:uint32 (id: 7);     // The model may be run in multi devices
 }
 
 root_type Model;

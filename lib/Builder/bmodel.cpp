@@ -44,6 +44,7 @@ const uint32_t BMODEL_MAGIC = 0xFF55AAEE;
 ModelGen::ModelGen(uint32_t reserved_size) {
   binary_.reserve(reserved_size);
   max_neuron_size_ = 0;
+  num_device_ = 0;
 }
 
 FlatBufferBuilder &ModelGen::Builder() { return builder_; }
@@ -72,8 +73,24 @@ void ModelGen::AddNet(const flatbuffers::Offset<bmodel::Net> &net) {
   nets_.push_back(net);
 }
 
-void ModelGen::AddNet(string net_name, const Offset<NetParameter> &parameter,
-                      uint32_t *net_idx, uint32_t *stage_idx) {
+void ModelGen::AddNet(const std::string &net_name,
+                      const CASCADE_INFO_T &cascade,
+                      const flatbuffers::Offset<NetParameter> &parameter) {
+  auto net_new = reinterpret_cast<const NetParameter *>(
+      builder_.GetCurrentBufferPointer() + builder_.GetSize() - parameter.o);
+  if (net_new->ctx_size() > max_neuron_size_) {
+    max_neuron_size_ = net_new->ctx_size();
+  }
+  NET_INFO_T net_info;
+  net_info.name = net_name;
+  net_info.cascade = cascade;
+  net_info.parameters.push_back(parameter);
+  net_vector_.push_back(net_info);
+}
+
+void ModelGen::AddNet(const string &net_name,
+                      const Offset<NetParameter> &parameter, uint32_t *net_idx,
+                      uint32_t *stage_idx) {
   ASSERT(net_name.empty() == false);
   auto net_new = reinterpret_cast<const NetParameter *>(
       builder_.GetCurrentBufferPointer() + builder_.GetSize() - parameter.o);
@@ -216,6 +233,8 @@ void ModelGen::AddChip(const std::string &arch_name) {
   chip_ = arch_name;
 }
 
+void ModelGen::AddNumDevice(int num_device) { this->num_device_ = num_device; }
+
 void ModelGen::AddKernelModule(std::string &file_name, Binary &tpu_module) {
   kernel_module_.file_name = file_name;
   kernel_module_.binary = tpu_module;
@@ -235,10 +254,19 @@ size_t ModelGen::Finish() {
     }
 
     ASSERT(parameter.IsNull() == false);
-
+    flatbuffers::Offset<Cascade> cascade = 0;
+    if (net_info.cascade.main_name.empty() == false) {
+      auto main_name = builder_.CreateString(net_info.cascade.main_name);
+      bmodel::CascadeBuilder cb(builder_);
+      cb.add_device_id(net_info.cascade.device_id);
+      cb.add_step(net_info.cascade.step);
+      cb.add_main_name(main_name);
+      cascade = cb.Finish();
+    }
     auto net_name = builder_.CreateString(net_info.name);
     bmodel::NetBuilder nb(builder_);
     nb.add_name(net_name);
+    nb.add_cascade(cascade);
     nb.add_parameter(parameter);
     nets_.push_back(nb.Finish());
   }
@@ -260,7 +288,6 @@ size_t ModelGen::Finish() {
   kb.add_file_name(module_name);
   kb.add_binary(&kernel_module_.binary);
   auto kernel_module = kb.Finish();
-
   bmodel::ModelBuilder mb(builder_);
   mb.add_chip(chip);
   mb.add_type(type);
@@ -269,6 +296,7 @@ size_t ModelGen::Finish() {
   mb.add_net(net);
   mb.add_neuron_size(max_neuron_size_);
   mb.add_kernel_module(kernel_module);
+  mb.add_device_num(num_device_);
 
   auto model = mb.Finish();
   builder_.Finish(model);
@@ -473,65 +501,6 @@ static Offset<Vector<Offset<T>>> Pack(ModelGen *model_gen,
   return model_gen->Builder().CreateVector(item_v);
 }
 
-void ModelCtx::update_net(const string &net_name,
-                          const Vector<Offset<NetStatic>> *net_static) {
-  if (net_static == NULL || net_static->size() == 0) {
-    return;
-  }
-  for (uint32_t idx = 0; idx < net_static->size(); idx++) {
-    auto net_param = net_static->Get(idx);
-    auto input_offset = Pack(model_gen_, net_param->input_tensor());
-    auto output_offset = Pack(model_gen_, net_param->output_tensor());
-    auto cmdgroup_offset = Pack(model_gen_, net_param->cmd_group());
-    auto subnet_offset = Pack(model_gen_, net_param->sub_net());
-    auto coeff_offset = Pack(model_gen_, net_param->coeff_mem());
-
-    bmodel::NetParameterBuilder npb(model_gen_->Builder());
-    npb.add_input_tensor(input_offset);
-    npb.add_output_tensor(output_offset);
-    npb.add_ctx_addr(net_param->ctx_addr());
-    npb.add_ctx_size(net_param->ctx_size());
-    npb.add_coeff_mem(coeff_offset);
-    npb.add_is_dynamic(false);
-    npb.add_cmd_group(cmdgroup_offset);
-    npb.add_sub_net(subnet_offset);
-    model_gen_->AddNet(net_name, npb.Finish());
-  }
-}
-
-void ModelCtx::update_net(const string &net_name,
-                          const Vector<Offset<NetDynamic>> *net_dynamic) {
-  if (net_dynamic == NULL || net_dynamic->size() == 0) {
-    return;
-  }
-  for (uint32_t idx = 0; idx < net_dynamic->size(); idx++) {
-    auto net_param = net_dynamic->Get(idx);
-    auto input_offset = Pack(model_gen_, net_param->input_tensor());
-    auto output_offset = Pack(model_gen_, net_param->output_tensor());
-    auto stageir_offset = Pack(model_gen_, net_param->stage_ir());
-    ASSERT(net_param->binary_ir() != NULL);
-    bmodel::Binary binaryIR(net_param->binary_ir()->start(),
-                            net_param->binary_ir()->size());
-
-    auto subnet_offset = Pack(model_gen_, net_param->sub_net());
-    auto coeff_offset = Pack(model_gen_, net_param->coeff_mem());
-
-    bmodel::NetParameterBuilder npb(model_gen_->Builder());
-    npb.add_input_tensor(input_offset);
-    npb.add_output_tensor(output_offset);
-    npb.add_ctx_addr(net_param->ctx_addr());
-    npb.add_ctx_size(net_param->ctx_size());
-    npb.add_coeff_mem(coeff_offset);
-    npb.add_is_dynamic(true);
-    npb.add_n_dynamic(net_param->n_dynamic());
-    npb.add_h_w_dynamic(net_param->h_w_dynamic());
-    npb.add_stage_ir(stageir_offset);
-    npb.add_binary_ir(&binaryIR);
-    npb.add_sub_net(subnet_offset);
-    model_gen_->AddNet(net_name, npb.Finish());
-  }
-}
-
 void ModelCtx::update_bmodel() {
   bool need_update = false;
   for (uint32_t net_idx = 0; net_idx < model_->net()->size(); net_idx++) {
@@ -553,8 +522,6 @@ void ModelCtx::update_bmodel() {
       model_gen_->AddNet(Pack(model_gen_, net));
       continue;
     }
-    update_net(net->name()->str(), net->net_static());
-    update_net(net->name()->str(), net->net_dynamic());
   }
   model_gen_->Finish();
   model_ = bmodel::GetModel(model_gen_->GetBufferPointer());

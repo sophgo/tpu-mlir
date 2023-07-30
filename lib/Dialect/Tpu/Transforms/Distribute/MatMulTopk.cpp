@@ -33,7 +33,7 @@ LogicalResult MatMulTopK::matchAndRewrite(tpu::MatMulOp op,
 }
 
 template <>
-void DoDistribution<MatMulTopK>(PatternRewriter &rewriter,
+void splitByDevices<MatMulTopK>(PatternRewriter &rewriter,
                                 tpu::DistributionBeginOp op,
                                 int64_t num_devices) {
   auto next_op = *op->user_begin();

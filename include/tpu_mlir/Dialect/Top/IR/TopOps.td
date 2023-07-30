@@ -1561,7 +1561,7 @@ def Top_GatherOp: Top_Op<"Gather"> {
     AnyTensor:$input,
     AnyTensor:$indices,
     DefaultValuedAttr<BoolAttr, "false">:$keepdims, // not sure for set false as defaut
-    DefaultValuedAttr<I64Attr, "0">:$axis
+    DefaultValuedAttr<SI32Attr, "0">:$axis
   );
 
   let results = (outs AnyTensor:$output);

@@ -74,23 +74,27 @@ class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {
 public:
   AddressAssignPass() {}
   void runOnOperation() override {
-    auto mOp = getOperation();
     if (!module::isState(module::State::TPU_DIVIDED)) {
       llvm_unreachable("module should be divided");
     }
     module::removeUnusedOp();
-    if (module::isCV18xx()) {
-      CVAddressAssign addr_assign;
-      addr_assign.assign(mOp, reuse_addr, merge_weight, compress_weight,
-                         weight_map_file);
-    } else {
-      RewritePatternSet patterns(mOp.getContext());
-      populateGlobalBufferBM168xPatterns(&patterns);
-      patterns.add<ConcatFusePattern>(patterns.getContext());
-      applyPatternsAndFoldGreedily(mOp, std::move(patterns));
-      BMAddressAssign addr_assign;
-      addr_assign.assign(mOp, reuse_addr);
+    auto modules = module::getAllModules();
+    for (auto s : *modules) {
+      if (module::isCV18xx()) {
+        CVAddressAssign addr_assign;
+        addr_assign.assign(s, reuse_addr, merge_weight, compress_weight,
+                           weight_map_file);
+      } else {
+        RewritePatternSet patterns(s.getContext());
+        populateGlobalBufferBM168xPatterns(&patterns);
+        patterns.add<ConcatFusePattern>(patterns.getContext());
+        applyPatternsAndFoldGreedily(s, std::move(patterns));
+        BMAddressAssign addr_assign;
+        addr_assign.assign(s, reuse_addr);
+      }
     }
+    module::updateModuleTypes();
+    module::setState(module::State::TPU_ADDRESSED);
   }
 };
 
