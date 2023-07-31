@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::MaxUnpoolOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }
@@ -47,4 +45,15 @@ LogicalResult top::MaxUnpoolOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::MaxUnpoolOp::shape_inference() {}
+void top::MaxUnpoolOp::shape_inference() {
+  int64_t N, C, H, W;
+  module::getNCHW(getInput(), N, C, H, W);
+  auto scale_h_ = getScaleH();
+  auto scale_w_ = getScaleW();
+  llvm::SmallVector<int64_t> out_shape;
+  out_shape.push_back(N);
+  out_shape.push_back(C);
+  out_shape.push_back(scale_h_ * H);
+  out_shape.push_back(scale_w_ * W);
+  module::setShapeOrVerify(getOutput(), out_shape);
+}
