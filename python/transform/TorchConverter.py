@@ -1147,7 +1147,7 @@ class TorchConverter(BaseConverter):
                              axis,
                              num,
                              split_size=split_size,
-                             loc=self.get_loc(torch_node.name),
+                             loc=self.get_loc(output_names),
                              ip=self.mlir.insert_point).outputs
         for i in range(num):
             self.addOperand(output_names[i], new_op[i])

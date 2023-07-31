@@ -119,7 +119,8 @@ LogicalResult top::ConvOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult top::ConvOp::backward_weight(InferenceParameter &p, InferenceParameter &p_back) {
+LogicalResult top::ConvOp::backward_weight(InferenceParameter &p,
+                                           InferenceParameter &p_back) {
   if (p.handle == nullptr) {
     return failure();
   }
@@ -150,6 +151,17 @@ void top::ConvOp::shape_inference() {
   auto pads = module::getI64Array(getPads());
   auto strides = module::getI64Array(getStrides());
   auto dilation = module::getI64Array(getDilations(), spacial_rank, 1);
+  std::vector<int64_t> new_pads(pads->begin(), pads->end());
+  if (getAutoPad().has_value()) {
+    auto kernel_shape = module::getI64Array(getKernelShapeAttr());
+    set_auto_pad(getAutoPad().value(), input_shape, *kernel_shape, *strides,
+                 new_pads);
+    auto builder = OpBuilder(getContext());
+    setPadsAttr(builder.getI64ArrayAttr(new_pads));
+    removeAutoPadAttr();
+    pads = module::getI64Array(getPads());
+  }
+
   for (int i = 0; i < spacial_rank; i++) {
     auto out_dim =
         (input_spacial_shape[i] + pads->at(i) + pads->at(i + spacial_rank) -

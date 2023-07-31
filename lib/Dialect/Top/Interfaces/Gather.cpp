@@ -63,11 +63,25 @@ void top::GatherOp::shape_inference() {
   for (int i = 0; i < ax; ++i) {
     out_shape.push_back(input_shape[i]);
   }
-  for (int s : indices_shape) {
-    out_shape.push_back(s);
+
+  if (indices_shape.size() == 1 && indices_shape[0] == 1 && !getKeepdims()) {
+    // if indices_shape.size() == 1 and indices is scalar(not a array) do squeeze manner
+    // do nothing
+  } else {
+    for (int s : indices_shape) {
+      out_shape.push_back(s);
+    }
   }
   for (int i = ax + 1; i < input_shape.size(); ++i) {
     out_shape.push_back(input_shape[i]);
+  }
+  if (out_shape.size() == 0) {
+    // 1D gather
+    out_shape.push_back(1);
+  }
+  if (out_shape.size() == input_shape.size()) {
+    auto builder = OpBuilder(getContext());
+    setKeepdimsAttr(builder.getBoolAttr(true));
   }
   module::setShapeOrVerify(getOutput(), out_shape);
 }

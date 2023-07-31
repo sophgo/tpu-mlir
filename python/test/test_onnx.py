@@ -100,6 +100,8 @@ class ONNX_IR_TESTER(object):
             "Gather2":      (self.test_Gather2,       N, Y, Y, N),
             "Gather3":      (self.test_Gather3,       Y, Y, Y, N),
             "Gemm":         (self.test_Gemm,          Y, Y, Y, Y),
+            "GlobalAveragePool":(self.test_GlobalAveragePool, Y, Y, Y, Y),
+            "GlobalMaxPool":(self.test_GlobalMaxPool, Y, Y, Y, Y),
             "GroupFC":      (self.test_GroupFC,       Y, Y, Y, Y),
             "GRU":          (self.test_GRU,           N, Y, Y, Y),  # test gru output Y
             "GRU2":         (self.test_GRU2,          N, Y, Y, Y),  # test gru output Yh
@@ -161,6 +163,7 @@ class ONNX_IR_TESTER(object):
             "Slice2":       (self.test_Slice2,        Y, Y, Y, Y),
             "Slice3":       (self.test_Slice3,        Y, Y, Y, Y),
             "Split":        (self.test_Split,         Y, Y, Y, Y),
+            "Split2":        (self.test_Split2,       Y, Y, Y, Y),
             "Scale":        (self.test_Scale,         Y, Y, Y, Y),
             "Sqrt":         (self.test_Sqrt,          Y, Y, Y, Y),
             "Sub":          (self.test_Sub,           Y, Y, Y, Y),
@@ -334,11 +337,11 @@ class ONNX_IR_TESTER(object):
                 inputs[name] = np.random.randint(0, 2, shape).astype(np.bool_)
         return inputs
 
-    def onnx_convert(self, input_data: dict, graph_def, model_name: str, static_shape=True):
+    def onnx_convert(self, input_data: dict, graph_def, model_name: str, static_shape=True, version=13):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
-        model_def.opset_import[0].version = 13
+        model_def.opset_import[0].version = version
         onnx.checker.check_model(model_def)
         tool = OnnxTransformer(model_name, model_def, static_shape=static_shape)
         node_name_mapping = tool.converter.node_name_mapping
@@ -515,12 +518,13 @@ class ONNX_IR_TESTER(object):
                       name: str = "",
                       input_data: dict = None,
                       static_shape=True,
-                      check_last: bool = False):
+                      check_last: bool = False,
+                      version=13):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
-            input_data, graph_def, model_name, static_shape=static_shape)
+            input_data, graph_def, model_name, static_shape=static_shape, version=version)
         # this assumes that outputs are in order, i.e. the last one is the output
         if check_last:
             top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
@@ -681,6 +685,30 @@ class ONNX_IR_TESTER(object):
             outputs=['output'],
             kernel_shape=kernel,
             strides=strides,
+        )
+        graph_def = helper.make_graph([pool_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
+    def test_GlobalAveragePool(self, case_name):
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, [1, 3, 64, 64])
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, [1, 3, 1, 1])
+
+        pool_def = helper.make_node(
+            'GlobalAveragePool',
+            inputs=['input'],
+            outputs=['output'],
+        )
+        graph_def = helper.make_graph([pool_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
+    def test_GlobalMaxPool(self, case_name):
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, [1, 3, 64, 64])
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, [1, 3, 1, 1])
+
+        pool_def = helper.make_node(
+            'GlobalMaxPool',
+            inputs=['input'],
+            outputs=['output'],
         )
         graph_def = helper.make_graph([pool_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
@@ -2389,6 +2417,26 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([split_def],
                                       case_name, [input], [output_1, output_2],
                                       initializer=[split])
+        self.onnx_and_test(graph_def)
+
+    def test_Split2(self, case_name):
+        input_shape = [6, 116, 64, 64]
+        output1_shape = [3, 116, 64, 64]
+        output2_shape = [3, 116, 64, 64]
+        split_data = np.array([3, 3], dtype=np.int64)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output_1 = helper.make_tensor_value_info('output_1', TensorProto.FLOAT, output1_shape)
+        output_2 = helper.make_tensor_value_info('output_2', TensorProto.FLOAT, output2_shape)
+        split_def = helper.make_node(
+            "Split",
+            inputs=['input'],
+            outputs=['output_1', 'output_2'],
+            axis=0,
+        )
+
+        graph_def = helper.make_graph([split_def],
+                                      case_name, [input], [output_1, output_2])
         self.onnx_and_test(graph_def)
 
     def test_Arg(self, case_name):
@@ -4493,9 +4541,9 @@ class ONNX_IR_TESTER(object):
 
     def test_Einsum4(self, case_name):
         for i, equation in enumerate(['bhwc,hkc->bhwk', 'bhwc,wkc->bhwk']):
-            input_shape = [5, 15, 15, 64]
-            filter_shape = [15, 14, 64]
-            output_shape = [5, 15, 15, 14]
+            input_shape = [5, 16, 15, 64]
+            filter_shape = [16, 14, 64]  if equation == 'bhwc,hkc->bhwk' else [15, 14, 64]
+            output_shape = [5, 16, 15, 14]
 
             weight_data = np.random.randn(*filter_shape).astype(np.float32)
             input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
@@ -4516,7 +4564,9 @@ class ONNX_IR_TESTER(object):
 
     def test_Einsum5(self, case_name):
         for i, equation in enumerate(['bhwc,hkc->bhwk', 'bhwc,wkc->bhwk']):
-            input_shape = {"input1": [5, 15, 15, 64], "input2": [15, 14, 64]}
+            input_shape = {"input1": [5, 16, 15, 64], "input2": [16, 14, 64]}
+            if equation == 'bhwc,wkc->bhwk':
+                input_shape["input2"][0] = input_shape["input1"][2]
             output_shape = [5, 15, 15, 14]
 
             inputs = [
@@ -5609,17 +5659,27 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Shape(self, case_name):
-        input_shape = [2, 3]
-        output_shape = [2]
+        input_shape = [2, 3, 4]
+        output_shape = [1]
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        shapeinfo = helper.make_tensor_value_info('shapeinfo', TensorProto.INT64, output_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.INT64, output_shape)
         shape_node = helper.make_node(
             'Shape',  # node name
             ['input'],  # inputs
             ['shapeinfo'],  # outputs
+            start=0,
+            end=2,
         )
-        graph_def = helper.make_graph([shape_node], case_name, [input], [shapeinfo])
-        self.onnx_and_test(graph_def, case_name, static_shape=False)
+        starts = helper.make_tensor('starts', TensorProto.INT64, [1], np.array([0], np.int64))
+        ends = helper.make_tensor('ends', TensorProto.INT64,[1], np.array([1], np.int64))
+        axes = helper.make_tensor( 'axes',TensorProto.INT64,[1], np.array([0], np.int64))
+        steps = helper.make_tensor('steps', TensorProto.INT64,[1], np.array([1], np.int64))
+        slice_node = helper.make_node("Slice",   inputs=['shapeinfo','starts', 'ends', 'axes', 'steps'], outputs=['output'])
+
+
+        graph_def = helper.make_graph([shape_node, slice_node], case_name, [input], [output],
+                                      initializer=[starts, ends, axes, steps])
+        self.onnx_and_test(graph_def, case_name, static_shape=False, version=15)
 
     def test_ShapeSlice(self, case_name):
         shape = [10,1000]

@@ -70,6 +70,8 @@ def StoreModeAttr: AnyStrAttrOf<["1N", "2N", "4N"]>;
 def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov4", "yolov5"]>;
 def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 def PaddingModeAttr:AnyStrAttrOf<["constant","reflect","symmetric","edge"]>;
+def AutoPadModeAttr:AnyStrAttrOf<["SAME_UPPER","SAME_LOWER","NOTSET","VALID"]>;
+def EinsumModeAttr:AnyStrAttrOf<["a,b->ab","abcd,cde->abe","abcd,bed->abce","abcd,ced->abce"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -355,6 +357,7 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu,
     OptionalAttr<I64ArrayAttr>:$inserts,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<AutoPadModeAttr>:$auto_pad, // only used in shape infer
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,
     OptionalAttr<F64Attr>:$out_int8_scale,
@@ -382,6 +385,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
     I64ArrayAttr:$strides,
     I64ArrayAttr:$pads,
     OptionalAttr<BoolAttr>:$ceil_mode,
+    OptionalAttr<AutoPadModeAttr>:$auto_pad, // only used in shape infer
     DefaultValuedAttr<BoolAttr, "true">:$keepdims,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
@@ -735,6 +739,22 @@ def Top_AttentionOp: Top_Op<"Attention"> {
   );
 
   let results = (outs AnyTensor:$output);
+}
+
+def Top_EinsumOp: Top_Op<"Einsum", [SupportFuseRelu]> {
+  let summary = "Einsum operator";
+
+  let description = [{
+    # https://pytorch.org/docs/1.13/generated/torch.einsum.html?highlight=einsum#torch.einsum
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    EinsumModeAttr:$mode
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_PadOp:Top_Op<"Pad"> {
@@ -1540,7 +1560,7 @@ def Top_GatherOp: Top_Op<"Gather"> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$indices,
-
+    DefaultValuedAttr<BoolAttr, "false">:$keepdims, // not sure for set false as defaut
     DefaultValuedAttr<I64Attr, "0">:$axis
   );
 
@@ -2588,7 +2608,11 @@ def Top_ShapeOp : Top_Op<"Shape"> {
     Takes a tensor as input and outputs an 1D int tensor containing the shape
      of the input tensor.
   }];
-  let arguments = (ins AnyTensor:$input);
+  let arguments = (ins
+    AnyTensor:$input,
+    OptionalAttr<I64Attr>:$start,
+    OptionalAttr<I64Attr>:$end
+  );
   let results = (outs AnyTensor:$output);
 }
 
