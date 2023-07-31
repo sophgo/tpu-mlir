@@ -148,6 +148,7 @@ class TorchConverter(BaseConverter):
             "aten::prelu": lambda node: self.convert_prelu_op(node),
             "aten::permute": lambda node: self.convert_permute_op(node),
             "aten::pixel_shuffle": lambda node: self.convert_pixel_shuffle_op(node),
+            "aten::pixel_unshuffle": lambda node: self.convert_pixel_unshuffle_op(node),
             "aten::repeat": lambda node: self.convert_repeat_op(node),
             "aten::reflection_pad1d": lambda node: self.convert_pad_op(node, mode='reflect'),
             "aten::reflection_pad2d": lambda node: self.convert_pad_op(node, mode='reflect'),
@@ -1552,6 +1553,19 @@ class TorchConverter(BaseConverter):
                                    block_w=block,
                                    is_CRD=True,
                                    is_inversed=False,
+                                   loc=self.get_loc(torch_node.name),
+                                   ip=self.mlir.insert_point)
+        self.addOperand(torch_node.name, new_op.output)
+
+    def convert_pixel_unshuffle_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        block = self.const_val[torch_node.inputs[1]]
+        new_op = top.Depth2SpaceOp(self.unranked_type,
+                                   op,
+                                   block_h=block,
+                                   block_w=block,
+                                   is_CRD=True,
+                                   is_inversed=True,
                                    loc=self.get_loc(torch_node.name),
                                    ip=self.mlir.insert_point)
         self.addOperand(torch_node.name, new_op.output)

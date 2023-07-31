@@ -106,6 +106,8 @@ class TORCH_IR_TESTER(object):
             "Reshape":          (self.test_Reshape,           N, Y, Y, Y),
             "RMSNorm":          (self.test_RMSNorm,           N, Y, Y, N),
             "PixelShuffle":     (self.test_PixelShuffle,      N, Y, Y, Y),
+            "PixelUnshuffle":   (self.test_PixelUnshuffle,    N, Y, Y, Y),
+            "PRelu":            (self.test_PRelu,             N, Y, Y, Y),
             "PRelu":            (self.test_PRelu,             N, Y, Y, Y),
             "Permute":          (self.test_Permute,           N, Y, Y, Y),
             "Permute2":         (self.test_Permute2,          N, Y, Y, N),
@@ -1754,6 +1756,23 @@ class TORCH_IR_TESTER(object):
                 return x
 
         self.trace_and_test([(1, 16, 32, 32)], Model())
+
+    #######################################################################
+    # PixelUnshuffle
+    # ------------
+    def test_PixelUnshuffle(self):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.pixel_unshuffle = nn.PixelUnshuffle(2)
+
+            def forward(self, x):
+                x = self.pixel_unshuffle(x)
+                return x
+
+        self.trace_and_test([(1, 4, 64, 64)], Model())
 
     #######################################################################
     # Where
