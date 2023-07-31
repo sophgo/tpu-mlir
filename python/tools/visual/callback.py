@@ -290,10 +290,13 @@ def show_weight(app):
         else:
             return dash.no_update
         top_opsf = {op.name:op for op in app.Global.analysis_data.f32_net.mlir_parser.ops}
-        if len(top_opsf[layer].opds) > 1 and top_opsf[layer].opds[1] in app.Global.analysis_data.f32_net.all_weight_names():
-            fweight = top_opsf[layer].opds[1]
-        else:
+        if layer not in top_opsf:
             fweight = None
+        else:
+            if len(top_opsf[layer].opds) > 1 and top_opsf[layer].opds[1] in app.Global.analysis_data.f32_net.all_weight_names():
+                fweight = top_opsf[layer].opds[1]
+            else:
+                fweight = None
 
         fig = app.Global.weight_cache.get_figure(plot.linear_plot,
                                                  name=weight,
