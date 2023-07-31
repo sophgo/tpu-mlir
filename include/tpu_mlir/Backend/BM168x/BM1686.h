@@ -65,13 +65,14 @@ private:
         dl_set_gdma_bw_s2l(12.0f);
         dl_set_gdma_bw_l2s(12.0f);
         dl_set_gdma_bw_l2l(10.0f);
+        dl_set_tiu_freq(static_cast<float>(A2_2::value));
       } else {
         dl_set_gdma_bw_s2s(12.0f);
         dl_set_gdma_bw_s2l(24.0f);
         dl_set_gdma_bw_l2s(24.0f);
         dl_set_gdma_bw_l2l(12.0f);
+        dl_set_tiu_freq(static_cast<float>(A2_1::value));
       }
-      dl_set_tiu_freq(static_cast<float>(A2_2::value));
 
     } else {
       dl_set_tiu_freq(static_cast<float>(get_frequance()));
