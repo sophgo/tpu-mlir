@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-
-
 pool_attr_t top::MaxPoolOp::parseParam() {
   pool_attr_t p = {0};
   auto ishape = getInput().getType().dyn_cast<RankedTensorType>().getShape();
@@ -109,8 +107,8 @@ LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
   pooling->run();
   if (getDoRelu()) {
     auto limit = getReluLimit().convertToDouble();
-    function_relu(p.outputs[0], p.outputs[0], module::getNumElements(getOutput()),
-                  limit);
+    function_relu(p.outputs[0], p.outputs[0],
+                  module::getNumElements(getOutput()), limit);
   }
   return success();
 }
@@ -118,6 +116,22 @@ LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
 void top::MaxPoolOp::shape_inference() {
   auto input_shape = module::getShape(getInput());
   auto kernel_shape = module::getI64Array(getKernelShape());
+  if (kernel_shape->size() == 0) {
+    // for onnx GlobalMaxPool
+    auto num_dim = input_shape.size() - 2;
+    assert(num_dim > 0);
+    std::vector<int64_t> vkernel_shape;
+    std::vector<int64_t> vstrides(num_dim, 1);
+    std::vector<int64_t> vpads(2 * num_dim, 0);
+    for (uint32_t i = 2; i < input_shape.size(); i++) {
+      vkernel_shape.push_back(input_shape[i]);
+    }
+    auto builder = OpBuilder(getContext());
+    setKernelShapeAttr(builder.getI64ArrayAttr(vkernel_shape));
+    setStridesAttr(builder.getI64ArrayAttr(vstrides));
+    setPadsAttr(builder.getI64ArrayAttr(vpads));
+    kernel_shape = module::getI64Array(getKernelShape());
+  }
   assert(input_shape.size() > 2);
   int spacial_rank = input_shape.size() - 2;
   assert(spacial_rank == getKernelShape().size());
@@ -128,6 +142,18 @@ void top::MaxPoolOp::shape_inference() {
   auto input_spacial_shape = llvm::ArrayRef(&input_shape[2], spacial_rank);
   auto pads = module::getI64Array(getPads());
   auto strides = module::getI64Array(getStrides());
+  // for AutoPad
+  std::vector<int64_t> new_pads;
+  new_pads.assign(pads->begin(), pads->end());
+  if (getAutoPad().has_value()) {
+    set_auto_pad(getAutoPad().value(), input_shape, *kernel_shape, *strides,
+                 new_pads);
+    auto builder = OpBuilder(getContext());
+    setPadsAttr(builder.getI64ArrayAttr(new_pads));
+    removeAutoPadAttr();
+    pads = module::getI64Array(getPads());
+  }
+
   for (int i = 0; i < spacial_rank; i++) {
     auto input_dim_expanded = input_spacial_shape[i] + pads->at(i) +
                               pads->at(i + spacial_rank) - kernel_shape->at(i);

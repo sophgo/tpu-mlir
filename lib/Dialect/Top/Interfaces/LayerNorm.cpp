@@ -79,12 +79,33 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
 
 void top::LayerNormOp::shape_inference() {
   auto in_shape = module::getShape(getInput());
+  auto dims = in_shape.size();
   auto axis = getAxis();
   if (axis < 0) {
-    axis += in_shape.size();
+    axis += dims;
     setAxis(axis);
   }
   auto normalized_shape = module::getI64Array(getNormalizedShape());
+  if (normalized_shape->size() == 0) {
+    std::vector<int64_t> wb_shape(axis, 1);
+    for (uint32_t i = axis; i < dims; i++) {
+      normalized_shape->push_back(in_shape[i]);
+      wb_shape.push_back(in_shape[i]);
+    }
+    auto builder = OpBuilder(getContext());
+    setNormalizedShapeAttr(builder.getI64ArrayAttr(*normalized_shape));
+
+    RankedTensorType newType;
+    if (auto weight_op = dyn_cast<WeightOp>(getWeight().getDefiningOp())) {
+      newType = RankedTensorType::get(wb_shape, module::getElementType(weight_op));
+      getWeight().setType(newType);
+    }
+    if (auto bias_op = dyn_cast<WeightOp>(getBias().getDefiningOp())) {
+      newType = RankedTensorType::get(wb_shape, module::getElementType(bias_op));
+      getBias().setType(newType);
+    }
+  }
+
   if (!std::equal(normalized_shape->begin(), normalized_shape->end(),
                   in_shape.begin() + axis)) {
     dump();

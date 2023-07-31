@@ -9,10 +9,8 @@
 
 #include "tpu_mlir/Support/Module.h"
 
-
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
-
 
 struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -36,29 +34,35 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       // e.g. Gather(indices=[1],axis=ax) + Unsqueeze(axis=ax)
       //            -> Slice(start=1, end=2, step=1, axes=ax)
       auto nextOp = op->user_begin();
-      if (!op->hasOneUse() || !isa<ReshapeOp>(*nextOp)) {
+      if (!op->hasOneUse()) {
         return failure();
       }
-
-      auto reshape_op = cast<ReshapeOp>(*nextOp);
+      bool next_is_reshape = false;
+      if (!isa<ReshapeOp>(*nextOp)) {
+        // e.g. Gather(indices=[1],axis=ax)
+        //            -> Slice(start=1, end=2, step=1, axes=ax)
+        next_is_reshape = true;
+      }
+      auto reshape_op = dyn_cast<ReshapeOp>(*nextOp);
       auto out_shape = module::getShape(op.getOutput());
-      auto reshape_out_shape = module::getShape(reshape_op.getOutput());
       std::vector<int64_t> unsqueeze_out_shape{};
       for (int64_t i = 0; i < out_shape.size(); ++i) {
-        if (i == ax) {
+        if (i == ax && !op.getKeepdims()) {
           unsqueeze_out_shape.push_back(1);
         }
         unsqueeze_out_shape.push_back(out_shape[i]);
       }
-      if (unsqueeze_out_shape.size() != reshape_out_shape.size()) {
-        return failure();
-      }
-      for (int64_t i = 0; i < unsqueeze_out_shape.size(); ++i) {
-        if (unsqueeze_out_shape[i] != reshape_out_shape[i]) {
+      if (!next_is_reshape) {
+        auto reshape_out_shape = module::getShape(reshape_op.getOutput());
+        if (unsqueeze_out_shape.size() != reshape_out_shape.size()) {
           return failure();
         }
+        for (int64_t i = 0; i < unsqueeze_out_shape.size(); ++i) {
+          if (unsqueeze_out_shape[i] != reshape_out_shape[i]) {
+            return failure();
+          }
+        }
       }
-
       NamedAttrList attrs;
       auto input_shape = module::getShape(op.getInput());
       std::vector<int64_t> offsets(input_shape.size(), 0);
@@ -75,10 +79,29 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       operands.push_back(none);
       operands.push_back(none);
       operands.push_back(none);
-      op.getOperation()->setLoc(reshape_op.getLoc());
-      rewriter.replaceOpWithNewOp<SliceOp>(op, reshape_op.getOutput().getType(),
-                                           operands, attrs);
-      rewriter.replaceOp(reshape_op, {reshape_op.getInput()});
+      if (!next_is_reshape) {
+        op.getOperation()->setLoc(reshape_op.getLoc());
+        rewriter.replaceOpWithNewOp<SliceOp>(
+            op, reshape_op.getOutput().getType(), operands, attrs);
+        rewriter.replaceOp(reshape_op, {reshape_op.getInput()});
+      } else {
+        rewriter.setInsertionPoint(op);
+        auto name = module::getName(op.getOutput()).str();
+        auto loc = NameLoc::get(rewriter.getStringAttr(name + "_slice"));
+        auto slice_shape = unsqueeze_out_shape;
+        if (input_shape.size() == 1 && out_shape.size() == 1) {
+          slice_shape = {1};
+        }
+        auto new_type = RankedTensorType::get(slice_shape,
+                                              module::getElementType(op));
+        auto slice_op =
+            rewriter.create<SliceOp>(loc, new_type, operands, attrs);
+
+        auto reshape_op = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(),
+                                                     ValueRange{slice_op});
+        op.replaceAllUsesWith(reshape_op.getOperation());
+        rewriter.eraseOp(op);
+      }
       return success();
     } else if (inds_shape.size() == 1) {
       // e.g. Gather(indices=[1,3,5,7],axis=ax)

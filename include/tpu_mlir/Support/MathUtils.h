@@ -287,4 +287,8 @@ void get_stride(const std::vector<int64_t> &shape,
 int getBcastIndex(int out_index, std::vector<int64_t> &output_shape,
                   std::vector<int64_t> &input_shape);
 
+void set_auto_pad(llvm::StringRef mode, const std::vector<int64_t> &input_shape,
+                  const std::vector<int64_t> &kernel_shape,
+                  const std::vector<int64_t> &strides,
+                  std::vector<int64_t> &pads);
 } // namespace tpu_mlir

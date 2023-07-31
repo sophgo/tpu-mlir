@@ -218,6 +218,10 @@ public:
         module::getShape(right_op.getInput()).size())
       return failure();
 
+    if (module::getShape(left_op.getInput()).size() <= 2) {
+      return failure();
+    }
+
     auto reshape_is_unsqueeze = [](tpu::ReshapeOp reshape_op) {
       std::vector<int64_t> in_shape = module::getShape(reshape_op.getInput());
       std::vector<int64_t> out_shape = module::getShape(reshape_op.getOutput());

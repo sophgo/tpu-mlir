@@ -83,6 +83,7 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
       }
 
       NamedAttrList attrs;
+      auto none = module::getNoneOp(op);
       auto input_shape = module::getShape(op.getInput());
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> steps(input_shape.size(), 1);
@@ -94,7 +95,7 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
       attrs.set("ends", rewriter.getI64ArrayAttr(ends));
       op.getOperation()->setLoc(reshape_op.getLoc());
       rewriter.replaceOpWithNewOp<SliceOp>(op, reshape_op.getOutput().getType(),
-                                           ValueRange{op.getInput()}, attrs);
+                                           ValueRange{op.getInput(), none, none, none}, attrs);
       rewriter.replaceOp(reshape_op, {reshape_op.getInput()});
       return success();
     }

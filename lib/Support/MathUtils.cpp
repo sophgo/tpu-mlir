@@ -1563,4 +1563,56 @@ void get_stride(const std::vector<int64_t> &shape,
     stride[i] = shape[i] != 1 ? stride[i] : 0;
   }
 }
+
+static int64_t get_TF_SAME_Padding(int64_t input_spatial_shape, int64_t kernel,
+                                   int64_t stride) {
+  // If padding == "SAME" :
+  //  output_spatial_shape[i] = ceil(input_spatial_shape[i] / strides[i])
+  int64_t pad_along;
+  if (input_spatial_shape % stride == 0) {
+    pad_along = std::max(kernel - stride, (int64_t)0);
+  } else {
+    pad_along = std::max(kernel - (input_spatial_shape % stride), (int64_t)0);
+  }
+  return pad_along;
+}
+
+void set_auto_pad(llvm::StringRef mode, const std::vector<int64_t> &input_shape,
+                  const std::vector<int64_t> &kernel_shape,
+                  const std::vector<int64_t> &strides,
+                  std::vector<int64_t> &pads) {
+  if (mode == "SAME_UPPER") {
+    pads.clear();
+    assert(kernel_shape.size() == 2 && "Now just support autopad 2d.");
+    int64_t padding_along_h =
+        get_TF_SAME_Padding(input_shape[2], kernel_shape[0], strides[0]);
+    int64_t padding_along_w =
+        get_TF_SAME_Padding(input_shape[3], kernel_shape[1], strides[1]);
+    int64_t padding_t = padding_along_h / 2;
+    int64_t padding_l = padding_along_w / 2;
+    int64_t padding_b = padding_along_h - padding_t;
+    int64_t padding_r = padding_along_w - padding_l;
+    pads = {padding_t, padding_l, padding_b, padding_r};
+  } else if (mode == "SAME_LOWER") {
+    // the extra padding is added at the beginning for SAME_LOWER.
+    pads.clear();
+    assert(kernel_shape.size() == 2 && "Now just support autopad 2d.");
+    int64_t padding_along_h =
+        get_TF_SAME_Padding(input_shape[2], kernel_shape[0], strides[0]);
+    int64_t padding_along_w =
+        get_TF_SAME_Padding(input_shape[3], kernel_shape[1], strides[1]);
+    int64_t padding_b = padding_along_h / 2;
+    int64_t padding_r = padding_along_w / 2;
+    int64_t padding_t = padding_along_h - padding_b;
+    int64_t padding_l = padding_along_w - padding_r;
+    pads = {padding_t, padding_l, padding_b, padding_r};
+  } else if (mode == "NOTSET") {
+    // do nothing
+  } else if (mode == "VALID") {
+    // do nothing
+  } else {
+    llvm_unreachable("Not support now");
+  }
+}
+
 } // namespace tpu_mlir

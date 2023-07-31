@@ -15,6 +15,16 @@ permute_attr_t top::PermuteOp::parseParam() {
   permute_attr_t attr;
   std::vector<int64_t> in_shape = module::getShape(getInput());
   i64_array_t in_order = module::getI64Array(getOrder());
+  if (in_order->size() == 0) {
+    // default revert it, eg: shape (2, 3, 4)->(4, 3, 2), per=[2, 1, 0]
+    std::vector<int64_t> order;
+    for(uint32_t i = in_shape.size() - 1; i >= 0; i--) {
+      order.push_back(i);
+    }
+    auto builder = OpBuilder(getContext());
+    setOrderAttr(builder.getI64ArrayAttr(order));
+    in_order = module::getI64Array(getOrder());
+  }
   auto ret =
       permute_reset(in_shape, *in_order, attr.in_shape_fix, attr.order_fix, 4);
   if (ret == false) {
