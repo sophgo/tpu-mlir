@@ -14,9 +14,11 @@
 
 using namespace tpu_mlir::backend;
 
-template <typename T> static int remove_value(std::vector<T> &v, T value) {
+template <typename T> static int remove_value(std::vector<T> &v, T value, bool is_int8) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
+    if (idx == 0 && is_int8)
+      continue;
     if (*iter == value) {
       v.erase(iter);
       return idx;
@@ -40,11 +42,12 @@ slice_attr_t tpu::SliceOp::parseParam() {
       os.insert(os.begin(), 1);
     }
   }
-
+  auto input_dtype = BM1684::getDataType(getInput());
+  bool is_int8 = (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8);
   if (num_dims > 4) {
     // remove dims = 1
     while (num_dims > 4) {
-      int idx = remove_value<int64_t>(is, 1);
+      int idx = remove_value<int64_t>(is, 1, is_int8);
       if (idx < 0) {
         break;
       }
@@ -57,6 +60,8 @@ slice_attr_t tpu::SliceOp::parseParam() {
     while (num_dims > 4) {
       bool done = false;
       for (int i = 0; i < num_dims - 1; i++) {
+        if (i == 0 && is_int8)
+          continue;
         if (is[i] == os[i] && is[i + 1] == os[i + 1]) {
           is[i] *= is[i + 1];
           os[i] *= os[i + 1];
