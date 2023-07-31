@@ -34,7 +34,7 @@ def linear_plot(data, name=None, max_sampling=1000, weight=False, f32weight=None
     else:
         step = 1
     index = np.arange(0, data_size, step)
-    if shape != None and len(shape) == 2: # matmul
+    if shape != None and (len(shape) == 2 or len(shape) == 1): # matmul
         blob_fp_t = blob_fp.transpose()
         blob_int_t = blob_int.transpose()
         fig = plt.plot_weight_and_transposed(
