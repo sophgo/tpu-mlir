@@ -2742,7 +2742,7 @@ class OnnxConverter(BaseConverter):
         assert (len(onnx_node.inputs) == 1)
         input_data = self.getOp(onnx_node.inputs[0])
         p = {
-            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "name": ["{}_{}_{}".format(onnx_node.name, onnx_node.op_type, id) for id in range(len(onnx_node.outputs))],
             "region": 2,
         }
         new_op = self.mlir.create_if_op([input_data], [], **p)
@@ -2767,7 +2767,7 @@ class OnnxConverter(BaseConverter):
         for output in onnx_node.outputs:
             out_shapes.append([])
         p = {
-            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "name": ["{}_{}_{}".format(onnx_node.name, onnx_node.op_type, id) for id in range(len(out_shapes))],
             "region": 1,
         }
         new_op = self.mlir.create_loop_op(operands, out_shapes, **p)
