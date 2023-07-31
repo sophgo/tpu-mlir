@@ -468,12 +468,14 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
   module::init(module);
   progressbar bar(num_infer_op);
   int flag = 0;
-  std::string if_name;
+  std::string if_name, loop_name;
   for (auto func : module.getOps<FuncOp>()) {
     [[maybe_unused]]WalkResult result = func.walk<WalkOrder::PreOrder>([&](Operation *op) {
-      if (isa<func::FuncOp>(*op)) {
+      if (isa<func::FuncOp>(*op)
+          || isa<top::LoopOp>(op->getParentOp())) {
         return WalkResult::advance();
       }
+
       std::string name;
       if (op->getLoc().isa<NameLoc>() || op->getLoc().isa<FusedLoc>()) {
         name = module::getName(op).str();
@@ -494,6 +496,184 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
         } else {
           flag = 1; // then branch
         }
+        return WalkResult::advance();
+      } else if (isa<top::LoopOp>(op)) {
+        if (isa<top::NoneOp>(op->getOperand(0).getDefiningOp())) {
+          if (isa<top::WeightOp>(op->getOperand(1).getDefiningOp())
+              && cast<top::WeightOp>(op->getOperand(1).getDefiningOp())
+                 .read_as_float()->data()[0] == 1.0f) {
+            flag = 3; //do_while
+          } else
+            flag = 4; // while
+        }
+
+        if (isa<top::NoneOp>(op->getOperand(1).getDefiningOp())) {
+          flag = 5; //for
+        }
+
+        if (!isa<top::NoneOp>(op->getOperand(0).getDefiningOp())
+            && !isa<top::NoneOp>(op->getOperand(0).getDefiningOp())) {
+          /* input (trip_count, cond)
+             int trip_count = ...;
+             bool cond = ...;
+             for (int i=0; i < trip_count && cond; ++i) {
+                  cond = ...;
+             }
+          */
+          flag = 6;
+        }
+
+        if (isa<top::NoneOp>(op->getOperand(0).getDefiningOp())
+            && isa<top::NoneOp>(op->getOperand(0).getDefiningOp())) {
+          /* input (\"\", \"\"):
+            for (int i=0; ; ++i) {
+              cond = ... // Note this value is ignored, but is required in the body
+            }
+          */
+          flag = 7; //loop forerver
+          llvm_unreachable("fatal error(loop forerver), please modify the origin model");
+        }
+
+        loop_name = name;
+        Block &bodyBlock = cast<top::LoopOp>(op).getBody().front();
+
+        auto result_index  = [&](Operation *op, int k) -> std::size_t {
+            int index = 0;
+            const auto& results = op->getOperand(k).getDefiningOp()->getResults();
+            if (results.size() >= 2) {
+              for (int i = 0; i < results.size(); i++) {
+                if (results[i] == op->getOperand(k)) {
+                  index = i;
+                }
+              }
+            }
+            return index;
+        };
+
+        using NEW_TYPE = std::vector<std::pair<std::size_t, std::unique_ptr<float[]>>>;
+        auto execute_body = [&] (Block &bodyBlock, std::size_t &cond, const std::string &loop_name,
+                                 const int l, Operation * const &op, NEW_TYPE &backup) -> void {
+            bodyBlock.walk<WalkOrder::PreOrder>(
+                                      [&](Operation *op_) {
+              if (auto infer_op = dyn_cast<InferenceInterface>(op_)) {
+                std::string op_name;
+                if (op_->getLoc().isa<NameLoc>() || op_->getLoc().isa<FusedLoc>()) {
+                  op_name = module::getName(op_).str();
+                }
+                LLVM_DEBUG(llvm::dbgs() << "compute: '" << op_ << "'\n");
+                if (failed(infer_op.inference(*inference_map[op_name]))) {
+                  infer_op.dump();
+                  llvm_unreachable("invoke failed!!");
+                }
+              }
+
+              //move data to LoopOp's result
+              if (isa<tpu::YieldOp, top::YieldOp>(op_)) {
+                for (int k = 0; k < op_->getNumOperands(); k++) {
+                  if (!k) {
+                    if (!isa<BlockArgument>(op_->getOperand(k))) {
+                      auto name = module::getName(op_->getOperand(k).getDefiningOp()).str();
+                      cond = inference_map[name]->outputs[0][0];
+                    }
+                  } else {
+                    auto num_element = module::getNumElements(op_->getOperand(k));
+                    //can return the argument
+                    if (isa<BlockArgument>(op_->getOperand(k))) {
+                      auto index = op_->getOperand(k).cast<BlockArgument>().getArgNumber();
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+                      for (int i = 0; i < num_element; i++) {
+                        inference_map[loop_name]->outputs[k-1][i] =
+                            inference_map[loop_name]->inputs[index][i];
+                      }
+                    } else {
+                      //Op maybe have more than 2 results
+                      auto index = result_index(op_, k);
+                      auto name = module::getName(op_->getOperand(k).getDefiningOp()).str();
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+                      for (int i = 0; i < num_element; i++) {
+                        inference_map[loop_name]->outputs[k-1][i] =
+                            inference_map[name]->outputs[index][i];
+                      }
+                    }
+                  }
+                }
+
+                /* update the argument because of
+                   loop-carried-dependency for next iteration */
+                for (int k = 0; k < cast<top::LoopOp>(op).getVInitial().size(); k++) {
+                  if (!l) {
+                    //backup the data, for later compare
+                    if (!isa<BlockArgument>(op_->getOperand(k+1))
+                        && !isa<top::WeightOp>(op->getOperand(k+2).getDefiningOp())) {
+                      auto name = module::getName(op->getOperand(k+2).getDefiningOp()).str();
+                      auto num_element = module::getNumElements(op_->getOperand(k+1));
+                      std::unique_ptr<float[]> data{std::make_unique<float[]>(num_element)};
+                      auto index = result_index(op, k+2);
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+                      for (int m = 0; m < num_element; m++)
+                      {
+                        data[m] = inference_map[name]->outputs[index][m];
+                      }
+                      backup.emplace_back(k, std::move(data));
+                    }
+                  }
+
+                  if (!isa<BlockArgument>(op_->getOperand(k+1))) {
+                    //update the data for next iteration
+                    auto src_name = module::getName(op_->getOperand(k+1).getDefiningOp()).str();
+                    auto src_index = result_index(op_, k+1);
+                    auto num_element = module::getNumElements(op_->getOperand(k+1));
+
+                    Value::user_iterator begin = bodyBlock.getArgument(k+2).user_begin();
+                    Value::user_iterator end = bodyBlock.getArgument(k+2).user_end();
+                    for (; begin != end; begin++) {
+                      auto dst_name = module::getName(*begin).str();
+
+                      std::size_t dst_index = 0;
+                      for (int p = 0; p < (*begin)->getOperands().size(); p++) {
+                        if ((*begin)->getOperand(p) == bodyBlock.getArgument(k+2)) {
+                         dst_index = p;
+                       }
+                      }
+
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+                      for (int m = 0; m < num_element; m++){
+                        inference_map[dst_name]->inputs[dst_index][m] =
+                              inference_map[src_name]->outputs[src_index][m];
+                      }
+                    }
+                  }
+                }
+              }
+              return WalkResult::advance();
+            });
+        };
+
+        if (flag == 6) {
+          std::size_t trip_count = (*inference_map[loop_name]).inputs[0][0];
+          std::size_t cond = (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
+          NEW_TYPE backup;
+          for (int l = 0; l < trip_count && cond; l++) {
+            execute_body(bodyBlock, cond, loop_name, l, op, backup);
+          }
+
+          //restore the data
+          for (int kk = 0; kk < backup.size(); kk++) {
+            std::size_t operand_index;
+            std::unique_ptr<float []> data;
+            std::tie(operand_index, data) = std::move(backup[kk]);
+            auto dst_name = module::getName(op->getOperand(operand_index).getDefiningOp()).str();
+            auto num_element = module::getNumElements(op->getOperand(operand_index));
+            auto dst_index = result_index(op, operand_index);
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+            for (int m = 0; m < num_element; m++) {
+              inference_map[dst_name]->outputs[dst_index][m] = data[m];
+            }
+          }
+        } else {
+          llvm_unreachable("other loop mode: Todo");
+        }
+        //other loop mode: Todo
         return WalkResult::advance();
       } else if (isa<tpu_mlir::InferenceInterface>(op) && 0 == flag) {
         bar.update();
