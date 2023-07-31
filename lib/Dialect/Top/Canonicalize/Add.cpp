@@ -37,7 +37,7 @@ struct AddToAddConst : public OpRewritePattern<AddOp> {
       return failure();
     if (left_elt_num == 1) {
       if (auto left_op =
-              dyn_cast<WeightOp>(op.getInputs()[0].getDefiningOp())) {
+              dyn_cast_or_null<WeightOp>(op.getInputs()[0].getDefiningOp())) {
         weight_flag = true;
         const_val = left_op.read<float>();
       }
