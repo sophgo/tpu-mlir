@@ -20,6 +20,30 @@ public:
     Operation *op = loopOp.getOperation();
     Value maxTripCountValue = op->getOperands()[0];
 
+    /* when construct the ir at frontend, because Loop's body
+       region is a graph, it have input node, will create inputOp
+       at region, it will meet error when model_runner.py the top.mlir
+       firstly, eliminate the inputOp */
+
+    /* the frontend maybe generate the ir as below:
+      %2 = "top.Squeeze"(%1) {axes = [0]} : (tensor<1xf32>) -> tensor<1xf32> loc(#loc3)
+      %3 = "top.Weight"() : () -> tensor<1xf32> loc(#loc4)
+      %4 = "top.Weight"() : () -> tensor<1xf32> loc(#loc5)
+      %5 = "top.Weight"() : () -> tensor<1xf32> loc(#loc6)
+      %6:2 = "top.Loop"(%3, %2, %4, %5) ({
+      ^bb0(%arg1: tensor<1xf32> loc(unknown), %arg2: tensor<1xf32> loc(unknown), %arg3: tensor<1xf32> loc(unknown), %arg4: tensor<1xf32> loc(unknown)):
+        %9 = "top.Input"(%arg3) : (tensor<1xf32>) -> tensor<1xf32> loc(#loc8)
+        %10 = "top.Input"(%arg4) : (tensor<1xf32>) -> tensor<1xf32> loc(#loc9)
+        %11 = "top.AddConst"(%10) {const_val = 2.000000e+00 : f64, do_relu = false, relu_limit = -1.000000e+00 : f64} : (tensor<1xf32>) -> tensor<1xf32> loc(#loc10)
+        %12 = "top.Compare"(%11, %9) {mode = "Less"} : (tensor<1xf32>, tensor<1xf32>) -> tensor<1xf32> loc(#loc11)
+        "top.Yield"(%12, %9, %11) : (tensor<1xf32>, tensor<1xf32>, tensor<1xf32>) -> () loc(#loc)
+      }) : (tensor<1xf32>, tensor<1xf32>, tensor<1xf32>, tensor<1xf32>) -> (tensor<1xf32>, tensor<1xf32>) loc(#loc7)
+    */
+    Block &bodyBlock = loopOp.getBody().front();
+    bodyBlock.walk<WalkOrder::PreOrder>([&](top::InputOp op) {
+      op.replaceAllUsesWith(*(op.getODSOperands(0).begin()));
+      rewriter.eraseOp(op);
+    });
     // Match the following pattern:
     // ```
     // ubValue = WeightOp() {value = ...}
@@ -49,37 +73,12 @@ public:
   }
 
 private:
-  bool isBlockArgument(Value v) const {
-    if (v.isa<BlockArgument>())
-      return true;
-    if (isa<top::InputOp>(v.getDefiningOp())
-        && v.getDefiningOp()->getOperands()[0]
-            .isa<BlockArgument>())
-      return true;
-    return false;
-  }
-
   bool isDefinedByWeightOp(Value v) const {
-    if (isBlockArgument(v)) {
-      if (v.isa<BlockArgument>())
-      {
-        auto index = v.cast<BlockArgument>().getArgNumber();
-        auto vv = v.cast<BlockArgument>().getOwner()
-                     ->getParentOp()->getOperands()[index];
-        return isa<top::WeightOp>(vv.getDefiningOp());
-      } else {
-        auto arg = v.getDefiningOp()->getOperands()[0];
-        auto index = arg.cast<BlockArgument>().getArgNumber();
-        if (isa<FuncOp>(arg.cast<BlockArgument>().getOwner()
-                     ->getParentOp()))
-        {
-          return false;
-        } else {
-          auto vv = arg.cast<BlockArgument>().getOwner()
-                      ->getParentOp()->getOperands()[index];
-          return isa<top::WeightOp>(vv.getDefiningOp());
-        }
-      }
+    if (v.isa<BlockArgument>()) {
+      auto index = v.cast<BlockArgument>().getArgNumber();
+      auto vv = v.cast<BlockArgument>().getOwner()
+                    ->getParentOp()->getOperands()[index];
+      return isa<top::WeightOp>(vv.getDefiningOp());
     } else {
       Operation *definingOp = v.getDefiningOp();
       if (isa<top::WeightOp>(definingOp)
@@ -92,48 +91,22 @@ private:
   }
 
   bool isInvariantBlockArg(Value v, Operation *returnOp) const {
-    if (isBlockArgument(v)) {
-      if (v.isa<BlockArgument>()) {
-        return (v == returnOp
+    return v.isa<BlockArgument>() && (v == returnOp
                    ->getOperands()[v.cast<BlockArgument>().getArgNumber() - 1]);
-      } else {
-        return (v == returnOp
-                   ->getOperands()[v.getDefiningOp()->getOperands()[0]
-                      .cast<BlockArgument>().getArgNumber() - 1]);
-      }
-    } else {
-      return false;
-    }
   }
 
   bool isConstantOrInvariantBlockArg(Value v, Operation *returnOp) const {
-    return ((isBlockArgument(v) && isInvariantBlockArg(v, returnOp)) ||
-            (!isBlockArgument(v) && isDefinedByWeightOp(v)));
+    return ((v.isa<BlockArgument>() && isInvariantBlockArg(v, returnOp)) ||
+            (!v.isa<BlockArgument>() && isDefinedByWeightOp(v)));
   }
 
   bool isUpdatedArgByValue(Value v, Value newV, Operation *returnOp) const {
-    if (isBlockArgument(v)) {
-      if (v.isa<BlockArgument>()) {
-        return (newV ==
-               returnOp
-                   ->getOperands()[v.cast<BlockArgument>().getArgNumber() - 1]);
-      } else {
-        return (newV ==
-               returnOp
-                   ->getOperands()[v.getDefiningOp()->getOperands()[0]
-                                   .cast<BlockArgument>().getArgNumber() - 1]);
-      }
-    } else {
-      return false;
-    }
+    return v.isa<BlockArgument>() && (newV ==
+               returnOp->getOperands()[v.cast<BlockArgument>().getArgNumber() - 1]);
   }
 
   Value getFedValue(Value arg, Operation *op) const {
-    if (arg.isa<BlockArgument>())
-      return op->getOperands()[arg.cast<BlockArgument>().getArgNumber()];
-    else
-      return op->getOperands()[arg.getDefiningOp()->getOperands()[0].
-                               cast<BlockArgument>().getArgNumber()];
+    return op->getOperands()[arg.cast<BlockArgument>().getArgNumber()];
   }
 
   int64_t getOneConstant(Value v) const {
@@ -142,16 +115,9 @@ private:
   }
 
   Value getSourceWeightV(Value v) const {
-    if (v.isa<BlockArgument>()) {
-      auto index = v.cast<BlockArgument>().getArgNumber();
-      return v.cast<BlockArgument>().getOwner()
-                     ->getParentOp()->getOperands()[index];
-    } else {
-      auto arg = v.getDefiningOp()->getOperands()[0];
-      auto index = arg.cast<BlockArgument>().getArgNumber();
-      return arg.cast<BlockArgument>().getOwner()
-                     ->getParentOp()->getOperands()[index];
-    }
+    auto index = v.cast<BlockArgument>().getArgNumber();
+    return v.cast<BlockArgument>().getOwner()
+                    ->getParentOp()->getOperands()[index];
   }
 
   std::pair<bool, Value> matchOp(
@@ -171,23 +137,9 @@ private:
     if (!isa<top::YieldOp>(returnOp))
       return std::make_pair(false, maxTripCountValue);
 
-    /* the frontend maybe generate the ir as below:
-      %2 = "top.Squeeze"(%1) {axes = [0]} : (tensor<1xf32>) -> tensor<1xf32> loc(#loc3)
-      %3 = "top.Weight"() : () -> tensor<1xf32> loc(#loc4)
-      %4 = "top.Weight"() : () -> tensor<1xf32> loc(#loc5)
-      %5 = "top.Weight"() : () -> tensor<1xf32> loc(#loc6)
-      %6:2 = "top.Loop"(%3, %2, %4, %5) ({
-      ^bb0(%arg1: tensor<1xf32> loc(unknown), %arg2: tensor<1xf32> loc(unknown), %arg3: tensor<1xf32> loc(unknown), %arg4: tensor<1xf32> loc(unknown)):
-        %9 = "top.Input"(%arg3) : (tensor<1xf32>) -> tensor<1xf32> loc(#loc8)
-        %10 = "top.Input"(%arg4) : (tensor<1xf32>) -> tensor<1xf32> loc(#loc9)
-        %11 = "top.AddConst"(%10) {const_val = 2.000000e+00 : f64, do_relu = false, relu_limit = -1.000000e+00 : f64} : (tensor<1xf32>) -> tensor<1xf32> loc(#loc10)
-        %12 = "top.Compare"(%11, %9) {mode = "Less"} : (tensor<1xf32>, tensor<1xf32>) -> tensor<1xf32> loc(#loc11)
-        "top.Yield"(%12, %9, %11) : (tensor<1xf32>, tensor<1xf32>, tensor<1xf32>) -> () loc(#loc)
-      }) : (tensor<1xf32>, tensor<1xf32>, tensor<1xf32>, tensor<1xf32>) -> (tensor<1xf32>, tensor<1xf32>) loc(#loc7)
-    */
     Value breakCond;
 
-    if (isa<BlockArgument>(returnOp->getOperands()[0])) {
+    if (returnOp->getOperands()[0].isa<BlockArgument>()) {
       breakCond = returnOp->getOperands()[0];
     } else {
       TypeSwitch<Operation*>(returnOp->getOperands()[0].getDefiningOp())
@@ -200,7 +152,7 @@ private:
           assert(0 && "fatal error, pls let us know ASAP.");});
     }
 
-    if (isBlockArgument(breakCond))
+    if (breakCond.isa<BlockArgument>())
       return std::make_pair(false, maxTripCountValue);
 
     Operation *breakCondOp = breakCond.getDefiningOp();
@@ -226,7 +178,7 @@ private:
                   Float16Type, BFloat16Type>())
       return std::make_pair(false, maxTripCountValue);
 
-    if (isBlockArgument(newCounterValue)
+    if (newCounterValue.isa<BlockArgument>()
         || !isa<top::AddOp, top::AddConstOp>(newCounterValue.getDefiningOp()))
       return std::make_pair(false, maxTripCountValue);
 

@@ -26,7 +26,7 @@ struct CompareToCompareConst : public OpRewritePattern<CompareOp> {
       return failure();
 
     std::shared_ptr<std::vector<float>> const_val;
-    if (auto right_op = dyn_cast<WeightOp>(op.getRhs().getDefiningOp())) {
+    if (auto right_op = dyn_cast_or_null<WeightOp>(op.getRhs().getDefiningOp())) {
       const_val = right_op.read<float>();
     } else {
       return failure();

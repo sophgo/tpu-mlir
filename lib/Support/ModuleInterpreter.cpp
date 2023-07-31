@@ -296,11 +296,21 @@ void ModuleInterpreter::allocate_all_tensor_in_mem() {
           }
         }
         for (auto input : op->getOperands()) {
+          std::string input_name;
           if (module::isNone(input)) {
             param->inputs.push_back(nullptr);
             continue;
+          } else if (input.isa<BlockArgument>()) {
+            /* op support nested ops,
+               can transfer operands by blockargument */
+            std::size_t index = input.cast<BlockArgument>().getArgNumber();
+            Value vv = input.cast<BlockArgument>().getOwner()
+                        ->getParentOp()->getOperands()[index];
+            input_name = module::getName(vv).str();
+          } else {
+            input_name = module::getName(input).str();
           }
-          auto input_name = module::getName(input).str();
+
           if (mem_map.find(input_name) == mem_map.end()) {
             input.dump();
             llvm_unreachable("input operands not allocated");
