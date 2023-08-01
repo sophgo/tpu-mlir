@@ -31,7 +31,8 @@ class MODEL_RUN(object):
                  customization_format: str = "",
                  aligned_input: bool = False,
                  save_log: bool = False,
-                 disable_thread: bool = True):
+                 disable_thread: bool = True,
+                 debug:bool = False):
         self.model_name = model_name
         self.chip = chip
         self.mode = mode
@@ -42,6 +43,7 @@ class MODEL_RUN(object):
         self.merge_weight = merge_weight
         self.save_log = save_log
         self.disable_thread = disable_thread
+        self.debug = debug
         self.model_type = chip_support[self.chip][-1]
         self.command = f"run_model.py {model_name} --chip {chip} --mode {mode}"
 
@@ -126,6 +128,8 @@ class MODEL_RUN(object):
                 "--test_input {}".format(self.ini_content["test_input"]),
                 f"--test_result {top_result}"
             ])
+        if self.debug:
+            cmd += ["--debug"]
         # add preprocess infor
         if dynamic:
             cmd += ["--input_shapes {}".format(self.ini_content["dynamic_shapes"])]
@@ -269,6 +273,8 @@ class MODEL_RUN(object):
         if self.merge_weight:
             cmd += ["--merge_weight"]
             model_file += "_merge_weight"
+        if self.debug:
+            cmd += ["--debug"]
 
         # add for int8 mode
         if (quant_mode.startswith("int8") or quant_mode.startswith("int4")):
