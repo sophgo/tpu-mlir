@@ -32,11 +32,27 @@ void ErfLowering::LoweringINT8(PatternRewriter &rewriter, top::ErfOp op,
 }
 
 void ErfLowering::LoweringBF16(PatternRewriter &rewriter, top::ErfOp op) const {
-  LoweringF32(rewriter, op);
+  if (module::isBM1686()) {
+    auto op_ = op.getOperation();
+    op_->setAttr("mode",
+                 tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::ERF));
+    lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
+  }
+  else{
+    LoweringF32(rewriter, op);
+  }
 }
 
 void ErfLowering::LoweringF16(PatternRewriter &rewriter, top::ErfOp op) const {
-  LoweringF32(rewriter, op);
+  if (module::isBM1686()) {
+    auto op_ = op.getOperation();
+    op_->setAttr("mode",
+                 tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::ERF));
+    lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
+  }
+  else{
+    LoweringF32(rewriter, op);
+  }
 }
 
 void ErfLowering::LoweringQuantized(PatternRewriter &rewriter,
