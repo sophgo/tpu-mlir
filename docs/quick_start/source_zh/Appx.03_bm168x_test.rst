@@ -66,7 +66,7 @@ model-zoo的目录结构如下：
 准备运行环境
 ~~~~~~~~~~~~
 
-在python3.7及以上的版本，安装运行 ``model-zoo`` 所需的依赖：
+安装运行 ``model-zoo`` 所需的依赖:
 
 .. code ::
 
@@ -78,7 +78,7 @@ model-zoo的目录结构如下：
    sudo yum install make automake gcc gcc-c++ kernel-devel
    sudo yum install python-devel
    sudo yum install mesa-libGL
-   # 精度测试需要执行以下操作，性能测试不执行
+   # 精度测试需要执行以下操作，性能测试不执行（推荐使用Anaconda等创建python3.7或以上的虚拟环境）
    cd path/to/model-zoo
    pip3 install -r requirements.txt
 
