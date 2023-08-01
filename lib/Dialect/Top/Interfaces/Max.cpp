@@ -48,16 +48,9 @@ LogicalResult top::MaxOp::inference(InferenceParameter &p) {
 }
 
 void top::MaxOp::shape_inference() {
-  auto  op = getOperation();
-  auto in_shape = module::getShape(op->getOperand(0)).vec();
-  for (uint32_t n = 1; n < op->getNumOperands(); n++) {
-    auto _shape = module::getShape(op->getOperand(n));
-    assert(in_shape.size() == _shape.size() && "Input rank mismatch.");
-    for (uint32_t i = 0; i < in_shape.size(); i++) {
-      if ((in_shape[i] == 1 || _shape[i] == 1) && (_shape[i] != in_shape[i])) {
-        in_shape[i] = in_shape[i] > _shape[i] ? in_shape[i]: _shape[i];
-      }
-    }
+  broadcast_shape_inference(getOperation());
+  for (int i = 0; i < getNumOperands(); i++) {
+    auto value = getInputs()[i];
+    broadcast_tensor_reshape(getOutput(), value);
   }
-  module::setShapeOrVerify(getOutput(), in_shape);
 }
