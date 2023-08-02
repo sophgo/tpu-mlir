@@ -70,4 +70,20 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::YoloDetectionOp::shape_inference() {}
+void top::YoloDetectionOp::shape_inference() {
+  auto in0_shape = module::getShape(getInputs()[0]);
+  int64_t batch = in0_shape[0];
+  int64_t keep_topk = getKeepTopk();
+  llvm::SmallVector<int64_t> out_shape;
+  out_shape.push_back(batch);
+  out_shape.push_back(1);
+  out_shape.push_back(keep_topk);
+  if (batch == 1) {
+    out_shape.push_back(6);
+    //(x, y, w, h, cls, score)
+  } else {
+    out_shape.push_back(7);
+    // (batch_idx, cls, score, x, y, w, h)
+  }
+  module::setShapeOrVerify(getOutput(), out_shape);
+}

@@ -120,4 +120,15 @@ LogicalResult top::PriorBoxOp::inference(InferenceParameter &p) {
 }
 
 
-void top::PriorBoxOp::shape_inference() {}
+void top::PriorBoxOp::shape_inference() {
+  int64_t num_priors = getNumPriors();
+  auto input_shape = module::getShape(getInputs()[0]);
+  int layer_height = input_shape[2];
+  int layer_width = input_shape[3];
+  llvm::SmallVector<int64_t> out_shape;
+  int dim = layer_height * layer_width * num_priors * 4;
+  out_shape.push_back(1);
+  out_shape.push_back(2);
+  out_shape.push_back(dim);
+  module::setShapeOrVerify(getOutput(), out_shape);
+}
