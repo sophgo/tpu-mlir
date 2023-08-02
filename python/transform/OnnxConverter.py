@@ -454,6 +454,9 @@ class OnnxConverter(BaseConverter):
             check_shape(self.num_input, len(input_shapes))
         for idx, input in enumerate(inputs):
             _dims = input.type.tensor_type.shape.dim
+            # for 1-element scalars that has no shape, assign [1] as shape to convert to tensor
+            if not _dims:
+                _dims.append(onnx.TensorShapeProto.Dimension(dim_value=1))
             num_dims = len(_dims)
             if no_shape == False:
                 check_shape(num_dims, len(input_shapes[idx]))
