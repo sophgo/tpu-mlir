@@ -13,6 +13,7 @@ $DIR/test1.sh
 $DIR/test2.sh
 $DIR/test5.sh
 $DIR/test6.sh
+$DIR/test_bmodel_dis.sh
 
 if [ $IS_BASIC == 'all' ]; then
   $DIR/test3.sh
