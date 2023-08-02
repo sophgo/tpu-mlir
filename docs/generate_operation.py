@@ -57,7 +57,7 @@ class Table(Node):
         """
         self.children.append([txt for txt in row])
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         def print_table(header):
             items = []
             for i, hdr in enumerate(header):
@@ -80,7 +80,7 @@ class Table(Node):
 
 
 class CustomVisitor(ast.NodeVisitor):
-    def __init__(self, op_set_name) -> None:
+    def __init__(self, op_set_name):
         super().__init__()
         self.op_set_name = op_set_name
         self.ops_name = []
