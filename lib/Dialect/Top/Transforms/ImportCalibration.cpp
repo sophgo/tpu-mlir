@@ -224,6 +224,9 @@ public:
       min = info.min;
       max = info.max;
     }
+    if (op->hasAttr("do_relu") && op->getAttr("do_relu").cast<BoolAttr>().getValue()) {
+      min = 0;
+    }
   }
 };
 

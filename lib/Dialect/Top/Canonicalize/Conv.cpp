@@ -180,6 +180,10 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
         return failure();
       }
 
+      if (prevConvOp.getGroup() != 1 || op.getGroup() != 1) {
+        return failure();
+      }
+
       // can't have padding now
       auto p = op.parseParam();
       auto prep = prevConvOp.parseParam();
