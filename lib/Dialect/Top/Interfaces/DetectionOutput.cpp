@@ -11,8 +11,6 @@
 
 #define DEBUG_TYPE "detection-output"
 
-
-
 int64_t top::DetectionOutputOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }
@@ -33,7 +31,7 @@ LogicalResult top::DetectionOutputOp::inference(InferenceParameter &p) {
   param.background_label_id = this->getBackgroundLabelId();
   param.loc_shape = module::getShape(this->getInputs()[0]);
   param.conf_shape = module::getShape(this->getInputs()[1]);
-  //onnx ssd just have loc、conf
+  // onnx ssd just have loc、conf
   if (this->getInputs().size() >= 3) {
     param.prior_shape = module::getShape(this->getInputs()[2]);
     param.onnx_nms = 0;
@@ -54,7 +52,7 @@ LogicalResult top::DetectionOutputOp::inference(InferenceParameter &p) {
 
   param.loc_data = p.inputs[0];
   param.conf_data = p.inputs[1];
-  param.prior_data = param.onnx_nms ? nullptr :p.inputs[2];
+  param.prior_data = param.onnx_nms ? nullptr : p.inputs[2];
   param.output_data = p.outputs[0];
 
   DetectionOutputFunc det_func(param);
@@ -62,4 +60,14 @@ LogicalResult top::DetectionOutputOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::DetectionOutputOp::shape_inference() {}
+void top::DetectionOutputOp::shape_inference() {
+  int64_t keep_topk = getKeepTopK();
+  auto loc_shape = module::getShape(this->getInputs()[0]);
+  llvm::SmallVector<int64_t> out_shape;
+  out_shape.push_back(loc_shape[0]);
+  out_shape.push_back(1);
+  out_shape.push_back(keep_topk);
+  out_shape.push_back(7);
+    //(num, label, indices, xmin, ymin, xmax, ymax)
+  module::setShapeOrVerify(getOutput(), out_shape);
+}

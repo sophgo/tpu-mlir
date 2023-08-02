@@ -9,8 +9,9 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-
-int64_t top::ProposalOp::getFLOPs() { return module::getNumElements(getOutput()); }
+int64_t top::ProposalOp::getFLOPs() {
+  return module::getNumElements(getOutput());
+}
 
 LogicalResult top::ProposalOp::init(InferenceParameter &p) { return success(); }
 
@@ -40,5 +41,16 @@ LogicalResult top::ProposalOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::ProposalOp::shape_inference() {}
+void top::ProposalOp::shape_inference() {
+  auto score_shape = module::getShape(getInputs()[0]);
+  int batch = score_shape[0];
+  int64_t rpn_nms_post_top_n = getRpnNmsPostTopN();
 
+  llvm::SmallVector<int64_t> out_shape;
+  out_shape.push_back(batch);
+  out_shape.push_back(1);
+  out_shape.push_back(rpn_nms_post_top_n);
+  out_shape.push_back(5);
+    //(batch, pred_boxes_x1, pred_boxes_y1, pred_boxes_x2, pred_boxes_y2)
+  module::setShapeOrVerify(getOutput(), out_shape);
+}

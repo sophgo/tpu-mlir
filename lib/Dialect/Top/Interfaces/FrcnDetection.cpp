@@ -41,4 +41,16 @@ LogicalResult top::FrcnDetectionOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::FrcnDetectionOp::shape_inference() {}
+void top::FrcnDetectionOp::shape_inference() {
+  auto input_shape = module::getShape(getInputs()[2]);
+  int64_t batch = input_shape[0];
+  int64_t keep_topk = getKeepTopk();
+
+  llvm::SmallVector<int64_t> out_shape;
+  out_shape.push_back(batch);
+  out_shape.push_back(1);
+  out_shape.push_back(keep_topk);
+  out_shape.push_back(6);
+  //(bbox.x1, bbox.y1, bbox.x2, bbox.y2, class_num, score)
+  module::setShapeOrVerify(getOutput(), out_shape);
+}
