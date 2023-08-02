@@ -191,6 +191,60 @@ public:
   }
 };
 
+/*
+  Do:
+    Reshape
+            + MatMul -->>  MatMul
+    Reshape
+
+  When:
+      Reshape (1,N,K) -> (1,1,N,K) or (1,N,K) -> (1,N,1,K)
+*/
+class MatMulRemoveReshapePattern : public OpRewritePattern<tpu::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    auto left_op =
+        dyn_cast_or_null<tpu::ReshapeOp>(op.getInput().getDefiningOp());
+    auto right_op =
+        dyn_cast_or_null<tpu::ReshapeOp>(op.getRight().getDefiningOp());
+    if (!(left_op && left_op->hasOneUse()))
+      return failure();
+    if (!(right_op && right_op->hasOneUse()))
+      return failure();
+
+    if (module::getShape(left_op.getInput()).size() !=
+        module::getShape(right_op.getInput()).size())
+      return failure();
+
+    auto reshape_is_unsqueeze = [](tpu::ReshapeOp reshape_op) {
+      std::vector<int64_t> in_shape = module::getShape(reshape_op.getInput());
+      std::vector<int64_t> out_shape = module::getShape(reshape_op.getOutput());
+      std::vector<int64_t> in_set;
+      for (auto in : in_shape) {
+        if (in != 1)
+          in_set.emplace_back(in);
+      }
+      std::vector<int64_t> out_set;
+      for (auto out : out_shape) {
+        if (out != 1)
+          out_set.emplace_back(out);
+      }
+      return (out_shape.size() > in_shape.size() && in_set == out_set);
+    };
+
+    if (!reshape_is_unsqueeze(left_op) || !reshape_is_unsqueeze(right_op))
+      return failure();
+
+    op.setOperand(0, left_op.getInput());
+    op.setOperand(1, right_op.getInput());
+    rewriter.eraseOp(left_op);
+    rewriter.eraseOp(right_op);
+    return success();
+  }
+};
+
 // transform group conv to normal conv, when int8/f16/bf16 &&
 // input_c<=ic_parallel && isBM1684XFamily()
 class GroupConv2NormalConv : public OpRewritePattern<tpu::Conv2DOp> {
@@ -725,6 +779,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   // clang-format off
     patterns->add<
       MatMulHdimBatchPattern,
+      MatMulRemoveReshapePattern,
       MatMulLeftReusePattern,
       MoveReshapeAfterAdd,
       GroupConv2NormalConv,
