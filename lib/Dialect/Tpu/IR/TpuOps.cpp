@@ -122,5 +122,21 @@ void IfOp::getSuccessorRegions(std::optional<unsigned> index,
   // Add the successor regions using the condition.
   regions.push_back(RegionSuccessor(condition ? &getThenBranch() : elseRegion));
 }
+
+void LoopOp::getSuccessorRegions(std::optional<unsigned> index,
+                                ArrayRef<Attribute> operands,
+                                SmallVectorImpl<RegionSuccessor> &regions) {
+  // If the predecessor is the ForOp, branch into the body using the iterator
+  // arguments.
+  if (!index) {
+    regions.push_back(RegionSuccessor(&getBody()));
+    return;
+  }
+
+  // Otherwise, the loop may branch back to itself or the parent operation.
+  assert(*index == 0 && "expected loop region");
+  regions.push_back(RegionSuccessor(&getBody()));
+  regions.push_back(RegionSuccessor(getVFinalAndScanOutputs()));
+}
 } // namespace tpu
 } // namespace tpu_mlir

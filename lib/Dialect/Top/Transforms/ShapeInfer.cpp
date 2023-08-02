@@ -101,7 +101,7 @@ public:
 // if all inputs is weight, convert to weight op
 static void WeightFolder(Operation *op) {
   // if the op is in the region of other op, don't do WeightFolder
-  if (isa<tpu::IfOp, top::LoopOp, top::IfOp>(op->getBlock()->getParentOp()))
+  if (isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(op->getBlock()->getParentOp()))
     return;
   if (module::isAllWeight(op) == false) {
     return;
@@ -204,8 +204,9 @@ public:
 private:
   bool removeIfNoUse(Operation *op) {
     // if the op is in the region of other op, don't do removeIfNoUse
-    if (op->getUsers().empty() && !isa<tpu::IfOp, top::LoopOp, top::IfOp>(
-                                      op->getBlock()->getParentOp())) {
+    if (op->getUsers().empty()
+        && !isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(
+                                op->getBlock()->getParentOp())) {
       op->erase();
       return true;
     }

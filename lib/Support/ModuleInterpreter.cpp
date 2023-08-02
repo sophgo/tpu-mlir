@@ -472,7 +472,7 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
   for (auto func : module.getOps<FuncOp>()) {
     [[maybe_unused]]WalkResult result = func.walk<WalkOrder::PreOrder>([&](Operation *op) {
       if (isa<func::FuncOp>(*op)
-          || isa<top::LoopOp>(op->getParentOp())) {
+          || isa<top::LoopOp, tpu::LoopOp>(op->getParentOp())) {
         return WalkResult::advance();
       }
 
@@ -497,7 +497,7 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
           flag = 1; // then branch
         }
         return WalkResult::advance();
-      } else if (isa<top::LoopOp>(op)) {
+      } else if (isa<top::LoopOp, tpu::LoopOp>(op)) {
         if (isa<top::NoneOp>(op->getOperand(0).getDefiningOp())) {
           if (isa<top::WeightOp>(op->getOperand(1).getDefiningOp())
               && cast<top::WeightOp>(op->getOperand(1).getDefiningOp())
@@ -535,7 +535,12 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
         }
 
         loop_name = name;
-        Block &bodyBlock = cast<top::LoopOp>(op).getBody().front();
+        Block *bodyBlock;
+        //Block &bodyBlock = cast<top::LoopOp>(op).getBody().front();
+
+        TypeSwitch<Operation*>(op)
+        .Case<top::LoopOp, tpu::LoopOp>([&] (auto op_) {
+          bodyBlock = &(op_.getBody().front());});
 
         auto result_index  = [&](Operation *op, int k) -> std::size_t {
             int index = 0;
@@ -600,7 +605,12 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
 
                 /* update the argument because of
                    loop-carried-dependency for next iteration */
-                for (int k = 0; k < cast<top::LoopOp>(op).getVInitial().size(); k++) {
+                int Initial_V_size = 0;
+                TypeSwitch<Operation*>(op)
+                  .Case<top::LoopOp, tpu::LoopOp>([&] (auto Op) {
+                    Initial_V_size = Op.getVInitial().size();});
+
+                for (int k = 0; k < Initial_V_size; k++) {
                   if (!l) {
                     //backup the data, for later compare
                     if (!isa<BlockArgument>(op_->getOperand(k+1))
@@ -654,7 +664,7 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
           std::size_t cond = (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
           NEW_TYPE backup;
           for (int l = 0; l < trip_count && cond; l++) {
-            execute_body(bodyBlock, cond, loop_name, l, op, backup);
+            execute_body(*bodyBlock, cond, loop_name, l, op, backup);
           }
 
           //restore the data

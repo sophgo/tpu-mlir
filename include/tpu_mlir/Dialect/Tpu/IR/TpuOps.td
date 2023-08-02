@@ -1326,7 +1326,7 @@ def Tpu_DistributionEndOp:Tpu_BaseOp<"DistributionEnd"> {
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp, ParallelOp, IfOp">]> {
+def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp, ParallelOp, IfOp, LoopOp">]> {
   let summary = "Yield values to parent operation";
   let description = [{
   }];
@@ -2806,5 +2806,37 @@ def Tpu_RMSNormOp : Tpu_Op<"RMSNorm", [
   );
 }
 
+def Tpu_LoopOp : Tpu_Op<"Loop", [DeclareOpInterfaceMethods<RegionBranchOpInterface>,
+              SingleBlockImplicitTerminator<"tpu::YieldOp">,
+              RecursiveMemoryEffects]> {
+  let summary = "Loop operation";
+  let description = [{
+    Generic Looping construct, support while/do_while/for/forerver etc:
+  }];
+
+  let arguments = (ins AnyTypeOf<[TensorOf<[I32]>, TensorOf<[F32]>, NoneType]>:$M,
+    AnyTypeOf<[TensorOf<[I32]>, TensorOf<[F32]>, NoneType]>:$cond,
+    Variadic<AnyTypeOf<[TensorOf<[UI8]>, TensorOf<[UI16]>, TensorOf<[UI32]>, TensorOf<[UI64]>, TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>, TensorOf<[F64]>, TensorOf<[I1]>]>>:$v_initial);
+  let results = (outs Variadic<AnyTypeOf<[TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>]>>:$v_final_and_scan_outputs);
+  let regions = (region SizedRegion<1>:$body);
+  let extraClassDeclaration = [{
+    static int getNumberOfOperands() {
+      return -1;
+    }
+    static int getNumberOfResults() {
+      return -1;
+    }
+    static std::vector<int> getTypeMap() {
+      return {22};
+    }
+
+    mlir::Operation::result_range v_final();
+    mlir::Operation::result_range scan_outputs();
+    int64_t getSubgraphRegionIdx(const std::string& name) {
+      if (name == "body") return 0;
+      llvm_unreachable("region with the specified name does not exist");
+    }
+  }];
+}
 #endif // TPU_OPS
 
