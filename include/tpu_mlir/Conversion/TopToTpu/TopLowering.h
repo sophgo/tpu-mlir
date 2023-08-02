@@ -141,6 +141,64 @@ private:
   }
 };
 
+
+class LoopOpLowering : public ConversionPattern {
+public:
+  explicit LoopOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
+      : ConversionPattern(typeConverter, top::LoopOp::getOperationName(), 1,
+                          ctx) {}
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const final {
+    std::vector<mlir::Type> new_types;
+    auto real_mode = module::getMode();
+    for (int i = 0; i < op->getNumResults(); i++)
+    {
+      switch (real_mode) {
+        case module::Mode::INT8:
+          new_types.push_back(getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
+          break;
+        case module::Mode::INT4:
+          new_types.push_back(getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
+          break;
+        case module::Mode::F16:
+          new_types.push_back(getQuantFloatType<mlir::Float16Type>(op->getResult(i)));
+          break;
+        case module::Mode::BF16:
+          new_types.push_back(getQuantFloatType<mlir::BFloat16Type>(op->getResult(i)));
+          break;
+        default:
+          new_types.emplace_back(op->getResultTypes()[i]);
+          break;
+      }
+    }
+
+    auto tpuLoopOp = rewriter.create<tpu::LoopOp>(
+        op->getLoc(), new_types, op->getOperands(), op->getAttrs());
+    rewriter.createBlock(&(tpuLoopOp.getBody()));
+    auto loopOp = dyn_cast<top::LoopOp>(op);
+    graphToTpuBranch(rewriter, op->getLoc(), loopOp.getBody(),
+                     tpuLoopOp.getBody());
+    op->replaceAllUsesWith(tpuLoopOp.getOperation());
+    rewriter.eraseOp(op);
+    return success();
+  }
+
+private:
+  void graphToTpuBranch(PatternRewriter &rewriter, Location loc, Region &graph,
+                        Region &tpuBranch) const {
+    OpBuilder::InsertionGuard insertGuard(rewriter);
+
+    rewriter.eraseBlock(&tpuBranch.back());
+    tpuBranch.takeBody(graph);
+    rewriter.setInsertionPointToEnd(&tpuBranch.back());
+
+    Operation *returnOp = tpuBranch.back().getTerminator();
+    rewriter.replaceOpWithNewOp<tpu::YieldOp>(returnOp,
+                                              returnOp->getOperands());
+  }
+};
+
 struct LoweringConfig {
   static bool isQuantized;
   static std::map<std::string, module::Mode> quantize_map;

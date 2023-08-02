@@ -495,7 +495,7 @@ public:
       ScfTypeConverter typeConverter;
       target.addLegalDialect<mlir::func::FuncDialect, top::TopDialect,
                              tpu::TpuDialect>();
-      target.addIllegalOp<top::IfOp>();
+      target.addIllegalOp<top::IfOp, top::LoopOp>();
 
       target.addDynamicallyLegalOp<mlir::func::CallOp>(
           [&](mlir::func::CallOp op) { return typeConverter.isLegal(op); });
