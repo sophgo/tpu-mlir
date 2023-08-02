@@ -309,6 +309,10 @@ struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
         return failure();
       }
       auto filterOp = dyn_cast<WeightOp>(convOp.getFilter().getDefiningOp());
+      if (!filterOp) { // filter may be not WeightOp
+        return failure();
+      }
+
       auto filterData = filterOp.read<float>();
       std::vector<float_t> newFilter(filterData->size(), 0);
       uint32_t innerSize = filterData->size() / c;
@@ -334,6 +338,9 @@ struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
       auto newBiasType = RankedTensorType::get({c}, rewriter.getF32Type());
       if (!module::isNone(convOp.getBias())) {
         auto cBiasOp = dyn_cast<WeightOp>(convOp.getBias().getDefiningOp());
+        if (!cBiasOp) { // filter may be not WeightOp
+          return failure();
+        }
         auto cBiasData = cBiasOp.read<float>();
         for (int i = 0; i < c; ++i) {
           newBiasVec[i] += cBiasData->at(i) * scaleVec[i];

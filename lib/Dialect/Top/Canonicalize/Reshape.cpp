@@ -129,7 +129,7 @@ struct ReshapeInstanceNormPattern : public OpRewritePattern<ReshapeOp> {
     auto new_reshape_out_type = next_op.getResult().getType();
     rewriter.replaceOpWithNewOp<ReshapeOp>(
       next_op, new_reshape_out_type, gn_output, std::vector<NamedAttribute>());
-    return failure();
+    return success();
   }
 };
 
