@@ -662,6 +662,9 @@ public:
         dyn_cast<top::WeightOp>(conv_op.getFilter().getDefiningOp());
     auto conv_bias_op =
         dyn_cast<top::WeightOp>(conv_op.getBias().getDefiningOp());
+    if (!conv_weight_op || !conv_bias_op) {
+      return failure();
+    }
 
     int64_t oc, ic, kh, kw;
     module::getNCHW(conv_weight_op.getOutput(), oc, ic, kh, kw);
