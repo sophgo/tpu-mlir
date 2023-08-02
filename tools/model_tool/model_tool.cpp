@@ -43,7 +43,7 @@ static void usage(void) {
 
 static inline bool isCv18xx(const string &filename) {
   string extension = filename.substr(filename.find_last_of("."));
-  return extension == ".cvi";
+  return extension == ".cvimodel";
 }
 
 static void print(const string &filename) {
