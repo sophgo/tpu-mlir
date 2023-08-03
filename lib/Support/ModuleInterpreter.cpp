@@ -659,14 +659,8 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
             });
         };
 
-        if (flag == 6) {
-          std::size_t trip_count = (*inference_map[loop_name]).inputs[0][0];
-          std::size_t cond = (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
-          NEW_TYPE backup;
-          for (int l = 0; l < trip_count && cond; l++) {
-            execute_body(*bodyBlock, cond, loop_name, l, op, backup);
-          }
-
+        auto restore_data = [&](NEW_TYPE &backup,
+               std::map<std::string, std::shared_ptr<InferenceParameter>> &inference_map) {
           //restore the data
           for (int kk = 0; kk < backup.size(); kk++) {
             std::size_t operand_index;
@@ -680,6 +674,78 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
               inference_map[dst_name]->outputs[dst_index][m] = data[m];
             }
           }
+        };
+
+        auto no_loop_handle = [&](Operation *op, const std::string &loop_name) {
+          int number = op->getResults().size() > (op->getNumOperands() - 2) ?
+                       (op->getNumOperands() - 2) : op->getResults().size();
+          for (int32_t i = 0; i < number; i++)
+          {
+            auto num_element = module::getNumElements(op->getOperand(i+2));
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+            for (int k = 0; k < num_element; k++) {
+              inference_map[loop_name]->outputs[i][k] =
+                            inference_map[loop_name]->inputs[i+2][k];
+            }
+          }
+        };
+
+        if (flag == 3) {
+          std::size_t cond = (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
+          NEW_TYPE backup;
+          int l = 0;
+          do {
+            execute_body(*bodyBlock, cond, loop_name, l, op, backup);
+            l = 1;
+          } while (cond);
+          restore_data(backup, inference_map);
+        } else if (flag == 4) {
+          std::size_t cond = (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
+          NEW_TYPE backup;
+          int l = 0;
+          int no_loop = cond? 0 : 1;
+          while (cond)
+          {
+            execute_body(*bodyBlock, cond, loop_name, l, op, backup);
+            l = 1;
+          };
+
+          //align with onnxruntime
+          if (no_loop) {
+            no_loop_handle(op, loop_name);
+          }
+
+          restore_data(backup, inference_map);
+        } else if (flag == 5) {
+          std::size_t trip_count = (*inference_map[loop_name]).inputs[0][0];
+          std::size_t cond = 1;
+          NEW_TYPE backup;
+          int no_loop = trip_count? 0 : 1;
+          for (int l = 0; l < trip_count; l++) {
+            execute_body(*bodyBlock, cond, loop_name, l, op, backup);
+          }
+
+          //align with onnxruntime
+          if (no_loop) {
+            no_loop_handle(op, loop_name);
+          }
+
+          restore_data(backup, inference_map);
+        } else if (flag == 6) {
+          std::size_t trip_count = (*inference_map[loop_name]).inputs[0][0];
+          std::size_t cond = (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
+          NEW_TYPE backup;
+          int no_loop = (cond && trip_count)? 0 : 1;
+          for (int l = 0; l < trip_count && cond; l++) {
+            execute_body(*bodyBlock, cond, loop_name, l, op, backup);
+          }
+
+          //align with onnxruntime
+          if (no_loop) {
+            no_loop_handle(op, loop_name);
+          }
+
+          restore_data(backup, inference_map);
         } else {
           llvm_unreachable("other loop mode: Todo");
         }

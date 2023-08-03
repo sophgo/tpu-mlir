@@ -272,7 +272,8 @@ def Tpu_RunMode: I32EnumAttr<"RunMode",
       I32EnumAttrCase<"CPU",         2>,
       I32EnumAttrCase<"SWITCH",      3>,
       I32EnumAttrCase<"MERGE",       4>,
-      I32EnumAttrCase<"UNKNOW",       5>
+      I32EnumAttrCase<"LOOP",       5>,
+      I32EnumAttrCase<"UNKNOW",       6>
     ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
@@ -2837,6 +2838,19 @@ def Tpu_LoopOp : Tpu_Op<"Loop", [DeclareOpInterfaceMethods<RegionBranchOpInterfa
       llvm_unreachable("region with the specified name does not exist");
     }
   }];
+}
+
+
+def Tpu_AutoIncreaseOp: Tpu_Op<"AutoIncrease"> {
+  let summary = "Auto increase ";
+  let description = [{
+    increase by 1 in-place
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    F64Attr:$const_val
+  );
+  let results = (outs AnyRankedTensor:$output);
 }
 #endif // TPU_OPS
 
