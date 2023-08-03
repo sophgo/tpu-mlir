@@ -91,6 +91,12 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
     anchors = {0};
     return;
   }
+  // yolov8
+  if (post_type == "yolov8" && num_opds == 1){
+    operands.push_back(opds[0]);
+    anchors = {0};
+    return;
+  }
   for (auto opd : opds) {
     auto s = module::getShape(opd);
     if (s.size() != 4 || width % s[3] != 0 || num_opds > 3) {
