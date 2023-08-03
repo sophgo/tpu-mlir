@@ -54,6 +54,9 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
              param.inputs[0].shape.size() == 3) {
     Yolov5DetectionFunc yolo_func(param);
     yolo_func.invoke();
+  } else if (process.starts_with("yolov8")) {
+    Yolov8DetectionFunc yolo_func(param);
+    yolo_func.invoke();
   } else {
     auto output_shape = module::getShape(this->getOutput());
     int64_t dim = output_shape.size();

@@ -59,6 +59,14 @@ typedef struct yolov5_decode_detect_out_spec {
     int agnostic_nms;
 } yolov5_decode_detect_out_spec_t;
 
+typedef struct yolov8_detect_out_spec {
+  int keep_top_k;
+  float nms_threshold;
+  float confidence_threshold;
+  int agnostic_nms;
+  int max_hw;
+} yolov8_detect_out_spec_t;
+
 #ifdef __cplusplus
 }
 #endif
@@ -97,7 +105,22 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
       spec.anchor_scale[i] = (float)(width / s[3]);
     }
     return BM168x::dynamic_spec_to_buffer(buffer, spec);
-  } else if (process.starts_with("yolov5") && getInputs().size() == 1 &&
+  }
+    else if (process.starts_with("yolov8") && getInputs().size() == 1 &&
+             module::getShape(getInputs()[0]).size() == 3) {
+    if (!buffer)
+      return sizeof(yolov8_detect_out_spec_t);
+    yolov8_detect_out_spec_t spec = {0};
+    spec.keep_top_k = getKeepTopk();
+    spec.nms_threshold = getNmsThreshold().convertToDouble();
+    spec.confidence_threshold = getObjThreshold().convertToDouble();
+    spec.agnostic_nms = (int)getAgnosticNms();
+    spec.max_hw =
+        !spec.agnostic_nms ? std::max(getNetInputW(), getNetInputH()) : 0;
+    return BM168x::dynamic_spec_to_buffer(buffer, spec);
+
+   }
+    else if (process.starts_with("yolov5") && getInputs().size() == 1 &&
              module::getShape(getInputs()[0]).size() == 3) {
     if (!buffer)
       return sizeof(yolov5_detect_out_spec_t);
@@ -144,7 +167,11 @@ int64_t tpu::YoloDetectionOp::get_fw_type_bm1684x() {
   auto process = module::getPostprocess();
   if (process.starts_with("yolov5")) {
     return FW_BMNET_YOLOV5_DETECT_OUT;
-  } else { // default
+  }
+  else if (process.starts_with("yolov8")){
+    return FW_BMNET_YOLOV8_DETECT_OUT;
+  }
+  else { // default
     return FW_BMNET_YOLOV3_DETECT_OUT;
   }
 }

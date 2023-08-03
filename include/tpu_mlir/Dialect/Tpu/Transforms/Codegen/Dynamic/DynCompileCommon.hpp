@@ -193,6 +193,7 @@ typedef enum fw_layer_type {
   FW_BMNET_DECONV3D = 145,
   FW_BMNET_YOLOV5_DETECT_OUT = 146,
   FW_BMNET_ONNX_NMS = 147,
+  FW_BMNET_YOLOV8_DETECT_OUT = 148,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;
@@ -1263,6 +1264,14 @@ typedef struct fw_yolov5_decode_detect_out_layer_param {
     float anchor_scale[MAX_YOLO_ANCHOR_NUM];
     int agnostic_nms;
 } fw_yolov5_decode_detect_out_layer_param_t;
+
+typedef struct fw_yolov8_detect_out_layer_param {
+    int keep_top_k;
+    int agnostic_nms;
+    int max_hw;
+    float nms_threshold;
+    float confidence_threshold;
+} fw_yolov8_detect_out_layer_param_t;
 
 typedef struct {
   int num_classes;

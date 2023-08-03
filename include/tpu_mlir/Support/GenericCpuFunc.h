@@ -161,6 +161,15 @@ private:
   YoloDetParam param_;
 };
 
+class Yolov8DetectionFunc {
+public:
+  Yolov8DetectionFunc(YoloDetParam &param);
+  void invoke();
+  
+private:
+  YoloDetParam param_;
+};
+
 struct ProposalParam {
   std::vector<tensor_list_t> inputs;
   tensor_list_t output;
