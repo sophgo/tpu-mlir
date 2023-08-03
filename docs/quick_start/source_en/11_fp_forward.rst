@@ -87,7 +87,7 @@ Parameter Description
      - mlir file
    * - chip
      - Y
-     - The platform that the model will use. Support bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - fpfwd_inputs
      - N
      - Specify layers (including this layer) to skip quantization before them. Multiple inputs are separated by commas.

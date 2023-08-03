@@ -82,7 +82,7 @@ Regression validation:
 
    # This project contains the yolov5s.onnx model, which can be used directly for validation
    $ pushd regression
-   $ ./run_model.sh yolov5s
+   $ python run_model.py yolov5s
    $ popd
 
 You can validate more networks with model-zoo, but the whole regression takes a long time:

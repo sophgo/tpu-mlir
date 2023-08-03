@@ -83,7 +83,7 @@ https://github.com/sophgo/model-zoo
 
    # 本工程包含yolov5s.onnx模型, 可以直接用来验证
    $ pushd regression
-   $ ./run_model.sh yolov5s
+   $ python run_model.py yolov5s
    $ popd
 
 如果要验证更多网络, 需要依赖model-zoo, 回归时间比较久。
