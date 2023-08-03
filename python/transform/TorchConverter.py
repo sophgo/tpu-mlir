@@ -1098,7 +1098,7 @@ class TorchConverter(BaseConverter):
 
     def convert_select_op(self, torch_node: TorchNode):
         step_name = torch_node.inputs[0] + '_tpu_step'
-        end_name = torch_node.inputs[0] + '_tpu_end'
+        end_name = torch_node.inputs[0] + torch_node.inputs[2] + '_tpu_end'
         self.addWeight(step_name, np.array([1], dtype=np.float32))
         assert torch_node.inputs[2] in self.const_val.keys()
         end = self.const_val[torch_node.inputs[2]] + 1
