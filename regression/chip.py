@@ -77,7 +77,7 @@ full_model_list = {
     "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov3":                     (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov3_tiny":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
-    "yolov4s":                    (N,      Y,       N,      N,      N,      N,      Y,      N),
+    "yolov4s":                    (N,      Y,       N,      N,      N,      Y,      Y,      N),
     "yolox_s":                    (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
     "yolov5s-face":               (N,      Y,       N,      N,      N,      N,      Y,      N),
     "yolov5s_with_trans":         (N,      Y,       Y,      N,      N,      Y,      Y,      Y),
