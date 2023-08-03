@@ -32,11 +32,17 @@ void LogLowering::LoweringINT8(PatternRewriter &rewriter, top::LogOp op,
 }
 
 void LogLowering::LoweringBF16(PatternRewriter &rewriter, top::LogOp op) const {
-  LoweringF32(rewriter, op);
+  auto op_ = op.getOperation();
+  op_->setAttr("mode",
+               tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::LN));
+  lowering_common_bf16<tpu::ActiveOp>(rewriter, op_);
 }
 
 void LogLowering::LoweringF16(PatternRewriter &rewriter, top::LogOp op) const {
-  LoweringF32(rewriter, op);
+  auto op_ = op.getOperation();
+  op_->setAttr("mode",
+               tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::LN));
+  lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
 }
 
 void LogLowering::LoweringQuantized(PatternRewriter &rewriter,
