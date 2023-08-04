@@ -47,6 +47,7 @@ class ONNX_IR_TESTER(object):
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N),  # failed cases
             "Arg":          (self.test_Arg,           Y, Y, Y, Y),
             "AddWeight":     (self.test_AddWeight,    Y, Y, Y, Y),
+            "AddWeight2":     (self.test_AddWeight2,  Y, Y, Y, Y),
             "AvgPool1d":    (self.test_AvgPool1d,     Y, Y, Y, Y),
             "AvgPool2d":    (self.test_AvgPool2d,     Y, Y, Y, Y),
             "AvgPool3d":    (self.test_AvgPool3d,     N, Y, Y, Y),
@@ -3622,6 +3623,32 @@ class ONNX_IR_TESTER(object):
                 i,
             ), [a, b, c], [output])
             self.onnx_and_test(graph_def)
+
+
+    def test_AddWeight2(self, case_name):
+        input_shape = [1, 16, 8, 8]
+        wshape = [16, 1, 1]
+        output_shape = [1, 16, 8, 8]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        w_data = np.random.rand(*wshape).astype(np.float32)
+        w_value = helper.make_tensor(
+            name='w',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=w_data.shape,
+            vals=w_data.flatten(),
+        )
+
+        add_node = helper.make_node(
+            'Add',  # node name
+            ['w', 'input', ],  # inputs
+            ['output'],  # outputs
+        )
+        graph_def = helper.make_graph([add_node],
+                                      case_name, [input], [output],
+                                      initializer=[w_value])
+        self.onnx_and_test(graph_def)
 
     def test_AddWeight(self, case_name):
         input_shape = [1, 16, 28, 28]

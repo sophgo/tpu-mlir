@@ -1250,6 +1250,22 @@ def Top_ExpOp: Top_Op<"Exp"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_ExpandOp: Top_Op<"Expand"> {
+  let summary = "Expand operator";
+
+  let description = [{
+    Broadcast the input tensor following the given shape and the broadcast rule.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$shape
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 def Top_CosOp: Top_Op<"Cos"> {
   let summary = "Cos operator";
 
