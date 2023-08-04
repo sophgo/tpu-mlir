@@ -55,7 +55,7 @@ void broadcast_shape_inference(mlir::Operation *op) {
   module::setShapeOrVerify(out, out_shape);
 }
 
-void broadcast_tensor_reshape(const mlir::Value &expect, mlir::Value &input) {
+void broadcast_tensor_reshape(const mlir::Value &expect, mlir::Value input) {
   // insert 1 at the begin of input if dim of input is not same with expect
   if (module::isWeight(input) && module::getNumElements(input) > 1 &&
       module::getShape(input).size() != module::getShape(expect).size()) {

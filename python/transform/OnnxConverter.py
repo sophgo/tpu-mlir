@@ -420,7 +420,7 @@ class OnnxConverter(BaseConverter):
             data = numpy_helper.to_array(tensor).astype(np.float32)
             self.addWeight(name, data)
             # TODO: for quantized onnx, keep the same type
-        self.add_shape_info(self.model.graph)  #  todo remove it
+        self.get_output_name(self.model.graph)
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         file_mark(self.onnx_file)
         onnx.save(self.model, self.onnx_file)
@@ -433,22 +433,10 @@ class OnnxConverter(BaseConverter):
             # fuse ops such as layernorm gelu...
             self.model, self.node_name_mapping = onnx_opt(self.model, True)
 
-    def add_shape_info(self, graph, flag=True):
-        for info in graph.value_info:
-            shape = [i.dim_value for i in info.type.tensor_type.shape.dim]
-            self.addShape(info.name, shape)
+    def get_output_name(self, graph):
         for output in graph.output:
             if not self.isWeight(output.name):
                 self.output_names.append(output.name)
-                shape = [i.dim_value for i in output.type.tensor_type.shape.dim]
-            var_exists = 'shape' in locals() or 'shape' in globals()
-            if var_exists:
-                self.addShape(output.name, shape)
-        for n in graph.node:
-            for o in n.output:
-                if not self.isWeight(o) \
-                   and o not in self.shapes:
-                    self.addShape(o, [])
 
     def input_shape_assign(self, input_shapes):
         inputs = self.get_inputs(self.model)
@@ -549,7 +537,6 @@ class OnnxConverter(BaseConverter):
     def convert_add_op(self, onnx_node):
         assert (onnx_node.op_type == "Add")
         assert (len(onnx_node.inputs) == 2)
-        output_shape = self.getShape(onnx_node.name)
         lhs = onnx_node.inputs[0]
         rhs = onnx_node.inputs[1]
         if self.isWeight(lhs) and not self.isWeight(rhs):
@@ -557,54 +544,11 @@ class OnnxConverter(BaseConverter):
             self.convert_add_op(onnx_node)
             return
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
-        if not self.isWeight(lhs) and self.isWeight(rhs):
-            is_scale = False
-            if len(output_shape) > 1:
-                opd1_num_elem = np.prod(self.getShape(rhs))
-                channel = output_shape[1]
-                if opd1_num_elem == channel:
-                    rhs_shape = self.getShape(rhs)
-                    axis = len(output_shape) - len(rhs_shape)
-                    if axis > 1:
-                        # the second dim (channel) need broadcast
-                        is_scale = False
-                    elif rhs_shape[1 - axis] == channel:
-                        # all dim except channel is 1 need broadcast, use scaleop
-                        is_scale = False if len(rhs_shape) == 1 else True
-                    else:
-                        # channel need broadcast, use addop
-                        is_scale = False
-            lhs_op = self.getOp(lhs)
-            if self.isScalar(rhs):
-                new_op = top.AddConstOp(self.unranked_type,
-                                        lhs_op,
-                                        self.getScalar(rhs),
-                                        do_relu=False,
-                                        loc=self.get_loc(name),
-                                        ip=self.mlir.insert_point).output
-            elif is_scale:
-                bias = self.getWeight(rhs)
-                weight_data = np.ones_like(bias)
-                self.addWeight(name + '_scale', weight_data)
-                weight_op = self.getWeightOp(name + '_scale')
-                bias_op = self.getWeightOp(rhs)
-                new_op = top.ScaleOp(self.unranked_type,
-                                     lhs_op,
-                                     weight_op,
-                                     bias_op,
-                                     loc=self.get_loc(name),
-                                     ip=self.mlir.insert_point).output
-            else:
-                rhs_op = self.getOp(rhs)
-                new_op = top.AddOp(self.unranked_type, [lhs_op, rhs_op],
-                                   loc=self.get_loc(name),
-                                   ip=self.mlir.insert_point).output
-        else:
-            lhs_op = self.getOp(lhs)
-            rhs_op = self.getOp(rhs)
-            new_op = top.AddOp(self.unranked_type, [lhs_op, rhs_op],
-                               loc=self.get_loc(name),
-                               ip=self.mlir.insert_point).output
+        lhs_op = self.getOp(lhs)
+        rhs_op = self.getOp(rhs)
+        new_op = top.AddOp(self.unranked_type, [lhs_op, rhs_op],
+                            loc=self.get_loc(name),
+                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_sub_op(self, onnx_node):
@@ -960,48 +904,13 @@ class OnnxConverter(BaseConverter):
             self.convert_mul_op(onnx_node)
             return
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
-        if (not self.isWeight(lhs)) and self.isWeight(rhs):
-            op0 = self.getOperand(lhs)
-            rhs = rhs
-            output_shape = self.getShape(onnx_node.name)
-            if self.isScalar(rhs):
-                mul_const_op = top.MulConstOp(self.unranked_type,
-                                              op0,
-                                              const_val=self.getScalar(rhs),
-                                              loc=self.get_loc(name),
-                                              ip=self.mlir.insert_point).output
-                self.addOperand(onnx_node.name, mul_const_op)
-                return
-            weight_num_elem = np.prod(self.getShape(rhs))
-            channel = output_shape[1]
-            if weight_num_elem == channel:
-                weight = self.getWeight(rhs)
-                offset_data = np.zeros_like(weight)
-                self.addWeight(name + '_bias', offset_data)
-                weight_op = self.getWeightOp(rhs)
-                offset_op = self.getWeightOp(name + '_bias')
-                scale_op = top.ScaleOp(self.unranked_type,
-                                       op0,
-                                       weight_op,
-                                       offset_op,
-                                       loc=self.get_loc(name),
-                                       ip=self.mlir.insert_point).output
-                self.addOperand(onnx_node.name, scale_op)
-                return
-            const_op = self.getWeightOp(rhs)
-            scale_op = top.MulOp(self.unranked_type, [op0, const_op],
-                                 loc=self.get_loc(name),
-                                 ip=self.mlir.insert_point).output
-            self.addOperand(onnx_node.name, scale_op)
-            return
-        else:
-            op0 = self.getOperand(lhs)
-            op1 = self.getOperand(rhs)
-            mul_op = top.MulOp(self.unranked_type, [op0, op1],
-                               loc=self.get_loc(name),
-                               ip=self.mlir.insert_point).output
-            self.addOperand(onnx_node.name, mul_op)
-            return
+        op0 = self.getOp(lhs)
+        op1 = self.getOp(rhs)
+        mul_op = top.MulOp(self.unranked_type, [op0, op1],
+                            loc=self.get_loc(name),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, mul_op)
+        return
 
     def convert_dropout_op(self, onnx_node):
         assert (onnx_node.op_type == "Dropout")
@@ -1179,19 +1088,17 @@ class OnnxConverter(BaseConverter):
 
     def convert_slice_op(self, onnx_node):
         assert (onnx_node.op_type == "Slice")
-        input_shape = self.getShape(onnx_node.inputs[0])
         starts = []
         ends = []
         axes = []
         num_input = len(onnx_node.inputs)
-        num_dims = len(input_shape)
         if num_input > 1:
             starts = self.getWeight(onnx_node.inputs[1]).astype(int)
             ends = self.getWeight(onnx_node.inputs[2])
             ends = list(
                 map(lambda x: np.iinfo(np.int64).max if x >= np.iinfo(np.int64).max else x, ends))
             axes = self.getWeight(onnx_node.inputs[3]).astype(int) if num_input > 3 else list(
-                np.arange(num_dims))
+                np.arange(len(ends)))
             steps = self.getWeight(
                 onnx_node.inputs[4]).astype(int) if num_input > 4 else [1] * len(axes)
         else:
@@ -1199,13 +1106,14 @@ class OnnxConverter(BaseConverter):
             ends = onnx_node.attrs.get('ends')
             axes = onnx_node.attrs.get('axes')
             if axes == None:
-                axes_len = num_dims
+                axes_len = len(ends)
                 axes = [i for i in range(axes_len)]
             steps = [1] * len(axes)
         assert (len(starts) == len(ends))
         assert (len(axes) == len(ends))
         if self.isWeight(onnx_node.inputs[0]):
             tensor_data = self.getWeight(onnx_node.inputs[0])
+            num_dims = len(tensor_data.shape)
             for start, end, axis, step in zip(starts, ends, axes, steps):
                 start, end, axis, step = int(start), int(end), int(axis), int(step)
                 if axis < 0:
@@ -1740,65 +1648,22 @@ class OnnxConverter(BaseConverter):
     def convert_expand_op(self, onnx_node):
         assert (onnx_node.op_type == 'Expand')
         in0 = self.getOperand(onnx_node.inputs[0])
-        output_shape = self.getShape(onnx_node.name)
-        input_shape = self.getShape(onnx_node.inputs[0])
-        assert len(output_shape) >= len(input_shape)
-        # remove leading 1
-        len_diff = len(output_shape) - len(input_shape)
-
-        out_shape = copy.deepcopy(input_shape)
-        new_op = in0
-        if len_diff != 0:
-            input_shape_ex = [1] * len_diff
-            for s in (input_shape):
-                input_shape_ex.append(s)
-            new_op = top.ReshapeOp(self.unranked_type,
-                                   new_op,
-                                   shape=input_shape_ex,
-                                   loc=self.get_loc('{}_{}_reshape'.format(
-                                       onnx_node.name, onnx_node.op_type)),
-                                   ip=self.mlir.insert_point).output
-            out_shape = input_shape_ex
-        # tile one axis each time to avoid gmem buffer
-        count = sum([out_shape[-i] != output_shape[-i] for i in range(1, len(out_shape) + 1)])
-        if count == 0:
-            self.addOperand(onnx_node.name, new_op)
-            return
-        assert count > 0
-
-        for i in range(1, len(output_shape) + 1):
-            axis = len(out_shape) - i
-            if axis < 0:
-                out_shape.insert(0, 1)
-            if output_shape[-i] != out_shape[-i]:
-                tile = output_shape[-i] // out_shape[-i]
-                if count == 1:
-                    loc_name = '{}_{}'.format(onnx_node.name, onnx_node.op_type)
-                    out_shape = output_shape
-                else:
-                    loc_name = "{}_{}_{}".format(onnx_node.name, onnx_node.op_type, count)
-                    out_shape[-i] = output_shape[-i]
-                # new_op = top.TileOp(self.mlir.get_tensor_type(out_shape),
-                new_op = top.TileOp(self.unranked_type,
-                                    new_op,
-                                    axis=axis,
-                                    tile=tile,
-                                    loc=self.get_loc(loc_name),
-                                    ip=self.mlir.insert_point).output
-                count -= 1
-            if count == 0:
-                break
+        shape = self.getWeight(onnx_node.inputs[1])
+        new_op = top.ExpandOp(self.unranked_type,
+                               in0,
+                               shape=shape,
+                               loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                               ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
+        return
 
     def convert_tile_op(self, onnx_node):
         assert (onnx_node.op_type == "Tile")
         in0_op = self.getOperand(onnx_node.inputs[0])
-        input_shape = self.getShape(onnx_node.inputs[0])
         tile_data = self.getWeight(onnx_node.inputs[1])
         if np.prod(tile_data) == 1:
             self.addOperand(onnx_node.name, in0_op)
             return
-        last_shape = list(input_shape)
         last_op = in0_op
         last_i = 0
         last_name = ""
@@ -1812,8 +1677,6 @@ class OnnxConverter(BaseConverter):
             last_name = onnx_node.name
             if i != last_i:
                 last_name += "_{}".format(i)
-            last_shape[i] = int(last_shape[i] * tile_data[i])
-            # last_op = top.TileOp(self.mlir.get_tensor_type(last_shape),
             last_op = top.TileOp(self.unranked_type,
                                  last_op,
                                  axis=i,
@@ -1825,10 +1688,10 @@ class OnnxConverter(BaseConverter):
     def convert_topk_op(self, onnx_node):
         assert (onnx_node.op_type == "TopK")
         in_op = self.getOperand(onnx_node.inputs[0])
-        if not self.isScalar(onnx_node.inputs[1]) and \
-           len(self.getShape(onnx_node.inputs[1])) == 1:
-            K = self.getShape(onnx_node.inputs[1])[0]
-        else:
+        K = onnx_node.attrs.get('k', -1) # opset 10
+        if (len(onnx_node.inputs) > 1):
+            # fix me if inputs[1] is not a tesnsor in the furture
+            assert(self.isWeight(onnx_node.inputs[1]))
             K = self.getScalar(onnx_node.inputs[1])
         axis = onnx_node.attrs.get('axis', -1)
         largest = onnx_node.attrs.get('largest', True)
@@ -1842,10 +1705,6 @@ class OnnxConverter(BaseConverter):
                 loc_names[idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = []
-                # out_shapes[idx] = self.getShape(out)
-                # if K != out_shapes[idx][axis] and \
-                #   not self.isScalar(onnx_node.inputs[1]):
-                #     K = out_shapes[idx][axis]
         out_op = top.TopKOp(*self.mlir.get_tensor_type(out_shapes),
                             in_op,
                             axis=axis,
@@ -1908,11 +1767,6 @@ class OnnxConverter(BaseConverter):
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         operands = []
         for i, x in enumerate(onnx_node.inputs):
-            x_shape = self.getShape(x)
-            num_elem = np.prod(x_shape)
-            if num_elem == 0:
-                print("WARNING:{}'s shape is strange {}".format(x, x_shape))
-                continue
             if self.isWeight(x):
                 data = self.getWeight(x)
                 self.addWeight(x, data)
@@ -2252,21 +2106,16 @@ class OnnxConverter(BaseConverter):
     def convert_pixel_norm_op(self, onnx_node):
         assert (onnx_node.op_type == "PixelNormalization")
         assert (len(onnx_node.inputs) in (1, 2, 3))
-        input_shape = self.getShape(onnx_node.inputs[0])
-        num_dims = len(input_shape)
-        assert (num_dims > 1)
         eps = onnx_node.attrs.get("epsilon", 1e-05)
-        wb_shape = [1] * num_dims
-        wb_shape[1] = input_shape[1]
         input_opd = self.getOperand(onnx_node.inputs[0])
         scale_opd = self.mlir.none_op
         bias_opd = self.mlir.none_op
         if len(onnx_node.inputs) > 1:
             if not self.isScalar_(onnx_node.inputs[1], 1):
-                scale_opd = self.getWeightOp(onnx_node.inputs[1], wb_shape)
+                scale_opd = self.getWeightOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
             if not self.isScalar_(onnx_node.inputs[2], 0):
-                bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
+                bias_opd = self.getWeightOp(onnx_node.inputs[2])
         new_op = top.PixelNormOp(self.unranked_type,
                                  input_opd,
                                  scale_opd,
@@ -2280,21 +2129,16 @@ class OnnxConverter(BaseConverter):
     def convert_instance_norm_op(self, onnx_node):
         assert (onnx_node.op_type == "InstanceNormalization")
         assert (len(onnx_node.inputs) in (1, 2, 3))
-        input_shape = self.getShape(onnx_node.inputs[0])
-        num_dims = len(input_shape)
-        assert (num_dims > 1)
         eps = onnx_node.attrs.get("epsilon", 1e-05)
-        wb_shape = [1] * num_dims
-        wb_shape[1] = input_shape[1]
         input_opd = self.getOperand(onnx_node.inputs[0])
         scale_opd = self.mlir.none_op
         bias_opd = self.mlir.none_op
         if len(onnx_node.inputs) > 1:
             if not self.isScalar_(onnx_node.inputs[1], 1):
-                scale_opd = self.getWeightOp(onnx_node.inputs[1], wb_shape)
+                scale_opd = self.getWeightOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
             if not self.isScalar_(onnx_node.inputs[2], 0):
-                bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
+                bias_opd = self.getWeightOp(onnx_node.inputs[2])
         new_op = top.InstanceNormOp(self.unranked_type,
                                     input_opd,
                                     scale_opd,
@@ -2308,22 +2152,17 @@ class OnnxConverter(BaseConverter):
     def convert_group_norm_op(self, onnx_node):
         assert (onnx_node.op_type == "GroupNormalization")
         assert (len(onnx_node.inputs) in (1, 2, 3))
-        input_shape = self.getShape(onnx_node.inputs[0])
-        num_dims = len(input_shape)
-        assert (num_dims > 1)
         num_groups = onnx_node.attrs.get("num_groups")  # required
         eps = onnx_node.attrs.get("epsilon", 1e-05)
-        wb_shape = [1] * num_dims
-        wb_shape[1] = input_shape[1]
         input_opd = self.getOperand(onnx_node.inputs[0])
         scale_opd = self.mlir.none_op
         bias_opd = self.mlir.none_op
         if len(onnx_node.inputs) > 1:
             if not self.isScalar_(onnx_node.inputs[1], 1):
-                scale_opd = self.getWeightOp(onnx_node.inputs[1], wb_shape)
+                scale_opd = self.getWeightOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
             if not self.isScalar_(onnx_node.inputs[2], 0):
-                bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
+                bias_opd = self.getWeightOp(onnx_node.inputs[2])
         new_op = top.GroupNormOp(self.unranked_type,
                                  input_opd,
                                  scale_opd,
@@ -2379,8 +2218,6 @@ class OnnxConverter(BaseConverter):
         input = self.getOp(onnx_node.inputs[0])
         rois = self.getOp(onnx_node.inputs[1])
         batch_indices = self.getOp(onnx_node.inputs[2])
-        rois_shape = self.getShape(onnx_node.inputs[1])
-        batch_indices_shape = self.getShape(onnx_node.inputs[2])
         output_name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         mode = onnx_node.attrs.get("mode", "Avg")
         output_height = onnx_node.attrs.get("output_height", 1)
@@ -2392,16 +2229,12 @@ class OnnxConverter(BaseConverter):
         else:
             coord_transf_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
         align_corners = coord_transf_mode == "half_pixel"
-        unsqueeze_shape = batch_indices_shape
-        unsqueeze_shape.append(1)
-        batch_indices_xpd = top.UnsqueezeOp(self.mlir.get_tensor_type(unsqueeze_shape),
+        batch_indices_xpd = top.UnsqueezeOp(self.unranked_type,
                                             batch_indices,
                                             axes=[-1],
                                             loc=self.get_loc(output_name + "_unsqueeze"),
                                             ip=self.mlir.insert_point).output
-        concat_shape = rois_shape
-        concat_shape[-1] = 5
-        rois_xpd = top.ConcatOp(self.mlir.get_tensor_type(concat_shape), [batch_indices_xpd, rois],
+        rois_xpd = top.ConcatOp(self.unranked_type, [batch_indices_xpd, rois],
                                 axis=1,
                                 loc=self.get_loc(output_name + "_concat"),
                                 ip=self.mlir.insert_point).output
@@ -2479,8 +2312,7 @@ class OnnxConverter(BaseConverter):
             name = tensor.name
             data = numpy_helper.to_array(tensor).astype(np.float32)
             self.addWeight(name, data)
-        self.add_shape_info(graph_node, False)
-
+        self.get_output_name(graph_node)
         def NoneAndRaise(node):
             raise RuntimeError("{} Op not support now".format(node.op_type))
 
