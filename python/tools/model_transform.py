@@ -125,11 +125,14 @@ class OnnxTransformer(ModelTransformer):
                  input_shapes: list = [],
                  output_names: list = [],
                  preprocessor: dict = {},
-                 static_shape=True):
+                 static_shape=True,
+                 onnx_sim_opt=None):
         super().__init__(model_name, model_def)
         from transform.OnnxConverter import OnnxConverter
+        if onnx_sim_opt is None:
+            onnx_sim_opt = ''
         self.converter = OnnxConverter(self.model_name, self.model_def, input_shapes, output_names,
-                                       preprocessor, static_shape)
+                                       preprocessor, static_shape, onnx_sim_opt=onnx_sim_opt)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import onnx_inference
@@ -211,7 +214,7 @@ def get_model_transform(args):
     tool = None
     if args.model_def.endswith('.onnx'):
         tool = OnnxTransformer(args.model_name, args.model_def, args.input_shapes,
-                               args.output_names, preprocessor.to_dict())
+                               args.output_names, preprocessor.to_dict(), onnx_sim_opt=args.onnx_sim_opt)
     elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
         tool = CaffeTransformer(args.model_name, args.model_def, args.model_data, args.input_shapes,
                                 args.output_names, preprocessor.to_dict())
@@ -252,6 +255,7 @@ if __name__ == '__main__':
                         choices=['','yolov3','yolov5','yolov8','ssd'], help="add postprocess for model")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
+    parser.add_argument("--onnx_sim_opt", type=str, help="skip onnx-sim passes, sep by quote without space, currently only support 'skip_fuse_bn' ")
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
     args, unknown_args = parser.parse_known_args()

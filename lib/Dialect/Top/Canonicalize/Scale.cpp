@@ -375,5 +375,5 @@ void ScaleOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
   results.insert<TopMultiScaleMergeToOne, TopScaleMergeToBatchNorm,
                  ScaleShapeAlign, ConstbinaryMergeToTopScale,
-                 TopScaleMergeToMatMul, FuseScaleIntoConv>(context);
+                 TopScaleMergeToMatMul>(context);
 }

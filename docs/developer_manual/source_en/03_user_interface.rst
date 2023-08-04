@@ -135,6 +135,9 @@ Used to convert various neural network models into MLIR files, the supported par
    * - mlir
      - Y
      - The output mlir file name (including path)
+   * - onnx_sim_opt
+     - Y
+     - option for onnx-sim, currently only support 'skip_fuse_bn' args
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
 
