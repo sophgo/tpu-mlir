@@ -2841,7 +2841,8 @@ def Tpu_LoopOp : Tpu_Op<"Loop", [DeclareOpInterfaceMethods<RegionBranchOpInterfa
 }
 
 
-def Tpu_AutoIncreaseOp: Tpu_Op<"AutoIncrease"> {
+def Tpu_AutoIncreaseOp: Tpu_Op<"AutoIncrease",
+    [SameOperandsAndResultType]> {
   let summary = "Auto increase ";
   let description = [{
     increase by 1 in-place
