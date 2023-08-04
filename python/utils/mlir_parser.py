@@ -160,6 +160,7 @@ class MlirParser:
         self.module_chip = eval(self.attrs['module.chip'])
         self.ops = []
         self.return_op = None
+        self._none_type = mlir.ir.Type.parse("none", self.ctx)
 
         cache_map = {}
         for i in range(len(self.body.operations)):
@@ -311,10 +312,14 @@ class MlirParser:
         middles = {}
         for i in range(len(self.body.operations)):
             op = self.body.operations[i]
-            type = Operation.type(op)
-            if type in ['top.None', 'top.Input', 'func.return']:
+            op_type = Operation.type(op)
+            if op_type in ["top.None", "top.Input", "func.return"]:
                 continue
-            shape_type = mlir.ir.ShapedType(op.results[0].type)
+
+            if op.results[0].type == self._none_type:
+                shape_type = mlir.ir.ShapedType.parse("none", self.ctx)
+            else:
+                shape_type = mlir.ir.ShapedType(op.results[0].type)
             name = Operation.name(op)
             middles[name] = shape_type
         return middles
