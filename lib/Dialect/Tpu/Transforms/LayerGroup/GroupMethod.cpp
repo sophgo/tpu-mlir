@@ -265,6 +265,20 @@ static bool group_type_check(const LgInfo &lg_info) {
   return true;
 }
 
+static bool group_cslice_check(const LgInfo &lg_info) {
+  if (module::isBM1684Family()){
+    for (auto op : lg_info.group_ops) {
+      if (isa<ActiveOp>(op)) {
+        auto shape = module::getShape(op->getOperand(0));
+        if (shape.size() > 2 && shape[1] > 4096) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 bool GroupMethod::dynamic_group_valid_check(const LgInfo &lg_info) {
   auto res = true;
   if (runmode_ == RunMode::TPU_DYNAMIC && lg_info.group_ops.size() > 1) {
@@ -299,6 +313,9 @@ bool GroupMethod::dynamic_group_valid_check(const LgInfo &lg_info) {
 
 bool GroupMethod::group_valid_pre_check(const LgInfo &lg_info) {
   if (!group_type_check(lg_info)) {
+    return false;
+  }
+  if (!group_cslice_check(lg_info)) {
     return false;
   }
   return true;
