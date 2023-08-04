@@ -81,8 +81,14 @@ top::NoneOp getNoneOp(Operation *op) {
 Value getOriValue(Value v) {
   if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
     int idx = block_arg.getArgNumber();
-    auto parent_op = v.getParentBlock()->getParentOp();
-    if (auto func_op = dyn_cast_or_null<FuncOp>(parent_op)) {
+    //blockargument have multi-layers nest.
+    FuncOp func_op;
+    if (isa<FuncOp>(v.getParentBlock()->getParentOp()))
+      func_op = cast<FuncOp>(v.getParentBlock()->getParentOp());
+    else
+      func_op = v.getParentBlock()->getParentOp()
+                      ->getParentOfType<FuncOp>();
+    if (func_op) {
       // cur call op
       auto call_op = getCallOp(func_op);
       // pre call op
@@ -128,6 +134,7 @@ Value getOriValue(Value v) {
       return v;
     }
   }
+
   llvm_unreachable("Failed to get preOperation.FIx me");
 }
 
