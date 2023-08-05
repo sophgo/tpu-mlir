@@ -132,6 +132,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
         auto subnet = CreateCPUSubNet(s, call);
         subnet_v.push_back(subnet);
       } break;
+      //actually use switch subnet
+      case RunMode::LOOP:
       case RunMode::SWITCH: {
         auto subnet = CreateSwitchSubNet(s, call);
         subnet_v.push_back(subnet);
@@ -910,6 +912,10 @@ Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(ModuleOp s,
   func.walk<WalkOrder::PreOrder>([&](Operation *op) {
     if (isa<tpu::IfOp>(op)) {
       inputs.emplace_back(module::getOriValue(op->getOperand(0)));
+    } else if (isa<tpu::LoopOp>(op)) {
+      //the last operand is the condition Operation
+      inputs.emplace_back(module::getOriValue(
+                  op->getOperand(op->getNumOperands() - 1)));
     }
   });
 
@@ -962,14 +968,46 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(ModuleOp s,
       }
     }
   }
-  auto ifOp =
-      dyn_cast<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp());
-  inputs.clear();
-  for (int k = 0; k < ifOp.getNumResults(); k++) {
-    for (int i = 0; i < ifOp.getNumRegions(); i++) {
-      Region &region = ifOp.getRegion(i);
-      Operation *yieldOp = region.back().getTerminator();
-      inputs.emplace_back(module::getOriValue(yieldOp->getOperand(k)));
+
+
+  if (isa<tpu::LoopOp>(call->getParentOp()))
+  {
+    std::vector<Value> tmp;
+    std::copy(inputs.begin(), inputs.end(), std::back_inserter(tmp));
+    std::vector<Value>().swap(inputs);
+    for (int i = 0; i < tmp.size(); i++) {
+      inputs.insert(inputs.begin() + 2 * i, {tmp[i], tmp[i]});
+    }
+
+    int32_t out_num = outputs.size();
+    std::vector<Value>().swap(outputs);
+    Operation *loopop = cast<tpu::LoopOp>(call->getParentOp());
+    //replace the actual output for next iteration
+    for (int i = 0; i < out_num; i++) {
+      outputs.emplace_back(module::getOriValue(loopop->getOperand(i+1)));
+    }
+  } else {
+    if (isa<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp())) {
+      auto ifOp =
+          dyn_cast<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp());
+      inputs.clear();
+      for (int k = 0; k < ifOp.getNumResults(); k++) {
+        for (int i = 0; i < ifOp.getNumRegions(); i++) {
+          Region &region = ifOp.getRegion(i);
+          Operation *yieldOp = region.back().getTerminator();
+          inputs.emplace_back(module::getOriValue(yieldOp->getOperand(k)));
+        }
+      }
+    } else {
+      //loopOp
+      auto loopOp =
+          dyn_cast<tpu::LoopOp>(module::getOriValue(inputs[0]).getDefiningOp());
+      inputs.clear();
+      Operation *yieldOp = loopOp.getBody().back().getTerminator();
+      for (int k = 0; k < loopOp.getNumResults(); k++) {
+          inputs.emplace_back(module::getOriValue(yieldOp->getOperand(k+1)));
+          inputs.emplace_back(module::getOriValue(loopOp.getOperand(k+2)));
+      }
     }
   }
 

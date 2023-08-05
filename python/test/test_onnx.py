@@ -264,8 +264,8 @@ class ONNX_IR_TESTER(object):
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y),
             "If":               (self.test_If,              N, Y, Y, N)
-            #"Loop" :            (self.test_Loop,            N, Y, N, N),
-            #"Loop2" :           (self.test_Loop2,           N, Y, N, N)
+            #"Loop" :            (self.test_Loop,            N, Y, Y, N),
+            #"Loop2" :           (self.test_Loop2,           N, Y, Y, N)
 
         }
         # yapf: enable
@@ -5382,7 +5382,7 @@ class ONNX_IR_TESTER(object):
         from onnx import numpy_helper
         from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
         graph_def = helper.make_graph(
-            name="test-loop",
+            name="loop",
             inputs=[
                 helper.make_tensor_value_info("input_0", TensorProto.FLOAT, shape=[1]),
             ],
@@ -5532,7 +5532,7 @@ class ONNX_IR_TESTER(object):
         from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
         x = np.array(10000).astype(np.int64)
         graph_def=helper.make_graph(
-            name="test-loop2",
+            name="loop",
             inputs=[
                 helper.make_tensor_value_info(
                     "input_0", TensorProto.FLOAT, shape=[1]
