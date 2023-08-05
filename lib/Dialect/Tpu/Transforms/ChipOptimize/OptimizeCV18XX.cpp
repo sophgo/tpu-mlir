@@ -7,9 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "Common.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "llvm/Support/Debug.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "llvm/Support/Debug.h"
 
 #define DEBUG_TYPE "optimize_cv18xx"
 
@@ -266,14 +267,10 @@ public:
 namespace tpu {
 using namespace cv18xx;
 void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
-  // clang-format off
-  patterns->add<
-      FuseLeakReluPattern,
-      MoveConvStrideToEltwiseOpPattern,
-      SplitReluLimitPattern,
-      SplitReducePattern
-  >(patterns->getContext());
-  // clang-format on
+  auto ctx = patterns->getContext();
+  patterns->add<FuseLeakReluPattern, MoveConvStrideToEltwiseOpPattern,
+                SplitReluLimitPattern, SplitReducePattern,
+                PermuteReorderPattern, PermutePadSwap>(ctx);
 };
 } // namespace tpu
 

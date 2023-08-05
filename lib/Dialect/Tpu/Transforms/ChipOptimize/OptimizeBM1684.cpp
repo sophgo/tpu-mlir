@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
+#include "Common.h"
 
 using namespace llvm;
 
@@ -145,7 +145,7 @@ public:
     std::string output_name = module::getName(op->getResult(0)).str();
     auto input_shape = module::getShape(input_value);
     auto output_shape = module::getShape(op->getResult(0));
-    if(input_shape.size() != 4 || output_shape.size() != 4){
+    if (input_shape.size() != 4 || output_shape.size() != 4) {
       return failure();
     }
     auto input_ele_type = module::getElementType(input_value);
@@ -249,12 +249,10 @@ public:
 namespace tpu {
 using namespace bm1684;
 void populateOptimizeBM1684Patterns(RewritePatternSet *patterns) {
-  // clang-format off
-  patterns->add<
-    CastWithoutScalePattern,
-    LargeDilationConvPattern
-  >(patterns->getContext());
-  // clang-format on
+  auto ctx = patterns->getContext();
+  patterns->add<LargePadConvPattern>(ctx, 9);
+  patterns->add<CastWithoutScalePattern, LargeDilationConvPattern,
+                PermuteReorderPattern, PermutePadSwap>(ctx, 8);
 };
 } // namespace tpu
 

@@ -8,8 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Patterns.h"
+#include "Common.h"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -436,7 +435,7 @@ public:
  * input0 + Permute \              => input0           \
  *                   => MaskedFill =>                   => MaskedFill + Permute
  * input1           /              => input1 + Permute /
-*/
+ */
 class MaskedFillPermuteMove : public OpRewritePattern<tpu::MaskedFillOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -780,20 +779,14 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
-  // clang-format off
-    patterns->add<
-      MatMulHdimBatchPattern,
-      MatMulRemoveReshapePattern,
-      MatMulLeftReusePattern,
-      MoveReshapeAfterAdd,
-      GroupConv2NormalConv,
-      TpuReshapeReorderPattern,
-      PermuteAddWeightReorderPattern,
-      MaskedFillPermuteMove,
-      PermuteFuse,
-      patterns::FuseRepeatPattern<tpu::ReshapeOp>
-    >(patterns->getContext());
-  // clang-format on
+  auto ctx = patterns->getContext();
+  patterns->add<LargePadConvPattern>(ctx, 9);
+  patterns->add<MatMulHdimBatchPattern, MatMulRemoveReshapePattern,
+                MatMulLeftReusePattern, MoveReshapeAfterAdd,
+                GroupConv2NormalConv, TpuReshapeReorderPattern,
+                PermuteAddWeightReorderPattern, MaskedFillPermuteMove,
+                PermuteFuse, patterns::FuseRepeatPattern<tpu::ReshapeOp>,
+                PermuteReorderPattern, PermutePadSwap>(ctx, 8);
 }
 } // namespace tpu
 
