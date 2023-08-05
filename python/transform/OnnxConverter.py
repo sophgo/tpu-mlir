@@ -102,7 +102,7 @@ class OnnxConverter(BaseConverter):
                  output_names: list,
                  preprocess_args: dict = {},
                  static_shape=True,
-                 onnx_sim_opt=""):
+                 onnx_sim=""):
         super().__init__()
 
         self.model_name = model_name
@@ -114,7 +114,7 @@ class OnnxConverter(BaseConverter):
             None, np.float32, np.uint8, np.int8, np.int16, np.int16, np.int32, np.int64, None,
             np.bool_, np.float16, np.float64, np.uint32, np.uint64, None, None, None
         ]
-        self.onnx_sim_opt = onnx_sim_opt
+        self.onnx_sim = onnx_sim
         self.load_onnx_model(onnx_file, input_shapes, output_names, static_shape)
         self.init_MLIRImporter()
         self.unranked_type = self.mlir.get_tensor_type([])
@@ -375,9 +375,9 @@ class OnnxConverter(BaseConverter):
             print("WARNING: ConstantFolding failed.")
         print("ConstantFolding finished")
         try:
-            skip_fuse_bn = "skip_fuse_bn" in self.onnx_sim_opt
+            onnx_sim = self.onnx_sim.split(',')
+            skip_fuse_bn = "skip_fuse_bn" in onnx_sim
             print('skip_fuse_bn:',skip_fuse_bn)
-
             self.model, _ = onnxsim.simplify(self.model,
                                              skip_fuse_bn=skip_fuse_bn,
                                              skip_constant_folding=True,
@@ -431,7 +431,6 @@ class OnnxConverter(BaseConverter):
             f.write(str(strip_model))
         if static_shape:
             # fuse ops such as layernorm gelu...
-            onnx_sim_opt = self.onnx_sim_opt.split(',')
             self.model, self.node_name_mapping = onnx_opt(self.model, True)
 
     def add_shape_info(self, graph, flag=True):

@@ -230,7 +230,8 @@ class ONNX_IR_TESTER(object):
             "Depth2SpaceWithPermute": (self.test_Depth2SpaceWithPermute, Y, Y, Y, N),
             "Div2Mul":          (self.test_Div2Mul,         Y, Y, Y, Y),
             "ConvSlice":        (self.test_ConvSlice,       Y, Y, Y, N),
-            "GaToSlice":        (self.test_GaToSlice,       Y, Y, Y, Y),
+            "Gather2Slice":     (self.test_Gather2Slice,    Y, Y, Y, Y),
+            "Gather2Slice2":    (self.test_Gather2Slice2,   N, Y, Y, Y),
             "GLMTilePermute":   (self.test_GLMTilePermute,  N, Y, N, N),
             "Mul2Scale":        (self.test_Mul2Scale,       Y, Y, Y, Y),
             "MatMulTranspose":  (self.test_MatMulTranspose, N, Y, Y, Y),
@@ -3103,7 +3104,7 @@ class ONNX_IR_TESTER(object):
                                       "{}_{}".format(case_name, 0), [input], [depth2space_output])
         self.onnx_and_test(graph_def)
 
-    def test_GaToSlice(self, case_name):
+    def test_Gather2Slice(self, case_name):
 
         class Model(torch.nn.Module):
 
@@ -3119,6 +3120,22 @@ class ONNX_IR_TESTER(object):
                 return e
 
         x = torch.randn(3, 36, 12, 49, 32).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_Gather2Slice2(self, case_name):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                a = x[..., 0]
+                b = x[..., 1]
+                c = torch.matmul(a, b)
+                return c
+
+        x = torch.randn(32, 128, 128, 2).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_GLMTilePermute(self, case_name):

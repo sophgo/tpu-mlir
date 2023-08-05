@@ -224,12 +224,12 @@ model_transform.py
    * - excepts
      - 否
      - 指定需要排除验证的网络层的名称, 多个用,隔开
+   * - onnx_sim
+     - 否
+     - onnx-sim 的可选项参数，目前仅支持 skip_fuse_bn 选项，用于关闭 batch_norm 和 Conv 层的合并
    * - mlir
      - 是
      - 指定输出的mlir文件名称和路径
-   * - onnx_sim_opt
-     - 是
-     - onnx-sim 的可选项参数，目前仅支持 skip_fuse_bn 选项，用于关闭 batch_norm 和 Conv 层的合并
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是后续模型的输入文件。
 
