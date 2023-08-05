@@ -424,7 +424,7 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
   } else if (auto weight2activation_op =
                  dyn_cast<tpu::Weight2ActivationOp>(op)) {
     return true;
-  } else if (isa<tpu::IdentityOp>(op)) {
+  } else if (isa<tpu::IdentityOp, tpu::AutoIncreaseOp>(op)) {
     return true;
   }
   return false;

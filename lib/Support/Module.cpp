@@ -97,8 +97,12 @@ Value getOriValue(Value v) {
         auto find_root = [](auto &&Me, Value v) -> Value {
           if (v.isa<BlockArgument>()) {
             int index = dyn_cast<BlockArgument>(v).getArgNumber();
-            auto p_op = v.getParentBlock()->getParentOp();
-            auto func_op = dyn_cast<FuncOp>(p_op);
+            FuncOp func_op;
+            if (isa<FuncOp>(v.getParentBlock()->getParentOp()))
+              func_op = cast<FuncOp>(v.getParentBlock()->getParentOp());
+            else
+              func_op = v.getParentBlock()->getParentOp()
+                         ->getParentOfType<FuncOp>();
             auto call_op = getCallOp(func_op);
             return Me(Me, call_op.getOperand(index));
           } else {

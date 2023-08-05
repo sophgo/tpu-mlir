@@ -2756,7 +2756,7 @@ def Tpu_Batch2SpaceOp: Tpu_Op<"Batch2Space"> {
 }
 
 def Tpu_IdentityOp : Tpu_Op<"Identity",[
-  NoMemoryEffect, SameOperandsAndResultType]> {
+  NoMemoryEffect]> {
   let summary = "identity operator";
 
   let description = [{

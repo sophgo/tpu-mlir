@@ -631,7 +631,7 @@ public:
           auto value2 = (*it)->ops[0]->getOperand(0);
           std::vector<NamedAttribute> attrs;
           double init_float = 0;
-          float step_v = 1.0f;
+          double step_v = 1.0f;
           //create WeightOp
           auto init_v = std::make_shared<std::vector<float>>(1);
           init_v->data()[0] = 1;
@@ -664,7 +664,7 @@ public:
               module::getLocLike((*it)->ops[0], "_AutoIncrease");
           attrs.clear();
           attrs.push_back(
-                builder.getNamedAttr("const_val", builder.getF32FloatAttr(step_v)));
+                builder.getNamedAttr("const_val", builder.getF64FloatAttr(step_v)));
           auto new_autoincrease = builder.create<tpu::AutoIncreaseOp>(
                 autoincrease_loc, value2.getType(), ValueRange{fill->getResult(0)}, attrs);
 
@@ -675,9 +675,11 @@ public:
                     "mode", builder.getStringAttr("And")));
           auto and_op = builder.create<tpu::CompareOp>(and_loc, cmp->getResult(0).getType(),
                                               ValueRange{cmp->getResult(0), (*it)->ops[0]->getOperand(1)}, attrs);
-          //insert and_op's output into LoopOp's operand
+          /* insert autoIncrease(for to not remove unused op)
+            & and_op's output into LoopOp's operand */
           (*it)->ops[0]->insertOperands((*it)->ops[0]->getNumOperands(),
-                                        {and_op->getResult(0)});
+                                        { new_autoincrease->getResult(0),
+                                          and_op->getResult(0)});
           if (it != subnet_infos.begin()) {
             //insert WeightOp & constFill op into previous subnet
             auto iit = std::prev(it, 1);
