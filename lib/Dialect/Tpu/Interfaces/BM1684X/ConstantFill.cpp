@@ -16,7 +16,17 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::ConstantFillOp::codegen_global_bm1684x() {
-  llvm_unreachable("Not supported now");
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+
+  constantfill_common_spec_t spec = {0};
+  float value = getValue().convertToDouble();
+  spec.filled_value = *(uint32_t*)&value;
+  spec.dtype        = DTYPE_FP32;
+  BM168x::call_global_func("backend_api_constant_fill_global", &spec,
+                           sizeof(spec), input_spec->data(),
+                           output_spec->data());
 }
 
 // ======================================
