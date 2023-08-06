@@ -278,7 +278,7 @@ class MLIRImporter(object):
         if self.num_output > 1:
             output_txt = "({})".format(output_txt)
         main_func = """
-            module @{name} attributes {{module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
+            module @\"{name}\" attributes {{module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none loc(unknown)
                 }} loc(unknown)
