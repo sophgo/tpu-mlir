@@ -73,6 +73,9 @@ void BMCodegen::init(ModuleOp m, const std::string &filename) {
   }
   input_names = module::getInputs();
   output_names = module::getOutputs();
+  hidden_names.clear();
+  current_step = 0;
+  current_device = 0;
 }
 
 void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
@@ -86,6 +89,23 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   std::vector<Value> outputs;
   module::getInputsOutputs(s, inputs, outputs);
   SetNetIO(inputs, outputs);
+  for (auto in : inputs) {
+    auto name = module::getName(in);
+    if (std::find(input_names->begin(), input_names->end(), name) !=
+        input_names->end()) {
+      continue;
+    }
+    assert(std::find(hidden_names.begin(), hidden_names.end(), name) !=
+           hidden_names.end());
+  }
+  for (auto out : outputs) {
+    auto name = module::getName(out);
+    if (std::find(output_names->begin(), output_names->end(), name) !=
+        output_names->end()) {
+      continue;
+    }
+    hidden_names.push_back(name);
+  }
 
   auto coeff_addr = module::getCoeffAddr(s);
   auto coeff_size = module::getCoeffSize(s);
@@ -132,7 +152,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
         auto subnet = CreateCPUSubNet(s, call);
         subnet_v.push_back(subnet);
       } break;
-      //actually use switch subnet
+      // actually use switch subnet
       case RunMode::LOOP:
       case RunMode::SWITCH: {
         auto subnet = CreateSwitchSubNet(s, call);
@@ -220,6 +240,15 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   bmodel::ModelGen::CASCADE_INFO_T cascade = {0, 0, ""};
   if (module::getNumSubModule() > 1) {
     module::getSubModuleId(s, cascade.device_id, cascade.step);
+    // make sure the order is by step and device id
+    if (cascade.step == current_step) {
+      assert(cascade.device_id == current_device);
+      current_device++;
+    } else {
+      assert(cascade.step == current_step + 1 && cascade.device_id == 0);
+      current_step++;
+      current_device = 1;
+    }
     cascade.main_name = module::getName(module::getModuleOp());
   }
   model_gen->AddNet(module::getName(s).str(), cascade, npb.Finish());
@@ -250,7 +279,8 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values) {
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   int index = 0;
   for (auto v : values) {
-    auto v_name = module::getName(v).str();
+    auto s_name = module::getName(v);
+    auto v_name = s_name.str();
     auto type = module::getStorageType(v);
     auto shape = module::getShape(v);
     auto data_type = BM168x::getDataType(type);
@@ -263,7 +293,7 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values) {
     tb.add_data_type(data_type);
     tb.add_gmem_stmode(gmem_stmode);
     tb.add_shape(stage_shape);
-    if (isIO(v_name) == false) {
+    if (isHiddenTensor(s_name)) {
       tb.add_hidden(1);
     }
 
@@ -961,9 +991,9 @@ Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(ModuleOp s,
     if (isa<tpu::IfOp>(op)) {
       inputs.emplace_back(module::getOriValue(op->getOperand(0)));
     } else if (isa<tpu::LoopOp>(op)) {
-      //the last operand is the condition Operation
-      inputs.emplace_back(module::getOriValue(
-                  op->getOperand(op->getNumOperands() - 1)));
+      // the last operand is the condition Operation
+      inputs.emplace_back(
+          module::getOriValue(op->getOperand(op->getNumOperands() - 1)));
     }
   });
 
@@ -1017,9 +1047,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(ModuleOp s,
     }
   }
 
-
-  if (isa<tpu::LoopOp>(call->getParentOp()))
-  {
+  if (isa<tpu::LoopOp>(call->getParentOp())) {
     std::vector<Value> tmp;
     std::copy(inputs.begin(), inputs.end(), std::back_inserter(tmp));
     std::vector<Value>().swap(inputs);
@@ -1030,9 +1058,9 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(ModuleOp s,
     int32_t out_num = outputs.size();
     std::vector<Value>().swap(outputs);
     Operation *loopop = cast<tpu::LoopOp>(call->getParentOp());
-    //replace the actual output for next iteration
+    // replace the actual output for next iteration
     for (int i = 0; i < out_num; i++) {
-      outputs.emplace_back(module::getOriValue(loopop->getOperand(i+1)));
+      outputs.emplace_back(module::getOriValue(loopop->getOperand(i + 1)));
     }
   } else {
     if (isa<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp())) {
@@ -1047,14 +1075,14 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(ModuleOp s,
         }
       }
     } else {
-      //loopOp
+      // loopOp
       auto loopOp =
           dyn_cast<tpu::LoopOp>(module::getOriValue(inputs[0]).getDefiningOp());
       inputs.clear();
       Operation *yieldOp = loopOp.getBody().back().getTerminator();
       for (int k = 0; k < loopOp.getNumResults(); k++) {
-          inputs.emplace_back(module::getOriValue(yieldOp->getOperand(k+1)));
-          inputs.emplace_back(module::getOriValue(loopOp.getOperand(k+2)));
+        inputs.emplace_back(module::getOriValue(yieldOp->getOperand(k + 1)));
+        inputs.emplace_back(module::getOriValue(loopOp.getOperand(k + 2)));
       }
     }
   }
@@ -1201,16 +1229,9 @@ SmallString<128> BMCodegen::gen_op_id(Operation *op) {
   return prefix;
 }
 
-bool BMCodegen::isIO(const std::string &name) {
-  if (std::find(input_names->begin(), input_names->end(), name) !=
-      input_names->end()) {
-    return true;
-  }
-  if (std::find(output_names->begin(), output_names->end(), name) !=
-      output_names->end()) {
-    return true;
-  }
-  return false;
+bool BMCodegen::isHiddenTensor(StringRef name) {
+  return std::find(hidden_names.begin(), hidden_names.end(), name) !=
+         hidden_names.end();
 }
 
 } // namespace tpu

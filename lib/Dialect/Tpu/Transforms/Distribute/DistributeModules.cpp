@@ -82,11 +82,8 @@ static void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp m) {
     retLoc.push_back(module::getLoc(output));
   }
   auto name = module::getName(m).str();
-  std::string func_name = name;
-  if (sf->devid != 0 || sf->step != 0) {
-    func_name +=
-        "_" + std::to_string(sf->devid) + "_" + std::to_string(sf->step);
-  }
+  std::string func_name =
+      name + "_" + std::to_string(sf->step) + "_" + std::to_string(sf->devid);
   OpBuilder builder(m.getContext());
   std::vector<NamedAttribute> attrs;
   attrs.push_back(

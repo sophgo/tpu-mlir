@@ -123,8 +123,11 @@ void bm_show(const string &filename) {
   auto model = model_ctx.model();
   cout << "bmodel version: " << model->type()->c_str() << "."
        << model->version()->c_str() << endl;
-  cout << "chip: " << model->chip()->c_str() << endl;
-  cout << "create time: " << model->time()->c_str() << endl;
+  cout << "chip: " << model->chip()->c_str();
+  if (model->device_num() > 1) {
+    cout << ",  device num: " << model->device_num();
+  }
+  cout << "\ncreate time: " << model->time()->c_str() << endl;
   // kernel_module info
   auto kernel_module = model->kernel_module();
   if (!kernel_module) {
@@ -149,6 +152,14 @@ void bm_show(const string &filename) {
     cout << "==========================================" << endl;
     cout << "net " << idx << ": [" << net->name()->c_str() << "]  " << net_type
          << endl;
+    auto cascade = net->cascade();
+    if (cascade) {
+      auto main_name = cascade->main_name()->str();
+      if (!main_name.empty()) {
+        cout << "cascade in [" << main_name << "], [step:devid] = ["
+             << cascade->step() << ":" << cascade->device_id() << "]" << endl;
+      }
+    }
     for (uint32_t i = 0; i < parameter->size(); i++) {
       auto net_param = parameter->Get(i);
       auto subnet = net_param->sub_net();

@@ -58,7 +58,7 @@ private:
       bool first_compute_loop, bool last_compute_loop);
   void codegen_ir(Operation *op, SubnetIr *subnet_ir_);
   SmallString<128> gen_op_id(Operation *op);
-  bool isIO(const std::string &name);
+  bool isHiddenTensor(StringRef name);
 
 private:
   StringRef state;
@@ -68,6 +68,9 @@ private:
   std::string filename;
   std::shared_ptr<std::vector<StringRef>> input_names;
   std::shared_ptr<std::vector<StringRef>> output_names;
+  std::vector<StringRef> hidden_names;
+  uint32_t current_step = 0;
+  uint32_t current_device = 0;
   std::shared_ptr<bmodel::ModelGen> model_gen;
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> cmd_group_all;
   TensorLocation tensor_loc;
