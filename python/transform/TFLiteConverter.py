@@ -854,7 +854,7 @@ class TFLiteConverter(BaseConverter):
         param = GatherOptions()
         param.Init(op_options.Bytes, op_options.Pos)
         attr = {
-            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT32], param.Axis()),
             # "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.BatchDims()),
         }
         return "top.Gather", attr, False
