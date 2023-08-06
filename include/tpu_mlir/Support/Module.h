@@ -178,8 +178,7 @@ bool isBM1684X();
 //-----------------------------------------------------------------
 // Helper Functions for submodule
 //-----------------------------------------------------------------
-bool hasSubModule();
-bool isEndModule(ModuleOp submodule); // is module with main function
+int getNumSubModule();
 std::shared_ptr<std::vector<ModuleOp>> getAllModules();
 void setSubModuleId(ModuleOp submodule, int64_t device_id, int64_t step);
 void getSubModuleId(ModuleOp submodule, int64_t &device_id, int64_t &step);

@@ -216,7 +216,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
     };
   }
   bmodel::ModelGen::CASCADE_INFO_T cascade = {0, 0, ""};
-  if (module::hasSubModule()) {
+  if (module::getNumSubModule() > 1) {
     module::getSubModuleId(s, cascade.device_id, cascade.step);
     cascade.main_name = module::getName(module::getModuleOp());
   }

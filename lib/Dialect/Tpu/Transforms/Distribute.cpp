@@ -114,7 +114,7 @@ class DistributePass : public DistributeBase<DistributePass> {
 public:
   DistributePass() {}
   void runOnOperation() override {
-    if (module::hasSubModule()) {
+    if (module::getNumSubModule() > 0) {
       return;
     }
     if (!module::isBM1684XFamily()) {

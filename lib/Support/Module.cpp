@@ -108,13 +108,12 @@ Value getOriValue(Value v) {
   }
   if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
     int idx = block_arg.getArgNumber();
-    //blockargument have multi-layers nest.
+    // blockargument have multi-layers nest.
     FuncOp func_op;
     if (isa<FuncOp>(v.getParentBlock()->getParentOp()))
       func_op = cast<FuncOp>(v.getParentBlock()->getParentOp());
     else
-      func_op = v.getParentBlock()->getParentOp()
-                      ->getParentOfType<FuncOp>();
+      func_op = v.getParentBlock()->getParentOp()->getParentOfType<FuncOp>();
     if (func_op) {
       // cur call op
       auto call_op = getCallOp(func_op);
@@ -128,8 +127,8 @@ Value getOriValue(Value v) {
             if (isa<FuncOp>(v.getParentBlock()->getParentOp()))
               func_op = cast<FuncOp>(v.getParentBlock()->getParentOp());
             else
-              func_op = v.getParentBlock()->getParentOp()
-                         ->getParentOfType<FuncOp>();
+              func_op =
+                  v.getParentBlock()->getParentOp()->getParentOfType<FuncOp>();
             auto call_op = getCallOp(func_op);
             return Me(Me, call_op.getOperand(index));
           } else {
@@ -907,10 +906,6 @@ void setFLOPs(int64_t flops) {
   m->setAttr(Attr::FLOPS, IntegerAttr::get(intType, flops));
 }
 
-bool isEndModule(ModuleOp sub) {
-  return sub.getOps<func::FuncOp>().empty() == false;
-}
-
 std::shared_ptr<std::vector<ModuleOp>> getAllModules() {
   auto modules = std::make_shared<std::vector<ModuleOp>>();
   auto sub = m.getOps<ModuleOp>();
@@ -922,7 +917,10 @@ std::shared_ptr<std::vector<ModuleOp>> getAllModules() {
   return std::move(modules);
 }
 
-bool hasSubModule() { return m.getOps<ModuleOp>().empty() == false; }
+int getNumSubModule() {
+  auto sub = m.getOps<ModuleOp>();
+  return std::distance(sub.begin(), sub.end());
+}
 
 void setSubModuleId(ModuleOp sub, int64_t device_id, int64_t step) {
   sub->setAttr(Attr::DEVICE_ID,
