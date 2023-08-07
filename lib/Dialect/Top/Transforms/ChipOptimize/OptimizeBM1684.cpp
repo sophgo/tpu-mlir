@@ -51,7 +51,6 @@ namespace top {
 using namespace bm1684;
 void populateOptimizeBM1684Patterns(RewritePatternSet *patterns) {
   // add bm1684 optimize here
-  patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns->add<patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
                 patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
                 ConvertScaleOp, ConvertMultiInputAdd>(patterns->getContext(),
