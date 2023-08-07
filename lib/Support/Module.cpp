@@ -112,8 +112,12 @@ Value getOriValue(Value v) {
     FuncOp func_op;
     if (isa<FuncOp>(v.getParentBlock()->getParentOp()))
       func_op = cast<FuncOp>(v.getParentBlock()->getParentOp());
-    else
+    else if (isa<tpu::LoopOp, tpu::IfOp, top::LoopOp, top::IfOp>
+             (v.getParentBlock()->getParentOp())) {
+      return getOriValue(v.getParentBlock()->getParentOp()->getOperand(idx));
+    } else
       func_op = v.getParentBlock()->getParentOp()->getParentOfType<FuncOp>();
+
     if (func_op) {
       // cur call op
       auto call_op = getCallOp(func_op);
@@ -288,7 +292,13 @@ int64_t getAddress(Value v) {
   if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
     int index = block_arg.getArgNumber();
     auto parent_op = v.getParentBlock()->getParentOp();
-    auto funcOp = dyn_cast_or_null<FuncOp>(parent_op);
+    FuncOp funcOp;
+
+    if (isa<FuncOp>(parent_op))
+      funcOp = cast<FuncOp>(parent_op);
+    else
+      funcOp = parent_op->getParentOfType<FuncOp>();
+
     if (funcOp) {
       func::CallOp callee = getCallOp(funcOp);
       return getAddress(callee.getOperand(index));

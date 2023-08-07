@@ -631,6 +631,29 @@ public:
           std::vector<NamedAttribute> attrs;
           double init_float = 0;
           double step_v = 1.0f;
+          std::vector<Operation *> ops;
+          /* if Loop's Operand (such as cond, v_initial) is WeightOp,
+             will create tensor for to replace it, because will change
+            the value during iteration */
+          for (int i = 0; i< (*it)->ops[0]->getNumOperands() - 1; i++) {
+            if (isa<top::WeightOp>(module::getOriValue
+                  ((*it)->ops[0]->getOperand(i+1)).getDefiningOp())) {
+              //create a D2D op(but use Addconst instead)
+              attrs.clear();
+              attrs.push_back(
+                builder.getNamedAttr("const_val", builder.getF64FloatAttr(0.f)));
+              auto d2d_loc = module::getLocLike((*it)->ops[0], std::to_string(i));
+              auto d2d_op = builder.create<tpu::D2DOp>(
+                    d2d_loc, (*it)->ops[0]->getOperand(i+1).getType(),
+                    ValueRange{(*it)->ops[0]->getOperand(i+1)}, attrs);
+              ops.emplace_back(d2d_op);
+              (*it)->ops[0]->getOperand(i+1)
+                      .replaceUsesWithIf(d2d_op->getResult(0),
+                                             [&](OpOperand &use) {
+                                               return isa<tpu::LoopOp>(use.getOwner());});
+            }
+          }
+
           // create WeightOp
           auto init_v = std::make_shared<std::vector<float>>(1);
           init_v->data()[0] = 1;
@@ -641,6 +664,7 @@ public:
               top::WeightOp::create((*it)->ops[0], "_init", *init_v, type);
           // create constfill op
           auto fill_loc = module::getLocLike((*it)->ops[0], "_fill");
+          attrs.clear();
           attrs.push_back(builder.getNamedAttr(
               "value", builder.getF64FloatAttr(init_float)));
           auto fill = builder.create<tpu::ConstantFillOp>(
@@ -682,6 +706,11 @@ public:
           if (it != subnet_infos.begin()) {
             // insert WeightOp & constFill op into previous subnet
             auto iit = std::prev(it, 1);
+            if (!ops.empty()) {
+              (*iit)->ops.insert((*iit)->ops.end(),
+                               ops.begin(), ops.end());
+            }
+
             (*iit)->ops.insert((*iit)->ops.end(),
                                {init_Value.getDefiningOp(), fill});
             update_subnet_io(*iit);
@@ -690,6 +719,11 @@ public:
             it = subnet_infos.insert(subnet_infos.begin(),
                                      new subnet_basic_info);
             (*it)->type = dynamic ? RunMode::TPU_DYNAMIC : RunMode::TPU_STATIC;
+            if (!ops.empty()) {
+              (*it)->ops.insert((*it)->ops.end(),
+                               ops.begin(), ops.end());
+            }
+
             (*it)->ops.insert((*it)->ops.end(),
                               {init_Value.getDefiningOp(), fill});
             update_subnet_io(*it);
@@ -1063,16 +1097,20 @@ public:
         }
 
         builder.setInsertionPointAfter(callee.getOperation());
-        auto new_name =
-            module::getName(module::getOriValue(fnInputs[0]).getDefiningOp())
-                .str() +
-            "_id_" + std::to_string(subnet->index);
-        auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+        std::vector<Location> locs;
         std::vector<Type> outType;
         for (auto &v : fnInputs)
           outType.emplace_back(v.getType());
+
+        for (int i = 0; i < fnInputs.size(); i++) {
+          auto loc = module::getLocLike(module::getOriValue(fnInputs[i]),
+                     "_id_" + std::to_string(subnet->index));
+          locs.push_back(loc);
+        }
+
+        auto  new_loc = FusedLoc::get(module::getCtx(), locs);
         auto identityOp =
-            builder.create<tpu::IdentityOp>(name_loc, outType, fnInputs);
+            builder.create<tpu::IdentityOp>(new_loc, outType, fnInputs);
         subnet->ops.emplace_back(identityOp.getOperation());
         for (auto &&v : identityOp.getOperation()->getResults()) {
           fnOutputs.emplace_back(v);
@@ -1113,16 +1151,21 @@ public:
         }
 
         builder.setInsertionPoint(pos, Block::iterator(pos->back()));
-        auto new_name =
-            module::getName(module::getOriValue(fnInputs[0]).getDefiningOp())
-                .str() +
-            "_id_" + std::to_string(subnet->index);
-        auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+
+        std::vector<Location> locs;
         std::vector<Type> outType;
         for (auto &v : fnInputs)
           outType.emplace_back(v.getType());
+
+        for (int i = 0; i < fnInputs.size(); i++) {
+          auto loc = module::getLocLike(module::getOriValue(fnInputs[i]),
+                     "_id_" + std::to_string(subnet->index));
+          locs.push_back(loc);
+        }
+
+        auto  new_loc = FusedLoc::get(module::getCtx(), locs);
         auto identityOp =
-            builder.create<tpu::IdentityOp>(name_loc, outType, fnInputs);
+            builder.create<tpu::IdentityOp>(new_loc, outType, fnInputs);
         subnet->ops.emplace_back(identityOp.getOperation());
         for (auto &&v : identityOp.getOperation()->getResults()) {
           fnOutputs.emplace_back(v);

@@ -19,8 +19,8 @@ struct SwapInput : public OpRewritePattern<AddOp> {
     if (op.getInputs().size() != 2) {
       return failure();
     }
-    if (!isa<WeightOp>(op.getInputs()[0].getDefiningOp()) &&
-        !isa<WeightOp>(op.getInputs()[1].getDefiningOp())) {
+    if (!isa<WeightOp>(module::getOriValue(op.getInputs()[0]).getDefiningOp()) &&
+        !isa<WeightOp>(module::getOriValue(op.getInputs()[1]).getDefiningOp())) {
       return failure();
     }
     auto coeffs = module::getF64Array(op.getCoeff(), 2, 1.0);
@@ -31,7 +31,7 @@ struct SwapInput : public OpRewritePattern<AddOp> {
     }
     auto lhs = op.getInputs()[0];
     auto rhs = op.getInputs()[1];
-    if (isa<WeightOp>(lhs.getDefiningOp())) {
+    if (isa<WeightOp>(module::getOriValue(lhs).getDefiningOp())) {
       op.setOperand(0, rhs);
       op.setOperand(1, lhs);
       return success();
