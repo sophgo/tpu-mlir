@@ -32,11 +32,17 @@ void ExpLowering::LoweringINT8(PatternRewriter &rewriter, top::ExpOp op,
 }
 
 void ExpLowering::LoweringBF16(PatternRewriter &rewriter, top::ExpOp op) const {
-  LoweringF32(rewriter, op);
+  auto op_ = op.getOperation();
+  op_->setAttr("mode",
+               tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::EXP));
+  lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
 }
 
 void ExpLowering::LoweringF16(PatternRewriter &rewriter, top::ExpOp op) const {
-  LoweringF32(rewriter, op);
+  auto op_ = op.getOperation();
+  op_->setAttr("mode",
+               tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::EXP));
+  lowering_common_f16<tpu::ActiveOp>(rewriter, op);
 }
 
 void ExpLowering::LoweringQuantized(PatternRewriter &rewriter,
