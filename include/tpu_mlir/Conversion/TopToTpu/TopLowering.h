@@ -179,6 +179,18 @@ public:
     auto loopOp = dyn_cast<top::LoopOp>(op);
     graphToTpuBranch(rewriter, op->getLoc(), loopOp.getBody(),
                      tpuLoopOp.getBody());
+
+    for (int i = 0; i < tpuLoopOp.getBody().getNumArguments(); i++) {
+      auto type = tpuLoopOp.getOperand(i).getType();
+      tpuLoopOp.getBody().getArgument(i).setType(type);
+    }
+
+    auto yieldOp = tpuLoopOp.getBody().front().getTerminator();
+    //update the loopop's output
+    for (int i = 0; i < tpuLoopOp.v_final().size(); i++) {
+      auto type = yieldOp->getOperand(i+1).getType();
+      tpuLoopOp.getResult(i).setType(type);
+    }
     op->replaceAllUsesWith(tpuLoopOp.getOperation());
     rewriter.eraseOp(op);
     return success();

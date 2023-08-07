@@ -1073,7 +1073,7 @@ protected:
     auto ctx = v.getContext();
     OpBuilder builder(ctx);
     builder.setInsertionPointAfterValue(v);
-    auto name = module::getName(v).str();
+    auto name = module::getName(module::getOriValue(v)).str();
     if (user_op && !isa<ReturnOp>(user_op)) {
       name += module::getName(user_op).str();
     }
@@ -1083,7 +1083,8 @@ protected:
       name += "_" + type_string(to_stype);
       auto newType = RankedTensorType::get(module::getShape(v), to_stype);
       auto loc = NameLoc::get(builder.getStringAttr(name));
-      if (v.getDefiningOp()->hasTrait<trait::ShapeProducer>()) {
+      if (module::getOriValue(v).getDefiningOp()
+           ->hasTrait<trait::ShapeProducer>()) {
         auto castOp =
             builder.create<tpu::ShapeCastOp>(loc, newType, ValueRange{v});
         return castOp.getOutput();

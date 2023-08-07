@@ -115,9 +115,17 @@ private:
   }
 
   Value getSourceWeightV(Value v) const {
-    auto index = v.cast<BlockArgument>().getArgNumber();
-    return v.cast<BlockArgument>().getOwner()
-                    ->getParentOp()->getOperands()[index];
+    /* frontend changed, replace
+       addconst/compareconst with add/comare */
+    if (isa<BlockArgument>(v)) {
+      auto index = v.cast<BlockArgument>().getArgNumber();
+      return v.cast<BlockArgument>().getOwner()
+                      ->getParentOp()->getOperands()[index];
+    } else if (isa<top::WeightOp>(v.getDefiningOp())) {
+      return v;
+    } else {
+      assert(0 && "fatal error, pls let us know ASAP.");
+    }
   }
 
   std::pair<bool, Value> matchOp(

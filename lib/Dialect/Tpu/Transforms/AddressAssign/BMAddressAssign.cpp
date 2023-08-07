@@ -322,6 +322,86 @@ void BMAddressAssign::updateLiveRangeofBMOps(
         liveRange[v_info].start = 0;
         liveRange[v_info].end = 0xFFFFFFFF;
       }
+
+      /* the operands of ops in prehead
+         basic block will live forever */
+      if (isa<tpu::LoopOp>(op)) {
+        auto set_life_forerver = [&] (ValueInfo &v_info) {
+          if (liveRange.find(v_info) != liveRange.end()) {
+            // not first, update operand's liverange
+            liveRange[v_info].start = 0;
+            liveRange[v_info].end = 0xFFFFFFFF;
+            liveRange[v_info].out_index = v_info.index;
+          } else {
+            // first update the operand, set its start, end, out_index and
+            // tensor_size
+            liveRange[v_info].start = 0;
+            liveRange[v_info].end = 0xFFFFFFFF;
+            liveRange[v_info].out_index = v_info.index;
+            liveRange[v_info].tensor_size =
+                getTensorGmemSize(opd, v_info.index, alignment);
+          }
+        };
+        //loop mode: 6
+        if (!isa<top::NoneOp>(module::getOriValue(op->getOperand(0)).getDefiningOp())
+            && !isa<top::NoneOp>(module::getOriValue(op->getOperand(1)).getDefiningOp())) {
+          /* Loop mode 6 : the prehead block IR as below:
+             %0 = "tpu.Compare"(%arg0, %arg1) {mode = "Less"} :
+                    (tensor<1xf32, 4295000064 : i64>, tensor<1xf32, 4294967296 : i64>)
+                    -> tensor<1xf32, 4294995968 : i64> loc(#loc11)
+              %1 = "tpu.AutoIncrease"(%arg0) {const_val = 1.000000e+00 : f64} :
+                    (tensor<1xf32, 4295000064 : i64>)
+                    -> tensor<1xf32, 4295000064 : i64> loc(#loc12)
+              %2 = "tpu.Compare"(%0, %arg2) {mode = "And"} :
+                    (tensor<1xf32, 4294995968 : i64>, tensor<1xf32, 4295012352 : i64>)
+                    -> tensor<1xf32, 4294991872 : i64> loc(#loc13)*/
+
+          for (int i = 0; i < op->getNumOperands() - 2; i++) {
+            //also set the life forerver
+            auto operand = module::getOriValue(op->getOperand(i));
+            auto opd = operand.getDefiningOp(); //other Op
+            if (!isa<top::WeightOp, top::NoneOp>(opd)) {
+              ValueInfo v_info(opd, operand.cast<OpResult>().getResultNumber());
+              set_life_forerver(v_info);
+            }
+          }
+
+          auto operand = module::getOriValue(op->getOperand
+                                (op->getNumOperands() - 2));
+          auto opd = operand.getDefiningOp(); //AutoIncrease Op
+          ValueInfo v_info(opd, operand.cast<OpResult>().getResultNumber());
+          set_life_forerver(v_info);
+          operand = module::getOriValue(opd->getOperand(0));
+          opd = operand.getDefiningOp();
+          if (!isa<top::WeightOp, top::NoneOp>(opd)) {
+            ValueInfo v_info2(opd, operand.cast<OpResult>().getResultNumber());
+            set_life_forerver(v_info2);
+          }
+
+          operand = module::getOriValue(op->getOperand
+                                (op->getNumOperands() - 1));
+          opd = operand.getDefiningOp(); //Compare Op(And)
+          ValueInfo v_info3(opd, operand.cast<OpResult>().getResultNumber());
+          set_life_forerver(v_info3);
+
+          auto dfs = [&] (auto &&Me, Operation *opd) {
+            if (!isa<tpu::CompareOp>(opd))
+              return;
+
+            for (int i = 0; i < opd->getNumOperands(); i++) {
+              auto operand2 = module::getOriValue(opd->getOperand(i));
+              auto opd2 = operand2.getDefiningOp();
+              if (!isa<top::WeightOp, top::NoneOp>(opd2)) {
+                ValueInfo v_info4(opd2, operand2.cast<OpResult>().getResultNumber());
+                set_life_forerver(v_info4);
+                Me(Me, opd2);
+              }
+            }
+          };
+
+          dfs(dfs, opd);
+        }
+      }
     }
   };
   auto updateSOLOLiveRange = [&](Operation *op, ValueInfo v_info,

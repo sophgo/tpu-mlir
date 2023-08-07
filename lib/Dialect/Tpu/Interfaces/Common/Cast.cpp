@@ -160,7 +160,7 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
       rewriter.replaceOp(op, {in});
       return success();
     }
-    auto castInputOp = dyn_cast<tpu::CastOp>(in.getDefiningOp());
+    auto castInputOp = dyn_cast<tpu::CastOp>(module::getOriValue(in).getDefiningOp());
     if (!castInputOp || castInputOp->hasOneUse() == false) {
       return failure();
     }

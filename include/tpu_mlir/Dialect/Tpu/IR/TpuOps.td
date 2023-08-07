@@ -2815,11 +2815,12 @@ def Tpu_LoopOp : Tpu_Op<"Loop", [DeclareOpInterfaceMethods<RegionBranchOpInterfa
     Generic Looping construct, support while/do_while/for/forerver etc:
   }];
 
-  let arguments = (ins AnyTypeOf<[TensorOf<[I32]>, TensorOf<[F32]>, NoneType]>:$M,
-    AnyTypeOf<[TensorOf<[I32]>, TensorOf<[F32]>, NoneType]>:$cond,
-    Variadic<AnyTypeOf<[TensorOf<[UI8]>, TensorOf<[UI16]>, TensorOf<[UI32]>, TensorOf<[UI64]>, TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>, TensorOf<[F64]>, TensorOf<[I1]>]>>:$v_initial);
-  let results = (outs Variadic<AnyTypeOf<[TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>]>>:$v_final_and_scan_outputs);
+  let arguments = (ins AnyTypeOf<[AnyTensor, NoneType]>:$M,
+                   AnyTypeOf<[AnyTensor, NoneType]>:$cond,
+                  Variadic<AnyTypeOf<[AnyTensor, NoneType]>>:$v_initial);
+  let results = (outs Variadic<AnyTypeOf<[AnyTensor, NoneType]>>:$v_final_and_scan_outputs);
   let regions = (region SizedRegion<1>:$body);
+  let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     static int getNumberOfOperands() {
       return -1;
@@ -2846,6 +2847,18 @@ def Tpu_AutoIncreaseOp: Tpu_Op<"AutoIncrease",
   let summary = "Auto increase ";
   let description = [{
     increase by 1 in-place
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    F64Attr:$const_val
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_D2DOp: Tpu_Op<"D2D"> {
+  let summary = "Copy WeightOp to Device Mem ";
+  let description = [{
+    for to alloc address, and can modify the data(with WeightOp to init it)
   }];
   let arguments = (ins
     AnyRankedTensor:$input,

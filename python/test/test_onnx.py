@@ -264,10 +264,8 @@ class ONNX_IR_TESTER(object):
             "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N),
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y),
-            "If":               (self.test_If,              N, Y, Y, N)
-            #"Loop" :            (self.test_Loop,            N, Y, Y, N),
-            #"Loop2" :           (self.test_Loop2,           N, Y, Y, N)
-
+            "If":               (self.test_If,              N, Y, Y, N),
+            "Loop" :            (self.test_Loop,            N, Y, Y, N)
         }
         # yapf: enable
 
@@ -521,7 +519,10 @@ class ONNX_IR_TESTER(object):
                       input_data: dict = None,
                       static_shape=True,
                       check_last: bool = False,
+                      quant_modes=None,
                       version=13):
+        if quant_modes is None:
+            quant_modes = self.quant_modes
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
@@ -550,7 +551,7 @@ class ONNX_IR_TESTER(object):
         if counter == 0:
             raise RuntimeError("No compare between onnx outs and mlir outts")
         print("Success: ONNX outs and Mlir outs are equal\n")
-        for quant_mode in self.quant_modes:
+        for quant_mode in quant_modes:
             if quant_mode == "int8" or quant_mode == "int4":
                 for isAsym in self.support_asym:
                     tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode, isAsym)
@@ -5408,155 +5409,6 @@ class ONNX_IR_TESTER(object):
     def test_Loop(self, case_name):
         from onnx import numpy_helper
         from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
-        graph_def = helper.make_graph(
-            name="loop",
-            inputs=[
-                helper.make_tensor_value_info("input_0", TensorProto.FLOAT, shape=[1]),
-            ],
-            outputs=[helper.make_tensor_value_info("output_0", TensorProto.INT32, shape=[1])],
-            initializer=[
-                numpy_helper.from_array(
-                    np.array([10], dtype=np.int64),
-                    name="while_maximum_iterations_0",
-                ),
-                numpy_helper.from_array(np.array([-1], dtype=np.int64), name="const_fold_opt__18"),
-                numpy_helper.from_array(np.array([10.0], dtype=np.float32),
-                                        name="const_fold_opt__17"),
-                numpy_helper.from_array(np.array([3], dtype=np.int32), name="Const_0"),
-                numpy_helper.from_array(np.array([0], dtype=np.int64), name="axes"),
-            ],
-            nodes=[
-                helper.make_node(
-                    "Cast",
-                    inputs=["input_0"],
-                    outputs=["while_cond_158_while_Less__13_0"],
-                    name="while_cond_158_while_Less__13",
-                    domain="",
-                    to=TensorProto.INT32,
-                ),
-                helper.make_node(
-                    "Less",
-                    inputs=[
-                        "input_0",
-                        "const_fold_opt__17",
-                    ],
-                    outputs=["while_cond_158_while_Less_0"],
-                    name="while_cond_158_while_Less",
-                    domain="",
-                ),
-                helper.make_node(
-                    "Squeeze",
-                    inputs=["while_cond_158_while_Less_0", "axes"],
-                    outputs=["while_cond_158_while_Squeeze_0"],
-                    name="while_cond_158_while_Squeeze",
-                    domain="",
-                ),
-                helper.make_node(
-                    "Loop",
-                    inputs=[
-                        "while_maximum_iterations_0",
-                        "while_cond_158_while_Squeeze_0",
-                        "while_cond_158_while_Less__13_0",
-                        "Const_0",
-                    ],
-                    outputs=["while_loop_0", "while_loop_1", "while_loop_2"],
-                    name="while_loop",
-                    body=helper.make_graph(
-                        name="while_body",
-                        inputs=[
-                            helper.make_tensor_value_info(
-                                "while_while_loop_counter_0",
-                                TensorProto.INT64,
-                                shape=[],
-                            ),
-                            helper.make_tensor_value_info("cond__15_0", TensorProto.BOOL, shape=[]),
-                            helper.make_tensor_value_info("while_placeholder_0",
-                                                          TensorProto.INT32,
-                                                          shape=[1]),
-                            helper.make_tensor_value_info("while_add_const_0_0",
-                                                          TensorProto.INT32,
-                                                          shape=[1]),
-                        ],
-                        outputs=[
-                            helper.make_tensor_value_info(
-                                "cond___while_Identity_graph_outputs_Identity__3_0",
-                                TensorProto.BOOL,
-                                shape=[],
-                            ),
-                            helper.make_tensor_value_info("while_Identity_2_0",
-                                                          TensorProto.INT32,
-                                                          shape=[1]),
-                            helper.make_tensor_value_info("while_add_const_0_0",
-                                                          TensorProto.INT32,
-                                                          shape=[1]),
-                            helper.make_tensor_value_info("while_placeholder_0",
-                                                          TensorProto.INT32,
-                                                          shape=[1])
-                        ],
-                        initializer=[
-                            numpy_helper.from_array(
-                                np.array(8.0, dtype=np.float32),
-                                name="const_fold_opt__19",
-                            ),
-                            numpy_helper.from_array(np.array([0], dtype=np.int64), name="reshape2"),
-                        ],
-                        nodes=[
-                            helper.make_node(
-                                "Add",
-                                inputs=[
-                                    "while_placeholder_0",
-                                    "while_add_const_0_0",
-                                ],
-                                outputs=["while_Identity_2_0"],
-                                name="while_Add",
-                            ),
-                            helper.make_node(
-                                "Cast",
-                                inputs=["while_Identity_2_0"],
-                                outputs=["cond___while_Less__13_0"],
-                                name="cond___while_Less__13",
-                                domain="",
-                                to=TensorProto.FLOAT,
-                            ),
-                            helper.make_node(
-                                "Less",
-                                inputs=[
-                                    "cond___while_Less__13_0",
-                                    "const_fold_opt__19",
-                                ],
-                                outputs=["cond___while_Less_0"],
-                                name="cond___while_Less",
-                                domain="",
-                            ),
-                            helper.make_node(
-                                "Squeeze",
-                                inputs=["cond___while_Less_0", "reshape2"],
-                                outputs=["cond___while_Identity_graph_outputs_Identity__3_0"],
-                                name="cond___while_Squeeze",
-                                domain="",
-                            ),
-                        ],
-                    ),
-                ),
-                helper.make_node(
-                    "Unsqueeze",
-                    inputs=["while_loop_0", "axes"],
-                    outputs=["Reshape_tensor_0"],
-                    name="Reshape_tensor",
-                ),
-                helper.make_node(
-                    "Reshape",
-                    inputs=["Reshape_tensor_0", "const_fold_opt__18"],
-                    outputs=["output_0"],
-                    name="Reshape",
-                ),
-            ],
-        )
-        self.onnx_and_test(graph_def)
-
-    def test_Loop2(self, case_name):
-        from onnx import numpy_helper
-        from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
         x = np.array(10000).astype(np.int64)
         graph_def=helper.make_graph(
             name="loop",
@@ -5578,7 +5430,9 @@ class ONNX_IR_TESTER(object):
                 numpy_helper.from_array(
                     np.array([0], dtype=np.int64), name="reshape"
                 ),
-
+                numpy_helper.from_array(
+                    np.array([1], dtype=np.int32), name="init_v"
+                ),
                 numpy_helper.from_array(
                     np.array(101, dtype=np.int32), name="up_value"
                 ),
@@ -5687,20 +5541,20 @@ class ONNX_IR_TESTER(object):
                     ),
                 ),
                 helper.make_node(
-                    "Unsqueeze",
-                    inputs=["up", "reshape"],
+                    "Add",
+                    inputs=["up", "init_v"],
                     outputs=["up_bound"],
                     name="upsqueeze",
                 ),
                 helper.make_node(
-                    "Unsqueeze",
-                    inputs=["new_cout", "reshape"],
+                    "Sub",
+                    inputs=["new_cout", "init_v"],
                     outputs=["new_start_v2"],
                     name="upsqueeze2",
                 ),
             ]
         )
-        self.onnx_and_test(graph_def)
+        self.onnx_and_test(graph_def, quant_modes=["f32", "f16", "bf16"])
 
     def test_Shape(self, case_name):
         input_shape = [2, 3, 4]
