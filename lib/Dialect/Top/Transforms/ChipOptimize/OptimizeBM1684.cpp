@@ -53,7 +53,7 @@ void populateOptimizeBM1684Patterns(RewritePatternSet *patterns) {
   // add bm1684 optimize here
   patterns->add<patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
                 patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
-                ConvertScaleOp, ConvertMultiInputAdd>(patterns->getContext(),
+                ConvertMultiInputAdd>(patterns->getContext(),
                                                       8);
 }
 
