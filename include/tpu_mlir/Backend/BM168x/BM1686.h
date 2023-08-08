@@ -45,6 +45,7 @@ public:
   tpu_core_context_setup dl_tpu_core_context_setup;
 
   void setCoreNum(int core = 1);
+  int getCoreNum() { return multiCodes.size(); };
   void useCore(int coreID = 0);
   void sync_all() {
     dl_tpu_set_id_node(code->cmdid_node);
