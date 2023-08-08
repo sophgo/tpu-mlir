@@ -582,7 +582,9 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   int coreId = 0;
   auto bm1686 = dyn_cast<BM1686>(bm168x);
   useMuliCore &= (secs > 1) && bm1686;
-  if (useMuliCore) {
+  if (useMuliCore && (bm1686->getCoreNum() != core_num)) {
+    assert(bm1686->getCoreNum() == 1 &&
+           "The core_num should be set only once, and can not be changed.");
     bm1686->dl_tpu_core_context_setup(0, core_num, 0);
     bm1686->setCoreNum(module::getCoreNum());
   }
@@ -699,11 +701,14 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
       }
     }
   }
-  for (; useMuliCore && coreId < core_num;
-       coreId++) { // consume all the MSG send/wait.
-    bm1686->useCore(coreId++);
-    bm1686->sync_all();
-    bm1686->sync_all();
+  { // consume all the MSG send/wait.
+    for (; useMuliCore && coreId < core_num; coreId++) {
+      bm1686->useCore(coreId);
+      bm1686->sync_all();
+      bm1686->sync_all();
+    }
+    if (useMuliCore)
+      bm1686->useCore(0);
   }
 }
 
@@ -733,8 +738,12 @@ void BMCodegen::codegen(Operation *op) {
       // operations have been completed. After this, it is safe to reuse
       // message0.
       auto core_num = module::getCoreNum();
-      bm1686->dl_tpu_core_context_setup(0, core_num, 0);
-      bm1686->setCoreNum(module::getCoreNum());
+      if (bm1686->getCoreNum() != core_num) {
+        assert(bm1686->getCoreNum() == 1 &&
+               "The core_num should be set only once, and can not be changed.");
+        bm1686->dl_tpu_core_context_setup(0, core_num, 0);
+        bm1686->setCoreNum(module::getCoreNum());
+      }
       int id = 0;
       for (auto &op : parallelOp.getRegion().getOps()) {
         if (auto globalOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
@@ -748,7 +757,7 @@ void BMCodegen::codegen(Operation *op) {
         };
       }
       for (; id < core_num; id++) { // consume all the MSG send/wait.
-        bm1686->useCore(id++);
+        bm1686->useCore(id);
         bm1686->sync_all();
         bm1686->sync_all();
       }
