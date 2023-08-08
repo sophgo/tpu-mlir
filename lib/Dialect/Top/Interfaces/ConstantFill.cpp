@@ -36,9 +36,8 @@ void top::ConstantFillOp::shape_inference() {
       idx += 1;
     }
     module::setShapeOrVerify(getOutput(), shape_);
-  } else {
-    auto preOp = getInput().getDefiningOp();
-    auto shape = module::getShape(preOp->getOperand(0));
-    module::setShapeOrVerify(getOutput(), shape);
+  } else if (module::isShape(getInput())) {
+    auto out_shape = module::getShapeTensorValue(getInput());
+    module::setShapeOrVerify(getOutput(), out_shape);
   }
 }

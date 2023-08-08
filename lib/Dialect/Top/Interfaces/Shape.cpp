@@ -67,7 +67,12 @@ void top::ShapeOp::shape_inference() {
     new_op.setOperand(0, cur_out);
     module::setShapeOrVerify(getOutput(), output_shape);
     new_op.shape_inference();
+    auto out_shape = module::commonShapeValInfer(
+        new_op, {module::getShape(getInput()).vec()},
+        module::getShape(new_op.getOutput()));
+    module::bindShapeTensorValue(new_op.getOutput(), out_shape);
   } else {
     module::setShapeOrVerify(getOutput(), output_shape);
+    module::bindShapeTensorValue(getOutput(), module::getShape(getInput()));
   }
 }
