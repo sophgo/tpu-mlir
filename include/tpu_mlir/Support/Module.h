@@ -236,5 +236,37 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
 void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                           bool &sign, bool asymmetric, int bitwidth = 8);
 
+//-----------------------------------------------------------------
+// Helper for shape op inference
+//-----------------------------------------------------------------
+class ShapeHelper {
+private:
+  ShapeHelper(){};
+  ~ShapeHelper(){};
+  ShapeHelper(const ShapeHelper &);
+  ShapeHelper &operator=(const ShapeHelper &);
+
+public:
+  static ShapeHelper &getInstance() {
+    static ShapeHelper instance;
+    return instance;
+  }
+
+  void bindShapeInfo(const Value &v, const std::vector<int64_t> &shape);
+  std::vector<int64_t> getShapeInfo(const Value &v);
+  bool isShape(const Value &v);
+
+private:
+  llvm::DenseMap<Value, std::vector<int64_t>> _shape_info;
+};
+
+void bindShapeTensorValue(const Value &v, const std::vector<int64_t> &shape);
+std::vector<int64_t> getShapeTensorValue(const Value &v);
+bool isShape(const Value &v);
+std::vector<int64_t>
+commonShapeValInfer(mlir::Operation *op,
+                    const std::vector<std::vector<int64_t>> &in_shapes_v,
+                    const std::vector<int64_t> &out_shape);
+
 } // namespace module
 } // namespace tpu_mlir
