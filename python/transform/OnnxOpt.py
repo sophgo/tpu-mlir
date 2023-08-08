@@ -756,6 +756,15 @@ class ReForm(object):
             else:
                 return find_cast(cast_dict[node], cast_dict)
 
+        def insert_identity(cur_node_out, out_name):
+            identity_node = onnx.helper.make_node(
+                                "Identity",
+                                name=cur_node_out + "_insert_Identity",
+                                inputs=[cur_node_out],
+                                outputs=[out_name])
+            insert_idx, _ = self.get_node(out_name)
+            self.nodes.insert(insert_idx, identity_node)
+
         for node in self.nodes:
             if node.op_type == "Cast":
                 cast_ops.append(node)
@@ -779,7 +788,7 @@ class ReForm(object):
                     if node.output[i] in cast_out_dict:
                         out_name = find_cast(cast_out_dict[node.output[i]], cast_out_dict)
                         if out_name in net_out_names:
-                            node.output[i] = out_name
+                            insert_identity(node.output[i], out_name)
 
         for op in cast_ops:
             self.nodes.remove(op)
