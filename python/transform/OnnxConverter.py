@@ -1467,17 +1467,16 @@ class OnnxConverter(BaseConverter):
         op = self.getOperand(onnx_node.inputs[0])
         num_output = len(onnx_node.outputs)
         axis = onnx_node.attrs['axis']
-        split_size = []
-        params = {}
+        split_size = onnx_node.attrs.get('split', None)
         if len(onnx_node.inputs) > 1:
             split_size = self.getWeight(onnx_node.inputs[1]).astype(int)
-            params.update({"split_size": split_size})
+
         loc_names = [n +  "_" + onnx_node.op_type for n in onnx_node.outputs]
         new_op = top.SplitOp([self.unranked_type] * num_output,
                              op,
                              axis=axis,
                              num=num_output,
-                             **params,
+                             split_size=split_size,
                              loc=self.get_loc(loc_names),
                              ip=self.mlir.insert_point).outputs
         for i in range(num_output):
