@@ -971,6 +971,21 @@ def Top_ArangeOp: Top_Op<"Arange"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_RangeOp: Top_Op<"Range"> {
+  let summary = "Range operator";
+  let description = [{
+    onnx range op
+  }];
+
+  let arguments = (ins
+    AnyTensorOrNone:$start,
+    AnyTensor:$limit,
+    AnyTensorOrNone:$delta
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ConstantFillOp: Top_Op<"ConstantFill"> {
   let summary = "constant fill operator";
   let description = [{

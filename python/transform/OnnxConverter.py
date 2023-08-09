@@ -1048,12 +1048,16 @@ class OnnxConverter(BaseConverter):
 
     def convert_range_op(self, onnx_node):
         assert (onnx_node.op_type == "Range")
-        start_op = self.getOp(onnx_node.inputs[0])
-        limit_op = self.getOp(onnx_node.inputs[1])
-        delta_op = self.getOp(onnx_node.inputs[2])
-        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
-        new_op = self.mlir.create_range_op([start_op, limit_op, delta_op], [], **p)
-        self.addOperand(onnx_node.name, new_op)
+        start = self.getOp(onnx_node.inputs[0])
+        limit = self.getOp(onnx_node.inputs[1])
+        delta = self.getOp(onnx_node.inputs[2])
+        range_op = top.RangeOp(self.unranked_type,
+                             start,
+                             limit,
+                             delta,
+                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                             ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, range_op)
 
     def convert_sigmoid_op(self, onnx_node):
         assert (onnx_node.op_type == "Sigmoid")
@@ -1605,7 +1609,7 @@ class OnnxConverter(BaseConverter):
         if self.isScalar(onnx_node.inputs[1]):
             extra_attr.update({"keepdims": True})
             idx = self.find_named_initializer(onnx_node.inputs[1])
-            if len(idx.shape) == 0:
+            if idx != None and len(idx.shape) == 0:
                 extra_attr["keepdims"] = False
         indices = self.getOp(onnx_node.inputs[1])
         new_op = top.GatherOp(self.unranked_type,

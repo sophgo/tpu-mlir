@@ -176,7 +176,7 @@ class ConstantFolding(object):
         self.const_tensors.extend([node.output[0] for node in self.model.graph.node if node.op_type == "Constant"])
         self.const_tensors.extend([''])
         for node in self.model.graph.node:
-            if node.op_type == "Shape":
+            if node.op_type == "Shape" and node.input[0] not in dynamic_tensors:
                 const_nodes.append(node)
                 self.const_tensors.extend(node.output)
             elif node.op_type == "Resize" and all([x in self.const_tensors for x in node.input]):

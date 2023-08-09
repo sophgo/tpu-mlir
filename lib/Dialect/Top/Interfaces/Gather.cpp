@@ -66,8 +66,8 @@ void top::GatherOp::shape_inference() {
   }
 
   if (indices_shape.size() == 1 && indices_shape[0] == 1 && !getKeepdims()) {
-    // if indices_shape.size() == 1 and indices is scalar(not a array) do squeeze manner
-    // do nothing
+    // if indices_shape.size() == 1 and indices is scalar(not a array) do
+    // squeeze manner do nothing
   } else {
     for (int s : indices_shape) {
       out_shape.push_back(s);
@@ -85,4 +85,20 @@ void top::GatherOp::shape_inference() {
     setKeepdimsAttr(builder.getBoolAttr(true));
   }
   module::setShapeOrVerify(getOutput(), out_shape);
+  if (module::isShape(getInput())) {
+    if (module::isWeight(getIndices())) {
+      auto indices_w = dyn_cast<top::WeightOp>(getIndices().getDefiningOp());
+      auto indices_float_val = indices_w.read_as_float();
+      std::vector<int64_t> indices_val(indices_float_val->size());
+      std::transform(indices_float_val->begin(), indices_float_val->end(),
+                     indices_val.begin(),
+                     [](auto &i) { return static_cast<int64_t>(i); });
+      auto out_shape_val = module::commonShapeValInfer(
+          getOperation(),
+          {module::getShapeTensorValue(getInput()), indices_val}, out_shape);
+      module::bindShapeTensorValue(getOutput(), out_shape_val);
+    } else {
+      llvm_unreachable("not implemented");
+    }
+  }
 }
