@@ -25,7 +25,8 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       ConcatTryLowering,
       UnsqueezeTryLowering,
       SqueezeTryLowering,
-      SliceTryLowering
+      SliceTryLowering,
+      RangeTryLowering
       // clang-format on
       >(patterns->getContext());
 }
@@ -131,7 +132,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       DetectionOutputLowering,
       ShuffleChannelLowering,
       NmsLowering,
-      RMSNormLowering
+      RMSNormLowering,
+      RangeLowering
       // clang-format on
       >(patterns->getContext());
 }

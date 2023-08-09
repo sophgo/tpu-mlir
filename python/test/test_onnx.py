@@ -137,7 +137,7 @@ class ONNX_IR_TESTER(object):
             "Pow1":         (self.test_Pow1,          Y, Y, Y, Y),  # y = x ^ n
             "Pow2":         (self.test_Pow2,          Y, Y, Y, N),  # y = n ^ x
             "PRelu":        (self.test_PRelu,         Y, Y, Y, Y),
-            # "Range":        (self.test_Range,       N, Y, Y, N),
+            "Range":        (self.test_Range,         N, Y, Y, N),
             "Resize":       (self.test_Resize,        Y, Y, Y, Y),
             "Resize2":      (self.test_Resize2,       N, Y, Y, Y),
             "Reshape":      (self.test_Reshape,       Y, Y, Y, N),

@@ -1016,6 +1016,21 @@ def Tpu_AttentionOp: Tpu_Op<"Attention", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_RangeOp: Tpu_Op<"Range"> {
+  let summary = "Range operator";
+  let description = [{
+    range op
+  }];
+
+  let arguments = (ins
+    AnyTensor:$start,
+    AnyTensor:$limit,
+    AnyTensor:$delta
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_ReluOp: Tpu_Op<"Relu", [
   InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<LocalGenInterface>,
