@@ -67,6 +67,8 @@ LogicalResult tpu::CastOp::init(InferenceParameter &p) { return success(); }
 void tpu::CastOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
+  auto in_shape = module::getShape(getInput());
+  module::setShape(getOutput(), in_shape);
   auto num_elem = module::getNumElements(getOutput());
   auto in_type = module::getStorageType(getInput());
   auto out_type = module::getStorageType(getOutput());
