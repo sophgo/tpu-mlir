@@ -411,7 +411,13 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
         user->setOperands(user_operands);
       }
     }
-
+    if (reshape2) {
+      rewriter.eraseOp(reshape2);
+    }
+    if (permute1) {
+      rewriter.eraseOp(permute1);
+    }
+    rewriter.eraseOp(permute0);
     return success();
   }
 };
