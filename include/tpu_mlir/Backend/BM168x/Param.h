@@ -1209,6 +1209,9 @@ typedef struct strideslice_global_spec {
   int new_axis_mask;
   int shrink_axis_mask;
   bool is_dynamic;
+  bool begin_as_tensor;
+  bool end_as_tensor;
+  bool stride_as_tensor;
 } strideslice_global_spec_t;
 
 typedef struct strideslice_local_spec {

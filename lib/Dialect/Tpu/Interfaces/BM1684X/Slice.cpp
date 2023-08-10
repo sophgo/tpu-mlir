@@ -148,11 +148,13 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.ellipsis_mask = 0;
   param.new_axis_mask = 0;
   param.shrink_axis_mask = 0;
-  param.is_dynamic = !module::isNone(getOffsetT());
-  if (param.is_dynamic) {
-    assert(!module::isNone(getEndsT()));
-    assert(!module::isNone(getStepsT()));
-  }
+  param.is_dynamic = !module::isNone(getOffsetT()) ||
+                     !module::isNone(getEndsT()) ||
+                     !module::isNone(getStepsT());
+  param.begin_as_tensor = !module::isNone(getOffsetT());
+  param.end_as_tensor = !module::isNone(getEndsT());
+  param.stride_as_tensor = !module::isNone(getStepsT());
+  int axis = param.is_dynamic ? module::getI64Array(getAxes())->at(0) : 0;
   for (int i = 0; i < num_dims; i++) {
     param.common.begin_index[i] = offset->at(i);
     param.common.strides[i] = steps->at(i);
@@ -164,8 +166,13 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
   /* for dynamic input shape, it need the begin_mask/end_mask
     to deduction the actual output shape */
   for (int i = 0; i < num_dims; i++) {
-    if (input_shape[i] == output_shape[i]) {
+    if (!param.begin_as_tensor && offset->at(i) == 0 ||
+        param.begin_as_tensor && axis != i) {
       param.common.begin_mask |= (1 << i);
+    }
+    if (!param.end_as_tensor &&
+            (ends->at(i) == output_shape[i] || ends->at(i) == -1) ||
+        param.end_as_tensor && axis != i) {
       param.common.end_mask |= (1 << i);
     }
   }

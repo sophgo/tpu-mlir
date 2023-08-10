@@ -460,6 +460,6 @@ void try_insert_host2device(Operation *op, uint32_t idx);
 // try to insert tpu.Device2HostOp at input #idx
 void try_insert_device2host(Operation *op, uint32_t idx);
 
-Value insert_device2host(Value v, Type to);
+Value insert_device2host(Value v, Type to, Operation *user = nullptr);
 
 } // namespace tpu_mlir

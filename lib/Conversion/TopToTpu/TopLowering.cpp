@@ -392,11 +392,14 @@ Value insert_host2device(Value v, Type to) {
   return hdOp.getOutput();
 }
 
-Value insert_device2host(Value v, Type to) {
+Value insert_device2host(Value v, Type to, Operation* user) {
   auto ctx = v.getContext();
   OpBuilder builder(ctx);
   builder.setInsertionPointAfterValue(v);
   auto name = module::getName(v).str();
+  if (user && !isa<ReturnOp>(user)) {
+      name += "_" + module::getName(user).str();
+  }
   name += "_device2host";
   auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
   auto loc = NameLoc::get(builder.getStringAttr(name));
@@ -417,7 +420,7 @@ void try_insert_device2host(Operation* op, uint32_t idx) {
   auto opd = op->getOperand(idx);
   auto def_op = opd.getDefiningOp();
   if (!def_op->hasTrait<trait::ShapeProducer>()) {
-    auto hdOp = insert_device2host(opd, opd.getType());
+    auto hdOp = insert_device2host(opd, opd.getType(), op);
     op->setOperand(idx, hdOp);
   }
 }

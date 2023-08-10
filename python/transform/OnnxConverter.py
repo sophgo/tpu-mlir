@@ -1091,20 +1091,48 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     def convert_slice_op(self, onnx_node):
+        def try_get_slice_input(node, i, attr):
+            is_const = self.isWeight(node.inputs[i])
+            ret_list = []
+            ret_op = self.mlir.none_op
+            if is_const:
+                ret_list = self.getWeight(node.inputs[i])
+                ret_op = self.getWeightOp(node.inputs[i])
+            elif attr in node.attrs:
+                ret_list = node.attrs.get(attr)
+                is_const = True
+            else:
+                ret_op = self.getOperand(node.inputs[i])
+            return ret_list, ret_op, is_const
+
         assert (onnx_node.op_type == "Slice")
         starts = []
         ends = []
         axes = []
+        steps = [1]
         num_input = len(onnx_node.inputs)
         if num_input > 1:
-            starts = self.getWeight(onnx_node.inputs[1]).astype(int)
-            ends = self.getWeight(onnx_node.inputs[2])
-            ends = list(
-                map(lambda x: np.iinfo(np.int64).max if x >= np.iinfo(np.int64).max else x, ends))
-            axes = self.getWeight(onnx_node.inputs[3]).astype(int) if num_input > 3 else list(
-                np.arange(len(ends)))
-            steps = self.getWeight(
-                onnx_node.inputs[4]).astype(int) if num_input > 4 else [1] * len(axes)
+            op = self.getOperand(onnx_node.inputs[0]) if not self.isWeight(onnx_node.inputs[0]) \
+                else self.getWeightOp(onnx_node.inputs[0])
+            starts, start_op, starts_is_const = try_get_slice_input(onnx_node, 1, 'starts')
+            ends, end_op, ends_is_const = try_get_slice_input(onnx_node, 2, 'ends') \
+                if num_input > 2 else (ends, self.mlir.none_op, True)
+            axes, axis_op, axes_is_const = try_get_slice_input(onnx_node, 3, 'axes') \
+                if num_input > 3 else (axes, self.mlir.none_op, True)
+            steps, step_op, steps_is_const = try_get_slice_input(onnx_node, 4, 'steps') \
+                if num_input > 4 else (steps, self.mlir.none_op, True)
+            ends = list(map(lambda x: np.iinfo(np.int64).max if x >= np.iinfo(np.int64).max else x, ends))
+            if not (starts_is_const * ends_is_const * axes_is_const * steps_is_const):
+                new_op = top.SliceAxisOp(self.unranked_type,
+                                         op,
+                                         axis_op,
+                                         start_op,
+                                         step_op,
+                                         end_op,
+                                         loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                         ip=self.mlir.insert_point).output
+                self.addOperand(onnx_node.name, new_op)
+                return
         else:
             starts = onnx_node.attrs.get('starts')
             ends = onnx_node.attrs.get('ends')
@@ -1332,7 +1360,10 @@ class OnnxConverter(BaseConverter):
 
     def convert_unsqueeze_op(self, onnx_node):
         assert (onnx_node.op_type == "Unsqueeze")
-        op = self.getOperand(onnx_node.inputs[0])
+        if self.isWeight(onnx_node.inputs[0]):
+            op = self.getWeightOp(onnx_node.inputs[0])
+        else:
+            op = self.getOperand(onnx_node.inputs[0])
         if self.opset < 13:
             axes = onnx_node.attrs.get('axes')
         else:
@@ -1607,10 +1638,10 @@ class OnnxConverter(BaseConverter):
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         extra_attr = {}
         if self.isScalar(onnx_node.inputs[1]):
-            extra_attr.update({"keepdims": True})
+            extra_attr.update({"keepdims": False})
             idx = self.find_named_initializer(onnx_node.inputs[1])
-            if idx != None and len(idx.shape) == 0:
-                extra_attr["keepdims"] = False
+            if idx and len(idx.shape) != 0:
+                extra_attr["keepdims"] = True
         indices = self.getOp(onnx_node.inputs[1])
         new_op = top.GatherOp(self.unranked_type,
                               in0,

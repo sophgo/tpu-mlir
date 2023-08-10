@@ -50,7 +50,7 @@ void top::ReshapeOp::shape_inference() {
     }
     module::setShapeOrVerify(getOutput(), out_shape);
   } else {
-    /* for unranked tensor as below, sema is ok, don;t check it
+    /* for unranked tensor as below, same is ok, otherwise check it
       %294 = "top.Reshape"(%293) : (tensor<1xf32>) -> tensor<*xf32> loc(#loc294) */
     //assert(module::isUnranked(getOutput()) == false);
     auto output_shape = module::getShape(getOutput());
