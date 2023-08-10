@@ -4233,14 +4233,14 @@ class ONNX_IR_TESTER(object):
 
     def test_Expand2(self, case_name):
         input_shape = [1, 16]
-        output_shape = [1, 16, 16]
+        output_shape = [4, 16, 16]
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         shape_def = helper.make_tensor(
             name='new_shape',
             data_type=onnx.TensorProto.INT64,
             dims=[len(output_shape)],
-            vals=np.array(output_shape, dtype=np.int64),
+            vals=np.array([4, 16, 1], dtype=np.int64),
         )
         expand_node = helper.make_node(
             'Expand',  # node name

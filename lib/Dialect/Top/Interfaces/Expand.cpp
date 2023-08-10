@@ -21,29 +21,24 @@ LogicalResult top::ExpandOp::inference(InferenceParameter &p) {
 
 void top::ExpandOp::shape_inference() {
   auto in_shape = module::getShape(getInput());
-  auto num = module::getNumElements(getInput());
   std::vector<int64_t> out_shape;
   auto shape = module::getI64Array(getShape());
-  int x = -1;
-  for (int i = 0; i < shape->size(); i++) {
+  auto in_dims = in_shape.size();
+  auto new_dims = shape->size();
+  assert(in_dims <= new_dims);
+  auto sub = new_dims - in_dims;
+  for (int i = 0; i < new_dims; i++) {
     auto s = shape->at(i);
-    if (s > 0) {
+    if (i < sub) {
       out_shape.push_back(s);
-      num /= s;
-    } else if (s == 0) {
-      out_shape.push_back(in_shape[i]);
-      num /= in_shape[i];
-    } else if (s == -1) {
-      out_shape.push_back(-1);
-      x = i;
+    } else if (s == 1) {
+      out_shape.push_back(in_shape[i - sub]);
+    } else if (in_shape[i - sub] == 1 || in_shape[i - sub] == s) {
+      out_shape.push_back(s);
     } else {
       dump();
       llvm_unreachable("shape is illegal");
     }
   }
-  if (x >= 0) {
-    out_shape[x] = num;
-  }
   module::setShapeOrVerify(getOutput(), out_shape);
-  module::getModuleOp().dump();
 }
