@@ -35,8 +35,8 @@ table CmdGroup {
 
 table CoreCommands {
     gdma_tiu_commands:[CmdGroup] (id: 0);  /* tpu command list with multiple id sync groups  */
-    sdma_commands: Binary (id: 1);         /* sdma command list */
-    hau_commands: Binary (id: 2);          /* hau command list */
+    sdma_commands: [Binary] (id: 1);         /* sdma command list */
+    hau_commands: [Binary] (id: 2);          /* hau command list */
     cdma_commands: [Binary] (id: 3);       /* 6x cdma command list for each direction */
 }
 
