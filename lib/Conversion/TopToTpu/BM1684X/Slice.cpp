@@ -13,14 +13,13 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 static void _try_insert_device2host(top::SliceOp op) {
-  const bool is_dynamic = !module::isNone(op.getOffsetT());
-  if (is_dynamic) {
-    assert(!module::isNone(op.getEndsT()));
-    assert(!module::isNone(op.getStepsT()));
-  }
+  const bool is_dynamic = !module::isNone(op.getOffsetT()) ||
+                          !module::isNone(op.getEndsT()) ||
+                          !module::isNone(op.getStepsT());
   if (is_dynamic) {
     for (int idx = 1; idx < 4; ++idx) {
-      try_insert_device2host(op.getOperation(), idx);
+      if (!module::isNone(op->getOperand(idx)))
+        try_insert_device2host(op.getOperation(), idx);
     }
   }
 }
@@ -62,12 +61,24 @@ void SliceLowering::LoweringINT8(PatternRewriter &rewriter, top::SliceOp op,
 void SliceLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::SliceOp op) const {
   _try_insert_device2host(op);
+  for (int idx = 1; idx < 4; ++idx) {
+    if (!module::isNone(op->getOperand(idx))) {
+      Type new_type = getQuantFloatType<mlir::BFloat16Type>(op.getOperand(idx));
+      op.getOperation()->getOperand(idx).setType(new_type);
+    }
+  }
   lowering_common_bf16<tpu::SliceOp>(rewriter, op, 5);
 }
 
 void SliceLowering::LoweringF16(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
   _try_insert_device2host(op);
+  for (int idx = 1; idx < 4; ++idx) {
+    if (!module::isNone(op->getOperand(idx))) {
+      Type new_type = getQuantFloatType<mlir::Float16Type>(op.getOperand(idx));
+      op.getOperation()->getOperand(idx).setType(new_type);
+    }
+  }
   lowering_common_f16<tpu::SliceOp>(rewriter, op, 5);
 }
 

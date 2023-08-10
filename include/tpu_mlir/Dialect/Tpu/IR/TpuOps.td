@@ -1610,7 +1610,8 @@ def Tpu_SliceOp: Tpu_Op<"Slice", [
     AnyTensorOrNone:$buffer, // only used in BM1684
     I64ArrayAttr:$offset,
     I64ArrayAttr:$steps,
-    I64ArrayAttr:$ends
+    I64ArrayAttr:$ends,
+    DefaultValuedAttr<I64ArrayAttr, "{1}">:$axes
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{

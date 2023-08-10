@@ -36,6 +36,11 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
       if (!isa<SliceOp>(user)) {
         return failure();
       }
+      if (!module::isNone(dyn_cast<SliceOp>(*user).getOffsetT()) ||
+          !module::isNone(dyn_cast<SliceOp>(*user).getEndsT()) ||
+          !module::isNone(dyn_cast<SliceOp>(*user).getStepsT())) {
+        return failure();
+      }
       users.emplace_back(user);
     }
     const auto& opd = op->getOperand(0);
@@ -73,7 +78,10 @@ struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
 
   LogicalResult matchAndRewrite(SliceOp op,
                                 PatternRewriter &rewriter) const override {
-
+    if (!module::isNone(op.getOffsetT()) || !module::isNone(op.getEndsT()) ||
+        !module::isNone(op.getStepsT())) {
+      return failure();
+    }
     auto in_op = op.getInput().getDefiningOp();
     if (!isa<SliceOp>(in_op) || in_op->hasOneUse() == false) {
       return failure();
@@ -126,6 +134,10 @@ struct NoUseSlicePattern : public OpRewritePattern<SliceOp> {
       if (std::get<0>(it) != std::get<1>(it)) {
         return failure();
       }
+    }
+    if (!module::isNone(op.getOffsetT()) || !module::isNone(op.getEndsT()) ||
+        !module::isNone(op.getStepsT())) {
+      return failure();
     }
     op.getOutput().replaceAllUsesWith(op.getInput());
     rewriter.eraseOp(op);

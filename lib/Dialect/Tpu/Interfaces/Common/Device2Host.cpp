@@ -14,7 +14,7 @@ LogicalResult tpu::Device2HostOp::init(InferenceParameter &p) { return success()
 void tpu::Device2HostOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::Device2HostOp::inference(InferenceParameter &p) {
-  const auto bytes = module::getBytes(getInput());
+  const auto bytes = sizeof(float) * module::getNumElements(getInput());
   memcpy(p.outputs[0], p.inputs[0], bytes);
   return success();
 }
