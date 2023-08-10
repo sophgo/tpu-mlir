@@ -141,8 +141,24 @@ void bm_show(const string &filename) {
          << endl;
     cout << "kernel_module size: " << module_size << endl;
   }
+  std::map<std::string, std::shared_ptr<vector<uint32_t>>> cascade_nets;
   for (uint32_t idx = 0; idx < model->net()->size(); idx++) {
     auto net = model->net()->Get(idx);
+    auto cascade = net->cascade();
+    if (cascade) {
+      auto main_name = cascade->main_name()->str();
+      if (!main_name.empty()) {
+        auto it = cascade_nets.find(main_name);
+        if (it != cascade_nets.end()) {
+          it->second->push_back(idx);
+        } else {
+          auto net_idx = std::make_shared<vector<uint32_t>>();
+          net_idx->push_back(idx);
+          cascade_nets[main_name] = net_idx;
+        }
+        continue;
+      }
+    }
     auto parameter = net->parameter();
     if (parameter == NULL || parameter->size() == 0) {
       continue;
@@ -152,14 +168,6 @@ void bm_show(const string &filename) {
     cout << "==========================================" << endl;
     cout << "net " << idx << ": [" << net->name()->c_str() << "]  " << net_type
          << endl;
-    auto cascade = net->cascade();
-    if (cascade) {
-      auto main_name = cascade->main_name()->str();
-      if (!main_name.empty()) {
-        cout << "cascade in [" << main_name << "], [step:devid] = ["
-             << cascade->step() << ":" << cascade->device_id() << "]" << endl;
-      }
-    }
     for (uint32_t i = 0; i < parameter->size(); i++) {
       auto net_param = parameter->Get(i);
       auto subnet = net_param->sub_net();
@@ -169,6 +177,34 @@ void bm_show(const string &filename) {
         cout << "subnet number: " << subnet->size() << endl;
       }
       show(parameter->Get(i), is_dynamic);
+    }
+  }
+  for (auto &it : cascade_nets) {
+    cout << "==========================================" << endl;
+    cout << "net: [" << it.first << "]  cascade" << endl;
+    // show inputs
+    for (auto idx : *it.second) {
+      auto net = model->net()->Get(idx);
+      auto parameter = net->parameter()->Get(0);
+      auto input_tensors = parameter->input_tensor();
+      for (uint32_t idx = 0; idx < input_tensors->size(); idx++) {
+        auto in = input_tensors->Get(idx);
+        if (in->hidden() != 1) {
+          cout << tensor_str(in, false);
+        }
+      }
+    }
+    // show outputs
+    for (auto idx : *it.second) {
+      auto net = model->net()->Get(idx);
+      auto parameter = net->parameter()->Get(0);
+      auto output_tensors = parameter->output_tensor();
+      for (uint32_t idx = 0; idx < output_tensors->size(); idx++) {
+        auto out = output_tensors->Get(idx);
+        if (out->hidden() != 1) {
+          cout << tensor_str(out, true);
+        }
+      }
     }
   }
   cout << std::endl;
@@ -432,9 +468,13 @@ static void combine_bmodels(ModelGen &model_gen,
   model_gen.AddChip(model_vec[0]->model_ctx->model()->chip()->str());
   auto &builder = model_gen.Builder();
   bool kernel_load = false;
+  uint32_t device_num = 0;
   for (uint32_t model_idx = 0; model_idx < model_vec.size(); model_idx++) {
     auto &model_info = model_vec[model_idx];
     auto model = model_info->model_ctx->model();
+    if (model->device_num() > device_num) {
+      device_num = model->device_num();
+    }
     if (kernel_load == false) {
       auto km = model->kernel_module();
       if (km) {
@@ -469,6 +509,7 @@ static void combine_bmodels(ModelGen &model_gen,
       }
     }
   }
+  model_gen.AddNumDevice(device_num);
   model_gen.Finish();
   for (uint32_t idx = 0; idx < model_vec.size(); idx++) {
     auto &model_info = model_vec[idx];
