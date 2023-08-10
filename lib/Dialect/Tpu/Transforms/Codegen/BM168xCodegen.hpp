@@ -29,7 +29,7 @@ private:
   Offset<Vector<Offset<bmodel::Shape>>>
   CreateShapeVector(const ArrayRef<int64_t> &shape);
   Offset<Vector<Offset<bmodel::Tensor>>>
-  CreateTensorVector(const std::vector<Value> &values);
+  CreateTensorVector(const std::vector<Value> &values, bool hidden_all = false);
   Offset<bmodel::SubNet> CreateSubNet(ModuleOp s, func::CallOp call);
   Offset<bmodel::SubNet> CreateSubNet(ModuleOp s, func::CallOp call,
                                       std::unique_ptr<SubnetIr> subnet_ir_,
@@ -59,6 +59,8 @@ private:
   void codegen_ir(Operation *op, SubnetIr *subnet_ir_);
   SmallString<128> gen_op_id(Operation *op);
   bool isHiddenTensor(StringRef name);
+  void checkAndUpdateHidden(const std::vector<Value> &inputs,
+                            const std::vector<Value> &outputs);
 
 private:
   StringRef state;

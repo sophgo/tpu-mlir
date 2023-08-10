@@ -11,7 +11,8 @@
 
 using namespace tpu_mlir::top;
 
-// in gpt2 model, the mask to softmax is from where, very small value in weight tensor, change them to -10000
+// in gpt2 model, the mask to softmax is from where, very small value in weight
+// tensor, change them to -10000
 struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -27,37 +28,41 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
     WeightOp weight_op[2] = {NULL};
     SoftmaxOp softmax_op = NULL;
     AddOp add_op = NULL;
-    for (auto opd:op.getOperands()){
+    for (auto opd : op.getOperands()) {
       if ((weight_op[weight_cnt] = dyn_cast<WeightOp>(opd.getDefiningOp()))) {
-        weight_cnt ++;
+        weight_cnt++;
         if (weight_cnt > 2)
           return failure();
       }
-      in_cnt ++;
+      in_cnt++;
     }
-    if (in_cnt != 3 || weight_cnt != 2 || weight_op[0] == NULL || weight_op[1] == NULL)
+    if (in_cnt != 3 || weight_cnt != 2 || weight_op[0] == NULL ||
+        weight_op[1] == NULL) {
       return failure();
+    }
 
-    for (auto out:op.getOutput().getUsers())
+    for (auto out : op.getOutput().getUsers()) {
       if ((softmax_op = dyn_cast<SoftmaxOp>(out)))
         break;
       else if (add_op = dyn_cast<AddOp>(out))
         break;
+    }
     if (softmax_op == NULL && add_op == NULL)
       return failure();
     else if (add_op != NULL) {
       if (!add_op.getOutput().hasOneUse())
         return failure();
-      else if(!isa<SoftmaxOp>(*add_op.getOutput().getUsers().begin()))
+      else if (!isa<SoftmaxOp>(*add_op.getOutput().getUsers().begin()))
         return failure();
       else
-        softmax_op = dyn_cast<SoftmaxOp>(*add_op.getOutput().getUsers().begin());
+        softmax_op =
+            dyn_cast<SoftmaxOp>(*add_op.getOutput().getUsers().begin());
     }
     if (softmax_op == NULL)
       return failure();
-    for (int i=0;i<2;i++) {
+    for (int i = 0; i < 2; i++) {
       auto w = weight_op[i].read<float>();
-      for (int i=0;i<w.get()->size();i++){
+      for (int i = 0; i < w.get()->size(); i++) {
         if (w->at(i) < -3e38)
           w->at(i) = -10000;
       }
@@ -68,8 +73,8 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
   }
 };
 
-
-// Idea from Repeat.cpp. Same as lib/Dialect/Top/Transforms/ChipOptimize/OptimizeBM1684X.cpp:expand_dim_and_tile
+// Idea from Repeat.cpp. Same as
+// lib/Dialect/Top/Transforms/ChipOptimize/OptimizeBM1684X.cpp:expand_dim_and_tile
 mlir::Value expand_dim_and_tile(mlir::Value tensor,
                                 llvm::ArrayRef<int64_t> out_shape,
                                 PatternRewriter &rewriter) {
@@ -85,7 +90,8 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
     std::string in_name = module::getName(tensor).str() + "_ToOutDim";
     auto loc = NameLoc::get(rewriter.getStringAttr(in_name));
     rewriter.setInsertionPointAfterValue(tensor_last_op);
-    tensor_last_op = rewriter.create<top::ReshapeOp>(loc, tensorType, ValueRange{tensor_last_op});
+    tensor_last_op = rewriter.create<top::ReshapeOp>(
+        loc, tensorType, ValueRange{tensor_last_op});
   }
   auto tensor_last_shape = std::vector<int64_t>(tensor_reshape);
 
@@ -110,8 +116,8 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
 
     tensor_last_shape[i] = out_shape[i];
     auto newType = RankedTensorType::get(tensor_last_shape, tensor_stype);
-    auto new_name = module::getName(tensor).str() + "_tile_" +
-                    std::to_string(i);
+    auto new_name =
+        module::getName(tensor).str() + "_tile_" + std::to_string(i);
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfterValue(tensor_last_op);
     tensor_last_op = rewriter.create<top::TileOp>(
@@ -119,7 +125,6 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
   }
   return tensor_last_op;
 }
-
 
 struct WhereBroadcastToTile : public OpRewritePattern<WhereOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -146,7 +151,7 @@ struct WhereTooLarge : public OpRewritePattern<WhereOp> {
                                 PatternRewriter &rewriter) const override {
     if (!op.getResult().hasOneUse())
       return failure();
-    if (!op.getXIsConst() && ! op.getYIsConst()) {
+    if (!op.getXIsConst() && !op.getYIsConst()) {
       return failure();
     }
     if (isa<AddOp>(*op.getOutput().getUsers().begin())) {
@@ -180,6 +185,7 @@ struct WhereTooLarge : public OpRewritePattern<WhereOp> {
 };
 
 void WhereOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                         MLIRContext *context) {
-  results.insert<FilterWhereWeightPattern, WhereBroadcastToTile, WhereTooLarge>(context);
+                                          MLIRContext *context) {
+  results.insert<FilterWhereWeightPattern, WhereBroadcastToTile, WhereTooLarge>(
+      context);
 }

@@ -89,23 +89,11 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   std::vector<Value> outputs;
   module::getInputsOutputs(s, inputs, outputs);
   SetNetIO(inputs, outputs);
-  for (auto in : inputs) {
-    auto name = module::getName(in);
-    if (std::find(input_names->begin(), input_names->end(), name) !=
-        input_names->end()) {
-      continue;
-    }
-    assert(std::find(hidden_names.begin(), hidden_names.end(), name) !=
-           hidden_names.end());
+  bmodel::ModelGen::CASCADE_INFO_T cascade = {0, 0, ""};
+  if (module::getNumSubModule() > 1) {
+    module::getSubModuleId(s, cascade.device_id, cascade.step);
   }
-  for (auto out : outputs) {
-    auto name = module::getName(out);
-    if (std::find(output_names->begin(), output_names->end(), name) !=
-        output_names->end()) {
-      continue;
-    }
-    hidden_names.push_back(name);
-  }
+  checkAndUpdateHidden(inputs, outputs);
 
   auto coeff_addr = module::getCoeffAddr(s);
   auto coeff_size = module::getCoeffSize(s);
@@ -113,8 +101,9 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   auto neuron_size = module::getNeuronSize(s);
 
   auto &builder = model_gen->Builder();
-  auto input_tensor = CreateTensorVector(inputs);
-  auto output_tensor = CreateTensorVector(outputs);
+  // if tensor not in device 0, will be hidden
+  auto input_tensor = CreateTensorVector(inputs, cascade.device_id != 0);
+  auto output_tensor = CreateTensorVector(outputs, cascade.device_id != 0);
   auto coeff_mem = CreateCoeffMem(weights, coeff_addr, coeff_size);
   std::vector<uint64_t> neuron_sizes = {(uint64_t)neuron_size};
   auto neuron_sizes_fb = builder.CreateVector(neuron_sizes);
@@ -237,9 +226,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
           std::bind(&bmodel::NetParameterBuilder::add_net_stat, &npb, _1));
     };
   }
-  bmodel::ModelGen::CASCADE_INFO_T cascade = {0, 0, ""};
   if (module::getNumSubModule() > 1) {
-    module::getSubModuleId(s, cascade.device_id, cascade.step);
     // make sure the order is by step and device id
     if (cascade.step == current_step) {
       assert(cascade.device_id == current_device);
@@ -274,7 +261,8 @@ BMCodegen::CreateShapeVector(const ArrayRef<int64_t> &shape) {
 }
 
 Offset<Vector<Offset<bmodel::Tensor>>>
-BMCodegen::CreateTensorVector(const std::vector<Value> &values) {
+BMCodegen::CreateTensorVector(const std::vector<Value> &values,
+                              bool hidden_all) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   int index = 0;
@@ -293,7 +281,7 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values) {
     tb.add_data_type(data_type);
     tb.add_gmem_stmode(gmem_stmode);
     tb.add_shape(stage_shape);
-    if (isHiddenTensor(s_name)) {
+    if (hidden_all || isHiddenTensor(s_name)) {
       tb.add_hidden(1);
     }
 
@@ -1232,6 +1220,27 @@ SmallString<128> BMCodegen::gen_op_id(Operation *op) {
 bool BMCodegen::isHiddenTensor(StringRef name) {
   return std::find(hidden_names.begin(), hidden_names.end(), name) !=
          hidden_names.end();
+}
+
+void BMCodegen::checkAndUpdateHidden(const std::vector<Value> &inputs,
+                                     const std::vector<Value> &outputs) {
+  for (auto in : inputs) {
+    auto name = module::getName(in);
+    if (std::find(input_names->begin(), input_names->end(), name) !=
+        input_names->end()) {
+      continue;
+    }
+    assert(std::find(hidden_names.begin(), hidden_names.end(), name) !=
+           hidden_names.end());
+  }
+  for (auto out : outputs) {
+    auto name = module::getName(out);
+    if (std::find(output_names->begin(), output_names->end(), name) !=
+        output_names->end()) {
+      continue;
+    }
+    hidden_names.push_back(name);
+  }
 }
 
 } // namespace tpu

@@ -180,7 +180,7 @@ static void collect_ops_backward(std::shared_ptr<SubFunction> &subf,
 }
 
 // MatMulTopK use forward
-static void Scollect_ops_forward(std::shared_ptr<SubFunction> &subf,
+static void collect_ops_forward(std::shared_ptr<SubFunction> &subf,
                                  Operation *op) {
   auto op_ = op->getOperand(0).getDefiningOp();
   if (isa<tpu::DistributionBeginOp>(op_)) {
@@ -191,7 +191,7 @@ static void Scollect_ops_forward(std::shared_ptr<SubFunction> &subf,
     if (isa<tpu::DistributionEndOp>(u)) {
       continue;
     }
-    Scollect_ops_forward(subf, u);
+    collect_ops_forward(subf, u);
   }
 }
 
@@ -203,7 +203,7 @@ static void buildDistibution(tpu::DistributionBeginOp begin,
   for (int i = 0; i < num_devices; i++) {
     auto subf = std::make_shared<SubFunction>(i, step);
     if (begins.size() == num_devices) {
-      Scollect_ops_forward(subf, begins[i]);
+      collect_ops_forward(subf, begins[i]);
     } else if (ends.size() == num_devices) {
       collect_ops_backward(subf, ends[i].getDefiningOp());
     } else {
