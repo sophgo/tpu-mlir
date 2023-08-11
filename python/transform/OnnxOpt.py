@@ -189,7 +189,9 @@ class ConstantFolding(object):
             elif self.is_quantizeLinear(node):
                 pass
             elif self.has_subgraph_in_node(node):
-                pass
+                if all([x in self.const_tensors for x in node.input]):
+                    if (node.op_type == "If"):
+                        const_nodes.append(node)
             elif len(node.input) > 0 and all([x in self.const_tensors for x in node.input]) \
                     and not self.is_non_determinstic_node(node):
                 const_nodes.append(node)
@@ -229,6 +231,24 @@ class ConstantFolding(object):
         do_eliminate = False
         for i, node in enumerate(self.model.graph.node):
             if node in const_node:
+                if node.op_type == "If":
+                    sub_graph = {}
+                    for attr in node.attribute:
+                        sub_graph[attr.name] = attr.g.node
+                    if res[node.input[0]]:
+                        sub_nodes = sub_graph['then_branch']
+                    else:
+                        sub_nodes = sub_graph['else_branch']
+                    if len(node.output) != len(sub_nodes[-1].output):
+                        raise RuntimeError("If op not support multi output now, fix me.")
+                    sub_nodes[-1].output[:] = []
+                    sub_nodes[-1].output.extend(node.output)
+                    sub_nodes = sub_nodes[::-1]
+                    for n in sub_nodes:
+                        self.insert_elem(self.model.graph.node, i + 1, n)
+                    self.model.graph.node.remove(node)
+                    do_eliminate = True
+                    continue
                 for output in node.output:
                     new_node = copy.deepcopy(node)
                     new_node.name = "node_" + output
