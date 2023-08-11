@@ -869,6 +869,7 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
+    Optional<AnyTensor>:$shapeT,
     OptionalAttr<I64ArrayAttr>:$shape
   );
   let results = (outs AnyTensor:$output);

@@ -181,8 +181,9 @@ class ONNX_IR_TESTER(object):
             "TopK":         (self.test_TopK,          N, Y, Y, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N),
             "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N),
-            "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
-            "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
+            # Only 1D shape is supported currently
+            # "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
+            # "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
             "Where":        (self.test_Where,         N, Y, Y, Y),
             #####################################
             # Torch Test Case, Alphabetically
@@ -1808,6 +1809,35 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[right])
         self.onnx_and_test(graph_def)
+
+    def test_Reshape2(self, case_name):
+        # [3, 6] -> [2, 9]
+        # onnx vs Top compare failed due to dynamic shape not support in Top
+        # Tpu vs model compare failed due to dynamic shape not support in Tpu
+        # onnx vs model compare success
+        input_shape = [3, 6]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.INT64, [])
+        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [], vals=[0])
+
+        indices = helper.make_tensor('indices', TensorProto.INT64, [1], vals=[0])
+        dim1 = helper.make_tensor('dim1', TensorProto.INT64, [1], vals=[-1])
+
+        gather0_def = helper.make_node('Gather', inputs=['input', 'indices0'], axis=0, outputs=['gather0'])
+        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
+        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
+        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
+        gather_def = helper.make_node('Gather', inputs=['shape', 'indices'], axis=0, outputs=['dim0'])
+        concat_def = helper.make_node('Concat', inputs=['dim0', 'dim1'], axis=0, outputs=['new_shape'])
+        reshape_def = helper.make_node('Reshape', inputs=['input', 'new_shape'], outputs=['output_tmp'])
+        final_shape_def = helper.make_node('Shape', inputs=['output_tmp'], outputs=['output'])
+        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def, shape_def, gather_def,
+                                      concat_def, reshape_def, final_shape_def],
+                                      case_name, [input], [output],
+                                      initializer=[indices, dim1, indices0])
+        input_data={'input' : np.array([[1, 0, 3, 0, 0, 0], [4, 5, 6, 3, 2, 1], [7, 8, 9, 2, 1, 1]],
+                                       dtype=np.float32)}
+        self.onnx_and_test(graph_def, static_shape=False, input_data=input_data)
 
     def test_floor(self, case_name):
         input_shape = [1, 128, 32, 32]

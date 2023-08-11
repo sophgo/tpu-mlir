@@ -395,6 +395,12 @@ struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
         break;
       }
     }
+    if (do_reshape && order->size() == 2 && order->at(0) == 1 &&
+        order->at(1) == 0) {
+      auto nonzeroOp = dyn_cast<top::NonZeroOp>(op.getInput().getDefiningOp());
+      if (nonzeroOp && nonzeroOp.getOrder().str() == "RowMajor")
+        do_reshape = false;
+    }
     if (do_reshape == false) {
       return failure();
     }

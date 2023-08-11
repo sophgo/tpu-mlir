@@ -945,12 +945,20 @@ class OnnxConverter(BaseConverter):
     def convert_reshape_op(self, onnx_node):
         assert (onnx_node.op_type == "Reshape")
         op = self.getOperand(onnx_node.inputs[0])
-        shape = self.getWeight(onnx_node.inputs[1])
-        new_op = top.ReshapeOp(self.unranked_type,
-                               op,
-                               shape=shape,
-                               loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                               ip=self.mlir.insert_point).output
+        if self.isWeight(onnx_node.inputs[1]):
+            shape = self.getWeight(onnx_node.inputs[1])
+            new_op = top.ReshapeOp(self.unranked_type,
+                                op,
+                                shape=shape,
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
+        else:
+            shape = self.getOperand(onnx_node.inputs[1])
+            new_op = top.ReshapeOp(self.unranked_type,
+                                   op,
+                                   shapeT=shape,
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                   ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     # when resize by linear or nearst, with float scale_h or float scale_w
