@@ -181,7 +181,7 @@ static void collect_ops_backward(std::shared_ptr<SubFunction> &subf,
 
 // MatMulTopK use forward
 static void collect_ops_forward(std::shared_ptr<SubFunction> &subf,
-                                 Operation *op) {
+                                Operation *op) {
   auto op_ = op->getOperand(0).getDefiningOp();
   if (isa<tpu::DistributionBeginOp>(op_)) {
     op->setOperand(0, op_->getOperand(0));
@@ -368,6 +368,21 @@ void distributeModules(ModuleOp m, int64_t num_device) {
   std::vector<FuncOp> funcs(ops.begin(), ops.end());
   for (auto f : funcs) {
     f.erase();
+  }
+  // make moudle order to be step by step and device by device
+  auto subs = m.getOps<ModuleOp>();
+  std::vector<ModuleOp> modules(subs.begin(), subs.end());
+  if (modules.size() <= 1) {
+    return;
+  }
+  std::sort(modules.begin(), modules.end(), [](ModuleOp a, ModuleOp b) {
+    int64_t a_devid, a_step, b_devid, b_step;
+    module::getSubModuleId(a, a_devid, a_step);
+    module::getSubModuleId(b, b_devid, b_step);
+    return a_step < b_step || (a_step == b_step && a_devid < b_devid);
+  });
+  for (int i = 1; i < modules.size(); i++) {
+    modules[i]->moveAfter(modules[i - 1]);
   }
 }
 
