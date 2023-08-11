@@ -40,4 +40,10 @@ void top::UnsqueezeOp::shape_inference() {
     out_shape.insert(out_shape.begin() + axis, 1);
   }
   module::setShapeOrVerify(getOutput(), out_shape);
+  if (module::isShape(getInput())) {
+    auto input_shape_v = module::getShapeTensorValue(getInput());
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), {input_shape_v}, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }

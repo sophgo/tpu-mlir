@@ -1066,6 +1066,20 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape", [
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_ShapeAssignOp: Tpu_Op<"ShapeAssign"> {
+  let summary = "ShapeAssign operator";
+  let description = [{
+    reshape for dynamic shape
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$shape
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_ReverseOp:Tpu_Op<"Reverse", [InOutSameShape]> {
   let summary = "Reverse operation";
   let description = [{
