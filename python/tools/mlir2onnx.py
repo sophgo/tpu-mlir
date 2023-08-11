@@ -144,7 +144,10 @@ def to_onnx(parser, onnx_file, weigth_file):
     for op in parser.ops:
         if op.type == "top.Input":
             continue
-        node = helper.make_node(op.type, op.opds, op.outputs, shape=op.shape, **op.attrs)
+        if 'shape' in op.attrs:
+            node = helper.make_node(op.type, op.opds, op.outputs, **op.attrs)
+        else:
+            node = helper.make_node(op.type, op.opds, op.outputs, shape=op.shape, **op.attrs)
         nodes.append(node)
 
     graph_def = helper.make_graph(nodes,

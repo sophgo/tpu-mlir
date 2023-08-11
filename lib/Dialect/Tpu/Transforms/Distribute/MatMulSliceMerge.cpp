@@ -44,6 +44,9 @@ MatMulSliceMerge::matchAndRewrite(tpu::MatMulOp op,
   if (!isLargeMatMul(op) || module::isOpInDistribution(op)) {
     return failure();
   }
+  if (!module::isNone(op.getBias()) && !module::isWeight(op.getBias())) {
+    return failure();
+  }
   std::vector<Operation *> users(op->user_begin(), op->user_end());
   if (users.size() != 2) {
     return failure();
@@ -112,6 +115,8 @@ void splitByDevices<MatMulSliceMerge>(PatternRewriter &rewriter,
   }
   std::vector<Value> end_operands;
   Operation *end_op = nullptr;
+  bool biasAdd = false;
+  Value biasValue;
   for (int i = 0; i < num_devices; i++) {
     std::vector<Value> res_operands;
     auto offset = i * slice_n;
@@ -172,9 +177,13 @@ void splitByDevices<MatMulSliceMerge>(PatternRewriter &rewriter,
     operands.push_back(newFilter1);
     if (module::isNone(mm1.getBias())) {
       operands.push_back(mm1.getBias());
-    } else {
+    } else if (module::isWeight(mm1.getBias())) {
       auto bias = mm1.getBias().getDefiningOp<top::WeightOp>();
       operands.push_back(bias.clone(suffix));
+    } else {
+      operands.push_back(module::getNoneOp(op));
+      biasAdd = true;
+      biasValue = mm1.getBias();
     }
     rewriter.setInsertionPointAfter(next_op);
     auto new_mm1 = rewriter.create<tpu::MatMulOp>(
@@ -188,6 +197,15 @@ void splitByDevices<MatMulSliceMerge>(PatternRewriter &rewriter,
   }
   assert(isa<tpu::DistributionEndOp>(end_op));
   end_op->setOperands(end_operands);
+  if (biasAdd) {
+    auto dis_op = cast<tpu::DistributionEndOp>(end_op);
+    auto dis_out = dis_op.getOutput();
+    rewriter.setInsertionPointAfter(end_op);
+    auto new_loc = module::getLocLike(dis_out, "add");
+    auto add_op = rewriter.create<tpu::AddOp>(new_loc, dis_out.getType(),
+                                              ValueRange{dis_out, biasValue});
+    dis_out.replaceAllUsesExcept(add_op.getOutput(), add_op);
+  }
   eraseForward(rewriter, mm0);
 }
 
