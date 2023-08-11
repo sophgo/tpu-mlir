@@ -14,6 +14,7 @@ npz_tool_func = {
     "visualize_diff": npz_visualize_diff,
     'dump':npz_dump,
     "extract": npz_extract,
+    "merge": npz_merge,
     "rename": npz_rename,
     "bf16_to_fp32": npz_bf16_to_fp32,
     "tranpose": npz_transpose,
