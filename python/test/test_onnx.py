@@ -14,7 +14,7 @@ from onnx import TensorProto
 from tools.model_runner import mlir_inference, model_inference, onnx_inference, show_fake_cmd
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
-from utils.auto_remove import file_mark, file_clean
+from utils.auto_remove import file_mark, file_clean, clean_kmp_files
 from utils.mlir_shell import *
 import os
 import torch
@@ -5897,6 +5897,7 @@ def test_all(tester: ONNX_IR_TESTER):
         # exit(1)
     else:
         print("====== test_onnx.py --chip {} TEST Success ======".format(tester.chip))
+    clean_kmp_files()
     return error_cases
 
 
