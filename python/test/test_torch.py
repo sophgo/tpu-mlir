@@ -12,6 +12,7 @@ from tools.model_runner import mlir_inference, model_inference, torch_inference,
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
+from utils.auto_remove import clean_kmp_files
 import os
 
 import torch
@@ -2814,6 +2815,7 @@ def test_all(tester: TORCH_IR_TESTER):
         # exit(1)
     else:
         print("====== test_torch.py --chip {} TEST Success ======".format(tester.chip))
+    clean_kmp_files()
     return error_cases
 
 

@@ -8,7 +8,7 @@
 #
 # ==============================================================================
 from debugger.op_support import MType
-from debugger.disassembler import BModelReader
+from debugger.disassembler import BModel
 from debugger.context import Context
 import cmd
 import sys
@@ -65,8 +65,8 @@ class Tdb(cmd.Cmd):
     def load_bmodel(self, bmodel_file: str = ""):
         if bmodel_file == None:
             raise Exception("Nothing to debug.")
-        bmodel = BModelReader(bmodel_file)
-        chip = bmodel.nets["Chip"][0]
+        bmodel = BModel(bmodel_file)
+        chip = bmodel.chip
         context = Context(chip)
         self.module = context.BModel2MLIR(bmodel)
         self.runner = context.get_runner(Tdb.ddr_size)
