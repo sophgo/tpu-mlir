@@ -40,8 +40,7 @@ int64_t tpu::MulShiftOp::getBufferSize_bm1684(
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
-  if (module::isUniformQuantized(getInput()) && module::isSign(getInput()) &&
-      !module::isSign(getOutput())) {
+  if (module::isUniformQuantized(getInput())) {
     int64_t buffer_size =
         ceiling_func(in_nslice, (int64_t)2) * ceiling_func(c, BM1684::NPU_NUM) *
         align_up(in_hslice * w, BM1684::eu_num(sizeof(float))) * sizeof(int);
