@@ -349,12 +349,10 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
       permute_in_shape.erase(permute_in_shape.begin() + new_slice_axis);
 
       for (int64_t i = 0; i < inv_order_size; ++i) {
-        for (int64_t j = 0; j < inv_order_size; ++j) {
-          if (permute_in_shape[i] == squeeze_out_shape[j] &&
-              inv_order[j] != i) {
-            std::swap(inv_order[j], inv_order[i]);
-            break;
-          }
+        if (order_final[i + 1] < order_final[0]) {
+          inv_order[i] = order_final[i + 1];
+        } else {
+          inv_order[i] = order_final[i + 1] - 1;
         }
       }
       squeeze_out.setType(
