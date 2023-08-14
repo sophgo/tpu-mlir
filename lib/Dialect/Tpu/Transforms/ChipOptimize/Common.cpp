@@ -171,7 +171,7 @@ PermuteReorderPattern::matchAndRewrite(tpu::PermuteOp op,
   auto order = module::getI64Array(op.getOrder());
   if (auto permute_op = dyn_cast<tpu::PermuteOp>(nextOp)) {
     // permute + permute with the same order
-    auto sec_order = module::getI64Array(op.getOrder());
+    auto sec_order = module::getI64Array(permute_op.getOrder());
     if (*sec_order != ps) {
       return failure();
     }
