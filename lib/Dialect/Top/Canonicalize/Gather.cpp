@@ -29,17 +29,22 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
     auto inds_shape = module::getShape(op.getIndices());
     auto inds_elems = module::getNumElements(op.getIndices());
     auto ax = op.getAxis();
+    auto input_shape = module::getShape(op.getInput());
     // if indices are regular, try to convert to SliceOp
     if (inds_elems == 1) {
       // e.g. Gather(indices=[1],axis=ax) + Unsqueeze(axis=ax)
       //            -> Slice(start=1, end=2, step=1, axes=ax)
-      NamedAttrList attrs;
-      auto input_shape = module::getShape(op.getInput());
+      int64_t index = (int64_t)inds_f32->at(0);
+      if (index == -1 && ax == 0) {
+        index = input_shape[ax] - 1;
+      }
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> ends(input_shape.size(), -1);
       std::vector<int64_t> steps(input_shape.size(), 1);
-      offsets[ax] = (int64_t)inds_f32->at(0);
+      offsets[ax] = index;
       ends[ax] = offsets[ax] + 1;
+
+      NamedAttrList attrs;
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
       attrs.set("ends", rewriter.getI64ArrayAttr(ends));
