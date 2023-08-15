@@ -17,7 +17,7 @@ void top::TopKOp::deinit(InferenceParameter &p) {}
 LogicalResult top::TopKOp::inference(InferenceParameter &p) {
   auto axis = getAxis();
   auto is_largest = getLargest();
-  auto K = getK();
+  auto K = getKT() ? (int64_t)p.inputs[1][0] : getK();
   auto is_sorted = getSorted();
   if (is_sorted == false) {
     llvm_unreachable("Not supported");
@@ -55,17 +55,18 @@ LogicalResult top::TopKOp::inference(InferenceParameter &p) {
 
 void top::TopKOp::shape_inference() {
   auto input_shape = module::getShape(getInput());
-  // auto value_shape = module::getShape(getValues());
-  int64_t K = getK();
+  int64_t K = -1;
+  if (module::isShape(getKT())) {
+    auto kt_vec = module::getShapeTensorValue(getKT());
+    assert(kt_vec.size() == 1);
+    K = kt_vec[0];
+  } else {
+    K = getK();
+  }
   int64_t axis = getAxis();
   int64_t rank = input_shape.size();
   axis = axis < 0 ? axis + rank : axis;
   setAxis(axis);
-  // if (K <= 0 || K != value_shape[axis]) {
-  if (K <= 0) {
-      K = 200;
-      setK(K);
-  }
   std::vector<int64_t> output_shape(input_shape.size());
   for (int i =0; i < input_shape.size(); i++) {
     if (i == axis) {

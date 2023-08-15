@@ -1748,6 +1748,7 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
+    Optional<AnyTensor>:$kT,
     I64Attr:$axis,
     I64Attr:$K,
     DefaultValuedAttr<BoolAttr, "true">:$largest,
