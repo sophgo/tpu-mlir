@@ -100,7 +100,7 @@ class FBSArray:
         return str(self.items)
 
 
-class FBSHas:
+class FBSOptional:
     def __init__(self, fbs, *args):
         self.has = bool(fbs)
 
@@ -138,7 +138,7 @@ class BModel:
         ]
     )
 
-    class CmdGroup(FBSHas):
+    class CmdGroup(FBSOptional):
         @safeInit
         def __init__(self, fbs: bmodel_fbs.CmdGroup, buffer):
             self.tiu_num = fbs.BdcNum()
@@ -176,7 +176,7 @@ class BModel:
             if self:
                 return f"tiu_num: {self.tiu_num}\ndma_num: {self.dma_num}"
 
-    class CoreCmdGroup(FBSHas):
+    class CoreCmdGroup(FBSOptional):
         @safeInit
         def __init__(self, fbs: bmodel_fbs.CoreCommands, buffer):
             self.gdma_tiu_commands = FBSArray(
@@ -198,7 +198,7 @@ class BModel:
             if self:
                 return f"gdma_tiu_commands: {self.gdma_tiu_commands}"
 
-    class ROData(FBSHas):
+    class ROData(FBSOptional):
         @safeInit
         def __init__(self, fbs: bmodel_fbs.CoeffMem, buffer):
             self.address = fbs.Address()
@@ -227,7 +227,7 @@ class BModel:
                 check_code = "".join(f"{x:0>2x}" for x in self.check_code)
                 return f"data: {self.address}\nshr256: {check_code}"
 
-    class Tensor(FBSHas):
+    class Tensor(FBSOptional):
         # fmt: off
         to_DType = {
             0: op_support.DType.f32, op_support.DType.f32: 0,
@@ -291,7 +291,7 @@ class BModel:
         def __repr__(self):
             return f"{self.name}: {self.shape} {self.dtype.name} ({self.device_addr})"
 
-    class KernelModule(FBSHas):
+    class KernelModule(FBSOptional):
         @safeInit
         def __init__(self, fbs: bmodel_fbs.KernelModule, buffer):
             self.file_name = fbs.FileName().decode()
@@ -313,7 +313,7 @@ class BModel:
         def __repr__(self) -> str:
             return f"kernel: {self.file_name}"
 
-    class SubNet(FBSHas):
+    class SubNet(FBSOptional):
         @safeInit
         def __init__(self, fbs: bmodel_fbs.SubNet, buffer):
             self.input_tensor = FBSArray(fbs, ("InputTensor", BModel.Tensor), buffer)
@@ -346,7 +346,7 @@ class BModel:
             if self:
                 return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())
 
-    class Parameter(FBSHas):
+    class Parameter(FBSOptional):
         @safeInit
         def __init__(self, fbs: bmodel_fbs.NetParameter, buffer):
             self.input_tensor = FBSArray(fbs, ("InputTensor", BModel.Tensor), buffer)
@@ -488,9 +488,9 @@ def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
             self.operations = []
             if bmodel_net.core_num > 1:
                 self.cmds = [
-                    decoder.decode_bmodel_cmd(i, self.label, index)
-                    for index, x in enumerate(subnet.core_commands)
-                    for i in x.gdma_tiu_commands
+                    decoder.decode_bmodel_cmd(cmd, self.label, core_id)
+                    for core_id, x in enumerate(subnet.core_commands)
+                    for cmd in x.gdma_tiu_commands
                 ]
                 sorter = context.opdef.MultiCoreCmd([i.all for i in self.cmds])
                 self.operations = sorter.consume_cmd()

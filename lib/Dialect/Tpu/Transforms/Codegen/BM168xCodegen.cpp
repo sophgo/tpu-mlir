@@ -763,16 +763,14 @@ void BMCodegen::codegen(Operation *op) {
         bm1686->setCoreNum(module::getCoreNum());
       }
       int id = 0;
-      for (auto &op : parallelOp.getRegion().getOps()) {
-        if (auto globalOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
-          bm1686->useCore(id++);
-          bm1686->sync_all(); // begin compute sync-all
-          auto pid_node = (CMD_ID_NODE *)(*bm1686)->cmdid_node;
-          BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
-                                                   gen_op_id(&op).c_str());
-          globalOp.codegen_global_bm168x();
-          bm1686->sync_all(); // end compute sync-all
-        };
+      for (auto globalOp : parallelOp.getOps<GlobalGenInterfaceDecorator>()) {
+        bm1686->useCore(id++);
+        bm1686->sync_all(); // begin compute sync-all
+        auto pid_node = (CMD_ID_NODE *)(*bm1686)->cmdid_node;
+        BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
+                                                 gen_op_id(op).c_str());
+        globalOp.codegen_global_bm168x();
+        bm1686->sync_all(); // end compute sync-all
       }
       for (; id < core_num; id++) { // consume all the MSG send/wait.
         bm1686->useCore(id);
