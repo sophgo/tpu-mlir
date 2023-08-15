@@ -9,9 +9,7 @@
 
 #include "tpu_mlir/Support/Module.h"
 
-
 using namespace tpu_mlir::top;
-
 
 // squeeze + unsqueeze && in == out
 struct TopFuseUnsqueeze : public OpRewritePattern<UnsqueezeOp> {
@@ -26,17 +24,16 @@ struct TopFuseUnsqueeze : public OpRewritePattern<UnsqueezeOp> {
       auto shape0 = module::getShape(op.getOutput());
       auto shape1 = module::getShape(former_op.getInput());
       if (shape0 != shape1) {
-      return failure();
+        return failure();
       }
       op.getOutput().replaceAllUsesWith(former_op.getInput());
       rewriter.eraseOp(op);
       rewriter.eraseOp(former_op);
       return success();
-      }
+    }
     return failure();
   }
 };
-
 
 struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -60,6 +57,13 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
       //            -> Slice(start=1, end=2, step=1, axes=ax)
       auto nextOp = op->user_begin();
       if (!op->hasOneUse() || !isa<UnsqueezeOp>(*nextOp)) {
+        // tmp code convert scalar to tensor for rangeOp (wait for shute's
+        // commit)
+        if (!isa<UnrankedTensorType>(op.getType()) &&
+            module::getShape(op.getOutput()).size() == 0) {
+          module::setShape(op.getResult(), {1});
+        }
+
         return failure();
       }
 
@@ -68,10 +72,13 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
       auto reshape_out_shape = module::getShape(reshape_op.getOutput());
       std::vector<int64_t> unsqueeze_out_shape{};
       for (int64_t i = 0; i < out_shape.size(); ++i) {
-        if (i == ax) {
+        if (i == ax && !op.getKeepdims()) {
           unsqueeze_out_shape.push_back(1);
         }
         unsqueeze_out_shape.push_back(out_shape[i]);
+      }
+      if (out_shape.size() == 0 && !op.getKeepdims()) {
+        unsqueeze_out_shape.push_back(1);
       }
       if (unsqueeze_out_shape.size() != reshape_out_shape.size()) {
         return failure();
@@ -94,8 +101,9 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
       attrs.set("ends", rewriter.getI64ArrayAttr(ends));
       op.getOperation()->setLoc(reshape_op.getLoc());
-      rewriter.replaceOpWithNewOp<SliceOp>(op, reshape_op.getOutput().getType(),
-                                           ValueRange{op.getInput(), none, none, none}, attrs);
+      rewriter.replaceOpWithNewOp<SliceOp>(
+          op, reshape_op.getOutput().getType(),
+          ValueRange{op.getInput(), none, none, none}, attrs);
       rewriter.replaceOp(reshape_op, {reshape_op.getInput()});
       return success();
     }

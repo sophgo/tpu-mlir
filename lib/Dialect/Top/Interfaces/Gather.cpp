@@ -76,10 +76,6 @@ void top::GatherOp::shape_inference() {
   for (int i = ax + 1; i < input_shape.size(); ++i) {
     out_shape.push_back(input_shape[i]);
   }
-  if (out_shape.size() == 0) {
-    // 1D gather
-    out_shape.push_back(1);
-  }
   if (out_shape.size() == input_shape.size()) {
     auto builder = OpBuilder(getContext());
     setKeepdimsAttr(builder.getBoolAttr(true));

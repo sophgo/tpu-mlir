@@ -392,10 +392,15 @@ class OnnxConverter(BaseConverter):
             print("WARNING: ConstantFolding failed.")
         print("ConstantFolding finished")
 
-    def find_named_initializer(self, name):
+    def find_named_tensor(self, name):
         for tensor in self.model.graph.initializer:
             if name == tensor.name:
                 return numpy_helper.to_array(tensor).astype(np.float32)
+        for node in self.converted_nodes:
+            if node.op_type != "Constant":
+                continue
+            onnx_tensor = node.attrs['value']
+            return numpy_helper.to_array(onnx_tensor)
 
     def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list, static_shape=True):
         if isinstance(onnx_file, str):
@@ -1637,10 +1642,10 @@ class OnnxConverter(BaseConverter):
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         extra_attr = {}
         if self.isScalar(onnx_node.inputs[1]):
-            extra_attr.update({"keepdims": False})
-            idx = self.find_named_initializer(onnx_node.inputs[1])
-            if idx and len(idx.shape) != 0:
-                extra_attr["keepdims"] = True
+            extra_attr.update({"keepdims": True})
+            idx = self.find_named_tensor(onnx_node.inputs[1])
+            if idx != None and len(idx.shape) == 0:
+                extra_attr["keepdims"] = False
         indices = self.getOp(onnx_node.inputs[1])
         new_op = top.GatherOp(self.unranked_type,
                               in0,
