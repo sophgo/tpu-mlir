@@ -163,6 +163,7 @@ class ONNX_IR_TESTER(object):
             "Slice":        (self.test_Slice,         Y, Y, Y, Y),
             "Slice2":       (self.test_Slice2,        Y, Y, Y, Y),
             "Slice3":       (self.test_Slice3,        Y, Y, Y, Y),
+            "Dynamic_Slice":(self.test_Dynamic_Slice, N, Y, Y, N),
             "Split":        (self.test_Split,         Y, Y, Y, Y),
             "Split2":        (self.test_Split2,       Y, Y, Y, Y),
             "Scale":        (self.test_Scale,         Y, Y, Y, Y),
@@ -2400,6 +2401,33 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(4, 8, 60, 80).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_Dynamic_Slice(self, case_name):
+        if not self.dynamic:
+            pass
+        else:
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, input, a, b, c, d, e):
+                    a = a.to(torch.int64)
+                    b = b.to(torch.int64)
+                    c = c.to(torch.int64)
+                    d = d.to(torch.int64)
+                    e = e.to(torch.int64)
+                    res = input[a[0]:b[0], b[0]:c[0], d[0] - a[0]:, 3:e[0]]
+                    return res
+
+            shape1 = (4, 6, 224, 224)
+            input = torch.randn(shape1, dtype=torch.float32)
+            a = torch.tensor([1.0])
+            b = torch.tensor([3.0])
+            c = torch.tensor([4.0])
+            d = torch.tensor([66.0])
+            e = torch.tensor([200.0])
+            self.torch_and_test((input, a, b, c, d, e), Model(), case_name)
 
     def test_ConvSlice(self, case_name):
 
