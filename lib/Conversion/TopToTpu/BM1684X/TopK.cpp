@@ -16,6 +16,8 @@ static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
+  if (op.getKT())
+    operands.push_back(op.getKT());
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -30,6 +32,16 @@ static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
     new_types.push_back(op.getIndices().getType());
   }
   rewriter.replaceOpWithNewOp<tpu::TopKOp>(op, new_types, operands, attrs);
+  return;
+}
+
+void TopKTryLowering::Lowering(PatternRewriter &rewriter,
+                               top::TopKOp op) const {
+  if (!op.getKT() ||
+      !op.getKT().getDefiningOp()->hasTrait<trait::ShapeProducer>())
+    return;
+
+  LoweringTopK(rewriter, op, rewriter.getF32Type());
   return;
 }
 

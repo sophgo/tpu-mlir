@@ -1151,9 +1151,10 @@ def Top_TopKOp:Top_Op<"TopK"> {
   let arguments = (ins
     AnyTensor:$input,
     I64Attr:$axis,
-    I64Attr:$K,
+    DefaultValuedAttr<I64Attr, "-1">:$K,
     DefaultValuedAttr<BoolAttr, "true">:$largest,
-    DefaultValuedAttr<BoolAttr, "true">:$sorted
+    DefaultValuedAttr<BoolAttr, "true">:$sorted,
+    Optional<AnyTensor>:$kT
   );
   let results = (outs
     AnyTensorOrNone:$values,

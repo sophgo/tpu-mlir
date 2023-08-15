@@ -179,6 +179,7 @@ class ONNX_IR_TESTER(object):
             "Transpose":    (self.test_Transpose,     Y, Y, Y, Y),
             "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y),
             "TopK":         (self.test_TopK,          N, Y, Y, N),
+            "TopK2":        (self.test_TopK2,         N, Y, N, N),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N),
             "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N),
             # Only 1D shape is supported currently
@@ -439,6 +440,57 @@ class ONNX_IR_TESTER(object):
 
         print("[Success] test {} {}".format(model_name, msg))
 
+    def inference_and_compare_bmodel(self,
+                              bmodel: str,
+                              input_npz: str,
+                              onnx_outs,
+                              quant_mode: str,
+                              model_name: str,
+                              isAsym: bool = False,
+                              node_name_mapping = None):
+        ref_bmodel_tolerance = "0.9,0.9"
+        input_data = np.load(input_npz)
+        if quant_mode == "int8":
+            ref_bmodel_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
+        elif quant_mode == "int4":
+            ref_bmodel_tolerance = "0.90,0.60"
+        elif quant_mode == "bf16":
+            ref_bmodel_tolerance = "0.95,0.80"
+        model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+        file_mark(model_npz)
+        show_fake_cmd(input_npz, bmodel, model_npz)
+        model_outs = model_inference(input_data, bmodel)
+        np.savez(model_npz, **model_outs)
+
+        counter = 0
+        onnx_transformed_model = {}
+        for name in onnx_outs:
+            found = False
+            if name in model_outs:
+                mapped_name = name
+                found = True
+            elif name in node_name_mapping:
+                mapped_name = node_name_mapping[name]
+                found = mapped_name in model_outs
+            if found:
+                if model_outs[mapped_name].shape != onnx_outs[name].shape:
+                    raise RuntimeError(
+                        f"onnx and bmodel output shape not equal, {model_outs[mapped_name].shape} vs {onnx_outs[name].shape}")
+                onnx_transformed_model[mapped_name] = onnx_outs[name]
+                counter += 1
+        if counter == 0:
+            raise RuntimeError("No compare between onnx outs and bmodel outs")
+        onnx_transformed_npz = bmodel.replace("." + bmodel.split(".")[-1], "_onnx_transformed.npz")
+        file_mark(onnx_transformed_npz)
+        np.savez(onnx_transformed_npz, **onnx_transformed_model)
+        npz_compare([onnx_transformed_npz, model_npz, "--tolerance", ref_bmodel_tolerance, "-v"])
+
+        msg = quant_mode.upper()
+        if quant_mode == "int8" or quant_mode == "int4":
+            msg += ", Asymmetric: {}".format(isAsym)
+
+        print("[Success] test {} {}".format(model_name, msg))
+
     def make_test_calibration_table(self, tensors, table_name):
         # simple calibration table
         with open(table_name, 'w') as f:
@@ -562,6 +614,38 @@ class ONNX_IR_TESTER(object):
             else:
                 tpu_mlir, bmodel = self.bmodel_generate(model_name, quant_mode)
                 self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name)
+
+    def onnx_and_test_bmodel(self,
+                      graph_def,
+                      name: str = "",
+                      input_data: dict = None,
+                      static_shape=True,
+                      check_last: bool = False,
+                      quant_modes=None,
+                      only_cmp_with_bmodel=False,
+                      version=13):
+        if quant_modes is None:
+            quant_modes = self.quant_modes
+        if input_data is None:
+            input_data = self.create_random_input(graph_def)
+        model_name = name if name else graph_def.name
+        onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
+            input_data, graph_def, model_name, static_shape=static_shape, version=version)
+        # this assumes that outputs are in order, i.e. the last one is the output
+        if check_last:
+            top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
+        for quant_mode in quant_modes:
+            if quant_mode == "int8" or quant_mode == "int4":
+                for isAsym in self.support_asym:
+                    _, bmodel = self.bmodel_generate(model_name, quant_mode, isAsym)
+                    self.inference_and_compare_bmodel(bmodel, input_npz, onnx_outs,
+                                                                quant_mode, model_name, isAsym,
+                                                                node_name_mapping)
+            else:
+                _, bmodel = self.bmodel_generate(model_name, quant_mode)
+                self.inference_and_compare_bmodel(bmodel, input_npz, onnx_outs,
+                                                            quant_mode, model_name,
+                                                            node_name_mapping=node_name_mapping)
 
     ##################################
     # adding operators from here
@@ -4731,6 +4815,30 @@ class ONNX_IR_TESTER(object):
                                       case_name, [X], [Y_Value, Y_Index],
                                       initializer=[K])
         self.onnx_and_test(graph_def)
+
+    def test_TopK2(self, case_name):
+        input_shape = [3, 6]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, [])
+        Y_Index = helper.make_tensor_value_info('Y_Index', TensorProto.INT64, [])
+        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [], vals=[0])
+        indices = helper.make_tensor('indices', TensorProto.INT64, [1], vals=[0])
+
+        gather0_def = helper.make_node('Gather', inputs=['input', 'indices0'], axis=0, outputs=['gather0'])
+        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
+        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
+        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
+        gather_def = helper.make_node('Gather', inputs=['shape', 'indices'], axis=0, outputs=['k'])
+        topk_def = helper.make_node('TopK', ['input', 'k'], ['Y_Value', 'Y_Index'],
+                                     axis=-1,
+                                     largest=True)
+        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def, shape_def, gather_def,
+                                      topk_def],
+                                      case_name, [input], [Y_Value, Y_Index],
+                                      initializer=[indices, indices0])
+        input_data={'input' : np.array([[1, 0, 3, 0, 0, 0], [4, 5, 6, 3, 2, 1], [7, 8, 9, 2, 1, 1]],
+                                       dtype=np.float32)}
+        self.onnx_and_test_bmodel(graph_def, static_shape=False, input_data=input_data, only_cmp_with_bmodel=True)
 
     def test_QDQConv(self, case_name):
         oc = 32

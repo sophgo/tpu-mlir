@@ -1736,10 +1736,12 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "TopK")
         in_op = self.getOperand(onnx_node.inputs[0])
         K = onnx_node.attrs.get('k', -1) # opset 10
+        k_op = None
         if (len(onnx_node.inputs) > 1):
-            # fix me if inputs[1] is not a tesnsor in the furture
-            assert(self.isWeight(onnx_node.inputs[1]))
-            K = self.getScalar(onnx_node.inputs[1])
+            if self.isWeight(onnx_node.inputs[1]):
+                K = self.getScalar(onnx_node.inputs[1])
+            else:
+                k_op = self.getOperand(onnx_node.inputs[1])
         axis = onnx_node.attrs.get('axis', -1)
         largest = onnx_node.attrs.get('largest', True)
         sorted = onnx_node.attrs.get('sorted', True)
@@ -1756,6 +1758,7 @@ class OnnxConverter(BaseConverter):
                             in_op,
                             axis=axis,
                             K=K,
+                            kT=k_op,
                             largest=largest,
                             sorted=sorted,
                             loc=self.get_loc(loc_names),
