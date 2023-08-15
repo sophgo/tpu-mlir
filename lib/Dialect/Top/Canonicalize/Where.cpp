@@ -77,7 +77,8 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
 // lib/Dialect/Top/Transforms/ChipOptimize/OptimizeBM1684X.cpp:expand_dim_and_tile
 mlir::Value expand_dim_and_tile(mlir::Value tensor,
                                 llvm::ArrayRef<int64_t> out_shape,
-                                PatternRewriter &rewriter) {
+                                PatternRewriter &rewriter,
+                                std::string op_name) {
   auto out_dim = out_shape.size();
   auto tensor_shape = module::getShape(tensor);
   auto tensor_dim = tensor_shape.size();
@@ -117,7 +118,7 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
     tensor_last_shape[i] = out_shape[i];
     auto newType = RankedTensorType::get(tensor_last_shape, tensor_stype);
     auto new_name =
-        module::getName(tensor).str() + "_tile_" + std::to_string(i);
+        op_name + "_input_tile_" + std::to_string(i);
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfterValue(tensor_last_op);
     tensor_last_op = rewriter.create<top::TileOp>(
@@ -135,7 +136,8 @@ struct WhereBroadcastToTile : public OpRewritePattern<WhereOp> {
     bool process = false;
 
     auto cond = op.getCond();
-    auto cond_ = expand_dim_and_tile(cond, out_shape, rewriter);
+    std::string op_name = std::string(module::getName(op.getOperation()).data());
+    auto cond_ = expand_dim_and_tile(cond, out_shape, rewriter, op_name);
     if (cond != cond_) {
       op.setOperand(0, cond_);
       process = true;
