@@ -30,30 +30,38 @@ def BModel2MLIR(bmodel_file):
     return context.BModel2MLIR(bmodel)
 
 
+def BModelCMDIter(bmodel):
+    for net in bmodel.net:
+        for param in net.parameter:
+            for subnet in param.sub_net:
+                _id = subnet.id
+                for gid, _net in enumerate(getattr(subnet, "cmd_group", [])):
+                    yield (0, _id, gid), _net
+                for core_id, cmds in enumerate(getattr(subnet, "core_commands", [])):
+                    for gid, _net in enumerate(cmds.gdma_tiu_commands):
+                        yield (core_id, _id, gid), _net
+
+
 def BModel2Reg(bmodel_file):
     bmodel = dis.BModel(bmodel_file)
     chip = bmodel.chip
     context = Context(chip)
     decoder = context.decoder
-    for net in bmodel.net:
-        for param in net.parameter:
-            for subnet in param.sub_net:
-                _id = subnet.id
-                for _net in subnet.cmd_group:
-                    yield _id, decoder.decode_bmodel_cmd(_net, _id)
+    for identifier, net in BModelCMDIter(bmodel):
+        core_id, _id, gid = identifier
+        formated_id = f"core({core_id}).subnet({_id}).group({gid})"
+        yield formated_id, decoder.decode_bmodel_cmd(net, _id, core_id)
 
 
 def BModel2Bin(bmodel_file):
     bmodel = dis.BModel(bmodel_file)
-    for net in bmodel.net:
-        for param in net.parameter:
-            for subnet in param.sub_net:
-                _id = subnet.id
-                for _net in subnet.cmd_group:
-                    with open(bmodel_file + f".{_id}.tiu.bin", "wb") as f:
-                        f.write(_net.tiu_cmd)
-                    with open(bmodel_file + f".{_id}.dma.bin", "wb") as f:
-                        f.write(_net.dma_cmd)
+    for identifier, net in BModelCMDIter(bmodel):
+        core_id, _id, gid = identifier
+        formated_id = f".core({core_id}).subnet({_id}).group({gid})."
+        with open(bmodel_file + formated_id + "tiu.bin", "wb") as f:
+            f.write(net.tiu_cmd)
+        with open(bmodel_file + formated_id + "dma.bin", "wb") as f:
+            f.write(net.dma_cmd)
 
 
 def unified_diff(a, b, fromfile="", tofile="", n=3, format="mlir"):

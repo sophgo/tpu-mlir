@@ -3,6 +3,7 @@ if (NOT DEFINED FLATBUFFERS_PATH)
 endif()
 message(STATUS "FLATBUFFERS_PATH: ${FLATBUFFERS_PATH}")
 function(compile_fbs)
+  get_filename_component(CMAKE_INSTALL_PREFIX_ABS "${CMAKE_INSTALL_PREFIX}" ABSOLUTE)
   foreach(fbs_file IN LISTS ARGN)
     get_filename_component(name ${fbs_file} NAME_WE)
     set(target_header ${name}_generated.h)
@@ -17,7 +18,7 @@ function(compile_fbs)
       DEPENDS ${fbs_file}
       COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/gen_header.sh ${fbs_file} ${name}
     )
-    set(python_targets ${CMAKE_SOURCE_DIR}/python/debugger/bmodel_fbs.py)
+    set(python_targets ${CMAKE_INSTALL_PREFIX_ABS}/python/debugger/bmodel_fbs.py)
     add_custom_command(
       OUTPUT ${python_targets}
       DEPENDS ${fbs_file}
