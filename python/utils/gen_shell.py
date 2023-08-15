@@ -230,6 +230,7 @@ def generate(
     data: Union[List[torch.Tensor], Dict[str, torch.Tensor]],
     workspace_root: str,
     input_names: list = None,
+    use_onnx=True,
 ):
     """
     generate onnx/jit model, transform/deploy scripts and model-zoo yaml config files by given pytorch model and input tensor list.
@@ -272,16 +273,27 @@ def generate(
     if isinstance(data, (list, tuple)):
         input_lis = data
     elif isinstance(data, dict):
-        input_lis = [data[k] for k in input_names]
+        input_lis = [data[k] for k in input_names if k in data]
 
-    shape_list = [list(i.shape) for i in input_lis]
+    shape_list = [list(i.shape) for i in input_lis if hasattr(i, "shape")]
     # generate convert.sh + mlir.config.yaml
-    generate_shell(model_name, shape_list, workspace_root)
-    generate_yaml(model_name, shape_list, workspace_root)
+    generate_shell(
+        model_name, shape_list, workspace_root, suf="onnx" if use_onnx else "pt"
+    )
+    generate_yaml(
+        model_name, shape_list, workspace_root, suf="onnx" if use_onnx else "pt"
+    )
 
     input_names = inspect.getargspec(model.forward).args[1:]
-    data_dic = {f"{k}.1": v for k, v in zip(input_names, input_lis)}
 
+    def detach(v):
+        try:
+            return v.cpu().detach().numpy()
+        except:
+            return v
+
+    data_dic = {f"{k}.1": detach(v) for k, v in zip(input_names, input_lis)}
+    print(data_dic.keys())
     # Make npz
     os.makedirs(os.path.join(workspace_root, f"cali_data"), exist_ok=True)
     np.savez(os.path.join(workspace_root, f"cali_data/data.npz"), **data_dic)
@@ -299,6 +311,8 @@ def generate(
         export_params=True,  # store the trained parameter weights inside the model file
         opset_version=10,  # the ONNX version to export the model to
         do_constant_folding=True,
+        input_names=list(data_dic),
+        
     )  # whether to execute constant folding for optimization)
 
 
