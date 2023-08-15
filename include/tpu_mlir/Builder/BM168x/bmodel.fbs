@@ -69,7 +69,8 @@ table Tensor {
     cpu_addr:uint32 (id: 8);       // tensor cpu mem. for cpu layer, recode every tensor's offset
     pad_h:uint32 (id: 9);          // this item is for conv 3ic(hack for BM1684 to improve efficiency): higher 16bit: pad_h_top, lower 16bit: pad_h_down
     zero_point:int32 = 0 (id: 10); // zero point for requant or dequant
-    hidden:int32 (id: 11);         // hidden tensor, from bmodel to bmodel
+    hidden:int32 (id: 11);         // hidden tensor, for cascade model. 0:hidden;1:input;2:output
+    index:int32 (id: 12);          // input or output index
 }
 
 table CpuConst {

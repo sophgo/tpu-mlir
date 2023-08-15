@@ -282,7 +282,21 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values,
     tb.add_gmem_stmode(gmem_stmode);
     tb.add_shape(stage_shape);
     if (hidden_all || isHiddenTensor(s_name)) {
-      tb.add_hidden(1);
+      tb.add_hidden(0);
+    } else {
+      auto in_iter =
+          std::find(input_names->begin(), input_names->end(), s_name);
+      auto out_iter =
+          std::find(output_names->begin(), output_names->end(), s_name);
+      if (in_iter != input_names->end()) {
+        tb.add_hidden(1); // input
+        tb.add_index(std::distance(input_names->begin(), in_iter));
+      } else if (out_iter != output_names->end()) {
+        tb.add_hidden(2); // output
+        tb.add_index(std::distance(output_names->begin(), out_iter));
+      } else {
+        tb.add_hidden(0);
+      }
     }
 
     /*
