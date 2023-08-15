@@ -90,7 +90,7 @@ void ModelGen::AddNet(const std::string &net_name,
 
 void ModelGen::AddNet(const string &net_name,
                       const Offset<NetParameter> &parameter, uint32_t *net_idx,
-                      uint32_t *stage_idx) {
+                      uint32_t *stage_idx, const bmodel::Cascade * cascade) {
   ASSERT(net_name.empty() == false);
   auto net_new = reinterpret_cast<const NetParameter *>(
       builder_.GetCurrentBufferPointer() + builder_.GetSize() - parameter.o);
@@ -106,10 +106,19 @@ void ModelGen::AddNet(const string &net_name,
   if (net_idx != NULL) {
     *net_idx = idx;
   }
+  if (cascade != NULL) {
+    // cascade not support multi stage
+    ASSERT(idx == net_vector_.size());
+  }
   if (idx == net_vector_.size()) { // if not found
     NET_INFO_T net_info;
     net_info.name = net_name;
     net_info.parameters.push_back(parameter);
+    if (cascade) {
+      net_info.cascade.main_name = cascade->main_name()->str();
+      net_info.cascade.device_id = cascade->device_id();
+      net_info.cascade.step = cascade->step();
+    }
     net_vector_.push_back(net_info);
     if (stage_idx != NULL) {
       *stage_idx = 0;

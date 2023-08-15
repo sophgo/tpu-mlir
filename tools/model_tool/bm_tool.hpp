@@ -114,6 +114,13 @@ static void show(const NetParameter *parameter, bool dynamic = false) {
   }
 }
 
+static void reorder(std::vector<const Tensor *> &tensors) {
+  std::sort(tensors.begin(), tensors.end(),
+            [](const Tensor *a, const Tensor *b) {
+              return a->index() <= b->index();
+            });
+}
+
 // print brief model info
 void bm_show(const string &filename) {
   ModelCtx model_ctx(filename);
@@ -183,28 +190,37 @@ void bm_show(const string &filename) {
     cout << "==========================================" << endl;
     cout << "net: [" << it.first << "]  cascade" << endl;
     // show inputs
+    std::vector<const bmodel::Tensor *> ins;
+    std::vector<const bmodel::Tensor *> outs;
     for (auto idx : *it.second) {
       auto net = model->net()->Get(idx);
       auto parameter = net->parameter()->Get(0);
       auto input_tensors = parameter->input_tensor();
+      auto output_tensors = parameter->output_tensor();
       for (uint32_t idx = 0; idx < input_tensors->size(); idx++) {
         auto in = input_tensors->Get(idx);
-        if (in->hidden() != 1) {
-          cout << tensor_str(in, false);
+        if (in->hidden() == 1) {
+          ins.push_back(in);
+        } else if (in->hidden() == 2) {
+          outs.push_back(in);
+        }
+      }
+      for (uint32_t idx = 0; idx < output_tensors->size(); idx++) {
+        auto out = output_tensors->Get(idx);
+        if (out->hidden() == 1) {
+          ins.push_back(out);
+        } else if (out->hidden() == 2) {
+          outs.push_back(out);
         }
       }
     }
-    // show outputs
-    for (auto idx : *it.second) {
-      auto net = model->net()->Get(idx);
-      auto parameter = net->parameter()->Get(0);
-      auto output_tensors = parameter->output_tensor();
-      for (uint32_t idx = 0; idx < output_tensors->size(); idx++) {
-        auto out = output_tensors->Get(idx);
-        if (out->hidden() != 1) {
-          cout << tensor_str(out, true);
-        }
-      }
+    reorder(ins);
+    reorder(outs);
+    for (auto &in : ins) {
+      cout << tensor_str(in, false);
+    }
+    for (auto &out : outs) {
+      cout << tensor_str(out, true);
     }
   }
   cout << std::endl;
@@ -494,6 +510,11 @@ static void combine_bmodels(ModelGen &model_gen,
         continue;
       }
       auto net_name = net->name()->str();
+      auto cascade = net->cascade();
+      if (cascade) {
+        // no more stage
+        assert(net->parameter()->size() == 1);
+      }
       for (uint32_t idx = 0; idx < net->parameter()->size(); idx++) {
         shared_ptr<NET_INDEX_T> net_idx(new NET_INDEX_T);
         if (is_dir) {
@@ -503,7 +524,7 @@ static void combine_bmodels(ModelGen &model_gen,
         auto netT = net->parameter()->Get(idx)->UnPack();
         auto net_offset = NetParameter::Pack(builder, netT);
         model_gen.AddNet(net_name, net_offset, &net_idx->net_idx,
-                         &net_idx->stage_idx);
+                         &net_idx->stage_idx, cascade);
         delete netT;
         model_info->net_index_v.push_back(net_idx);
       }

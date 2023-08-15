@@ -70,7 +70,8 @@ public:
   void AddNet(const flatbuffers::Offset<Net> &net);
   void AddNet(const std::string &net_name,
               const flatbuffers::Offset<NetParameter> &parameter,
-              uint32_t *net_idx = NULL, uint32_t *stage_idx = NULL);
+              uint32_t *net_idx = NULL, uint32_t *stage_idx = NULL,
+              const bmodel::Cascade * cascade = NULL);
   void AddNet(const std::string &net_name, const CASCADE_INFO_T &cascade,
               const flatbuffers::Offset<NetParameter> &parameter);
   // firmware_core.so save into bmodel
