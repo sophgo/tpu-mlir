@@ -19,6 +19,7 @@ class TPUMLIROpTrait<string name> : NativeOpTrait<name> {
 def ShapeProducer : TPUMLIROpTrait<"ShapeProducer">;
 def ShapeConsumer : TPUMLIROpTrait<"ShapeConsumer">;
 def SupportPermuteMove : TPUMLIROpTrait<"SupportPermuteMove">;
+def SupportConstant: TPUMLIROpTrait<"SupportConstant">;
 def SupportFuseRelu : TPUMLIROpTrait<"SupportFuseRelu">;
 def SupportEarlyStride : TPUMLIROpTrait<"SupportEarlyStride">;
 def SupportElementwise : TPUMLIROpTrait<"SupportElementwise">;

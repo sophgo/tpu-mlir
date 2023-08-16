@@ -74,19 +74,23 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
         const_val = left_op.read<float>();
       }
       new_input = op.getInputs()[1];
-    } else if (right_elt_num == 1) {
+    }
+    if (!weight_flag && right_elt_num == 1) {
       if (auto right_op =
               dyn_cast<WeightOp>(op.getInputs()[1].getDefiningOp())) {
         weight_flag = true;
         const_val = right_op.read<float>();
       }
       new_input = op.getInputs()[0];
-    } else {
-      assert(0);
     }
 
-    if (!weight_flag)
+    if (!weight_flag) {
       return failure();
+    }
+    if (const_val->at(0) == 1.0f) {
+      rewriter.replaceOp(op, {new_input});
+      return success();
+    }
     Type output = op.getOutput().getType();
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
@@ -163,7 +167,7 @@ struct MulToScale : public OpRewritePattern<MulOp> {
   }
 };
 
-//Mul + Mul
+// Mul + Mul
 struct MulMerge : public OpRewritePattern<MulOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -233,7 +237,7 @@ struct MergeGelu : public OpRewritePattern<MulOp> {
       return failure();
     MulConstOp mulconst_op = NULL;
     AddConstOp addconst_op = NULL;
-    for (auto in:op.getInputs()) {
+    for (auto in : op.getInputs()) {
       if (auto weight_op = dyn_cast<WeightOp>(in.getDefiningOp()))
         return failure();
       else if ((addconst_op = dyn_cast<AddConstOp>(in.getDefiningOp())))
@@ -245,11 +249,12 @@ struct MergeGelu : public OpRewritePattern<MulOp> {
     }
     if (mulconst_op == NULL || addconst_op == NULL)
       return failure();
-    if (!mulconst_op.getResult().hasOneUse() || !addconst_op.getResult().hasOneUse())
+    if (!mulconst_op.getResult().hasOneUse() ||
+        !addconst_op.getResult().hasOneUse())
       return failure();
-    if (fabs(mulconst_op.getConstVal().convertToDouble() - 0.5)>1e-4)
+    if (fabs(mulconst_op.getConstVal().convertToDouble() - 0.5) > 1e-4)
       return failure();
-    if (fabs(addconst_op.getConstVal().convertToDouble() - 1.0)>1e-4)
+    if (fabs(addconst_op.getConstVal().convertToDouble() - 1.0) > 1e-4)
       return failure();
     ErfOp erf_op = NULL;
     erf_op = dyn_cast<ErfOp>(addconst_op.getInput().getDefiningOp());
@@ -261,17 +266,20 @@ struct MergeGelu : public OpRewritePattern<MulOp> {
     mulconst_op1 = dyn_cast<MulConstOp>(erf_op.getInput().getDefiningOp());
     if (mulconst_op1 == NULL)
       return failure();
-    if (fabs(mulconst_op1.getConstVal().convertToDouble() - 0.70710676908493042f)>1e-4)
+    if (fabs(mulconst_op1.getConstVal().convertToDouble() -
+             0.70710676908493042f) > 1e-4)
       return failure();
-    if (mulconst_op1.getInput().getDefiningOp() != mulconst_op.getInput().getDefiningOp())
+    if (mulconst_op1.getInput().getDefiningOp() !=
+        mulconst_op.getInput().getDefiningOp())
       return failure();
     rewriter.replaceOpWithNewOp<GELUOp>(op, op.getResult().getType(),
-             ValueRange{mulconst_op.getInput()});
+                                        ValueRange{mulconst_op.getInput()});
     return success();
   }
 };
 
 void MulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<MulToSiLU, MulToMulConst, MulToScale, MulMerge, MergeGelu>(context);
+  results.insert<MulToSiLU, MulToMulConst, MulToScale, MulMerge, MergeGelu>(
+      context);
 }
