@@ -118,19 +118,15 @@ void top::MatMulOp::shape_inference() {
   } else if (in1_shape[k_idx] == k) {
     if (module::getPlatform() == module::Platform::CAFFE) {
       // for caffe case
-      auto sum = 1;
-      for (int i = 0; i < in0_dims; i++) {
-        sum *= out_shape[i];
-      }
       // shape case:[1, 1, 1, 4832] * [4832, 126] = [1, 126]
-      if (sum == k) {
-        while (out_shape.size() > 1) {
-          out_shape.pop_back();
+      // shape case:[8, 1, 1, 4832] * [4832, 136] = [8, 136]
+      for (int i = 1; i < out_shape.size(); i++) {
+        if(out_shape[i] == 1){
+          out_shape.erase(out_shape.begin()+i);
+          i--;
         }
-        out_shape.push_back(n);
-      } else {
-        out_shape[in0_dims - 1] = n;
       }
+      out_shape[out_shape.size() - 1] = n;
     } else {
       out_shape[in0_dims - 1] = n;
     }
