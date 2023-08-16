@@ -115,6 +115,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
   template<typename T>
   std::shared_ptr<std::vector<T>> read();
@@ -463,7 +464,7 @@ def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_AddOp: Top_Op<"Add", [SupportFuseRelu]> {
+def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, SupportConstant]> {
   let summary = "add operator";
 
   let description = [{
@@ -482,7 +483,7 @@ def Top_AddOp: Top_Op<"Add", [SupportFuseRelu]> {
   let hasCanonicalizer = 1;
 }
 
-def Top_SubOp: Top_Op<"Sub", [SupportFuseRelu]> {
+def Top_SubOp: Top_Op<"Sub", [SupportFuseRelu, SupportConstant]> {
   let summary = "sub operator";
 
   let description = [{
@@ -501,7 +502,7 @@ def Top_SubOp: Top_Op<"Sub", [SupportFuseRelu]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu]> {
+def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, SupportConstant]> {
   let summary = "Mul operator";
 
   let description = [{
@@ -518,7 +519,7 @@ def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu]> {
   let hasCanonicalizer = 1;
 }
 
-def Top_MinOp: Top_Op<"Min"> {
+def Top_MinOp: Top_Op<"Min", [SupportConstant]> {
   let summary = "min operator";
 
   let description = [{
@@ -533,7 +534,7 @@ def Top_MinOp: Top_Op<"Min"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_MaxOp: Top_Op<"Max"> {
+def Top_MaxOp: Top_Op<"Max", [SupportConstant]> {
   let summary = "max operator";
 
   let description = [{
@@ -1594,7 +1595,7 @@ def Top_GatherOp: Top_Op<"Gather"> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$indices,
-    DefaultValuedAttr<BoolAttr, "false">:$keepdims, // not sure for set false as defaut
+    DefaultValuedAttr<BoolAttr, "true">:$keepdims,
     DefaultValuedAttr<SI32Attr, "0">:$axis
   );
 
@@ -1839,7 +1840,7 @@ def Top_MaskedFillOp : Top_Op<"MaskedFill"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_CompareOp : Top_Op<"Compare"> {
+def Top_CompareOp : Top_Op<"Compare", [SupportConstant]> {
   let summary = "Compare operation";
   let description = [{
     Returns the tensor resulted from performing the compare

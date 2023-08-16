@@ -1020,7 +1020,7 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x):
                     y = func(shape, dtype=type)
                     z = y + x
-                    return z
+                    return z * 0.5
 
             self.trace_and_test([shape], Model())
 
@@ -1189,7 +1189,7 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x):
                     y = self.coeff.new_zeros(shape, dtype=dtype)
                     y = y.to(torch.float32) + x
-                    return y
+                    return y * 0.5
 
             self.trace_and_test([shape], Model())
 
@@ -2644,7 +2644,7 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x):
                     y = op_type(x)
-                    return x + y
+                    return x + y + 0.5
 
             self.trace_and_test([input_shape], Model())
 

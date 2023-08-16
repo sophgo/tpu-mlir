@@ -19,8 +19,10 @@ struct SwapInput : public OpRewritePattern<AddOp> {
     if (op.getInputs().size() != 2) {
       return failure();
     }
-    if (!isa<WeightOp>(module::getOriValue(op.getInputs()[0]).getDefiningOp()) &&
-        !isa<WeightOp>(module::getOriValue(op.getInputs()[1]).getDefiningOp())) {
+    if (!isa<WeightOp>(
+            module::getOriValue(op.getInputs()[0]).getDefiningOp()) &&
+        !isa<WeightOp>(
+            module::getOriValue(op.getInputs()[1]).getDefiningOp())) {
       return failure();
     }
     auto coeffs = module::getF64Array(op.getCoeff(), 2, 1.0);
@@ -128,7 +130,8 @@ struct AddToAddConst : public OpRewritePattern<AddOp> {
         const_val = left_op.read<float>();
       }
       new_input = op.getInputs()[1];
-    } else if (right_elt_num == 1) {
+    }
+    if (!weight_flag && right_elt_num == 1) {
       if (auto right_op =
               dyn_cast<WeightOp>(op.getInputs()[1].getDefiningOp())) {
         weight_flag = true;
@@ -138,9 +141,13 @@ struct AddToAddConst : public OpRewritePattern<AddOp> {
     } else {
       return failure();
     }
-
-    if (!weight_flag)
+    if (!weight_flag) {
       return failure();
+    }
+    if (const_val->at(0) == 0.0f) {
+      rewriter.replaceOp(op, {new_input});
+      return success();
+    }
     Type output = op.getOutput().getType();
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(

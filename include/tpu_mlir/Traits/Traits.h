@@ -45,6 +45,10 @@ class SupportPermuteMove
     : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportPermuteMove> {};
 
 template <typename ConcreteType>
+class SupportConstant
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportConstant> {};
+
+template <typename ConcreteType>
 class SupportEarlyStride
     : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportEarlyStride> {};
 
