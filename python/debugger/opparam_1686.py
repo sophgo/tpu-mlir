@@ -276,7 +276,10 @@ class Memory:
     """
 
     def __init__(self, LMEM, DDR) -> None:
-        self.LMEM = LMEM.ravel()
+        self.lmem_list = LMEM
+        for lmem in self.lmem_list:
+            lmem.ravel()
+        self.LMEM = self.lmem_list[0]
         self.DDR = DDR.ravel()
 
     def _local_mem_to_numpy(self, memref):
@@ -501,6 +504,7 @@ class Memory:
         if value.mtype == MType.G:
             return self._ddr_to_numpy(value)
         if value.mtype == MType.R:
+            self.LMEM = self.lmem_list[value.core_id]
             return self._local_mem_to_numpy(value)
         raise ValueError(f"unsupported memory view: {value}")
 

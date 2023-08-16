@@ -104,6 +104,7 @@ class InsBase:
         "reg",
         "cmd_id",
         "cmd_id_dep",
+        "core_id"
     )
 
     def _is_comp(self, cmd_buf):

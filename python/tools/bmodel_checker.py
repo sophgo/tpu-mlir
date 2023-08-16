@@ -211,7 +211,7 @@ get_mlir_type_info = _get_mlir_type_info()
 
 
 class TensorBuilder:
-    def __init__(self, tensor_des, context):
+    def __init__(self, tensor_des, context, core_id=0):
         address = tensor_des["address"]
 
         shape, dtype = get_shape_and_dtype(tensor_des["memory_type"])
@@ -263,6 +263,7 @@ class TensorBuilder:
         self.memref = context.MemRef(
             address, shape, dtype, layout=layout, stride=stride
         )
+        self.memref.core_id = core_id
         self.tensor_des = tensor_des
         self.mlir_type = get_mlir_type_info(tensor_des["type"])
 
@@ -484,7 +485,8 @@ def check_data(tdb, tensors, ref_data, context):
 
     result = []
     for tensor_des in tensors:
-        t = TensorBuilder(tensor_des.tensor.value, context)
+        ci = tensor_des.record["core_id"]
+        t = TensorBuilder(tensor_des.tensor.value, context, ci)
         # Fix Me. Invalid shape workaround.
         if t.name in ref_data and all(t.memref.shape):
             actual = t.to_f32data(t.memref.data)

@@ -560,6 +560,7 @@ def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
             self.chip = bmodel.chip
             self.version = bmodel.version
             self.type = bmodel.type
+            self.core_num = bmodel.core_num
 
         @property
         @functools.lru_cache()

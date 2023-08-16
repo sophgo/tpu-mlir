@@ -426,10 +426,10 @@ class BM1686:
     TAG_WEIGHT = 1
     ENGINE_HAU = 2
     TAG_ACTIVATION = 2
+    # always init with 2 cores
+    core_num = 2
 
     def __init__(self, memory_size, base_addr):
-        # always init with 2 cores
-        self.core_num = 2
         lib = _lib_wrapper(open_lib(self.lib_name))
         lib.cmodel_init.argtypes = [ctypes.c_int32, ctypes.c_int64]
         lib.cmodel_init.restype = ctypes.c_int32
@@ -471,29 +471,31 @@ class BM1686:
     def __setup(self, memory_size, base_addr):
         base_idx = (ctypes.c_int32 * 2)(self.TAG_WEIGHT, self.TAG_ACTIVATION)
         base_addr = (ctypes.c_uint64 * 2)(base_addr[0], base_addr[1])
+        self.LMEM = []
         for i in range(self.core_num):
             self.lib.cmodel_init(i, memory_size)
             self.lib.set_cur_nodechip_idx(i)
             self.lib.atomic_set_base_ddr(
                 base_idx, base_addr, 2, self.ENGINE_GDMA)
+            self.LMEM.append(c_array_to_ndarray(
+                self.lib.get_local_mem(i).contents.raw_ptr, (32, 16, 1024 * 8)
+            ))
         self.DDR = c_array_to_ndarray(
             self.lib.get_global_memaddr(0), memory_size)
-        self.LMEM = c_array_to_ndarray(
-            self.lib.get_local_mem(0).contents.raw_ptr, (32, 16, 1024 * 8)
-        )
         self.SMEM = c_array_to_ndarray(
             self.lib.get_static_memaddr_by_node(0), (16 * 1024,)
         )
 
     def clear_memory(self):
         self.DDR.fill(0)
-        self.LMEM.fill(0)
+        for lmem in self.LMEM:
+            lmem.fill(0)
         lut = np.array(self.gen_lookup_table(), np.uint32).view(np.uint8)
         self.SMEM[: len(lut)] = lut[...]
 
     def __del__(self):
         base_idx = (ctypes.c_int32 * 2)(1, 2)
-        base_addr = (ctypes.c_int64 * 2)(0, 0)
+        base_addr = (ctypes.c_uint64 * 2)(0, 0)
         for i in range(self.core_num):
             self.lib.set_cur_nodechip_idx(i)
             self.lib.atomic_set_base_ddr(
