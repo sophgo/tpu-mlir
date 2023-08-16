@@ -1131,9 +1131,9 @@ class OnnxConverter(BaseConverter):
             ends, end_op, ends_is_const = try_get_slice_input(onnx_node, 2, 'ends') \
                 if num_input > 2 else (ends, self.mlir.none_op, True)
             axes, axis_op, axes_is_const = try_get_slice_input(onnx_node, 3, 'axes') \
-                if num_input > 3 else (axes, self.mlir.none_op, True)
+                if num_input > 3 else (list(np.arange(len(ends))), self.mlir.none_op, True)
             steps, step_op, steps_is_const = try_get_slice_input(onnx_node, 4, 'steps') \
-                if num_input > 4 else (steps, self.mlir.none_op, True)
+                if num_input > 4 else ([1] * len(axes), self.mlir.none_op, True)
             ends = list(map(lambda x: np.iinfo(np.int64).max if x >= np.iinfo(np.int64).max else x, ends))
             if not (starts_is_const * ends_is_const * axes_is_const * steps_is_const):
                 new_op = top.SliceAxisOp(self.unranked_type,
