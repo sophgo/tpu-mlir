@@ -5,7 +5,7 @@
 #
 # ==============================================================================
 
-from .MLIRImporter import MLIRImporter
+from .MLIRImporter import MLIRImporter, Platform
 from .BaseConverter import BaseConverter
 import numpy as np
 
@@ -178,7 +178,7 @@ class CaffeConverter(BaseConverter):
                     break
             output_shapes.append(self.getShape(_name))
         # init importer
-        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name)
+        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, platform=Platform.CAFFE)
         self.weight_file = self.mlir.weight_file
 
     def layerType(self, layer):
