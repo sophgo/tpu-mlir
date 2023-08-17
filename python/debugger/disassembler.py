@@ -103,28 +103,22 @@ class FBSArray:
 class FBSOptional:
     def __init__(self, fbs, *args):
         self.has = bool(fbs)
+        if self:
+            self.init(fbs, *args)
+
+    def serialize(self, *args):
+        if self:
+            return self._serialize(*args)
+        return None
 
     def __bool__(self):
         return self.has
 
+    def init(self, *_):
+        raise NotImplementedError("need a init method as _init__.")
 
-def safeInit(init_func):
-    def wrapper(self, *args, **kwargs):
-        super(self.__class__, self).__init__(*args, **kwargs)
-        if self:
-            return init_func(self, *args, **kwargs)
-        return None
-
-    return wrapper
-
-
-def serialize(func):
-    def wrapper(self, *args, **kwargs):
-        if self:
-            return func(self, *args, **kwargs)
-        return None
-
-    return wrapper
+    def _serialize(self, *_):
+        raise NotImplementedError("need concrete serialize method for this message.")
 
 
 class BModel:
@@ -139,8 +133,7 @@ class BModel:
     )
 
     class CmdGroup(FBSOptional):
-        @safeInit
-        def __init__(self, fbs: bmodel_fbs.CmdGroup, buffer):
+        def init(self, fbs: bmodel_fbs.CmdGroup, buffer):
             self.tiu_num = fbs.BdcNum()
             self.dma_num = fbs.GdmaNum()
             if fbs.BinaryBdc():
@@ -154,8 +147,7 @@ class BModel:
             else:
                 self.dma_cmd = []
 
-        @serialize
-        def serialize(self, builder, save_binary_fun):
+        def _serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.CmdGroup
             module.Start(builder)
             module.AddBdcNum(builder, self.tiu_num)
@@ -177,14 +169,12 @@ class BModel:
                 return f"tiu_num: {self.tiu_num}\ndma_num: {self.dma_num}"
 
     class CoreCmdGroup(FBSOptional):
-        @safeInit
-        def __init__(self, fbs: bmodel_fbs.CoreCommands, buffer):
+        def init(self, fbs: bmodel_fbs.CoreCommands, buffer):
             self.gdma_tiu_commands = FBSArray(
                 fbs, ("GdmaTiuCommands", BModel.CmdGroup), buffer
             )
 
-        @serialize
-        def serialize(self, builder, save_binary_fun):
+        def _serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.CoreCommands
             gdma_tiu_commands = self.gdma_tiu_commands.serialize(
                 builder, save_binary_fun
@@ -199,15 +189,13 @@ class BModel:
                 return f"gdma_tiu_commands: {self.gdma_tiu_commands}"
 
     class ROData(FBSOptional):
-        @safeInit
-        def __init__(self, fbs: bmodel_fbs.CoeffMem, buffer):
+        def init(self, fbs: bmodel_fbs.CoeffMem, buffer):
             self.address = fbs.Address()
             self.check_code = fbs.CheckCodeAsNumpy()
             binary_data = (fbs.BinaryCoeff().Start(), fbs.BinaryCoeff().Size())
             self.data = buffer[binary_data[0] : sum(binary_data)]
 
-        @serialize
-        def serialize(self, builder, save_binary_fun):
+        def _serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.CoeffMem
 
             check_code = builder.CreateNumpyVector(
@@ -240,8 +228,7 @@ class BModel:
             7: op_support.DType.ui32, op_support.DType.ui32: 7,
         }
         # fmt: on
-        @safeInit
-        def __init__(self, fbs: bmodel_fbs.Tensor, _):
+        def init(self, fbs: bmodel_fbs.Tensor, _):
             self.name = fbs.Name().decode()
             self.dtype = self.to_DType[fbs.DataType()]
             self.device_addr = fbs.DeviceAddr()
@@ -255,8 +242,7 @@ class BModel:
             self.zero_point = fbs.ZeroPoint()
             self.size = fbs.Size()
 
-        @serialize
-        def serialize(self, builder, _):
+        def _serialize(self, builder, _):
             module = bmodel_fbs.Tensor
 
             def build_shape(shape):
@@ -292,14 +278,12 @@ class BModel:
             return f"{self.name}: {self.shape} {self.dtype.name} ({self.device_addr})"
 
     class KernelModule(FBSOptional):
-        @safeInit
-        def __init__(self, fbs: bmodel_fbs.KernelModule, buffer):
+        def init(self, fbs: bmodel_fbs.KernelModule, buffer):
             self.file_name = fbs.FileName().decode()
             binary_data = (fbs.Binary().Start(), fbs.Binary().Size())
             self.data = buffer[binary_data[0] : sum(binary_data)]
 
-        @serialize
-        def serialize(self, builder, save_binary_fun):
+        def _serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.KernelModule
             file_name = builder.CreateString(self.file_name)
             module.Start(builder)
@@ -314,8 +298,7 @@ class BModel:
             return f"kernel: {self.file_name}"
 
     class SubNet(FBSOptional):
-        @safeInit
-        def __init__(self, fbs: bmodel_fbs.SubNet, buffer):
+        def init(self, fbs: bmodel_fbs.SubNet, buffer):
             self.input_tensor = FBSArray(fbs, ("InputTensor", BModel.Tensor), buffer)
             self.output_tensor = FBSArray(fbs, ("OutputTensor", BModel.Tensor), buffer)
             self.cmd_group = FBSArray(fbs, ("CmdGroup", BModel.CmdGroup), buffer)
@@ -325,8 +308,7 @@ class BModel:
                 fbs, ("CoreCommands", BModel.CoreCmdGroup), buffer
             )
 
-        @serialize
-        def serialize(self, builder, save_binary_fun):
+        def _serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.SubNet
             cmd_group = self.cmd_group.serialize(builder, save_binary_fun)
             input_tensor = self.input_tensor.serialize(builder, save_binary_fun)
@@ -347,8 +329,7 @@ class BModel:
                 return "\n".join(f"{k}: {v}" for k, v in self.__dict__.items())
 
     class Parameter(FBSOptional):
-        @safeInit
-        def __init__(self, fbs: bmodel_fbs.NetParameter, buffer):
+        def init(self, fbs: bmodel_fbs.NetParameter, buffer):
             self.input_tensor = FBSArray(fbs, ("InputTensor", BModel.Tensor), buffer)
             self.output_tensor = FBSArray(fbs, ("OutputTensor", BModel.Tensor), buffer)
             self.sub_net = FBSArray(fbs, ("SubNet", BModel.SubNet), buffer)
@@ -358,8 +339,7 @@ class BModel:
             self.coeff_mem = BModel.ROData(fbs.CoeffMem(), buffer)
             self.core_num = fbs.CoreNum()
 
-        @serialize
-        def serialize(self, builder, save_binary_fun):
+        def _serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.NetParameter
             input_tensor = self.input_tensor.serialize(builder, save_binary_fun)
             output_tensor = self.output_tensor.serialize(builder, save_binary_fun)
