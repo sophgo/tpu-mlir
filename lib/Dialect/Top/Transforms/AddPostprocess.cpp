@@ -62,6 +62,8 @@ public:
       insertYoloOp(builder);
     } else if (post_type == "ssd") {
       insertSsdOp(builder);
+    } else if (post_type == "bnr") {
+      insertDepackRawOp(builder);
     }
     module::updateModuleTypes();
     module::setPostprocess(post_type);
@@ -72,6 +74,7 @@ protected:
                                  std::vector<int64_t> &anchors);
   void insertYoloOp(OpBuilder &builder);
   void insertSsdOp(OpBuilder &builder);
+  void insertDepackRawOp(OpBuilder &builder);
 
 protected:
   std::vector<int64_t> in_shape;
@@ -205,6 +208,49 @@ void AddPostprocessPass::insertSsdOp(OpBuilder &builder) {
   auto post_op =
       builder.create<top::DetectionOutputOp>(loc, new_type, operands, attrs);
   terminator->setOperands({post_op.getOutput()});
+}
+
+void AddPostprocessPass::insertDepackRawOp(OpBuilder &builder) {
+  auto mOp = getOperation();
+  auto func = module::getMainFuncOp(mOp);
+  float white_level, black_level;
+  std::string pixel_format;
+  func.walk([&](top::InputOp inputOp){
+    if ( inputOp.getDoPreprocess() )
+    {
+      white_level = inputOp.getWhiteLevel()->convertToDouble();
+      black_level = inputOp.getBlackLevel()->convertToDouble();
+      pixel_format = inputOp.getPixelFormat()->str();
+      return;
+    }
+  });
+  auto operands = terminator->getOperands();
+  auto opd = operands[0];
+  auto shape = module::getShape(opd);
+  int padding_h = 0;
+  int padding_w = 0;
+  int oh = ( shape[2] - padding_h ) * 2;
+  int ow = ( shape[3] - padding_w ) * 3;
+  std::vector<int64_t> channel_order;
+  // RGBG->(3, 2, 0, 1)->GBRG
+  // RGBG->(1, 0, 2, 3)->GRBG
+  // RGBG->(0, 1, 3, 2)->RGGB
+  // RGBG->(2, 3, 1, 0)->BGGR
+  if ( pixel_format == "gbrg" )      channel_order = {3, 2, 0, 1};
+  else if ( pixel_format == "grbg" ) channel_order = {1, 0, 2, 3};
+  else if ( pixel_format == "rggb" ) channel_order = {0, 1, 3, 2};
+  else if ( pixel_format == "bggr" ) channel_order = {2, 3, 1, 0};
+  else llvm_unreachable ("raw format not support current type");
+  std::vector<NamedAttribute> attrs;
+  attrs.emplace_back(builder.getNamedAttr("padding_h", builder.getI64IntegerAttr(padding_h)));
+  attrs.emplace_back(builder.getNamedAttr("padding_w", builder.getI64IntegerAttr(padding_w)));
+  attrs.emplace_back(builder.getNamedAttr("white_level", builder.getF64FloatAttr(white_level)));
+  attrs.emplace_back(builder.getNamedAttr("black_level", builder.getF64FloatAttr(black_level)));
+  attrs.emplace_back(builder.getNamedAttr("channel_order", builder.getI64ArrayAttr(channel_order)));
+  auto loc = NameLoc::get(builder.getStringAttr("depack_raw"));
+  auto new_type = RankedTensorType::get({batch, 1, oh, ow}, builder.getIntegerType(8, false));
+  auto post_op = builder.create<top::DepackRawOp>(loc, new_type, opd, attrs);
+  terminator->setOperand(0, post_op.getOutput());
 }
 
 std::unique_ptr<OperationPass<ModuleOp>> createAddPostprocessPass() {

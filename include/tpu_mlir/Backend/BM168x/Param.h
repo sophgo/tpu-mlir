@@ -1760,6 +1760,20 @@ typedef struct dyn_nms_global_spec {
   unsigned long long buffer_addr;
   int detected_box_num;
 } dyn_nms_global_spec_t;
+
+typedef struct pack_raw_spec {
+  float white_level;
+  float black_level;
+  float threshold;
+  int channel_order[4];
+} pack_raw_spec_t;
+
+typedef struct depack_raw_spec {
+  int pad[2];
+  float white_level;
+  float black_level;
+  int channel_order[4];
+} depack_raw_spec_t;
 #ifdef __cplusplus
 }
 

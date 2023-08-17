@@ -78,10 +78,13 @@ public:
     auto name = module::getName(op.getOutput()).str();
     auto resized_dims = module::getI64Array(op.getResizeDims());
     std::string channel_order = op.getChannelOrder().str();
+    std::string pixel_format = op.getCustomizationFormat().str();
     this->mean = *(module::getF64Array(op.getMean()));
     this->scale = *(module::getF64Array(op.getScale()));
+    this->white_level = op.getWhiteLevel().convertToDouble();
+    this->black_level = op.getBlackLevel().convertToDouble();
     this->sign = op.getSign();
-    std::string pixel_format = op.getCustomizationFormat().str();
+
     module::getNCHW(op.getResult(), n, c, h, w, false);
     if (resized_dims->size() == 2) {
       this->resize_h = resized_dims->at(0);
@@ -91,49 +94,77 @@ public:
       this->resize_w = w;
     }
 
+    // in non-INT8 quant mode, a castOp will be inserted right after inputOp
+    mlir::Value currentOut = op.getInput();
+    auto castOp0 = dyn_cast_or_null<tpu::CastOp>(currentOut.getDefiningOp());
+    double qscale = 0;
+    // INT8 quant mode
+    if (!castOp0)
+    {
+      auto uniform_type = module::getUniformQuantizedType(op.getResult());
+      qscale = uniform_type.getScale();
+    }
+    // FP mode, insert permute and slice before castOp 
+    else {
+      currentOut = castOp0.getInput();
+      auto castOut = castOp0.getOutput();
+      castOut.setType(RankedTensorType::get({n, c, h, w}, module::getStorageType(castOut)));
+    }
+    rewriter.setInsertionPointAfterValue(currentOut);
+
     auto eleType = module::getStorageType(op.getResult());
     this->isInt8 = eleType.isInteger(8);
-
-    mlir::Value currentOut = op.getInput();
-    // in non-INT8 quant mode, a castOp will be inserted right after inputOp
-    auto castOp0 = dyn_cast_or_null<tpu::CastOp>(currentOut.getDefiningOp());
-
-    auto nextOp = module::getNextOp(op);
     // in mix precision case, a castOp will be inserted right after PreprocessOp
+    auto nextOp = module::getNextOp(op);
     auto castOp1 = dyn_cast_or_null<tpu::CastOp>(nextOp);
-    double qscale = 0;
     if (castOp1) {
       nextOp = module::getNextOp(nextOp);
       eleType = module::getStorageType(castOp1.getResult());
       this->isInt8 = eleType.isInteger(8);
     }
 
-    if (!castOp0) { // INT8 quant mode
-      auto uniform_type = module::getUniformQuantizedType(op.getResult());
-      qscale = uniform_type.getScale();
-    } else { // FP mode, insert permute and slice before castOp
-      currentOut = castOp0.getInput();
-      auto castOut = castOp0.getOutput();
-      castOut.setType(
-          RankedTensorType::get({n, c, h, w}, module::getStorageType(castOut)));
-    }
-    rewriter.setInsertionPointAfterValue(currentOut);
-
     std::map<std::string, std::pair<std::string, std::string>> attributes_map =
         {{"RGB_PLANAR", {"rgb", "nchw"}},  {"RGB_PACKED", {"rgb", "nhwc"}},
          {"BGR_PLANAR", {"bgr", "nchw"}},  {"BGR_PACKED", {"bgr", "nhwc"}},
          {"GRAYSCALE", {"gray", "nchw"}},   {"YUV420_PLANAR", {"bgr", "nchw"}},
          {"YUV_NV21", {"bgr", "nchw"}},    {"YUV_NV12", {"bgr", "nchw"}},
-         {"RGBA_PLANAR", {"rgba", "nchw"}}};
+         {"RGBA_PLANAR", {"rgba", "nchw"}}, {"GBRG_RAW", {"gbrg", "nchw"}},
+         {"GRBG_RAW", {"grbg", "nchw"}}, {"BGGR_RAW", {"bggr", "nchw"}},
+         {"RGGB_RAW", {"rggb", "nchw"}}};
     if (attributes_map.find(pixel_format) == attributes_map.end())
       llvm_unreachable("customization format is not supported yet.");
     auto color = std::get<0>(attributes_map[pixel_format]);
     auto layout = std::get<1>(attributes_map[pixel_format]);
-    bool swap_channel = (color != channel_order) ? true : false;
+    bool swap_channel = (color != channel_order);
     LLVM_DEBUG(llvm::dbgs()
                    << "pixel_format:" << pixel_format << ", color:" << color
                    << ", channel_order_attr:" << channel_order << ", layout:"
                    << layout << ", swap_channel:" << swap_channel << "\n";);
+
+    // insert PackRawOp, no need other preprocessOp & castOp
+    if (color == "gbrg" || color == "grbg" || color == "rggb" || color == "bggr") {
+      assert ( c == 4 && "processed raw image should include 4 channel");
+      // GBRG->(2, 3, 1, 0)->RGBG
+      // GRBG->(1, 0, 2, 3)->RGBG
+      // RGGB->(0, 1, 3, 2)->RGBG
+      // BGGR->(3, 2, 0, 1)->RGBG
+      if ( color == "gbrg" ) this->channel_order = {2, 3, 1, 0};
+      else if ( color == "grbg" ) this->channel_order = {1, 0, 2, 3};
+      else if ( color == "rggb" ) this->channel_order = {0, 1, 3, 2};
+      else if ( color == "bggr" ) this->channel_order = {3, 2, 0, 1};
+      else llvm_unreachable ("raw format not support current type");
+
+      int64_t zeropoint = 0;
+      auto finaltype = module::getStorageType(op.getResult());
+      if (castOp1) finaltype = module::getStorageType(castOp1.getResult());
+      if (castOp0) module::getScaleAndZeroPoint(op.getOutput(), qscale, zeropoint, this->sign, module::isAsymmetric());
+      currentOut = this->insertPackRawOp(rewriter, name, currentOut, qscale, finaltype);
+      rewriter.setInsertionPointAfterValue(currentOut);
+      if (castOp0) rewriter.replaceOp(castOp0, {currentOut});
+      rewriter.replaceOp(op, {currentOut});
+      if (castOp1) rewriter.replaceOp(castOp1, {currentOut});
+      return;
+    }
 
     // insert permuteOp
     if (layout == "nhwc") {
@@ -160,7 +191,7 @@ public:
       if (castOp0) { // FP --> INT8 mix precision case
         int64_t zeropoint = 0;
         module::getScaleAndZeroPoint(op.getOutput(), qscale, zeropoint,
-                                     this->sign, module::isAsymmetric());
+                                    this->sign, module::isAsymmetric());
         int64_t qmin = this->sign ? -128 : 0, qmax = this->sign ? 127 : 255;
         auto ctx = op.getOutput().getContext();
         qtype = quant::UniformQuantizedType::get(
@@ -173,7 +204,7 @@ public:
                                           qscale, qtype, swap_channel);
     } else if (eleType.isF32()) {
       currentOut = this->insertDWConv<float>(rewriter, name, currentOut,
-                                             eleType, swap_channel);
+                                            eleType, swap_channel);
     } else {
       currentOut = this->insertDWConv<uint16_t>(rewriter, name, currentOut,
                                                 eleType, swap_channel);
@@ -224,6 +255,8 @@ private:
   int64_t n, c, h, w;
   int64_t resize_h, resize_w;
   std::vector<double> mean, scale;
+  std::vector<int64_t> channel_order;
+  double white_level, black_level;
   bool _asymmetric = module::isAsymmetric();
   bool sign;
   bool isInt8;
@@ -231,7 +264,7 @@ private:
   Value insertTransposeOp(PatternRewriter &rewriter, std::string &name,
                           Value opd) {
     llvm::errs() << "Inserting PermuteOp.\n";
-    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_tranpose"));
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_transpose"));
     std::vector<int64_t> order{0, 3, 1, 2};
     auto none = module::getNoneOp(opd.getDefiningOp());
     std::vector<NamedAttribute> attrs;
@@ -255,8 +288,8 @@ private:
     std::vector<int64_t> slice_ends{-1, -1, -1, -1};
     std::vector<NamedAttribute> attrs;
     auto none = module::getNoneOp(opd.getDefiningOp());
-    attrs.emplace_back(rewriter.getNamedAttr(
-        "offset", rewriter.getI64ArrayAttr(slice_offset)));
+    attrs.emplace_back(
+      rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(slice_offset)));
     attrs.emplace_back(
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(slice_step)));
     attrs.emplace_back(
@@ -412,11 +445,26 @@ private:
         loc, type, ArrayRef<Value>{opd}, attrs);
     return newOp.getOutput();
   }
+
+  Value insertPackRawOp(PatternRewriter &rewriter, std::string &name,
+                          Value opd, double threshold, Type qtype) {
+    llvm::errs() << "Inserting PackRawOp.\n";
+    std::vector<NamedAttribute> attrs;
+    attrs.emplace_back(rewriter.getNamedAttr("white_level", rewriter.getF64FloatAttr(white_level)));
+    attrs.emplace_back(rewriter.getNamedAttr("black_level", rewriter.getF64FloatAttr(black_level)));
+    attrs.emplace_back(rewriter.getNamedAttr("threshold", rewriter.getF64FloatAttr(threshold)));
+    attrs.emplace_back(rewriter.getNamedAttr("channel_order", rewriter.getI64ArrayAttr(channel_order)));
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_pack_raw"));
+    auto type = RankedTensorType::get({n, c, h, w}, qtype);
+    auto newOp = rewriter.create<tpu::PackRawOp>(loc, type, ArrayRef<Value>{opd}, attrs);
+    return newOp.getOutput();
+  };
 };
+
 
 LogicalResult tpu::PreprocessOp::canonicalize(PreprocessOp op,
                                               PatternRewriter &rewriter) {
   ReplacePreprocess replacer = ReplacePreprocess();
   replacer.replacePreprocess(rewriter, op);
   return success();
-};
+}

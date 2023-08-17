@@ -61,7 +61,7 @@ def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","Le
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
 def InterpModeAttr: AnyStrAttrOf<["nearest","linear"]>;
 def InterpCoordModeAttr: AnyStrAttrOf<["align_corners", "half_pixel", "pytorch_half_pixel", "asymmetric"]>;
-def PixelFormatAttr: AnyStrAttrOf<["rgb","bgr","gray","rgba"]>;
+def PixelFormatAttr: AnyStrAttrOf<["rgb","bgr","gray","rgba","gbrg","grbg","bggr","rggb"]>;
 def ChannelFormatAttr: AnyStrAttrOf<["nhwc","nchw"]>;
 def PadModeAttr: AnyStrAttrOf<["normal","center"]>;
 def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_SIZE"]>;
@@ -146,6 +146,8 @@ def Top_InputOp: Top_BaseOp<"Input"> {
 
   let arguments = (
     ins AnyRankedTensor:$input,
+    // whether need preprocess
+    DefaultValuedAttr<BoolAttr, "false">:$do_preprocess,
     // preprocess for input
     OptionalAttr<PixelFormatAttr>:$pixel_format,
     OptionalAttr<ChannelFormatAttr>:$channel_format,
@@ -158,7 +160,10 @@ def Top_InputOp: Top_BaseOp<"Input"> {
     OptionalAttr<F64ArrayAttr>:$mean,
     //for cv18xx fusepreprocess
     OptionalAttr<StrAttr>:$customization_format,
-    OptionalAttr<BoolAttr>:$aligned
+    OptionalAttr<BoolAttr>:$aligned,
+    //for raw image preprocess
+    OptionalAttr<F64Attr>:$white_level,
+    OptionalAttr<F64Attr>:$black_level
   );
 
   let results = (outs AnyTensor:$output);
@@ -2411,7 +2416,28 @@ def Top_PreprocessOp: Top_Op<"Preprocess"> {
     I64ArrayAttr:$resize_dims,
     F64ArrayAttr:$scale,
     F64ArrayAttr:$mean,
+    //for raw image preprocess
+    F64Attr:$white_level,
+    F64Attr:$black_level,
     DefaultValuedAttr<BoolAttr, "true">:$sign
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_DepackRawOp: Top_Op<"DepackRaw"> {
+  let summary = "Postprocess for raw image.";
+  let description = [{
+    postprocess raw image from 4 channels to mixed pixel pattern,
+    remove padding first if padded before,
+    then for each channel depack to 2 * 2 image block.
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$padding_h,
+    I64Attr:$padding_w,
+    F64Attr:$white_level,
+    F64Attr:$black_level,
+    I64ArrayAttr:$channel_order
   );
   let results = (outs AnyTensor:$output);
 }

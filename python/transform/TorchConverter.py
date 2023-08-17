@@ -56,6 +56,13 @@ class TorchConverter(BaseConverter):
         self.init_MLIRImporter()
         self.unranked_type = self.mlir.get_tensor_type([])
         self.preprocess_args = {}
+        if 'preprocess_list' in preprocess_args:
+            if preprocess_args['preprocess_list'] is not None:
+                for input_index in preprocess_args['preprocess_list']:
+                    assert( 0 < input_index <= len(input_shapes)
+                     and "Please check --preprocess_list is right input")
+            else:
+                preprocess_args['preprocess_list'] = [ i + 1 for i in range(len(input_shapes)) ]
         if 'channel_format' in preprocess_args:
             if preprocess_args['channel_format'] != "none":
                 self.preprocess_args = preprocess_args

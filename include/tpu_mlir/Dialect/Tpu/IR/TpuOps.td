@@ -571,7 +571,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
 }
 
 def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
-  let summary = "FusePreprcess, it's just a placeholder op.";
+  let summary = "FusePreprocess, it's just a placeholder op.";
   let description = [{
     It may be divided to permute + slice + scale/scale_lut ops.
   }];
@@ -583,9 +583,50 @@ def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
     I64ArrayAttr:$resize_dims,
     F64ArrayAttr:$scale,
     F64ArrayAttr:$mean,
+    //for gbrg raw image preprocess
+    F64Attr:$white_level,
+    F64Attr:$black_level,
     DefaultValuedAttr<BoolAttr, "true">:$sign
   );
   let hasCanonicalizeMethod = 1;
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_PackRawOp: Tpu_Op<"PackRaw"> {
+  let summary = "Preprocess for raw image.";
+  let description = [{
+    1. preprocess raw image from 3 byte 2 pixel to 2 byte 1 pixel,
+      for each row pixel fill 0 in top 4 bits;
+      for each img block pack to 4 channels pattern;
+    2. cast to float then normalize and clip by black & white level;
+    3. cast to odtype then pad img to align padding param and move to ddr;
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    F64Attr:$white_level,
+    F64Attr:$black_level,
+    F64Attr:$threshold,
+    I64ArrayAttr:$channel_order
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_DepackRawOp: Tpu_Op<"DepackRaw",
+    [DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Postprocess for raw image.";
+  let description = [{
+    1. depack channel (b, bh * bw, ih + ph, iw + pw) -> (b, 1, oh * bh, ow * bw)
+    2. cast to INT16 then postprocess img to raw pattern ( 3 byte 2 pixel )
+    3. (b, bh * bw, ih + ph, iw + pw) 16bit -> (b, 1, oh * bh, ow * bw * 3 / 2) 8bit
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$padding_h,
+    I64Attr:$padding_w,
+    F64Attr:$white_level,
+    F64Attr:$black_level,
+    I64ArrayAttr:$channel_order
+  );
   let results = (outs AnyTensor:$output);
 }
 
