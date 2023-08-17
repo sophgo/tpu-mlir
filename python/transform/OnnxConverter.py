@@ -124,6 +124,13 @@ class OnnxConverter(BaseConverter):
                 self.opset = ver_info.version
                 break
         self.preprocess_args = {}
+        if 'preprocess_list' in preprocess_args:
+            if preprocess_args['preprocess_list'] is not None:
+                for input_index in preprocess_args['preprocess_list']:
+                    assert( 0 < input_index <= self.num_input
+                        and "Please check --preprocess_list is right input")
+            else:
+                preprocess_args['preprocess_list'] = [ i + 1 for i in range(self.num_input) ]
         if 'channel_format' in preprocess_args:
             if preprocess_args['channel_format'] != "none":
                 self.preprocess_args = preprocess_args

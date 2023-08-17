@@ -45,6 +45,10 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
           return failure();
         }
       }
+      if (out.getType().getShape().size() < 4)
+      {
+        return failure();
+      }
       out.setType(op.getResult().getType());
       rewriter.replaceOp(op, out);
       return success();
@@ -155,6 +159,7 @@ class StripIOQuantPass : public StripIOQuantBase<StripIOQuantPass> {
 public:
   StripIOQuantPass() {}
   void runOnOperation() override {
+    llvm::errs() << "Entering StripIOQuantPass.\n";
     auto mOp = getOperation();
     auto func = module::getMainFuncOp(mOp);
     auto ctx = func.getContext();

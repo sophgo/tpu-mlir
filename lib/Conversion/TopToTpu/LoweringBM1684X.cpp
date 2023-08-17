@@ -89,6 +89,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       CumSumLowering,
       DeconvLowering,
       DeformConv2DLowering,
+      DepackRawLowering,
       Depth2SpaceLowering,
       DivLowering,
       EluLowering,
