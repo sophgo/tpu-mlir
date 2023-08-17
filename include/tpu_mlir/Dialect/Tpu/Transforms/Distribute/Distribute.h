@@ -59,6 +59,24 @@ template <typename T>
 void splitByDevices(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
                     int64_t num_devices);
 
+enum class DistributionEndMode {
+  EndToUnknown = 0,
+  EndToSum = 1,
+  EndToTopK = 2,
+};
+
+static DistributionEndMode getEndMode(tpu::DistributionEndOp op) {
+  switch (op.getPattern()) {
+  case tpu::DistributionPattern::MatMulSliceMerge:
+    return DistributionEndMode::EndToSum;
+  case tpu::DistributionPattern::MatMulTopK:
+    return DistributionEndMode::EndToTopK;
+  default:
+    llvm_unreachable("Not Implemented");
+  }
+  return DistributionEndMode::EndToUnknown;
+}
+
 // ===================================
 // split module to multi modules for devices
 // ===================================

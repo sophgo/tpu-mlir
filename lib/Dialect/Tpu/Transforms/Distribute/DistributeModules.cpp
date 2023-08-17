@@ -213,61 +213,109 @@ static void buildDistibution(tpu::DistributionBeginOp begin,
   }
 }
 
-// translate tpu::DistributionEndOp to executive op
-class EndOpTranslate : public OpRewritePattern<tpu::DistributionEndOp> {
-public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::DistributionEndOp op,
-                                PatternRewriter &rewriter) const override {
-    auto num_devices = module::getDeviceNum();
-    rewriter.setInsertionPointAfter(op);
-    switch (op.getPattern()) {
-    case tpu::DistributionPattern::MatMulSliceMerge: {
-      // convert to AddOp
-      auto output = op.getOperand(0);
-      for (int i = 1; i < num_devices; i++) {
-        auto loc = module::getLocLike(op.getOutput(), std::to_string(i));
-        auto add = rewriter.create<tpu::AddOp>(
-            loc, op.getOutput().getType(),
-            mlir::ValueRange{output, op.getOperand(i)});
-        output = add.getOutput();
+static std::shared_ptr<SubFunction> buildEndOp(tpu::DistributionEndOp end,
+                                               ModuleOp m, int64_t num_devices,
+                                               int64_t &step) {
+  OpBuilder builder(end.getContext());
+  builder.setInsertionPointAfter(end);
+  int times = num_devices > 2 ? std::ceil(std::sqrt(num_devices)) : 1;
+  std::vector<Value> operands(end.operand_begin(), end.operand_end());
+  std::vector<Value> new_operands;
+  std::vector<std::shared_ptr<tpu_mlir::tpu::SubFunction>> subf_v;
+  auto mode = getEndMode(end);
+  switch (mode) {
+  case DistributionEndMode::EndToSum:
+    for (int t = 0; t < times; t++) {
+      for (int i = 0; i < operands.size(); i += 2) {
+        if (i + 1 == operands.size()) {
+          new_operands.push_back(operands[i]);
+          continue;
+        }
+        auto loc = module::getLocLike(operands[i],
+                                      std::string("add_") + std::to_string(i));
+        auto add = builder.create<tpu::AddOp>(
+            loc, operands[i].getType(),
+            mlir::ValueRange{operands[i], operands[i + 1]});
+        new_operands.push_back(add.getOutput());
+        auto subf = std::make_shared<SubFunction>(
+            i * (int)std::pow(2, t) % num_devices, step);
+        insert_subop(subf, add);
+        if (t == times - 1) {
+          module::setLoc(add.getOutput(), module::getLoc(end.getOutput()));
+          end.getOutput().replaceAllUsesWith(add.getOutput());
+          end.erase();
+          for (auto f : subf_v) {
+            buildSubFunction(f, m);
+          }
+          return std::move(subf);
+        } else {
+          subf_v.emplace_back(std::move(subf));
+        }
       }
-      module::setLoc(output, module::getLoc(op.getOutput()));
-      rewriter.replaceOp(op, {output});
-    } break;
-    case tpu::DistributionPattern::MatMulTopK: {
-      auto value = op.getOperand(0);
-      auto indice = op.getOperand(1);
-      for (int i = 1; i < num_devices; i++) {
-        auto value2 = op.getOperand(i * 2);
-        auto indice2 = op.getOperand(i * 2 + 1);
+      step++;
+      operands = new_operands;
+      new_operands.clear();
+    }
+    break;
+  case DistributionEndMode::EndToTopK:
+    for (int t = 0; t < times; t++) {
+      for (int i = 0; i < operands.size(); i += 4) {
+        if (i + 2 == operands.size()) {
+          new_operands.push_back(operands[i]);
+          new_operands.push_back(operands[i + 1]);
+          continue;
+        }
+        auto value = operands[i];
+        auto indice = operands[i + 1];
+        auto value2 = operands[i + 2];
+        auto indice2 = operands[i + 3];
         auto loc =
-            module::getLocLike(op.getOutput(), "add" + std::to_string(i));
+            module::getLocLike(operands[i + 1], "cmp_" + std::to_string(i));
         std::vector<NamedAttribute> attrs;
-        attrs.push_back(rewriter.getNamedAttr(
-            "mode", rewriter.getStringAttr("GreaterOrEqual")));
-        auto cmp = rewriter.create<tpu::CompareOp>(
+        attrs.push_back(builder.getNamedAttr(
+            "mode", builder.getStringAttr("GreaterOrEqual")));
+        auto cmp = builder.create<tpu::CompareOp>(
             loc, value.getType(), ValueRange{value, value2}, attrs);
-        loc = module::getLocLike(op.getOutput(), "value" + std::to_string(i));
-        auto value_select = rewriter.create<tpu::WhereOp>(
+        loc = module::getLocLike(operands[i], "value_" + std::to_string(i));
+        auto value_select = builder.create<tpu::WhereOp>(
             loc, value.getType(), ValueRange{cmp.getOutput(), value, value2});
         value = value_select.getOutput();
-        loc = module::getLocLike(op.getOutput(), "indice" + std::to_string(i));
-        auto indice_select = rewriter.create<tpu::WhereOp>(
+        loc =
+            module::getLocLike(operands[i + 1], "indice_" + std::to_string(i));
+        auto indice_select = builder.create<tpu::WhereOp>(
             loc, indice.getType(),
             ValueRange{cmp.getOutput(), indice, indice2});
         indice = indice_select.getOutput();
+        new_operands.push_back(value);
+        new_operands.push_back(indice);
+        auto subf = std::make_shared<SubFunction>(
+            (i / 2 * (int)std::pow(2, t)) % num_devices, step);
+        insert_subop(subf, cmp);
+        insert_subop(subf, indice_select);
+        if (t == times - 1) {
+          module::setLoc(indice, module::getLoc(end.getOutput()));
+          end.getOutput().replaceAllUsesWith(indice);
+          end.erase();
+          for (auto f : subf_v) {
+            buildSubFunction(f, m);
+          }
+          return std::move(subf);
+        } else {
+          insert_subop(subf, value_select);
+          subf_v.emplace_back(std::move(subf));
+        }
       }
-      module::setLoc(indice, module::getLoc(op.getOutput()));
-      rewriter.replaceOp(op, {indice});
-    } break;
-    default:
-      llvm_unreachable("Not Implemented");
-      break;
+      step++;
+      operands = new_operands;
+      new_operands.clear();
     }
-    return success();
+    break;
+  default:
+    llvm_unreachable("Not Implemented");
+    break;
   }
-};
+  return nullptr;
+}
 
 static int64_t getDeviceId(FuncOp func) {
   return func->getAttrOfType<IntegerAttr>(DEVICE_ID).getInt();
@@ -344,8 +392,7 @@ void distributeModules(ModuleOp m, int64_t num_device) {
         auto end = cast<tpu::DistributionEndOp>(op);
         buildDistibution(begin, end, m, num_device, step++);
         in_distribution = false;
-        subf = std::make_shared<SubFunction>(0, step++);
-        insert_subop(subf, op);
+        subf = buildEndOp(end, m, num_device, step);
       } else if (in_distribution) {
         // do nothing
       } else if (subf == nullptr) {
@@ -360,7 +407,6 @@ void distributeModules(ModuleOp m, int64_t num_device) {
     buildSubFunction(subf, m);
     subf = nullptr;
   }
-  applyPatternOnce<EndOpTranslate>(m);
   // each function create one module
   applyPatternOnce<Function2Module>(m);
   // remove main, and functions
