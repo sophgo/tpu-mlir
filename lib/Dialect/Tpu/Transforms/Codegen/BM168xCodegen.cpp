@@ -229,8 +229,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   if (module::getNumSubModule() > 1) {
     // make sure the order is by step and device id
     if (cascade.step == current_step) {
-      assert(cascade.device_id == current_device);
-      current_device++;
+      assert(cascade.device_id >= current_device);
+      current_device = cascade.device_id + 1;
     } else {
       assert(cascade.step == current_step + 1 && cascade.device_id == 0);
       current_step++;
