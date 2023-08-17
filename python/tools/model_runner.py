@@ -99,6 +99,7 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
     size = os.path.getsize(model_file)
     pack_bmodel_context = (iter([None]) if is_cv18xx else pack_bmodel_context_generator(
         model_file, net))
+    next(pack_bmodel_context) # save input_data
 
     if size > 0x10000000:
         print("Warning: {} is too large and will cost a long time. Please run in board".format(
@@ -136,7 +137,7 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
                     *dyn_output_shapes[dyn_idx])
                 dyn_idx += 1
     try:
-        next(pack_bmodel_context)
+        next(pack_bmodel_context) # save output
     except StopIteration:
         pass
 
