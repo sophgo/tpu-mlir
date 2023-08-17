@@ -20,6 +20,8 @@ TPU-MLIR Quick Start
    08_fuse_preprocess
    09_add_postprocess
    10_sensitive_layer
+   11_fp_forward.rst
+   12_nntc2mlir.rst
    Appx.01_to_onnx_convert
    Appx.02_cv18xx_guide
    Appx.03_bm168x_test
