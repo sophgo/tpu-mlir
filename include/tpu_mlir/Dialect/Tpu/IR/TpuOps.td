@@ -2920,5 +2920,22 @@ def Tpu_D2DOp: Tpu_Op<"D2D"> {
   );
   let results = (outs AnyRankedTensor:$output);
 }
+
+def Tpu_ShapeArithOp: Tpu_Op<"ShapeArith", [
+    ShapeProducer, ShapeConsumer,
+    DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Cpu data operation";
+
+  let description = [{
+    Arithmetic implementation for simple data in host memory such as 'Shape, Index, Stride' etc.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>: $inputs,
+    StrAttr:$type
+  );
+  let results = (outs AnyRankedTensor:$output);
+}
+
 #endif // TPU_OPS
 
