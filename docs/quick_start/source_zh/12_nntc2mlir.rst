@@ -2,7 +2,7 @@
 =======================
 
 NNTC 所使用 docker 版本为 sophgo/tpuc_dev:v2.1, MLIR 使用的docker版本及环境初始化请参考
-:ref:`开发环境配置 <docker configuration>`
+:ref:`开发环境配置 <docker configuration>` 。
 
 下面将以 yolov5s 为例, 讲解NNTC和TPU-MLIR在量化方面的异同, 浮点模型编译方面可以直接
 参考 :ref:`编译ONNX模型 <onnx to bmodel>` 。
@@ -13,7 +13,7 @@ NNTC 所使用 docker 版本为 sophgo/tpuc_dev:v2.1, MLIR 使用的docker版本
 ONNX模型导入
 ------------
 
-在TPU-MLIR中要对模型进行量化首先要把原始模型转为top层的mlir文件, 这一步可以类比为NNTC中分步量化中的生成fp32umodel
+在TPU-MLIR中要对模型进行量化首先要把原始模型转为top层的mlir文件, 这一步可以类比为NNTC中分步量化中的生成fp32umodel。
 
 #. TPU-MLIR的模型转换命令
 
@@ -45,7 +45,7 @@ ONNX模型导入
            -d 'compilation' \
            --cmp
 
-   NNTC导入模型的时候不能指定预处理方。
+   NNTC导入模型的时候不能指定预处理方式。
 
 
 制作量化校准表
@@ -73,7 +73,7 @@ ONNX模型导入
           --input_num 100 \
           -o yolov5s_cali_table
 
-   经过量化之后会得到量化表yolov5s_cali_table
+   经过量化之后会得到量化表yolov5s_cali_table。
 
 
 #. NNTC 量化模型
@@ -85,7 +85,7 @@ ONNX模型导入
             --weights=./compilation/yolov5s_bmneto.fp32umodel \
             -save_test_proto=True --bitwidth=TO_INT8
 
-   在nntc中,量化之后得到的是int8umodel以及prototxt
+   在nntc中,量化之后得到的是int8umodel以及prototxt。
 
 
 值得一提的是, mlir还有run_qtable工具帮助生成混精度模型
@@ -114,7 +114,7 @@ ONNX模型导入
 
 #. NNTC:
 
-   在NNTC中,则是使用int8umodel以及prototxt使用bmnetu工具生成int8的bmodel
+   在NNTC中,则是使用int8umodel以及prototxt使用bmnetu工具生成int8的bmodel。
 
    .. code-block:: shell
 

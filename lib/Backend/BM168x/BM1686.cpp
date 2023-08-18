@@ -59,7 +59,7 @@ int BM1686::getCurrentCoreID() {
     if (_code == code)
       return id;
   }
-  llvm_unreachable("cant not find current codeGen core.");
+  llvm_unreachable("can not find current codeGen core.");
 }
 
 void BM1686::useCore(int coreID) {
