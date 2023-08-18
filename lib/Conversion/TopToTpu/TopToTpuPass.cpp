@@ -646,7 +646,7 @@ public:
     host2device_convert_process();
 
     // process other ops
-    if (module::isBM1684XFamily()) {
+    if (module::isBM1684XFamily() || module::isSG2260Family()) {
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
     } else if (module::isBM1684Family()) {
       bm1684::populateTopToTpuConversionPatterns(&patterns);
