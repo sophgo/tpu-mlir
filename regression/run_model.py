@@ -32,7 +32,8 @@ class MODEL_RUN(object):
                  aligned_input: bool = False,
                  save_log: bool = False,
                  disable_thread: bool = True,
-                 debug:bool = False):
+                 debug:bool = False,
+                 num_core: int = 1):
         self.model_name = model_name
         self.chip = chip
         self.mode = mode
@@ -46,6 +47,7 @@ class MODEL_RUN(object):
         self.debug = debug
         self.model_type = chip_support[self.chip][-1]
         self.command = f"run_model.py {model_name} --chip {chip} --mode {mode}"
+        self.num_core = num_core
 
         config = configparser.ConfigParser(inline_comment_prefixes=('#', ))
         config.read(os.path.expandvars(f"$REGRESSION_PATH/config/{self.model_name}.ini"))
@@ -275,6 +277,8 @@ class MODEL_RUN(object):
             model_file += "_merge_weight"
         if self.debug:
             cmd += ["--debug"]
+        if self.num_core != 1:
+            cmd += [f"--num_core {self.num_core}"]
 
         # add for int8 mode
         if (quant_mode.startswith("int8") or quant_mode.startswith("int4")):
@@ -456,14 +460,15 @@ if __name__ == "__main__":
     parser.add_argument("--save_log", action="store_true", help='if true, save the log to file')
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
-
+    parser.add_argument("--num_core", default=1, type=int,
+                        help="The number of TPU cores used for parallel computation.")
     # yapf: enable
     args = parser.parse_args()
-    out_dir = f"$REGRESSION_PATH/regression_out/{args.model_name}_{args.chip}" if args.out_dir == "" else args.out_dir
+    out_dir = f"$REGRESSION_PATH/regression_out/{args.model_name}_{args.chip}_num_core_{args.num_core}" if args.out_dir == "" else args.out_dir
     dir = os.path.expandvars(out_dir)
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
     runner = MODEL_RUN(args.model_name, args.chip, args.mode, args.dyn_mode, args.merge_weight,
                        args.fuse_preprocess, args.customization_format, args.aligned_input,
-                       args.save_log, args.disable_thread, args.debug)
+                       args.save_log, args.disable_thread, args.debug, args.num_core)
     runner.run_full()
