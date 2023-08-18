@@ -139,6 +139,7 @@ class OnnxConverter(BaseConverter):
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
             "Cast": lambda node: self.convert_cast_op(node),
+            "Ceil": lambda node: self.convert_ceil_op(node),
             "Concat": lambda node: self.convert_concat_op(node),
             "Constant": lambda node: self.convert_constant_op(node),
             "ConstantOfShape": lambda node: self.convert_constantofshape_op(node),
@@ -617,6 +618,15 @@ class OnnxConverter(BaseConverter):
             op = self.getOperand(onnx_node.inputs[0])
             self.addOperand(onnx_node.name, op)
 
+    def convert_ceil_op(self, onnx_node):
+        assert (onnx_node.op_type == "Ceil")
+        op = self.getOp(onnx_node.inputs[0])
+        new_op = top.CeilOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc(onnx_node.name),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
     def convert_concat_op(self, onnx_node):
         assert (onnx_node.op_type == "Concat")
         axis = onnx_node.attrs['axis']
@@ -672,15 +682,11 @@ class OnnxConverter(BaseConverter):
         """
         assert (onnx_node.op_type == "ConstantOfShape")
         value = 0
-        dtype = np.float32
         if 'value' in onnx_node.attrs:
             onnx_tensor = onnx_node.attrs['value']
             np_tensor = numpy_helper.to_array(onnx_tensor)
             assert (np_tensor.size == 1)
-            assert (np_tensor.dtype == np.float32)
             value = np_tensor[0]
-            dtype = np_tensor.dtype
-        assert (dtype == np.float32)
         op = self.getOp(onnx_node.inputs[0])
         new_op = top.ConstantFillOp(self.unranked_type,
                                     op,
