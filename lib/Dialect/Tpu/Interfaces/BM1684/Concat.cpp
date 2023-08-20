@@ -19,10 +19,8 @@ void tpu::ConcatOp::codegen_global_bm1684() {
   }
   int num_input = getInputs().size();
   int(*bottomtensor_shape)[MAX_SHAPE_DIMS] = new int[num_input][MAX_SHAPE_DIMS];
-  int is_st_concat_way[num_input];
-  memset(is_st_concat_way, 0, sizeof(int) * (num_input + 1));
-  uint64_t in_addr[num_input];
-  memset(in_addr, 0, sizeof(int) * (num_input + 1));
+  SmallVector<int> is_st_concat_way(num_input, 0);
+  SmallVector<uint64_t> in_addr(num_input, 0);
   auto out_addr = module::getAddress(getOutput());
   for (int i = 0; i < num_input; ++i) {
     in_addr[i] = module::getAddress(getInputs()[i]);
@@ -33,13 +31,13 @@ void tpu::ConcatOp::codegen_global_bm1684() {
   if (false == module::isUniformQuantized(getOutput())) {
     BM1684::instance().dl_nodechip_concat_md(
         getAxis(), module::getShape(getInputs()[0]).size(), getInputs().size(),
-        in_addr, out_addr, bottomtensor_shape, out_shape, is_st_concat_way,
-        (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
+        in_addr.data(), out_addr, bottomtensor_shape, out_shape,
+        is_st_concat_way.data(), (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_concat_md_fix8b(
         getAxis(), module::getShape(getInputs()[0]).size(), getInputs().size(),
-        in_addr, out_addr, bottomtensor_shape, out_shape, is_st_concat_way,
-        2 /* in_stmode == out_stmode */, 2,
+        in_addr.data(), out_addr, bottomtensor_shape, out_shape,
+        is_st_concat_way.data(), 2 /* in_stmode == out_stmode */, 2,
         (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
   delete[] bottomtensor_shape;

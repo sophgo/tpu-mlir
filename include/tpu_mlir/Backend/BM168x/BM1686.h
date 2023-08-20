@@ -9,6 +9,7 @@
 
 #pragma once
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
 #include "tpu_mlir/Support/Module.h"
 
 typedef void (*set_tiu_freq)(float freq);
@@ -21,8 +22,8 @@ typedef void (*tpu_core_context_setup)(int, int, int);
 
 namespace tpu_mlir {
 namespace backend {
-#define BUFFER_SIZE (4 *1024 * 1024)
-class BM1686 : public BM1684X {
+#define BUFFER_SIZE (4 * 1024 * 1024)
+class BM1686 : public BM1684X, MultiCoreInterface::Base<BM1686> {
 public:
   static bool classof(const BM168x *bm168x) {
     return bm168x->getTypeID() == TypeID::get<BM1686>();
@@ -44,18 +45,23 @@ public:
   tpu_sync_all dl_tpu_sync_all;
   tpu_core_context_setup dl_tpu_core_context_setup;
 
-  void setCoreNum(int core = 1);
-  int getCoreNum() { return multiCodes.size(); };
-  int getCurrentCoreID();
-  void useCore(int coreID = 0);
-  void sync_all() {
+  void setCoreNum(int core = 1) final;
+  int getCoreNum() final { return multiCode.size(); };
+  int getCurrentCoreID() final;
+
+  void useCore(int coreID = 0) final;
+  void setupMultiCoreContext(int core_idx, int core_num,
+                             int core_msg_id) final {
+    dl_tpu_core_context_setup(core_idx, core_num, core_msg_id);
+  }
+  void syncAll() final {
     dl_tpu_set_id_node(code->cmdid_node);
     dl_tpu_sync_all();
     dl_tpu_get_id_node(code->cmdid_node);
   }
 
-  std::vector<std::shared_ptr<BM168x::Code>> const &getCodebuffer() {
-    return multiCodes;
+  std::vector<std::shared_ptr<BM168x::Code>> const &getCodebuffer() final {
+    return multiCode;
   }
 
 private:
@@ -115,14 +121,14 @@ protected:
     GDMA_VALUE_FORMAT_BFLOAT16 = 5;
     GDMA_VALUE_FORMAT_INT4 = 6;
     GDMA_VALUE_FORMAT_NUM = 7;
-    multiCodes.push_back(std::make_unique<BM168x::Code>());
-    code = multiCodes.back();
+    multiCode.push_back(std::make_unique<BM168x::Code>());
+    code = multiCode.back();
     start_env();
   };
   virtual void load_functions() override;
   virtual ~BM1686(){};
   bool useCode0 = true;
-  std::vector<std::shared_ptr<BM168x::Code>> multiCodes;
+  std::vector<std::shared_ptr<BM168x::Code>> multiCode;
 };
 
 } // namespace backend

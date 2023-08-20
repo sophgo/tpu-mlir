@@ -24,7 +24,7 @@ void SG2260::before_codegen() {
 
 void SG2260::after_codegen(int64_t flops) {
   BM168x::after_codegen(flops);
-  for (int i = 0, n = multiCodes.size(); i < n; i++) {
+  for (int i = 0, n = multiCode.size(); i < n; i++) {
     useCore(i);
     dl_store_cmd_end();
   }
@@ -33,10 +33,10 @@ void SG2260::after_codegen(int64_t flops) {
 }
 
 void SG2260::setCoreNum(int core) {
-  for (int i = core - multiCodes.size(); i > 0; i--) {
-    multiCodes.push_back(std::make_unique<BM168x::Code>());
+  for (int i = core - multiCode.size(); i > 0; i--) {
+    multiCode.push_back(std::make_unique<BM168x::Code>());
     // initialize all of them
-    auto _code = multiCodes.back();
+    auto _code = multiCode.back();
     _code->cmdid_node = dl_create_cmd_id_node();
     _code->bdc_node = dl_create_cmd_id_node();
     _code->gdma_node = dl_create_cmd_id_node();
@@ -55,7 +55,7 @@ void SG2260::setCoreNum(int core) {
 }
 
 int SG2260::getCurrentCoreID() {
-  for (auto [id, _code] : llvm::enumerate(multiCodes)) {
+  for (auto [id, _code] : llvm::enumerate(multiCode)) {
     if (_code == code)
       return id;
   }
@@ -63,23 +63,23 @@ int SG2260::getCurrentCoreID() {
 }
 
 void SG2260::useCore(int coreID) {
-  if (code == multiCodes[coreID]) {
+  if (code == multiCode[coreID]) {
     return;
   }
 
   // We can not configure the backend to switch to another command buffer. This
   // is a workaround solution: swapping the buffer and "use codes[0]" only.
   if (useCode0) { // restore buffer
-    auto itr = std::find(multiCodes.begin(), multiCodes.end(), code);
-    multiCodes[0]->gdma_buffer.swap((*itr)->gdma_buffer);
-    multiCodes[0]->bdc_buffer.swap((*itr)->bdc_buffer);
+    auto itr = std::find(multiCode.begin(), multiCode.end(), code);
+    multiCode[0]->gdma_buffer.swap((*itr)->gdma_buffer);
+    multiCode[0]->bdc_buffer.swap((*itr)->bdc_buffer);
   }
 
-  code = multiCodes[coreID];
+  code = multiCode[coreID];
 
   if (useCode0) { // use buffer 0
-    multiCodes[0]->gdma_buffer.swap(code->gdma_buffer);
-    multiCodes[0]->bdc_buffer.swap(code->bdc_buffer);
+    multiCode[0]->gdma_buffer.swap(code->gdma_buffer);
+    multiCode[0]->bdc_buffer.swap(code->bdc_buffer);
   }
   dl_set_cmd_len_ptr((void *)&code->gdma_bytes, (void *)&code->bdc_bytes);
   dl_set_total_id_ptr(&code->gdma_total_id, &code->bdc_total_id,
