@@ -745,6 +745,25 @@ static bool backward_update_slice(const LgInfo &lg_info,
         std::find(group_ins.begin(), group_ins.end(), in) != group_ins.end();
     auto ret = get_backward_slice_info(si, out_si, op, in, shape_secs,
                                        lg_info.type, hold_in_lmem, is_group_in);
+    if(pre_op && module::isDynWeight(in)){
+        auto shape = module::getShape(in);
+        si.n.clear();
+        si.n.emplace_back(std::pair(0, shape[0]));
+        si.c.clear();
+        si.c.emplace_back(std::pair(0, shape[1]));
+        si.h.clear();
+        si.h.emplace_back(std::pair(0, shape[2]));
+        si.w.clear();
+        si.w.emplace_back(std::pair(0, shape[3]));
+
+        tensor_infos[in] = tensor_info_t(si);
+        tensor_infos[in].hold_in_lmem = true;
+
+        if (strip_back_judge(in, lg_info, op_set, out_tensor_set)) {
+          tensor_branchs.push_back(in);
+        }
+        continue;
+    }
     if (ret == false) {
       return false;
     }
@@ -911,6 +930,8 @@ int64_t get_buffer_size(Value v, const tensor_info_t &ti,
     } else {
       buf_size = Arch::get_weight_lmem_bytes(v, group_type, ti.eu_align);
     }
+  } else if(module::isDynWeight(v)) { // TODO: need check
+    buf_size = Arch::get_weight_lmem_bytes(v, group_type, ti.eu_align);
   } else {
     int64_t nslice, cslice, hslice, dslice, wslice;
     auto &si = ti.slice_info;
@@ -1064,6 +1085,11 @@ bool is_eu_align_cv18xx(Value opd) {
 
 bool is_eu_align_bm168x(Value opd) {
   auto op = *opd.user_begin();
+
+  if (module::isDynWeight(opd)) {
+    return false;
+  }
+
   if (module::isWeight(opd)) {
     if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp,
             tpu::LayerNormOp, tpu::PixelNormOp>(op)) {

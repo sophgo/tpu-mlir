@@ -692,7 +692,7 @@ class OnnxConverter(BaseConverter):
 
     def convert_conv_op(self, onnx_node):
         assert (onnx_node.op_type == "Conv")
-        op = self.getOperand(onnx_node.inputs[0])
+        op = self.getOp(onnx_node.inputs[0]) # input can be weight
         kernel_shape = onnx_node.attrs['kernel_shape']
         dim = len(kernel_shape)
         dilations = onnx_node.attrs.get("dilations", dim * [1])
@@ -704,6 +704,7 @@ class OnnxConverter(BaseConverter):
         pads = onnx_node.attrs.get("pads", dim * 2 * [0])
         operands = list()
         operands.append(op)
+        # filter may be dynamic weight
         filter_op = self.getOp(onnx_node.inputs[1])
         operands.append(filter_op)
         if len(onnx_node.inputs) > 2:
@@ -1435,25 +1436,27 @@ class OnnxConverter(BaseConverter):
         operands = list()
         input_opd = self.getOperand(onnx_node.inputs[0])
         weight_name = onnx_node.inputs[1]
-        old_weight = np.ascontiguousarray(self.tensors[weight_name])
-        if weight_name not in self.mlir.load_weight:
-            if group != 1:
-                # (ic, oc / g, kh, kw) --> (g, oc/g, ic / g, kh, kw) --> (oc / g, ic, kh, kw)
-                _shape = list(old_weight.shape)
-                old_shape = [group, int(_shape[0] / group), _shape[1]] + _shape[2:]
-                new_shape = [_shape[1], _shape[0]] + _shape[2:]
-                old_weight = old_weight.reshape(old_shape)
-                order = [0, 2, 1] + list(range(len(_shape) + 1)[3:])
-                new_weight = np.transpose(old_weight, order).reshape(new_shape)
-                self.tensors[weight_name] = new_weight
-            else:
-                # (ic, oc, kh, kw) --> (oc, ic, kh, kw)
-                order = [1, 0] + list(range(len(old_weight.shape))[2:])
-                self.tensors[weight_name] = np.transpose(old_weight, order)
+        # weight can be dynamic
+        if weight_name in self.tensors:
+            old_weight = np.ascontiguousarray(self.tensors[weight_name])
+            if weight_name not in self.mlir.load_weight:
+                if group != 1:
+                    # (ic, oc / g, kh, kw) --> (g, oc/g, ic / g, kh, kw) --> (oc / g, ic, kh, kw)
+                    _shape = list(old_weight.shape)
+                    old_shape = [group, int(_shape[0] / group), _shape[1]] + _shape[2:]
+                    new_shape = [_shape[1], _shape[0]] + _shape[2:]
+                    old_weight = old_weight.reshape(old_shape)
+                    order = [0, 2, 1] + list(range(len(_shape) + 1)[3:])
+                    new_weight = np.transpose(old_weight, order).reshape(new_shape)
+                    self.tensors[weight_name] = new_weight
+                else:
+                    # (ic, oc, kh, kw) --> (oc, ic, kh, kw)
+                    order = [1, 0] + list(range(len(old_weight.shape))[2:])
+                    self.tensors[weight_name] = np.transpose(old_weight, order)
 
-            self.shapes[weight_name] = self.tensors[weight_name].shape
+                self.shapes[weight_name] = self.tensors[weight_name].shape
 
-        filter_opd = self.getWeightOp(onnx_node.inputs[1])
+        filter_opd = self.getOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
             bias_opd = self.getWeightOp(onnx_node.inputs[2])
         else:

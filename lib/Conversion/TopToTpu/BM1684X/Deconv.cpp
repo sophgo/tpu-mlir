@@ -57,6 +57,10 @@ void DeconvLowering::LoweringINT4(PatternRewriter &rewriter, top::DeconvOp op,
 }
 void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
                                   bool asymmetric) const {
+  if (module::isWeight(op.getFilter()) == false) {
+    LoweringF32(rewriter, op);
+    return;
+  }
   auto param = op.parseParam();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
@@ -219,6 +223,11 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
 
 void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::DeconvOp op) const {
+  if (module::isWeight(op.getFilter()) == false) {
+    LoweringF32(rewriter, op);
+    return;
+  }
+
   std::vector<Value> operands;
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   rewriter.setInsertionPointAfter(op);
@@ -240,6 +249,11 @@ void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void DeconvLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::DeconvOp op) const {
+  if (module::isWeight(op.getFilter()) == false) {
+    LoweringF32(rewriter, op);
+    return;
+  }
+
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());

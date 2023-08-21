@@ -11,6 +11,7 @@
 
 using namespace tpu_mlir::top;
 
+
 struct Conv1dTo2d : public OpRewritePattern<ConvOp> {
   using OpRewritePattern::OpRewritePattern;
 

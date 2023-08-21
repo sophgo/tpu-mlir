@@ -97,12 +97,6 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
 
 LogicalResult tpu::DeconvOp::init(InferenceParameter &p) {
   auto deconv = new Deconv();
-  auto attr = parseParam();
-  int izp = 0;
-  if (module::isUniformQuantized(getInput())) {
-    izp = module::getUniformQuantizedType(getInput()).getZeroPoint();
-  }
-  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr, izp);
   p.handle = (void *)deconv;
   return success();
 }
@@ -120,6 +114,12 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto deconv = (Deconv *)p.handle;
+  auto attr = parseParam();
+  int izp = 0;
+  if (module::isUniformQuantized(getInput())) {
+    izp = module::getUniformQuantizedType(getInput()).getZeroPoint();
+  }
+  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr, izp);
   deconv->run();
   // requant
   auto out_type = module::getStorageType(getOutput());
