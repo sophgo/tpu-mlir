@@ -359,6 +359,7 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu,
     OptionalAttr<I64ArrayAttr>:$inserts,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    DefaultValuedAttr<BoolAttr, "false">:$dynweight_reorderd,
     OptionalAttr<AutoPadModeAttr>:$auto_pad, // only used in shape infer
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,
@@ -1467,6 +1468,7 @@ def Top_DeconvOp: Top_Op<"Deconv", [SupportFuseRelu]> {
     DefaultValuedAttr<I64Attr, "1">:$group,
     OptionalAttr<I64ArrayAttr>:$dilations,
     OptionalAttr<I64ArrayAttr>:$output_padding,
+    DefaultValuedAttr<BoolAttr, "false">:$dynweight_reorderd,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );

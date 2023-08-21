@@ -750,6 +750,20 @@ bool isWeight(Value v) {
   if (isa<top::WeightOp>(op)) {
     return true;
   }
+
+  return false;
+}
+
+bool isDynWeight(Value v) {
+  auto op = v.getDefiningOp();
+  if (op == nullptr) {
+    return false;
+  }
+  if (op->hasAttr("dynamic_weight")) {
+    // use code below to tag dynamic weight op
+    // op->setAttr("dynamic_weight", , rewriter.getBoolAttr(true));
+    return true;
+  }
   return false;
 }
 

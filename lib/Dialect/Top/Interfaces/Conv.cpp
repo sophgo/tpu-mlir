@@ -96,8 +96,6 @@ int64_t top::ConvOp::getFLOPs() {
 
 LogicalResult top::ConvOp::init(InferenceParameter &p) {
   auto conv = new Conv();
-  auto attr = parseParam();
-  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)conv;
   return success();
 }
@@ -115,6 +113,8 @@ LogicalResult top::ConvOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto conv = (Conv *)p.handle;
+  auto attr = parseParam();
+  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   conv->run();
   return success();
 }

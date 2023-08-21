@@ -78,6 +78,7 @@ class ONNX_IR_TESTER(object):
             "Clip":         (self.test_Clip,          Y, Y, Y, Y),
             "DepthToSpace": (self.test_DepthToSpace,  Y, Y, Y, Y),
             "Deconv":       (self.test_Deconv,        Y, Y, Y, Y),
+            "DeconvDF":     (self.test_DeconvDynW,    N, Y, N, N),
             "Deconv2":      (self.test_Deconv2,       Y, N, N, Y),
             "Deconv3d":     (self.test_Deconv3d,      Y, N, N, N),
             "Div":          (self.test_Div,           Y, Y, Y, Y),
@@ -2481,6 +2482,40 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(3, 8, 16, 32).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_DeconvDynW(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.deconv = nn.ConvTranspose2d(in_channels=8,
+                                                 out_channels=8,
+                                                 kernel_size=2,
+                                                 stride=2,
+                                                 padding=0,
+                                                 output_padding=0,
+                                                 groups=1,
+                                                 bias=False,
+                                                 dilation=1)
+
+            def forward(self, x, y):
+                output_padding = self.deconv._output_padding(
+                    x,
+                    None,
+                    self.deconv.stride,
+                    self.deconv.padding,
+                    self.deconv.kernel_size,  # type: ignore[arg-type]
+                    2,
+                    self.deconv.dilation
+                )  # type: ignore[arg-type]
+
+                out = F.conv_transpose2d(x, y, None, [2, 2], 0, output_padding, 1, 1)
+                return out
+
+        x = torch.randn(3, 8, 16, 32).float()
+        y = torch.randn(8, 8, 2, 2).float()
+        self.torch_and_test((x,y), Model(), case_name)
 
     def test_Deconv2(self, case_name):
         groups, kernel = 4, 4

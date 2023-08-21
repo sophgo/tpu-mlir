@@ -145,7 +145,24 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
   std::vector<int64_t> filter_shape = {1, attr.oc, attr.ic / attr.g,
                                        attr.kh * attr.kw};
   auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-  op.getFilter().setType(new_filter_type);
+
+
+  if (!isa<top::WeightOp>(op.getOperand(1).getDefiningOp())) {
+    // dynamic op, usually used in GAN
+    rewriter.setInsertionPointAfterValue(op.getOperand(1));
+    auto name = module::getName(op.getOutput());
+    auto reshape_loc =
+        NameLoc::get(rewriter.getStringAttr(name.str() + "_reorder_filter"));
+    auto new_type = op.getOperand(1).getType();
+    auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
+        reshape_loc, new_type, ValueRange{op.getOperand(1)});
+    new_reshape_op.getOutput().setType(new_filter_type);
+
+    new_reshape_op->setAttr("dynamic_weight", rewriter.getBoolAttr(true));
+    op.setOperand(1, new_reshape_op);
+  } else {
+    op.getFilter().setType(new_filter_type);
+  }
 
   // bias op
   if (attr.with_bias) {

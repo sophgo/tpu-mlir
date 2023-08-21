@@ -59,14 +59,6 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
 
 LogicalResult tpu::Conv2DOp::init(InferenceParameter &p) {
   auto conv = new Conv();
-  auto attr = parseParam();
-  if (module::isUniformQuantized(getOutput()) && attr.has_bias) {
-    attr.do_relu = false;
-    for (int i = 0; i < attr.oc; i++) {
-      p.inputs[2][i] = 0.f;
-    }
-  }
-  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)conv;
   return success();
 }
@@ -84,6 +76,14 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto conv = (Conv *)p.handle;
+  auto attr = parseParam();
+  if (module::isUniformQuantized(getOutput()) && attr.has_bias) {
+    attr.do_relu = false;
+    for (int i = 0; i < attr.oc; i++) {
+      p.inputs[2][i] = 0.f;
+    }
+  }
+  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   conv->run();
   // requant
   auto out_type = module::getStorageType(getOutput());

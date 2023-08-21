@@ -137,6 +137,7 @@ bool isUnranked(Value v);
 void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape);
 bool isSign(Value v);
 bool isWeight(Value v);
+bool isDynWeight(Value v);
 bool isShapeRelatedOp(Value v);
 bool isAllWeight(Operation *op);
 bool isNone(Value v);
