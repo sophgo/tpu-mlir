@@ -994,7 +994,7 @@ protected:
           top::MulConstOp mcop = NULL;
           if (isa<top::AddOp>(sm.getInput().getDefiningOp()))
             addop1 = dyn_cast_or_null<top::AddOp>(sm.getInput().getDefiningOp());
-          if (!addop1.getOutput().hasOneUse())
+          if (!addop1 || !addop1.getOutput().hasOneUse())
             return;
           for (auto in:addop1.getOperands()) {
             top::MulConstOp mcop_ = NULL;
