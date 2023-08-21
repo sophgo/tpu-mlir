@@ -743,7 +743,7 @@ class OnnxConverter(BaseConverter):
     def convert_flatten_op(self, onnx_node):
         assert (onnx_node.op_type == "Flatten")
         op = self.getOperand(onnx_node.inputs[0])
-        axis = onnx_node.attrs.get('axis', 0)
+        axis = onnx_node.attrs.get('axis', 1)
         new_op = top.FlattenOp(self.unranked_type,
                                op,
                                start_dim=axis,
