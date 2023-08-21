@@ -169,7 +169,7 @@ class TensorCompare():
                 cosine_similarity = 0.0
             # measure euclidean similarity
             ed = self.euclidean_distance(d1_loop, d2_loop)
-            sr = self.square_rooted((d1_loop + d2_loop) / 2)
+            sr = self.square_rooted((d1_loop + d2_loop) / 2) + 1e-7
             if (np.isinf(ed) or np.isinf(sr)):
                 euclidean_similarity = 0.0
             else:
