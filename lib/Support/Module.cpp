@@ -33,6 +33,7 @@ struct Attr {
   static constexpr llvm::StringRef STEP = "module.step";
   static constexpr llvm::StringRef INPUTS = "module.inputs";
   static constexpr llvm::StringRef OUTPUTS = "module.outputs";
+  static constexpr llvm::StringRef W8A16_LINEAR = "module.w8a16_linear";
 };
 
 static ModuleOp m = nullptr;
@@ -952,6 +953,17 @@ bool isAsymmetric() {
 
 void setAsymmetric(bool is_asymmetric) {
   m->setAttr(Attr::ASYMMETRIC, BoolAttr::get(ctx, is_asymmetric));
+}
+
+bool isW8A16Linear() {
+  if (m->hasAttrOfType<BoolAttr>(Attr::W8A16_LINEAR)) {
+    return m->getAttrOfType<BoolAttr>(Attr::W8A16_LINEAR).getValue();
+  }
+  return false;
+}
+
+void setW8A16Linear(bool is_w8a16linear) {
+  m->setAttr(Attr::W8A16_LINEAR, BoolAttr::get(ctx, is_w8a16linear));
 }
 
 State getState() {
