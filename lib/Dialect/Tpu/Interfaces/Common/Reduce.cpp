@@ -190,3 +190,41 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+// Reduce (f32) -> Cast(f32-f16) -> Cast(f16-f32) -> Active(f32)
+LogicalResult tpu::ReduceOp::canonicalize(tpu::ReduceOp op,
+                                           PatternRewriter &rewriter){
+
+    auto opt = op.getOutput();
+    if (!opt.hasOneUse()) {
+      return failure();
+    }
+
+    auto next_op_ = *opt.user_begin();
+    auto castf16 = dyn_cast<tpu::CastOp>(next_op_);
+    if (!castf16 || !module::getElementType(castf16.getInput()).isF32()) {
+      return failure();
+    }
+
+    next_op_ = *castf16.getOutput().user_begin();
+    auto castf32 = dyn_cast<tpu::CastOp>(next_op_);
+    if (!castf32 || !module::getElementType(castf32.getOutput()).isF32()) {
+      return failure();
+    }
+
+    next_op_ = *castf32.getOutput().user_begin();
+    auto active = dyn_cast<tpu::ActiveOp>(next_op_);
+    if (!active) {
+      return failure();
+    }
+
+    active.setOperand(opt);
+    rewriter.replaceAllUsesWith(castf16.getOutput(), active.getInput());
+    // erase reversed
+    rewriter.eraseOp(castf32);
+    rewriter.eraseOp(castf16);
+
+    active.dump();
+    return success();
+}
+
