@@ -166,26 +166,26 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
     if (!castInputOp || castInputOp->hasOneUse() == false) {
       return failure();
     }
-    auto pre_in = castInputOp.getInput();
-    if (out_type == pre_in.getType()) {
+    auto pre_cast_in = castInputOp.getInput();
+    if (out_type == pre_cast_in.getType()) {
       // for example, int32 cast f16 cast int32 => remove these two cast
-      rewriter.replaceOp(op, {pre_in});
+      rewriter.replaceOp(op, {pre_cast_in});
       return success();
     }
     bool is_qtype_out = module::isUniformQuantized(out_type);
     bool is_qtype_in = module::isUniformQuantized(in);
-    bool is_qtype_pre_in = module::isUniformQuantized(pre_in);
+    bool is_qtype_pre_in = module::isUniformQuantized(pre_cast_in);
     if (false == is_qtype_out && false == is_qtype_pre_in) {
       // for example, int32 cast int8 cast f16 => int32 cast f16
-      op->setOperand(0, pre_in);
+      op->setOperand(0, pre_cast_in);
       rewriter.eraseOp(castInputOp);
       return success();
     }
     if (is_qtype_out && false == is_qtype_in && false == is_qtype_pre_in) {
-      auto pre_stype = module::getStorageType(pre_in);
+      auto pre_stype = module::getStorageType(pre_cast_in);
       if (pre_stype.isa<mlir::FloatType>()) {
         // for example, f32 cast f16, f16 cast int8 => f32 cast int8
-        op->setOperand(0, pre_in);
+        op->setOperand(0, pre_cast_in);
         rewriter.eraseOp(castInputOp);
         return success();
       }
@@ -205,7 +205,7 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
             "quant_mode",
             tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
         rewriter.replaceOpWithNewOp<tpu::RequantIntOp>(
-            op, op.getOutput().getType(), ValueRange{pre_in}, attrs);
+            op, op.getOutput().getType(), ValueRange{pre_cast_in}, attrs);
         return success();
       }
     }

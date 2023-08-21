@@ -2134,6 +2134,7 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
     OptionalAttr<I64ArrayAttr>:$rshift
   );
 
+  let hasCanonicalizeMethod = 1;
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
     reduce_attr_t parseParam();
