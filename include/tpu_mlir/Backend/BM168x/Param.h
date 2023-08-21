@@ -91,20 +91,20 @@ typedef enum {
 } ROUND_MODE_T;
 
 typedef enum {
-  BMNET_NEURON = 0,         // Addr align, h*w align
-  BMNET_COEFF  = 1,         // Addr unalign, h*w compact
-  BMNET_COEFF_NEURON = 2,   // Addr align, h*w compact
+  BMNET_NEURON = 0,       // Addr align, h*w align
+  BMNET_COEFF = 1,        // Addr unalign, h*w compact
+  BMNET_COEFF_NEURON = 2, // Addr align, h*w compact
   BMNET_COEFF_FC = 3,
   BMNET_COEFF_WINOGRAD = 4,
   BMNET_NEURON_FC = 5,
-  BMNET_NEURON_CONST = 6,   // Addr align, h*w align
+  BMNET_NEURON_CONST = 6, // Addr align, h*w align
   BMNET_NEURON_SHAPE = 7,
   BMNET_NEURON_CPU = 8,
   BMNET_NEURON_ARRAY = 9,
   BMNET_NEURON_FLOW = 10,
   BMNET_NEURON_3IC = 11,
   BMNET_CPU_CONST = 12,
-  BMNET_COEFF_ALIGN = 13,   // Addr align, h*w align
+  BMNET_COEFF_ALIGN = 13, // Addr align, h*w align
   TENSOR_TYPE_NUM,
   TENSOR_UNKNOWN = -1,
 } TENSOR_TYPE_T;
@@ -204,46 +204,46 @@ typedef enum {
 } arg_method_t;
 
 typedef enum {
-    UNARY_F32_ABS,
-    UNARY_F32_ACOSH,
-    UNARY_F32_ARCCOS,
-    UNARY_F32_ARCSIN,
-    UNARY_F32_ASINH,
-    UNARY_F32_ATANH,
-    UNARY_F32_CEIL,
-    UNARY_F32_COS,
-    UNARY_F32_COSH,
-    UNARY_F32_COT,
-    UNARY_F32_EXP,
-    UNARY_F32_EXPM1,
-    UNARY_F32_FLOOR,
-    UNARY_F32_IPOWER,
-    UNARY_F32_SQUARE,
-    UNARY_F32_LOG,
-    UNARY_F32_LOG1P,
-    UNARY_F32_PRELU,
-    UNARY_F32_PRELU_N,
-    UNARY_F32_RELU,
-    UNARY_F32_RELU_N,
-    UNARY_F32_ELU,
-    UNARY_F32_ROUND,
-    UNARY_F32_RSQRT,
-    UNARY_F32_SIGMOID,
-    UNARY_F32_SIGN,
-    UNARY_F32_SIN,
-    UNARY_F32_SINH,
-    UNARY_F32_SQRT,
-    UNARY_F32_TAN,
-    UNARY_F32_TANH,
-    UNARY_F32_TO_I32,
-    UNARY_F32_TRIM,
-    UNARY_I32_TO_F32,
-    UNARY_U32_TO_F32,
-    UNARY_U8_TO_F32,
-    UNARY_F32_MISH,
-    UNARY_F32_SWISH,
-    UNARY_F32_IS_FINITE,
-    UNARY_F32_GELU,
+  UNARY_F32_ABS,
+  UNARY_F32_ACOSH,
+  UNARY_F32_ARCCOS,
+  UNARY_F32_ARCSIN,
+  UNARY_F32_ASINH,
+  UNARY_F32_ATANH,
+  UNARY_F32_CEIL,
+  UNARY_F32_COS,
+  UNARY_F32_COSH,
+  UNARY_F32_COT,
+  UNARY_F32_EXP,
+  UNARY_F32_EXPM1,
+  UNARY_F32_FLOOR,
+  UNARY_F32_IPOWER,
+  UNARY_F32_SQUARE,
+  UNARY_F32_LOG,
+  UNARY_F32_LOG1P,
+  UNARY_F32_PRELU,
+  UNARY_F32_PRELU_N,
+  UNARY_F32_RELU,
+  UNARY_F32_RELU_N,
+  UNARY_F32_ELU,
+  UNARY_F32_ROUND,
+  UNARY_F32_RSQRT,
+  UNARY_F32_SIGMOID,
+  UNARY_F32_SIGN,
+  UNARY_F32_SIN,
+  UNARY_F32_SINH,
+  UNARY_F32_SQRT,
+  UNARY_F32_TAN,
+  UNARY_F32_TANH,
+  UNARY_F32_TO_I32,
+  UNARY_F32_TRIM,
+  UNARY_I32_TO_F32,
+  UNARY_U32_TO_F32,
+  UNARY_U8_TO_F32,
+  UNARY_F32_MISH,
+  UNARY_F32_SWISH,
+  UNARY_F32_IS_FINITE,
+  UNARY_F32_GELU,
 } UNARY_FUNC_TYPE;
 // -------------------------------------------------------------------
 // Struct Definition
@@ -771,75 +771,74 @@ typedef struct layer_norm_local_spec {
 } layer_norm_local_spec_t;
 
 typedef struct rms_norm_common_spec {
-    float  eps;
-    int    affine;
+  float eps;
+  int affine;
 } rms_norm_common_spec_t;
 
 typedef struct rms_norm_global_spec {
-    rms_norm_common_spec_t common;
+  rms_norm_common_spec_t common;
 } rms_norm_global_spec_t;
 
 typedef struct rms_norm_local_spec {
-    rms_norm_common_spec_t common;
-    uint32_t buffer_addr;
+  rms_norm_common_spec_t common;
+  uint32_t buffer_addr;
 } rms_norm_local_spec_t;
 
 typedef struct instance_norm_common_spec {
-    float  eps;
-    int    affine;
+  float eps;
+  int affine;
 } instance_norm_common_spec_t;
 
 typedef struct instance_norm_global_spec {
-    instance_norm_common_spec_t common;
+  instance_norm_common_spec_t common;
 } instance_norm_global_spec_t;
 
 typedef struct instance_norm_local_spec {
-    instance_norm_common_spec_t common;
-    uint32_t buffer_addr;
+  instance_norm_common_spec_t common;
+  uint32_t buffer_addr;
 } instance_norm_local_spec_t;
 
 typedef struct group_norm_common_spec {
-    int group_num;
-    float eps;
-    int affine;
+  int group_num;
+  float eps;
+  int affine;
 } group_norm_common_spec_t;
 
 typedef struct group_norm_local_param {
-    group_norm_common_spec_t common;
-    uint32_t buffer_addr;
+  group_norm_common_spec_t common;
+  uint32_t buffer_addr;
 } group_norm_local_param_t;
 
 typedef struct group_norm_global_param {
-    group_norm_common_spec_t common;
-    int axis;
+  group_norm_common_spec_t common;
+  int axis;
 } group_norm_global_param_t;
 
-
 typedef enum {
-    GridSampleNearest = 0,
-    GridSampleBilinear = 1,
+  GridSampleNearest = 0,
+  GridSampleBilinear = 1,
 } GridSampleInterpMode;
 
 typedef enum {
-    GridSampleZeros = 0,
-    GridSampleBorder = 1,
-    GridSampleReflection = 2,
+  GridSampleZeros = 0,
+  GridSampleBorder = 1,
+  GridSampleReflection = 2,
 } GridSamplePaddingMode;
 
 typedef struct {
-    unsigned long long input_addr;
-    unsigned long long grid_addr;
-    unsigned long long output_addr;
-    int input_n;
-    int input_c;
-    int input_h;
-    int input_w;
-    int output_h;
-    int output_w;
-    int align_corners;
-    GridSampleInterpMode interp_mode;
-    GridSamplePaddingMode padding_mode;
-    int dtype;
+  unsigned long long input_addr;
+  unsigned long long grid_addr;
+  unsigned long long output_addr;
+  int input_n;
+  int input_c;
+  int input_h;
+  int input_w;
+  int output_h;
+  int output_w;
+  int align_corners;
+  GridSampleInterpMode interp_mode;
+  GridSamplePaddingMode padding_mode;
+  int dtype;
 } grid_sample_global_param_t;
 
 typedef struct tranpose_spec {
@@ -915,9 +914,9 @@ typedef struct interp_global_spec {
 } interp_global_spec_t;
 
 typedef struct interp_global_param {
-    interp_global_spec_t spec;
-    int if_getting_buffer_size;
-    uint64_t* buffer_size_ptr;
+  interp_global_spec_t spec;
+  int if_getting_buffer_size;
+  uint64_t *buffer_size_ptr;
 } interp_global_param_t;
 
 typedef struct interp_local_spec {
@@ -1079,6 +1078,11 @@ typedef struct fc_global_spec {
   int32_t round_mode;
 } fc_global_spec_t;
 
+typedef struct w8a16_matmul_spec {
+  bool has_bias;
+  bool R_trans;
+} w8a16_matmul_spec_t;
+
 typedef struct batch_matmul_common_spec {
   int Y_dtype;
   int L_trans;
@@ -1191,8 +1195,7 @@ typedef struct {
 
 typedef struct {
   int group;
-}
-shuffle_channel_param_t;
+} shuffle_channel_param_t;
 
 typedef struct strideslice_common_spec {
   int begin_mask;
@@ -1225,7 +1228,7 @@ typedef struct squeeze_dims_common_spec {
 } squeeze_dims_common_spec_t;
 
 typedef struct squeeze_dims_global_spec {
-    squeeze_dims_common_spec_t common;
+  squeeze_dims_common_spec_t common;
 } squeeze_dims_global_spec_t;
 typedef struct shape_slice_param {
   int begin_index[MAX_SHAPE_DIMS];
@@ -1316,22 +1319,22 @@ typedef struct {
 } topk_spec_t;
 
 typedef struct attention_common_spec {
-    int head;
-    float scale;
-    int hasbias;
-    int hasmusk;
-    int input_num;
-    int dim;
-    int quant_param[16];
+  int head;
+  float scale;
+  int hasbias;
+  int hasmusk;
+  int input_num;
+  int dim;
+  int quant_param[16];
 } attention_common_spec_t;
 
 typedef struct attention_global_spec {
-    attention_common_spec_t common;
+  attention_common_spec_t common;
 } attention_global_spec_t;
 
 typedef struct attention_local_spec {
-    attention_common_spec_t common;
-    uint32_t buffer_addr;
+  attention_common_spec_t common;
+  uint32_t buffer_addr;
 } attention_local_spec_t;
 
 typedef struct {
@@ -1428,11 +1431,11 @@ typedef struct pooling3d_spec {
 } pooling3d_spec_t;
 
 typedef struct arg_common_spec {
-  int  axis;
-  int  method;
-  int  is_index_int32;
-  int  select_last_index;
-  int  need_val;
+  int axis;
+  int method;
+  int is_index_int32;
+  int select_last_index;
+  int need_val;
 } arg_common_spec_t;
 
 typedef struct arg_global_spec {
@@ -1471,41 +1474,36 @@ typedef struct conv3d_common_spec {
   int32_t kzp_dtype;
 } conv3d_common_spec_t;
 
-typedef struct dyn_conv3d_local_spec
-{
-    conv3d_common_spec_t common;
-    uint32_t kzp_local_addr;
-    uint32_t pad_local_addr;
-    uint32_t buffer_local_addr;
-    // For dynamic inference
-    uint32_t concat_c;
-    int32_t concat_c_idx;
-    int32_t reference_id;
+typedef struct dyn_conv3d_local_spec {
+  conv3d_common_spec_t common;
+  uint32_t kzp_local_addr;
+  uint32_t pad_local_addr;
+  uint32_t buffer_local_addr;
+  // For dynamic inference
+  uint32_t concat_c;
+  int32_t concat_c_idx;
+  int32_t reference_id;
 } dyn_conv3d_local_spec_t;
 
-typedef struct dyn_conv3d_local_param
-{
-    dyn_conv3d_local_spec_t spec;
+typedef struct dyn_conv3d_local_param {
+  dyn_conv3d_local_spec_t spec;
 } dyn_conv3d_local_param_t;
 
-typedef struct dyn_conv3d_global_spec
-{
-    conv3d_common_spec_t common;
-    uint64_t kzp_global_addr;
-    uint64_t pad_global_addr;
-    // For dynamic inference
-    uint32_t concat_c;
-    int32_t concat_c_idx;
-    int32_t reference_id;
+typedef struct dyn_conv3d_global_spec {
+  conv3d_common_spec_t common;
+  uint64_t kzp_global_addr;
+  uint64_t pad_global_addr;
+  // For dynamic inference
+  uint32_t concat_c;
+  int32_t concat_c_idx;
+  int32_t reference_id;
 } dyn_conv3d_global_spec_t;
 
-typedef struct dyn_conv3d_global_param
-{
-    dyn_conv3d_global_spec_t spec;
+typedef struct dyn_conv3d_global_param {
+  dyn_conv3d_global_spec_t spec;
 } dyn_conv3d_global_param_t;
 
-typedef struct dyn_deconv_common_spec
-{
+typedef struct dyn_deconv_common_spec {
   int groups;
   int output_c;
   int kernel[2];     // (kh, kw)
@@ -1532,16 +1530,14 @@ typedef struct dyn_deconv_common_spec
   int kzp_dtype;
 } dyn_deconv_common_spec_t;
 
-typedef struct dyn_deconv_local_spec
-{
+typedef struct dyn_deconv_local_spec {
   dyn_deconv_common_spec_t common;
   unsigned int buffer_local_addr;
   unsigned int kzp_local_addr;
   unsigned int pad_insert_local_addr;
 } dyn_deconv_local_spec_t;
 
-typedef struct dyn_deconv_global_spec
-{
+typedef struct dyn_deconv_global_spec {
   dyn_deconv_common_spec_t common;
   uint64_t kzp_global_addr;
   uint64_t pad_insert_global_addr;
@@ -1585,14 +1581,14 @@ typedef struct {
 } gru_common_param_t;
 
 typedef struct {
-    gru_common_param_t common;
-    uint64_t xGlobalAddr;
-    uint64_t h0GlobalAddr;
-    uint64_t yGlobalAddr;
-    uint64_t hnGlobalAddr;
-    uint64_t wGlobalAddr;
-    uint64_t bGlobalAddr;
-    uint64_t zGlobalAddr;
+  gru_common_param_t common;
+  uint64_t xGlobalAddr;
+  uint64_t h0GlobalAddr;
+  uint64_t yGlobalAddr;
+  uint64_t hnGlobalAddr;
+  uint64_t wGlobalAddr;
+  uint64_t bGlobalAddr;
+  uint64_t zGlobalAddr;
 } dyn_glu_global_spec_t;
 
 typedef struct {
@@ -1650,7 +1646,7 @@ typedef struct {
 
 typedef struct {
   unsigned int filled_value;
-  int          dtype;
+  int dtype;
 } constantfill_common_spec_t;
 
 typedef struct shape_pack_param {
@@ -1685,14 +1681,14 @@ typedef struct nms_common_spec {
   float score_threshold;
   int keep_topk_per_class;
   int center_point_box;
-  int  input_num;
-  int onnx_nms;//1: onnx_nms
+  int input_num;
+  int onnx_nms; // 1: onnx_nms
 } nms_common_spec_t;
 
 typedef struct dyn_nms_global_spec {
-    nms_common_spec_t common;
-    unsigned long long buffer_addr;
-    int detected_box_num;
+  nms_common_spec_t common;
+  unsigned long long buffer_addr;
+  int detected_box_num;
 } dyn_nms_global_spec_t;
 #ifdef __cplusplus
 }

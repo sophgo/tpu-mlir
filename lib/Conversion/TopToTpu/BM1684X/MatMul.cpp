@@ -31,8 +31,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   }
   int64_t left_num_dims = module::getShape(op.getInput()).size();
   if (module::isWeight(op.getInput())) {
-      LoweringF16(rewriter, op);
-      return;
+    LoweringF16(rewriter, op);
+    return;
   }
   if (auto filterOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
     auto filter_f32 = filterOp.read<float>();
@@ -150,7 +150,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
   // refer quantize_convlike_layer_int8
   llvm::errs() << "start MatMul LoweringINT4, call LoweringINT8, name:"
                << module::getName(op.getOperation()).str() << "\n";
-  //return LoweringINT8(rewriter, op, asymmetric);
+  // return LoweringINT8(rewriter, op, asymmetric);
 
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
@@ -165,8 +165,10 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
   int64_t in_int8_zp;
   bool all_next_layer_is_int8 = true;
   bool all_next_layer_is_int4 = true;
-  double out_int8_scale = op.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
-  double out_int8_zp = op.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble();
+  double out_int8_scale =
+      op.getOutInt8Scale().value_or(APFloat(1.0)).convertToDouble();
+  double out_int8_zp =
+      op.getOutInt8Zp().value_or(APFloat(0.0)).convertToDouble();
   int64_t in_zp = 0, out_zp = 0;
   double in_scale = 1, out_scale = 1, w_scale = 1;
 
@@ -185,17 +187,18 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       //   }
       // }
       // if (!find) {
-        // 存在int4的输入scale，说明上一层是int8，故输入tensor也是int8，需要requant为int4
+      // 存在int4的输入scale，说明上一层是int8，故输入tensor也是int8，需要requant为int4
       in_scale =
           op->getAttr("in_int4_scale").cast<FloatAttr>().getValueAsDouble();
       in_zp = op->getAttr("in_int4_zp").cast<FloatAttr>().getValueAsDouble();
       module::getScaleAndZeroPoint(op.getInput(), in_int8_scale, in_int8_zp,
-                                  asymmetric);
+                                   asymmetric);
       auto output_type = getQuantIntType(op.getInput(), in_scale, in_zp, 4);
       double int4_scale = in_int8_scale / in_scale; // 将int8转为int4的rq参数
       double offset = in_zp - in_int8_zp * int4_scale;
       auto to_name = "to_b4_for_" + module::getName(op.getOperation()).str();
-      value = do_requantFp(op.getInput(), int4_scale, offset, output_type, to_name);
+      value =
+          do_requantFp(op.getInput(), int4_scale, offset, output_type, to_name);
       operands.push_back(value);
       // }
     } else { // 输入tensor也是int4
@@ -334,14 +337,15 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     // to int32, and then requant to int8
     auto convType = RankedTensorType::get(module::getShape(op.getOutput()),
                                           rewriter.getI32Type());
-    auto matmul_int32_name = module::getName(op.getOperation()).str() + "_int32";
+    auto matmul_int32_name =
+        module::getName(op.getOperation()).str() + "_int32";
     auto name_loc = NameLoc::get(rewriter.getStringAttr(matmul_int32_name));
     auto matmul_int32_out =
         rewriter.create<tpu::MatMulOp>(name_loc, convType, operands, attrs);
 
-    std::vector<Operation*> int8_op;
-    std::vector<Operation*> int4_op;
-    std::vector<Operation*> cur_op;
+    std::vector<Operation *> int8_op;
+    std::vector<Operation *> int4_op;
+    std::vector<Operation *> cur_op;
     for (auto user : op->getUsers()) {
       if (!module::isInt4Op(user)) {
         int8_op.push_back(user);
@@ -357,12 +361,14 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       std::string w_name, requant_name;
       if (i == 0) {
         w_name = "w_quant_int8_for_" + module::getName(op.getOperation()).str();
-        requant_name = "requant_int8_for_" + module::getName(op.getOperation()).str();
+        requant_name =
+            "requant_int8_for_" + module::getName(op.getOperation()).str();
         cur_op.swap(int8_op);
         newType = getQuantIntType(op.getOutput(), out_int8_scale, out_int8_zp);
       } else {
         w_name = "w_quant_int4_for_" + module::getName(op.getOperation()).str();
-        requant_name = "requant_int4_for_" + module::getName(op.getOperation()).str();
+        requant_name =
+            "requant_int4_for_" + module::getName(op.getOperation()).str();
         cur_op.swap(int4_op);
         newType = getQuantInt4Type(op.getOutput(), asymmetric);
       }
@@ -374,8 +380,8 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
         quant_w_size = 2;
         quant.resize(quant_w_size, 0);
         quant[i * 2] = scale;
-        quant[i * 2 + 1] = ((-(int32_t)shift) & 0xffff) |
-                          (((int32_t)out_zp & 0xffff) << 16);
+        quant[i * 2 + 1] =
+            ((-(int32_t)shift) & 0xffff) | (((int32_t)out_zp & 0xffff) << 16);
       } else {
         quant_w_size = 3;
         quant.resize(quant_w_size, 0);
@@ -387,14 +393,16 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
                                               rewriter.getI32Type());
       auto quant_value = top::WeightOp::create(op, w_name, quant, quant_type);
 
-      auto newValue = do_requant(requant_name_loc, matmul_int32_out, quant_value, newType,
-                                true, tpu::RequantMode::MultiplierShift);
+      auto newValue =
+          do_requant(requant_name_loc, matmul_int32_out, quant_value, newType,
+                     true, tpu::RequantMode::MultiplierShift);
 
       for (auto op2 : cur_op) {
         std::string str = module::getName(op2).str();
         for (uint32_t idx = 0; idx < op2->getNumOperands(); idx++) {
           if (op.getOutput() == op2->getOperand(idx)) {
-            llvm::errs() << "setOperand, idx:" << idx <<",name:"<<str<< "\n";
+            llvm::errs() << "setOperand, idx:" << idx << ",name:" << str
+                         << "\n";
             op2->setOperand(idx, newValue);
           }
         }
@@ -409,8 +417,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
 
     auto newType = getQuantInt4Type(op.getOutput(), asymmetric);
     if (all_next_layer_is_int8) {
-      newType =
-          getQuantIntType(op.getOutput(), out_int8_scale, out_int8_zp);
+      newType = getQuantIntType(op.getOutput(), out_int8_scale, out_int8_zp);
     }
     auto newOp =
         rewriter.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
@@ -445,7 +452,16 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
   std::vector<Value> operands;
   for (int i = 0; i < op->getNumOperands(); ++i) {
     auto in = op->getOperand(i);
+
     if (auto wOp = dyn_cast<top::WeightOp>(in.getDefiningOp())) {
+      // only linear layer will be replaced
+      if (i == 1 && module::isW8A16Linear() &&
+          wOp.getType().cast<RankedTensorType>().getShape().size() == 2) {
+        auto noneOp = module::getNoneOp(op);
+        operands.insert(operands.end(), {in, noneOp, op->getOperand(2)});
+        rewriter.replaceOpWithNewOp<tpu::W8A16MatMulOp>(op, newType, operands);
+        return;
+      }
       if (i == 2 && bias_use_fp32) {
         operands.push_back(in);
       } else {
@@ -457,7 +473,6 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
   }
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
                                              op->getAttrs());
-
 }
 
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
@@ -508,8 +523,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
         "right_zp", rewriter.getI64IntegerAttr(right_zero_point)));
 
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
-  bool can_merge_izp =
-      input_zeroPoint == 0 || module::isWeight(op.getRight());
+  bool can_merge_izp = input_zeroPoint == 0 || module::isWeight(op.getRight());
   int K_idx = op.getRightTranspose() ? 1 : 0;
   int N_idx = op.getRightTranspose() ? 0 : 1;
   if (p.batch > 1) {

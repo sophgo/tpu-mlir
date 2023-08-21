@@ -607,6 +607,7 @@ public:
       module::setAsymmetric(isAsymmetric);
       calibration_process();
     }
+    module::setW8A16Linear(isW8A16Linear);
     init_qtable();
 
     if (module::isBM1684XFamily() && !LoweringConfig::isQuantized &&
