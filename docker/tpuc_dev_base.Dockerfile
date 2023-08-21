@@ -7,8 +7,8 @@ ENV TZ=Asia/Shanghai
 # stage 0: base
 # ********************************************************************************
 
-RUN apt-get update && apt-get install -y apt-transport-https ca-certificates && \
-    apt-get install -y build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    apt-transport-https ca-certificates build-essential \
     git vim sudo \
     # python
     python3-dev \
@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y apt-transport-https ca-certificates && 
     bsdmainutils \
     gdb \
     ccache \
+    git-lfs \
     clang lld lldb clang-format \
     libomp-dev \
     # for opencv
@@ -36,7 +37,7 @@ RUN apt-get update && apt-get install -y apt-transport-https ca-certificates && 
     # for document
     texlive-xetex \
     # fix bug: https://bugs.archlinux.org/task/67856
-    texlive-lang-chinese && \
+    texlive-lang-chinese texlive-fonts-recommended && \
     # clenup
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -51,6 +52,14 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmak
     && chmod u+x /tmp/cmake-install.sh \
     && /tmp/cmake-install.sh --skip-license --prefix=/usr/local \
     && rm /tmp/cmake-install.sh
+
+ENV CATCH3_VERSION 3.4.0
+
+RUN git clone --branch v${CATCH3_VERSION} https://github.com/catchorg/Catch2.git && \
+    cd Catch2 && \
+    cmake -Bbuild -H. -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    cmake --build build/ --target install && \
+    rm -rf /Catch2 /tmp/* ~/.cache/*
 
 ARG FLATBUFFERS_VERSION="e2be0c0b0605b38e11a8710a8bae38d7f86a7679"
 RUN git clone https://github.com/google/flatbuffers.git &&\
@@ -128,8 +137,8 @@ RUN git clone https://github.com/llvm/llvm-project.git && \
     -DLLVM_INSTALL_UTILS=ON \
     -DLLVM_TARGETS_TO_BUILD="" \
     -DLLVM_ENABLE_ASSERTIONS=ON \
-    -DLLVM_INCLUDE_TESTS=OFF \
     -DMLIR_INCLUDE_TESTS=OFF \
+    -DLLVM_INSTALL_GTEST=ON \
     -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
@@ -156,7 +165,7 @@ RUN TZ=Asia/Shanghai \
 # ********************************************************************************
 FROM mlir_builder as final
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     # caffe dependency
     libboost-python1.74.0 \
     libboost-filesystem1.74.0 \

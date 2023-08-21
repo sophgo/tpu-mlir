@@ -1,4 +1,4 @@
-FROM sophgo/tpuc_dev:v3.0-base
+FROM sophgo/tpuc_dev:v3.1-base
 ARG DEBIAN_FRONTEND="noninteractive"
 ENV TZ=Asia/Shanghai
 
