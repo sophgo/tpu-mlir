@@ -15,14 +15,13 @@
 
 using namespace std;
 
-
 // show usage of tool
 static void usage(void) {
   cout << "Usage:" << endl;
   // clang-format off
   cout << "  model_tool" << endl
        << "    [bmodel]:" << endl
-       << "      --info model_file : show brief model info" << endl
+       << "      --info model_file : show brief model info, --all will show all hidden info" << endl
        << "      --chip model_file : show chip of model" << endl
        << "      --dynamic model_file : true or false" << endl
        << "      --print model_file : show detailed model info" << endl
@@ -54,12 +53,12 @@ static void print(const string &filename) {
   }
 }
 
-static void show(const string &filename) {
+static void show(const string &filename, bool all = false) {
   if (isCv18xx(filename)) {
     cvtool::Model model(filename);
     model.dump();
   } else {
-    bm_show(filename);
+    bm_show(filename, all);
   }
 }
 
@@ -142,7 +141,11 @@ int main(int argc, char **argv) {
   if (cmd == "--print") {
     print(argv[2]);
   } else if (cmd == "--info") {
-    show(argv[2]);
+    bool all = false;
+    if (argc == 4 && string(argv[3]) == "--all") {
+      all = true;
+    }
+    show(argv[2], true);
   } else if (cmd == "--chip") {
     show_chip(argv[2]);
   } else if (cmd == "--is_dynamic") {
