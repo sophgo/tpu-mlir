@@ -239,134 +239,89 @@ class learning_inputs:
         return self.num_sample
 
 class ref_tensors:
-    def __init__(self, loopnum, seg, buf_num=8):
-        self.loopnum = loopnum
+    def __init__(self, learner, inputs):
+        self.parser = learner.parser
+        self.module = learner.module
+        self.net_inputs = inputs
+        self.epoch_samples = inputs.num_sample
         self.ops = {}
-        self.dir = './buf/'
-        self.len = 0
-        self.seg = seg
-        self.cnt = {}
-        self.tensors = {}
-        self.batch_tensors = []
-        self.buffer = {}
-        self.atime = {}
-        self.buf_num = buf_num
-        self.lock = Lock()
-
-        if os.path.exists(self.dir):
-            if not os.path.isfile(self.dir+'0-0.npy'):
-                return
-            total = np.ceil(loopnum/seg)
-            cnt = 0
-            for i in np.arange(total):
-                if not os.path.isfile(self.dir+'0-'+str(int(i))+'.npy'):
-                    return
-                test = np.load(self.dir+'0-'+str(int(i))+'.npy')
-                cnt = cnt + test.shape[0]
-                del test
-            if cnt < loopnum:
-                print(
-                    f"samples in buf not enough, {cnt} vs {loopnum}, re run!")
-                import shutil
-                try:
-                    shutil.rmtree(self.dir)
-                    os.mkdir(self.dir)
-                except OSError as e:
-                    print("Error: %s - %s." % (e.filename, e.strerror))
-            self.len = cnt
-        else:
-            os.mkdir(self.dir)
-
-    def load(self, op, idx):
-        if op in self.ops:
-            fname = self.ops[op]
-        else:
-            self.ops[op] = str(len(self.ops))
-            fname = self.ops[op]
-        index = op+'+'+str(idx)
-        self.lock.acquire()
-        if index not in self.buffer:
-            self.buffer[index] = np.load(self.dir+fname+'-'+str(int(idx))+'.npy')
-        self.lock.release()
-        self.atime[index] = datetime.now()
-        if len(self.buffer) > self.buf_num:
-            self.lock.acquire()
-            t=datetime.now()
-            e=''
-            for i in self.buffer:
-                if self.atime[i] < t:
-                    t = self.atime[i]
-                    e = i
-            if e != index and (datetime.now()-self.atime[e]).total_seconds()>2:
-                del self.buffer[e]
-                del self.atime[e]
-            self.lock.release()
-        return self.buffer[index]
-
-
-    def save(self, cnt):
-        for op in self.ops:
-            fname = self.ops[op]
-            shape = list(np.expand_dims(self.batch_tensors[0][op], axis=0).shape)
-            if (cnt+1) % self.seg == 0:
-                shape[0] = self.seg
-            else:
-                shape[0] = (cnt+1) % self.seg
-            buf = np.zeros(tuple(shape), dtype=np.float32)
-            for i in np.arange(shape[0]):
-                buf[i] = np.expand_dims(self.batch_tensors[i][op], axis=0)
-            np.save(self.dir+fname+'-'+str(cnt//self.seg)+'.npy', buf)
-        self.batch_tensors = []
-        del buf
-        gc.collect()
+        self.ops_cnt = {}
+        self.ops_buffer = {}
+        self.init()
 
     def add_name(self, ops):
         for op in ops:
             if op in self.ops:
                 continue
             else:
-                self.ops[op] = str(len(self.ops))
+                self.ops[op] = 0
+                self.ops_cnt[op] = 0
 
-    def infer(self, module, data: dict, input_names: list):
-        for name in input_names:
-            module.set_tensor(name, data[name][0])
-        module.invoke()
-        outputs = {}
-        for name in module.output_names:
-            outputs[name] = module.get_tensor(name)
-        return outputs
+    def init(self):
+        self.add_name(self.module.all_tensor_names)
+        self.add_name(self.parser.get_op_name_list())
+        for op in self.ops:
+            self.ops[op] = len(self.parser.get_next_op_by_op_name(op))
+            if op in self.module.output_names:
+                self.ops[op] += 1
 
-    def gather_orig_tensors(self, learner, inputs, idx):
-        import sys
-        net_input = list(inputs.ref_activations[idx].keys())
-        outputs = self.infer(learner.module, inputs.ref_activations[idx], net_input)
-        tensors = {}
-        for name in self.ops:
-            tensors[name] = copy.deepcopy(learner.module.get_tensor(name))
-        self.batch_tensors.append(tensors)
+    def get(self, op, idx, quant=False, symetric=True):
+        if idx > self.epoch_samples:
+            print(f"requested idx out of range {idx} vs {self.epoch_samples}")
+        #if already buffered return the buffer
+        if op in self.ops_buffer:
+            return self.ops_buffer[op][idx]
+        elif op in self.net_inputs.ref_activations[0]:
+            return self.net_inputs.ref_activations[idx][op][0]
 
-    def gather(self, learner, inputs):
-        self.add_name(learner.module.all_tensor_names)
-        self.add_name(learner.parser.get_op_name_list())
-        if self.len < learner.num_sample:
-            pbar = tqdm(np.arange(learner.num_sample))
-            pbar.set_description("Gather ref ")
-            for loop in pbar:
-                self.gather_orig_tensors(learner, inputs, loop)
-                if (loop+1) % self.seg == 0 or ((loop) == (learner.num_sample - 1)):
-                    self.save(loop)
-                    gc.collect()
-
-    def get(self, op, loop):
-        if op in self.ops:
-            fname = self.ops[op]
-        else:
-            print(f'op not exist {op}')
-            print(self.ops)
+        #if not bufferred, generate all samples
+        inputs = self.parser.get_pre_op_by_op_name(op)
+        for in_ in inputs:
+            if in_ not in self.ops_buffer and in_ not in self.net_inputs.ref_activations[0]:
+                loger.logging(f'recursive get {in_}')
+                self.get(in_, idx, quant, symetric)
+                self.ops_cnt[in_] = self.ops[in_]
+        for l in range(self.epoch_samples):
+            for in_ in inputs:
+                if in_ in self.ops_buffer:
+                    self.module.set_tensor(in_, self.ops_buffer[in_][l])
+                elif in_ in self.net_inputs.ref_activations[0]:
+                    self.module.set_tensor(in_, self.net_inputs.ref_activations[l][in_][0])
+                outputs = self.module.invoke_at(op)
+                for out_ in self.parser.get_outputs_by_op_name(op):
+                    if out_ in self.ops and self.ops[out_] > 0:
+                        if out_ in self.ops_buffer:
+                            self.ops_buffer[out_].append(self.module.get_tensor(out_).copy())
+                        else:
+                            self.ops_buffer[out_] = []
+                            self.ops_buffer[out_].append(self.module.get_tensor(out_).copy())
+                    if l == 0:
+                        loger.logging(f'adding {out_}')
+        for out_ in self.parser.get_outputs_by_op_name(op):
+            if out_ in self.ops and self.ops[out_] > 0:
+                loger.logging(f'setting {out_} {self.ops[out_]}')
+                self.ops_cnt[out_] = self.ops[out_]
+        for in_ in inputs:
+            if in_ in self.ops_buffer:
+                self.ops_cnt[in_] -= 1
+                if self.ops_cnt[in_] == 0:
+                    del self.ops_buffer[in_]
+                    loger.logging(f'del {in_}')
+        if op not in self.ops_buffer:
+            print(f'{op} not in ref tensors!')
             sys.exit(1)
-        idx = loop//self.seg
-        data_all = self.load(op, idx)
-        return data_all[loop % self.seg]
+        return self.ops_buffer[op][idx]
+
+    def consumed_tensor(self, op):  # must call when loop over epoch of using the tensor is done
+        if op in self.net_inputs.ref_activations[0]:
+            return
+        if op not in self.ops_buffer:
+            print(f"{op} not in buffer when mark used!")
+            sys.exit(1)
+        else:
+            self.ops_cnt[op] -= 1
+            if self.ops_cnt[op] == 0:
+                del self.ops_buffer[op]
 
 class LrScheduler:
     def __init__(self, lr, max_iter, mode):
@@ -536,6 +491,7 @@ class LearningGptqWeight:
         self.num_sample = 0
         self.samples = {}
         self.epoch = args.epoch
+        self.ref_tensors = None
         self.pre_loss = {}
         self.post_loss = {}
         self.loss = {}
@@ -584,8 +540,10 @@ class LearningGptqWeight:
             else:
                 print("not support!")
                 sys.exit(1)
+    def restore_weight(self, op):
+        self.module.set_tensor(self.finetune_layer_weights[op], self.orig_weights[op])
 
-    def quant_requant_weight(self, op, blocksize=128, percdamp=0.01, groupsize=-1, bitwidth=8):
+    def quant_requant_weight(self, op, blocksize=128, percdamp=0.01, groupsize=-1, bitwidth=8, actorder=False):
         W = torch.Tensor(self.orig_weights[op].copy())
 
         tick  = time.time()
@@ -608,6 +566,11 @@ class LearningGptqWeight:
         dead = torch.diag(H) == 0
         H[dead, dead] = 1
         W[:, dead] = 0
+
+        if actorder:
+            perm = torch.argsort(torch.diag(H), descending=True)
+            W = W[:, perm]
+            H = H[perm][:, perm]
 
         Losses = torch.zeros_like(W)
         Q = torch.zeros_like(W)
@@ -651,9 +614,9 @@ class LearningGptqWeight:
 
             W[:, i2:] -= Err1.matmul(Hinv[i1:i2, i2:])
 
-        #torch.cuda.synchronize()
-        #print('time %.2f' % (time.time() - tick))
-        #print('error', torch.sum(Losses).item())
+        if actorder:
+            invperm = torch.argsort(perm)
+            Q = Q[:, invperm]
 
         if self.parser.get_op_type_by_op_name(op) == 'top.Conv':
             self.update_weight(op, Q.numpy().reshape(shape))
@@ -679,10 +642,10 @@ class LearningGptqWeight:
             print("not support!")
             sys.exit(1)
 
-    def set_op_inputs(self, op, loop, bitwidth=8):
+    def set_op_inputs(self, op, loop, bitwidth=8, quant=True):
         pre_ops = self.parser.get_pre_op_by_op_name(op)
         for pop in pre_ops:
-            shape = ref_all_tensor.get(pop, loop).shape
+            shape = self.ref_tensors.get(pop, loop).shape
             if pop not in self.module.all_tensor_names:
                 if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape':
                     pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
@@ -690,15 +653,36 @@ class LearningGptqWeight:
                 else:
                     print(f"{op} input {pop} not in all tensor list")
                     sys.exit(1)
-            d = ref_all_tensor.get(pop, loop).reshape(shape)
+            d = self.ref_tensors.get(pop, loop).reshape(shape)
             scale = self.scales[pop][0]
             unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
-            if scale != 1.0:
+            if scale != 1.0 and quant:
                 if self.support_unsigned:
                     d = quant_requant_active(d, scale, unsigned, bits=bitwidth)
                 else:
                     d = quant_requant_active(d, scale, False, bits=bitwidth)
             self.module.set_tensor(pop, d)
+
+    def get_op_input0(self, op, loop, bitwidth=8, quanted=False):
+        pre_ops = self.parser.get_pre_op_by_op_name(op)
+        for pop in pre_ops:
+            shape = self.ref_tensors.get(pop, loop).shape
+            if pop not in self.module.all_tensor_names:
+                if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape':
+                    pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
+                    pop=pre_pre_ops[0]
+                else:
+                    print(f"{op} input {pop} not in all tensor list")
+                    sys.exit(1)
+            d = self.ref_tensors.get(pop, loop).reshape(shape).copy()
+            scale = self.scales[pop][0]
+            unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
+            if scale != 1.0 and quanted:
+                if self.support_unsigned:
+                    d = quant_requant_active(d, scale, unsigned, bits=bitwidth)
+                else:
+                    d = quant_requant_active(d, scale, False, bits=bitwidth)
+            return d
 
     def update_weight(self, op, weight):
         self.param_back[self.finetune_layer_weights[op]] = weight
@@ -750,44 +734,6 @@ class LearningGptqWeight:
             inp = np.sqrt(2/self.samples[op])*inp
             self.H[op] += np.matmul(inp, inp.transpose())
 
-    def get_op_input0(self, op, loop):
-        pre_ops = self.parser.get_pre_op_by_op_name(op)
-        for pop in pre_ops:
-            shape = ref_all_tensor.get(pop, loop).shape
-            if pop not in self.module.all_tensor_names:
-                if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape':
-                    pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
-                    pop=pre_pre_ops[0]
-                else:
-                    print(f"{op} input {pop} not in all tensor list")
-                    sys.exit(1)
-            d = ref_all_tensor.get(pop, loop).reshape(shape)
-            return d.copy()
-
-    def op_first_input(self, op, loop, bitwidth=8):
-        pre_ops = self.parser.get_pre_op_by_op_name(op)
-        if len(pre_ops) != 1:
-            print(f'input num not 1! {op}')
-            sys.exit(1)
-        pop = pre_ops[0]
-        shape = ref_all_tensor.get(pop, loop).shape
-        if pop not in self.module.all_tensor_names:
-            if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape':
-                pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
-                pop=pre_pre_ops[0]
-            else:
-                print(f"{op} input {pop} not in all tensor list")
-                sys.exit(1)
-        d = ref_all_tensor.get(pop, loop).reshape(shape)
-        scale = self.scales[pop][0]
-        unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
-        if scale != 1.0:
-            if self.support_unsigned:
-                d = quant_requant_active(d, scale, unsigned, bits=bitwidth)
-            else:
-                d = quant_requant_active(d, scale, False, bits=bitwidth)
-        return d
-
     def learning_one(self, epoch, op, total):
         loger.logging(f"now to learn {op} in epoch {epoch}")
         sub_total = 1
@@ -812,7 +758,7 @@ class LearningGptqWeight:
                 pbar_detail.set_postfix_str(
                     f"Cal orig loss {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
                 pbar_detail.update()
-                self.set_op_inputs(op, loop, bitwidth = input_bw)
+                self.set_op_inputs(op, loop, bitwidth = input_bw, quant=False)
                 outputs = self.module.invoke_at(op)
                 scale = self.scales[op][0]
                 unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
@@ -821,19 +767,20 @@ class LearningGptqWeight:
                         outputs[0] = quant_requant_active(outputs[0], scale, unsigned, bits = output_bw)
                     else:
                         outputs[0] = quant_requant_active(outputs[0], scale, False, bits = output_bw)
-                ref = ref_all_tensor.get(op, loop)
+                ref = self.ref_tensors.get(op, loop)
                 if op in self.pre_loss:
                     pre_loss = self.pre_loss[op] + cal_loss(outputs, ref)
                     self.pre_loss[op] = pre_loss
                 else:
                     pre_loss = cal_loss(outputs, ref)
                     self.pre_loss[op] = pre_loss
+            self.restore_weight(op)
 
         for loop in np.arange(self.num_sample):
             pbar_detail.set_postfix_str(
                 f"Learning {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
             pbar_detail.update()
-            input = self.get_op_input0(op, loop) # FIXME, seems it is enough to calculate with float input
+            input = self.get_op_input0(op, loop, bitwidth=input_bw,quanted=False)
             if epoch == 0 and loop == 0:
                 self.update_H(op, input, None) # init H
             self.update_H(op, input, None)
@@ -844,7 +791,7 @@ class LearningGptqWeight:
                 pbar_detail.set_postfix_str(
                     f"Comparing {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
                 pbar_detail.update()
-                self.set_op_inputs(op, loop, bitwidth=input_bw)
+                self.set_op_inputs(op, loop, bitwidth=input_bw, quant=False)
                 self.module.invoke_at(op)
                 outputs = self.module.get_tensor(op)
                 scale = self.scales[op][0]
@@ -854,7 +801,7 @@ class LearningGptqWeight:
                         outputs[0] = quant_requant_active(outputs[0], scale, unsigned, bits=output_bw)
                     else:
                         outputs[0] = quant_requant_active(outputs[0], scale, False, bits=output_bw)
-                ref = ref_all_tensor.get(op, loop)
+                ref = self.ref_tensors.get(op, loop)
                 if op in self.post_loss:
                     post_loss = self.post_loss[op] + cal_loss(outputs, ref)
                     self.post_loss[op] = post_loss
@@ -864,11 +811,9 @@ class LearningGptqWeight:
 
             if self.post_loss[op] <= self.pre_loss[op]:
                 loger.logging(f'{op} use trained weight {self.post_loss[op]} vs {self.pre_loss[op]}')
-                print(f'{op} use trained weight {self.post_loss[op]} vs {self.pre_loss[op]}')
-                #self.update_weight(op)
             else:
                 loger.logging(f'{op} do not use learned weight {self.post_loss[op]} vs {self.pre_loss[op]}')
-                print(f'{op} do not use learned weight {self.post_loss[op]} vs {self.pre_loss[op]}')
+            self.restore_weight(op)
 
     def save_weights(self):
         os.rename(self.weight_file, self.weight_file.replace(".npz",".bak.npz"))
@@ -876,6 +821,7 @@ class LearningGptqWeight:
 
     def learning(self):
         total = len(self.finetune_layers)
+        '''
         can_parallel = True
         for l in self.finetune_layers:
             if self.parser.get_op_type_by_op_name(l) != 'top.MatMul':
@@ -903,6 +849,16 @@ class LearningGptqWeight:
                 print(f"  End epoch {epoch}, learned {total} layers")
                 print("=================================================")
                 print("")
+        '''
+        for epoch in np.arange(self.epoch):
+            for l in self.finetune_layers:
+                self.learning_one(epoch, l, total)
+            print("")
+            print("=================================================")
+            print(f"  End epoch {epoch}, learned {total} layers")
+            print("=================================================")
+            print("")
+
         self.save_weights()
 
 class LearningAdaWeight:
@@ -968,6 +924,7 @@ class LearningAdaWeight:
         self.mini_batch = args.mini_batch
         self.num_sample = 0
         self.epoch = args.epoch
+        self.ref_tensors = None
         self.pre_loss = {}
         self.post_loss = {}
         self.loss = {}
@@ -994,7 +951,7 @@ class LearningAdaWeight:
             f'Learning Weight, momentum is {self.momentum} nesterov is {self.nesterov} weight_decay is {self.weight_decay}')
         self.v = {}
         self.support_unsigned = False
-        self.get_finetune_ops()
+        self.get_finetune_ops(args.excepts)
         self.backup_weights()
         if self.mini_batch <= self.batch_size:
             self.mini_batch = 1
@@ -1063,10 +1020,11 @@ class LearningAdaWeight:
     def cal_grdr(self, alpha, beta, iter, unsigned = False):
         return self.cal_grdr_signed(alpha, beta, iter)
 
-    def get_finetune_ops(self):
+    def get_finetune_ops(self, excepts):
         top_ops = {op.name: op for op in self.parser.ops}
+        exclude = excepts.split(',')
         for op in top_ops:
-            if top_ops[op].type in LEARNING_WEIGHT_OPERATION:
+            if top_ops[op].type in LEARNING_WEIGHT_OPERATION and top_ops[op].name not in exclude:
                 if len(top_ops[op].opds) > 1 and top_ops[op].opds[1] in self.module.all_weight_names:
                     self.finetune_layers.append(op)
                     self.finetune_layer_weights[op] = top_ops[op].opds[1]
@@ -1136,10 +1094,10 @@ class LearningAdaWeight:
             print("not support!")
             sys.exit(1)
 
-    def set_op_inputs(self, op, loop):
+    def set_op_inputs(self, op, loop, quant=True):
         pre_ops = self.parser.get_pre_op_by_op_name(op)
         for pop in pre_ops:
-            shape = ref_all_tensor.get(pop, loop).shape
+            shape = self.ref_tensors.get(pop, loop).shape
             if pop not in self.module.all_tensor_names:
                 if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape':
                     pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
@@ -1147,10 +1105,10 @@ class LearningAdaWeight:
                 else:
                     print(f"{op} input {pop} not in all tensor list")
                     sys.exit(1)
-            d = ref_all_tensor.get(pop, loop).reshape(shape)
+            d = self.ref_tensors.get(pop, loop).reshape(shape)
             scale = self.scales[pop][0]
             unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
-            if scale != 1.0:
+            if scale != 1.0 and quant:
                 if self.support_unsigned:
                     d = quant_requant_active(d, scale, unsigned)
                 else:
@@ -1163,7 +1121,7 @@ class LearningAdaWeight:
             print(f'input num not 1! {op}')
             sys.exit(1)
         pop = pre_ops[0]
-        shape = ref_all_tensor.get(pop, loop).shape
+        shape = self.ref_tensors.get(pop, loop).shape
         if pop not in self.module.all_tensor_names:
             if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape':
                 pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
@@ -1171,7 +1129,7 @@ class LearningAdaWeight:
             else:
                 print(f"{op} input {pop} not in all tensor list")
                 sys.exit(1)
-        d = ref_all_tensor.get(pop, loop).reshape(shape)
+        d = self.ref_tensors.get(pop, loop).reshape(shape)
         scale = self.scales[pop][0]
         unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
         if scale != 1.0:
@@ -1197,7 +1155,7 @@ class LearningAdaWeight:
                 pbar_detail.set_postfix_str(
                     f"Cal orig loss {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
                 pbar_detail.update()
-                self.set_op_inputs(op, loop)
+                self.set_op_inputs(op, loop, quant=True)
                 outputs = self.module.invoke_at(op)
                 scale = self.scales[op][0]
                 unsigned = self.scales[op][1] >= 0 and self.scales[op][2] >= 0
@@ -1206,7 +1164,7 @@ class LearningAdaWeight:
                         outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
                     else:
                         outputs[0] = quant_requant_active(outputs[0], scale, False)
-                ref = ref_all_tensor.get(op, loop)
+                ref = self.ref_tensors.get(op, loop)
                 if op in self.pre_loss:
                     pre_loss = self.pre_loss[op] + cal_loss(outputs, ref)
                     self.pre_loss[op] = pre_loss
@@ -1218,7 +1176,7 @@ class LearningAdaWeight:
             pbar_detail.set_postfix_str(
                 f"Learning {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
             pbar_detail.update()
-            self.set_op_inputs(op, loop)
+            self.set_op_inputs(op, loop, quant=True)
             self.quant_requant_weight(op)
             outputs = self.module.invoke_at(op)
             scale = self.scales[op][0]
@@ -1227,7 +1185,7 @@ class LearningAdaWeight:
                 outputq = quant_requant_active(outputs[0], scale, unsigned)
             else:
                 outputq = quant_requant_active(outputs[0], scale, False)
-            ref = ref_all_tensor.get(op, loop)
+            ref = self.ref_tensors.get(op, loop)
             beta = self.cal_beta(epoch*self.num_sample+loop)
             loss = cal_loss(outputq, ref)
             loger.logging(f"loss of {op} in loop {loop} is {loss}")
@@ -1274,7 +1232,7 @@ class LearningAdaWeight:
                 pbar_detail.set_postfix_str(
                     f"Comparing {epoch}.{loop+1}/{self.epoch}.{self.num_sample} [Total: {total}]")
                 pbar_detail.update()
-                self.set_op_inputs(op, loop)
+                self.set_op_inputs(op, loop, quant=True)
                 self.module.invoke_at(op)
                 outputs = self.module.get_tensor(op)
                 scale = self.scales[op][0]
@@ -1284,13 +1242,14 @@ class LearningAdaWeight:
                         outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
                     else:
                         outputs[0] = quant_requant_active(outputs[0], scale, False)
-                ref = ref_all_tensor.get(op, loop)
+                ref = self.ref_tensors.get(op, loop)
                 if op in self.post_loss:
                     post_loss = self.post_loss[op] + cal_loss(outputs, ref)
                     self.post_loss[op] = post_loss
                 else:
                     post_loss = cal_loss(outputs, ref)
                     self.post_loss[op] = post_loss
+            self.restore_weight(op)
 
             if self.post_loss[op] <= self.pre_loss[op]:
                 loger.logging(f'{op} use trained weight {self.post_loss[op]} vs {self.pre_loss[op]}')
@@ -1328,6 +1287,7 @@ class LearningAdaWeight:
 
     def learning(self):
         total = len(self.finetune_layers)
+        '''
         can_parallel = True
         for l in self.finetune_layers:
             if self.parser.get_op_type_by_op_name(l) != 'top.MatMul':
@@ -1355,6 +1315,16 @@ class LearningAdaWeight:
                 print(f"  End epoch {epoch}, learned {total} layers")
                 print("=================================================")
                 print("")
+        '''
+        for epoch in np.arange(self.epoch):
+            for l in self.finetune_layers:
+                self.learning_one(epoch, l, total)
+            print("")
+            print("=================================================")
+            print(f"  End epoch {epoch}, learned {total} layers")
+            print("=================================================")
+            print("")
+
         self.save_weights()
 
 class LearningScale:
@@ -1524,6 +1494,8 @@ class LearningScale:
         self.batch_size = self.parser.get_batch_size()  # batch size of net
         self.input_num = self.parser.get_input_num()  # number of net inputs
         self.mini_batch = args.mini_batch
+        self.epoch = args.epoch
+        self.ref_tensors = None
         self.num_sample = 0
         self.orig_scales = {}
         self.new_scales = {}
@@ -1532,37 +1504,38 @@ class LearningScale:
         self.support_unsigned = False
         self.opt = None
         self.finetune_layers = []  # layers to fine tune, without skipped
-        self.get_finetune_ops()
+        self.get_finetune_ops(args.excepts)
         if self.mini_batch <= self.batch_size:
             self.mini_batch = 1
         else:
             self.mini_batch = self.mini_batch // self.batch_size
 
-    def get_finetune_ops(self):
+    def get_finetune_ops(self, excepts):
         top_ops = {op.name: op for op in self.parser.ops}
+        exclude = excepts.split(',')
         for n in top_ops:
-            if top_ops[n].type not in SKIP_OPERATION:
+            if top_ops[n].type not in SKIP_OPERATION and top_ops[n].name not in exclude:
                 self.finetune_layers.append(n)
 
-    def set_op_inputs(self, op, loop):
+    def set_op_inputs(self, op, loop, quant=False):
         pre_ops = self.parser.get_pre_op_by_op_name(op)
         for pop in pre_ops:
-            shape = ref_all_tensor.get(pop, loop).shape
+            shape = self.ref_tensors.get(pop, loop).shape
             if pop not in self.module.all_tensor_names:
-                if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape':
+                if self.parser.get_op_type_by_op_name(pop) == 'top.Reshape' or self.parser.get_op_type_by_op_name(pop) == 'top.Squeeze' or self.parser.get_op_type_by_op_name(pop) == 'top.Unsqueeze':
                     pre_pre_ops = self.parser.get_pre_op_by_op_name(pop)
                     pop=pre_pre_ops[0]
                 else:
                     print(f"{op} input {pop} not in all tensor list")
                     sys.exit(1)
-            d = ref_all_tensor.get(pop, loop).reshape(shape)
+            d = self.ref_tensors.get(pop, loop).copy().reshape(shape)
             scale = 1.0
             if pop in self.new_scales:
                 scale = self.new_scales[pop][0]
             elif pop in self.orig_scales:
                 scale = self.orig_scales[pop][0]
             unsigned = self.orig_scales[op][1] >= 0 and self.orig_scales[op][2] >= 0
-            if scale != 1.0:
+            if scale != 1.0 and not quant:
                 if self.support_unsigned:
                     d = quant_requant_active(d, scale, unsigned)
                 else:
@@ -1633,7 +1606,7 @@ class LearningScale:
             pbar_detail.set_postfix_str(
                 f"Cal orig loss {loop} [Total Progress: {total}]")
             pbar_detail.update()
-            self.set_op_inputs(op, loop)
+            self.set_op_inputs(op, loop, quant=True)
             outputs = self.module.invoke_at(op).copy()
             scale = self.orig_scales[op][0]
             unsigned = self.orig_scales[op][1] >= 0 and self.orig_scales[op][2] >= 0
@@ -1641,7 +1614,7 @@ class LearningScale:
                 outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
             else:
                 outputs[0] = quant_requant_active(outputs[0], scale, False)
-            ref = ref_all_tensor.get(op, loop)
+            ref = self.ref_tensors.get(op, loop)
             if op in self.pre_loss:
                 pre_loss = self.pre_loss[op] + cal_loss(outputs, ref)
                 self.pre_loss[op] = pre_loss
@@ -1653,7 +1626,7 @@ class LearningScale:
             pbar_detail.set_postfix_str(
                 f"Learning {loop} [Total Progress: {total}]")
             pbar_detail.update()
-            self.set_op_inputs(op, loop)
+            self.set_op_inputs(op, loop, quant=True)
             outputs = self.module.invoke_at(op).copy()
             scale = 1.0
             if op in self.new_scales:
@@ -1668,7 +1641,7 @@ class LearningScale:
                     outputq = quant_requant_active(outputs[0], scale, False)
             else:
                 outputq = outputs[0]
-            ref = ref_all_tensor.get(op, loop)
+            ref = self.ref_tensors.get(op, loop)
             loss = cal_loss(outputq, ref)
             self.opt.update_loss(op, loss)
             unsigned = self.orig_scales[op][1] >= 0 and self.orig_scales[op][2] >= 0
@@ -1687,7 +1660,7 @@ class LearningScale:
             pbar_detail.set_postfix_str(
                 f"Comparing {loop} [Total Progress: {total}]")
             pbar_detail.update()
-            self.set_op_inputs(op, loop)
+            self.set_op_inputs(op, loop, quant=True)
             self.module.invoke_at(op)
             outputs = self.module.get_tensor(op).copy()
             scale = self.new_scales[op][0]
@@ -1696,13 +1669,17 @@ class LearningScale:
                 outputs[0] = quant_requant_active(outputs[0], scale, unsigned)
             else:
                 outputs[0] = quant_requant_active(outputs[0], scale, False)
-            ref = ref_all_tensor.get(op, loop)
+            ref = self.ref_tensors.get(op, loop)
             if op in self.post_loss:
                 post_loss = self.post_loss[op] + cal_loss(outputs, ref)
                 self.post_loss[op] = post_loss
             else:
                 post_loss = cal_loss(outputs, ref)
                 self.post_loss[op] = post_loss
+
+        for in_ in self.parser.get_pre_op_by_op_name(op):
+            self.ref_tensors.consumed_tensor(in_)
+
 
         if self.post_loss[op] >= self.pre_loss[op] or self.new_scales[op][0] < 0 or self.new_scales[op][0]/self.orig_scales[op][0] > 1.5:
             loger.logging(
@@ -1713,8 +1690,8 @@ class LearningScale:
                 f'use tune of {op}, old loss: {self.pre_loss[op]}, new loss: {self.post_loss[op]}, old scale {self.orig_scales[op][0]} new scale {self.new_scales[op][0]}')
 
     def learning(self):
-        import sys
         total = len(self.finetune_layers)
+        '''
         groups = into_groups(self.parser, self.finetune_layers)
         can_parallel = True
         for l in self.finetune_layers:
@@ -1728,6 +1705,8 @@ class LearningScale:
                 for result in pool.map(learning_scale_wrap, reqs):
                     learned += 1
         else:
+        '''
+        for e in range(self.epoch):
             for l in self.finetune_layers:
                 self.learning_one(l, total)
 
@@ -1792,38 +1771,41 @@ if __name__ == '__main__':
     scale_searcher.orig_scales = cali_table.table
     all_inputs = learning_inputs(scale_searcher.parser, args)
     num_sample = all_inputs.prepare(args.input_num)
-    scale_searcher.num_sample = num_sample
+
     learn_scale = args.target == "Scale"
     learn_adaweight = args.target == "AdaWeight"
     learn_gptweight = args.target == "GptWeight"
 
     print(f'Learning Scale: {learn_scale}; Learning AdaWeight: {learn_adaweight}; Learning GptWeight: {learn_gptweight}')
     if learn_scale:
+        scale_searcher.num_sample = num_sample
+        scale_searcher.ref_tensors = ref_tensors(scale_searcher, all_inputs)
         scheduler = LrScheduler(args.lr, scale_searcher.num_sample, args.lr_scheduler)
         if args.opt == 'SGD':
             scale_searcher.opt = scale_searcher.SgdScaleOpt(scheduler, args.momentum, args.nesterov, args.weight_decay)
         else:
             scale_searcher.opt = scale_searcher.AdamScaleOpt(scheduler, 0.9, 0.999, args.weight_decay)
-    ref_all_tensor = ref_tensors(scale_searcher.num_sample, args.data_seg, args.threads*4*(num_sample//args.data_seg))
-    ref_all_tensor.gather(scale_searcher, all_inputs)
-    del all_inputs
-    if learn_scale:
         scale_searcher.learning()
         cali_table.update(scale_searcher.new_scales)
         cali_table.write()
-    del scale_searcher
+        del scale_searcher.ref_tensors
+        del scale_searcher
     if learn_adaweight:
         scheduler = LrScheduler(args.lr, num_sample*args.epoch, args.lr_scheduler)
         weight_searcher = LearningAdaWeight(args)
         weight_searcher.scales = cali_table.table
         weight_searcher.num_sample = num_sample
+        weight_searcher.ref_tensors = ref_tensors(weight_searcher, all_inputs)
+
         weight_searcher.opt = weight_searcher.SgdWeightOpt(scheduler, args.momentum, args.nesterov, args.weight_decay, args.epoch)
         weight_searcher.learning()
+        del weight_searcher.ref_tensors
         del weight_searcher
     if learn_gptweight:
         weight_searcher = LearningGptqWeight(args)
         weight_searcher.scales = cali_table.table
         weight_searcher.num_sample = num_sample
+        weight_searcher.ref_tensors = ref_tensors(weight_searcher, all_inputs)
         weight_searcher.learning()
         del weight_searcher
 
