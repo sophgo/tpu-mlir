@@ -145,7 +145,7 @@ int main(int argc, char **argv) {
     if (argc == 4 && string(argv[3]) == "--all") {
       all = true;
     }
-    show(argv[2], true);
+    show(argv[2], all);
   } else if (cmd == "--chip") {
     show_chip(argv[2]);
   } else if (cmd == "--is_dynamic") {
