@@ -265,6 +265,8 @@ static std::shared_ptr<SubFunction> buildEndOp(tpu::DistributionEndOp end,
           new_operands.push_back(operands[i + 1]);
           continue;
         }
+        auto subf = std::make_shared<SubFunction>(
+            (i / 2 * (int)std::pow(2, t)) % num_devices, step);
         auto value = operands[i];
         auto indice = operands[i + 1];
         auto value2 = operands[i + 2];
@@ -276,22 +278,16 @@ static std::shared_ptr<SubFunction> buildEndOp(tpu::DistributionEndOp end,
             "mode", builder.getStringAttr("GreaterOrEqual")));
         auto cmp = builder.create<tpu::CompareOp>(
             loc, value.getType(), ValueRange{value, value2}, attrs);
-        loc = module::getLocLike(operands[i], "value_" + std::to_string(i));
-        auto value_select = builder.create<tpu::WhereOp>(
-            loc, value.getType(), ValueRange{cmp.getOutput(), value, value2});
-        value = value_select.getOutput();
+        insert_subop(subf, cmp);
+
         loc =
             module::getLocLike(operands[i + 1], "indice_" + std::to_string(i));
         auto indice_select = builder.create<tpu::WhereOp>(
             loc, indice.getType(),
             ValueRange{cmp.getOutput(), indice, indice2});
         indice = indice_select.getOutput();
-        new_operands.push_back(value);
-        new_operands.push_back(indice);
-        auto subf = std::make_shared<SubFunction>(
-            (i / 2 * (int)std::pow(2, t)) % num_devices, step);
-        insert_subop(subf, cmp);
         insert_subop(subf, indice_select);
+
         if (t == times - 1) {
           module::setLoc(indice, module::getLoc(end.getOutput()));
           end.getOutput().replaceAllUsesWith(indice);
@@ -300,10 +296,15 @@ static std::shared_ptr<SubFunction> buildEndOp(tpu::DistributionEndOp end,
             buildSubFunction(f, m);
           }
           return std::move(subf);
-        } else {
-          insert_subop(subf, value_select);
-          subf_v.emplace_back(std::move(subf));
         }
+        loc = module::getLocLike(operands[i], "value_" + std::to_string(i));
+        auto value_select = builder.create<tpu::WhereOp>(
+            loc, value.getType(), ValueRange{cmp.getOutput(), value, value2});
+        value = value_select.getOutput();
+        insert_subop(subf, value_select);
+        subf_v.emplace_back(std::move(subf));
+        new_operands.push_back(value);
+        new_operands.push_back(indice);
       }
       step++;
       operands = new_operands;

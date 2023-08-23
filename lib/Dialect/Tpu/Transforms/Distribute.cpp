@@ -125,7 +125,13 @@ public:
     if (num_device > 1) {
       applyPatternOnce<MatMulSliceMerge>(mOp);
       applyPatternOnce<MatMulTopK>(mOp);
-      applyPatternOnce<DoDistributePattern>(mOp);
+      if (mOp.getOps<tpu::DistributionBeginOp>().empty()) {
+        // no pattern find
+        num_device = 1;
+        module::setDeviceNum(num_device);
+      } else {
+        applyPatternOnce<DoDistributePattern>(mOp);
+      }
     }
     distributeModules(mOp, num_device);
   }
