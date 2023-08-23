@@ -585,6 +585,116 @@ struct CastInputCV18xxPattern : public OpRewritePattern<tpu::CastOp> {
   }
 };
 
+/**
+ * @brief Try insert tile since shapes cannot merge to 4d in some case
+*/
+template <typename TyOp>
+struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
+
+  bool can_be_merged(int64_t a1, int64_t a2, int64_t b1, int64_t b2) const {
+    // case 0: both dims are same --- always true
+    if (a1 == b1 && a2 == b2)
+      return true;
+    // case 1: only one dim is same --- only when another is 1 can be merged
+    if ((a1 == b1 && a2 != b2 && a1 == 1) || (a1 != b1 && a2 == b2 && a2 == 1))
+      return true;
+    // case 2: both dims are not same --- only a or b broadcast can be merged
+    if (a1 != b1 && a2 != b2 && (a1 == a2 || b1 == b2))
+      return true;
+    return false;
+  }
+
+  bool canMergeTo4D(const std::vector<int64_t> &ashape,
+                    const std::vector<int64_t> &bshape, int shape_dim) const {
+    if (shape_dim > 4) {
+      int i = 0;
+      while (i < shape_dim - 1) {
+        if (can_be_merged(ashape[i], ashape[i + 1], bshape[i], bshape[i + 1])) {
+          --shape_dim;
+        } else {
+          ++i;
+        }
+        if (shape_dim == 4)
+          break;
+      }
+    }
+    return shape_dim <= 4;
+  }
+
+  bool needBroadcast(const std::vector<int64_t> &shape1,
+                    const std::vector<int64_t> &shape2) const {
+    int dim1 = shape1.size();
+    int dim2 = shape2.size();
+    int maxDim = std::max(dim1, dim2);
+    for (int i = 1; i <= maxDim; ++i) {
+        int size1 = (dim1 - i >= 0) ? shape1[dim1 - i] : 1;
+        int size2 = (dim2 - i >= 0) ? shape2[dim2 - i] : 1;
+        if (size1 != size2 && (size1 != 1 || size2 != 1)) {
+            return true;
+        }
+    }
+    return false;
+  }
+
+  void try_insert_tile(TyOp &op, PatternRewriter &rewriter, int idx, int axis, int tile) const {
+    Value opd = op.getOperand(idx);
+    auto def_op = opd.getDefiningOp();
+    auto input_shape = module::getShape(opd);
+    auto newType =
+        RankedTensorType::get(input_shape, module::getStorageType(opd));
+    auto name = module::getName(opd).str();
+    if (opd && !isa<ReturnOp>(def_op)) {
+        name += "_" + module::getName(op.getOperation()).str();
+    }
+    name += "_tile";
+    auto loc = NameLoc::get(rewriter.getStringAttr(name));
+    std::vector<NamedAttribute> attrs;
+    attrs.emplace_back(
+        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(axis)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("tile", rewriter.getI64IntegerAttr(tile)));
+    auto tileOp =
+        rewriter.create<tpu::TileOp>(loc, newType, ValueRange{opd, module::getNoneOp(op)}, attrs);
+    op->setOperand(idx, tileOp);
+    std::vector<int64_t> output_shape = input_shape;
+    output_shape[axis] = tile;
+    module::setShape(tileOp.getOutput(), output_shape);
+  }
+
+  LogicalResult matchAndRewrite(TyOp op,
+                                PatternRewriter &rewriter) const override {
+    int max_allow_dim_backend = 4;
+    Value out = op.getOutput();
+    if (isa<ReturnOp>(op))
+      return failure();
+    int opd_num = op.getNumOperands();
+    if (opd_num != 2)
+      return failure();
+
+    Value opd1 = op.getOperand(0);
+    Value opd2 = op.getOperand(1);
+    const std::vector<int64_t> shape1 = module::getShape(opd1);
+    const std::vector<int64_t> shape2 = module::getShape(opd2);
+    int shape_dim = std::max(shape1.size(), shape2.size());
+    if (needBroadcast(shape1, shape2) &&
+        !canMergeTo4D(shape1, shape2, shape_dim)) {
+
+      for (int i = 0; i < shape_dim - max_allow_dim_backend; ++i) {
+        if (shape1[i] == shape2[i]) {
+          continue;
+        } else if (shape1[i] == 1) {
+          try_insert_tile(op, rewriter, 0, i, shape2[i]);
+        } else if (shape2[i] == 1) {
+          try_insert_tile(op, rewriter, 1, i, shape1[i]);
+        }
+      }
+      return success();
+    }
+    return failure();
+  }
+};
+
 struct ConvertTopToTpu : public ::impl::ConvertTopToTpuBase<ConvertTopToTpu> {
 public:
   void runOnOperation() override {
@@ -626,6 +736,15 @@ public:
       bm1684::populateTopShapeToTpuConversionPatterns(&patterns);
     }
 
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+
+    patterns.clear();
+    patterns.add<TryInsertTileBinaryPattern<top::AddOp>,
+                 TryInsertTileBinaryPattern<top::SubOp>,
+                 TryInsertTileBinaryPattern<top::MulOp>,
+                 TryInsertTileBinaryPattern<top::MaxOp>,
+                 TryInsertTileBinaryPattern<top::MinOp>,
+                 TryInsertTileBinaryPattern<top::CompareOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
 
     patterns.clear();
