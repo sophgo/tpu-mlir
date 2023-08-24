@@ -10,7 +10,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <experimental/filesystem>
 #include "bm_tool.hpp"
 #include "cv_tool.hpp"
 
@@ -43,8 +42,8 @@ static void usage(void) {
 }
 
 static inline bool isCv18xx(const string &filename) {
-  return std::experimental::filesystem::path(filename).extension().string().find("cvi") !=
-         std::string::npos;
+  string extension = filename.substr(filename.find_last_of("."));
+  return extension == ".cvimodel";
 }
 
 static void print(const string &filename) {

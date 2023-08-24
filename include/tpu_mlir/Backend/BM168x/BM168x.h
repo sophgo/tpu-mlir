@@ -63,6 +63,7 @@ typedef void (*cmd_id_divide)(void *p_cmd_src, void *p_cmd_dst0,
                               void *p_cmd_dst1);
 typedef void (*cmd_id_merge)(void *p_cmd_dst, void *p_cmd_src0,
                              void *p_cmd_src1);
+
 typedef void (*sg_set_profile_dump)(bool enable);
 typedef void (*sg_set_profile_path)(const char *path);
 typedef void (*sg_stas_dump)(void *pid_node);

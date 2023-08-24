@@ -96,8 +96,7 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   auto out_name = module::getName(op).str();
   auto new_name = in_name + "_to_" + out_name;
 
-  auto rq_stype = module::getElementType(out);
-  auto rq_type = RankedTensorType::get(in_shape, rq_stype);
+  auto rq_type = module::getTypeLike(out, in_shape);
   std::vector<NamedAttribute> attrs;
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
   attrs.push_back(builder.getNamedAttr(
@@ -364,12 +363,11 @@ Value do_transpose(Location name_loc, Value input,
   builder.setInsertionPointAfterValue(input);
   auto inshape = module::getShape(input);
   auto dims = inshape.size();
-  auto type = module::getElementType(input);
   std::vector<int64_t> oshape;
   for (int i = 0; i < dims; ++i) {
     oshape.push_back(inshape[order[i]]);
   }
-  auto new_type = RankedTensorType::get(oshape, type);
+  auto new_type = module::getTypeLike(input, oshape);
   std::vector<NamedAttribute> attrs = {};
   attrs.push_back(
       builder.getNamedAttr("order", builder.getI64ArrayAttr(order)));
@@ -394,11 +392,14 @@ Value insert_host2device(Value v, Type to) {
   return hdOp.getOutput();
 }
 
-Value insert_device2host(Value v, Type to) {
+Value insert_device2host(Value v, Type to, Operation* user) {
   auto ctx = v.getContext();
   OpBuilder builder(ctx);
   builder.setInsertionPointAfterValue(v);
   auto name = module::getName(v).str();
+  if (user && !isa<ReturnOp>(user)) {
+      name += "_" + module::getName(user).str();
+  }
   name += "_device2host";
   auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
   auto loc = NameLoc::get(builder.getStringAttr(name));
@@ -419,7 +420,7 @@ void try_insert_device2host(Operation* op, uint32_t idx) {
   auto opd = op->getOperand(idx);
   auto def_op = opd.getDefiningOp();
   if (!def_op->hasTrait<trait::ShapeProducer>()) {
-    auto hdOp = insert_device2host(opd, opd.getType());
+    auto hdOp = insert_device2host(opd, opd.getType(), op);
     op->setOperand(idx, hdOp);
   }
 }

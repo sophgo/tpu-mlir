@@ -9,18 +9,17 @@
 
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
 #include "tpu_mlir/Support/ModuleEnum.cpp.inc"
 
 namespace tpu_mlir {
 namespace module {
 struct Attr {
-  static constexpr llvm::StringRef NAME = "module.name";
   static constexpr llvm::StringRef STATE = "module.state";
   static constexpr llvm::StringRef CHIP = "module.chip";
   static constexpr llvm::StringRef WEIGHT_FILE = "module.weight_file";
   static constexpr llvm::StringRef FLOPS = "module.FLOPs";
   static constexpr llvm::StringRef CORES = "module.cores";
+  static constexpr llvm::StringRef DEVICES = "module.devices";
   static constexpr llvm::StringRef COEFF_ADDR = "module.coeff_addr";
   static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
   static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
@@ -30,6 +29,10 @@ struct Attr {
   static constexpr llvm::StringRef MODE = "module.mode";
   static constexpr llvm::StringRef PLATFORM = "module.platform";
   static constexpr llvm::StringRef POSTPROCESS = "module.postprocess";
+  static constexpr llvm::StringRef DEVICE_ID = "module.device_id";
+  static constexpr llvm::StringRef STEP = "module.step";
+  static constexpr llvm::StringRef INPUTS = "module.inputs";
+  static constexpr llvm::StringRef OUTPUTS = "module.outputs";
 };
 
 static ModuleOp m = nullptr;
@@ -77,11 +80,45 @@ top::NoneOp getNoneOp(Operation *op) {
   return NoneOp;
 }
 
+static ModuleOp getModuleOp(Value v) {
+  auto parent_op = v.getParentBlock()->getParentOp();
+  while (parent_op != nullptr && !isa<ModuleOp>(parent_op)) {
+    parent_op = parent_op->getParentOp();
+  }
+  if (parent_op == nullptr) {
+    return nullptr;
+  }
+  return cast<ModuleOp>(parent_op);
+}
+
+static ModuleOp getModuleOp(Operation *op) {
+  while (op != nullptr && !isa<ModuleOp>(op)) {
+    op = op->getParentOp();
+  }
+  if (op == nullptr) {
+    return nullptr;
+  }
+  return cast<ModuleOp>(op);
+}
+
 Value getOriValue(Value v) {
+  auto s = getModuleOp(v);
+  if (!s) {
+    return v;
+  }
   if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
     int idx = block_arg.getArgNumber();
-    auto parent_op = v.getParentBlock()->getParentOp();
-    if (auto func_op = dyn_cast_or_null<FuncOp>(parent_op)) {
+    // blockargument have multi-layers nest.
+    FuncOp func_op;
+    if (isa<FuncOp>(v.getParentBlock()->getParentOp()))
+      func_op = cast<FuncOp>(v.getParentBlock()->getParentOp());
+    else if (isa<tpu::LoopOp, tpu::IfOp, top::LoopOp, top::IfOp>
+             (v.getParentBlock()->getParentOp())) {
+      return getOriValue(v.getParentBlock()->getParentOp()->getOperand(idx));
+    } else
+      func_op = v.getParentBlock()->getParentOp()->getParentOfType<FuncOp>();
+
+    if (func_op) {
       // cur call op
       auto call_op = getCallOp(func_op);
       // pre call op
@@ -90,8 +127,12 @@ Value getOriValue(Value v) {
         auto find_root = [](auto &&Me, Value v) -> Value {
           if (v.isa<BlockArgument>()) {
             int index = dyn_cast<BlockArgument>(v).getArgNumber();
-            auto p_op = v.getParentBlock()->getParentOp();
-            auto func_op = dyn_cast<FuncOp>(p_op);
+            FuncOp func_op;
+            if (isa<FuncOp>(v.getParentBlock()->getParentOp()))
+              func_op = cast<FuncOp>(v.getParentBlock()->getParentOp());
+            else
+              func_op =
+                  v.getParentBlock()->getParentOp()->getParentOfType<FuncOp>();
             auto call_op = getCallOp(func_op);
             return Me(Me, call_op.getOperand(index));
           } else {
@@ -108,7 +149,7 @@ Value getOriValue(Value v) {
         return operand;
       }
       auto pre_call_op = dyn_cast<func::CallOp>(opd);
-      auto pre_func_op = getFuncOp(pre_call_op.getCallee());
+      auto pre_func_op = getFuncOp(s, pre_call_op.getCallee());
       auto return_op = dyn_cast<ReturnOp>(pre_func_op.front().back());
       return return_op.getOperand(result.getResultNumber());
     }
@@ -116,7 +157,7 @@ Value getOriValue(Value v) {
     if (isa<func::CallOp>(pre_op)) {
       auto call_op = dyn_cast<func::CallOp>(pre_op);
       int index = v.cast<OpResult>().getResultNumber();
-      for (auto func : m.getOps<FuncOp>()) {
+      for (auto func : s.getOps<FuncOp>()) {
         if (call_op.getCallee() == func.getName()) {
           Block &entryBlock = func.front();
           auto returnOp = dyn_cast<ReturnOp>(entryBlock.back()).getOperation();
@@ -127,6 +168,7 @@ Value getOriValue(Value v) {
       return v;
     }
   }
+
   llvm_unreachable("Failed to get preOperation.FIx me");
 }
 
@@ -153,10 +195,10 @@ Value getOperand(Operation *op, int i) {
   return getOriValue(v);
 }
 
-void updateModuleTypes() {
+static void updateModuleTypes(ModuleOp s) {
   Builder builder(ctx);
   // update callee func's return types
-  for (auto func : m.getOps<FuncOp>()) {
+  for (auto func : s.getOps<FuncOp>()) {
     if (func.getName() == "main") {
       continue;
     }
@@ -177,7 +219,7 @@ void updateModuleTypes() {
     }
   }
   // update callee arg types
-  for (auto func : m.getOps<FuncOp>()) {
+  for (auto func : s.getOps<FuncOp>()) {
     if (func.getName() == "main") {
       continue;
     }
@@ -196,7 +238,7 @@ void updateModuleTypes() {
     func.setType(fnType);
   }
   // update main op return types
-  auto mainFunc = getMainFuncOp();
+  auto mainFunc = getMainFuncOp(s);
   Block &entryBlock = mainFunc.front();
   auto returnOp = dyn_cast<ReturnOp>(entryBlock.back()).getOperation();
   std::vector<Type> returns;
@@ -208,9 +250,16 @@ void updateModuleTypes() {
   mainFunc.setType(fnType);
 }
 
-void removeUnusedOp() {
+void updateModuleTypes() {
+  auto modules = getAllModules();
+  for (auto s : *modules) {
+    updateModuleTypes(s);
+  }
+}
+
+static void removeUnusedOp(ModuleOp submodule) {
   std::vector<Operation *> all_ops;
-  for (auto func : m.getOps<FuncOp>()) {
+  for (auto func : submodule.getOps<FuncOp>()) {
     // for to support nested region's op
     func.walk<WalkOrder::PreOrder>([&](Operation *op) {
       if (!isa<ReturnOp, FuncOp, tpu::YieldOp, top::YieldOp>(op))
@@ -221,6 +270,13 @@ void removeUnusedOp() {
     if ((*iter)->use_empty()) {
       (*iter)->erase();
     }
+  }
+}
+
+void removeUnusedOp() {
+  auto modules = getAllModules();
+  for (auto s : *modules) {
+    removeUnusedOp(s);
   }
 }
 
@@ -236,7 +292,13 @@ int64_t getAddress(Value v) {
   if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
     int index = block_arg.getArgNumber();
     auto parent_op = v.getParentBlock()->getParentOp();
-    auto funcOp = dyn_cast_or_null<FuncOp>(parent_op);
+    FuncOp funcOp;
+
+    if (isa<FuncOp>(parent_op))
+      funcOp = cast<FuncOp>(parent_op);
+    else
+      funcOp = parent_op->getParentOfType<FuncOp>();
+
     if (funcOp) {
       func::CallOp callee = getCallOp(funcOp);
       return getAddress(callee.getOperand(index));
@@ -292,6 +354,11 @@ llvm::ArrayRef<int64_t> getShape(Value v) {
   }
 }
 
+void setShape(Value v, llvm::ArrayRef<int64_t> shape) {
+  auto newType = RankedTensorType::get(shape, getElementType(v));
+  v.setType(newType);
+}
+
 void getGlobalShape(Value v, int *shape, int dim) {
   for (auto v : llvm::enumerate(getShape(v)))
     shape[v.index()] = (int)v.value();
@@ -307,8 +374,7 @@ void getLocalShape(Value v, int64_t n_step, int64_t h_step, int *shape) {
   shape[1] = (int)c;
   shape[2] = (int)gi.h_slice;
   shape[3] = (int)w;
-  if (module::isBM1684Family() && module::isUniformQuantized(v))
-  {
+  if (module::isBM1684Family() && module::isUniformQuantized(v)) {
     shape[1] *= d;
   } else {
     shape[0] *= d;
@@ -366,7 +432,7 @@ i32_array_t getI32Array(ArrayAttr arrayAttr) {
   return std::move(data);
 }
 
-i32_array_t getI32Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+i32_array_t getI32Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         int32_t default_value) {
   if (arrayAttr.has_value()) {
     auto arr = getI32Array(arrayAttr.value());
@@ -390,7 +456,7 @@ i64_array_t getI64Array(ArrayAttr arrayAttr) {
   return std::move(data);
 }
 
-i64_array_t getI64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+i64_array_t getI64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         int64_t default_value) {
   if (arrayAttr.has_value()) {
     auto arr = getI64Array(arrayAttr.value());
@@ -409,7 +475,7 @@ f64_array_t getF64Array(ArrayAttr arrayAttr) {
   return std::move(data);
 }
 
-f64_array_t getF64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value) {
   if (arrayAttr.has_value()) {
     auto arr = getF64Array(arrayAttr.value());
@@ -452,6 +518,10 @@ Type getElementType(Value v) {
     return rtype.getElementType();
   }
   return type;
+}
+
+RankedTensorType getTypeLike(Value v, llvm::ArrayRef<int64_t> shape) {
+  return RankedTensorType::get(shape, getElementType(v));
 }
 
 static void getNCHW_align_right(llvm::ArrayRef<int64_t> &shape, int64_t &n,
@@ -618,8 +688,21 @@ bool isOpInParallel(Operation *Op) {
   return false;
 }
 
-FuncOp getFuncOp(StringRef func_name) {
-  for (auto func : m.getOps<FuncOp>()) {
+bool isOpInDistribution(Operation *op) {
+  while (!op->use_empty()) {
+    op = *op->user_begin();
+    if (isa<func::ReturnOp, tpu::DistributionBeginOp>(op)) {
+      return false;
+    }
+    if (isa<tpu::DistributionEndOp>(op)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+FuncOp getFuncOp(ModuleOp mod, StringRef func_name) {
+  for (auto func : mod.getOps<FuncOp>()) {
     if (func.getName() == func_name) {
       return func;
     }
@@ -630,8 +713,10 @@ FuncOp getFuncOp(StringRef func_name) {
 }
 
 func::CallOp getCallOp(FuncOp func) {
+  auto parent = func->getParentOp();
+  auto s = cast<ModuleOp>(parent);
   func::CallOp call = nullptr;
-  for (auto each_func : m.getOps<FuncOp>()) {
+  for (auto each_func : s.getOps<FuncOp>()) {
     WalkResult result =
         each_func.walk<WalkOrder::PreOrder>([&](func::CallOp op) {
           if (!call && op.getCallee() == func.getName()) {
@@ -646,7 +731,7 @@ func::CallOp getCallOp(FuncOp func) {
   return call;
 }
 
-FuncOp getMainFuncOp() { return getFuncOp("main"); }
+FuncOp getMainFuncOp(ModuleOp module) { return getFuncOp(module, "main"); }
 
 bool isSign(Value v) {
   auto stype = getStorageType(v);
@@ -727,21 +812,20 @@ bool isGlobalBuffer(Value v) {
   return isa<tpu::BufferOp>(op);
 }
 
-llvm::StringRef getModuleName() {
-  return m->getAttrOfType<StringAttr>(Attr::NAME).getValue();
+int64_t getCoeffSize(ModuleOp s) {
+  return s->getAttrOfType<IntegerAttr>(Attr::COEFF_SIZE).getInt();
 }
 
-int64_t getCoeffSize() {
-  return m->getAttrOfType<IntegerAttr>(Attr::COEFF_SIZE).getInt();
+void setCoeffSize(ModuleOp s, int64_t size) {
+  s->setAttr(Attr::COEFF_SIZE, Builder(ctx).getI64IntegerAttr(size));
 }
-void setCoeffSize(int64_t size) {
-  m->setAttr(Attr::COEFF_SIZE, Builder(ctx).getI64IntegerAttr(size));
+
+int64_t getGmemPrivateSize(ModuleOp s) {
+  return s->getAttrOfType<IntegerAttr>(Attr::GMEM_PRIVATE_SIZE).getInt();
 }
-int64_t getGmemPrivateSize() {
-  return m->getAttrOfType<IntegerAttr>(Attr::GMEM_PRIVATE_SIZE).getInt();
-}
-void setGmemPrivateSize(int64_t size) {
-  m->setAttr(Attr::GMEM_PRIVATE_SIZE, Builder(ctx).getI64IntegerAttr(size));
+
+void setGmemPrivateSize(ModuleOp s, int64_t size) {
+  s->setAttr(Attr::GMEM_PRIVATE_SIZE, Builder(ctx).getI64IntegerAttr(size));
 }
 
 int64_t getCoreNum() {
@@ -754,24 +838,39 @@ void setCoreNum(int64_t core_num) {
   m->setAttr(Attr::CORES, Builder(ctx).getI64IntegerAttr(core_num));
 }
 
-int64_t getCoeffAddr() {
-  return m->getAttrOfType<IntegerAttr>(Attr::COEFF_ADDR).getInt();
+int64_t getDeviceNum() {
+  if (auto devices = m->getAttrOfType<IntegerAttr>(Attr::DEVICES)) {
+    return devices.getInt();
+  }
+  return 1;
 }
 
-void setCoeffAddr(int64_t addr) {
-  m->setAttr(Attr::COEFF_ADDR, Builder(ctx).getI64IntegerAttr(addr));
+void setDeviceNum(int64_t device_num) {
+  m->setAttr(Attr::DEVICES, Builder(ctx).getI64IntegerAttr(device_num));
 }
-int64_t getNeuronSize() {
-  return m->getAttrOfType<IntegerAttr>(Attr::NEURON_SIZE).getInt();
+
+int64_t getCoeffAddr(ModuleOp s) {
+  return s->getAttrOfType<IntegerAttr>(Attr::COEFF_ADDR).getInt();
 }
-void setNeuronSize(int64_t size) {
-  m->setAttr(Attr::NEURON_SIZE, Builder(ctx).getI64IntegerAttr(size));
+
+void setCoeffAddr(ModuleOp s, int64_t addr) {
+  s->setAttr(Attr::COEFF_ADDR, Builder(ctx).getI64IntegerAttr(addr));
 }
-int64_t getNeuronAddr() {
-  return m->getAttrOfType<IntegerAttr>(Attr::NEURON_ADDR).getInt();
+
+int64_t getNeuronSize(ModuleOp s) {
+  return s->getAttrOfType<IntegerAttr>(Attr::NEURON_SIZE).getInt();
 }
-void setNeuronAddr(int64_t addr) {
-  m->setAttr(Attr::NEURON_ADDR, Builder(ctx).getI64IntegerAttr(addr));
+
+void setNeuronSize(ModuleOp s, int64_t size) {
+  s->setAttr(Attr::NEURON_SIZE, Builder(ctx).getI64IntegerAttr(size));
+}
+
+int64_t getNeuronAddr(ModuleOp s) {
+  return s->getAttrOfType<IntegerAttr>(Attr::NEURON_ADDR).getInt();
+}
+
+void setNeuronAddr(ModuleOp s, int64_t addr) {
+  s->setAttr(Attr::NEURON_ADDR, Builder(ctx).getI64IntegerAttr(addr));
 }
 
 llvm::StringRef getPostprocess() {
@@ -811,9 +910,37 @@ void setMode(Mode mode) {
 int64_t getFLOPs() {
   return m->getAttrOfType<IntegerAttr>(Attr::FLOPS).getInt();
 }
+
 void setFLOPs(int64_t flops) {
   auto intType = IntegerType::get(ctx, 64);
   m->setAttr(Attr::FLOPS, IntegerAttr::get(intType, flops));
+}
+
+std::shared_ptr<std::vector<ModuleOp>> getAllModules() {
+  auto modules = std::make_shared<std::vector<ModuleOp>>();
+  auto sub = m.getOps<ModuleOp>();
+  if (sub.empty()) {
+    modules->push_back(m);
+  } else {
+    modules->assign(sub.begin(), sub.end());
+  }
+  return std::move(modules);
+}
+
+int getNumSubModule() {
+  auto sub = m.getOps<ModuleOp>();
+  return std::distance(sub.begin(), sub.end());
+}
+
+void setSubModuleId(ModuleOp sub, int64_t device_id, int64_t step) {
+  sub->setAttr(Attr::DEVICE_ID,
+               Builder(sub.getContext()).getI64IntegerAttr(device_id));
+  sub->setAttr(Attr::STEP, Builder(sub.getContext()).getI64IntegerAttr(step));
+}
+
+void getSubModuleId(ModuleOp sub, int64_t &device_id, int64_t &step) {
+  device_id = sub->getAttrOfType<IntegerAttr>(Attr::DEVICE_ID).getInt();
+  step = sub->getAttrOfType<IntegerAttr>(Attr::STEP).getInt();
 }
 
 bool isAsymmetric() {
@@ -839,6 +966,34 @@ bool isPlatform(Platform plt) { return platform == plt; }
 void setState(State state) {
   auto s = stringifyState(state);
   m->setAttr(Attr::STATE, StringAttr::get(ctx, s));
+}
+
+void setInputs(ArrayRef<StringRef> inputs) {
+  m->setAttr(Attr::INPUTS, Builder(ctx).getStrArrayAttr(inputs));
+}
+
+std::shared_ptr<std::vector<StringRef>> getInputs() {
+  auto inputs = m->getAttrOfType<ArrayAttr>(Attr::INPUTS);
+  auto data = std::make_shared<std::vector<StringRef>>();
+  for (auto en : llvm::enumerate(inputs)) {
+    auto attr = en.value().dyn_cast<StringAttr>();
+    data->push_back(attr.strref());
+  }
+  return std::move(data);
+}
+
+void setOutputs(ArrayRef<StringRef> outputs) {
+  m->setAttr(Attr::OUTPUTS, Builder(ctx).getStrArrayAttr(outputs));
+}
+
+std::shared_ptr<std::vector<StringRef>> getOutputs() {
+  auto outputs = m->getAttrOfType<ArrayAttr>(Attr::OUTPUTS);
+  auto data = std::make_shared<std::vector<StringRef>>();
+  for (auto en : llvm::enumerate(outputs)) {
+    auto attr = en.value().dyn_cast<StringAttr>();
+    data->push_back(attr.strref());
+  }
+  return std::move(data);
 }
 
 bool isState(State state) { return state == getState(); }
@@ -881,8 +1036,6 @@ ModuleOp getModuleOp() { return m; }
 Location getLoc() { return m.getLoc(); }
 
 MLIRContext *getCtx() { return ctx; }
-
-void push_back(FuncOp funcOp) { m.push_back(funcOp); }
 
 double getThreshold(Value v) {
   auto type = getCalibratedType(v);
@@ -961,9 +1114,35 @@ NameLoc getLoc(Value v) {
   return nullptr;
 }
 
+NameLoc getLocLike(Operation *op, llvm::StringRef suffix) {
+  return getLocLike(op->getResult(0), suffix);
+}
+
+NameLoc getLocLike(Value v, llvm::StringRef suffix) {
+  auto name = getName(v);
+  auto new_name = name.str() + "_" + suffix.str();
+  Builder builder(v.getContext());
+  return NameLoc::get(builder.getStringAttr(new_name));
+}
+
+void setLocSuffix(Operation *op, llvm::StringRef suffix) {
+  if (op->getNumResults() > 1) {
+    std::vector<Location> locs;
+    for (auto r : op->getResults()) {
+      auto loc = getLocLike(r, suffix);
+      locs.push_back(loc);
+    }
+    auto new_loc = FusedLoc::get(op->getContext(), locs);
+    op->setLoc(new_loc);
+  } else {
+    auto loc = getLocLike(op->getResult(0), suffix);
+    op->setLoc(loc);
+  }
+}
+
 StringRef getName(Operation *op, int index) {
   if (auto module = dyn_cast<ModuleOp>(op)) {
-    return getName(module);
+    return module.getName().value_or("Unknown");
   }
   if (auto loc = op->getLoc().dyn_cast<NameLoc>()) {
     return loc.getName();
@@ -983,14 +1162,15 @@ StringRef getName(Operation *op, int index) {
 
 StringRef getName(Value v) { return getLoc(v).getName().strref(); }
 
-void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs) {
-  auto main_func = getMainFuncOp();
+void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
+                      std::vector<Value> &outputs) {
+  auto main_func = getMainFuncOp(s);
   main_func.walk([&](top::InputOp op) { inputs.push_back(op.getOutput()); });
   main_func.walk([&](ReturnOp op) {
     for (auto out : op.getOperands()) {
       auto result = out.cast<OpResult>();
       auto call_op = result.getDefiningOp<func::CallOp>();
-      auto func_op = getFuncOp(call_op.getCallee());
+      auto func_op = getFuncOp(s, call_op.getCallee());
       auto return_op = dyn_cast<ReturnOp>(func_op.front().back());
       assert(return_op);
       outputs.push_back(return_op.getOperand(result.getResultNumber()));
@@ -1032,7 +1212,8 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
   for (auto opd : call.getOperands()) {
     inputs.emplace_back(module::getOriValue(opd));
   }
-  auto func = getFuncOp(call.getCallee());
+  auto md = getModuleOp(call);
+  auto func = getFuncOp(md, call.getCallee());
   func.walk([&](ReturnOp op) {
     for (auto output : op.getOperands()) {
       outputs.push_back(output);
@@ -1187,10 +1368,66 @@ quant::UniformQuantizedType getUniformQuantizedType(Type t) {
 }
 
 //-----------------------------------------------------------------
+// Helper Functions for op translate
+//-----------------------------------------------------------------
+mlir::Value opSliceAxis(mlir::Value v, int64_t axis, int64_t offset,
+                        int64_t length) {
+  auto stype = module::getStorageType(v);
+  auto shape = module::getShape(v);
+  std::vector<int64_t> new_shape(shape);
+  new_shape[axis] = length;
+  assert(offset + length <= shape[axis]);
+  auto new_type = RankedTensorType::get(new_shape, module::getElementType(v));
+  auto suffix = std::to_string(axis) + "_" + std::to_string(offset);
+  if (isWeight(v)) {
+    auto op = v.getDefiningOp<top::WeightOp>();
+    if (stype.isBF16() || stype.isF16()) {
+      auto data = op.read<uint16_t>();
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      return top::WeightOp::create<uint16_t>(op, suffix, *new_data, new_type);
+    } else if (stype.isSignedInteger(8) || stype.isSignlessInteger(8)) {
+      auto data = op.read<int8_t>();
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      return top::WeightOp::create<int8_t>(op, suffix, *new_data, new_type);
+    } else if (stype.isF32()) {
+      auto data = op.read<float>();
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      return top::WeightOp::create<float>(op, suffix, *new_data, new_type);
+    }
+    op.dump();
+    llvm_unreachable("Not Implemented");
+  } else {
+    auto ctx = v.getContext();
+    OpBuilder builder(ctx);
+    std::string name = getName(v).str() + "_" + suffix;
+    auto loc = NameLoc::get(builder.getStringAttr(name));
+    std::vector<NamedAttribute> attrs;
+    std::vector<int64_t> offsets(shape.size(), 0);
+    offsets[axis] = offset;
+    attrs.emplace_back(
+        builder.getNamedAttr("offset", builder.getI64ArrayAttr(offset)));
+    attrs.emplace_back(
+        builder.getNamedAttr("steps", builder.getI64ArrayAttr({1, 1, 1, 1})));
+    attrs.emplace_back(builder.getNamedAttr(
+        "ends", builder.getI64ArrayAttr({-1, -1, -1, -1})));
+    std::vector<Value> operands;
+    operands.emplace_back(v);
+    auto none = module::getNoneOp(v.getDefiningOp());
+    operands.emplace_back(none);
+    operands.emplace_back(none);
+    operands.emplace_back(none);
+    operands.emplace_back(none);
+    builder.setInsertionPointAfterValue(v);
+    auto sliceOp = builder.create<tpu::SliceOp>(loc, new_type, operands, attrs);
+    return sliceOp.getOutput();
+  }
+}
+
+//-----------------------------------------------------------------
 // Helper Functions for weight
 //-----------------------------------------------------------------
 static std::string genWeightFileName(bool &same_name) {
-  auto name = getModuleName();
+  auto name = getName(m);
   auto state = getState();
   auto chip_ = getChip();
   auto chip = stringifyChip(chip_);
@@ -1218,20 +1455,24 @@ static std::string genWeightFileName(bool &same_name) {
 void saveWeight() {
   // check name conflict
   std::set<StringRef> all_names;
-  for (auto func : m.getOps<FuncOp>()) {
-    func.walk([&](Operation *op) {
-      if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op) &&
-          !module::isOpInParallel(op)) {
-        auto name = module::getName(op);
-        // if op have more than two regions, it can have the same op Name
-        if (all_names.find(name) != all_names.end() &&
-            !isa<tpu::YieldOp, tpu::IfOp>(op)) {
-          op->dump();
-          llvm_unreachable("op name conflict");
+  auto modules = getAllModules();
+  for (auto s : *modules) {
+    for (auto func : s.getOps<FuncOp>()) {
+      func.walk([&](Operation *op) {
+        if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op) &&
+            !module::isOpInParallel(op) &&
+            !isa<func::ReturnOp, func::CallOp, func::FuncOp, tpu::YieldOp,
+                 tpu::IfOp, top::InputOp>(op)) {
+          auto name = module::getName(op);
+          // if op have more than two regions, it can have the same op Name
+          if (all_names.find(name) != all_names.end()) {
+            op->dump();
+            llvm_unreachable("op name conflict");
+          }
+          all_names.insert(name);
         }
-        all_names.insert(name);
-      }
-    });
+      });
+    }
   }
   bool same_name = true;
   std::string filename_;
@@ -1253,10 +1494,12 @@ void saveWeight() {
     return;
   }
   std::set<StringRef> weight_names;
-  for (auto func : m.getOps<FuncOp>()) {
-    func.walk([&](top::WeightOp op) {
-      weight_names.insert(module::getName(op.getOperation()));
-    });
+  for (auto s : *modules) {
+    for (auto func : s.getOps<FuncOp>()) {
+      func.walk([&](top::WeightOp op) {
+        weight_names.insert(module::getName(op.getOperation()));
+      });
+    }
   }
   std::set<StringRef> npz_names;
   wFile->getAllNames(npz_names);
@@ -1285,6 +1528,62 @@ mlir::TensorFile &weightFile() {
     wFile = std::make_unique<mlir::TensorFile>(name, false);
   }
   return *wFile;
+}
+
+//-----------------------------------------------------------------
+// Helper for shape op inference
+//-----------------------------------------------------------------
+void ShapeHelper::bindShapeInfo(const Value &v,
+                                const std::vector<int64_t> &shape) {
+  _shape_info[v] = shape;
+}
+
+std::vector<int64_t> ShapeHelper::getShapeInfo(const Value &v) {
+  return _shape_info.at(v);
+}
+
+bool ShapeHelper::isShape(const Value &v) {
+  return _shape_info.find(v) != _shape_info.end();
+}
+
+void bindShapeTensorValue(const Value &v, const std::vector<int64_t> &shape) {
+  ShapeHelper::getInstance().bindShapeInfo(v, shape);
+}
+
+std::vector<int64_t> getShapeTensorValue(const Value &v) {
+  return ShapeHelper::getInstance().getShapeInfo(v);
+}
+
+bool isShape(const Value &v) { return ShapeHelper::getInstance().isShape(v); }
+
+std::vector<int64_t>
+commonShapeValInfer(mlir::Operation *op,
+                    const std::vector<std::vector<int64_t>> &in_shapes_v,
+                    const std::vector<int64_t> &out_shape) {
+  // support scalar
+  assert(out_shape.size() == 1 || out_shape.size() == 0);
+  auto real_out_size = out_shape.size() == 0 ? 1 : out_shape[0];
+  InferenceParameter p;
+  std::vector<std::vector<float_t>> input_datas;
+  for (auto &in_shape_v : in_shapes_v) {
+    std::vector<float_t> input_data(in_shape_v.size());
+    std::transform(in_shape_v.begin(), in_shape_v.end(), input_data.begin(),
+                   [](auto &i) { return static_cast<float_t>(i); });
+    input_datas.push_back(input_data);
+  }
+  std::transform(input_datas.begin(), input_datas.end(),
+                 std::back_inserter(p.inputs),
+                 [](auto &i) { return i.data(); });
+  std::vector<float_t> output_data(real_out_size);
+  p.outputs.push_back(output_data.data());
+  auto inf_op = dyn_cast<InferenceInterface>(op);
+  assert(inf_op);
+  auto ret = inf_op.inference(p);
+  assert(mlir::succeeded(ret));
+  std::vector<int64_t> output_shape_v(real_out_size);
+  std::transform(output_data.begin(), output_data.end(), output_shape_v.begin(),
+                 [](float_t i) { return static_cast<int64_t>(i); });
+  return output_shape_v;
 }
 
 } // namespace module

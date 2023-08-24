@@ -1921,6 +1921,93 @@ void Yolov5DetectionFunc::invoke() {
     top_data[i * 7 + 6] = total_preds[i].h;
   }
 }
+Yolov8DetectionFunc::Yolov8DetectionFunc(YoloDetParam &param)
+    : param_(param) {
+}
+
+void Yolov8DetectionFunc::invoke() {
+
+  auto top_data = param_.output.ptr;
+  memset(top_data, 0, param_.output.size);
+  int batch_num = param_.inputs[0].shape[0];
+  int box_len = param_.inputs[0].shape[1];    //84   (x y w h + 80 class_score)
+  int box_num = param_.inputs[0].shape[2];    //8400 box
+  int agnostic_nms = param_.agnostic_nms;
+
+  std::vector<PredictionResult> total_preds;
+
+  for(int b = 0; b < batch_num; b++){
+    std::vector<PredictionResult> preds;
+    //================================
+    // box decode
+    //================================
+    for(int j = 0; j < box_num; j++){
+    const float *input_data =
+    param_.inputs[0].ptr + b * box_num * box_len + j; // TODO:transpose input_data [1,84,box_num]->[1,box_num,84] when canonicalizing may faster
+      float max_value = -10000;
+      int max_idx = 0;
+      for (int l = 4; l < box_len; l++){
+        const float *input_element = input_data + l * box_num;
+        if (*input_element > max_value){
+          max_value = *input_element;
+          max_idx = l-4;
+        }
+         if (max_value >= param_.obj_threshold) {
+          PredictionResult pred;
+          pred.classType = max_idx;
+          pred.confidence = max_value;
+          pred.idx = b;
+          pred.x = *(input_data);
+          pred.y = *(input_data + box_num);
+          pred.w = *(input_data + 2 * box_num);
+          pred.h = *(input_data + 3 * box_num);
+          preds.push_back(pred);
+      }
+    }
+  }
+
+
+    //================================
+    // NMS for each image
+    //================================
+    std::vector<int> idxes;
+    idxes.clear();
+
+    int num_kept = 0;
+    if (preds.size() > 0) {
+      std::stable_sort(
+          preds.begin(), preds.end(),
+          [](const PredictionResult &box1, const PredictionResult &box2) {
+            return box1.confidence > box2.confidence;
+          });
+
+      ApplyNms_opt(preds, idxes, param_.nms_threshold, agnostic_nms);
+      num_kept = idxes.size();
+
+      if (param_.keep_topk > 0) {
+        if (num_kept > param_.keep_topk)
+          num_kept = param_.keep_topk;
+      } else {
+        if (num_kept > KEEP_TOP_K)
+          num_kept = KEEP_TOP_K;
+      }
+
+      for (int i = 0; i < num_kept; i++) {
+        total_preds.push_back(preds[idxes[i]]);
+      }
+    }
+  }
+
+  for (int i = 0; i < total_preds.size(); i++) {
+    top_data[i * 7 + 0] = total_preds[i].idx;        // Image_Id
+    top_data[i * 7 + 1] = total_preds[i].classType;  // label
+    top_data[i * 7 + 2] = total_preds[i].confidence; // confidence
+    top_data[i * 7 + 3] = total_preds[i].x;
+    top_data[i * 7 + 4] = total_preds[i].y;
+    top_data[i * 7 + 5] = total_preds[i].w;
+    top_data[i * 7 + 6] = total_preds[i].h;
+  }
+}
 
 NmsFunc::NmsFunc(NmsParam &param) : param_(param) {}
 

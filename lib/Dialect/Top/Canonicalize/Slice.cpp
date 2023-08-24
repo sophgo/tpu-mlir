@@ -20,11 +20,28 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
     if (op->hasOneUse()) {
       return failure();
     }
-    const auto users = op->getUsers();
-    for (const auto user: users) {
+    // ****** CAUTION ******
+    // Method 1:
+    // auto users = op->getUsers();
+    // for (auto user: users) {
+    //  *** remove users ***
+    // }
+    // Method 2:
+    // for (auto user: op->getUsers()) {
+    //  *** remove users ***
+    // }
+    // Both methods might cause problems! We should cache the users first!
+    std::vector<mlir::Operation *> users;
+    for (auto user: op->getUsers()) {
       if (!isa<SliceOp>(user)) {
         return failure();
       }
+      if (!module::isNone(dyn_cast<SliceOp>(*user).getOffsetT()) ||
+          !module::isNone(dyn_cast<SliceOp>(*user).getEndsT()) ||
+          !module::isNone(dyn_cast<SliceOp>(*user).getStepsT())) {
+        return failure();
+      }
+      users.emplace_back(user);
     }
     const auto& opd = op->getOperand(0);
     const auto& res = op->getResult(0);
@@ -50,6 +67,7 @@ struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
       user->eraseOperand(0);
       user->insertOperands(0, slice_result_var);
     }
+    rewriter.eraseOp(op);
     return success();
   }
 };
@@ -60,7 +78,10 @@ struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
 
   LogicalResult matchAndRewrite(SliceOp op,
                                 PatternRewriter &rewriter) const override {
-
+    if (!module::isNone(op.getOffsetT()) || !module::isNone(op.getEndsT()) ||
+        !module::isNone(op.getStepsT())) {
+      return failure();
+    }
     auto in_op = op.getInput().getDefiningOp();
     if (!isa<SliceOp>(in_op) || in_op->hasOneUse() == false) {
       return failure();
@@ -114,7 +135,12 @@ struct NoUseSlicePattern : public OpRewritePattern<SliceOp> {
         return failure();
       }
     }
+    if (!module::isNone(op.getOffsetT()) || !module::isNone(op.getEndsT()) ||
+        !module::isNone(op.getStepsT())) {
+      return failure();
+    }
     op.getOutput().replaceAllUsesWith(op.getInput());
+    rewriter.eraseOp(op);
     return success();
   }
 };

@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
@@ -62,9 +61,7 @@ struct PReluReshape : public OpRewritePattern<PReluOp> {
     }
     std::vector<int64_t> new_shape(num_dims, 1);
     new_shape[1] = num;
-    auto new_type =
-        RankedTensorType::get(new_shape, module::getElementType(slope));
-    op.getSlope().setType(new_type);
+    module::setShape(slope, new_shape);
     return success();
   }
 };

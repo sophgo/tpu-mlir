@@ -59,7 +59,7 @@ void CVAddressAssign::checkIfFileGood(std::string &fileName,
   }
 }
 
-void CVAddressAssign::assign_weight_addr(mlir::ModuleOp &module,
+void CVAddressAssign::assign_weight_addr(mlir::ModuleOp &m,
                                          bool merge_weight,
                                          bool compress_weight,
                                          std::string &weight_map_file) {
@@ -92,7 +92,7 @@ void CVAddressAssign::assign_weight_addr(mlir::ModuleOp &module,
   auto weightMapFile = std::make_unique<std::fstream>(weight_map_file, flags);
   checkIfFileGood(weight_map_file, weightMapFile);
 
-  for (auto func : module.getOps<FuncOp>()) {
+  for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
       auto weight_data = op.read_as_byte();
       std::string md5 = calcMD5(*weight_data);
@@ -101,7 +101,7 @@ void CVAddressAssign::assign_weight_addr(mlir::ModuleOp &module,
       if (compress_weight && op.getResult().hasOneUse()) {
         auto nextOp = (*op.getResult().getUses().begin()).getOwner();
         if (isa<tpu::Conv2DOp>(nextOp) || isa<tpu::MatMulOp>(nextOp)) {
-          Builder builder(module.getContext());
+          Builder builder(m.getContext());
           op.setDoCompressAttr(builder.getBoolAttr(true));
         }
       }
@@ -135,15 +135,15 @@ void CVAddressAssign::assign_weight_addr(mlir::ModuleOp &module,
       }
     }
   }
-  module::setCoeffAddr(start_addr);
-  module::setCoeffSize(addr);
+  module::setCoeffAddr(m, start_addr);
+  module::setCoeffSize(m, addr);
 }
 
-void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr,
+void CVAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr,
                              bool merge_weight, bool compress_weight,
                              std::string &weight_map_file) {
   // assign weight first
-  assign_weight_addr(module, merge_weight, compress_weight, weight_map_file);
+  assign_weight_addr(m, merge_weight, compress_weight, weight_map_file);
 
   int64_t neuron_alignment = 16;
   // key: the operation pointer & output index
@@ -159,7 +159,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr,
 
   // assign activation
   uint32_t loc = 0;
-  for (auto func : module.getOps<FuncOp>()) {
+  for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
       ops_loc[op] = loc;
       ++loc;
@@ -170,7 +170,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr,
   }
   std::vector<Value> inputs;
   std::vector<Value> outputs;
-  module::getInputsOutputs(inputs, outputs);
+  module::getInputsOutputs(m, inputs, outputs);
   for (auto iter = ops.rbegin(); iter != ops.rend(); ++iter) {
     updateLiveRange(*iter, ops_loc, op_infos, inplace_ops, outputs,
                     neuron_alignment);
@@ -269,10 +269,8 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr,
   // TODO markGmemReusedOp
   // TODO crop concat pattern
 
-  module::setNeuronSize(sharedGmemSize);
-  module::setGmemPrivateSize(privateGmemSize);
-  module::updateModuleTypes();
-  module::setState(module::State::TPU_ADDRESSED);
+  module::setNeuronSize(m, sharedGmemSize);
+  module::setGmemPrivateSize(m, privateGmemSize);
 }
 
 void CVAddressAssign::updateLiveRangeofPreOp(

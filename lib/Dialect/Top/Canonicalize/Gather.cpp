@@ -9,10 +9,8 @@
 
 #include "tpu_mlir/Support/Module.h"
 
-
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
-
 
 struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -31,41 +29,22 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
     auto inds_shape = module::getShape(op.getIndices());
     auto inds_elems = module::getNumElements(op.getIndices());
     auto ax = op.getAxis();
+    auto input_shape = module::getShape(op.getInput());
     // if indices are regular, try to convert to SliceOp
     if (inds_elems == 1) {
       // e.g. Gather(indices=[1],axis=ax) + Unsqueeze(axis=ax)
       //            -> Slice(start=1, end=2, step=1, axes=ax)
-      auto nextOp = op->getUsers().begin();
-      if (!op->hasOneUse() || !isa<ReshapeOp>(*nextOp)) {
-        return failure();
+      int64_t index = (int64_t)inds_f32->at(0);
+      if (index == -1 && ax == 0) {
+        index = input_shape[ax] - 1;
       }
-
-      auto reshape_op = cast<ReshapeOp>(*nextOp);
-      auto out_shape = module::getShape(op.getOutput());
-      auto reshape_out_shape = module::getShape(reshape_op.getOutput());
-      std::vector<int64_t> unsqueeze_out_shape{};
-      for (int64_t i = 0; i < out_shape.size(); ++i) {
-        if (i == ax) {
-          unsqueeze_out_shape.push_back(1);
-        }
-        unsqueeze_out_shape.push_back(out_shape[i]);
-      }
-      if (unsqueeze_out_shape.size() != reshape_out_shape.size()) {
-        return failure();
-      }
-      for (int64_t i = 0; i < unsqueeze_out_shape.size(); ++i) {
-        if (unsqueeze_out_shape[i] != reshape_out_shape[i]) {
-          return failure();
-        }
-      }
-
-      NamedAttrList attrs;
-      auto input_shape = module::getShape(op.getInput());
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> ends(input_shape.size(), -1);
       std::vector<int64_t> steps(input_shape.size(), 1);
-      offsets[ax] = (int64_t)inds_f32->at(0);
+      offsets[ax] = index;
       ends[ax] = offsets[ax] + 1;
+
+      NamedAttrList attrs;
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
       attrs.set("ends", rewriter.getI64ArrayAttr(ends));
@@ -75,10 +54,16 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       operands.push_back(none);
       operands.push_back(none);
       operands.push_back(none);
-      op.getOperation()->setLoc(reshape_op.getLoc());
-      rewriter.replaceOpWithNewOp<SliceOp>(op, reshape_op.getOutput().getType(),
-                                           operands, attrs);
-      rewriter.replaceOp(reshape_op, {reshape_op.getInput()});
+      rewriter.setInsertionPoint(op);
+      std::vector<int64_t> slice_shape = input_shape;
+      slice_shape[ax] = 1;
+      auto new_loc = module::getLocLike(op.getOutput(), "_slice");
+      auto new_type = module::getTypeLike(op.getOutput(), slice_shape);
+      auto slice_op =
+          rewriter.create<SliceOp>(new_loc, new_type, operands, attrs);
+      auto reshape_op = rewriter.create<ReshapeOp>(
+          op.getLoc(), op.getType(), ValueRange{slice_op.getOutput()});
+      rewriter.replaceOp(op, {reshape_op.getOutput()});
       return success();
     } else if (inds_shape.size() == 1) {
       // e.g. Gather(indices=[1,3,5,7],axis=ax)

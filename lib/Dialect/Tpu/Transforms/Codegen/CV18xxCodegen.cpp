@@ -94,60 +94,64 @@ static void getTypeAndQscale(Value v, std::string &qtype, double &qscale) {
   auto type = module::getStorageType(v);
   auto bits = type.getIntOrFloatBitWidth();
   if (type.isUnsignedInteger()) {
-    switch(bits) {
-      case 8:
-        qtype = "uint8";
-        break;
-      case 16:
-        qtype = "uint16";
-        break;
-      case 32:
-        llvm::errs()<<"type:"<<type<<"\n";
-        llvm_unreachable("unsupported uint32 data type");
-        break;
-      default:
-        break;
+    switch (bits) {
+    case 8:
+      qtype = "uint8";
+      break;
+    case 16:
+      qtype = "uint16";
+      break;
+    case 32:
+      llvm::errs() << "type:" << type << "\n";
+      llvm_unreachable("unsupported uint32 data type");
+      break;
+    default:
+      break;
     }
   } else if (type.isSignedInteger() || type.isSignlessInteger()) {
-    switch(bits) {
-      case 8:
-        qtype = "int8";
-        break;
-      case 16:
-        qtype = "int16";
-        break;
-      case 32:
-        qtype = "int32";
-        break;
-      default:
-        break;
+    switch (bits) {
+    case 8:
+      qtype = "int8";
+      break;
+    case 16:
+      qtype = "int16";
+      break;
+    case 32:
+      qtype = "int32";
+      break;
+    default:
+      break;
     }
   } else if (type.isBF16()) {
     qtype = "bf16";
   } else if (type.isF32()) {
     qtype = "fp32";
   } else {
-    llvm::errs()<<"type:"<<type<<"\n";
+    llvm::errs() << "type:" << type << "\n";
     llvm_unreachable("unsupported data type");
   }
 }
 
-static void writeDebugInfos(std::string fileName, std::vector<std::vector<debug_info_t>> debug_infos) {
+static void
+writeDebugInfos(std::string fileName,
+                std::vector<std::vector<debug_info_t>> debug_infos) {
   std::ofstream ofs;
   ofs.open(fileName, std::ios::out);
   int i = 1;
   for (auto &tpu_infos : debug_infos) {
-    ofs<<"Cmdbuf"<<i<<": layer_id, tensor_name, inGroup, ignore, gaddr, g_shape, lg_idx_slice, laddr, qtype, qscale. \n";
+    ofs << "Cmdbuf" << i
+        << ": layer_id, tensor_name, inGroup, ignore, gaddr, g_shape, "
+           "lg_idx_slice, laddr, qtype, qscale. \n";
     for (auto &info : tpu_infos) {
-      ofs<<std::to_string(info.layer_id)<< " ";
-      ofs<<info.name<<" ";
+      ofs << std::to_string(info.layer_id) << " ";
+      ofs << info.name << " ";
       if (info.inGroup) {
         ofs << "true ";
         if (info.ignore) {
           ofs << "true x x x x x x\n";
         } else {
           ofs << "false ";
-          ofs << "x "; //set gaddr as x
+          ofs << "x "; // set gaddr as x
           for (int i = 0; i < info.g_shape.size() - 1; i++) {
             ofs << std::to_string(info.g_shape[i]) << ",";
           }
@@ -156,7 +160,8 @@ static void writeDebugInfos(std::string fileName, std::vector<std::vector<debug_
           for (int i = 0; i < info.lg_idx_slice.size() - 1; i++) {
             ofs << std::to_string(info.lg_idx_slice[i]) << ",";
           }
-          ofs << std::to_string(info.lg_idx_slice[info.lg_idx_slice.size() - 1]);
+          ofs << std::to_string(
+              info.lg_idx_slice[info.lg_idx_slice.size() - 1]);
           ofs << " ";
           ofs << std::to_string(info.laddr) << " ";
           ofs << info.qtype << " ";
@@ -170,7 +175,7 @@ static void writeDebugInfos(std::string fileName, std::vector<std::vector<debug_
         }
         ofs << std::to_string(info.g_shape[info.g_shape.size() - 1]);
         ofs << " ";
-        ofs << "x x "; //set lg_idx_slice and laddr as x
+        ofs << "x x "; // set lg_idx_slice and laddr as x
         ofs << info.qtype << " ";
         ofs << std::to_string(info.qscale) << "\n";
       }
@@ -180,10 +185,10 @@ static void writeDebugInfos(std::string fileName, std::vector<std::vector<debug_
   ofs.close();
 }
 
-CviCpuRoutine::CviCpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
+CviCpuRoutine::CviCpuRoutine(ModuleOp s, flatbuffers::FlatBufferBuilder &fbb,
                              func::CallOp &call, std::string chip)
     : CviRoutine(fbb, false, chip) {
-  auto func = module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(s, call.getCallee());
   func.walk([&](Operation *op) {
     if (isa<GlobalGenInterface>(op)) {
       ops.emplace_back(op);
@@ -315,12 +320,12 @@ bool CviTpuRoutine::isCodegen(Operation *op) {
   return true;
 }
 
-CviTpuRoutine::CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
+CviTpuRoutine::CviTpuRoutine(ModuleOp s, flatbuffers::FlatBufferBuilder &fbb,
                              func::CallOp &call, int *layer_id,
                              std::string chip)
     : CviRoutine(fbb, true, chip) {
   this->layer_id = layer_id;
-  auto func = module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(s, call.getCallee());
   name = func.getName().str();
   func.walk([&](Operation *op) {
     if (isa<GlobalGenInterface, GroupOp>(op) && !module::isOpInGroup(op)) {
@@ -423,7 +428,8 @@ void CviTpuRoutine::codegen_for_group(GroupOp gOp) {
             int64_t gn, gc, gh, gw;
             module::getNCHW(result, gn, gc, gh, gw);
             dinfo.g_shape = {gn, gc, gh, gw};
-            dinfo.lg_idx_slice = {ginfo.n_idx, ginfo.n_slice, ginfo.h_idx, ginfo.h_slice};
+            dinfo.lg_idx_slice = {ginfo.n_idx, ginfo.n_slice, ginfo.h_idx,
+                                  ginfo.h_slice};
             dinfo.laddr = ginfo.out_addr;
             getTypeAndQscale(result, dinfo.qtype, dinfo.qscale);
             debug_infos.emplace_back(dinfo);
@@ -500,19 +506,19 @@ flatbuffers::Offset<Routine> CviTpuRoutine::build() {
                        0);
 }
 
-CviModelBuilder::CviModelBuilder(ModuleOp &module) : fbb_(1024) {
+CviModelBuilder::CviModelBuilder(ModuleOp &m) : fbb_(1024) {
   int32_t layer_id = 0;
   auto chip_ = module::getChip();
   chip = module::stringifyChip(chip_);
-  privateGmemSize_ = module::getGmemPrivateSize();
-  sharedGmemSize_ = module::getNeuronSize();
+  privateGmemSize_ = module::getGmemPrivateSize(m);
+  sharedGmemSize_ = module::getNeuronSize(m);
   version_ = get_version(majorVersion_, minorVersion_, subMinorVersion_);
-  modelName_ = module::getModuleName().str();
-  coeff_size = module::getCoeffSize(); // set in assignAddr
+  modelName_ = module::getName(m);
+  coeff_size = module::getCoeffSize(m); // set in assignAddr
   std::map<int32_t, func::FuncOp> subFuncs;
-  module.walk<WalkOrder::PreOrder>([&](func::FuncOp func){
+  m.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
     func.walk([&](top::WeightOp op) { weights.push_back(op); });
-    if (func == module::getMainFuncOp()) {
+    if (func == module::getMainFuncOp(m)) {
       return WalkResult::advance();
     }
     int32_t subIdx = func->getAttrOfType<IntegerAttr>("id").getInt();
@@ -528,27 +534,28 @@ CviModelBuilder::CviModelBuilder(ModuleOp &module) : fbb_(1024) {
       llvm_unreachable("Cant find subFunc.");
     }
     if (auto call = module::getCallOp(func)) {
-      addRoutine(call, &layer_id);
+      addRoutine(m, call, &layer_id);
     }
     nextSubIdx = func->getAttrOfType<DenseI32ArrayAttr>("next_index")[0];
   };
-  module::getInputsOutputs(inputs, outputs);
+  module::getInputsOutputs(m, inputs, outputs);
 }
 
-void CviModelBuilder::addRoutine(func::CallOp &call, int *layer_id) {
+void CviModelBuilder::addRoutine(ModuleOp s, func::CallOp &call,
+                                 int *layer_id) {
   // todo support cpu sub_fun
-  auto func = module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(s, call.getCallee());
   auto run_mode = getRunMode(func);
   CviRoutine *rt = nullptr;
   switch (run_mode) {
   case RunMode::TPU_STATIC: {
-    rt = new CviTpuRoutine(fbb_, call, layer_id, chip);
+    rt = new CviTpuRoutine(s, fbb_, call, layer_id, chip);
     CviTpuRoutine *tpu_rt = (CviTpuRoutine *)rt;
     tpu_debug_infos.emplace_back(tpu_rt->debug_infos);
     break;
   }
   case RunMode::CPU:
-    rt = new CviCpuRoutine(fbb_, call, chip);
+    rt = new CviCpuRoutine(s, fbb_, call, chip);
     break;
   default:
     llvm_unreachable("Not Implemented");
@@ -917,7 +924,8 @@ void CviModelBuilder::storeModel(std::string filename) {
                      modelData.size());
   output->keep();
 
-  //write debug txt
-  std::string debugFileName = filename.replace(filename.end() - 9, filename.end(), "_tensor_info.txt");
+  // write debug txt
+  std::string debugFileName =
+      filename.replace(filename.end() - 9, filename.end(), "_tensor_info.txt");
   writeDebugInfos(debugFileName, this->tpu_debug_infos);
 }

@@ -14,7 +14,6 @@
 
 using namespace llvm;
 
-
 using namespace flatbuffers;
 namespace tpu_mlir {
 namespace tpu {
@@ -22,21 +21,22 @@ namespace tpu {
 class BMCodegen {
 public:
   BMCodegen() {}
-  void run(ModuleOp &module, std::string &filename);
+  void init(ModuleOp m, const std::string &filename);
+  void run(ModuleOp s, bool embed_debug_info = false);
+  void store();
 
 private:
-  u32 max_cpu_mem_size = 0;
   Offset<Vector<Offset<bmodel::Shape>>>
   CreateShapeVector(const ArrayRef<int64_t> &shape);
   Offset<Vector<Offset<bmodel::Tensor>>>
-  CreateTensorVector(const std::vector<Value> &values);
-  Offset<bmodel::SubNet> CreateSubNet(func::CallOp call);
-  Offset<bmodel::SubNet> CreateSubNet(func::CallOp call,
+  CreateTensorVector(const std::vector<Value> &values, bool hidden_all = false);
+  Offset<bmodel::SubNet> CreateSubNet(ModuleOp s, func::CallOp call);
+  Offset<bmodel::SubNet> CreateSubNet(ModuleOp s, func::CallOp call,
                                       std::unique_ptr<SubnetIr> subnet_ir_,
                                       std::unique_ptr<Context> &context);
-  Offset<bmodel::SubNet> CreateCPUSubNet(func::CallOp call);
-   Offset<bmodel::SubNet> CreateSwitchSubNet(func::CallOp call);
-  Offset<bmodel::SubNet> CreateMergeSubNet(func::CallOp call);
+  Offset<bmodel::SubNet> CreateCPUSubNet(ModuleOp s, func::CallOp call);
+  Offset<bmodel::SubNet> CreateSwitchSubNet(ModuleOp s, func::CallOp call);
+  Offset<bmodel::SubNet> CreateMergeSubNet(ModuleOp s, func::CallOp call);
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
   Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                                           uint64_t coeff_addr,
@@ -46,10 +46,9 @@ private:
                       const vector<u32> &binary_ir_v, u32 ir_offset,
                       bmodel::Binary &binary_ir);
   Offset<bmodel::SwitchParam>
-  CreateSwitchParamVector(vector<int>& output_from,
-                          vector<int>& output_branch);
+  CreateSwitchParamVector(vector<int> &output_from, vector<int> &output_branch);
   Offset<bmodel::MergeParam>
-  CreateMergeParamVector(vector<vector<int>>& output_from);
+  CreateMergeParamVector(vector<vector<int>> &output_from);
   void codegen(Operation *op);
   void codegen_for_group(GroupOp gOP, Operation *prev_op, Operation *next_op);
   void codegen_for_overlap_ops(
@@ -59,12 +58,21 @@ private:
       bool first_compute_loop, bool last_compute_loop);
   void codegen_ir(Operation *op, SubnetIr *subnet_ir_);
   SmallString<128> gen_op_id(Operation *op);
+  bool isHiddenTensor(StringRef name);
+  void checkAndUpdateHidden(const std::vector<Value> &inputs,
+                            const std::vector<Value> &outputs);
 
 private:
-  ModuleOp module;
   StringRef state;
   std::string chip;
   BM168x *bm168x;
+  u32 max_cpu_mem_size = 0;
+  std::string filename;
+  std::shared_ptr<std::vector<StringRef>> input_names;
+  std::shared_ptr<std::vector<StringRef>> output_names;
+  std::vector<StringRef> hidden_names;
+  uint32_t current_step = 0;
+  uint32_t current_device = 0;
   std::shared_ptr<bmodel::ModelGen> model_gen;
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> cmd_group_all;
   TensorLocation tensor_loc;

@@ -12,14 +12,18 @@ using namespace tpu_mlir;
 namespace cvi_debug {
 class FieldBase {
 public:
-  FieldBase() = default;
+  FieldBase(TypeID typeID) : typeID(typeID){};
   virtual ~FieldBase() = default;
+  TypeID typeID;
 };
 
 template <typename T>
 class Field: public FieldBase {
 public:
-  Field(T& val): data(val) {}
+  Field(T &val) : data(val), FieldBase(TypeID::get<Field<T>>()) {}
+  static bool classof(const FieldBase *base) {
+    return base->typeID == TypeID::get<Field<T>>();
+  }
   T data;
 };
 
@@ -33,7 +37,7 @@ public:
   template <typename T>
   T& get(std::string name) {
     //llvm::errs()<<"name:"<<name<<",value:"<<fields[name].get()<<"\n";
-    auto f = dynamic_cast<Field<T>*>(fields[name].get());
+    auto f = dyn_cast<Field<T>>(fields[name].get());
     assert(f);
     return f->data;
   }
@@ -72,4 +76,3 @@ void getAndSaveCpuOutput(std::vector<float> &output, std::vector<float> &save_da
 
 void invoke(cpu_func_info &func_info, std::vector<std::vector<float>> &inputs, std::vector<std::vector<float>> &outputs);
 }
-

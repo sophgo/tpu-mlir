@@ -10,9 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
-
 using namespace llvm;
-
 
 namespace tpu_mlir {
 namespace tpu {
@@ -85,7 +83,7 @@ struct AttentionReorderPattern : public RewritePattern {
       if (user->hasOneUse() == false) {
         return failure();
       }
-      auto user2 = *user->getUsers().begin();
+      auto user2 = *user->user_begin();
       if (false == isa<tpu::ReshapeOp>(user2)) {
         return failure();
       }
@@ -120,23 +118,27 @@ class OpReorderPass : public OpReorderBase<OpReorderPass> {
 public:
   OpReorderPass() {}
   void runOnOperation() override {
-    auto func = getOperation();
-    if (func.getName() == "main") {
-      // only for subnet
-      return;
+    auto ctx = &getContext();
+    auto modules = module::getAllModules();
+    for (auto s : *modules) {
+      for (auto func : s.getOps<FuncOp>()) {
+        if (func.getName() == "main") {
+          // only for subnet
+          return;
+        }
+        RewritePatternSet patterns(ctx);
+        patterns.add<OpReorderPattern>(ctx);
+        applyPatternsAndFoldGreedily(func, std::move(patterns));
+        // special for attention
+        patterns.clear();
+        patterns.add<AttentionReorderPattern>(ctx);
+        applyPatternsAndFoldGreedily(func, std::move(patterns));
+      }
     }
-    auto ctx = func.getContext();
-    RewritePatternSet patterns(ctx);
-    patterns.add<OpReorderPattern>(ctx);
-    applyPatternsAndFoldGreedily(func, std::move(patterns));
-    // special for attention
-    patterns.clear();
-    patterns.add<AttentionReorderPattern>(ctx);
-    applyPatternsAndFoldGreedily(func, std::move(patterns));
   }
 };
 
-std::unique_ptr<OperationPass<FuncOp>> createOpReorderPass() {
+std::unique_ptr<OperationPass<ModuleOp>> createOpReorderPass() {
   return std::make_unique<OpReorderPass>();
 }
 } // namespace tpu

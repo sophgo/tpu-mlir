@@ -49,36 +49,35 @@ void top::ReshapeOp::shape_inference() {
       out_shape[x] = num;
     }
     module::setShapeOrVerify(getOutput(), out_shape);
-  } else {
-    /* for unranked tensor as below, sema is ok, don;t check it
-      %294 = "top.Reshape"(%293) : (tensor<1xf32>) -> tensor<*xf32> loc(#loc294) */
-    //assert(module::isUnranked(getOutput()) == false);
-    auto output_shape = module::getShape(getOutput());
-    int element_num  = 1;
-    [&](llvm::ArrayRef<int64_t> &shape) {
-      int unranked_shape_num = 0;
-      for (int i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0)
-          unranked_shape_num++;
-        else
-          element_num *= shape[i];
-        out_shape.push_back(shape[i]);
-      }
-      assert(unranked_shape_num < 2);
-    }(output_shape);
-
-    if (out_shape.empty()) {
-      out_shape.push_back(num);
-      module::setShapeOrVerify(getOutput(), out_shape);
+  } else if (getShapeT()) {
+    if (auto shape_w = dyn_cast<top::WeightOp>(getShapeT().getDefiningOp())) {
+      auto shape_v = shape_w.read_as_float();
+      std::transform(shape_v->begin(), shape_v->end(),
+                     std::back_inserter(out_shape),
+                     [](auto &v) { return static_cast<int64_t>(v); });
+    } else if (module::isShape(getShapeT())) {
+      out_shape = module::getShapeTensorValue(getShapeT());
     } else {
-      for (int i = 0; i < out_shape.size(); i++) {
-        if (out_shape[i] == 0) {
-          out_shape[i] = num/element_num;
-          module::setShapeOrVerify(getOutput(), out_shape);
-          break;
-        }
-      }
+      llvm_unreachable("shape is illegal");
     }
+    assert(std::count(out_shape.begin(), out_shape.end(), -1) <= 1);
+    auto last_0_iter = std::find(out_shape.rbegin(), out_shape.rend(), 0);
+    auto last_0_bias = std::distance(last_0_iter, out_shape.rend());
+    assert(last_0_bias <= in_shape.size());
+    std::transform(out_shape.begin(), out_shape.begin() + last_0_bias,
+                   in_shape.begin(), out_shape.begin(),
+                   [](auto out, auto in) { return out == 0 ? in : out; });
+    auto unrank_shape_iter = std::find(out_shape.begin(), out_shape.end(), -1);
+    if (unrank_shape_iter != out_shape.end()) {
+      auto fixed_shape_elem = std::accumulate(
+          out_shape.begin(), out_shape.end(), 1, std::multiplies<int64_t>());
+      *unrank_shape_iter = -num / fixed_shape_elem;
+    }
+    module::setShapeOrVerify(getOutput(), out_shape);
+  } else {
+    // for tflite, no shape input or attribute
+    auto out_shape = module::getShape(getOutput());
+    module::setShapeOrVerify(getOutput(), out_shape);
   }
 
   if (!module::isUnranked(getOutput())) {

@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -97,7 +96,7 @@ LogicalResult tpu::ConcatOp::LocalGenSupport() {
     }
     return status;
   } else {
-    return ax > 3 ? failure() : success();
+    return ax > 3 || ax == 0 ? failure() : success();
   }
   return failure();
 }

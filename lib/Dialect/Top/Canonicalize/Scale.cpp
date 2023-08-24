@@ -68,6 +68,10 @@ struct ConstbinaryMergeToTopScale : public OpRewritePattern<ScaleOp> {
                                 PatternRewriter &rewriter) const override {
     auto formerOp = op->getOperand(0).getDefiningOp();
 
+    if (!formerOp->hasOneUse()) {
+      return failure();
+    }
+
     if (!isa<MulConstOp, AddConstOp>(formerOp)) {
       return failure();
     }
@@ -83,7 +87,7 @@ struct ConstbinaryMergeToTopScale : public OpRewritePattern<ScaleOp> {
 
     if (isa<MulConstOp>(formerOp)) {
       auto mul_const_op = cast<MulConstOp>(formerOp);
-      float value = mul_const_op.getConstVal().convertToFloat();
+      float value = mul_const_op.getConstVal().convertToDouble();
       for (int i = 0; i < elem_num; ++i) {
         scale_v[i] = scale_f32->at(i) * value;
       }
@@ -91,24 +95,26 @@ struct ConstbinaryMergeToTopScale : public OpRewritePattern<ScaleOp> {
           RankedTensorType::get({elem_num}, rewriter.getF32Type());
       auto new_scale = WeightOp::create(op, "constbinary_merged_to_scale",
                                         scale_v, scale_type);
+      op->setOperand(0, mul_const_op.getInput());
       op->setOperand(1, new_scale);
       op->setOperand(2, bias);
-      rewriter.replaceOp(mul_const_op, {op});
+      rewriter.eraseOp(mul_const_op);
       return success();
     }
 
     if (isa<AddConstOp>(formerOp)) {
       auto add_const_op = cast<AddConstOp>(formerOp);
-      float value = add_const_op.getConstVal().convertToFloat();
+      float value = add_const_op.getConstVal().convertToDouble();
       for (int i = 0; i < elem_num; ++i) {
         bias_v[i] += scale_f32->at(i) * value;
       }
       auto bias_type = RankedTensorType::get({elem_num}, rewriter.getF32Type());
       auto new_bias =
           WeightOp::create(op, "constbinary_merged_to_bias", bias_v, bias_type);
+      op->setOperand(0, add_const_op.getInput());
       op->setOperand(1, scale);
       op->setOperand(2, new_bias);
-      rewriter.replaceOp(add_const_op, {op});
+      rewriter.eraseOp(add_const_op);
       return success();
     }
     return failure();
@@ -311,6 +317,10 @@ struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
         return failure();
       }
       auto filterOp = dyn_cast<WeightOp>(convOp.getFilter().getDefiningOp());
+      if (!filterOp) { // filter may be not WeightOp
+        return failure();
+      }
+
       auto filterData = filterOp.read<float>();
       std::vector<float_t> newFilter(filterData->size(), 0);
       uint32_t innerSize = filterData->size() / c;
@@ -336,6 +346,9 @@ struct FuseScaleIntoConv : public OpRewritePattern<ScaleOp> {
       auto newBiasType = RankedTensorType::get({c}, rewriter.getF32Type());
       if (!module::isNone(convOp.getBias())) {
         auto cBiasOp = dyn_cast<WeightOp>(convOp.getBias().getDefiningOp());
+        if (!cBiasOp) { // filter may be not WeightOp
+          return failure();
+        }
         auto cBiasData = cBiasOp.read<float>();
         for (int i = 0; i < c; ++i) {
           newBiasVec[i] += cBiasData->at(i) * scaleVec[i];
@@ -362,5 +375,5 @@ void ScaleOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
   results.insert<TopMultiScaleMergeToOne, TopScaleMergeToBatchNorm,
                  ScaleShapeAlign, ConstbinaryMergeToTopScale,
-                 TopScaleMergeToMatMul, FuseScaleIntoConv>(context);
+                 TopScaleMergeToMatMul>(context);
 }

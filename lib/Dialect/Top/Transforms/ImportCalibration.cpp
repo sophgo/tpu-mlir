@@ -135,7 +135,7 @@ public:
             value.setType(new_type);
           }
         } else if (isa<WeightOp>(op)) {
-          auto user = op->getUsers().begin();
+          auto user = op->user_begin();
           std::string str = module::getName(*user).str() + "_weight";
           if (per_chan_scales_map.count(str)) {
             op->setAttr("scale", builder.getF64ArrayAttr(ArrayRef<double>{
@@ -223,6 +223,9 @@ public:
     } else {
       min = info.min;
       max = info.max;
+    }
+    if (op->hasAttr("do_relu") && op->getAttr("do_relu").cast<BoolAttr>().getValue()) {
+      min = 0;
     }
   }
 };

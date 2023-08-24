@@ -59,18 +59,10 @@ void init(ModuleOp module);
 //-----------------------------------------------------------------
 // Helper for get/set Attributes
 //-----------------------------------------------------------------
-int64_t getCoeffSize();
-void setCoeffSize(int64_t size);
-int64_t getGmemPrivateSize();
-void setGmemPrivateSize(int64_t size);
-int64_t getCoeffAddr();
-void setCoeffAddr(int64_t addr);
 int64_t getCoreNum();
 void setCoreNum(int64_t core_num = 1);
-int64_t getNeuronSize();
-void setNeuronSize(int64_t size);
-int64_t getNeuronAddr();
-void setNeuronAddr(int64_t addr);
+int64_t getDeviceNum();
+void setDeviceNum(int64_t device_num = 1);
 
 Chip getChip();
 void setChip(Chip chip);
@@ -80,6 +72,11 @@ void setMode(Mode mode);
 State getState();
 void setState(State state);
 bool isState(State state);
+void setInputs(ArrayRef<StringRef> inputs);
+std::shared_ptr<std::vector<StringRef>> getInputs();
+void setOutputs(ArrayRef<StringRef> outputs);
+std::shared_ptr<std::vector<StringRef>> getOutputs();
+
 Platform getPlatform();
 bool isPlatform(Platform plt);
 
@@ -97,8 +94,6 @@ void setPostprocess(StringRef post);
 ModuleOp getModuleOp();
 Location getLoc();
 MLIRContext *getCtx();
-
-void push_back(FuncOp funcOp);
 
 top::NoneOp getNoneOp(Operation *op);
 Value getOriValue(Value v);
@@ -125,6 +120,9 @@ int64_t getNumElements(Value v);
 Type getStorageType(Value v); // storage type
 Type getStorageType(Type type);
 Type getElementType(Value v);
+RankedTensorType getTypeLike(Value v, llvm::ArrayRef<int64_t> shape);
+
+void setShape(Value v, llvm::ArrayRef<int64_t> shape);
 llvm::ArrayRef<int64_t> getShape(Value v);
 void getGlobalShape(Value v, int *shape, int dim = 4);
 void getLocalShape(Value v, int64_t n_step, int64_t h_step, int *shape);
@@ -141,27 +139,31 @@ bool isShapeRelatedOp(Value v);
 bool isAllWeight(Operation *op);
 bool isNone(Value v);
 bool isGlobalBuffer(Value v);
-FuncOp getMainFuncOp();
+FuncOp getMainFuncOp(ModuleOp module);
 i32_array_t getI32Array(ArrayAttr arrayAttr);
-i32_array_t getI32Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+i32_array_t getI32Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         int32_t default_value);
 i64_array_t getI64Array(ArrayAttr arrayAttr);
-i64_array_t getI64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+i64_array_t getI64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         int64_t default_value);
 f64_array_t getF64Array(ArrayAttr arrayAttr);
-f64_array_t getF64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+f64_array_t getF64Array(std::optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value);
 bool isOpInGroup(Operation *Op, int64_t *group_type = nullptr);
 bool isOpInParallel(Operation *Op);
-FuncOp getFuncOp(StringRef func_name);
+bool isOpInDistribution(Operation *Op);
+FuncOp getFuncOp(ModuleOp module, StringRef func_name);
 func::CallOp getCallOp(FuncOp func);
-llvm::StringRef getModuleName();
 llvm::StringRef getName(Operation *op, int index = 0);
 llvm::StringRef getName(Value v);
 uint32_t getIdx(Value v);
 NameLoc getLoc(Value v);
+NameLoc getLocLike(Operation *op, llvm::StringRef suffix);
+NameLoc getLocLike(Value v, llvm::StringRef suffix);
+void setLocSuffix(Operation *op, llvm::StringRef suffix);
 void setLoc(Value v, NameLoc loc);
-void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs);
+void getInputsOutputs(ModuleOp submodule, std::vector<Value> &inputs,
+                      std::vector<Value> &outputs);
 void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
                       std::vector<Value> &outputs);
 
@@ -172,6 +174,29 @@ bool isBM1684Family();
 bool isBM1684XFamily();
 bool isBM1686();
 bool isBM1684X();
+
+//-----------------------------------------------------------------
+// Helper Functions for submodule
+//-----------------------------------------------------------------
+int getNumSubModule();
+std::shared_ptr<std::vector<ModuleOp>> getAllModules();
+void setSubModuleId(ModuleOp submodule, int64_t device_id, int64_t step);
+void getSubModuleId(ModuleOp submodule, int64_t &device_id, int64_t &step);
+int64_t getNeuronSize(ModuleOp submodule);
+void setNeuronSize(ModuleOp submodule, int64_t size);
+int64_t getNeuronAddr(ModuleOp submodule);
+void setNeuronAddr(ModuleOp submodule, int64_t addr);
+int64_t getCoeffSize(ModuleOp submodule);
+void setCoeffSize(ModuleOp submodule, int64_t size);
+int64_t getGmemPrivateSize(ModuleOp submodule);
+void setGmemPrivateSize(ModuleOp submodule, int64_t size);
+int64_t getCoeffAddr(ModuleOp submodule);
+void setCoeffAddr(ModuleOp submodule, int64_t addr);
+//-----------------------------------------------------------------
+// Helper Functions for op translate
+//-----------------------------------------------------------------
+mlir::Value opSliceAxis(mlir::Value v, int64_t axis, int64_t offset,
+                        int64_t length);
 
 //-----------------------------------------------------------------
 // Helper Functions for weight
@@ -210,6 +235,38 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                           bool asymmetric, int bitwidth = 8);
 void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                           bool &sign, bool asymmetric, int bitwidth = 8);
+
+//-----------------------------------------------------------------
+// Helper for shape op inference
+//-----------------------------------------------------------------
+class ShapeHelper {
+private:
+  ShapeHelper(){};
+  ~ShapeHelper(){};
+  ShapeHelper(const ShapeHelper &);
+  ShapeHelper &operator=(const ShapeHelper &);
+
+public:
+  static ShapeHelper &getInstance() {
+    static ShapeHelper instance;
+    return instance;
+  }
+
+  void bindShapeInfo(const Value &v, const std::vector<int64_t> &shape);
+  std::vector<int64_t> getShapeInfo(const Value &v);
+  bool isShape(const Value &v);
+
+private:
+  llvm::DenseMap<Value, std::vector<int64_t>> _shape_info;
+};
+
+void bindShapeTensorValue(const Value &v, const std::vector<int64_t> &shape);
+std::vector<int64_t> getShapeTensorValue(const Value &v);
+bool isShape(const Value &v);
+std::vector<int64_t>
+commonShapeValInfer(mlir::Operation *op,
+                    const std::vector<std::vector<int64_t>> &in_shapes_v,
+                    const std::vector<int64_t> &out_shape);
 
 } // namespace module
 } // namespace tpu_mlir

@@ -13,7 +13,7 @@ from tools.model_runner import mlir_inference, model_inference, tflite_inference
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
-from utils.auto_remove import file_mark, file_clean
+from utils.auto_remove import file_mark, file_clean, clean_kmp_files
 import os
 
 # from tflite.BuiltinOperator import BuiltinOperator
@@ -946,6 +946,7 @@ def test_all(tester: TFLITE_IR_TESTER):
     # exit(1)
   else:
     print("====== test_tflite.py --chip {} TEST Success ======".format(tester.chip))
+  clean_kmp_files()
   return error_cases
 
 

@@ -11,8 +11,6 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace llvm;
 
 using namespace tpu_mlir::backend;
@@ -40,13 +38,13 @@ bool BMAddressAssign::is_next_subnet_input(Operation *op, int index) {
   return ret;
 }
 
-void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
+void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   int64_t alignment = BM168x::ALIGNMENT;
   int64_t start_addr = BM168x::COEFF_START_ADDR;
-  Builder builder(module.getContext());
+  Builder builder(m.getContext());
   // assign weight first
   auto addr = start_addr;
-  for (auto func : module.getOps<FuncOp>()) {
+  for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
       const auto out_value = op.getOutput();
       auto elm_bits = module::getStorageType(out_value).getIntOrFloatBitWidth();
@@ -79,8 +77,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       addr = align_up(addr + bytes, alignment);
     });
   }
-  module::setCoeffAddr(start_addr);
-  module::setCoeffSize(addr - start_addr);
+  module::setCoeffAddr(m, start_addr);
+  module::setCoeffSize(m, addr - start_addr);
 
   // assign activation
   if (module::isBM1686()) {
@@ -96,7 +94,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   std::vector<ValueInfo> inplace_ops;
   std::vector<Operation *> all_ops;
   // 0.update liverange of ops and choose ops to allocate.
-  for (auto func : module.getOps<FuncOp>()) {
+  for (auto func : m.getOps<FuncOp>()) {
     func.walk<WalkOrder::PreOrder>([&](Operation *op) {
       ops_loc[op] = loc;
       ++loc;
@@ -183,6 +181,9 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
         auto addr = module::getAddress(module::getOriValue(it.value()));
         module::setAddress(identityOp.getOutput()[it.index()], addr);
       }
+    } else if (auto autoincOp = dyn_cast<tpu::AutoIncreaseOp>(op)) {
+      auto addr = module::getAddress(module::getOriValue(autoincOp.getInput()));
+      module::setAddress(autoincOp.getOutput(), addr);
     } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
       auto addr = module::getAddress(sliceOp.getInput());
       auto p = sliceOp.parseParam();
@@ -207,7 +208,39 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
     }
   }
 
-  // 3.set group op address
+  // 3. set parallel Op address
+  for (auto func : m.getOps<FuncOp>()) {
+    func.walk<WalkOrder::PreOrder>([&](tpu::ParallelOp parallelOp) {
+      for (auto &op : parallelOp.getRegion().getOps()) {
+        llvm::TypeSwitch<Operation &>(op)
+            .Case([](tpu::SplitOp splitOp) {
+              int64_t address = module::getAddress(splitOp->getOperand(0));
+              for (auto v : splitOp->getResults()) {
+                module::setAddress(v, address);
+                address += module::getBytes(v);
+              }
+            })
+            .Case([&](tpu::YieldOp yieldOp) {
+              for (auto joinOp_withType : llvm::zip(
+                       yieldOp->getOperands(), parallelOp->getResultTypes())) {
+                auto joinOpValue = std::get<0>(joinOp_withType);
+                joinOpValue.setType(parallelOp->getResultTypes()[0]);
+                int64_t address = module::getAddress(joinOpValue);
+                for (auto v : joinOpValue.getDefiningOp()->getOperands()) {
+                  module::setAddress(v, address);
+                  if (isa<tpu::GroupOp>(v.getDefiningOp())) {
+                    group_ops.push_back(ValueInfo(v.getDefiningOp(), 0));
+                  } else {
+                    address += module::getBytes(v);
+                  }
+                }
+              }
+            });
+      }
+    });
+  }
+
+  // 4.set group op address
   for (auto &op_value : group_ops) {
     auto op = static_cast<Operation *>(op_value.op);
     if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
@@ -224,7 +257,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   }
 
   // 4. set parallel Op address
-  for (auto func : module.getOps<FuncOp>()) {
+  for (auto func : m.getOps<FuncOp>()) {
     func.walk<WalkOrder::PreOrder>([&](tpu::ParallelOp op) {
       auto splitOp = &op.getBody().front().front();
       int64_t address = module::getAddress(splitOp->getOperand(0));
@@ -246,10 +279,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
     });
   }
 
-  module::setNeuronAddr(start_addr);
-  module::setNeuronSize(addr - start_addr);
-  module::updateModuleTypes();
-  module::setState(module::State::TPU_ADDRESSED);
+  module::setNeuronAddr(m, start_addr);
+  module::setNeuronSize(m, addr - start_addr);
 }
 
 void BMAddressAssign::updateLiveRangeofBMOps(
@@ -290,6 +321,86 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       if (isa<top::InputOp>(opd)) {
         liveRange[v_info].start = 0;
         liveRange[v_info].end = 0xFFFFFFFF;
+      }
+
+      /* the operands of ops in prehead
+         basic block will live forever */
+      if (isa<tpu::LoopOp>(op)) {
+        auto set_life_forerver = [&] (ValueInfo &v_info) {
+          if (liveRange.find(v_info) != liveRange.end()) {
+            // not first, update operand's liverange
+            liveRange[v_info].start = 0;
+            liveRange[v_info].end = 0xFFFFFFFF;
+            liveRange[v_info].out_index = v_info.index;
+          } else {
+            // first update the operand, set its start, end, out_index and
+            // tensor_size
+            liveRange[v_info].start = 0;
+            liveRange[v_info].end = 0xFFFFFFFF;
+            liveRange[v_info].out_index = v_info.index;
+            liveRange[v_info].tensor_size =
+                getTensorGmemSize(opd, v_info.index, alignment);
+          }
+        };
+        //loop mode: 6
+        if (!isa<top::NoneOp>(module::getOriValue(op->getOperand(0)).getDefiningOp())
+            && !isa<top::NoneOp>(module::getOriValue(op->getOperand(1)).getDefiningOp())) {
+          /* Loop mode 6 : the prehead block IR as below:
+             %0 = "tpu.Compare"(%arg0, %arg1) {mode = "Less"} :
+                    (tensor<1xf32, 4295000064 : i64>, tensor<1xf32, 4294967296 : i64>)
+                    -> tensor<1xf32, 4294995968 : i64> loc(#loc11)
+              %1 = "tpu.AutoIncrease"(%arg0) {const_val = 1.000000e+00 : f64} :
+                    (tensor<1xf32, 4295000064 : i64>)
+                    -> tensor<1xf32, 4295000064 : i64> loc(#loc12)
+              %2 = "tpu.Compare"(%0, %arg2) {mode = "And"} :
+                    (tensor<1xf32, 4294995968 : i64>, tensor<1xf32, 4295012352 : i64>)
+                    -> tensor<1xf32, 4294991872 : i64> loc(#loc13)*/
+
+          for (int i = 0; i < op->getNumOperands() - 2; i++) {
+            //also set the life forerver
+            auto operand = module::getOriValue(op->getOperand(i));
+            auto opd = operand.getDefiningOp(); //other Op
+            if (!isa<top::WeightOp, top::NoneOp>(opd)) {
+              ValueInfo v_info(opd, operand.cast<OpResult>().getResultNumber());
+              set_life_forerver(v_info);
+            }
+          }
+
+          auto operand = module::getOriValue(op->getOperand
+                                (op->getNumOperands() - 2));
+          auto opd = operand.getDefiningOp(); //AutoIncrease Op
+          ValueInfo v_info(opd, operand.cast<OpResult>().getResultNumber());
+          set_life_forerver(v_info);
+          operand = module::getOriValue(opd->getOperand(0));
+          opd = operand.getDefiningOp();
+          if (!isa<top::WeightOp, top::NoneOp>(opd)) {
+            ValueInfo v_info2(opd, operand.cast<OpResult>().getResultNumber());
+            set_life_forerver(v_info2);
+          }
+
+          operand = module::getOriValue(op->getOperand
+                                (op->getNumOperands() - 1));
+          opd = operand.getDefiningOp(); //Compare Op(And)
+          ValueInfo v_info3(opd, operand.cast<OpResult>().getResultNumber());
+          set_life_forerver(v_info3);
+
+          auto dfs = [&] (auto &&Me, Operation *opd) {
+            if (!isa<tpu::CompareOp>(opd))
+              return;
+
+            for (int i = 0; i < opd->getNumOperands(); i++) {
+              auto operand2 = module::getOriValue(opd->getOperand(i));
+              auto opd2 = operand2.getDefiningOp();
+              if (!isa<top::WeightOp, top::NoneOp>(opd2)) {
+                ValueInfo v_info4(opd2, operand2.cast<OpResult>().getResultNumber());
+                set_life_forerver(v_info4);
+                Me(Me, opd2);
+              }
+            }
+          };
+
+          dfs(dfs, opd);
+        }
       }
     }
   };
@@ -403,8 +514,8 @@ void BMAddressAssign::findInPlaceOpMaxUsePosition(
 bool BMAddressAssign::isInPlaceOp(Operation *op) {
   if (auto ReshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
     if (Arch::ALIGN_4N &&
-        module::getStorageType(ReshapeOp.getInput()).getIntOrFloatBitWidth()==8)
-    {
+        module::getStorageType(ReshapeOp.getInput()).getIntOrFloatBitWidth() ==
+            8) {
       int64_t in, ic, ih, iw, on, oc, oh, ow;
       module::getNCHW(ReshapeOp.getInput(), in, ic, ih, iw);
       module::getNCHW(ReshapeOp.getOutput(), on, oc, oh, ow);
@@ -421,7 +532,7 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
   } else if (auto weight2activation_op =
                  dyn_cast<tpu::Weight2ActivationOp>(op)) {
     return true;
-  } else if (isa<tpu::IdentityOp>(op)) {
+  } else if (isa<tpu::IdentityOp, tpu::AutoIncreaseOp>(op)) {
     return true;
   }
   return false;

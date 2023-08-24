@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-
-
 int64_t top::ROIPoolingOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }
@@ -40,4 +38,18 @@ LogicalResult top::ROIPoolingOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::ROIPoolingOp::shape_inference() {}
+void top::ROIPoolingOp::shape_inference() {
+  int64_t pooled_h = getPooledH();
+  int64_t pooled_w = getPooledW();
+  auto input_shape = module::getShape(getInputs()[0]);
+  auto roi_shape = module::getShape(getInputs()[1]);
+  int64_t channel = input_shape[1];
+  int64_t num_rois = roi_shape[2];
+
+  llvm::SmallVector<int64_t> out_shape;
+  out_shape.push_back(num_rois);
+  out_shape.push_back(channel);
+  out_shape.push_back(pooled_h);
+  out_shape.push_back(pooled_w);
+  module::setShapeOrVerify(getOutput(), out_shape);
+}

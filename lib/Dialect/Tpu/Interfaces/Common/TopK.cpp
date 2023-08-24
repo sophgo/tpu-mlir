@@ -15,7 +15,7 @@ void tpu::TopKOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::TopKOp::inference(InferenceParameter &p) {
   auto axis = getAxis();
   auto is_largest = getLargest();
-  auto K = getK();
+  auto K = getKT() ? (int64_t)p.inputs[1][0] : getK();
   auto is_sorted = getSorted();
   if (is_sorted == false) {
     llvm_unreachable("Not supported");

@@ -56,6 +56,9 @@ LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
       param.inputs[0].shape.size() == 3) {
     Yolov5DetectionFunc yolo_func(param);
     yolo_func.invoke();
+  } else if (process.starts_with("yolov8")) {
+    Yolov8DetectionFunc yolo_func(param);
+    yolo_func.invoke(); 
   } else {
     YoloDetectionFunc_v2 yolo_func(param);
     yolo_func.invoke();

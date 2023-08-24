@@ -66,6 +66,8 @@ public:
   LogicalResult addTensor(llvm::StringRef name, const std::vector<T> *data,
                           std::vector<int64_t> &shape);
 
+  LogicalResult cloneTensor(llvm::StringRef name, llvm::StringRef suffix);
+
   /// read a tensor from file
   /// if the name is not found, return failure()
   /// type is provided for checking, return failure() if type does not match

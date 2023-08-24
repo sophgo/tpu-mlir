@@ -182,7 +182,7 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
     if (concat_op->hasOneUse() == false) {
       return failure();
     }
-    auto use_op = *concat_op->getUsers().begin();
+    auto use_op = *concat_op->user_begin();
     if (!isa<ConvOp>(use_op)) {
       return failure();
     }
@@ -207,7 +207,7 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
       if (concat_op->hasOneUse() == false) {
         return failure();
       }
-      auto use_op = *concat_op->getUsers().begin();
+      auto use_op = *concat_op->user_begin();
       if (!isa<ConvOp>(use_op)) {
         return failure();
       }
@@ -266,7 +266,7 @@ struct ConcatToDepth2SpacePattern2 : public OpRewritePattern<ConcatOp> {
       return failure();
     }
     if (concat_op->hasOneUse()) {
-      auto use_op = *concat_op->getUsers().begin();
+      auto use_op = *concat_op->user_begin();
       if (isa<ConvOp>(use_op)) {
         return failure();
       }
@@ -370,7 +370,8 @@ struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
         ends0 = ends;
       } else {
         for (size_t i = 0; i < steps->size(); ++i) {
-          if (i == axis) continue;
+          if (i == axis)
+            continue;
           if (steps->at(i) != steps0->at(i)) {
             return failure();
           }
@@ -379,7 +380,7 @@ struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
           }
         }
       }
-      const auto& output_shape = module::getShape(slice_op.getOutput());
+      const auto &output_shape = module::getShape(slice_op.getOutput());
       end = offset->at(axis) + output_shape[axis];
     }
     // rewrite now !
@@ -463,6 +464,5 @@ void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
                  ConcatToDepth2SpacePattern, ConcatToDepth2SpacePattern2,
-                 MergeSliceConcatPattern,
-                 ConcatToSwapDimInner>(context);
+                 MergeSliceConcatPattern, ConcatToSwapDimInner>(context);
 }

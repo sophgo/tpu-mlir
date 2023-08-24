@@ -3,8 +3,8 @@
 Sensitive Layer Search
 ==================
 
-This chapter takes ``mobilenet-v2`` as examples to introduce how to use sensitive layer search。
-This model is from <nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt>。
+This chapter takes ``mobilenet-v2`` as example to introduce how to use sensitive layer search.
+This model is from <nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt>.
 
 This chapter requires the following files (where xxxx corresponds to the actual version information):
 
@@ -26,7 +26,7 @@ The operation is as follows:
   :linenos:
 
    $ mkdir mobilenet-v2 && cd mobilenet-v2
-   $ cp -rf $TPUC_ROOT/regression/dataset/ILSVCR2012 .
+   $ cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
    $ mkdir workspace && cd workspace
 
 ``$TPUC_ROOT`` is an environment variable, corresponding to the tpu-mlir_xxxx directory.
@@ -41,24 +41,24 @@ Step 1: To F32 mlir
 .. code-block:: shell
 
    $ model_transform.py \
-       --model_name mobilenet \
+       --model_name mobilenet_v2 \
        --model_def ../mobilenet_v2.pt \
        --input_shapes [[1,3,224,224]] \
        --resize_dims 256,256 \
        --mean 123.675,116.28,103.53 \
        --scale 0.0171,0.0175,0.0174 \
        --pixel_format rgb \
-       --mlir mobilenet.mlir
+       --mlir mobilenet_v2.mlir
 
 Step 2: Gen calibartion table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
-   $ run_calibration.py mobilenet.mlir \
+   $ run_calibration.py mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
-       -o mobilenet_cali_table
+       -o mobilenet_v2_cali_table
 
 Step 3: To F32 bmodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -66,12 +66,10 @@ Step 3: To F32 bmodel
 .. code-block:: shell
 
    $ model_deploy.py \
-       --mlir mobilenet.mlir \
+       --mlir mobilenet_v2.mlir \
        --quantize F32 \
        --chip bm1684 \
-       --test_input mobilenet_in_f32.npz \
-       --test_reference mobilenet_pt_top.npz \
-       --model mobilenet_1684_f32.bmodel
+       --model mobilenet_v2_1684_f32.bmodel
 
 Step 4: To INT8 model
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -79,52 +77,58 @@ Step 4: To INT8 model
 .. code-block:: shell
 
    $ model_deploy.py \
-       --mlir mobilenet.mlir \
+       --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --chip bm1684 \
-       --calibration_table mobilenet_cali_table \
-       --model mobilenet_bm1684_int8_sym.bmodel
+       --calibration_table mobilenet_v2_cali_table \
+       --model mobilenet_v2_bm1684_int8_sym.bmodel
 
 Step 5: Accuracy test
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The topk program can be used to test the accuracy of mobilenet-v2. It is available in model-zoo, and can be called by adding harness to mlir.config.yaml.
+``classify_mobilenet_v2.py`` is a python program, to run ``mobilenet-v2`` model.
+
+Test the fp32 model:
 
 .. code-block:: shell
 
-   $ dataset:
-        image_path: $(imagenet2012_val_set)
-        image_label: $(imagenet2012_caffe_val_ground_truth)
-        mean: [123.675, 116.28, 103.53]
-        scale: [0.0171, 0.0175, 0.0174]
-        resize_dims: 256
-        size: 224
-        trans: true
-        bgr2rgb: true
+   $ classify_mobilenet_v2.py \
+       --model_def mobilenet_v2_bm1684_f32.bmodel \
+       --input ../ILSVRC2012/n01440764_9572.JPEG \
+       --output mobilenet_v2_fp32_bmodel.JPEG \
+       --category_file ../ILSVRC2012/synset_words.txt
 
-      harness:
-        type: topk
-        args:
-          - name: FP32
-            bmodel: $(workdir)/$(name)_bm1684_f32.bmodel
-          - name: INT8
-            bmodel: $(workdir)/$(name)_bm1684_int8_sym.bmodel
-
-Switch to the model-zoo directory and test accuracy using tpu_perf.precision_benchmark.
+The classification information is displayed on the output image. The right label ``tench, Tinca tinca`` ranks first.
 
 .. code-block:: shell
 
-   $ python3 -m tpu_perf.precision_benchmark mobilenet_v2_path --mlir --target BM1684 --devices 0
+    Top-5
+    n01440764 tench, Tinca tinca
+    n02536864 coho, cohoe, coho salmon, blue jack, silver salmon, Oncorhynchus kisutch
+    n02422106 hartebeest
+    n02749479 assault rifle, assault gun
+    n02916936 bulletproof vest
 
-The accuracy test results are stored in output/topk.csv.
+Test the INT8 model:
 
 .. code-block:: shell
 
-    name,top1,top5
-    mobilenet-v2-FP32,70.72%,89.81%
-    mobilenet-v2-INT8,67.53%,87.84%
+   $ classify_mobilenet_v2.py \
+       --model_def mobilenet_v2_bm1684_int8_sym.bmodel \
+       --input ../ILSVRC2012/n01440764_9572.JPEG \
+       --output mobilenet_v2_INT8_sym_bmodel.JPEG \
+       --category_file ../ILSVRC2012/synset_words.txt
 
-It can be seen that the int8 symmetric quantization model performs poorly compared to the float model. Top1 accuracy lost 3.2% and top5 accuracy lost 2%.
+The right label ``tench, Tinca tinca`` ranks second.
+
+.. code-block:: shell
+
+    Top-5
+    n02408429 water buffalo, water ox, Asiatic buffalo, Bubalus bubalis
+    n01440764 tench, Tinca tinca
+    n01871265 tusker
+    n02396427 wild boar, boar, Sus scrofa
+    n02074367 dugong, Dugong dugon
 
 To Mix Precision Model
 -----------------------
@@ -157,7 +161,7 @@ Use ``run_sensitive_layer.py`` and bad cases to search sensitive layers, paramet
      - Name of calibration table file
    * - chip
      - Y
-     - The platform that the model will use. Support bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
@@ -179,6 +183,9 @@ Use ``run_sensitive_layer.py`` and bad cases to search sensitive layers, paramet
    * - histogram_bin_num
      - N
      - The number of bins used in kld calibration, default 2048
+   * - post_process
+     - N
+     - The user defined prost process program path, default None
    * - expected_cos
      - N
      - Specify the minimum cos value for the expected final output layer of the network. The default is 0.99. The smaller the value, the more layers may be set to floating-point
@@ -195,19 +202,28 @@ Use ``run_sensitive_layer.py`` and bad cases to search sensitive layers, paramet
      - N
      - float type of mix precision
 
-In this example, the default 100 images are used for calibration and 30 images are used for inference, and the command is as follows (for the chip of CV18xx series, set the chip to the corresponding chip name) :
+In this example, 100 images are used for calibration and 30 images are used for inference, and the command is as follows (for the chip of CV18xx series, set the chip to the corresponding chip name) :
 
 The operation is as follows:
 
 .. code-block:: shell
 
-   $ run_sensitive_layer.py mobilenet.mlir \
+   $ run_sensitive_layer.py mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
        --inference_num 30 \
-       --calibration_table mobilenet_cali_table \
+       --calibration_table mobilenet_v2_cali_table \
        --chip bm1684 \
-       -o mobilenet_qtable
+       --post_process post_process_func.py \
+       -o mobilenet_v2_qtable
+
+Sensitive layer program supports user defined post process programs ``post_process_func.py``. The post process function must be named ``PostProcess``.
+
+.. code-block:: shell
+
+   $ def PostProcess(data):
+       print("in post process")
+       return data
 
 The final output after execution is printed as follows:
 
@@ -228,12 +244,12 @@ The final output after execution is printed as follows:
     run result:
     int8 outputs_cos:0.978847 old
     mix model outputs_cos:0.989741
-    Output mix quantization table to mobilenet_qtable
+    Output mix quantization table to mobilenet_v2_qtable
     total time:402.15848112106323
     success sensitive layer search
 
-Above, int8 outputs_cos represents the cos similarity between original network output of int8 model and fp32; mix model outputs_cos represents the cos similarity of network output after mixing precision is used in some layers; total time represents the search time of 402 seconds.
-In addition，get quantization table ``mobilenet_qtable``, context as below:
+Above, int8 outputs_cos represents the cosine similarity between network outputs of int8 model and float model; mix model outputs_cos represents the cosine similarity between network outputs of mix model and float model; total time represents the search time is 402 seconds.
+In addition，this program generates a quantization table ``mobilenet_v2_qtable``, the context is as below:
 
 .. code-block:: shell
 
@@ -244,26 +260,26 @@ In addition，get quantization table ``mobilenet_qtable``, context as below:
     input130.1 F32
     input127.1 F32
 
-In the table, first col is layer name, second is quantization type.
-Also a log file named``SensitiveLayerSearch`` is generated, context as blow:
+The first column in the table is layer name, and the second one is quantization type.
+Also a log file named ``SensitiveLayerSearch`` is generated, its context is as blow:
 
 .. code-block:: shell
     :linenos:
 
     INFO:root:start to handle layer: input3.1, type: top.Conv
     INFO:root:adjust layer input3.1 th, with method MAX, and threshlod 5.5119305
-    INFO:root:run int8 mode: mobilenet.mlir
+    INFO:root:run int8 mode: mobilenet_v2.mlir
     INFO:root:outputs_cos_los = 0.014830573787862011
     INFO:root:adjust layer input3.1 th, with method Percentile9999, and threshlod 4.1202815
-    INFO:root:run int8 mode: mobilenet.mlir
+    INFO:root:run int8 mode: mobilenet_v2.mlir
     INFO:root:outputs_cos_los = 0.011843443367980822
     INFO:root:adjust layer input3.1 th, with method KL, and threshlod 2.6186381997094728
-    INFO:root:run int8 mode: mobilenet.mlir
+    INFO:root:run int8 mode: mobilenet_v2.mlir
     INFO:root:outputs_cos_los = 0.008808857469573828
     INFO:root:layer input3.1, layer type is top.Conv, best_th = 2.6186381997094728, best_method = KL, best_cos_loss = 0.008808857469573828
 
 This log file records the cosine losses between the outputs of mix model and float model when setting each op to int8 with different quantize methods(MAX/Percentile9999/KL).
-It also contaions the loss information printed in the screen and the cosine similarity of mix model and float model.
+It also contains the loss information printed in the screen and the cosine similarity of mix model and float model.
 The qtable generated by this program can be modified according to the loss information.
 The best thresholds of each op are recorded in a new cali table named new_cali_table. This table is restored in current workspace and need to be used when generating mix model.
 In this example, the loss of input3.1 is larger than other ops, thus you can only set input3.1 as float in qtable.
@@ -274,29 +290,31 @@ Step 2: Gen mix precision model
 .. code-block:: shell
 
    $ model_deploy.py \
-       --mlir mobilenet.mlir \
+       --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --chip bm1684 \
        --calibration_table new_cali_table \
-       --quantize_table mobilenet_qtable \
-       --model mobilenet_bm1684_int8_mix.bmodel
+       --quantize_table mobilenet_v2_qtable \
+       --model mobilenet_v2_bm1684_int8_mix.bmodel
 
-Step 3: test accuracy of mix model
+Step 3: Test accuracy of mix model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
-   $ harness:
-        type: topk
-        args:
-          - name: INT8
-            bmodel: $(workdir)/$(name)_bm1684_int8_mix.bmodel
+   $ classify_mobilenet_v2.py \
+       --model_def mobilenet_v2_bm1684_mix.bmodel \
+       --input ../ILSVRC2012/n01440764_9572.JPEG \
+       --output mobilenet_v2_INT8_sym_bmodel.JPEG \
+       --category_file ../ILSVRC2012/synset_words.txt
 
-The print result as follows:
+The classification results are as follows. The right label ``tench, Tinca tinca`` ranks first again.
 
 .. code-block:: shell
 
-    name,top1,top5
-    mobilenet-v2-INT8,69.07%,88.73%
-
-It can be seen that the top1 accuracy is improved by 1.5%.
+    Top-5
+    n01440764 tench, Tinca tinca
+    n02749479 assault rifle, assault gun
+    n02916936 bulletproof vest
+    n02536864 coho, cohoe, coho salmon, blue jack, silver salmon, Oncorhynchus kisutch
+    n04090263 rifle

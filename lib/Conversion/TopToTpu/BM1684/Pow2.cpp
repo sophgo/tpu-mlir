@@ -13,15 +13,16 @@ namespace tpu_mlir {
 namespace bm1684 {
 // y = n ^ x = e ^ (x * log(n))
 // TODO: dangerous as need x > 0
-void Pow2Lowering::LoweringF32(PatternRewriter &rewriter, top::Pow2Op op) const {
-  auto name = module::getName(op.getOutput());
+void Pow2Lowering::LoweringF32(PatternRewriter &rewriter,
+                               top::Pow2Op op) const {
   auto type = op.getOutput().getType();
   rewriter.setInsertionPointAfter(op);
   std::vector<NamedAttribute> attrs;
   auto n = std::log(op.getConstVal().convertToDouble());
-  auto mul_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_mul"));
+  auto mul_loc = module::getLocLike(op.getOutput(), "mul");
   attrs.clear();
-  attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(n)));
+  attrs.push_back(
+      rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(n)));
   auto mul_op = rewriter.create<tpu::MulConstOp>(
       mul_loc, type, ValueRange{op.getInput()}, attrs);
   auto ex_loc = op.getLoc();
@@ -35,12 +36,12 @@ void Pow2Lowering::LoweringF32(PatternRewriter &rewriter, top::Pow2Op op) const 
 }
 
 void Pow2Lowering::LoweringINT8(PatternRewriter &rewriter, top::Pow2Op op,
-                               bool asymmetric) const {
+                                bool asymmetric) const {
   double g_x = 0;
   g_x = op.getConstVal().convertToDouble();
-  auto table =
-      create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
-                          [g_x](double val) { return std::pow(g_x, val); }, 32);
+  auto table = create_lookup_table(
+      op.getInput(), op.getOutput(), asymmetric,
+      [g_x](double val) { return std::pow(g_x, val); }, 32);
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});

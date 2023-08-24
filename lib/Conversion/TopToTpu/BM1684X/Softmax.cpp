@@ -252,8 +252,8 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
     rewriter.setInsertionPointAfter(op);
     new_name = (module::getName(op.getOutput()).str()) + "__softmax";
     name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-    auto newType = RankedTensorType::get(
-        module::getShape(TransOp), module::getElementType(op.getOutput()));
+    auto newType =
+        module::getTypeLike(op.getOutput(), module::getShape(TransOp));
     auto newOp = rewriter.create<tpu::SoftmaxOp>(
         name_loc, newType,
         ValueRange{TransOp, table_opd, module::getNoneOp(op.getOperation()),

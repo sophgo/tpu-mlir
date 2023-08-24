@@ -121,9 +121,10 @@ void tpu::MulOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     }
     is_int8[2] = module::getStorageType(getOutput()).isInteger(8);
     sign[2] = module::isSign(getOutput()) ? 1 : 0;
+    auto tmp = module::getShape(getInputs()[0]).size() > 4 ?  4: module::getShape(getInputs()[0]).size();
     BM1684::instance().dl_nodechip_broadcast_binary_fix8b_forward_local(
         input_addrs[0], input_addrs[1], out_gi.out_addr, out_gi.buffer_addr,
-        b0_shape, b1_shape, module::getShape(getInputs()[0]).size(),
+        b0_shape, b1_shape, tmp,
         module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
         op_code, getMultiplier(), 1, getRshift(), 0, is_int8, sign, getDoRelu(),
         BM1684::instance()->bdc_node);

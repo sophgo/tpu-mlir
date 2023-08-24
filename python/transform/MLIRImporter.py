@@ -207,7 +207,7 @@ class MLIRImporter(object):
         op = Operation.create("top.If",
                               results=[self.get_tensor_type(output_shape)],
                               operands=operands,
-                              loc=Location.fused([Location.name(kargs['name'])]),
+                              loc=Location.fused([Location.name(x) for x in kargs['name']]),
                               attributes=dict(),
                               regions=region)
         self.insert_point.insert(op)
@@ -218,7 +218,7 @@ class MLIRImporter(object):
         op = Operation.create("top.Loop",
                               results=self.get_tensor_type(output_shape),
                               operands=operands,
-                              loc=Location.fused([Location.name(kargs['name'])]),
+                              loc=Location.fused([Location.name(x) for x in kargs['name']]),
                               attributes=dict(),
                               regions=region)
         self.insert_point.insert(op)
@@ -278,7 +278,7 @@ class MLIRImporter(object):
         if self.num_output > 1:
             output_txt = "({})".format(output_txt)
         main_func = """
-            module attributes {{module.name = \"{name}\", module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
+            module @\"{name}\" attributes {{module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none loc(unknown)
                 }} loc(unknown)

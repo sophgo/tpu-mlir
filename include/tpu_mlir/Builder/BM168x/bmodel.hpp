@@ -39,18 +39,26 @@ typedef struct {
 #endif
 
 typedef struct {
-   uint64_t bd_cmd_mem_size;       // bd instruction total size
-   uint64_t gdma_cmd_mem_size;     // gdma instruction total size
-   uint64_t dynamic_ir_mem_size;   // dynamic ir total size
-   uint64_t neuron_mem_size;       // total neuron mem
-   uint64_t coeff_mem_size;        // total coeff size
-   uint64_t middle_buffer_size;    // max input and output byte size
-   uint64_t host_neuron_mem_size;  // total mem size for cpu layer IO on host
-   uint64_t host_coeff_mem_size;   // total mem size for cpu layer coeff on host
+  uint64_t bd_cmd_mem_size;      // bd instruction total size
+  uint64_t gdma_cmd_mem_size;    // gdma instruction total size
+  uint64_t dynamic_ir_mem_size;  // dynamic ir total size
+  uint64_t neuron_mem_size;      // total neuron mem
+  uint64_t coeff_mem_size;       // total coeff size
+  uint64_t middle_buffer_size;   // max input and output byte size
+  uint64_t host_neuron_mem_size; // total mem size for cpu layer IO on host
+  uint64_t host_coeff_mem_size;  // total mem size for cpu layer coeff on host
 } bmodel_mem_info_t;
 
 class ModelGen {
- public:
+
+public:
+  typedef struct {
+    int64_t device_id;
+    int64_t step;
+    std::string main_name; // name for Cascade
+  } CASCADE_INFO_T;
+
+public:
   ModelGen(uint32_t reserved_size = 0x1000000);
   virtual ~ModelGen();
   flatbuffers::FlatBufferBuilder &Builder();
@@ -58,9 +66,14 @@ class ModelGen {
 
   // add model elements
   void AddChip(const std::string &arch_name);
+  void AddNumDevice(int num_device);
   void AddNet(const flatbuffers::Offset<Net> &net);
-  void AddNet(std::string net_name, const flatbuffers::Offset<NetParameter> &parameter,
-              uint32_t *net_idx = NULL, uint32_t *stage_idx = NULL);
+  void AddNet(const std::string &net_name,
+              const flatbuffers::Offset<NetParameter> &parameter,
+              uint32_t *net_idx = NULL, uint32_t *stage_idx = NULL,
+              const bmodel::Cascade * cascade = NULL);
+  void AddNet(const std::string &net_name, const CASCADE_INFO_T &cascade,
+              const flatbuffers::Offset<NetParameter> &parameter);
   // firmware_core.so save into bmodel
   void AddKernelModule(std::string &filename, Binary &tpu_module);
   // finish and save to file
@@ -68,17 +81,19 @@ class ModelGen {
 
   // finish and return size, but no save
   size_t Finish();
-  void Save(const std::string &filename);  // save to file
-  void Save(void *buffer);                 // save to buffer
+  void Save(const std::string &filename); // save to file
+  void Save(void *buffer);                // save to buffer
   uint8_t *GetBufferPointer();
 
- private:
-  bool IsTensorConflict(const flatbuffers::Vector<flatbuffers::Offset<Tensor>> *,
-                        const flatbuffers::Vector<flatbuffers::Offset<Tensor>> *);
+private:
+  bool
+  IsTensorConflict(const flatbuffers::Vector<flatbuffers::Offset<Tensor>> *,
+                   const flatbuffers::Vector<flatbuffers::Offset<Tensor>> *);
   bool IsShapeSame(const Shape *, const Shape *);
 
   typedef struct {
     std::string name;
+    CASCADE_INFO_T cascade;
     std::vector<flatbuffers::Offset<NetParameter>> parameters;
   } NET_INFO_T;
 
@@ -88,6 +103,7 @@ class ModelGen {
   } KERNEL_MODULE_T;
 
   std::string chip_;
+  int num_device_;
   flatbuffers::FlatBufferBuilder builder_;
   std::vector<uint8_t> binary_;
   std::vector<Binary> binary_vector_;
@@ -99,7 +115,7 @@ class ModelGen {
 };
 
 class ModelCtx {
- public:
+public:
   ModelCtx(const std::string &filename);
   ModelCtx(const void *bmodel_data, size_t size);
   virtual ~ModelCtx();
@@ -109,7 +125,8 @@ class ModelCtx {
   // read binary data to buffer
   void read_binary(const bmodel::Binary *binary, uint8_t *buffer);
   // read binary from offset
-  void read_binary(const bmodel::Binary *binary, uint64_t offset, uint8_t *buffer, uint64_t size);
+  void read_binary(const bmodel::Binary *binary, uint64_t offset,
+                   uint8_t *buffer, uint64_t size);
 
   // model buffer data for parse
   const void *data() const;
@@ -117,23 +134,20 @@ class ModelCtx {
   const MODEL_HEADER_T &header() const;
 
   bmodel_mem_info_t get_bmodel_mem_info();
- protected:
-  void update_bmodel();
-  void update_net(const std::string &net_name,
-                  const flatbuffers::Vector<flatbuffers::Offset<NetStatic>> *net_static);
-  void update_net(const std::string &net_name,
-                  const flatbuffers::Vector<flatbuffers::Offset<NetDynamic>> *net_dynamic);
 
- private:
+protected:
+  void update_bmodel();
+
+private:
   MODEL_HEADER_T header_;
   ModelGen *model_gen_;
   const Model *model_;
   void *model_buffer_;
   uint32_t binary_offset_;
-  std::ifstream file_;          // bmodel in file
-  const void *bmodel_pointer_;  // bmodel in buffer
+  std::ifstream file_;         // bmodel in file
+  const void *bmodel_pointer_; // bmodel in buffer
 };
 
-}  // namespace bmodel
+} // namespace bmodel
 
-#endif  // LIBBMODEL_HPP_
+#endif // LIBBMODEL_HPP_

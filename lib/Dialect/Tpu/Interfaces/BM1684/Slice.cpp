@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -86,10 +85,18 @@ void tpu::SliceOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int *begin_index = new int[MAX_SHAPE_DIMS];
   int *end_index = new int[MAX_SHAPE_DIMS];
   int *strides = new int[MAX_SHAPE_DIMS];
+
+  // slice local gen only support dim 4 in bm1684
+  int idx[4] = {(int)out_g_info.n_idx, (int)offset->at(1),
+                (int)out_g_info.h_idx, (int)offset->at(3)};
+
+  int slice[4] = {(int)out_g_info.n_slice, (int)output_shape[1],
+                  (int)out_g_info.h_slice, (int)output_shape[3]};
+
   for (int i = 0; i < num_dims; ++i) {
-    begin_index[i] = offset->at(i);
+    begin_index[i] = idx[i];
     strides[i] = steps->at(i);
-    end_index[i] = begin_index[i] + output_shape[i] * strides[i];
+    end_index[i] = begin_index[i] + slice[i] * strides[i];
   }
   if (num_dims < 4) {
     for (int i = num_dims; i < 4; i++) {

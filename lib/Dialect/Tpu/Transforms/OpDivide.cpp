@@ -12,7 +12,6 @@
 
 using namespace llvm;
 
-
 namespace tpu_mlir {
 namespace tpu {
 class OpDividePass : public OpDivideBase<OpDividePass> {
@@ -44,9 +43,7 @@ public:
 
   void set_op_locs(FuncOp &fn) {
     uint16_t loc = 0;
-    fn.walk([&](Operation *op) {
-      ops_loc[op] = loc;
-    });
+    fn.walk([&](Operation *op) { ops_loc[op] = loc; });
   }
 
   static bool support(Operation *op) {
@@ -54,7 +51,7 @@ public:
       if (isa<tpu::Conv2DOp>(op)) {
         return true;
       } else if (isa<tpu::AddOp>(op)) {
-        //should be eltwise
+        // should be eltwise
         auto input1_shape = module::getShape(op->getOperand(0));
         auto input2_shape = module::getShape(op->getOperand(1));
         if (input1_shape.size() != input2_shape.size()) {
@@ -66,7 +63,7 @@ public:
           }
         }
         return true;
-      } else if (isa<tpu::Pool2DOp>(op)){
+      } else if (isa<tpu::Pool2DOp>(op)) {
         auto poolOp = dyn_cast<tpu::Pool2DOp>(op);
         if (poolOp.getPoolMode() == tpu::PoolMode::Max) {
           return true;
@@ -91,10 +88,10 @@ public:
   // }
 
   static int64_t getTensorSize(Value value) {
-    //get int tensor size
+    // get int tensor size
     std::vector<int64_t> shape = value.getType().cast<TensorType>().getShape();
     return std::accumulate(std::begin(shape), std::end(shape), 1,
-                          std::multiplies<>());
+                           std::multiplies<>());
   }
 
   bool update_box(std::set<Operation *> &op_box, main_op_t &main_op) {
@@ -174,8 +171,9 @@ public:
     Operation *next_op = in_op;
     do {
       next_op = module::getNextOp(next_op);
-    } while (next_op != nullptr && false == support(next_op));
-    if (next_op == nullptr) {
+    } while (next_op != nullptr && !isa<ReturnOp>(next_op) &&
+             false == support(next_op));
+    if (next_op == nullptr || isa<ReturnOp>(next_op)) {
       return false;
     }
 
@@ -199,7 +197,8 @@ public:
       info.op = next_op;
     } while (next_op != nullptr);
     // make sure max_size is really too large
-    int64_t npu_memory = tpu_mlir::backend::CV18xx::NPU_NUM * tpu_mlir::backend::CV18xx::LMEM_BYTES;
+    int64_t npu_memory = tpu_mlir::backend::CV18xx::NPU_NUM *
+                         tpu_mlir::backend::CV18xx::LMEM_BYTES;
     if (max_size <= npu_memory) {
       return false;
     }
@@ -272,8 +271,7 @@ public:
     fn.walk([&](Operation *op) {
       if (op->getName().getDialect()->getNamespace() != "tpu" ||
           isa<top::WeightOp>(op) || isa<top::NoneOp>(op) ||
-          isa<top::InputOp>(op) || isa<ReturnOp>(op) ||
-          isa<FuncOp>(op)) {
+          isa<top::InputOp>(op) || isa<ReturnOp>(op) || isa<FuncOp>(op)) {
       } else if (op_set.find(op) != op_set.end()) {
       } else {
         auto size = getTensorSize(op->getResult(0));
@@ -445,9 +443,9 @@ public:
   }
 
   Value create_slice_op(OpBuilder &builder, Operation *op, int h_start,
-                       int h_slice) {
+                        int h_slice) {
     auto op_out = op->getResult(0);
-    //builder.setInsertionPointAfterValue(op_out);
+    // builder.setInsertionPointAfterValue(op_out);
     auto shape = module::getShape(op_out);
     std::vector<int64_t> slice_shape(shape.begin(), shape.end());
     slice_shape[2] = h_slice;
@@ -456,9 +454,12 @@ public:
     std::vector<NamedAttribute> attrs;
     std::vector<int64_t> offset(shape.size(), 0);
     offset[2] = h_start;
-    attrs.emplace_back(builder.getNamedAttr("offset", builder.getI64ArrayAttr(offset)));
-    attrs.emplace_back(builder.getNamedAttr("steps", builder.getI64ArrayAttr({1, 1, 1, 1})));
-    attrs.emplace_back(builder.getNamedAttr("ends", builder.getI64ArrayAttr({-1, -1, -1, -1})));
+    attrs.emplace_back(
+        builder.getNamedAttr("offset", builder.getI64ArrayAttr(offset)));
+    attrs.emplace_back(
+        builder.getNamedAttr("steps", builder.getI64ArrayAttr({1, 1, 1, 1})));
+    attrs.emplace_back(builder.getNamedAttr(
+        "ends", builder.getI64ArrayAttr({-1, -1, -1, -1})));
     std::vector<Value> operands;
     operands.emplace_back(op_out);
     auto none = module::getNoneOp(op);
@@ -472,7 +473,8 @@ public:
     return sliceOp.getResult();
   }
 
-  Value adjust_input(OpBuilder &builder, Operation * op, Value input, h_slice_t &s) {
+  Value adjust_input(OpBuilder &builder, Operation *op, Value input,
+                     h_slice_t &s) {
     auto input_op = input.getDefiningOp();
     auto shape = module::getShape(input_op->getResult(0));
     if (op_set.find(input_op) == op_set.end() || op == main_ops[start_idx].op) {
@@ -486,7 +488,7 @@ public:
       return s_in.op->getResult(0);
     }
     return create_slice_op(builder, s_in.op, s.in_h_start - s_in.out_h_start,
-                          s.in_h);
+                           s.in_h);
   }
 
   void concat_all(FuncOp &fn, OpBuilder &builder) {
@@ -497,11 +499,14 @@ public:
     for (auto &s : slice) {
       operands.push_back(s.op->getResult(0));
     }
-    attrs.emplace_back(builder.getNamedAttr("axis", builder.getSI32IntegerAttr(2)));
+    attrs.emplace_back(
+        builder.getNamedAttr("axis", builder.getSI32IntegerAttr(2)));
     std::vector<int64_t> multipliers(slice.size(), 1);
     std::vector<int64_t> rshifts(slice.size(), 0);
-    attrs.emplace_back(builder.getNamedAttr("multipliers", builder.getI64ArrayAttr(multipliers)));
-    attrs.emplace_back(builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshifts)));
+    attrs.emplace_back(builder.getNamedAttr(
+        "multipliers", builder.getI64ArrayAttr(multipliers)));
+    attrs.emplace_back(
+        builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshifts)));
     auto new_op = builder.create<tpu::ConcatOp>(
         last_op->getLoc(), last_op->getResult(0).getType(),
         ArrayRef<Value>{operands}, ArrayRef<NamedAttribute>{attrs});
@@ -516,7 +521,8 @@ public:
   //   auto filterOp = cast<top::WeightOp>(ori_filter.getDefiningOp());
   //   auto filter_data = filterOp.read<int8_t>();
   //   auto filter_type = ori_filter.getType().cast<RankedTensorType>();
-  //   auto new_filter = top::WeightOp::create(op, "filter_i8", *filter_data, filter_type);
+  //   auto new_filter = top::WeightOp::create(op, "filter_i8", *filter_data,
+  //   filter_type);
   // }
 
   void forward(OpBuilder &builder, Operation *op) {
@@ -548,29 +554,32 @@ public:
         attrs.emplace_back(attr);
       }
       auto loc = NameLoc::get(builder.getStringAttr(name));
-      auto newOp = builder.create<tpu::AddOp>(loc, type, ArrayRef<Value>{operands},
-          ArrayRef<NamedAttribute>{attrs});
+      auto newOp =
+          builder.create<tpu::AddOp>(loc, type, ArrayRef<Value>{operands},
+                                     ArrayRef<NamedAttribute>{attrs});
       s.op = newOp.getOperation();
     } else if (auto cast_op = llvm::dyn_cast_or_null<tpu::Conv2DOp>(op)) {
       auto in = adjust_input(builder, op, cast_op.getInput(), s);
       operands.push_back(in);
       // operands.push_back(cast_op.getFilter());
       // operands.push_back(cast_op.getBias());
-      //copy filter
+      // copy filter
       auto ori_filter = cast_op.getFilter();
       auto filterOp = cast<top::WeightOp>(ori_filter.getDefiningOp());
       auto filter_data = filterOp.read<int8_t>();
       auto filter_type = ori_filter.getType().cast<RankedTensorType>();
-      auto new_filter = top::WeightOp::create(op, "_tod_" + std::to_string(slice_idx), *filter_data, filter_type);
+      auto new_filter = top::WeightOp::create(
+          op, "_tod_" + std::to_string(slice_idx), *filter_data, filter_type);
       operands.push_back(new_filter);
-      //copy bias
+      // copy bias
       auto biasOp = cast_op.getBias().getDefiningOp();
       if (!isa<top::NoneOp>(biasOp)) {
         auto bias_weight_op = cast<top::WeightOp>(biasOp);
-        //because weight reorder, bias_data is int8_t
+        // because weight reorder, bias_data is int8_t
         auto bias_data = bias_weight_op.read<int8_t>();
         auto bias_type = cast_op.getBias().getType().cast<RankedTensorType>();
-        auto new_bias = top::WeightOp::create(op, "_tod_" + std::to_string(slice_idx), *bias_data, bias_type);
+        auto new_bias = top::WeightOp::create(
+            op, "_tod_" + std::to_string(slice_idx), *bias_data, bias_type);
         operands.push_back(new_bias);
       } else {
         operands.push_back(module::getNoneOp(op));
@@ -580,9 +589,9 @@ public:
       for (auto &attr : op->getAttrs()) {
         attrs.emplace_back(attr);
       }
-      auto newOp = builder.create<tpu::Conv2DOp>(
-          loc, type, ArrayRef<Value>{operands},
-          ArrayRef<NamedAttribute>{attrs});
+      auto newOp =
+          builder.create<tpu::Conv2DOp>(loc, type, ArrayRef<Value>{operands},
+                                        ArrayRef<NamedAttribute>{attrs});
       auto pads = module::getI64Array(newOp.getPads()); // top,left,bottom,right
       std::vector<int64_t> new_pads(pads->begin(), pads->end());
       if (start_slice() == false && origin_shape[2] != s.out_h) {
@@ -598,9 +607,9 @@ public:
       operands.push_back(in);
       std::string name = op_name + "_tod_" + std::to_string(slice_idx);
       auto loc = NameLoc::get(builder.getStringAttr(name));
-      auto newOp = builder.create<tpu::Pool2DOp>(
-          loc, type, ArrayRef<Value>{operands},
-          ArrayRef<NamedAttribute>{attrs});
+      auto newOp =
+          builder.create<tpu::Pool2DOp>(loc, type, ArrayRef<Value>{operands},
+                                        ArrayRef<NamedAttribute>{attrs});
       auto pads = module::getI64Array(newOp.getPads()); // top,left,bottom,right
       std::vector<int64_t> new_pads(pads->begin(), pads->end());
       if (start_slice() == false && origin_shape[2] != s.out_h) {
@@ -638,10 +647,14 @@ public:
   }
 
   void runOnOperation() override {
-    if (module::isCV18xx()) {
-      auto fn = module::getMainFuncOp();
-      auto *context = &getContext();
-      auto builder = OpBuilder(context);
+    if (!module::isCV18xx()) {
+      return;
+    }
+    auto *context = &getContext();
+    auto builder = OpBuilder(context);
+    auto modules = module::getAllModules();
+    for (auto s : *modules) {
+      auto fn = module::getMainFuncOp(s);
       set_op_locs(fn);
       if (init_main_op(fn) == false) {
         llvm::errs() << "tg-op-divide op set failed\n";
@@ -673,5 +686,5 @@ private:
 std::unique_ptr<OperationPass<ModuleOp>> createOpDividePass() {
   return std::make_unique<OpDividePass>();
 }
-}
-}
+} // namespace tpu
+} // namespace tpu_mlir

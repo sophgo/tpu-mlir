@@ -29,10 +29,15 @@ void top::ConstantFillOp::shape_inference() {
     auto weight = cast<top::WeightOp>(getInput().getDefiningOp());
     const auto shape = weight.read<float>();
     std::vector<int64_t> shape_(shape->begin(), shape->end());
+    int idx = 0;
+    for(auto a : shape_) {
+      if(a == -1)
+        shape_[idx] = (int64_t)1;
+      idx += 1;
+    }
     module::setShapeOrVerify(getOutput(), shape_);
-  } else {
-    auto preOp = getInput().getDefiningOp();
-    auto shape = module::getShape(preOp->getOperand(0));
-    module::setShapeOrVerify(getOutput(), shape);
+  } else if (module::isShape(getInput())) {
+    auto out_shape = module::getShapeTensorValue(getInput());
+    module::setShapeOrVerify(getOutput(), out_shape);
   }
 }

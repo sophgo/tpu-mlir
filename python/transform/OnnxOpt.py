@@ -89,7 +89,7 @@ class ConstantFolding(object):
                                    "onnx".format(key, shape))
             elem_type = self.get_elem_type(key)
             elem_type = self.get_np_type_from_elem_type(elem_type)
-            if elem_type == np.bool :  # for mask
+            if elem_type == np.bool_ :  # for mask
                 inputs.update({key: np.random.randint(0, 2, shape, dtype=elem_type)})
             # elif elem_type == np.int64:
             #     inputs.update({key: np.random.randint(0, 10, size=shape, dtype=elem_type)})
@@ -125,7 +125,7 @@ class ConstantFolding(object):
     @staticmethod
     def get_np_type_from_elem_type(elem_type):
         types = (None, np.float32, np.uint8, np.int8, np.uint16, np.int16, np.int32,
-                np.int64, str, np.bool, np.float16, np.double, np.uint32, np.uint64,
+                np.int64, str, np.bool_, np.float16, np.double, np.uint32, np.uint64,
                 np.complex64, np.complex128, np.float16)
         assert len(types) == 17
         _type = types[elem_type]
@@ -176,7 +176,7 @@ class ConstantFolding(object):
         self.const_tensors.extend([node.output[0] for node in self.model.graph.node if node.op_type == "Constant"])
         self.const_tensors.extend([''])
         for node in self.model.graph.node:
-            if node.op_type == "Shape":
+            if node.op_type == "Shape" and node.input[0] not in dynamic_tensors:
                 const_nodes.append(node)
                 self.const_tensors.extend(node.output)
             elif node.op_type == "Resize" and all([x in self.const_tensors for x in node.input]):
@@ -189,7 +189,9 @@ class ConstantFolding(object):
             elif self.is_quantizeLinear(node):
                 pass
             elif self.has_subgraph_in_node(node):
-                pass
+                if all([x in self.const_tensors for x in node.input]):
+                    if (node.op_type == "If"):
+                        const_nodes.append(node)
             elif len(node.input) > 0 and all([x in self.const_tensors for x in node.input]) \
                     and not self.is_non_determinstic_node(node):
                 const_nodes.append(node)
@@ -229,6 +231,24 @@ class ConstantFolding(object):
         do_eliminate = False
         for i, node in enumerate(self.model.graph.node):
             if node in const_node:
+                if node.op_type == "If":
+                    sub_graph = {}
+                    for attr in node.attribute:
+                        sub_graph[attr.name] = attr.g.node
+                    if res[node.input[0]]:
+                        sub_nodes = sub_graph['then_branch']
+                    else:
+                        sub_nodes = sub_graph['else_branch']
+                    if len(node.output) != len(sub_nodes[-1].output):
+                        raise RuntimeError("If op not support multi output now, fix me.")
+                    sub_nodes[-1].output[:] = []
+                    sub_nodes[-1].output.extend(node.output)
+                    sub_nodes = sub_nodes[::-1]
+                    for n in sub_nodes:
+                        self.insert_elem(self.model.graph.node, i + 1, n)
+                    self.model.graph.node.remove(node)
+                    do_eliminate = True
+                    continue
                 for output in node.output:
                     new_node = copy.deepcopy(node)
                     new_node.name = "node_" + output
@@ -756,6 +776,15 @@ class ReForm(object):
             else:
                 return find_cast(cast_dict[node], cast_dict)
 
+        def insert_identity(cur_node_out, out_name):
+            identity_node = onnx.helper.make_node(
+                                "Identity",
+                                name=cur_node_out + "_insert_Identity",
+                                inputs=[cur_node_out],
+                                outputs=[out_name])
+            insert_idx, _ = self.get_node(out_name)
+            self.nodes.insert(insert_idx, identity_node)
+
         for node in self.nodes:
             if node.op_type == "Cast":
                 cast_ops.append(node)
@@ -779,7 +808,7 @@ class ReForm(object):
                     if node.output[i] in cast_out_dict:
                         out_name = find_cast(cast_out_dict[node.output[i]], cast_out_dict)
                         if out_name in net_out_names:
-                            node.output[i] = out_name
+                            insert_identity(node.output[i], out_name)
 
         for op in cast_ops:
             self.nodes.remove(op)

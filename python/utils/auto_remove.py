@@ -32,3 +32,13 @@ def file_clean():
                 pass
         else:
             os.remove(n)
+
+
+def clean_kmp_files():
+    # When using multi-processing with the "fork" mode and compiling a library
+    # with clang and libomp, some __KMP__ files may leak in /dev/shm. This can
+    # take over all the space if /dev/shm is small.
+    # eg: oneDNN/src/common/dnnl_thread.hpp:69 triggers the creation of __KMP__
+    #     files when using OpenMP.
+    uid = os.getuid()
+    os.system(f"rm -f /dev/shm/__KMP_REGISTERED_LIB_*_{uid}")

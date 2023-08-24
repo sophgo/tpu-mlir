@@ -11,6 +11,92 @@
 
 using namespace tpu_mlir::top;
 
+struct SwapInput : public OpRewritePattern<AddOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(AddOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op.getInputs().size() != 2) {
+      return failure();
+    }
+    if (!isa<WeightOp>(module::getOriValue(op.getInputs()[0]).getDefiningOp()) &&
+        !isa<WeightOp>(module::getOriValue(op.getInputs()[1]).getDefiningOp())) {
+      return failure();
+    }
+    auto coeffs = module::getF64Array(op.getCoeff(), 2, 1.0);
+    for (auto c : *coeffs) {
+      if (c != 1.0) {
+        return failure();
+      }
+    }
+    auto lhs = op.getInputs()[0];
+    auto rhs = op.getInputs()[1];
+    if (isa<WeightOp>(module::getOriValue(lhs).getDefiningOp())) {
+      op.setOperand(0, rhs);
+      op.setOperand(1, lhs);
+      return success();
+    } else {
+      return failure();
+    }
+  }
+};
+
+struct AddToScale : public OpRewritePattern<AddOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(AddOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op.getInputs().size() != 2) {
+      return failure();
+    }
+    if (!isa<WeightOp>(op.getInputs()[1].getDefiningOp())) {
+      return failure();
+    }
+    auto lhs_shape = module::getShape(op.getInputs()[0]);
+    auto rhs_shape = module::getShape(op.getInputs()[1]);
+    auto output_shape = module::getShape(op.getOutput());
+    auto coeffs = module::getF64Array(op.getCoeff(), 2, 1.0);
+    for (auto c : *coeffs) {
+      if (c != 1.0) {
+        return failure();
+      }
+    }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32()) {
+      return failure();
+    }
+
+    if (output_shape.size() < 2 || lhs_shape.size() != rhs_shape.size() ||
+        output_shape.size() - rhs_shape.size() > 1) {
+      return failure();
+    }
+
+    if (rhs_shape[1] != lhs_shape[1]) {
+      return failure();
+    }
+
+    auto elt_num = module::getNumElements(op.getInputs()[1]);
+    if (elt_num != lhs_shape[1]) {
+      return failure();
+    }
+
+    std::vector<NamedAttribute> attrs;
+    std::vector<Value> operands;
+    rewriter.setInsertionPoint(op);
+    std::vector<float_t> weight_v(elt_num, 1.);
+    auto rtype = RankedTensorType::get(rhs_shape.vec(), rewriter.getF32Type());
+    auto w_scale =
+        WeightOp::create(op.getOperation(), "_scale_weight", weight_v, rtype);
+    operands.push_back(op.getInputs()[0]);
+    operands.push_back(w_scale);
+    operands.push_back(op.getInputs()[1]);
+    attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+    attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
+    rewriter.replaceOpWithNewOp<ScaleOp>(op, op.getType(), operands, attrs);
+    return success();
+  }
+};
+
 struct AddToAddConst : public OpRewritePattern<AddOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -37,7 +123,7 @@ struct AddToAddConst : public OpRewritePattern<AddOp> {
       return failure();
     if (left_elt_num == 1) {
       if (auto left_op =
-              dyn_cast<WeightOp>(op.getInputs()[0].getDefiningOp())) {
+              dyn_cast_or_null<WeightOp>(op.getInputs()[0].getDefiningOp())) {
         weight_flag = true;
         const_val = left_op.read<float>();
       }
@@ -155,5 +241,5 @@ struct AddMerge : public OpRewritePattern<AddOp> {
 
 void AddOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<AddToAddConst, AddMerge>(context);
+  results.insert<SwapInput, AddToAddConst, AddToScale, AddMerge>(context);
 }

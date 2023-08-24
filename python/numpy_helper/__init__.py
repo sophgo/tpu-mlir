@@ -54,6 +54,17 @@ def npz_extract(args):
         npz_out[s] = d
     np.savez(args[1], **npz_out)
 
+def npz_merge(args):
+    if len(args) < 3:
+        print("Usage: {} merge a.npz b.npz output.npz".format(sys.argv[0]))
+        exit(-1)
+    num = len(args)
+    npz_out = {}
+    for i in range(num-1):
+        data = np.load(args[i])
+        npz_out.update(data)
+    np.savez(args[num-1], **npz_out)
+
 def npz_to_bin(args):
     if len(args) < 3:
         print("Usage: {} filename.npz array_name filename.bin [int8|bf16|float32]".format(sys.argv[0]))

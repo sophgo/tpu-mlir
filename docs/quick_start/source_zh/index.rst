@@ -19,6 +19,8 @@ TPU-MLIR快速入门手册
    07_mix_precision
    08_fuse_preprocess
    09_add_postprocess
+   10_sensitive_layer
    Appx.01_to_onnx_convert
    Appx.02_cv18xx_guide
    Appx.03_bm168x_test
+   Appx.04_supported_ops

@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "TensorLocation.hpp"
+#include "tpu_mlir/Backend/BM168x/BM1686.h"
 
 namespace mlir {
 using namespace llvm;
@@ -82,6 +83,9 @@ group_info_t getGroupInfo(Operation *op, const slice_index &slice_i) {
                                          slice_i.c_step);
 }
 
+inline int64_t modIndex(DenseI64ArrayAttr attr, int64_t index) {
+  return attr[index % attr.size()];
+}
 group_info_t getGroupInfo(const OpOperand &v, const slice_index &slice_i) {
   if (auto op = v.get().getDefiningOp())
     if (op->hasAttr(LocalGenInterface::kLayerGroupAttrName))
@@ -93,16 +97,16 @@ group_info_t getGroupInfo(const OpOperand &v, const slice_index &slice_i) {
   auto dst_lg_op = cast<LocalGenInterface>(dst_op);
   auto g_param = dst_op->getAttr(LocalGenInterface::kLayerGroupAttrName)
                      .cast<tpu::LayerGroupAttr>();
-  int64_t nslice = g_param.getNSlice()[slice_i.n_step];
-  int64_t cslice = g_param.getCSlice()[slice_i.c_step];
-  int64_t dslice = g_param.getDSlice()[slice_i.d_step];
-  int64_t hslice = g_param.getHSlice()[slice_i.h_step];
-  int64_t wslice = g_param.getWSlice()[slice_i.w_step];
-  int64_t nindex = g_param.getNIdx()[slice_i.n_step];
-  int64_t cindex = g_param.getCIdx()[slice_i.c_step];
-  int64_t hindex = g_param.getHIdx()[slice_i.h_step];
-  int64_t dindex = g_param.getDIdx()[slice_i.d_step];
-  int64_t windex = g_param.getWIdx()[slice_i.w_step];
+  int64_t nslice = modIndex(g_param.getNSlice(), slice_i.n_step);
+  int64_t cslice = modIndex(g_param.getCSlice(), slice_i.c_step);
+  int64_t dslice = modIndex(g_param.getDSlice(), slice_i.d_step);
+  int64_t hslice = modIndex(g_param.getHSlice(), slice_i.h_step);
+  int64_t wslice = modIndex(g_param.getWSlice(), slice_i.w_step);
+  int64_t nindex = modIndex(g_param.getNIdx(), slice_i.n_step);
+  int64_t cindex = modIndex(g_param.getCIdx(), slice_i.c_step);
+  int64_t hindex = modIndex(g_param.getHIdx(), slice_i.h_step);
+  int64_t dindex = modIndex(g_param.getDIdx(), slice_i.d_step);
+  int64_t windex = modIndex(g_param.getWIdx(), slice_i.w_step);
   dst_lg_op.BackwardN(ginfo.n_idx, ginfo.n_slice, nindex, nslice);
   dst_lg_op.BackwardH(ginfo.h_idx, ginfo.h_slice, hindex, hslice);
   dst_lg_op.BackwardC(ginfo.c_idx, ginfo.c_slice, cindex, cslice);
@@ -197,11 +201,11 @@ json::Object record_tensor(const T val_or_opd, const slice_index &slice_i,
   return json::Object{
       {"name", name},     {"address", address}, {"memory_type", memory_type},
       {"layout", layout}, {"type", type},       {"reshape", reshape},
-      {"slice", slice},
-  };
+      {"slice", slice}};
 }
 
 json::Object record_tensor(Value v, const group_type_t group_type) {
+
   auto v_spc = BM168x::value_to_spec(v, group_type);
   std::string type;
   llvm::raw_string_ostream os(type);
@@ -225,24 +229,31 @@ json::Object record_tensor(Value v, const group_type_t group_type) {
                       {"slice", "[...]"}};
 }
 
+int getSubNetId(Operation *op) {
+  if (op == nullptr)
+    return -1;
+  if (auto func = dyn_cast_or_null<func::FuncOp>(op))
+    return func->getAttrOfType<IntegerAttr>("id").getInt();
+  return getSubNetId(op->getParentOp());
+}
+
 void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
                                     const json::Array &results) {
   int64_t line_num = -1; // unknown location
+  int core_id = 0;
+  if (auto bm1686 = dyn_cast<BM1686>(BM168x::instance())) {
+    core_id = bm1686->getCurrentCoreID();
+  }
   auto it = opToLineCol.find(op);
   if (it != opToLineCol.end()) {
     line_num = it->second.first;
   }
-  int subnet_id = -1;
-  if (auto func = dyn_cast<func::FuncOp>(op->getParentOp()))
-    subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
-  else if (auto lg = dyn_cast<tpu::GroupOp>(op->getParentOp())) {
-    auto func = cast<func::FuncOp>(lg->getParentOp());
-    subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
-  }
+  int subnet_id = getSubNetId(op);
 
   J.object([&] {
     J.attribute("file-line", line_num);
     J.attribute("subnet_id", subnet_id);
+    J.attribute("core_id", core_id);
     J.attribute("opcode", op->getName().getStringRef());
     J.attributeArray("tiu_dma_id(before)", [&] {
       J.value(cmd_before[0]);

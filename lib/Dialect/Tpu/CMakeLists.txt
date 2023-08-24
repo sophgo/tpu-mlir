@@ -17,6 +17,7 @@ file(GLOB _sources
           Transforms/WeightReorder/BM1684/*.cpp
           Transforms/WeightReorder/BM1684X/*.cpp
           Transforms/WeightReorder/CV18xx/*.cpp
+          Transforms/Distribute/*.cpp
           Transforms/Parallel/*.cpp)
 
 add_llvm_library(TPUMLIRTpu
@@ -60,6 +61,4 @@ add_llvm_library(TPUMLIRTpu
   TPUMLIRTrait
   TPUMLIRBackend
   TPUMLIRBuilder
-  ssl
-  crypto
 )

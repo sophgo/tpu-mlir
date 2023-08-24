@@ -12,7 +12,7 @@
 
 include "mlir/Pass/PassBase.td"
 
-def OpReorder : Pass<"op-reorder", "FuncOp"> {
+def OpReorder : Pass<"op-reorder", "ModuleOp"> {
   let summary = "op reorder in tpu by tpuc-opt";
   let constructor = "createOpReorderPass()";
   let dependentDialects = ["TpuDialect"];
@@ -34,7 +34,7 @@ def SubnetDivide : Pass<"subnet-divide", "ModuleOp"> {
   ];
 }
 
-def LayerGroup : Pass<"layer-group", "FuncOp"> {
+def LayerGroup : Pass<"layer-group", "ModuleOp"> {
   let summary = "convert to layer group in tpu by tpuc-opt";
   let constructor = "createLayerGroupPass()";
   let dependentDialects = ["TpuDialect"];
@@ -44,12 +44,22 @@ def LayerGroup : Pass<"layer-group", "FuncOp"> {
   ];
 }
 
-def Parallel : Pass<"parallel", "FuncOp"> {
+def Distribute : Pass<"distribute", "ModuleOp"> {
+  let summary = "distribute module to multi modules to run in multi devices";
+  let constructor = "createDistributePass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+      Option<"num_device", "num_device", "int64_t", /*default=*/"1",
+             "num of devices to distributed.">
+  ];
+}
+
+def Parallel : Pass<"parallel", "ModuleOp"> {
   let summary = "split the operation to fine-grained and run it in parallel on TPU";
   let constructor = "createParallelPass()";
   let dependentDialects = ["TpuDialect"];
   let options = [
-    Option<"core", "core", "int64_t", /*default=*/"1",
+    Option<"num_core", "num_core", "int64_t", /*default=*/"1",
            "core_num=1: Set how many cores will be used to run model in parallel.">,
   ];
 }
@@ -76,7 +86,9 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
   let options = [
     Option<"model_file", "model_file", "std::string", /*default=*/"",
-           "save to model file">
+           "save to model file">,
+    Option<"embed_debug_info", "embed_debug_info", "bool", /*default=*/"false",
+           "embed debug and profiling data to model file.">
   ];
 }
 

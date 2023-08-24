@@ -21,7 +21,8 @@ public:
   void runOnOperation() override {
     llvm::errs() << "Entering FusePreprocessPass.\n";
     auto ctx_ = &getContext();
-    auto fn = module::getMainFuncOp();
+    auto mOp = getOperation();
+    auto fn = module::getMainFuncOp(mOp);
     auto builder = OpBuilder(ctx_);
     std::vector<mlir::Type> returnTypes;
     Block &entryBlock = fn.front();

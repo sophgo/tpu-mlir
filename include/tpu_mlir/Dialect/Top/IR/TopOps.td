@@ -24,6 +24,7 @@ include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/FlopsInterface.td"
 include "tpu_mlir/Interfaces/ShapeInterface.td"
 include "tpu_mlir/Traits/Traits.td"
+
 // =============================================================================
 //
 // Defines TOP Dialect.
@@ -67,9 +68,11 @@ def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_
 def RoiAlignModeAttr: AnyStrAttrOf<["Avg","Max"]>;
 def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
 def StoreModeAttr: AnyStrAttrOf<["1N", "2N", "4N"]>;
-def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov4", "yolov5"]>;
+def YoloVersionAttr: AnyStrAttrOf<["yolov3", "yolov3_tiny", "yolov3_spp", "yolov4", "yolov5","yolov8"]>;
 def MatchTemplateModeAttr: AnyStrAttrOf<["TM_CCOEFF_NORMED", "TM_SQDIFF"]>;
 def PaddingModeAttr:AnyStrAttrOf<["constant","reflect","symmetric","edge"]>;
+def AutoPadModeAttr:AnyStrAttrOf<["SAME_UPPER","SAME_LOWER","NOTSET","VALID"]>;
+def EinsumModeAttr:AnyStrAttrOf<["a,b->ab","abcd,cde->abe","abcd,bed->abce","abcd,ced->abce"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -129,6 +132,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   mlir::Value clone_bf16(mlir::Operation * OwnerOp, std::string name = "");
   mlir::Value clone_f16(mlir::Operation * OwnerOp);
   mlir::Value clone_int(mlir::Operation *OwnerOp);
+  mlir::Value clone(llvm::StringRef suffix);
   }];
 }
 
@@ -354,6 +358,7 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu,
     OptionalAttr<I64ArrayAttr>:$inserts,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<AutoPadModeAttr>:$auto_pad, // only used in shape infer
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,
     OptionalAttr<F64Attr>:$out_int8_scale,
@@ -381,6 +386,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
     I64ArrayAttr:$strides,
     I64ArrayAttr:$pads,
     OptionalAttr<BoolAttr>:$ceil_mode,
+    OptionalAttr<AutoPadModeAttr>:$auto_pad, // only used in shape infer
     DefaultValuedAttr<BoolAttr, "true">:$keepdims,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
@@ -577,7 +583,7 @@ def Top_SubConstOp: Top_Op<"SubConst", [SupportFuseRelu]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu]> {
+def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, SupportPermuteMove]> {
   let summary = "Mul Const operator";
 
   let description = [{
@@ -736,6 +742,22 @@ def Top_AttentionOp: Top_Op<"Attention"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_EinsumOp: Top_Op<"Einsum", [SupportFuseRelu]> {
+  let summary = "Einsum operator";
+
+  let description = [{
+    # https://pytorch.org/docs/1.13/generated/torch.einsum.html?highlight=einsum#torch.einsum
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    EinsumModeAttr:$mode
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 def Top_PadOp:Top_Op<"Pad"> {
   let summary = "Pad operation";
   let description = [{
@@ -847,6 +869,7 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
+    Optional<AnyTensor>:$shapeT,
     OptionalAttr<I64ArrayAttr>:$shape
   );
   let results = (outs AnyTensor:$output);
@@ -870,7 +893,7 @@ def Top_ViewOp:Top_Op<"View"> {
 def Top_FlattenOp:Top_Op<"Flatten"> {
   let summary = "Flatten operation";
   let description = [{
-    gen by torch aten::flatten
+    gen by torch aten::flatten or onnx
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -949,6 +972,21 @@ def Top_ArangeOp: Top_Op<"Arange"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_RangeOp: Top_Op<"Range"> {
+  let summary = "Range operator";
+  let description = [{
+    onnx range op
+  }];
+
+  let arguments = (ins
+    AnyTensorOrNone:$start,
+    AnyTensor:$limit,
+    AnyTensorOrNone:$delta
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ConstantFillOp: Top_Op<"ConstantFill"> {
   let summary = "constant fill operator";
   let description = [{
@@ -1019,10 +1057,14 @@ def Top_SliceOp: Top_Op<"Slice"> {
     AnyTensorOrNone:$stepsT,
     I64ArrayAttr:$offset,
     I64ArrayAttr:$steps,
-    I64ArrayAttr:$ends
+    I64ArrayAttr:$ends,
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$axes
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+  let extraClassDeclaration = [{
+    void paramConvert();
+  }];
 }
 
 def Top_StridedSliceOp: Top_Op<"StridedSlice"> {
@@ -1109,9 +1151,10 @@ def Top_TopKOp:Top_Op<"TopK"> {
   let arguments = (ins
     AnyTensor:$input,
     I64Attr:$axis,
-    I64Attr:$K,
+    DefaultValuedAttr<I64Attr, "-1">:$K,
     DefaultValuedAttr<BoolAttr, "true">:$largest,
-    DefaultValuedAttr<BoolAttr, "true">:$sorted
+    DefaultValuedAttr<BoolAttr, "true">:$sorted,
+    Optional<AnyTensor>:$kT
   );
   let results = (outs
     AnyTensorOrNone:$values,
@@ -1223,6 +1266,22 @@ def Top_ExpOp: Top_Op<"Exp"> {
   );
 
   let results = (outs AnyTensor:$output);
+}
+
+def Top_ExpandOp: Top_Op<"Expand"> {
+  let summary = "Expand operator";
+
+  let description = [{
+    Broadcast the input tensor following the given shape and the broadcast rule.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$shape
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_CosOp: Top_Op<"Cos"> {
@@ -1535,8 +1594,8 @@ def Top_GatherOp: Top_Op<"Gather"> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$indices,
-
-    DefaultValuedAttr<I64Attr, "0">:$axis
+    DefaultValuedAttr<BoolAttr, "false">:$keepdims, // not sure for set false as defaut
+    DefaultValuedAttr<SI32Attr, "0">:$axis
   );
 
   let results = (outs AnyTensor:$output);
@@ -2551,11 +2610,12 @@ def Top_LoopOp : Top_Op<"Loop"> {
 
   The input/output of subgraph (produced by loop node) matching is based on order instead of name. The implementation will figure out the names based on this order.
   }];
-  let arguments = (ins AnyTypeOf<[TensorOf<[I32]>, TensorOf<[F32]>, NoneType]>:$M,
-    AnyTypeOf<[TensorOf<[I32]>, TensorOf<[F32]>, NoneType]>:$cond,
-    Variadic<AnyTypeOf<[TensorOf<[UI8]>, TensorOf<[UI16]>, TensorOf<[UI32]>, TensorOf<[UI64]>, TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>, TensorOf<[F64]>, TensorOf<[I1]>]>>:$v_initial);
-  let results = (outs Variadic<AnyTypeOf<[TensorOf<[I8]>, TensorOf<[I16]>, TensorOf<[I32]>, TensorOf<[I64]>, TensorOf<[BF16]>, TensorOf<[F16]>, TensorOf<[F32]>]>>:$v_final_and_scan_outputs);
+  let arguments = (ins AnyTypeOf<[AnyTensor, NoneType]>:$M,
+                   AnyTypeOf<[AnyTensor, NoneType]>:$cond,
+                  Variadic<AnyTypeOf<[AnyTensor, NoneType]>>:$v_initial);
+  let results = (outs Variadic<AnyTypeOf<[AnyTensor, NoneType]>>:$v_final_and_scan_outputs);
   let regions = (region SizedRegion<1>:$body);
+  let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     static int getNumberOfOperands() {
       return -1;
@@ -2582,7 +2642,11 @@ def Top_ShapeOp : Top_Op<"Shape"> {
     Takes a tensor as input and outputs an 1D int tensor containing the shape
      of the input tensor.
   }];
-  let arguments = (ins AnyTensor:$input);
+  let arguments = (ins
+    AnyTensor:$input,
+    OptionalAttr<I64Attr>:$start,
+    OptionalAttr<I64Attr>:$end
+  );
   let results = (outs AnyTensor:$output);
 }
 

@@ -31,6 +31,9 @@ SHAPE_LOWERING_BM1684X(Concat)
 SHAPE_LOWERING_BM1684X(Unsqueeze)
 SHAPE_LOWERING_BM1684X(Squeeze)
 SHAPE_LOWERING_BM1684X(Slice)
+SHAPE_LOWERING_BM1684X(Range)
+SHAPE_LOWERING_BM1684X(Reshape)
+SHAPE_LOWERING_BM1684X(TopK)
 
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
@@ -150,5 +153,6 @@ LOWERING_BM1684X(DetectionOutput)
 LOWERING_BM1684X(Unsqueeze)
 LOWERING_BM1684X(Squeeze)
 LOWERING_BM1684X(Nms)
+LOWERING_BM1684X(Range)
 } // namespace bm1684x
 } // namespace tpu_mlir

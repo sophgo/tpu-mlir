@@ -18,10 +18,10 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   uint32_t store_mode = 0;
   if (getStoreMode().has_value()) {
     store_mode = StringSwitch<uint32_t>(getStoreModeAttr())
-      .Case("1N", 0)
-      .Case("2N", 1)
-      .Case("4N", 2)
-      .Default(0);
+                     .Case("1N", 0)
+                     .Case("2N", 1)
+                     .Case("4N", 2)
+                     .Default(0);
   }
   return module::weightFile().readTensor<T>(module::getName(op).str(), type,
                                             store_mode);
@@ -277,6 +277,21 @@ Value WeightOp::clone_int(Operation *OwnerOp) {
                                              ValueRange{});
   return newOp.getResult();
 };
+
+Value WeightOp::clone(llvm::StringRef suffix) {
+  auto ctx = getContext();
+  OpBuilder builder(ctx);
+  auto op = getOperation();
+  builder.setInsertionPointAfter(op);
+  auto name = module::getName(op);
+  auto new_name = name.str() + "_" + suffix.str();
+  auto nameAttr = builder.getStringAttr(new_name);
+  auto ret = module::weightFile().cloneTensor(name, suffix);
+  assert(succeeded(ret));
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), getType(),
+                                             ValueRange{});
+  return newOp.getOutput();
+}
 
 template <typename T>
 LogicalResult WeightOp::update(const std::vector<T> &data, size_t count) {

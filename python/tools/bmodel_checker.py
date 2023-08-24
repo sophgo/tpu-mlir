@@ -44,7 +44,7 @@ class Operand(Value):
 class TensorLoc:
     __solts__ = ("tensor_loc", "cmd_index")
     # so many namedTuple, could we use a smart Table?
-    ID = namedtuple("ID", ["sunnetId", "tiu", "dma"])
+    ID = namedtuple("ID", ["sunnetId", "tiu", "dma", "core_id"])
     TR = namedtuple("TensorRecord", ["tensor", "record"])
 
     def __init__(self, ts_des_file):
@@ -64,7 +64,7 @@ class TensorLoc:
         for loc in self.tensor_loc:
             loc_s = {k: v for k, v in loc.items() if k not in ("operands", "results")}
             # before this nodechip command, we can check the input data.
-            key = self.ID(loc["subnet_id"], *loc["tiu_dma_id(before)"])
+            key = self.ID(loc["subnet_id"], *loc["tiu_dma_id(before)"], loc["core_id"])
             self.breakpoint_loc.setdefault(key, []).extend(
                 self.TR(Operand(v, i), loc_s)
                 for i, v in enumerate(loc["operands"])
@@ -72,7 +72,7 @@ class TensorLoc:
             )
 
             # after this nodechip command, we can check the output data.
-            key = self.ID(loc["subnet_id"], *loc["tiu_dma_id(after)"])
+            key = self.ID(loc["subnet_id"], *loc["tiu_dma_id(after)"], loc["core_id"])
             self.breakpoint_loc.setdefault(key, []).extend(
                 self.TR(Result(v, i), loc_s)
                 for i, v in enumerate(loc["results"])
@@ -84,26 +84,36 @@ class TensorLoc:
             cmd = org_func(*args)
             for i, x in enumerate(cmd):
                 if isinstance(x, op_support.TIUBase):
-                    k = self.ID(args[-1], x.cmd_id, None)
+                    k = self.ID(args[-1], x.cmd_id, None, x.core_id)
                 else:
-                    k = self.ID(args[-1], None, x.cmd_id)
+                    k = self.ID(args[-1], None, x.cmd_id, x.core_id)
                 self.cmd_index[k] = i
             return cmd
 
         return record_index
 
+    def record_index(self, ops):
+        for i, x in enumerate(ops):
+            if isinstance(x, op_support.TIUBase):
+                k = self.ID(0, x.cmd_id, None, x.core_id)
+            else:
+                k = self.ID(0, None, x.cmd_id, x.core_id)
+            self.cmd_index[k] = i
+
+
     def set_breakpoint(self, tdb: Tdb, subnet_id: int = 0):
         bp = filter(lambda x: x[0] == subnet_id, self.breakpoint_loc.keys())
 
-        def bb(tiu_id, dma_id):
+        def bb(tiu_id, dma_id, core_id):
+            assert(core_id>=0)
             x, y = -1, -1
             if tiu_id > 0:
-                x = self.cmd_index[(subnet_id, tiu_id, None)]
+                x = self.cmd_index[(subnet_id, tiu_id, None, core_id)]
             if dma_id > 0:
-                y = self.cmd_index[(subnet_id, None, dma_id)]
+                y = self.cmd_index[(subnet_id, None, dma_id, core_id)]
             return max(x, y)
 
-        tdb.breakpoint.extend(bb(x, y) for _, x, y in bp)
+        tdb.breakpoint.extend(bb(x, y, core_id) for _, x, y, core_id in bp)
 
 
 to_dtype = {
@@ -520,7 +530,7 @@ class Checker:
         """
         self.results = {}
         RPS = namedtuple(
-            "ReportState", ["line", "subnet_id", "ins_before", "ins_after"]
+            "ReportState", ["line", "subnet_id", "ins_before", "ins_after", "core_id"]
         )
         OPS = namedtuple("OpState", ["operands_state", "results_state"])
 
@@ -529,12 +539,7 @@ class Checker:
         tdb = Tdb()
         tdb.enable_message = False  # disable message
         tdb.load_bmodel(self.bmodel_file)
-
-        # Please improve this code, it want to read the sorted instruction.
-        # This implement like a decorator but it is not clean.
-        tdb.context.decoder.merge_instruction = self.tensor_loc.merge_cmd(
-            tdb.context.decoder.merge_instruction
-        )
+        self.tensor_loc.record_index(tdb.get_all_ops())
 
         tdb.start()
         tdb.load_data(self.input_data_file)
@@ -562,6 +567,7 @@ class Checker:
                     "subnet_id",
                     "tiu_dma_id(before)",
                     "tiu_dma_id(after)",
+                    "core_id",
                 )
 
                 key = RPS(*(tr.record[i] for i in info))
@@ -601,19 +607,20 @@ class Checker:
         for k, v in self.results.items():
             tiu_x, dma_x = k.ins_before
             tiu_y, dma_y = k.ins_after
+            core_id = k.core_id
             sid = k.subnet_id
             line = k.line
             ops = state_aggragate(v.operands_state)
             res = state_aggragate(v.results_state)
             self.ins_state.update(
                 {
-                    self.SI(sid, cmd_idx[(sid, x + 1, None)]): self.LS(line, ops, res)
+                    self.SI(sid, cmd_idx[(sid, x + 1, None, core_id)]): self.LS(line, ops, res)
                     for x in range(tiu_x, tiu_y)
                 }
             )
             self.ins_state.update(
                 {
-                    self.SI(sid, cmd_idx[(sid, None, x + 1)]): self.LS(line, ops, res)
+                    self.SI(sid, cmd_idx[(sid, None, x + 1, core_id)]): self.LS(line, ops, res)
                     for x in range(dma_x, dma_y)
                 }
             )

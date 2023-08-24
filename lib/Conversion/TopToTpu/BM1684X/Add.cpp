@@ -33,8 +33,11 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
     int scalei = 1, shifti = 0;
-    if (auto constOp = dyn_cast<top::WeightOp>(input.getDefiningOp())) {
+
+    if (!isa<BlockArgument>(input) &&
+        isa<top::WeightOp>(input.getDefiningOp())) {
       // constant tensor
+      auto constOp = dyn_cast<top::WeightOp>(input.getDefiningOp());
       auto constF32 = constOp.read<float>();
       float fmax, fmin;
       findMinMax(constF32->data(), constF32->size(), &fmin, &fmax);

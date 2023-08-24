@@ -46,7 +46,8 @@ public:
     if (post_type.empty()) {
       return;
     }
-    auto func = module::getMainFuncOp();
+    auto mOp = getOperation();
+    auto func = module::getMainFuncOp(mOp);
     terminator = func.getBody().back().getTerminator();
     auto arg_type = func.getArgumentTypes();
     in_shape = arg_type[0].cast<RankedTensorType>().getShape();
@@ -87,6 +88,12 @@ void AddPostprocessPass::getYoloOperandsAndAnchors(
   // TODO: Maybe yolov5 has only 1 yolo layer
   if (post_type == "yolov5" && num_opds == 1 &&
       module::getShape(opds[0]).size() == 3) {
+    operands.push_back(opds[0]);
+    anchors = {0};
+    return;
+  }
+  // yolov8
+  if (post_type == "yolov8" && num_opds == 1){
     operands.push_back(opds[0]);
     anchors = {0};
     return;

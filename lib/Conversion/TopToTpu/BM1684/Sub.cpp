@@ -25,7 +25,8 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
 
   if (op.getCoeff().has_value()) {
     int idx = 0;
-    for (auto v : op.getCoeff().value()) {
+    auto coeff = op.getCoeff().value();
+    for (auto v : coeff) {
       coeff_v[idx++] = v.cast<FloatAttr>().getValueAsDouble();
     }
   }

@@ -29,7 +29,9 @@ typedef struct {
 
 class TgEltwiseKernel {
 public:
-  TgEltwiseKernel() {}
+  TgEltwiseKernel(::TypeID typeID) : typeID(typeID) {}
+  TypeID typeID;
+
 
   void init(uint32_t layer_id,
     gaddr_t ga_inputs[], gaddr_t ga_output,
@@ -63,8 +65,6 @@ protected:
   void load(int32_t step_idx);
   void store(int32_t step_idx);
 
-
-
   gaddr_t *ga_inputs;
   gaddr_t ga_output;
 
@@ -97,7 +97,8 @@ protected:
 
 class TgInt8EltwiseAddKernel : public TgEltwiseKernel {
 public:
-  TgInt8EltwiseAddKernel() {}
+  TgInt8EltwiseAddKernel()
+      : TgEltwiseKernel(TypeID::get<TgInt8EltwiseAddKernel>()) {}
 
 protected:
   void compute(int32_t step_idx);
@@ -110,7 +111,8 @@ private:
 
 class TgInt8EltwiseMaxKernel : public TgEltwiseKernel {
 public:
-  TgInt8EltwiseMaxKernel() {}
+  TgInt8EltwiseMaxKernel()
+      : TgEltwiseKernel(TypeID::get<TgInt8EltwiseMaxKernel>()) {}
 
 protected:
   void compute(int32_t step_idx);
@@ -118,7 +120,8 @@ protected:
 
 class TgInt8EltwiseMinKernel : public TgEltwiseKernel {
 public:
-  TgInt8EltwiseMinKernel() {}
+  TgInt8EltwiseMinKernel()
+      : TgEltwiseKernel(TypeID::get<TgInt8EltwiseMinKernel>()) {}
 
 protected:
   void compute(int32_t step_idx);
@@ -126,7 +129,8 @@ protected:
 
 class TgInt8EltwiseMulKernel : public TgEltwiseKernel {
 public:
-  TgInt8EltwiseMulKernel() {}
+  TgInt8EltwiseMulKernel()
+      : TgEltwiseKernel(TypeID::get<TgInt8EltwiseMulKernel>()) {}
 
 protected:
   void compute(int32_t step_idx);
@@ -134,7 +138,8 @@ protected:
 
 class TgBf16EltwiseAddKernel : public TgEltwiseKernel {
 public:
-  TgBf16EltwiseAddKernel() {}
+  TgBf16EltwiseAddKernel()
+      : TgEltwiseKernel(TypeID::get<TgBf16EltwiseAddKernel>()) {}
 
 protected:
   void compute(int32_t step_idx);
@@ -142,7 +147,8 @@ protected:
 
 class TgBf16EltwiseMaxKernel : public TgEltwiseKernel {
 public:
-  TgBf16EltwiseMaxKernel() {}
+  TgBf16EltwiseMaxKernel()
+      : TgEltwiseKernel(TypeID::get<TgBf16EltwiseMaxKernel>()) {}
 
 protected:
   void compute(int32_t step_idx);
@@ -150,7 +156,8 @@ protected:
 
 class TgBf16EltwiseMinKernel : public TgEltwiseKernel {
 public:
-  TgBf16EltwiseMinKernel() {}
+  TgBf16EltwiseMinKernel()
+      : TgEltwiseKernel(TypeID::get<TgBf16EltwiseMinKernel>()) {}
 
 protected:
   void compute(int32_t step_idx);
@@ -158,7 +165,8 @@ protected:
 
 class TgBf16EltwiseMulKernel : public TgEltwiseKernel {
 public:
-  TgBf16EltwiseMulKernel() {}
+  TgBf16EltwiseMulKernel()
+      : TgEltwiseKernel(TypeID::get<TgBf16EltwiseMulKernel>()) {}
 
 protected:
   void compute(int32_t step_idx);
@@ -166,7 +174,13 @@ protected:
 
 class TgBf16EltwiseMinMaxKernel : public TgEltwiseKernel {
 public:
-  TgBf16EltwiseMinMaxKernel() {}
+  TgBf16EltwiseMinMaxKernel()
+      : TgEltwiseKernel(TypeID::get<TgBf16EltwiseMinMaxKernel>()) {}
+
+  static bool classof(const TgEltwiseKernel *eltwiseKernel) {
+    return eltwiseKernel->typeID ==
+           TypeID::get<TgBf16EltwiseMinMaxKernel>();
+  }
 
 protected:
   void compute(int32_t step_idx);
@@ -174,7 +188,7 @@ protected:
 
 class TgEltwiseAbsKernel : public TgEltwiseKernel {
 public:
-  TgEltwiseAbsKernel() {}
+  TgEltwiseAbsKernel() : TgEltwiseKernel(TypeID::get<TgEltwiseAbsKernel>()) {}
 
 protected:
   void compute(int32_t step_idx);

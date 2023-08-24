@@ -14,7 +14,6 @@
 
 using namespace llvm;
 
-
 namespace tpu_mlir {
 namespace top {
 
@@ -77,53 +76,32 @@ public:
         return i;
       }
     }
+    llvm_unreachable("operand not found");
     return -1;
-  }
-
-  template<typename T>
-  void copyNewWeight(Operation *user, WeightOp op) const {
-    int operand_index = getOperandIndex(user, op.getOutput());
-    assert(operand_index != -1);
-    auto weight_data = op.read<T>();
-    auto weight_type = op.getType().cast<RankedTensorType>();
-    auto new_weight_value = top::WeightOp::create(op, "new", *weight_data, weight_type);
-    user->setOperand(operand_index, new_weight_value);
   }
 
   LogicalResult matchAndRewrite(WeightOp op,
                                 PatternRewriter &rewriter) const override {
-    if (!op->hasOneUse()) {
-      for (auto user : op->getUsers()) {
-        auto elt_type = module::getStorageType(op.getOutput());
-        if (elt_type.isF32()) {
-          copyNewWeight<float>(user, op);
-        } else if (elt_type.isInteger(32)) {
-          copyNewWeight<int32_t>(user, op);
-        } else if (elt_type.isUnsignedInteger(32)) {
-          copyNewWeight<uint32_t>(user, op);
-        } else if (elt_type.isBF16() || elt_type.isF16()
-                  || elt_type.isUnsignedInteger(16)) {
-          copyNewWeight<uint16_t>(user, op);
-        } else if (elt_type.isInteger(16)) {
-          copyNewWeight<int16_t>(user, op);
-        } else if (elt_type.isInteger(8) || elt_type.isInteger(4)) {
-          copyNewWeight<int8_t>(user, op);
-        } else if (elt_type.isUnsignedInteger(8)) {
-          copyNewWeight<uint8_t>(user, op);
-        } else {
-          op.dump();
-          llvm_unreachable("unsupported weight element type");
-        }
-      }
+    std::vector<Operation *> users(op->user_begin(), op->user_end());
+    if (users.size() <= 1) {
+      return failure();
     }
+    int idx = 0;
+    for (auto user : users) {
+      int operand_index = getOperandIndex(user, op.getOutput());
+      auto new_weight = op.clone(std::to_string(idx));
+      user->setOperand(operand_index, new_weight);
+      idx++;
+    }
+    rewriter.eraseOp(op);
     return success();
   }
 };
 
 // if all inputs is weight, convert to weight op
 static void WeightFolder(Operation *op) {
-  //if the op is in the region of other op, don't do WeightFolder
-  if (isa<tpu::IfOp, top::LoopOp, top::IfOp>(op->getBlock()->getParentOp()))
+  // if the op is in the region of other op, don't do WeightFolder
+  if (isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(op->getBlock()->getParentOp()))
     return;
   if (module::isAllWeight(op) == false) {
     return;
@@ -225,9 +203,10 @@ public:
 
 private:
   bool removeIfNoUse(Operation *op) {
-    //if the op is in the region of other op, don't do removeIfNoUse
+    // if the op is in the region of other op, don't do removeIfNoUse
     if (op->getUsers().empty()
-        && !isa<tpu::IfOp, top::LoopOp, top::IfOp>(op->getBlock()->getParentOp())) {
+        && !isa<tpu::IfOp, tpu::LoopOp, top::LoopOp, top::IfOp>(
+                                op->getBlock()->getParentOp())) {
       op->erase();
       return true;
     }

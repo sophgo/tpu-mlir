@@ -84,7 +84,7 @@ LogicalResult top::ArgOp::inference(InferenceParameter &p) {
 }
 
 void top::ArgOp::shape_inference() {
-  auto axis = getAxis();
+  int64_t axis = getAxis();
   auto input_shape = module::getShape(getInput());
   const int input_dims = input_shape.size();
   if (axis < 0) {

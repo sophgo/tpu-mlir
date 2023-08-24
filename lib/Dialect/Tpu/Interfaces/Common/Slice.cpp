@@ -14,9 +14,11 @@
 
 using namespace tpu_mlir::backend;
 
-template <typename T> static int remove_value(std::vector<T> &v, T value) {
+template <typename T> static int remove_value(std::vector<T> &v, T value, bool is_int8) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
+    if (idx == 0 && is_int8)
+      continue;
     if (*iter == value) {
       v.erase(iter);
       return idx;
@@ -40,11 +42,12 @@ slice_attr_t tpu::SliceOp::parseParam() {
       os.insert(os.begin(), 1);
     }
   }
-
+  auto input_dtype = BM1684::getDataType(getInput());
+  bool is_int8 = (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8);
   if (num_dims > 4) {
     // remove dims = 1
     while (num_dims > 4) {
-      int idx = remove_value<int64_t>(is, 1);
+      int idx = remove_value<int64_t>(is, 1, is_int8);
       if (idx < 0) {
         break;
       }
@@ -57,6 +60,8 @@ slice_attr_t tpu::SliceOp::parseParam() {
     while (num_dims > 4) {
       bool done = false;
       for (int i = 0; i < num_dims - 1; i++) {
+        if (i == 0 && is_int8)
+          continue;
         if (is[i] == os[i] && is[i + 1] == os[i + 1]) {
           is[i] *= is[i + 1];
           os[i] *= os[i + 1];
@@ -125,7 +130,27 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
     out_shape.insert(out_shape.begin(), 1);
     out_dims++;
   }
-
+  if (!(module::isNone(getOffsetT()) && module::isNone(getEndsT()) &&
+        module::isNone(getStepsT()))) {
+    // slice in only one aixs in such case
+    int axis = module::getI64Array(getAxes())->at(0);
+    auto ends_v = module::getI64Array(getEnds());
+    auto in_ends_v = std::valarray<int64_t>(ends_v->data(), ends_v->size());
+    auto in_steps_v = std::valarray<int64_t>(steps_v->data(), steps_v->size());
+    if (!module::isNone(getOffsetT()))
+      offset_v->at(axis) = *p.inputs[1];
+    if (!module::isNone(getEndsT()))
+      ends_v->at(axis) = *p.inputs[2];
+    if (!module::isNone(getStepsT()))
+      steps_v->at(axis) = *p.inputs[3];
+    for (int i = 0; i < out_dims; i++) {
+      out_shape[i] = std::min(out_shape[i], in_shape[i]);
+    }
+    out_shape[axis] =
+        (ends_v->at(axis) - offset_v->at(axis)) / steps_v->at(axis);
+    module::setShape(getOutput(), out_shape);
+    out_num_elem = module::getNumElements(getOutput());
+  }
   // slice[range] -> (offset + stride)
   std::valarray<int64_t> in_stride_v(1, in_dims);
   std::valarray<int64_t> out_stride_v(1, out_dims);

@@ -41,7 +41,7 @@ public:
   ScfTypeConverter() {
     // The order of type conversion is important: later ones are tried earlier.
     addConversion([](Type type) { return type; });
-    addConversion([&](TensorType type) -> Optional<Type> {
+    addConversion([&](TensorType type) -> std::optional<Type> {
       if (isLegal(type.getElementType()))
         return type;
       return std::nullopt;
@@ -49,7 +49,7 @@ public:
 
     addSourceMaterialization([&](OpBuilder &builder, Type resultType,
                                  ValueRange inputs,
-                                 Location loc) -> Optional<Value> {
+                                 Location loc) -> std::optional<Value> {
       if (inputs.size() != 1)
         return std::nullopt;
 
@@ -59,7 +59,7 @@ public:
 
     addTargetMaterialization([&](OpBuilder &builder, Type resultType,
                                  ValueRange inputs,
-                                 Location loc) -> Optional<Value> {
+                                 Location loc) -> std::optional<Value> {
       if (inputs.size() != 1)
         return std::nullopt;
 
@@ -122,6 +122,76 @@ public:
     graphToTpuBranch(rewriter, op->getLoc(), ifOp.getElseBranch(),
                      tpuIfOp.getElseBranch());
     op->replaceAllUsesWith(tpuIfOp.getOperation());
+    rewriter.eraseOp(op);
+    return success();
+  }
+
+private:
+  void graphToTpuBranch(PatternRewriter &rewriter, Location loc, Region &graph,
+                        Region &tpuBranch) const {
+    OpBuilder::InsertionGuard insertGuard(rewriter);
+
+    rewriter.eraseBlock(&tpuBranch.back());
+    tpuBranch.takeBody(graph);
+    rewriter.setInsertionPointToEnd(&tpuBranch.back());
+
+    Operation *returnOp = tpuBranch.back().getTerminator();
+    rewriter.replaceOpWithNewOp<tpu::YieldOp>(returnOp,
+                                              returnOp->getOperands());
+  }
+};
+
+
+class LoopOpLowering : public ConversionPattern {
+public:
+  explicit LoopOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
+      : ConversionPattern(typeConverter, top::LoopOp::getOperationName(), 1,
+                          ctx) {}
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const final {
+    std::vector<mlir::Type> new_types;
+    auto real_mode = module::getMode();
+    for (int i = 0; i < op->getNumResults(); i++)
+    {
+      switch (real_mode) {
+        case module::Mode::INT8:
+          new_types.push_back(getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
+          break;
+        case module::Mode::INT4:
+          new_types.push_back(getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
+          break;
+        case module::Mode::F16:
+          new_types.push_back(getQuantFloatType<mlir::Float16Type>(op->getResult(i)));
+          break;
+        case module::Mode::BF16:
+          new_types.push_back(getQuantFloatType<mlir::BFloat16Type>(op->getResult(i)));
+          break;
+        default:
+          new_types.emplace_back(op->getResultTypes()[i]);
+          break;
+      }
+    }
+
+    auto tpuLoopOp = rewriter.create<tpu::LoopOp>(
+        op->getLoc(), new_types, op->getOperands(), op->getAttrs());
+    rewriter.createBlock(&(tpuLoopOp.getBody()));
+    auto loopOp = dyn_cast<top::LoopOp>(op);
+    graphToTpuBranch(rewriter, op->getLoc(), loopOp.getBody(),
+                     tpuLoopOp.getBody());
+
+    for (int i = 0; i < tpuLoopOp.getBody().getNumArguments(); i++) {
+      auto type = tpuLoopOp.getOperand(i).getType();
+      tpuLoopOp.getBody().getArgument(i).setType(type);
+    }
+
+    auto yieldOp = tpuLoopOp.getBody().front().getTerminator();
+    //update the loopop's output
+    for (int i = 0; i < tpuLoopOp.v_final().size(); i++) {
+      auto type = yieldOp->getOperand(i+1).getType();
+      tpuLoopOp.getResult(i).setType(type);
+    }
+    op->replaceAllUsesWith(tpuLoopOp.getOperation());
     rewriter.eraseOp(op);
     return success();
   }
@@ -389,5 +459,7 @@ int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
 void try_insert_host2device(Operation *op, uint32_t idx);
 // try to insert tpu.Device2HostOp at input #idx
 void try_insert_device2host(Operation *op, uint32_t idx);
+
+Value insert_device2host(Value v, Type to, Operation *user = nullptr);
 
 } // namespace tpu_mlir

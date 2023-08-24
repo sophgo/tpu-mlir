@@ -54,9 +54,18 @@ void BM1686::setCoreNum(int core) {
   }
 }
 
+int BM1686::getCurrentCoreID() {
+  for (auto [id, _code] : llvm::enumerate(multiCodes)) {
+    if (_code == code)
+      return id;
+  }
+  llvm_unreachable("cant not find current codeGen core.");
+}
+
 void BM1686::useCore(int coreID) {
-  if (code == multiCodes[coreID])
+  if (code == multiCodes[coreID]) {
     return;
+  }
 
   // We can not configure the backend to switch to another command buffer. This
   // is a workaround solution: swapping the buffer and "use codes[0]" only.

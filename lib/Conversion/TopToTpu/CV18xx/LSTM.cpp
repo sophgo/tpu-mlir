@@ -107,9 +107,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   if (recurrenceShape.size() == 2) {
     std::vector<int64_t> newRecurrenceShape = {
         nofdir, recurrenceShape[0] / nofdir, hiddenSize};
-    new_type = RankedTensorType::get(
-        newRecurrenceShape, module::getElementType(op.getRecurrence()));
-    recurrenceOp.getResult().setType(new_type);
+    module::setShape(op.getRecurrence(), newRecurrenceShape);
   }
   operands.push_back(recurrenceOp.clone_bf16(op));
   if (has_rBias) {

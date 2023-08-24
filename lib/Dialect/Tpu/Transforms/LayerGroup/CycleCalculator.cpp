@@ -294,7 +294,7 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
     }
     auto l_stride = bm168x->getLocalStride(n_slice, C, h_slice, w_slice,
                                            fmt_bytes, eu_align);
-    auto use_op = *v.getUsers().begin();
+    auto use_op = *v.user_begin();
     auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
     auto kernel = module::getI64Array(conv_op.getKernelShape());
     int64_t to_ic =

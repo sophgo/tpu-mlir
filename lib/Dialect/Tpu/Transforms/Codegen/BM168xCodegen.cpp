@@ -15,7 +15,6 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SHA256.h>
 
-
 #define DEBUG_TYPE "bm_codegen"
 
 using namespace llvm;
@@ -49,38 +48,21 @@ static bmodel::Binary CreateBinaryFromFile(bmodel::ModelGen *model_gen,
   return CreateBinaryFromFile(model_gen, fp);
 }
 
-void BMCodegen::run(ModuleOp &module, std::string &filename) {
-  // record the line number of operation in module.
+void BMCodegen::init(ModuleOp m, const std::string &filename) {
+  this->filename = filename;
   llvm::raw_null_ostream os;
-  AsmState state(module, OpPrintingFlags(), &opToLineCol);
-  module->print(os, state);
-
+  AsmState state(m, OpPrintingFlags(), &opToLineCol);
+  m->print(os, state);
   auto chip_ = module::getChip();
+  auto num_device = module::getDeviceNum();
   chip = module::stringifyChip(chip_).upper();
   tensor_loc = TensorLocation(&opToLineCol, filename + ".json");
   profile_ctx = ProfileCtx(&opToLineCol, true);
   bm168x = BM168x::instance();
-  DynCodegenInit();
-  std::vector<top::WeightOp> weights;
-  for (auto func : module.getOps<FuncOp>()) {
-    func.walk([&](top::WeightOp op) {
-      // TODO: store all weight to gmem for compare
-      // bm168x->value_s2d(op.getOutput(), op.read_as_byte()->data());
-      weights.push_back(op);
-    });
-  }
-  std::vector<Value> inputs;
-  std::vector<Value> outputs;
-  module::getInputsOutputs(inputs, outputs);
-  SetNetIO(inputs, outputs);
-
-  auto coeff_addr = module::getCoeffAddr();
-  auto coeff_size = module::getCoeffSize();
-  auto neuron_addr = module::getNeuronAddr();
-  auto neuron_size = module::getNeuronSize();
   model_gen = std::make_shared<bmodel::ModelGen>();
   // add chip name
   model_gen->AddChip(chip);
+  model_gen->AddNumDevice(num_device);
   if (module::isBM1684X()) {
     std::string kernel_name = backend::BM1684X::LIB_KERNEL_NAME.str();
     std::string root_path = getenv("TPUC_ROOT");
@@ -89,9 +71,39 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
         CreateBinaryFromFile(&(*model_gen), kernel_path);
     model_gen->AddKernelModule(kernel_name, kernel_module);
   }
+  input_names = module::getInputs();
+  output_names = module::getOutputs();
+  hidden_names.clear();
+  current_step = 0;
+  current_device = 0;
+}
+
+void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
+  // record the line number of operation in module.
+  DynCodegenInit();
+  std::vector<top::WeightOp> weights;
+  for (auto func : s.getOps<FuncOp>()) {
+    func.walk([&](top::WeightOp op) { weights.push_back(op); });
+  }
+  std::vector<Value> inputs;
+  std::vector<Value> outputs;
+  module::getInputsOutputs(s, inputs, outputs);
+  SetNetIO(inputs, outputs);
+  bmodel::ModelGen::CASCADE_INFO_T cascade = {0, 0, ""};
+  if (module::getNumSubModule() > 1) {
+    module::getSubModuleId(s, cascade.device_id, cascade.step);
+  }
+  checkAndUpdateHidden(inputs, outputs);
+
+  auto coeff_addr = module::getCoeffAddr(s);
+  auto coeff_size = module::getCoeffSize(s);
+  auto neuron_addr = module::getNeuronAddr(s);
+  auto neuron_size = module::getNeuronSize(s);
+
   auto &builder = model_gen->Builder();
-  auto input_tensor = CreateTensorVector(inputs);
-  auto output_tensor = CreateTensorVector(outputs);
+  // if tensor not in device 0, will be hidden
+  auto input_tensor = CreateTensorVector(inputs, cascade.device_id != 0);
+  auto output_tensor = CreateTensorVector(outputs, cascade.device_id != 0);
   auto coeff_mem = CreateCoeffMem(weights, coeff_addr, coeff_size);
   std::vector<uint64_t> neuron_sizes = {(uint64_t)neuron_size};
   auto neuron_sizes_fb = builder.CreateVector(neuron_sizes);
@@ -102,9 +114,10 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
   int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;
   bool first_dynamic = false;
 
-  module.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
-    if (func == module::getMainFuncOp())
+  s.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
+    if (func == module::getMainFuncOp(s)) {
       return WalkResult::advance();
+    }
     if (auto call = module::getCallOp(func)) {
       auto mode = getRunMode(func);
       int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
@@ -115,25 +128,27 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
       switch (mode) {
       case RunMode::TPU_STATIC: {
         profile_ctx.set_profile_start();
-        auto subnet = CreateSubNet(call);
+        auto subnet = CreateSubNet(s, call);
         subnet_v.push_back(subnet);
         profile_ctx.set_profile_end();
       } break;
       case RunMode::TPU_DYNAMIC: {
         auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
-        auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
+        auto subnet = CreateSubNet(s, call, std::move(subnet_ir_), context);
         subnet_v.push_back(subnet);
       } break;
       case RunMode::CPU: {
-        auto subnet = CreateCPUSubNet(call);
+        auto subnet = CreateCPUSubNet(s, call);
         subnet_v.push_back(subnet);
       } break;
+      // actually use switch subnet
+      case RunMode::LOOP:
       case RunMode::SWITCH: {
-        auto subnet = CreateSwitchSubNet(call);
+        auto subnet = CreateSwitchSubNet(s, call);
         subnet_v.push_back(subnet);
       } break;
       case RunMode::MERGE: {
-        auto subnet = CreateMergeSubNet(call);
+        auto subnet = CreateMergeSubNet(s, call);
         subnet_v.push_back(subnet);
       } break;
       default:
@@ -146,7 +161,7 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
   });
 
   auto subnets = builder.CreateVector(subnet_v);
-  auto cmd_group = model_gen->Builder().CreateVector(*cmd_group_all);
+  auto cmd_group = builder.CreateVector(*cmd_group_all);
   bmodel::Binary binary_ir;
   uint32_t ir_info_len = context->get_cur_net_ir_len();
   uint32_t ir_info_len_word =
@@ -184,7 +199,7 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
     }
   }
 
-  if (true) {
+  if (embed_debug_info) {
     auto save_profile_info = [&](StringRef pfname, auto fun) -> bool {
       llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
           llvm::MemoryBuffer::getFileOrSTDIN(pfname);
@@ -211,8 +226,22 @@ void BMCodegen::run(ModuleOp &module, std::string &filename) {
           std::bind(&bmodel::NetParameterBuilder::add_net_stat, &npb, _1));
     };
   }
+  if (module::getNumSubModule() > 1) {
+    // make sure the order is by step and device id
+    if (cascade.step == current_step) {
+      assert(cascade.device_id == current_device);
+      current_device++;
+    } else {
+      assert(cascade.step == current_step + 1 && cascade.device_id == 0);
+      current_step++;
+      current_device = 1;
+    }
+    cascade.main_name = module::getName(module::getModuleOp());
+  }
+  model_gen->AddNet(module::getName(s).str(), cascade, npb.Finish());
+}
 
-  model_gen->AddNet(module::getModuleName().str(), npb.Finish());
+void BMCodegen::store() {
   model_gen->Finish();
   model_gen->Save(filename);
 }
@@ -232,12 +261,14 @@ BMCodegen::CreateShapeVector(const ArrayRef<int64_t> &shape) {
 }
 
 Offset<Vector<Offset<bmodel::Tensor>>>
-BMCodegen::CreateTensorVector(const std::vector<Value> &values) {
+BMCodegen::CreateTensorVector(const std::vector<Value> &values,
+                              bool hidden_all) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   int index = 0;
   for (auto v : values) {
-    auto v_name = module::getName(v).str();
+    auto s_name = module::getName(v);
+    auto v_name = s_name.str();
     auto type = module::getStorageType(v);
     auto shape = module::getShape(v);
     auto data_type = BM168x::getDataType(type);
@@ -250,6 +281,24 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values) {
     tb.add_data_type(data_type);
     tb.add_gmem_stmode(gmem_stmode);
     tb.add_shape(stage_shape);
+    if (hidden_all || isHiddenTensor(s_name)) {
+      tb.add_hidden(0);
+    } else {
+      auto in_iter =
+          std::find(input_names->begin(), input_names->end(), s_name);
+      auto out_iter =
+          std::find(output_names->begin(), output_names->end(), s_name);
+      if (in_iter != input_names->end()) {
+        tb.add_hidden(1); // input
+        tb.add_index(std::distance(input_names->begin(), in_iter));
+      } else if (out_iter != output_names->end()) {
+        tb.add_hidden(2); // output
+        tb.add_index(std::distance(output_names->begin(), out_iter));
+      } else {
+        tb.add_hidden(0);
+      }
+    }
+
     /*
 +--------------------------+     +-----------------------------------------+
 | TPU_LAYER (MEM_TYPE_ALL) | --> | (MEM_TYPE_ALL) CPU_LAYER (MEM_TYPE_ALL) |
@@ -557,16 +606,35 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   SoftwarePipeline timestep_swpipl;
   local_sec_info_t sec_info;
   int64_t timestep_num = timestep_table.size();
+  // multi-core-setup
+  auto core_num = module::getCoreNum();
+  bool useMuliCore = core_num > 1;
+  auto secs = nsecs * csecs * dsecs * hsecs * wsecs;
+  auto max_task_per_core = (secs + core_num - 1) / core_num;
+  int coreId = 0;
+  auto bm1686 = dyn_cast<BM1686>(bm168x);
+  useMuliCore &= (secs > 1) && bm1686;
+  if (useMuliCore && (bm1686->getCoreNum() != core_num)) {
+    assert(bm1686->getCoreNum() == 1 &&
+           "The core_num should be set only once, and can not be changed.");
+    bm1686->dl_tpu_core_context_setup(0, core_num, 0);
+    bm1686->setCoreNum(module::getCoreNum());
+  }
+  // multi-core-setup END
   for (uint64_t nstep = 0, cstep = 0, hstep = 0, dstep = 0, wstep = 0;
        nstep < nsecs || draining_period;) {
+    if (useMuliCore && stage_idx == 0) {
+      bm1686->useCore(coreId++);
+      bm1686->sync_all();
+    }
     /* add for software pipeline */
     timestep_swpipl.write_swloop_buffer(nstep, cstep, hstep, dstep, wstep,
                                         swpipl_stage_num);
     for (int64_t ts = 0; ts < timestep_num; ++ts) {
       bm168x->divide_sync_id();
-
       auto cur_op_ids = timestep_table[ts];
       for (auto id : cur_op_ids) {
+
         auto lgOp = cast<LocalGenInterfaceDecorator>(group_ops[id]);
         auto ginfo = lgOp.getGroupInfo(nstep, hstep, dstep, wstep, cstep);
         if ((!draining_period && ginfo.stage > stage_idx) ||
@@ -594,7 +662,8 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
         ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep,
                                   tensor_step->dstep, tensor_step->wstep,
                                   tensor_step->cstep);
-        if (ginfo.overstepped == false) {
+        if (ginfo.overstepped == false || stage_idx == ginfo.stage) {
+          ginfo.overstepped = true;
           auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->bdc_node;
           if (isa<LoadOp, StoreOp>(*group_ops[id])) {
             pid_node = (CMD_ID_NODE *)(*BM168x::instance())->gdma_node;
@@ -645,18 +714,39 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
           draining_period = true;
         }
       }
+      if (useMuliCore && ((stage_idx + 1) % max_task_per_core) == 0 &&
+          nstep < nsecs) {
+        draining_period = true;
+        draining_idx = 0;
+      }
     }
+    stage_idx++;
     if (draining_period) {
       draining_idx++;
       if (draining_idx >= swpipl_stage_num) {
         draining_period = false;
+        stage_idx = 0;
+        draining_idx = 0;
+        if (useMuliCore) {
+          bm1686->sync_all();
+        }
       }
     }
-    stage_idx++;
+  }
+  { // consume all the MSG send/wait.
+    for (; useMuliCore && coreId < core_num; coreId++) {
+      bm1686->useCore(coreId);
+      bm1686->sync_all();
+      bm1686->sync_all();
+    }
+    if (useMuliCore)
+      bm1686->useCore(0);
   }
 }
 
 void BMCodegen::codegen(Operation *op) {
+  if (module::isOpInGroup(op) || module::isOpInParallel(op))
+    return;
   if (auto castOp = dyn_cast<GroupOp>(op)) {
     Operation *prev_op = op->getPrevNode();
     while (prev_op && !isa<GroupOp, GlobalGenInterfaceDecorator>(prev_op)) {
@@ -667,42 +757,47 @@ void BMCodegen::codegen(Operation *op) {
       next_op = next_op->getNextNode();
     }
     codegen_for_group(castOp, prev_op, next_op);
-  } else if (module::isOpInGroup(op)) {
     return;
-  } else if (auto parallelOp = dyn_cast<ParallelOp>(op)) {
+  }
+  if (auto parallelOp = dyn_cast<ParallelOp>(op)) {
     if (auto bm1686 = dyn_cast<BM1686>(bm168x)) {
       // For the sync-all method, we can use two message IDs to represent all
       // the dependencies in a single run. We can try the following sequence:
-      // send0, wait0, send1, wait1. If any of the wait0 operations succeed, it
-      // confirms that all the send0 operations have finished. Similarly, if any
-      // of the wait1 operations succeed, it confirms that all the send1
-      // operations have finished, which also implies that all the wait0
+      // send0, wait0, send1, wait1. If any of the wait0 operations succeed,
+      // it confirms that all the send0 operations have finished. Similarly,
+      // if any of the wait1 operations succeed, it confirms that all the
+      // send1 operations have finished, which also implies that all the wait0
       // operations have been completed. After this, it is safe to reuse
       // message0.
       auto core_num = module::getCoreNum();
-      bm1686->dl_tpu_core_context_setup(0, core_num, 0);
-      bm1686->setCoreNum(module::getCoreNum());
+      if (bm1686->getCoreNum() != core_num) {
+        assert(bm1686->getCoreNum() == 1 &&
+               "The core_num should be set only once, and can not be changed.");
+        bm1686->dl_tpu_core_context_setup(0, core_num, 0);
+        bm1686->setCoreNum(module::getCoreNum());
+      }
       int id = 0;
-      op->walk([&](GlobalGenInterfaceDecorator globalOp) {
+      for (auto globalOp : parallelOp.getOps<GlobalGenInterfaceDecorator>()) {
         bm1686->useCore(id++);
-        bm1686->dl_tpu_sync_all(); // begin compute sync-all
+        bm1686->sync_all(); // begin compute sync-all
         auto pid_node = (CMD_ID_NODE *)(*bm1686)->cmdid_node;
         BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
                                                  gen_op_id(op).c_str());
         globalOp.codegen_global_bm168x();
-        bm1686->dl_tpu_sync_all(); // end compute sync-all
-      });
+        bm1686->sync_all(); // end compute sync-all
+      }
       for (; id < core_num; id++) { // consume all the MSG send/wait.
-        bm1686->useCore(id++);
-        bm1686->dl_tpu_sync_all();
-        bm1686->dl_tpu_sync_all();
+        bm1686->useCore(id);
+        bm1686->sync_all();
+        bm1686->sync_all();
       }
       bm1686->useCore(0); // reset the command buffer to 0
     } else {
       llvm_unreachable("The backend is missing configuration.");
     }
-
-  } else if (auto castOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
+    return;
+  }
+  if (auto castOp = dyn_cast<GlobalGenInterfaceDecorator>(op)) {
     auto pid_node = (CMD_ID_NODE *)(*BM168x::instance())->cmdid_node;
     BM168x::instance()->dl_set_cmd_id_prefix(pid_node, gen_op_id(op).c_str());
     LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(op) << "'\n");
@@ -711,9 +806,9 @@ void BMCodegen::codegen(Operation *op) {
   }
 }
 
-Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
+Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call) {
   bm168x->before_codegen();
-  auto func = module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(s, call.getCallee());
   func.walk([&](Operation *op) { codegen(op); });
   bm168x->after_codegen(module::getFLOPs());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
@@ -736,7 +831,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
       if (isa<tpu::YieldOp, ReturnOp>(user)) {
         tensor_is_cpu[v_name].push_back(false);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
-        auto func = module::getFuncOp(call.getCallee());
+        auto func = module::getFuncOp(s, call.getCallee());
         auto mode = getRunMode(func);
         tensor_is_cpu[v_name].push_back(mode == RunMode::CPU);
       }
@@ -750,7 +845,7 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
       if (isa<tpu::YieldOp, ReturnOp>(user)) {
         tensor_is_cpu[v_name].push_back(false);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
-        auto func = module::getFuncOp(call.getCallee());
+        auto func = module::getFuncOp(s, call.getCallee());
         auto mode = getRunMode(func);
         tensor_is_cpu[v_name].push_back(mode == RunMode::CPU);
       }
@@ -799,9 +894,10 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(func::CallOp call) {
   return snb.Finish();
 }
 
-Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
+Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(ModuleOp s,
+                                                  func::CallOp call) {
   bm168x->before_codegen();
-  auto func = module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(s, call.getCallee());
   bm168x->after_codegen(module::getFLOPs());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
@@ -883,8 +979,9 @@ Offset<bmodel::SubNet> BMCodegen::CreateCPUSubNet(func::CallOp call) {
   return snb.Finish();
 }
 
-Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(func::CallOp call) {
-  auto func = module::getFuncOp(call.getCallee());
+Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(ModuleOp s,
+                                                     func::CallOp call) {
+  auto func = module::getFuncOp(s, call.getCallee());
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   auto next_index = func->getAttrOfType<DenseI32ArrayAttr>("next_index");
@@ -893,6 +990,10 @@ Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(func::CallOp call) {
   func.walk<WalkOrder::PreOrder>([&](Operation *op) {
     if (isa<tpu::IfOp>(op)) {
       inputs.emplace_back(module::getOriValue(op->getOperand(0)));
+    } else if (isa<tpu::LoopOp>(op)) {
+      // the last operand is the condition Operation
+      inputs.emplace_back(
+          module::getOriValue(op->getOperand(op->getNumOperands() - 1)));
     }
   });
 
@@ -920,10 +1021,11 @@ Offset<bmodel::SubNet> BMCodegen::CreateSwitchSubNet(func::CallOp call) {
   return snb.Finish();
 }
 
-Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(func::CallOp call) {
+Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(ModuleOp s,
+                                                    func::CallOp call) {
   std::vector<Value> inputs;
   std::vector<Value> outputs;
-  auto func = module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(s, call.getCallee());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
   auto next_index = func->getAttrOfType<DenseI32ArrayAttr>("next_index");
@@ -938,20 +1040,50 @@ Offset<bmodel::SubNet> BMCodegen::CreateMergeSubNet(func::CallOp call) {
       if (isa<tpu::YieldOp, ReturnOp>(user)) {
         tensor_is_cpu[v_name].push_back(false);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
-        auto func = module::getFuncOp(call.getCallee());
+        auto func = module::getFuncOp(s, call.getCallee());
         auto mode = getRunMode(func);
         tensor_is_cpu[v_name].push_back(mode == RunMode::CPU);
       }
     }
   }
-  auto ifOp =
-      dyn_cast<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp());
-  inputs.clear();
-  for (int k = 0; k < ifOp.getNumResults(); k++) {
-    for (int i = 0; i < ifOp.getNumRegions(); i++) {
-      Region &region = ifOp.getRegion(i);
-      Operation *yieldOp = region.back().getTerminator();
-      inputs.emplace_back(module::getOriValue(yieldOp->getOperand(k)));
+
+  if (isa<tpu::LoopOp>(call->getParentOp())) {
+    std::vector<Value> tmp;
+    std::copy(inputs.begin(), inputs.end(), std::back_inserter(tmp));
+    std::vector<Value>().swap(inputs);
+    for (int i = 0; i < tmp.size(); i++) {
+      inputs.insert(inputs.begin() + 2 * i, {tmp[i], tmp[i]});
+    }
+
+    int32_t out_num = outputs.size();
+    std::vector<Value>().swap(outputs);
+    Operation *loopop = cast<tpu::LoopOp>(call->getParentOp());
+    // replace the actual output for next iteration
+    for (int i = 0; i < out_num; i++) {
+      outputs.emplace_back(module::getOriValue(loopop->getOperand(i + 1)));
+    }
+  } else {
+    if (isa<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp())) {
+      auto ifOp =
+          dyn_cast<tpu::IfOp>(module::getOriValue(inputs[0]).getDefiningOp());
+      inputs.clear();
+      for (int k = 0; k < ifOp.getNumResults(); k++) {
+        for (int i = 0; i < ifOp.getNumRegions(); i++) {
+          Region &region = ifOp.getRegion(i);
+          Operation *yieldOp = region.back().getTerminator();
+          inputs.emplace_back(module::getOriValue(yieldOp->getOperand(k)));
+        }
+      }
+    } else {
+      // loopOp
+      auto loopOp =
+          dyn_cast<tpu::LoopOp>(module::getOriValue(inputs[0]).getDefiningOp());
+      inputs.clear();
+      Operation *yieldOp = loopOp.getBody().back().getTerminator();
+      for (int k = 0; k < loopOp.getNumResults(); k++) {
+        inputs.emplace_back(module::getOriValue(yieldOp->getOperand(k + 1)));
+        inputs.emplace_back(module::getOriValue(loopOp.getOperand(k + 2)));
+      }
     }
   }
 
@@ -987,9 +1119,10 @@ void BMCodegen::codegen_ir(Operation *op, SubnetIr *subnet_ir_) {
 }
 
 Offset<bmodel::SubNet>
-BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
+BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call,
+                        std::unique_ptr<SubnetIr> subnet_ir_,
                         std::unique_ptr<Context> &context) {
-  auto func = module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(s, call.getCallee());
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
@@ -1008,7 +1141,7 @@ BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
       if (isa<tpu::YieldOp, ReturnOp>(user)) {
         tensor_is_cpu[v_name].push_back(false);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
-        auto func = module::getFuncOp(call.getCallee());
+        auto func = module::getFuncOp(s, call.getCallee());
         auto mode = getRunMode(func);
         tensor_is_cpu[v_name].push_back(mode == RunMode::CPU);
       }
@@ -1022,7 +1155,7 @@ BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
       if (isa<tpu::YieldOp, ReturnOp>(user)) {
         tensor_is_cpu[v_name].push_back(false);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
-        auto func = module::getFuncOp(call.getCallee());
+        auto func = module::getFuncOp(s, call.getCallee());
         auto mode = getRunMode(func);
         tensor_is_cpu[v_name].push_back(mode == RunMode::CPU);
       }
@@ -1034,7 +1167,7 @@ BMCodegen::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_,
   std::function<void(Operation *, SubnetIr *)> task =
       std::bind(&BMCodegen::codegen_ir, this, std::placeholders::_1,
                 std::placeholders::_2);
-  subnet_ir_->generate_compiler_ir(module, call, task);
+  subnet_ir_->generate_compiler_ir(s, call, task);
   subnet_ir_->write_binary_ir_to_buffer(context);
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
 
@@ -1094,6 +1227,32 @@ SmallString<128> BMCodegen::gen_op_id(Operation *op) {
   SmallString<128> prefix = op->getName().getStringRef().substr(4);
   prefix.append({"_", std::to_string(line_num)});
   return prefix;
+}
+
+bool BMCodegen::isHiddenTensor(StringRef name) {
+  return std::find(hidden_names.begin(), hidden_names.end(), name) !=
+         hidden_names.end();
+}
+
+void BMCodegen::checkAndUpdateHidden(const std::vector<Value> &inputs,
+                                     const std::vector<Value> &outputs) {
+  for (auto in : inputs) {
+    auto name = module::getName(in);
+    if (std::find(input_names->begin(), input_names->end(), name) !=
+        input_names->end()) {
+      continue;
+    }
+    assert(std::find(hidden_names.begin(), hidden_names.end(), name) !=
+           hidden_names.end());
+  }
+  for (auto out : outputs) {
+    auto name = module::getName(out);
+    if (std::find(output_names->begin(), output_names->end(), name) !=
+        output_names->end()) {
+      continue;
+    }
+    hidden_names.push_back(name);
+  }
 }
 
 } // namespace tpu

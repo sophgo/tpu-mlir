@@ -14,7 +14,7 @@ namespace bm1684x {
 void populateTopCfOpToTpuConversionPatterns(RewritePatternSet &patterns,
                                             TypeConverter &typeConverter,
                                             MLIRContext *ctx) {
-  patterns.insert<IfOpLowering>(typeConverter, ctx);
+  patterns.insert<IfOpLowering, LoopOpLowering>(typeConverter, ctx);
 }
 
 void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
@@ -25,7 +25,10 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       ConcatTryLowering,
       UnsqueezeTryLowering,
       SqueezeTryLowering,
-      SliceTryLowering
+      SliceTryLowering,
+      RangeTryLowering,
+      ReshapeTryLowering,
+      TopKTryLowering
       // clang-format on
       >(patterns->getContext());
 }
@@ -131,7 +134,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       DetectionOutputLowering,
       ShuffleChannelLowering,
       NmsLowering,
-      RMSNormLowering
+      RMSNormLowering,
+      RangeLowering
       // clang-format on
       >(patterns->getContext());
 }

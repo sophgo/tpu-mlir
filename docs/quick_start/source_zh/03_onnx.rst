@@ -182,7 +182,7 @@ MLIR转F16模型
      - 指定默认量化类型, 支持F32/F16/BF16/INT8
    * - chip
      - 是
-     - 指定模型将要用到的平台, 支持bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台, 支持bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - calibration_table
      - 否
      - 指定校准表路径, 当存在INT8量化的时候需要校准表
@@ -203,10 +203,13 @@ MLIR转F16模型
      - 指定需要排除验证的网络层的名称, 多个用,隔开
    * - op_divide
      - 否
-     - cv183x/cv182x/cv181x/cv180x only, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 适用少数特定模型
+     - cv186x/cv183x/cv182x/cv181x/cv180x only, 尝试将较大的op拆分为多个小op以达到节省ion内存的目的, 适用少数特定模型
    * - model
      - 是
      - 指定输出的model文件名称和路径
+   * - core
+     - 否
+     - 当target选择为bm1686或cv186x时,用于选择并行计算的tpu核心数量,默认设置为1个tpu核心
 
 
 编译完成后, 会生成名为 ``yolov5s_1684x_f16.bmodel`` 的文件。

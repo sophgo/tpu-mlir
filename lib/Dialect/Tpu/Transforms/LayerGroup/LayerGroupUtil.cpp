@@ -928,7 +928,6 @@ void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
   int64_t group_type = 0;
-  module::isOpInGroup(op, &group_type);
   auto lg_attr = LayerGroupAttr::get(
       ctx, 0, 0, 0, 0, true, builder.getDenseI64ArrayAttr({nidx}),
       builder.getDenseI64ArrayAttr({nslice}),
@@ -947,7 +946,7 @@ void set_weight_allow_split_attr(Operation *op) {
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
   if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp,
-          tpu::MaxOp, tpu::CompareOp>(op) &&
+          tpu::MaxOp, tpu::CompareOp, tpu::ConcatOp>(op) &&
       (module::isWeight(op->getOperand(0)) ||
        module::isWeight(op->getOperand(1)))) {
     top::WeightOp weight_op;
@@ -1014,7 +1013,7 @@ void delete_fake_global_addr(Operation *op) {
 }
 
 bool is_eu_align_cv18xx(Value opd) {
-  auto op = *opd.getUsers().begin();
+  auto op = *opd.user_begin();
   if (module::isWeight(opd)) {
     if (isa<tpu::LutOp>(op)) {
       if (opd == op->getOperand(1)) {
@@ -1064,7 +1063,7 @@ bool is_eu_align_cv18xx(Value opd) {
 }
 
 bool is_eu_align_bm168x(Value opd) {
-  auto op = *opd.getUsers().begin();
+  auto op = *opd.user_begin();
   if (module::isWeight(opd)) {
     if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp,
             tpu::LayerNormOp, tpu::PixelNormOp>(op)) {
@@ -1097,7 +1096,7 @@ bool need_bcast(Value opd) {
   if (opd.hasOneUse() == false) {
     return false;
   }
-  auto use_op = *opd.getUsers().begin();
+  auto use_op = *opd.user_begin();
   if (auto cast_op = dyn_cast<tpu::LutOp>(use_op)) {
     return opd == cast_op.getTable();
   } else if (auto cast_op = dyn_cast<tpu::LutBF16Op>(use_op)) {

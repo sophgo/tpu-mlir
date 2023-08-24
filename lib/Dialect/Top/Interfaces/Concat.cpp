@@ -83,4 +83,45 @@ void top::ConcatOp::shape_inference() {
   std::vector<int64_t> out_shape(in0_shape);
   out_shape[axis_] = shape_axis;
   module::setShapeOrVerify(getOutput(), out_shape);
+  if (llvm::find_if(getOperands(), module::isShape) != getOperands().end()) {
+    std::vector<std::vector<int64_t>> input_shapes_v;
+    for (const auto &input : getOperands()) {
+      if (module::isShape(input)) {
+        auto input_shape_v = module::getShapeTensorValue(input);
+        input_shapes_v.push_back(input_shape_v);
+      } else if (module::isWeight(input)) {
+        auto data = input.getDefiningOp<top::WeightOp>().read_as_float();
+        std::vector<int64_t> data_v(data->begin(), data->end());
+        input_shapes_v.push_back(data_v);
+      } else {
+        llvm_unreachable("unexpected input");
+      }
+    }
+    assert(out_shape.size() == 1 || out_shape.size() == 0);
+    auto real_out_size = out_shape.size() == 0 ? 1 : out_shape[0];
+    InferenceParameter p;
+    std::vector<std::vector<float_t>> input_datas;
+    for (auto &in_shape_v : input_shapes_v) {
+      std::vector<float_t> input_data(in_shape_v.size());
+      std::transform(in_shape_v.begin(), in_shape_v.end(), input_data.begin(),
+                     [](auto &i) { return static_cast<float_t>(i); });
+      input_datas.push_back(input_data);
+    }
+    std::transform(input_datas.begin(), input_datas.end(),
+                   std::back_inserter(p.inputs),
+                   [](auto &i) { return i.data(); });
+    std::vector<float_t> output_data(real_out_size);
+    p.outputs.push_back(output_data.data());
+    auto inf_op = dyn_cast<InferenceInterface>(getOperation());
+    inf_op.init(p);
+    assert(inf_op);
+    auto ret = inf_op.inference(p);
+    assert(mlir::succeeded(ret));
+    inf_op.deinit(p);
+    std::vector<int64_t> output_shape_v(real_out_size);
+    std::transform(output_data.begin(), output_data.end(),
+                   output_shape_v.begin(),
+                   [](float_t i) { return static_cast<int64_t>(i); });
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }

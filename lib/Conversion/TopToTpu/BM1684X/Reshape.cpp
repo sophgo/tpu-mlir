@@ -12,6 +12,25 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+void ReshapeTryLowering::Lowering(PatternRewriter &rewriter,
+                                  top::ReshapeOp op) const {
+  if (!op.getShapeT() ||
+      (op.getShapeT() &&
+       !op.getShapeT().getDefiningOp()->hasTrait<trait::ShapeProducer>()))
+    return;
+  try_insert_device2host(op.getOperation(), 1);
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto v = op.getResult();
+  auto shape = module::getShape(v);
+  auto ctx = v.getContext();
+  Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
+  rewriter.replaceOpWithNewOp<tpu::ShapeAssignOp>(op, new_type,
+                                                  op.getOperands(), attrs);
+}
+
 void ReshapeLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::ReshapeOp op) const {
   lowering_common_f32<tpu::ReshapeOp>(rewriter, op);

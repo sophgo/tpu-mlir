@@ -25,11 +25,12 @@ extern void populateParalleBM1684XPatterns(RewritePatternSet *patterns,
 // (1, 2)
 template <typename T, class Func>
 void invokeInIterationSpace(ArrayRef<T> shape, Func &&func,
-                            SmallVector<T> dims = {}) {
+                            SmallVector<T, 8> dims = {}) {
   auto dim = dims.size();
-  for (int64_t i = 0, n = shape[dim]; i < n; i++) {
-    SmallVector dimN(dims);
-    dimN.push_back(i);
+  SmallVector dimN(dims);
+  dimN.push_back(0);
+  for (T i = 0, n = shape[dim]; i < n; i++) {
+    dimN.back() = i;
     if (dimN.size() < shape.size()) {
       invokeInIterationSpace(shape, func, dimN);
     } else {
@@ -119,7 +120,7 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
   return outputType;
 };
 
-bool forAll(IndexingMapsInterface op, int core = 1) {
+bool forAll(IndexingMapsInterface op, int num_core = 1) {
   auto indexMap = op.getIndexingMaps();
   if (indexMap.size() == 0)
     return false;
@@ -143,7 +144,7 @@ bool forAll(IndexingMapsInterface op, int core = 1) {
   // :load balance:
   // shape = [a, b]; other situations can be reduced to this formula.
   // a * b = a * \sum_{i=1}^n (b_i)
-  // a * n <= core
+  // a * n <= num_core
   // Find the largest n
   // This implement use the maxSlice as much as possible, but it does not take
   // the number of NPU into account. #please improve This
@@ -153,9 +154,9 @@ bool forAll(IndexingMapsInterface op, int core = 1) {
   int splitDim = 0, splitMax = 1;
   SmallVector<int64_t, 4> iterationShape;
   for (int64_t i = 0, n = shapeParallel.size(), iterSpace = 1; i < n; ++i) {
-    if (iterSpace * shapeParallel[i] >= core) {
+    if (iterSpace * shapeParallel[i] >= num_core) {
       splitDim = i;
-      int coreK = core / iterSpace;                      // This is the lower n
+      int coreK = num_core / iterSpace;                  // This is the lower n
       splitMax = (shapeParallel[i] + coreK - 1) / coreK; // This is max(b_i)
       auto n = (shapeParallel[i] + splitMax - 1) / splitMax;
       iterationShape.push_back(n);
@@ -198,7 +199,7 @@ bool forAll(IndexingMapsInterface op, int core = 1) {
         getValidStride(valueMap, ArrayRef(iterationShape)));
   }
 
-  // 2. build distributing compute operation for each core.
+  // 2. build distributing compute operation for each num_core.
   SmallVector<Operation *> computeOps;
   SmallVector<SmallVector<Type>> outputsTypes;
   for (auto [valueMap, value] : llvm::zip(resultsMap, op->getResults())) {
@@ -233,7 +234,7 @@ bool forAll(IndexingMapsInterface op, int core = 1) {
   // unroll iteration space
   invokeInIterationSpace(ArrayRef(iterationShape), createComputeOp);
 
-  // 3. join the computation from multi-core.
+  // 3. join the computation from multi-num_core.
   SmallVector<Value> joinValues;
   for (int i = 0, n = outputsTypes.size(); i < n; i++) {
     SmallVector<Value> operands;
@@ -243,7 +244,7 @@ bool forAll(IndexingMapsInterface op, int core = 1) {
     joinValues.push_back(rewriter
                              .create<tpu::JoinOp>(op->getLoc(),
                                                   op->getResultTypes()[i],
-                                                  operands, op->getAttrs())
+                                                  operands)
                              .getResult());
   }
   rewriter.create<tpu::YieldOp>(op->getLoc(), joinValues);
@@ -256,27 +257,30 @@ class ParallelPass : public ParallelBase<ParallelPass> {
 public:
   ParallelPass() {}
   void runOnOperation() override {
-    module::setCoreNum(core);
-    if (core < 2)
+    module::setCoreNum(num_core);
+    if (num_core < 2) {
       return;
-    auto mOp = getOperation();
-
-    RewritePatternSet patterns(mOp.getContext());
-    if (module::isBM1684XFamily()) {
-      populateParalleBM1684XPatterns(&patterns, core);
     }
-    auto config = GreedyRewriteConfig();
-    config.maxIterations = 1; // apply each pattern only once.
-    applyPatternsAndFoldGreedily(mOp, std::move(patterns), config);
-    mOp->walk([&](IndexingMapsInterface op) {
-      if (module::isOpInGroup(op) || module::isOpInParallel(op))
-        return;
-      forAll(op, core);
-    });
+    auto modules = module::getAllModules();
+    for (auto m : *modules) {
+      // run each submodule
+      RewritePatternSet patterns(&getContext());
+      if (module::isBM1684XFamily()) {
+        populateParalleBM1684XPatterns(&patterns, num_core);
+      }
+      auto config = GreedyRewriteConfig();
+      config.maxIterations = 1; // apply each pattern only once.
+      applyPatternsAndFoldGreedily(m, std::move(patterns), config);
+      m->walk([&](IndexingMapsInterface op) {
+        if (module::isOpInGroup(op) || module::isOpInParallel(op))
+          return;
+        forAll(op, num_core);
+      });
+    }
   }
 };
 
-std::unique_ptr<OperationPass<FuncOp>> createParallelPass() {
+std::unique_ptr<OperationPass<ModuleOp>> createParallelPass() {
   return std::make_unique<ParallelPass>();
 }
 } // namespace tpu

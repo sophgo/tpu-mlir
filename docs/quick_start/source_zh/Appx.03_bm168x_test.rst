@@ -66,7 +66,7 @@ model-zoo的目录结构如下：
 准备运行环境
 ~~~~~~~~~~~~
 
-在python3.7及以上的版本，安装运行 ``model-zoo`` 所需的依赖：
+安装运行 ``model-zoo`` 所需的依赖:
 
 .. code ::
 
@@ -78,7 +78,7 @@ model-zoo的目录结构如下：
    sudo yum install make automake gcc gcc-c++ kernel-devel
    sudo yum install python-devel
    sudo yum install mesa-libGL
-   # 精度测试需要执行以下操作，性能测试不执行
+   # 精度测试需要执行以下操作，性能测试不执行（推荐使用Anaconda等创建python3.7或以上的虚拟环境）
    cd path/to/model-zoo
    pip3 install -r requirements.txt
 
@@ -231,7 +231,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --target BM1684X --mlir -l full_cases.txt
 
-``--target`` 用于指定芯片型号，目前支持 ``BM1684`` 和 ``BM1684X`` 。
+``--target`` 用于指定芯片型号，目前支持 ``BM1684``、``BM1684X``、``BM1686``和``CV186X``。
 
 此时会编译以下模型（由于model-zoo的模型在持续添加中，这里只列出部分模型；同时该
 过程也编译了用于测试精度的模型，后续精度测试部分无需再编译模型。）:
@@ -273,7 +273,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
 
-``--target`` 用于指定芯片型号，目前支持 ``BM1684`` 和 ``BM1684X`` 。
+``--target`` 用于指定芯片型号，目前支持 ``BM1684``、``BM1684X``、``BM1686``和``CV186X``。
 
 注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
@@ -316,7 +316,7 @@ PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 精度。
    $ cd model-zoo
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt
 
-``--target`` 用于指定芯片型号，目前支持 ``BM1684`` 和 ``BM1684X`` 。
+``--target`` 用于指定芯片型号，目前支持 ``BM1684``、``BM1684X``、``BM1686``和``CV186X``。
 
 各类精度数据在 output 目录中的各个 csv 文件可以获得。
 

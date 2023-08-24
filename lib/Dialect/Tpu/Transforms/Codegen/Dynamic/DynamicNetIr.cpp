@@ -945,7 +945,7 @@ vector<int32_t> SubnetIr::align_model_output_order(const vector<Value> &sub_out)
 }
 
 void SubnetIr::generate_compiler_ir(
-    ModuleOp &module, func::CallOp &call,
+    ModuleOp &s, func::CallOp &call,
     std::function<void(Operation *, SubnetIr *)> task) {
 
   std::vector<Value> inputs;
@@ -970,7 +970,7 @@ void SubnetIr::generate_compiler_ir(
     fw_ir_length += sizeof(uint32_t);
   }
 
-  auto func = module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(s, call.getCallee());
   func.walk([&](Operation *op) { task(op, this); });
   // get layer group num
   fw_ir_length += sizeof(u32);

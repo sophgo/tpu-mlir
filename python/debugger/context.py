@@ -24,7 +24,7 @@ class Device(Enum):
 
 
 class Context:
-    __slots__ = "opdef", "opparam", "device"
+    __slots__ = "opdef", "opparam", "device", "base_addr"
 
     def __init__(self, device: Device):
         self.device = Device(device)
@@ -38,6 +38,7 @@ class Context:
 
             self.opdef = opdef_1684x
             self.opparam = opparam_1684x
+            self.base_addr = None
         elif self.device == Device.BM1684:
             try:
                 from . import opdef_1684
@@ -48,6 +49,7 @@ class Context:
 
             self.opdef = opdef_1684
             self.opparam = opparam_1684
+            self.base_addr = None
         elif self.device == Device.BM1686:
             try:
                 from . import opdef_1686
@@ -58,6 +60,8 @@ class Context:
 
             self.opdef = opdef_1686
             self.opparam = opparam_1686
+            self.base_addr = [
+                self.opparam.memmap[self.opparam.MType.G][0] for _ in range(2)]
 
         else:
             raise ValueError(f"Unknown device: {device}")
@@ -66,11 +70,13 @@ class Context:
         # bind compute
         for _, v in self.opdef.tiu_cls.items():
             for op in v:
-                setattr(op, "compute", lambda c: cmodel.tiu_compute(c.cmd))
+                setattr(op, "compute", lambda c: cmodel.tiu_compute(
+                    c.cmd, c.core_id))
 
         for _, v in self.opdef.dma_cls.items():
             for op in v:
-                setattr(op, "compute", lambda c: cmodel.dma_compute(c.cmd))
+                setattr(op, "compute", lambda c: cmodel.dma_compute(
+                    c.cmd, c.core_id))
 
         # bind memory operation
         memory = self.opparam.Memory(cmodel.LMEM, cmodel.DDR)
@@ -96,7 +102,7 @@ class Context:
         elif self.device == Device.BM1684:
             _cmodel = cmodel.BM1684(memory_size)
         elif self.device == Device.BM1686:
-            _cmodel = cmodel.BM1686(memory_size)
+            _cmodel = cmodel.BM1686(memory_size, self.base_addr)
         else:
             raise ValueError(f"device: {self.device} is not supported.")
 
@@ -114,6 +120,7 @@ class Context:
     @property
     @functools.lru_cache()
     def decoder(self):
+        setattr(self.MemRef, "base_addr", self.base_addr)
         return disassembler.Decoder(self)
 
     def BModel2MLIR(self, bmodel):

@@ -55,19 +55,29 @@ LogicalResult top::SliceAxisOp::inference(InferenceParameter &p) {
 void top::SliceAxisOp::shape_inference() {
   float start = 0;
   float step = 1;
+  float end;
+  auto in_shape = module::getShape(getInput());
   assert(module::isWeight(getAxis()));
   auto axis_op = getAxis().getDefiningOp<top::WeightOp>();
   auto axis_data = axis_op.read<float>();
   auto axis = axis_data->at(0);
-  assert(module::isWeight(getEnd()));
-  auto end_op = getEnd().getDefiningOp<top::WeightOp>();
-  auto end_data = end_op.read<float>();
-  auto end = end_data->at(0);
+  if (module::isNone(getEnd()) == false) {
+    if (module::isWeight(getEnd())) {
+      auto end_op = getEnd().getDefiningOp<top::WeightOp>();
+      auto end_data = end_op.read<float>();
+      end = end_data->at(0);
+    } else {
+      end = in_shape[(int)axis];
+    }
+  }
   if (module::isNone(getStart()) == false) {
-    assert(module::isWeight(getStart()));
-    auto start_op = getStart().getDefiningOp<top::WeightOp>();
-    auto start_data = start_op.read<float>();
-    start = start_data->at(0);
+    if (module::isWeight(getStart())) {
+      auto start_op = getStart().getDefiningOp<top::WeightOp>();
+      auto start_data = start_op.read<float>();
+      start = start_data->at(0);
+    } else {
+      start = 0;
+    }
   }
   if (module::isNone(getStep()) == false) {
     assert(module::isWeight(getStep()));
@@ -76,8 +86,6 @@ void top::SliceAxisOp::shape_inference() {
     step = step_data->at(0);
     assert(step != 0);
   }
-
-  auto in_shape = module::getShape(getInput());
   auto dims = in_shape.size();
   if (axis < 0) {
     axis += dims;

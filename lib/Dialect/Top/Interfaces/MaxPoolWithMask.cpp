@@ -7,9 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "float.h"
-
+#include "tpu_mlir/Support/MathUtils.h"
 
 pool_attr_t top::MaxPoolWithMaskOp::parseParam() {
   pool_attr_t p = {0};
@@ -94,4 +93,25 @@ LogicalResult top::MaxPoolWithMaskOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::MaxPoolWithMaskOp::shape_inference() {}
+void top::MaxPoolWithMaskOp::shape_inference() {
+  int64_t out_h, out_w;
+  auto input_shape = module::getShape(getInput());
+  auto kernel = module::getI64Array(getKernelShape());
+  auto stride = module::getI64Array(getStrides());
+  auto pad = module::getI64Array(getPads());
+
+  llvm::SmallVector<int64_t> out_shape;
+  out_shape.push_back(input_shape[0]);
+  out_shape.push_back(input_shape[1]);
+  out_h =
+      (ceil(input_shape[2] + 2 * pad->at(0) - kernel->at(0)) / stride->at(0)) +
+      1;
+  out_w =
+      (ceil(input_shape[3] + 2 * pad->at(1) - kernel->at(1)) / stride->at(1)) +
+      1;
+  out_shape.push_back(out_h);
+  out_shape.push_back(out_w);
+
+  module::setShapeOrVerify(getOutput(), out_shape);
+  module::setShapeOrVerify(getMask(), out_shape);
+}

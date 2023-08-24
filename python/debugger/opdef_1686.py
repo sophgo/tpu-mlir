@@ -19,6 +19,7 @@ except:
 
 import ctypes
 import numpy as np
+from enum import Enum
 
 # global data and type
 # ------------------------------------------------------------
@@ -28,6 +29,8 @@ dma_cls = dict()
 # ------------------------------------------------------------
 # registry function
 # ------------------------------------------------------------
+
+
 def base_registry(cmd_type, sheet_name, cls):
     reg_def = regdef_1686.reg_def[sheet_name]
     setattr(cls, "length", reg_def[-1][-1])
@@ -53,8 +56,9 @@ def dma_registry(sheet_name):
 # ------------------------------------------------------------
 # TIU definition
 # ------------------------------------------------------------
-class tiu_base(TIUBase):
 
+
+class tiu_base(TIUBase):
 
     opcode_bits = (41, 45)
     # extension
@@ -85,21 +89,32 @@ class tiu_base(TIUBase):
         raise NotImplementedError()
 
     def __repr__(self):
+        ci = self.core_id
         if self.operands == []:
             if self.attribute:
-                attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
-                return "SYS_TR_ACC" + attribute
+                attribute = f" {self.attribute}".replace(
+                    ":", " =").replace("'", "")
+                return (
+                    # f"core_id: {self.core_id} " +
+                    f"%B{self.cmd_id}C{ci} = \"{self.op_name}\""
+                    + f"(%D{self.cmd_id_dep}C{ci})"
+                    + attribute
+                )
             else:
                 return self.description
-        res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
-        opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
+        res_name, res_type_t = zip(*((x.name, x.type_str)
+                                   for x in self.results))
+        opd_name, opd_type_t = zip(*((x.name, x.type_str)
+                                   for x in self.operands))
         attribute = ""
         if self.attribute:
-            attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
+            attribute = f" {self.attribute}".replace(
+                ":", " =").replace("'", "")
 
         return (
-            f"{', '.join(res_name)}, %B{1} = \"{self.op_name}\""
-            + f"({', '.join(opd_name)}, %D{self.cmd_id_dep})"
+            # f"core_id: {self.core_id} " +
+            f"{', '.join(res_name)}, %B{self.cmd_id}C{ci} = \"{self.op_name}\""
+            + f"({', '.join(opd_name)}, %D{self.cmd_id_dep}C{ci})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
         )
@@ -376,6 +391,7 @@ class sgl_op(tiu_base):
     def ops(self, is_arch):
         return 0
 
+
 @tiu_registry("sSGL")
 class ssgl_op(sgl_op):
     short_cmd = True
@@ -397,6 +413,7 @@ class transbc_op(tiu_base):
 
     def ops(self, is_arch):
         return 0
+
 
 @tiu_registry("sCW&sBC")
 class stransbc_op(transbc_op):
@@ -440,14 +457,12 @@ class tiu_sys(tiu_base):
     def _set_op(self, reg):
         return ([],) * 3
 
-    def __repr__(self):
-        return self.op_name
-
 # ------------------------------------------------------------
 # GDMA definition
 # ------------------------------------------------------------
-class dma_base(DMABase):
 
+
+class dma_base(DMABase):
 
     description = "GDMA Operation."
     opcode_bits = (32, 36)
@@ -474,17 +489,32 @@ class dma_base(DMABase):
         return True
 
     def __repr__(self):
+        ci = self.core_id
         if self.operands == []:
-            return self.description
-        opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
-        res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
+            if self.attribute:
+                attribute = f" {self.attribute}".replace(
+                    ":", " =").replace("'", "")
+                return (
+                    # f"core_id: {self.core_id} " +
+                    f"%D{self.cmd_id}C{ci} = \"{self.op_name}\""
+                    + f"(%B{self.cmd_id_dep}C{ci})"
+                    + attribute
+                )
+            else:
+                return self.description
+        opd_name, opd_type_t = zip(*((x.name, x.type_str)
+                                   for x in self.operands))
+        res_name, res_type_t = zip(*((x.name, x.type_str)
+                                   for x in self.results))
         attribute = ""
         if self.attribute:
-            attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
+            attribute = f" {self.attribute}".replace(
+                ":", " =").replace("'", "")
 
         return (
-            f"{', '.join(res_name)}, %D{0} = \"{self.op_name}\""
-            + f"({', '.join(opd_name)}, %B{self.cmd_id_dep})"
+            # f"core_id: {self.core_id} " +
+            f"{', '.join(res_name)}, %D{self.cmd_id}C{ci} = \"{self.op_name}\""
+            + f"({', '.join(opd_name)}, %B{self.cmd_id_dep}C{ci})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
         )
@@ -617,17 +647,29 @@ def op_factory(engine_type):
     if engine_type == Engine.TIU:
         opcode_bits = tiu_base.opcode_bits
         cmd_set = tiu_cls
-        sys_end = tiu_sys
+
+        def sys_end(operation):
+            if isinstance(operation, tiu_sys) and \
+                    operation.reg.tsk_eu_typ == 31:
+                return True
+            else:
+                return False
     elif engine_type == Engine.DMA:
         opcode_bits = dma_base.opcode_bits
         cmd_set = dma_cls
-        sys_end = dma_sys
+
+        def sys_end(operation):
+            if isinstance(operation, dma_sys) and \
+                    operation.reg.cmd_special_function == 0:
+                return True
+            else:
+                return False
     else:
         raise ValueError(f"cannot decode engine type: {engine_type}")
 
     def is_end(cmd_buf, operation):
         nonlocal sys_end
-        is_sys = isinstance(operation, sys_end)
+        is_sys = sys_end(operation)
         is_less_1024 = len(cmd_buf) * 8 < 1025
         if is_sys and is_less_1024 and not np.any(np.frombuffer(cmd_buf, np.uint8)):
             return True
@@ -651,6 +693,7 @@ def op_factory(engine_type):
 def merge_instruction(tiu, dma):
     main_cmd, inserted_cmd = dma, tiu
     # remove the system command
+
     def get_end(cmd):
         if len(cmd) == 0:
             return 0
@@ -673,9 +716,168 @@ def merge_instruction(tiu, dma):
     fix_tgcr_cmd_id_dp(inserted_cmd[: get_end(inserted_cmd)])
     # remove system instruction
     main_id = [(m.cmd_id, m) for m in main_cmd[: get_end(main_cmd)]]
-    inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
+    inserted_id = [(i.cmd_id_dep, i)
+                   for i in inserted_cmd[: get_end(inserted_cmd)]]
     # "sorted" is stable, which keeps the inserted commands
     # after the main instructions.
     cmd = main_id + inserted_id
     cmd_sorted = sorted(cmd, key=lambda x: x[0])
     return [x[1] for x in cmd_sorted]
+
+
+"""
+This essentially simulates the engine synchronization mechanism of cmodel/hardware
+
+Think of the instruction list for each core as a state machine.
+The principle of consumption instructions:
+if it is a normal instruction direct consumption, if it is a sys instruction,
+it will be consumed according to the rules
+1. The send command can be directly consumed
+2. The wait command requires send_cnt to meet the requirements before it can be consumed
+Assuming that a core instruction is in an unconsumable state
+(wait is not up to the standard or all instructions have been consumed),
+switch the current state machine
+
+The sender sends a message to the message queue,
+and the message queue adds 1 to the sent_cnt field
+where the ID is located after receiving the message,
+and sets the remain_wait_cnt field to wait_cnt;
+the receiver polls whether the sent_cnt at the
+corresponding position in the message queue has
+met the requirements, if it is satisfied,
+decrease reamin_wait_cnt by one.
+When it is reduced to 0, this position is cleared to 0,
+and the process of message synchronization is completed so far
+"""
+
+
+class SYS_TYPE(Enum):
+    SEND = 0
+    WAIT = 1
+
+class Status(Enum):
+    # for msg use
+    CONSUMED = 0
+    WAITING = 1
+    # for machine use
+    RUNNING = 2
+    MACHINE_DONE = 3
+
+
+
+class CmdStateMachine:
+    def __init__(self, cmds, msg_queue):
+        self.cmds = cmds
+        self.idx = 0
+        self.msg_queue = msg_queue
+
+    def consume_cmd(self):
+        if self.consume_done():
+            return None, Status.MACHINE_DONE
+        cmd = self.cmds[self.idx]
+        sys = (tiu_sys, dma_sys)
+        if isinstance(cmd, sys):
+            return self.consume_sys(cmd)
+        else:
+            self.idx += 1
+        return cmd, Status.RUNNING
+
+    def consume_sys(self, cmd):
+        cmd, ret = self.msg_queue.consume_sys(cmd)
+        if ret == Status.CONSUMED:
+            self.idx += 1
+            return cmd, Status.RUNNING
+        else:
+            return None, ret
+
+    def consume_done(self):
+        return self.idx >= len(self.cmds)
+
+
+class Msg:
+    def __init__(self):
+        self.sent_cnt = 0
+        self.wait_cnt = 0
+
+
+class MsgQueue:
+    def __init__(self):
+        self.msges = [Msg()] * 128
+
+    def get_cmd_type(self, cmd):
+        if isinstance(cmd, tiu_sys):
+            if cmd.reg.tsk_eu_typ == 8:
+                return SYS_TYPE.SEND
+            elif cmd.reg.tsk_eu_typ == 9:
+                return SYS_TYPE.WAIT
+            else:
+                raise ValueError(f"cmd type error: {cmd}")
+        elif isinstance(cmd, dma_sys):
+            if cmd.reg.cmd_special_function == 3:
+                return SYS_TYPE.SEND
+            elif cmd.reg.cmd_special_function == 4:
+                return SYS_TYPE.WAIT
+            else:
+                raise ValueError(f"cmd type error: {cmd}")
+        else:
+            raise ValueError(f"cmd type error: {cmd}")
+
+    def get_msg_id(self, cmd):
+        return cmd.attribute["msg_id"]
+
+    def get_msg_cnt(self, cmd):
+        return cmd.attribute["cnt"]
+
+    def consume_sys(self, cmd):
+        sys = (tiu_sys, dma_sys)
+        assert isinstance(cmd, sys)
+        if self.get_cmd_type(cmd) == SYS_TYPE.SEND:
+            return self.consume_send(cmd)
+        elif self.get_cmd_type(cmd) == SYS_TYPE.WAIT:
+            return self.consume_wait(cmd)
+
+    def consume_send(self, cmd):
+        msg_id = self.get_msg_id(cmd)
+        self.msges[msg_id].sent_cnt += 1
+        self.msges[msg_id].remain_wait_cnt = self.get_msg_cnt(cmd)
+        return cmd, Status.CONSUMED
+
+    def consume_wait(self, cmd):
+        msg_id = self.get_msg_id(cmd)
+        if self.get_msg_cnt(cmd) != self.msges[msg_id].sent_cnt:
+            return None, Status.WAITING
+        else:
+            self.msges[msg_id].remain_wait_cnt -= 1
+            if self.msges[msg_id].remain_wait_cnt == 0:
+                self.msges[msg_id].sent_cnt = 0
+            return cmd, Status.CONSUMED
+
+
+class MultiCoreCmd:
+    def __init__(self, core_cmds):
+        self.core_cmds = core_cmds
+        self.core_num = len(core_cmds)
+        self.cur_core_id = 0
+        self.msg_queue = MsgQueue()
+        self.cmd_state_machines = [CmdStateMachine(
+            core_cmds[i], self.msg_queue) for i in range(self.core_num)]
+        self.current_machine = self.cmd_state_machines[self.cur_core_id]
+        self.cmds = []
+
+    def switch_machine(self):
+        self.cur_core_id = (self.cur_core_id + 1) % self.core_num
+        self.current_machine = self.cmd_state_machines[self.cur_core_id]
+
+    def all_consume_done(self):
+        for i in self.cmd_state_machines:
+            if not i.consume_done():
+                return False
+        return True
+
+    def consume_cmd(self):
+        while(not self.all_consume_done()):
+            cmd, ret = self.current_machine.consume_cmd()
+            self.switch_machine()
+            if ret not in  (Status.MACHINE_DONE, Status.WAITING) :
+                self.cmds.append(cmd)
+        return self.cmds

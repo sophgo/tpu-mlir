@@ -11,15 +11,13 @@
 
 namespace mlir {
 
-template <typename T>
-static std::string int_to_hex(T i) {
+template <typename T> static std::string int_to_hex(T i) {
   std::stringstream stream;
   stream << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << i;
   return stream.str();
 }
 
-template <typename T>
-static bool check_type(Type eltType) {
+template <typename T> static bool check_type(Type eltType) {
   if (eltType.isa<quant::UniformQuantizedPerAxisType>()) {
     eltType =
         eltType.cast<quant::UniformQuantizedPerAxisType>().getStorageType();
@@ -102,6 +100,26 @@ LogicalResult TensorFile::updateTensorData(llvm::StringRef name, const T *data,
   arr.fortran_order = false;
   memcpy(arr.data_holder->data(), data, arr.num_bytes());
   cnt_update++;
+  return success();
+}
+
+LogicalResult TensorFile::cloneTensor(llvm::StringRef name,
+                                      llvm::StringRef suffix) {
+  assert(!readOnly);
+  auto it = map.find(name.str());
+  if (it == map.end()) {
+    llvm::errs() << "failed to clone tensor " << name.str() << ", not exist\n";
+    llvm_unreachable("cloneTensor error!");
+    return failure();
+  }
+  auto new_name = name.str() + "_" + suffix.str();
+  auto new_it = map.find(new_name);
+  if (new_it != map.end()) {
+    llvm::errs() << "failed to clone tensor " << new_name << ", exist\n";
+    llvm_unreachable("cloneTensor error!");
+    return failure();
+  }
+  cnpy::npz_clone_array(map, name.str(), new_name);
   return success();
 }
 

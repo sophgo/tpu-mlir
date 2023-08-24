@@ -109,7 +109,9 @@ def mlir_to_model(tpu_mlir: str,
                   disable_layer_group: bool = False,
                   merge_weight: bool = False,
                   op_divide: bool = False,
-                  core: int = 1):
+                  num_device: int = 1,
+                  num_core: int = 1,
+                  embed_debug_info: bool = False):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
@@ -121,7 +123,8 @@ def mlir_to_model(tpu_mlir: str,
     #address_assign_param = '--address-assign="reuse_addr=false"'
     if merge_weight:
         address_assign_param = '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
-    parallel_param = f"--parallel='core={core}'"
+    distribute_param = f"--distribute='num_device={num_device}'"
+    parallel_param = f"--parallel='num_core={num_core}'"
 
     op_divide_param = ""
     if op_divide:
@@ -132,6 +135,7 @@ def mlir_to_model(tpu_mlir: str,
         "--mlir-disable-threading",
         strip_io_quant_param,
         "--chip-tpu-optimize",
+        distribute_param,
         "--weight-reorder",
         op_divide_param,
         subnet_param,
@@ -146,7 +150,9 @@ def mlir_to_model(tpu_mlir: str,
     _os_system(cmd)
 
     # codegen based on final mlir
-    codegen_param = '--codegen="model_file={}"'.format(model)
+    codegen_param = (
+        f'--codegen="model_file={model} embed_debug_info={str(embed_debug_info).lower()}"'
+    )
     cmd = [
         "tpuc-opt",
         final_mlir,

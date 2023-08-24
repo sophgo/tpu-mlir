@@ -9,6 +9,8 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
+namespace tpu_mlir {
+namespace tpu {
 namespace bm1684x {
 
 template <typename Op>
@@ -25,3 +27,5 @@ private:
 };
 
 } // namespace bm1684x
+} // namespace tpu
+} // namespace tpu_mlir

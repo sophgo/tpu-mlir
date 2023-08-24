@@ -11,23 +11,27 @@
 #define DEBUG_TYPE "lowering-GELU"
 namespace tpu_mlir {
 namespace cv18xx {
-void GELULowering::LoweringINT8(PatternRewriter &rewriter,
-                                    top::GELUOp op, bool asymmetric) const {
+void GELULowering::LoweringINT8(PatternRewriter &rewriter, top::GELUOp op,
+                                bool asymmetric) const {
   Value table = create_lookup_table(
-      op.getInput(), op.getOutput(), asymmetric,
-      [](double val) {return 0.5 * val * (1.0 + std::erf(val / std::sqrt(2.0)));});
+      op.getInput(), op.getOutput(), asymmetric, [](double val) {
+        return 0.5 * val * (1.0 + std::erf(val / std::sqrt(2.0)));
+      });
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }
 
 void GELULowering::LoweringBF16(PatternRewriter &rewriter,
-                                   top::GELUOp op) const {
+                                top::GELUOp op) const {
   Value table_weight, slope_weight;
   float range_start = -8, range_end = 8;
-  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start,
-                  range_end, [](double val) {return 0.5 * val * (1.0 + std::erf(val / std::sqrt(2.0)));},
-                  table_weight, slope_weight);
+  createBf16LutOp(
+      op, "slope", TableMode::Slope, 0.0, 0.0, range_start, range_end,
+      [](double val) {
+        return 0.5 * val * (1.0 + std::erf(val / std::sqrt(2.0)));
+      },
+      table_weight, slope_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
@@ -41,9 +45,9 @@ void GELULowering::LoweringBF16(PatternRewriter &rewriter,
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType, ValueRange{op.getInput(), table_weight, slope_weight}, attrs);
+      op, newType, ValueRange{op.getInput(), table_weight, slope_weight},
+      attrs);
   return;
-
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

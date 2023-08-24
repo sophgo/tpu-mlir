@@ -132,6 +132,9 @@ Used to convert various neural network models into MLIR files, the supported par
    * - excepts
      - N
      - Names of network layers that need to be excluded from validation. Separated by comma
+   * - onnx_sim
+     - N
+     - option for onnx-sim, currently only support 'skip_fuse_bn' args
    * - mlir
      - Y
      - The output mlir file name (including path)
@@ -200,7 +203,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Quantization type (F32/F16/BF16/INT8)
    * - chip
      - Y
-     - The platform that the model will use. Support bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
      - N
      - The quantization table path. Required when it is INT8 quantization
@@ -228,6 +231,9 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - debug
      - N
      - to keep all intermediate files for debug
+   * - core
+     - N
+     - When the target is selected as bm1686 or cv186x, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
 
 .. _tools:
 

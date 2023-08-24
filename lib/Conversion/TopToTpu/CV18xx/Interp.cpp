@@ -68,8 +68,7 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
       rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(const_val)));
   pad_attrs.push_back(
       rewriter.getNamedAttr("mode", rewriter.getStringAttr("edge")));
-  auto pad_type = RankedTensorType::get(
-      shape_after_pad, op.getInput().getType().getElementType());
+  auto pad_type = module::getTypeLike(op.getInput(), shape_after_pad);
   auto pad_op = rewriter.create<top::PadOp>(
       loc, pad_type, ValueRange{op.getInput()}, pad_attrs);
 

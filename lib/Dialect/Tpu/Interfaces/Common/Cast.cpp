@@ -67,6 +67,8 @@ LogicalResult tpu::CastOp::init(InferenceParameter &p) { return success(); }
 void tpu::CastOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
+  auto in_shape = module::getShape(getInput());
+  module::setShape(getOutput(), in_shape);
   auto num_elem = module::getNumElements(getOutput());
   auto in_type = module::getStorageType(getInput());
   auto out_type = module::getStorageType(getOutput());
@@ -160,7 +162,7 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
       rewriter.replaceOp(op, {in});
       return success();
     }
-    auto castInputOp = dyn_cast<tpu::CastOp>(in.getDefiningOp());
+    auto castInputOp = dyn_cast<tpu::CastOp>(module::getOriValue(in).getDefiningOp());
     if (!castInputOp || castInputOp->hasOneUse() == false) {
       return failure();
     }

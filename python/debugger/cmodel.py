@@ -143,7 +143,8 @@ class BM1684X:
         lib.cmodel_get_global_mem_size.restype = ctypes.c_ulonglong
 
         # computing function
-        lib.execute_command.argtypes = [ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint]
+        lib.execute_command.argtypes = [
+            ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint]
 
         self.lib = lib
         self.__setup(memory_size)
@@ -151,7 +152,8 @@ class BM1684X:
     def __setup(self, memory_size):
         self.lib.cmodel_init(0, memory_size)
         # self.lib.cmodel_multi_thread_cxt_deinit(0)
-        self.DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
+        self.DDR = c_array_to_ndarray(
+            self.lib.get_global_memaddr(0), memory_size)
         self.LMEM = c_array_to_ndarray(
             self.lib.get_local_mem(0).contents.raw_ptr, (64, 16, 1024 * 16)
         )
@@ -178,10 +180,10 @@ class BM1684X:
             engine_type,
         )
 
-    def tiu_compute(self, command):
+    def tiu_compute(self, command, core_id=0):
         return self.compute(command, 0)
 
-    def dma_compute(self, command):
+    def dma_compute(self, command, core_id=0):
         return self.compute(command, 1)
 
     @staticmethod
@@ -385,11 +387,13 @@ class BM1684:
 
     def __setup(self, memory_size):
         self.lib.cmodel_init(0, memory_size)
-        self.DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
+        self.DDR = c_array_to_ndarray(
+            self.lib.get_global_memaddr(0), memory_size)
         self.LMEM = c_array_to_ndarray(
             self.lib.get_local_mem(0).contents.raw_ptr, (64, 8, 1024 * 64)
         )
-        self.L2SRAM = c_array_to_ndarray(self.lib.get_l2_sram(0), (4096 * 1024,))
+        self.L2SRAM = c_array_to_ndarray(
+            self.lib.get_l2_sram(0), (4096 * 1024,))
 
     def clear_memory(self):
         self.DDR.fill(0)
@@ -404,12 +408,17 @@ class BM1684:
         command = np.frombuffer(command, dtype=np.uint8)
         assert isinstance(command, np.ndarray)
         assert command.dtype == np.uint8
+        # fix runtime error
+        command = np.unpackbits(command, bitorder="little").view(np.uint8)
+        command = np.packbits(command.reshape(-1, 8),
+                              bitorder="little", axis=-1)
+        command = command.ctypes.data
         return self.lib.get_atomic_function(command, engine_type)(0, command)
 
-    def tiu_compute(self, command):
+    def tiu_compute(self, command, core_id=0):
         return self.compute(command, 0)
 
-    def dma_compute(self, command):
+    def dma_compute(self, command, core_id=0):
         return self.compute(command, 1)
 
     @staticmethod
@@ -419,13 +428,19 @@ class BM1684:
 
 class BM1686:
     lib_name = "libcmodel_1686.so"
+    ENGINE_GDMA = 1
+    TAG_WEIGHT = 1
+    ENGINE_HAU = 2
+    TAG_ACTIVATION = 2
 
-    def __init__(self, memory_size):
+    def __init__(self, memory_size, base_addr):
+        # always init with 2 cores
+        self.core_num = 2
         lib = _lib_wrapper(open_lib(self.lib_name))
         lib.cmodel_init.argtypes = [ctypes.c_int32, ctypes.c_int64]
         lib.cmodel_init.restype = ctypes.c_int32
         lib.cmodel_deinit.argtypes = [ctypes.c_int32]
-        # lib.cmodel_multi_thread_cxt_deinit.argtypes = [ctypes.c_int32]
+
         # local_mem
         lib.get_local_mem.argtypes = [ctypes.c_int32]
         lib.get_local_mem.restype = ctypes.POINTER(local_mem)
@@ -446,16 +461,29 @@ class BM1686:
         lib.cmodel_get_global_mem_size.restype = ctypes.c_ulonglong
 
         # computing function
-        lib.execute_command.argtypes = [ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint]
+        lib.execute_command.argtypes = [
+            ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint]
+
+        lib.atomic_set_base_ddr.argtypes = [ctypes.POINTER(
+            ctypes.c_int32), ctypes.POINTER(ctypes.c_uint64), ctypes.c_int32, ctypes.c_uint]
+        lib.atomic_set_base_ddr.restype = ctypes.c_void_p
+
+        lib.set_cur_nodechip_idx.argtypes = [ctypes.c_int32]
+        lib.set_cur_nodechip_idx.restype = ctypes.c_void_p
 
         self.lib = lib
-        self.__setup(memory_size)
+        self.__setup(memory_size, base_addr)
 
-
-    def __setup(self, memory_size):
-        self.lib.cmodel_init(0, memory_size)
-        # self.lib.cmodel_multi_thread_cxt_deinit(0)
-        self.DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
+    def __setup(self, memory_size, base_addr):
+        base_idx = (ctypes.c_int32 * 2)(self.TAG_WEIGHT, self.TAG_ACTIVATION)
+        base_addr = (ctypes.c_uint64 * 2)(base_addr[0], base_addr[1])
+        for i in range(self.core_num):
+            self.lib.cmodel_init(i, memory_size)
+            self.lib.set_cur_nodechip_idx(i)
+            self.lib.atomic_set_base_ddr(
+                base_idx, base_addr, 2, self.ENGINE_GDMA)
+        self.DDR = c_array_to_ndarray(
+            self.lib.get_global_memaddr(0), memory_size)
         self.LMEM = c_array_to_ndarray(
             self.lib.get_local_mem(0).contents.raw_ptr, (32, 16, 1024 * 8)
         )
@@ -470,23 +498,29 @@ class BM1686:
         self.SMEM[: len(lut)] = lut[...]
 
     def __del__(self):
-        self.lib.cmodel_deinit(0)
+        base_idx = (ctypes.c_int32 * 2)(1, 2)
+        base_addr = (ctypes.c_int64 * 2)(0, 0)
+        for i in range(self.core_num):
+            self.lib.set_cur_nodechip_idx(i)
+            self.lib.atomic_set_base_ddr(
+                base_idx, base_addr, 2, self.ENGINE_GDMA)
+            self.lib.cmodel_deinit(i)
 
-    def compute(self, command, engine_type):
+    def compute(self, command, engine_type, core_id=0):
         command = np.frombuffer(command, dtype=np.uint8)
         assert isinstance(command, np.ndarray)
         assert command.dtype == np.uint8
         return self.lib.execute_command(
-            0,
+            core_id,
             command.ctypes.data,
             engine_type,
         )
 
-    def tiu_compute(self, command):
-        return self.compute(command, 0)
+    def tiu_compute(self, command, core_id=0):
+        return self.compute(command, 0, core_id)
 
-    def dma_compute(self, command):
-        return self.compute(command, 1)
+    def dma_compute(self, command, core_id=0):
+        return self.compute(command, 1, core_id)
 
     @staticmethod
     def gen_lookup_table():

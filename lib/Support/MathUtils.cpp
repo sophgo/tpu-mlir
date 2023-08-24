@@ -64,8 +64,7 @@ void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,
   scale = (int)std::round(scale_f * std::pow(2, shift));
 }
 
-template <typename Dtype>
-float findMaxabs(const Dtype *pSrcData, int len) {
+template <typename Dtype> float findMaxabs(const Dtype *pSrcData, int len) {
   float fmax = 0.0;
   float dataTmp;
   for (int i = 0; i < len; i++) {
@@ -118,15 +117,13 @@ int calRightShiftNum(float fmax, double thBottom, double thTop, int numBits) {
   return m;
 }
 
-template <typename T>
-void func_abs(int n, T *src, T *dst) {
+template <typename T> void func_abs(int n, T *src, T *dst) {
   for (int i = 0; i < n; i++) {
     dst[i] = std::abs(src[i]);
   }
 }
 
-template <typename T>
-void func_log(int n, T *src, T *dst) {
+template <typename T> void func_log(int n, T *src, T *dst) {
   for (int i = 0; i < n; i++) {
     dst[i] = std::log(src[i]);
   }
@@ -163,8 +160,7 @@ float func_log2(double dataInput) {
   return result;
 }
 
-template <typename T>
-int64_t to_int(T v, RoundingMode round_mode) {
+template <typename T> int64_t to_int(T v, RoundingMode round_mode) {
   int64_t i64_val;
   if (round_mode == ROUNDING_HALF_AWAY_FROM_ZERO) {
     i64_val = std::round(v);
@@ -737,6 +733,38 @@ void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
 }
 
 template <typename T>
+std::shared_ptr<std::vector<T>>
+tensor_slice(T *src_data, const std::vector<int64_t> &shape, int64_t axis,
+             int64_t offset, int64_t length) {
+  auto outer_size = std::accumulate(shape.begin(), shape.begin() + axis, 1,
+                                    std::multiplies<int64_t>());
+  auto axis_size = shape[axis];
+  auto inner_size = std::accumulate(shape.begin() + axis + 1, shape.end(), 1,
+                                    std::multiplies<int64_t>());
+  assert(length + offset <= axis_size);
+  auto output =
+      std::make_shared<std::vector<T>>(outer_size * inner_size * length);
+  for (int64_t i = 0; i < outer_size; i++) {
+    T *src_ptr = src_data + i * axis_size * inner_size + offset * inner_size;
+    T *dst_ptr = output->data() + i * length * inner_size;
+    std::copy(src_ptr, src_ptr + length * inner_size, dst_ptr);
+  }
+  return output;
+}
+
+template std::shared_ptr<std::vector<float>>
+tensor_slice(float *src_data, const std::vector<int64_t> &shape, int64_t axis,
+             int64_t offset, int64_t length);
+
+template std::shared_ptr<std::vector<uint16_t>>
+tensor_slice(uint16_t *src_data, const std::vector<int64_t> &shape,
+             int64_t axis, int64_t offset, int64_t length);
+
+template std::shared_ptr<std::vector<int8_t>>
+tensor_slice(int8_t *src_data, const std::vector<int64_t> &shape, int64_t axis,
+             int64_t offset, int64_t length);
+
+template <typename T>
 int64_t saturate(T v, mlir::Type type, RoundingMode round_mode) {
   auto itype = dyn_cast<mlir::IntegerType>(type);
   if (!itype) {
@@ -1100,8 +1128,7 @@ void tile(T *input, T *output, llvm::ArrayRef<int64_t> in_shape, int axis,
 template void tile(float *input, float *output,
                    llvm::ArrayRef<int64_t> in_shape, int axis, int times);
 
-template <typename T>
-static int remove_value(std::vector<T> &v, int value) {
+template <typename T> static int remove_value(std::vector<T> &v, int value) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
     if (*iter == value) {
@@ -1536,4 +1563,56 @@ void get_stride(const std::vector<int64_t> &shape,
     stride[i] = shape[i] != 1 ? stride[i] : 0;
   }
 }
+
+static int64_t get_TF_SAME_Padding(int64_t input_spatial_shape, int64_t kernel,
+                                   int64_t stride) {
+  // If padding == "SAME" :
+  //  output_spatial_shape[i] = ceil(input_spatial_shape[i] / strides[i])
+  int64_t pad_along;
+  if (input_spatial_shape % stride == 0) {
+    pad_along = std::max(kernel - stride, (int64_t)0);
+  } else {
+    pad_along = std::max(kernel - (input_spatial_shape % stride), (int64_t)0);
+  }
+  return pad_along;
+}
+
+void set_auto_pad(llvm::StringRef mode, const std::vector<int64_t> &input_shape,
+                  const std::vector<int64_t> &kernel_shape,
+                  const std::vector<int64_t> &strides,
+                  std::vector<int64_t> &pads) {
+  if (mode == "SAME_UPPER") {
+    pads.clear();
+    assert(kernel_shape.size() == 2 && "Now just support autopad 2d.");
+    int64_t padding_along_h =
+        get_TF_SAME_Padding(input_shape[2], kernel_shape[0], strides[0]);
+    int64_t padding_along_w =
+        get_TF_SAME_Padding(input_shape[3], kernel_shape[1], strides[1]);
+    int64_t padding_t = padding_along_h / 2;
+    int64_t padding_l = padding_along_w / 2;
+    int64_t padding_b = padding_along_h - padding_t;
+    int64_t padding_r = padding_along_w - padding_l;
+    pads = {padding_t, padding_l, padding_b, padding_r};
+  } else if (mode == "SAME_LOWER") {
+    // the extra padding is added at the beginning for SAME_LOWER.
+    pads.clear();
+    assert(kernel_shape.size() == 2 && "Now just support autopad 2d.");
+    int64_t padding_along_h =
+        get_TF_SAME_Padding(input_shape[2], kernel_shape[0], strides[0]);
+    int64_t padding_along_w =
+        get_TF_SAME_Padding(input_shape[3], kernel_shape[1], strides[1]);
+    int64_t padding_b = padding_along_h / 2;
+    int64_t padding_r = padding_along_w / 2;
+    int64_t padding_t = padding_along_h - padding_b;
+    int64_t padding_l = padding_along_w - padding_r;
+    pads = {padding_t, padding_l, padding_b, padding_r};
+  } else if (mode == "NOTSET") {
+    // do nothing
+  } else if (mode == "VALID") {
+    // do nothing
+  } else {
+    llvm_unreachable("Not support now");
+  }
+}
+
 } // namespace tpu_mlir

@@ -111,7 +111,7 @@ struct MaskedFillMergePattern : public OpRewritePattern<MaskedFillOp> {
     if(!out.hasOneUse()){
       return failure();
     }
-    auto next_op = *op.getOutput().getUsers().begin();
+    auto next_op = *op.getOutput().user_begin();
     // get attr
     // auto attr = op->getAttrs;
     auto value = op.getConstVal().convertToDouble();
@@ -124,7 +124,7 @@ struct MaskedFillMergePattern : public OpRewritePattern<MaskedFillOp> {
     }
     // get softmax op's next op
     auto softmax_op = dyn_cast<SoftmaxOp>(next_op);
-    auto softmax_next_op = *softmax_op.getOutput().getUsers().begin();
+    auto softmax_next_op = *softmax_op.getOutput().user_begin();
     if(!isa<MaskedFillOp>(softmax_next_op)){
       return failure();
     }

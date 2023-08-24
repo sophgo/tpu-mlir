@@ -74,16 +74,12 @@ void top::NonZeroOp::shape_inference() {
   const auto shape = module::getShape(getInput());
   int64_t dims = shape.size();
   std::vector<int64_t> output_shape;
-  if (dims > 1) {
-    if (order) {
-      output_shape.push_back(dims);
-      output_shape.push_back(num_elem);
-    } else {
-      output_shape.push_back(num_elem);
-      output_shape.push_back(dims);
-    }
+  if (order) {
+    output_shape.push_back(dims);
+    output_shape.push_back(num_elem);
   } else {
     output_shape.push_back(num_elem);
+    output_shape.push_back(dims);
   }
   module::setShapeOrVerify(getOutput(), output_shape);
 }

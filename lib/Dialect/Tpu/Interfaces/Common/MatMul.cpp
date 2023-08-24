@@ -237,7 +237,7 @@ LogicalResult tpu::MatMulOp::canonicalize(tpu::MatMulOp op,
     // only f32 support
     return failure();
   }
-  auto user = *out.getUsers().begin();
+  auto user = *out.user_begin();
   auto add_op = dyn_cast_or_null<tpu::AddOp>(user);
   if (!add_op || add_op.getNumOperands() != 2) {
     return failure();
@@ -254,6 +254,7 @@ LogicalResult tpu::MatMulOp::canonicalize(tpu::MatMulOp op,
   }
   op->setOperand(2, another);
   op->setLoc(add_op.getLoc());
+  op->moveAfter(add_op);
   add_op->replaceAllUsesWith(op);
   rewriter.eraseOp(add_op);
   return success();

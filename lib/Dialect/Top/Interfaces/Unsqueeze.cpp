@@ -39,9 +39,11 @@ void top::UnsqueezeOp::shape_inference() {
   for (auto axis : axes_) {
     out_shape.insert(out_shape.begin() + axis, 1);
   }
-  /* if previous op(such as reduce) change the shape,
-     the input & output shape size is equal, don;t verify again */
-  if (in_shape.size() != module::getShape(getOutput()).size()) {
-    module::setShapeOrVerify(getOutput(), out_shape);
+  module::setShapeOrVerify(getOutput(), out_shape);
+  if (module::isShape(getInput())) {
+    auto input_shape_v = module::getShapeTensorValue(getInput());
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), {input_shape_v}, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
   }
 }

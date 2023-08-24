@@ -29,9 +29,7 @@ struct TopGroupNormReshape : public OpRewritePattern<GroupNormOp> {
       if (num_dims != weight_shape.size()) {
         std::vector<int64_t> new_shape(num_dims, 1);
         new_shape[1] = weight_shape[0];
-        auto new_type =
-            RankedTensorType::get(new_shape, module::getElementType(weight));
-        weight.setType(new_type);
+        module::setShape(weight, new_shape);
         res = success();
       }
     }
@@ -42,9 +40,7 @@ struct TopGroupNormReshape : public OpRewritePattern<GroupNormOp> {
       if (num_dims != bias_shape.size()) {
         std::vector<int64_t> new_shape(num_dims, 1);
         new_shape[1] = bias_shape[0];
-        auto new_type =
-            RankedTensorType::get(new_shape, module::getElementType(bias));
-        bias.setType(new_type);
+        module::setShape(bias, new_shape);
         res = success();
       }
     }

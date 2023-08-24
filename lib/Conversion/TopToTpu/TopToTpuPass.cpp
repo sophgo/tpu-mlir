@@ -22,9 +22,7 @@ namespace tpu_mlir {
 template <typename OpTy> static void BackwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
-  auto in_type = in.getType().cast<RankedTensorType>();
-  auto out_qtype = module::getCalibratedType(out);
-  auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
+  auto new_type = module::getTypeLike(out, module::getShape(in));
   in.setType(new_type);
 }
 
@@ -43,9 +41,7 @@ static void Backward(Value in) {
 template <typename OpTy> static void ForwardOp(OpTy op) {
   Value in = op.getInput();
   Value out = op.getOutput();
-  auto out_type = out.getType().cast<RankedTensorType>();
-  auto in_qtype = module::getCalibratedType(in);
-  auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+  auto new_type = module::getTypeLike(in, module::getShape(out));
   out.setType(new_type);
 }
 
@@ -86,8 +82,7 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
         return failure();
       }
     }
-    auto out_type = out.getType().cast<RankedTensorType>();
-    auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+    auto new_type = RankedTensorType::get(module::getShape(out), in_qtype);
     out.setType(new_type);
     Forward(out);
     return success();
@@ -421,6 +416,144 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   }
 };
 
+struct SelectiveWhere : public OpRewritePattern<top::WhereOp> {
+  using OpRewritePattern<top::WhereOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::WhereOp op,
+                                PatternRewriter &rewriter) const override {
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(out)) {
+      return failure();
+    }
+
+    float const_v = 0.0;
+    bool const_signed = false;
+    if (op.getYIsConst()) {
+      float c = op.getYConstVal().convertToDouble();
+      const_signed = c < 0.;
+      const_v = std::abs(c);
+    }
+    if (op.getXIsConst()) {
+      float c = op.getXConstVal().convertToDouble();
+      const_signed |= c < 0.;
+      const_v = std::max(std::abs(c), const_v);
+    }
+
+    auto out_qtype = module::getCalibratedType(out);
+    // if output th is less than const(if exists), make it larger to include
+    // const val
+    if (out_qtype.getMax() < const_v) {
+      auto out_qtype = module::getCalibratedType(out);
+      auto new_qtype = quant::CalibratedQuantizedType::get(
+          out_qtype.getExpressedType(),
+          (const_signed || out_qtype.getMin() < 0.) ? -const_v * 0.1 : 0.0f,
+          const_v);
+      auto new_type = RankedTensorType::get(
+          out.getType().cast<RankedTensorType>().getShape(), new_qtype);
+      out.setType(new_type);
+    }
+    // if input is not the same with out, set the input to follow output
+    // don't backward to condition
+    bool changed = false;
+    if (!op.getXIsConst()) {
+      auto in = op.getTbrn();
+      if (!module::isCalibratedType(in))
+        return failure();
+      if (module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
+          module::getCalibratedType(in).getMax() != out_qtype.getMax()) {
+        auto in_qtype = module::getCalibratedType(in);
+        auto new_qtype = quant::CalibratedQuantizedType::get(
+            in_qtype.getExpressedType(), out_qtype.getMin(),
+            out_qtype.getMax());
+        auto new_type = RankedTensorType::get(
+            in.getType().cast<RankedTensorType>().getShape(), new_qtype);
+        in.setType(new_type);
+        changed |= true;
+      }
+    }
+    if (!op.getYIsConst()) {
+      auto in = op.getFbrn();
+      if (!module::isCalibratedType(in))
+        return failure();
+      if (module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
+          module::getCalibratedType(in).getMax() != out_qtype.getMax()) {
+        auto in_qtype = module::getCalibratedType(in);
+        auto new_qtype = quant::CalibratedQuantizedType::get(
+            in_qtype.getExpressedType(), out_qtype.getMin(),
+            out_qtype.getMax());
+        auto new_type = RankedTensorType::get(
+            in.getType().cast<RankedTensorType>().getShape(), new_qtype);
+        in.setType(new_type);
+        changed |= true;
+      }
+    }
+    if (changed)
+      return success();
+    else
+      return failure();
+  }
+};
+
+struct SelectiveMaskedFill : public OpRewritePattern<top::MaskedFillOp> {
+  using OpRewritePattern<top::MaskedFillOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::MaskedFillOp op,
+                                PatternRewriter &rewriter) const override {
+    // TODO: need to be more clever
+    for (auto in : op->getOperands()) {
+      if (!module::isCalibratedType(in)) {
+        return failure();
+      }
+      if (!in.hasOneUse()) {
+        return failure();
+      }
+    }
+
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(out)) {
+      return failure();
+    }
+
+    float const_v = 0.0;
+    bool const_signed = false;
+    float c = op.getConstVal().convertToDouble();
+    const_signed = c < 0.;
+    const_v = std::abs(c);
+
+    auto out_qtype = module::getCalibratedType(out);
+    // if output th is less than const(if exists), make it larger to include
+    // const val
+    if (out_qtype.getMax() < const_v) {
+      auto out_qtype = module::getCalibratedType(out);
+      auto new_qtype = quant::CalibratedQuantizedType::get(
+          out_qtype.getExpressedType(),
+          (const_signed || out_qtype.getMin() < 0.) ? -const_v * 0.1 : 0.0f,
+          const_v);
+      auto new_type = RankedTensorType::get(
+          out.getType().cast<RankedTensorType>().getShape(), new_qtype);
+      out.setType(new_type);
+    }
+    // if input is not the same with out, set the input to follow output
+    // don't backward to condition
+    bool changed = false;
+    auto in = op.getOperand(1);
+    if (module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
+        module::getCalibratedType(in).getMax() != out_qtype.getMax()) {
+      auto in_qtype = module::getCalibratedType(in);
+      auto new_qtype = quant::CalibratedQuantizedType::get(
+          in_qtype.getExpressedType(), out_qtype.getMin(), out_qtype.getMax());
+      auto new_type = RankedTensorType::get(
+          in.getType().cast<RankedTensorType>().getShape(), new_qtype);
+      in.setType(new_type);
+      changed |= true;
+    }
+    if (changed)
+      return success();
+    else
+      return failure();
+  }
+};
+
 struct CastInputCV18xxPattern : public OpRewritePattern<tpu::CastOp> {
   using OpRewritePattern<tpu::CastOp>::OpRewritePattern;
 
@@ -457,7 +590,7 @@ public:
   void runOnOperation() override {
     module_ = getOperation();
     ctx_ = &getContext();
-    mainFunc_ = module::getMainFuncOp();
+    mainFunc_ = module::getMainFuncOp(module_);
     LoweringConfig::isQuantized = false;
     auto mode_ = StringRef(mode).upper();
     auto mode = module::symbolizeMode(mode_);
@@ -476,7 +609,9 @@ public:
     }
     init_qtable();
 
-    if (module::isBM1684XFamily() && !LoweringConfig::isQuantized && (module::getMode() == module::Mode::INT8 || module::getMode() == module::Mode::UINT8)) {
+    if (module::isBM1684XFamily() && !LoweringConfig::isQuantized &&
+        (module::getMode() == module::Mode::INT8 ||
+         module::getMode() == module::Mode::UINT8)) {
       qtable_process();
       module::updateModuleTypes();
     }
@@ -498,7 +633,7 @@ public:
       ScfTypeConverter typeConverter;
       target.addLegalDialect<mlir::func::FuncDialect, top::TopDialect,
                              tpu::TpuDialect>();
-      target.addIllegalOp<top::IfOp>();
+      target.addIllegalOp<top::IfOp, top::LoopOp>();
 
       target.addDynamicallyLegalOp<mlir::func::CallOp>(
           [&](mlir::func::CallOp op) { return typeConverter.isLegal(op); });
@@ -582,6 +717,10 @@ protected:
     patterns.add<CompareCalibartion>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
+    patterns.add<SelectiveWhere,
+		SelectiveMaskedFill>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    patterns.clear();
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
                  ForwardCalibartion<top::MinConstOp>,
@@ -622,6 +761,10 @@ protected:
                  KeepSignPattern<top::MaxPoolOp>, /*KeepAddSignPattern,*/
                  SetSubConstSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    patterns.clear();
+    patterns.add<SelectiveWhere, SelectiveMaskedFill>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    patterns.clear();
   }
 
   void host2device_convert_process() {
@@ -847,35 +990,37 @@ protected:
               return;
             }
             if (LoweringConfig::quantize_map.find(module::getName(op).str()) !=
-                        LoweringConfig::quantize_map.end())
+                LoweringConfig::quantize_map.end())
               return;
             int idx = 0;
             float th[2] = {0.0};
             for (auto in : addop.getInputs()) {
               if (!module::isUniformQuantized(in))
                 return;
-              if (isa<top::WeightOp>(in.getDefiningOp())){
-                auto weight = dyn_cast<top::WeightOp>(in.getDefiningOp()).read<float>();
+              if (isa<top::WeightOp>(in.getDefiningOp())) {
+                auto weight =
+                    dyn_cast<top::WeightOp>(in.getDefiningOp()).read<float>();
                 float absmax = fabs(weight.get()->at(0));
-                for (int i=0;i<weight.get()->size();i++) {
+                for (int i = 0; i < weight.get()->size(); i++) {
                   float value = fabs(weight.get()->at(i));
-                  absmax = value >absmax?value:absmax;
+                  absmax = value > absmax ? value : absmax;
                 }
                 th[idx++] = absmax;
-              }
-              else {
+              } else {
                 double in_scale;
                 int64_t in_zp;
-                module::getScaleAndZeroPoint(in, in_scale, in_zp, module::isAsymmetric());
+                module::getScaleAndZeroPoint(in, in_scale, in_zp,
+                                             module::isAsymmetric());
                 th[idx++] = in_scale;
               }
-              if (idx>2)
+              if (idx > 2)
                 return;
             }
             if (th[0] < 1e-8 || th[1] < 1e-8)
               return;
-            if (th[0]/th[1] > 64 || th[1]/th[0] > 64){
-              if (LoweringConfig::quantize_map.find(module::getName(op).str()) ==
+            if (th[0] / th[1] > 64 || th[1] / th[0] > 64) {
+              if (LoweringConfig::quantize_map.find(
+                      module::getName(op).str()) ==
                   LoweringConfig::quantize_map.end()) {
                 LoweringConfig::quantize_map.insert(
                     {module::getName(op).str(), module::Mode::F16});
@@ -894,7 +1039,8 @@ protected:
     set_add_before_softmax_fp16();
   }
 
-  Value do_cast(Value v, Type to, TypeCastMode mode, Operation *user_op = nullptr) {
+  Value do_cast(Value v, Type to, TypeCastMode mode,
+                Operation *user_op = nullptr) {
     auto to_stype = module::getStorageType(to);
     // check whether value has been casted
     for (auto user : v.getUsers()) {
@@ -927,7 +1073,7 @@ protected:
     auto ctx = v.getContext();
     OpBuilder builder(ctx);
     builder.setInsertionPointAfterValue(v);
-    auto name = module::getName(v).str();
+    auto name = module::getName(module::getOriValue(v)).str();
     if (user_op && !isa<ReturnOp>(user_op)) {
       name += module::getName(user_op).str();
     }
@@ -937,7 +1083,8 @@ protected:
       name += "_" + type_string(to_stype);
       auto newType = RankedTensorType::get(module::getShape(v), to_stype);
       auto loc = NameLoc::get(builder.getStringAttr(name));
-      if (v.getDefiningOp()->hasTrait<trait::ShapeProducer>()) {
+      if (module::getOriValue(v).getDefiningOp()
+           ->hasTrait<trait::ShapeProducer>()) {
         auto castOp =
             builder.create<tpu::ShapeCastOp>(loc, newType, ValueRange{v});
         return castOp.getOutput();
@@ -1006,7 +1153,8 @@ protected:
 
   void init_qtable() {
     LoweringConfig::quantize_map.clear();
-    if (ignore_f16_overflow == false && module::getMode() == module::Mode::F16) {
+    if (ignore_f16_overflow == false &&
+        module::getMode() == module::Mode::F16) {
       mainFunc_.walk([&](Operation *op) {
         // if have other op need convert from f16 to f32, add here
         if (isa<top::LayerNormOp, top::RMSNormOp>(op)) {
