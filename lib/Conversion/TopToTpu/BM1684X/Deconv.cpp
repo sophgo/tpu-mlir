@@ -75,7 +75,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   auto filter_f32 = filterOp.read<float>();
   float fmax, fmin;
   findMinMax(filter_f32->data(), filter_f32->size(), &fmin, &fmax);
-  bool with_bias = !module::isNone(op.getBias());
+  bool with_bias = param.with_bias;
   bool fsign = (fmin < 0 || with_bias == true);
   float fqmax = fsign ? 127 : 255;
   f64_array_t weight_scale_v;
