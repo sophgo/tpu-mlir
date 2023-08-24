@@ -2937,5 +2937,20 @@ def Tpu_ShapeArithOp: Tpu_Op<"ShapeArith", [
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_CumSumOp: Tpu_Op<"CumSum"> {
+  let summary = "CumSum operator";
+
+  let description = [{
+    Returns the cumulative sum of elements of input in the dimension dim.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$dim,
+    I64Attr:$axis
+  );
+  let results = (outs
+    AnyTensor:$output);
+}
 #endif // TPU_OPS
 

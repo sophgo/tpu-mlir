@@ -76,6 +76,7 @@ class ONNX_IR_TESTER(object):
             "ConvTrans":    (self.test_ConvTrans,     N, Y, Y, Y),
             "ConvTrans2":   (self.test_ConvTrans2,    N, Y, Y, Y),  #no pad
             "Clip":         (self.test_Clip,          Y, Y, Y, Y),
+            "CumSum":       (self.test_CumSum,        N, Y, N, N),
             "DepthToSpace": (self.test_DepthToSpace,  Y, Y, Y, Y),
             "Deconv":       (self.test_Deconv,        Y, Y, Y, Y),
             "DeconvDF":     (self.test_DeconvDynW,    N, Y, N, N),
@@ -151,6 +152,7 @@ class ONNX_IR_TESTER(object):
             "Reciprocal":   (self.test_Reciprocal,    Y, Y, Y, Y),
             "Relu":         (self.test_Relu,          Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
+            "Round":        (self.test_Round,         N, Y, N, N),
             "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y),
             "ScatterND":    (self.test_ScatterND,     N, Y, Y, N),
             "Shape":        (self.test_Shape,         Y, Y, Y, N),
@@ -6023,6 +6025,37 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test((x1, x2), Model(torch.sub), case_name + "Sub")
         self.torch_and_test((x1, x2), Model(torch.mul), case_name + "Mul")
 
+    def test_CumSum(self, case_name):
+        input_shape = [2,3,4,5]
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+        for d in range(len(input_shape)):
+            dim_input = helper.make_tensor(name="dim",
+                                    data_type=onnx.TensorProto.INT64,
+                                    dims=[1],
+                                    vals=np.array([d], dtype=np.int64))
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, input_shape)
+            cumsum_def = helper.make_node("CumSum", inputs=["input", "dim"], outputs=["output"])
+            graph_def = helper.make_graph([cumsum_def],
+                                        case_name, [input], [output], initializer=[dim_input])
+            input_data = {
+                "input": np.random.uniform(-100, 100, size=input_shape).astype(np.float32)
+            }
+            self.onnx_and_test(graph_def, input_data=input_data)
+
+    def test_Round(self, case_name):
+        input_shape = [1, 16, 64, 64]
+        output_shape = [1, 16, 64, 64]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        abs_def = helper.make_node(
+            "Round",
+            inputs=['input'],
+            outputs=['output'],
+        )
+        graph_def = helper.make_graph([abs_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:

@@ -2809,4 +2809,34 @@ def Top_RemainderOp: Top_Op<"Remainder"> {
 
   let results = (outs AnyTensor:$output);
 }
+
+def Top_CumSumOp: Top_Op<"CumSum"> {
+  let summary = " CumSum operator";
+  let description = [{
+    Returns the cumulative sum of elements of input in the dimension dim.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$dim,
+    I64Attr:$axis
+  );
+  let results = (outs
+    AnyTensor:$output);
+}
+
+def Top_RoundOp : Top_Op<"Round"> {
+  let summary = " Round operator";
+  let description = [{
+     Round takes one input Tensor and rounds the values, element-wise,
+     meaning it finds the nearest integer for each value. In case of halfs,
+     the rule is to round them to the nearest even integer.
+     If input x is integral, +0, -0, NaN, or infinite, x itself is returned.
+     The output tensor has the same shape and type as the input.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs
+    AnyTensor:$output);
+}
 #endif // Top_OPS

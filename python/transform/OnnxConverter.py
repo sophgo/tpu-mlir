@@ -147,6 +147,7 @@ class OnnxConverter(BaseConverter):
             "Cos": lambda node: self.convert_cos_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
             "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
+            "CumSum": lambda node: self.convert_cumsum_op(node),
             "DepthToSpace": lambda node: self.convert_depth2space_op(node),
             "DequantizeLinear": lambda node: self.convert_deqlinear_op(node),
             "Div": lambda node: self.convert_div_op(node),
@@ -210,6 +211,7 @@ class OnnxConverter(BaseConverter):
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
             "RoiAlign": lambda node: self.convert_roi_align_op(node),
+            "Round": lambda node: self.convert_round_op(node),
             "ScatterElements": lambda node: self.convert_scatter_elements_op(node),
             "ScatterND": lambda node: self.convert_scatternd_op(node),
             "Shape": lambda node: self.convert_shape_op(node),
@@ -2467,4 +2469,26 @@ class OnnxConverter(BaseConverter):
                                    loc=self.get_loc("{}_{}".format(onnx_node.name,
                                                                    onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_cumsum_op(self, onnx_node):
+        assert onnx_node.op_type == "CumSum"
+        assert (self.isWeight(onnx_node.inputs[1]), "Not Constant Not Implemented For Axis")
+        axis = self.getWeight(onnx_node.inputs[1])
+        operands = list()
+        operands.append(self.getOperand(onnx_node.inputs[0]))
+        operands.append(self.getWeightOp(onnx_node.inputs[1]))
+        new_op = top.CumSumOp(self.unranked_type, *operands,
+                            axis=axis,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_round_op(self, onnx_node):
+        assert (onnx_node.op_type == "Round")
+        operand = self.getOperand(onnx_node.inputs[0])
+        new_op = top.RoundOp(self.unranked_type,
+                            operand,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
