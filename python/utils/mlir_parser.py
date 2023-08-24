@@ -165,7 +165,7 @@ class MlirParser:
         self.ops = []
         self.return_op = None
 
-        cache_map = {}
+        cache_map = {} #用字典创建算子连接图
         for i in range(len(self.body.operations)):
             prev_op = self.body.operations[i]
             if Operation.type(prev_op) not in [

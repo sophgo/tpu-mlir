@@ -45,7 +45,7 @@ class BaseKldCalibrator:
                                    density=False)
         else:
             hist = np.zeros(bin_num)
-        hist = hist.astype(np.int32)
+        hist = hist.astype(np.int32) #转换为int32类型，截断小数
         return hist, width
 
     def kld_threshold(self, hist, width, bin_num):
@@ -822,10 +822,10 @@ class ActivationCalibrator2(BaseKldCalibrator):
         thresholds_map_scale4 = {}
         thresholds_map_zp4 = {}
 
-        all_tensors = self.parser.get_op_name_list()
+        all_tensors = self.parser.get_op_name_list() #所有op的列表：Cov、Mul等
         step = (99.999999 - 99.99) / len(all_tensors)
-        pbar = tqdm(all_tensors, total=len(all_tensors), position=0, leave=True)
-        for i, evaled_op in enumerate(all_tensors):
+        pbar = tqdm(all_tensors, total=len(all_tensors), position=0, leave=True) #当前处理的op进度条
+        for i, evaled_op in enumerate(all_tensors): #0，op0名 1，op1名 ……
             pbar.set_description("activation_collect_and_calc_th for op: {}".format(evaled_op))
             pbar.update(1)
             for idx in range(self.args.input_num):
@@ -873,7 +873,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 for idx in range(self.args.input_num):
                     activation = self.get_ref_tensor(idx, evaled_op)
                     _, _, abs_value = self.activations_statistics[evaled_op]
-                    hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
+                    hist, width = self.histogram(activation, abs_value, self.histogram_bin_num) #绘制直方图，返回频数列表和数据范围
                     if evaled_op not in histogram_data_map:
                         histogram_data_map[evaled_op] = hist
                         histogram_width_map[evaled_op] = width
@@ -911,7 +911,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
         pbar.close()
 
         if 'use_torch_observer_for_cali' not in self.debug_cmd:
-            thresholds_map = self.find_threshold(histogram_data_map, histogram_width_map)
+            thresholds_map = self.find_threshold(histogram_data_map, histogram_width_map) #kld算法寻找阈值
             thresholds_map4 = thresholds_map.copy()
             for k, v in self.activations_statistics.items():
                 _, _, abs_val = v
