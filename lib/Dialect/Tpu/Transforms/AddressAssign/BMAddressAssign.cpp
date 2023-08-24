@@ -81,7 +81,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
   module::setCoeffSize(m, addr - start_addr);
 
   // assign activation
-  if (module::isBM1686()) {
+  if (module::isBM1686() || module::isSG2260Family()) {
     addr = BM168x::CTX_START_ADDR;
   }
   start_addr = addr;

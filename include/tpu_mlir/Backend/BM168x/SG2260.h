@@ -74,8 +74,9 @@ protected:
     IC_PARALLEL = 64;
     ALIGNMENT = 0x1000;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
-    GMEM_START_ADDR = 0x1ul << 40; // tag for global memory address
+
     //have 30 memory section, now don't kown use which section
+    GMEM_START_ADDR = 0; // tag for global memory address
     COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
     LIB_BACKEND_NAME = "libbackend_sg2260.so";

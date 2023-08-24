@@ -38,7 +38,8 @@ def GlobalGenInterface : OpInterface<"GlobalGenInterface"> {
         [{
           if (module::isBM1684Family()) {
             $_op.codegen_global_bm1684();
-          } else if (module::isBM1684XFamily()) {
+          } else if (module::isBM1684XFamily()
+                    || module::isSG2260Family()) {
             $_op.codegen_global_bm1684x();
           }
         }]
