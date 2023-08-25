@@ -93,7 +93,7 @@ To use stepwise quantization in nntc, you need to make your own mdb quantization
 It is worth mentioning that mlir also has a run_qtable tool to help generate mixed-precision models
 
 Generating int8 models
----------------------
+------------------------
 
 To convert to an INT8 symmetric quantized model, execute the following command.
 
