@@ -136,12 +136,77 @@ Example: yolov5s calibration
       --test_result yolov5s_top_outputs.npz \
       --mlir yolov5s.mlir
 
+.. list-table:: The arguments of model_transform.py
+   :widths: 18 60
+   :header-rows: 1
+
+   * - Argument
+     - Description
+   * - model_name
+     - Model name
+   * - --model_def
+     - Model definition file (.onnx,.pt,.tflite or .prototxt)
+   * - --model_data
+     - Specify the model weight file, required when it is caffe model (corresponding to the '.caffemodel' file)
+   * - --input_shapes
+     - The shape of the input, such as [[1,3,640,640]] (a two-dimensional array), which can support multiple inputs
+   * - --resize_dims
+     - The size of the original image to be adjusted to. If not specified, it will be resized to the input size of the model
+   * - --keep_aspect_ratio
+     - Whether to maintain the aspect ratio when resize. False by default. It will pad 0 to the insufficient part when setting
+   * - --mean
+     - The mean of each channel of the image. The default is 0.0,0.0,0.0
+   * - --scale
+     - The scale of each channel of the image. The default is 1.0,1.0,1.0
+   * - --pixel_format
+     - Image type, can be rgb, bgr, gray or rgbd
+   * - --output_names
+     - The names of the output. Use the output of the model if not specified, otherwise use the specified names as the output
+   * - --test_input
+     - The input file for validation, which can be an image, npy or npz. No validation will be carried out if it is not specified
+   * - --test_result
+     - Output file to save validation result
+   * - --excepts
+     - Names of network layers that need to be excluded from validation. Separated by comma
+   * - --debug
+     - if open debug, immediate model file will keep; or will remove after conversion done
+   * - --mlir
+     - The output mlir file name (including path)
+
+
+.. code-block:: shell
+   :linenos:
+
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
       --tune_num 10 \
       -o yolov5s_cali_table
 
+.. list-table:: The arguments of run_calibration.py
+   :widths: 18 60
+   :header-rows: 1
+
+   * - Argument
+     - Description
+   * - mlir_file
+     - mlir file
+   * - --dataset
+     - dataset for calibration
+   * - --data_list
+     - Input list file contain all input
+   * - --input_num
+     - num of images for calibration
+   * - --tune_list
+     - Tune list file contain all input for tune
+   * - --tune_num
+     - num of images for tune
+   * - --histogram_bin_num
+     - Specify histogram bin numer for kld calculate
+   * - -o
+     - output threshold table
+   * - --debug_cmd
+     - debug command to specify calibration mode; “percentile9999” initialize the threshold via percentile function, “use_max” specifies the maximum of absolute value to be the threshold, “use_torch_observer_for_cali” adopts Torch observer for calibration. 
 
 The result is shown in the following figure (:ref:`yolov5s_cali`).
 
