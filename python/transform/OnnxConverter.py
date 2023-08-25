@@ -431,7 +431,7 @@ class OnnxConverter(BaseConverter):
         self.get_output_name(self.model.graph)
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         file_mark(self.onnx_file)
-        onnx.save(self.model, self.onnx_file)
+        onnx.save(self.model, self.onnx_file, save_as_external_data=True)
         strip_model = onnx.ModelProto()
         strip_model.CopyFrom(self.model)
         strip_model.graph.ClearField("initializer")

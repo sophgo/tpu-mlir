@@ -206,9 +206,18 @@ class ConstantFolding(object):
         sess_options = rt.SessionOptions()
         sess_options.graph_optimization_level = rt.GraphOptimizationLevel(0)
         sess_options.log_severity_level = 3
+        try:
+            sess = rt.InferenceSession(model.SerializeToString(), sess_options=sess_options,
+                                       providers=["CPUExecutionProvider"])
+        except ValueError:
+            # large models try to convert through a temporary file
+            import os
+            import tempfile
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                model_path = os.path.join(tmpdirname, 'model.onnx')
+                onnx.save(model, model_path, save_as_external_data=True)
+                sess = rt.InferenceSession(model_path)
 
-        sess = rt.InferenceSession(model.SerializeToString(), sess_options=sess_options,
-                                   providers=["CPUExecutionProvider"])
         input_names = self.get_input_names()
         inputs = {}
         for name in input_names:
