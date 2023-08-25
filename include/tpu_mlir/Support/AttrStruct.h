@@ -32,6 +32,7 @@ typedef struct {
   int64_t pad_value;
   int64_t kernel_zp;
   int64_t dims; // 1d/2d/3d
+  int64_t weight_is_coeff;
   bool has_bias;
   bool is_dw;
   bool do_relu;

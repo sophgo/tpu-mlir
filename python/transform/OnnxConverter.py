@@ -715,6 +715,7 @@ class OnnxConverter(BaseConverter):
         # filter may be dynamic weight
         filter_op = self.getOp(onnx_node.inputs[1])
         operands.append(filter_op)
+        weight_is_coeff = 1 if self.isWeight(onnx_node.inputs[1]) else 0
         if len(onnx_node.inputs) > 2:
             bias_op = self.getWeightOp(onnx_node.inputs[2])
         else:
@@ -728,6 +729,7 @@ class OnnxConverter(BaseConverter):
                             auto_pad=StringAttr.get(auto_pad),
                             pads=pads,
                             group=group,
+                            weight_is_coeff=weight_is_coeff,
                             do_relu=False,
                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                             ip=self.mlir.insert_point).output

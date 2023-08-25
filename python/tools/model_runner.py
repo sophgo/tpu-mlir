@@ -115,6 +115,7 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
         # for example: last layer is NonMaxSuppression, NonZero, etc.
         dyn_output_shapes = net.forward_dynamic(input_shapes)
     dyn_idx = 0
+
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
             if is_cv18xx and i.name in inputs:
