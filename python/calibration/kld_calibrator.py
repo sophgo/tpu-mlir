@@ -237,11 +237,12 @@ class SimpleTuner:
                                                     in batched_inputs else x[input].astype(np.float32))
                             batch_size = batched_inputs[input].shape[0]
                             if batched_inputs[input].shape[0] >= self.batch_size:
+                                real_batch_size = self.parser.get_op_by_op_name(input).shape[0]
                                 self.dq_activations[tune_idx][input] = [
-                                    batched_inputs[input][:self.batch_size], inp_ref_dict[input]
+                                    batched_inputs[input][:real_batch_size], inp_ref_dict[input]
                                 ]
                                 self.ref_activations[tune_idx][input] = [
-                                    batched_inputs[input][:self.batch_size], inp_ref_dict[input]
+                                    batched_inputs[input][:real_batch_size], inp_ref_dict[input]
                                 ]
                                 batched_inputs.pop(input)
 
@@ -716,11 +717,12 @@ class ActivationCalibrator2(BaseKldCalibrator):
                                                     in batched_inputs else x[input].astype(np.float32))
                             batch_size = batched_inputs[input].shape[0]
                             if batched_inputs[input].shape[0] >= self.batch_size:
+                                real_batch_size = self.parser.get_op_by_op_name(input).shape[0]
                                 self.dq_activations[tune_idx][input] = [
-                                    batched_inputs[input][:self.batch_size], inp_ref_dict[input]
+                                    batched_inputs[input][:real_batch_size], inp_ref_dict[input]
                                 ]
                                 self.ref_activations[tune_idx][input] = [
-                                    batched_inputs[input][:self.batch_size], inp_ref_dict[input]
+                                    batched_inputs[input][:real_batch_size], inp_ref_dict[input]
                                 ]
                                 batched_inputs.pop(input)
 
@@ -892,7 +894,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 abs_value = max_abs_value
             if abs_value != None and abs_value <= 1e-5:
                 # if op's outputs are all close to zero, change it to 1e-5 for them.
-                min_value = -1e-5
+                min_value = -1e-5 if min_value < 0 else 0
                 max_value = 1e-5
                 abs_value = 1e-5
                 print("WARNING: layer {} is all zeros. Please check the "
