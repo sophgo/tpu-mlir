@@ -14,6 +14,30 @@
 using namespace bm1684x;
 // refer to net_compiler: bool BM1684XCoeffArranger::ConvWeightArr(GraphEdge*
 // edge)
+
+LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op, PatternRewriter &rewriter) {
+  if (module::isWeight(op.getFilter()) == false) {
+    auto attr = op.parseParam();
+    auto filter_type = module::getStorageType(op.getFilter());
+    std::vector<int64_t> filter_shape = {1, attr.oc, attr.ic / attr.groups,
+                                          attr.kh * attr.kw};
+    auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
+
+    if (!module::isWeight(op.getOperand(1))) {
+      rewriter.setInsertionPointAfterValue(op.getOperand(1));
+      auto name = module::getName(op.getOutput());
+      auto reshape_loc =
+          NameLoc::get(rewriter.getStringAttr(name.str() + "_reorder_filter"));
+      auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
+          reshape_loc, new_filter_type, ValueRange{op.getOperand(1)});
+      new_reshape_op->setAttr("dynamic_weight", rewriter.getBoolAttr(true));
+      op.setOperand(1, new_reshape_op);
+      return success();
+    }
+  }
+  return failure();
+}
+
 template <>
 LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
@@ -508,6 +532,9 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isBF16())
     return failure();
+  if (module::isWeight(op.getFilter()) == false) {
+    return dynamic_weight_reorder_bm1684x(op, rewriter);
+  }
   return weight_reorder_bf16_bm1684x(op, rewriter);
 }
 
@@ -516,6 +543,9 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float16Type>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF16())
     return failure();
+  if (module::isWeight(op.getFilter()) == false) {
+    return dynamic_weight_reorder_bm1684x(op, rewriter);
+  }
   return weight_reorder_bf16_bm1684x(op, rewriter);
 }
 

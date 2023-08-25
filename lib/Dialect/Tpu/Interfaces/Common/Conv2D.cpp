@@ -23,6 +23,7 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.has_bias = getWithBias();
+  p.weight_is_coeff = getWeightIsCoeff();
   p.dims = i_s.size() - 2;
   p.n = i_s[0];
   p.ic = i_s[1];
@@ -289,7 +290,10 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
     }
   }
   if (module::isWeight(getFilter()) == false) {
-    return failure();
+    auto Filter_type = BM168x::getDataType(getFilter());
+    if (Filter_type == DTYPE_FP32){
+      return failure();
+    }
   }
   return success();
 }

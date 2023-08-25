@@ -16,6 +16,7 @@ conv_attr_t top::ConvOp::parseParam() {
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.has_bias = !getBias().getType().isa<NoneType>();
+  p.weight_is_coeff = getWeightIsCoeff();
   auto kernel = module::getI64Array(getKernelShape());
   auto pads_v = module::getI64Array(getPads());
   auto strides_v = module::getI64Array(getStrides());

@@ -1088,7 +1088,7 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x):
                     y = x.type_as(self.other) + 1
-                    return y
+                    return y 
 
             self.trace_and_test([shape], Model())
 

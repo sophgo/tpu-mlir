@@ -371,6 +371,7 @@ typedef struct conv_common_spec {
   int32_t ipad_value;
   int32_t bias_sign; // For merged coeff
   int32_t use_3ic_optimize;
+  int32_t weight_is_coeff;
 } conv_common_spec_t;
 
 typedef struct conv_global_spec {

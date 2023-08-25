@@ -340,6 +340,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     //new param
     BoolAttr:$with_bias,
+    DefaultValuedAttr<I64Attr, "1">:$weight_is_coeff,
     DefaultValuedAttr<BoolAttr, "false">:$coeff_merged,
     DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
     DefaultValuedAttr<I64Attr, "0">:$kernel_zp,
