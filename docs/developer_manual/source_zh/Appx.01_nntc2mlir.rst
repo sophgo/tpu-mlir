@@ -1,13 +1,12 @@
-从 NNTC 迁移至 TPU-MLIR
-=======================
+附录01：从 NNTC 迁移至 TPU-MLIR
+===============================
 
 NNTC 所使用 docker 版本为 sophgo/tpuc_dev:v2.1, MLIR 使用的docker版本及环境初始化请参考
 :ref:`开发环境配置 <docker configuration>` 。
 
 下面将以 yolov5s 为例, 讲解NNTC和TPU-MLIR在量化方面的异同, 浮点模型编译方面可以直接
-参考 :ref:`编译ONNX模型 <onnx to bmodel>` 。
-
-首先参考 :ref:`编译ONNX模型 <onnx to bmodel>` 的章节准备yolov5s模型。
+参考《TPU-MLIR快速入门指南》的“编译ONNX模型”章节内容，以下内容假设已经按照
+《TPU-MLIR快速入门指南》中描述准备好了yolov5s模型。
 
 
 ONNX模型导入
