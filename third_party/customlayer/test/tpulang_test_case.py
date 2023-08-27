@@ -51,7 +51,7 @@ if __name__ == "__main__":
     os.chdir("tmp")
     # 1. prepare the input
     dtype = "float32"
-    input_shape = [1, 3, 14, 14]
+    input_shape = [10, 3, 14, 14]
     x_data = rand_data(input_shape, dtype)
     x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
 
