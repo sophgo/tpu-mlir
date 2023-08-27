@@ -30,8 +30,8 @@ protected:
 
 class MultiCoreInterface {
 public:
-  template <typename ConcreteType>
 
+  template <typename ConcreteType>
   using Base = BackendInterfaceBase<ConcreteType, MultiCoreInterface>;
 
   virtual ~MultiCoreInterface() = default;

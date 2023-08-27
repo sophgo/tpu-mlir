@@ -1,15 +1,16 @@
-Migrating from NNTC to tpu-mlir
-===============================
+Appendix.01: Migrating from NNTC to tpu-mlir
+============================================
 
 NNTC is using docker version sophgo/tpuc_dev:v2.1, for MLIR docker version
-reference and environment initialization please refer to :ref:`Setup Docker Container <docker container_setup>`
+reference and environment initialization please refer to :ref:`Environment Setup <docker configuration>`.
 
 
 In the following, we will use yolov5s as an example to explain the similarities
 and differences between nntc and mlir in terms of quantization, and for
-compiling floating-point models, please refer to :ref:`Compiling ONNX Models <onnx to bmodel>`.
+compiling floating-point models, please refer to <TPU-MLIR_Quick_Start>
+`Compile the ONNX model`.
 
-First, refer to the section :ref:`Compile the ONNX model <onnx to bmodel>` to prepare the yolov5s model.
+First, refer to the section `Compile the ONNX model` to prepare the yolov5s model.
 
 ONNX to MLIR
 ------------

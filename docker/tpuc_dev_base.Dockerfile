@@ -34,6 +34,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # for opencv
     libgl1 \
     libnuma1 libatlas-base-dev \
+    # ssh
+    openssh-server openssh-client \
     # for document
     texlive-xetex \
     # fix bug: https://bugs.archlinux.org/task/67856
