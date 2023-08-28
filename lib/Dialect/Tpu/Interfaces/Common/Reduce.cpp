@@ -73,17 +73,17 @@ reduce_attr_t tpu::ReduceOp::parseParam() {
                                            std::multiplies<int64_t>());
       else if ((axes_->at(i) == 0) && (axes_->at(i) + 1 <= num_dims) && (i + 1 <= num_axes))
         attr.inner_dims *= std::accumulate(input_shape.begin() + (axes_->at(i) + 1),
-                                           input_shape.begin() + axes_->at(i + 1), 1,
-                                           std::multiplies<int64_t>());
+                            input_shape.begin() + axes_->at(i + 1), 1,
+                            std::multiplies<int64_t>());
     }
   }
   else {
     attr.axis_dims = std::accumulate(input_shape.begin() + start_axis,
-                                   input_shape.begin() + end_axis, 1,
-                                   std::multiplies<int64_t>());
+                                     input_shape.begin() + end_axis, 1,
+                                     std::multiplies<int64_t>());
     attr.inner_dims =
-      std::accumulate(input_shape.begin() + end_axis, input_shape.end(), 1,
-                      std::multiplies<int64_t>());
+        std::accumulate(input_shape.begin() + end_axis, input_shape.end(), 1,
+                        std::multiplies<int64_t>());
   }
   attr.simplified = true;
   return attr;
@@ -163,7 +163,7 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
         float target = input_v[o * attr.axis_dims * attr.inner_dims + i];
         for (int a = 0; a < attr.axis_dims; a++) {
           target *= input_v[o * attr.axis_dims * attr.inner_dims +
-                          a * attr.inner_dims + i];
+                            a * attr.inner_dims + i];
         }
         output_v[o * attr.inner_dims + i] = target;
       } else {
@@ -191,40 +191,47 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
   return success();
 }
 
-// Reduce (f32) -> Cast(f32-f16) -> Cast(f16-f32) -> Active(f32)
+/**
+ * Reduce (f32) -> Cast(f32-f16) -> Cast(f16-f32) -> Active(f32)
+ * Reduce (f32) -> Cast(f32-int8) -> Cast(int8-f32) -> Active(f32)
+ */
 LogicalResult tpu::ReduceOp::canonicalize(tpu::ReduceOp op,
-                                           PatternRewriter &rewriter){
+                                          PatternRewriter &rewriter) {
 
-    auto opt = op.getOutput();
-    if (!opt.hasOneUse()) {
-      return failure();
-    }
+  auto opt = op.getOutput();
+  if (!opt.hasOneUse()) {
+    return failure();
+  }
 
-    auto next_op_ = *opt.user_begin();
-    auto castf16 = dyn_cast<tpu::CastOp>(next_op_);
-    if (!castf16 || !module::getElementType(castf16.getInput()).isF32()) {
-      return failure();
-    }
+  auto next_op_ = *opt.user_begin();
+  auto castf16 = dyn_cast<tpu::CastOp>(next_op_);
 
-    next_op_ = *castf16.getOutput().user_begin();
-    auto castf32 = dyn_cast<tpu::CastOp>(next_op_);
-    if (!castf32 || !module::getElementType(castf32.getOutput()).isF32()) {
-      return failure();
-    }
+  if (!castf16 ||
+      (!module::getElementType(castf16.getInput()).isF32() &&
+       !module::isCalibratedType(castf16.getInput()) /**for int8 cast op*/)) {
+    return failure();
+  }
 
-    next_op_ = *castf32.getOutput().user_begin();
-    auto active = dyn_cast<tpu::ActiveOp>(next_op_);
-    if (!active) {
-      return failure();
-    }
+  next_op_ = *castf16.getOutput().user_begin();
+  auto castf32 = dyn_cast<tpu::CastOp>(next_op_);
+  if (!castf32 || (!module::getElementType(castf32.getOutput()).isF32() &&
+                   !module::isUniformQuantized(
+                       castf32.getOutput()) /**for int8 cast op*/)) {
+    return failure();
+  }
 
-    active.setOperand(opt);
-    rewriter.replaceAllUsesWith(castf16.getOutput(), active.getInput());
-    // erase reversed
-    rewriter.eraseOp(castf32);
-    rewriter.eraseOp(castf16);
+  next_op_ = *castf32.getOutput().user_begin();
+  auto active = dyn_cast<tpu::ActiveOp>(next_op_);
+  if (!active) {
+    return failure();
+  }
 
-    active.dump();
-    return success();
+  active.setOperand(opt);
+  rewriter.replaceAllUsesWith(castf16.getOutput(), active.getInput());
+  // erase reversed
+  rewriter.eraseOp(castf32);
+  rewriter.eraseOp(castf16);
+
+  return success();
 }
 
