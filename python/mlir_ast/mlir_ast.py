@@ -8,16 +8,12 @@
 #
 # ==============================================================================
 
-from joblib import Parallel, delayed
-from copy import deepcopy
-import shutil
 import os
+from typing import Tuple
 from itertools import chain
-from typing import Tuple, Dict
+from typing import Dict
 from .nodes import *
-import mlir
-from mlir import ir
-from tqdm import tqdm
+import mlir.ir
 
 AST_CONTEXT: "MlirAST" = None
 
@@ -28,8 +24,6 @@ class MlirASTParser:
             self.mlir_fn = mlir_file
             self.lines = r.readlines()
             self.lno = 0
-        # self.tqdm = iter(tqdm(self.lines))
-        self.pool = Parallel(4)
         self._module = None
         self.ast = MlirAST()
         self.ast.mlir_file = os.path.abspath(mlir_file)
@@ -76,23 +70,32 @@ class MlirASTParser:
         self.ast.add_location(loc)
 
     def parse_module(self, module_start_line: str):
+        name_start_idx = module_start_line.find("@") + 1
+        name_end_idx = module_start_line.find("attributes") - 1
+
         attr_start_idx = module_start_line.find("{")
+
         attr_end_idx = module_start_line.find("}") + 1
 
+        name = module_start_line[name_start_idx:name_end_idx]
         attr_content = module_start_line[attr_start_idx:attr_end_idx]
         attrs = Attributes.parse(attr_content)
-
         funcs = []
         line = self.next_line()
+        sub_modules = []
         while line.strip() != "} loc(#loc)":
-            if line.lstrip().startswith("func.fun"):
+            if line.lstrip().startswith("module"):
+                sub_module = self.parse_module(line)
+                assert sub_module.dump_head().strip() == line.strip()
+                sub_modules.append(sub_module)
+            elif line.lstrip().startswith("func.fun"):
                 func = self.parse_func(line)
                 funcs.append(func)
             else:
-                raise NotImplementedError()
+                raise NotImplementedError(line)
             line = self.next_line()
 
-        module = Module(attrs=attrs, funcs=funcs)
+        module = Module(name=name, attrs=attrs, funcs=funcs, sub_modules=sub_modules)
         return module
 
     def parse_func(self, func_line: str) -> Func:
@@ -128,6 +131,7 @@ class MlirASTParser:
             if '"tpu.Group"' in line:
                 op = self.parse_groupop(line)
             elif line.lstrip().startswith("%"):
+                line = line.lstrip()
                 try:
                     op = self.parse_simple_operation(line)
                 except:
@@ -340,8 +344,12 @@ class MlirAST:
         except:
             pass
 
-    def get_op_name_by_op_id(self, op_id_str: str) -> str:
-        op = self.opid2op[op_id_str]
+    def get_op_name_by_op_id(self, opd_str: str) -> str:
+        """
+        for Operation input, use op.op_type.opds
+        for Operation output, use op.opd_ids
+        """
+        op = self.opid2op[opd_str]
         return self.locid2opname[op.loc_label.loc_id_str]
 
     def get_op_by_op_name(self, op_name: str) -> Operation:
@@ -363,6 +371,26 @@ class MlirParserV2:
 
         self.attrs = self.ast.module.attrs.to_dict()
         self.module = self.ast.module
+        self.module_state = self.attrs["module.state"]
+        self.module_weight_file = self.attrs["module.weight_file"]
+        self.module_chip = self.attrs["module.chip"]
+        self.ops = self.ast.ops
+        self.return_op = self.ast.return_op
+
+        self.inputs = []
+        for op in self.ops:
+            if op.type == "top.Input":
+                self.inputs.append(op)
+
+    @staticmethod
+    def from_astparser(parser: MlirASTParser):
+        self = MlirParserV2.__new__()  # type: MlirParserV2
+        self.ctx = mlir.ir.Context()
+        self.ctx.allow_unregistered_dialects = True
+        self.ast = parser.ast
+
+        self.attrs = self.ast.module.attrs.to_dict()
+        self.module = self.ast.module
         self.module_name = self.attrs["module.name"]
         self.module_state = self.attrs["module.state"]
         self.module_weight_file = self.attrs["module.weight_file"]
@@ -374,6 +402,7 @@ class MlirParserV2:
         for op in self.ops:
             if op.type == "top.Input":
                 self.inputs.append(op)
+        return self
 
     def get_op_by_op_id(self, op_id: str) -> Operation:
         return self.ast.opid2op[op_id]
@@ -522,3 +551,99 @@ class MlirParserV2:
 
         return middles
 
+    def get_all_parents_with_distance(self, op_name: str) -> Dict[str, int]:
+        queue = [(op_name, 0)]
+        visited = set()
+        dic = {}
+        while len(queue) > 0:
+            top, distance = queue.pop()
+            visited.update([top])
+            pre_ops = self.get_pre_op_by_op_name(top)
+            pre_ops = [(pre_op, distance + 1) for pre_op in pre_ops]
+            dic[top] = min(dic.get(top, 1e10), distance)
+            queue.extend(pre_ops)
+        return dic
+
+    def get_all_children_with_distance(self, op_name: str) -> Dict[str, int]:
+        queue = [(op_name, 0)]
+        visited = set()
+        dic = {}
+        while len(queue) > 0:
+            top, distance = queue.pop()
+            visited.update([top])
+            pre_ops = self.get_next_op_by_op_name(top)
+            pre_ops = [(pre_op, distance + 1) for pre_op in pre_ops]
+            dic[top] = min(dic.get(top, 1e10), distance)
+            queue.extend(pre_ops)
+        return dic
+
+    def find_earliest_common_parent(self, a: str, b: str) -> List[Tuple[str, int]]:
+        """
+        for DAG, multiple parents may be found
+
+        return:
+            List of tuple, in each tuple:
+            first element: operation name of common parent
+            second element (int): operation distance from a and b
+        """
+
+        a_parent = self.get_all_parents_with_distance(a)
+
+        cand = []
+        queue = [(b, 0, 0)]
+        counter = Counter()
+
+        branch_map = {}
+        unique_id = 0
+
+        def unique_branch(pre_op, branch_id, idx):
+            nonlocal unique_id
+            if pre_op in branch_map:
+                return branch_map[pre_op]
+
+            if idx == 0:
+                return branch_id
+            unique_id += 1
+            return unique_id
+
+        while len(queue) > 0:
+            top, branch_id, distance = queue.pop()
+            branch_map[top] = branch_id
+            counter.update([top])
+            pre_ops = self.get_pre_op_by_op_name(top)
+            pre_ops = [
+                (pre_op, unique_branch(pre_op, branch_id, i), distance + 1)
+                for i, pre_op in enumerate(pre_ops)
+                if pre_op not in counter
+            ]
+
+            for pre_op_tuple in pre_ops:
+                if top not in a_parent and pre_op_tuple[0] in a_parent:
+                    cand.append([pre_op_tuple[0], distance])
+                else:
+                    queue.append(pre_op_tuple)
+
+        return [(i[0], i[1] + a_parent[i[0]]) for i in cand]
+
+    def find_common_operations(self, names: List[str]) -> List[str]:
+        dic = {}
+
+        if len(names) == 1:
+            # dic[]
+            pass
+
+        counter = Counter()
+        for name in names:
+            queue = [name]
+            sub_counter = Counter()
+            while len(queue) > 0:
+                top = queue.pop()
+                counter.update([top])
+                pre_ops = self.get_pre_op_by_op_name(top)
+                pre_ops = [pre_op for pre_op in pre_ops if pre_op not in sub_counter]
+                queue.extend(pre_ops)
+                for pre in pre_ops:
+                    dic.setdefault(pre, set()).add(name)
+            counter.update(sub_counter)
+
+        return dic, counter
