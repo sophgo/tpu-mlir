@@ -22,6 +22,11 @@ void MaxLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxOp op,
   module::getScaleAndZeroPoint(op.getOutput(), o_scale, o_zp, sign, false);
   std::vector<int> coeff_v(nInputs, 1);
   std::vector<float> qscale(nInputs);
+  for (auto ins : op.getInputs()) {
+    if (module::isWeight(ins)) {
+      return LoweringBF16(rewriter, op);
+    }
+  }
   for (int i = 0; i < nInputs; i++) {
     double i_scale;
     int64_t i_zp;
