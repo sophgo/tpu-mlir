@@ -271,7 +271,6 @@ class Type(Node):
         pattern: tensor<[^>]+>
         """
         res = []
-
         match_tensor_start = Type.match_tensor.search(type_str)
         while match_tensor_start:
             tensor_start_idx = match_tensor_start.start()
@@ -281,12 +280,12 @@ class Type(Node):
             if match_tensor_end:
                 tensor_end_idx = match_tensor_end.start() - 2
             else:
-                tensor_end_idx = -1
+                tensor_end_idx = None
             tensor_str = type_str[tensor_start_idx:tensor_end_idx]
             if (tensor_str.strip()) == "none":
                 res.append(NoneType())
             else:
-                res.append(Type.parse(tensor_str))
+                res.append(Type.parse(tensor_str.rstrip(" )")))
             match_tensor_start = match_tensor_end
 
         return res
@@ -456,10 +455,26 @@ class Operation(Node):
         self.loc_label = loc_label
         self.const = const
         self._name = None
+        self._parent: GroupOp = None
         self.erased = False
+
+    @property
+    def ns_opd_ids(self):
+        ns = self.ns
+        return [ns + i for i in self.opd_ids]
+
+    @property
+    def ns(self) -> str:
+        if self._parent is None:
+            return ""
+        return self._parent.name + "-"
 
     def erase(self):
         self.erased = True
+
+    @property
+    def parent(self) -> "GroupOp":
+        return self._parent
 
     @property
     def name(self):
@@ -731,6 +746,7 @@ class GroupOp(Operation):
 class Func(Node):
     """
     func.func @main(%arg0: tensor<1x3x384x288xf32> loc(unknown)) -> tensor<1x133x96x72xf32, 4418519040 : i64> {
+                   argname;         type;               loc                     output_types
         ...
     } loc(#loc)
 
@@ -815,7 +831,10 @@ class Func(Node):
 
     @staticmethod
     def parse_func_inputs(func_inputs_str: str):
-        """%arg0: tensor<1x3x384x288xf32> loc(unknown)"""
+        """
+        %arg0: tensor<1x3x384x288xf32> loc(unknown)
+        %arg0: tensor<1x1600x4xf32, 4433473536 : i64> loc("p2o.Concat.30_Concat"), %arg1: tensor<1x300x2xsi32, 4433510400 : i64> loc("p2o.helper.concat.1_Concatgather_nd_0.tmp_0_GatherND_si32")
+        """
         start = func_inputs_str.find("%")
         arg_names = []
         arg_types = []
@@ -826,20 +845,21 @@ class Func(Node):
 
             arg_name_end_idx = func_inputs_str.find(":", start)
             arg_name = func_inputs_str[start:arg_name_end_idx]
-            tensor_pos = Type.match_tensor_from_line.search(func_inputs_str)
-
-            arg_type = Type.parse(tensor_pos.group(0))
+            tensor_start_idx = arg_name_end_idx + 1
+            tensor_end_idx = func_inputs_str.find("loc", arg_name_end_idx)
+            tensor_str = func_inputs_str[tensor_start_idx:tensor_end_idx].strip()
+            arg_type = Type.parse(tensor_str)
             arg_names.append(arg_name)
             arg_types.append(arg_type)
-            arg_loc_end_idx = func_inputs_str.find(",", tensor_pos.end(0))
 
+            arg_loc_start_idx = tensor_end_idx
+            arg_loc_end_idx = func_inputs_str.find(",", arg_loc_start_idx)
             if arg_loc_end_idx == -1:
-                loc_label_str = func_inputs_str[tensor_pos.end(0) :]
-            else:
-                loc_label_str = func_inputs_str[tensor_pos.end(0) : arg_loc_end_idx]
+                arg_loc_end_idx = None
+            loc_label_str = func_inputs_str[arg_loc_start_idx:arg_loc_end_idx].strip()
 
             arg_locs.append(LocLabel.parse(loc_label_str))
-            start = func_inputs_str.find("%", start + 1)
+            start = func_inputs_str.find("%", arg_loc_start_idx)
 
         return arg_names, arg_types, arg_locs
 
