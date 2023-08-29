@@ -9,16 +9,10 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
-
-int64_t top::WhereOp::getFLOPs() {
-  return module::getNumElements(getOutput());
-}
+int64_t top::WhereOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::WhereOp::init(InferenceParameter &p) { return success(); }
 void top::WhereOp::deinit(InferenceParameter &p) {}
-
 
 LogicalResult top::WhereOp::inference(InferenceParameter &p) {
   const auto num_element = module::getNumElements(getOutput());
@@ -48,7 +42,8 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
         idx_to_list(i, out_shape, list_);
         int64_t cond_idx = list_to_idx(list_, in0_stride);
         int64_t tbrn_idx = list_to_idx(list_, in1_stride);
-        p.outputs[0][i] = p.inputs[0][cond_idx] ? const_val : p.inputs[2][tbrn_idx];
+        p.outputs[0][i] =
+            p.inputs[0][cond_idx] ? const_val : p.inputs[2][tbrn_idx];
       }
     }
   } else if (y_const && x_const == false) {
@@ -69,7 +64,8 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
         idx_to_list(i, out_shape, list_);
         int64_t cond_idx = list_to_idx(list_, in0_stride);
         int64_t fbrn_idx = list_to_idx(list_, in1_stride);
-        p.outputs[0][i] = p.inputs[0][cond_idx] ? p.inputs[1][fbrn_idx] : const_val;
+        p.outputs[0][i] =
+            p.inputs[0][cond_idx] ? p.inputs[1][fbrn_idx] : const_val;
       }
     }
   } else if (y_const && x_const) {
@@ -112,7 +108,8 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
         int64_t cond_idx = list_to_idx(list_, in0_stride);
         int64_t tbrn_idx = list_to_idx(list_, in1_stride);
         int64_t fbrn_idx = list_to_idx(list_, in2_stride);
-        p.outputs[0][i] = p.inputs[0][cond_idx] ? p.inputs[1][tbrn_idx] : p.inputs[2][fbrn_idx];
+        p.outputs[0][i] = p.inputs[0][cond_idx] ? p.inputs[1][tbrn_idx]
+                                                : p.inputs[2][fbrn_idx];
       }
     }
   }
@@ -121,4 +118,53 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
 
 void top::WhereOp::shape_inference() {
   broadcast_shape_inference(getOperation());
+  // support case input/output both shape.
+  // cond/x/y all weight/shape, and weight is integer
+  std::vector<std::vector<int64_t>> input_shapes_v;
+  if (module::isShape(getCond())) {
+    auto input_shape_v = module::getShapeTensorValue(getCond());
+    input_shapes_v.push_back(input_shape_v);
+  } else if (module::isWeight(getCond())) {
+    auto data = getCond().getDefiningOp<top::WeightOp>().read_as_float();
+    std::vector<int64_t> data_v(data->begin(), data->end());
+    input_shapes_v.push_back(data_v);
+  }
+  if (getXIsConst()) {
+    auto x_const_v = getXConstVal().convertToDouble();
+    if (x_const_v == floor(x_const_v)) {
+      input_shapes_v.push_back({static_cast<int>(x_const_v)});
+    }
+  } else if (module::isShape(getTbrn())) {
+    auto input_shape_v = module::getShapeTensorValue(getTbrn());
+    input_shapes_v.push_back(input_shape_v);
+  } else if (module::isWeight(getTbrn())) {
+    auto data = getTbrn().getDefiningOp<top::WeightOp>().read_as_float();
+    if (std::all_of(data->begin(), data->end(),
+                    [](auto &x) { return x == floor(x); })) {
+      std::vector<int64_t> data_v(data->begin(), data->end());
+      input_shapes_v.push_back(data_v);
+    }
+  }
+  if (getYIsConst()) {
+    auto x_const_v = getYConstVal().convertToDouble();
+    if (x_const_v == floor(x_const_v)) {
+      input_shapes_v.push_back({static_cast<int>(x_const_v)});
+    }
+  } else if (module::isShape(getFbrn())) {
+    auto input_shape_v = module::getShapeTensorValue(getFbrn());
+    input_shapes_v.push_back(input_shape_v);
+  } else if (module::isWeight(getFbrn())) {
+    auto data = getFbrn().getDefiningOp<top::WeightOp>().read_as_float();
+    if (std::all_of(data->begin(), data->end(),
+                    [](auto &x) { return x == floor(x); })) {
+      std::vector<int64_t> data_v(data->begin(), data->end());
+      input_shapes_v.push_back(data_v);
+    }
+  }
+  if (input_shapes_v.size() == 3) {
+    auto out_shape = module::getShape(getOutput());
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }

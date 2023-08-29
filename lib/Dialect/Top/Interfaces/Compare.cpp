@@ -67,4 +67,27 @@ void top::CompareOp::shape_inference() {
     auto value = getOperation()->getOperand(i);
     broadcast_tensor_reshape(getOutput(), value);
   }
+  auto inputs = {getLhs(), getRhs()};
+  // shape value inference can only support shape and weight
+  bool need_shape_val_infer =
+      std::all_of(inputs.begin(), inputs.end(), [](auto in_op) {
+        return module::isShape(in_op) || module::isWeight(in_op);
+      });
+  if (need_shape_val_infer) {
+    std::vector<std::vector<int64_t>> input_shapes_v;
+    for (auto in_op : inputs) {
+      if (module::isShape(in_op)) {
+        auto input_shape_v = module::getShapeTensorValue(in_op);
+        input_shapes_v.push_back(input_shape_v);
+      } else if (module::isWeight(in_op)) {
+        auto data = in_op.getDefiningOp<top::WeightOp>().read_as_float();
+        std::vector<int64_t> data_v(data->begin(), data->end());
+        input_shapes_v.push_back(data_v);
+      }
+    }
+    auto out_shape = module::getShape(getOutput());
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }

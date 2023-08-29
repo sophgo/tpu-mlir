@@ -1607,8 +1607,10 @@ commonShapeValInfer(mlir::Operation *op,
   p.outputs.push_back(output_data.data());
   auto inf_op = dyn_cast<InferenceInterface>(op);
   assert(inf_op);
+  inf_op.init(p);
   auto ret = inf_op.inference(p);
   assert(mlir::succeeded(ret));
+  inf_op.deinit(p);
   std::vector<int64_t> output_shape_v(real_out_size);
   std::transform(output_data.begin(), output_data.end(), output_shape_v.begin(),
                  [](float_t i) { return static_cast<int64_t>(i); });
