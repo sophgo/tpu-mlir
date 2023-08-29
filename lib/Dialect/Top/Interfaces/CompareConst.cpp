@@ -37,4 +37,11 @@ LogicalResult top::CompareConstOp::inference(InferenceParameter &p) {
 
 void top::CompareConstOp::shape_inference() {
   common_shape_inference(getOperation());
+  if (module::isShape(getInput())) {
+    auto input_shape_v = module::getShapeTensorValue(getInput());
+    auto out_shape = module::getShape(getOutput());
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), {input_shape_v}, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }

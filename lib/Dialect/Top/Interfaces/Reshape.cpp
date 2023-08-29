@@ -86,5 +86,10 @@ void top::ReshapeOp::shape_inference() {
     assert(num_input == num_output);
   }
 
+  if (module::isShape(getInput())) {
+    auto out_shape = module::getShape(getOutput());
+    module::bindShapeTensorValue(getOutput(), out_shape);
+  }
+
   removeShapeAttr();
 }
