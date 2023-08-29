@@ -20,10 +20,10 @@ void tpu::RMSNormOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
 
   rms_norm_global_spec_t param = {0};
-  const bool have_gamma = !getGamma().getType().isa<NoneType>();
+  const bool has_weight = !module::isNone(getGamma());
 
   param.common.eps = getEps().convertToDouble();
-  param.common.affine = have_gamma;
+  param.common.affine = has_weight;
   BM168x::call_global_func("backend_api_rms_norm_global", &param, sizeof(param),
                            input_spec->data(), output_spec->data());
 }
@@ -41,12 +41,10 @@ int64_t tpu::RMSNormOp::getBufferSize_bm1684x(
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
   rms_norm_local_spec_t param = {0};
-  const bool have_weight = !getGamma().getType().isa<NoneType>();
+  const bool has_weight = !module::isNone(getGamma());
 
-  if (group_type == GROUP_SMALL_C) {
-  }
   param.common.eps = getEps().convertToDouble();
-  param.common.affine = have_weight;
+  param.common.affine = has_weight;
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(local_sec_info_t));
   sec_info.group_type = group_type;
@@ -73,13 +71,10 @@ void tpu::RMSNormOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
   rms_norm_local_spec param = {0};
-  const bool have_weight = !getGamma().getType().isa<NoneType>();
+  const bool has_weight = !module::isNone(getGamma());
 
-  if (group_type == GROUP_SMALL_C) {
-    [[maybe_unused]]auto shape = module::getShape(getInput());
-  }
   param.common.eps = getEps().convertToDouble();
-  param.common.affine = have_weight;
+  param.common.affine = has_weight;
   const auto &gi = getGroupInfo(0, 0, 0, 0, 0);
   param.buffer_addr = gi.buffer_addr;
   BM168x::call_local_func("backend_api_rms_norm_local", &param, sizeof(param),

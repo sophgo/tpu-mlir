@@ -51,7 +51,7 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
   }
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp,
-             SoftmaxOp>(op)) {
+             SoftmaxOp, RMSNormOp>(op)) {
       return false;
     }
     auto shape = module::getShape(op->getOperand(0));
@@ -94,7 +94,7 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
 static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp, MulOp,
-             ReshapeOp, SoftmaxOp, AttentionOp>(op)) {
+             ReshapeOp, SoftmaxOp, AttentionOp, RMSNormOp>(op)) {
       return false;
     }
     auto shape = module::getShape(op->getOperand(0));
