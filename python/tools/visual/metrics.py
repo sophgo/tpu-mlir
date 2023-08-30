@@ -17,8 +17,8 @@ def register(func):
 def cos(a, b):
     a_vec = a.flatten()
     b_vec = b.flatten()
-    denom = np.float(np.linalg.norm(a_vec) * np.linalg.norm(b_vec))
-    a_dot_b = np.float(np.dot(a_vec, b_vec))
+    denom = float(np.linalg.norm(a_vec) * np.linalg.norm(b_vec))
+    a_dot_b = float(np.dot(a_vec, b_vec))
     cos_dis = a_dot_b / (denom + np.finfo(np.float32).eps)
     if np.isinf(cos_dis):
         return -1
