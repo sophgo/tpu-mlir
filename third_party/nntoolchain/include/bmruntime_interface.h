@@ -87,6 +87,22 @@ DECL_EXPORT void bmrt_print_network_info(const bm_net_info_t* net_info);
  */
 DECL_EXPORT void* bmrt_create(bm_handle_t bm_handle);
 
+/* --------------------------------------------------------------------------*/
+/**
+ * @name    bmrt_create_ex
+ * @brief   To create the bmruntime with one or more bm_handle.
+ * @ingroup bmruntime
+ *
+ * This API creates the bmruntime. It returns a void* pointer which is the pointer
+ * of bmruntime.
+ *
+ * @param [in] bm_handles   bm handles. It must be initialized by using bmlib.
+ * @param [in] num_handles  number of bm_handles.
+ *
+ * @retval void* the pointer of bmruntime
+ */
+DECL_EXPORT void *bmrt_create_ex(bm_handle_t *bm_handles, int num_handles);
+
 /**
  * @name    bmrt_destroy
  * @brief   To destroy the bmruntime pointer
@@ -287,6 +303,47 @@ DECL_EXPORT bool bmrt_launch_data(void* p_bmrt, const char* net_name, void* cons
  * @param [in]    p_bmrt         Bmruntime that had been created
  */
 DECL_EXPORT void bmrt_trace(void* p_bmrt);
+
+/**
+ * @name    bmrt_launch_tensor_multi_cores
+ * @brief   To launch the inference of the neuron network with setting input tensors, and support multi core inference.
+ * @ingroup bmruntime
+ *
+ * This API supports the neuron nework that is static-compiled or dynamic-compiled
+ * After calling this API, inference on TPU is launched. And the CPU program will not
+ * be blocked. bm_thread_sync_from_core should be called to make sure inference is finished.
+ * This API support multiple inputs, and multi thread safety
+ *
+ * @param [in]    p_bmrt            Bmruntime that had been created
+ * @param [in]    net_name          The name of the neuron network
+ * @param [in]    input_tensors     Array of input tensor, defined like bm_tensor_t input_tensors[input_num],
+ *                                  User should initialize each input tensor.
+ * @param [in]    input_num         Input number
+ * @param [out]   output_tensors    Array of output tensor, defined like bm_tensor_t output_tensors[output_num].
+ *                                  User can set device_mem or stmode of output tensors. If user_mem is true, this interface
+ *                                  will use device mem of output_tensors to store output data, and not alloc device mem;
+ *                                  Or it will alloc device mem to store output. If user_stmode is true, it will use stmode in
+ *                                  each output tensor; Or stmode will be BM_STORE_1N as default.
+ * @param [in]    output_num        Output number
+ * @param [in]    user_mem          whether device_mem of output tensors are set
+ * @param [in]    user_stmode       whether stmode of output tensors are set
+ * @param [in]    core_list         core id list those will be used to inference
+ * @param [in]    core_num          number of the core list
+ *
+ * @retval true    Launch success.
+ * @retval false   Launch failed.
+ */
+DECL_EXPORT bool bmrt_launch_tensor_multi_cores(
+    void *p_bmrt,
+    const char *net_name,
+    const sg_tensor_t input_tensors[],
+    int input_num,
+    sg_tensor_t output_tensors[],
+    int output_num,
+    bool user_mem,
+    bool user_stmode,
+    const int *core_list,
+    int core_num);
 
 #if defined (__cplusplus)
 }
