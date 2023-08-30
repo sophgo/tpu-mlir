@@ -68,6 +68,14 @@ typedef struct bm_tensor_s {
   bm_store_mode_t st_mode; /* user can set 0 as default store mode */
 } bm_tensor_t;
 
+
+typedef struct sg_tensor_s {
+  bm_data_type_t dtype;
+  bm_shape_t shape;
+  sg_device_mem_t device_mem;
+  bm_store_mode_t st_mode; /* user can set 0 as default store mode */
+} sg_tensor_t;
+
 /* --------------------------------------------------------------------------*/
 /* network information structure */
 

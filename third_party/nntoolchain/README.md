@@ -32,11 +32,13 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 popd
 ```
 
-2023-08-31
+## tpu-runtime 2023-08-31
 build from tpu-runtime 37226235356cd162c872b14bce25b45d3a1424d8
-2023-03-03
-build from nntoolchain 8308714678f92122c2b3bb1989cfa978feb13c71
-2023-08-31
-build from libsophon   f5e30d4e32e5accef7de39a7e21f66292f3417d9
-2023-04-26
-build from tpu-cpuop   a158817d0260990d7a7aa6486cfacfab552b7ced
+``` bash
+pushd nntoolchain/net_compiler/
+source  scripts/envsetup.sh
+rebuild_bmruntime
+cp out/install_bmruntime/lib/libbmrt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp out/install/lib/libbmlib.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+popd
+```
