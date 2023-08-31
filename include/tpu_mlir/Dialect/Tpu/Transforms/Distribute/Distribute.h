@@ -22,6 +22,8 @@ namespace tpu {
 // ===================================
 void distribute(PatternRewriter &rewriter, Operation *op_begin,
                 Operation *op_end, tpu::DistributionPattern pattern);
+void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,
+                     Operation *op_end, tpu::DistributionPattern pattern);
 bool isLargeMatMul(Operation *op);
 bool isBinaryOp(Operation *op);
 Operation *cloneOp(PatternRewriter &rewriter, Operation *op,
@@ -48,6 +50,13 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
+class MatMulSliceMerge2 : public OpRewritePattern<tpu::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::MatMulOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 class MatMulTopK : public OpRewritePattern<tpu::MatMulOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
@@ -68,6 +77,8 @@ enum class DistributionEndMode {
 static DistributionEndMode getEndMode(tpu::DistributionEndOp op) {
   switch (op.getPattern()) {
   case tpu::DistributionPattern::MatMulSliceMerge:
+    return DistributionEndMode::EndToSum;
+  case tpu::DistributionPattern::MatMulSliceMerge2:
     return DistributionEndMode::EndToSum;
   case tpu::DistributionPattern::MatMulTopK:
     return DistributionEndMode::EndToTopK;
