@@ -28,7 +28,7 @@ class Net(torch.nn.Module):
         e = a + c
         return d, e
 
-
+torch.manual_seed(0)
 x = torch.randn(4, 64, 8, 8).float()
 y = torch.randn(8, 8).float()
 z = torch.randn(4, 64, 8, 8).float()
