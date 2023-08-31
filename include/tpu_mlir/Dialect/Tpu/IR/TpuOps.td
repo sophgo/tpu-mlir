@@ -175,7 +175,8 @@ def Tpu_DistributionPattern: I32EnumAttr<"DistributionPattern",
       I32EnumAttrCase<"MatMulRow", 1>,
       I32EnumAttrCase<"MatMulMerge", 2>,
       I32EnumAttrCase<"MatMulSliceMerge", 3>,
-      I32EnumAttrCase<"MatMulTopK", 4>
+      I32EnumAttrCase<"MatMulTopK", 4>,
+      I32EnumAttrCase<"MatMulSliceMerge2", 5>
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
