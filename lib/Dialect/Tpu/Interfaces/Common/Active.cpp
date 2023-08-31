@@ -114,7 +114,7 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
     break;
   case ActiveMode::SOFT_PLUS:
     active_func(p, num_element,
-                [](double val) { return std::log(std::exp(val) + 1); });
+              [](double val) { return val > 20 ? val : std::log(std::exp(val) + 1); });
     break;
   case ActiveMode::FLOOR:
     active_func(p, num_element, [](double val) { return std::floor(val); });
