@@ -87,7 +87,7 @@ void top::ReshapeOp::shape_inference() {
   }
 
   if (module::isShape(getInput())) {
-    auto out_shape = module::getShape(getOutput());
+    auto out_shape = module::getShapeTensorValue(getInput());
     module::bindShapeTensorValue(getOutput(), out_shape);
   }
 
