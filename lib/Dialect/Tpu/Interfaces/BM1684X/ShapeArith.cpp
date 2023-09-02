@@ -26,21 +26,32 @@ int64_t tpu::ShapeArithOp::dyn_codegen_global_bm1684x(void *buffer) {
 
     // TODO: Min Max GT LT GE LE SQRT ...
     if (op_type == "Add")
-      return BM168x::dynamic_spec_to_buffer(buffer, 0);
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_ADD);
     else if (op_type == "Sub")
-      return BM168x::dynamic_spec_to_buffer(buffer, 1);
-    else if (op_type == "Sub")
-      return BM168x::dynamic_spec_to_buffer(buffer, 2);
-    else if (op_type == "Sub")
-      return BM168x::dynamic_spec_to_buffer(buffer, 3);
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_SUB);
+    else if (op_type == "Mul")
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_MUL);
+    else if (op_type == "Div")
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_DIV);
+    else if (op_type == "Less")
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_LT);
+    else if (op_type == "Greater")
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_GT);
+    else if (op_type == "LessOrEqual")
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_LE);
+    else if (op_type == "GreaterOrEqual")
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_GE);
+    else if (op_type == "Min")
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_MIN);
+    else if (op_type == "Max")
+      return BM168x::dynamic_spec_to_buffer(buffer, BINARY_MAX);
   }
   return sizeof(int);
 }
 
-int64_t tpu::ShapeArithOp::get_fw_type_bm1684x() {
-  return FW_BMNET_SHAPE_ARITH;
-}
+int64_t tpu::ShapeArithOp::get_fw_type_bm1684x() { return FW_BMNET_SHAPE_OP; }
 
-mlir::Type tpu::ShapeArithOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+mlir::Type tpu::ShapeArithOp::type_verify(uint64_t opd_idx,
+                                          TypeCastMode &mode) {
   return do_nothing(mode);
 }

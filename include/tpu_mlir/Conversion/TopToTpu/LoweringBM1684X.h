@@ -34,6 +34,7 @@ SHAPE_LOWERING_BM1684X(Slice)
 SHAPE_LOWERING_BM1684X(Range)
 SHAPE_LOWERING_BM1684X(Reshape)
 SHAPE_LOWERING_BM1684X(TopK)
+SHAPE_LOWERING_BM1684X(MinConst)
 
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 

@@ -1871,6 +1871,7 @@ def Top_CompareConstOp : Top_Op<"CompareConst"> {
     BoolAttr:$inversed
   );
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_ErfOp : Top_Op<"Erf"> {
