@@ -21,10 +21,14 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
                    lg_info.type);
   int64_t max_nsecs = n;
   if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp,
-          tpu::MinOp>(lg_info.group_ops[0])) {
+          tpu::MinOp, tpu::MatMulOp>(lg_info.group_ops[0])) {
     module::getNCDHW(lg_info.group_ops[0]->getOperand(1), n, c, d, h, w,
                      lg_info.type);
-    max_nsecs = std::max(n, max_nsecs);
+    if (isa<tpu::MatMulOp>(lg_info.group_ops[0]) && n != max_nsecs) {
+      max_nsecs = 1;
+    } else {
+      max_nsecs = std::max(n, max_nsecs);
+    }
   }
   int64_t max_csecs = llvm::maxIntN(64);
   int64_t max_hsecs = llvm::maxIntN(64);
