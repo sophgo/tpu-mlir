@@ -34,6 +34,7 @@ struct Attr {
   static constexpr llvm::StringRef INPUTS = "module.inputs";
   static constexpr llvm::StringRef OUTPUTS = "module.outputs";
   static constexpr llvm::StringRef W8A16_LINEAR = "module.w8a16_linear";
+  static constexpr llvm::StringRef TRAIN = "module.train";
 };
 
 static ModuleOp m = nullptr;
@@ -980,6 +981,16 @@ void setW8A16Linear(bool is_w8a16linear) {
   m->setAttr(Attr::W8A16_LINEAR, BoolAttr::get(ctx, is_w8a16linear));
 }
 
+bool isTrain() {
+  if (m->hasAttrOfType<BoolAttr>(Attr::TRAIN)) {
+    return m->getAttrOfType<BoolAttr>(Attr::TRAIN).getValue();
+  }
+  return false;
+}
+
+void setTrain(bool is_train) {
+  m->setAttr(Attr::TRAIN, BoolAttr::get(ctx, is_train));
+}
 State getState() {
   auto s = m->getAttrOfType<StringAttr>(Attr::STATE);
   return symbolizeState(s).value_or(State::TOP_F32);
@@ -1199,10 +1210,14 @@ void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
     for (auto out : op.getOperands()) {
       auto result = out.cast<OpResult>();
       auto call_op = result.getDefiningOp<func::CallOp>();
-      auto func_op = getFuncOp(s, call_op.getCallee());
-      auto return_op = dyn_cast<ReturnOp>(func_op.front().back());
-      assert(return_op);
-      outputs.push_back(return_op.getOperand(result.getResultNumber()));
+      if(call_op) {
+        auto func_op = getFuncOp(s, call_op.getCallee());
+        auto return_op = dyn_cast<ReturnOp>(func_op.front().back());
+        assert(return_op);
+        outputs.push_back(return_op.getOperand(result.getResultNumber()));
+      } else {
+        outputs.push_back(out);
+      }
     }
   });
 }

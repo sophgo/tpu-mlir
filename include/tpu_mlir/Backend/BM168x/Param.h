@@ -1693,4 +1693,36 @@ typedef struct dyn_nms_global_spec {
 } dyn_nms_global_spec_t;
 #ifdef __cplusplus
 }
+
+typedef struct softmax_backward_cast_param {
+  int           axis;
+} softmax_backward_param_t;
+
+typedef struct weight_reorder_param {
+    int reorder_mode;
+} weight_reorder_param_t;
+
+typedef struct batchnorm_train_param {
+    float momentum;
+    float eps;
+} batchnorm_train_param_t;
+
+typedef struct batchnorm_backward_param {
+    int reserve;
+} batchnorm_backward_param_t;
+
+typedef struct layernorm_train_param {
+    int axis;
+    float eps;
+} layernorm_train_param_t;
+
+typedef struct layernorm_backward_param {
+    int axis;
+} layernorm_backward_param_t;
+
+typedef struct embedding_backward_param {
+    int  window_size;
+    bool is_index_int64;
+} embedding_backward_param_t;
+
 #endif

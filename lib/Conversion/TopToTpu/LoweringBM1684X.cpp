@@ -172,6 +172,13 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ShuffleChannelLowering,
       NmsLowering,
       RMSNormLowering,
+      LayerNormTrainLowering,
+      LayerNormBwdLowering,
+      BatchNormTrainLowering,
+      BatchNormBwdLowering,
+      EmbDenseBwdLowering,
+      SoftmaxBwdLowering,
+      WeightReorderLowering,
       RangeLowering
       // clang-format on
       >(patterns->getContext());
