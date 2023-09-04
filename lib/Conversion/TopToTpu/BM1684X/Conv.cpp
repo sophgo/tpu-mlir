@@ -572,15 +572,18 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
   //   return;
   // }
   auto p = op.parseParam();
-  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  operands.push_back(op.getInput());
-  if (module::isWeight(op.getFilter()) == false) {
-    operands.push_back(op.getFilter());    
-  } else{
-    operands.push_back(filterOp.clone_bf16(op));  
+  for (int i = 0; i < 2; i++) {
+    // 0: input; 1: filter, both have possibility to be WeightOp
+    auto opd = op.getOperand(i);
+    if (auto weightOp = dyn_cast<top::WeightOp>(opd.getDefiningOp())) {
+      operands.push_back(weightOp.clone_bf16(op));
+    } else {
+      operands.push_back(opd);
+    }
   }
+
   operands.push_back(op.getBias());
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -602,15 +605,20 @@ void ConvLowering::LoweringF16(PatternRewriter &rewriter,
   //   return;
   // }
   auto p = op.parseParam();
-  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  operands.push_back(op.getInput());
-  if (module::isWeight(op.getFilter()) == false) {
-    operands.push_back(op.getFilter());    
-  } else{
-    operands.push_back(filterOp.clone_f16(op));  
+
+  for (int i = 0; i < 2; i++) {
+    // 0: input; 1: filter, both have possibility to be WeightOp
+    auto opd = op.getOperand(i);
+    if (auto weightOp = dyn_cast<top::WeightOp>(opd.getDefiningOp())) {
+      operands.push_back(weightOp.clone_f16(op));
+    } else {
+      operands.push_back(opd);
+    }
   }
+
+  // bias lowering will be done in --weight-reorder pass
   operands.push_back(op.getBias());
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
