@@ -64,7 +64,7 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
       p.K = b_s[b_dims - 3];
       p.N = b_s[b_dims - 1];
       // fix bias_merge_izp size for bm1684x
-      if (module::isBM1684XFamily()) {
+      if (module::isBM1684XFamily() || module::isSG2260Family()) {
         p.N = b_s[b_dims - 3];
         p.K = b_s[b_dims - 1];
       }
@@ -264,7 +264,7 @@ LogicalResult tpu::MatMulOp::LocalGenSupport() {
   if (module::isCV18xx()) {
     return failure();
   }
-  if (module::isBM1684XFamily() &&
+  if ((module::isBM1684XFamily() || module::isSG2260Family()) &&
       getRunMode(getOperation()) == tpu::RunMode::TPU_DYNAMIC) {
     return failure();
   }
