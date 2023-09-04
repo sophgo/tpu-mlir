@@ -720,7 +720,8 @@ public:
     module::setW8A16Linear(isW8A16Linear);
     init_qtable();
 
-    if (module::isBM1684XFamily() && !LoweringConfig::isQuantized &&
+    if ((module::isBM1684XFamily() || module::isSG2260Family())
+         && !LoweringConfig::isQuantized &&
         (module::getMode() == module::Mode::INT8 ||
          module::getMode() == module::Mode::UINT8)) {
       qtable_process();
@@ -730,7 +731,7 @@ public:
     RewritePatternSet patterns(ctx_);
 
     // process shape related ops
-    if (module::isBM1684XFamily()) {
+    if (module::isBM1684XFamily() || module::isSG2260Family()) {
       bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
     } else if (module::isBM1684Family()) {
       bm1684::populateTopShapeToTpuConversionPatterns(&patterns);
@@ -748,7 +749,7 @@ public:
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
 
     patterns.clear();
-    if (module::isBM1684XFamily()) {
+    if (module::isBM1684XFamily() || module::isSG2260Family()) {
       ConversionTarget target(*ctx_);
       ScfTypeConverter typeConverter;
       target.addLegalDialect<mlir::func::FuncDialect, top::TopDialect,

@@ -255,7 +255,8 @@ public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::Conv2DOp op,
                                 PatternRewriter &rewriter) const override {
-    if (!module::isBM1684XFamily() || !module::isWeight(op.getFilter())) {
+    if (!(module::isBM1684XFamily() || module::isSG2260Family()) ||
+        !module::isWeight(op.getFilter())) {
       return failure();
     }
     auto data_type = module::getStorageType(op.getFilter());

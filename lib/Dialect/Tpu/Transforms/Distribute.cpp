@@ -152,7 +152,7 @@ public:
     if (module::getNumSubModule() > 0) {
       return;
     }
-    if (!module::isBM1684XFamily()) {
+    if (!(module::isBM1684XFamily() || module::isSG2260Family())) {
       num_device = 1;
     }
     module::setDeviceNum(num_device);

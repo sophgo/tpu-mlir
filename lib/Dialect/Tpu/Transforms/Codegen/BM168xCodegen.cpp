@@ -112,7 +112,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
   std::vector<Offset<bmodel::SubNet>> subnet_v;
   auto context = std::make_unique<Context>();
-  int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;
+  int dynamic_mode = (module::isBM1684XFamily()
+                     || module::isSG2260Family()) ? 2 : 1;
   bool first_dynamic = false;
 
   s.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
