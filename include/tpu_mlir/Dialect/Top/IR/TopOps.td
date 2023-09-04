@@ -2841,4 +2841,155 @@ def Top_RoundOp : Top_Op<"Round"> {
   let results = (outs
     AnyTensor:$output);
 }
+
+def Top_BatchNormTrainOp: Top_Op<"BatchNormTrain"> {
+  let summary = "BatchNormalization train operation";
+  let description = [{
+    Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
+    with additional channel dimension) as described in the paper
+    Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`__ .
+
+    ```math
+        y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
+    ```
+
+    The mean and standard-deviation are calculated per-dimension over
+    the mini-batches and $$\gamma$$ and $$\beta$$ are learnable parameter vectors
+    of size C (where C is the input channel size).
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$mean,
+    AnyTensor:$variance,
+    AnyTensorOrNone:$gamma,
+    AnyTensorOrNone:$beta,
+    DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
+    DefaultValuedAttr<F64Attr, "0.1">:$momentum
+  );
+  let results = (outs
+    AnyTensor:$output,
+    AnyTensor:$mean_out,
+    AnyTensor:$variance_out
+  );
+}
+
+def Top_BatchNormBwdOp: Top_Op<"BatchNormBwd"> {
+  let summary = "BatchNormalization train operation";
+  let description = [{
+    Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
+    with additional channel dimension) as described in the paper
+    Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`__ .
+
+    ```math
+        y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
+    ```
+
+    The mean and standard-deviation are calculated per-dimension over
+    the mini-batches and $$\gamma$$ and $$\beta$$ are learnable parameter vectors
+    of size C (where C is the input channel size).
+  }];
+  let arguments = (ins
+    AnyTensor:$grad_out,
+    AnyTensor:$input,
+    AnyTensorOrNone:$weight_opt,
+    AnyTensorOrNone:$running_mean_opt,
+    AnyTensorOrNone:$running_var_opt,
+    DefaultValuedAttr<F64Attr, "1e-05">:$epsilon
+  );
+  let results = (outs
+    AnyTensor:$output,
+    AnyTensor:$mean_out,
+    AnyTensor:$variance_out
+  );
+}
+
+
+def Top_LayerNormTrainOp : Top_Op<"LayerNormTrain"> {
+  let summary = "LayerNorm operation for train";
+  let description = [{
+    layer normalization in train
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    I64ArrayAttr:$normalized_shape,
+    SI32Attr:$axis,
+    F64Attr:$eps
+  );
+  let results = (outs
+    AnyTensor:$output,
+    AnyTensor:$mean,
+    AnyTensor:$variance
+  );
+}
+
+def Top_LayerNormBwdOp : Top_Op<"LayerNormBwd"> {
+  let summary = "LayerNorm operation for train";
+  let description = [{
+    layer normalization in train
+  }];
+  let arguments = (ins
+    AnyTensor:$grad_out,
+    AnyTensor:$mean,
+    AnyTensor:$variance,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    I64ArrayAttr:$normalized_shape
+  );
+  let results = (outs
+    AnyTensorOrNone:$grad_input,
+    AnyTensorOrNone:$grad_weight,
+    AnyTensorOrNone:$grad_bias
+  );
+}
+
+def Top_EmbDenseBwdOp : Top_Op<"EmbDenseBwd"> {
+  let summary = "EmbDenseBwd operation for train";
+  let description = [{
+    layer normalization
+  }];
+  let arguments = (ins
+    AnyTensor:$grad_output,
+    AnyTensor:$indices,
+    SI32Attr:$num_weights
+  );
+  let results = (outs
+    AnyTensor:$output
+  );
+}
+
+def Top_WeightReorderOp: Top_Op<"WeightReorder"> {
+  let summary = "WeightReorder operator";
+
+  let description = [{
+      reorder Weight.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    DefaultValuedAttr<I64Attr, "0">:$reorder_mode
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+
+def Top_SoftmaxBwdOp: Top_Op<"SoftmaxBwd"> {
+  let summary = "softmax backward operator";
+
+  let description = [{
+    Integrates some operations related to softmax backward.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$grad_output,
+    AnyTensor:$output,
+    SI32Attr:$dim
+  );
+
+  let results = (outs AnyRankedTensor:$grad_input);
+}
+
 #endif // Top_OPS
