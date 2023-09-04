@@ -129,6 +129,8 @@ typedef struct inst_profile {
   bool b_gdma_use_l2;
 } INST_PROFILE;
 
+//bm1686 also use it
+#define CONFIG_MAX_CDMA_NUM 10
 typedef struct cmd_id_node {
   unsigned int bd_cmd_id;
   unsigned int gdma_cmd_id;
@@ -144,6 +146,8 @@ typedef struct cmd_id_node {
   gdma_cmd_node_info_t gdma_cmd_info;
   INST_PROFILE inst_profile;
 #endif
+  unsigned int sdma_cmd_id;
+  unsigned int cdma_cmd_id[CONFIG_MAX_CDMA_NUM];
 } CMD_ID_NODE;
 
 #ifdef SG_STAS_GEN
