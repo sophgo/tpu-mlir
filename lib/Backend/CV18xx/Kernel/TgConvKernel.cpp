@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/Kernel/TgConvKernel.hpp"
-#include "tpu_mlir/Support/TPUCompressUtil.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/TPUCompressUtil.h"
 
 #define DEBUG_TYPE "cvi_backend_conv_kernel"
 
@@ -1600,7 +1600,7 @@ void Conv::computeLeakyRelu(cvk_tl_t *tl_output) {
   bool isSlopeSmallerThanOne =
       ((args.activation_le_scale >> args.activation_le_rshift) == 0);
 
-  if (isIgnorePosPart) {
+  if (isIgnorePosPart && args.activation_le_scale >= 0) {
     cvk_tiu_mul_param_t p4 = {0};
     p4.res_high = nullptr;
     p4.res_low = &tl_relu;
@@ -1639,19 +1639,19 @@ void Conv::computeLeakyRelu(cvk_tl_t *tl_output) {
     p1.b_const.val = 0;
     p1.layer_id = args.layer_id;
     CV18xx::tiu_max(&p1);
-
-    cvk_tiu_mul_param_t p2 = {0};
-    p2.res_high = nullptr;
-    p2.res_low = &tl_relu;
-    p2.a = &tl_relu;
-    p2.b_const.val = args.activation_gt_scale;
-    p2.b_const.is_signed = true;
-    p2.b_is_const = 1;
-    p2.rshift_bits = args.activation_gt_rshift;
-    p2.layer_id = args.layer_id;
-    p2.relu_enable = 0;
-    CV18xx::tiu_mul(&p2);
-
+    if (!isIgnorePosPart) {
+      cvk_tiu_mul_param_t p2 = {0};
+      p2.res_high = nullptr;
+      p2.res_low = &tl_relu;
+      p2.a = &tl_relu;
+      p2.b_const.val = args.activation_gt_scale;
+      p2.b_const.is_signed = true;
+      p2.b_is_const = 1;
+      p2.rshift_bits = args.activation_gt_rshift;
+      p2.layer_id = args.layer_id;
+      p2.relu_enable = 0;
+      CV18xx::tiu_mul(&p2);
+    }
     cvk_tiu_min_param_t p3 = {0};
     p3.min = &tl_neg;
     p3.a = tl_output;
