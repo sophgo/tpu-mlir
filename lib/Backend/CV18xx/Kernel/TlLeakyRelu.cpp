@@ -9,9 +9,6 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 
-
-
-
 #define DEBUG_TYPE "tl_leay_relu"
 
 namespace tpu_mlir {
@@ -27,7 +24,8 @@ void cvi_backend_tl_leaky_relu(uint32_t layer_id, laddr_t input_laddr,
   bool isSlopeSmallerThanOne = ((LE_scale >> LE_right_shift_width) == 0);
 
   // input
-  cvk_tl_shape_t tl_shape = CV18xx::tl_shape_t4(input_n, input_c, input_h, input_w);
+  cvk_tl_shape_t tl_shape =
+      CV18xx::tl_shape_t4(input_n, input_c, input_h, input_w);
   cvk_tl_t tl_input;
   tl_input.start_address = input_laddr;
   tl_input.fmt = CVK_FMT_I8;
@@ -40,7 +38,7 @@ void cvi_backend_tl_leaky_relu(uint32_t layer_id, laddr_t input_laddr,
   tl_output.shape = tl_shape;
   tl_output.stride = CV18xx::tl_default_stride(tl_shape, CVK_FMT_I8, 1);
 
-  if (isIgnorePosPart) {
+  if (isIgnorePosPart && LE_scale >= 0) {
     cvk_tiu_mul_param_t p4 = {0};
     p4.res_high = nullptr;
     p4.res_low = &tl_output;
@@ -81,18 +79,20 @@ void cvi_backend_tl_leaky_relu(uint32_t layer_id, laddr_t input_laddr,
     p13.layer_id = layer_id;
     CV18xx::tiu_max(&p13);
 
-    // 1. relu = (relu * GT_scale) >> GT_right_shift_width
-    cvk_tiu_mul_param_t p = {0};
-    p.res_high = nullptr;
-    p.res_low = &tl_output;
-    p.a = &tl_output;
-    p.b_const.val = GT_scale;
-    p.b_const.is_signed = true;
-    p.b_is_const = 1;
-    p.rshift_bits = GT_right_shift_width;
-    p.layer_id = layer_id;
-    p.relu_enable = 0;
-    CV18xx::tiu_mul(&p);
+    if (!isIgnorePosPart) {
+      // 1. relu = (relu * GT_scale) >> GT_right_shift_width
+      cvk_tiu_mul_param_t p = {0};
+      p.res_high = nullptr;
+      p.res_low = &tl_output;
+      p.a = &tl_output;
+      p.b_const.val = GT_scale;
+      p.b_const.is_signed = true;
+      p.b_is_const = 1;
+      p.rshift_bits = GT_right_shift_width;
+      p.layer_id = layer_id;
+      p.relu_enable = 0;
+      CV18xx::tiu_mul(&p);
+    }
 
     // 2. neg = neg(0, botom)
     cvk_tiu_min_param_t p7 = {0};
@@ -133,7 +133,8 @@ void cvi_backend_bf16_tl_leaky_relu(uint32_t layer_id, laddr_t input_laddr,
                                     int input_w, float neg_slope) {
 
   // input
-  cvk_tl_shape_t tl_shape = CV18xx::tl_shape_t4(input_n, input_c, input_h, input_w);
+  cvk_tl_shape_t tl_shape =
+      CV18xx::tl_shape_t4(input_n, input_c, input_h, input_w);
   cvk_tl_t tl_input, tl_output, tl_working;
   CV18xx::lmem_init_tensor(&tl_input, tl_shape, CVK_FMT_BF16, 1);
   CV18xx::lmem_init_tensor(&tl_output, tl_shape, CVK_FMT_BF16, 1);

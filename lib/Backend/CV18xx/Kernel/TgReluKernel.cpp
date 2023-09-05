@@ -160,7 +160,7 @@ void TgReluKernel::compute_leaky_relu_fixed_sym(int32_t step_idx, int32_t flip) 
   bool isIgnorePosPart = (GT_scale == 0 || (GT_scale == 1 && GT_rshift == 0));
   bool isSlopeSmallerThanOne = ((LE_scale >> LE_rshift) == 0);
 
-  if (isIgnorePosPart) {
+  if (isIgnorePosPart && LE_scale >= 0) {
     cvk_tiu_mul_param_t p1 = {0};
     p1.res_high = nullptr;
     p1.res_low = &tl_ofmap;
@@ -199,21 +199,21 @@ void TgReluKernel::compute_leaky_relu_fixed_sym(int32_t step_idx, int32_t flip) 
     p3.b_const.val = 0;
     p3.layer_id = layer_id;
     CV18xx::tiu_max(&p3);
-
-    // tl_ofmap = (tl_ofmap * GT_scale) >> GT_rshift
-    cvk_tiu_mul_param_t p4 = {0};
-    p4.res_high = nullptr;
-    p4.res_low = &tl_ofmap;
-    p4.a = &tl_ofmap;
-    p4.b_const.val = GT_scale;
-    p4.b_const.is_signed = true;
-    p4.b_is_const = 1;
-    p4.rshift_bits = GT_rshift;
-    p4.layer_id = layer_id;
-    p4.relu_enable = 0;
-    CV18xx::tiu_mul(&p4);
-
-    // tl_ifmap = min(0, tl_ifmap)
+    if (!isIgnorePosPart) {
+      // tl_ofmap = (tl_ofmap * GT_scale) >> GT_rshift
+      cvk_tiu_mul_param_t p4 = {0};
+      p4.res_high = nullptr;
+      p4.res_low = &tl_ofmap;
+      p4.a = &tl_ofmap;
+      p4.b_const.val = GT_scale;
+      p4.b_const.is_signed = true;
+      p4.b_is_const = 1;
+      p4.rshift_bits = GT_rshift;
+      p4.layer_id = layer_id;
+      p4.relu_enable = 0;
+      CV18xx::tiu_mul(&p4);
+    }
+    // tl_ifmap = min(0, tl_ifmap) select meg part
     cvk_tiu_min_param_t p5 = {0};
     p5.min = &tl_ifmap;
     p5.a = &tl_ifmap;
