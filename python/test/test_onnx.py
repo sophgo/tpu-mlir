@@ -95,6 +95,7 @@ class ONNX_IR_TESTER(object):
             "Exp":          (self.test_Exp,           Y, Y, Y, Y),
             "Expand":       (self.test_Expand,        Y, Y, Y, Y),
             "Expand2":      (self.test_Expand2,       Y, Y, Y, Y),
+            "ExpandDyn":    (self.test_ExpandDyn,    N, Y, Y, N),
             "Flatten":      (self.test_Flatten,       Y, Y, Y, Y),
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y),
@@ -468,10 +469,14 @@ class ONNX_IR_TESTER(object):
 
         counter = 0
         onnx_transformed_model = {}
+        print("*****************************")
+        print(model_outs)
+        print("*****************************")
         for name in onnx_outs:
+            key_vals = {key_val[0:len(name)]: key_val for key_val in model_outs.keys()}
             found = False
-            if name in model_outs:
-                mapped_name = name
+            if name in key_vals.keys():
+                mapped_name = key_vals[name]
                 found = True
             elif name in node_name_mapping:
                 mapped_name = node_name_mapping[name]
@@ -4447,6 +4452,33 @@ class ONNX_IR_TESTER(object):
                                       initializer=[shape_def])
         self.onnx_and_test(graph_def)
 
+    def test_ExpandDyn(self, case_name):
+        nonzero_input_shape = [2,6]
+        nonzero_input = helper.make_tensor_value_info('nonzero_input', TensorProto.FLOAT, nonzero_input_shape)
+        expand_input_shape = [3,1]
+        expand_input = helper.make_tensor_value_info('expand_input', TensorProto.FLOAT, expand_input_shape)
+
+        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, [])
+        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [], vals=[0])
+        indices = helper.make_tensor('indices', TensorProto.INT64, [1], vals=[0])
+        dim0 = helper.make_tensor('dim0', TensorProto.INT64, [1], vals=[3])
+
+        gather0_def = helper.make_node('Gather', inputs=['nonzero_input', 'indices0'], axis=0, outputs=['gather0'])
+        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
+        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
+        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
+        gather_def = helper.make_node('Gather', inputs=['shape', 'indices'], axis=0, outputs=['dim1'])
+        concat_def = helper.make_node('Concat', inputs=['dim0', 'dim1'], axis=0, outputs=['times'])
+        expand_def = helper.make_node('Expand', inputs=['expand_input', 'times'], outputs=['Y_Value'])
+        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def,shape_def,gather_def, concat_def, expand_def],
+                                      case_name, [nonzero_input, expand_input], [Y_Value],
+                                      initializer=[indices0,indices,dim0])
+        input_data={
+            'nonzero_input' : np.array([[1, 0, 3, 0, 4, 0], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
+            'expand_input': np.array([[1.5], [2.1], [3.5]], dtype=np.float32)
+                    }
+        self.onnx_and_test_bmodel(graph_def, static_shape=False, input_data=input_data, only_cmp_with_bmodel=True)
+
     def test_Max(self, case_name):
         input_shape = {"input1": [1, 85, 32, 8], "input2": [1, 85, 32, 8]}
         output_shape = [1, 85, 32, 8]
@@ -4752,7 +4784,7 @@ class ONNX_IR_TESTER(object):
             "Einsum",
             inputs=['input', 'weight'],
             outputs=['output'],
-            equation='bfnd,ndh->bfh',
+            equation='bfnd,ndh->bfh ',
         )
 
         graph_def = helper.make_graph([einsum_def],

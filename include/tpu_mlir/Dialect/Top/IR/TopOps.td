@@ -1280,7 +1280,8 @@ def Top_ExpandOp: Top_Op<"Expand"> {
 
   let arguments = (ins
     AnyTensor:$input,
-    I64ArrayAttr:$shape
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$shape,
+    Optional<AnyTensor>:$shapeT
   );
 
   let results = (outs AnyTensor:$output);
