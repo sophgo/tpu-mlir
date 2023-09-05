@@ -1707,13 +1707,21 @@ class OnnxConverter(BaseConverter):
 
     def convert_expand_op(self, onnx_node):
         assert (onnx_node.op_type == 'Expand')
-        in0 = self.getOperand(onnx_node.inputs[0])
-        shape = self.getWeight(onnx_node.inputs[1])
-        new_op = top.ExpandOp(self.unranked_type,
-                               in0,
-                               shape=shape,
-                               loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                               ip=self.mlir.insert_point).output
+        in0 = self.getOp(onnx_node.inputs[0])
+        if self.isWeight(onnx_node.inputs[1]):
+            shape = self.getWeight(onnx_node.inputs[1])
+            new_op = top.ExpandOp(self.unranked_type,
+                                   in0,
+                                   shape=shape,
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                   ip=self.mlir.insert_point).output
+        else:
+            shape = self.getOperand(onnx_node.inputs[1])
+            new_op = top.ExpandOp(self.unranked_type,
+                                in0,
+                                shapeT=shape,
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
         return
 

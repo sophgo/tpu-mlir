@@ -22,23 +22,32 @@ LogicalResult top::ExpandOp::inference(InferenceParameter &p) {
 void top::ExpandOp::shape_inference() {
   auto in_shape = module::getShape(getInput());
   std::vector<int64_t> out_shape;
-  auto shape = module::getI64Array(getShape());
-  auto in_dims = in_shape.size();
-  auto new_dims = shape->size();
-  assert(in_dims <= new_dims);
-  auto sub = new_dims - in_dims;
-  for (int i = 0; i < new_dims; i++) {
-    auto s = shape->at(i);
-    if (i < sub) {
-      out_shape.push_back(s);
-    } else if (s == 1) {
-      out_shape.push_back(in_shape[i - sub]);
-    } else if (in_shape[i - sub] == 1 || in_shape[i - sub] == s) {
-      out_shape.push_back(s);
-    } else {
-      dump();
-      llvm_unreachable("shape is illegal");
-    }
+  if (!getShapeT()){
+      auto shape_v = module::getI64Array(getShape());
+      out_shape = *shape_v;
+  } else if (auto shape_w = dyn_cast<top::WeightOp>(getShapeT().getDefiningOp())){
+    auto shape_v = shape_w.read_as_float();
+    std::transform(shape_v->begin(), shape_v->end(),
+        std::back_inserter(out_shape),
+        [](auto &v) { return static_cast<int64_t>(v); });
+  } else if (module::isShape(getShapeT())) {
+      out_shape = module::getShapeTensorValue(getShapeT());
+  } else{
+    llvm_unreachable("out_shape is illegal");
+  }
+
+  int dim_in = in_shape.size();
+  int dim_out = out_shape.size();
+  int dim_pad = dim_out - dim_in;
+  assert(dim_pad >= 0);
+
+  for(int i = dim_pad; i < dim_out; i++){
+    out_shape[i] = in_shape[i - dim_pad] == 1 ? out_shape[i] : in_shape[i - dim_pad];
   }
   module::setShapeOrVerify(getOutput(), out_shape);
+
+  if (module::isShape(getInput())) {
+    module::bindShapeTensorValue(getOutput(), out_shape);
+  }
+
 }
