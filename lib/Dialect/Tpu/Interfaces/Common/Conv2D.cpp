@@ -289,12 +289,6 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
       return failure();
     }
   }
-  if (module::isWeight(getFilter()) == false) {
-    auto Filter_type = BM168x::getDataType(getFilter());
-    if (Filter_type == DTYPE_FP32){
-      return failure();
-    }
-  }
   return success();
 }
 
