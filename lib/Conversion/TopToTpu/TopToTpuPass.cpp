@@ -442,6 +442,7 @@ struct SelectiveWhere : public OpRewritePattern<top::WhereOp> {
     auto out_qtype = module::getCalibratedType(out);
     // if output th is less than const(if exists), make it larger to include
     // const val
+    bool out_to_constv = false;
     if (out_qtype.getMax() < const_v) {
       auto out_qtype = module::getCalibratedType(out);
       auto new_qtype = quant::CalibratedQuantizedType::get(
@@ -451,11 +452,20 @@ struct SelectiveWhere : public OpRewritePattern<top::WhereOp> {
       auto new_type = RankedTensorType::get(
           out.getType().cast<RankedTensorType>().getShape(), new_qtype);
       out.setType(new_type);
+      out_to_constv = true;
     }
+    // but if where is set float, don't backward the th
+    bool float_where = false;
+    if (LoweringConfig::quantize_map.find(module::getName(op.getOperation()).str()) != LoweringConfig::quantize_map.end()) {
+      if (LoweringConfig::quantize_map.find(module::getName(op.getOperation()).str())->second == module::Mode::F32 ||
+          LoweringConfig::quantize_map.find(module::getName(op.getOperation()).str())->second == module::Mode::F16)
+        float_where = true;
+    }
+
     // if input is not the same with out, set the input to follow output
-    // don't backward to condition
+    // don't backward to condition, and don't backward to input if output has been enlarged to const_v
     bool changed = false;
-    if (!op.getXIsConst()) {
+    if (!op.getXIsConst() && !out_to_constv && !float_where) {
       auto in = op.getTbrn();
       if (!module::isCalibratedType(in))
         return failure();
@@ -471,7 +481,7 @@ struct SelectiveWhere : public OpRewritePattern<top::WhereOp> {
         changed |= true;
       }
     }
-    if (!op.getYIsConst()) {
+    if (!op.getYIsConst() && !out_to_constv && !float_where) {
       auto in = op.getFbrn();
       if (!module::isCalibratedType(in))
         return failure();
@@ -523,6 +533,7 @@ struct SelectiveMaskedFill : public OpRewritePattern<top::MaskedFillOp> {
     auto out_qtype = module::getCalibratedType(out);
     // if output th is less than const(if exists), make it larger to include
     // const val
+    bool out_to_constv = false;
     if (out_qtype.getMax() < const_v) {
       auto out_qtype = module::getCalibratedType(out);
       auto new_qtype = quant::CalibratedQuantizedType::get(
@@ -532,13 +543,23 @@ struct SelectiveMaskedFill : public OpRewritePattern<top::MaskedFillOp> {
       auto new_type = RankedTensorType::get(
           out.getType().cast<RankedTensorType>().getShape(), new_qtype);
       out.setType(new_type);
+      out_to_constv = true;
     }
     // if input is not the same with out, set the input to follow output
     // don't backward to condition
+    // but if where is set float, don't backward the th
+    bool float_mf = false;
+    if (LoweringConfig::quantize_map.find(module::getName(op.getOperation()).str()) != LoweringConfig::quantize_map.end()) {
+      if (LoweringConfig::quantize_map.find(module::getName(op.getOperation()).str())->second == module::Mode::F32 ||
+          LoweringConfig::quantize_map.find(module::getName(op.getOperation()).str())->second == module::Mode::F16)
+        float_mf = true;
+    }
+
     bool changed = false;
     auto in = op.getOperand(1);
-    if (module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
-        module::getCalibratedType(in).getMax() != out_qtype.getMax()) {
+    if ((module::getCalibratedType(in).getMin() != out_qtype.getMin() ||
+         module::getCalibratedType(in).getMax() != out_qtype.getMax()) &&
+        !out_to_constv && !float_mf) {
       auto in_qtype = module::getCalibratedType(in);
       auto new_qtype = quant::CalibratedQuantizedType::get(
           in_qtype.getExpressedType(), out_qtype.getMin(), out_qtype.getMax());
@@ -709,6 +730,9 @@ public:
     if (weightFileName != "") {
       module::setWeightFileName(weightFileName);
     }
+
+    init_qtable();
+
     if (module::isState(module::State::TOP_QUANTIZED)) {
       module::setAsymmetric(true);
       LoweringConfig::isQuantized = true;
@@ -718,7 +742,6 @@ public:
       calibration_process();
     }
     module::setW8A16Linear(isW8A16Linear);
-    init_qtable();
 
     if ((module::isBM1684XFamily() || module::isSG2260Family())
          && !LoweringConfig::isQuantized &&
