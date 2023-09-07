@@ -18,7 +18,7 @@ import onnxsim.onnx_simplifier as onnxsim
 from utils.preprocess import get_preprocess_parser, preprocess
 from utils.mlir_parser import *
 from utils.misc import *
-from tools.model_runner import is_dynamic_model, get_chip_from_model, round_away_from_zero, fp32_to_bf16, bf16_to_fp32
+from tools.model_runner import get_chip_from_model, round_away_from_zero
 
 
 
@@ -101,10 +101,8 @@ class bmodel_inference(common_inference):
         pyruntime = "pyruntime_"
         self.first = False
         self.is_cv18xx = False
-        self.is_dynamic = False
         if self.args.model_file.endswith(".bmodel"):
             pyruntime = pyruntime + "bm"
-            self.is_dynamic = is_dynamic_model(self.args.model_file)
             chip = get_chip_from_model(self.args.model_file)
             # trick for runtime link chip cmodel
             lib_so = 'libcmodel_1684x.so'
@@ -147,17 +145,14 @@ class bmodel_inference(common_inference):
             overflow = np.prod(i.data.shape) - np.prod(input.shape)
             if self.is_cv18xx and i.aligned:
                 overflow = i.size - np.prod(input.shape)
-            if self.is_dynamic:
-                assert (len(i.data.shape) == len(input.shape))
-                for max, dim in zip(i.data.shape, input.shape):
-                    if dim > max:
-                        raise RuntimeError("Error shape: form {} to {}".format(
-                            i.data.shape, input.shape))
-                dyn_input_shapes.append(input.shape)
-                input = np.concatenate([input.flatten(),
+            assert (len(i.data.shape) == len(input.shape))
+            for max, dim in zip(i.data.shape, input.shape):
+                if dim > max:
+                    raise RuntimeError("Error shape: form {} to {}".format(
+                        i.data.shape, input.shape))
+            dyn_input_shapes.append(input.shape)
+            input = np.concatenate([input.flatten(),
                                         np.zeros([overflow]).astype(input.dtype)]).reshape(i.data.shape)
-            elif overflow != 0:
-                raise RuntimeError("Error shape: form {} to {}".format(i.data.shape, input.shape))
             zp = i.qzero_point
             if i.data.dtype == input.dtype:
                 i.data[:] = input.reshape(i.data.shape)
@@ -185,10 +180,7 @@ class bmodel_inference(common_inference):
                 i.data[:] = input.astype(np.float32)
             else:
                 raise ValueError(f"unknown type: form {input.dtype} to {i.data.dtype}")
-        if not self.is_dynamic:
-            self.net.forward()
-        else:
-            dyn_output_shapes = self.net.forward_dynamic(dyn_input_shapes)
+        dyn_output_shapes = self.net.forward_dynamic(dyn_input_shapes)
         dyn_idx = 0
 
         for i in self.net.outputs:
@@ -207,12 +199,11 @@ class bmodel_inference(common_inference):
                 output = bf16_to_fp32(i.data)
             else:
                 output = np.array(i.data)
-            if self.is_dynamic:
-                if output.shape != dyn_output_shapes[dyn_idx]:
-                    dyn_len = np.prod(dyn_output_shapes[dyn_idx])
-                    output = output.flatten()[:dyn_len].reshape(
-                        *dyn_output_shapes[dyn_idx])
-                    dyn_idx += 1
+            if output.shape != dyn_output_shapes[dyn_idx]:
+                dyn_len = np.prod(dyn_output_shapes[dyn_idx])
+                output = output.flatten()[:dyn_len].reshape(
+                    *dyn_output_shapes[dyn_idx])
+                dyn_idx += 1
             outputs.append(output)
         return outputs
 
