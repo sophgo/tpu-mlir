@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ==============================================================================
 # Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
 #
 # TPU-MLIR is licensed under the 2-Clause BSD License except for the
@@ -28,8 +29,25 @@ class Status:
     TIMEOUT = 'TIMEOUT'
 
 
-class MAIN_ENTRY(object):
+def timeit(func):
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func(*args, **kwargs)
+        end = time.time()
+        print(f"{func.__name__} ran in {end - start:.2f} seconds")
+        return result
+    return wrapper
 
+
+class Timer:
+    def __init__(self):
+        self.start_time = time.time()
+
+    def elapsed_time(self):
+        return time.time() - self.start_time
+
+
+class MAIN_ENTRY(object):
     def __init__(self, test_type, disable_thread: bool):
         self.test_type = test_type
         self.disable_thread = disable_thread
@@ -45,6 +63,12 @@ class MAIN_ENTRY(object):
             "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x"]),
         }
         # yapf: enable
+        self.test_set = {
+            "op": self.run_op_test,
+            "script": self.run_script_test,
+            "model": self.run_model_test,
+        }
+
         self.results = []
         self.time_cost = []
         self.logger = logging.getLogger()
@@ -87,7 +111,7 @@ class MAIN_ENTRY(object):
         file_handler.close()
         return ret == 0
 
-    def run_op_test(self, op_source, tester, test_all_func, chip):
+    def _run_op_test(self, op_source, tester, test_all_func, chip):
         print(f"======= test_{op_source}.py ======")
         case_name = f"{op_source}_test_{chip}"
         os.makedirs(case_name, exist_ok=True)
@@ -103,6 +127,8 @@ class MAIN_ENTRY(object):
         return not error_cases
 
     def run_script_test(self):
+        # return exit status
+        t = Timer()
         # run scripts under $REGRESSION_OUT/script_test
         print("======= script test ======")
         case_name = "script_test"
@@ -123,35 +149,24 @@ class MAIN_ENTRY(object):
 
         self.logger.removeHandler(file_handler)
         file_handler.close()
-        return success
+        self.time_cost.append(f"run_script: {int(t.elapsed_time())} seconds")
+        return not success
 
-    def run_all(self):
-        start_time = time.time()
-        tmp_time = end_time = start_time
-
-        # test op from different sources
+    def run_op_test(self):
         for op_source in self.op_test_types.keys():
+            t = Timer()
             tester, test_func, chips = self.op_test_types[op_source]
             for chip in chips:
-                success = self.run_op_test(op_source, tester, test_func, chip)
+                success = self._run_op_test(op_source, tester, test_func, chip)
                 # basic test stops once a test failed
                 if not success and self.is_basic:
                     return 1
-            end_time = time.time()
-            self.time_cost.append(f"run_{op_source}: {int(end_time - tmp_time)} seconds")
-            tmp_time = end_time
+            self.time_cost.append(f"run_{op_source}: {int(t.elapsed_time())} seconds")
 
-        # test script
-        success = self.run_script_test()
-        if not success and self.is_basic:
-            return 1
-        end_time = time.time()
-        self.time_cost.append(f"run_script: {int(end_time - tmp_time)} seconds")
-        tmp_time = end_time
-
-        # test model regression
+    def run_model_test(self):
         model_list = basic_model_list if self.is_basic else full_model_list
         for idx, chip in enumerate(chip_support.keys()):
+            t = Timer()
             cur_model_list = [
                 model_name for model_name, do_test in model_list.items() if do_test[idx]
             ]
@@ -194,12 +209,17 @@ class MAIN_ENTRY(object):
                     for result in finished_list:
                         if result["status"] != Status.PASSED:
                             return 1
+            self.time_cost.append(f"run models for {chip}: {int(t.elapsed_time())} seconds")
 
-            end_time = time.time()
-            self.time_cost.append(f"run models for {chip}: {int(end_time - tmp_time)} seconds")
-            tmp_time = end_time
-        self.time_cost.append(f"total time: {int(end_time - start_time)} seconds")
 
+    def run_all(self, test_set):
+        t = Timer()
+
+        for test in test_set:
+            if self.test_set[test]() and self.is_basic:
+                return 1
+
+        self.time_cost.append(f"total time: {int(t.elapsed_time())} seconds")
         return 1 if any(result.get("status") != Status.PASSED for result in self.results) else 0
 
 
@@ -208,6 +228,9 @@ if __name__ == "__main__":
     # yapf: disable
     parser.add_argument("--test_type", default="all", type=str.lower, choices=['all', 'basic'],
                         help="whether do all model test, 'all' runs all modes, 'baisc' runs basic models f16 and int8 sym only")
+    choices = ["op", "script", "model"]
+    parser.add_argument("--test_set", default=choices, type=str.lower, nargs="+", choices=choices,
+                        help="run test set individually.")
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
     # yapf: enable
     args = parser.parse_args()
@@ -223,7 +246,7 @@ if __name__ == "__main__":
 
     main_entry = MAIN_ENTRY(args.test_type, args.disable_thread)
 
-    exit_status = main_entry.run_all()
+    exit_status = main_entry.run_all(args.test_set)
 
     # print last 100 lines log of failed cases first
     for result in main_entry.results:

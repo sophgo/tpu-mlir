@@ -207,9 +207,12 @@ MLIR转F16模型
    * - model
      - 是
      - 指定输出的model文件名称和路径
-   * - core
+   * - num_core
      - 否
      - 当target选择为bm1686或cv186x时,用于选择并行计算的tpu核心数量,默认设置为1个tpu核心
+   * - skip_validation
+     - 否
+     - 跳过验证bmodel正确性环节，用于提升模型部署的效率，默认执行bmodel验证。
 
 
 编译完成后, 会生成名为 ``yolov5s_1684x_f16.bmodel`` 的文件。

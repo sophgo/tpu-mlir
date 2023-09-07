@@ -88,6 +88,7 @@ class DeployTool:
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         self.dynamic = args.dynamic
         self.compare_all = args.compare_all
+        self.skip_validation = args.skip_validation
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
                 self.prefix += "_asym"
@@ -217,15 +218,11 @@ class DeployTool:
                           self.quant_input, self.quant_output, self.disable_layer_group,
                           self.merge_weight, self.op_divide, self.num_device, self.num_core,
                           self.embed_debug_info)
-            if self.do_validate:
+            if not self.skip_validation and self.do_validate:
                 tool.validate_model()
 
     def validate_model(self):
         size = os.path.getsize(self.model)
-        if size > 0x8000000:
-            print("Warning: {} is too large and will cost a long time. Please run in board".format(
-                self.model))
-            return
         self.model_npz = "{}_model_outputs.npz".format(self.prefix)
         file_mark(self.model_npz)
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
@@ -297,6 +294,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_core", default=1, type=int,
                         help="The number of TPU cores used for parallel computation.")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
+    parser.add_argument("--skip_validation", action='store_true', help='skip checking the correctness of bmodel.')
     parser.add_argument("--merge_weight", action="store_true", default=False,
                         help="merge weights into one weight binary with previous generated cvimodel")
 

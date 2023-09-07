@@ -209,9 +209,12 @@ The main parameters of ``model_deploy.py`` are as follows (for a complete introd
    * - model
      - Y
      - Name of output model file (including path)
-   * - core
+   * - num_core
      - N
      - When the target is selected as bm1686 or cv186x, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
+   * - skip_validation
+     - N
+     - Skip bmodel correctness verification to boost deployment efficiency; bmodel verification is on by default.
 
 
 After compilation, a file named ``yolov5s_1684x_f16.bmodel`` is generated.
