@@ -580,7 +580,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
     return failure();
   }
   if (module::isWeight(op.getFilter()) == false) {
-    return failure();
+    return dynamic_weight_reorder_bm1684x(op, rewriter);
   }
   auto attr = op.parseParam();
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
