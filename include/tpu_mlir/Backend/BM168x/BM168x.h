@@ -171,6 +171,7 @@ public:
   static int GDMA_VALUE_FORMAT_INT32;
   static int GDMA_VALUE_FORMAT_BFLOAT16;
   static int GDMA_VALUE_FORMAT_INT4;
+  static int GDMA_VALUE_FORMAT_FLOAT20;
   static int GDMA_VALUE_FORMAT_NUM;
 
   // -------------------------------------------------------------------

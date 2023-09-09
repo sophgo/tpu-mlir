@@ -75,7 +75,7 @@ public:
     if (attr.simplified == false) {
       llvm_unreachable("Not Implemented");
     }
-    if (module::isBM1684XFamily()) {
+    if (module::isBM1684XFamily() || module::isSG2260Family()) {
       auto type = module::getStorageType(reduceOp.getInput());
       auto input_spec = BM168x::get_input_spec(reduceOp);
       auto output_spec = BM168x::get_output_spec(reduceOp);
@@ -291,7 +291,7 @@ public:
     }
     uint64_t buffer_size = 0;
     auto attr = permuteOp.parseParam();
-    if (module::isBM1684XFamily()) {
+    if (module::isBM1684XFamily() || module::isSG2260Family()) {
       transpose_param_t param = {0};
       param.if_getting_buffer_size = 1;
       for (int i = 0, n = attr.order_fix.size(); i < n; ++i) {
@@ -426,7 +426,7 @@ public:
     if (!module::isNone(Op.getBuffer())) {
       return failure();
     }
-    if (!module::isBM1684XFamily()) {
+    if (!(module::isBM1684XFamily() || module::isSG2260Family())) {
       return failure();
     }
     deform_gather_attr_t p = Op.parseParam();
@@ -456,7 +456,7 @@ public:
       return failure();
     }
     uint64_t buffer_size = 0;
-    if (module::isBM1684XFamily()) {
+    if (module::isBM1684XFamily() || module::isSG2260Family()) {
       llvm_unreachable("Not supported now");
       return failure();
     } else if (module::isBM1684Family()) {
@@ -528,7 +528,7 @@ public:
       return failure();
     }
     uint64_t buffer_size = 0;
-    if (module::isBM1684XFamily()) {
+    if (module::isBM1684XFamily() || module::isSG2260Family()) {
       llvm_unreachable("Not supported now");
       return failure();
     } else if (module::isBM1684Family()) {
@@ -757,7 +757,7 @@ public:
     if (!module::isNone(ScatterNDOp.getBuffer())) {
       return failure();
     }
-    if (!module::isBM1684XFamily()) {
+    if (!module::isBM1684XFamily() && !module::isSG2260Family()) {
       return failure();
     }
     auto buffer_type =

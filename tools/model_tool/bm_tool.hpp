@@ -122,7 +122,7 @@ static void reorder(std::vector<const Tensor *> &tensors) {
 }
 
 // print brief model info
-void bm_show(const string &filename) {
+void bm_show(const string &filename, bool all) {
   ModelCtx model_ctx(filename);
   if (!model_ctx) {
     FATAL("file[%s] is not correct", filename.c_str());
@@ -163,7 +163,9 @@ void bm_show(const string &filename) {
           net_idx->push_back(idx);
           cascade_nets[main_name] = net_idx;
         }
-        continue;
+        if (all == false) {
+          continue;
+        }
       }
     }
     auto parameter = net->parameter();

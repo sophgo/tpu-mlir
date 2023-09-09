@@ -226,7 +226,7 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
       return failure();
     }
     return (p.offset_4[1] % CV18xx::NPU_NUM == 0) ? success() : failure();
-  } else if (module::isBM1684XFamily()) {
+  } else if (module::isBM1684XFamily() || module::isSG2260Family()) {
     if((int)getRunMode(getOperation()) == 1) {
       return failure();
     }

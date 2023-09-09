@@ -689,7 +689,6 @@ TPU sdk准备:
    # envs
    tar zxf cvimodel_samples_cv183x.tar.gz
    export MODEL_PATH=$PWD/cvimodel_samples
-   source cvitek_mlir/cvitek_envs.sh
 
    # get cvimodel info
    cd ../install_samples

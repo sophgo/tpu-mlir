@@ -11,6 +11,69 @@
 
 using namespace tpu_mlir::top;
 
+struct ReorderDynWeight : public OpRewritePattern<DeconvOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(DeconvOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto filter_shape =
+        module::getShape(op.getFilter()); // <oc, ic, *, *> or <ic, oc, *, *>
+    //  first channle of filter should be oc
+    // auto out_shape = module::getShape(op.getOutput()); // <bs, oc, *, *>
+
+    // op.getDynWeightReordered()
+
+    if (module::isWeight(op.getOperand(1))) {
+      return failure();
+    }
+    bool dyn_weight_reorderd = op.getDynweightReorderd();
+    if(dyn_weight_reorderd){
+      return failure();
+    }
+
+    if (isa<top::PermuteOp>(op.getOperand(1).getDefiningOp())) {
+      auto permute_op =
+          dyn_cast<top::PermuteOp>(op.getOperand(1).getDefiningOp());
+
+      // erase if already have this permute but from original graph
+      std::vector<int64_t> ps = {1, 0, 2, 3};
+      auto order = module::getI64Array(permute_op.getOrder());
+      if (*order == ps) {
+        permute_op.replaceAllUsesWith(permute_op.getInput());
+        rewriter.eraseOp(permute_op);
+        op.setDynweightReorderd(true);
+        return success();
+      }
+    }
+
+    rewriter.setInsertionPointAfterValue(op.getFilter());
+    std::string name = module::getName(op.getOutput()).str();
+    auto loc =
+        NameLoc::get(rewriter.getStringAttr(name + "_reorder_permute"));
+
+    std::vector<int64_t> order = {1, 0};
+    auto filter_dim = filter_shape.size();
+    for (int i = 2; i < filter_dim; i++) {
+      order.push_back(i);
+    }
+
+    auto p_type =
+        UnrankedTensorType::get(module::getElementType(op.getFilter()));
+    std::vector<NamedAttribute> attrs;
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
+
+    auto new_permute_op = rewriter.create<top::PermuteOp>(
+        loc, p_type, ValueRange{op.getFilter()}, attrs);
+
+    new_permute_op.shape_inference();
+    op.setOperand(1, new_permute_op.getOutput());
+    op.setDynweightReorderd(true);
+    return success();
+  }
+};
+
 struct Deconv1dTo2d : public OpRewritePattern<DeconvOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -52,6 +115,6 @@ struct Deconv1dTo2d : public OpRewritePattern<DeconvOp> {
 };
 
 void DeconvOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                         MLIRContext *context) {
-  results.insert<Deconv1dTo2d>(context);
+                                           MLIRContext *context) {
+  results.insert<Deconv1dTo2d, ReorderDynWeight>(context);
 }

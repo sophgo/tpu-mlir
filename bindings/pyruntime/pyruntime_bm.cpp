@@ -159,16 +159,40 @@ struct PythonNet {
         in_.dims[j] = dyn_in_[j];
       }
     }
-    auto ret =
-        bmrt_launch_data(p_bmrt, name.c_str(), input_datas.data(),
-                         input_shapes_.data(), num_input, output_datas.data(),
-                         output_shapes_.data(), num_output, true);
+    auto net_info = bmrt_get_network_info(p_bmrt, name.c_str());
+    std::vector<bm_tensor_t> input_tensors(net_info->input_num);
+    std::vector<bm_tensor_t> output_tensors(net_info->output_num);
+    for (int idx = 0; idx < net_info->input_num; idx++) {
+      auto &tensor = input_tensors[idx];
+      bmrt_tensor(&tensor, p_bmrt, net_info->input_dtypes[idx],
+                  input_shapes_[idx]);
+      bm_memcpy_s2d(bm_handle, tensor.device_mem, (void *)input_datas[idx]);
+    }
+    for (int idx = 0; idx < net_info->output_num; idx++) {
+      auto &tensor = output_tensors[idx];
+      bmrt_tensor(&tensor, p_bmrt, net_info->output_dtypes[idx],
+                  output_shapes_[idx]);
+    }
+    auto ret = bmrt_launch_tensor_ex(p_bmrt, name.c_str(), input_tensors.data(),
+                                     net_info->input_num, output_tensors.data(),
+                                     net_info->output_num, true, false);
     assert(true == ret);
+    auto status = bm_thread_sync(bm_handle);
+    assert(BM_SUCCESS == status);
+    for (int idx = 0; idx < net_info->output_num; idx++) {
+      auto &tensor = output_tensors[idx];
+      bm_memcpy_d2s(bm_handle, (void *)output_datas[idx], tensor.device_mem);
+      bm_free_device(bm_handle, tensor.device_mem);
+    }
+    for (int idx = 0; idx < num_inputs; idx++) {
+      auto &tensor = input_tensors[idx];
+      bm_free_device(bm_handle, tensor.device_mem);
+    }
     std::vector<std::vector<size_t>> dyn_output_shapes;
-    for (auto &o_s : output_shapes_) {
+    for (auto &o : output_tensors) {
       std::vector<size_t> shape;
-      for (int i = 0; i < o_s.num_dims; i++) {
-        shape.push_back(o_s.dims[i]);
+      for (int i = 0; i < o.shape.num_dims; i++) {
+        shape.push_back(o.shape.dims[i]);
       }
       dyn_output_shapes.push_back(shape);
     }

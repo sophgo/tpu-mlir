@@ -36,7 +36,12 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Value v, int64_t n_step,
     if (v.getType().isa<NoneType>()) {
       return ginfo;
     }
-    auto dst_op = *v.user_begin();
+    // make sure dst_op can cast to LocalGenInterface
+    auto dst_op_iter = std::find_if(v.user_begin(), v.user_end(), [](Operation *x) {
+      return dyn_cast_or_null<LocalGenInterface>(*x);
+    });
+    assert(dst_op_iter != v.user_end());
+    auto dst_op = *dst_op_iter;
     auto dst_lg_op = cast<LocalGenInterface>(dst_op);
     auto g_param = dst_op->getAttr(LocalGenInterface::kLayerGroupAttrName)
                        .cast<tpu::LayerGroupAttr>();

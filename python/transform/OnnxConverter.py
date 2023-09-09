@@ -139,6 +139,7 @@ class OnnxConverter(BaseConverter):
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
             "Cast": lambda node: self.convert_cast_op(node),
+            "Ceil": lambda node: self.convert_ceil_op(node),
             "Concat": lambda node: self.convert_concat_op(node),
             "Constant": lambda node: self.convert_constant_op(node),
             "ConstantOfShape": lambda node: self.convert_constantofshape_op(node),
@@ -146,6 +147,7 @@ class OnnxConverter(BaseConverter):
             "Cos": lambda node: self.convert_cos_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
             "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
+            "CumSum": lambda node: self.convert_cumsum_op(node),
             "DepthToSpace": lambda node: self.convert_depth2space_op(node),
             "DequantizeLinear": lambda node: self.convert_deqlinear_op(node),
             "Div": lambda node: self.convert_div_op(node),
@@ -209,6 +211,7 @@ class OnnxConverter(BaseConverter):
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
             "RoiAlign": lambda node: self.convert_roi_align_op(node),
+            "Round": lambda node: self.convert_round_op(node),
             "ScatterElements": lambda node: self.convert_scatter_elements_op(node),
             "ScatterND": lambda node: self.convert_scatternd_op(node),
             "Shape": lambda node: self.convert_shape_op(node),
@@ -428,7 +431,7 @@ class OnnxConverter(BaseConverter):
         self.get_output_name(self.model.graph)
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         file_mark(self.onnx_file)
-        onnx.save(self.model, self.onnx_file)
+        onnx.save(self.model, self.onnx_file, save_as_external_data=True)
         strip_model = onnx.ModelProto()
         strip_model.CopyFrom(self.model)
         strip_model.graph.ClearField("initializer")
@@ -617,6 +620,15 @@ class OnnxConverter(BaseConverter):
             op = self.getOperand(onnx_node.inputs[0])
             self.addOperand(onnx_node.name, op)
 
+    def convert_ceil_op(self, onnx_node):
+        assert (onnx_node.op_type == "Ceil")
+        op = self.getOp(onnx_node.inputs[0])
+        new_op = top.CeilOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc(onnx_node.name),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
     def convert_concat_op(self, onnx_node):
         assert (onnx_node.op_type == "Concat")
         axis = onnx_node.attrs['axis']
@@ -672,15 +684,11 @@ class OnnxConverter(BaseConverter):
         """
         assert (onnx_node.op_type == "ConstantOfShape")
         value = 0
-        dtype = np.float32
         if 'value' in onnx_node.attrs:
             onnx_tensor = onnx_node.attrs['value']
             np_tensor = numpy_helper.to_array(onnx_tensor)
             assert (np_tensor.size == 1)
-            assert (np_tensor.dtype == np.float32)
             value = np_tensor[0]
-            dtype = np_tensor.dtype
-        assert (dtype == np.float32)
         op = self.getOp(onnx_node.inputs[0])
         new_op = top.ConstantFillOp(self.unranked_type,
                                     op,
@@ -692,7 +700,7 @@ class OnnxConverter(BaseConverter):
 
     def convert_conv_op(self, onnx_node):
         assert (onnx_node.op_type == "Conv")
-        op = self.getOperand(onnx_node.inputs[0])
+        op = self.getOp(onnx_node.inputs[0]) # input can be weight
         kernel_shape = onnx_node.attrs['kernel_shape']
         dim = len(kernel_shape)
         dilations = onnx_node.attrs.get("dilations", dim * [1])
@@ -704,8 +712,10 @@ class OnnxConverter(BaseConverter):
         pads = onnx_node.attrs.get("pads", dim * 2 * [0])
         operands = list()
         operands.append(op)
+        # filter may be dynamic weight
         filter_op = self.getOp(onnx_node.inputs[1])
         operands.append(filter_op)
+        weight_is_coeff = 1 if self.isWeight(onnx_node.inputs[1]) else 0
         if len(onnx_node.inputs) > 2:
             bias_op = self.getWeightOp(onnx_node.inputs[2])
         else:
@@ -719,6 +729,7 @@ class OnnxConverter(BaseConverter):
                             auto_pad=StringAttr.get(auto_pad),
                             pads=pads,
                             group=group,
+                            weight_is_coeff=weight_is_coeff,
                             do_relu=False,
                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                             ip=self.mlir.insert_point).output
@@ -743,7 +754,7 @@ class OnnxConverter(BaseConverter):
     def convert_flatten_op(self, onnx_node):
         assert (onnx_node.op_type == "Flatten")
         op = self.getOperand(onnx_node.inputs[0])
-        axis = onnx_node.attrs.get('axis', 0)
+        axis = onnx_node.attrs.get('axis', 1)
         new_op = top.FlattenOp(self.unranked_type,
                                op,
                                start_dim=axis,
@@ -1435,25 +1446,27 @@ class OnnxConverter(BaseConverter):
         operands = list()
         input_opd = self.getOperand(onnx_node.inputs[0])
         weight_name = onnx_node.inputs[1]
-        old_weight = np.ascontiguousarray(self.tensors[weight_name])
-        if weight_name not in self.mlir.load_weight:
-            if group != 1:
-                # (ic, oc / g, kh, kw) --> (g, oc/g, ic / g, kh, kw) --> (oc / g, ic, kh, kw)
-                _shape = list(old_weight.shape)
-                old_shape = [group, int(_shape[0] / group), _shape[1]] + _shape[2:]
-                new_shape = [_shape[1], _shape[0]] + _shape[2:]
-                old_weight = old_weight.reshape(old_shape)
-                order = [0, 2, 1] + list(range(len(_shape) + 1)[3:])
-                new_weight = np.transpose(old_weight, order).reshape(new_shape)
-                self.tensors[weight_name] = new_weight
-            else:
-                # (ic, oc, kh, kw) --> (oc, ic, kh, kw)
-                order = [1, 0] + list(range(len(old_weight.shape))[2:])
-                self.tensors[weight_name] = np.transpose(old_weight, order)
+        # weight can be dynamic
+        if weight_name in self.tensors:
+            old_weight = np.ascontiguousarray(self.tensors[weight_name])
+            if weight_name not in self.mlir.load_weight:
+                if group != 1:
+                    # (ic, oc / g, kh, kw) --> (g, oc/g, ic / g, kh, kw) --> (oc / g, ic, kh, kw)
+                    _shape = list(old_weight.shape)
+                    old_shape = [group, int(_shape[0] / group), _shape[1]] + _shape[2:]
+                    new_shape = [_shape[1], _shape[0]] + _shape[2:]
+                    old_weight = old_weight.reshape(old_shape)
+                    order = [0, 2, 1] + list(range(len(_shape) + 1)[3:])
+                    new_weight = np.transpose(old_weight, order).reshape(new_shape)
+                    self.tensors[weight_name] = new_weight
+                else:
+                    # (ic, oc, kh, kw) --> (oc, ic, kh, kw)
+                    order = [1, 0] + list(range(len(old_weight.shape))[2:])
+                    self.tensors[weight_name] = np.transpose(old_weight, order)
 
-            self.shapes[weight_name] = self.tensors[weight_name].shape
+                self.shapes[weight_name] = self.tensors[weight_name].shape
 
-        filter_opd = self.getWeightOp(onnx_node.inputs[1])
+        filter_opd = self.getOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
             bias_opd = self.getWeightOp(onnx_node.inputs[2])
         else:
@@ -2458,4 +2471,26 @@ class OnnxConverter(BaseConverter):
                                    loc=self.get_loc("{}_{}".format(onnx_node.name,
                                                                    onnx_node.op_type)),
                                    ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_cumsum_op(self, onnx_node):
+        assert onnx_node.op_type == "CumSum"
+        assert (self.isWeight(onnx_node.inputs[1]), "Not Constant Not Implemented For Axis")
+        axis = self.getWeight(onnx_node.inputs[1])
+        operands = list()
+        operands.append(self.getOperand(onnx_node.inputs[0]))
+        operands.append(self.getWeightOp(onnx_node.inputs[1]))
+        new_op = top.CumSumOp(self.unranked_type, *operands,
+                            axis=axis,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_round_op(self, onnx_node):
+        assert (onnx_node.op_type == "Round")
+        operand = self.getOperand(onnx_node.inputs[0])
+        new_op = top.RoundOp(self.unranked_type,
+                            operand,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)

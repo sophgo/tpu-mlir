@@ -81,14 +81,19 @@ private:
 class TensorLocation {
 
 public:
-  TensorLocation() { impl.reset(); }
+  TensorLocation() { getImpl().reset(); }
   template <typename... Args>
   TensorLocation(Args... args) {
-    impl = std::make_unique<TensorLocationImpl>(args...);
+    getImpl() = std::make_unique<TensorLocationImpl>(args...);
   };
 
+  TensorLocationImpl *operator->() const { return getImpl().get(); }
+
 private:
-  static std::shared_ptr<TensorLocationImpl> impl;
+  static std::shared_ptr<TensorLocationImpl> &getImpl() {
+    static std::shared_ptr<TensorLocationImpl> impl;
+    return impl;
+  }
   friend class LocalGenInterfaceDecorator;
   friend class GlobalGenInterfaceDecorator;
   friend class ScopeVar;
@@ -99,8 +104,8 @@ class ScopeVar {
   const AsmState::LocationMap &opToLineCol;
 
 public:
-  ScopeVar(TensorLocation *tensor_loc, Operation *op)
-      : J(tensor_loc->impl->J), opToLineCol(tensor_loc->impl->opToLineCol) {
+  ScopeVar(TensorLocation &tensor_loc, Operation *op)
+      : J(tensor_loc->J), opToLineCol(tensor_loc->opToLineCol) {
     J.objectBegin();
     if (auto func = dyn_cast<FuncOp>(op)) {
       J.attribute("function", func.getName());
@@ -112,8 +117,8 @@ public:
     J.arrayBegin();
   };
 
-  ScopeVar(TensorLocation *tensor_loc, StringRef name)
-      : J(tensor_loc->impl->J), opToLineCol(tensor_loc->impl->opToLineCol) {
+  ScopeVar(TensorLocation &tensor_loc, StringRef name)
+      : J(tensor_loc->J), opToLineCol(tensor_loc->opToLineCol) {
     J.objectBegin();
     J.attribute("function", name);
     J.attribute("line", nullptr);
@@ -132,9 +137,9 @@ public:
   LocalGenInterfaceDecorator(Operation *op) : LocalGenInterface(op){};
   template <typename... Args>
   void codegen_local_bm168x(Args... args) {
-    TensorLocation::impl->before_codegen_local(getOperation(), args...);
+    TensorLocation::getImpl()->before_codegen_local(getOperation(), args...);
     LocalGenInterface::codegen_local_bm168x(args...);
-    TensorLocation::impl->after_codegen_local(getOperation(), args...);
+    TensorLocation::getImpl()->after_codegen_local(getOperation(), args...);
   }
 };
 
@@ -142,9 +147,9 @@ class GlobalGenInterfaceDecorator : public GlobalGenInterface {
 public:
   GlobalGenInterfaceDecorator(Operation *op) : GlobalGenInterface(op){};
   void codegen_global_bm168x() {
-    TensorLocation::impl->before_codegen_global(getOperation());
+    TensorLocation::getImpl()->before_codegen_global(getOperation());
     GlobalGenInterface::codegen_global_bm168x();
-    TensorLocation::impl->after_codegen_global(getOperation());
+    TensorLocation::getImpl()->after_codegen_global(getOperation());
   }
 };
 

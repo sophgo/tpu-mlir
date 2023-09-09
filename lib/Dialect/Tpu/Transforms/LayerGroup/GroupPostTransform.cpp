@@ -179,7 +179,7 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
       llvm_unreachable("wrong conv weight data type");
     }
 
-  } else if (module::isBM1684XFamily()) {
+  } else if (module::isBM1684XFamily() || module::isSG2260Family()) {
     conv3d_op.getFilter().setType(ori_type);
     if (filter_type.isF32() && lg_info.group_ops.size() > 1) {
       // (oc, ic, kt, kh, kw) -> (1, oc, kt, ic, kh*kw)
@@ -367,7 +367,8 @@ class GroupPostTransformPass : public LgPass {
 public:
   GroupPostTransformPass() {}
   virtual bool run(LgPassIR *pass_ir) override {
-    if (module::isBM1684XFamily() || module::isBM1684Family()) {
+    if (module::isBM1684XFamily() || module::isBM1684Family()
+        || module::isSG2260Family()) {
       for (size_t i = 0; i < pass_ir->lg_infos.size(); ++i) {
         _3D_group_post_transform(pass_ir->lg_infos[i]);
         matmul_left_reuse_setting(pass_ir->lg_infos[i]);

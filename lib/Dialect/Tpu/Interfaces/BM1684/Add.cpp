@@ -40,10 +40,9 @@ void tpu::AddOp::codegen_global_bm1684() {
         getDoRelu(), getReluLimit().convertToDouble(), gdma_format,
         (CMD_ID_NODE *)BM1684::instance()->cmdid_node, src_int32);
   } else {
-    int is_sign[input_num + 1];
-    memset(is_sign, 0, sizeof(int) * (input_num + 1));
-    int is_int8[input_num + 1];
-    memset(is_sign, 0, sizeof(int) * (input_num + 1));
+    SmallVector<int> is_sign(input_num + 1, 0);
+    SmallVector<int> is_int8(input_num + 1, 0);
+
     for (int i = 0; i < input_num; ++i) {
       is_int8[i] = module::getDtypeSize(getInputs()[i]) == 1;
       is_sign[i] = module::isSign(getInputs()[i]);
@@ -65,7 +64,7 @@ void tpu::AddOp::codegen_global_bm1684() {
     BM1684::instance().dl_nodechip_broadcast_binary_fix8b_forward_parallel(
         a_addr, b_addr, o_addr, a_shape, b_shape, out_dims, is_coeff[0],
         is_coeff[1], BINARY_ADD, muls->at(0), muls->at(1), rs->at(0), rs->at(1),
-        is_int8, is_sign, getDoRelu(),
+        is_int8.data(), is_sign.data(), getDoRelu(),
         (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
   }
 }

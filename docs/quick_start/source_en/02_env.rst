@@ -6,7 +6,7 @@ Download the required image from DockerHub https://hub.docker.com/r/sophgo/tpuc_
 
 .. code-block:: shell
 
-   $ docker pull sophgo/tpuc_dev:v2.2
+   $ docker pull sophgo/tpuc_dev:v3.1
 
 
 If you are using docker for the first time, you can execute the following commands to install and configure it (only for the first time):
@@ -31,7 +31,7 @@ Make sure the installation package is in the current directory, and then create 
 
 .. code-block:: shell
 
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v2.2
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.1
   # "myname" is just an example, you can use any name you want
 
 Subsequent chapters assume that the user is already in the /workspace directory inside docker.

@@ -17,15 +17,16 @@ void CompareConstLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_f32<tpu::CompareConstOp>(rewriter, op);
 }
 
-void CompareConstLowering::LoweringINT4(PatternRewriter &rewriter, top::CompareConstOp op,
-                                   bool asymmetric) const {
+void CompareConstLowering::LoweringINT4(PatternRewriter &rewriter,
+                                        top::CompareConstOp op,
+                                        bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 
 void CompareConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                         top::CompareConstOp op,
                                         bool asymmetric) const {
-  if(op.getMode().str() == "And") {
+  if (op.getMode().str() == "And") {
     lowering_common_f16<tpu::CompareConstOp>(rewriter, op);
   } else {
     auto op_ = op.getOperation();

@@ -8,13 +8,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "TensorLocation.hpp"
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
 
 namespace mlir {
 using namespace llvm;
 using namespace tpu_mlir::backend;
-
-std::shared_ptr<TensorLocationImpl> TensorLocation::impl;
 
 struct slice {
   int64_t begin;
@@ -241,8 +239,8 @@ void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
                                     const json::Array &results) {
   int64_t line_num = -1; // unknown location
   int core_id = 0;
-  if (auto bm1686 = dyn_cast<BM1686>(BM168x::instance())) {
-    core_id = bm1686->getCurrentCoreID();
+  if (auto multiCore = dyn_cast<MultiCoreInterface>(BM168x::instance())) {
+    core_id = multiCore->getCurrentCoreID();
   }
   auto it = opToLineCol.find(op);
   if (it != opToLineCol.end()) {

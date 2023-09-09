@@ -76,8 +76,10 @@ class ONNX_IR_TESTER(object):
             "ConvTrans":    (self.test_ConvTrans,     N, Y, Y, Y),
             "ConvTrans2":   (self.test_ConvTrans2,    N, Y, Y, Y),  #no pad
             "Clip":         (self.test_Clip,          Y, Y, Y, Y),
+            "CumSum":       (self.test_CumSum,        N, Y, N, N),
             "DepthToSpace": (self.test_DepthToSpace,  Y, Y, Y, Y),
             "Deconv":       (self.test_Deconv,        Y, Y, Y, Y),
+            "DeconvDF":     (self.test_DeconvDynW,    N, Y, N, N),
             "Deconv2":      (self.test_Deconv2,       Y, N, N, Y),
             "Deconv3d":     (self.test_Deconv3d,      Y, N, N, N),
             "Div":          (self.test_Div,           Y, Y, Y, Y),
@@ -150,6 +152,7 @@ class ONNX_IR_TESTER(object):
             "Reciprocal":   (self.test_Reciprocal,    Y, Y, Y, Y),
             "Relu":         (self.test_Relu,          Y, Y, Y, Y),
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
+            "Round":        (self.test_Round,         N, Y, N, N),
             "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y),
             "ScatterND":    (self.test_ScatterND,     N, Y, Y, N),
             "Shape":        (self.test_Shape,         Y, Y, Y, N),
@@ -163,6 +166,7 @@ class ONNX_IR_TESTER(object):
             "Slice":        (self.test_Slice,         Y, Y, Y, Y),
             "Slice2":       (self.test_Slice2,        Y, Y, Y, Y),
             "Slice3":       (self.test_Slice3,        Y, Y, Y, Y),
+            "Dynamic_Slice":(self.test_Dynamic_Slice, N, Y, Y, N),
             "Split":        (self.test_Split,         Y, Y, Y, Y),
             "Split2":        (self.test_Split2,       Y, Y, Y, Y),
             "Scale":        (self.test_Scale,         Y, Y, Y, Y),
@@ -2401,6 +2405,33 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(4, 8, 60, 80).float()
         self.torch_and_test(x, Model(), case_name)
 
+    def test_Dynamic_Slice(self, case_name):
+        if not self.dynamic:
+            pass
+        else:
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, input, a, b, c, d, e):
+                    a = a.to(torch.int64)
+                    b = b.to(torch.int64)
+                    c = c.to(torch.int64)
+                    d = d.to(torch.int64)
+                    e = e.to(torch.int64)
+                    res = input[a[0]:b[0], b[0]:c[0], d[0] - a[0]:, 3:e[0]]
+                    return res
+
+            shape1 = (4, 6, 224, 224)
+            input = torch.randn(shape1, dtype=torch.float32)
+            a = torch.tensor([1.0])
+            b = torch.tensor([3.0])
+            c = torch.tensor([4.0])
+            d = torch.tensor([66.0])
+            e = torch.tensor([200.0])
+            self.torch_and_test((input, a, b, c, d, e), Model(), case_name)
+
     def test_ConvSlice(self, case_name):
 
         class Model(nn.Module):
@@ -2453,6 +2484,40 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(3, 8, 16, 32).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_DeconvDynW(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.deconv = nn.ConvTranspose2d(in_channels=8,
+                                                 out_channels=8,
+                                                 kernel_size=2,
+                                                 stride=2,
+                                                 padding=0,
+                                                 output_padding=0,
+                                                 groups=1,
+                                                 bias=False,
+                                                 dilation=1)
+
+            def forward(self, x, y):
+                output_padding = self.deconv._output_padding(
+                    x,
+                    None,
+                    self.deconv.stride,
+                    self.deconv.padding,
+                    self.deconv.kernel_size,  # type: ignore[arg-type]
+                    2,
+                    self.deconv.dilation
+                )  # type: ignore[arg-type]
+
+                out = F.conv_transpose2d(x, y, None, [2, 2], 0, output_padding, 1, 1)
+                return out
+
+        x = torch.randn(3, 8, 16, 32).float()
+        y = torch.randn(8, 8, 2, 2).float()
+        self.torch_and_test((x,y), Model(), case_name)
 
     def test_Deconv2(self, case_name):
         groups, kernel = 4, 4
@@ -2979,7 +3044,7 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test(input_data, Model(), case_name)
 
     def test_TorchRMSNorm(self, case_name):
-        normalize_shape = [25]
+        normalize_shape = [4096]
         eps = 1e-5
         class Model(torch.nn.Module):
             def __init__(self):
@@ -2995,7 +3060,7 @@ class ONNX_IR_TESTER(object):
 
                 return self.prelu(rmsnorm_out)
 
-        input_shape = [4, 32] + normalize_shape
+        input_shape = [1, 513] + normalize_shape
         input_data = torch.randn(input_shape)
         self.torch_and_test(input_data, Model(), case_name)
 
@@ -3676,16 +3741,16 @@ class ONNX_IR_TESTER(object):
             [9, 12],
             [7, 14, 15],
             [16, 9, 323, 67],
-            #   [4, 7, 38, 6, 4],
-            #   [3, 3, 11, 3, 4, 5],
+            [4, 7, 38, 6, 4],
+            [3, 3, 11, 3, 4, 5],
         )
         bcast_dims = (
             [[0]],
             [[0], [1]],
             [[0], [2], [0, 2], [0, 1, 2]],
             [[0], [2], [0, 2], [0, 3], [2, 3], [0, 2, 3], [0, 1, 2, 3]],
-            #   [[0], [2], [0, 2], [3, 4], [2, 3, 4]],
-            #   [[0], [2], [0, 2], [3, 4, 5], [2, 3, 4, 5]],
+            [[0], [2], [0, 2], [3, 4], [2, 3, 4]],
+            [[0], [2], [0, 2], [3, 4, 5], [2, 3, 4, 5]],
         )
         for i, s in enumerate(shapes):
             for dims in bcast_dims[i]:
@@ -5960,6 +6025,37 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test((x1, x2), Model(torch.sub), case_name + "Sub")
         self.torch_and_test((x1, x2), Model(torch.mul), case_name + "Mul")
 
+    def test_CumSum(self, case_name):
+        input_shape = [2,3,4,5]
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+        for d in range(len(input_shape)):
+            dim_input = helper.make_tensor(name="dim",
+                                    data_type=onnx.TensorProto.INT64,
+                                    dims=[1],
+                                    vals=np.array([d], dtype=np.int64))
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, input_shape)
+            cumsum_def = helper.make_node("CumSum", inputs=["input", "dim"], outputs=["output"])
+            graph_def = helper.make_graph([cumsum_def],
+                                        case_name, [input], [output], initializer=[dim_input])
+            input_data = {
+                "input": np.random.uniform(-100, 100, size=input_shape).astype(np.float32)
+            }
+            self.onnx_and_test(graph_def, input_data=input_data)
+
+    def test_Round(self, case_name):
+        input_shape = [1, 16, 64, 64]
+        output_shape = [1, 16, 64, 64]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        abs_def = helper.make_node(
+            "Round",
+            inputs=['input'],
+            outputs=['output'],
+        )
+        graph_def = helper.make_graph([abs_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:
@@ -6059,7 +6155,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1686', 'cv183x', 'cv182x', 'cv181x', 'cv180x'],
+                        choices=['bm1684', 'bm1684x', 'bm1686', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'sg2260'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4'],

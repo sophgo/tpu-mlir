@@ -58,6 +58,8 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
             lib_so = 'libcmodel_1686.so'
         elif chip == 'BM1684':
             lib_so = 'libcmodel_1684.so'
+        elif chip == "SG2260":
+            lib_so = 'libcmodel_sg2260.so'
         cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
         os.system(cmd)
     elif model_file.endswith(".cvimodel"):
@@ -99,6 +101,7 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
     size = os.path.getsize(model_file)
     pack_bmodel_context = (iter([None]) if is_cv18xx else pack_bmodel_context_generator(
         model_file, net))
+    next(pack_bmodel_context) # save input_data
 
     if size > 0x10000000:
         print("Warning: {} is too large and will cost a long time. Please run in board".format(
@@ -112,6 +115,7 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
         # for example: last layer is NonMaxSuppression, NonZero, etc.
         dyn_output_shapes = net.forward_dynamic(input_shapes)
     dyn_idx = 0
+
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
             if is_cv18xx and i.name in inputs:
@@ -136,7 +140,7 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
                     *dyn_output_shapes[dyn_idx])
                 dyn_idx += 1
     try:
-        next(pack_bmodel_context)
+        next(pack_bmodel_context) # save output
     except StopIteration:
         pass
 

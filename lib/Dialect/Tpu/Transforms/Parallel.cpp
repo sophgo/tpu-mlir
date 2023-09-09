@@ -265,7 +265,7 @@ public:
     for (auto m : *modules) {
       // run each submodule
       RewritePatternSet patterns(&getContext());
-      if (module::isBM1684XFamily()) {
+      if (module::isBM1684XFamily() || module::isSG2260Family()) {
         populateParalleBM1684XPatterns(&patterns, num_core);
       }
       auto config = GreedyRewriteConfig();

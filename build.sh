@@ -14,7 +14,7 @@ if [ -z "$CLANG_PATH" ] || [ -z "$CLANGXX_PATH" ]; then
     # Use gcc and g++ if CLANG is not found
     COMPILER_FLAG="-DCMAKE_C_COMPILER=$(command -v gcc) -DCMAKE_CXX_COMPILER=$(command -v g++)"
 else
-    COMPILER_FLAG="-DCMAKE_C_COMPILER=$CLANG_PATH -DCMAKE_CXX_COMPILER=$CLANGXX_PATH"
+    COMPILER_FLAG="-DCMAKE_C_COMPILER=$CLANG_PATH -DCMAKE_CXX_COMPILER=$CLANGXX_PATH -DTPUMLIR_USE_LLD=ON"
 fi
 
 # Parse arguments

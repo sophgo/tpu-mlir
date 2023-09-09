@@ -61,6 +61,7 @@ class DeployTool:
         self.test_input = args.test_input
         self.quantize = args.quantize.lower()
         self.asymmetric = args.asymmetric
+        self.w8a16_linear = args.w8a16_linear
         self.cali_table = args.calibration_table
         self.quant_input = args.quant_input
         self.quant_output = args.quant_output
@@ -114,7 +115,8 @@ class DeployTool:
             self.final_mlir = "{}_final.mlir".format(self.prefix)
             mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
                           self.asymmetric, self.quantize_table, self.customization_format,
-                          self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow)
+                          self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow,
+                          self.w8a16_linear)
             if self.do_validate:
                 tool.validate_tpu_mlir()
 
@@ -249,10 +251,12 @@ if __name__ == '__main__':
                         help="set default qauntization type: F32/BF16/F16/INT8")
     parser.add_argument("--asymmetric", action='store_true',
                         help="do INT8 asymmetric quantization")
+    parser.add_argument("--w8a16_linear", action='store_true',
+                        help="do W8A16Linear for weight matmul")
     parser.add_argument("--ignore_f16_overflow", action='store_true',
                         help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm")
     parser.add_argument("--chip", required=True, type=str.lower,
-                        choices=['bm1686', 'bm1684x', 'bm1684',
+                        choices=['bm1686', 'bm1684x', 'bm1684', 'sg2260',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--model", required=True, help='output model')
@@ -298,6 +302,8 @@ if __name__ == '__main__':
 
     # yapf: enable
     args = parser.parse_args()
+    if (args.w8a16_linear):
+        assert (args.quantize == "F16" and "W8A16Linear only support F16 quantize mode for now.")
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
     if not args.fuse_preprocess and args.customization_format:

@@ -34,6 +34,11 @@
    * - Version
      - Release date
      - Explanation
+   * - v1.3.0
+     - 2023.07.27
+     - Add the function to manually specify operations computing with floating-point;
+       Add the list of supported front-end framework operators;
+       Add a comparison between NNTC and TPU-MLIR quantization methods.
    * - v1.2.0
      - 2023.06.14
      - Adjusted the mixed quantization example

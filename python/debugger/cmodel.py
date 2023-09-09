@@ -176,7 +176,7 @@ class BM1684X:
         assert command.dtype == np.uint8
         return self.lib.execute_command(
             0,
-            command.ctypes.data,
+            command.ctypes.data_as(ctypes.c_void_p),
             engine_type,
         )
 
@@ -406,14 +406,8 @@ class BM1684:
 
     def compute(self, command, engine_type):
         command = np.frombuffer(command, dtype=np.uint8)
-        assert isinstance(command, np.ndarray)
-        assert command.dtype == np.uint8
-        # fix runtime error
-        command = np.unpackbits(command, bitorder="little").view(np.uint8)
-        command = np.packbits(command.reshape(-1, 8),
-                              bitorder="little", axis=-1)
-        command = command.ctypes.data
-        return self.lib.get_atomic_function(command, engine_type)(0, command)
+        cmd_p = command.ctypes.data_as(ctypes.c_void_p)
+        return self.lib.get_atomic_function(cmd_p, engine_type)(0, cmd_p)
 
     def tiu_compute(self, command, core_id=0):
         return self.compute(command, 0)
@@ -512,7 +506,7 @@ class BM1686:
         assert command.dtype == np.uint8
         return self.lib.execute_command(
             core_id,
-            command.ctypes.data,
+            command.ctypes.data_as(ctypes.c_void_p),
             engine_type,
         )
 

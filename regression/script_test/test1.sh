@@ -98,10 +98,10 @@ model_deploy.py \
   --model mobilenet_v2_1684x_int8_fuse2.bmodel
 
 # convert to tosa without weight
-tpuc-opt mobilenet_v2.mlir \
-  --chip-top-optimize \
-  --convert-top-to-tosa="includeWeight=False" \
-  -o mobilenet_v2_tosa_no_weight.mlir
+# tpuc-opt mobilenet_v2.mlir \
+#   --chip-top-optimize \
+#   --convert-top-to-tosa="includeWeight=False" \
+#   -o mobilenet_v2_tosa_no_weight.mlir
 
 tpuc-opt mobilenet_v2.mlir \
   --chip-top-optimize \

@@ -8,13 +8,13 @@
 #
 # ==============================================================================
 
-from typing import List, Tuple
+from typing import List, Union
 
 from collections import OrderedDict, Counter
-import json5
 import textwrap
 import re
-from enum import Enum
+import mlir.ir
+from mlir.dialects import quant
 
 SPACE = "  "
 
@@ -131,14 +131,19 @@ class OperationType(Node):
         return f'"{self.op_type_name}"({opds_str})'
 
 
-class NoneType:
+class NoneType(Node):
+    @property
+    def ir(self):
+        return mlir.ir.Type.parse("none", self.context.ctx)
+
     def dump(self):
         return "none"
 
 
 @with_assert
 class Type(Node):
-    match_tensor = re.compile("tensor<([^>]+>*)>|(none)")
+    match_tensor = re.compile("tensor<|none")
+    match_tensor_from_line = re.compile("tensor<.*>|none")
 
     def __init__(self, shape, dtype, address=None) -> None:
         super().__init__()
@@ -146,8 +151,49 @@ class Type(Node):
         self.dtype = dtype
         self.address = address
 
+    @property
+    def ir(self):
+        return mlir.ir.Type.parse(self.dump(), self.context.ctx)
+
     def create_a_f32(self):
         return Type(self.shape, "f32", self.address)
+
+    @staticmethod
+    def match_tensor_content(line: str) -> Union["Type", List["Type"]]:
+        def match_tensor(tensor_start_idx):
+            _start_idx = line.find("<", tensor_start_idx)
+            tensor_end_idx = line.find(">", _start_idx)
+            while line.find("<", _start_idx + 1) >= 0:
+                _start_idx = line.find("<", _start_idx + 1)
+                tensor_end_idx = line.find(">", tensor_end_idx + 1)
+            return tensor_end_idx + 1
+
+        def match_none():
+            pass
+
+        multiple = False
+        count = 0
+        match_res = Type.match_tensor.search(line)
+        types = []
+        while match_res:
+            start_idx = match_res.start()
+            if count == 0 and line[start_idx - 1] == "(":
+                multiple = True
+
+            if line[start_idx] == "t":
+                tensor_end_idx = match_tensor(start_idx)
+                types.append(line[start_idx:tensor_end_idx])
+                start_idx = tensor_end_idx
+            else:
+                types.append(line[start_idx : start_idx + 4])
+                start_idx += 4
+
+            match_res = Type.match_tensor.search(line)
+
+        if multiple:
+            return types
+        else:
+            return types[0]
 
     @staticmethod
     def _raw_parse(tensor_str: str):
@@ -155,26 +201,27 @@ class Type(Node):
         1x256x14x14xf32
         1x256x14x14x!quant.uniform<i8:f32, 0.064606035433070863>
         1x25088x!quant.uniform<i8:f32, 0.051140184251968507>, 4362649600 : i64
+        1x16x512x!quant.calibrated<f32<-0.92979659999999997:0.92979659999999997>>, 4459302912 : i64
         """
 
         address = None
-        if tensor_str[-1] == ">":
-            # no address with quant
-            shape_str, dtype = tensor_str.rsplit("x", maxsplit=1)
+
+        if tensor_str.endswith("i64"):
+            address_start_idx = tensor_str.rfind(",")
+            tensor_str, address = (
+                tensor_str[:address_start_idx],
+                tensor_str[address_start_idx + 2 :],
+            )
+
+        quant_start_idx = tensor_str.find("!")
+        if quant_start_idx >= 0:
+            shape_str, dtype = (
+                tensor_str[:quant_start_idx],
+                tensor_str[quant_start_idx:],
+            )
+            shape_str = shape_str.rstrip("x")
         else:
-            quant_dtype_end_idx = tensor_str.find(">") + 1
-            quote_idx = tensor_str.find(",")
-            if quant_dtype_end_idx > 0:
-                # address with quant
-                shape_str, dtype = tensor_str[:quant_dtype_end_idx].rsplit("<")
-                address = tensor_str[quant_dtype_end_idx:].strip(", ")
-            elif quote_idx >= 0:
-                # address without quant
-                left_str, address = tensor_str.split(", ")
-                shape_str, dtype = left_str.rsplit("x", maxsplit=1)
-            else:
-                # normal shape with normal dtype
-                shape_str, dtype = tensor_str.rsplit("x", maxsplit=1)
+            shape_str, dtype = tensor_str.rsplit("x", maxsplit=1)
 
         shape = list(map(shape_int, shape_str.split("x")))
         dtype = dtype.strip()
@@ -194,10 +241,14 @@ class Type(Node):
 
     @staticmethod
     def parse(dtype_str: str) -> "Type":
+        """
+        tensor<1x3x384x288xf32>
+        tensor<1x3x384x288xf32, 4410114048 : i64>
+        none
+        """
         if dtype_str.strip() == "none":
             return NoneType()
-        res = Type.match_tensor.search(dtype_str)
-        return Type._raw_parse(res.group(1))
+        return Type._raw_parse(dtype_str.replace("tensor<", "")[:-1])
 
     @staticmethod
     def parse_output(dtype_str: str) -> List["Type"]:
@@ -207,24 +258,37 @@ class Type(Node):
         if dtype_str.startswith("("):
             return Type.parse_inputs_tuple(dtype_str)
 
-        res = Type.match_tensor.search(dtype_str)
-        return [Type._raw_parse(res.group(1))]
+        return [Type.parse(dtype_str)]
 
     @staticmethod
     def parse_inputs_tuple(type_str: str) -> List["Type"]:
         """
         - ()
         - (tensor<1x3x384x288xf32, 4410114048 : i64>)
+        - (tensor<1x3x384x288xf32, 4410114048 : i64>, none)
         - (tensor<1x3x384x288xf32>, tensor<1x64x3x9xf32>, tensor<1x64x1x1xf32>)
 
         pattern: tensor<[^>]+>
         """
         res = []
-        for type in Type.match_tensor.findall(type_str):
-            if type[1].strip() == "none":
+
+        match_tensor_start = Type.match_tensor.search(type_str)
+        while match_tensor_start:
+            tensor_start_idx = match_tensor_start.start()
+            match_tensor_end = Type.match_tensor.search(
+                type_str, pos=tensor_start_idx + 1
+            )
+            if match_tensor_end:
+                tensor_end_idx = match_tensor_end.start() - 2
+            else:
+                tensor_end_idx = -1
+            tensor_str = type_str[tensor_start_idx:tensor_end_idx]
+            if (tensor_str.strip()) == "none":
                 res.append(NoneType())
             else:
-                res.append(Type._raw_parse(type[0]))
+                res.append(Type.parse(tensor_str))
+            match_tensor_start = match_tensor_end
+
         return res
 
     def dump(self):
@@ -329,26 +393,15 @@ class Attributes(Node):
     @staticmethod
     def parse(attr_str: str) -> "Attributes":
         """attr_str: {...}"""
-        attr_str = attr_str.strip()
-        assert attr_str.startswith("{") and attr_str.endswith("}")
+        temp = Node()
+        attribute = mlir.ir.Attribute.parse(attr_str, temp.context.ctx)
+        arr_map = OrderedDict()
+        for i in range(len(attribute)):
+            attr = attribute[i]
+            k, v = str(attr.name), str(attr.attr)
+            arr_map[k] = v
 
-        def translate_eq(x):
-            name = x.group(1)
-            inner_attr = x.group(2)
-            inner_attr = inner_attr.replace("=", "!EQ!")
-            inner_attr = inner_attr.replace('"', r"\"")
-            return f'"#{name}<{inner_attr}>"'
-
-        attr_str = Attributes.match_eq.sub(translate_eq, attr_str)
-        attr_str = Attributes.match_m.sub(r'"\1"', attr_str)
-        attr_str = Attributes.match_key.sub(r'"\1" : ', attr_str)
-        attr_str = Attributes.match_array.sub(r'"\1"', attr_str)
-        attr_str = attr_str.replace("!EQ!", "=")
-        attr_dicts = json5.loads(
-            attr_str, object_pairs_hook=OrderedDict, parse_float=str, parse_int=str
-        )
-
-        return Attributes(attr_dicts)
+        return Attributes(arr_map)
 
     def dump(self):
         def dump_dict(dic: dict):
@@ -357,7 +410,7 @@ class Attributes(Node):
                 if isinstance(v, bool):
                     v = str(v).lower()
                 elif isinstance(v, str) and len(v.split()) == 1:
-                    v = f'"{v}"'
+                    v = f"{v}"
                 elif isinstance(v, list):
                     v = ", ".join(v)
                     v = f"[{v}]"
@@ -412,9 +465,6 @@ class Operation(Node):
     def name(self):
         if self._name is None:
             return self.context.locid2opname[self.loc_label.loc_id_str]
-            # raise ValueError(
-            #     "Node is created without MlirAST context. Should use .parser() to parse mlir ast"
-            # )
         return self._name
 
     @name.setter
@@ -428,11 +478,35 @@ class Operation(Node):
 
     @property
     def attrs(self):
-        return self._attrs.to_dict()
+        if self._attrs is None:
+            res = {}
+        else:
+            res = self._attrs.to_dict()
+        if len(self.opd_ids) != 1:
+            return res
+
+        # align mlir_parser.py
+        if not isinstance(self.output_types[0], NoneType):
+            element_type = self.output_types[0].ir.element_type
+            if quant.UniformQuantizedType.isinstance(element_type):
+                quant_type = quant.UniformQuantizedType(element_type)
+                res["quant_scale"] = str(quant_type.scale)
+                res["quant_zero_point"] = str(quant_type.zero_point)
+            if quant.CalibratedQuantizedType.isinstance(element_type):
+                quant_type = quant.CalibratedQuantizedType(element_type)
+                res["calibrate_min"] = str(quant_type.min)
+                res["calibrate_max"] = str(quant_type.max)
+        return res
 
     @property
     def opds(self) -> List[str]:
-        self.att
+        return [
+            self.context.get_op_name_by_op_id(i) for i in self.op_type.opds if i != "%0"
+        ]
+
+    @property
+    def outputs(self) -> List[str]:
+        return [self.context.get_op_name_by_op_id(i) for i in self.opd_ids]
 
     @staticmethod
     def parse(operation_line: str) -> "Operation":
@@ -608,7 +682,6 @@ class GroupOp(Operation):
     """
      %6:2 = "tpu.Group"(%arg0) ({
     }) {...} : (tensor<1x3x384x288xf32, 4410114048 : i64>) -> (tensor<1x64x96x72xf32, 4411441152 : i64>, tensor<1x64x96x72xf32, 4413210624 : i64>) loc(#loc1666)
-
     """
 
     def __init__(
@@ -753,7 +826,7 @@ class Func(Node):
 
             arg_name_end_idx = func_inputs_str.find(":", start)
             arg_name = func_inputs_str[start:arg_name_end_idx]
-            tensor_pos = Type.match_tensor.search(func_inputs_str)
+            tensor_pos = Type.match_tensor_from_line.search(func_inputs_str)
 
             arg_type = Type.parse(tensor_pos.group(0))
             arg_names.append(arg_name)
@@ -794,14 +867,25 @@ class Func(Node):
 
 
 class Module(Node):
-    def __init__(self, attrs: Attributes, funcs: List[Func]) -> None:
+    def __init__(
+        self,
+        name: str,
+        attrs: Attributes,
+        funcs: List[Func],
+        sub_modules: List["Module"],
+    ) -> None:
         super().__init__()
+        self.name = name
         self.funcs = funcs
         self.attrs = attrs
+        self.sub_module = sub_modules
+        for sub in sub_modules:
+            self.funcs.extend(sub.funcs)
+            self.attrs.attributes.update(sub.attrs.attributes)
 
     def dump(self):
         """
-        module attributes {...} {
+        module @DragGan attributes {...} {
         } loc(#loc)
         """
         head = self.dump_head()
@@ -811,7 +895,7 @@ class Module(Node):
         return f"{head}\n{func_str}\n{tail}"
 
     def dump_head(self):
-        return f"module attributes {self.attrs.dump()} {{"
+        return f"module @{self.name} attributes {self.attrs.dump()} {{"
 
     def dump_tail(self):
         return "} loc(#loc)"

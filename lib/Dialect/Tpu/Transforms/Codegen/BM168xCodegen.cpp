@@ -9,7 +9,8 @@
 
 #include "BM168xCodegen.hpp"
 
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Backend/BM168x/BackendInterfaces.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/MemoryBuffer.h>
@@ -111,7 +112,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
   std::vector<Offset<bmodel::SubNet>> subnet_v;
   auto context = std::make_unique<Context>();
-  int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;
+  int dynamic_mode = (module::isBM1684XFamily()
+                     || module::isSG2260Family()) ? 2 : 1;
   bool first_dynamic = false;
 
   s.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
@@ -189,8 +191,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   npb.add_sub_net(subnets);
   npb.add_cpu_mem_size(0);
   // multi-core
-  if (auto bm1686 = dyn_cast<BM1686>(bm168x)) {
-    auto bufferNum = bm1686->getCodebuffer().size();
+  if (auto multi_core = dyn_cast<MultiCoreInterface>(bm168x)) {
+    auto bufferNum = multi_core->getCodebuffer().size();
     if (module::getCoreNum() > 1 && bufferNum > 1) {
       assert(module::getCoreNum() == bufferNum &&
              "The code buffer size does not match the core number defined in "
@@ -229,8 +231,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   if (module::getNumSubModule() > 1) {
     // make sure the order is by step and device id
     if (cascade.step == current_step) {
-      assert(cascade.device_id == current_device);
-      current_device++;
+      assert(cascade.device_id >= current_device);
+      current_device = cascade.device_id + 1;
     } else {
       assert(cascade.step == current_step + 1 && cascade.device_id == 0);
       current_step++;
@@ -611,21 +613,21 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
   bool useMuliCore = core_num > 1;
   auto secs = nsecs * csecs * dsecs * hsecs * wsecs;
   auto max_task_per_core = (secs + core_num - 1) / core_num;
-  int coreId = 0;
-  auto bm1686 = dyn_cast<BM1686>(bm168x);
-  useMuliCore &= (secs > 1) && bm1686;
-  if (useMuliCore && (bm1686->getCoreNum() != core_num)) {
-    assert(bm1686->getCoreNum() == 1 &&
+  int core_id = 0;
+  auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
+  useMuliCore &= (secs > 1) && multi_core;
+  if (useMuliCore && (multi_core->getCoreNum() != core_num)) {
+    assert(multi_core->getCoreNum() == 1 &&
            "The core_num should be set only once, and can not be changed.");
-    bm1686->dl_tpu_core_context_setup(0, core_num, 0);
-    bm1686->setCoreNum(module::getCoreNum());
+    multi_core->setupMultiCoreContext(0, core_num, 0);
+    multi_core->setCoreNum(module::getCoreNum());
   }
   // multi-core-setup END
   for (uint64_t nstep = 0, cstep = 0, hstep = 0, dstep = 0, wstep = 0;
        nstep < nsecs || draining_period;) {
     if (useMuliCore && stage_idx == 0) {
-      bm1686->useCore(coreId++);
-      bm1686->sync_all();
+      multi_core->useCore(core_id++);
+      multi_core->syncAll();
     }
     /* add for software pipeline */
     timestep_swpipl.write_swloop_buffer(nstep, cstep, hstep, dstep, wstep,
@@ -728,19 +730,19 @@ void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
         stage_idx = 0;
         draining_idx = 0;
         if (useMuliCore) {
-          bm1686->sync_all();
+          multi_core->syncAll();
         }
       }
     }
   }
   { // consume all the MSG send/wait.
-    for (; useMuliCore && coreId < core_num; coreId++) {
-      bm1686->useCore(coreId);
-      bm1686->sync_all();
-      bm1686->sync_all();
+    for (; useMuliCore && core_id < core_num; core_id++) {
+      multi_core->useCore(core_id);
+      multi_core->syncAll();
+      multi_core->syncAll();
     }
     if (useMuliCore)
-      bm1686->useCore(0);
+      multi_core->useCore(0);
   }
 }
 
@@ -760,7 +762,7 @@ void BMCodegen::codegen(Operation *op) {
     return;
   }
   if (auto parallelOp = dyn_cast<ParallelOp>(op)) {
-    if (auto bm1686 = dyn_cast<BM1686>(bm168x)) {
+    if (auto multi_core = dyn_cast<MultiCoreInterface>(bm168x)) {
       // For the sync-all method, we can use two message IDs to represent all
       // the dependencies in a single run. We can try the following sequence:
       // send0, wait0, send1, wait1. If any of the wait0 operations succeed,
@@ -770,28 +772,28 @@ void BMCodegen::codegen(Operation *op) {
       // operations have been completed. After this, it is safe to reuse
       // message0.
       auto core_num = module::getCoreNum();
-      if (bm1686->getCoreNum() != core_num) {
-        assert(bm1686->getCoreNum() == 1 &&
+      if (multi_core->getCoreNum() != core_num) {
+        assert(multi_core->getCoreNum() == 1 &&
                "The core_num should be set only once, and can not be changed.");
-        bm1686->dl_tpu_core_context_setup(0, core_num, 0);
-        bm1686->setCoreNum(module::getCoreNum());
+        multi_core->setupMultiCoreContext(0, core_num, 0);
+        multi_core->setCoreNum(module::getCoreNum());
       }
       int id = 0;
       for (auto globalOp : parallelOp.getOps<GlobalGenInterfaceDecorator>()) {
-        bm1686->useCore(id++);
-        bm1686->sync_all(); // begin compute sync-all
-        auto pid_node = (CMD_ID_NODE *)(*bm1686)->cmdid_node;
+        multi_core->useCore(id++);
+        multi_core->syncAll(); // begin compute sync-all
+        auto pid_node = (CMD_ID_NODE *)(*bm168x)->cmdid_node;
         BM168x::instance()->dl_set_cmd_id_prefix(pid_node,
                                                  gen_op_id(op).c_str());
         globalOp.codegen_global_bm168x();
-        bm1686->sync_all(); // end compute sync-all
+        multi_core->syncAll(); // end compute sync-all
       }
       for (; id < core_num; id++) { // consume all the MSG send/wait.
-        bm1686->useCore(id);
-        bm1686->sync_all();
-        bm1686->sync_all();
+        multi_core->useCore(id);
+        multi_core->syncAll();
+        multi_core->syncAll();
       }
-      bm1686->useCore(0); // reset the command buffer to 0
+      multi_core->useCore(0); // reset the command buffer to 0
     } else {
       llvm_unreachable("The backend is missing configuration.");
     }
@@ -859,11 +861,11 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call) {
 
   std::vector<Offset<bmodel::CmdGroup>> cmd_group_vs;
   std::vector<Offset<bmodel::CoreCommands>> core_commands;
-  auto bm1686 = dyn_cast<BM1686>(bm168x);
-  if (bm1686 && bm1686->getCodebuffer().size() > 1) {
-    auto code_buffers = bm1686->getCodebuffer();
+  auto multi_core = dyn_cast<MultiCoreInterface>(bm168x);
+  if (multi_core && multi_core->getCodebuffer().size() > 1) {
+    auto code_buffers = multi_core->getCodebuffer();
     for (int i = 0, n = code_buffers.size(); i < n; i++) {
-      bm1686->useCore(i);
+      multi_core->useCore(i);
       auto cmd_group_v = CreateCmdGroupVector();
       auto cmd_group = builder.CreateVector(*cmd_group_v);
       bmodel::CoreCommandsBuilder ccb(builder);

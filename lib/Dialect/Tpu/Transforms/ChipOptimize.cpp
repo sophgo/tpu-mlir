@@ -25,7 +25,7 @@ public:
   void runOnOperation() override {
     auto mOp = getOperation();
     RewritePatternSet patterns(mOp.getContext());
-    if (module::isBM1684XFamily()) {
+    if (module::isBM1684XFamily() || module::isSG2260Family()) {
       populateOptimizeBM1684XPatterns(&patterns);
     } else if (module::isCV18xx()) {
       populateOptimizeCV18XXPatterns(&patterns);

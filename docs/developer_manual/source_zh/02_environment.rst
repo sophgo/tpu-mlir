@@ -24,7 +24,7 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
 
 .. code-block:: shell
 
-   $ docker pull sophgo/tpuc_dev:v2.2
+   $ docker pull sophgo/tpuc_dev:v3.1
 
 
 如果是首次使用Docker, 可执行下述命令进行安装和配置(仅首次执行):
@@ -48,7 +48,7 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
 
 .. code-block:: shell
 
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v2.2
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.1
   # myname只是举个名字的例子, 请指定成自己想要的容器的名字
 
 注意TPU-MLIR工程在docker中的路径应该是/workspace/tpu-mlir

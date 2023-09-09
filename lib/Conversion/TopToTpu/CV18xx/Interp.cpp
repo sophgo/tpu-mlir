@@ -793,9 +793,9 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
          "Transformsed conv shape SHOULD be equal with interp");
 
   if (is1x1Input) {
-    rewriter.replaceOp(op, {deconv2d});
+    rewriter.replaceOp(op, deconv2d);
   } else {
-    rewriter.replaceOp(op, {conv2d});
+    rewriter.replaceOp(op, conv2d);
   }
   return true;
 }

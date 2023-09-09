@@ -123,7 +123,7 @@ struct ReshapeInstanceNormPattern : public OpRewritePattern<ReshapeOp> {
     rewriter.setInsertionPointAfterValue(input);
     auto gn_op = rewriter.create<GroupNormOp>(
       loc, gn_out_type, gn_opds, attrs);
-    rewriter.replaceOp(op, {gn_op});
+    rewriter.replaceOp(op, gn_op);
     auto gn_output = gn_op.getOutput();
     rewriter.setInsertionPointAfterValue(gn_output);
     auto new_reshape_out_type = next_op.getResult().getType();

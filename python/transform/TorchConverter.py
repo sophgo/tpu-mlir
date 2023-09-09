@@ -407,6 +407,7 @@ class TorchConverter(BaseConverter):
             filter_op = self.getOp(new_name)
         else:
             filter_op = self.getOp(torch_node.inputs[1])
+        weight_is_coeff=1 if self.isWeight(torch_node.inputs[1]) else 0
         if torch_node.inputs[2] not in self.const_val.keys() or self.const_val[
                 torch_node.inputs[2]] is not None:
             bias_op = self.getOp(torch_node.inputs[2])
@@ -437,6 +438,7 @@ class TorchConverter(BaseConverter):
                             dilations=dilations,
                             pads=pads,
                             group=group,
+                            weight_is_coeff=weight_is_coeff,
                             do_relu=False,
                             loc=self.get_loc(torch_node.name),
                             ip=self.mlir.insert_point).output
