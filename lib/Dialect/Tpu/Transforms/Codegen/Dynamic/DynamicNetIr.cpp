@@ -810,7 +810,8 @@ void SubnetIr::generate_group_time_step_ir(Operation *op) {
       ir_group_timestep_layer_param.push_back(layer_info_v2);
     ir_group_timestep_tensor_gdma_param.push_back(tensor_gdma_info_v2);
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    if (module::isBM1684XFamily() || module::isBM1684Family()) {
+    if (module::isBM1684XFamily() || module::isBM1684Family()
+        || module::isSG2260Family()) {
       // global layer
       LgInfo sub_group;
       sub_group.group_ops.push_back(op);

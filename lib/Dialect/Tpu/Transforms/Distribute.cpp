@@ -40,6 +40,38 @@ void distribute(PatternRewriter &rewriter, Operation *op_begin,
   output.replaceAllUsesExcept(end.getOutput(), end);
 }
 
+void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,
+                     Operation *op_end, tpu::DistributionPattern pattern) {
+  // 1. Create pattern params
+  auto ctx = rewriter.getContext();
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr(
+      "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
+
+  // 2. Insert DistributionBeginOp
+  auto input = op_begin->getResult(0);
+  std::vector<Type> types = {input.getType()};
+  rewriter.setInsertionPointAfter(op_begin);
+  auto begin = rewriter.create<tpu::DistributionBeginOp>(
+      module::getLocLike(input, "distribute_begin"), types, ValueRange{input},
+      attrs);
+  input.replaceAllUsesExcept(begin.getOutput(), begin);
+
+  // 3. Insert DistributionEndOp
+  Value output;
+  for (auto o : op_end->getResults()) {
+    if (o.hasOneUse()) {
+      output = o;
+      break;
+    }
+  }
+  rewriter.setInsertionPointAfter(op_end);
+  auto end = rewriter.create<tpu::DistributionEndOp>(
+      module::getLocLike(output, "distribute_end"), output.getType(),
+      ValueRange{output}, attrs);
+  output.replaceAllUsesExcept(end.getOutput(), end);
+}
+
 bool isLargeMatMul(Operation *op) {
   auto mm = dyn_cast<tpu::MatMulOp>(op);
   if (!mm) {
@@ -96,6 +128,9 @@ public:
     case tpu::DistributionPattern::MatMulSliceMerge:
       splitByDevices<MatMulSliceMerge>(rewriter, op, num_devices);
       break;
+    case tpu::DistributionPattern::MatMulSliceMerge2:
+      splitByDevices<MatMulSliceMerge2>(rewriter, op, num_devices);
+      break;
     case tpu::DistributionPattern::MatMulTopK:
       splitByDevices<MatMulTopK>(rewriter, op, num_devices);
       break;
@@ -117,15 +152,24 @@ public:
     if (module::getNumSubModule() > 0) {
       return;
     }
-    if (!module::isBM1684XFamily()) {
+    if (!(module::isBM1684XFamily() || module::isSG2260Family())) {
       num_device = 1;
     }
     module::setDeviceNum(num_device);
     auto mOp = getOperation();
+    auto mainFunc = module::getMainFuncOp(mOp);
     if (num_device > 1) {
       applyPatternOnce<MatMulSliceMerge>(mOp);
+      applyPatternOnce<MatMulSliceMerge2>(mOp);
       applyPatternOnce<MatMulTopK>(mOp);
       applyPatternOnce<DoDistributePattern>(mOp);
+      if (mainFunc.getOps<tpu::DistributionBeginOp>().empty()) {
+        // no pattern find
+        num_device = 1;
+        module::setDeviceNum(num_device);
+      } else {
+        applyPatternOnce<DoDistributePattern>(mOp);
+      }
     }
     distributeModules(mOp, num_device);
   }

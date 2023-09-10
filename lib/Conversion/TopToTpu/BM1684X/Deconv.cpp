@@ -57,6 +57,10 @@ void DeconvLowering::LoweringINT4(PatternRewriter &rewriter, top::DeconvOp op,
 }
 void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
                                   bool asymmetric) const {
+  if (module::isWeight(op.getFilter()) == false) {
+    LoweringF32(rewriter, op);
+    return;
+  }
   auto param = op.parseParam();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
@@ -71,7 +75,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   auto filter_f32 = filterOp.read<float>();
   float fmax, fmin;
   findMinMax(filter_f32->data(), filter_f32->size(), &fmin, &fmax);
-  bool with_bias = !module::isNone(op.getBias());
+  bool with_bias = param.with_bias;
   bool fsign = (fmin < 0 || with_bias == true);
   float fqmax = fsign ? 127 : 255;
   f64_array_t weight_scale_v;
@@ -219,6 +223,11 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
 
 void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::DeconvOp op) const {
+  if (module::isWeight(op.getFilter()) == false) {
+    LoweringF32(rewriter, op);
+    return;
+  }
+
   std::vector<Value> operands;
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   rewriter.setInsertionPointAfter(op);
@@ -240,6 +249,11 @@ void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void DeconvLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::DeconvOp op) const {
+  if (module::isWeight(op.getFilter()) == false) {
+    LoweringF32(rewriter, op);
+    return;
+  }
+
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());

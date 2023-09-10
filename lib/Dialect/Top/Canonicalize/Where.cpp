@@ -44,7 +44,7 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
     for (auto out : op.getOutput().getUsers()) {
       if ((softmax_op = dyn_cast<SoftmaxOp>(out)))
         break;
-      else if (add_op = dyn_cast<AddOp>(out))
+      else if ((add_op = dyn_cast<AddOp>(out)))
         break;
     }
     if (softmax_op == NULL && add_op == NULL)

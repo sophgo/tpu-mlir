@@ -33,6 +33,8 @@ struct Attr {
   static constexpr llvm::StringRef STEP = "module.step";
   static constexpr llvm::StringRef INPUTS = "module.inputs";
   static constexpr llvm::StringRef OUTPUTS = "module.outputs";
+  static constexpr llvm::StringRef W8A16_LINEAR = "module.w8a16_linear";
+  static constexpr llvm::StringRef TRAIN = "module.train";
 };
 
 static ModuleOp m = nullptr;
@@ -749,6 +751,20 @@ bool isWeight(Value v) {
   if (isa<top::WeightOp>(op)) {
     return true;
   }
+
+  return false;
+}
+
+bool isDynWeight(Value v) {
+  auto op = v.getDefiningOp();
+  if (op == nullptr) {
+    return false;
+  }
+  if (op->hasAttr("dynamic_weight")) {
+    // use code below to tag dynamic weight op
+    // op->setAttr("dynamic_weight", , rewriter.getBoolAttr(true));
+    return true;
+  }
   return false;
 }
 
@@ -954,6 +970,27 @@ void setAsymmetric(bool is_asymmetric) {
   m->setAttr(Attr::ASYMMETRIC, BoolAttr::get(ctx, is_asymmetric));
 }
 
+bool isW8A16Linear() {
+  if (m->hasAttrOfType<BoolAttr>(Attr::W8A16_LINEAR)) {
+    return m->getAttrOfType<BoolAttr>(Attr::W8A16_LINEAR).getValue();
+  }
+  return false;
+}
+
+void setW8A16Linear(bool is_w8a16linear) {
+  m->setAttr(Attr::W8A16_LINEAR, BoolAttr::get(ctx, is_w8a16linear));
+}
+
+bool isTrain() {
+  if (m->hasAttrOfType<BoolAttr>(Attr::TRAIN)) {
+    return m->getAttrOfType<BoolAttr>(Attr::TRAIN).getValue();
+  }
+  return false;
+}
+
+void setTrain(bool is_train) {
+  m->setAttr(Attr::TRAIN, BoolAttr::get(ctx, is_train));
+}
 State getState() {
   auto s = m->getAttrOfType<StringAttr>(Attr::STATE);
   return symbolizeState(s).value_or(State::TOP_F32);
@@ -1027,6 +1064,9 @@ bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1686 ||
           chip == Chip::CV186X);
+}
+bool isSG2260Family() {
+  return (chip == Chip::SG2260);
 }
 bool isBM1686() { return (chip == Chip::BM1686 || chip == Chip::CV186X); }
 bool isBM1684X() { return (chip == Chip::BM1684X); }
@@ -1170,10 +1210,14 @@ void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
     for (auto out : op.getOperands()) {
       auto result = out.cast<OpResult>();
       auto call_op = result.getDefiningOp<func::CallOp>();
-      auto func_op = getFuncOp(s, call_op.getCallee());
-      auto return_op = dyn_cast<ReturnOp>(func_op.front().back());
-      assert(return_op);
-      outputs.push_back(return_op.getOperand(result.getResultNumber()));
+      if(call_op) {
+        auto func_op = getFuncOp(s, call_op.getCallee());
+        auto return_op = dyn_cast<ReturnOp>(func_op.front().back());
+        assert(return_op);
+        outputs.push_back(return_op.getOperand(result.getResultNumber()));
+      } else {
+        outputs.push_back(out);
+      }
     }
   });
 }
@@ -1578,8 +1622,10 @@ commonShapeValInfer(mlir::Operation *op,
   p.outputs.push_back(output_data.data());
   auto inf_op = dyn_cast<InferenceInterface>(op);
   assert(inf_op);
+  inf_op.init(p);
   auto ret = inf_op.inference(p);
   assert(mlir::succeeded(ret));
+  inf_op.deinit(p);
   std::vector<int64_t> output_shape_v(real_out_size);
   std::transform(output_data.begin(), output_data.end(), output_shape_v.begin(),
                  [](float_t i) { return static_cast<int64_t>(i); });

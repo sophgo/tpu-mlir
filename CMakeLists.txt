@@ -4,7 +4,7 @@ if (POLICY CMP0116)
   cmake_policy(SET CMP0116 OLD)
 endif()
 
-project(nntoolchain LANGUAGES CXX C)
+project(tpu-mlir LANGUAGES CXX C)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -18,9 +18,6 @@ endif()
 #-------------------------------------------------------------------------------
 # MLIR/LLVM Configuration
 #-------------------------------------------------------------------------------
-
-set(MLIR_DIR ${PROJECT_SOURCE_DIR}/third_party/llvm/lib/cmake/mlir)
-
 # reference https://github.com/llvm/circt/blob/main/cmake/modules/AddCIRCT.cmake
 set(MLIR_BINARY_DIR ${CMAKE_INSTALL_PREFIX})
 
@@ -52,11 +49,9 @@ message(STATUS "Using MLIR_INCLUDE_DIRS in: ${MLIR_INCLUDE_DIRS}")
 #-------------------------------------------------------------------------------
 # oneDNN Configuration
 #-------------------------------------------------------------------------------
-set(DNNL_PATH ${PROJECT_SOURCE_DIR}/third_party/oneDNN)
-set(DNNL_DIR ${DNNL_PATH}/lib/cmake/dnnl)
-find_package(DNNL REQUIRED CONFIG)
-include_directories(${DNNL_PATH}/include)
-link_directories(${DNNL_PATH}/lib)
+find_package(DNNL REQUIRED)
+include_directories(${DNNL_INCLUDE_DIRS})
+link_libraries(${DNNL_LIBS})
 #-------------------------------------------------------------------------------
 # cnpy Configuration
 #-------------------------------------------------------------------------------
@@ -65,9 +60,9 @@ include_directories(${CNPY_PATH})
 #-------------------------------------------------------------------------------
 # flatbuffers Configuration
 #-------------------------------------------------------------------------------
-set(FLATBUFFERS_PATH ${PROJECT_SOURCE_DIR}/third_party/flatbuffers)
-include_directories(${FLATBUFFERS_PATH}/include)
-link_directories(${FLATBUFFERS_PATH}/lib)
+find_package(Flatbuffers REQUIRED)
+include_directories(${FLATBUFFERS_INCLUDE_DIRS})
+link_libraries(${FLATBUFFERS_LIBS})
 #-------------------------------------------------------------------------------
 # nntoolchain Configuration
 #-------------------------------------------------------------------------------
@@ -99,6 +94,17 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
 
 #-------------------------------------------------------------------------------
+function(append value)
+  foreach(variable ${ARGN})
+    set(${variable} "${${variable}} ${value}" PARENT_SCOPE)
+  endforeach(variable)
+endfunction()
+if(TPUMLIR_USE_LLD)
+  append("-fuse-ld=lld"
+    CMAKE_EXE_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS)
+endif()
+#-------------------------------------------------------------------------------
+
 # generate version
 execute_process(
   COMMAND git describe --tags --always

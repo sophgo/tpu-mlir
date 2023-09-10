@@ -309,23 +309,28 @@ std::unique_ptr<std::vector<T>> TensorFile::readTensor(llvm::StringRef name,
       {1 /*STORE_MODE_2N*/, 2l},
       {2 /*STORE_MODE_4N*/, 4l},
   };
-  auto n = type.getShape()[0];
-  auto others = type.getNumElements() / n;
-  auto count = (n + stmode_map.at(store_mode) - 1) / stmode_map.at(store_mode) *
-               stmode_map.at(store_mode) * others;
-  assert(check_type<T>(type.getElementType()) == true);
-  bool isINT4 = type.getElementType().isInteger(4);
-  if (isINT4) {
-    auto dims = type.getShape().size();
-    if (dims == 2) { // for MatMul
-      count = type.getDimSize(0) * ((type.getDimSize(1) + 1) / 2);
-    } else if (dims == 4) { // for Conv2d
-                            /* count = type.getDimSize(0) *
-                                     type.getDimSize(1) *
-                                     ((type.getDimSize(2) * type.getDimSize(3) + 1)/2); */
-      count = (count + 1) / 2;
-    } else {
-      assert(0);
+  size_t count = 1;
+  bool isINT4 = false;
+  auto s = type.getShape();
+  if (s.size() > 0 ) {
+    auto n = type.getShape()[0];
+    auto others = type.getNumElements() / n;
+    count = (n + stmode_map.at(store_mode) - 1) / stmode_map.at(store_mode) *
+                stmode_map.at(store_mode) * others;
+    assert(check_type<T>(type.getElementType()) == true);
+    isINT4 = type.getElementType().isInteger(4);
+    if (isINT4) {
+      auto dims = type.getShape().size();
+      if (dims == 2) { // for MatMul
+        count = type.getDimSize(0) * ((type.getDimSize(1) + 1) / 2);
+      } else if (dims == 4) { // for Conv2d
+                              /* count = type.getDimSize(0) *
+                                      type.getDimSize(1) *
+                                      ((type.getDimSize(2) * type.getDimSize(3) + 1)/2); */
+        count = (count + 1) / 2;
+      } else {
+        assert(0);
+      }
     }
   }
 

@@ -8,7 +8,7 @@
 #
 # ==============================================================================
 import argparse
-from onnx import onnx
+import onnx
 from onnx import helper
 from onnx import TensorProto
 from utils.mlir_parser import MlirParser

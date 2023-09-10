@@ -67,10 +67,10 @@ LogicalResult tpu::RMSNormOp::inference(InferenceParameter &p) {
   }
   int inner_dim = input_shape[dim_size - 1];
 
-  const bool have_gamma = !getGamma().getType().isa<NoneType>();
+  const bool has_weight = !getGamma().getType().isa<NoneType>();
 
   const float *input_data = p.inputs[0];
-  const float *gamma_data = have_gamma ? p.inputs[1] : nullptr;
+  const float *gamma_data = has_weight ? p.inputs[1] : nullptr;
   float *output_data = p.outputs[0];
 
   std::vector<float> rms_arr(outer_dim, 0);
@@ -88,4 +88,13 @@ LogicalResult tpu::RMSNormOp::inference(InferenceParameter &p) {
   }
 
   return success();
+}
+
+LogicalResult tpu::RMSNormOp::AllowDataSplit(int64_t axis,
+                                               group_type_t group_type) {
+  int64_t ax = module::getShape(getInput()).size() - 1;
+  if (group_type == GROUP_SMALL_C) {
+    ax = 2;
+  }
+  return axis < ax ? success() : failure();
 }

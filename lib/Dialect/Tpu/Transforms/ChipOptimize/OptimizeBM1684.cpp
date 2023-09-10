@@ -238,7 +238,7 @@ public:
     auto op_batch2space = rewriter.create<tpu::Batch2SpaceOp>(
         op.getLoc(), RankedTensorType::get(output_shape, output_ele_type),
         operands_batch2space, attrs_batch2space);
-    rewriter.replaceOp(op, {op_batch2space});
+    rewriter.replaceOp(op, op_batch2space);
 
     return failure();
   }

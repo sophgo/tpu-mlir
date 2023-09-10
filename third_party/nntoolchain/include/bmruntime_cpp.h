@@ -138,6 +138,44 @@ class Tensor {
   friend class Network;
 };
 
+struct api_info_t {
+  /// @brief api_id to be sent to driver
+  int32_t api_id;
+  /// @brief api data to be sent to driver, {core_idx, core_api_data}
+  std::vector<std::vector<uint8_t>> api_data;
+  /// @brief offset of input tensors' addr in api_data
+  std::vector<uint32_t> input_addr_offset;
+  /// @brief offset of output tensors' addr in api_data
+  std::vector<uint32_t> output_addr_offset;
+};
+/**
+ * @name    get_bmodel_api_info
+ * @brief   To get the api info setting input tensors
+ * @ingroup bmruntime
+ *
+ * This API only supports the neuron nework that is static-compiled.
+ * After calling this API, api info will be setted and return,
+ * and then you can call `bm_send_api` to start TPU inference.
+ *
+ * @param [in]    p_bmrt            Bmruntime that had been created
+ * @param [in]    net_name          The name of the neuron network
+ * @param [in]    input_tensors     Array of input tensor, defined like bm_tensor_t input_tensors[input_num],
+ *                                  User should initialize each input tensor.
+ * @param [in]    input_num         Input number
+ * @param [out]   output_tensors    Array of output tensor, defined like bm_tensor_t output_tensors[output_num].
+ *                                  User can set device_mem or stmode of output tensors. If user_mem is true, this interface
+ *                                  will use device mem of output_tensors to store output data, and not alloc device mem;
+ *                                  Or it will alloc device mem to store output. If user_stmode is true, it will use stmode in
+ *                                  each output tensor; Or stmode will be BM_STORE_1N as default.
+ * @param [in]    output_num        Output number
+ * @param [in]    user_mem          whether device_mem of output tensors are set
+ * @param [in]    user_stmode       whether stmode of output tensors are set
+ *
+ */
+api_info_t get_bmodel_api_info(void *p_bmrt, const char *net_name,
+                               const bm_tensor_t *input_tensors, int input_num,
+                               bm_tensor_t *output_tensors, int output_num,
+                               bool user_mem, bool user_stmode);
 }  // namespace bmruntime
 
 #endif /* __BMRUNTIME_CPP_H__ */

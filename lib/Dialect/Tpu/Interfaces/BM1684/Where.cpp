@@ -22,6 +22,10 @@ void tpu::WhereOp::codegen_global_bm1684() {
   spec.sel1_const_val = getYConstVal().convertToDouble();
   uint32_t *cond_shape = new uint32_t[MAX_SHAPE_DIMS];
   uint32_t *out_shape = new uint32_t[MAX_SHAPE_DIMS];
+  for (int i = 0; i < MAX_SHAPE_DIMS; i++) {
+    cond_shape[i] = 1;
+    out_shape[i] = 1;
+  }
   int cond_sign = module::isSign(getCond());
   for (auto v : llvm::enumerate(module::getShape(getCond())))
     cond_shape[v.index()] = (uint32_t)v.value();

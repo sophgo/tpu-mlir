@@ -9,6 +9,7 @@
 from debugger import disassembler
 from debugger import opdef_1684x
 from debugger import context
+import numpy as np
 
 
 def get_nop_conv():

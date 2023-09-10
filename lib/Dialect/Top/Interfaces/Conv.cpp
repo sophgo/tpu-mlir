@@ -16,6 +16,7 @@ conv_attr_t top::ConvOp::parseParam() {
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.has_bias = !getBias().getType().isa<NoneType>();
+  p.weight_is_coeff = getWeightIsCoeff();
   auto kernel = module::getI64Array(getKernelShape());
   auto pads_v = module::getI64Array(getPads());
   auto strides_v = module::getI64Array(getStrides());
@@ -96,8 +97,6 @@ int64_t top::ConvOp::getFLOPs() {
 
 LogicalResult top::ConvOp::init(InferenceParameter &p) {
   auto conv = new Conv();
-  auto attr = parseParam();
-  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)conv;
   return success();
 }
@@ -115,6 +114,8 @@ LogicalResult top::ConvOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto conv = (Conv *)p.handle;
+  auto attr = parseParam();
+  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   conv->run();
   return success();
 }

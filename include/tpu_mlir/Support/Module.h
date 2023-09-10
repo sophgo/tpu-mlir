@@ -84,6 +84,8 @@ int64_t getFLOPs();
 void setFLOPs(int64_t flops);
 bool isAsymmetric();
 void setAsymmetric(bool is_asymmetric);
+bool isW8A16Linear();
+void setW8A16Linear(bool is_w8a16linear);
 llvm::StringRef getPostprocess();
 void setPostprocess(StringRef post);
 
@@ -135,6 +137,7 @@ bool isUnranked(Value v);
 void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape);
 bool isSign(Value v);
 bool isWeight(Value v);
+bool isDynWeight(Value v);
 bool isShapeRelatedOp(Value v);
 bool isAllWeight(Operation *op);
 bool isNone(Value v);
@@ -172,6 +175,7 @@ bool isInt4Op(Operation *op);
 bool isCV18xx();
 bool isBM1684Family();
 bool isBM1684XFamily();
+bool isSG2260Family();
 bool isBM1686();
 bool isBM1684X();
 

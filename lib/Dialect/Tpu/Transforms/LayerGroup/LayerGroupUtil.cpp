@@ -21,10 +21,14 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
                    lg_info.type);
   int64_t max_nsecs = n;
   if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp,
-          tpu::MinOp>(lg_info.group_ops[0])) {
+          tpu::MinOp, tpu::MatMulOp>(lg_info.group_ops[0])) {
     module::getNCDHW(lg_info.group_ops[0]->getOperand(1), n, c, d, h, w,
                      lg_info.type);
-    max_nsecs = std::max(n, max_nsecs);
+    if (isa<tpu::MatMulOp>(lg_info.group_ops[0]) && n != max_nsecs) {
+      max_nsecs = 1;
+    } else {
+      max_nsecs = std::max(n, max_nsecs);
+    }
   }
   int64_t max_csecs = llvm::maxIntN(64);
   int64_t max_hsecs = llvm::maxIntN(64);
@@ -53,7 +57,8 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
       }
 
       // split d now only supports BM1684X and not int4, not dynamic
-      if (module::isBM1684XFamily() && (!stype.isInteger(4)) &&
+      if ((module::isBM1684XFamily() || module::isSG2260Family())
+           && (!stype.isInteger(4)) &&
           lg_info.type == GROUP_3D && mode != RunMode::TPU_DYNAMIC &&
           succeeded(lgOp.AllowDataSplit(2, lg_info.type))) {
         max_dsecs = std::min(max_dsecs, d);
@@ -67,7 +72,8 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
         max_hsecs = 1;
       }
       // split w now only supports BM1684X and not int4, not dynamic
-      if (module::isBM1684XFamily() && (!stype.isInteger(4)) &&
+      if ((module::isBM1684XFamily() || module::isSG2260Family())
+          && (!stype.isInteger(4)) &&
           mode != RunMode::TPU_DYNAMIC &&
           succeeded(lgOp.AllowDataSplit(3 + (lg_info.type == GROUP_3D ? 1 : 0),
                                         lg_info.type))) {
@@ -745,6 +751,25 @@ static bool backward_update_slice(const LgInfo &lg_info,
         std::find(group_ins.begin(), group_ins.end(), in) != group_ins.end();
     auto ret = get_backward_slice_info(si, out_si, op, in, shape_secs,
                                        lg_info.type, hold_in_lmem, is_group_in);
+    if(pre_op && module::isDynWeight(in)){
+        auto shape = module::getShape(in);
+        si.n.clear();
+        si.n.emplace_back(std::pair(0, shape[0]));
+        si.c.clear();
+        si.c.emplace_back(std::pair(0, shape[1]));
+        si.h.clear();
+        si.h.emplace_back(std::pair(0, shape[2]));
+        si.w.clear();
+        si.w.emplace_back(std::pair(0, shape[3]));
+
+        tensor_infos[in] = tensor_info_t(si);
+        tensor_infos[in].hold_in_lmem = true;
+
+        if (strip_back_judge(in, lg_info, op_set, out_tensor_set)) {
+          tensor_branchs.push_back(in);
+        }
+        continue;
+    }
     if (ret == false) {
       return false;
     }
@@ -911,6 +936,8 @@ int64_t get_buffer_size(Value v, const tensor_info_t &ti,
     } else {
       buf_size = Arch::get_weight_lmem_bytes(v, group_type, ti.eu_align);
     }
+  } else if(module::isDynWeight(v)) { // TODO: need check
+    buf_size = Arch::get_weight_lmem_bytes(v, group_type, ti.eu_align);
   } else {
     int64_t nslice, cslice, hslice, dslice, wslice;
     auto &si = ti.slice_info;
@@ -1064,6 +1091,11 @@ bool is_eu_align_cv18xx(Value opd) {
 
 bool is_eu_align_bm168x(Value opd) {
   auto op = *opd.user_begin();
+
+  if (module::isDynWeight(opd)) {
+    return false;
+  }
+
   if (module::isWeight(opd)) {
     if (isa<tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp, tpu::GroupNormOp,
             tpu::LayerNormOp, tpu::PixelNormOp>(op)) {

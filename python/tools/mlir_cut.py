@@ -99,17 +99,29 @@ def cut_mlir_input(ast: MlirAST, input_names: List[str]):
             )
 
 
-def make_fake_feed_input(ast: MlirAST):
+def make_fake_feed_input(ast: MlirAST, ref: Dict[str, np.ndarray]):
     import numpy as np
 
     dic = {}
     for op in ast.module.funcs[0].ops:
         if op.op_type.isa("top.Input"):
-            dic[op.name] = np.random.random(op.input_types[0].shape)
+            if op.name in ref:
+                dic[op.name] = ref[op.name]
+            else:
+                dic[op.name] = np.random.random(op.input_types[0].shape)
+
     return dic
 
 
-def cut_mlir(ast: MlirAST, input_names: List[str] = [], output_names: List[str] = []):
+def cut_mlir(
+    ast: MlirAST,
+    input_names: List[str] = [],
+    output_names: List[str] = [],
+    ref_data: Dict[str, np.ndarray] = None,
+):
+    if ref_data is None:
+        ref_data = {}
+
     i = 0
     fn = f"{ast.mlir_file}_v{i}.mlir"
     while os.path.exists(fn):
@@ -130,21 +142,22 @@ def cut_mlir(ast: MlirAST, input_names: List[str] = [], output_names: List[str] 
     with open(fn, "w") as w:
         w.write(ast.dump())
 
-    print(f"new version is rewrite, also copy to {fn}")
+    latest_fn = f"{ast.mlir_file}_latest.mlir"
+    with open(latest_fn, "w") as w:
+        w.write(ast.dump())
 
-    # if len(input_names) > 0:
-    dic = make_fake_feed_input(ast)
+    print(f"new version is rewrite to {fn}, also copy to {latest_fn}")
+
+    dic = make_fake_feed_input(ast, ref_data)
     np.savez("fake_data.npz", **dic)
 
-    wd = os.path.dirname(fn)
     basename = os.path.basename(fn)
-
-    if module_state == "TOP_F32":
+    if module_state == '"TOP_F32"':
         tgt_name = basename.replace("_origin", "")
         print(
             f"tpuc-opt {basename} --shape-infer --canonicalize --extra-optimize -o {tgt_name}.mlir"
         )
-    elif module_state == "TPU_LOWERED":
+    elif module_state == '"TPU_LOWERED"':
         print(
             " ".join(
                 [
@@ -164,7 +177,7 @@ def cut_mlir(ast: MlirAST, input_names: List[str] = [], output_names: List[str] 
             )
         )
 
-    elif module_state == "TPU_ADDRESSED":
+    elif module_state == '"TPU_ADDRESSED"':
         print(
             rf""" tpuc-opt {basename} \
             --codegen="model_file={fn}.bmodel embed_debug_info=false" \
@@ -172,14 +185,43 @@ def cut_mlir(ast: MlirAST, input_names: List[str] = [], output_names: List[str] 
         )
 
 
+def backtrace(
+    ast_parser: MlirASTParser, output_names: List[str], number: int, dir="bt"
+):
+    parser = MlirParserV2.from_astparser(ast_parser)
+    side_names = []
+    for name in output_names:
+        count = 0
+        queue = [name]
+        while count < number:
+            top = queue.pop()
+            neighbor = (
+                parser.get_pre_op_by_op_name(top)
+                if dir == "bt"
+                else parser.get_next_op_by_op_name(top)
+            )
+            queue.extend(neighbor)
+            count += len(neighbor)
+        side_names.extend(queue)
+    return side_names
+
+
 if __name__ == "__main__":
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--mlir", required=True, help="model name")
+    parser.add_argument("--mode", choices=['io','bt','ft'], help="""
+                         - io mean assign input_names and output_names;
+                         - bt (backtrace) means cut `num` operations back for each output_name;
+                         - ft (forward trace) means cut `num` operation back for each input_name
+                        """, default='io')
+    parser.add_argument("--num", type=int, help="model name")
     parser.add_argument("--input_names", type=str2list, default=list(),
                         help="if set, will find names in model and set as real outputs")
     parser.add_argument("--output_names", type=str2list, default=list(),
+                        help="if set, will find names in model and set as real outputs")
+    parser.add_argument("--ref_data", type=str, default= None,
                         help="if set, will find names in model and set as real outputs")
 
     args, unknown_args = parser.parse_known_args()
@@ -187,5 +229,17 @@ if __name__ == "__main__":
 
     parser = MlirASTParser(args.mlir)
     parser.parse()
-    cut_mlir(parser.ast, args.input_names, args.output_names)
+
+    if args.mode == 'bt':
+        assert len(args.input_names) == 0 and len(args.output_names) != 0
+        args.input_names = backtrace(parser, args.output_names, args.num, dir=args.mode)
+    elif args.mode == 'ft':
+        assert len(args.output_names) == 0 and len(args.input_names) != 0
+        args.output_names = backtrace(parser, args.input_names, args.num, dir=args.mode)
+
+    ref_data =None
+    if args.ref_data is not None:
+        ref_data = np.load(args.ref_data, allow_pickle=True)
+
+    cut_mlir(parser.ast, args.input_names, args.output_names, ref_data)
     exit(0)

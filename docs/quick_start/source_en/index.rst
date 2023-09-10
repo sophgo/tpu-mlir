@@ -16,10 +16,9 @@ TPU-MLIR Quick Start
    04_torch
    05_caffe
    06_tflite
-   07_mix_precision
+   07_quantization
    08_fuse_preprocess
    09_add_postprocess
-   10_sensitive_layer
    Appx.01_to_onnx_convert
    Appx.02_cv18xx_guide
    Appx.03_bm168x_test

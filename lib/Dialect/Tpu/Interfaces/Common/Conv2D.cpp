@@ -23,6 +23,7 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.has_bias = getWithBias();
+  p.weight_is_coeff = getWeightIsCoeff();
   p.dims = i_s.size() - 2;
   p.n = i_s[0];
   p.ic = i_s[1];
@@ -59,14 +60,6 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
 
 LogicalResult tpu::Conv2DOp::init(InferenceParameter &p) {
   auto conv = new Conv();
-  auto attr = parseParam();
-  if (module::isUniformQuantized(getOutput()) && attr.has_bias) {
-    attr.do_relu = false;
-    for (int i = 0; i < attr.oc; i++) {
-      p.inputs[2][i] = 0.f;
-    }
-  }
-  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)conv;
   return success();
 }
@@ -84,6 +77,14 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto conv = (Conv *)p.handle;
+  auto attr = parseParam();
+  if (module::isUniformQuantized(getOutput()) && attr.has_bias) {
+    attr.do_relu = false;
+    for (int i = 0; i < attr.oc; i++) {
+      p.inputs[2][i] = 0.f;
+    }
+  }
+  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   conv->run();
   // requant
   auto out_type = module::getStorageType(getOutput());
@@ -289,7 +290,10 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
     }
   }
   if (module::isWeight(getFilter()) == false) {
-    return failure();
+    auto Filter_type = BM168x::getDataType(getFilter());
+    if (Filter_type == DTYPE_FP32){
+      return failure();
+    }
   }
   return success();
 }

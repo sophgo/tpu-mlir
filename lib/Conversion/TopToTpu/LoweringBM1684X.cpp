@@ -11,6 +11,36 @@
 
 namespace tpu_mlir {
 namespace bm1684x {
+template <typename TyOp>
+struct ShapeArithConvert : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(TyOp op,
+                                PatternRewriter &rewriter) const override {
+    Value out = op.getOutput();
+    if (isa<ReturnOp>(op))
+      return failure();
+
+    for (uint32_t idx = 0; idx < op.getNumOperands(); idx++) {
+      Value opd = op.getOperand(idx);
+      auto def_op = opd.getDefiningOp();
+      if (!def_op || !def_op->hasTrait<trait::ShapeProducer>())
+        return failure();
+    }
+    std::vector<NamedAttribute> attrs;
+    std::string op_name = op.getOperationName().str();
+    int pos = op_name.find("top.");
+    op_name = op_name.erase(pos, 4);
+    attrs.emplace_back(
+      rewriter.getNamedAttr("type", rewriter.getStringAttr(op_name)));
+    for (auto &attr : op->getAttrs()) {
+      attrs.push_back(attr);
+    }
+    rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, out.getType(), op.getOperands(), attrs);
+    return success();
+  }
+};
+
 void populateTopCfOpToTpuConversionPatterns(RewritePatternSet &patterns,
                                             TypeConverter &typeConverter,
                                             MLIRContext *ctx) {
@@ -28,9 +58,14 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       SliceTryLowering,
       RangeTryLowering,
       ReshapeTryLowering,
-      TopKTryLowering
+      TopKTryLowering,
+      MinConstTryLowering
       // clang-format on
       >(patterns->getContext());
+  // TODO: GT LT GE LE MIN MAX SQRT ...
+  patterns->add<ShapeArithConvert<top::AddOp>, ShapeArithConvert<top::SubOp>,
+                ShapeArithConvert<top::MulOp>, ShapeArithConvert<top::DivOp>>(
+      patterns->getContext());
 }
 
 
@@ -50,6 +85,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       CosLowering,
       CoshLowering,
       CustomLowering,
+      CumSumLowering,
       DeconvLowering,
       DeformConv2DLowering,
       Depth2SpaceLowering,
@@ -89,6 +125,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       RemainderLowering,
       ReshapeLowering,
       RoiAlignLowering,
+      RoundLowering,
       ScaleLowering,
       ScaleLutLowering,
       ScatterElementsLowering,
@@ -135,6 +172,13 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ShuffleChannelLowering,
       NmsLowering,
       RMSNormLowering,
+      LayerNormTrainLowering,
+      LayerNormBwdLowering,
+      BatchNormTrainLowering,
+      BatchNormBwdLowering,
+      EmbDenseBwdLowering,
+      SoftmaxBwdLowering,
+      WeightReorderLowering,
       RangeLowering
       // clang-format on
       >(patterns->getContext());

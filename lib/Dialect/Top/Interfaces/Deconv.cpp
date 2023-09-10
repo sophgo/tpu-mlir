@@ -99,8 +99,6 @@ int64_t top::DeconvOp::getFLOPs() {
 
 LogicalResult top::DeconvOp::init(InferenceParameter &p) {
   auto deconv = new Deconv();
-  auto attr = parseParam();
-  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)deconv;
   return success();
 }
@@ -118,6 +116,8 @@ LogicalResult top::DeconvOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto deconv = (Deconv *)p.handle;
+  auto attr = parseParam();
+  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   deconv->run();
   return success();
 }
@@ -136,8 +136,17 @@ void top::DeconvOp::shape_inference() {
   }
   assert(getPads().size() == spacial_rank * 2);
   llvm::SmallVector<int64_t> out_shape;
-  out_shape.push_back(input_shape[0]);
-  out_shape.push_back(filter_shape[0] * getGroup());
+  out_shape.push_back(input_shape[0]); // batch size
+
+
+  if (module::isWeight(getOperand(1))) {
+    // WeightOp, weight reorder will be finished in origin.mlir generation phase
+    // oc, ic
+    out_shape.push_back(filter_shape[0] * getGroup());
+  } else {
+    // ic,
+    out_shape.push_back(filter_shape[1] * getGroup());
+  }
 
   auto input_spacial_shape = llvm::ArrayRef(&input_shape[2], spacial_rank);
   auto filter_spacial_shape = llvm::ArrayRef(&filter_shape[2], spacial_rank);

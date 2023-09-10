@@ -1,9 +1,5 @@
 cmake_minimum_required(VERSION 3.1.0)
 
-if (NOT DEFINED FLATBUFFERS_PATH)
-  message(FATAL_ERROR "Please set FLATBUF_PATH")
-endif()
-message(STATUS "FLATBUFFERS_PATH: ${FLATBUFFERS_PATH}")
 
 function(compile_fbs)
   foreach(fbs_file IN LISTS ARGN)
@@ -12,7 +8,7 @@ function(compile_fbs)
     message(STATUS "To compile fbs files ${fbs_file} for ${target_header}")
     add_custom_command(OUTPUT ${target_header}
       DEPENDS ${fbs_file}
-      COMMAND ${FLATBUFFERS_PATH}/bin/flatc -o . --cpp ${fbs_file}
+      COMMAND flatc -o . --cpp ${fbs_file}
     )
     set(targets ${targets} ${target_header})
   endforeach()

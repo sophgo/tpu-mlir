@@ -50,6 +50,7 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   common.kzp_is_const = true;
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
+  common.weight_is_coeff = attr.weight_is_coeff;
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
     auto out_etype = module::getStorageType(getOutput());
@@ -128,6 +129,13 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     sz += 64 * 2;
     sz += p.kh * p.kw * in_type_len;
   }
+  auto Filter_type = BM168x::getDataType(getFilter());
+  auto Filter_type_len = BM168x::getFmtBytes(Filter_type);
+  if ((module::isWeight(getFilter()) == false)) {
+    if (Filter_type == DTYPE_FP16 || Filter_type == DTYPE_BFP16 || Filter_type == DTYPE_INT8 || Filter_type == DTYPE_UINT8){
+      sz += p.kh * p.kw * p.oc * align_up(p.ic / p.groups, eu_num) * Filter_type_len;
+    }
+  }
   return sz;
 }
 
@@ -174,6 +182,7 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.kzp_is_const = true;
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
+  common.weight_is_coeff = attr.weight_is_coeff;
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
     common.ipad_value = in_qtype.getZeroPoint();

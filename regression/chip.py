@@ -22,6 +22,7 @@ chip_support = {
     "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
     "cv183x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
     "cv186x":    (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
+    #"sg2260":    (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
 }
 
 '''

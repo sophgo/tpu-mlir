@@ -58,7 +58,7 @@ LogicalResult tpu::DivOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::DivOp::LocalGenSupport() {
-  if (!module::isBM1684XFamily()) {
+  if (!(module::isBM1684XFamily() || module::isSG2260Family())) {
     return failure();
   }
   return BroadCastBinaryLocalGenSupport(getOperation());

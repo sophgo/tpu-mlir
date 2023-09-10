@@ -27,3 +27,4 @@ TPU-MLIR开发参考手册
    15_qat
    16_tpulang
    17_custom
+   Appx.01_nntc2mlir.rst

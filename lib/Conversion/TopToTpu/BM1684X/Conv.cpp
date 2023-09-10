@@ -567,16 +567,20 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
 
 void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ConvOp op) const {
-  if (module::isWeight(op.getFilter()) == false) {
-    LoweringF32(rewriter, op);
-    return;
-  }
+  // if (module::isWeight(op.getFilter()) == false) {
+  //   LoweringF32(rewriter, op);
+  //   return;
+  // }
   auto p = op.parseParam();
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  operands.push_back(filterOp.clone_bf16(op));
+  if (module::isWeight(op.getFilter()) == false) {
+    operands.push_back(op.getFilter());    
+  } else{
+    operands.push_back(filterOp.clone_bf16(op));  
+  }
   operands.push_back(op.getBias());
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -593,16 +597,20 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void ConvLowering::LoweringF16(PatternRewriter &rewriter,
                                top::ConvOp op) const {
+  // if (module::isWeight(op.getFilter()) == false) {
+  //   LoweringF32(rewriter, op);
+  //   return;
+  // }
   auto p = op.parseParam();
-  if (module::isWeight(op.getFilter()) == false) {
-    LoweringF32(rewriter, op);
-    return;
-  }
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
-  operands.push_back(filterOp.clone_f16(op));
+  if (module::isWeight(op.getFilter()) == false) {
+    operands.push_back(op.getFilter());    
+  } else{
+    operands.push_back(filterOp.clone_f16(op));  
+  }
   operands.push_back(op.getBias());
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {

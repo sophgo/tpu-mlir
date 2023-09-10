@@ -166,12 +166,76 @@ auto-tune算法
       --test_result yolov5s_top_outputs.npz \
       --mlir yolov5s.mlir
 
+.. list-table:: model_transform.py参数
+   :widths: 18 60
+   :header-rows: 1
+
+   * - 参数
+     - 描述
+   * - model_name
+     - 模型名
+   * - --model_def
+     - 模型类型文件(.onnx,.pt,.tflite or .prototxt)
+   * - --model_data
+     - 指定模型权重文件，为caffe模型时需要（对应'.caffemodel'文件）
+   * - --input_shapes
+     - 输入的形状，例如[[1,3,640,640]]（二维数组），可以支持多个输入
+   * - --resize_dims
+     - 要调整到的原始图像的大小。 如果未指定，它将调整为模型的输入大小
+   * - --keep_aspect_ratio
+     - 调整大小时是否保持纵横比。 默认为False。 设置时不足的部分会补0
+   * - --mean
+     - 图像每个通道的平均值。 默认为 0.0,0.0,0.0
+   * - --scale
+     - 图像每个通道的scale。 默认为 1.0,1.0,1.0
+   * - --pixel_format
+     - 图像类型，可以是 rgb、bgr、gray 或 rgbd
+   * - --output_names
+     - 输出的名称。 如果未指定，则使用模型的输出，否则使用指定的名称作为输出
+   * - --test_input
+     - 用于验证的输入文件，可以是图像、npy 或 npz。 如果不指定则不会进行验证
+   * - --test_result
+     - 输出文件保存验证结果
+   * - --excepts
+     - 验证过程中要排除的网络层名称。 用逗号分隔
+   * - --debug
+     - 如果打开调试，则立即模型文件将保留； 或将在转换完成后删除
+   * - --mlir
+     - 输出mlir文件名（包括路径）
+
+.. code-block:: shell
+   :linenos:
+
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
       --tune_num 10 \
       -o yolov5s_cali_table
 
+.. list-table:: run_calibration.py参数
+   :widths: 18 60
+   :header-rows: 1
+
+   * - 参数
+     - 描述
+   * - mlir_file
+     - mlir文件
+   * - --dataset
+     - 校准数据集
+   * - --data_list
+     - input列表
+   * - --input_num
+     - 校准图像数量
+   * - --tune_list
+     - tuning用到的input列表
+   * - --tune_num
+     - tuning的图像数量
+   * - --histogram_bin_num
+     - 指定 kld 计算的直方图 bin 数量
+   * - -o
+     - 输出门限表
+   * - --debug_cmd
+     - debug命令,可以选择校准模式;“percentile9999”采用99.99分位作为初始门限。“use_max”采用绝对值最大值作为门限。“use_torch_observer_for_cali”采用torch的observer进行校准。         
 
 执行结果如下图(:ref:`yolov5s_cali`)所示
 

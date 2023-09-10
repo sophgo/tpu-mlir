@@ -14,9 +14,6 @@
 
 deconv_attr_t tpu::DeconvOp::parseParam() {
   deconv_attr_t p = {0};
-  bool is_deconv3d = getKernelShape().size() == 3;
-  bool is_deconv2d = getKernelShape().size() == 2;
-  bool is_deconv1d = getKernelShape().size() == 1;
   auto ishape = getInput().getType().cast<RankedTensorType>().getShape();
   auto oshape = getOutput().getType().cast<RankedTensorType>().getShape();
   auto kernel = module::getI64Array(getKernelShape());
@@ -32,7 +29,8 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
   p.n = ishape[0];
   p.ic = ishape[1];
   p.oc = oshape[1];
-  if (is_deconv3d) {
+  auto dims = ishape.size() - 2;
+  if (dims == 3) {
     p.id = ishape[2];
     p.ih = ishape[3];
     p.iw = ishape[4];
@@ -57,7 +55,7 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
     p.output_pad_d = output_padding->at(0);
     p.output_pad_h = output_padding->at(1);
     p.output_pad_w = output_padding->at(2);
-  } else if (is_deconv2d) {
+  } else if (dims == 2) {
     p.ih = ishape[2];
     p.iw = ishape[3];
     p.oh = oshape[2];
@@ -79,7 +77,7 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
     p.kd = 1;
     p.sd = 1;
     p.dd = 1;
-  } else if (is_deconv1d) {
+  } else if (dims == 1) {
     p.id = p.od = p.kd = p.dd = p.sd = 1;
     p.iw = p.ow = p.kw = p.dw = p.sw = 1;
     p.ih = ishape[2];
@@ -97,12 +95,6 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
 
 LogicalResult tpu::DeconvOp::init(InferenceParameter &p) {
   auto deconv = new Deconv();
-  auto attr = parseParam();
-  int izp = 0;
-  if (module::isUniformQuantized(getInput())) {
-    izp = module::getUniformQuantizedType(getInput()).getZeroPoint();
-  }
-  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr, izp);
   p.handle = (void *)deconv;
   return success();
 }
@@ -120,6 +112,12 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto deconv = (Deconv *)p.handle;
+  auto attr = parseParam();
+  int izp = 0;
+  if (module::isUniformQuantized(getInput())) {
+    izp = module::getUniformQuantizedType(getInput()).getZeroPoint();
+  }
+  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr, izp);
   deconv->run();
   // requant
   auto out_type = module::getStorageType(getOutput());
