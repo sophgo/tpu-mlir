@@ -1079,10 +1079,12 @@ typedef struct fc_global_spec {
   int32_t round_mode;
 } fc_global_spec_t;
 
-typedef struct w8a16_matmul_spec {
+typedef struct a16_matmul_spec {
   bool has_bias;
+  bool sign;
   bool R_trans;
-} w8a16_matmul_spec_t;
+  int weight_bits;
+} a16_matmul_spec_t;
 
 typedef struct batch_matmul_common_spec {
   int Y_dtype;
