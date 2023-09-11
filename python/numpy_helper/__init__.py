@@ -114,15 +114,13 @@ def npz_bf16_to_fp32(args):
     npz_out = {}
     for s in npz_in:
         bf16_arr = npz_in[s]
-        fp32_arr = np.empty_like(bf16_arr, dtype=np.float32)
-
-        for x, y in np.nditer([bf16_arr, fp32_arr], op_flags=['readwrite']):
-          if npz_in[s].dtype == np.float32:
-            y[...] = x
-          else:
-            y[...] = bf16_to_fp32(x)
-
-        npz_out[s] = fp32_arr
+        if bf16_arr.dtype == np.float32:
+            npz_out[s] = bf16_arr
+        else:
+            # Using NumPy's vectorize function to apply bf16_to_fp32 to the entire array
+            vectorized_func = np.vectorize(bf16_to_fp32)
+            fp32_arr = vectorized_func(bf16_arr).astype(np.float32)
+            npz_out[s] = fp32_arr
 
     np.savez(args[1], **npz_out)
 
