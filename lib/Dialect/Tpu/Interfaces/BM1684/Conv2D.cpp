@@ -81,6 +81,32 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int top_dim[4] = {(int)gi.n_slice, (int)p.oc, (int)gi.h_slice, (int)p.ow};
   auto pad_h_t = (in_gi.h_idx == 0 ? p.pht : 0);
   auto pad_h_b = (in_gi.h_idx + in_gi.h_slice == p.ih ? p.phb : 0);
+
+  int unused_ht_for_input = 0, unused_hb_for_input = 0, unused_wl_for_input = 0,
+      unused_wr_for_input = 0;
+  int64_t N, C, H, W;
+  module::getNCHW(getInput(), N, C, H, W);
+  if (sec_info.h_slice != H) {
+    int cal_h_idx = sec_info.out_h_idx * p.sh - p.pht;
+    int cal_h_slice = (sec_info.out_h_slice - 1) * p.sh + p.kh;
+    cal_h_slice = std::min(cal_h_slice, cal_h_slice + cal_h_idx);
+    cal_h_idx = std::max(0, cal_h_idx);
+    unused_ht_for_input = cal_h_idx - std::max(0, sec_info.h_idx);
+    int h_end = std::min(sec_info.h_idx + sec_info.h_slice, (int)H);
+    unused_hb_for_input = std::max(0, h_end - (cal_h_idx + cal_h_slice));
+  }
+
+  if (sec_info.w_slice != W) {
+    int cal_w_idx = sec_info.out_w_idx * p.sw - p.pwl;
+    int cal_w_slice = (sec_info.out_w_slice - 1) * p.sw + p.kw;
+    cal_w_slice = std::min(cal_w_slice, cal_w_slice + cal_w_idx);
+    cal_w_idx = std::max(0, cal_w_idx);
+
+    unused_wl_for_input = cal_w_idx - std::max(0, sec_info.w_idx);
+    int w_end = std::min(sec_info.w_idx + sec_info.w_slice, (int)W);
+    unused_wr_for_input = std::max(0, w_end - (cal_w_idx + cal_w_slice));
+  }
+
   if (module::isUniformQuantized(getInput())) {
     auto shift_v = module::getI64Array(getRshift(), 1, 0);
     auto shift = shift_v->at(0);
@@ -103,7 +129,8 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
           in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
           gi.buffer_addr, bottom_dim, top_dim, p.groups, p.kh, p.kw, p.dh, p.dw,
           pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw, p.has_bias, 0, p.do_relu,
-          p.relu_limit, /*unused_ht*/ 0, 0, 0, 0, /* insert h*/ p.ins_h,
+          p.relu_limit, /*unused_ht*/ unused_ht_for_input, unused_hb_for_input,
+          unused_wl_for_input, unused_wr_for_input, /* insert h*/ p.ins_h,
           p.ins_w, shift, in_sign, filter_sign, bias_sign, true, /*mulshift*/ 0,
           0, 0, 0, BM1684::instance()->bdc_node);
     }
@@ -112,7 +139,8 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
         in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
         gi.buffer_addr, bottom_dim, top_dim, p.groups, p.kh, p.kw, p.dh, p.dw,
         pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw, p.has_bias ? 1 : 0,
-        /* result_add*/ 0, p.do_relu ? 1 : 0, p.relu_limit, 0, 0, 0, 0,
+        /* result_add*/ 0, p.do_relu ? 1 : 0, p.relu_limit, unused_ht_for_input,
+        unused_hb_for_input, unused_wl_for_input, unused_wr_for_input,
         BM1684::instance()->bdc_node);
   }
 }
