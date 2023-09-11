@@ -183,6 +183,34 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.kzp_value = attr.kernel_zp;
   common.use_3ic_optimize = getUse_3icOptimize();
   common.weight_is_coeff = attr.weight_is_coeff;
+
+  p.spec.unused_ht_for_input = 0;
+  p.spec.unused_hb_for_input = 0;
+  p.spec.unused_wl_for_input = 0;
+  p.spec.unused_wr_for_input = 0;
+  int64_t N, C, H, W;
+  module::getNCHW(getInput(), N, C, H, W);
+  if (sec_info.h_slice != H) {
+    int cal_h_idx = sec_info.out_h_idx * attr.sh - attr.pht;
+    int cal_h_slice = (sec_info.out_h_slice - 1) * attr.sh + attr.kh;
+    cal_h_slice = std::min(cal_h_slice, cal_h_slice + cal_h_idx);
+    cal_h_idx = std::max(0, cal_h_idx);
+    p.spec.unused_ht_for_input = cal_h_idx - std::max(0, sec_info.h_idx);
+    int h_end = std::min(sec_info.h_idx + sec_info.h_slice, (int)H);
+    p.spec.unused_hb_for_input = std::max(0, h_end - (cal_h_idx + cal_h_slice));
+  }
+
+  if (sec_info.w_slice != W) {
+    int cal_w_idx = sec_info.out_w_idx * attr.sw - attr.pwl;
+    int cal_w_slice = (sec_info.out_w_slice - 1) * attr.sw + attr.kw;
+    cal_w_slice = std::min(cal_w_slice, cal_w_slice + cal_w_idx);
+    cal_w_idx = std::max(0, cal_w_idx);
+
+    p.spec.unused_wl_for_input = cal_w_idx - std::max(0, sec_info.w_idx);
+    int w_end = std::min(sec_info.w_idx + sec_info.w_slice, (int)W);
+    p.spec.unused_wr_for_input = std::max(0, w_end - (cal_w_idx + cal_w_slice));
+  }
+
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
     common.ipad_value = in_qtype.getZeroPoint();

@@ -706,7 +706,8 @@ bool check_hsecs(Value value, slice_info_t &si, group_type_t group_type) {
 }
 
 static bool backward_update_slice(const LgInfo &lg_info,
-                                  const shape_secs_t &shape_secs, Value out,
+                                  const shape_secs_t &shape_secs,
+                                  const Value &out,
                                   std::list<Value> &tensor_branchs,
                                   TensorInfo &tensor_infos,
                                   std::multiset<Operation *> &op_set,
@@ -720,6 +721,7 @@ static bool backward_update_slice(const LgInfo &lg_info,
   }
   auto op = out.getDefiningOp();
   op_set.insert(op);
+  auto mode = getRunMode(op);
 
   slice_info_t &out_si = tensor_infos[out].slice_info;
   auto &group_ins = lg_info.group_ins;
@@ -776,7 +778,52 @@ static bool backward_update_slice(const LgInfo &lg_info,
     auto iter = tensor_infos.find(in);
     if (iter != tensor_infos.end()) {
       if (false == is_same_slice_info(si, iter->second.slice_info)) {
-        return false;
+        if (module::isCV18xx() || mode == RunMode::TPU_DYNAMIC)
+          return false;
+        bool is_hw_overlap = true;
+        for (int i = 0; i < shape_secs.hsecs; i++) {
+          is_hw_overlap *=
+              std::max(si.h[i].first, iter->second.slice_info.h[i].first) <
+                  std::min(si.h[i].first + si.h[i].second,
+                           iter->second.slice_info.h[i].first +
+                               iter->second.slice_info.h[i].second);
+        }
+        for (int i = 0; i < shape_secs.wsecs; i++) {
+          is_hw_overlap *=
+              std::max(si.w[i].first, iter->second.slice_info.w[i].first) <
+              std::min(si.w[i].first + si.w[i].second,
+                       iter->second.slice_info.w[i].first +
+                           iter->second.slice_info.w[i].second);
+        }
+        if (is_hw_overlap) {
+          slice_info_t si_both;
+          si_both.n = si.n;
+          si_both.c = si.c;
+          si_both.d = si.d;
+          for (int i = 0; i < shape_secs.hsecs; i++) {
+            int64_t h_lowest =
+                std::min(si.h[i].first, iter->second.slice_info.h[i].first);
+            int64_t h_highest =
+                std::max(si.h[i].first + si.h[i].second,
+                         iter->second.slice_info.h[i].first +
+                             iter->second.slice_info.h[i].second);
+            si_both.h.push_back(
+                std::pair<int64_t, int64_t>(h_lowest, h_highest - h_lowest));
+          }
+          for (int i = 0; i < shape_secs.wsecs; i++) {
+            int64_t w_lowest = std::min(si.w[i].first, iter->second.slice_info.w[i].first);
+            int64_t w_highest =
+                std::max(si.w[i].first + si.w[i].second,
+                         iter->second.slice_info.w[i].first +
+                             iter->second.slice_info.w[i].second);
+            si_both.w.push_back(
+                std::pair<int64_t, int64_t>(w_lowest, w_highest - w_lowest));
+          }
+          tensor_infos[in] = tensor_info_t(si_both);
+          tensor_infos[in].hold_in_lmem = hold_in_lmem;
+        } else {
+          return false;
+        }
       }
     } else {
       tensor_infos[in] = tensor_info_t(si);
