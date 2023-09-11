@@ -839,7 +839,9 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
       if (std::ceil(scale_h) == std::floor(scale_h) &&
           std::ceil(scale_w) == std::floor(scale_w)) {
         // todo only support ins == 0
-        return resize_to_conv1(rewriter, op, scale_h, scale_w);
+        if (scale_h != 1.0 && scale_w != 1.0) {
+          return resize_to_conv1(rewriter, op, scale_h, scale_w);
+        }
       }
       if (std::abs(scale_h - scale_w) < 1e-6 &&
           std::abs(scale_h - 0.5) < 1e-6) {
