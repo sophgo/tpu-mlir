@@ -981,21 +981,23 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
   }];
 }
 
-def Tpu_W8A16MatMulOp: Tpu_Op<"W8A16MatMul"> {
-  let summary = "w8a16 matmul operator";
+def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul"> {
+  let summary = "w8a16 / w4a16 matmul operator";
 
   let description = [{
     The special matrix multiplication designed for LLM Linear Layer.
     Weight is saved in int8 with f16 per-channel quant scale.
 
-    y_f16 = x_f16 x (w_int8.to(f16) * scale_f16)
+    y_f16 = x_f16 x (quantized_w.to(f16) * scale_f16)
   }];
 
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$weight,
-    AnyTensorOrNone:$scale, // the scale for W8A16Linear
+    AnyTensorOrNone:$scale, // the scale for quantized weight
     AnyTensorOrNone:$bias,
+    I64Attr:$weight_bits,
+    DefaultValuedAttr<BoolAttr, "true">:$sign,
     DefaultValuedAttr<BoolAttr, "false">:$w_transpose
   );
 

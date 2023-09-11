@@ -741,7 +741,7 @@ public:
       module::setAsymmetric(isAsymmetric);
       calibration_process();
     }
-    module::setW8A16Linear(isW8A16Linear);
+    module::setLinearQuantMode(LinearQuantMode);
 
     if ((module::isBM1684XFamily() || module::isSG2260Family())
          && !LoweringConfig::isQuantized &&

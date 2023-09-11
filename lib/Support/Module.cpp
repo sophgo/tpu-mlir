@@ -33,7 +33,7 @@ struct Attr {
   static constexpr llvm::StringRef STEP = "module.step";
   static constexpr llvm::StringRef INPUTS = "module.inputs";
   static constexpr llvm::StringRef OUTPUTS = "module.outputs";
-  static constexpr llvm::StringRef W8A16_LINEAR = "module.w8a16_linear";
+  static constexpr llvm::StringRef LINEAR_QUANT_MODE = "module.linear_quant_mode";
   static constexpr llvm::StringRef TRAIN = "module.train";
 };
 
@@ -114,8 +114,8 @@ Value getOriValue(Value v) {
     FuncOp func_op;
     if (isa<FuncOp>(v.getParentBlock()->getParentOp()))
       func_op = cast<FuncOp>(v.getParentBlock()->getParentOp());
-    else if (isa<tpu::LoopOp, tpu::IfOp, top::LoopOp, top::IfOp>
-             (v.getParentBlock()->getParentOp())) {
+    else if (isa<tpu::LoopOp, tpu::IfOp, top::LoopOp, top::IfOp>(
+                 v.getParentBlock()->getParentOp())) {
       return getOriValue(v.getParentBlock()->getParentOp()->getOperand(idx));
     } else
       func_op = v.getParentBlock()->getParentOp()->getParentOfType<FuncOp>();
@@ -970,15 +970,19 @@ void setAsymmetric(bool is_asymmetric) {
   m->setAttr(Attr::ASYMMETRIC, BoolAttr::get(ctx, is_asymmetric));
 }
 
-bool isW8A16Linear() {
-  if (m->hasAttrOfType<BoolAttr>(Attr::W8A16_LINEAR)) {
-    return m->getAttrOfType<BoolAttr>(Attr::W8A16_LINEAR).getValue();
+std::string getLinearQuantMode() {
+  if (m->hasAttrOfType<StringAttr>(Attr::LINEAR_QUANT_MODE)) {
+    return m->getAttrOfType<StringAttr>(Attr::LINEAR_QUANT_MODE).getValue().str();
   }
-  return false;
+  return "NORMAL";
 }
 
-void setW8A16Linear(bool is_w8a16linear) {
-  m->setAttr(Attr::W8A16_LINEAR, BoolAttr::get(ctx, is_w8a16linear));
+void setLinearQuantMode(std::string linear_quant_mode) {
+  if (strcasecmp("W4A16", linear_quant_mode.c_str()) != 0 &&
+      strcasecmp("W8A16", linear_quant_mode.c_str()) != 0) {
+    linear_quant_mode = "NORMAL";
+  }
+  m->setAttr(Attr::LINEAR_QUANT_MODE, StringAttr::get(ctx, linear_quant_mode));
 }
 
 bool isTrain() {
@@ -1210,7 +1214,7 @@ void getInputsOutputs(ModuleOp s, std::vector<Value> &inputs,
     for (auto out : op.getOperands()) {
       auto result = out.cast<OpResult>();
       auto call_op = result.getDefiningOp<func::CallOp>();
-      if(call_op) {
+      if (call_op) {
         auto func_op = getFuncOp(s, call_op.getCallee());
         auto return_op = dyn_cast<ReturnOp>(func_op.front().back());
         assert(return_op);

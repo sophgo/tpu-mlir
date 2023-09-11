@@ -431,7 +431,23 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   std::vector<Value> operands;
   for (int i = 0; i < op->getNumOperands(); ++i) {
     auto in = op->getOperand(i);
+
     if (auto wOp = dyn_cast<top::WeightOp>(in.getDefiningOp())) {
+      // only linear layer will be replaced
+      if (i == 1 && module::getLinearQuantMode() != "NORMAL" &&
+          wOp.getType().cast<RankedTensorType>().getShape().size() == 2) {
+        auto noneOp = module::getNoneOp(op);
+        operands.insert(operands.end(), {in, noneOp, op->getOperand(2)});
+        std::vector<NamedAttribute> attrs;
+        auto weight_bits = rewriter.getNamedAttr(
+            "weight_bits",
+            rewriter.getI64IntegerAttr(
+                module::getLinearQuantMode() == "W4A16" ? 4 : 8));
+        attrs.push_back(weight_bits);
+        rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands,
+                                                        attrs);
+        return;
+      }
       if (i == 2 && bias_use_fp32) {
         operands.push_back(in);
       } else {
@@ -441,6 +457,7 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
       operands.push_back(in);
     }
   }
+
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
                                              op->getAttrs());
 }
@@ -455,11 +472,18 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
 
     if (auto wOp = dyn_cast<top::WeightOp>(in.getDefiningOp())) {
       // only linear layer will be replaced
-      if (i == 1 && module::isW8A16Linear() &&
+      if (i == 1 && module::getLinearQuantMode() != "NORMAL" &&
           wOp.getType().cast<RankedTensorType>().getShape().size() == 2) {
         auto noneOp = module::getNoneOp(op);
         operands.insert(operands.end(), {in, noneOp, op->getOperand(2)});
-        rewriter.replaceOpWithNewOp<tpu::W8A16MatMulOp>(op, newType, operands);
+        std::vector<NamedAttribute> attrs;
+        auto weight_bits = rewriter.getNamedAttr(
+            "weight_bits",
+            rewriter.getI64IntegerAttr(
+                module::getLinearQuantMode() == "W4A16" ? 4 : 8));
+        attrs.push_back(weight_bits);
+        rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands,
+                                                        attrs);
         return;
       }
       if (i == 2 && bias_use_fp32) {
