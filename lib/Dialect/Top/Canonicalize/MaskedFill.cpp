@@ -47,21 +47,17 @@ struct MaskedFillBroadcast : public OpRewritePattern<MaskedFillOp> {
     for (int i = 0; i < dims; ++i) {
       if (broadcast[i] != 0) {
         auto tile_input = broadcast[i] == TILE_BRN ? input : cond;
-        // if(!tile_input.hasOneUse()) {
-        //   return failure();
-        // }
         auto tile_input_shape = module::getShape(tile_input);
-        attrs.push_back(
-            rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(i)));
         auto input_op_name = module::getName(tile_input);
-        auto tile_loc =
-            NameLoc::get(rewriter.getStringAttr(input_op_name.str() + "_tile"));
+        auto tile_loc = NameLoc::get(rewriter.getStringAttr(input_op_name.str() + "_tile"));
         auto stype = module::getStorageType(tile_input);
         auto tile_output_shape = std::vector<int64_t>(tile_input_shape);
         tile_output_shape[i] =
             broadcast[i] == TILE_BRN ? condition_shape[i] : input_shape[i];
+        std::vector<int64_t> weight_tile(tile_output_shape.size(), 1);
+        weight_tile[i] = tile_output_shape[i];
         attrs.push_back(rewriter.getNamedAttr(
-            "tile", rewriter.getI64IntegerAttr(tile_output_shape[i])));
+            "tile", rewriter.getI64ArrayAttr(weight_tile)));
         auto tile_output_type = RankedTensorType::get(tile_output_shape, stype);
         bool reuse_tile = false;
         for (auto j : tile_input.getUsers()) {

@@ -95,7 +95,7 @@ class ONNX_IR_TESTER(object):
             "Exp":          (self.test_Exp,           Y, Y, Y, Y),
             "Expand":       (self.test_Expand,        Y, Y, Y, Y),
             "Expand2":      (self.test_Expand2,       Y, Y, Y, Y),
-            "ExpandDyn":    (self.test_ExpandDyn,    N, Y, Y, N),
+            "ExpandDyn":    (self.test_ExpandDyn,     N, Y, Y, N),
             "Flatten":      (self.test_Flatten,       Y, Y, Y, Y),
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y),
@@ -181,6 +181,7 @@ class ONNX_IR_TESTER(object):
             "Sum":          (self.test_Sum,           Y, Y, Y, Y),
             "Tanh":         (self.test_Tanh,          Y, Y, Y, Y),
             "Tile":         (self.test_Tile,          Y, Y, Y, Y),
+            "TileDyn":      (self.test_TileDyn,       N, Y, Y, N),
             "Transpose":    (self.test_Transpose,     Y, Y, Y, Y),
             "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y),
             "TopK":         (self.test_TopK,          N, Y, Y, N),
@@ -4239,7 +4240,7 @@ class ONNX_IR_TESTER(object):
 
     def test_Tile(self, case_name):
         input_shape = [1, 4, 6, 8]
-        output_shape = [1, 24, 24, 16]
+        output_shape = [3, 24, 24, 16]
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
@@ -4259,6 +4260,66 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[tiles])
         self.onnx_and_test(graph_def)
+
+    def test_Tile2(self, case_name):
+        # test local_codegen, now"N N N N"
+        # When testing the case, please open the LocalGenSupport in lib/Dialect/Tpu/Interfaces/Common/Tile.cpp
+        input_shape = [1, 4, 6, 8]
+        output_shape = [3, 24, 24, 16]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        right = helper.make_tensor_value_info("right", TensorProto.FLOAT, output_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        tiles = helper.make_tensor(
+            name='tiles',
+            data_type=onnx.TensorProto.INT64,
+            dims=[4],
+            vals=np.array([1, 6, 4, 2]),
+        )
+        tile_def = helper.make_node(
+            'Tile',
+            ['input', 'tiles'],
+            ['left'],
+        )
+        add_def = helper.make_node(
+            'Add',
+            ['left', 'right'],
+            ['output']
+        )
+
+        graph_def = helper.make_graph([tile_def, add_def],
+                                      case_name, [input, right], [output],
+                                      initializer=[tiles])
+        self.onnx_and_test(graph_def)
+
+    def test_TileDyn(self, case_name):
+        nonzero_input_shape = [2,6]
+        nonzero_input = helper.make_tensor_value_info('nonzero_input', TensorProto.FLOAT, nonzero_input_shape)
+        tile_input_shape = [3,5]
+        tile_input = helper.make_tensor_value_info('tile_input', TensorProto.FLOAT, tile_input_shape)
+
+        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, [])
+        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [], vals=[0])
+        indices = helper.make_tensor('indices', TensorProto.INT64, [1], vals=[0])
+        dim0 = helper.make_tensor('dim0', TensorProto.INT64, [1], vals=[3])
+
+
+        gather0_def = helper.make_node('Gather', inputs=['nonzero_input', 'indices0'], axis=0, outputs=['gather0'])
+        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
+        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
+        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
+        gather_def = helper.make_node('Gather', inputs=['shape', 'indices'], axis=0, outputs=['dim1'])
+        concat_def = helper.make_node('Concat', inputs=['dim0', 'dim1'], axis=0, outputs=['times'])
+        tile_def = helper.make_node('Tile', inputs=['tile_input', 'times'], outputs=['Y_Value'])
+        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def,shape_def, gather_def, concat_def, tile_def],
+                                      case_name, [nonzero_input, tile_input], [Y_Value],
+                                      initializer=[indices0,indices,dim0])
+        input_data={
+            'nonzero_input' : np.array([[1, 0, 3, 0, 4, 5], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
+            'tile_input': np.array([[1.5, 1.2, 0, 0, 1.6], [2.1, 2.5, 0, 0, 2.6], [3.5, 3.2, 0, 0, 3.6]], dtype=np.float32)
+                    }
+        self.onnx_and_test_bmodel(graph_def, static_shape=False, input_data=input_data, only_cmp_with_bmodel=True)
 
     def test_Sub(self, case_name):
         input_shape = [4, 3, 27, 27]

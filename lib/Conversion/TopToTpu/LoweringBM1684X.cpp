@@ -59,7 +59,8 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       RangeTryLowering,
       ReshapeTryLowering,
       TopKTryLowering,
-      MinConstTryLowering
+      MinConstTryLowering,
+      TileTryLowering
       // clang-format on
       >(patterns->getContext());
   // TODO: GT LT GE LE MIN MAX SQRT ...

@@ -1631,8 +1631,8 @@ def Top_TileOp: Top_Op<"Tile"> {
 
   let arguments = (ins
     AnyTensor:$input,
-    SI32Attr:$axis,
-    I64Attr:$tile
+    Optional<AnyTensor>:$tileT,
+    OptionalAttr<I64ArrayAttr>:$tile
   );
 
   let results = (outs AnyTensor:$output);
