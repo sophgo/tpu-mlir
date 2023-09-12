@@ -12,9 +12,35 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+static void LoweringTile(PatternRewriter &rewriter, top::TileOp op, Type type) {
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  operands.push_back(op.getInput());
+  if (op.getTileT())
+    operands.push_back(op.getTileT());
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp);
+  auto new_type = op.getOutput().getType();
+  rewriter.replaceOpWithNewOp<tpu::TileOp>(op, new_type, operands, attrs);
+  return;
+}
+
+void TileTryLowering::Lowering(PatternRewriter &rewriter,
+                                  top::TileOp op) const {
+  if (!op.getTileT() ||
+      (!op.getTileT().getDefiningOp()->hasTrait<trait::ShapeProducer>()))
+    return;
+  LoweringTile(rewriter, op, rewriter.getF32Type());
+}
+
 void TileLowering::LoweringF32(PatternRewriter &rewriter,
                                top::TileOp op) const {
-  lowering_common_f32<tpu::TileOp>(rewriter, op, 2);
+  LoweringTile(rewriter, op, rewriter.getF32Type());
+
 }
 
 void TileLowering::LoweringINT8(PatternRewriter &rewriter, top::TileOp op,

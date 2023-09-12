@@ -1727,31 +1727,26 @@ class OnnxConverter(BaseConverter):
 
     def convert_tile_op(self, onnx_node):
         assert (onnx_node.op_type == "Tile")
-        in0_op = self.getOperand(onnx_node.inputs[0])
-        tile_data = self.getWeight(onnx_node.inputs[1])
-        if np.prod(tile_data) == 1:
-            self.addOperand(onnx_node.name, in0_op)
-            return
-        last_op = in0_op
-        last_i = 0
-        last_name = ""
-        for i in range(tile_data.size):
-            last_i = tile_data.size - i - 1
-            if tile_data[last_i] != 1:
-                break
-        for i in range(last_i + 1):
-            if tile_data[i] == 1:
-                continue
-            last_name = onnx_node.name
-            if i != last_i:
-                last_name += "_{}".format(i)
-            last_op = top.TileOp(self.unranked_type,
-                                 last_op,
-                                 axis=i,
-                                 tile=int(tile_data[i]),
-                                 loc=self.get_loc("{}_{}".format(last_name, onnx_node.op_type)),
-                                 ip=self.mlir.insert_point).output
-        self.addOperand(onnx_node.name, last_op)
+        in0_op = self.getOp(onnx_node.inputs[0])
+        if self.isWeight(onnx_node.inputs[1]):
+            tile_data = self.getWeight(onnx_node.inputs[1])
+            if np.prod(tile_data) == 1:
+                self.addOperand(onnx_node.name, in0_op)
+                return
+            else:
+                new_op = top.TileOp(self.unranked_type,
+                        in0_op,
+                        tile = tile_data,
+                        loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                        ip=self.mlir.insert_point).output
+        else:
+            tile_op = self.getOperand(onnx_node.inputs[1])
+            new_op = top.TileOp(self.unranked_type,
+                        in0_op,
+                        tileT = tile_op,
+                        loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                        ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_topk_op(self, onnx_node):
         assert (onnx_node.op_type == "TopK")

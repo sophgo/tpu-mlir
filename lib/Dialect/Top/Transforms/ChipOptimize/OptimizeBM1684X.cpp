@@ -620,7 +620,7 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
     }
   }
   auto tensor_last_shape = std::vector<int64_t>(tensor_reshape);
-
+  std::vector<int64_t> weight_tile(out_dim, 1);
   // tile to expand shape
   int last_i = 0;
   for (int i = out_dim - 1; i >= 0; --i) {
@@ -630,25 +630,28 @@ mlir::Value expand_dim_and_tile(mlir::Value tensor,
     }
   }
 
+  int count = 0;
   for (int i = 0; i <= last_i; ++i) {
     if (out_shape[i] == tensor_reshape[i])
       continue;
     int64_t tile = out_shape[i] / tensor_reshape[i];
-    std::vector<NamedAttribute> attrs;
-    attrs.push_back(
-        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(i)));
-    attrs.push_back(
-        rewriter.getNamedAttr("tile", rewriter.getI64IntegerAttr(tile)));
-
-    tensor_last_shape[i] = out_shape[i];
-    auto newType = RankedTensorType::get(tensor_last_shape, tensor_stype);
-    auto new_name =
-        module::getName(tensor).str() + "_tile_" + std::to_string(i);
-    auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-    rewriter.setInsertionPointAfterValue(tensor_last_op);
-    tensor_last_op = rewriter.create<top::TileOp>(
-        name_loc, newType, ValueRange{tensor_last_op}, attrs);
+    weight_tile[i] = tile;
+    count++;
   }
+  if(count == 0){
+    return tensor_last_op;
+  }
+
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(
+      rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr(weight_tile)));
+  auto newType = RankedTensorType::get(out_shape, tensor_stype);
+  auto new_name = module::getName(tensor).str() + "_Tile";
+  auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+  rewriter.setInsertionPointAfterValue(tensor_last_op);
+  tensor_last_op = rewriter.create<top::TileOp>(
+      name_loc, newType, ValueRange{tensor_last_op}, attrs);
+
   return tensor_last_op;
 }
 

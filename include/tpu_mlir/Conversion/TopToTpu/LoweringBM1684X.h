@@ -35,6 +35,7 @@ SHAPE_LOWERING_BM1684X(Range)
 SHAPE_LOWERING_BM1684X(Reshape)
 SHAPE_LOWERING_BM1684X(TopK)
 SHAPE_LOWERING_BM1684X(MinConst)
+SHAPE_LOWERING_BM1684X(Tile)
 
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 

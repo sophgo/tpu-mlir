@@ -13,7 +13,7 @@ namespace tpu_mlir {
 namespace bm1684 {
 
 void TileLowering::LoweringF32(PatternRewriter &rewriter,
-                               top::TileOp op) const {
+                              top::TileOp op) const {
   lowering_common_f32<tpu::TileOp>(rewriter, op, 2);
 }
 

@@ -40,7 +40,6 @@ struct ConvertExpand : public OpRewritePattern<ExpandOp> {
         new_op = rewriter.create<ReshapeOp>(loc, newType, ValueRange{new_op});
         out_shape = input_shape_ex;
       }
-      // tile one axis each time to avoid gmem buffer
       int32_t count = 0;
       for (uint32_t i = 0; i < output_dims; i++) {
         if (out_shape[i] != output_shape[i]) {
@@ -52,40 +51,22 @@ struct ConvertExpand : public OpRewritePattern<ExpandOp> {
         rewriter.eraseOp(op);
         return success();
       }
-      for (uint32_t i = 1; i <= output_dims; i++) {
-        int32_t axis = out_shape.size() - i;
-        if (axis < 0) {
-          out_shape.insert(out_shape.begin(), 1);
-        }
-        auto out_dims = out_shape.size();
-        NameLoc loc;
-        if (output_shape[output_dims - i] != out_shape[out_dims - i]) {
-          auto tile = output_shape[output_dims - i] / out_shape[out_dims - i];
-          if (count == 1) {
-            loc = NameLoc::get(rewriter.getStringAttr(name));
-            out_shape = output_shape;
-          } else {
-            loc = NameLoc::get(
-                rewriter.getStringAttr(name + std::to_string(count)));
-            out_shape[out_dims - i] = output_shape[output_dims - i];
-          }
-          auto newType = RankedTensorType::get(out_shape, elt_type);
-          std::vector<NamedAttribute> attrs;
-          attrs.push_back(
-              rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(axis)));
-          attrs.push_back(
-              rewriter.getNamedAttr("tile", rewriter.getI64IntegerAttr(tile)));
-          new_op =
-              rewriter.create<TileOp>(loc, newType, ValueRange{new_op}, attrs);
-          --count;
-        }
-        if (count == 0) {
-          op.replaceAllUsesWith(new_op.getDefiningOp());
-          rewriter.eraseOp(op);
-          return success();
-        }
+      std::vector<int64_t> weight_tile(output_dims, 1);
+      for (uint32_t i = 0; i < output_dims; i++) {
+        if (out_shape[i] == output_shape[i])
+          continue;
+        int64_t tile = output_shape[i] / out_shape[i];
+        weight_tile[i] = tile;
       }
-      return failure();
+      std::vector<NamedAttribute> attrs;
+      attrs.push_back(
+          rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr(weight_tile)));
+      auto newType = RankedTensorType::get(output_shape, elt_type);
+      auto loc = NameLoc::get(rewriter.getStringAttr(name));
+      new_op = rewriter.create<top::TileOp>(loc, newType, ValueRange{new_op}, attrs);
+      op.replaceAllUsesWith(new_op.getDefiningOp());
+      rewriter.eraseOp(op);
+      return success();
     } else {
       std::string name = module::getName(op.getOutput()).str();
       auto consF_loc =

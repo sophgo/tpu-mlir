@@ -592,75 +592,53 @@ class TileGlobalBuffer : public OpRewritePattern<tpu::TileOp> {
 public:
   using OpRewritePattern<tpu::TileOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tpu::TileOp tileOp,
+  LogicalResult matchAndRewrite(tpu::TileOp TileOp,
                                 PatternRewriter &rewriter) const override {
-    if (!module::isNone(tileOp.getBuffer())) {
+    if (!module::isNone(TileOp.getBuffer())) {
       return failure();
     }
-    if (module::isBM1684Family()) {
-      auto input_shape = module::getShape(tileOp.getInput());
-      int input_dim = input_shape.size();
-      uint32_t in_shape[input_dim];
-
-      for (int i =0 ;i < input_dim ; i++) {
-        in_shape[i] = input_shape[i];
+    if (!module::isBM1684Family()
+        && (!module::isBM1684XFamily())) {
+      llvm_unreachable("Not Implemented");
+      return failure();
+    }
+    auto input_shape = module::getShape(TileOp.getInput());
+    int input_dim = input_shape.size();
+    auto output_shape = module::getShape(TileOp.getOutput());
+    int tile_coeff[8];
+    auto type = module::getStorageType(TileOp.getInput());
+    int64_t type_len = module::getDtypeSize(TileOp.getInput());
+    uint64_t buffer_size = 0;
+    int tile_count = 0;
+    int min_tile = output_shape[0] / input_shape[0];
+    uint64_t total_size = 1;
+    for (int i = 0; i < input_dim; ++i) {
+      tile_coeff[i] =
+          output_shape[i] < 0 ? 1 : output_shape[i] / input_shape[i];
+      if (tile_coeff[i] > 1)
+        tile_count++;
+      if (tile_coeff[i] < min_tile)
+        min_tile = tile_coeff[i];
+      total_size *= output_shape[i];
+    }
+    if (type_len > 0) {
+      if (tile_count > 1) {
+        buffer_size = total_size / min_tile * type_len;
       }
-      auto output_shape = module::getShape(tileOp.getOutput());
-      int tile_coeff[8];
-      auto type = module::getStorageType(tileOp.getInput());
-      int64_t type_len = module::getDtypeSize(tileOp.getInput());
-      uint64_t buffer_size = 0;
-      int tile_count = 0;
-      int max_tile = 1;
-      uint64_t total_size = 1;
-      for (int i = 0; i < input_dim; ++i) {
-        tile_coeff[i] =
-            output_shape[i] < 0 ? 1 : output_shape[i] / input_shape[i];
-        if (tile_coeff[i] > 1)
-          tile_count++;
-        if (tile_coeff[i] > max_tile)
-          max_tile = tile_coeff[i];
-          total_size *= output_shape[i];
-      }
-      if (type_len == 4) {
-        if (tile_count > 1) {
-          buffer_size = total_size / max_tile * type_len;
-        }
-        if (buffer_size > 0) {
-          std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
-          auto buffer_type = RankedTensorType::get(buffer_shape, type);
-          auto buffer = tpu::BufferOp::create(tileOp, buffer_type);
-          tileOp.getBuffer().replaceUsesWithIf(
-              buffer, [&](OpOperand &operand) {
-                return operand.get() == tileOp.getBuffer() && operand.getOwner() == tileOp;
-              });
-        }
-      }
-      else if (type_len == 1) {
-        auto input = tileOp.getInput();
-        auto output = tileOp.getOutput();
-        auto input_format = BM1684::getStoreMode(input);
-        auto output_format = BM1684::getStoreMode(output);
-        BM1684::instance().dl_nodechip_tile_full_fix8b(
-            0, 0, 0, &buffer_size, (const uint32_t *)in_shape, (const int *)tile_coeff, input_dim, input_format, output_format, 0,
-            (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
-        if (buffer_size > 0) {
-          std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
-          auto buffer_type = RankedTensorType::get(buffer_shape, type);
-          auto buffer = tpu::BufferOp::create(tileOp, buffer_type);
-          tileOp.getBuffer().replaceUsesWithIf(
-              buffer, [&](OpOperand &operand) {
-                return operand.get() == tileOp.getBuffer() && operand.getOwner() == tileOp;
-              });
-        }
-      } else {
-          llvm_unreachable("Not Implemented");
-        }
+      if (buffer_size > 0) {
+        std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+        auto buffer_type = RankedTensorType::get(buffer_shape, type);
+        auto buffer = tpu::BufferOp::create(TileOp, buffer_type);
+        TileOp.getBuffer().replaceUsesWithIf(
+            buffer, [&](OpOperand &operand) {
+              return operand.get() == TileOp.getBuffer() && operand.getOwner() == TileOp;
+            });
         return success();
       }
-      return failure();;
     }
-  };
+    return failure();
+  }
+};
 
 class PadGlobalBuffer : public OpRewritePattern<tpu::PadOp> {
 public:

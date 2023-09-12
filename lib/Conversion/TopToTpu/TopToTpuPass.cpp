@@ -671,10 +671,10 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     name += "_tile";
     auto loc = NameLoc::get(rewriter.getStringAttr(name));
     std::vector<NamedAttribute> attrs;
+    std::vector<int64_t> weight_tile(input_shape.size(), 1);
+    weight_tile[axis] = tile;
     attrs.emplace_back(
-        rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(axis)));
-    attrs.emplace_back(
-        rewriter.getNamedAttr("tile", rewriter.getI64IntegerAttr(tile)));
+        rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr(weight_tile)));
     auto tileOp =
         rewriter.create<tpu::TileOp>(loc, newType, ValueRange{opd, module::getNoneOp(op)}, attrs);
     op->setOperand(idx, tileOp);
