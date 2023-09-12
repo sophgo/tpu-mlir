@@ -180,7 +180,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       EmbDenseBwdLowering,
       SoftmaxBwdLowering,
       WeightReorderLowering,
-      RangeLowering
+      RangeLowering,
+      GatherNDLowering
       // clang-format on
       >(patterns->getContext());
 }

@@ -100,7 +100,7 @@ class ONNX_IR_TESTER(object):
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y),
             "GatherElements": (self.test_GatherElements,      Y, N, N, N),
-            "GatherND":     (self.test_GatherND,      Y, N, N, Y),
+            "GatherND":     (self.test_GatherND,      Y, Y, Y, Y),
             "Gather2":      (self.test_Gather2,       N, Y, Y, N),
             "Gather3":      (self.test_Gather3,       Y, Y, Y, N),
             "Gemm":         (self.test_Gemm,          Y, Y, Y, Y),
