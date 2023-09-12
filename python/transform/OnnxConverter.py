@@ -1984,7 +1984,7 @@ class OnnxConverter(BaseConverter):
                                  loc=self.get_loc("{}_{}".format(onnx_node.name,
                                                                  onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
-        elif num_const == 1:
+        elif num_const >= 1:
             x_is_const = False
             y_is_const = False
             if self.isScalar(tbrn):
@@ -2013,7 +2013,7 @@ class OnnxConverter(BaseConverter):
                                                                  onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
         else:
-            assert (0)  # TODO: to be implement
+            assert (0)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_not_op(self, onnx_node):
