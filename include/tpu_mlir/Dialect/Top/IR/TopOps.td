@@ -361,6 +361,7 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     DefaultValuedAttr<BoolAttr, "false">:$dynweight_reorderd,
     DefaultValuedAttr<I64Attr, "1">:$weight_is_coeff,
+    OptionalAttr<BoolAttr>:$do_winograd,
     OptionalAttr<AutoPadModeAttr>:$auto_pad, // only used in shape infer
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,

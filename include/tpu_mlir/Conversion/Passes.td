@@ -27,6 +27,8 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
            "a table of Ops that quantized to specific mode">,
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"false",
            "true for asymmetric quantization, or false for symmetric">,
+    Option<"doWinograd", "doWinograd", "bool", /*default=*/"false",
+           "true for trying winograd ,or false for not">,
     Option<"ignore_f16_overflow", "ignore_f16_overflow", "bool", /*default=*/"false",
            "some ops convert from f16 to f32, to avoid f16 overflow">,
     Option<"weightFileName", "weightFileName", "std::string", /*default=*/"",

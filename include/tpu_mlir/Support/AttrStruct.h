@@ -37,6 +37,7 @@ typedef struct {
   bool is_dw;
   bool do_relu;
   double relu_limit;
+  int use_winograd;
 } conv_attr_t;
 
 typedef struct {

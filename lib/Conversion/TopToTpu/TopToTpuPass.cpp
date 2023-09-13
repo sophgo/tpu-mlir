@@ -731,6 +731,7 @@ public:
       module::setWeightFileName(weightFileName);
     }
 
+    LoweringConfig::doWinograd = doWinograd.hasValue() ? doWinograd.getValue() : false;
     init_qtable();
 
     if (module::isState(module::State::TOP_QUANTIZED)) {

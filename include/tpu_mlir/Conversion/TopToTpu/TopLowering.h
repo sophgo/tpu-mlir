@@ -213,6 +213,7 @@ private:
 
 struct LoweringConfig {
   static bool isQuantized;
+  static bool doWinograd;
   static std::map<std::string, module::Mode> quantize_map;
 };
 
@@ -236,6 +237,9 @@ public:
     }
     switch (real_mode) {
     case module::Mode::INT8:
+      if(auto conv = dyn_cast<top::ConvOp>(op)){
+        conv.setDoWinograd(LoweringConfig::doWinograd);
+      }
       LoweringINT8(rewriter, opTy, module::isAsymmetric());
       break;
     case module::Mode::INT4:

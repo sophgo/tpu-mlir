@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
 
@@ -19,7 +19,8 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
   auto filter_addr = module::getAddress(getFilter());
   auto bias_addr = module::getAddress(getBias());
   if (module::isUniformQuantized(getInput())) {
-    auto shift_v = module::getI64Array(getRshift(), 1, 0);
+    auto shift_v =
+        module::getI64Array(getRshift(), attr.use_winograd == 0 ? 1 : 2, 0);
     auto shift = shift_v->at(0);
     auto in_sign = module::isSign(getInput());
     auto filter_sign = module::isSign(getFilter());
@@ -34,14 +35,32 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
           bias_sign, out_sign, attr.do_relu ? 1 : 0, attr.relu_limit,
           (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
     } else {
-      BM1684::instance()
-          .dl_nodechip_conv_forward_parallel_fix8b_with_data_split(
-              in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic,
-              attr.ih, attr.iw, attr.groups, attr.oc, attr.kh, attr.kw, attr.dh,
-              attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
-              attr.has_bias ? 1 : 0, 0, attr.do_relu ? 1 : 0, 0, 1, 0, 0, shift,
-              in_sign, filter_sign, bias_sign, 3, 0, 0, 0, 0, 0,
-              (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
+      if (attr.use_winograd == 2) {
+        // /workspace/nntoolchain/net_compiler/bmcompiler/src/cmd_gen/bm1684_global_layer_ctrl.cpp
+        // dl_nodechip_winograd_forward_parallel_with_data_split
+        int64_t bias_global_offset =
+            filter_addr + ceiling_func(attr.oc / attr.groups, 64) *
+                              ceiling_func(attr.ic / attr.groups, 4) * 64;
+
+        BM1684::instance()
+            .dl_nodechip_winograd_forward_parallel_fix8b_with_data_split(
+                in_addr, out_addr, filter_addr, bias_global_offset, attr.n,
+                attr.ic, attr.ih, attr.iw, attr.groups, attr.oc, attr.pht,
+                attr.phb, attr.pwl, attr.pwr, 2, attr.do_relu ? 1 : 0,
+                attr.relu_limit, 2, 0, 0, shift_v->at(1), in_sign, filter_sign,
+                bias_sign, 3, 0, 0, 0, 0,
+                (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
+      } else {
+        BM1684::instance()
+            .dl_nodechip_conv_forward_parallel_fix8b_with_data_split(
+                in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic,
+                attr.ih, attr.iw, attr.groups, attr.oc, attr.kh, attr.kw,
+                attr.dh, attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr,
+                attr.sh, attr.sw, attr.has_bias ? 1 : 0, 0,
+                attr.do_relu ? 1 : 0, 0, 1, 0, 0, shift, in_sign, filter_sign,
+                bias_sign, 3, 0, 0, 0, 0, 0,
+                (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
+      }
     }
   } else {
     // F32
@@ -108,13 +127,26 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   }
 
   if (module::isUniformQuantized(getInput())) {
-    auto shift_v = module::getI64Array(getRshift(), 1, 0);
+    int use_winograd = getUseWinograd().value_or(0);
+    auto shift_v = module::getI64Array(getRshift(), use_winograd ? 2 : 1, 0);
     auto shift = shift_v->at(0);
     auto in_sign = module::isSign(getInput());
     auto filter_sign = module::isSign(getFilter());
     auto bias_sign = p.has_bias ? module::isSign(getBias()) : 0;
     auto out_sign = module::isSign(getOutput());
-    if (p.is_dw) {
+    if (use_winograd == 2) {
+      auto winorshift = shift_v->at(1);
+      auto bias_local_addr =
+          f_gi.out_addr + align_up(p.oc / p.groups, 4) *
+                              ceiling_func(p.ic / p.groups, 64) * 4 * 4;
+      BM1684::instance().dl_nodechip_winograd_forward_local_fix8b(
+          in_gi.out_addr, f_gi.out_addr, bias_local_addr, gi.out_addr,
+          gi.buffer_addr, bottom_dim, top_dim, p.groups, pad_h_t, pad_h_b,
+          p.pwl, p.pwr, 2 /* use_bias*/, 0, p.do_relu, p.relu_limit, 2,
+          /*unused_ht*/ 0, 0, 0, 0, winorshift, in_sign, filter_sign, bias_sign,
+          3,
+          /*mulshift*/ 0, 0, 0, 0, BM1684::instance()->bdc_node);
+    } else if (p.is_dw) {
       BM1684::instance().dl_nodechip_pooling_fix8b_forward_local(
           in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr, bottom_dim,
           top_dim, p.kh, p.kw, pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw,
