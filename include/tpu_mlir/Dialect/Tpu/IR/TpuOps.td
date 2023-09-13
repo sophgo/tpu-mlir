@@ -2982,6 +2982,7 @@ def Tpu_LayerNormBwdOp : Tpu_Op<"LayerNormBwd"> {
   }];
   let arguments = (ins
     AnyTensor:$grad_out,
+    AnyTensor:$input,
     AnyTensor:$mean,
     AnyTensor:$variance,
     AnyTensorOrNone:$weight,
@@ -2989,7 +2990,7 @@ def Tpu_LayerNormBwdOp : Tpu_Op<"LayerNormBwd"> {
     I64ArrayAttr:$normalized_shape
   );
   let results = (outs
-    AnyTensorOrNone:$grad_input,
+    AnyTensor:$grad_input,
     AnyTensorOrNone:$grad_weight,
     AnyTensorOrNone:$grad_bias
   );
@@ -3049,14 +3050,14 @@ def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd"> {
     AnyTensor:$grad_out,
     AnyTensor:$input,
     AnyTensorOrNone:$weight_opt,
-    AnyTensorOrNone:$running_mean_opt,
-    AnyTensorOrNone:$running_var_opt,
+    AnyTensorOrNone:$saved_mean,
+    AnyTensorOrNone:$saved_invstd,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon
   );
   let results = (outs
-    AnyTensor:$output,
-    AnyTensor:$mean_out,
-    AnyTensor:$variance_out
+    AnyTensor:$grad_in,
+    AnyTensorOrNone:$weight_grad,
+    AnyTensorOrNone:$bias_grad
   );
 }
 

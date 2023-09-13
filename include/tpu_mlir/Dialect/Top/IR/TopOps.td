@@ -2876,7 +2876,7 @@ def Top_BatchNormTrainOp: Top_Op<"BatchNormTrain"> {
 }
 
 def Top_BatchNormBwdOp: Top_Op<"BatchNormBwd"> {
-  let summary = "BatchNormalization train operation";
+  let summary = "BatchNormalization backward operation";
   let description = [{
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
     with additional channel dimension) as described in the paper
@@ -2895,14 +2895,14 @@ def Top_BatchNormBwdOp: Top_Op<"BatchNormBwd"> {
     AnyTensor:$grad_out,
     AnyTensor:$input,
     AnyTensorOrNone:$weight_opt,
-    AnyTensorOrNone:$running_mean_opt,
-    AnyTensorOrNone:$running_var_opt,
+    AnyTensorOrNone:$saved_mean,
+    AnyTensorOrNone:$saved_invstd,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon
   );
   let results = (outs
-    AnyTensor:$output,
-    AnyTensor:$mean_out,
-    AnyTensor:$variance_out
+    AnyTensor:$grad_in,
+    AnyTensorOrNone:$weight_grad,
+    AnyTensorOrNone:$bias_grad
   );
 }
 
@@ -2934,6 +2934,7 @@ def Top_LayerNormBwdOp : Top_Op<"LayerNormBwd"> {
   }];
   let arguments = (ins
     AnyTensor:$grad_out,
+    AnyTensor:$input,
     AnyTensor:$mean,
     AnyTensor:$variance,
     AnyTensorOrNone:$weight,
@@ -2941,7 +2942,7 @@ def Top_LayerNormBwdOp : Top_Op<"LayerNormBwd"> {
     I64ArrayAttr:$normalized_shape
   );
   let results = (outs
-    AnyTensorOrNone:$grad_input,
+    AnyTensor:$grad_input,
     AnyTensorOrNone:$grad_weight,
     AnyTensorOrNone:$grad_bias
   );

@@ -50,11 +50,12 @@ def torch_dtype_from_tpu_mlir(dtype) -> torch.dtype:
 
 class TpuMlirModule(torch.nn.Module):
     def __init__(
-        self, model_file, return_none_count = 0
+        self, model_file, output_dtypes, return_none_count = 0
     ):
         super(TpuMlirModule, self).__init__()
-        print('TpuMlirModule __init__')
+        print(f'TpuMlirModule __init__ output_dtypes:{output_dtypes}')
         self._register_state_dict_hook(TpuMlirModule._on_state_dict)
+        self.output_dtypes = output_dtypes
         self.model_file = model_file
         self.initialized = False
         self.return_none_count = return_none_count
@@ -180,6 +181,9 @@ class TpuMlirModule(torch.nn.Module):
                                 *dyn_output_shapes[dyn_idx])
                             dyn_idx += 1
                     tpu_outputs.append(torch.from_numpy(output))
+                for output, dtype in zip(tpu_outputs, self.output_dtypes):
+                    if dtype == torch.int64:
+                        output = output.int()
                 print('forward output shape:', [i.shape for i in tpu_outputs])
                 tpu_outputs.extend([None for i in range(self.return_none_count)])
                 print('return_none_count:', self.return_none_count)

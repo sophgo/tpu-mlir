@@ -15,16 +15,14 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::BatchNormBwdOp::codegen_global_bm1684x() {
-  // auto op = getOperation();
-  // auto input_spec = BM168x::get_input_spec(op);
-  // auto output_spec = BM168x::get_output_spec(op);
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
 
-  // batchnorm_train_param_t param = {0};
-  // param.eps = getEpsilon().convertToDouble();
-  // param.momentum = getMomentum().convertToDouble();
-  // BM168x::call_global_func("backend_api_batchnorm_train_global", &param,
-  //                          sizeof(param), input_spec->data(),
-  //                          output_spec->data());
+  batchnorm_backward_param_t param = {0};
+  BM168x::call_global_func("backend_api_batchnorm_backward_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
 
 void tpu::BatchNormBwdOp::codegen_global_bm1684() {
