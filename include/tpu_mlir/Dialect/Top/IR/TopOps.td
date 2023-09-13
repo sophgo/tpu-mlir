@@ -1119,7 +1119,7 @@ def Top_SliceAxisOp: Top_Op<"SliceAxis"> {
     AnyTensor:$input,
     AnyTensor:$axis,
     AnyTensor:$start,
-    AnyTensor:$step,
+    AnyTensorOrNone:$step,
     AnyTensor:$end
   );
   let results = (outs AnyTensor:$output);

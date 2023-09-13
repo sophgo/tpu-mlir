@@ -639,6 +639,8 @@ class OnnxConverter(BaseConverter):
         for x in onnx_node.inputs:
             if self.isWeight(x):
                 data = self.getWeight(x)
+                if len(data.shape) == 1 and data.shape[0] == 0:
+                    continue
                 if weight_data is not None:
                     weight_data = np.concatenate((weight_data, data), axis=axis)
                 else:
@@ -1696,7 +1698,7 @@ class OnnxConverter(BaseConverter):
         if self.isScalar(onnx_node.inputs[1]):
             extra_attr.update({"keepdims": True})
             idx = self.find_named_tensor(onnx_node.inputs[1])
-            if idx != None and len(idx.shape) == 0:
+            if idx is not None and len(idx.shape) == 0:
                 extra_attr["keepdims"] = False
         indices = self.getOp(onnx_node.inputs[1])
         new_op = top.GatherOp(self.unranked_type,

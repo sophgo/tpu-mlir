@@ -72,8 +72,8 @@ void top::ConcatOp::shape_inference() {
   auto axis_ = getAxis();
   auto in0_shape = module::getShape(getInputs()[0]);
   if (axis_ < 0) {
-      axis_ += in0_shape.size();
-      setAxis(axis_);
+    axis_ += in0_shape.size();
+    setAxis(axis_);
   }
   int64_t shape_axis = 0;
   for (auto inp : getInputs()) {
@@ -93,6 +93,9 @@ void top::ConcatOp::shape_inference() {
         auto data = input.getDefiningOp<top::WeightOp>().read_as_float();
         std::vector<int64_t> data_v(data->begin(), data->end());
         input_shapes_v.push_back(data_v);
+      } else if (module::getShape(input).size() == 1 &&
+                 module::getShape(input)[0] == 0) {
+        continue;
       } else {
         llvm_unreachable("unexpected input");
       }
