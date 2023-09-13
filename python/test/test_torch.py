@@ -201,6 +201,8 @@ class TORCH_IR_TESTER(object):
             return True
         if self.chip == "bm1686" and bm1686_support:
             return True
+        if self.chip == "mars3" and bm1686_support:
+            return True
         return False
 
     def square_rooted(self, x):
@@ -2823,7 +2825,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1686', 'cv183x'], help="chip platform name")
+                        choices=['bm1684', 'bm1684x', 'bm1686', 'cv183x', 'mars3'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")
