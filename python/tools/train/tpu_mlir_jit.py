@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import torch
 import time
 import copy
@@ -17,7 +18,7 @@ from tools.train.TpuMlirModule import TpuMlirModule
 from tools.train.fx2mlir import fx2mlir
 from tools.train.fx_pass import fx_pass_for_bmm_expand
 
-PLUGIN_PATH = "/workspace/code/tpu10/tpu-train/libtorch_plugin/build/liblibtorch_plugin.so"
+PLUGIN_PATH = "/workspace/code/tpu11/tpu-train/libtorch_plugin/build/liblibtorch_plugin.so"
 torch.ops.load_library(PLUGIN_PATH)
 
 args = None
@@ -94,12 +95,14 @@ def _get_disc_decomp():
 def convert_module_fx(
     submodule_name: str,
     module: torch.fx.GraphModule,
-    args:Namespace
+    args:Namespace,
+    bwd_graph:bool
 ) -> TpuMlirModule:
-    c = fx2mlir(submodule_name, args)
+    c = fx2mlir(submodule_name, args, bwd_graph)
     return c.convert(module)
 
 def tpu_mlir_compiler(fx_g, example_inputs):
+    os.system('rm -rf fx_graph_dumped*')
     print('run tpu_mlir_compiler, original graph:')
     fx_g.graph.print_tabular()
 
@@ -157,6 +160,8 @@ def tpu_mlir_compiler(fx_g, example_inputs):
         fx_g.graph.lint()
         fx_g.recompile()
 
+        bwd_graph = len([node for node in fx_g.graph.nodes if node.op == 'placeholder' and node.name == 'tangents_1']) > 0
+
         cvt_en = False
         partitioned_module = partition(fx_g, min_block_size = 3)
         name = f"partitioned_module_{time.time()}"
@@ -164,17 +169,18 @@ def tpu_mlir_compiler(fx_g, example_inputs):
         with open(f'{name}.svg', "wb") as f:
             f.write(g.get_dot_graph().create_svg())
 
+
         if len(list(partitioned_module.named_children())) > 0:
             for name, _ in partitioned_module.named_children():
                 submodule = getattr(partitioned_module, name)
                 print(name, 'submodule:', submodule)
 
-                tpu_mlir_mod = convert_module_fx(name, submodule, args)
+                tpu_mlir_mod = convert_module_fx(name, submodule, args, bwd_graph)
                 if tpu_mlir_mod is not None:
                     cvt_en = True
                     setattr(partitioned_module, name, tpu_mlir_mod)
         else:
-            partitioned_module = convert_module_fx('main_mod', partitioned_module, args)
+            partitioned_module = convert_module_fx('main_mod', partitioned_module, args, bwd_graph)
             if partitioned_module is not None:
                 cvt_en = True
 

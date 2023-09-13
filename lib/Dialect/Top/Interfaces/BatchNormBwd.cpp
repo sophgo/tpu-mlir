@@ -10,7 +10,7 @@
 #include "tpu_mlir/Support/Module.h"
 
 int64_t top::BatchNormBwdOp::getFLOPs() {
-  return module::getNumElements(getOutput()) * 2;
+  return module::getNumElements(getGradIn());
 }
 
 LogicalResult top::BatchNormBwdOp::init(InferenceParameter &p) {

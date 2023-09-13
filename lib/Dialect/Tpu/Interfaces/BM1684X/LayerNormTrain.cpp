@@ -19,16 +19,11 @@ void tpu::LayerNormTrainOp::codegen_global_bm1684x() {
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
 
-  layer_norm_global_spec_t param = {0};
-  const bool have_weight = !getWeight().getType().isa<NoneType>();
-  const bool have_bias = !getBias().getType().isa<NoneType>();
-
-  param.common.axis = (int)getAxis();
-  param.common.eps = getEps().convertToDouble();
-  param.common.affine = (have_weight << 0) + (have_bias << 1);
-  param.common.need_mean = false;
-  param.common.need_rstd = false;
-  BM168x::call_global_func("backend_api_layer_norm_train_global", &param,
+  auto normalized_shape = module::getI64Array(getNormalizedShape());
+  layernorm_train_param_t param = {0};
+  param.axis = input_spec->at(0).dims - normalized_shape->size();
+  param.eps = getEps().convertToDouble();
+  BM168x::call_global_func("backend_api_layernorm_train_global", &param,
                            sizeof(param), input_spec->data(),
                            output_spec->data());
 }

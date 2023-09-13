@@ -14,7 +14,8 @@ namespace bm1684x {
 
 void BatchNormBwdLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::BatchNormBwdOp op) const {
-  lowering_common_f32<tpu::BatchNormBwdOp>(rewriter, op, 6);
+  rewriter.replaceOpWithNewOp<tpu::BatchNormBwdOp>(
+      op, op->getResultTypes(), op->getOperands(), op->getAttrs());
 }
 
 void BatchNormBwdLowering::LoweringBF16(PatternRewriter &rewriter,
