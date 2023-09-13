@@ -9,6 +9,7 @@
 
 #include "../WeightReorder.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/WinoGrad.h"
 
 using namespace bm1684;
 
@@ -46,15 +47,10 @@ void conv_weight_transform(int ic, int oc, int kh, int kw,
   }
 }
 
-template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
-    tpu::Conv2DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.getFilter()).isInteger(8))
-    return failure();
-  if (module::isWeight(op.getFilter()) == false) {
-    return failure();
-  }
+LogicalResult convReorder(tpu::Conv2DOp op, PatternRewriter &rewriter) {
+
   auto attr = op.parseParam();
+
   auto type_bytes = 1;
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
@@ -139,12 +135,207 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   }
   // bias op
   if (attr.has_bias) {
-    auto bias_type = module::getElementType(op.getBias());
+    auto bias = op.getBias().getDefiningOp<top::WeightOp>();
+    auto bias_type = module::getElementType(bias);
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+    auto old_bias = bias.read<int16_t>();
+    std::vector<int16_t> new_bias(attr.oc);
+    for (int i = 0; i < attr.oc; i++) {
+      new_bias[i] = (*old_bias)[i];
+    }
+
     auto new_type = RankedTensorType::get(bias_shape, bias_type);
+
     op.getBias().setType(new_type);
+    auto new_bias_op = top::WeightOp::create(op.getBias().getDefiningOp(),
+                                             "bias", new_bias, new_type);
+    op.setOperand(2, new_bias_op);
   }
   return success();
+}
+
+/**
+ * Reorder twice,
+ * first by winograd_weight_transform_subfunc
+ * sec in function, merge bias
+ */
+LogicalResult WinoWeightArr(tpu::Conv2DOp op, PatternRewriter &rewriter) {
+  auto attr = op.parseParam();
+  int input_c = attr.ic;
+  int output_c = attr.oc;
+  int groups = attr.groups;
+
+  // read data
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
+  auto filter_int8 = filterOp.read<int8_t>();
+  auto filter_type = module::getElementType(op.getFilter());
+
+  auto old_filter_shape = module::getShape(op.getFilter());
+  // n, c, 4, 4
+  auto num_connection = old_filter_shape[0] * old_filter_shape[1];
+
+  std::vector<int8_t> new_weight(num_connection * 4 * 4);
+  auto conv_droped_size = num_connection * 3 * 3;
+  winograd_weight_transform_subfunc(
+      (char *)filter_int8->data() + conv_droped_size, (char *)new_weight.data(),
+      input_c * groups, output_c, groups, 2);
+
+  int new_c = attr.oc < 64 ? attr.oc : 64;
+  int new_h = ceiling_func(attr.oc, 64);
+
+  std::vector<int64_t> new_shape(4);
+  new_shape[0] = groups;
+  new_shape[1] = new_c;
+  new_shape[2] = new_h;
+  new_shape[3] = ceiling_func(attr.ic, 4) * 64;
+  auto new_type = RankedTensorType::get(new_shape, filter_type);
+  op.getBias().setType(new_type);
+  auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
+                                          "winograd", new_weight, new_type);
+  op.setOperand(1, new_filter);
+  return success();
+}
+
+LogicalResult WinoBiasArr(tpu::Conv2DOp op, PatternRewriter &rewriter) {
+  auto attr = op.parseParam();
+  int NPU_NUM = 64;
+  int groups = attr.groups;
+  int oc = attr.oc;
+  int occupy_npu_nm = (oc / groups) < NPU_NUM ? (oc / groups) : NPU_NUM;
+  int oc_per_npu = ceiling_func(oc / groups, NPU_NUM);
+
+  auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+  auto bias_int8 = biasOp.read<int16_t>();
+  auto bias_size = bias_int8->size() / 2;
+  auto bias_type = module::getElementType(op.getBias());
+
+  std::vector<int16_t> bias_wino(groups * occupy_npu_nm * oc_per_npu);
+
+  winograd_bias_transform_subfunc(bias_int8->data() + bias_size,
+                                  bias_wino.data(), oc, groups);
+
+  std::vector<int64_t> new_shape(4);
+  new_shape[0] = 1;
+  new_shape[1] = groups * occupy_npu_nm;
+  new_shape[2] = 1;
+  new_shape[3] = oc_per_npu;
+  auto new_type = RankedTensorType::get(new_shape, bias_type);
+  auto new_bias = top::WeightOp::create(op.getBias().getDefiningOp(),
+                                        "winograd_bias", bias_wino, new_type);
+  op.setOperand(2, new_bias);
+  return success();
+}
+
+/**
+ * Reorder twice,
+ * first by winograd_weight_transform_subfunc
+ * sec in function, merge bias
+ */
+LogicalResult WinoWeightBiasArr(tpu::Conv2DOp op, PatternRewriter &rewriter) {
+  auto attr = op.parseParam();
+  int input_c = attr.ic;
+  int output_c = attr.oc;
+  int groups = attr.groups;
+
+  // read data
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
+  auto filter_int8 = filterOp.read<int8_t>();
+  auto filter_type = module::getElementType(op.getFilter());
+
+  auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+  auto bias_int8 = biasOp.read<int16_t>();
+  int bias_size = bias_int8->size() / 2;
+
+  auto old_filter_shape = module::getShape(op.getFilter());
+  // n, c, 4, 4
+  auto num_connection = old_filter_shape[0] * old_filter_shape[1];
+
+  std::vector<int8_t> new_weight_(num_connection * 4 * 4, 0);
+  int conv_droped_size = num_connection * 3 * 3;
+  winograd_weight_transform_subfunc(
+      (char *)filter_int8->data() + conv_droped_size,
+      (char *)new_weight_.data(), input_c * groups, output_c, groups, 2);
+
+  int new_c = attr.oc < 64 ? attr.oc : 64;
+  int new_h = ceiling_func(attr.oc, 64);
+
+  char *old_weight = (char *)new_weight_.data();
+  short *bias_data = (short *)(bias_int8->data() + bias_size);
+  std::vector<int8_t> new_weight(
+      groups * new_c * new_h * (ceiling_func(attr.ic, 4) * 64 + 2), 0);
+
+  // merge bias
+  for (int g = 0; g < groups; g++) {
+    for (int m = 0; m < new_c; m++) {
+      char *pDst =
+          (char *)new_weight.data() +
+          (g * new_c + m) * (new_h * ceiling_func(attr.ic, 4) * 64 + 2 * new_h);
+      char *pSrc = (char *)old_weight +
+                   (g * new_c + m) * (new_h * ceiling_func(attr.ic, 4) * 64);
+
+      memcpy(pDst, pSrc, new_h * ceiling_func(attr.ic, 4) * 64);
+
+      for (int c0 = 0; c0 < new_h; c0++) {
+        int oc_idx = c0 * new_c + m;
+        if (oc_idx < attr.oc)
+          memcpy(pDst + new_h * ceiling_func(attr.ic, 4) * 64,
+                 (short *)bias_data + oc_idx + g * attr.oc, 2);
+        else
+          memset(pDst + new_h * ceiling_func(attr.ic, 4) * 64, 0, 2);
+        pDst += 2;
+      }
+    }
+  }
+  std::vector<int64_t> new_shape(4);
+  new_shape[0] = groups;
+  new_shape[1] = new_c;
+  new_shape[2] = new_h;
+  new_shape[3] = ceiling_func(attr.ic, 4) * 64 + 2;
+  auto new_type = RankedTensorType::get(new_shape, filter_type);
+  op.getBias().setType(new_type);
+  auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
+                                          "winograd", new_weight, new_type);
+  op.setOperand(1, new_filter);
+  // erase the bias
+  op.setOperand(2, module::getNoneOp(op));
+  return success();
+}
+
+LogicalResult winoReorder(tpu::Conv2DOp op, PatternRewriter &rewriter) {
+
+  // merge weight and bias
+  auto attr = op.parseParam();
+  bool depthwise =
+      (attr.groups == attr.ic && attr.groups == attr.oc && attr.groups > 1);
+  if (attr.has_bias && !depthwise) {
+    // rewriter.create<top::WeightOp>()
+    return WinoWeightBiasArr(op, rewriter);
+  } else {
+    WinoWeightArr(op, rewriter);
+    if (attr.has_bias) {
+      WinoBiasArr(op, rewriter);
+    }
+    return failure();
+  }
+
+  return success();
+}
+
+template <>
+LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
+    tpu::Conv2DOp op, PatternRewriter &rewriter) const {
+  if (!module::getStorageType(op.getFilter()).isInteger(8))
+    return failure();
+  if (module::isWeight(op.getFilter()) == false) {
+    return failure();
+  }
+
+  if (op.getUseWinograd().value_or(0) == 2) {
+    /* decided in ConvOp TopToTpu pass */
+    return winoReorder(op, rewriter);
+  } else {
+    return convReorder(op, rewriter);
+  }
 }
 
 template <>

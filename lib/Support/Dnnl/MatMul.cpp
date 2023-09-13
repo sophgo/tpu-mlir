@@ -60,6 +60,7 @@ void MatMul::output_init(float *output, int64_t batch, int64_t batch_low,
   }
 }
 
+/**[M, K] @ [K, N] => [M, N]*/
 void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t batch_low, int64_t M, int64_t K,
                    int64_t N, bool do_relu, double relu_limit, int64_t right_zp,

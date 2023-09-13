@@ -72,6 +72,7 @@ class DeployTool:
         self.customization_format = args.customization_format
         self.fuse_preprocess = args.fuse_preprocess
         self.aligned_input = args.aligned_input
+        self.do_winograd = args.do_winograd
         self.module = MlirParser(args.mlir)
         self.module_name = self.module.module_name
         self.state = self.module.module_state
@@ -117,7 +118,7 @@ class DeployTool:
             mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
                           self.asymmetric, self.quantize_table, self.customization_format,
                           self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow,
-                          self.linear_quant_mode)
+                          self.linear_quant_mode, self.do_winograd)
             if self.do_validate:
                 tool.validate_tpu_mlir()
 
@@ -297,6 +298,8 @@ if __name__ == '__main__':
                         help="merge weights into one weight binary with previous generated cvimodel")
     parser.add_argument("--linear_quant_mode", default="NORMAL", type=str.upper, choices=["W8A16", "W4A16", "NORMAL"],
                     help="quantize linear with W8A16 / W4A16 strategy")
+    parser.add_argument("--do_winograd", action="store_true", default=False,
+                        help="do_winograd")
 
     # yapf: enable
     args = parser.parse_args()

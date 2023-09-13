@@ -345,6 +345,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     DefaultValuedAttr<BoolAttr, "false">:$coeff_merged,
     DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
     DefaultValuedAttr<I64Attr, "0">:$kernel_zp,
+    OptionalAttr<I64Attr>:$use_winograd, // 0 not use, 1 used in toptotpu, 2 apply nodechip
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
