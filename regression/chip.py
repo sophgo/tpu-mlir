@@ -17,6 +17,7 @@ chip_support = {
     "bm1684":    (Y,   N,   N,    Y,        N,         N,        N,       "bmodel"),
     "bm1684x":   (Y,   Y,   Y,    Y,        N,         N,        N,       "bmodel"),
     "bm1686":    (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
+    # "mars3":     (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
     "cv180x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
     "cv181x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
     "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),

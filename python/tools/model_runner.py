@@ -60,6 +60,8 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
             lib_so = 'libcmodel_1684.so'
         elif chip == "SG2260":
             lib_so = 'libcmodel_sg2260.so'
+        elif chip == "MARS3":
+            lib_so = 'libcmodel_mars3.so'
         cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
         os.system(cmd)
     elif model_file.endswith(".cvimodel"):
