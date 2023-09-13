@@ -1,0 +1,10 @@
+RUN: bmodel_dis.py %p/bmodel/yolov5s_bm1684x_int8_sym.bmodel | FileCheck %s
+
+CHECK:  module attributes {chip = "BM1684X", version = 2.2} {
+CHECK-NEXT:    func.func @yolov5s(%G8146944: memref<1x3x640x640xui8, strides: [1228800, 409600, 640, 1]>) -> (memref<1x255x80x80xsi8, strides: [1632000, 6400, 80, 1]>, memref<1x255x40x40xsi8, strides: [408000, 1600, 40, 1]>, memref<1x255x20x20xsi8, strides: [102000, 400, 20, 1]>) ({
+CHECK-NEXT:  ^bb-1(%images: memref<1x3x640x640xui8, strides: [1228800, 409600, 640, 1]>)
+CHECK-NEXT:    %R0, %D1 = "dma.tensor.broadcast"(%G8146944, %B0) {decompress = False} : (memref<1x1x130x640xi8, strides: [1228800, 0, 640, 1]>, none) -> (memref<1x6x130x640xi8, strides: [83200, 0, 640, 1]>, none)
+CHECK-NEXT:    %R0.L6, %D2 = "dma.tensor.broadcast"(%G8556544, %B0) {decompress = False} : (memref<1x1x130x640xi8, strides: [1228800, 0, 640, 1]>, none) -> (memref<1x6x130x640xi8, strides: [83200, 0, 640, 1]>, none)
+CHECK-NEXT:    %R0.L12, %D3 = "dma.tensor.broadcast"(%G8966144, %B0) {decompress = False} : (memref<1x1x130x640xi8, strides: [1228800, 0, 640, 1]>, none) -> (memref<1x6x130x640xi8, strides: [83200, 0, 640, 1]>, none)
+CHECK-NEXT:    %R5.8960, %D4 = "dma.tensor"(%G0, %B0) {decompress = False} : (memref<1x32x1x448xi8, strides: [14336, 448, 448, 1]>, none) -> (memref<1x32x1x448xi8, strides: [448, 448, 448, 1]>, none)
+CHECK-NEXT:    %R15.8192, %B1 = "tsbc.s_distribute"(%S1472, %D4) : (memref<1x6x1x1xi32>, none) -> (memref<1x6x1x1xi32, strides: [1, 1, 1, 1]>, none)

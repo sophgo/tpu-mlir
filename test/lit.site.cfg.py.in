@@ -1,0 +1,16 @@
+@LIT_SITE_CFG_IN_HEADER@
+
+
+config.llvm_tools_dir = lit_config.substitute("@LLVM_TOOLS_DIR@")
+config.mlir_python_dir = "@MLIR_INSTALL_PREFIX@"
+config.enable_bindings_python = "@MLIR_ENABLE_BINDINGS_PYTHON@"
+config.tpumlir_obj_root = "@PROJECT_BINARY_DIR@"
+config.tpumlir_python_root = "@PROJECT_SOURCE_DIR@/python"
+config.tpumlir_install_root = "@CMAKE_INSTALL_PREFIX@"
+config.llvm_shlib_ext = "@SHLIBEXT@"
+
+import lit.llvm
+lit.llvm.initialize(lit_config, config)
+
+# Let the main config do the real work.
+lit_config.load_config(config, "@PROJECT_SOURCE_DIR@/test/lit.cfg.py")

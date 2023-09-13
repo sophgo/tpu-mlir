@@ -1,0 +1,14 @@
+RUN: bmodel_dis.py %p/bmodel/yolov5s_bm1686_int8_sym_core2.bmodel | FileCheck %s
+
+CHECK: module attributes {chip = "BM1686", version = 2.2} {
+CHECK-NEXT:  func.func @yolov5s(%G0: memref<1x3x640x640xui8, strides: [1228800, 409600, 640, 1]>) -> (memref<1x255x80x80xsi8, strides: [1632000, 6400, 80, 1]>, memref<1x255x40x40xsi8, strides: [408000, 1600, 40, 1]>, memref<1x255x20x20xsi8, strides: [102000, 400, 20, 1]>) ({
+CHECK-NEXT:  ^bb-1(%images: memref<1x3x640x640xui8, strides: [1228800, 409600, 640, 1]>)
+CHECK-NEXT:    %B1C0 = "system.send_msg"(%D0C0) {msg_id = 30, cnt = 4}
+CHECK-NEXT:    %B1C1 = "system.send_msg"(%D0C1) {msg_id = 30, cnt = 4}
+CHECK-NEXT:    %D1C0 = "dma.sys.sys_send"(%B1C0) {msg_id = 30, cnt = 4}
+CHECK-NEXT:    %D1C1 = "dma.sys.sys_send"(%B1C1) {msg_id = 30, cnt = 4}
+
+CHECK:    %G2969600, %D154C0 = "dma.tensor"(%R0, %B335C0) : (memref<1x255x40x40xi8, strides: [12800, 1600, 40, 1]>, none) -> (memref<1x255x40x40xi8, strides: [408000, 1600, 40, 1]>, none)
+CHECK-NEXT:    %G2867200, %D155C0 = "dma.tensor"(%R2, %B337C0) : (memref<1x255x20x20xi8, strides: [3200, 400, 20, 1]>, none) -> (memref<1x255x20x20xi8, strides: [102000, 400, 20, 1]>, none)
+CHECK-NEXT:    return %G3379200, %G2969600, %G2867200: memref<1x255x80x80xsi8, strides: [1632000, 6400, 80, 1]>, memref<1x255x40x40xsi8, strides: [408000, 1600, 40, 1]>, memref<1x255x20x20xsi8, strides: [102000, 400, 20, 1]>
+CHECK-NEXT:  }) {function_type = {arg_attrs = ["images"], res_attrs = ["326_Conv", "474_Conv", "622_Conv"]}}

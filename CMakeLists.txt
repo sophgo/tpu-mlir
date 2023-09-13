@@ -146,3 +146,12 @@ add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(bindings)
 add_subdirectory(python)
+
+#-------------------------------------------------------------------------------
+option(TPUMLIR_INCLUDE_TESTS "Generate build targets for the TPU-MLIR unit tests.")
+
+if(TPUMLIR_INCLUDE_TESTS)
+  add_definitions(-DTPUMLIR_INCLUDE_TESTS)
+  add_subdirectory(unittests)
+  add_subdirectory(test)
+endif()
