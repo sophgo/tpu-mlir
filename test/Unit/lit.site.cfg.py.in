@@ -1,0 +1,12 @@
+@LIT_SITE_CFG_IN_HEADER@
+
+config.llvm_tools_dir = lit_config.substitute("@LLVM_TOOLS_DIR@")
+config.llvm_build_mode = lit_config.substitute("@LLVM_BUILD_MODE@")
+
+config.tpumlir_src_root = "@PROJECT_SOURCE_DIR@"
+config.tpumlir_obj_root = "@PROJECT_BINARY_DIR@"
+config.tpumlir_tools_dir = "@PROJECT_BINARY_DIR@/bin"
+
+
+# Let the main config do the real work.
+lit_config.load_config(config, "@PROJECT_SOURCE_DIR@/test/Unit/lit.cfg.py")

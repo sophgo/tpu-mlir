@@ -1,0 +1,12 @@
+RUN: bmodel_dis.py %p/bmodel/yolov5s_bm1684_f32.bmodel | FileCheck %s
+
+CHECK: module attributes {chip = "BM1684", version = 2.2} {
+CHECK-NEXT:  func.func @yolov5s(%G114053120: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>) -> (memref<1x255x80x80xf32, strides: [1632000, 6400, 80, 1]>, memref<1x255x40x40xf32, strides: [408000, 1600, 40, 1]>, memref<1x255x20x20xf32, strides: [102000, 400, 20, 1]>) ({
+CHECK-NEXT:  ^bb-1(%images: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>)
+CHECK-NEXT:    DMA tensor
+CHECK-NEXT:    DMA tensor
+CHECK-NEXT:    DMA tensor
+CHECK-NEXT:    convolution neuron
+
+CHECK:    return %G121012224, %G119377920, %G118968320: memref<1x255x80x80xf32, strides: [1632000, 6400, 80, 1]>, memref<1x255x40x40xf32, strides: [408000, 1600, 40, 1]>, memref<1x255x20x20xf32, strides: [102000, 400, 20, 1]>
+CHECK-NEXT:  }) {function_type = {arg_attrs = ["images"], res_attrs = ["326_Conv", "474_Conv", "622_Conv"]}}
