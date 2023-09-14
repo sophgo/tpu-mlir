@@ -42,7 +42,7 @@ void TopKLowering::LoweringF32(PatternRewriter &rewriter,
 
 void TopKLowering::LoweringINT8(PatternRewriter &rewriter, top::TopKOp op,
                                 bool asymmetric) const {
-  llvm_unreachable("Topk do not support Lowering to Int8");
+  LoweringF32(rewriter, op);
 }
 
 } // namespace bm1684

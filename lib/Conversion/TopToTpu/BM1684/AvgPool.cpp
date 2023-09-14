@@ -74,7 +74,11 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter, top::AvgPoolOp op,
       lowering_common_int8<tpu::Pool1DOp>(rewriter, op);
     }
   } else {
-    lowering_common_f32<tpu::Pool2DOp>(rewriter, op);
+    if(op.getKernelShape().size() == 1) {
+      op->setAttr("multiplier", rewriter.getSI32IntegerAttr(dev_table_i[k]));
+      op->setAttr("rshift", rewriter.getSI32IntegerAttr(dev_table_e[k]));
+      lowering_common_int8<tpu::Pool1DOp>(rewriter, op);
+    }else lowering_common_f32<tpu::Pool2DOp>(rewriter, op);
   }
 }
 
