@@ -70,7 +70,7 @@ memmap = {
     MType.R: (int("0x8000000", 16), int("0x9000000", 16)),  # lmen_base 16M
     MType.S: (int("0x9000000", 16), int("0x9004000", 16)),  # static memory 16KB
     MType.L: (int("0x10000000", 16), int("0x10200000", 16)),  # L2 SRAM  2M
-    MType.G: (int("0x100000000", 16), int("0x300000000", 16)),  # global memory
+    MType.G: (int("0x100000000", 16), int("0xF00000000", 16)),  # global memory
 }
 
 
@@ -513,8 +513,8 @@ def _converter(reg):
             opd1["layout"] = Layout._32IC
 
     if reg.tsk_eu_typ in [1, 2]:  # conv_wrq
-        assert self.opd2["is_const"] > 0
-        assert self.opd3["is_const"] > 0
+        assert opd2["is_const"] > 0
+        assert opd3["is_const"] > 0
 
     operands = [get_value(**x) for x in (opd0, opd1, opd2, opd3)]
     results = [get_value(**res0)]
@@ -578,7 +578,7 @@ def _converter(reg):
         else:
             opd_num = 2
     elif reg.tsk_eu_typ in [2, 3]:
-        assert reg0.opd0_prec == DType.i8
+        assert reg.opd0_prec == DType.i8
         opd2["dtype"] = (DType.i16, 1)  # bias
         attr["shift"] = reg.opd3_addr  # shift
 
