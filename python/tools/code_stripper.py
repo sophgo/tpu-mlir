@@ -9,9 +9,6 @@
 # strip the coeff data and kernel_module, keep machine code only.
 
 from debugger import disassembler
-from debugger import opdef_1684x
-from debugger import context
-import numpy as np
 
 
 def remove_weight(bmodel):

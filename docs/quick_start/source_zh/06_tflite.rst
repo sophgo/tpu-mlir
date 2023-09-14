@@ -31,7 +31,7 @@
    $ mkdir workspace && cd workspace
 
 
-这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
+这里的 ``REGRESSION_PATH`` 是环境变量, 对应tpu-mlir_xxxx/regression目录。
 
 
 TFLite转MLIR

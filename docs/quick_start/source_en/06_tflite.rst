@@ -29,7 +29,7 @@ The operation is as follows:
    $ cp ${REGRESSION_PATH}/npz_input/squad_data.npz .
    $ mkdir workspace && cd workspace
 
-``$TPUC_ROOT`` is an environment variable, corresponding to the tpu-mlir_xxxx directory.
+``REGRESSION_PATH`` is an environment variable, corresponding to the tpu-mlir_xxxx/regression directory.
 
 
 TFLite to MLIR
