@@ -318,6 +318,8 @@ class NetStatParser:
         layer_id = -1
         if items[0].startswith(self.layer_prefix):
             layer_id = int(items[0][len(self.layer_prefix):])
+        if len(items)<7:
+            return
         op_type = items[1]
         start_time = int(items[2].split(":")[-1])/1000.0 + self.time_offset
         bd_id = int(items[3].split(":")[-1])
@@ -922,7 +924,7 @@ class BMProfileParser:
         bmlib_data = []
         iteration=0
         for infile in glob.glob(in_dir + "/bmlib*.profile"):
-            print(infile)
+            print("reading " + infile)
         # while True:
             # infile = os.path.join(in_dir, "bmlib_*.profile".format(iteration))
             iteration += 1
