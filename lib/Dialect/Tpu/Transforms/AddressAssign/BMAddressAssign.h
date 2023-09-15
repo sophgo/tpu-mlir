@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 #pragma once
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "GmemAllocator.h"
+#include "tpu_mlir/Support/GmemAllocator.h"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace llvm;

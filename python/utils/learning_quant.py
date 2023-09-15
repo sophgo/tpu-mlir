@@ -17,6 +17,7 @@ from multiprocessing import Lock
 
 
 import pymlir
+pymlir.set_mem_mode("value_mem")
 from utils.mlir_parser import MlirParser
 from utils.preprocess import preprocess
 from calibration.data_selector import DataSelector

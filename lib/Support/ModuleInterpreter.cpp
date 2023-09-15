@@ -9,12 +9,14 @@
 
 #include "tpu_mlir/Support/ModuleInterpreter.h"
 #include "progressbar.hpp"
+#include "tpu_mlir/Support/GmemAllocator.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include <algorithm>
 #define DEBUG_TYPE "interpreter"
 
 static const int64_t MAX_COUNT_LIMIT = 0x100000000ll;
 namespace tpu_mlir {
+using namespace tpu;
 ModuleInterpreter::ModuleInterpreter(ModuleOp module) : module(module) {
   module::init(module);
   if (!module::isState(module::State::TOP_F32) &&
@@ -74,6 +76,160 @@ void ModuleInterpreter::allocate_resources() {
   case mem_mode_t::PART_SMALL_TENSOR_IN_MEM:
     allocate_small_tensor_in_mem();
     break;
+  case mem_mode_t::ALL_TENSOR_IN_REUSED_MEM:
+    allocate_tensor_in_reused_mem();
+    break;
+  }
+}
+
+void ModuleInterpreter::allocate_tensor_in_reused_mem() {
+  all_tensor_names.clear();
+  value_map.clear();
+  mem_map.clear();
+  num_infer_op = 0;
+  for (auto func : module.getOps<FuncOp>()) {
+    func.walk([&](Operation *op) {
+      if (op == func.getOperation() || isa<top::NoneOp>(op)) {
+      } else if (isa<ReturnOp>(op)) {
+        for (auto v : op->getOperands()) {
+          auto name = module::getName(v).str();
+          output_names.push_back(name);
+        }
+      } else if (auto in_op = dyn_cast<top::InputOp>(op)) {
+        auto v = in_op.getOutput();
+        auto name = module::getName(v).str();
+        input_names.push_back(name);
+        value_map[name] = v;
+        all_tensor_names.push_back(name);
+      } else if (auto wOp = dyn_cast<top::WeightOp>(op)) {
+        auto v = wOp.getOutput();
+        auto name = module::getName(v).str();
+        value_map[name] = v;
+        mem_map[name] = wOp.read_as_float();
+        all_weight_names.push_back(name);
+      } else {
+        for (auto v : op->getResults()) {
+          auto name = module::getName(v).str();
+          all_tensor_names.push_back(name);
+          value_map[name] = v;
+        }
+      }
+    });
+  }
+
+  module::detachWeightFile(); // free weight mem
+
+  uint32_t loc = 0;
+  int64_t alignment = 0;
+  int64_t start_addr = 0;
+  std::map<ValueInfo, TensorLive> liveRange;
+  std::map<Operation *, uint32_t> ops_loc;
+  std::vector<ValueInfo> common_ops;
+  // std::vector<ValueInfo> inplace_ops;
+  std::vector<Operation *> infer_ops;
+  std::map<ValueInfo, int64_t> gaddrMap;
+  std::map<ValueInfo, std::string> vNameMap;
+  uint64_t gmemUsed = 0;
+  for (auto func : module.getOps<FuncOp>()) {
+    func.walk([&](Operation *op) {
+      if (llvm::dyn_cast<InferenceInterface>(op)) {
+        num_infer_op++;
+        ops_loc[op] = loc;
+        loc++;
+        infer_ops.emplace_back(op);
+      } else if (llvm::dyn_cast<top::InputOp>(op) || isa<ReturnOp>(op)) {
+        ops_loc[op] = loc;
+        loc++;
+        infer_ops.emplace_back(op);
+      }
+    });
+  }
+  for (Operation *infer_op : infer_ops) {
+    if (!isa<ReturnOp>(infer_op)) {
+      // int num_results = infer_op->getNumResults();
+      int index = 0;
+      for (auto v : infer_op->getResults()) {
+        // auto iter = infer_ops.end();
+        if (!module::isNone(v)) {
+          ValueInfo v_info(infer_op, index);
+          TensorLive v_live(index, ops_loc[infer_op], ops_loc[infer_op],
+                            module::getNumElements(v));
+          common_ops.emplace_back(v_info);
+          liveRange[v_info] = v_live;
+
+          for (auto successor_op : v.getUsers()) {
+            if (ops_loc.count(successor_op) > 0) {
+              liveRange[v_info].end =
+                  (liveRange[v_info].end > ops_loc[successor_op])
+                      ? liveRange[v_info].end
+                      : ops_loc[successor_op];
+            }
+          }
+          liveRange[v_info].end++;
+          vNameMap[v_info] = module::getName(v).str();
+        }
+      }
+    }
+  }
+  if (!common_ops.empty()) {
+    GmemAllocator::sortOpByLiveStart(common_ops, liveRange);
+    GmemAllocator allocator(gaddrMap, alignment);
+    gmemUsed = allocator.assignGaddr(common_ops, liveRange, true, start_addr);
+    std::cout << "reused mem is " << gmemUsed << ", all mem is " << total_count
+              << std::endl;
+    // for (auto lr : liveRange){
+    //   std::cout << vNameMap[lr.first] << " mem loc is " << gaddrMap[lr.first]
+    //   <<
+    //     " start is "<< lr.second.start<< " end is "<< lr.second.end << "
+    //     tensor size is "<<lr.second.tensor_size << std::endl;
+    //     }
+  }
+  auto gMem = std::make_shared<std::vector<float>>(gmemUsed);
+  // float* ptr = gMem->data();
+  for (auto pair : gaddrMap) {
+    auto name = vNameMap[pair.first];
+    auto memLoc = pair.second;
+    auto size = liveRange[pair.first].tensor_size;
+    mem_map[name] = gMem;
+    activation_offset[name] = std::make_pair(memLoc, size);
+    // std::cout << name << " start_addr " << ptr << " cur_addr " << (float
+    // *)(mem_map[name]->data()) - ptr << std::endl;
+  }
+  for (Operation *op : infer_ops) {
+    if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
+      std::string op_name = module::getName(op).str();
+      auto param = std::make_shared<InferenceParameter>();
+      for (auto result : op->getResults()) {
+        if (result.getType().isa<NoneType>())
+          param->outputs.push_back(nullptr);
+        else {
+          auto r_name = module::getName(result).str();
+          auto r_memLoc = activation_offset[r_name].first;
+          param->outputs.push_back(mem_map[r_name]->data() + r_memLoc);
+        }
+      }
+      for (auto input : op->getOperands()) {
+        if (module::isNone(input)) {
+          param->inputs.push_back(nullptr);
+          continue;
+        }
+        auto input_name = module::getName(input).str();
+
+        if (mem_map.find(input_name) == mem_map.end()) {
+          input.dump();
+          llvm_unreachable("input operands not allocated");
+        } else {
+          auto input_memLoc = activation_offset[input_name].first;
+          param->inputs.push_back(mem_map[input_name]->data() + input_memLoc);
+        }
+      }
+      LLVM_DEBUG(llvm::dbgs() << "init: '" << op_name << "'\n");
+      if (failed(infer_op.init(*param))) {
+        op->dump();
+        llvm_unreachable("op inferece init failed");
+      }
+      inference_map[op_name] = param;
+    }
   }
 }
 
@@ -304,8 +460,10 @@ void ModuleInterpreter::allocate_all_tensor_in_mem() {
             /* op support nested ops,
                can transfer operands by blockargument */
             std::size_t index = input.cast<BlockArgument>().getArgNumber();
-            Value vv = input.cast<BlockArgument>().getOwner()
-                        ->getParentOp()->getOperands()[index];
+            Value vv = input.cast<BlockArgument>()
+                           .getOwner()
+                           ->getParentOp()
+                           ->getOperands()[index];
             input_name = module::getName(vv).str();
           } else {
             input_name = module::getName(input).str();
@@ -452,12 +610,14 @@ void ModuleInterpreter::fake_quant_weight() {
 void ModuleInterpreter::invoke(bool express_type) {
   switch (mem_mode) {
   case mem_mode_t::ALL_TENSOR_IN_MEM:
+  case mem_mode_t::ALL_TENSOR_IN_REUSED_MEM:
     invoke_all_in_mem(express_type);
     break;
   case mem_mode_t::PART_TENSOR_IN_MEM:
   case mem_mode_t::PART_SMALL_TENSOR_IN_MEM:
     invoke_part_in_mem(express_type);
     break;
+
   default:
     llvm_unreachable("Mem not enough, please use invoke_to_disk");
     break;
@@ -470,9 +630,10 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
   int flag = 0;
   std::string if_name, loop_name;
   for (auto func : module.getOps<FuncOp>()) {
-    [[maybe_unused]]WalkResult result = func.walk<WalkOrder::PreOrder>([&](Operation *op) {
-      if (isa<func::FuncOp>(*op)
-          || isa<top::LoopOp, tpu::LoopOp>(op->getParentOp())) {
+    [[maybe_unused]] WalkResult result = func.walk<
+        WalkOrder::PreOrder>([&](Operation *op) {
+      if (isa<func::FuncOp>(*op) ||
+          isa<top::LoopOp, tpu::LoopOp>(op->getParentOp())) {
         return WalkResult::advance();
       }
 
@@ -484,35 +645,45 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
       if (flag && isa<func::FuncOp>(*(op->getParentOp()))) {
         flag = 0; // clear
       }
+      if (auto in_op = dyn_cast<top::InputOp>(op)) {
+        auto v = in_op.getOutput();
+        auto name = module::getName(v).str();
+        call_before_hook(name);
+        call_after_hook(name);
+        return WalkResult::advance();
+      }
       if (isa<tpu::IfOp, top::IfOp>(op)) {
         std::optional<RegisteredOperationName> info =
             op->getName().getRegisteredInfo();
         if_name = name;
         auto *inferInterface =
             info->getInterface<tpu_mlir::InferenceInterface>();
+        call_before_hook(name);
         if (failed(inferInterface->inference(inferInterface, op,
                                              *inference_map[name]))) {
           flag = 2; // else branch
         } else {
           flag = 1; // then branch
         }
+        call_after_hook(name);
         return WalkResult::advance();
       } else if (isa<top::LoopOp, tpu::LoopOp>(op)) {
         if (isa<top::NoneOp>(op->getOperand(0).getDefiningOp())) {
-          if (isa<top::WeightOp>(op->getOperand(1).getDefiningOp())
-              && cast<top::WeightOp>(op->getOperand(1).getDefiningOp())
-                 .read_as_float()->data()[0] == 1.0f) {
-            flag = 3; //do_while
+          if (isa<top::WeightOp>(op->getOperand(1).getDefiningOp()) &&
+              cast<top::WeightOp>(op->getOperand(1).getDefiningOp())
+                      .read_as_float()
+                      ->data()[0] == 1.0f) {
+            flag = 3; // do_while
           } else
             flag = 4; // while
         }
 
         if (isa<top::NoneOp>(op->getOperand(1).getDefiningOp())) {
-          flag = 5; //for
+          flag = 5; // for
         }
 
-        if (!isa<top::NoneOp>(op->getOperand(0).getDefiningOp())
-            && !isa<top::NoneOp>(op->getOperand(0).getDefiningOp())) {
+        if (!isa<top::NoneOp>(op->getOperand(0).getDefiningOp()) &&
+            !isa<top::NoneOp>(op->getOperand(0).getDefiningOp())) {
           /* input (trip_count, cond)
              int trip_count = ...;
              bool cond = ...;
@@ -523,175 +694,202 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
           flag = 6;
         }
 
-        if (isa<top::NoneOp>(op->getOperand(0).getDefiningOp())
-            && isa<top::NoneOp>(op->getOperand(0).getDefiningOp())) {
+        if (isa<top::NoneOp>(op->getOperand(0).getDefiningOp()) &&
+            isa<top::NoneOp>(op->getOperand(0).getDefiningOp())) {
           /* input (\"\", \"\"):
             for (int i=0; ; ++i) {
-              cond = ... // Note this value is ignored, but is required in the body
+              cond = ... // Note this value is ignored, but is required in the
+            body
             }
           */
-          flag = 7; //loop forerver
-          llvm_unreachable("fatal error(loop forerver), please modify the origin model");
+          flag = 7; // loop forerver
+          llvm_unreachable(
+              "fatal error(loop forerver), please modify the origin model");
         }
 
         loop_name = name;
         Block *bodyBlock;
-        //Block &bodyBlock = cast<top::LoopOp>(op).getBody().front();
+        // Block &bodyBlock = cast<top::LoopOp>(op).getBody().front();
 
-        TypeSwitch<Operation*>(op)
-        .Case<top::LoopOp, tpu::LoopOp>([&] (auto op_) {
-          bodyBlock = &(op_.getBody().front());});
+        TypeSwitch<Operation *>(op).Case<top::LoopOp, tpu::LoopOp>(
+            [&](auto op_) { bodyBlock = &(op_.getBody().front()); });
 
-        auto result_index  = [&](Operation *op, int k) -> std::size_t {
-            int index = 0;
-            const auto& results = op->getOperand(k).getDefiningOp()->getResults();
-            if (results.size() >= 2) {
-              for (int i = 0; i < results.size(); i++) {
-                if (results[i] == op->getOperand(k)) {
-                  index = i;
-                }
+        auto result_index = [&](Operation *op, int k) -> std::size_t {
+          int index = 0;
+          const auto &results = op->getOperand(k).getDefiningOp()->getResults();
+          if (results.size() >= 2) {
+            for (int i = 0; i < results.size(); i++) {
+              if (results[i] == op->getOperand(k)) {
+                index = i;
               }
-            }
-            return index;
-        };
-
-        using NEW_TYPE = std::vector<std::pair<std::size_t, std::unique_ptr<float[]>>>;
-        auto execute_body = [&] (Block &bodyBlock, std::size_t &cond, const std::string &loop_name,
-                                 const int l, Operation * const &op, NEW_TYPE &backup) -> void {
-            bodyBlock.walk<WalkOrder::PreOrder>(
-                                      [&](Operation *op_) {
-              if (auto infer_op = dyn_cast<InferenceInterface>(op_)) {
-                std::string op_name;
-                if (op_->getLoc().isa<NameLoc>() || op_->getLoc().isa<FusedLoc>()) {
-                  op_name = module::getName(op_).str();
-                }
-                LLVM_DEBUG(llvm::dbgs() << "compute: '" << op_ << "'\n");
-                if (failed(infer_op.inference(*inference_map[op_name]))) {
-                  infer_op.dump();
-                  llvm_unreachable("invoke failed!!");
-                }
-              }
-
-              //move data to LoopOp's result
-              if (isa<tpu::YieldOp, top::YieldOp>(op_)) {
-                for (int k = 0; k < op_->getNumOperands(); k++) {
-                  if (!k) {
-                    if (!isa<BlockArgument>(op_->getOperand(k))) {
-                      auto name = module::getName(op_->getOperand(k).getDefiningOp()).str();
-                      cond = inference_map[name]->outputs[0][0];
-                    }
-                  } else {
-                    auto num_element = module::getNumElements(op_->getOperand(k));
-                    //can return the argument
-                    if (isa<BlockArgument>(op_->getOperand(k))) {
-                      auto index = op_->getOperand(k).cast<BlockArgument>().getArgNumber();
-#pragma omp parallel for schedule(static, omp_schedule(num_element))
-                      for (int i = 0; i < num_element; i++) {
-                        inference_map[loop_name]->outputs[k-1][i] =
-                            inference_map[loop_name]->inputs[index][i];
-                      }
-                    } else {
-                      //Op maybe have more than 2 results
-                      auto index = result_index(op_, k);
-                      auto name = module::getName(op_->getOperand(k).getDefiningOp()).str();
-#pragma omp parallel for schedule(static, omp_schedule(num_element))
-                      for (int i = 0; i < num_element; i++) {
-                        inference_map[loop_name]->outputs[k-1][i] =
-                            inference_map[name]->outputs[index][i];
-                      }
-                    }
-                  }
-                }
-
-                /* update the argument because of
-                   loop-carried-dependency for next iteration */
-                int Initial_V_size = 0;
-                TypeSwitch<Operation*>(op)
-                  .Case<top::LoopOp, tpu::LoopOp>([&] (auto Op) {
-                    Initial_V_size = Op.getVInitial().size();});
-
-                for (int k = 0; k < Initial_V_size; k++) {
-                  if (!l) {
-                    //backup the data, for later compare
-                    if (!isa<BlockArgument>(op_->getOperand(k+1))
-                        && !isa<top::WeightOp>(op->getOperand(k+2).getDefiningOp())) {
-                      auto name = module::getName(op->getOperand(k+2).getDefiningOp()).str();
-                      auto num_element = module::getNumElements(op_->getOperand(k+1));
-                      std::unique_ptr<float[]> data{std::make_unique<float[]>(num_element)};
-                      auto index = result_index(op, k+2);
-#pragma omp parallel for schedule(static, omp_schedule(num_element))
-                      for (int m = 0; m < num_element; m++)
-                      {
-                        data[m] = inference_map[name]->outputs[index][m];
-                      }
-                      backup.emplace_back(k, std::move(data));
-                    }
-                  }
-
-                  if (!isa<BlockArgument>(op_->getOperand(k+1))) {
-                    //update the data for next iteration
-                    auto src_name = module::getName(op_->getOperand(k+1).getDefiningOp()).str();
-                    auto src_index = result_index(op_, k+1);
-                    auto num_element = module::getNumElements(op_->getOperand(k+1));
-
-                    Value::user_iterator begin = bodyBlock.getArgument(k+2).user_begin();
-                    Value::user_iterator end = bodyBlock.getArgument(k+2).user_end();
-                    for (; begin != end; begin++) {
-                      auto dst_name = module::getName(*begin).str();
-
-                      std::size_t dst_index = 0;
-                      for (int p = 0; p < (*begin)->getOperands().size(); p++) {
-                        if ((*begin)->getOperand(p) == bodyBlock.getArgument(k+2)) {
-                         dst_index = p;
-                       }
-                      }
-
-#pragma omp parallel for schedule(static, omp_schedule(num_element))
-                      for (int m = 0; m < num_element; m++){
-                        inference_map[dst_name]->inputs[dst_index][m] =
-                              inference_map[src_name]->outputs[src_index][m];
-                      }
-                    }
-                  }
-                }
-              }
-              return WalkResult::advance();
-            });
-        };
-
-        auto restore_data = [&](NEW_TYPE &backup,
-               std::map<std::string, std::shared_ptr<InferenceParameter>> &inference_map) {
-          //restore the data
-          for (int kk = 0; kk < backup.size(); kk++) {
-            std::size_t operand_index;
-            std::unique_ptr<float []> data;
-            std::tie(operand_index, data) = std::move(backup[kk]);
-            auto dst_name = module::getName(op->getOperand(operand_index).getDefiningOp()).str();
-            auto num_element = module::getNumElements(op->getOperand(operand_index));
-            auto dst_index = result_index(op, operand_index);
-#pragma omp parallel for schedule(static, omp_schedule(num_element))
-            for (int m = 0; m < num_element; m++) {
-              inference_map[dst_name]->outputs[dst_index][m] = data[m];
             }
           }
+          return index;
         };
 
+        using NEW_TYPE =
+            std::vector<std::pair<std::size_t, std::unique_ptr<float[]>>>;
+        auto execute_body = [&](Block &bodyBlock, std::size_t &cond,
+                                const std::string &loop_name, const int l,
+                                Operation *const &op,
+                                NEW_TYPE &backup) -> void {
+          bodyBlock.walk<WalkOrder::PreOrder>([&](Operation *op_) {
+            if (auto infer_op = dyn_cast<InferenceInterface>(op_)) {
+              std::string op_name;
+              if (op_->getLoc().isa<NameLoc>() ||
+                  op_->getLoc().isa<FusedLoc>()) {
+                op_name = module::getName(op_).str();
+              }
+              LLVM_DEBUG(llvm::dbgs() << "compute: '" << op_ << "'\n");
+              call_before_hook(name);
+              if (failed(infer_op.inference(*inference_map[op_name]))) {
+                infer_op.dump();
+                llvm_unreachable("invoke failed!!");
+              }
+              call_after_hook(name);
+            }
+
+            // move data to LoopOp's result
+            if (isa<tpu::YieldOp, top::YieldOp>(op_)) {
+              for (int k = 0; k < op_->getNumOperands(); k++) {
+                if (!k) {
+                  if (!isa<BlockArgument>(op_->getOperand(k))) {
+                    auto name =
+                        module::getName(op_->getOperand(k).getDefiningOp())
+                            .str();
+                    cond = inference_map[name]->outputs[0][0];
+                  }
+                } else {
+                  auto num_element = module::getNumElements(op_->getOperand(k));
+                  // can return the argument
+                  if (isa<BlockArgument>(op_->getOperand(k))) {
+                    auto index =
+                        op_->getOperand(k).cast<BlockArgument>().getArgNumber();
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+                    for (int i = 0; i < num_element; i++) {
+                      inference_map[loop_name]->outputs[k - 1][i] =
+                          inference_map[loop_name]->inputs[index][i];
+                    }
+                  } else {
+                    // Op maybe have more than 2 results
+                    auto index = result_index(op_, k);
+                    auto name =
+                        module::getName(op_->getOperand(k).getDefiningOp())
+                            .str();
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+                    for (int i = 0; i < num_element; i++) {
+                      inference_map[loop_name]->outputs[k - 1][i] =
+                          inference_map[name]->outputs[index][i];
+                    }
+                  }
+                }
+              }
+
+              /* update the argument because of
+                 loop-carried-dependency for next iteration */
+              int Initial_V_size = 0;
+              TypeSwitch<Operation *>(op).Case<top::LoopOp, tpu::LoopOp>(
+                  [&](auto Op) { Initial_V_size = Op.getVInitial().size(); });
+
+              for (int k = 0; k < Initial_V_size; k++) {
+                if (!l) {
+                  // backup the data, for later compare
+                  if (!isa<BlockArgument>(op_->getOperand(k + 1)) &&
+                      !isa<top::WeightOp>(
+                          op->getOperand(k + 2).getDefiningOp())) {
+                    auto name =
+                        module::getName(op->getOperand(k + 2).getDefiningOp())
+                            .str();
+                    auto num_element =
+                        module::getNumElements(op_->getOperand(k + 1));
+                    std::unique_ptr<float[]> data{
+                        std::make_unique<float[]>(num_element)};
+                    auto index = result_index(op, k + 2);
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+                    for (int m = 0; m < num_element; m++) {
+                      data[m] = inference_map[name]->outputs[index][m];
+                    }
+                    backup.emplace_back(k, std::move(data));
+                  }
+                }
+
+                if (!isa<BlockArgument>(op_->getOperand(k + 1))) {
+                  // update the data for next iteration
+                  auto src_name =
+                      module::getName(op_->getOperand(k + 1).getDefiningOp())
+                          .str();
+                  auto src_index = result_index(op_, k + 1);
+                  auto num_element =
+                      module::getNumElements(op_->getOperand(k + 1));
+
+                  Value::user_iterator begin =
+                      bodyBlock.getArgument(k + 2).user_begin();
+                  Value::user_iterator end =
+                      bodyBlock.getArgument(k + 2).user_end();
+                  for (; begin != end; begin++) {
+                    auto dst_name = module::getName(*begin).str();
+
+                    std::size_t dst_index = 0;
+                    for (int p = 0; p < (*begin)->getOperands().size(); p++) {
+                      if ((*begin)->getOperand(p) ==
+                          bodyBlock.getArgument(k + 2)) {
+                        dst_index = p;
+                      }
+                    }
+
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+                    for (int m = 0; m < num_element; m++) {
+                      inference_map[dst_name]->inputs[dst_index][m] =
+                          inference_map[src_name]->outputs[src_index][m];
+                    }
+                  }
+                }
+              }
+            }
+            return WalkResult::advance();
+          });
+        };
+
+        auto restore_data =
+            [&](NEW_TYPE &backup,
+                std::map<std::string, std::shared_ptr<InferenceParameter>>
+                    &inference_map) {
+              // restore the data
+              for (int kk = 0; kk < backup.size(); kk++) {
+                std::size_t operand_index;
+                std::unique_ptr<float[]> data;
+                std::tie(operand_index, data) = std::move(backup[kk]);
+                auto dst_name =
+                    module::getName(
+                        op->getOperand(operand_index).getDefiningOp())
+                        .str();
+                auto num_element =
+                    module::getNumElements(op->getOperand(operand_index));
+                auto dst_index = result_index(op, operand_index);
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+                for (int m = 0; m < num_element; m++) {
+                  inference_map[dst_name]->outputs[dst_index][m] = data[m];
+                }
+              }
+            };
+
         auto no_loop_handle = [&](Operation *op, const std::string &loop_name) {
-          int number = op->getResults().size() > (op->getNumOperands() - 2) ?
-                       (op->getNumOperands() - 2) : op->getResults().size();
-          for (int32_t i = 0; i < number; i++)
-          {
-            auto num_element = module::getNumElements(op->getOperand(i+2));
+          int number = op->getResults().size() > (op->getNumOperands() - 2)
+                           ? (op->getNumOperands() - 2)
+                           : op->getResults().size();
+          for (int32_t i = 0; i < number; i++) {
+            auto num_element = module::getNumElements(op->getOperand(i + 2));
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
             for (int k = 0; k < num_element; k++) {
               inference_map[loop_name]->outputs[i][k] =
-                            inference_map[loop_name]->inputs[i+2][k];
+                  inference_map[loop_name]->inputs[i + 2][k];
             }
           }
         };
 
         if (flag == 3) {
-          std::size_t cond = (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
+          std::size_t cond =
+              (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
           NEW_TYPE backup;
           int l = 0;
           do {
@@ -700,17 +898,17 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
           } while (cond);
           restore_data(backup, inference_map);
         } else if (flag == 4) {
-          std::size_t cond = (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
+          std::size_t cond =
+              (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
           NEW_TYPE backup;
           int l = 0;
-          int no_loop = cond? 0 : 1;
-          while (cond)
-          {
+          int no_loop = cond ? 0 : 1;
+          while (cond) {
             execute_body(*bodyBlock, cond, loop_name, l, op, backup);
             l = 1;
           };
 
-          //align with onnxruntime
+          // align with onnxruntime
           if (no_loop) {
             no_loop_handle(op, loop_name);
           }
@@ -720,12 +918,12 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
           std::size_t trip_count = (*inference_map[loop_name]).inputs[0][0];
           std::size_t cond = 1;
           NEW_TYPE backup;
-          int no_loop = trip_count? 0 : 1;
+          int no_loop = trip_count ? 0 : 1;
           for (int l = 0; l < trip_count; l++) {
             execute_body(*bodyBlock, cond, loop_name, l, op, backup);
           }
 
-          //align with onnxruntime
+          // align with onnxruntime
           if (no_loop) {
             no_loop_handle(op, loop_name);
           }
@@ -733,14 +931,15 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
           restore_data(backup, inference_map);
         } else if (flag == 6) {
           std::size_t trip_count = (*inference_map[loop_name]).inputs[0][0];
-          std::size_t cond = (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
+          std::size_t cond =
+              (std::size_t)((*inference_map[loop_name]).inputs[1][0]);
           NEW_TYPE backup;
-          int no_loop = (cond && trip_count)? 0 : 1;
+          int no_loop = (cond && trip_count) ? 0 : 1;
           for (int l = 0; l < trip_count && cond; l++) {
             execute_body(*bodyBlock, cond, loop_name, l, op, backup);
           }
 
-          //align with onnxruntime
+          // align with onnxruntime
           if (no_loop) {
             no_loop_handle(op, loop_name);
           }
@@ -749,21 +948,25 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
         } else {
           llvm_unreachable("other loop mode: Todo");
         }
-        //other loop mode: Todo
+        // other loop mode: Todo
         return WalkResult::advance();
       } else if (isa<tpu_mlir::InferenceInterface>(op) && 0 == flag) {
         bar.update();
         auto infer_op = dyn_cast<InferenceInterface>(op);
+        call_before_hook(name);
         if (failed(infer_op.inference(*inference_map[name]))) {
           infer_op.dump();
           llvm_unreachable("invoke failed!!");
         }
+        call_after_hook(name);
       } else if (flag && op->getParentRegion()->getRegionNumber() == flag - 1) {
         if (auto infer_op = dyn_cast<InferenceInterface>(op)) {
+          call_before_hook(name);
           if (failed(infer_op.inference(*inference_map[name]))) {
             infer_op.dump();
             llvm_unreachable("invoke failed!!");
           }
+          call_after_hook(name);
         }
 
         if (isa<tpu::YieldOp, top::YieldOp>(op)) {
@@ -1004,11 +1207,12 @@ ModuleInterpreter::invoke_at(const std::string op_name) {
   }
   auto infer_op = cast<InferenceInterface>(op);
   LLVM_DEBUG(llvm::dbgs() << "invoke at: '" << infer_op << "'\n");
+  call_before_hook(op_name);
   if (failed(infer_op.inference(*inference_map[op_name]))) {
     infer_op.dump();
     llvm_unreachable("infer_op.inference failed!!");
   }
-
+  call_after_hook(op_name);
   return getTensor(op_name);
 }
 
@@ -1022,9 +1226,13 @@ void ModuleInterpreter::invoke_from(const std::string op_name) {
         start_run = true;
       }
       LLVM_DEBUG(llvm::dbgs() << "invoke: '" << infer_op << "'\n");
-      if (start_run && failed(infer_op.inference(*inference_map[name]))) {
-        infer_op.dump();
-        llvm_unreachable("invoke failed!!");
+      if (start_run) {
+        call_before_hook(name);
+        if (failed(infer_op.inference(*inference_map[name]))) {
+          infer_op.dump();
+          llvm_unreachable("invoke failed!!");
+        }
+        call_after_hook(name);
       }
     });
   }
@@ -1096,10 +1304,21 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
     llvm::errs() << "Can't find op name: " << name << "\n";
     llvm_unreachable("Error, setTensor failed");
   }
+  bool is_activation =
+      std::find(all_tensor_names.begin(), all_tensor_names.end(), name) !=
+      all_tensor_names.end();
   auto act = it->second;
-  if (act->size() * sizeof(float) != size) {
+  auto tensor_size =
+      (mem_mode == mem_mode_t::ALL_TENSOR_IN_REUSED_MEM && is_activation)
+          ? activation_offset[name].second
+          : act->size();
+  auto offset =
+      (mem_mode == mem_mode_t::ALL_TENSOR_IN_REUSED_MEM && is_activation)
+          ? activation_offset[name].first
+          : 0;
+  if (tensor_size * sizeof(float) != size) {
     llvm::errs() << "Tensor " << name
-                 << " data need size: " << act->size() * sizeof(float)
+                 << " data need size: " << tensor_size * sizeof(float)
                  << " , but set size: " << size << "\n";
     llvm_unreachable("Error, setTensor failed");
   }
@@ -1107,13 +1326,14 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
   if (is_integer == false && module::isUniformQuantized(value)) {
     auto qtype = module::getUniformQuantizedType(value);
     float *p = (float *)data;
-    for (uint32_t i = 0; i < act->size(); i++) {
+    for (uint32_t i = 0; i < tensor_size; i++) {
       float d =
           p[i] * (float)(1 / qtype.getScale()) + (float)qtype.getZeroPoint();
-      act->at(i) = qtype.isSigned() ? to_int8(d) : to_uint8(d);
+      *(&(act->at(i)) + offset) = qtype.isSigned() ? to_int8(d) : to_uint8(d);
     }
+    // std::cout << "is interger" << std::endl;
   } else {
-    memcpy(act->data(), data, size);
+    memcpy(act->data() + offset, data, size);
   }
 }
 
@@ -1132,23 +1352,48 @@ ModuleInterpreter::getTensor(const std::string &name, bool express_type) {
     llvm::errs() << "Can't find op name: " << name << "\n";
     llvm_unreachable("Error, getTensor failed");
   }
+  bool is_activation =
+      std::find(all_tensor_names.begin(), all_tensor_names.end(), name) !=
+      all_tensor_names.end();
+  auto act = it->second;
+  auto tensor_size =
+      (mem_mode == mem_mode_t::ALL_TENSOR_IN_REUSED_MEM && is_activation)
+          ? activation_offset[name].second
+          : act->size();
+  auto offset =
+      (mem_mode == mem_mode_t::ALL_TENSOR_IN_REUSED_MEM && is_activation)
+          ? activation_offset[name].first
+          : 0;
 
   if (express_type && module::isState(module::State::TPU_LOWERED)) {
     auto value = value_map.at(name);
     if (module::isUniformQuantized(value)) {
       int i = 0;
       auto mem = mem_map.at(name);
-      auto data_fp32 = std::make_shared<std::vector<float>>(it->second->size());
+      auto data_fp32 = std::make_shared<std::vector<float>>(tensor_size);
       auto qtype = module::getUniformQuantizedType(value);
-      for (auto &data : *mem) {
-        data_fp32->data()[i++] =
-            (data - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
+      // for (auto &data : *mem) {
+      //   data_fp32->data()[i++] =
+      //       (data - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
+      // }
+      for (i = 0; i < tensor_size; i++) {
+        data_fp32->data()[i] =
+            (*(mem->data() + offset + i) - (float)qtype.getZeroPoint()) *
+            (float)qtype.getScale();
       }
       return std::move(data_fp32);
     }
   }
-
-  std::shared_ptr<std::vector<float>> tmp(it->second);
+  // bool is_activation =
+  // std::find(all_tensor_names.begin(),all_tensor_names.end(), name) !=
+  // all_tensor_names.end(); auto act = it->second; auto tensor_size = (mem_mode
+  // == mem_mode_t::ALL_TENSOR_IN_REUSED_MEM && is_activation)?
+  // activation_offset[name].second:act->size(); auto offset =(mem_mode ==
+  // mem_mode_t::ALL_TENSOR_IN_REUSED_MEM && is_activation)?
+  // activation_offset[name].first:0; std::shared_ptr<std::vector<float>>
+  // tmp(act->data()+offset,act->data()+offset+tensor_size);
+  auto tmp = std::make_shared<std::vector<float>>(
+      act->data() + offset, act->data() + offset + tensor_size);
   return std::move(tmp);
 }
 
@@ -1234,4 +1479,24 @@ ModuleInterpreter::getTensorShape(const std::string &name) {
   return it->second.getType().cast<RankedTensorType>().getShape();
 }
 
+void ModuleInterpreter::call_before_hook(std::string layer_name) {
+  for (auto hook : before_hooks) {
+    hook->run(layer_name);
+  }
+}
+void ModuleInterpreter::call_after_hook(std::string layer_name) {
+  for (auto hook : after_hooks) {
+    hook->run(layer_name);
+  }
+}
+
+void ModuleInterpreter::clear_hooks() {
+  after_hooks.clear();
+  before_hooks.clear();
+}
+
+void ModuleInterpreter::set_mem_mode(std::string mem_mode_str) {
+  if (mem_mode_str == "reused_mem" || mem_mode_str.empty())
+    mem_mode = mem_mode_t::ALL_TENSOR_IN_REUSED_MEM;
+}
 } // namespace tpu_mlir

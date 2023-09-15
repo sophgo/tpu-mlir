@@ -5,6 +5,7 @@ from threading import Thread
 import pandas as pd
 import numpy as np
 import pymlir
+pymlir.set_mem_mode("value_mem")
 import sys
 import copy
 sys.path.append('../..')

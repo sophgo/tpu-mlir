@@ -15,7 +15,7 @@
 
 #include "mlir/Support/LLVM.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
+#include "Module.h"
 
 #include "GmemAllocatorMethod.h"
 
