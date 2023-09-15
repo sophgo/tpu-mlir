@@ -12,6 +12,7 @@ import numpy as np
 import time
 import argparse
 import pymlir
+pymlir.set_mem_mode("value_mem")
 import onnx
 import onnxruntime
 from utils.mlir_shell import *

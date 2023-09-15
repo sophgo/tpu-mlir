@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "GmemAllocatorMethod.h"
+#include "tpu_mlir/Support/GmemAllocatorMethod.h"
 #include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "gmem-allocator"

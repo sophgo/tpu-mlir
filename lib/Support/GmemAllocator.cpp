@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "GmemAllocator.h"
+#include "tpu_mlir/Support/GmemAllocator.h"
 
 
 
