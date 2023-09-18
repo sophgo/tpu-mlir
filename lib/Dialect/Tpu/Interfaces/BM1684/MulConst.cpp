@@ -72,6 +72,10 @@ void tpu::MulConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                        module::isSign(getOutput())};
     int is_int8s[3] = {module::getStorageType(getInput()).isInteger(8), 0,
                        module::getStorageType(getOutput()).isInteger(8)};
+    if(b0_mul<0){
+      b0_mul *= -1;
+      b1_val *= -1;
+    }
     BM1684::instance().dl_nodechip_const_binary_fix8b_forward_local(
         in_g_info.out_addr, out_g_info.out_addr, out_g_info.buffer_addr, b1_val,
         b0_shape, 4, BINARY_MUL, b0_mul, 0, b0_rshift, 0, 0, getDoRelu(),
