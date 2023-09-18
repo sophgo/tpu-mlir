@@ -1,12 +1,63 @@
 RUN: bmodel_dis.py %p/bmodel/yolov5s_bm1684_f32.bmodel | FileCheck %s
 
-CHECK: module attributes {chip = "BM1684", version = 2.2} {
-CHECK-NEXT:  func.func @yolov5s(%G114053120: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>) -> (memref<1x255x80x80xf32, strides: [1632000, 6400, 80, 1]>, memref<1x255x40x40xf32, strides: [408000, 1600, 40, 1]>, memref<1x255x20x20xf32, strides: [102000, 400, 20, 1]>) ({
-CHECK-NEXT:  ^bb-1(%images: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>)
-CHECK-NEXT:    DMA tensor
-CHECK-NEXT:    DMA tensor
-CHECK-NEXT:    DMA tensor
-CHECK-NEXT:    convolution neuron
-
-CHECK:    return %G121012224, %G119377920, %G118968320: memref<1x255x80x80xf32, strides: [1632000, 6400, 80, 1]>, memref<1x255x40x40xf32, strides: [408000, 1600, 40, 1]>, memref<1x255x20x20xf32, strides: [102000, 400, 20, 1]>
-CHECK-NEXT:  }) {function_type = {arg_attrs = ["images"], res_attrs = ["326_Conv", "474_Conv", "622_Conv"]}}
+CHECK:  module attributes {chip = "BM1684", version = 2.2} {
+CHECK:      ^bb-1(%G114053120: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>)    //  run_mode=TPU_STATIC
+CHECK-NEXT:        %D1 = DMA tensor(%B0)
+CHECK-NEXT:        %D2 = DMA tensor(%B0)
+CHECK-NEXT:        %D3 = DMA tensor(%B0)
+CHECK-NEXT:        %B1 = convolution neuron(%D3)
+CHECK-NEXT:        %D4 = DMA tensor(%B0)
+CHECK:        %B120 = tensor arithmetic(%D17)
+CHECK-NEXT:        %B121 = tensor arithmetic(%D17)
+CHECK-NEXT:        %B122 = md sfu(%D17)
+CHECK-NEXT:        %B123 = table lookup(%D17)
+CHECK-NEXT:        %B124 = table lookup(%D17)
+CHECK-NEXT:        %B125 = md scalar(%D17)
+CHECK:        %B248 = convolution neuron(%D26)
+CHECK-NEXT:        %D27 = DMA tensor(%B235)
+CHECK-NEXT:        %B249 = md scalar(%D27)
+CHECK-NEXT:        %B250 = tensor arithmetic(%D27)
+CHECK-NEXT:        %B251 = tensor arithmetic(%D27)
+CHECK-NEXT:        %B252 = md sfu(%D27)
+CHECK:        %B366 = md scalar(%D46)
+CHECK-NEXT:        %B367 = md scalar(%D46)
+CHECK-NEXT:        %D47 = DMA tensor(%B355)
+CHECK-NEXT:        %B368 = tensor arithmetic(%D47)
+CHECK-NEXT:        %D48 = DMA tensor(%B367)
+CHECK-NEXT:        %B369 = convolution neuron(%D48)
+CHECK:        %B485 = md scalar(%D64)
+CHECK-NEXT:        %B486 = md scalar(%D64)
+CHECK-NEXT:        %B487 = md scalar(%D64)
+CHECK-NEXT:        %B488 = md scalar(%D64)
+CHECK-NEXT:        %D65 = DMA tensor(%B476)
+CHECK-NEXT:        %B489 = tensor arithmetic(%D65)
+CHECK:        %B606 = md scalar(%D81)
+CHECK-NEXT:        %B607 = md scalar(%D81)
+CHECK-NEXT:        %B608 = md scalar(%D81)
+CHECK-NEXT:        %B609 = md scalar(%D81)
+CHECK-NEXT:        %B610 = tensor arithmetic(%D81)
+CHECK-NEXT:        %D82 = DMA tensor(%B596)
+CHECK:        %B721 = md scalar(%D103)
+CHECK-NEXT:        %B722 = tensor arithmetic(%D103)
+CHECK-NEXT:        %B723 = tensor arithmetic(%D103)
+CHECK-NEXT:        %B724 = md sfu(%D103)
+CHECK-NEXT:        %B725 = table lookup(%D103)
+CHECK-NEXT:        %B726 = table lookup(%D103)
+CHECK:        %B841 = table lookup(%D121)
+CHECK-NEXT:        %B842 = table lookup(%D121)
+CHECK-NEXT:        %B843 = md scalar(%D121)
+CHECK-NEXT:        %B844 = md sfu(%D121)
+CHECK-NEXT:        %B845 = md scalar(%D121)
+CHECK-NEXT:        %B846 = md scalar(%D121)
+CHECK:        %B965 = table lookup(%D134)
+CHECK-NEXT:        %B966 = table lookup(%D134)
+CHECK-NEXT:        %B967 = md scalar(%D134)
+CHECK-NEXT:        %B968 = md sfu(%D134)
+CHECK-NEXT:        %B969 = md scalar(%D134)
+CHECK-NEXT:        %B970 = md scalar(%D134)
+CHECK:        %B1083 = convolution neuron(%D154)
+CHECK-NEXT:        %D155 = DMA tensor(%B1082)
+CHECK-NEXT:        %B1084 = convolution neuron(%D155)
+CHECK-NEXT:        %D156 = DMA tensor(%B1083)
+CHECK-NEXT:        %B1085 = convolution neuron(%D156)
+CHECK-NEXT:        %D157 = DMA tensor(%B1084)

@@ -16,6 +16,7 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libbmrt.so
               nntoolchain/lib/libbmrt.so.1.0
               nntoolchain/lib/libcpuop.so
+              nntoolchain/lib/libcpuop.so.1.0.0
               nntoolchain/lib/libbm1684x_kernel_module.so
               # cvitek
               CV18xx/lib/libcvikernel.so

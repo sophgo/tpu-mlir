@@ -13,6 +13,7 @@ find_package(pybind11 REQUIRED CONFIG)
 pybind11_add_module(pyruntime_bm pyruntime_bm.cpp)
 target_link_libraries(pyruntime_bm PRIVATE
   bmrt
+  cpuop
 )
 pybind11_add_module(pyruntime_cvi pyruntime_cvi.cpp)
 target_link_libraries(pyruntime_cvi PRIVATE

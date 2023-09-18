@@ -7,13 +7,14 @@
 # third-party components.
 #
 # ==============================================================================
-
+from typing import List
+from itertools import chain
 import sys
 import mlir
 import re
 from mlir.ir import *
 from mlir.dialects import quant
-
+import mlir.ir
 
 class Operation:
     cache_map = {}
@@ -31,22 +32,32 @@ class Operation:
         self.op = op
 
     def __str__(self):
-        return self.name + "," + self.type + "," + self.loc + "," + str(self.shape) + "," + str(
-            self.opds)
+        return (
+            self.name
+            + ","
+            + self.type
+            + ","
+            + self.loc
+            + ","
+            + str(self.shape)
+            + ","
+            + str(self.opds)
+        )
 
     @staticmethod
     def name(op):
         loc = op.location
         if loc == "loc(unknown)":
             return None
-        return re.findall(r'\"(.+?)\"', str(loc))[0]
+
+        return re.findall(r"\"(.+?)\"", str(loc))[0]
 
     @staticmethod
     def outputs(op):
         loc = op.location
         if loc == "loc(unknown)":
             return None
-        return re.findall(r'\"(.+?)\"', str(loc))
+        return re.findall(r"\"(.+?)\"", str(loc))
 
     @staticmethod
     def type(op):
@@ -103,13 +114,13 @@ class Operation:
 
     @staticmethod
     def loc(op):
-        return op.get_asm().split('=')[0].strip('% ')
+        return op.get_asm().split("=")[0].strip("% ")
 
     @staticmethod
     def shape(op):
         shape = []
         for result in op.results:
-            if str(result.type) != 'none':
+            if str(result.type) != "none":
                 shape_type = mlir.ir.ShapedType(result.type)
                 shape = [shape_type.get_dim_size(i) for i in range(shape_type.rank)]
                 break
@@ -123,10 +134,10 @@ class Operation:
                 prev_op = body.operations[j]
                 if prev_op.results[0] == opd:
                     if Operation.type(prev_op) not in [
-                            "tpu.None",
-                            "top.None",
-                            "tpu.load_weight",
-                            "tpu.weight_file",
+                        "tpu.None",
+                        "top.None",
+                        "tpu.load_weight",
+                        "tpu.weight_file",
                     ]:
                         opds.append(Operation.name(prev_op))
         return opds
@@ -145,53 +156,61 @@ class Operation:
 
 
 class MlirParser:
-
     def __init__(self, mlir_file):
-        with open(mlir_file, 'r') as f:
+        with open(mlir_file, "r") as f:
             context = f.read()
         self.ctx = mlir.ir.Context()
         self.ctx.allow_unregistered_dialects = True
         self.module = mlir.ir.Module.parse(context, self.ctx)
         self.body = self.module.body.operations[0].regions[0].blocks[0]
         self.attrs = Operation.attrs(self.module.operation)
-        self.module_name = eval(self.attrs['sym_name'])
-        self.module_state = eval(self.attrs['module.state'])
-        self.module_weight_file = eval(self.attrs['module.weight_file'])
-        self.module_chip = eval(self.attrs['module.chip'])
-        self.ops = []
+        self.module_name = eval(self.attrs["sym_name"])
+        self.module_state = eval(self.attrs["module.state"])
+        self.module_weight_file = eval(self.attrs["module.weight_file"])
+        self.module_chip = eval(self.attrs["module.chip"])
+        self.ops: List[Operation] = []
         self.return_op = None
         self._none_type = mlir.ir.Type.parse("none", self.ctx)
 
         cache_map = {}
         for i in range(len(self.body.operations)):
             prev_op = self.body.operations[i]
-            if Operation.type(prev_op) not in [
+            if (
+                Operation.type(prev_op)
+                not in [
                     "tpu.None",
                     "top.None",
                     "tpu.load_weight",
                     "tpu.weight_file",
-            ] and len(prev_op.results) > 0:
+                ]
+                and len(prev_op.results) > 0
+            ):
                 for idx, r in enumerate(prev_op.results):
-                    if str(r.type) == 'none':
+                    if str(r.type) == "none":
                         continue
-                    cache_map.setdefault(r, []).append([i, Operation.outputs(prev_op)[idx]])
+                    cache_map.setdefault(r, []).append(
+                        [i, Operation.outputs(prev_op)[idx]]
+                    )
         Operation.cache_map = cache_map
 
         for i in range(len(self.body.operations)):
             op = self.body.operations[i]
             type = Operation.type(op)
-            if type in ['top.None', 'top.Weight', 'func.return']:
-                if type == 'func.return':
+            if type in ["top.None", "top.Weight", "func.return"]:
+                if type == "func.return":
                     self.return_op = op
                 continue
             self.ops.append(Operation(op, self.body, i))
         self.inputs = []
         for op in self.ops:
-            if op.type == 'top.Input':
+            if op.type == "top.Input":
                 self.inputs.append(op)
 
     def get_op_name_list(self):
         return [op.name for op in self.ops]
+
+    def get_op_output_name_list(self):
+        return list(chain(*[op.outputs for op in self.ops]))
 
     def get_input_num(self):
         return len(self.inputs)
@@ -207,7 +226,7 @@ class MlirParser:
         for op in self.ops:
             if op.name == op_name:
                 for opd in op.opds:
-                    if opd in self.get_op_name_list():
+                    if opd in self.get_op_output_name_list():
                         op_input_tensor.append(opd)
         return op_input_tensor
 
@@ -215,7 +234,7 @@ class MlirParser:
         op_output_tensor = []
         for op in self.ops:
             if op_name in op.opds:
-                if op.name in self.get_op_name_list():
+                if op.name in self.get_op_output_name_list():
                     op_output_tensor.append(op.name)
         return op_output_tensor
 
@@ -325,12 +344,11 @@ class MlirParser:
         return middles
 
     def get_initializer_op_names_n_shape_type(self):
-
         initializer = {}
         for i in range(len(self.body.operations)):
             op = self.body.operations[i]
             type = Operation.type(op)
-            if type != 'top.Weight':
+            if type != "top.Weight":
                 continue
             shape_type = mlir.ir.ShapedType(op.results[0].type)
             name = Operation.name(op)
@@ -338,6 +356,6 @@ class MlirParser:
         return initializer
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = MlirParser(sys.argv[1])
     print(parser.module)

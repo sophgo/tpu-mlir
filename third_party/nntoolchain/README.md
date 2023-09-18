@@ -40,3 +40,15 @@ cp tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 cp bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 popd
 ```
+
+
+## tpu-cpuop 2023-10-10
+
+```bash
+pushd /workspace/nntoolchain/net_compiler
+source new_scripts/envsetup.sh
+rebuild_cpuop
+cp /workspace/nntoolchain/net_compiler/out/lib/libcpuop.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
+
+# libbmcpu.so/libusercpu.so are deprecated
+```

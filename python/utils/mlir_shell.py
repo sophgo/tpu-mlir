@@ -4,7 +4,7 @@
 # third-party components.
 #
 # ==============================================================================
-
+import shutil
 import os
 import subprocess
 import logging
@@ -163,6 +163,9 @@ def mlir_to_model(tpu_mlir: str,
     ]
     _os_system(cmd)
 
+    out_dir = model.rsplit(".", maxsplit=1)[0]
+    os.makedirs(out_dir, exist_ok=True)
+    shutil.copy(final_mlir, os.path.join(out_dir, 'final.mlir'))
     try:
         if model.endswith(".bmodel"):
             # The suffix of the profile file is not consistent.

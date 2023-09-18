@@ -13,11 +13,16 @@ from enum import Enum
 from dataclasses import dataclass
 from collections import namedtuple, OrderedDict
 import argparse, itertools
+from typing import List, NamedTuple
 import numpy as np
 from rich.console import Console
+from debugger.target_common import (
+    BaseTpuOp,
+    CModelContext,
+    op_support,
+)
 
 from numpy_helper.tensor_compare import TensorCompare
-from debugger import op_support
 from tdb import Tdb
 
 
@@ -41,11 +46,24 @@ class Operand(Value):
     pass
 
 
+class TR(NamedTuple):
+    tensor: Value
+    record: dict
+
+
+class ID(NamedTuple):
+    subnetId: int
+    tiu: int
+    dma: int
+    core_id: int
+
+
 class TensorLoc:
     __solts__ = ("tensor_loc", "cmd_index")
     # so many namedTuple, could we use a smart Table?
-    ID = namedtuple("ID", ["sunnetId", "tiu", "dma", "core_id"])
-    TR = namedtuple("TensorRecord", ["tensor", "record"])
+    # namedtuple("ID", ["sunnetId", "tiu", "dma", "core_id"])
+    ID = ID
+    TR = TR
 
     def __init__(self, ts_des_file):
         self.cmd_index = {}
@@ -79,33 +97,17 @@ class TensorLoc:
                 if v != {}
             )
 
-    def merge_cmd(self, org_func):
-        def record_index(*args):
-            cmd = org_func(*args)
-            for i, x in enumerate(cmd):
-                if isinstance(x, op_support.TIUBase):
-                    k = self.ID(args[-1], x.cmd_id, None, x.core_id)
-                else:
-                    k = self.ID(args[-1], None, x.cmd_id, x.core_id)
-                self.cmd_index[k] = i
-            return cmd
-
-        return record_index
-
-    def record_index(self, ops):
+    def record_index(self, ops: List[BaseTpuOp]):
         for i, x in enumerate(ops):
-            if isinstance(x, op_support.TIUBase):
-                k = self.ID(0, x.cmd_id, None, x.core_id)
-            else:
-                k = self.ID(0, None, x.cmd_id, x.core_id)
+            k = self.ID(*x.tuple_key)
             self.cmd_index[k] = i
-
 
     def set_breakpoint(self, tdb: Tdb, subnet_id: int = 0):
         bp = filter(lambda x: x[0] == subnet_id, self.breakpoint_loc.keys())
 
+        # 把每个 bp 更大的那个 index 拿出来
         def bb(tiu_id, dma_id, core_id):
-            assert(core_id>=0)
+            assert core_id >= 0
             x, y = -1, -1
             if tiu_id > 0:
                 x = self.cmd_index[(subnet_id, tiu_id, None, core_id)]
@@ -211,7 +213,7 @@ get_mlir_type_info = _get_mlir_type_info()
 
 
 class TensorBuilder:
-    def __init__(self, tensor_des, context, core_id=0):
+    def __init__(self, tensor_des, context: CModelContext, core_id=0):
         address = tensor_des["address"]
 
         shape, dtype = get_shape_and_dtype(tensor_des["memory_type"])
@@ -272,14 +274,15 @@ class TensorBuilder:
         scale = self.mlir_type.scale
         return ((data).astype(np.float32) - zp) * scale
 
-    def get_ref_data(self, refence_data):
+    def get_ref_data(self, refence_data: np.ndarray):
         reshape = self.tensor_des["reshape"]
         ref_data = refence_data
+
         if reshape:
-            reshape = reshape[1:-1].replace("x", ",")
-            ref_data = eval(f"ref_data.reshape({reshape})")
+            reshape = eval(reshape[1:-1].replace("x", ","))  # '1,3,1,192,1024'
+            ref_data = ref_data.reshape(reshape)
         _slice = self.tensor_des["slice"]
-        data = eval(f"ref_data{_slice}")
+        data = eval(f"ref_data{_slice}")  # type: np.ndarray
         # The data in HW has a transposed collapsed shape.
         # To align the Bmodel with TPU.mlir, we need to transpose the reference data.
         if self.tensor_des["layout"] in (
@@ -431,6 +434,7 @@ class DataChecker(TensorCompare):
                 + f"cos={self.cosine_similarity_tol}"
                 + f", euc={self.euclidean_similarity_tol}"
             )
+
             remarks = [
                 f"cosine similarity: {metric['cosine']:.6f}",
                 f"euclidean similarity: {metric['euclid']:.6f}",
@@ -466,7 +470,7 @@ DATA_CHECKER = DataChecker()
 ASM_CONTEXT_LENGTH = 2
 
 
-def check_data(tdb, tensors, ref_data, context):
+def check_data(tdb, tensors: List[TR], ref_data, context: CModelContext):
     # multiple tensors
     def get_line_info(e, tensor_des):
         info = ("opcode", "tiu_dma_id(before)", "tiu_dma_id(after)")
@@ -616,13 +620,17 @@ class Checker:
             res = state_aggragate(v.results_state)
             self.ins_state.update(
                 {
-                    self.SI(sid, cmd_idx[(sid, x + 1, None, core_id)]): self.LS(line, ops, res)
+                    self.SI(sid, cmd_idx[(sid, x + 1, None, core_id)]): self.LS(
+                        line, ops, res
+                    )
                     for x in range(tiu_x, tiu_y)
                 }
             )
             self.ins_state.update(
                 {
-                    self.SI(sid, cmd_idx[(sid, None, x + 1, core_id)]): self.LS(line, ops, res)
+                    self.SI(sid, cmd_idx[(sid, None, x + 1, core_id)]): self.LS(
+                        line, ops, res
+                    )
                     for x in range(dma_x, dma_y)
                 }
             )
