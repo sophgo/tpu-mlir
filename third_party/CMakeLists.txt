@@ -14,6 +14,7 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libcmodel_sg2260.so
               nntoolchain/lib/libcmodel.so
               nntoolchain/lib/libbmrt.so
+              nntoolchain/lib/libbmrt.so.1.0
               nntoolchain/lib/libcpuop.so
               nntoolchain/lib/libbm1684x_kernel_module.so
               # cvitek

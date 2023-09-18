@@ -29,13 +29,14 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 popd
 ```
 
-## tpu-runtime 2023-08-31
-build from tpu-runtime 37226235356cd162c872b14bce25b45d3a1424d8
+## tpu-runtime 2023-09-18
+build from tpu-runtime 969fb471519b9c2cf34398d914e69f27786e8f52
 ``` bash
-pushd nntoolchain/net_compiler/
-source  scripts/envsetup.sh
-rebuild_bmruntime
-cp out/install_bmruntime/lib/libbmrt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
-cp out/install/lib/libbmlib.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+pushd libsophon
+mkdir -p build && cd build
+cmake -G Ninja -DPLATFORM=cmode ..
+ninja
+cp tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 popd
 ```
