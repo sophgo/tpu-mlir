@@ -97,6 +97,7 @@ class ONNX_IR_TESTER(object):
             "Expand2":      (self.test_Expand2,       Y, Y, Y, Y),
             "ExpandDyn":    (self.test_ExpandDyn,     N, Y, Y, N),
             "Flatten":      (self.test_Flatten,       Y, Y, Y, Y),
+            "Flip":         (self.test_Flip,          Y, Y, Y, N),
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y),
             "GatherElements": (self.test_GatherElements,      Y, N, N, N),
@@ -1889,6 +1890,26 @@ class ONNX_IR_TESTER(object):
         softmax_def = helper.make_node('Softmax', inputs=['x'], outputs=['output'], axis=-1)
         graph_def = helper.make_graph([flatten_def, softmax_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
+
+    def test_Flip(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+
+                axes = 5
+                y1 = x.flip(dims=[axes])
+
+                # reversed_indices = [i for i in range(x.size(axes) - 1, -1, -1)]
+                # y = x.index_select(axes, torch.tensor(reversed_indices))
+
+
+                return y1
+        x = torch.randn([1, 4, 3, 32, 2, 6])
+        self.torch_and_test((x), Model(), case_name)
+
 
     def test_Reshape(self, case_name):
         input_shape = [1, 16, 32, 32]

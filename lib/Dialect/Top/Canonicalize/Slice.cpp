@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include <vector>
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
@@ -153,6 +154,8 @@ struct TopSliceToReverse : public OpRewritePattern<SliceOp> {
     auto in_shape = module::getShape(op.getInput());
     auto output_shape = module::getShape(op.getOutput());
     auto in_dims = in_shape.size();
+    if (in_dims > 4)
+      return failure();
     int reverse_count = 0;
     int reverse_dim = 0;
     auto steps = module::getI64Array(op.getSteps());
@@ -169,6 +172,54 @@ struct TopSliceToReverse : public OpRewritePattern<SliceOp> {
         rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(reverse_dim)));
     rewriter.replaceOpWithNewOp<ReverseOp>(op, op.getResult().getType(),
                                            op.getInput(), attrs);
+    return success();
+  }
+};
+
+struct TopSliceToGather : public OpRewritePattern<SliceOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(SliceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in_shape = module::getShape(op.getInput());
+    auto output_shape = module::getShape(op.getOutput());
+    auto in_dims = in_shape.size();
+    int gather_count = 0;
+    int gather_dim = 0;
+    auto steps = module::getI64Array(op.getSteps());
+    for (int i = 0; i < in_dims; i++) {
+      if (steps->at(i) == -1 && in_shape[i] == output_shape[i]) {
+        gather_count++;
+        gather_dim = i;
+      }
+    }
+
+    if (gather_count != 1)
+      return failure();
+
+    int dim_length = in_shape[gather_dim];
+
+    std::vector<float> indices;
+    for (int i = 0; i < dim_length; i++) {
+      indices.push_back(dim_length - i - 1);
+    };
+    auto coeff_type = RankedTensorType::get(dim_length, rewriter.getF32Type());
+    auto indices_op = WeightOp::create(
+        op, "indices", indices ,coeff_type);
+
+    // auto indices_op = b ;
+    std::vector<NamedAttribute> attrs;
+    bool keepdims = true;
+    attrs.push_back(
+        rewriter.getNamedAttr("keepdims", rewriter.getBoolAttr(keepdims)));
+    attrs.push_back(
+        rewriter.getNamedAttr("axis", rewriter.getI32IntegerAttr(gather_dim)));
+
+
+    rewriter.replaceOpWithNewOp<GatherOp>(op, op.getResult().getType(),
+                                          op.getInput(), indices_op, keepdims,
+                                          gather_dim);
+
     return success();
   }
 };
@@ -222,12 +273,12 @@ struct ConvSlice: public OpRewritePattern<SliceOp>{
   }
 };
 
-
 void SliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
   results.insert<NoUseSlicePattern,
                  SplitSlicePattern,
                  MergeSlicePattern,
                  TopSliceToReverse,
+                 TopSliceToGather,
                  ConvSlice>(context);
 }
