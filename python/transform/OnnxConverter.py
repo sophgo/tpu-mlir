@@ -1146,6 +1146,26 @@ class OnnxConverter(BaseConverter):
                 if num_input > 3 else (list(np.arange(len(ends))), self.mlir.none_op, True)
             steps, step_op, steps_is_const = try_get_slice_input(onnx_node, 4, 'steps') \
                 if num_input > 4 else ([1] * len(axes), self.mlir.none_op, True)
+            if steps[0] == -1 and starts[0] == -1 and ends == -np.iinfo(np.int64).max and self.isWeight(op):
+                in0 = op
+                indices_op_name = 'indices_'+onnx_node.inputs[0]
+                extra_attr = {}
+                dim_length = self.getWeight(onnx_node.inputs[axes])
+                np_tensor = np.arange(dim_length, -1, -1, dtype=np.int64)
+                self.addWeight(indices_op_name, np_tensor)
+                indices_op = self.getWeightOp(indices_op_name)
+                extra_attr.update({"keepdims": True})
+                indices = indices_op
+                new_op = top.GatherOp(self.unranked_type,
+                        in0,
+                        indices,
+                        axis=axes,
+                        **extra_attr,
+                        loc=self.get_loc("{}_{}".format(onnx_node.name, 'Gather')),
+                        ip=self.mlir.insert_point).output
+                self.addOperand(onnx_node.name, new_op)
+                return
+
             ends = list(map(lambda x: np.iinfo(np.int64).max if x >= np.iinfo(np.int64).max else x, ends))
             if not (starts_is_const * ends_is_const * axes_is_const * steps_is_const):
                 new_op = top.SliceAxisOp(self.unranked_type,

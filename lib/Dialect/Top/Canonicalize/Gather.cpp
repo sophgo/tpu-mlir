@@ -75,7 +75,7 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
           return failure();
         }
       }
-      if (step == 0)
+      if (step <= 0)
         return failure();
 
       NamedAttrList attrs;
