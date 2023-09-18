@@ -590,6 +590,7 @@ class TORCH_IR_TESTER(object):
         test = self._test_AvgPool()
         test((nn.AvgPool1d, F.avg_pool1d), (4, 8, 40), 4, 3, 2)
         test((nn.AvgPool1d, F.avg_pool1d), (1, 8, 40), 2, 1, 1, False)
+        # test((nn.AvgPool1d, F.avg_pool1d), (1, 1, 1024), 510, 510, 0, False) /*not supported for bm1684x now*/
 
     def test_AvgPool2d(self):
         test = self._test_AvgPool()
@@ -692,6 +693,7 @@ class TORCH_IR_TESTER(object):
         test = self._test_MaxPool()
         test((nn.MaxPool1d, F.max_pool1d), (4, 8, 40), 4, 3, 2)
         test((nn.MaxPool1d, F.max_pool1d), (1, 8, 40), 2, 1, 0)
+        # test((nn.MaxPool1d, F.max_pool1d), (1, 1, 1024), 510, 510, 0, False) /*not supported for bm1684x now*/
 
     def test_MaxPool2d(self):
         test = self._test_MaxPool()
@@ -1090,7 +1092,7 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x):
                     y = x.type_as(self.other) + 1
-                    return y 
+                    return y
 
             self.trace_and_test([shape], Model())
 

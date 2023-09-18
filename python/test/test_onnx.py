@@ -1582,7 +1582,7 @@ class ONNX_IR_TESTER(object):
         mul_const = helper.make_tensor(name='const_mul',
                                        data_type=TensorProto.FLOAT,
                                        dims=[],
-                                       vals=[2.0])
+                                       vals=[-2.0])
 
         const_mul_def = helper.make_node("Mul", inputs=["input", "const_mul"], outputs=["output"])
 
