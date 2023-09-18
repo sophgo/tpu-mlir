@@ -7,51 +7,53 @@
 # third-party components.
 #
 # ==============================================================================
-from debugger.context import Context
+# from debugger.context import Context
 import debugger.disassembler as dis
+from debugger.atomic_dialect import decode_cmdgroup
+from typing import Tuple, Iterator
+from debugger.target_common import use_backend
 
 
-def decode_tiu_file(tiu_file, device):
+def decode_tiu_file(tiu_file, device: str):
     tiu = open(tiu_file, "rb").read()
-    context = Context(device.upper())
-    return context.decoder.decode_tiu_buf(tiu)
+
+    with use_backend(device.upper()) as context:
+        return context.decoder.decode_tiu_cmds(tiu)
 
 
 def decode_dma_file(dma_file, device):
     dma = open(dma_file, "rb").read()
-    context = Context(device.upper())
-    return context.decoder.decode_dma_buf(dma)
+
+    with use_backend(device.upper()) as context:
+        return context.decoder.decode_dma_cmds(dma)
 
 
 def BModel2MLIR(bmodel_file):
+    from debugger.atomic_dialect import BModel2MLIR
+
     bmodel = dis.BModel(bmodel_file)
-    chip = bmodel.chip
-    chip = "BM1688" if chip == "BM1686" else chip
-    context = Context(chip)
-    return context.BModel2MLIR(bmodel)
+    return BModel2MLIR(bmodel)
 
 
-def BModelCMDIter(bmodel):
+def BModelCMDIter(bmodel: dis.BModel) -> Iterator[Tuple[Tuple, dis.CmdGroup]]:
     for net in bmodel.net:
         for param in net.parameter:
             for subnet in param.sub_net:
                 _id = subnet.id
-                for gid, _net in enumerate(getattr(subnet, "cmd_group", [])):
+                for gid, _net in enumerate(subnet.cmd_group):
                     yield (0, _id, gid), _net
-                for core_id, cmds in enumerate(getattr(subnet, "core_commands", [])):
+                for core_id, cmds in enumerate(subnet.core_commands):
                     for gid, _net in enumerate(cmds.gdma_tiu_commands):
                         yield (core_id, _id, gid), _net
 
 
 def BModel2Reg(bmodel_file):
     bmodel = dis.BModel(bmodel_file)
-    chip = bmodel.chip
-    context = Context(chip)
-    decoder = context.decoder
+
     for identifier, net in BModelCMDIter(bmodel):
         core_id, _id, gid = identifier
         formated_id = f"core({core_id}).subnet({_id}).group({gid})"
-        yield formated_id, decoder.decode_bmodel_cmd(net, _id, core_id)
+        yield formated_id, decode_cmdgroup(bmodel.context, net, _id, core_id)
 
 
 def BModel2Bin(bmodel_file):
@@ -122,7 +124,7 @@ def __main():
     parser.add_argument(
         "--format",
         dest="format",
-        choices=["mlir", "reg", "bits", "bin"],
+        choices=["mlir", "reg", "bits", "bin", "reg-set"],
         default="mlir",
         help="The format of format operations.",
     )
@@ -138,18 +140,35 @@ def __main():
         if args.format == "mlir":
             module = BModel2MLIR(args.bmodels[0])
             print(module, flush=True)
-        elif args.format == "reg":
+        elif args.format == "reg" or args.format == "reg-set":
             import json
+
+            visited = set()
+
+            def not_visited(op):
+                if args.format == "reg":
+                    return True
+                res = op not in visited
+                visited.add(op)
+                return res
 
             module = BModel2Reg(args.bmodels[0])
             outs = {
                 _id: {
-                    "tiu": [dict(x.reg) for x in ops.tiu],
-                    "dma": [dict(x.reg) for x in ops.dma],
+                    "tiu": [
+                        {"name": x.OP_NAME, "cmd": dict(x)}
+                        for x in ops.tiu
+                        if not_visited(x.OP_NAME)
+                    ],
+                    "dma": [
+                        {"name": x.OP_NAME, "cmd": dict(x)}
+                        for x in ops.dma
+                        if not_visited(x.OP_NAME)
+                    ],
                 }
                 for _id, ops in module
             }
-            print(json.dumps(outs, indent=2), flush=True)
+            print(json.dumps(outs, indent=2, ensure_ascii=False), flush=True)
 
         elif args.format == "bin":
             BModel2Bin(args.bmodels[0])

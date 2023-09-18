@@ -84,17 +84,20 @@
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
-    "editor.tabSize":2,
+    "editor.tabSize": 2,
     "C_Cpp.formatting": "clangFormat",
     "C_Cpp.clang_format_style": "LLVM",
     "python.analysis.extraPaths": [
-        "./third_party/llvm/python_packages/mlir_core",
+        "/usr/local/src/python/MLIRPythonSources.Core/_mlir_libs",
         "install/python"
     ],
     "python.formatting.provider": "yapf",
     "python.formatting.yapfArgs": [
         "--style={based_on_style:pep8, indent_width:4, column_limit:100}"
     ],
+    "python": {
+        "tabSize": 4
+    },
     "restructuredtext.preview.name": "docutils",
     "esbonio.sphinx.confDir": "."
 }

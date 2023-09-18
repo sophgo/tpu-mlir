@@ -7,11 +7,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
-#include <pybind11/numpy.h>
 
+#include "bmcpu.h"
 #include "bmruntime_interface.h"
 
 namespace py = pybind11;
@@ -256,6 +257,51 @@ private:
   int net_num;
 };
 
+struct PyCpuLayer {
+  PyCpuLayer() { bmcpu_handle = bmcpu_init(); }
+
+  std::vector<std::vector<int>> forward(
+      int op_type, py::bytes param_py, int param_size,
+      std::vector<std::vector<float>> &input_tensors_py,
+      const std::vector<std::vector<int>> &input_shapes,
+      // std::vector<std::vector<float>> &output_tensors_py,
+      std::vector<py::array_t<float, py::array::c_style | py::array::forcecast>>
+          &output_tensors_py,
+      std::vector<std::vector<int>> &output_shapes_out) {
+
+    std::vector<float *> input_tensors(input_tensors_py.size());
+    std::vector<float *> output_tensors(output_tensors_py.size());
+    // vector<vector<int>> output_shapes(output_tensors.size());
+    for (int i = 0; i < input_tensors_py.size(); i++) {
+      input_tensors[i] = input_tensors_py[i].data();
+    }
+    for (int i = 0; i < output_tensors_py.size(); i++) {
+      // output_tensors[i] = output_tensors_py[i].data();
+      output_tensors[i] = new float[output_tensors_py[i].size()];
+      // output_shapes[i] = vector<int>();
+    }
+
+    char *param = PyBytes_AsString(param_py.ptr());
+    bmcpu_process(bmcpu_handle, op_type, (void *)param, param_size,
+                  input_tensors, input_shapes, output_tensors,
+                  output_shapes_out);
+
+    for (int i = 0; i < output_tensors_py.size(); i++) {
+      // output_tensors[i] = output_tensors_py[i].data();
+      auto result_buffer = output_tensors_py[i].request();
+      memcpy((float *)result_buffer.ptr, output_tensors[i],
+             output_tensors_py[i].size() * sizeof(float));
+    }
+
+    return output_shapes_out;
+  }
+
+  ~PyCpuLayer() { bmcpu_uninit(bmcpu_handle); }
+
+private:
+  void *bmcpu_handle;
+};
+
 PYBIND11_MODULE(pyruntime_bm, m) {
   py::class_<PythonTensor, std::shared_ptr<PythonTensor>>(m, "Tensor")
       .def_readonly("name", &PythonTensor::name)
@@ -279,4 +325,13 @@ PYBIND11_MODULE(pyruntime_bm, m) {
            py::arg("device_id") = 0)
       .def("Net", &PythonModel::Net)
       .def_readonly("networks", &PythonModel::networks);
+
+  py::class_<PyCpuLayer>(m, "CpuLayer")
+      .def(py::init())
+      .def("forward", &PyCpuLayer::forward, "forward", py::arg("op_type"),
+           py::arg("param").noconvert(), py::arg("param_size"),
+           py::arg("input_tensors").noconvert(),
+           py::arg("input_shapes").noconvert(),
+           py::arg("output_tensors").noconvert(),
+           py::arg("output_shapes").noconvert());
 }

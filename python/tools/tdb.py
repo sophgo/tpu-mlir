@@ -7,17 +7,21 @@
 # third-party components.
 #
 # ==============================================================================
-from debugger.op_support import MType
-from debugger.disassembler import BModel
-from debugger.context import Context
+from debugger.target_common import MType
+from debugger.tdb_support import TdbCmdBackend, TdbStatus, BreakpointStop, CMDType
+import os
 import cmd
+from debugger.disassembler import (
+    BModel,
+)
+from debugger.atomic_dialect import BModel2MLIR
+
 import sys
 import pprint
 import code
 import traceback
 import numpy as np
 from rich import print
-from os import path
 
 
 class Tdb(cmd.Cmd):
@@ -44,10 +48,10 @@ class Tdb(cmd.Cmd):
         cmd.Cmd.__init__(self, completekey, stdin, stdout)
         self.disassembler = None
         self.record_status = False
-        self.module = None
+        self.milir_module = None
         self.current_function = None
         self.status = {}
-        self.bmodel = None
+        self.bmodel: BModel = None
         self.inputs = None
         self.enable_message = True
         self.current_line = -1
@@ -56,23 +60,25 @@ class Tdb(cmd.Cmd):
         self.temporary_breakpoint = False
 
     def __reset(self):
-        self.runner.clear_memory()
+        self.runner.memory.clear_memory()
         self.status = {}
         self.current_line = -1
         self.current_function = None
         self._make_continue_iter()
 
     def load_bmodel(self, bmodel_file: str = ""):
-        if bmodel_file == None:
+        if bmodel_file is None:
             raise Exception("Nothing to debug.")
         bmodel = BModel(bmodel_file)
-        chip = bmodel.chip
-        context = Context(chip)
-        self.module = context.BModel2MLIR(bmodel)
+        context = bmodel.context
+        self.bmodel = bmodel
+        self.milir_module = BModel2MLIR(bmodel)
         self.runner = context.get_runner(Tdb.ddr_size)
         self.LMEM = self.runner.LMEM
         self.DDR = self.runner.DDR
         self.context = context
+        self.memory = context.memory
+        self.decoder = context.decoder
 
     def message(self, msg):
         if self.enable_message:
@@ -87,7 +93,7 @@ class Tdb(cmd.Cmd):
             try:
                 self.breakpoint.append(int(arg))
                 self.message(f"Add breakpoint at line: {arg}")
-            except:
+            except Exception:
                 bb = [int(x) for x in arg.split(" ")]
                 self.breakpoint.extend(bb)
                 self.message(f"Add breakpoint at line: {bb}")
@@ -135,14 +141,11 @@ class Tdb(cmd.Cmd):
         for i in lines:
             ri = i - self.current_line  # relative line number
             if i == self.current_line and i in self.breakpoint:
-                msg.append(
-                    f"[bold red]B+> {i:{width}} [/bold red] {self.get_op(ri)}")
+                msg.append(f"[bold red]B+> {i:{width}} [/bold red] {self.get_op(ri)}")
             elif i == self.current_line:
-                msg.append(
-                    f"[bold blue]--> {i:{width}} [/bold blue] {self.get_op(ri)}")
+                msg.append(f"[bold blue]--> {i:{width}} [/bold blue] {self.get_op(ri)}")
             elif i in self.breakpoint:
-                msg.append(
-                    f"[bold red] BB {i:{width}} [/bold red] {self.get_op(ri)}")
+                msg.append(f"[bold red] BB {i:{width}} [/bold red] {self.get_op(ri)}")
             else:
                 msg.append(
                     f"[bold green]{' '*4}{i:{width}} [/bold green] {self.get_op(ri)}"
@@ -162,9 +165,8 @@ class Tdb(cmd.Cmd):
             try:
                 arg = int(arg)
                 assert arg > 0
-            except:
-                self.error(
-                    f"invalid input: {arg}. input should be a positive integer.")
+            except Exception:
+                self.error(f"invalid input: {arg}. input should be a positive integer.")
                 return
         self.print_context(arg)
 
@@ -212,7 +214,7 @@ class Tdb(cmd.Cmd):
                         self.next()
                     while not self.should_stop():
                         self.next()
-                except:
+                except Exception:
                     raise StopIteration
 
         self.continues = continueIter()
@@ -241,7 +243,7 @@ class Tdb(cmd.Cmd):
     def _getval(self, arg):
         try:
             return eval(arg)
-        except:
+        except Exception:
             exc_info = sys.exc_info()[:2]
             self.error(traceback.format_exception_only(*exc_info)[-1].strip())
             raise
@@ -255,7 +257,7 @@ class Tdb(cmd.Cmd):
             return
         try:
             self.message(repr(self._getval(arg)))
-        except:
+        except Exception:
             pass
 
     def do_pp(self, arg):
@@ -264,7 +266,7 @@ class Tdb(cmd.Cmd):
         """
         try:
             self.message(pprint.pformat(self._getval(arg)))
-        except:
+        except Exception:
             pass
 
     def do_interact(self, arg):
@@ -310,9 +312,12 @@ class Tdb(cmd.Cmd):
             inputs = np.fromfile(file, dtype=np.uint8)
             _offset = 0
             for arg in self.current_function.signature[0]:
-                mem = self.context.tensor2memref(arg)
+                mem = self.bmodel.tensor2memref(arg)
                 size = int(np.prod(mem.shape) * mem.itemsize)
-                mem.data = inputs[_offset: _offset + size].view(mem.np_dtype)
+                self.memory.set_data(
+                    mem, inputs[_offset : _offset + size].view(mem.np_dtype)
+                )
+
                 _offset += size
         elif file.endswith(".npz"):
             inputs = np.load(file)
@@ -341,13 +346,13 @@ class Tdb(cmd.Cmd):
 
     def set_input(self, id, input):
         args = self.current_function.signature[0]
-        mem = self.context.tensor2memref(args[id])
-        mem.data = input
+        mem = self.bmodel.tensor2memref(args[id])
+        self.memory.set_data(mem, input)
 
     def get_return(self):
         outputs = self.current_function.signature[1]
-        mems = [self.context.tensor2memref(x) for x in outputs]
-        return [mem.data for mem in mems]
+        mems = [self.bmodel.tensor2memref(x) for x in outputs]
+        return [self.memory.get_data(mem) for mem in mems]
 
     def get_op(self, offset=0):
         ops = self.current_function.regions[0].blocks[0].operations
@@ -359,12 +364,16 @@ class Tdb(cmd.Cmd):
         return ops[line]
 
     def get_all_ops(self):
-        return self.module.functions[0].regions[0].blocks[0].operations
+        return self.milir_module.functions[0].regions[0].blocks[0].operations
 
     def push_status(self):
         if not self.record_status:
             return
         op = self.get_op()
+        import pdb
+
+        pdb.set_trace()
+
         self.status[self.current_line] = [x.data for x in op.results[0]]
 
     def pop_status(self):
@@ -381,18 +390,19 @@ class Tdb(cmd.Cmd):
 
     def start(self):
         self.__reset()
-        coeff = self.module.functions[0].regions[0].data
+        coeff = self.milir_module.functions[0].regions[0].data
         if coeff:
             address = coeff.address
             if self.context.device.name == "BM1688":
                 address = self.context.opparam.MemRef.fix_tag(
-                    address, self.context.base_addr)
+                    address, self.context.base_addr
+                )
             addr = address - self.context.memmap[MType.G][0]
-            # load constant data
-            self.DDR[addr: addr + len(coeff.data)] = memoryview(coeff.data)
-        if self.module is None:
+
+            self.DDR[addr : addr + len(coeff.data)] = memoryview(coeff.data)
+        if self.milir_module is None:
             raise Exception("please load one file.")
-        self.current_function = self.module.functions[0]
+        self.current_function = self.milir_module.functions[0]
 
     def do_run(self, arg):
         """r(un)
@@ -415,12 +425,17 @@ class Tdb(cmd.Cmd):
         self.push_status()
         try:
             op = self.get_op()
-            sys = (self.context.opdef.dma_sys, self.context.opdef.tiu_sys)
-            if sys != (None, None):
-                if not isinstance(op, sys):
-                    op.compute()
-            else:
-                op.compute()
+            cmd, cmd_type = op.cmd, op.cmd_type
+            # sys = (self.context.dma_sys, self.context.tiu_sys)
+            if not self.decoder.is_end(cmd):
+                if cmd_type == CMDType.tiu:
+                    self.runner.tiu_compute(cmd)
+                elif cmd_type == CMDType.dma:
+                    self.runner.dma_compute(cmd)
+                elif cmd_type == CMDType.cpu:
+                    self.runner.cpu_compute(cmd)
+                else:
+                    self.error("skip unknown CMDType")
             self.current_line += 1
         except ValueError as e:
             raise e
@@ -433,83 +448,268 @@ class Tdb(cmd.Cmd):
             raise Exception("begin of execution.")
 
 
-def __main():
+class TdbInterface(TdbCmdBackend):
+    """
+    do_break
+    do_b
+    do_g
+    do_clear
+    do_l
+    do_ll
+    do_next
+    do_n
+    do_continue
+    do_c
+    do_quit
+    do_q
+    do_exit
+    do_p
+    do_pp
+    do_interact
+    do_help
+    do_h
+    do_run
+    do_r
+    """
+
+    ddr_size = 2**32
+    prompt = "(tdb) "
+    """
+    TPU debugger.
+
+    1. Use as an interactive tool:
+    >> tdb.py the/path/of/bmodel/context
+
+    2. Use as a package:
+    from tdb import Tdb
+    tdb = Tdb()
+    tdb.load_bmodel("./onnx_test/AddConst_f32.bmodel")
+    tdb.start()
+    input = np.arange(1 * 16 * 28 * 28, dtype=np.float32)[::-1].reshape([1, 16, 28, 28])
+    tdb.set_inputs(input)
+    tdb.do_continue("")
+    tdb.get_return()
+    """
+
+    def complete_check(self, text, line, begidx, endidx):
+        lis = self.checker.check_list() + ["?"]
+        return [i for i in lis if i.startswith(text)]
+
+    def do_status(self, arg):
+        self.message(self.status)
+
+    def default(self, line):
+        self.do_py(line)
+
+    def do_py(self, arg):
+        try:
+            self.message(eval(arg))
+        except BaseException as e:
+            self.error(e)
+
+    def complete_py(self, text, line, begidx, endidx):
+        return self._complete_expression(text, line, begidx, endidx)
+
+    def do_run(self, _):
+        """run from begining"""
+        if self.status == TdbStatus.RUNNING:
+            try:
+                res = input(
+                    """The program being debugged has been started already.\nStart it from the beginning? (y or any)"""
+                )
+                if not res.strip().lower().startswith("y"):
+                    self.message("Program not restarted.")
+                    return False
+            except KeyboardInterrupt:
+                self.message("Cancel")
+                return False
+        self._reset()
+
+        while True:
+            try:
+                self.next()
+            except (KeyboardInterrupt, BreakpointStop, StopIteration):
+                self.plugins.after_stop(self)
+                break
+        self.plugins.after_end_execution()
+
+    do_r = do_run
+
+    def do_start(self, arg):
+        if self.status == TdbStatus.RUNNING:
+            try:
+                res = input(
+                    """The program being debugged has been started already.\nStart it from the beginning? (y or any)"""
+                )
+                if not res.strip().lower().startswith("y"):
+                    self.message("Program not restarted.")
+                    return False
+            except Exception:
+                self.message("Quit")
+                return False
+        self._reset()
+        self.plugins.after_stop()
+
+    do_s = do_start
+
+    def do_continue(self, arg):
+        """continue running"""
+        if self.status != TdbStatus.RUNNING:
+            self.message("The program is not being run.")
+            return
+
+        while True:
+            try:
+                _ = self.next()
+            except (BreakpointStop, KeyboardInterrupt):
+                self.plugins.after_stop()
+                break
+            except StopIteration:
+                self.plugins.after_stop()
+                self.status = TdbStatus.IDLE
+                self.message("End of Execution")
+                break
+
+        self.plugins.after_end_execution()
+
+    do_c = do_continue
+
+    def do_next(self, arg):
+        if self.status != TdbStatus.RUNNING:
+            self.message("The program is not being run.")
+            return
+
+        if arg == "":
+            arg = 1
+        else:
+            try:
+                arg = int(arg)
+            except Exception:
+                arg = 1
+
+        for i in range(arg):
+            try:
+                self.next()
+                self.plugins.after_stop()
+            except (BreakpointStop, KeyboardInterrupt):
+                self.plugins.after_stop()
+                return
+            except StopIteration:
+                self.plugins.after_stop()
+                self.status = TdbStatus.IDLE
+                message = "End of Execution"
+                self.message(message)
+                return
+
+    do_n = do_next
+
+    def do_quit(self, arg):
+        if self.status != TdbStatus.RUNNING:
+            exit(0)
+        try:
+            res = input(
+                """The program being debugged has been started already.\nQuit? (y or any)"""
+            )
+            if res.strip().lower().startswith("y"):
+                exit(0)
+        except EOFError:
+            exit(0)
+        except KeyboardInterrupt:
+            self.message("Quit")
+            return False
+
+    do_q = do_quit
+    do_EOF = do_quit
+
+    def postcmd(self, stop, line):
+        pass
+
+    def do_plugin(self, arg):
+        return self.message(self.plugins.plugins.keys())
+
+
+def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="TPU Debugger.")
     parser.add_argument(
-        "bmodel",
+        "context_dir",
         type=str,
+        default="./",
         nargs="?",
         help="The path of BModel.",
     )
     parser.add_argument(
-        "inputs",
+        "--inputs",
         type=str,
         nargs="?",
+        default=None,
         help="The inputs data of the BModel.",
     )
+    parser.add_argument(
+        "--ref_data",
+        nargs="*",
+        type=str,
+        # default=None,
+        help="The inputs data of the BModel.",
+    )
+    parser.add_argument(
+        "--plugins",
+        type=str,
+        nargs="?",
+        default=None,
+        help="The inputs data of the BModel.",
+    )
+    parser.add_argument(
+        "--checks",
+        type=str,
+        nargs="?",
+        default=None,
+        help="The inputs data of the BModel.",
+    )
+    parser.add_argument("-v", "--verbose", action="store_true", default=False)
+
     return parser.parse_args()
 
 
 if __name__ == "__main__":
-    args = __main()
-    tdb = Tdb()
-    if args.bmodel:
-        if path.isfile(args.bmodel):
-            print(f"load bmodel: {args.inputs}")
-            tdb.load_bmodel(args.bmodel)
-            tdb.start()
-        elif path.isdir(args.bmodel):
-            inputs = path.join(args.bmodel, "input_ref_data.dat")
-            bmodel = path.join(args.bmodel, "compilation.bmodel")
-            assert path.isfile(bmodel)
-            assert path.isfile(inputs)
-            assert args.inputs == None
-            args.inputs = inputs
-            print(f"load bmodel: {bmodel}")
-            tdb.load_bmodel(bmodel)
-            tdb.start()
-    if args.inputs:
-        print(f"load input: {args.inputs}")
-        tdb.load_data(args.inputs)
+    args = main()
+    context_dir = args.context_dir
+    bmodel_file = os.path.join(context_dir, "compilation.bmodel")
+    final_mlir_fn = os.path.join(context_dir, "final.mlir")
+    tensor_loc_file = os.path.join(context_dir, "tensor_location.json")
+    input_data_fn = args.inputs
+    if input_data_fn is None:
+        input_data_fn = os.path.join(context_dir, "input_ref_data.dat")
+    reference_data_fn = args.ref_data
 
-    # Some handy functions for calling in interactive mode.
-    def ins(index):
-        """
-        p ins(0)
-        """
-        op = tdb.get_op()
-        value = op.operands[index]
-        print(value)
-        return value.data
+    # context_output_ref_fn = os.path.join(context_dir, "output_ref_data.dat")
+    # if reference_data_fn is None and os.path.exists(context_output_ref_fn):
+    #     reference_data_fn = context_output_ref_fn
 
-    def outs(index):
-        """
-        p outs(0)
-        """
-        op = tdb.get_op()
-        value = op.results[index]
-        print(value)
-        return value.data
+    extra_plugins = args.plugins
+    if extra_plugins is None:
+        extra_plugins = []
+    else:
+        extra_plugins = extra_plugins.split(",")
 
-    class op:
-        def __init__(self, index=0) -> None:
-            self.index = index
+    if args.verbose:
+        extra_plugins.append("progress")
 
-        def __repr__(self):
-            print(tdb.get_op(self.index))
+    extra_check = args.checks
+    if extra_check is None:
+        extra_check = []
+    else:
+        extra_check = extra_check.split(",")
 
-        def ins(self, index):
-            op = tdb.get_op(self.index)
-            value = op.operands[index]
-            print(value)
-            return value.data
-
-        def outs(self, index):
-            op = tdb.get_op(self.index)
-            value = op.results[index]
-            print(value)
-            return value.data
+    tdb = TdbInterface(
+        bmodel_file=bmodel_file,
+        final_mlir_fn=final_mlir_fn,
+        tensor_loc_file=tensor_loc_file,
+        input_data_fn=input_data_fn,
+        reference_data_fn=reference_data_fn,
+        extra_plugins=extra_plugins,
+        extra_check=extra_check,
+    )
 
     tdb.cmdloop()
