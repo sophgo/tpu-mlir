@@ -73,7 +73,7 @@ protected:
   SG2260() {
     typeID = TypeID::get<SG2260>();
     NPU_NUM = 64;
-    EU_BYTES = 128;
+    EU_BYTES = 64; // vector length 512bit
     LMEM_BYTES = 1 << 18; // 256KB
     LMEM_BANKS = 16;
     IC_PARALLEL = 64;
