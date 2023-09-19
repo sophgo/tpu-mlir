@@ -781,10 +781,15 @@ static bool backward_update_slice(const LgInfo &lg_info,
         if (module::isCV18xx() || mode == RunMode::TPU_DYNAMIC)
           return false;
         // only Conv2D allow differnece for now
-        auto num_users =
-            std::distance(pre_op->getUsers().begin(), pre_op->getUsers().end());
-        if (!(isa<tpu::Conv2DOp>(pre_op) && num_users == 1)) {
-          return false;
+        if (pre_op) {
+          for (auto user : pre_op->getUsers()) {
+            if (!(std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
+                            user) != lg_info.group_ops.end() &&
+                  isa<tpu::Conv2DOp>(user) &&
+                  module::isUniformQuantized(in))) {
+              return false;
+            }
+          }
         }
         bool is_hw_overlap = true;
         for (int i = 0; i < shape_secs.hsecs; i++) {
