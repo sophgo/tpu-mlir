@@ -43,10 +43,11 @@ template <typename T> static void applyPatternOnce(ModuleOp m) {
 // ===================================
 // patterns for distribution
 // ===================================
-class MatMulSliceMerge : public OpRewritePattern<tpu::MatMulOp> {
+template <typename MatMulTy>
+class MatMulSliceMerge : public OpRewritePattern<MatMulTy> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
+  using OpRewritePattern<MatMulTy>::OpRewritePattern;
+  LogicalResult matchAndRewrite(MatMulTy op,
                                 PatternRewriter &rewriter) const override;
 };
 
@@ -66,6 +67,10 @@ public:
 
 template <typename T>
 void splitByDevices(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
+                    int64_t num_devices);
+
+template <typename MatMulTy>
+void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter, tpu::DistributionBeginOp op,
                     int64_t num_devices);
 
 enum class DistributionEndMode {

@@ -1437,6 +1437,10 @@ mlir::Value opSliceAxis(mlir::Value v, int64_t axis, int64_t offset,
       auto data = op.read<int8_t>();
       auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
       return top::WeightOp::create<int8_t>(op, suffix, *new_data, new_type);
+    } else if (stype.isUnsignedInteger(8)) {
+      auto data = op.read<uint8_t>();
+      auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
+      return top::WeightOp::create<uint8_t>(op, suffix, *new_data, new_type);
     } else if (stype.isF32()) {
       auto data = op.read<float>();
       auto new_data = tensor_slice(data->data(), shape, axis, offset, length);
