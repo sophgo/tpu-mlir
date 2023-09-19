@@ -181,6 +181,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SoftmaxBwdLowering,
       WeightReorderLowering,
       RangeLowering,
+      ConvBwdWeightLowering,
       GatherNDLowering
       // clang-format on
       >(patterns->getContext());

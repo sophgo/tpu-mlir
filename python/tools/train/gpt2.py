@@ -33,10 +33,7 @@ class FeedForward(nn.Module):
         self.act     = F.relu
 
     def forward(self, x):
-        x = self.c_fc(x)
-        # x = self.act(x)
-        return self.c_proj(x)
-        # return self.c_proj(self.act(self.c_fc(x)))
+        return self.c_proj(self.act(self.c_fc(x)))
 
 class Attention(nn.Module):
     def __init__(self, d_model=768, n_head=12, n_ctx=1024, d_head=64, bias=True, scale=False):
@@ -59,7 +56,7 @@ class Attention(nn.Module):
         scores  = torch.matmul(q, k.transpose(-2, -1))
         if self.scale: scores = scores/math.sqrt(v.size(-1))
         if attn_mask is not None: scores = scores + attn_mask
-        # scores  = self.softmax(scores) #todo the output of cmodel is nan
+        scores  = self.softmax(scores) #todo the output of cmodel is nan
         outputs = torch.matmul(scores, v)
         return outputs
 
@@ -74,7 +71,7 @@ class Attention(nn.Module):
         q, k, v  = self.split_heads(q), self.split_heads(k), self.split_heads(v)
         out      = self._attn(q, k, v)
         out      = self.merge_heads(out)
-        # out      = self.c_proj(out)
+        out      = self.c_proj(out)
         return out
 
 class TransformerBlock(nn.Module):
@@ -86,15 +83,11 @@ class TransformerBlock(nn.Module):
         self.ln_2        = LayerNorm(d_model)
 
     def forward(self, x):
-        # # x1 = self.ln_1(x)
-        # x = x + self.attn(x)
-        # # x2 = self.ln_2(x)
-        # x = x + self.feedforward(x)
-
-        x = self.attn(x)
-        x = self.feedforward(x)
+        x1 = self.ln_1(x)
+        x = x + self.attn(x1)
+        x2 = self.ln_2(x)
+        x = x + self.feedforward(x2)
         return x
-        # return x.sum()
 
 def _get_clones(module, n):
     return torch.nn.ModuleList([copy.deepcopy(module) for i in range(n)])

@@ -2992,7 +2992,7 @@ def Tpu_LayerNormBwdOp : Tpu_Op<"LayerNormBwd"> {
     I64ArrayAttr:$normalized_shape
   );
   let results = (outs
-    AnyTensor:$grad_input,
+    AnyTensorOrNone:$grad_input,
     AnyTensorOrNone:$grad_weight,
     AnyTensorOrNone:$grad_bias
   );
@@ -3110,6 +3110,26 @@ def Tpu_SoftmaxBwdOp: Tpu_Op<"SoftmaxBwd"> {
 
   let results = (outs AnyRankedTensor:$grad_input);
 }
-
+def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight">{
+  let summary = "Convolution Backward operator";
+  let description = [{Gradient of Weight in Convolution Backward}];
+  let arguments = (ins
+  AnyTensor:$input,
+  AnyTensor:$gradout,
+  I64Attr:$groups,
+  I64ArrayAttr:$input_shape,
+  I64ArrayAttr:$grad_out_shape,
+  I64ArrayAttr:$kernel_shape,
+  I64ArrayAttr:$stride,
+  I64ArrayAttr:$dilations,
+  I64ArrayAttr:$padding,
+  BoolAttr:$grad_bias_enable
+  );
+  let results =(outs
+  AnyTensor:$output);
+  let extraClassDeclaration = [{
+    convbwd_weight_attr_t parseParam();
+  }];
+}
 #endif // TPU_OPS
 

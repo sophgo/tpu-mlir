@@ -16,9 +16,9 @@ def enable_dynamo_debug_info():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--xx", default="F32", type=str.upper, choices=['F32'],
-                        help="")
-    parser.add_argument("--debug", default="my_model",
+    parser.add_argument("--chip", default="bm1684x", choices=['bm1684x', 'sg2260'],
+                        help="chip name")
+    parser.add_argument("--debug", default="",
                         help="debug")
     parser.add_argument("--cmp", action='store_true',
                         help="enable cmp")
@@ -28,10 +28,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     tpu_mlir_jit.args = args
     # enable_dynamo_debug_info()
-    if args.debug == 'my_model':
-        # input = torch.randn((1, 3, 224, 224))
-        # import torchvision.models as models
-        # mod = models.resnet18()
+    if True:
+        input = torch.randn((1, 3, 224, 224))
+        import torchvision.models as models
+        mod = models.resnet18()
 
         # input = torch.randn((1, 3, 224, 224))
         # from resnet50 import resnet50
@@ -41,15 +41,14 @@ if __name__ == '__main__':
         # mod = test_model() #.train()
         # input = torch.randn((1, 3, 16, 16))
 
-        d_model=10 #768
-        from tools.train.gpt2 import TransformerBlocks #backward can not use this
-        mod = TransformerBlocks(d_model=d_model, nlayers=1) #.train()
-        input = torch.randn((1,4,d_model))
+        # d_model=10 #768  #test ok at 0918
+        # from tools.train.gpt2 import TransformerBlocks #backward can not use this
+        # mod = TransformerBlocks(d_model=d_model, nlayers=3) #.train()
+        # input = torch.randn((1,4,d_model))
 
         # from tools.train.gpt2 import GPT2
         # mod = GPT2()
         # input = torch.randint(0, 50257,(1, 5))
-        # input.require_grad = True
 
         net_d = copy.deepcopy(mod)
         input_d = input.to(device)
@@ -80,7 +79,7 @@ if __name__ == '__main__':
         loss_d.backward() #for TransformerBlocks
         # loss_d[0,0].backward() #for resnet18
         # optimizer.step()
-        exit(0)
+        # exit(0)
         # with autocast(): #tpu device
     else:
         from transformers import GPT2Config

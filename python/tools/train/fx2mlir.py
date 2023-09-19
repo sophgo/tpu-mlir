@@ -8,7 +8,6 @@ import numpy as np
 import importlib
 from argparse import Namespace
 MIN_BLOCK_SIZE = 5
-from torch.fx.passes.graph_drawer import FxGraphDrawer
 from mlir.ir import *
 import mlir.dialects.top as top
 from tools.train.TpuMlirModule import TpuMlirModule
@@ -54,6 +53,7 @@ class fx2mlir(object):
                  args:Namespace,
                  bwd_graph:bool
                 ):
+        self.work_dir = submodule_name.split('_')[0]
         tmp = 'bwd' if bwd_graph else 'fwd'
         self.model_name = f'{submodule_name}_{tmp}'
         self.args = args
@@ -217,7 +217,7 @@ class fx2mlir(object):
 
         tpu_ir = 'tpu_'+mlir_file
         self.bmodel_path = tpu_ir+'.bmodel'
-        mlir_lowering(mlir_file, tpu_ir, 'F32', "bm1684x")
+        mlir_lowering(mlir_file, tpu_ir, 'F32', self.args.chip)
         if self.args.cmp:
             tensors = mlir_inference(in_ref_data, tpu_ir, True)
             np.savez('tpu_ir_out_data.npz', **tensors)
@@ -306,8 +306,8 @@ class fx2mlir(object):
             gc.collect()
 
         tpu_ir = 'tpu_'+mlir_file
-        self.bmodel_path = tpu_ir+'.bmodel'
-        mlir_lowering(mlir_file, tpu_ir, 'F32', "bm1684x")
+        self.bmodel_path = os.path.join(self.work_dir, tpu_ir+'.bmodel')
+        mlir_lowering(mlir_file, tpu_ir, 'F32', self.args.chip)
         if self.args.cmp:
             tensors = mlir_inference(in_ref_data, tpu_ir, True)
             np.savez('tpu_ir_out_data.npz', **tensors)
@@ -462,12 +462,12 @@ class fx2mlir(object):
         dtypes = []
         if 'val' in node.meta:
             if isinstance(node.meta['val'], (tuple,list)):
-                dtypes = [i.dtype for i in node.meta['val'] if i is not None]
+                dtypes = [i.dtype if i is not None else None for i in node.meta['val'] ]
             else:
                 dtypes.append(node.meta['val'].dtype)
         else:
             dtypes.append(torch.float16)
-        dtypes = [self.get_dtype(i) for i in dtypes]
+        dtypes = [self.get_dtype(i) if i is not None else None for i in dtypes]
         # if len(dtypes) == 1:
         #     dtypes = dtypes[0]
         return dtypes
@@ -475,11 +475,11 @@ class fx2mlir(object):
     def get_output_shapes(self, node, exclude_num = 0):
         shapes = []
         if isinstance(node.meta['val'], (tuple,list)):
-            shapes = [list(i.size()) for i in node.meta['val'] if i is not None]
+            shapes = [list(i.size()) if i is not None else None for i in node.meta['val']]
         else:
             shapes.append(list(node.meta['val'].size()))
 
-        shapes = [[1] if i == [] else i for i in shapes]
+        shapes = [[1] if i is not None and i == [] else i for i in shapes]
         for _ in range(exclude_num):
             shapes.pop()
         return shapes
@@ -588,7 +588,7 @@ class fx2mlir(object):
                             output,
                             dim = node.args[2],
                             loc=self.get_loc(node.name),
-                            ip=self.insert_point).output
+                            ip=self.insert_point).grad_input
         self.operands[node] = new_op
 
     def convert_threshold_backward_op(self, node):
@@ -800,64 +800,83 @@ class fx2mlir(object):
         bias_op = self.none_op
         if output_mask[1]:
             shape = list(node.args[0].meta['val'].size())
-            shape[0],shape[1] = shape[1],shape[0]
-            transposed_gradout = top.TransposeOp(*self.get_tensor_type([shape], dtype),
-                                 grad_out,
-                                 0,
-                                 1,
-                                 loc=self.get_loc(node.name+'_transposed_gradout'),
-                                 ip=self.insert_point).output
-            shape = list(node.args[1].meta['val'].size())
-            shape[0],shape[1] = shape[1],shape[0]
-            transposed_input = top.TransposeOp(*self.get_tensor_type([shape], dtype),
-                                 input,
-                                 0,
-                                 1,
-                                 loc=self.get_loc(node.name+'_transposed_input'),
-                                 ip=self.insert_point).output
-            # kernel_shape_ = list(node.args[1].meta['val'].size())
-            grad_weight_kernel_shape = list(node.args[0].meta['val'].size())
-            grad_weight_kernel_shape = grad_weight_kernel_shape[2:]
-            grad_weight_shape = shape1
-            grad_weight_shape[0],grad_weight_shape[1] = grad_weight_shape[1],grad_weight_shape[0]
-            if pads[0]>0 and strides[0]>1:
-                new_strides = [1,1]
-                new_pads = copy.deepcopy(pads)
-                new_pads[2],new_pads[3] = 2,2
-                grad_weight = top.ConvOp(*self.get_tensor_type([grad_weight_shape], dtype),
-                                    transposed_input,
-                                    transposed_gradout,
-                                    bias_op,
-                                    kernel_shape=grad_weight_kernel_shape,
-                                    strides=new_strides,
-                                    dilations=strides,
-                                    pads = new_pads,
-                                    group=group,
-                                    do_relu=False,
-                                    loc=self.get_loc(node.name+'_grad_weight'),
-                                    ip=self.insert_point).output
+            if shape[2]>56:
+                input_shape = list(node.args[1].meta['val'].size())
+                grad_out_shape = list(node.args[0].meta['val'].size())
+                transposed_grad_weight = top.ConvBwdWeightOp(*self.get_tensor_type([shape1], [dtype[1]]),
+                                                           input,
+                                                           grad_out,
+                                                           group,
+                                                           input_shape,
+                                                           grad_out_shape,
+                                                           kernel_shape,
+                                                           strides,
+                                                           dilations,
+                                                           pads,
+                                                           output_mask[-1],
+                                                           loc=self.get_loc(node.name+'_grad_weight'),
+                                                           ip=self.insert_point).output
             else:
-                grad_weight = top.ConvOp(*self.get_tensor_type([grad_weight_shape], dtype),
-                                    transposed_input,
-                                    transposed_gradout,
-                                    bias_op,
-                                    kernel_shape=grad_weight_kernel_shape,
-                                    strides=strides,
-                                    dilations=strides,
-                                    pads = pads,
-                                    group=group,
-                                    do_relu=False,
-                                    loc=self.get_loc(node.name+'_grad_weight'),
-                                    ip=self.insert_point).output
-            temp_shape = shape1
-            temp_shape[0],temp_shape[1] = temp_shape[1],temp_shape[0]
-            # shape = list(node.args[1].meta['val'].size())
-            transposed_grad_weight = top.TransposeOp(*self.get_tensor_type([temp_shape], dtype),
-                                grad_weight,
-                                0,
-                                1,
-                                loc=self.get_loc(node.name+'_transposed_grad_weight'),
-                                ip=self.insert_point).output
+	            shape[0],shape[1] = shape[1],shape[0]
+	            transposed_gradout = top.TransposeOp(*self.get_tensor_type([shape], dtype),
+	                                 grad_out,
+	                                 0,
+	                                 1,
+	                                 loc=self.get_loc(node.name+'_transposed_gradout'),
+	                                 ip=self.insert_point).output
+	            shape = list(node.args[1].meta['val'].size())
+	            shape[0],shape[1] = shape[1],shape[0]
+	            transposed_input = top.TransposeOp(*self.get_tensor_type([shape], dtype),
+	                                 input,
+	                                 0,
+	                                 1,
+	                                 loc=self.get_loc(node.name+'_transposed_input'),
+	                                 ip=self.insert_point).output
+	            # kernel_shape_ = list(node.args[1].meta['val'].size())
+	            grad_weight_kernel_shape = list(node.args[0].meta['val'].size())
+	            grad_weight_kernel_shape = grad_weight_kernel_shape[2:]
+	            grad_weight_shape = shape1
+	            grad_weight_shape[0],grad_weight_shape[1] = grad_weight_shape[1],grad_weight_shape[0]
+	            if pads[0]>0 and strides[0]>1:
+	                new_strides = [1,1]
+	                new_pads = copy.deepcopy(pads)
+	                input_shape = list(node.args[1].meta['val'].size())
+	                pad_cal = grad_weight_shape[2]-(pads[0]+input_shape[2]-strides[0]*(grad_weight_kernel_shape[0]-1))
+	                new_pads[2],new_pads[3] = pad_cal,pad_cal
+	                grad_weight = top.ConvOp(*self.get_tensor_type([grad_weight_shape], dtype),
+	                                    transposed_input,
+	                                    transposed_gradout,
+	                                    bias_op,
+	                                    kernel_shape=grad_weight_kernel_shape,
+	                                    strides=new_strides,
+	                                    dilations=strides,
+	                                    pads = new_pads,
+	                                    group=group,
+	                                    do_relu=False,
+	                                    loc=self.get_loc(node.name+'_grad_weight'),
+	                                    ip=self.insert_point).output
+	            else:
+	                grad_weight = top.ConvOp(*self.get_tensor_type([grad_weight_shape], dtype),
+	                                    transposed_input,
+	                                    transposed_gradout,
+	                                    bias_op,
+	                                    kernel_shape=grad_weight_kernel_shape,
+	                                    strides=strides,
+	                                    dilations=strides,
+	                                    pads = pads,
+	                                    group=group,
+	                                    do_relu=False,
+	                                    loc=self.get_loc(node.name+'_grad_weight'),
+	                                    ip=self.insert_point).output
+	            temp_shape = shape1
+	            temp_shape[0],temp_shape[1] = temp_shape[1],temp_shape[0]
+	            # shape = list(node.args[1].meta['val'].size())
+	            transposed_grad_weight = top.TransposeOp(*self.get_tensor_type([temp_shape], dtype),
+	                                grad_weight,
+	                                0,
+	                                1,
+	                                loc=self.get_loc(node.name+'_transposed_grad_weight'),
+	                                ip=self.insert_point).output
         if output_mask[0]:
             transposed_weight_shape = shape1
             transposed_weight_shape[0],transposed_weight_shape[1] = transposed_weight_shape[1],transposed_weight_shape[0]
@@ -1322,6 +1341,7 @@ class fx2mlir(object):
         weight_opt = self.operands[node.args[5]] if node.args[5] in self.operands else self.none_op
         bias_opt = self.operands[node.args[6]] if node.args[6] in self.operands else self.none_op
         out = top.LayerNormBwdOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                              grad_out,
                               input,
                               mean,
                               rstd,
