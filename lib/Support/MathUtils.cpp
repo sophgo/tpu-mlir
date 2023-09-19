@@ -764,6 +764,10 @@ template std::shared_ptr<std::vector<int8_t>>
 tensor_slice(int8_t *src_data, const std::vector<int64_t> &shape, int64_t axis,
              int64_t offset, int64_t length);
 
+template std::shared_ptr<std::vector<uint8_t>>
+tensor_slice(uint8_t *src_data, const std::vector<int64_t> &shape, int64_t axis,
+             int64_t offset, int64_t length);
+
 template <typename T>
 int64_t saturate(T v, mlir::Type type, RoundingMode round_mode) {
   auto itype = dyn_cast<mlir::IntegerType>(type);
