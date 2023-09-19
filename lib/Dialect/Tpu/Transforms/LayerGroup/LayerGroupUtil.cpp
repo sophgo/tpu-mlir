@@ -780,6 +780,12 @@ static bool backward_update_slice(const LgInfo &lg_info,
       if (false == is_same_slice_info(si, iter->second.slice_info)) {
         if (module::isCV18xx() || mode == RunMode::TPU_DYNAMIC)
           return false;
+        // only Conv2D allow differnece for now
+        auto num_users =
+            std::distance(pre_op->getUsers().begin(), pre_op->getUsers().end());
+        if (!(isa<tpu::Conv2DOp>(pre_op) && num_users == 1)) {
+          return false;
+        }
         bool is_hw_overlap = true;
         for (int i = 0; i < shape_secs.hsecs; i++) {
           is_hw_overlap *=
