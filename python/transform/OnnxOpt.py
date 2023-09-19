@@ -210,6 +210,7 @@ class ConstantFolding(object):
             sess = rt.InferenceSession(model.SerializeToString(), sess_options=sess_options,
                                        providers=["CPUExecutionProvider"])
         except ValueError:
+            print("Waring: Try to convert through a temporary file.")
             # large models try to convert through a temporary file
             import os
             import tempfile

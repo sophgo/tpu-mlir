@@ -481,13 +481,14 @@ class OnnxConverter(BaseConverter):
                     shape_changed = True
                 _shape.append(_dim.dim_value)
             self.addShape(input.name, _shape)
-
+        idx = 0  # avoid confilict for multi dynamic axes
         for o in outputs:
-            # for set arbitrary batch_size
+            # for set arbitrary axes
             _odims = o.type.tensor_type.shape.dim
             for _odim in _odims:
                 if _odim.dim_value <= 0 or shape_changed:
-                    _odim.dim_param = '?'
+                    _odim.dim_param = '?_' + str(idx)
+                    idx += 1
 
     def init_MLIRImporter(self):
         input_shapes = list()
@@ -2478,7 +2479,8 @@ class OnnxConverter(BaseConverter):
 
     def convert_cumsum_op(self, onnx_node):
         assert onnx_node.op_type == "CumSum"
-        assert (self.isWeight(onnx_node.inputs[1]), "Not Constant Not Implemented For Axis")
+        if not self.isWeight(onnx_node.inputs[1]):
+            raise ValueError("Currently, only constant axis is supported")
         axis = self.getWeight(onnx_node.inputs[1])
         operands = list()
         operands.append(self.getOperand(onnx_node.inputs[0]))
