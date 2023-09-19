@@ -35,8 +35,8 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       // e.g. Gather(indices=[1],axis=ax) + Unsqueeze(axis=ax)
       //            -> Slice(start=1, end=2, step=1, axes=ax)
       int64_t index = (int64_t)inds_f32->at(0);
-      if (index == -1 && ax == 0) {
-        index = input_shape[ax] - 1;
+      if (index < 0) {
+        index = input_shape[ax] + index;
       }
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> ends(input_shape.size(), -1);
