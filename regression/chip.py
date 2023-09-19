@@ -40,11 +40,11 @@ chip_support = {
 ######################################
 basic_model_list = {
     # model_name:              (bm1684, bm1684x, bm1686, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
-    "mobilenet_v2_cf":            (N,      Y,       N,      Y,      N,      Y,      Y,     N,      N),
+    "mobilenet_v2_cf":            (N,      Y,       Y,      Y,      N,      Y,      Y,     N,      N),
     "resnet50_v2":                (Y,      N,       N,      N,      N,      Y,      Y,     N,      Y),
     "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      Y),
     "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      N,     N,      N),
-    "yolov5s_tf":                 (N,      Y,       N,      N,      N,      N,      N,     N,      N),
+    "yolov5s_tf":                 (N,      Y,       Y,      N,      N,      N,      N,     N,      N),
     "retinaface_mnet_with_det":   (N,      N,       N,      N,      Y,      Y,      Y,     N,      N),
 }
 
