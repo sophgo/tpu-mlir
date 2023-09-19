@@ -42,7 +42,7 @@ class ONNX_IR_TESTER(object):
             "Abs":          (self.test_Abs,           Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y),
             "And":          (self.test_And,           N, Y, Y, N),
-            "AddBcast":     (self.test_AddBcast,      Y, Y, Y, N),
+            "AddBcast":     (self.test_AddBcast,      Y, Y, N, N),
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N),
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N),  # failed cases
             "Arg":          (self.test_Arg,           Y, Y, Y, Y),
