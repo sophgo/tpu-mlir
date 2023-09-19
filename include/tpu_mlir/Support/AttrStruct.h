@@ -221,4 +221,20 @@ typedef struct {
   bool use_mask;
 } deform_gather_attr_t;
 
+typedef struct {
+  int64_t n;
+  int64_t ic;
+  int64_t ih;
+  int64_t iw;
+  int64_t oc;
+  int64_t oh;
+  int64_t ow;
+  int64_t kh,kw;
+  int64_t sh,sw;
+  int64_t dh,dw;
+  int64_t pht, phb;
+  int64_t pwl, pwr;
+  int64_t groups;
+  bool has_bias;
+} convbwd_weight_attr_t;
 } // namespace tpu_mlir

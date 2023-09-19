@@ -9,6 +9,7 @@ import torch
 from tools.model_transform import *
 from utils.mlir_shell import *
 from tools.train.tpu_mlir_jit import cosine_similarity
+from tools.train.fx2mlir import fx2mlir
 import tools.train.tpu_mlir_jit as tpu_mlir_jit
 
 if __name__ == "__main__":
@@ -28,16 +29,18 @@ if __name__ == "__main__":
                         help="submodel")
     parser.add_argument("--cmp", action='store_true',
                         help="enable cmp")
+    parser.add_argument("--check_module", action='store_true',
+                        help="check the whole module")
 
     args = parser.parse_args()
     tpu_mlir_jit.args = args
 
-    exec(f'from fx_graph_dumped.module import {args.submodel}')
+    exec(f'from fx_graph_dumped_{args.submodel}.module import {args.submodel}')
     from torch.fx._symbolic_trace import symbolic_trace
     mod = eval(f'symbolic_trace({args.submodel}())')
     from torch.fx.passes.fake_tensor_prop import FakeTensorProp
     example_inputs = []
-    lines = open('fx_graph_dumped/input_shape', "r").readlines()
+    lines = open(f'fx_graph_dumped_{args.submodel}/input_shape', "r").readlines()
     for line in lines:
         items = line.strip().split('*')
         if items[2] == 'torch.int64':
@@ -45,9 +48,22 @@ if __name__ == "__main__":
             print(f'input {items[0]} dtype is int64:',example_inputs[-1])
         else:
             example_inputs.append(torch.randn(eval(items[1])))
-    FakeTensorProp(mod).propagate(*example_inputs)
 
-    from tools.train.fx2mlir import fx2mlir
+    if args.check_module:
+        # ref_outs = mod(*example_inputs)
+        # c = fx2mlir(f'mod_{args.submodel}', args)
+        # tpu_mlir_mod = c.convert(mod)
+        # outs = tpu_mlir_mod(*example_inputs)
+        # cosine_similarity(ref_outs, outs)
+        bmodel = f'tpu_out_{args.submodel}.mlir.bmodel'
+        from tools.train.TpuMlirModule import TpuMlirModule
+        #mod.graph.print_tabular()
+        mlir_mod = TpuMlirModule(bmodel)
+        tmp = mlir_mod(*example_inputs)
+        exit(0)
+
+    # example_inputs = [i.contiguous() for i in example_inputs]
+    FakeTensorProp(mod).propagate(*example_inputs)
     for i, node in enumerate(mod.graph.nodes):
         if node.op == 'call_module' or node.op == 'call_method' or node.op == 'call_function':
             if args.run_op == '':
@@ -59,30 +75,28 @@ if __name__ == "__main__":
 
             print(f'>>> {i}th op, name:', node.name, 'target:',node.target, 'args:', node.args, 'users:', list(node.users.keys()), 'kwargs:', node.kwargs,
                 'val:', node.meta['val'] if 'val' in node.meta else 'None')
-            print('args shape:', [[list(i.meta['val'].size()), i.meta['val'].dtype] for i in node.args if isinstance(i, torch.fx.Node) and 'val' in i.meta])
             if node.name.startswith('getitem'):
                 print('skip getitem')
                 continue
-            if isinstance(node.meta['val'], tuple):
-                out_dtype = [i.dtype for i in node.meta['val']]
-            else:
-                out_dtype = [node.meta['val'].dtype]
+            print('args shape:', [[list(i.meta['val'].size()), i.meta['val'].dtype] for i in node.args if isinstance(i, torch.fx.Node) and 'val' in i.meta])
+
             c = fx2mlir(f'node_{node.name}', args)
             mlir_mod, in_ref_data = c.convert_a_op(node)
             for i,data in enumerate(in_ref_data):
                 print(f'{i}th in, data:{data.flatten()[:8]}')
             if mlir_mod is not None:
                 outs = mlir_mod(*in_ref_data)
-                for out, dtype in zip(outs, out_dtype):
-                    if dtype == torch.int64:
-                        out = out.int()
+                if not isinstance(outs, (list, tuple)):
+                    outs = [outs]
 
             other_args = [i for i in node.args if not isinstance(i, torch.fx.Node)]
             ref_outs = node.target(*in_ref_data, *other_args)
+            if not isinstance(ref_outs, (list, tuple)):
+                ref_outs = [ref_outs]
             print(f'len(ref_outs):{len(ref_outs)}')
             # m3 = torch.nn.functional.batch_norm(in_ref_data[0],in_ref_data[3],in_ref_data[4], in_ref_data[1],in_ref_data[2],training=True, eps=1e-5, momentum=0.1)
             # ref_outs2 = [m3, in_ref_data[1],in_ref_data[2],in_ref_data[3],in_ref_data[4]]
-            cosine_similarity(ref_outs, out)
+            cosine_similarity(ref_outs, outs)
             if args.run_op == node.name:
                 break
             # exit(0)

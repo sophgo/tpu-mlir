@@ -1727,4 +1727,31 @@ typedef struct embedding_backward_param {
     bool is_index_int64;
 } embedding_backward_param_t;
 
+typedef struct 
+{
+  int32_t groups;
+  int32_t ic;
+  int32_t n;
+  int32_t ih;
+  int32_t iw;
+  int32_t oc;
+  int32_t oh;
+  int32_t ow;
+  int32_t kh;
+  int32_t kw;
+  int32_t sh;
+  int32_t sw;
+  int32_t dh;
+  int32_t dw;
+  int32_t pt;
+  int32_t pb;
+  int32_t pl;
+  int32_t pr;
+  bool has_bias;
+}ConvBwdWeight_common_spec_t;
+
+typedef struct 
+{
+  ConvBwdWeight_common_spec_t common;
+}ConvBwdWeight_global_spec_t;
 #endif
