@@ -12,14 +12,16 @@ namespace tpu_mlir {
 namespace tpu {
 
 // MatMul + Elementwise * n + TopK
-LogicalResult MatMulTopK::matchAndRewrite(tpu::MatMulOp op,
-                                          PatternRewriter &rewriter) const {
+template <typename MatMulTy>
+LogicalResult
+MatMulTopK<MatMulTy>::matchAndRewrite(MatMulTy op,
+                                      PatternRewriter &rewriter) const {
   if (!isLargeMatMul(op) || module::isOpInDistribution(op) ||
       !op->hasOneUse()) {
     return failure();
   }
   auto next_op = *op->user_begin();
-  while (next_op->hasTrait<trait::SupportElementwise>() &&
+  while (next_op->template hasTrait<trait::SupportElementwise>() &&
          next_op->hasOneUse()) {
     next_op = *next_op->user_begin();
   }
@@ -32,13 +34,23 @@ LogicalResult MatMulTopK::matchAndRewrite(tpu::MatMulOp op,
   return success();
 }
 
-template <>
-void splitByDevices<MatMulTopK>(PatternRewriter &rewriter,
-                                tpu::DistributionBeginOp op,
-                                int64_t num_devices) {
+template LogicalResult
+MatMulTopK<tpu::MatMulOp>::matchAndRewrite(tpu::MatMulOp op,
+                                           PatternRewriter &rewriter) const;
+
+template LogicalResult
+MatMulTopK<tpu::A16MatMulOp>::matchAndRewrite(tpu::A16MatMulOp op,
+                                              PatternRewriter &rewriter) const;
+
+template <typename MatMulTy>
+void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
+               tpu::DistributionBeginOp op, int64_t num_devices) {
+  if (!mm) {
+    return;
+  }
   auto next_op = *op->user_begin();
-  auto mm = cast<tpu::MatMulOp>(next_op);
-  auto filterOp = mm.getRight().getDefiningOp<top::WeightOp>();
+  // auto mm = cast<tpu::MatMulOp>(next_op);
+  auto filterOp = mm.getOperand(1).template getDefiningOp<top::WeightOp>();
   auto filterShape = module::getShape(filterOp.getOutput());
   auto outputShape = module::getShape(mm.getOutput());
   auto mm_attrs = mm->getAttrs();
@@ -46,6 +58,8 @@ void splitByDevices<MatMulTopK>(PatternRewriter &rewriter,
   auto num_dims = filterShape.size();
   auto N = filterShape[num_dims - 1];
   auto slice_n = ceiling_func(N, num_devices);
+  auto a16_mm = dyn_cast<tpu::A16MatMulOp>(mm.getOperation());
+  auto weight_bits = a16_mm ? a16_mm.getWeightBits() : 16;
   Operation *end_op = nullptr;
   std::vector<Value> t_operands;
   for (int i = 0; i < num_devices; i++) {
@@ -53,10 +67,14 @@ void splitByDevices<MatMulTopK>(PatternRewriter &rewriter,
     auto length = std::min(slice_n, N - offset);
     auto suffix = std::to_string(i);
     auto newFilter =
-        module::opSliceAxis(mm.getRight(), num_dims - 1, offset, length);
+        module::opSliceAxis(mm.getOperand(1), num_dims - 1, offset, length);
     std::vector<Value> operands;
     operands.push_back(mm.getInput());
     operands.push_back(newFilter);
+    if (a16_mm) {
+      auto scale_op = mm.getOperand(2).template getDefiningOp<top::WeightOp>();
+      operands.push_back(scale_op.clone(suffix));
+    }
     if (has_bias) {
       auto new_bias =
           module::opSliceAxis(mm.getBias(), num_dims - 1, offset, length);
@@ -66,11 +84,11 @@ void splitByDevices<MatMulTopK>(PatternRewriter &rewriter,
     }
     auto new_loc = module::getLocLike(mm.getOutput(), suffix);
     std::vector<int64_t> new_shape = outputShape;
-    new_shape[new_shape.size() - 1] = length;
+    new_shape[new_shape.size() - 1] = (weight_bits == 4 ? 2 : 1) * length;
     auto new_type = module::getTypeLike(mm.getOutput(), new_shape);
     rewriter.setInsertionPointAfter(mm);
     auto new_mm =
-        rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands, mm_attrs);
+        rewriter.create<MatMulTy>(new_loc, new_type, operands, mm_attrs);
     Value cur_output = new_mm.getOutput();
     next_op = *mm->user_begin();
     while (!isa<tpu::TopKOp>(next_op)) {
@@ -93,8 +111,9 @@ void splitByDevices<MatMulTopK>(PatternRewriter &rewriter,
       auto new_loc = NameLoc::get(
           rewriter.getStringAttr(new_name.str() + suffix + "_add"));
       std::vector<NamedAttribute> attrs;
-      attrs.push_back(
-          rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(offset)));
+      attrs.push_back(rewriter.getNamedAttr(
+          "const_val",
+          rewriter.getF64FloatAttr((weight_bits == 4 ? 2 : 1) * offset)));
       rewriter.setInsertionPointAfter(new_op);
       auto new_add = rewriter.create<tpu::AddConstOp>(
           new_loc, indices.getType(), ValueRange{indices}, attrs);
@@ -109,6 +128,12 @@ void splitByDevices<MatMulTopK>(PatternRewriter &rewriter,
   end_op->setOperands(t_operands);
   eraseForward(rewriter, mm);
 }
+
+template void topKSplit(tpu::MatMulOp mm, PatternRewriter &rewriter,
+                        tpu::DistributionBeginOp op, int64_t num_devices);
+
+template void topKSplit(tpu::A16MatMulOp mm, PatternRewriter &rewriter,
+                        tpu::DistributionBeginOp op, int64_t num_devices);
 
 } // namespace tpu
 } // namespace tpu_mlir

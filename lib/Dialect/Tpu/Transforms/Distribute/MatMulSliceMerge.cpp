@@ -40,7 +40,7 @@ static bool isHalfSlice(tpu::SliceOp op) {
 template <typename MatMulTy>
 LogicalResult
 MatMulSliceMerge<MatMulTy>::matchAndRewrite(MatMulTy op,
-                                        PatternRewriter &rewriter) const {
+                                            PatternRewriter &rewriter) const {
   if (!isLargeMatMul(op) || module::isOpInDistribution(op)) {
     return failure();
   }
@@ -160,10 +160,11 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
       }
       auto new_loc = module::getLocLike(mm0.getOutput(), suffix_half);
       std::vector<int64_t> new_shape = outputShape;
-      new_shape[new_shape.size() - 1] = (a16_mm0 && weight_bits == 4 ? 2 : 1) * length;
+      new_shape[new_shape.size() - 1] = (weight_bits == 4 ? 2 : 1) * length;
       auto new_type = module::getTypeLike(mm0.getOutput(), new_shape);
       rewriter.setInsertionPointAfter(mm0);
-      auto new_mm0 = rewriter.create<MatMulTy>(new_loc, new_type, operands, attrs);
+      auto new_mm0 =
+          rewriter.create<MatMulTy>(new_loc, new_type, operands, attrs);
       Value cur_output = new_mm0.getOutput();
       next_op = *slices[half]->user_begin();
       while (!isBinaryOp(next_op)) {
@@ -191,14 +192,14 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
     auto new_loc = module::getLocLike(next_op, suffix);
     std::vector<Value> operands;
     operands.push_back(cur_output);
-    auto newFilter1 =
-        module::opSliceAxis(mm1.getOperand(1), num_dims - 2, offset,
-                            (a16_mm0 && weight_bits == 4 ? 2 : 1) * length);
+    auto newFilter1 = module::opSliceAxis(mm1.getOperand(1), num_dims - 2,
+                                          (weight_bits == 4 ? 2 : 1) * offset,
+                                          (weight_bits == 4 ? 2 : 1) * length);
     operands.push_back(newFilter1);
     if (a16_mm0) {
-      auto new_scale =
-          module::opSliceAxis(mm1.getOperand(2), num_dims - 2, offset,
-                              (a16_mm0 && weight_bits == 4 ? 2 : 1) * length);
+      auto new_scale = module::opSliceAxis(mm1.getOperand(2), 0,
+                                           (weight_bits == 4 ? 2 : 1) * offset,
+                                           (weight_bits == 4 ? 2 : 1) * length);
       operands.push_back(new_scale);
     }
     if (module::isNone(mm1.getBias())) {
@@ -213,7 +214,7 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
     }
     rewriter.setInsertionPointAfter(next_op);
     auto new_mm1 = rewriter.create<MatMulTy>(new_loc, mm1.getOutput().getType(),
-                                         operands, mm1->getAttrs());
+                                             operands, mm1->getAttrs());
     end_operands.push_back(new_mm1.getOutput());
     if (i == 0) {
       end_op = *next_op->user_begin();
