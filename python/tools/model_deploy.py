@@ -90,6 +90,7 @@ class DeployTool:
         self.dynamic = args.dynamic
         self.compare_all = args.compare_all
         self.skip_validation = args.skip_validation
+        self.model_version = args.model_version
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
                 self.prefix += "_asym"
@@ -218,7 +219,7 @@ class DeployTool:
             mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
                           self.quant_input, self.quant_output, self.disable_layer_group,
                           self.merge_weight, self.op_divide, self.num_device, self.num_core,
-                          self.embed_debug_info)
+                          self.embed_debug_info, self.model_version)
             if not self.skip_validation and self.do_validate:
                 tool.validate_model()
 
@@ -300,6 +301,8 @@ if __name__ == '__main__':
                     help="quantize linear with W8A16 / W4A16 strategy")
     parser.add_argument("--do_winograd", action="store_true", default=False,
                         help="do_winograd")
+    parser.add_argument("--model_version", default="latest",
+                        help="if need old version cvimodel, set the verion, such as 1.2")
 
     # yapf: enable
     args = parser.parse_args()
