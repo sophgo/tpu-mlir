@@ -81,9 +81,9 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
 LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
                                           PatternRewriter &rewriter) {
   auto attr = op.parseParam();
-  if (attr.is_dw || attr.groups > 1) {
-    llvm_unreachable("depthwise should support !!");
-  }
+  // if (attr.is_dw || attr.groups > 1) {
+  //   llvm_unreachable("depthwise should support !!");
+  // }
   // filter reorder
   auto filter_type = module::getStorageType(op.getFilter());
   auto data_type = BM168x::getDataType(op.getFilter());
