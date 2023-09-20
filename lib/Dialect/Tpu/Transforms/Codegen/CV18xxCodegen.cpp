@@ -32,11 +32,22 @@ using namespace tpu_mlir::tpu;
 // 6) rename preprocess_hits to preprocess_hints
 #define V_1_4_0 VERSION(1, 4, 0)
 
-static uint32_t get_version(uint8_t &majorVersion, uint8_t &minorVersion,
+static uint32_t get_version(std::string clModelVersion, uint8_t &majorVersion, uint8_t &minorVersion,
                             uint8_t &subMinorVersion) {
-  majorVersion = MajorVersion_value;
-  minorVersion = MinorVersion_value;
-  subMinorVersion = SubMinorVersion_value;
+  if (clModelVersion.empty() || clModelVersion == "latest") {
+    majorVersion = MajorVersion_value;
+    minorVersion = MinorVersion_value;
+    subMinorVersion = SubMinorVersion_value;
+  } else {
+    uint32_t v0 = 0, v1 = 0, v2 = 0;
+    int pick = sscanf(clModelVersion.c_str(), "%u.%u.%u", &v0, &v1, &v2);
+    if (pick < 2) {
+      llvm_unreachable("version set error");
+    }
+    majorVersion = v0;
+    minorVersion = v1;
+    subMinorVersion = v2;
+  }
   uint32_t version = VERSION(majorVersion, minorVersion, subMinorVersion);
   return version;
 }
@@ -506,13 +517,13 @@ flatbuffers::Offset<Routine> CviTpuRoutine::build() {
                        0);
 }
 
-CviModelBuilder::CviModelBuilder(ModuleOp &m) : fbb_(1024) {
+CviModelBuilder::CviModelBuilder(ModuleOp &m, std::string &version) : fbb_(1024) {
   int32_t layer_id = 0;
   auto chip_ = module::getChip();
   chip = module::stringifyChip(chip_);
   privateGmemSize_ = module::getGmemPrivateSize(m);
   sharedGmemSize_ = module::getNeuronSize(m);
-  version_ = get_version(majorVersion_, minorVersion_, subMinorVersion_);
+  version_ = get_version(version, majorVersion_, minorVersion_, subMinorVersion_);
   modelName_ = module::getName(m);
   coeff_size = module::getCoeffSize(m); // set in assignAddr
   std::map<int32_t, func::FuncOp> subFuncs;

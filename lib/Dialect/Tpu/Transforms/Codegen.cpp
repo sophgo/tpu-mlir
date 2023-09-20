@@ -28,7 +28,7 @@ public:
     auto mOp = getOperation();
     auto modules = module::getAllModules();
     if (module::isCV18xx()) {
-      CviModelBuilder builder(modules->at(0));
+      CviModelBuilder builder(modules->at(0), model_version);
       builder.storeModel(filename);
       return;
     }
