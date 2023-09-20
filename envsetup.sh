@@ -26,7 +26,6 @@ export PATH=$PROJECT_ROOT/third_party/customlayer/python:$PATH
 export LD_LIBRARY_PATH=$INSTALL_PATH/lib:$PROJECT_ROOT/capi/lib:$LD_LIBRARY_PATH
 
 export PYTHONPATH=$INSTALL_PATH/python:$PYTHONPATH
-# export PYTHONPATH=/usr/local/python_packages/mlir_core:$PYTHONPATH
 export PYTHONPATH=/usr/local/python_packages/:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/customlayer/python:$PYTHONPATH
