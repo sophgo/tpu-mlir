@@ -92,6 +92,7 @@ install(
   PATTERN "test_*" EXCLUDE
   PATTERN "__pycache__" EXCLUDE
   PATTERN ".pytest_cache" EXCLUDE
+  PATTERN "tpu_mlir" EXCLUDE
 )
 install(
   DIRECTORY ./ DESTINATION python FILES_MATCHING

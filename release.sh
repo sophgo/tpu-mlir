@@ -49,7 +49,6 @@ export PATH=${TPUC_ROOT}/python/samples:$PATH
 export PATH=${TPUC_ROOT}/customlayer/python:$PATH
 export LD_LIBRARY_PATH=$TPUC_ROOT/lib:$LD_LIBRARY_PATH
 export PYTHONPATH=${TPUC_ROOT}/python:$PYTHONPATH
-export PYTHONPATH=/usr/local/python_packages/mlir_core:$PYTHONPATH
 export PYTHONPATH=/usr/local/python_packages/:$PYTHONPATH
 export PYTHONPATH=${TPUC_ROOT}/customlayer/python:$PYTHONPATH
 export MODEL_ZOO_PATH=${TPUC_ROOT}/../model-zoo
