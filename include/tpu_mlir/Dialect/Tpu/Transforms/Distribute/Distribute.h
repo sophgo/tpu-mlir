@@ -51,26 +51,32 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
-class MatMulSliceMerge2 : public OpRewritePattern<tpu::MatMulOp> {
+template <typename MatMulTy>
+class MatMulSliceMerge2 : public OpRewritePattern<MatMulTy> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
+  using OpRewritePattern<MatMulTy>::OpRewritePattern;
+  LogicalResult matchAndRewrite(MatMulTy op,
                                 PatternRewriter &rewriter) const override;
 };
 
-class MatMulTopK : public OpRewritePattern<tpu::MatMulOp> {
+template <typename MatMulTy>
+class MatMulTopK : public OpRewritePattern<MatMulTy> {
 public:
-  using OpRewritePattern::OpRewritePattern;
-  LogicalResult matchAndRewrite(tpu::MatMulOp op,
+  using OpRewritePattern<MatMulTy>::OpRewritePattern;
+  LogicalResult matchAndRewrite(MatMulTy op,
                                 PatternRewriter &rewriter) const override;
 };
-
-template <typename T>
-void splitByDevices(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
-                    int64_t num_devices);
 
 template <typename MatMulTy>
 void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter, tpu::DistributionBeginOp op,
+                    int64_t num_devices);
+
+template <typename MatMulTy>
+void sliceMerge2Split(MatMulTy mm_left, PatternRewriter &rewriter, tpu::DistributionBeginOp op,
+                    int64_t num_devices);
+
+template <typename MatMulTy>
+void topKSplit(MatMulTy mm, PatternRewriter &rewriter, tpu::DistributionBeginOp op,
                     int64_t num_devices);
 
 enum class DistributionEndMode {
