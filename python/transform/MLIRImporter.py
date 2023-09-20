@@ -275,12 +275,18 @@ class MLIRImporter(object):
             output_txt += _type.__str__()
             if (_idx + 1) < self.num_output:
                 output_txt += ", "
+        final_output=output_txt
+        result_for_main_func="%1"
         if self.num_output > 1:
             output_txt = "({})".format(output_txt)
+            final_output=output_txt[1:-1]
+            result_for_main_func=",".join(["%1#"+str(output_id) for output_id in range(self.num_output)])
         main_func = """
             module @\"{name}\" attributes {{module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none loc(unknown)
+                    %1:{last_output_num} = \"PlaceHolder.Op\"() : () -> {output}
+                    return {num_output} : {final_output}
                 }} loc(unknown)
             }} loc(unknown)
         """.format(name=self.model_name,
@@ -289,13 +295,18 @@ class MLIRImporter(object):
                    state=self.state,
                    chip=self.chip,
                    args=args_txt,
-                   output=output_txt)
+                   output=output_txt,
+                   last_output_num=self.num_output,
+                   num_output=result_for_main_func,
+                   final_output=final_output )
         self.mlir_module = Module.parse(main_func, self.ctx)
         self.func = self.mlir_module.body.operations[0]
         self.entry_block = self.func.regions[0].blocks[0]
         self.insert_point = InsertionPoint(self.entry_block)
         self.none_op = self.entry_block.operations[0].operation.results[0]
-
+        self.entry_block.operations[2].operation.erase()
+        self.entry_block.operations[1].operation.erase()
+        
         self.func_args = list()
         for i in self.entry_block.arguments:
             self.func_args.append(i)
