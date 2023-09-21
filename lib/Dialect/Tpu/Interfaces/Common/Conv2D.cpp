@@ -219,7 +219,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
 
       // 4.
       // P @ AEQ.transpose(0, 1) -> wino_res
-      float *wino_res = new float[row_num * 64 * 4];
+      float *wino_res = new float[row_num * attr.oc * 4];
       matmul = new MatMul();
       matmul->setup(P, (float *)AEQ, 0, wino_res, 1, 1, row_num * attr.oc, 16,
                     4, false, 0, 0, 0, true, false, false, 0);
