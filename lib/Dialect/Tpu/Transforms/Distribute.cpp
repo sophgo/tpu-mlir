@@ -14,6 +14,102 @@ namespace tpu {
 // only >= 4MB distribute to multi devices
 static const int64_t WEIGHT_LIMIT = 0x400000;
 
+void distribute(PatternRewriter &rewriter, std::vector<Operation *> ops_begin,
+                std::vector<Operation *> ops_end,
+                tpu::DistributionPattern pattern,
+                std::vector<int64_t> &begin_methods,
+                std::vector<int64_t> &end_methods) {
+  // 1. Create pattern params
+  auto ctx = rewriter.getContext();
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr(
+      "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "begin_methods",
+      rewriter.getI64ArrayAttr(llvm::ArrayRef(begin_methods))));
+
+  // 2. Insert DistributionBeginOp
+  std::vector<Value> inputs;
+  std::vector<Type> types;
+  std::vector<Location> locs;
+  Value opd = ops_begin[0]->getOperand(0);
+  for (auto op : ops_begin) {
+    auto input = op->getOperand(0);
+    if (isa<tpu::GatherOp>(op)) {
+      input = op->getOperand(1);
+    } else if (isa<tpu::MatMulOp>(op)) {
+      if (!isa<top::NoneOp>(op->getOperand(2).getDefiningOp())) {
+        input = op->getOperand(2);
+        opd = input;
+      }
+    }
+    auto type = input.getType();
+    auto loc = module::getLocLike(op, "distribute_begin");
+    inputs.push_back(input);
+    types.push_back(type);
+    locs.push_back(loc);
+  }
+  auto begin_loc = FusedLoc::get(ctx, locs);
+  rewriter.setInsertionPointAfterValue(opd);
+  auto begin = rewriter.create<tpu::DistributionBeginOp>(begin_loc, types,
+                                                         inputs, attrs);
+  for (auto op : ops_begin) {
+    if (op != ops_begin[0]) {
+      auto in = op->getOperand(0);
+      if (isa<tpu::GatherOp>(op)) {
+        in = op->getOperand(1);
+      }
+      if (!isa<BlockArgument>(in)) {
+        in.getDefiningOp()->moveBefore(begin);
+      }
+    }
+  }
+  for (size_t i = 0; i < ops_begin.size(); ++i) {
+    int index = 0;
+    for (auto [idx, in] : llvm::enumerate(ops_begin[i]->getOperands())) {
+      if (in == begin.getInputs()[i]) {
+        index = idx;
+        break;
+      }
+    }
+    ops_begin[i]->setOperand(index, begin.getOutputs()[i]);
+  }
+
+  // 3. Insert DistributionEndOp
+  attrs.clear();
+  inputs.clear();
+  types.clear();
+  locs.clear();
+
+  attrs.push_back(rewriter.getNamedAttr(
+      "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "end_methods", rewriter.getI64ArrayAttr(llvm::ArrayRef(end_methods))));
+
+  for (auto op : ops_end) {
+    for (auto o : op->getResults()) {
+      inputs.push_back(o);
+      types.push_back(o.getType());
+      auto loc = module::getLocLike(op, "distribute_end");
+      locs.push_back(loc);
+      break;
+    }
+  }
+  auto end_loc = FusedLoc::get(ctx, locs);
+  rewriter.setInsertionPointAfter(ops_end[0]);
+  auto end =
+      rewriter.create<tpu::DistributionEndOp>(end_loc, types, inputs, attrs);
+
+  for (size_t i = 0; i < ops_end.size(); ++i) {
+    // inputs[i].replaceAllUsesExcept(end.getOutputs()[i], end);
+    inputs[i].replaceUsesWithIf(end.getOutputs()[i], [&](OpOperand &use) {
+      return use.getOwner() != end && !isa<tpu::ConcatOp, tpu::MatMulOp>(use.getOwner());
+    });
+  }
+}
+
+// insert DistributionBeginOp before op_begin
+// insert DistributionEndOp after op_end
 void distribute(PatternRewriter &rewriter, Operation *op_begin,
                 Operation *op_end, tpu::DistributionPattern pattern) {
   auto ctx = rewriter.getContext();
@@ -22,10 +118,15 @@ void distribute(PatternRewriter &rewriter, Operation *op_begin,
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr(
       "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
+  std::vector<int64_t> begin_methods{1};
+  attrs.push_back(rewriter.getNamedAttr(
+      "begin_methods",
+      rewriter.getI64ArrayAttr(llvm::ArrayRef(begin_methods))));
   rewriter.setInsertionPoint(op_begin);
   auto begin = rewriter.create<tpu::DistributionBeginOp>(
-      op_begin->getLoc(), types, ValueRange{input}, attrs);
-  op_begin->setOperand(0, begin.getOutput());
+      module::getLocLike(op_begin, "distribute_begin"), types,
+      ValueRange{input}, attrs);
+  op_begin->setOperand(0, begin.getOutputs()[0]);
 
   Value output;
   for (auto o : op_end->getResults()) {
@@ -34,12 +135,22 @@ void distribute(PatternRewriter &rewriter, Operation *op_begin,
       break;
     }
   }
+
+  attrs.clear();
+  std::vector<int64_t> end_methods{2};
+  attrs.push_back(rewriter.getNamedAttr(
+      "pattern", tpu::DistributionPatternAttr::get(ctx, pattern)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "end_methods", rewriter.getI64ArrayAttr(llvm::ArrayRef(end_methods))));
   rewriter.setInsertionPointAfter(op_end);
   auto end = rewriter.create<tpu::DistributionEndOp>(
-      module::getLoc(output), output.getType(), ValueRange{output}, attrs);
-  output.replaceAllUsesExcept(end.getOutput(), end);
+      module::getLocLike(output, "distribute_end"), output.getType(),
+      ValueRange{output}, attrs);
+  output.replaceAllUsesExcept(end.getOutputs()[0], end);
 }
 
+// insert DistributionBeginOp after op_begin
+// insert DistributionEndOp after op_end
 void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,
                      Operation *op_end, tpu::DistributionPattern pattern) {
   // 1. Create pattern params
@@ -55,7 +166,7 @@ void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,
   auto begin = rewriter.create<tpu::DistributionBeginOp>(
       module::getLocLike(input, "distribute_begin"), types, ValueRange{input},
       attrs);
-  input.replaceAllUsesExcept(begin.getOutput(), begin);
+  input.replaceAllUsesExcept(begin.getOutputs()[0], begin);
 
   // 3. Insert DistributionEndOp
   Value output;
@@ -69,7 +180,7 @@ void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,
   auto end = rewriter.create<tpu::DistributionEndOp>(
       module::getLocLike(output, "distribute_end"), output.getType(),
       ValueRange{output}, attrs);
-  output.replaceAllUsesExcept(end.getOutput(), end);
+  output.replaceAllUsesExcept(end.getOutputs()[0], end);
 }
 
 bool isLargeMatMul(Operation *op) {
@@ -111,7 +222,6 @@ void eraseForward(PatternRewriter &rewriter, Operation *op) {
       eraseForward(rewriter, u);
     }
   }
-  rewriter.eraseOp(op);
 }
 
 // ===================================
@@ -130,20 +240,53 @@ public:
       return failure();
     }
     auto next_op = *op->user_begin();
-    switch (op.getPattern()) {
-    case tpu::DistributionPattern::MatMulSliceMerge:
-      sliceMergeSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);
-      sliceMergeSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op, num_devices);
-      break;
-    case tpu::DistributionPattern::MatMulSliceMerge2:
-      sliceMerge2Split(rewriter, op, num_devices);
-      break;
-    case tpu::DistributionPattern::MatMulTopK:
-      topKSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);
-      topKSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op, num_devices);
-      break;
-    default:
-      return failure();
+    auto mode = module::getMode();
+    if (mode == module::Mode::F16 || mode == module::Mode::BF16) {
+      switch (op.getPattern()) {
+      case tpu::DistributionPattern::MatMulSliceMerge:
+        sliceMergeSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op,
+                        num_devices);
+        break;
+      case tpu::DistributionPattern::MatMulSliceMerge2:
+        sliceMerge2Split(rewriter, op, num_devices);
+        break;
+      case tpu::DistributionPattern::AttentionSliceMerge2:
+        sliceAttentionMerge2Split(rewriter, op, num_devices);
+        break;
+      case tpu::DistributionPattern::MatMulSliceMerge3:
+        sliceMerge3Split(rewriter, op, num_devices);
+        break;
+      case tpu::DistributionPattern::MatMulTopK:
+        topKSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);
+        break;
+      default:
+        return failure();
+      }
+    } else if (mode == module::Mode::W8F16 || mode == module::Mode::W8BF16 ||
+               mode == module::Mode::W4F16 || mode == module::Mode::W4BF16) {
+      switch (op.getPattern()) {
+      case tpu::DistributionPattern::MatMulSliceMerge:
+        sliceMergeSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op,
+                        num_devices);
+        break;
+      case tpu::DistributionPattern::MatMulSliceMerge2:
+        sliceMerge2Split(rewriter, op, num_devices);
+        break;
+      case tpu::DistributionPattern::AttentionSliceMerge2:
+        sliceAttentionMerge2Split(rewriter, op, num_devices);
+        break;
+      case tpu::DistributionPattern::MatMulSliceMerge3:
+        sliceMerge3Split(rewriter, op, num_devices);
+        break;
+      case tpu::DistributionPattern::MatMulTopK:
+        topKSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op,
+                  num_devices);
+        break;
+      default:
+        return failure();
+      }
+    } else {
+      llvm_unreachable("Not supported quantization mode");
     }
     op.setDone(true);
     return success();
@@ -166,18 +309,27 @@ public:
     module::setDeviceNum(num_device);
     auto mOp = getOperation();
     auto mainFunc = module::getMainFuncOp(mOp);
+    auto mode = module::getMode();
     if (num_device > 1) {
-      applyPatternOnce<MatMulSliceMerge<tpu::MatMulOp>>(mOp);
-      applyPatternOnce<MatMulSliceMerge<tpu::A16MatMulOp>>(mOp);
-      applyPatternOnce<MatMulSliceMerge2<tpu::MatMulOp>>(mOp);
-      applyPatternOnce<MatMulSliceMerge2<tpu::A16MatMulOp>>(mOp);
-      applyPatternOnce<MatMulTopK<tpu::MatMulOp>>(mOp);
-      applyPatternOnce<MatMulTopK<tpu::A16MatMulOp>>(mOp);
-      applyPatternOnce<DoDistributePattern>(mOp);
+      if (mode == module::Mode::F16 || mode == module::Mode::BF16) {
+        applyPatternOnce<MatMulSliceMerge3>(mOp);
+        applyPatternOnce<MatMulSliceMerge<tpu::MatMulOp>>(mOp);
+        applyPatternOnce<MatMulSliceMerge2<tpu::MatMulOp>>(mOp);
+        applyPatternOnce<MatMulTopK<tpu::MatMulOp>>(mOp);
+        applyPatternOnce<AttentionSliceMerge2<tpu::MatMulOp>>(mOp);
+      } else if (mode == module::Mode::W8F16 || mode == module::Mode::W8BF16 ||
+                 mode == module::Mode::W4F16 || mode == module::Mode::W4BF16) {
+        applyPatternOnce<MatMulSliceMerge<tpu::A16MatMulOp>>(mOp);
+        applyPatternOnce<MatMulSliceMerge2<tpu::A16MatMulOp>>(mOp);
+        applyPatternOnce<MatMulTopK<tpu::A16MatMulOp>>(mOp);
+        applyPatternOnce<AttentionSliceMerge2<tpu::A16MatMulOp>>(mOp);
+      } else {
+        llvm_unreachable("Not supported quantization mode");
+      }
       if (mainFunc.getOps<tpu::DistributionBeginOp>().empty()) {
-        // no pattern find
+        // no pattern find, copy the whole modules num_device times
         num_device = 1;
-        module::setDeviceNum(num_device);
+        // module::setDeviceNum(num_device);
       } else {
         applyPatternOnce<DoDistributePattern>(mOp);
       }
@@ -188,6 +340,26 @@ public:
 private:
   ModuleOp mOp;
 };
+
+void dump(Operation *op) {
+  Value res;
+  if (op->getNumResults() > 0) {
+    res = op->getResult(0);
+    op->dump();
+  }
+
+  std::vector<Value> opds(op->operand_begin(), op->operand_end());
+  printf("### It has %ld operands.\n", opds.size());
+  for (auto opd : opds) {
+    opd.dump();
+  }
+
+  std::vector<Operation *> users(op->user_begin(), op->user_end());
+  printf("### It has %ld users.\n", users.size());
+  for (auto user : users) {
+    user->dump();
+  }
+}
 
 std::unique_ptr<OperationPass<ModuleOp>> createDistributePass() {
   return std::make_unique<DistributePass>();

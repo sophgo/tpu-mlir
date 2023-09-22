@@ -176,13 +176,39 @@ def Tpu_DistributionPattern: I32EnumAttr<"DistributionPattern",
       I32EnumAttrCase<"MatMulMerge", 2>,
       I32EnumAttrCase<"MatMulSliceMerge", 3>,
       I32EnumAttrCase<"MatMulTopK", 4>,
-      I32EnumAttrCase<"MatMulSliceMerge2", 5>
+      I32EnumAttrCase<"MatMulSliceMerge2", 5>,
+      I32EnumAttrCase<"MatMulSliceMerge3", 6>,
+      I32EnumAttrCase<"AttentionSliceMerge2", 7>
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
 }
 def Tpu_DistributionPatternAttr : EnumAttr<Tpu_Dialect, Tpu_DistributionPattern, "distribution_pattern">;
 
+// def Tpu_DistributionBeginMethod: I32EnumAttr<"DistributionBeginMethod",
+//     "Begin method of distribution",
+//     [
+//       I32EnumAttrCase<"BeginFromCopy", 0>,
+//       I32EnumAttrCase<"BeginFromSplit", 1>
+//     ]> {
+//   let genSpecializedAttr = 0;
+//   let cppNamespace = "::tpu_mlir::tpu";
+// }
+// def Tpu_DistributionBeginMethodAttr : EnumAttr<Tpu_Dialect, Tpu_DistributionBeginMethod, "begin_method">;
+// def Tpu_DistributionBeginMethodArrayAttr : TypedArrayAttrBase<Tpu_DistributionBeginMethodAttr, "Array of BeginMethod">;
+//
+// def Tpu_DistributionEndMethod: I32EnumAttr<"DistributionEndMethod",
+//     "End method of distribution",
+//     [
+//       I32EnumAttrCase<"EndToSum", 0>,
+//       I32EnumAttrCase<"EndToTopK", 1>,
+//       I32EnumAttrCase<"EndToConcat", 2>
+//     ]> {
+//   let genSpecializedAttr = 0;
+//   let cppNamespace = "::tpu_mlir::tpu";
+// }
+// def Tpu_DistributionEndMethodAttr : EnumAttr<Tpu_Dialect, Tpu_DistributionEndMethod, "end_method">;
+// def Tpu_DistributionEndMethodArrayAttr : TypedArrayAttrBase<Tpu_DistributionEndMethodAttr, "Array of EndMethod">;
 
 def Tpu_LutBF16Mode : I32EnumAttr<"LutBF16Mode",
     "bf16 look up table mode",
@@ -1442,9 +1468,13 @@ def Tpu_DistributionBeginOp:Tpu_BaseOp<"DistributionBegin"> {
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
     Tpu_DistributionPatternAttr:$pattern,
+    // TypedArrayAttrBase<Tpu_DistributionBeginMethodAttr, "Array of BeginMethod">:$begin_methods,
+    I64ArrayAttr:$begin_methods,
     DefaultValuedAttr<BoolAttr, "false">:$done
+
   );
-  let results = (outs AnyRankedTensor:$output);
+  let results = (outs
+   Variadic<AnyRankedTensor>:$outputs);
 }
 
 def Tpu_DistributionEndOp:Tpu_BaseOp<"DistributionEnd"> {
@@ -1454,9 +1484,12 @@ def Tpu_DistributionEndOp:Tpu_BaseOp<"DistributionEnd"> {
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
-    Tpu_DistributionPatternAttr:$pattern
+    Tpu_DistributionPatternAttr:$pattern,
+    // TypedArrayAttrBase<Tpu_DistributionEndMethodAttr, "Array of EndMethod">:$end_methods
+    I64ArrayAttr:$end_methods
   );
-  let results = (outs AnyRankedTensor:$output);
+  let results = (outs
+   Variadic<AnyRankedTensor>:$outputs);
 }
 
 def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp, ParallelOp, IfOp, LoopOp">]> {

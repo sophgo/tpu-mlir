@@ -34,8 +34,8 @@ public:
   int32_t get_cur_net_idx() { return cur_net_idx; }
   int64_t get_tensor_id(Value value);
 
-  void set_profile_start();
-  void set_profile_end();
+  void set_profile_start(int subnet_id);
+  void set_profile_end(int subnet_id);
   FILE *get_fp_profile() { return fp_profile[cur_net_idx]; }
 
 private:
