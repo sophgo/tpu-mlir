@@ -149,8 +149,8 @@ void moveUnaryPermute(tpu::PermuteOp &op, Operation *nextOp,
         module::getName(op.getOperation()).str() + "_" + oldNextOpName));
     op->setLoc(loc);
   });
-  nextOp->dump();
-  op.dump();
+  // nextOp->dump();
+  // op.dump();
   return;
 }
 

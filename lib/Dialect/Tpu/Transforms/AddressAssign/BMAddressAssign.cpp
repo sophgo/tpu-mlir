@@ -155,6 +155,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
     Operation *op = (Operation *)v_info.op;
     if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
       auto in0 = concatOp.getInputs()[0];
+      in0 = module::getOriValue(in0);
       if (auto rop = dyn_cast<tpu::ReshapeOp>(in0.getDefiningOp())) {
         in0 = rop.getInput();
       }
@@ -163,6 +164,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &m, bool reuse_addr) {
       int64_t offset = module::getBytes(in0);
       for (uint32_t i = 1; i < concatOp.getInputs().size(); i++) {
         auto input = concatOp.getInputs()[i];
+        input = module::getOriValue(input);
         if (auto rop = dyn_cast<tpu::ReshapeOp>(input.getDefiningOp())) {
           module::setAddress(input, addr + offset);
           input = rop.getInput();
@@ -559,9 +561,10 @@ BMAddressAssign::getConcatOpLive(Operation *op,
   live[0] = liveRange[op_info].start;
   live[1] = liveRange[op_info].end;
   for (uint32_t i = 0; i < op->getNumOperands(); i++) {
-    auto operand = op->getOperand(i);
-    auto opd = operand.getDefiningOp();
-    ValueInfo v_info(opd, operand.cast<OpResult>().getResultNumber());
+    auto operand = module::getOriValue(op->getOperand(i));
+    auto pre_op = operand.getDefiningOp();
+    int idx = operand.cast<OpResult>().getResultNumber();
+    ValueInfo v_info(pre_op, idx);
     assert(liveRange.find(v_info) != liveRange.end());
     live[0] = std::min(liveRange[v_info].start, live[0]);
     live[1] = std::max(liveRange[v_info].end, live[1]);

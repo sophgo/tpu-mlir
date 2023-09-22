@@ -14,6 +14,7 @@ from onnx import TensorProto
 from utils.mlir_parser import MlirParser
 import numpy as np
 from mlir.dialects import quant
+import mlir
 
 
 def type_map(element_type):
@@ -84,7 +85,9 @@ def create_input_tvis(parser):
     tvis = []
     for op in ops:
         if op.type == 'top.Input':
-            tvi = helper.make_tensor_value_info(op.name, TensorProto.FLOAT, op.shape)
+            shape_type = mlir.ir.ShapedType(op.op.results[0].type)
+            mlir_type = shape_type.element_type
+            tvi = helper.make_tensor_value_info(op.name, type_map(mlir_type), op.shape)
             tvis.append(tvi)
     return tvis
 
@@ -94,9 +97,12 @@ def create_output_tvis(parser):
     outputs = parser.get_output_op_names_n_shapes()
     tvis = []
     for op in ops:
-        if op.name in outputs:
-            tvi = helper.make_tensor_value_info(op.name, TensorProto.FLOAT, outputs[op.name])
-            tvis.append(tvi)
+        for i, name in enumerate(op.outputs):
+            if name in outputs:
+                shape_type = mlir.ir.ShapedType(op.op.results[i].type)
+                mlir_type = shape_type.element_type
+                tvi = helper.make_tensor_value_info(name, type_map(mlir_type), outputs[name])
+                tvis.append(tvi)
     return tvis
 
 

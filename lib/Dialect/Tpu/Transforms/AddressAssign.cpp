@@ -46,11 +46,19 @@ public:
         return failure();
       }
       if (in.hasOneUse() == false) {
-        return failure();
+        int times = 0;
+        for (auto v : op.getInputs()) {
+          if (in == v) {
+            times++;
+          }
+        }
+        if (times > 1) {
+          return failure();
+        }
       }
       auto in_op = in.getDefiningOp();
       if (in_op == nullptr) {
-        return failure();
+        // return failure();
       } else if (isa<tpu::ConcatOp>(in_op)) {
         return failure();
       } else if (auto rshape = dyn_cast<tpu::ReshapeOp>(in_op)) {

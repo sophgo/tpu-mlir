@@ -576,10 +576,10 @@ public:
     dfs();
 
     /*  1. move the WeightOp and NoneOp's position between subnets
-           and get the input and output of subnet 
+           and get the input and output of subnet
 
         2. if subnet's output in host -> host2device  and  device2host (in next subnet)*/
-       
+
     std::vector<Operation *> to_move_ops;
     for (int i = 0; i < subnet_infos.size(); i++) {
       bool add_h2d_flag = false;
@@ -603,12 +603,12 @@ public:
                     for (auto idx = 0; idx < user->getNumOperands(); idx++) {
                       // insert host2device
                       if (user->getOperand(idx) == output_op_p->getResult(k)) {
-                        
+
                         d2hval = insert_device2host(user->getOperand(idx),
                                                     user->getOperand(idx).getType(),user);
                         user->setOperand(idx, d2hval);
                         auto d2hop = d2hval.getDefiningOp();
-                        
+
                         h2dval = insert_host2device(d2hop->getOperand(0),
                                                     d2hop->getOperand(0).getType());
                         d2hop->setOperand(0, h2dval);
