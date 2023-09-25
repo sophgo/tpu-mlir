@@ -37,9 +37,6 @@ declare_mlir_python_extension(TPUMLIRPythonExtension.RegisterEverything
   ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tpu_mlir"
   SOURCES
     RegisterEverything.cpp
-  PRIVATE_LINK_LIBS
-    LLVMSupport
-    TPUMLIRCAPI
   EMBED_CAPI_LINK_LIBS
     TPUMLIRCAPI
 )
