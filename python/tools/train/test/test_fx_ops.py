@@ -29,7 +29,7 @@ if __name__ == "__main__":
                         help="submodel")
     parser.add_argument("--cmp", action='store_true',
                         help="enable cmp")
-    parser.add_argument("--check_module", action='store_true',
+    parser.add_argument("--check_bmodel", action='store_true',
                         help="check the whole module")
 
     args = parser.parse_args()
@@ -49,15 +49,16 @@ if __name__ == "__main__":
         else:
             example_inputs.append(torch.randn(eval(items[1])))
 
-    if args.check_module:
+    if args.check_bmodel:
         # ref_outs = mod(*example_inputs)
+        #mod.graph.print_tabular()
         # c = fx2mlir(f'mod_{args.submodel}', args)
         # tpu_mlir_mod = c.convert(mod)
         # outs = tpu_mlir_mod(*example_inputs)
         # cosine_similarity(ref_outs, outs)
-        bmodel = f'tpu_out_{args.submodel}.mlir.bmodel'
+        path = args.submodel.split('_')[0]
+        bmodel = os.path.join(path, f'tpu_out_{args.submodel}.mlir.bmodel')
         from tools.train.TpuMlirModule import TpuMlirModule
-        #mod.graph.print_tabular()
         mlir_mod = TpuMlirModule(bmodel)
         tmp = mlir_mod(*example_inputs)
         exit(0)

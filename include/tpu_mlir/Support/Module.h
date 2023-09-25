@@ -72,6 +72,8 @@ void setMode(Mode mode);
 State getState();
 void setState(State state);
 bool isState(State state);
+bool isTrain();
+void setTrain(bool is_train);
 void setInputs(ArrayRef<StringRef> inputs);
 std::shared_ptr<std::vector<StringRef>> getInputs();
 void setOutputs(ArrayRef<StringRef> outputs);

@@ -108,7 +108,7 @@ def save_fxgraph_dot(name, module):
             f.write(g.get_dot_graph().create_svg())
 
 def tpu_mlir_compiler(fx_g, example_inputs):
-    time_str = time.time()
+    time_str = time.strftime("time%Y%m%d%H%M%S", time.localtime())
     os.system(f'rm -rf fx_graph_dumped*;mkdir -p {time_str}')
     print('run tpu_mlir_compiler, original graph:')
     fx_g.graph.print_tabular()
