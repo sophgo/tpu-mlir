@@ -138,8 +138,7 @@ void top::DeconvOp::shape_inference() {
   llvm::SmallVector<int64_t> out_shape;
   out_shape.push_back(input_shape[0]); // batch size
 
-
-  if (module::isWeight(getOperand(1))) {
+  if (module::isWeight(getOperand(1)) || module::isTrain()) {
     // WeightOp, weight reorder will be finished in origin.mlir generation phase
     // oc, ic
     out_shape.push_back(filter_shape[0] * getGroup());

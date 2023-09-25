@@ -487,7 +487,7 @@ class fx2mlir(object):
     def create_input_op(self, node, func_arg):
         init_args = {}
         output_shapes = self.get_output_shapes(node)
-        if 'tensor_meta' in node.meta and node.meta['tensor_meta'].requires_grad:
+        if not self.bwd and 'tensor_meta' in node.meta and node.meta['tensor_meta'].requires_grad:
             init_args["loc"] = self.get_loc(f'{node.name}_weight_or_param')
             init_args["ip"] = self.insert_point
             init_args["input"] = func_arg

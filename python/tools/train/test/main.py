@@ -76,8 +76,8 @@ if __name__ == '__main__':
         # )
         # print('loss_d:', loss_d.size(), loss_d.device)
 
-        loss_d.backward() #for TransformerBlocks
-        # loss_d[0,0].backward() #for resnet18
+        # loss_d.backward() #for TransformerBlocks
+        loss_d[0,0].backward() #for resnet18
         # optimizer.step()
         # exit(0)
         # with autocast(): #tpu device
