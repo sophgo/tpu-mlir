@@ -301,7 +301,7 @@ if __name__ == '__main__':
                         help="merge weights into one weight binary with previous generated cvimodel")
 
     # yapf: enable
-    args = parser.parse_args()
+    args = parser.parse_args() #namespace:所有参数名：参数值
     if (args.w8a16_linear):
         assert (args.quantize == "F16" and "W8A16Linear only support F16 quantize mode for now.")
     if args.customization_format.startswith("YUV"):

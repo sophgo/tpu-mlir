@@ -153,7 +153,7 @@ class MlirParser:
         self.ctx.allow_unregistered_dialects = True
         self.module = mlir.ir.Module.parse(context, self.ctx)
         self.body = self.module.body.operations[0].regions[0].blocks[0]
-        self.attrs = Operation.attrs(self.module.operation)
+        self.attrs = Operation.attrs(self.module.operation) #字典
         self.module_name = eval(self.attrs['sym_name'])
         self.module_state = eval(self.attrs['module.state'])
         self.module_weight_file = eval(self.attrs['module.weight_file'])
@@ -162,7 +162,7 @@ class MlirParser:
         self.return_op = None
         self._none_type = mlir.ir.Type.parse("none", self.ctx)
 
-        cache_map = {} #用字典创建算子连接图
+        cache_map = {} #用字典创建算子连接图，如loc1 = loc("images")
         for i in range(len(self.body.operations)):
             prev_op = self.body.operations[i]
             if Operation.type(prev_op) not in [
