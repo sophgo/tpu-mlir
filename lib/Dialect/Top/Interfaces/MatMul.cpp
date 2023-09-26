@@ -47,14 +47,27 @@ matmul_attr_t top::MatMulOp::parseParam() {
   assert(p.N == o_s[o_dims - 1]);
   p.K = p.right_transpose ? b_s[b_dims - 1] : b_s[b_dims - 2];
   p.batch = 1;
+  int b_temp = 1;
   for (int i = 0; i < b_dims - 2; i++) {
     p.batch *= b_s[i];
   }
-  if (p.batch > 1 || o_dims <= 2) {
-    p.M = o_s[o_dims - 2];
+  for (int i = 1; i < b_dims - 2; i++) {
+    b_temp *= b_s[i];
+  }
+  if (a_s[0] == b_s[0] && b_temp == 1 && b_dims > 2){
+    p.batch = b_s[0];
+    int a_temp = 1;
+    for(int i = 1; i < a_dims - 2; i++){
+      a_temp *= a_s[i];
+    }
+    p.M = a_s[o_dims - 2] * a_temp;
   } else {
-    p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
-                          std::multiplies<int64_t>());
+    if (p.batch > 1 || o_dims <= 2) {
+      p.M = o_s[o_dims - 2];
+    } else {
+      p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
+                            std::multiplies<int64_t>());
+    }
   }
   return p;
 }

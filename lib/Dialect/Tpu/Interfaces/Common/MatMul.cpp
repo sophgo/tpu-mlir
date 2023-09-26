@@ -119,6 +119,18 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
       p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
                             std::multiplies<int64_t>());
     }
+    int b_temp = 1;
+    for (int i = 1; i < b_dims - 2; i++) {
+      b_temp *= b_s[i];
+    }
+    if (a_s[0] == b_s[0] && b_temp == 1 && b_dims > 2){
+      p.batch = b_s[0];
+      int a_temp = 1;
+      for(int i = 1; i < a_dims - 2; i++){
+        a_temp *= a_s[i];
+      }
+      p.M = a_s[o_dims - 2] * a_temp;
+    }
   }
   return p;
 }
