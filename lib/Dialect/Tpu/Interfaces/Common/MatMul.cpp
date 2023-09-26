@@ -380,3 +380,35 @@ void tpu::MatMulOp::assign_fw_param(void *param) {
            sizeof(fw_batch_matmul_layer_param_t));
   }
 }
+
+ArrayAttr tpu::MatMulOp::getIndexingMaps() {
+  MLIRContext *context = getContext();
+  if (module::isWeight(getRight()) &&
+      module::getStorageType(getInput()).isInteger(4))
+    return Builder(getContext()).getAffineMapArrayAttr({});
+
+  auto dims = module::getShape(getInput()).size();
+  bool has_ts = getLeftTranspose() || getOutputTranspose();
+  int dims_parallel = dims - 1 - has_ts;
+  if (dims_parallel == 0)
+    return Builder(getContext()).getAffineMapArrayAttr({});
+
+  AffineMap identityMap =
+      AffineMap::getMultiDimIdentityMap(dims_parallel, context);
+
+  AffineMap emptyMap = AffineMap::get(dims_parallel, 0, context);
+  AffineMap rightMatrixMap = AffineMap::get(
+      dims_parallel, 0, identityMap.getResults().slice(0, dims_parallel - 1),
+      context);
+
+  SmallVector<AffineMap> indexingMaps{identityMap, rightMatrixMap};
+
+  for (int i = 2, n = getNumOperands(); i < n; ++i) {
+    if (module::isNone(getOperand(i)))
+      indexingMaps.push_back(emptyMap);
+    else
+      indexingMaps.push_back(rightMatrixMap);
+  }
+  indexingMaps.push_back(identityMap);
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+}

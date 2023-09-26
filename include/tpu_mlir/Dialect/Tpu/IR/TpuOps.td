@@ -945,6 +945,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "matmul operator";
 
@@ -3133,4 +3134,3 @@ def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight">{
   }];
 }
 #endif // TPU_OPS
-
