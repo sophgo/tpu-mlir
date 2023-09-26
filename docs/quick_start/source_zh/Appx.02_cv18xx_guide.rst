@@ -801,7 +801,7 @@ FAQ
 
     1) 若指定 ``--fuse_preprocess`` 参数,cvimodel的input类型为uint8;
 
-    2) 若指定 ``--quant_input`` , 一般情况下,bf16_cvimoel的input类型为fp32,int8_cvimodel的input类型为int8;
+    2) 若指定 ``--quant_input`` , 一般情况下,bf16_cvimoel的input类型为bf16,int8_cvimodel的input类型为int8;
 
     3) input类型也可以通过model_tool --info xxx.cvimodel查看
 
