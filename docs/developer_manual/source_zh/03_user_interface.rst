@@ -394,9 +394,18 @@ model_deploy.py
    * - quantize
      - 是
      - 指定默认量化类型, 支持F32/F16/BF16/INT8
+   * - quant_input
+     - 否
+     - 指定输入数据类型是否与量化类型一致，例如int8模型指定quant_input，那么输入数据类型也为int8，若不指定则为F32
+   * - quant_output
+     - 否
+     - 指定输出数据类型是否与量化类型一致，例如int8模型指定quant_input，那么输出入数据类型也为int8，若不指定则为F32
    * - quantize_table
      - 否
      - 指定混精度量化表路径, 如果没有指定则按quantize类型量化; 否则优先按量化表量化
+   * - fuse_preprocess
+     - 否
+     - 指定是否将预处理融合到模型中，如果指定了此参数，则模型输入为uint8类型，直接输入resize后的原图即可
    * - calibration_table
      - 否
      - 指定校准表路径, 当存在INT8量化的时候需要校准表
