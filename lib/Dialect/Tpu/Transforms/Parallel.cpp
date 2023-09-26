@@ -215,7 +215,10 @@ bool forAll(IndexingMapsInterface op, int num_core = 1) {
     SmallVector<Value, 4> operands;
     for (auto [index, spOp] : llvm::enumerate(splitOps)) {
       ArrayRef stride(operandsStride[index]);
-      operands.push_back(spOp->getResult(getValidIndex(dims, stride)));
+      if (spOp)
+        operands.push_back(spOp->getResult(getValidIndex(dims, stride)));
+      else // inputs
+        operands.push_back(op->getOperand(index));
     }
 
     SmallVector<Type, 2> resultsType;
