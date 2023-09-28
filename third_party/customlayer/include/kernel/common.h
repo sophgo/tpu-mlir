@@ -129,7 +129,7 @@ typedef struct inst_profile {
   bool b_gdma_use_l2;
 } INST_PROFILE;
 
-//bm1686 also use it
+//bm1688 also use it
 #define CONFIG_MAX_CDMA_NUM 10
 typedef struct cmd_id_node {
   unsigned int bd_cmd_id;

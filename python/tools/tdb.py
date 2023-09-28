@@ -384,7 +384,7 @@ class Tdb(cmd.Cmd):
         coeff = self.module.functions[0].regions[0].data
         if coeff:
             address = coeff.address
-            if self.context.device.name == "BM1686":
+            if self.context.device.name == "BM1688":
                 address = self.context.opparam.MemRef.fix_tag(
                     address, self.context.base_addr)
             addr = address - self.context.memmap[MType.G][0]

@@ -67,7 +67,7 @@ def opparam_converter_regitstry(sheet_name):
     return add_converter
 
 
-# TPU1686/bm1684x/spec/include/memmap.h
+# TPU1688/bm1684x/spec/include/memmap.h
 memmap = {
     MType.R: (int("0x8000000", 16), int("0x9000000", 16)),  # lmen_base 16M
     MType.S: (int("0x9000000", 16), int("0x9004000", 16)),  # static memory 16KB

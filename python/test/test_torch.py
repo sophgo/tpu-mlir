@@ -40,7 +40,7 @@ class TORCH_IR_TESTER(object):
             ##################################
             # Torch Test Case, Alphabetically
             ##################################
-            # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
             "Abs":              (self.test_Abs,               N, Y, Y, Y),
             "Activation":       (self.test_Activation,        Y, Y, Y, Y),
             "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, N, Y, Y, Y),
@@ -192,16 +192,16 @@ class TORCH_IR_TESTER(object):
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1686_support, cv183x_support = self.test_cases[case]
+        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support = self.test_cases[case]
         if self.is_cv18xx and cv183x_support:
             return True
         if self.chip == "bm1684" and bm1684_support:
             return True
         if self.chip == "bm1684x" and bm1684x_support:
             return True
-        if self.chip == "bm1686" and bm1686_support:
+        if self.chip == "bm1688" and bm1688_support:
             return True
-        if self.chip == "mars3" and bm1686_support:
+        if self.chip == "mars3" and bm1688_support:
             return True
         return False
 
@@ -775,7 +775,7 @@ class TORCH_IR_TESTER(object):
     # ------------
     def test_Div(self):
         """Div"""
-        if self.chip != "bm1686":
+        if self.chip != "bm1688":
             self._test_binary(torch.div, (1, 3, 32, 31), (1, 3, 32, 1), min=0)
             self._test_binary(torch.div, (32, 32), (32), min=0)
         self._test_binary(torch.div, (2, 32, 16), (2, 1, 16), min=0)
@@ -2827,7 +2827,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1686', 'cv183x', 'mars3'], help="chip platform name")
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'mars3'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")

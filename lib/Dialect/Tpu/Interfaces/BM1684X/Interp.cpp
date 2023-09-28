@@ -21,7 +21,7 @@ void tpu::InterpOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
   interp_global_param_t param = {0};
   param.if_getting_buffer_size = false;
-  if(module::isBM1686()){
+  if(module::isBM1688()){
     param.spec.buffer_addr = module::getAddress(getBuffer());
   } else {
     param.spec.buffer_addr = BM168x::L2_SRAM_START_ADDR;
@@ -133,7 +133,7 @@ int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer) return sizeof(interp_global_param_t);
   interp_global_param_t param = {0};
   param.if_getting_buffer_size = false;
-  if(module::isBM1686()){
+  if(module::isBM1688()){
     param.spec.buffer_addr = module::getAddress(getBuffer());
   } else {
     param.spec.buffer_addr = BM168x::L2_SRAM_START_ADDR;

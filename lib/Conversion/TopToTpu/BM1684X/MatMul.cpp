@@ -376,7 +376,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       // requant
       std::vector<int32_t> quant;
       int64_t quant_w_size = 0;
-      if (module::isBM1686()) {
+      if (module::isBM1688()) {
         quant_w_size = 2;
         quant.resize(quant_w_size, 0);
         quant[i * 2] = scale;
@@ -426,7 +426,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
 }
 void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::MatMulOp op) const {
-  bool bias_use_fp32 = module::isBM1686();
+  bool bias_use_fp32 = module::isBM1688();
   auto newType = getQuantBF16Type(op->getResult(0));
   std::vector<Value> operands;
   for (int i = 0; i < op->getNumOperands(); ++i) {
@@ -464,7 +464,7 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
-  bool bias_use_fp32 = module::isBM1686();
+  bool bias_use_fp32 = module::isBM1688();
   auto newType = getQuantF16Type(op->getResult(0));
   std::vector<Value> operands;
   for (int i = 0; i < op->getNumOperands(); ++i) {

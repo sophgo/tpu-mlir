@@ -420,7 +420,7 @@ class BM1684:
         return []
 
 
-class BM1686:
+class BM1688:
     lib_name = "libcmodel_1686.so"
     ENGINE_GDMA = 1
     TAG_WEIGHT = 1

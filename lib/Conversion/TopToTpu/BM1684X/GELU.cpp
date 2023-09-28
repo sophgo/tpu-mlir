@@ -36,7 +36,7 @@ void GELULowering::LoweringINT8(PatternRewriter &rewriter, top::GELUOp op,
 
 void GELULowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::GELUOp op) const {
-  if (module::isBM1686()) {
+  if (module::isBM1688()) {
     auto op_ = op.getOperation();
     op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                   tpu::ActiveMode::GELU));
@@ -48,7 +48,7 @@ void GELULowering::LoweringBF16(PatternRewriter &rewriter,
 
 void GELULowering::LoweringF16(PatternRewriter &rewriter,
                                top::GELUOp op) const {
-  if (module::isBM1686()) {
+  if (module::isBM1688()) {
     auto op_ = op.getOperation();
     op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                   tpu::ActiveMode::GELU));

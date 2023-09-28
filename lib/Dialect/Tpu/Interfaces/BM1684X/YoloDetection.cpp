@@ -158,7 +158,7 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
     for (uint32_t i = 0; i < anchors->size(); i++) {
       param.spec.bias[i] = (float)(anchors->at(i));
     }
-    param.buffer_addr = module::isBM1686() ? module::getAddress(getBuffer()) : 0;
+    param.buffer_addr = module::isBM1688() ? module::getAddress(getBuffer()) : 0;
     return BM168x::dynamic_spec_to_buffer(buffer, param);
   }
 }

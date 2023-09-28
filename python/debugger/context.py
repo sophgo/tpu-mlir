@@ -20,7 +20,7 @@ except:
 class Device(Enum):
     BM1684X = "BM1684X"
     BM1684 = "BM1684"
-    BM1686 = "BM1686"
+    BM1688 = "BM1688"
 
 
 class Context:
@@ -50,16 +50,16 @@ class Context:
             self.opdef = opdef_1684
             self.opparam = opparam_1684
             self.base_addr = None
-        elif self.device == Device.BM1686:
+        elif self.device == Device.BM1688:
             try:
-                from . import opdef_1686
-                from . import opparam_1686
+                from . import opdef_1688
+                from . import opparam_1688
             except:
-                import opdef_1686
-                import opparam_1686
+                import opdef_1688
+                import opparam_1688
 
-            self.opdef = opdef_1686
-            self.opparam = opparam_1686
+            self.opdef = opdef_1688
+            self.opparam = opparam_1688
             self.base_addr = [
                 self.opparam.memmap[self.opparam.MType.G][0] for _ in range(2)]
 
@@ -101,8 +101,8 @@ class Context:
             _cmodel = cmodel.BM1684X(memory_size)
         elif self.device == Device.BM1684:
             _cmodel = cmodel.BM1684(memory_size)
-        elif self.device == Device.BM1686:
-            _cmodel = cmodel.BM1686(memory_size, self.base_addr)
+        elif self.device == Device.BM1688:
+            _cmodel = cmodel.BM1688(memory_size, self.base_addr)
         else:
             raise ValueError(f"device: {self.device} is not supported.")
 

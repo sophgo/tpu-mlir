@@ -175,7 +175,7 @@
      - 输入校准表
    * - chip
      - 是
-     - 指定模型将要用到的平台, 支持bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - fp_type
      - 否
      - 指定混精度使用的float类型, 支持auto,F16,F32,BF16，默认为auto，表示由程序内部自动选择
@@ -472,7 +472,7 @@ INT8对称量化模型：
      - 输入校准表
    * - chip
      - 是
-     - 指定模型将要用到的平台, 支持bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - fp_type
      - 否
      - 指定混精度使用的float类型, 支持auto,F16,F32,BF16，默认为auto，表示由程序内部自动选择
@@ -670,7 +670,7 @@ INT8对称量化模型：
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
        --model yolov5s_1684x_mix.bmodel
- 
+
 
 验证FP32模型和混精度模型的精度
 model-zoo中有对目标检测模型进行精度验证的程序yolo，可以在mlir.config.yaml中使用harness字段调用yolo：
@@ -733,7 +733,7 @@ INT8模型mAP为： 34.70%
      - 指定起点和终点之间的层不执行量化，起点和终点之间用:间隔，多个block之间用空格间隔
    * - chip
      - 是
-     - 指定模型将要用到的平台, 支持bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - fp_type
      - 否
      - 指定混精度使用的float类型, 支持auto,F16,F32,BF16，默认为auto，表示由程序内部自动选择

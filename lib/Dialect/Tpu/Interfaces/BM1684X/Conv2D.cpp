@@ -91,7 +91,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   int ic_per_npu = ceiling_func(p.ic / p.groups, BM168x::NPU_NUM);
   int int32_size = out_lmem_bytes * sizeof(int32_t) / out_type_len;
   int use_3ic_optimize = getUse_3icOptimize();
-  if (module::isBM1686() && getCoeffMerged()) {
+  if (module::isBM1688() && getCoeffMerged()) {
     if (module::isUniformQuantized(getInput()) && p.kernel_zp != 0)
       return int32_size * 2;
     if(use_3ic_optimize == 0)

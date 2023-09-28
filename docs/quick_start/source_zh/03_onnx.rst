@@ -182,7 +182,7 @@ MLIR转F16模型
      - 指定默认量化类型, 支持F32/F16/BF16/INT8
    * - chip
      - 是
-     - 指定模型将要用到的平台, 支持bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+     - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - calibration_table
      - 否
      - 指定校准表路径, 当存在INT8量化的时候需要校准表
@@ -209,7 +209,7 @@ MLIR转F16模型
      - 指定输出的model文件名称和路径
    * - num_core
      - 否
-     - 当target选择为bm1686或cv186x时,用于选择并行计算的tpu核心数量,默认设置为1个tpu核心
+     - 当target选择为bm1688或cv186x时,用于选择并行计算的tpu核心数量,默认设置为1个tpu核心
    * - skip_validation
      - 否
      - 跳过验证bmodel正确性环节，用于提升模型部署的效率，默认执行bmodel验证。
