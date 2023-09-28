@@ -2306,6 +2306,10 @@ class OnnxConverter(BaseConverter):
         batch_indices = self.getOp(onnx_node.inputs[2])
         output_name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         mode = onnx_node.attrs.get("mode", "Avg")
+        if  isinstance(mode, bytes):
+            mode_str = str(mode,'utf-8')
+            if  mode_str == "avg" or mode_str == "max":
+                mode = mode_str.capitalize()
         output_height = onnx_node.attrs.get("output_height", 1)
         output_width = onnx_node.attrs.get("output_width", 1)
         sampling_ratio = onnx_node.attrs.get("sampling_ratio", 0)
