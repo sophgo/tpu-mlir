@@ -83,13 +83,15 @@ static void LoweringArg(PatternRewriter &rewriter, top::ArgOp &op,
   if (with_conf) {
     cpu_result_types.emplace_back(RankedTensorType::get(
         module::getShape(op.getValues()), rewriter.getF32Type()));
-
+    auto cpu_op = rewriter.create<tpu::GenericCpuOp>(
+        op.getLoc(), cpu_result_types, operands, attrs);
+        rewriter.replaceAllUsesWith(op.getResults(), cpu_op.getOutputs());
   } else {
     auto cpu_op = rewriter.create<tpu::GenericCpuOp>(
         op.getIndices().getLoc(), cpu_result_types, operands, attrs);
     rewriter.replaceAllUsesWith(op.getIndices(), cpu_op.getOutputs()[0]);
-    rewriter.eraseOp(op);
   }
+  rewriter.eraseOp(op);
   return;
 }
 

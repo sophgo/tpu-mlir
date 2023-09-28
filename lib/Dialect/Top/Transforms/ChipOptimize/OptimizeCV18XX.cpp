@@ -1266,10 +1266,9 @@ public:
         "axis", rewriter.getSI32IntegerAttr(new_shape.size() - 1)));
     attrs.emplace_back(rewriter.getNamedAttr("normalized_shape",
                                              rewriter.getI64ArrayAttr({ic})));
-    auto outTypes = TypeRange{RankedTensorType::get(new_shape, outEltType),
-                              rewriter.getNoneType(), rewriter.getNoneType()};
+    auto outType = RankedTensorType::get(new_shape, outEltType);
     auto layerNormOp =
-        rewriter.create<top::LayerNormOp>(name2, outTypes, operands, attrs);
+        rewriter.create<top::LayerNormOp>(name2, outType, operands, attrs);
     operands.clear();
     attrs.clear();
     operands.emplace_back(layerNormOp.getOutput());
