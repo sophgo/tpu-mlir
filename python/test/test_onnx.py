@@ -2038,6 +2038,53 @@ class ONNX_IR_TESTER(object):
         )
         self.onnx_and_test(graph_def)
 
+    def test_Nms2(self, case_name):
+        # params for Nms
+        num_batches = 1
+        num_classes = 80
+        spatial_dimension = 50 #15200
+        in_shape = [num_batches, spatial_dimension, 4]
+        score_shape = [num_batches, num_classes, spatial_dimension]
+
+        nonzero_input_shape = [2,6]
+        nonzero_input = helper.make_tensor_value_info('nonzero_input', TensorProto.FLOAT, nonzero_input_shape)
+        boxes = helper.make_tensor_value_info('boxes', TensorProto.FLOAT, in_shape)
+        scores = helper.make_tensor_value_info('scores', TensorProto.FLOAT, score_shape)
+        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.INT64, [])
+
+        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [1], vals=[0])
+        indices1 = helper.make_tensor('indices1', TensorProto.INT64, [1], vals=[0])
+
+        iou_threshold = helper.make_tensor(name='iou_threshold',
+                                           data_type=TensorProto.FLOAT,
+                                           dims=[1],
+                                           vals=0.5 * np.ones(1))
+        score_threshold = helper.make_tensor(name='score_threshold',
+                                             data_type=TensorProto.FLOAT,
+                                             dims=[1],
+                                             vals=0.05 * np.ones(1))
+
+        gather0_def = helper.make_node('Gather', inputs=['nonzero_input', 'indices0'], axis=0, outputs=['gather0'])
+        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
+        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
+        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
+        gather_def = helper.make_node('Gather', inputs=['shape', 'indices1'], axis=0, outputs=['max_output_boxes_per_class'])
+        nms_def = helper.make_node(
+            'NonMaxSuppression',
+            inputs=['boxes', 'scores', 'max_output_boxes_per_class', 'iou_threshold', 'score_threshold'],
+            outputs=['Y_Value'],
+        )
+        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def, shape_def, gather_def, nms_def],
+                                case_name, [nonzero_input, boxes, scores], [Y_Value],
+                                initializer=[indices0, indices1, iou_threshold, score_threshold])
+
+        input_data={
+            'nonzero_input' : np.array([[1, 0, 3, 0, 4, 0], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
+            'boxes' : np.random.rand(*in_shape).astype(np.float32),
+            'scores' : np.random.rand(*score_shape).astype(np.float32)
+                    }
+        self.onnx_and_test_bmodel(graph_def, static_shape=False, input_data=input_data, only_cmp_with_bmodel=True)
+
     def test_Nms(self, case_name):
         num_batches = 1
         num_classes = 80

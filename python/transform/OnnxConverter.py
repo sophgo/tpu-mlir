@@ -1862,15 +1862,14 @@ class OnnxConverter(BaseConverter):
                     max_output_size = data.astype(np.int64)
             else:
                 operands.append(self.getOperand(x))
-        p = {'name': name, 'center_point_box': 0}
-        if len(onnx_node.inputs) < 3:
-            p['max_output_size'] = 0
-        else:
-            p['max_output_size'] = self.getWeight(onnx_node.inputs[2]).astype(np.int64)
+        max_output_size = 0
+        if (len(onnx_node.inputs) > 3):
+            if self.isWeight(onnx_node.inputs[2]):
+                max_output_size = self.getWeight(onnx_node.inputs[2]).astype(np.int64)
         nms_op = top.NmsOp(self.unranked_type,
                            operands,
                            center_point_box=0,
-                           max_output_size=self.getWeight(onnx_node.inputs[2]).astype(np.int64),
+                           max_output_size=max_output_size,
                            loc=self.get_loc(name),
                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, nms_op)
