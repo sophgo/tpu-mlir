@@ -51,7 +51,7 @@ public:
 protected:
   BM1684X() : BM168x(TypeID::get<BM1684X>()) {
     if (chip != module::Chip::BM1684X) {
-      // avoid bm1686 construct
+      // avoid bm1688 construct
       return;
     }
     code = std::make_unique<BM168x::Code>();

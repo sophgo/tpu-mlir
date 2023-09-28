@@ -1,6 +1,6 @@
 Use TPU for Postprocessing
 ==============================
-Currently, TPU-MLIR supports integrating the post-processing of YOLO series and SSD network models into the model. The chips currently supporting this function include BM1684X, BM1686, and CV186X. This chapter will take the conversion of YOLOv5s to F16 model as an example to introduce how this function is used.
+Currently, TPU-MLIR supports integrating the post-processing of YOLO series and SSD network models into the model. The chips currently supporting this function include BM1684X, BM1688, and CV186X. This chapter will take the conversion of YOLOv5s to F16 model as an example to introduce how this function is used.
 
 This chapter requires the following files (where xxxx corresponds to the actual version information):
 

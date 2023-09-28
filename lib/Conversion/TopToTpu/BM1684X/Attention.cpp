@@ -209,7 +209,7 @@ Value lowering_attention_float(PatternRewriter &rewriter, top::AttentionOp op) {
   auto nstype = module::getStorageType(newType);
   std::vector<Value> operands;
   int in_num_ops = op->getNumOperands();
-  // bool bias_use_fp32 = module::isBM1686();
+  // bool bias_use_fp32 = module::isBM1688();
   for (int i = 0; i < in_num_ops; ++i) {
     auto in = op->getOperand(i);
     if (module::isWeight(in)) {

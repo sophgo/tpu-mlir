@@ -75,7 +75,7 @@ void LayerNormLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void LayerNormLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::LayerNormOp op) const {
-  if (module::isBM1686()) {
+  if (module::isBM1688()) {
     LoweringLayerNorm(rewriter, op, rewriter.getF32Type());
   } else {
     LoweringLayerNorm(rewriter, op, rewriter.getBF16Type());

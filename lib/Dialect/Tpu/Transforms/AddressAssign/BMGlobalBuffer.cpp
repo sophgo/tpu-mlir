@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
@@ -389,7 +389,7 @@ public:
 
   LogicalResult matchAndRewrite(tpu::InterpOp interpOp,
                                 PatternRewriter &rewriter) const override {
-    if (!module::isBM1686())
+    if (!module::isBM1688())
       return failure();
 
     if (!module::isNone(interpOp.getBuffer())) {
@@ -756,7 +756,7 @@ public:
       return failure();
     }
     if (!module::isBM1684XFamily()
-        || (module::isBM1684XFamily() && !module::isBM1686())) {
+        || (module::isBM1684XFamily() && !module::isBM1688())) {
       return failure();
     }
 
@@ -780,7 +780,7 @@ public:
       return failure();
     }
     if (!module::isBM1684XFamily()
-        || (module::isBM1684XFamily() && !module::isBM1686())) {
+        || (module::isBM1684XFamily() && !module::isBM1688())) {
       return failure();
     }
     auto process = module::getPostprocess();
@@ -808,7 +808,7 @@ public:
     }
 
     if (!module::isBM1684XFamily()
-        || (module::isBM1684XFamily() && !module::isBM1686())) {
+        || (module::isBM1684XFamily() && !module::isBM1688())) {
       return failure();
     }
 

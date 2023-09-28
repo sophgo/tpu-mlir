@@ -68,7 +68,7 @@ void RMSNormLowering::LoweringINT4(PatternRewriter &rewriter,
 }
 void RMSNormLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::RMSNormOp op) const {
-  if (module::isBM1686()) {
+  if (module::isBM1688()) {
     LoweringRMSNorm(rewriter, op, rewriter.getF32Type());
   } else {
     LoweringRMSNorm(rewriter, op, rewriter.getBF16Type());

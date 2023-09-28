@@ -464,6 +464,7 @@ class BModel:
 
 def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
     chip = bmodel_net.chip
+    chip = "BM1688" if chip == "BM1686" else chip
     assert chip.upper() == decoder.context.device.name
     context = decoder.context
 
@@ -572,7 +573,7 @@ def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
             attrs = f'attributes {{chip = "{self.chip}", version = {self.version}}}'
             return f"module {attrs} {{\n{funs}\n}}"
 
-    if context.device.name == "BM1686":
+    if context.device.name == "BM1688":
         coeff = Module(bmodel_net).functions[0].regions[0].data
         if coeff:
             context.base_addr[1] += len(coeff.data)

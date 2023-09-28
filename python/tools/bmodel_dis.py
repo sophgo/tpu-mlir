@@ -26,6 +26,7 @@ def decode_dma_file(dma_file, device):
 def BModel2MLIR(bmodel_file):
     bmodel = dis.BModel(bmodel_file)
     chip = bmodel.chip
+    chip = "BM1688" if chip == "BM1686" else chip
     context = Context(chip)
     return context.BModel2MLIR(bmodel)
 

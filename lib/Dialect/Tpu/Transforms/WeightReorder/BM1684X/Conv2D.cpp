@@ -150,7 +150,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   }
   if (groups != 1 && !attr.is_dw) {
     use_3ic_optimize = 0;
-  } else if (module::isBM1686() /*&& isINT4Conv*/) {
+  } else if (module::isBM1688() /*&& isINT4Conv*/) {
     use_3ic_optimize = 0;
   }
 
@@ -234,7 +234,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     auto r_data = module::getI64Array(op.getRshift(), attr.oc, 0);
     int64_t quant_w_size = 0;
     bool align = true;
-    if (module::isBM1686()) {
+    if (module::isBM1688()) {
       align = false;
       quant_w_size = 2;
       for (int i = 0; i < attr.oc; i++) {
@@ -262,7 +262,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
   int64_t filter_align = BM168x::EU_BYTES;
   if (attr.is_dw) {
-    if (!module::isBM1686()) {
+    if (!module::isBM1688()) {
       filter_align = 1;
     }
   }

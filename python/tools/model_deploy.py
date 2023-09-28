@@ -253,7 +253,7 @@ if __name__ == '__main__':
     parser.add_argument("--ignore_f16_overflow", action='store_true',
                         help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm, RMSNorm, AvgPool")
     parser.add_argument("--chip", required=True, type=str.lower,
-                        choices=['bm1686', 'bm1684x', 'bm1684', 'sg2260', 'mars3',
+                        choices=['bm1688', 'bm1684x', 'bm1684', 'sg2260', 'mars3',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--model", required=True, help='output model')

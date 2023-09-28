@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;

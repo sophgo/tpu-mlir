@@ -67,7 +67,7 @@ class MODEL_RUN(object):
         self.arch = chip
         if chip.startswith("cv18") and chip != "cv186x":
             self.arch = "cv18xx"
-        elif chip == "bm1686" or chip == "cv186x":
+        elif chip == "bm1688" or chip == "cv186x":
             self.arch = "bm1684x"
         self.tolerance = {
             "f32": config.get(self.arch, "f32_tolerance", fallback="0.99,0.99"),
@@ -196,12 +196,12 @@ class MODEL_RUN(object):
         '''tmp test script for int4 sym mode, no bmodel generated for now'''
 
         # generate tpu mlir
-        tpu_mlir = f"{self.model_name}_bm1686_tpu_int4_sym.mlir"
+        tpu_mlir = f"{self.model_name}_bm1688_tpu_int4_sym.mlir"
         if "use_quantize_table" in self.ini_content and int(
                 self.ini_content["use_quantize_table"]):
             qtable=self.cali_table.replace("_cali_table","_qtable")
             cmd = [
-                "tpuc-opt", f"{self.model_name}.mlir", "--chip-assign=\"chip=bm1686\"",
+                "tpuc-opt", f"{self.model_name}.mlir", "--chip-assign=\"chip=bm1688\"",
                 "--chip-top-optimize",
                 f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
                 f"--convert-top-to-tpu=\"mode=INT4 qtable={qtable} asymmetric=false\"", "--canonicalize",
@@ -209,7 +209,7 @@ class MODEL_RUN(object):
             ]
         else:
             cmd = [
-                "tpuc-opt", f"{self.model_name}.mlir", "--chip-assign=\"chip=bm1686\"",
+                "tpuc-opt", f"{self.model_name}.mlir", "--chip-assign=\"chip=bm1688\"",
                 "--chip-top-optimize",
                 f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
                 "--convert-top-to-tpu=\"mode=INT4 asymmetric=false\"", "--canonicalize",

@@ -69,7 +69,7 @@ int64_t tpu::DetectionOutputOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.spec.eta = getEta().convertToDouble();
   param.spec.top_k = getTopK();
   param.spec.onnx_nms = getOnnxNms();
-  param.buffer_addr = module::isBM1686() ? module::getAddress(getBuffer()) : 0;
+  param.buffer_addr = module::isBM1688() ? module::getAddress(getBuffer()) : 0;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 

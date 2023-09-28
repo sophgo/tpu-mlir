@@ -4,8 +4,8 @@
 Quantization and optimization
 =================================
 
-In deploying neuron network, the accuracy and throughput (inference speed) are critical targets. To achieve high accuracy and high speed, for some networks, mix precision 
-inference is essential. In this chapter, with yolo as examples, method of setting mix precision inference is demonstrated, and two useful 
+In deploying neuron network, the accuracy and throughput (inference speed) are critical targets. To achieve high accuracy and high speed, for some networks, mix precision
+inference is essential. In this chapter, with yolo as examples, method of setting mix precision inference is demonstrated, and two useful
 tools 'sensitive layer search' and 'local non-quantization' are illustrated.
 
 Mix Precision
@@ -171,7 +171,7 @@ Use ``run_qtable.py`` to gen qtable, parameters as below:
      - Name of calibration table file
    * - chip
      - Y
-     - The platform that the model will use. Support bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
@@ -471,7 +471,7 @@ Use ``run_sensitive_layer.py`` and bad cases to search sensitive layers, paramet
      - Name of calibration table file
    * - chip
      - Y
-     - The platform that the model will use. Support bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - fp_type
      - N
      - Specifies the type of float used for mixing precision. Support auto,F16,F32,BF16. Default is auto, indicating that it is automatically selected by program
@@ -719,7 +719,7 @@ Parameter Description
      - mlir file
    * - chip
      - Y
-     - The platform that the model will use. Support bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - fpfwd_inputs
      - N
      - Specify layers (including this layer) to skip quantization before them. Multiple inputs are separated by commas.

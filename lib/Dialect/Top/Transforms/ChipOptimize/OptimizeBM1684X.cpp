@@ -366,7 +366,7 @@ public:
     auto len_weight0 = module::getNumElements(matmul_queries.getRight());
     auto len_weight1 = module::getNumElements(matmul_keys.getRight());
     auto len_weight2 = module::getNumElements(matmul_values.getRight());
-    if (module::isBM1686()) {
+    if (module::isBM1688()) {
       // TODO: do not suppose attention when size greater than [batch, 2048,
       // 320]
       if (len > 2048 * 320 ||
