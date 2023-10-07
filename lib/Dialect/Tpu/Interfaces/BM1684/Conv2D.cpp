@@ -106,8 +106,10 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int64_t N, C, H, W;
   module::getNCHW(getInput(), N, C, H, W);
   if (sec_info.h_slice != H) {
+    int use_winograd = getUseWinograd().value_or(0);
+    int kh_consider_dh = use_winograd > 0 ? 3 : (p.kh - 1) * (p.dh) + 1;
     int cal_h_idx = sec_info.out_h_idx * p.sh - p.pht;
-    int cal_h_slice = (sec_info.out_h_slice - 1) * p.sh + p.kh;
+    int cal_h_slice = (sec_info.out_h_slice - 1) * p.sh + kh_consider_dh;
     cal_h_slice = std::min(cal_h_slice, cal_h_slice + cal_h_idx);
     cal_h_idx = std::max(0, cal_h_idx);
     unused_ht_for_input = cal_h_idx - std::max(0, sec_info.h_idx);
@@ -116,8 +118,10 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   }
 
   if (sec_info.w_slice != W) {
+    int use_winograd = getUseWinograd().value_or(0);
+    int kw_consider_dw = use_winograd > 0 ? 3 : (p.kw - 1) * (p.dw) + 1;
     int cal_w_idx = sec_info.out_w_idx * p.sw - p.pwl;
-    int cal_w_slice = (sec_info.out_w_slice - 1) * p.sw + p.kw;
+    int cal_w_slice = (sec_info.out_w_slice - 1) * p.sw + kw_consider_dw;
     cal_w_slice = std::min(cal_w_slice, cal_w_slice + cal_w_idx);
     cal_w_idx = std::max(0, cal_w_idx);
 
