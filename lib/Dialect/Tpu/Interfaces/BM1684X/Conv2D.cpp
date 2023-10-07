@@ -191,8 +191,9 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   int64_t N, C, H, W;
   module::getNCHW(getInput(), N, C, H, W);
   if (sec_info.h_slice != H) {
+    int kh_consider_dh = (attr.kh - 1) * (attr.dh) + 1;
     int cal_h_idx = sec_info.out_h_idx * attr.sh - attr.pht;
-    int cal_h_slice = (sec_info.out_h_slice - 1) * attr.sh + attr.kh;
+    int cal_h_slice = (sec_info.out_h_slice - 1) * attr.sh + kh_consider_dh;
     cal_h_slice = std::min(cal_h_slice, cal_h_slice + cal_h_idx);
     cal_h_idx = std::max(0, cal_h_idx);
     p.spec.unused_ht_for_input = cal_h_idx - std::max(0, sec_info.h_idx);
@@ -201,8 +202,9 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   }
 
   if (sec_info.w_slice != W) {
+    int kw_consider_dw = (attr.kw - 1) * (attr.dw) + 1;
     int cal_w_idx = sec_info.out_w_idx * attr.sw - attr.pwl;
-    int cal_w_slice = (sec_info.out_w_slice - 1) * attr.sw + attr.kw;
+    int cal_w_slice = (sec_info.out_w_slice - 1) * attr.sw + kw_consider_dw;
     cal_w_slice = std::min(cal_w_slice, cal_w_slice + cal_w_idx);
     cal_w_idx = std::max(0, cal_w_idx);
 
