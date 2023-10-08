@@ -141,6 +141,17 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::ROUND:
     active_func(p, num_element, [](double val) { return std::round(val); });
     break;
+  case ActiveMode::SIGN:
+    active_func(p, num_element, [](double val) {
+      if (val < 0) {
+        return -1;
+      } else if (val > 0) {
+        return 1;
+      } else {
+        return 0;
+      }
+    });
+    break;
   default:
     llvm_unreachable("Not Implemented");
   }

@@ -166,6 +166,7 @@ class TorchConverter(BaseConverter):
             "aten::split_with_sizes": lambda node: self.convert_split_op(node),
             "aten::sqrt": lambda node: self.convert_sqrt_op(node),
             "aten::sigmoid": lambda node: self.convert_sigmoid_op(node),
+            "aten::sign" : lambda node: self.convert_math_op(node, "sign"),
             "aten::sin": lambda node: self.convert_math_op(node, "sin"),
             "aten::sinh": lambda node: self.convert_math_op(node, "sinh"),
             "aten::silu": lambda node: self.convert_silu_op(node),
@@ -921,7 +922,7 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.name, new_op)
 
     def convert_math_op(self, torch_node: TorchNode, mode: str):
-        assert mode in ["cos", "cosh", "sin", "sinh", "tan", "tanh", "exp"]
+        assert mode in ["cos", "cosh", "sin", "sinh", "tan", "tanh", "exp", "sign"]
         op0 = self.getOp(torch_node.inputs[0])
         cmd = "top.%sOp(self.unranked_type, op0, loc=self.get_loc(torch_node.name), ip=self.mlir.insert_point).output" % mode.capitalize(
         )

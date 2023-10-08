@@ -134,6 +134,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SinLowering,
       SinhLowering,
       SigmoidLowering,
+      SignLowering,
       SiLULowering,
       SliceLowering,
       SoftmaxLowering,
