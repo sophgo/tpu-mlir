@@ -22,6 +22,12 @@ typedef struct {
   double max;
 } cali_info;
 
+typedef struct {
+  double threshold;
+  double mean;
+  double max;
+} fp8_cali_info;
+
 class ImportCalibrationTablePass
     : public ImportCalibrationTableBase<ImportCalibrationTablePass> {
 public:
@@ -37,6 +43,8 @@ public:
     OpBuilder builder(mOp);
     std::map<std::string, cali_info> calibration_map;
     std::map<std::string, cali_info> calibration_map_int4;
+    std::map<std::string, fp8_cali_info> calibration_map_e4; //e4m3 map added
+    std::map<std::string, fp8_cali_info> calibration_map_e5; //e5m2 map added
     std::map<std::string, f64_array_t> per_chan_scales_map;
     std::ifstream infile(this->tableFile);
     if (!infile) {
@@ -47,6 +55,8 @@ public:
     std::regex info_pattern("#.*");
     bool weight_scale_meeted = false;
     bool int4_th_meeted = false;
+    bool e4m3_th_meeted = false; //e4m3 th added
+    bool e5m2_th_meeted = false; //e5m2 th added
     while (std::getline(infile, line)) {
       if (line.back() == '\r') {
         line.pop_back();
@@ -67,6 +77,24 @@ public:
           vScales->data()[i] = value;
         }
         per_chan_scales_map[name] = vScales;
+      } else if (e5m2_th_meeted) {
+        if (std::regex_match(line, cali_pattern)) {
+          fp8_cali_info fp8_info = {0, 0, 0};
+          if (!(iss >> name >> fp8_info.threshold >> fp8_info.mean >> fp8_info.max)) {
+            llvm::errs() << line;
+            llvm_unreachable("\n => not match required format\n");
+          }
+          calibration_map_e5[name] = fp8_info;
+        }
+      } else if (e4m3_th_meeted) {
+        if (std::regex_match(line, cali_pattern)) {
+          fp8_cali_info fp8_info = {0, 0, 0};
+          if (!(iss >> name >> fp8_info.threshold >> fp8_info.mean >> fp8_info.max)) {
+            llvm::errs() << line;
+            llvm_unreachable("\n => not match required format\n");
+          }
+          calibration_map_e4[name] = fp8_info;
+        }
       } else if (int4_th_meeted) { // second run, read int4 th
         if (std::regex_match(line, cali_pattern)) {
           cali_info info = {0, 0, 0};
@@ -91,6 +119,12 @@ public:
         } else if (std::regex_match(line, info_pattern) &&
                    std::string::npos != line.find("#int4_th")) {
           int4_th_meeted = true;
+        } else if (std::regex_match(line, info_pattern) &&
+                   std::string::npos != line.find("E4M3")) {
+          e4m3_th_meeted = true;
+        } else if (std::regex_match(line, info_pattern) &&
+                   std::string::npos != line.find("E5M2")) {
+          e5m2_th_meeted = true;
         }
       }
     }
