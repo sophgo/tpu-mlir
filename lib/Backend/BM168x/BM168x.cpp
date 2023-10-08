@@ -395,14 +395,6 @@ void BM168x::start_env() {
   code->cmdid_node = dl_create_cmd_id_node();
   code->bdc_node = dl_create_cmd_id_node();
   code->gdma_node = dl_create_cmd_id_node();
-  code->gdma_buffer.reserve(0x1000000);
-  code->bdc_buffer.reserve(0x1000000);
-  dl_set_cmd_buffer_ptr((void *)&code->gdma_buffer, (void *)&code->bdc_buffer);
-  dl_set_total_id_ptr(&code->gdma_total_id, &code->bdc_total_id,
-                      code->cmdid_node, (void *)&code->gdma_group_id,
-                      (void *)&code->bdc_group_id, &code->cmdid_groupnum);
-  dl_allow_store_cmd();
-  dl_forbid_atomic_cmodel(); // TODO:(no compare)
 }
 
 void BM168x::end_env() {
@@ -513,15 +505,6 @@ void BM168x::before_codegen() {
   dl_sg_set_profile_path("./");
   dl_sg_set_profile_dump(true);
   reset_cmd_id_node();
-  code->gdma_group_id.clear();
-  code->gdma_group_id.push_back(0);
-  code->bdc_group_id.clear();
-  code->bdc_group_id.push_back(0);
-  code->gdma_bytes.clear();
-  code->bdc_bytes.clear();
-  code->gdma_buffer.clear();
-  code->bdc_buffer.clear();
-  code->cmdid_groupnum = 1;
 }
 
 void BM168x::after_codegen(int64_t flops) {

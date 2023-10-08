@@ -441,6 +441,11 @@ public:
 public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) override;
+  virtual unsigned int get_total_id(const char *) override;
+  virtual unsigned int get_inst_number_per_group(const char *, int) override;
+  virtual unsigned int get_group_number() override;
+  virtual const unsigned char *get_inst_data(const char *) override;
+  virtual void before_codegen() override;
 
 public:
   static const int64_t BDC_CMD_ALIGNED_BIT = 7;
@@ -475,6 +480,18 @@ protected:
   };
   virtual ~BM1684() { end_env(); };
   virtual void load_functions() override;
+  virtual void start_env() override;
+
+private:
+  std::vector<uint32_t> bdc_buffer;
+  std::vector<uint32_t> gdma_buffer;
+  uint32_t gdma_total_id = 0;
+  uint32_t bdc_total_id = 0;
+  std::vector<uint32_t> gdma_group_id;
+  std::vector<uint32_t> bdc_group_id;
+  std::vector<uint32_t> gdma_bytes;
+  std::vector<uint32_t> bdc_bytes;
+  int cmdid_groupnum = 0;
 };
 } // namespace backend
 } // namespace tpu_mlir

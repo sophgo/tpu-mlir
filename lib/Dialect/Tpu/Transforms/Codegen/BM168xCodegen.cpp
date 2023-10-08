@@ -112,8 +112,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
   std::vector<Offset<bmodel::SubNet>> subnet_v;
   auto context = std::make_unique<Context>();
-  int dynamic_mode = (module::isBM1684XFamily()
-                     || module::isSG2260Family()) ? 2 : 1;
+  int dynamic_mode =
+      (module::isBM1684XFamily() || module::isSG2260Family()) ? 2 : 1;
   bool first_dynamic = false;
 
   s.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
@@ -378,12 +378,13 @@ BMCodegen::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
 std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>>
 BMCodegen::CreateCmdGroupVector() {
   auto cmd_group_v = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
-  auto gdma_ptr = (uint8_t *)(*bm168x)->gdma_buffer.data();
-  auto bdc_ptr = (uint8_t *)(*bm168x)->bdc_buffer.data();
+  auto gdma_ptr = (uint8_t *)(*bm168x).get_inst_data("gdma:0:0");
+  auto bdc_ptr = (uint8_t *)(*bm168x).get_inst_data("tiu:0:0");
   int bdc_offset = 0, gdma_offset = 0;
-  for (int group_idx = 0; group_idx < (*bm168x)->cmdid_groupnum; group_idx++) {
-    auto bdc_num = (*bm168x)->bdc_group_id[group_idx];
-    auto gdma_num = (*bm168x)->gdma_group_id[group_idx];
+  for (int group_idx = 0; group_idx < (*bm168x).get_group_number();
+       group_idx++) {
+    auto bdc_num = (*bm168x).get_inst_number_per_group("tiu:0:0", group_idx);
+    auto gdma_num = (*bm168x).get_inst_number_per_group("gdma:0:0", group_idx);
     bmodel::Binary binary_bdc;
     bmodel::Binary binary_gdma;
     auto bdc_len = bm168x->get_bdc_len(bdc_num, group_idx);
@@ -510,6 +511,7 @@ void BMCodegen::codegen_for_overlap_ops(
 
 void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
                                   Operation *next_op) {
+
   auto nsecs = gOp.getNsecs();
   auto hsecs = gOp.getHsecs();
   auto dsecs = gOp.getDsecs();

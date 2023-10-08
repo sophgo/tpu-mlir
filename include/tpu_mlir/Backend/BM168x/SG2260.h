@@ -73,14 +73,14 @@ protected:
   SG2260() {
     typeID = TypeID::get<SG2260>();
     NPU_NUM = 64;
-    EU_BYTES = 64; // vector length 512bit
+    EU_BYTES = 64;        // vector length 512bit
     LMEM_BYTES = 1 << 18; // 256KB
     LMEM_BANKS = 16;
     IC_PARALLEL = 64;
     ALIGNMENT = 0x1000;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
 
-    //have 30 memory section, now don't kown use which section
+    // have 30 memory section, now don't kown use which section
     GMEM_START_ADDR = 0; // tag for global memory address
     COEFF_START_ADDR = GMEM_START_ADDR | TAG_WEIGHT;
     CTX_START_ADDR = GMEM_START_ADDR | TAG_ACTIVATION;
@@ -96,6 +96,7 @@ protected:
     GDMA_VALUE_FORMAT_NUM = 7;
     multiCode.push_back(std::make_unique<BM168x::Code>());
     code = multiCode.back();
+    core_num = module::getCoreNum();
     start_env();
   };
   virtual void load_functions() override;
