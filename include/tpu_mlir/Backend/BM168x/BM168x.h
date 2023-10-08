@@ -212,8 +212,7 @@ public:
   bmcpu_reshape dl_bmcpu_reshape;
   bmcpu_dtype dl_bmcpu_dtype;
 
-  template <typename FPtrTy>
-  FPtrTy CpuCastToFPtr(const char *symbolName) {
+  template <typename FPtrTy> FPtrTy CpuCastToFPtr(const char *symbolName) {
     assert(cpuopDL.isValid());
     auto fPtr = cpuopDL.getAddressOfSymbol(symbolName);
     if (fPtr == nullptr) {
@@ -242,7 +241,6 @@ public:
   // arch info
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) = 0;
-
   void set_command_issue_flag(bool value);
   void reset_cmd_id_node();
   int64_t get_gdma_cycle();
@@ -263,15 +261,15 @@ public:
 
 public:
   struct Code {
-    std::vector<uint32_t> bdc_buffer;
-    std::vector<uint32_t> gdma_buffer;
-    uint32_t gdma_total_id = 0;
-    uint32_t bdc_total_id = 0;
-    std::vector<uint32_t> gdma_group_id;
-    std::vector<uint32_t> bdc_group_id;
-    std::vector<uint32_t> gdma_bytes;
-    std::vector<uint32_t> bdc_bytes;
-    int cmdid_groupnum = 0;
+    // std::vector<uint32_t> bdc_buffer;
+    // std::vector<uint32_t> gdma_buffer;
+    // uint32_t gdma_total_id = 0;
+    // uint32_t bdc_total_id = 0;
+    // std::vector<uint32_t> gdma_group_id;
+    // std::vector<uint32_t> bdc_group_id;
+    // std::vector<uint32_t> gdma_bytes;
+    // std::vector<uint32_t> bdc_bytes;
+    // int cmdid_groupnum = 0;
     void *cmdid_node = nullptr;
     void *bdc_node = nullptr;
     void *gdma_node = nullptr;
@@ -286,6 +284,10 @@ public:
   llvm::sys::DynamicLibrary cpuopDL;
   llvm::StringRef libcpuop = "libcpuop.so";
   TypeID getTypeID() const { return typeID; }
+  virtual unsigned int get_total_id(const char *) = 0;
+  virtual unsigned int get_inst_number_per_group(const char *, int) = 0;
+  virtual unsigned int get_group_number() = 0;
+  virtual const unsigned char *get_inst_data(const char *) = 0;
 
 protected:
   BM168x(TypeID typeID) : typeID(typeID){};

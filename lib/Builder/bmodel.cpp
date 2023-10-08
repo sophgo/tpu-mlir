@@ -90,7 +90,7 @@ void ModelGen::AddNet(const std::string &net_name,
 
 void ModelGen::AddNet(const string &net_name,
                       const Offset<NetParameter> &parameter, uint32_t *net_idx,
-                      uint32_t *stage_idx, const bmodel::Cascade * cascade) {
+                      uint32_t *stage_idx, const bmodel::Cascade *cascade) {
   ASSERT(net_name.empty() == false);
   auto net_new = reinterpret_cast<const NetParameter *>(
       builder_.GetCurrentBufferPointer() + builder_.GetSize() - parameter.o);

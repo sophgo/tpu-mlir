@@ -18,7 +18,7 @@ void SG2260::load_functions() {
 }
 
 void SG2260::before_codegen() {
-  BM168x::before_codegen();
+  BM1684X::before_codegen();
   useCode0 = true;
 }
 
@@ -28,7 +28,7 @@ void SG2260::after_codegen(int64_t flops) {
     useCore(i);
     dl_store_cmd_end();
   }
-  useCore(0); // Reset buffer swapping.
+  // useCore(0); // Reset buffer swapping.
   useCode0 = false;
 }
 
@@ -40,17 +40,6 @@ void SG2260::setCoreNum(int core) {
     _code->cmdid_node = dl_create_cmd_id_node();
     _code->bdc_node = dl_create_cmd_id_node();
     _code->gdma_node = dl_create_cmd_id_node();
-    _code->gdma_buffer.reserve(0x1000000);
-    _code->bdc_buffer.reserve(0x1000000);
-    _code->gdma_group_id.clear();
-    _code->gdma_group_id.push_back(0);
-    _code->bdc_group_id.clear();
-    _code->bdc_group_id.push_back(0);
-    _code->gdma_bytes.clear();
-    _code->bdc_bytes.clear();
-    _code->gdma_buffer.clear();
-    _code->bdc_buffer.clear();
-    _code->cmdid_groupnum = 1;
   }
 }
 
@@ -66,23 +55,6 @@ void SG2260::useCore(int coreID) {
   if (code == multiCode[coreID]) {
     return;
   }
-
-  // We can not configure the backend to switch to another command buffer. This
-  // is a workaround solution: swapping the buffer and "use codes[0]" only.
-  if (useCode0) { // restore buffer
-    auto itr = std::find(multiCode.begin(), multiCode.end(), code);
-    multiCode[0]->gdma_buffer.swap((*itr)->gdma_buffer);
-    multiCode[0]->bdc_buffer.swap((*itr)->bdc_buffer);
-  }
-
   code = multiCode[coreID];
-
-  if (useCode0) { // use buffer 0
-    multiCode[0]->gdma_buffer.swap(code->gdma_buffer);
-    multiCode[0]->bdc_buffer.swap(code->bdc_buffer);
-  }
-  dl_set_cmd_len_ptr((void *)&code->gdma_bytes, (void *)&code->bdc_bytes);
-  dl_set_total_id_ptr(&code->gdma_total_id, &code->bdc_total_id,
-                      code->cmdid_node, (void *)&code->gdma_group_id,
-                      (void *)&code->bdc_group_id, &code->cmdid_groupnum);
+  dl_backend_api_set_core_info(coreID, core_num);
 }

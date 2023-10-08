@@ -123,6 +123,7 @@ protected:
     GDMA_VALUE_FORMAT_NUM = 7;
     multiCode.push_back(std::make_unique<BM168x::Code>());
     code = multiCode.back();
+    core_num = module::getCoreNum();
     start_env();
   };
   virtual void load_functions() override;

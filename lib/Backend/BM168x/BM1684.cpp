@@ -282,5 +282,57 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_select_fix8b);
   CAST_FUNCTION(nodechip_select_local);
   CAST_FUNCTION(nodechip_select_fix8b_local);
+  CAST_FUNCTION(allow_store_cmd);
   // clang-format on
+}
+
+unsigned int BM1684::get_total_id(const char *engine_name) {
+  if (strcmp(engine_name, "tiu:0:0") == 0)
+    return bdc_total_id;
+  else if (strcmp(engine_name, "gdma:0:0") == 0)
+    return gdma_total_id;
+  return 0;
+}
+
+unsigned int BM1684::get_inst_number_per_group(const char *engine_name,
+                                               int group_idx) {
+  if (strcmp(engine_name, "tiu:0:0") == 0)
+    return bdc_group_id[group_idx];
+  else if (strcmp(engine_name, "gdma:0:0") == 0)
+    return gdma_group_id[group_idx];
+  return 0;
+}
+
+unsigned int BM1684::get_group_number() { return cmdid_groupnum; }
+const unsigned char *BM1684::get_inst_data(const char *engine_name) {
+  if (strcmp(engine_name, "tiu:0:0") == 0)
+    return (const unsigned char *)bdc_buffer.data();
+  else if (strcmp(engine_name, "gdma:0:0") == 0)
+    return (const unsigned char *)gdma_buffer.data();
+  return nullptr;
+}
+
+void BM1684::before_codegen() {
+  BM168x::before_codegen();
+  gdma_group_id.clear();
+  gdma_group_id.push_back(0);
+  bdc_group_id.clear();
+  bdc_group_id.push_back(0);
+  gdma_bytes.clear();
+  bdc_bytes.clear();
+  gdma_buffer.clear();
+  bdc_buffer.clear();
+  cmdid_groupnum = 1;
+}
+
+void BM1684::start_env() {
+  BM168x::start_env();
+  gdma_buffer.reserve(0x1000000);
+  bdc_buffer.reserve(0x1000000);
+  dl_set_cmd_buffer_ptr((void *)&gdma_buffer, (void *)&bdc_buffer);
+  dl_set_total_id_ptr(&gdma_total_id, &bdc_total_id, code->cmdid_node,
+                      (void *)&gdma_group_id, (void *)&bdc_group_id,
+                      &cmdid_groupnum);
+  dl_allow_store_cmd();
+  dl_forbid_atomic_cmodel();
 }
