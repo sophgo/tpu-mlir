@@ -936,6 +936,20 @@ def Top_SigmoidOp : Top_Op<"Sigmoid", [SupportPermuteMove]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_SignOp : Top_Op<"Sign"> {
+  let summary = " Sign Operator";
+  let description = [{
+     Calculate the sign of the given input tensor element-wise.
+     If input > 0, output 1. if input < 0, output -1. if input == 0,
+     output 0.
+  }];
+  let arguments = (
+    ins AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_SoftsignOp: Top_Op<"Softsign"> {
   let summary = " Softsign Operator";
   let description = [{

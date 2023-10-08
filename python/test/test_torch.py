@@ -117,6 +117,7 @@ class TORCH_IR_TESTER(object):
             "Pow":              (self.test_Pow,               N, Y, Y, Y),
             "Scatter":          (self.test_Scatter,           N, N, N, N),
             "Select":           (self.test_Select,            N, Y, Y, Y),
+            "Sign":             (self.test_Sign,              N, Y, Y, N),
             "Slice":            (self.test_Slice,             N, Y, Y, Y),
             "Softmax":          (self.test_Softmax,           N, Y, Y, Y),
             "Softmin":          (self.test_Softmin,           N, Y, Y, Y),
@@ -2777,6 +2778,24 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in0_shape], Model(), [self.Desc('float32')])
 
         _test_remainder(torch.remainder, (1, 16, 32, 32), (1, 16, 32, 32))
+
+    #######################################################################
+    # Sign
+    # ------------
+    def test_Sign(self):
+        """Sign"""
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                o = torch.sign(x)
+                return o
+
+        self.trace_and_test([(4, 3, 32, 32)], Model())
+        self.trace_and_test([(1, 65, 4, 4)], Model())
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     try:

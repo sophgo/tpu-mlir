@@ -165,6 +165,7 @@ class ONNX_IR_TESTER(object):
             "Softplus":     (self.test_Softplus,      Y, Y, Y, Y),
             "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y),
             "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y),
+            "Sign":         (self.test_Sign,          N, Y, Y, N),
             "Slice":        (self.test_Slice,         Y, Y, Y, Y),
             "Slice2":       (self.test_Slice2,        Y, Y, Y, Y),
             "Slice3":       (self.test_Slice3,        Y, Y, Y, Y),
@@ -2436,6 +2437,21 @@ class ONNX_IR_TESTER(object):
             add_def = helper.make_node("Add", inputs=["a", "output"], outputs=["add_out"])
             graph_def = helper.make_graph([sigmoid_def, add_def], case_name, [input, a], [add_out])
 
+        self.onnx_and_test(graph_def)
+
+    def test_Sign(self, case_name):
+        input_shape = [4, 2, 200, 100]
+        output_shape = [4, 2, 200, 100]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        sign_def = helper.make_node(
+            case_name,
+            inputs=['input'],
+            outputs=['output'],
+        )
+        graph_def = helper.make_graph([sign_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
     def test_Slice(self, case_name):

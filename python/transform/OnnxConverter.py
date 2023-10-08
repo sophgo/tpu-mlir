@@ -216,6 +216,7 @@ class OnnxConverter(BaseConverter):
             "ScatterND": lambda node: self.convert_scatternd_op(node),
             "Shape": lambda node: self.convert_shape_op(node),
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
+            "Sign": lambda node: self.convert_sign_op(node),
             "Sin": lambda node: self.convert_sin_op(node),
             "Slice": lambda node: self.convert_slice_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
@@ -1095,6 +1096,15 @@ class OnnxConverter(BaseConverter):
                                bias=bias,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_sign_op(self, onnx_node):
+        assert (onnx_node.op_type == "Sign")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.SignOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_sin_op(self, onnx_node):
