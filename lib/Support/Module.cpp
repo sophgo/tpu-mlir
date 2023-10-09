@@ -33,7 +33,6 @@ struct Attr {
   static constexpr llvm::StringRef STEP = "module.step";
   static constexpr llvm::StringRef INPUTS = "module.inputs";
   static constexpr llvm::StringRef OUTPUTS = "module.outputs";
-  static constexpr llvm::StringRef LINEAR_QUANT_MODE = "module.linear_quant_mode";
   static constexpr llvm::StringRef TRAIN = "module.train";
 };
 
@@ -910,6 +909,18 @@ Mode getMode() {
   return symbolizeMode(s).value_or(Mode::F32);
 }
 
+bool isBF16Modes() {
+  auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
+  auto mode = symbolizeMode(s).value_or(Mode::F32);
+  return mode == Mode::BF16 || mode == Mode::W8BF16 || mode == Mode::W4BF16;
+}
+
+bool isF16Modes() {
+  auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
+  auto mode = symbolizeMode(s).value_or(Mode::F32);
+  return mode == Mode::F16 || mode == Mode::W8F16 || mode == Mode::W4F16;
+}
+
 void setChip(Chip chip_) {
   chip = chip_;
   auto s = stringifyChip(chip_);
@@ -968,21 +979,6 @@ bool isAsymmetric() {
 
 void setAsymmetric(bool is_asymmetric) {
   m->setAttr(Attr::ASYMMETRIC, BoolAttr::get(ctx, is_asymmetric));
-}
-
-std::string getLinearQuantMode() {
-  if (m->hasAttrOfType<StringAttr>(Attr::LINEAR_QUANT_MODE)) {
-    return m->getAttrOfType<StringAttr>(Attr::LINEAR_QUANT_MODE).getValue().str();
-  }
-  return "NORMAL";
-}
-
-void setLinearQuantMode(std::string linear_quant_mode) {
-  if (strcasecmp("W4A16", linear_quant_mode.c_str()) != 0 &&
-      strcasecmp("W8A16", linear_quant_mode.c_str()) != 0) {
-    linear_quant_mode = "NORMAL";
-  }
-  m->setAttr(Attr::LINEAR_QUANT_MODE, StringAttr::get(ctx, linear_quant_mode));
 }
 
 bool isTrain() {
@@ -1069,9 +1065,7 @@ bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1688 ||
           chip == Chip::CV186X || chip == Chip::MARS3);
 }
-bool isSG2260Family() {
-  return (chip == Chip::SG2260);
-}
+bool isSG2260Family() { return (chip == Chip::SG2260); }
 bool isBM1688() { return (chip == Chip::BM1688 || chip == Chip::CV186X || chip == Chip::MARS3); }
 bool isBM1684X() { return (chip == Chip::BM1684X); }
 

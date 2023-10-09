@@ -434,15 +434,14 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
 
     if (auto wOp = dyn_cast<top::WeightOp>(in.getDefiningOp())) {
       // only linear layer will be replaced
-      if (i == 1 && module::getLinearQuantMode() != "NORMAL" &&
+      if (i == 1 && op.getWeightBits().has_value() &&
           wOp.getType().cast<RankedTensorType>().getShape().size() == 2) {
         auto noneOp = module::getNoneOp(op);
         operands.insert(operands.end(), {in, noneOp, op->getOperand(2)});
         std::vector<NamedAttribute> attrs;
         auto weight_bits = rewriter.getNamedAttr(
             "weight_bits",
-            rewriter.getI64IntegerAttr(
-                module::getLinearQuantMode() == "W4A16" ? 4 : 8));
+                op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
         rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands,
                                                         attrs);
@@ -472,15 +471,14 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
 
     if (auto wOp = dyn_cast<top::WeightOp>(in.getDefiningOp())) {
       // only linear layer will be replaced
-      if (i == 1 && module::getLinearQuantMode() != "NORMAL" &&
+      if (i == 1 && op.getWeightBits().has_value() &&
           wOp.getType().cast<RankedTensorType>().getShape().size() == 2) {
         auto noneOp = module::getNoneOp(op);
         operands.insert(operands.end(), {in, noneOp, op->getOperand(2)});
         std::vector<NamedAttribute> attrs;
         auto weight_bits = rewriter.getNamedAttr(
             "weight_bits",
-            rewriter.getI64IntegerAttr(
-                module::getLinearQuantMode() == "W4A16" ? 4 : 8));
+                op.getWeightBitsAttr());
         attrs.push_back(weight_bits);
         rewriter.replaceOpWithNewOp<tpu::A16MatMulOp>(op, newType, operands,
                                                         attrs);
