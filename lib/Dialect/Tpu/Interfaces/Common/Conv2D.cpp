@@ -61,6 +61,7 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
     p.kw = 3;
   }
   p.use_winograd = getUseWinograd().value_or(0);
+  p.use_3ic_optimize = getUse_3icOptimize();
   return p;
 }
 

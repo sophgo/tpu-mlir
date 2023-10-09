@@ -12,6 +12,7 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx_profiling.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
 
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
@@ -264,6 +265,7 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
   int64_t n_slice, c_slice, h_slice, d_slice, w_slice;
   auto &si = tensor_info.slice_info;
   get_max_slice_nchdw(si, n_slice, c_slice, h_slice, d_slice, w_slice);
+  std::vector<slice_pair_t> slice_idx = get_max_slice_nchdw_and_idx(si, n_slice, c_slice, h_slice, d_slice, w_slice);
   int64_t use_3ic = tensor_info.use_3ic_opt;
   bool need_bcast = tensor_info.need_bcast;
   bool eu_align = tensor_info.eu_align;
@@ -278,68 +280,119 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
     data_type = DTYPE_INT8;
     W >>= 1;
   }
-
   gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   auto g_addr = module::getAddress(v);
   auto l_addr = 0;
-  if (use_3ic < 4 && use_3ic > 0) {
-    // correspoding to NEURON_3IC
-    auto g_stride = bm168x->getGlobalStride(N, C, H, W);
+  if (module::isBM1684Family() && fmt_bytes == 1 && use_3ic) {
     if (need_bcast) {
-      C = Arch::NPU_NUM;
-      g_stride.N = 0;
-      g_stride.C = 0;
-      g_stride.H = 0;
+      C = BM168x::NPU_NUM;
     }
-    auto l_stride = bm168x->getLocalStride(n_slice, C, h_slice, w_slice,
-                                           fmt_bytes, eu_align);
-    auto use_op = *v.user_begin();
+    int64_t n_idx = slice_idx[0].second;
+    auto use_op = *v.getUsers().begin();
     auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
+    auto conv_param = conv_op.parseParam();
     auto kernel = module::getI64Array(conv_op.getKernelShape());
-    int64_t to_ic =
-        use_3ic == 1
-            ? kernel->at(0)
-            : (use_3ic == 2 ? kernel->at(1) : kernel->at(0) * kernel->at(1));
-    for (int64_t i = 0; i < C; ++i) {
-      bm168x->dl_tensor_broadcast_move_gen_cmd(
-          g_addr + i * W * H * fmt_bytes, 0, l_addr, i * to_ic, n_slice,
-          h_slice, w_slice, to_ic, g_stride.N, g_stride.H, l_stride.N,
-          l_stride.H, gdma_format, true, GDMA_VALUE_DIR_S2L, pid_node);
+    int data_len = 4;
+    int n_idx_trans = n_idx / 4;
+    int n_slice_trans = ceiling_func(n_slice, 4);
+    int oh_slice = (h_slice - conv_param.kh) / conv_param.sh + 1;
+    auto local_offerset = get_buffer_size(v, tensor_info, group_type);
+    for (int i = 0; i < n_slice_trans; i++) {
+      int src_N = C; // ic
+      int src_C = conv_param.kh;
+      int src_H = oh_slice;
+      int src_W = w_slice; // w
+
+      int src_N_stride = H * W;
+      int src_C_stride = W;
+      int src_H_stride = W * conv_param.sh;
+      int src_W_stride = 1;
+
+      int dst_N = 1;
+      int dst_C = C * conv_param.kh;
+      int dst_H = oh_slice;
+      int dst_W = w_slice;
+
+      int dst_W_stride = 1;
+      int dst_H_stride = dst_W;
+
+      auto NPU_NUM = BM168x::NPU_NUM;
+      auto EU_NUM = BM168x::eu_num(sizeof(float));
+      int dst_C_stride = (oh_slice * dst_W + EU_NUM - 1) / EU_NUM * EU_NUM;
+      int dst_N_stride =
+          (C * conv_param.kh + NPU_NUM - 1) / NPU_NUM * dst_C_stride;
+      BM1684::instance().dl_tensor_general_move_gen_cmd(
+          g_addr + (uint64_t)(n_idx_trans + i) * C * H * W * data_len +
+              (uint64_t)(slice_idx[2].second) * W * data_len + slice_idx[4].second * data_len,
+          0, // no use
+          src_N, src_C, src_H, src_W, src_N_stride, src_C_stride, src_H_stride,
+          src_W_stride, 0, local_offerset + i * dst_N_stride * data_len, 0, dst_N,
+          dst_C, dst_H, dst_W, dst_N_stride, dst_C_stride, dst_H_stride,
+          dst_W_stride, 0,
+          GDMA_VALUE_DIR_S2L, // 0
+          0, pid_node);
     }
   } else {
-    // correspoding to NEURON
-    int64_t c_num_local = ceiling_func(C, Arch::NPU_NUM);
-    int64_t c_stride =
-        eu_align ? align_up(h_slice * w_slice, Arch::eu_num(fmt_bytes))
-                 : h_slice * w_slice;
-    int64_t channel_num = c_slice;
-    const int64_t csecs = ceiling_func(channel_num, (int64_t)MAX_TPU_DIM);
-    if (d_slice <= n_slice) {
-      for (int64_t d = 0; d < d_slice; d++) {
-        int64_t channel_index = 0;
-        while (channel_index < csecs) {
-          int64_t cur_cslice =
-              std::min(channel_num - channel_index * (int64_t)MAX_TPU_DIM,
-                       (int64_t)MAX_TPU_DIM);
+    if (use_3ic < 4 && use_3ic > 0) {
+      // correspoding to NEURON_3IC
+      auto g_stride = bm168x->getGlobalStride(N, C, H, W);
+      if (need_bcast) {
+        C = Arch::NPU_NUM;
+        g_stride.N = 0;
+        g_stride.C = 0;
+        g_stride.H = 0;
+      }
+      auto l_stride = bm168x->getLocalStride(n_slice, C, h_slice, w_slice,
+                                             fmt_bytes, eu_align);
+      auto use_op = *v.getUsers().begin();
+      auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
+      auto kernel = module::getI64Array(conv_op.getKernelShape());
+      int64_t to_ic =
+          use_3ic == 1
+              ? kernel->at(0)
+              : (use_3ic == 2 ? kernel->at(1) : kernel->at(0) * kernel->at(1));
+      for (int64_t i = 0; i < C; ++i) {
+        bm168x->dl_tensor_broadcast_move_gen_cmd(
+            g_addr + i * W * H * fmt_bytes, 0, l_addr, i * to_ic, n_slice,
+            h_slice, w_slice, to_ic, g_stride.N, g_stride.H, l_stride.N,
+            l_stride.H, gdma_format, true, GDMA_VALUE_DIR_S2L, pid_node);
+      }
+    } else {
+      // correspoding to NEURON
+      int64_t c_num_local = ceiling_func(C, Arch::NPU_NUM);
+      int64_t c_stride =
+          eu_align ? align_up(h_slice * w_slice, Arch::eu_num(fmt_bytes))
+                   : h_slice * w_slice;
+      int64_t channel_num = c_slice;
+      const int64_t csecs = ceiling_func(channel_num, (int64_t)MAX_TPU_DIM);
+      if (d_slice <= n_slice) {
+        for (int64_t d = 0; d < d_slice; d++) {
+          int64_t channel_index = 0;
+          while (channel_index < csecs) {
+            int64_t cur_cslice =
+                std::min(channel_num - channel_index * (int64_t)MAX_TPU_DIM,
+                         (int64_t)MAX_TPU_DIM);
+            bm168x->dl_tensor_stride_move_gen_cmd(
+                l_addr, 0, g_addr, // only simulate for calc cycle
+                n_slice, cur_cslice, h_slice, w_slice, C * D * H * W, D * H * W,
+                W, 1, c_num_local * c_stride, c_stride, w_slice, 1, gdma_format,
+                GDMA_VALUE_DIR_S2L, 0, pid_node);
+            channel_index++;
+          }
+        }      // depth loop
+      } else { // HAVE DEPTH,3D [N,C,D,H,W]->[d,n_slice,c,h_slice,w]
+        for (int64_t i = 0; i < n_slice; i++) {
           bm168x->dl_tensor_stride_move_gen_cmd(
-              l_addr, 0, g_addr, // only simulate for calc cycle
-              n_slice, cur_cslice, h_slice, w_slice, C * D * H * W, D * H * W,
-              W, 1, c_num_local * c_stride, c_stride, w_slice, 1, gdma_format,
-              GDMA_VALUE_DIR_S2L, 0, pid_node);
-          channel_index++;
-        }
-      }      // depth loop
-    } else { // HAVE DEPTH,3D [N,C,D,H,W]->[d,n_slice,c,h_slice,w]
-      for (int64_t i = 0; i < n_slice; i++) {
-        bm168x->dl_tensor_stride_move_gen_cmd(
-            l_addr, 0, g_addr, d_slice, c_slice, h_slice, w_slice,
-            H * W,     // actually global d_stride
-            D * H * W, // actually global c_stride
-            W, 1,
-            n_slice * c_num_local * c_stride, // actually local d_stride
-            c_stride, w_slice, 1, gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
-      } // nslice loop
+              l_addr, 0, g_addr, d_slice, c_slice, h_slice, w_slice,
+              H * W,     // actually global d_stride
+              D * H * W, // actually global c_stride
+              W, 1,
+              n_slice * c_num_local * c_stride, // actually local d_stride
+              c_stride, w_slice, 1, gdma_format, GDMA_VALUE_DIR_S2L, 0,
+              pid_node);
+        } // nslice loop
+      }
     }
   }
   int64_t gdma_cycle = bm168x->dl_get_cmd_id_cycle(pid_node);

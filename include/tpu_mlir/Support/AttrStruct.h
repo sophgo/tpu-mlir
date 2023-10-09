@@ -38,6 +38,7 @@ typedef struct {
   bool do_relu;
   double relu_limit;
   int use_winograd;
+  int use_3ic_optimize;
 } conv_attr_t;
 
 typedef struct {
