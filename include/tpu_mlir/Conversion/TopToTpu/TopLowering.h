@@ -90,6 +90,11 @@ public:
                   ConversionPatternRewriter &rewriter) const final {
     std::vector<mlir::Type> new_types;
     auto real_mode = module::getMode();
+    if (module::isF16Modes()) {
+      real_mode = module::Mode::F16;
+    } else if (module::isBF16Modes()) {
+      real_mode = module::Mode::BF16;
+    }
     for (int i = 0; i < op->getNumResults(); i++) {
       switch (real_mode) {
       case module::Mode::INT8:
@@ -153,6 +158,11 @@ public:
                   ConversionPatternRewriter &rewriter) const final {
     std::vector<mlir::Type> new_types;
     auto real_mode = module::getMode();
+    if (module::isF16Modes()) {
+      real_mode = module::Mode::F16;
+    } else if (module::isBF16Modes()) {
+      real_mode = module::Mode::BF16;
+    }
     for (int i = 0; i < op->getNumResults(); i++) {
       switch (real_mode) {
       case module::Mode::INT8:
