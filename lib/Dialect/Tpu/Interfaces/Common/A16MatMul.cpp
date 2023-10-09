@@ -108,7 +108,7 @@ LogicalResult tpu::A16MatMulOp::inference(InferenceParameter &p) {
   }
 
   auto num_elem = module::getNumElements(getOutput());
-  if (module::getMode() == module::Mode::F16) {
+  if (module::isF16Modes()) {
     F16(p.outputs[0], p.outputs[0], num_elem);
   } else {
     BF16(p.outputs[0], p.outputs[0], num_elem);
