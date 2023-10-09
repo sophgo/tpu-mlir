@@ -7,10 +7,35 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
+
+static int inline get_tensor_local_size(const int *shape, int type_len,
+                                        STORE_MODE_T store_mode, int npu_num, int eu_num,
+                                        bool is_aligned = true) {
+  int n = shape[0];
+  if (store_mode == STORE_MODE_4N && type_len == 1) {
+    n = align_up(n, 4);
+  } else if (store_mode == STORE_MODE_2N && type_len == 2) {
+    n = align_up(n, 2);
+  }
+  int c = shape[1];
+  int h = shape[2];
+  int w = shape[3];
+  int cnum = (c + eu_num - 1) / npu_num;
+  int cstride = h * w;
+  if (is_aligned) {
+    cstride = align_up(cstride, (eu_num * 4 / type_len));
+  }
+  int buffer_size = n * cnum * cstride * type_len;
+  return buffer_size;
+}
 
 void tpu::Conv2DOp::codegen_global_bm1684() {
   auto attr = parseParam();
@@ -21,6 +46,10 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
   if (module::isUniformQuantized(getInput())) {
     auto shift_v =
         module::getI64Array(getRshift(), attr.use_winograd == 0 ? 1 : 2, 0);
+    auto out_etype = module::getStorageType(getOutput());
+    if (out_etype.isUnsignedInteger()) {
+      attr.do_relu = true;
+    }
     auto shift = shift_v->at(0);
     auto in_sign = module::isSign(getInput());
     auto filter_sign = module::isSign(getFilter());
@@ -51,6 +80,9 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
                 bias_sign, 3, 0, 0, 0, 0,
                 (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
       } else {
+        // int bottom_height = attr.ih;
+        // if (getUse_3icOptimize())
+        //   bottom_height += attr.pht + attr.phb;
         BM1684::instance()
             .dl_nodechip_conv_forward_parallel_fix8b_with_data_split(
                 in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic,
@@ -58,7 +90,7 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
                 attr.dh, attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr,
                 attr.sh, attr.sw, attr.has_bias ? 1 : 0, 0,
                 attr.do_relu ? 1 : 0, 0, 1, 0, 0, shift, in_sign, filter_sign,
-                bias_sign, 3, 0, 0, 0, 0, 0,
+                bias_sign, 3, 0, 0, 0, 0, getUse_3icOptimize(),
                 (CMD_ID_NODE *)BM1684::instance()->cmdid_node);
       }
     }
@@ -85,6 +117,49 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
 int64_t tpu::Conv2DOp::getBufferSize_bm1684(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+  auto p = parseParam();
+  auto pads_v = module::getI64Array(getPads());
+  p.pht = pads_v->at(0);
+  p.pwl = pads_v->at(1);
+  p.phb = pads_v->at(2);
+  p.pwr = pads_v->at(3);
+  int buffer_size = 0;
+  auto dtype_i = BM168x::getDataType(getInput());
+  auto NPU_NUM = BM168x::NPU_NUM;
+  auto EU_NUM = BM168x::eu_num(sizeof(float));
+  bool need_buffer = p.is_dw;
+  if (dtype_i == DTYPE_FP32) {
+    if (p.is_dw == 0 &&
+        (in_hslice + p.pht + p.phb > 2047 || p.iw + p.pwl + p.pwr > 2047)) {
+      need_buffer = true;
+    }
+    if (need_buffer) {
+      int h_pad = in_hslice + p.pht + p.phb;
+      int w_pad = p.iw + p.pwl + p.pwr;
+      int real_h =
+          ((h_pad > 2047 ? 2047 : h_pad) - ((p.kh - 1) * p.dh + 1)) / p.sh + 1;
+      int real_w =
+          ((w_pad > 2047 ? 2047 : w_pad) - ((p.kw - 1) * p.dw + 1)) / p.sw + 1;
+      // split_shape[0][0] = n_slice;
+      int new_shape[4] = {(int)in_nslice, (int)p.oc, real_h, real_w};
+      buffer_size = get_tensor_local_size(new_shape, 4, STORE_MODE_1N,  (int)NPU_NUM, (int)EU_NUM, true);
+    }
+    return buffer_size;
+  } else {
+    if (dtype_i == DTYPE_INT16 || dtype_i == DTYPE_UINT16) {
+      buffer_size = ceiling_func(in_nslice, 4) * ceiling_func(p.ic, NPU_NUM) *
+                    align_up((in_hslice + p.pht + p.phb) * p.iw, EU_NUM) *
+                    sizeof(int);
+      int kh_ext = p.dh * (p.kh - 1) + 1;
+      int output_h = (in_hslice + p.pht + p.phb - kh_ext) / p.sh + 1;
+      // for 4N int16 output data
+      buffer_size += ceiling_func(in_nslice, 2) * output_h *
+                     align_up(1 * 32, EU_NUM) * 2 * sizeof(int);
+      return buffer_size;
+    }
+    // workd/nntoolchain/net_compiler/bmcompiler/src/layers/bm1684/bm1684_conv.cpp 
+    // ##todo int8/uint8 datatype only when merged mulshift into conv need buffer;
+  }
   return 0;
 }
 
@@ -161,14 +236,21 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
           in_sign, filter_sign, bias_sign, out_sign, p.do_relu,
           BM1684::instance()->bdc_node);
     } else {
+      bottom_dim[1] =
+          getUse_3icOptimize() ? bottom_dim[1] * p.kh : bottom_dim[1];
+      bottom_dim[2] = getUse_3icOptimize() ? top_dim[2] : bottom_dim[2];
+      // pad_h_t = getUse_3icOptimize() ? 0 : pad_h_t;
+      // pad_h_b = getUse_3icOptimize() ? 0 : pad_h_b;
       BM1684::instance().dl_nodechip_conv_forward_local_fix8b(
           in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
-          gi.buffer_addr, bottom_dim, top_dim, p.groups, p.kh, p.kw, p.dh, p.dw,
-          pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw, p.has_bias, 0, p.do_relu,
-          p.relu_limit, /*unused_ht*/ unused_ht_for_input, unused_hb_for_input,
-          unused_wl_for_input, unused_wr_for_input, /* insert h*/ p.ins_h,
-          p.ins_w, shift, in_sign, filter_sign, bias_sign, true, /*mulshift*/ 0,
-          0, 0, 0, BM1684::instance()->bdc_node);
+          gi.buffer_addr, bottom_dim, top_dim, p.groups,
+          getUse_3icOptimize() ? 1 : p.kh, p.kw, p.dh, p.dw, pad_h_t, pad_h_b,
+          p.pwl, p.pwr, getUse_3icOptimize() ? 1 : p.sh, p.sw, p.has_bias, 0,
+          p.do_relu, p.relu_limit, /*unused_ht*/ unused_ht_for_input,
+          unused_hb_for_input, unused_wl_for_input, unused_wr_for_input,
+          /* insert h*/ p.ins_h, p.ins_w, shift, in_sign, filter_sign,
+          bias_sign, true, /*mulshift*/ 0, 0, 0, 0,
+          BM1684::instance()->bdc_node);
     }
   } else {
     BM1684::instance().dl_nodechip_conv_forward_local(
@@ -253,8 +335,8 @@ int32_t tpu::Conv2DOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
                                    getBias());
   }
 
-  // output, in local concat case, let the out_tensor_id which is the first conv
-  // of concat be concat's out_tensor_id
+  // output, in local concat case, let the out_tensor_id which is the first
+  // conv of concat be concat's out_tensor_id
   dynamic_push_back_local_tensor(conv_layer_info->ir_tensor_info_v,
                                  getOutput());
 

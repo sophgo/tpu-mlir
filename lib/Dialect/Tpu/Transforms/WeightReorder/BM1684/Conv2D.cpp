@@ -48,13 +48,13 @@ void conv_weight_transform(int ic, int oc, int kh, int kw,
 }
 
 LogicalResult convReorder(tpu::Conv2DOp op, PatternRewriter &rewriter) {
-
   auto attr = op.parseParam();
-
   auto type_bytes = 1;
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
   auto filter_type = module::getElementType(op.getFilter());
+  std::vector<int64_t> new_shape = {1, attr.oc, attr.kh * attr.kw,
+                                    align_up(attr.ic / attr.groups, 4)};
   if ((attr.dh > 15 || attr.dw > 15) && attr.groups == 1) {
     int64_t factor_dh = 2, factor_dw = 2;
     int64_t new_kh = attr.kh, new_kw = attr.kw;
@@ -113,18 +113,47 @@ LogicalResult convReorder(tpu::Conv2DOp op, PatternRewriter &rewriter) {
     op.setDilationsAttr(rewriter.getI64ArrayAttr({new_dh, new_dw}));
     op.setKernelShapeAttr(rewriter.getI64ArrayAttr({new_kh, new_kw}));
   } else if (attr.is_dw == false) {
-    std::vector<int64_t> new_shape = {1, attr.oc, attr.kh * attr.kw,
-                                      align_up(attr.ic / attr.groups, 4l)};
-    int new_count =
-        align_up(attr.ic / attr.groups, 4l) * attr.oc * attr.kh * attr.kw;
-    auto filter_new = std::make_shared<std::vector<int8_t>>(new_count, 0);
-    conv_weight_transform(attr.ic / attr.groups, attr.oc, attr.kh, attr.kw,
-                          filter_int8->data(), filter_new->data(), type_bytes);
+    if (op.getUse_3icOptimize()) {
+      std::vector<int64_t> new_shape = {attr.ic / attr.groups, attr.oc, attr.kh, attr.kw};
+      new_shape[0] = new_shape[0] * new_shape[2];
+      new_shape[2] = 1;
+      int ic = new_shape[0];
+      int oc = new_shape[1];
+      int kh = new_shape[2];
+      int kw = new_shape[3];
+      int new_count = oc * align_up(ic, 4) * kh * kw;
+      auto filter_new = std::make_shared<std::vector<int8_t>>(new_count, 0);
+      auto filter_op = op.getFilter().getDefiningOp<top::WeightOp>();
+      auto filter_type = module::getStorageType(op.getFilter());
+      auto filter_i8 = filter_op.read<int8_t>();
+      for(int oc_idx = 0; oc_idx < oc; oc_idx++) {
+      for(int ic_idx = 0; ic_idx < ic; ic_idx++) {
+        for(int k_idx = 0; k_idx < kh * kw;  k_idx++) {
+          int orig_offset = ic_idx * kh * kw + k_idx + oc_idx * kh * kw * ic;
+          int trans_offset = ic_idx + k_idx * align_up(ic,4) + oc_idx * kh * kw * align_up(ic,4);
+          filter_new->at(trans_offset) = filter_i8->at(orig_offset);
+        }
+      }
+    }
+    new_shape[3] = 1;
+    new_shape[2] = kh * kw * align_up(ic,4);
+    new_shape[0] = 1;
     auto new_type = RankedTensorType::get(new_shape, filter_type);
-    auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
-                                            "reorderd", *filter_new, new_type);
+    auto new_filter = top::WeightOp::create(
+        op.getFilter().getDefiningOp(), "reorderd", *filter_new, new_type);
     op->setOperand(1, new_filter);
-  } else {
+    } else {
+      int new_count = new_shape[0] * new_shape[1] * new_shape[2] * new_shape[3];
+      auto filter_new = std::make_shared<std::vector<int8_t>>(new_count, 0);
+      conv_weight_transform(attr.ic / attr.groups, attr.oc, attr.kh, attr.kw,
+                            filter_int8->data(), filter_new->data(),
+                            type_bytes);
+      auto new_type = RankedTensorType::get(new_shape, filter_type);
+      auto new_filter = top::WeightOp::create(
+          op.getFilter().getDefiningOp(), "reorderd", *filter_new, new_type);
+      op->setOperand(1, new_filter);
+    }
+   } else {
     int64_t filter_shape[4];
     filter_shape[0] = 1;
     filter_shape[1] = attr.oc;
@@ -132,9 +161,7 @@ LogicalResult convReorder(tpu::Conv2DOp op, PatternRewriter &rewriter) {
     filter_shape[3] = attr.kh * attr.kw;
     auto new_type = RankedTensorType::get(filter_shape, filter_type);
     op.getFilter().setType(new_type);
-  }
-  // bias op
-  if (attr.has_bias) {
+  } if (attr.has_bias) {
     auto bias = op.getBias().getDefiningOp<top::WeightOp>();
     auto bias_type = module::getElementType(bias);
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
@@ -145,7 +172,6 @@ LogicalResult convReorder(tpu::Conv2DOp op, PatternRewriter &rewriter) {
     }
 
     auto new_type = RankedTensorType::get(bias_shape, bias_type);
-
     op.getBias().setType(new_type);
     auto new_bias_op = top::WeightOp::create(op.getBias().getDefiningOp(),
                                              "bias", new_bias, new_type);
