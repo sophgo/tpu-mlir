@@ -642,12 +642,11 @@ void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
   if (GROUP_3D == group_type) {
     n = num_dims > 0 ? shape[0] : 1;
     c = num_dims > 1 ? shape[1] : 1;
-    d = num_dims > 2 ? shape[2] : 1;
-    h = num_dims > 3 ? shape[3] : 1;
+    d = num_dims > 4 ? shape[2] : 1;
+    h = num_dims > 4 ? shape[3] : (num_dims > 2 ? shape[2] : 1);
     w = 1;
-    for (size_t i = 4; i < num_dims; ++i) {
+    for (int i = (num_dims > 4) ? 4 : 3; i < num_dims; i++)
       w *= shape[i];
-    }
     return;
   } else if (GROUP_MM_INT4 == group_type) {
     assert(num_dims == 2);
@@ -1066,7 +1065,9 @@ bool isBM1684XFamily() {
           chip == Chip::CV186X || chip == Chip::MARS3);
 }
 bool isSG2260Family() { return (chip == Chip::SG2260); }
-bool isBM1688() { return (chip == Chip::BM1688 || chip == Chip::CV186X || chip == Chip::MARS3); }
+bool isBM1688() {
+  return (chip == Chip::BM1688 || chip == Chip::CV186X || chip == Chip::MARS3);
+}
 bool isBM1684X() { return (chip == Chip::BM1684X); }
 
 ModuleOp getModuleOp() { return m; }
