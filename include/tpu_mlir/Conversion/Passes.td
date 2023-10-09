@@ -32,9 +32,7 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
     Option<"ignore_f16_overflow", "ignore_f16_overflow", "bool", /*default=*/"false",
            "some ops convert from f16 to f32, to avoid f16 overflow">,
     Option<"weightFileName", "weightFileName", "std::string", /*default=*/"",
-           "weight file name to save">,
-    Option<"LinearQuantMode", "linear_quant_mode", "std::string", /*default=*/"",
-           "W4A16/ W8A16 quant mode for linear layer">
+           "weight file name to save">
   ];
 }
 

@@ -136,8 +136,7 @@ public:
       sliceMergeSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op, num_devices);
       break;
     case tpu::DistributionPattern::MatMulSliceMerge2:
-      sliceMerge2Split(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);
-      sliceMerge2Split(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op, num_devices);
+      sliceMerge2Split(rewriter, op, num_devices);
       break;
     case tpu::DistributionPattern::MatMulTopK:
       topKSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);

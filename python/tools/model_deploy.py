@@ -59,7 +59,6 @@ class DeployTool:
         self.excepts = args.excepts
         self.tolerance = args.tolerance
         self.test_input = args.test_input
-        self.linear_quant_mode = args.linear_quant_mode
         self.quantize = args.quantize.lower()
         self.asymmetric = args.asymmetric
         self.cali_table = args.calibration_table
@@ -119,7 +118,7 @@ class DeployTool:
             mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
                           self.asymmetric, self.quantize_table, self.customization_format,
                           self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow,
-                          self.linear_quant_mode, self.do_winograd)
+                          self.do_winograd)
             if self.do_validate:
                 tool.validate_tpu_mlir()
 
@@ -246,7 +245,7 @@ if __name__ == '__main__':
                         help="calibration table for int8 quantization")
     parser.add_argument("--quantize_table",
                         help="table of OPs that quantized to specific mode")
-    parser.add_argument("--quantize", default="F32", type=str.upper, choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'QDQ'],
+    parser.add_argument("--quantize", default="F32", type=str.upper, choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'QDQ', 'W8F16', 'W8BF16', 'W4F16', 'W4BF16'],
                         help="set default qauntization type: F32/BF16/F16/INT8")
     parser.add_argument("--asymmetric", action='store_true',
                         help="do INT8 asymmetric quantization")
@@ -297,8 +296,6 @@ if __name__ == '__main__':
     parser.add_argument("--skip_validation", action='store_true', help='skip checking the correctness of bmodel.')
     parser.add_argument("--merge_weight", action="store_true", default=False,
                         help="merge weights into one weight binary with previous generated cvimodel")
-    parser.add_argument("--linear_quant_mode", default="NORMAL", type=str.upper, choices=["W8A16", "W4A16", "NORMAL"],
-                    help="quantize linear with W8A16 / W4A16 strategy")
     parser.add_argument("--do_winograd", action="store_true", default=False,
                         help="do_winograd")
     parser.add_argument("--model_version", default="latest",
@@ -306,9 +303,6 @@ if __name__ == '__main__':
 
     # yapf: enable
     args = parser.parse_args()
-    if args.linear_quant_mode != "NORMAL":
-        assert((args.quantize == "F16" or args.quantize == "BF16")
-               and "W8A16 and W4A16 can only be used in F16/ BF16 quantize mode")
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
     if not args.fuse_preprocess and args.customization_format:

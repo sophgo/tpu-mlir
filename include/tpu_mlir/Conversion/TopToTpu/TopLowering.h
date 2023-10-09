@@ -33,8 +33,7 @@ mlir::Type getQuantIntType(Value v, double scale, double offset, int bits = 8);
 mlir::Type getQuantInt4Type(Value v, bool asymmetric = false);
 mlir::Type getQuantBoolType(Value v);
 
-template <typename ElemTy>
-static mlir::Type getQuantFloatType(Value v);
+template <typename ElemTy> static mlir::Type getQuantFloatType(Value v);
 
 class ScfTypeConverter : public TypeConverter {
 public:
@@ -91,24 +90,27 @@ public:
                   ConversionPatternRewriter &rewriter) const final {
     std::vector<mlir::Type> new_types;
     auto real_mode = module::getMode();
-    for (int i = 0; i < op->getNumResults(); i++)
-    {
+    for (int i = 0; i < op->getNumResults(); i++) {
       switch (real_mode) {
-        case module::Mode::INT8:
-          new_types.push_back(getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
-          break;
-        case module::Mode::INT4:
-          new_types.push_back(getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
-          break;
-        case module::Mode::F16:
-          new_types.push_back(getQuantFloatType<mlir::Float16Type>(op->getResult(i)));
-          break;
-        case module::Mode::BF16:
-          new_types.push_back(getQuantFloatType<mlir::BFloat16Type>(op->getResult(i)));
-          break;
-        default:
-          new_types.emplace_back(op->getResultTypes()[i]);
-          break;
+      case module::Mode::INT8:
+        new_types.push_back(
+            getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
+        break;
+      case module::Mode::INT4:
+        new_types.push_back(
+            getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
+        break;
+      case module::Mode::F16:
+        new_types.push_back(
+            getQuantFloatType<mlir::Float16Type>(op->getResult(i)));
+        break;
+      case module::Mode::BF16:
+        new_types.push_back(
+            getQuantFloatType<mlir::BFloat16Type>(op->getResult(i)));
+        break;
+      default:
+        new_types.emplace_back(op->getResultTypes()[i]);
+        break;
       }
     }
 
@@ -141,7 +143,6 @@ private:
   }
 };
 
-
 class LoopOpLowering : public ConversionPattern {
 public:
   explicit LoopOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
@@ -152,24 +153,27 @@ public:
                   ConversionPatternRewriter &rewriter) const final {
     std::vector<mlir::Type> new_types;
     auto real_mode = module::getMode();
-    for (int i = 0; i < op->getNumResults(); i++)
-    {
+    for (int i = 0; i < op->getNumResults(); i++) {
       switch (real_mode) {
-        case module::Mode::INT8:
-          new_types.push_back(getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
-          break;
-        case module::Mode::INT4:
-          new_types.push_back(getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
-          break;
-        case module::Mode::F16:
-          new_types.push_back(getQuantFloatType<mlir::Float16Type>(op->getResult(i)));
-          break;
-        case module::Mode::BF16:
-          new_types.push_back(getQuantFloatType<mlir::BFloat16Type>(op->getResult(i)));
-          break;
-        default:
-          new_types.emplace_back(op->getResultTypes()[i]);
-          break;
+      case module::Mode::INT8:
+        new_types.push_back(
+            getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
+        break;
+      case module::Mode::INT4:
+        new_types.push_back(
+            getQuantInt8Type(op->getResult(i), module::isAsymmetric()));
+        break;
+      case module::Mode::F16:
+        new_types.push_back(
+            getQuantFloatType<mlir::Float16Type>(op->getResult(i)));
+        break;
+      case module::Mode::BF16:
+        new_types.push_back(
+            getQuantFloatType<mlir::BFloat16Type>(op->getResult(i)));
+        break;
+      default:
+        new_types.emplace_back(op->getResultTypes()[i]);
+        break;
       }
     }
 
@@ -186,9 +190,9 @@ public:
     }
 
     auto yieldOp = tpuLoopOp.getBody().front().getTerminator();
-    //update the loopop's output
+    // update the loopop's output
     for (int i = 0; i < tpuLoopOp.v_final().size(); i++) {
-      auto type = yieldOp->getOperand(i+1).getType();
+      auto type = yieldOp->getOperand(i + 1).getType();
       tpuLoopOp.getResult(i).setType(type);
     }
     op->replaceAllUsesWith(tpuLoopOp.getOperation());
@@ -224,6 +228,12 @@ public:
   LogicalResult matchAndRewrite(OpTy opTy,
                                 PatternRewriter &rewriter) const override {
     Operation *op = opTy.getOperation();
+    // for WxF16 / WxBF16 mode
+    auto matmul_op = dyn_cast<top::MatMulOp>(op);
+    auto is_right_weight =
+        matmul_op ? isa<top::WeightOp>(op->getOperand(1).getDefiningOp())
+                  : false;
+
     bool isQuantized = LoweringConfig::isQuantized;
     if (isQuantized) {
       LoweringQuantized(rewriter, opTy);
@@ -237,7 +247,7 @@ public:
     }
     switch (real_mode) {
     case module::Mode::INT8:
-      if(auto conv = dyn_cast<top::ConvOp>(op)){
+      if (auto conv = dyn_cast<top::ConvOp>(op)) {
         conv.setDoWinograd(LoweringConfig::doWinograd);
       }
       LoweringINT8(rewriter, opTy, module::isAsymmetric());
@@ -257,6 +267,30 @@ public:
       }
       break;
     case module::Mode::BF16:
+      LoweringBF16(rewriter, opTy);
+      break;
+    case module::Mode::W8F16:
+      if (matmul_op && is_right_weight) {
+        matmul_op.setWeightBits(8);
+      }
+      LoweringF16(rewriter, opTy);
+      break;
+    case module::Mode::W8BF16:
+      if (matmul_op && is_right_weight) {
+        matmul_op.setWeightBits(8);
+      }
+      LoweringBF16(rewriter, opTy);
+      break;
+    case module::Mode::W4F16:
+      if (matmul_op && is_right_weight) {
+        matmul_op.setWeightBits(4);
+      }
+      LoweringF16(rewriter, opTy);
+      break;
+    case module::Mode::W4BF16:
+      if (matmul_op && is_right_weight) {
+        matmul_op.setWeightBits(4);
+      }
       LoweringBF16(rewriter, opTy);
       break;
     default:
@@ -320,8 +354,8 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
   for (int i = 0; i < in_num_ops; ++i) {
     auto in = from->getOperand(i);
     if (module::isWeight(in)) {
-      [[maybe_unused]]auto wOp = in.getDefiningOp<top::WeightOp>();
-      [[maybe_unused]]auto wtype = module::getStorageType(in);
+      [[maybe_unused]] auto wOp = in.getDefiningOp<top::WeightOp>();
+      [[maybe_unused]] auto wtype = module::getStorageType(in);
       if (stype.isF16()) {
         operands.push_back(wOp.clone_f16(from));
       } else if (stype.isBF16()) {
@@ -433,8 +467,8 @@ Value do_requantFp(Value input, double scale, double offset, Type to_type,
 template <typename OpTy>
 Value do_binary_saclar(Value input, Type to_type, int64_t scalar,
                        const char *suffix = "_binary") {
-  [[maybe_unused]]auto from_stype = module::getStorageType(input);
-  [[maybe_unused]]auto to_stype = module::getStorageType(to_type);
+  [[maybe_unused]] auto from_stype = module::getStorageType(input);
+  [[maybe_unused]] auto to_stype = module::getStorageType(to_type);
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
   auto newType = to_type;

@@ -121,7 +121,7 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
                                           mm0->getAttrs().end());
     attrs.insert(attrs.end(), mm0_attrs.begin(), mm0_attrs.end());
   }
-  int weight_bits = a16_mm0 ? a16_mm0.getWeightBits() : 16;
+  int mm0_wbits = a16_mm0 ? a16_mm0.getWeightBits() : 16;
   auto slice_n = ceiling_func(N_half, num_devices);
   std::vector<Operation *> slices(mm0->user_begin(), mm0->user_end());
   auto slice0Op = cast<tpu::SliceOp>(slices[0]);
@@ -160,7 +160,7 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
       }
       auto new_loc = module::getLocLike(mm0.getOutput(), suffix_half);
       std::vector<int64_t> new_shape = outputShape;
-      new_shape[new_shape.size() - 1] = (weight_bits == 4 ? 2 : 1) * length;
+      new_shape[new_shape.size() - 1] = (mm0_wbits == 4 ? 2 : 1) * length;
       auto new_type = module::getTypeLike(mm0.getOutput(), new_shape);
       rewriter.setInsertionPointAfter(mm0);
       auto new_mm0 =
@@ -181,41 +181,49 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
     new_op->setOperands(res_operands);
     Value cur_output = new_op->getResult(0);
     next_op = *next_op->user_begin();
-    // matmul op
-    while (!isa<MatMulTy>(next_op)) {
+    // matmul op, can be MatMul or A16MatMul
+    while (!isa<tpu::MatMulOp, tpu::A16MatMulOp>(next_op)) {
       new_op = cloneOp(rewriter, next_op, new_shape, suffix);
       new_op->setOperand(0, cur_output);
       cur_output = new_op->getResult(0);
       next_op = *next_op->user_begin();
     }
-    auto mm1 = cast<MatMulTy>(next_op);
+    auto a16_mm1 = dyn_cast<tpu::A16MatMulOp>(next_op);
+    auto mm1_weight_value = next_op->getOperand(1);
+    auto mm1_bias_value = next_op->getOperand(a16_mm1 ? 3 : 2);
+
     auto new_loc = module::getLocLike(next_op, suffix);
     std::vector<Value> operands;
     operands.push_back(cur_output);
-    auto newFilter1 = module::opSliceAxis(mm1.getOperand(1), num_dims - 2,
-                                          (weight_bits == 4 ? 2 : 1) * offset,
-                                          (weight_bits == 4 ? 2 : 1) * length);
+    auto newFilter1 = module::opSliceAxis(mm1_weight_value, num_dims - 2,
+                                          (mm0_wbits == 4 ? 2 : 1) * offset,
+                                          (mm0_wbits == 4 ? 2 : 1) * length);
     operands.push_back(newFilter1);
-    if (a16_mm0) {
-      auto new_scale = module::opSliceAxis(mm1.getOperand(2), 0,
-                                           (weight_bits == 4 ? 2 : 1) * offset,
-                                           (weight_bits == 4 ? 2 : 1) * length);
+    if (a16_mm1) {
+      auto new_scale = module::opSliceAxis(a16_mm1.getOperand(2), 0,
+                                           (mm0_wbits == 4 ? 2 : 1) * offset,
+                                           (mm0_wbits == 4 ? 2 : 1) * length);
       operands.push_back(new_scale);
     }
-    if (module::isNone(mm1.getBias())) {
-      operands.push_back(mm1.getBias());
-    } else if (module::isWeight(mm1.getBias())) {
-      auto bias = mm1.getBias().template getDefiningOp<top::WeightOp>();
+    if (module::isNone(mm1_bias_value)) {
+      operands.push_back(mm1_bias_value);
+    } else if (module::isWeight(mm1_bias_value)) {
+      auto bias = mm1_bias_value.template getDefiningOp<top::WeightOp>();
       operands.push_back(bias.clone(suffix));
     } else {
       operands.push_back(module::getNoneOp(op));
       biasAdd = true;
-      biasValue = mm1.getBias();
+      biasValue = mm1_bias_value;
     }
     rewriter.setInsertionPointAfter(next_op);
-    auto new_mm1 = rewriter.create<MatMulTy>(new_loc, mm1.getOutput().getType(),
-                                             operands, mm1->getAttrs());
-    end_operands.push_back(new_mm1.getOutput());
+    auto new_type = next_op->getResult(0).getType();
+    auto new_mm1 =
+        a16_mm1 ? rewriter.create<tpu::A16MatMulOp>(new_loc, new_type, operands,
+                                                    next_op->getAttrs())
+                : rewriter.create<tpu::MatMulOp>(new_loc, new_type, operands,
+                                                 next_op->getAttrs());
+    end_operands.push_back(new_mm1->getResult(0));
+
     if (i == 0) {
       end_op = *next_op->user_begin();
     } else {
