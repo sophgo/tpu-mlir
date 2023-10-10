@@ -26,9 +26,7 @@ struct RemoveInterp : public OpRewritePattern<InterpOp> {
       rewriter.eraseOp(op);
       return success();
     }
-    if (input_shape.size() != 4) {
-      llvm_unreachable("Todo, support interp other then 4dims");
-    } else if ((float)output_shape[0] / input_shape[0] != 1 ||
+    if ((float)output_shape[0] / input_shape[0] != 1 ||
                (float)output_shape[1] / input_shape[1] != 1) {
       llvm_unreachable("Interp now only support h/w");
     }
@@ -55,13 +53,10 @@ struct InterpToUpsampleMergePattern : public OpRewritePattern<InterpOp> {
     auto scale_h = op.getScaleH().convertToDouble();
     auto scale_w = op.getScaleW().convertToDouble();
 
-    if (output_shape[2] % input_shape[2] != 0 ||
-        output_shape[3] % input_shape[3] != 0) {
+    if (output_shape.size() <= 3 || output_shape[2] % input_shape[2] != 0 ||
+        (double)output_shape[2] / (double)input_shape[2] != (double)output_shape[3] / (double)input_shape[3]) {
       return failure();
     }
-    int size = output_shape[2] / input_shape[2];
-    if (size != output_shape[3] / input_shape[3])
-      return failure();
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "scale_h", rewriter.getI64IntegerAttr((int64_t)scale_h)));

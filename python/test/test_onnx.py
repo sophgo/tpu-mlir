@@ -1730,24 +1730,27 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Resize(self, case_name):
-        input_shape = [1, 16, 32, 32]
-        output_shape = [1, 16, 64, 64]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        roi_data = np.array([], dtype=np.float32)
-        scales_data = np.array([1, 1, 2, 2], dtype=np.float32)
-        roi = helper.make_tensor('roi', TensorProto.FLOAT, [0], roi_data)
-        scales = helper.make_tensor('scales', TensorProto.FLOAT, [4], scales_data)
-        resize_def = helper.make_node('Resize',
-                                      inputs=['input', 'roi', 'scales'],
-                                      outputs=['output'],
-                                      mode='nearest',
-                                      nearest_mode='floor',
-                                      coordinate_transformation_mode='asymmetric')
-        graph_def = helper.make_graph([resize_def],
-                                      case_name, [input], [output],
-                                      initializer=[roi, scales])
-        self.onnx_and_test(graph_def)
+        case0 = [[1, 16, 32, 32], [1, 16, 64, 64], [1, 1, 2, 2], [4], 'nearest', 'asymmetric']
+        case1 = [[2, 3, 224], [2, 3, 448], [1, 1, 2], [3], 'linear', 'half_pixel']
+        cases = (case0, case1) if self.chip in ['bm1684x', 'bm1688'] else (case0,)
+        for idx, case in enumerate(cases):
+            input_shape, output_shape, scales, dim, mode, coor_mode = case
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+            roi_data = np.array([], dtype=np.float32)
+            scales_data = np.array(scales, dtype=np.float32)
+            roi = helper.make_tensor('roi', TensorProto.FLOAT, [0], roi_data)
+            scales = helper.make_tensor('scales', TensorProto.FLOAT, dim, scales_data)
+            resize_def = helper.make_node('Resize',
+                                        inputs=['input', 'roi', 'scales'],
+                                        outputs=['output'],
+                                        mode=mode,
+                                        nearest_mode='floor',
+                                        coordinate_transformation_mode=coor_mode)
+            graph_def = helper.make_graph([resize_def],
+                                        case_name, [input], [output],
+                                        initializer=[roi, scales])
+            self.onnx_and_test(graph_def)
 
     def test_Resize2(self, case_name):
         input_shape = [1, 32, 208, 30]
