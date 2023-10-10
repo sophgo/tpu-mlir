@@ -6,3 +6,4 @@ function(add_tpumlir_unittest test_dirname)
 endfunction()
 
 add_subdirectory(Backend)
+add_subdirectory(Linalg)

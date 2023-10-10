@@ -1,5 +1,3 @@
-add_subdirectory(llvm-lit)
-
 configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
   ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg.py MAIN_CONFIG
@@ -9,6 +7,8 @@ configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/Unit/lit.site.cfg.py.in
   ${CMAKE_CURRENT_BINARY_DIR}/Unit/lit.site.cfg.py MAIN_CONFIG
   ${CMAKE_CURRENT_SOURCE_DIR}/Unit/lit.cfg.py)
+
+add_subdirectory(llvm-lit)
 
 set(TPUMLIR_TEST_DEPENDS #
     FileCheck count not split-file tpuc-opt)
@@ -23,3 +23,6 @@ set_target_properties(check-tpumlir PROPERTIES FOLDER "Tests")
 
 add_lit_testsuites(TPUMLIR ${CMAKE_CURRENT_BINARY_DIR} DEPENDS
                    ${TPUMLIR_TEST_DEPENDS})
+
+
+add_subdirectory(lib)
