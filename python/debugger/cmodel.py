@@ -421,7 +421,7 @@ class BM1684:
 
 
 class BM1688:
-    lib_name = "libcmodel_1686.so"
+    lib_name = "libcmodel_1688.so"
     ENGINE_GDMA = 1
     TAG_WEIGHT = 1
     ENGINE_HAU = 2
