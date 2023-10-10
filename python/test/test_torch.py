@@ -1321,7 +1321,7 @@ class TORCH_IR_TESTER(object):
     def test_Interp(self):
         """Interp"""
 
-        def _test_interp(input_shape, scale):
+        def _test_interp(input_shape, size=None, scale=None, mode=None):
 
             class Model(nn.Module):
 
@@ -1330,17 +1330,20 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x):
                     y = nn.functional.interpolate(x,
-                                                  None,
+                                                  size,
                                                   scale,
-                                                  mode='bilinear',
+                                                  mode=mode,
                                                   align_corners=False)
                     return y
 
             self.trace_and_test([input_shape], Model())
 
-        _test_interp((1, 3, 100, 100), 4)
-        _test_interp((1, 1, 32, 32), 10)
-        _test_interp((2, 32, 16, 16), 16)
+        _test_interp((1, 3, 100, 100), None, 4, 'bilinear')
+        _test_interp((1, 1, 32, 32), None, 10,'bilinear')
+        _test_interp((2, 32, 16, 16), None, 16, 'bilinear')
+        if self.chip in ["bm1684x", "bm1688"]:
+            _test_interp((2, 3, 224), None, 2, 'linear')
+            _test_interp((2, 3, 224), (100), None, 'linear')
 
     #######################################################################
     # BMM
@@ -2118,6 +2121,9 @@ class TORCH_IR_TESTER(object):
         _test_upsample((1, 3, 32, 32), 64, None)
         _test_upsample((1, 3, 32, 32), (81), None)
         _test_upsample((1, 3, 32, 32), (64, 65), None)
+        if self.chip in ["bm1684x", "bm1688"]:
+            _test_upsample((1, 3, 224), None, 2)
+            _test_upsample((1, 3, 224), (500), None)
 
     #######################################################################
     # IndexSelect

@@ -187,6 +187,8 @@ class TorchConverter(BaseConverter):
             "aten::type_as": lambda node:  self.convert_to_op(node),
             "aten::unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "aten::upsample_bilinear2d": lambda node: self.convert_upsample_op(node, mode='bilinear'),
+            "aten::upsample_linear1d": lambda node: self.convert_upsample_op(node, mode='linear'),
+            "aten::upsample_nearest1d": lambda node: self.convert_upsample_op(node, mode='nearest'),
             "aten::upsample_nearest2d": lambda node: self.convert_upsample_op(node, mode='nearest'),
             "aten::view": lambda node: self.convert_reshape_op(node),
             "aten::where": lambda node: self.convert_where_op(node),
@@ -1176,6 +1178,9 @@ class TorchConverter(BaseConverter):
             mode = "linear"
             align_corners = self.const_val[torch_node.inputs[2]]
             scale = self.const_val[torch_node.inputs[3]] if not has_out_size else [-1, -1]
+        elif mode == "linear":
+            align_corners = self.const_val[torch_node.inputs[2]]
+            scale = [1] + self.const_val[torch_node.inputs[3]] if not has_out_size else [-1, -1]
         new_op = top.InterpOp(self.unranked_type,
                               op0,
                               out_size if has_out_size else self.mlir.none_op,

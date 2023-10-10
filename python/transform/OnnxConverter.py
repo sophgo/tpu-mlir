@@ -1034,21 +1034,26 @@ class OnnxConverter(BaseConverter):
                 scale_factor = scale_factor.reshape(dims)
             if len(scale_factor) == 0:
                 sizes = self.getWeight(onnx_node.inputs[3])
+                assert(len(sizes) >= 2)
                 scale_factor = sizes
                 use_size = True
         else:
             # opset 10
             scale_factor = self.getWeight(onnx_node.inputs[1])
-        # Todo support 3dim data resize which appears in transformer net
-        scale_h, scale_w = scale_factor[-2:]
-        if scale_h == 1.0 and scale_w == 1.0:
-            self.addOperand(onnx_node.name, op)
-            return
+
         if (use_size):
-            scale_h, scale_w = -1, -1
+            scale_d, scale_h, scale_w = -1, -1, -1
             self.addWeight(onnx_node.name + "_target_shape",
-                           np.array(scale_factor[-2:], dtype=np.int64))
+                           np.array(scale_factor[2:], dtype=np.int64))
             target_shape = self.getWeightOp(onnx_node.name + "_target_shape")
+        else:
+            scale_d = -1 if len(scale_factor) <= 4 else scale_factor[-3]
+            scale_h = -1 if len(scale_factor) <= 3 else scale_factor[-2]
+            scale_w = scale_factor[-1]
+            if scale_h == 1.0 and scale_w == 1.0:
+                self.addOperand(onnx_node.name, op)
+                return
+ 
         coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
         self.resize_to_interp(onnx_node,
                               op,
@@ -1057,7 +1062,6 @@ class OnnxConverter(BaseConverter):
                               mode,
                               coord_mode,
                               target_shape=target_shape)
-        return
 
     def convert_shape_op(self, onnx_node):
         assert (onnx_node.op_type == "Shape")
