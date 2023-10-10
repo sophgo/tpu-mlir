@@ -62,6 +62,7 @@ tool_dirs = [
 
 tools = [
     "tpuc-opt",
+    "tpuc-test",
 ]
 
 
