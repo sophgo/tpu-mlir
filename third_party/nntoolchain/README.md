@@ -1,4 +1,4 @@
-sss## TPU1684 2023-07-21
+## TPU1684 2023-07-21
 sha256: ebfe12c4683ff2345f94faf58e68743d8a8bc606
 
 ``` bash
@@ -9,17 +9,8 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-<<<<<<< Updated upstream
-## TPU1686 2023-09-08
-<<<<<<< Updated upstream
-sha256: 46f4c9248429336e693e238d9658ec32ec2b05db
-=======
-sha256: 39db36bdfbfae15a187235462dacd854e962890a
->>>>>>> Stashed changes
-=======
 ## TPU1686 2023-10-09
-sha256: 0a0643c294a52db9ad9a5413498e9d3431597551
->>>>>>> Stashed changes
+sha256: 9685c752fe397d41d2dc9eac7cc34a7f878fa426
 
 ``` bash
 pushd  nntoolchain/net_compiler/
