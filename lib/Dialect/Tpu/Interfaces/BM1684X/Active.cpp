@@ -58,7 +58,6 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
   case ActiveMode::EXP:
   case ActiveMode::ELU:
   case ActiveMode::LOG_SIGMOID:
-  case ActiveMode::SOFT_PLUS:
   case ActiveMode::SILU:
   case ActiveMode::SIGMOID:
     // |    work1    |    work0    | exp coeff  |
@@ -66,6 +65,14 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
     buffer_size = 2 * align_up(tensor_size, Arch::EU_BYTES);
     buffer_size +=
         align_up(32 * dtype_len, Arch::EU_BYTES);
+    break;
+  case ActiveMode::SOFT_PLUS:
+    // |    work1    |    work0    | exp coeff  | log coeff |
+    // | tensor_size | tensor_size |     32     | FP32?16:8 |
+    buffer_size = 2 * align_up(tensor_size, Arch::EU_BYTES);
+    buffer_size += align_up(32 * dtype_len, Arch::EU_BYTES);
+    if(stype.isF32()) buffer_size += align_up(16 * dtype_len, Arch::EU_BYTES);
+    else buffer_size += align_up(8 * dtype_len, Arch::EU_BYTES);
     break;
   case ActiveMode::GELU:
     buffer_size = 4 * tensor_size;

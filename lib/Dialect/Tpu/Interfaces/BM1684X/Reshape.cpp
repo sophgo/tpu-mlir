@@ -43,6 +43,8 @@ void tpu::ReshapeOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   for (size_t i = 0; i < shape.size(); ++i) {
     spec.shape[i] = shape[i];
   }
+  auto gi = getGroupInfo(n_step, h_step, d_step, w_step, c_step);
+  spec.eu_align = gi.eu_align;
   BM168x::call_local_func("backend_api_reshape_local", &spec, sizeof(spec),
                           &sec_info, input_spec->data(), output_spec->data());
 }

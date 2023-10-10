@@ -923,6 +923,7 @@ typedef struct transpose_param {
 typedef struct reshape_spec {
   int32_t dims;
   int32_t shape[MAX_SHAPE_DIMS];
+  int eu_align;
 } reshape_spec_t;
 
 typedef struct {
@@ -1793,7 +1794,7 @@ typedef struct embedding_backward_param {
     bool is_index_int64;
 } embedding_backward_param_t;
 
-typedef struct 
+typedef struct
 {
   int32_t groups;
   int32_t ic;
@@ -1816,7 +1817,7 @@ typedef struct
   bool has_bias;
 }ConvBwdWeight_common_spec_t;
 
-typedef struct 
+typedef struct
 {
   ConvBwdWeight_common_spec_t common;
 }ConvBwdWeight_global_spec_t;
