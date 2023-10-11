@@ -32,28 +32,10 @@ Value get_weight(Value weight, int head, int idx, int axis, Type to_type,
     auto shape = module::getShape(weight);
     auto dim = shape.size();
     axis = axis < 0 ? dim + axis : axis;
-    int64_t outer = 1;
-    for (int i = 0; i < axis; ++i) {
-      outer *= shape[i];
-    }
-    int64_t inner = module::getNumElements(weight) / outer;
-    int64_t head_inner = inner / head;
-    auto out_weight =
-        std::make_shared<std::vector<float_t>>(outer * head_inner);
-    auto weight_op =
-        cast<top::WeightOp>(weight.getDefiningOp()).read_as_float();
-    for (int64_t i = 0; i < outer; ++i) {
-      int64_t src_offset = i * inner + idx * head_inner;
-      int64_t dst_offset = i * head_inner;
-      for (int64_t j = 0; j < head_inner; ++j) {
-        out_weight->data()[dst_offset + j] = weight_op->at(src_offset + j);
-      }
-    }
-    std::vector<int64_t> out_shape(shape);
-    out_shape[axis] /= head;
-    auto new_type = RankedTensorType::get(out_shape, to_type);
+    int begin = shape[axis] / head * idx;
+    int end = shape[axis] / head * (idx + 1);
     std::string suffix = base_name + "_head_" + std::to_string(idx);
-    return top::WeightOp::create(op, suffix, *out_weight, new_type);
+    return dyn_cast<top::WeightOp>(op).split(begin, end, axis, to_type, suffix);
   } else {
     return top::NoneOp(op);
   }

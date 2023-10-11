@@ -420,7 +420,71 @@ struct MatmulWithPermuteAndSplit : public OpRewritePattern<MatMulOp> {
   }
 };
 
+Value get_weight(Value weight, int begin, int end, int axis, Type to_type,
+                 std::string suffix) {
+  auto op = weight.getDefiningOp();
+  if (module::isWeight(weight)) {
+    return dyn_cast<top::WeightOp>(op).split(begin, end, axis, to_type, suffix);
+  } else {
+    return top::NoneOp(op);
+  }
+}
+
+// matmul + slice => matmul + matmul
+struct MatMulWithSlice : public OpRewritePattern<MatMulOp> {
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    auto filter = op.getRight();
+    if (module::isWeight(filter) == false) {
+      return failure();
+    }
+    if (op->hasOneUse() == true) {
+      return failure();
+    }
+    auto shape = module::getShape(op.getOutput());
+    for (auto user = op->getUsers().begin(); user != op->getUsers().end(); ++user) {
+      if (auto slice_op = dyn_cast<SliceOp>(*user)) {
+        if (!module::isNone(slice_op.getOffsetT()) ||
+            !module::isNone(slice_op.getEndsT()) ||
+            !module::isNone(slice_op.getStepsT())) {
+          return failure();
+        }
+        auto s_shape = module::getShape(slice_op.getOutput());
+        if (shape[0] != s_shape[0] || shape[1] != s_shape[1] || s_shape[2] < 128) {
+          return failure();
+        }
+        auto offset = module::getI64Array(slice_op.getOffsetAttr());
+        if (offset->at(0) != 0 || offset->at(1) != 0) {
+          return failure();
+        }
+        auto step = module::getI64Array(slice_op.getStepsAttr());
+        if (step->at(0) != 1 || step->at(1) != 1 || step->at(2) != 1) {
+          return failure();
+        }
+      } else {
+        return failure();
+      }
+    }
+
+    std::string out_name = module::getName(op.getOutput()).data();
+    for (auto user = op->getUsers().begin(); user != op->getUsers().end(); ++user) {
+      auto slice_op = dyn_cast<SliceOp>(*user);
+      std::vector<Value> operands;
+      operands.push_back(op.getInput());
+      auto offset = module::getI64Array(slice_op.getOffsetAttr())->at(2);
+      auto size = module::getShape(slice_op.getOutput())[2];
+      operands.push_back(get_weight(op.getRight(), offset, offset + size, -1, rewriter.getF32Type(), "_offset" + std::to_string(offset)));
+      operands.push_back(get_weight(op.getBias(), offset, offset + size, -1, rewriter.getF32Type(), "_offset" + std::to_string(offset)));
+      rewriter.replaceOpWithNewOp<top::MatMulOp>(slice_op, slice_op.getOutput().getType(),
+          operands, op->getAttrs());
+    }
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
 void MatMulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<MatMulWithBias, NoKeepDimsAddReshape, MatmulWithPermuteAndSplit>(context);
+  results.insert<MatMulWithBias, NoKeepDimsAddReshape, MatmulWithPermuteAndSplit, MatMulWithSlice>(context);
 }

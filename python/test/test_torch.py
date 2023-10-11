@@ -92,6 +92,7 @@ class TORCH_IR_TESTER(object):
             "MaskedFill":       (self.test_MaskedFill,        Y, Y, Y, N),
             "Math":             (self.test_Math,              N, Y, Y, N),
             "MatMul":           (self.test_MatMul,            N, Y, Y, Y),
+            "MatMulSlice":      (self.test_MatMulSlice,       N, Y, Y, Y),
             "Max":              (self.test_Max,               N, Y, Y, N),
             "MaxPool1d":        (self.test_MaxPool1d,         N, Y, Y, Y),
             "MaxPool2d":        (self.test_MaxPool2d,         N, Y, Y, Y),
@@ -1923,6 +1924,36 @@ class TORCH_IR_TESTER(object):
         # _test_attention1((2, 1024, 640), (2, 77, 768), 80, 2, False)
         _test_attention1((2, 4096, 320), (2, 77, 768), 40, 2, False)
         # _test_attention1((1, 384, 64), (1, 384, 64), 32, 2, False)
+
+    #######################################################################
+    # MatmulSlice
+    # ------------
+
+    def test_MatMulSlice(self):
+
+        def _test_matmul_slice(shape, size, num):
+            import math
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.w = torch.randn((shape[2], size * num)) / math.sqrt(shape[2])
+                    self.b = torch.randn(size * num)
+
+                def forward(self, x):
+                    m = torch.matmul(x, self.w)# + self.b
+                    for i in range(num):
+                      s = m[:, :, i * size : (i+1) * size]
+                      if i == 0:
+                        y = s
+                      else:
+                        y *= s
+                    return y
+
+            self.trace_and_test([shape], Model(), [self.Desc('float32', -1, 1)])
+
+        _test_matmul_slice((1, 384, 768), 128, 3)
+        _test_matmul_slice((1, 384, 768), 96, 4)
 
     #######################################################################
     # Select
