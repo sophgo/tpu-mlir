@@ -188,6 +188,73 @@ struct KeepSignPattern : public OpRewritePattern<TyOp> {
   }
 };
 
+template <typename TyOp>
+struct KeepMulSignPattern : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(TyOp op,
+                                PatternRewriter &rewriter) const override {
+    auto num_inputs = op.getInputs().size();
+    if (num_inputs != 2)
+      return failure();
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(out)) {
+      return failure();
+    }
+    auto out_qtype = module::getCalibratedType(out);
+    bool out_signed = out_qtype.getMin() < 0.0;
+    bool in_signed[2] = {true};
+
+    int idx = 0;
+    for (auto i:op.getInputs()) {
+      if (isa<top::WeightOp>(i.getDefiningOp())) {
+        top::WeightOp w = dyn_cast<top::WeightOp>(i.getDefiningOp());
+        auto filter_f32 = w.read<float>();
+        if (filter_f32->size() != 1)
+          return failure();
+        if (filter_f32->at(0) >= 0.0)
+          in_signed[idx] = false;
+      }
+      else {
+        auto in_qtype = module::getCalibratedType(i);
+        if (in_qtype.getMin() >= 0.0)
+          in_signed[idx] = false;
+      }
+      idx ++;
+    }
+
+    if (in_signed[0] == out_signed)
+      return failure();
+    else if (in_signed[1] == out_signed) {
+      //switch inputs
+      std::vector<Value> operands;
+      for (auto in:op.getOperands()) {
+        operands.insert(operands.begin(), in);
+      }
+      op.getOperation()->setOperands(operands);
+      return success();
+    } else {
+      // two inputs are same but output is not the same
+      if (in_signed[0]) {
+        // in all signed, output unsigned, set output to signed, though possible eg. sqr, but ic has the restriction
+        float min = -out_qtype.getMax() * 0.1;
+        auto etype = module::getStorageType(out);
+        auto new_qtype =
+            quant::CalibratedQuantizedType::get(etype, min, out_qtype.getMax());
+        auto new_type = RankedTensorType::get(module::getShape(out), new_qtype);
+        out.setType(new_type);
+        Forward(out);
+        return success();
+      }
+      else {
+        // in all unsigned, output signed, may be caused by other pass? bad cali_table?
+        llvm_unreachable((std::string("not reasonable, two unsigned get signed, check cali-table and graph op is:") + std::string(module::getName(op.getOperation()).str())).data());
+      }
+    }
+    return failure();
+  }
+};
+
 struct KeepAddSignPattern : public OpRewritePattern<top::AddOp> {
   using OpRewritePattern<top::AddOp>::OpRewritePattern;
 
@@ -863,6 +930,12 @@ protected:
                  SetSubConstSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
+    if (!module::isCV18xx()) {
+      patterns.add<KeepMulSignPattern<top::MulOp>, /*KeepMulSignPattern,*/
+                 SetSubConstSignPattern>(ctx_);
+      applyPatternsAndFoldGreedily(module_, std::move(patterns));
+      patterns.clear();
+    }
     patterns.add<BackwardMutiInSingleOut<top::ConcatOp>,
                  BackwardMutiInSingleOut<top::MinOp>,
                  BackwardMutiInSingleOut<top::MaxOp>>(ctx_);
