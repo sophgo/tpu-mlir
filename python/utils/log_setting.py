@@ -13,31 +13,41 @@ import logging
 
 
 log_name = dict()
+
+
+def wrap_print(logger: logging.Logger):
+    def log_print(*args, sep=" "):
+        logger.info(sep.join([f"{arg}" for arg in args]))
+
+    return log_print
+
+
 def setup_logger(name, log_level="INFO"):
     if name in log_name:
         return log_name[name]
 
     formatter = logging.Formatter(
-        datefmt='%Y/%m/%d %H:%M:%S', fmt='%(asctime)s - %(levelname)s : %(message)s')
+        datefmt="%Y/%m/%d %H:%M:%S", fmt="%(asctime)s - %(levelname)s : %(message)s"
+    )
 
     handler = logging.StreamHandler(stream=sys.stderr)
     handler.setFormatter(formatter)
 
     logger = logging.getLogger(name)
-    if log_level == "DEBUG":
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
+    logger.setLevel(logging._nameToLevel[log_level])
+
     logger.addHandler(handler)
     log_name[name] = logger
+    logger.print = wrap_print(logger)
     return logger
 
-class logger():
-    def __init__(self, log_file_name:str, log_level:str = "DEBUG"):
+
+class logger:
+    def __init__(self, log_file_name: str, log_level: str = "DEBUG"):
         root_logger = logging.getLogger()
         for h in root_logger.handlers:
             root_logger.removeHandler(h)
-        os.system(f'rm -f {log_file_name}')
+        os.system(f"rm -f {log_file_name}")
         level = logging.DEBUG
         if log_level == "INFO":
             level = logging.INFO
@@ -45,13 +55,12 @@ class logger():
 
     def print_dbg(self, *para):
         tmp = [str(item) for item in para]
-        tmpStr = ' '.join(tmp)
+        tmpStr = " ".join(tmp)
         print(tmpStr)
         logging.debug(tmpStr)
 
     def print_info(self, *para):
         tmp = [str(item) for item in para]
-        tmpStr = ' '.join(tmp)
+        tmpStr = " ".join(tmp)
         print(tmpStr)
         logging.info(tmpStr)
-
