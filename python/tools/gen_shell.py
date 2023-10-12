@@ -16,7 +16,8 @@ import inspect
 from torch import nn
 import shutil
 from typing import List, Union, Dict
-
+import sys
+import argparse
 
 sh_template = r"""
 
@@ -26,7 +27,7 @@ model_transform.py \
    --input_shapes {shape_str} \
    --test_input data.npz \
    --keep_aspect_ratio \
-   --tolerance 0.85,0.7 \
+   --tolerance 0.99,0.99 \
    --debug \
    --test_result {model_name}_top_output.npz \
    --mlir {model_name}.mlir
@@ -308,6 +309,7 @@ def generate_onnx(
     workspace_root: str,
     data_path: str = None,
     fake_npz: bool = False,
+    input_shapes=None,
 ):
     import onnx
 
@@ -319,6 +321,9 @@ def generate_onnx(
     shape_list = []
     for v in inputs:
         shape_list.append([dim.dim_value for dim in v.type.tensor_type.shape.dim])
+    if input_shapes is not None:
+        print(f"replace original onnx shape with input_shapes {input_shapes}.")
+        shape_list = input_shapes
     shutil.copy(model_path, os.path.join(workspace_root, f"{model_name}.onnx"))
     generate_shell(model_name, shape_list, workspace_root, suf="onnx")
     generate_yaml(model_name, shape_list, workspace_root, suf="onnx")
@@ -328,13 +333,27 @@ def generate_onnx(
             os.path.join(workspace_root, "data.npz"),
             **{k.name: np.random.rand(*shape) for k, shape in zip(inputs, shape_list)},
         )
+        print(shape_list)
 
 
 if __name__ == "__main__":
-    import sys
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", help="model name")
+    parser.add_argument("--input_shapes", help="", default=None)
 
-    file = sys.argv[1]
+    args = parser.parse_args()
+    file = args.file
+    input_shapes = args.input_shapes
+    if input_shapes is not None:
+        input_shapes = eval(input_shapes)
     if file.endswith(".onnx"):
         basename = os.path.basename(file)
         bn, ext = os.path.splitext(basename)
-        generate_onnx(bn, file, f"{bn}_workspace", fake_npz=True)
+        generate_onnx(
+            bn,
+            file,
+            f"{bn}_workspace",
+            fake_npz=True,
+            input_shapes=input_shapes,
+        )
+
