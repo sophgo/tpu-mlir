@@ -5,9 +5,7 @@
 
 该模型来自yolov5的官网: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
-本章需要如下文件(其中xxxx对应实际的版本信息):
-
-**tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
+本章需要安装tpu_mlir。
 
 .. list-table::
    :widths: 35 20 30
@@ -25,10 +23,12 @@
 
 .. _onnx to bmodel:
 
-加载tpu-mlir
+安装tpu-mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[onnx]
 
 
 准备工作目录
@@ -45,12 +45,32 @@
 
    $ mkdir model_yolov5s && cd model_yolov5s
    $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
+   $ tpu_mlir_get_resource regression/image .
    $ mkdir workspace && cd workspace
 
 
-这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
+这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。具体使用方法如下:
+
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 
 ONNX转MLIR
@@ -72,7 +92,7 @@ ONNX转MLIR
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
        --input_shapes [[1,3,640,640]] \
@@ -87,7 +107,7 @@ ONNX转MLIR
 
 .. _model_transform param:
 
-``model_transform.py`` 主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
+``model_transform`` 主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
 
 
 .. list-table:: model_transform 参数功能
@@ -154,7 +174,7 @@ MLIR转F16模型
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
        --chip bm1684x \
@@ -164,7 +184,7 @@ MLIR转F16模型
 
 .. _model_deploy param:
 
-``model_deploy.py`` 的主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
+``model_deploy`` 的主要参数说明如下（完整介绍请参见TPU-MLIR开发参考手册用户界面章节）:
 
 
 .. list-table:: model_deploy 参数功能
@@ -234,7 +254,7 @@ MLIR转INT8模型
 
 .. code-block:: shell
 
-   $ run_calibration.py yolov5s.mlir \
+   $ run_calibration yolov5s.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
        -o yolov5s_cali_table
@@ -250,7 +270,7 @@ MLIR转INT8模型
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
@@ -266,9 +286,9 @@ MLIR转INT8模型
 效果对比
 ------------------
 
-在本发布包中有用python写好的yolov5用例, 源码路径
-``$TPUC_ROOT/python/samples/detect_yolov5.py`` , 用于对图片进行目标检测。阅读该
-代码可以了解模型是如何使用的: 先预处理得到模型的输入, 然后推理得到输出, 最后做后处理。
+在本发布包中有用python写好的yolov5用例, 使用 ``detect_yolov5`` 命令, 用于对图片进行目标检测。
+该命令对应源码路径 ``{package/path/to/tpu_mlir}/python/samples/detect_yolov5.py`` 。
+阅读该代码可以了解模型是如何使用的: 先预处理得到模型的输入, 然后推理得到输出, 最后做后处理。
 用以下代码分别来验证onnx/f16/int8的执行结果。
 
 
@@ -276,28 +296,25 @@ onnx模型的执行方式如下, 得到 ``dog_onnx.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model ../yolov5s.onnx \
        --output dog_onnx.jpg
-
 
 f16 bmodel的执行方式如下, 得到 ``dog_f16.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_1684x_f16.bmodel \
        --output dog_f16.jpg
-
-
 
 int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_1684x_int8_sym.bmodel \
        --output dog_int8_sym.jpg
@@ -337,7 +354,7 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
    # 下面测试上面编译出的bmodel
    # --bmodel参数后面接bmodel文件,
 
-   $ cd $TPUC_ROOT/../model_yolov5s/workspace
+   $ cd path/to/model_yolov5s/workspace
    $ bmrt_test --bmodel yolov5s_1684x_f16.bmodel
    $ bmrt_test --bmodel yolov5s_1684x_int8_sym.bmodel
 

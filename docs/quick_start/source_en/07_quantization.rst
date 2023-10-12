@@ -14,14 +14,15 @@ Mix Precision
 This chapter takes ``yolov3 tiny`` as examples to introduce how to use mix precision。
 This model is from <https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/tiny-yolov3>。
 
-This chapter requires the following files (where xxxx corresponds to the actual version information):
+This chapter requires the tpu_mlir python package.
 
-**tpu-mlir_xxxx.tar.gz (The release package of tpu-mlir)**
 
-Load tpu-mlir
+Install tpu_mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[all]
 
 Prepare working directory
 ---------------------------
@@ -35,22 +36,42 @@ The operation is as follows:
 
    $ mkdir yolov3_tiny && cd yolov3_tiny
    $ wget https://github.com/onnx/models/raw/main/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
+   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
    $ mkdir workspace && cd workspace
 
-``$TPUC_ROOT`` is an environment variable, corresponding to the tpu-mlir_xxxx directory.
+The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
 
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file are the relative path to the package path of tpu_mlir,
+and the dir structure of tpu_mlir are as follows:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 Sample for onnx
 -------------------
 
-``detect_yolov3.py`` is a python program, to run ``yolov3_tiny`` model.
+``detect_yolov3`` is a python program, to run ``yolov3_tiny`` model.
 
 The operation is as follows:
 
 .. code-block:: shell
 
-   $ detect_yolov3.py \
+   $ detect_yolov3 \
         --model ../tiny-yolov3-11.onnx \
         --input ../COCO2017/000000366711.jpg \
         --output yolov3_onnx.jpg
@@ -80,7 +101,7 @@ Step 1: To F32 mlir
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov3_tiny \
        --model_def ../tiny-yolov3-11.onnx \
        --input_shapes [[1,3,416,416]] \
@@ -96,7 +117,7 @@ Step 2: Gen calibartion table
 
 .. code-block:: shell
 
-   $ run_calibration.py yolov3_tiny.mlir \
+   $ run_calibration yolov3_tiny.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
        -o yolov3_cali_table
@@ -106,7 +127,7 @@ Step 3: To model
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov3_tiny.mlir \
        --quantize INT8 \
        --calibration_table yolov3_cali_table \
@@ -118,7 +139,7 @@ Step 4: Run model
 
 .. code-block:: shell
 
-   $ detect_yolov3.py \
+   $ detect_yolov3 \
         --model yolov3_int8.bmodel \
         --input ../COCO2017/000000366711.jpg \
         --output yolov3_int8.jpg
@@ -148,9 +169,9 @@ After int8 conversion, do these commands as beflow.
 Step 1: Gen quantization table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use ``run_qtable.py`` to gen qtable, parameters as below:
+Use ``run_qtable`` to gen qtable, parameters as below:
 
-.. list-table:: run_qtable.py parameters
+.. list-table:: run_qtable parameters
    :widths: 23 8 50
    :header-rows: 1
 
@@ -204,7 +225,7 @@ The operation is as follows:
 
 .. code-block:: shell
 
-   $ run_qtable.py yolov3_tiny.mlir \
+   $ run_qtable yolov3_tiny.mlir \
        --dataset ../COCO2017 \
        --calibration_table yolov3_cali_table \
        --min_layer_cos 0.999 \ #If the default 0.99 is used here, the program detects that the original int8 model already meets the cos of 0.99 and simply stops searching
@@ -263,7 +284,7 @@ This table is arranged smoothly according to the cos from small to large, indica
 by this Layer after the precursor layer of this layer has been changed to the corresponding floating-point mode.
 If the cos is still smaller than the previous parameter min_layer_cos, this layer and its immediate successor
 layer will be set to floating-point calculation。
-``run_qtable.py`` calculates the output cos of the whole network every time the neighboring two layers are set
+``run_qtable`` calculates the output cos of the whole network every time the neighboring two layers are set
 to floating point. If the cos is larger than the specified expected_cos, the search is withdrawn. Therefore,
 if you set a larger expected_cos value, you will try to set more layers to floating point。
 
@@ -273,7 +294,7 @@ Step 2: Gen mix precision model
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov3_tiny.mlir \
        --quantize INT8 \
        --quantize_table yolov3_qtable \
@@ -286,7 +307,7 @@ Step 3: run mix precision model
 
 .. code-block:: shell
 
-   $ detect_yolov3.py \
+   $ detect_yolov3 \
         --model yolov3_mix.bmodel \
         --input ../COCO2017/000000366711.jpg \
         --output yolov3_mix.jpg
@@ -316,14 +337,15 @@ Sensitive Layer Search
 This chapter takes ``mobilenet-v2`` as example to introduce how to use sensitive layer search.
 This model is from <nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt>.
 
-This chapter requires the following files (where xxxx corresponds to the actual version information):
+This chapter requires the tpu_mlir python package.
 
-**tpu-mlir_xxxx.tar.gz (The release package of tpu-mlir)**
 
-Load tpu-mlir
+Install tpu_mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[all]
 
 Prepare working directory
 ---------------------------
@@ -336,11 +358,11 @@ The operation is as follows:
   :linenos:
 
    $ mkdir mobilenet-v2 && cd mobilenet-v2
-   $ cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
+   $ tpu_mlir_get_resource regression/dataset/ILSVRC2012 .
+   $ wget https://github.com/sophgo/tpu-mlir/releases/download/v1.4-beta.0/mobilenet_v2.pt
    $ mkdir workspace && cd workspace
 
-``$TPUC_ROOT`` is an environment variable, corresponding to the tpu-mlir_xxxx directory.
-Note that mobilenet-v2.pt needs to be downloaded from nnmodels and then be placed in the mobilenet-v2 directory.
+The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
 
 Accuracy test of float anf int8 models
 ---------------------------------------
@@ -350,7 +372,7 @@ Step 1: To F32 mlir
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name mobilenet_v2 \
        --model_def ../mobilenet_v2.pt \
        --input_shapes [[1,3,224,224]] \
@@ -365,7 +387,7 @@ Step 2: Gen calibartion table
 
 .. code-block:: shell
 
-   $ run_calibration.py mobilenet_v2.mlir \
+   $ run_calibration mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
        -o mobilenet_v2_cali_table
@@ -375,7 +397,7 @@ Step 3: To F32 bmodel
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize F32 \
        --chip bm1684 \
@@ -386,7 +408,7 @@ Step 4: To INT8 model
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --chip bm1684 \
@@ -396,13 +418,13 @@ Step 4: To INT8 model
 Step 5: Accuracy test
 ~~~~~~~~~~~~~~~~~~~~~~
 
-``classify_mobilenet_v2.py`` is a python program, to run ``mobilenet-v2`` model.
+``classify_mobilenet_v2`` is a python program, to run ``mobilenet-v2`` model.
 
 Test the fp32 model:
 
 .. code-block:: shell
 
-   $ classify_mobilenet_v2.py \
+   $ classify_mobilenet_v2 \
        --model_def mobilenet_v2_bm1684_f32.bmodel \
        --input ../ILSVRC2012/n01440764_9572.JPEG \
        --output mobilenet_v2_fp32_bmodel.JPEG \
@@ -423,22 +445,22 @@ Test the INT8 model:
 
 .. code-block:: shell
 
-   $ classify_mobilenet_v2.py \
+   $ classify_mobilenet_v2 \
        --model_def mobilenet_v2_bm1684_int8_sym.bmodel \
        --input ../ILSVRC2012/n01440764_9572.JPEG \
        --output mobilenet_v2_INT8_sym_bmodel.JPEG \
        --category_file ../ILSVRC2012/synset_words.txt
 
-The right label ``tench, Tinca tinca`` ranks second.
+The right label ``tench, Tinca tinca`` ranks first.
 
 .. code-block:: shell
 
     Top-5
-    n02408429 water buffalo, water ox, Asiatic buffalo, Bubalus bubalis
     n01440764 tench, Tinca tinca
-    n01871265 tusker
-    n02396427 wild boar, boar, Sus scrofa
-    n02074367 dugong, Dugong dugon
+    n02749479 assault 日file, assau
+    n02536864 coho, cohoe, coho
+    n02916936 bulletproof vest
+    n04336792 stretcher
 
 To Mix Precision Model
 -----------------------
@@ -448,9 +470,9 @@ After int8 conversion, do these commands as beflow.
 Step 1: Search sensitive layers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use ``run_sensitive_layer.py`` and bad cases to search sensitive layers, parameters as below:
+Use ``run_sensitive_layer`` and bad cases to search sensitive layers, parameters as below:
 
-.. list-table:: run_sensitive_layer.py parameters
+.. list-table:: run_sensitive_layer parameters
    :widths: 23 8 50
    :header-rows: 1
 
@@ -518,7 +540,7 @@ The operation is as follows:
 
 .. code-block:: shell
 
-   $ run_sensitive_layer.py mobilenet_v2.mlir \
+   $ run_sensitive_layer mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
        --inference_num 30 \
@@ -599,7 +621,7 @@ Step 2: Gen mix precision model
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --chip bm1684 \
@@ -612,7 +634,7 @@ Step 3: Test accuracy of mix model
 
 .. code-block:: shell
 
-   $ classify_mobilenet_v2.py \
+   $ classify_mobilenet_v2 \
        --model_def mobilenet_v2_bm1684_mix.bmodel \
        --input ../ILSVRC2012/n01440764_9572.JPEG \
        --output mobilenet_v2_INT8_sym_bmodel.JPEG \
@@ -644,7 +666,7 @@ For YOLO series models, the last three convolutional layers often have significa
 
 .. code-block:: shell
 
-   $ fp_forward.py \
+   $ fp_forward \
        yolov5s.mlir \
        --quantize INT8 \
        --chip bm1684x \
@@ -658,7 +680,7 @@ Generating the Mixed-Precision Model
 
 .. code-block:: shell
 
-  $ model_deploy.py \
+  $ model_deploy \
       --mlir yolov5s.mlir \
       --quantize INT8 \
       --calibration_table yolov5s_cali_table \
@@ -707,7 +729,7 @@ mAP for the mixed-precision model using the manually added mixed-precision table
 Parameter Description
 
 
-.. list-table:: fp_forward.py parameters
+.. list-table:: fp_forward parameters
    :widths: 23 8 50
    :header-rows: 1
 

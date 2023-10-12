@@ -15,14 +15,15 @@
 本章以检测网络 ``yolov3 tiny`` 网络模型为例, 介绍如何使用混精度。
 该模型来自https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/tiny-yolov3。
 
-本章需要如下文件(其中xxxx对应实际的版本信息):
+本章需要安装tpu_mlir。
 
-**tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
 
-加载tpu-mlir
+安装tpu-mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[all]
 
 准备工作目录
 ------------------
@@ -37,20 +38,41 @@
 
    $ mkdir yolov3_tiny && cd yolov3_tiny
    $ wget https://github.com/onnx/models/raw/main/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
+   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
    $ mkdir workspace && cd workspace
 
-这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
+这里的 tpu_mlir_get_resource 命令用于从tpu_mlir的包安装根目录向外复制文件。
+
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
+
 注意如果 ``tiny-yolov3-11.onnx`` 用wget下载失败, 请用其他方式下载后放到 ``yolov3_tiny`` 目录。
 
 验证原始模型
 ----------------
 
-``detect_yolov3.py`` 是已经写好的验证程序, 可以用来对 ``yolov3_tiny`` 网络进行验证。执行过程如下:
+``detect_yolov3`` 是已经写好的验证命令, 可以用来对 ``yolov3_tiny`` 网络进行验证。执行过程如下:
 
 .. code-block:: shell
 
-   $ detect_yolov3.py \
+   $ detect_yolov3 \
         --model ../tiny-yolov3-11.onnx \
         --input ../COCO2017/000000366711.jpg \
         --output yolov3_onnx.jpg
@@ -82,7 +104,7 @@
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov3_tiny \
        --model_def ../tiny-yolov3-11.onnx \
        --input_shapes [[1,3,416,416]] \
@@ -98,7 +120,7 @@
 
 .. code-block:: shell
 
-   $ run_calibration.py yolov3_tiny.mlir \
+   $ run_calibration yolov3_tiny.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
        -o yolov3_cali_table
@@ -108,7 +130,7 @@
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov3_tiny.mlir \
        --quantize INT8 \
        --calibration_table yolov3_cali_table \
@@ -120,7 +142,7 @@
 
 .. code-block:: shell
 
-   $ detect_yolov3.py \
+   $ detect_yolov3 \
         --model yolov3_int8.bmodel \
         --input ../COCO2017/000000366711.jpg \
         --output yolov3_int8.jpg
@@ -152,9 +174,9 @@
 第一步: 生成混精度量化表
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-使用 ``run_qtable.py`` 生成混精度量化表, 相关参数说明如下:
+使用 ``run_qtable`` 生成混精度量化表, 相关参数说明如下:
 
-.. list-table:: run_qtable.py 参数功能
+.. list-table:: run_qtable 参数功能
    :widths: 23 8 50
    :header-rows: 1
 
@@ -208,7 +230,7 @@
 
 .. code-block:: shell
 
-   $ run_qtable.py yolov3_tiny.mlir \
+   $ run_qtable yolov3_tiny.mlir \
        --dataset ../COCO2017 \
        --calibration_table yolov3_cali_table \
        --chip bm1684x \
@@ -263,7 +285,7 @@
 
 
 该表按cos从小到大顺利排列, 表示该层的前驱Layer根据各自的cos已换成相应的浮点模式后, 该层计算得到的cos, 若该cos仍小于前面min_layer_cos参数，则会将该层及直接后继层设置为浮点计算。
-``run_qtable.py`` 会在每次设置某相邻2层为浮点计算后，接续计算整个网络的输出cos，若该cos大于指定的expected_cos，则退出搜素。因此，若设置更大的expected_cos，会尝试将更多层设为浮点计算
+``run_qtable`` 会在每次设置某相邻2层为浮点计算后，接续计算整个网络的输出cos，若该cos大于指定的expected_cos，则退出搜素。因此，若设置更大的expected_cos，会尝试将更多层设为浮点计算
 
 
 第二步: 生成混精度量化模型
@@ -271,7 +293,7 @@
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov3_tiny.mlir \
        --quantize INT8 \
        --quantize_table yolov3_qtable \
@@ -284,7 +306,7 @@
 
 .. code-block:: shell
 
-   $ detect_yolov3.py \
+   $ detect_yolov3 \
         --model yolov3_mix.bmodel \
         --input ../COCO2017/000000366711.jpg \
         --output yolov3_mix.jpg
@@ -317,14 +339,15 @@
 本章以检测网络 ``mobilenet-v2`` 网络模型为例, 介绍如何使用敏感层搜索。
 该模型来自nnmodels/pytorch_models/accuracy_test/classification/mobilenet_v2.pt。
 
-本章需要如下文件(其中xxxx对应实际的版本信息):
+本章需要安装tpu_mlir。
 
-**tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
 
-加载tpu-mlir
+安装tpu-mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[all]
 
 准备工作目录
 ------------------
@@ -337,12 +360,32 @@
   :linenos:
 
    $ mkdir mobilenet-v2 && cd mobilenet-v2
-   $ cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
+   $ tpu_mlir_get_resource regression/dataset/ILSVRC2012 .
+   $ wget https://github.com/sophgo/tpu-mlir/releases/download/v1.4-beta.0/mobilenet_v2.pt
    $ mkdir workspace && cd workspace
 
-这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
-注意 ``mobilenet-v2.pt`` 需要自己从nnmodels下载后放到 ``mobilenet-v2`` 目录。
+这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。
 
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
+    
 测试Float和INT8对称量化模型分类效果
 ---------------------------------
 
@@ -353,7 +396,7 @@
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name mobilenet_v2 \
        --model_def ../mobilenet_v2.pt \
        --input_shapes [[1,3,224,224]] \
@@ -368,7 +411,7 @@
 
 .. code-block:: shell
 
-   $ run_calibration.py mobilenet_v2.mlir \
+   $ run_calibration mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
        -o mobilenet_v2_cali_table
@@ -378,7 +421,7 @@
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize F32 \
        --chip bm1684 \
@@ -389,7 +432,7 @@
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --chip bm1684 \
@@ -399,11 +442,11 @@
 第五步: 验证FP32模型和INT8对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-classify_mobilenet_v2.py是已经写好的验证程序，可以用来对mobilenet_v2网络进行验证。执行过程如下，FP32模型：
+classify_mobilenet_v2是已经写好的验证程序，可以用来对mobilenet_v2网络进行验证。执行过程如下，FP32模型：
 
 .. code-block:: shell
 
-   $ classify_mobilenet_v2.py \
+   $ classify_mobilenet_v2 \
        --model_def mobilenet_v2_bm1684_f32.bmodel \
        --input ../ILSVRC2012/n01440764_9572.JPEG \
        --output mobilenet_v2_fp32_bmodel.JPEG \
@@ -424,22 +467,22 @@ INT8对称量化模型：
 
 .. code-block:: shell
 
-   $ classify_mobilenet_v2.py \
+   $ classify_mobilenet_v2 \
        --model_def mobilenet_v2_bm1684_int8_sym.bmodel \
        --input ../ILSVRC2012/n01440764_9572.JPEG \
        --output mobilenet_v2_INT8_sym_bmodel.JPEG \
        --category_file ../ILSVRC2012/synset_words.txt
 
-在输出结果图片上可以看到如下分类信息，正确结果tench排在第二名：
+在输出结果图片上可以看到如下分类信息，正确结果tench排在第一名：
 
 .. code-block:: shell
 
     Top-5
-    n02408429 water buffalo, water ox, Asiatic buffalo, Bubalus bubalis
     n01440764 tench, Tinca tinca
-    n01871265 tusker
-    n02396427 wild boar, boar, Sus scrofa
-    n02074367 dugong, Dugong dugon
+    n02749479 assault 日file, assau
+    n02536864 coho, cohoe, coho
+    n02916936 bulletproof vest
+    n04336792 stretcher
 
 转成混精度量化模型
 -----------------------
@@ -449,9 +492,9 @@ INT8对称量化模型：
 第一步: 进行敏感层搜索
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-使用 ``run_sensitive_layer.py`` 搜索损失较大的layer，注意尽量使用bad cases进行敏感层搜索，相关参数说明如下:
+使用 ``run_sensitive_layer`` 搜索损失较大的layer，注意尽量使用bad cases进行敏感层搜索，相关参数说明如下:
 
-.. list-table:: run_sensitive_layer.py 参数功能
+.. list-table:: run_sensitive_layer 参数功能
    :widths: 23 8 50
    :header-rows: 1
 
@@ -517,11 +560,11 @@ INT8对称量化模型：
 
 .. code-block:: shell
 
-   $ run_sensitive_layer.py mobilenet_v2.mlir \
+   $ run_sensitive_layer mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
        --inference_num 30 \
-       --calibration_table mobilenet_cali_table \
+       --calibration_table mobilenet_v2_cali_table \
        --chip bm1684 \
        --post_process post_process_func.py \
        -o mobilenet_v2_qtable
@@ -600,7 +643,7 @@ INT8对称量化模型：
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --chip bm1684 \
@@ -613,7 +656,7 @@ INT8对称量化模型：
 
 .. code-block:: shell
 
-   $ classify_mobilenet_v2.py \
+   $ classify_mobilenet_v2 \
        --model_def mobilenet_v2_bm1684_mix.bmodel \
        --input ../ILSVRC2012/n01440764_9572.JPEG \
        --output mobilenet_v2_INT8_sym_bmodel.JPEG \
@@ -646,7 +689,7 @@ INT8对称量化模型：
 
 .. code-block:: shell
 
-   $ fp_forward.py \
+   $ fp_forward \
        yolov5s.mlir \
        --quantize INT8 \
        --chip bm1684x \
@@ -660,7 +703,7 @@ INT8对称量化模型：
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
@@ -712,7 +755,7 @@ INT8模型mAP为： 34.70%
 
 参数说明
 ------------------
-.. list-table:: fp_forward.py 参数功能
+.. list-table:: fp_forward 参数功能
    :widths: 23 8 50
    :header-rows: 1
 

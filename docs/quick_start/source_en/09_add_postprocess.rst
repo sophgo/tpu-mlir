@@ -2,15 +2,15 @@ Use TPU for Postprocessing
 ==============================
 Currently, TPU-MLIR supports integrating the post-processing of YOLO series and SSD network models into the model. The chips currently supporting this function include BM1684X, BM1688, and CV186X. This chapter will take the conversion of YOLOv5s to F16 model as an example to introduce how this function is used.
 
-This chapter requires the following files (where xxxx corresponds to the actual version information):
+This chapter requires the tpu_mlir python package.
 
 
-**tpu-mlir_xxxx.tar.gz (The release package of tpu-mlir)**
-
-Load tpu-mlir
+Install tpu_mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[onnx]
 
 
 Prepare working directory
@@ -27,13 +27,33 @@ The operation is as follows:
 
    $ mkdir yolov5s_onnx && cd yolov5s_onnx
    $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
+   $ tpu_mlir_get_resource regression/image .
    $ mkdir workspace && cd workspace
 
 
-``$TPUC_ROOT`` is an environment variable, corresponding to the tpu-mlir_xxxx directory.
+The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
 
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file are the relative path to the package path of tpu_mlir,
+and the dir structure of tpu_mlir are as follows:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 ONNX to MLIR
 --------------------
@@ -42,7 +62,7 @@ The model conversion command is as follows:
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
        --input_shapes [[1,3,640,640]] \
@@ -81,7 +101,7 @@ To convert the MLIR file to an F16 bmodel, proceed as follows:
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
        --chip bm1684x \
@@ -123,15 +143,16 @@ Here, [1, 1, 200, 7] is the maximum shape, and the actual output varies dependin
 Bmodel Verification
 -----------------------
 
-In this release package, there is a YOLOv5 use case written in Python, with the source code located at
-``$TPUC_ROOT/python/samples/detect_yolov5.py``. It is used for object detection in images.
+In tpu_mlir package, there are yolov5 use cases written in python, using the ``detect_yolov5`` command to detect objects in images.
+This command corresponds to the source code path ``{package/path/to/tpu_mlir}/python/samples/detect_yolov5.py``.
+It is used for object detection in images.
 By reading this code, you can understand how the final output result is transformed into bounding boxes.
 
 The command execution is as follows:
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_1684x_f16.bmodel \
        --net_input_dims 640,640 \

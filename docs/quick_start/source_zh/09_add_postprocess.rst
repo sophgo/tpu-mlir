@@ -4,14 +4,15 @@
 
 本章将yolov5s转成为F16模型为例, 介绍该功能如何被使用。
 
-本章需要如下文件(其中xxxx对应实际的版本信息):
+本章需要安装tpu_mlir。
 
-**tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
 
-加载tpu-mlir
+安装tpu-mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[onnx]
 
 
 准备工作目录
@@ -28,12 +29,32 @@
 
    $ mkdir yolov5s_onnx && cd yolov5s_onnx
    $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
+   $ tpu_mlir_get_resource regression/image .
    $ mkdir workspace && cd workspace
 
 
-这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
+这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。
 
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 ONNX转MLIR
 --------------------
@@ -42,7 +63,7 @@ ONNX转MLIR
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
        --input_shapes [[1,3,640,640]] \
@@ -88,7 +109,7 @@ MLIR转换成BModel
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
        --chip bm1684x \
@@ -130,15 +151,15 @@ MLIR转换成BModel
 模型验证
 -------------
 
-在本发布包中有用python写好的yolov5用例, 源码路径
-``$TPUC_ROOT/python/samples/detect_yolov5.py`` , 用于对图片进行目标检测。
+在本发布包中有用python写好的yolov5用例, 使用 ``detect_yolov5`` 命令, 用于对图片进行目标检测。
+该命令对应源码路径 ``{package/path/to/tpu_mlir}/python/samples/detect_yolov5.py`` 。
 阅读该代码可以了解最终输出结果是怎么转换画框的。
 
 命令执行如下:
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_1684x_f16.bmodel \
        --net_input_dims 640,640 \

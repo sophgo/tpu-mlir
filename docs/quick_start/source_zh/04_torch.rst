@@ -3,14 +3,14 @@
 
 本章以 ``yolov5s.pt`` 为例, 介绍如何编译迁移一个pytorch模型至BM1684X TPU平台运行。
 
-本章需要如下文件(其中xxxx对应实际的版本信息):
+本章需要安装tpu_mlir。
 
-**tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
-
-加载tpu-mlir
+安装tpu-mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[torch]
 
 
 准备工作目录
@@ -26,14 +26,33 @@
    :linenos:
 
    $ mkdir model_yolov5s_pt && cd model_yolov5s_pt
-   $ wget https://github.com/sophgo/model-zoo/raw/main/vision/detection/yolov5/yolov5s-5.0.pt
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ wget -O yolov5s.pt "https://github.com/sophgo/tpu-mlir/raw/master/regression/model/yolov5s.pt"
+   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
+   $ tpu_mlir_get_resource regression/image .
    $ mkdir workspace && cd workspace
 
 
-这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
+这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。
 
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 TORCH转MLIR
 ------------------
@@ -46,9 +65,9 @@ TORCH转MLIR
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s_pt \
-       --model_def ../yolov5s-5.0.pt \
+       --model_def ../yolov5s.pt \
        --input_shapes [[1,3,640,640]] \
        --mean 0.0,0.0,0.0 \
        --scale 0.0039216,0.0039216,0.0039216 \
@@ -69,7 +88,7 @@ MLIR转F16模型
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s_pt.mlir \
        --quantize F16 \
        --chip bm1684x \
@@ -92,7 +111,7 @@ MLIR转INT8模型
 
 .. code-block:: shell
 
-   $ run_calibration.py yolov5s_pt.mlir \
+   $ run_calibration yolov5s_pt.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
        -o yolov5s_pt_cali_table
@@ -108,7 +127,7 @@ MLIR转INT8模型
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s_pt.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_pt_cali_table \
@@ -124,7 +143,7 @@ MLIR转INT8模型
 效果对比
 ------------------
 
-利用 ``$TPUC_ROOT/python/samples/detect_yolov5.py`` 路径下的源码, 对图片进行目标检测。
+利用 ``detect_yolov5`` 命令, 对图片进行目标检测。
 用以下代码分别来验证pytorch/f16/int8的执行结果。
 
 
@@ -132,7 +151,7 @@ pytorch模型的执行方式如下, 得到 ``dog_torch.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model ../yolov5s.pt \
        --output dog_torch.jpg
@@ -142,7 +161,7 @@ f16 bmodel的执行方式如下, 得到 ``dog_f16.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_pt_1684x_f16.bmodel \
        --output dog_f16.jpg
@@ -153,7 +172,7 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_pt_1684x_int8_sym.bmodel \
        --output dog_int8_sym.jpg

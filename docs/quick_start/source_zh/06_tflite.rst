@@ -3,14 +3,15 @@
 
 本章以 ``lite-model_mobilebert_int8_1.tflite`` 模型为例, 介绍如何编译迁移一个TFLite模型至BM1684X TPU平台运行。
 
-本章需要如下文件(其中xxxx对应实际的版本信息):
+本章需要安装tpu_mlir。
 
-**tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
 
-加载tpu-mlir
+安装tpu-mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[tensorflow]
 
 
 准备工作目录
@@ -27,12 +28,31 @@
 
    $ mkdir mobilebert_tf && cd mobilebert_tf
    $ wget -O lite-model_mobilebert_int8_1.tflite https://storage.googleapis.com/tfhub-lite-models/iree/lite-model/mobilebert/int8/1.tflite
-   $ cp ${REGRESSION_PATH}/npz_input/squad_data.npz .
+   $ tpu_mlir_get_resource regression/npz_input/squad_data.npz .
    $ mkdir workspace && cd workspace
 
 
-这里的 ``REGRESSION_PATH`` 是环境变量, 对应tpu-mlir_xxxx/regression目录。
+这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。
 
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 TFLite转MLIR
 ------------------
@@ -42,7 +62,7 @@ TFLite转MLIR
 
 .. code-block:: shell
 
-    $ model_transform.py \
+    $ model_transform \
         --model_name mobilebert_tf \
         --mlir mobilebert_tf.mlir \
         --model_def ../lite-model_mobilebert_int8_1.tflite \
@@ -62,7 +82,7 @@ MLIR转模型
 
 .. code-block:: shell
 
-    $ model_deploy.py \
+    $ model_deploy \
         --mlir mobilebert_tf.mlir \
         --quantize INT8 \
         --chip bm1684x \

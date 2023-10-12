@@ -4,15 +4,15 @@ Compile the Torch Model
 This chapter takes ``yolov5s.pt`` as an example to introduce how to compile and transfer an pytorch model to run on the BM1684X TPU platform.
 
 
-This chapter requires the following files (where xxxx corresponds to the actual version information):
+This chapter requires the tpu_mlir python package.
 
 
-**tpu-mlir_xxxx.tar.gz (The release package of tpu-mlir)**
-
-Load tpu-mlir
+Install tpu_mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[torch]
 
 
 Prepare working directory
@@ -28,12 +28,33 @@ The operation is as follows:
    :linenos:
 
    $ mkdir model_yolov5s_pt && cd model_yolov5s_pt
-   $ wget https://github.com/sophgo/model-zoo/raw/main/vision/detection/yolov5/yolov5s-5.0.pt
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ wget -O yolov5s.pt "https://github.com/sophgo/tpu-mlir/raw/master/regression/model/yolov5s.pt"
+   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
+   $ tpu_mlir_get_resource regression/image .
    $ mkdir workspace && cd workspace
 
-``$TPUC_ROOT`` is an environment variable, corresponding to the tpu-mlir_xxxx directory.
+The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
+
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file are the relative path to the package path of tpu_mlir,
+and the dir structure of tpu_mlir are as follows:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 TORCH to MLIR
 ------------------
@@ -46,9 +67,9 @@ The model conversion command:
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s_pt \
-       --model_def ../yolov5s-5.0.pt \
+       --model_def ../yolov5s.pt \
        --input_shapes [[1,3,640,640]] \
        --mean 0.0,0.0,0.0 \
        --scale 0.0039216,0.0039216,0.0039216 \
@@ -69,7 +90,7 @@ Convert the mlir file to the bmodel of f16, the operation method is as follows:
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s_pt.mlir \
        --quantize F16 \
        --chip bm1684x \
@@ -93,7 +114,7 @@ Before converting to the INT8 model, you need to run calibration to get the cali
 
 .. code-block:: shell
 
-   $ run_calibration.py yolov5s_pt.mlir \
+   $ run_calibration yolov5s_pt.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
        -o yolov5s_pt_cali_table
@@ -108,7 +129,7 @@ Execute the following command to convert to the INT8 symmetric quantized model:
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s_pt.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_pt_cali_table \
@@ -124,7 +145,7 @@ After compilation, a file named ``yolov5s_pt_1684x_int8_sym.bmodel`` will be gen
 Effect comparison
 ------------------
 
-Use the source code under the ``$TPUC_ROOT/python/samples/detect_yolov5.py`` path to perform object detection on the image.
+Use the command ``detect_yolov5`` path to perform object detection on the image.
 Use the following codes to verify the execution results of pytorch/ f16/ int8 respectively.
 
 
@@ -132,7 +153,7 @@ The pytorch model is run as follows to get ``dog_torch.jpg``:
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model ../yolov5s.pt \
        --output dog_torch.jpg
@@ -142,7 +163,7 @@ The f16 bmodel is run as follows to get ``dog_f16.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_pt_1684x_f16.bmodel \
        --output dog_f16.jpg
@@ -153,7 +174,7 @@ The int8 asymmetric bmodel is run as follows to get ``dog_int8_sym.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_pt_1684x_int8_sym.bmodel \
        --output dog_int8_sym.jpg
