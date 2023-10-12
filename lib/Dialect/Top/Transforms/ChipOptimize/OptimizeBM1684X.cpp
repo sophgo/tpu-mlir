@@ -677,7 +677,7 @@ public:
         op.setOperand(1, module::getNoneOp(op));
         op.setOperand(2, fbrn);
         process = true;
-      } else if (!isa<top::WeightOp>(tbrn.getDefiningOp())) {
+      } else {
         auto tbrn_ = expand_dim_and_tile(tbrn, out_shape, rewriter);
         if (tbrn != tbrn_) {
           op.setOperand(1, tbrn_);
@@ -699,7 +699,7 @@ public:
         op.setOperand(1, tbrn);
         op.setOperand(2, module::getNoneOp(op));
         process |= true;
-      } else if (!isa<top::WeightOp>(fbrn.getDefiningOp())) {
+      } else {
         auto fbrn_ = expand_dim_and_tile(fbrn, out_shape, rewriter);
         if (fbrn != fbrn_) {
           op.setOperand(2, fbrn_);
