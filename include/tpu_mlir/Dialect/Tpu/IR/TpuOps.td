@@ -1780,7 +1780,8 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
     I64Attr:$axis,
     I64Attr:$K,
     DefaultValuedAttr<BoolAttr, "true">:$largest,
-    DefaultValuedAttr<BoolAttr, "true">:$sorted
+    DefaultValuedAttr<BoolAttr, "true">:$sorted,
+    DefaultValuedAttr<BoolAttr, "false">:$values_used_only
   );
   let results = (outs
     AnyTensorOrNone:$values,

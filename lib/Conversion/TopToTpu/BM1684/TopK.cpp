@@ -22,7 +22,13 @@ void TopKLowering::LoweringF32(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     cpu_param.push_back(attr);
   }
-
+  // If only values or indices are used, record it to support only one output in cpu layer
+  if(!op.getValues().getUsers().empty() && op.getIndices().getUsers().empty()) {
+    cpu_param.push_back(rewriter.getNamedAttr("values_used_only", rewriter.getBoolAttr(true)));
+  }
+  else {
+    cpu_param.push_back(rewriter.getNamedAttr("values_used_only", rewriter.getBoolAttr(false)));
+  }
   attrs.emplace_back(
       rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(cpu_param)));
   std::vector<Type> new_types;
