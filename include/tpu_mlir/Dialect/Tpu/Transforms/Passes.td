@@ -18,6 +18,12 @@ def OpReorder : Pass<"op-reorder", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def WeightFold : Pass<"weight-fold", "ModuleOp"> {
+  let summary = "fold weight if all input of an operation is weight";
+  let constructor = "createWeightFoldPass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 def WeightReorder : Pass<"weight-reorder", "ModuleOp"> {
   let summary = "weight reorder in tpu by tpuc-opt";
   let constructor = "createWeightReorderPass()";

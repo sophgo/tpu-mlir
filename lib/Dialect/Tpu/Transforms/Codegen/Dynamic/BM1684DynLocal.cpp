@@ -217,9 +217,10 @@ void *call_local_layer_ir_write(FW_LAYER_TYPE_T fw_layer_type, void *p_ir_addr,
   }
   if ((u32)((u64)p_ir_addr - pre_ir_addr) !=
       p_ir_layer_info->layer_fw_ir_length) {
-    std::cout << "write ir buff size is not same with fw_ir_length, fw local "
-                 "layer type is "
-              << fw_layer_type;
+    llvm::errs()
+        << "write ir buff size is not same with fw_ir_length, fw local "
+           "layer type is "
+        << fw_layer_type;
     llvm_unreachable("ir length error");
   }
   return p_ir_addr;

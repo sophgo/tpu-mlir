@@ -95,6 +95,7 @@ def mlir_lowering(top_mlir: str,
     cmd.extend([
         lower_param,
         "--canonicalize",
+        "--weight-fold",
         "-o",
         tpu_mlir,
     ])

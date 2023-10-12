@@ -177,11 +177,13 @@ LogicalResult tpu::ActiveOp::LocalGenSupport() {
 void tpu::ActiveOp::assign_fw_param(void *param) {
   fw_active_layer_param_t layer_param = {0};
   layer_param.active_type = (int)getMode();
-  layer_param.if_relu = 0; //not implement
+  layer_param.if_relu = 0; // not implement
   layer_param.relu_upper_limit = 0.f;
-  layer_param.ic = module::getShape(getInput())[1];
-  layer_param.input_scale_back2float = 1.f; //not implement
-  layer_param.output_scale_back2float = 1.f; //not implement
+  auto shape = module::getShape(getInput());
+
+  layer_param.ic = shape.size() > 1 ? shape[1] : 1;
+  layer_param.input_scale_back2float = 1.f;  // not implement
+  layer_param.output_scale_back2float = 1.f; // not implement
   layer_param.opd_sign = module::isSign(getInput());
   layer_param.res_sign = module::isSign(getOutput());
   memcpy(param, &layer_param, sizeof(fw_active_layer_param_t));

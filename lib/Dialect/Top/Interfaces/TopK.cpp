@@ -60,6 +60,7 @@ void top::TopKOp::shape_inference() {
     auto kt_vec = module::getShapeTensorValue(getKT());
     assert(kt_vec.size() == 1);
     K = kt_vec[0];
+    setK(K);
   } else {
     K = getK();
   }
