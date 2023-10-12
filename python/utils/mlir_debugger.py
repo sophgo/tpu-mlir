@@ -8,14 +8,34 @@
 #
 # ==============================================================================
 import pymlir
+
 pymlir.set_mem_mode("value_mem")
 from collections import Counter
 from pprint import pformat
 import numpy as np
-from mlir_ast.mlir_ast import MlirParserV2 as MlirParser
+from utils.mlir_parser import MlirParser
+
 import os
 from numpy_helper.tensor_compare import TensorCompare
 from typing import List, Union, Dict
+from utils.log_setting import setup_logger
+
+logger = setup_logger("debugger")
+print = logger.print
+debug = logger.debug
+
+
+def before_compare(actual, desire):
+    actual = actual.astype(np.float32)
+    desire = desire.astype(np.float32)
+    if actual.size != desire.size:
+        if actual.size > desire.size:
+            actual = actual.flatten()[: desire.size].reshape(desire.shape)
+        else:
+            new_actual = np.zeros_like(desire)
+            new_actual[: actual.size] = actual.flatten()
+            actual = new_actual
+    return actual, desire
 
 
 class MlirDebugger:
@@ -52,7 +72,7 @@ class MlirDebugger:
         self.module = pymlir.module()
         self.module.load(os.path.basename(mlir_file))
 
-    def invoke_at(self, name: str, input_data_dict: Dict[str, np.ndarray]):
+    def invoke_at(self, name: str, input_data_dict: Dict[str, np.ndarray]) -> dict:
         op = self.parser.get_op_by_op_name(name)
         missing = [
             i for i in op.opds if i not in input_data_dict and i not in self.weights
@@ -84,26 +104,32 @@ class MlirDebugger:
             _ = self.module.invoke_at(name)
 
             outkeys = set(op.outputs)
-            for k, v in self.module.get_all_tensor().items():
-                if k in outkeys:
-                    data = v.copy()  # type: np.ndarray
-                    # try de-quant
+            dic = self.module.get_all_tensor()
+            for k in outkeys:
+                if k not in dic:
+                    print(f"Miss {k}")
+                    continue
+                v = dic[k]
+                print(k, outkeys)
+                data = v.copy()  # type: np.ndarray
+                # try de-quant
 
-                    zero_point = float(op.attrs.get("quant_zero_point", 0))
-                    scale = float(op.attrs.get("quant_scale", 1))
-                    if "quant_scale" in op.attrs:
-                        dtype_str = "int8"
-                    else:
-                        dtype_str = str(op.attrs)
+                zero_point = float(op.attrs.get("quant_zero_point", 0))
+                scale = float(op.attrs.get("quant_scale", 1))
+                if "quant_scale" in op.attrs:
+                    dtype_str = "int8"
+                else:
+                    dtype_str = "f32"
 
-                    outputs[f"{k}_context"] = {
-                        "ori_dtype": dtype_str,
-                        "zero_point": zero_point,
-                        "quant": scale,
-                    }
-                    outputs[k + f"_{dtype_str}"] = data
-                    data = (data.astype(np.float32) - zero_point) * scale
-                    outputs[k] = data
+                outputs[f"{k}_context"] = {
+                    "ori_dtype": dtype_str,
+                    "zero_point": zero_point,
+                    "quant": scale,
+                }
+                outputs[k + f"_{dtype_str}"] = data
+                data = (data.astype(np.float32) - zero_point) * scale
+
+                outputs[k] = data
         return outputs
 
     def invoke_from(
@@ -113,6 +139,8 @@ class MlirDebugger:
         feed_dict: Dict[str, np.ndarray] = {},
         reference: Dict[str, np.ndarray] = {},
         force_correct: bool = False,
+        fast_fail=False,
+        excepts=[],
     ):
         """
         results -> type -> name -> { op, result, inputs, outputs, reference_outputs}
@@ -140,7 +168,6 @@ class MlirDebugger:
         outputs = []
         # ensure root input correctness
         memo = {k: reference[k] if k in reference else feed_dict[k] for k in inputs}
-
         failed = {}
         failed_type_counter = Counter()
         succeed_type_counter = Counter()
@@ -149,8 +176,15 @@ class MlirDebugger:
             if len(inputs) == 0:
                 print("Early stop")
                 break
+            if len(failed) > 0 and fast_fail:
+                print("fast fail, stop inference")
+                break
+            # print("inputs", inputs)
             for ipt in inputs:  # try find output meet input requirements
                 opt_names = self.parser.get_next_op_by_op_name(ipt)
+                # get_next_op may skip some operation, like squeeze -> topk[0, 1],
+                # the second output may be skiped.
+                # print("opt_names", opt_names)
                 for opt in opt_names:
                     op = self.parser.get_op_by_op_name(opt)
                     missing = [
@@ -158,8 +192,9 @@ class MlirDebugger:
                         for pre in self.parser.get_pre_op_by_op_name(opt)
                         if pre not in memo
                     ]
+
                     if any(missing):
-                        print(f"Skip {opt} for lack of {missing}")
+                        print(f"Temporarily skip inference {opt} for lack of {missing}")
                         continue
 
                     for pre in self.parser.get_pre_op_by_op_name(opt):
@@ -176,11 +211,19 @@ class MlirDebugger:
                         for pre in self.parser.get_pre_op_by_op_name(opt):
                             if pre in reference:
                                 print(f"use reference value of {pre}")
-                                memo[pre] = reference[pre]
+                                if memo[pre].shape != reference[pre].shape:
+                                    print(
+                                        f"inplace because shape not equal memo {memo[pre].shape} but ref {reference[pre].shape}"
+                                    )
+                                    memo[pre].flatten()[
+                                        : reference[pre].size
+                                    ] = reference[pre].flatten()
+                                else:
+                                    memo[pre] = reference[pre]
 
                     res = self.invoke_at(opt, memo)
                     middle_results.update(res)
-                    outputs.append(opt)
+                    outputs.extend(res.keys())
                     output_keyset = (
                         output_keyset - res.keys()
                     )  # update output_keyset, when len(output_keyset) == 0, all required output_name are calculated.
@@ -194,8 +237,14 @@ class MlirDebugger:
                         k: self.weights[k].shape for k in op.opds if k in self.weights
                     }
 
-                    if opt in reference:
-                        cmp_ret = self.tc.compare(reference[opt], res[opt], verbose=2)
+                    if opt in reference and opt not in excepts:
+                        actual, desire = before_compare(res[opt], reference[opt])
+
+                        cmp_ret = self.tc.compare(
+                            actual,
+                            desire,
+                            verbose=2,
+                        )
                         ret, msg, code, meta, _ = cmp_ret
 
                         print(cmp_ret)
@@ -219,6 +268,8 @@ class MlirDebugger:
                             )
 
                             print(failed_type_counter)
+                            if fast_fail:
+                                break
 
             inputs = list(set(outputs))
             inputs = [i for i in inputs if i not in memo]
@@ -232,12 +283,20 @@ class MlirDebugger:
         feed_dict: Dict[str, np.ndarray] = {},
         reference: Dict[str, np.ndarray] = {},
         force_correct: bool = False,
+        fast_fail=False,
+        excepts=[],
     ):
         op_names = [i.name for i in self.parser.inputs]
         output_names = list(self.parser.get_output_op_names_n_shapes().keys())
         print(op_names)
         print(output_names)
         middle_results, failed, counter = self.invoke_from(
-            op_names, output_names, feed_dict, reference, force_correct
+            op_names,
+            output_names,
+            feed_dict,
+            reference,
+            force_correct,
+            fast_fail=fast_fail,
+            excepts=excepts,
         )
         return middle_results, failed, counter
