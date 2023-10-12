@@ -643,7 +643,7 @@ public:
     } else {
       // convert for embedding
       bool need_convert =
-          (axis == 1 && indices_shape.size() == 0 && input_shape.size() == 3 &&
+          (axis == 1 && indices_shape.size() == 1 && input_shape.size() == 3 &&
            input_shape[0] == 1 && !(module::isWeight(input)));
       if (need_convert) {
         // conver to reshapeOp + new GatherOp
@@ -672,7 +672,7 @@ public:
         operands.emplace_back(out1);
         operands.emplace_back(indices);
         attrs.emplace_back(
-            rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(0)));
+            rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(0)));
         auto loc2 = NameLoc::get(rewriter.getStringAttr(name));
         auto newOp =
             rewriter.create<top::GatherOp>(loc2, type2, operands, attrs);
@@ -1504,12 +1504,26 @@ public:
   LogicalResult matchAndRewrite(top::WhereOp op,
                                 PatternRewriter &rewriter) const override {
     // out = input[0] * input[1] + (1 - input[0]) * input[2]
+    Value ori_out = op.getOutput();
+    std::vector<int64_t> output_shape = module::getShape(ori_out);
+    int32_t out_num = module::getNumElements(ori_out);
+    auto add_weight = [&](float val, std::string name, int32_t idx) {
+      auto type = RankedTensorType::get({output_shape}, rewriter.getF32Type());
+      auto newWeight = top::WeightOp::create(
+          op, module::getName(op.getOutput()).str() + name,
+          std::vector<float>(out_num, val), type);
+      op.setOperand(idx, newWeight);
+    };
+    if (op.getXIsConst()) {
+      add_weight(op.getXConstVal().convertToDouble(), "_x", 1);
+    }
+    if (op.getYIsConst()) {
+      add_weight(op.getYConstVal().convertToDouble(), "_y", 2);
+    }
     Value input0 = op.getOperand(0);
     Value input1 = op.getOperand(1);
     Value input2 = op.getOperand(2);
-    Value ori_out = op.getOutput();
     std::string name = module::getName(ori_out).str();
-    std::vector<int64_t> output_shape = module::getShape(ori_out);
     std::vector<int64_t> input0_shape = module::getShape(input0);
     std::vector<int64_t> input1_shape = module::getShape(input1);
     std::vector<int64_t> input2_shape = module::getShape(input2);
