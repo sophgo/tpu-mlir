@@ -3,14 +3,15 @@ Compile the TFLite model
 
 This chapter takes the ``lite-model_mobilebert_int8_1.tflite`` model as an example to introduce how to compile and transfer a TFLite model to run on the BM1684X TPU platform.
 
-This chapter requires the following files (where xxxx corresponds to the actual version information):
+This chapter requires the tpu_mlir python package.
 
-**tpu-mlir_xxxx.tar.gz (The release package of tpu-mlir)**
 
-Load tpu-mlir
+Install tpu_mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[tensorflow]
 
 
 Prepare working directory
@@ -26,11 +27,31 @@ The operation is as follows:
 
    $ mkdir mobilebert_tf && cd mobilebert_tf
    $ wget -O lite-model_mobilebert_int8_1.tflite https://storage.googleapis.com/tfhub-lite-models/iree/lite-model/mobilebert/int8/1.tflite
-   $ cp ${REGRESSION_PATH}/npz_input/squad_data.npz .
+   $ tpu_mlir_get_resource regression/npz_input/squad_data.npz .
    $ mkdir workspace && cd workspace
 
-``REGRESSION_PATH`` is an environment variable, corresponding to the tpu-mlir_xxxx/regression directory.
+The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
 
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file are the relative path to the package path of tpu_mlir,
+and the dir structure of tpu_mlir are as follows:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 TFLite to MLIR
 ------------------
@@ -40,7 +61,7 @@ The model conversion command:
 
 .. code-block:: shell
 
-    $ model_transform.py \
+    $ model_transform \
         --model_name mobilebert_tf \
         --mlir mobilebert_tf.mlir \
         --model_def ../lite-model_mobilebert_int8_1.tflite \
@@ -60,7 +81,7 @@ This model is a tflite asymmetric quantized model, which can be converted into a
 
 .. code-block:: shell
 
-    $ model_deploy.py \
+    $ model_deploy \
         --mlir mobilebert_tf.mlir \
         --quantize INT8 \
         --chip bm1684x \

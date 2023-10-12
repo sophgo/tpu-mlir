@@ -16,7 +16,7 @@
 获取 ``model-zoo`` 模型
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-在 ``tpu-mlir_xxxx.tar.gz`` (tpu-mlir的发布包)的同级目录下, 使用以下命令克隆 ``model-zoo`` 工程:
+在欲使用的工作目录下, 使用以下命令克隆 ``model-zoo`` 工程:
 
 .. code :: shell
 
@@ -178,7 +178,6 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 ::
 
    ├── tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
-   ├── tpu-mlir_xxxx.tar.gz
    └── model-zoo
 
 准备工具链编译环境
@@ -191,16 +190,19 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
    $ sudo usermod -aG docker $USER
    $ newgrp docker
 
-然后，在 ``tpu-mlir_xxxx.tar.gz`` 目录下(注意, ``tpu-mlir_xxxx.tar.gz`` 和
-``model-zoo`` 需要在同一级目录), 执行以下命令:
+然后，在欲使用的工作目录(即 ``model-zoo`` 所在目录)下执行以下命令:
 
 .. code :: shell
 
-   $ tar zxf tpu-mlir_xxxx.tar.gz
    $ docker pull sophgo/tpuc_dev:v3.1
    $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.1
 
 运行命令后会处于Docker的容器中。
+在Docker容器中安装tpu_mlir:
+
+.. code :: shell
+
+   $ pip install tpu_mlir[all]
 
 模型性能和精度测试流程
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -212,8 +214,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 
 .. code :: shell
 
-   $ cd tpu-mlir_xxxx
-   $ source envsetup.sh
+   $ source $(which envsetup.sh)
 
 该过程结束后不会有任何提示。之后使用以下命令安装 ``tpu-perf``:
 

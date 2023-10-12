@@ -62,3 +62,15 @@ def run_subprocess_c(file_name):
     return_code = process.wait()
     if return_code != 0:
         exit(1)
+
+
+def cp_from_package_root():
+    arguments = sys.argv[1:]
+    if len(arguments)!=2:
+        print("Both src_path and target_path are and only required!")
+        exit(1)
+    command = ["cp","-rf"] + [f"{package_path}/" + arguments[0]] + [arguments[1]]
+    process = subprocess.Popen(command)
+    return_code = process.wait()
+    if return_code != 0:
+        exit(1)

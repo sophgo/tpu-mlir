@@ -17,7 +17,7 @@ If you are using Docker for the first time, use the methods in :ref:`Environment
 Get the ``model-zoo`` model [#extra]_
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the same directory of ``tpu-mlir_xxxx.tar.gz`` (tpu-mlir's release package), use the following command to clone the ``model-zoo`` project:
+Use the following command to clone the ``model-zoo`` project:
 
 .. code-block:: shell
    :linenos:
@@ -62,7 +62,6 @@ Download the latest ``tpu-perf`` wheel installation package from https://github.
 ::
 
    ├── tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
-   ├── tpu-mlir_xxxx.tar.gz
    └── model-zoo
 
 
@@ -72,8 +71,7 @@ Test process
 Unzip the SDK and create a Docker container
 +++++++++++++++++++++++++++++++++++++++++++
 
-Execute the following command in the ``tpu-mlir_xxxx.tar.gz`` directory (note that ``tpu-mlir_xxxx.tar.gz`` and
-``model-zoo`` needs to be at the same level):
+Execute the following command in the workspace directory (note that ``model-zoo`` should be contained in this dir):
 
 .. code-block:: shell
    :linenos:
@@ -83,6 +81,11 @@ Execute the following command in the ``tpu-mlir_xxxx.tar.gz`` directory (note th
    $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.1
 
 After running the command, it will be in a Docker container.
+Install tpu_mlir python package in the docker environment:
+
+.. code :: shell
+
+   $ pip install tpu_mlir[all]
 
 
 Set environment variables and install ``tpu-perf``
@@ -93,8 +96,7 @@ Complete setting the environment variables needed to run the tests with the foll
 .. code-block:: shell
    :linenos:
 
-   $ cd tpu-mlir_xxxx
-   $ source envsetup.sh
+   $ source $(which envsetup.sh)
 
 There will be no prompts after the process ends. Then install ``tpu-perf`` with the following command:
 

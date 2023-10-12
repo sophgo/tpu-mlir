@@ -8,10 +8,12 @@ CV18xx series chip currently supports ONNX and Caffe models but not TFLite model
 Compile yolov5 model
 --------------------
 
-TPU-MLIR Setup
+Install tpu_mlir
 ~~~~~~~~~~~~~~~~~~~~
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[all]
 
 Prepare working directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -26,12 +28,33 @@ The operation is as follows:
 
    $ mkdir model_yolov5s && cd model_yolov5s
    $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
+   $ tpu_mlir_get_resource regression/image .
    $ mkdir workspace && cd workspace
 
 
-Here ``$TPUC_ROOT`` is an environment variable, corresponding to the tpu-mlir_xxxx directory.
+The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
+
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file are the relative path to the package path of tpu_mlir,
+and the dir structure of tpu_mlir are as follows:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 ONNX to MLIR
 ~~~~~~~~~~~~~~~~~~~~
@@ -49,7 +72,7 @@ The model conversion command is as follows:
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
        --input_shapes [[1,3,640,640]] \
@@ -62,7 +85,7 @@ The model conversion command is as follows:
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
 
-For the argument description of ``model_transform``, refer to the section :ref:`The main parameters of model_transform.py <model_transform param>` .
+For the argument description of ``model_transform``, refer to the section :ref:`The main parameters of model_transform <model_transform param>` .
 
 MLIR to BF16 Model
 ~~~~~~~~~~~~~~~~~~~~
@@ -71,7 +94,7 @@ Convert the mlir file to the cvimodel of bf16, the operation is as follows:
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize BF16 \
        --chip cv183x \
@@ -79,7 +102,7 @@ Convert the mlir file to the cvimodel of bf16, the operation is as follows:
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_cv183x_bf16.cvimodel
 
-For the argument description of ``model_deploy.py``, refer to the section  :ref:`The main parameters of model_deploy.py <model_deploy param>` .
+For the argument description of ``model_deploy``, refer to the section  :ref:`The main parameters of model_deploy <model_deploy param>` .
 
 MLIR to INT8 Model
 ~~~~~~~~~~~~~~~~~~~~
@@ -89,7 +112,7 @@ Here we use the 100 images from COCO2017 as an example to perform calibration:
 
 .. code-block:: shell
 
-   $ run_calibration.py yolov5s.mlir \
+   $ run_calibration yolov5s.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
        -o yolov5s_cali_table
@@ -100,7 +123,7 @@ To convert to symmetric INT8 cvimodel model, execute the following command:
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
@@ -120,7 +143,7 @@ The onnx model is run as follows to get ``dog_onnx.jpg``:
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model ../yolov5s.onnx \
        --output dog_onnx.jpg
@@ -129,7 +152,7 @@ The FP32 mlir model is run as follows to get ``dog_mlir.jpg``:
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s.mlir \
        --output dog_mlir.jpg
@@ -138,7 +161,7 @@ The BF16 cvimodel is run as follows to get ``dog_bf16.jpg``:
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_cv183x_bf16.cvimodel \
        --output dog_bf16.jpg
@@ -147,7 +170,7 @@ The INT8 cvimodel is run as follows to get ``dog_int8.jpg``:
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_cv183x_int8_sym.cvimodel \
        --output dog_int8.jpg
@@ -175,7 +198,7 @@ For the same model, independent cvimodel files can be generated according to the
 Step 0: generate the cvimodel for batch 1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Please refer to the previous section to create a new workspace directory and convert yolov5s to the mlir fp32 model by model_transform.py
+Please refer to the previous section to create a new workspace directory and convert yolov5s to the mlir fp32 model by model_transform
 
 .. admonition:: Attention ：
   :class: attention
@@ -187,7 +210,7 @@ Please refer to the previous section to create a new workspace directory and con
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
        --input_shapes [[1,3,640,640]] \
@@ -200,12 +223,12 @@ Please refer to the previous section to create a new workspace directory and con
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s_bs1.mlir
 
-Use the yolov5s_cali_table generated in preceding sections, or generate calibration table by run_calibration.py.
+Use the yolov5s_cali_table generated in preceding sections, or generate calibration table by run_calibration.
 
 .. code-block:: shell
 
   # Add --merge_weight
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s_bs1.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
@@ -223,7 +246,7 @@ Generate mlir fp32 file in the same workspace:
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
        --input_shapes [[2,3,640,640]] \
@@ -239,7 +262,7 @@ Generate mlir fp32 file in the same workspace:
 .. code-block:: shell
 
   # Add --merge_weight
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s_bs2.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
@@ -305,7 +328,7 @@ Using the above command, you can merge either the same models or different model
 
 The main steps are:
 
-1. When generating a cvimodel through model_deploy.py, add the --merge_weight parameter.
+1. When generating a cvimodel through model_deploy, add the --merge_weight parameter.
 2. The work directory of the model to be merged must be the same, and do not clean up any intermediate files before merging the models(Reuse the previous model's weight is implemented through the intermediate file _weight_map.csv).
 3. Use model_tool to merge cvimodels.
 
@@ -707,13 +730,13 @@ Model transformation FAQ
 
     tensorflow / others: It is not supported yet and can be supported indirectly through onnx.
 
-  1.2 An error occurs when model transform.py is executed
+  1.2 An error occurs when model_transform is executed
 
-    ``model_transform.py`` This script convert the onnx,caffe model into the fp32 mlir. The high probability of error here is that there are unsupported operators or incompatible operator attributes, which can be fed back to the tpu team to solve.
+    ``model_transform`` This command convert the onnx,caffe model into the fp32 mlir. The high probability of error here is that there are unsupported operators or incompatible operator attributes, which can be fed back to the tpu team to solve.
 
-  1.3 An error occurs when model deploy.py is executed
+  1.3 An error occurs when model_deploy is executed
 
-    ``model_deploy.py`` This script quantizes fp32 mlir to int8/bf16mlir, and then converts int8/bf16mlir to cvimodel.
+    ``model_deploy`` This command quantizes fp32 mlir to int8/bf16mlir, and then converts int8/bf16mlir to cvimodel.
     In the process of conversion, two similarity comparisons will be involved: one is the quantitative comparison between fp32 mlir and int8/bf16mlir, and the other is the similarity comparison between int8/bf16mlir and the final converted cvimodel. If the similarity comparison fails, the following err will occur:
 
     .. figure:: ../assets/compare_failed.png
@@ -722,7 +745,7 @@ Model transformation FAQ
 
     Solution: The tolerance parameter is incorrect. During the model conversion process, similarity will be calculated for the output of int8/bf16 mlir and fp32 mlir, and tolerance is to limit the minimum value of similarity. If the calculated minimum value of similarity is lower than the corresponding preset tolerance value, the program will stop execution. Consider making adjustments to tolerance. (If the minimum similarity value is too low, please report it to the tpu team.)
 
-  1.4 What is the difference between the ``pixel_format parameter`` of ``model_transform.py`` and the ``customization_format`` parameter of ``model_deploy.py``?
+  1.4 What is the difference between the ``pixel_format parameter`` of ``model_transform`` and the ``customization_format`` parameter of ``model_deploy``?
 
     Channel_order is the input image type of the original model (only gray/rgb planar/bgr planar is supported),customization_format is the input image type of cvimodel, which is determined by the customer and must be used together with :ref:`fuse_preprocess <fuse preprocess>`. (If the input is a YUV image obtained through VPSS or VI, set customization_format to YUV format.) If pixel_format is inconsistent with customization_format,cvimodel will automatically converts the input to the type specified by pixel_format.
 
@@ -733,13 +756,13 @@ Model transformation FAQ
 2 Related to model quantization
 ````````````````````````````````````
 
-  2.1 run run_calibration.py raise KeyError: 'images'
+  2.1 run run_calibration raise KeyError: 'images'
 
    Please check that the path of the data set is correct.
 
   2.2 How to deal with multiple input problems by running quantization?
 
-    When running run_calibration.py, you can store multiple inputs using .npz, or using the --data_list argument, and the multiple inputs in each row of the data_list are separated by ",".
+    When running run_calibration, you can store multiple inputs using .npz, or using the --data_list argument, and the multiple inputs in each row of the data_list are separated by ",".
 
   2.3 Is the input preprocessed when quantization is performed?
 
@@ -747,7 +770,7 @@ Model transformation FAQ
 
   2.4 The program is killed by the system or the memory allocation fails when run calibration
 
-    It is necessary to check whether the memory of the host is enough, and the common model requires about 8G memory. If memory is insufficient, try adding the following parameters when running run_calibration.py to reduce memory requirements.
+    It is necessary to check whether the memory of the host is enough, and the common model requires about 8G memory. If memory is insufficient, try adding the following parameters when running run_calibration to reduce memory requirements.
 
      .. code-block:: shell
 
@@ -790,7 +813,7 @@ Model performance evaluation FAQ
 
   2.3 If int8 model accuracy is poor:
 
-    1) Verify that the data set used by run_calibration.py is the validation set used when training the model;
+    1) Verify that the data set used by run_calibration is the validation set used when training the model;
 
     2) A business scenario data set (typically 100-1000 images) can be added for run_calibration.
 
@@ -818,7 +841,7 @@ Common problems of model deployment
 2 Is the model preprocessing slow?
 ``````````````````````````````````````
 
-  2.1 Add the ``--fuse_preprocess`` parameter when running model_deploy.py, which will put the preprocessing inside the TPU for processing.
+  2.1 Add the ``--fuse_preprocess`` parameter when running model_deploy, which will put the preprocessing inside the TPU for processing.
 
   2.2 If the image is obtained from vpss or vi, you can use ``--fuse_preprocess``, ``--aligned_input`` when converting to the model. Then use an interface such as CVI_NN_SetTensorPhysicalAddr to set the input tensor address directly to the physical address of the image, reducing the data copy time.
 
@@ -837,7 +860,7 @@ Common problems of model deployment
 
   ``CVI_NN_SetTensorPtr`` : Set the virtual address of input tensor, and the original tensor memory will not be freed. Inference **copies data** from a user-set virtual address to the original tensor memory.
 
-  ``CVI_NN_SetTensorPhysicalAddr`` : Set the physical address of input tensor, and the original tensor memory will be freed. Inference directly reads data from the newly set physical address, **data copy is not required** . A Frame obtained from VPSS can call this interface by passing in the Frame's first address. Note that model_deploy.py must be set ``--fused_preprocess`` and ``--aligned_input`` .
+  ``CVI_NN_SetTensorPhysicalAddr`` : Set the physical address of input tensor, and the original tensor memory will be freed. Inference directly reads data from the newly set physical address, **data copy is not required** . A Frame obtained from VPSS can call this interface by passing in the Frame's first address. Note that model_deploy must be set ``--fused_preprocess`` and ``--aligned_input`` .
 
   ``CVI_NN_SetTensorWithVideoFrame`` : Fill the Input Tensor with the VideoFrame structure. Note The address of VideoFrame is a physical address. If the model is fused preprocess and aligned_input, it is equivalent to CVI_NN_SetTensorPhysicalAddr, otherwise the VideoFrame data will be copied to the Input Tensor.
 

@@ -94,7 +94,7 @@ BM1684X部署
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
@@ -113,7 +113,7 @@ CV18xx部署
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
@@ -132,7 +132,7 @@ VPSS作为输入
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \

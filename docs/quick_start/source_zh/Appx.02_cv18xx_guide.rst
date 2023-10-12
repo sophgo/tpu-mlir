@@ -9,10 +9,12 @@ CV18xx支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数�
 编译yolov5模型
 ------------------
 
-加载tpu-mlir
+安装tpu-mlir
 ~~~~~~~~~~~~~~~~~~~~
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[all]
 
 准备工作目录
 ~~~~~~~~~~~~~~~~~~~~
@@ -28,12 +30,32 @@ CV18xx支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数�
 
    $ mkdir model_yolov5s && cd model_yolov5s
    $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
+   $ tpu_mlir_get_resource regression/image .
    $ mkdir workspace && cd workspace
 
 
-这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
+这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。
+
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 ONNX转MLIR
 ~~~~~~~~~~~~~~~~~~~~
@@ -53,7 +75,7 @@ ONNX转MLIR
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
        --input_shapes [[1,3,640,640]] \
@@ -75,7 +97,7 @@ MLIR转BF16模型
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize BF16 \
        --chip cv183x \
@@ -83,7 +105,7 @@ MLIR转BF16模型
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_cv183x_bf16.cvimodel
 
-``model_deploy.py`` 的相关参数说明参考 :ref:`model_deploy参数说明 <model_deploy param>` 部分。
+``model_deploy`` 的相关参数说明参考 :ref:`model_deploy参数说明 <model_deploy param>` 部分。
 
 MLIR转INT8模型
 ~~~~~~~~~~~~~~~~~~~~
@@ -93,7 +115,7 @@ MLIR转INT8模型
 
 .. code-block:: shell
 
-   $ run_calibration.py yolov5s.mlir \
+   $ run_calibration yolov5s.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
        -o yolov5s_cali_table
@@ -105,7 +127,7 @@ MLIR转INT8模型
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
@@ -125,7 +147,7 @@ onnx模型的执行方式如下, 得到 ``dog_onnx.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model ../yolov5s.onnx \
        --output dog_onnx.jpg
@@ -134,7 +156,7 @@ FP32 mlir模型的执行方式如下,得到 ``dog_mlir.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s.mlir \
        --output dog_mlir.jpg
@@ -143,7 +165,7 @@ BF16 cvimodel的执行方式如下, 得到 ``dog_bf16.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_cv183x_bf16.cvimodel \
        --output dog_bf16.jpg
@@ -152,7 +174,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_cv183x_int8_sym.cvimodel \
        --output dog_int8.jpg
@@ -178,7 +200,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 步骤0: 生成batch 1的cvimodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-请参考前述章节,新建workspace目录,通过model_transform.py将yolov5s转换成mlir fp32模型。
+请参考前述章节,新建workspace目录,通过model_transform将yolov5s转换成mlir fp32模型。
 
 .. admonition:: 注意 :
   :class: attention
@@ -191,7 +213,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
        --input_shapes [[1,3,640,640]] \
@@ -204,13 +226,13 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s_bs1.mlir
 
-使用前述章节生成的yolov5s_cali_table;如果没有,则通过run_calibration.py工具对yolov5s.mlir进行量化校验获得calibration table文件。
+使用前述章节生成的yolov5s_cali_table;如果没有,则通过run_calibration工具对yolov5s.mlir进行量化校验获得calibration table文件。
 然后将模型量化并生成cvimodel:
 
 .. code-block:: shell
 
   # 加上 --merge_weight参数
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s_bs1.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
@@ -228,7 +250,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
        --input_shapes [[2,3,640,640]] \
@@ -244,7 +266,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 .. code-block:: shell
 
   # 加上 --merge_weight参数
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s_bs2.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
@@ -311,7 +333,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 主要步骤在于:
 
-1. 用model_deploy.py生成模型时,加上--merge_weight参数
+1. 用model_deploy生成模型时,加上--merge_weight参数
 2. 要合并的模型的生成目录必须是同一个,且在合并模型前不要清理任何中间文件(叠加前面模型weight通过中间文件_weight_map.csv实现)
 3. 用model_tool --combine 将多个cvimodel合并
 
@@ -711,13 +733,13 @@ FAQ
 
     tensorflow / 其它: 暂不支持,可以通过onnx间接支持tf模型。
 
-  1.2 执行model_transform.py报错
+  1.2 执行model_transform报错
 
-    ``model_transform.py`` 脚本作用是将onnx,caffe框架模型转化为fp32 mlir形式,报错很大概率就是存在不支持的算子或者算子属性不兼容,可以反馈给tpu团队解决。
+    ``model_transform`` 命令作用是将onnx,caffe框架模型转化为fp32 mlir形式,报错很大概率就是存在不支持的算子或者算子属性不兼容,可以反馈给tpu团队解决。
 
-  1.3 执行model_deploy.py报错
+  1.3 执行model_deploy报错
 
-    ``model_deploy.py`` 作用是先将fp32 mlir通过量化转为int8/bf16mlir形式,然后再将int8/bf16mlir转化为cvimodel。
+    ``model_deploy`` 作用是先将fp32 mlir通过量化转为int8/bf16mlir形式,然后再将int8/bf16mlir转化为cvimodel。
     在转化的过程中,会涉及到两次相似度的对比: 一次是fp32 mlir与int8/bf16mlir之间的量化对比,一次是int8/bf16mlir与最终转化出来的cvimodel的相似度对比,若相似度对比失败则会出现下列问题:
 
     .. figure:: ../assets/compare_failed.png
@@ -726,7 +748,7 @@ FAQ
 
     解决方法: ``tolerance`` 参数不对。模型转换过程会对int8/bf16 mlir与fp32 mlir的输出计算相似度,而tolerance作用就是限制相似度的最低值,若计算出的相似度的最小值低于对应的预设的tolerance值则程序会停止执行, 可以考虑对tolerance进行调整。(如果相似度的最小值过低请反馈到tpu团队解决)。
 
-  1.4 ``model_transform.py`` 的 ``pixel_format`` 参数和 ``model_deploy.py`` 的 ``customization_format`` 参数的差异?
+  1.4 ``model_transform`` 的 ``pixel_format`` 参数和 ``model_deploy`` 的 ``customization_format`` 参数的差异?
 
     channel_order是原始模型的输入图片类型(只支持gray/rgb planar/bgr planar),customization_format是转换成cvimodel后的输入图片类型,由客户自行决定,需与 :ref:`fuse_preprocess <fuse preprocess>` 共同使用(如果输入图片是通过VPSS或者VI获取的YUV图片,可以设置customization_format为YUV格式)。如果pixel_format与customization_format不一致,cvimodel推理时会自动将输入转成pixel_format指定的类型。
 
@@ -737,21 +759,21 @@ FAQ
 2 量化问题
 ````````````
 
-  2.1 跑run_calibration.py提示KeyError: 'images'
+  2.1 跑run_calibration提示KeyError: 'images'
 
     传入的images的路径不对,请检查数据集的路径是否正确。
 
   2.2 跑量化如何处理多输入问题?
 
-    多输入模型跑run_calibration.py时, 需要多输入模型跑run_calibration.py时, 可使用.npz存储多个输入，或使用--data_list参数，且data_list中的每行的多个输入由“，”隔开。
+    多输入模型跑run_calibration时, 需要多输入模型跑run_calibration时, 可使用.npz存储多个输入，或使用--data_list参数，且data_list中的每行的多个输入由“，”隔开。
 
   2.3 跑量化输入会进行预处理吗?
 
-    会的,根据model_transform.py的预处理参数保存到mlir文件中,量化过程会进行加载预处理参数进行预处理。
+    会的,根据model_transform的预处理参数保存到mlir文件中,量化过程会进行加载预处理参数进行预处理。
 
   2.4 跑量化输入程序被系统kill或者显示分配内存失败
 
-    需要先检查主机的内存是否足够,常见的模型需要8G内存左右即可。如果内存不够,可尝试在运行run_calibration.py时,添加以下参数来减少内存需求。
+    需要先检查主机的内存是否足够,常见的模型需要8G内存左右即可。如果内存不够,可尝试在运行run_calibration时,添加以下参数来减少内存需求。
 
      .. code-block:: shell
 
@@ -787,15 +809,15 @@ FAQ
 2 量化后精度与原来模型对不上,如何调试?
 ``````````````````````````````````````
 
-  2.1 确保 ``model_deploy.py`` 的 ``--test_input``, ``--test_reference``, ``--compare_all``, ``--tolerance`` 参数进行了正确设置。
+  2.1 确保 ``model_deploy`` 的 ``--test_input``, ``--test_reference``, ``--compare_all``, ``--tolerance`` 参数进行了正确设置。
 
   2.2 比较bf16模型与原始模型的运行结果,确保误差不大。如果误差较大,先确认预处理和后处理是否正确。
 
   2.3 如果int8模型精度差:
 
-    1) 确认 ``run_calibration.py`` 使用的数据集为训练模型时使用的验证集;
+    1) 确认 ``run_calibration`` 使用的数据集为训练模型时使用的验证集;
 
-    2) 可以增加 ``run_calibration.py`` 使用的业务场景数据集(一般为100-1000张图片)。
+    2) 可以增加 ``run_calibration`` 使用的业务场景数据集(一般为100-1000张图片)。
 
   2.4 确认输入类型:
 
@@ -821,7 +843,7 @@ FAQ
 2 模型预处理速度比较慢?
 ```````````````````````
 
-  2.1 转模型的时候可以在运行 ``model_deploy.py`` 时加上 ``fuse_preprocess`` 参数, 将预处理放到TPU内部来处理。
+  2.1 转模型的时候可以在运行 ``model_deploy`` 时加上 ``fuse_preprocess`` 参数, 将预处理放到TPU内部来处理。
 
   2.2 如果图片是从vpss或者vi获取, 那么可以在转模型时使用 ``fuse_preprocess、aligned_input`` , 然后使用 ``CVI_NN_SetTensorPhysicalAddr`` 等接口直接将input tensor地址设置为图片的物理地址, 减少数据拷贝耗时。
 
@@ -840,7 +862,7 @@ FAQ
 
   ``CVI_NN_SetTensorPtr`` : 设置input tensor的虚拟地址，原本的tensor 内存不会释放。推理时从用户设置的虚拟地址 **拷贝数据** 到原本的tensor内存上。
 
-  ``CVI_NN_SetTensorPhysicalAddr`` : 设置input tensor的物理地址，原本的tensor 内存会释放。推理时直接从新设置的物理地址读取数据, **无需拷贝数据** 。从VPSS获取的Frame可以调用这个接口，传入Frame的首地址。注意需要转模型的时候 ``model_deploy.py`` 设置 ``--fused_preprocess --aligned_input`` 才能调用此接口。
+  ``CVI_NN_SetTensorPhysicalAddr`` : 设置input tensor的物理地址，原本的tensor 内存会释放。推理时直接从新设置的物理地址读取数据, **无需拷贝数据** 。从VPSS获取的Frame可以调用这个接口，传入Frame的首地址。注意需要转模型的时候 ``model_deploy`` 设置 ``--fused_preprocess --aligned_input`` 才能调用此接口。
 
   ``CVI_NN_SetTensorWithVideoFrame`` : 通过VideoFrame结构体来填充Input Tensor。注意VideoFrame的地址为物理地址。如果转模型设置 ``--fuse_preprocess --aligned_input`` ，则等同于 ``CVI_NN_SetTensorPhysicalAddr`` ，否则会将VideoFrame的数据拷贝到Input Tensor。
 

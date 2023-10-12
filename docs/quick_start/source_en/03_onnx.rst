@@ -5,10 +5,8 @@ This chapter takes ``yolov5s.onnx`` as an example to introduce how to compile an
 
 The model is from the official website of yolov5: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
-This chapter requires the following files (where xxxx corresponds to the actual version information):
+This chapter requires the tpu_mlir python package.
 
-
-**tpu-mlir_xxxx.tar.gz (The release package of tpu-mlir)**
 
 .. list-table::
    :widths: 35 20 30
@@ -26,10 +24,12 @@ This chapter requires the following files (where xxxx corresponds to the actual 
 
 .. _onnx to bmodel:
 
-Load tpu-mlir
+Install tpu_mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[onnx]
 
 
 Prepare working directory
@@ -46,13 +46,33 @@ The operation is as follows:
 
    $ mkdir model_yolov5s && cd model_yolov5s
    $ wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ tpu_mlir_get_resource regression/dataset/COCO2017 .
+   $ tpu_mlir_get_resource regression/image .
    $ mkdir workspace && cd workspace
 
 
-``$TPUC_ROOT`` is an environment variable, corresponding to the tpu-mlir_xxxx directory.
+The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
 
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file are the relative path to the package path of tpu_mlir,
+and the dir structure of tpu_mlir are as follows:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 ONNX to MLIR
 ------------------
@@ -73,7 +93,7 @@ The model conversion command is as follows:
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name yolov5s \
        --model_def ../yolov5s.onnx \
        --input_shapes [[1,3,640,640]] \
@@ -88,7 +108,7 @@ The model conversion command is as follows:
 
 .. _model_transform param:
 
-The main parameters of ``model_transform.py`` are described as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
+The main parameters of ``model_transform`` are described as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
 
 
 .. list-table:: Function of model_transform parameters
@@ -155,7 +175,7 @@ To convert the mlir file to the f16 bmodel, we need to run:
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
        --chip bm1684x \
@@ -166,7 +186,7 @@ To convert the mlir file to the f16 bmodel, we need to run:
 
 .. _model_deploy param:
 
-The main parameters of ``model_deploy.py`` are as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
+The main parameters of ``model_deploy`` are as follows (for a complete introduction, please refer to the user interface chapter of the TPU-MLIR Technical Reference Manual):
 
 
 .. list-table:: Function of model_deploy parameters
@@ -236,7 +256,7 @@ Here is an example of the existing 100 images from COCO2017 to perform calibrati
 
 .. code-block:: shell
 
-   $ run_calibration.py yolov5s.mlir \
+   $ run_calibration yolov5s.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
        -o yolov5s_cali_table
@@ -251,7 +271,7 @@ Execute the following command to convert to the INT8 symmetric quantized model:
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
@@ -267,7 +287,9 @@ After compilation, a file named ``yolov5s_1684x_int8_sym.bmodel`` is generated.
 Effect comparison
 ----------------------
 
-There is a yolov5 use case written in python in this release package for object detection on images. The source code path is ``$TPUC_ROOT/python/samples/detect_yolov5.py``. It can be learned how the model is used by reading the code. Firstly, preprocess to get the model's input, then do inference to get the output, and finally do post-processing.
+In tpu_mlir package, there are yolov5 use cases written in python, using the ``detect_yolov5`` command to detect objects in images.
+This command corresponds to the source code path ``{package/path/to/tpu_mlir}/python/samples/detect_yolov5.py``.
+It can be learned how the model is used by reading the code. Firstly, preprocess to get the model's input, then do inference to get the output, and finally do post-processing.
 Use the following codes to validate the inference results of onnx/f16/int8 respectively.
 
 
@@ -275,7 +297,7 @@ The onnx model is run as follows to get ``dog_onnx.jpg``:
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model ../yolov5s.onnx \
        --output dog_onnx.jpg
@@ -285,7 +307,7 @@ The f16 bmodel is run as follows to get ``dog_f16.jpg`` :
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_1684x_f16.bmodel \
        --output dog_f16.jpg
@@ -296,7 +318,7 @@ The int8 symmetric bmodel is run as follows to get ``dog_int8_sym.jpg``:
 
 .. code-block:: shell
 
-   $ detect_yolov5.py \
+   $ detect_yolov5 \
        --input ../image/dog.jpg \
        --model yolov5s_1684x_int8_sym.bmodel \
        --output dog_int8_sym.jpg
@@ -335,7 +357,7 @@ After installing ``libsophon``, you can use ``bmrt_test`` to test the accuracy a
    # Test the bmodel compiled above
    # --bmodel parameter followed by bmodel file,
 
-   $ cd $TPUC_ROOT/../model_yolov5s/workspace
+   $ cd path/to/model_yolov5s/workspace
    $ bmrt_test --bmodel yolov5s_1684x_f16.bmodel
    $ bmrt_test --bmodel yolov5s_1684x_int8_sym.bmodel
 
