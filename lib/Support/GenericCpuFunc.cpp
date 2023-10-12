@@ -2149,6 +2149,7 @@ void BMCpuOp::get_topk_param() {
   cpu_param.axis = paramDic.get("axis").cast<IntegerAttr>().getInt();
   cpu_param.sorted = paramDic.get("sorted").cast<BoolAttr>().getValue();
   cpu_param.descending = paramDic.get("largest").cast<BoolAttr>().getValue();
+  cpu_param.values_used_only = paramDic.get("values_used_only").cast<BoolAttr>().getValue();
   this->param_size = sizeof(cpu_topk_param_t);
   this->param = (void *)malloc(this->param_size);
   memcpy(this->param, &cpu_param, this->param_size);
