@@ -218,11 +218,17 @@ struct Conv1x1Convkxk2dMerge : public OpRewritePattern<ConvOp> {
       //  1, 1]
       int E = filterShape.at(0), D = filterShape.at(1), K = filterShape.at(2),
           C = prefilterShape.at(1);
-      auto filter_merge =
-          std::make_shared<std::vector<float>>(size_t(E * C * K * K), 0);
       int eckk = E * C * K * K;
       int ckk = C * K * K;
       int kk = K * K;
+      auto filter_merge = std::make_shared<std::vector<float>>(size_t(eckk), 0);
+      // TODO. Use pass to set option attr to the op before Canonicalize.
+      // For the rare case: w0(63, 1536, 1) w1(18507, 63, 1) -> [18507, 1536, 1]
+      int edkk = E * D * K * K;
+      if ((float)eckk / (edkk + C * D) > 20 /* for this case */) {
+        return failure();
+      }
+     
 #pragma omp parallel for schedule(static, omp_schedule(eckk))
       for (int i = 0; i < eckk; ++i) {
         int e = i / ckk;

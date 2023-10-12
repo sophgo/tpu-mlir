@@ -293,8 +293,8 @@ LogicalResult tpu::DeconvOp::LocalGenSupport() {
   }
 
   if (module::isCV18xx()) {
-    if (attr.ic > MAX_TIU_CHL || attr.iw > MAX_TIU_CHL ||
-        attr.ow > MAX_TIU_CHL) {
+    if (attr.ic > MAX_TIU_CHL || attr.oc > MAX_TIU_CHL ||
+        attr.iw > MAX_TIU_CHL || attr.ow > MAX_TIU_CHL) {
       return failure();
     }
   }
