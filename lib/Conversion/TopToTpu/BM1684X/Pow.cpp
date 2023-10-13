@@ -12,31 +12,92 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-// y = x ^ n = e ^ (n * log(x))
-// TODO: dangerous as need x > 0
+/**
+ * @note for the sake of avoiding x < 0 SINCE y = x ^ n is translated as e ^ (n
+ * * log(x))
+ *
+ * y = → (if n even) {abs(x) ^ n;}
+ *     ↘ (if n not even) → (if n is int) {x * abs(x) ^ (n - 1);}
+ *                       ↘ (if n is not int) {e ^ (n * log(x));} → (if x >= 0)
+ * {x ^ n;} ↘ (if x < 0) {nan}
+ */
 void PowLowering::LoweringF32(PatternRewriter &rewriter, top::PowOp op) const {
-  auto name = module::getName(op.getOutput());
-  auto type = op.getOutput().getType();
-  rewriter.setInsertionPointAfter(op);
-  auto log_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_log"));
-  std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr(
-      "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::LN)));
-  auto log_op = rewriter.create<tpu::ActiveOp>(log_loc, type,
-                                               ValueRange{op.getInput()}, attrs);
-  auto mul_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_mul"));
-  attrs.clear();
-  attrs.push_back(rewriter.getNamedAttr("const_val", op.getExponentAttr()));
-  auto mul_op = rewriter.create<tpu::MulConstOp>(
-      mul_loc, type, ValueRange{log_op.getOutput()}, attrs);
-  auto ex_loc = op.getLoc();
-  attrs.clear();
-  attrs.push_back(rewriter.getNamedAttr(
-      "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::EXP)));
-  auto ex_op = rewriter.create<tpu::ActiveOp>(
-      ex_loc, type, ValueRange{mul_op.getOutput()}, attrs);
-  op.replaceAllUsesWith(ex_op.getOperation());
-  rewriter.eraseOp(op);
+  auto replace_pow = [&rewriter](top::PowOp &op, double n) -> Value {
+    auto name = module::getName(op.getOutput());
+    auto type = op.getOutput().getType();
+    rewriter.setInsertionPointAfter(op);
+    auto log_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_log"));
+    std::vector<NamedAttribute> attrs;
+
+    attrs.clear();
+    attrs.push_back(rewriter.getNamedAttr(
+        "mode",
+        tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::LN)));
+    auto log_op = rewriter.create<tpu::ActiveOp>(
+        log_loc, type, ValueRange{op.getInput()}, attrs);
+    auto mul_loc =
+        NameLoc::get(rewriter.getStringAttr(name.str() + "_mul_const"));
+    attrs.clear();
+    attrs.push_back(
+        rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(n)));
+    auto mul_op = rewriter.create<tpu::MulConstOp>(
+        mul_loc, type, ValueRange{log_op.getOutput()}, attrs);
+    auto ex_loc = op.getLoc();
+    attrs.clear();
+    attrs.push_back(rewriter.getNamedAttr(
+        "mode",
+        tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::EXP)));
+    auto ex_op = rewriter.create<tpu::ActiveOp>(
+        ex_loc, type, ValueRange{mul_op.getOutput()}, attrs);
+    op.replaceAllUsesWith(ex_op.getOperation());
+    return ex_op.getOutput();
+  };
+
+  auto insert_abs = [&rewriter](top::PowOp &op) -> tpu::ActiveOp {
+    auto name = module::getName(op.getOutput());
+    std::vector<NamedAttribute> attrs;
+    auto abs_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_abs"));
+    attrs.push_back(rewriter.getNamedAttr(
+        "mode",
+        tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::ABSVAL)));
+    auto abs_op = rewriter.create<tpu::ActiveOp>(
+        abs_loc, op.getOutput().getType(), ValueRange{op.getInput()}, attrs);
+    op->setOperand(0, abs_op.getOutput());
+    return abs_op;
+  };
+
+  double exponent = op.getExponent().convertToDouble();
+
+  if (fmod(exponent, 2) == 0) {
+    insert_abs(op);
+    replace_pow(op, exponent);
+
+    rewriter.eraseOp(op);
+  } else {
+    if ((int)exponent == exponent) {
+      auto abs_op = insert_abs(op);
+      Value v_replaced = replace_pow(op, exponent - 1);
+
+      // insert mul
+      std::vector<NamedAttribute> attrs;
+      auto name = module::getName(op.getOutput());
+      auto exp_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_exp"));
+      v_replaced.getDefiningOp()->setLoc(exp_loc);
+      auto x = abs_op.getInput();
+      auto mul_loc = NameLoc::get(rewriter.getStringAttr(name.str()));
+      std::vector<Value> mul_operands;
+      mul_operands.push_back(x);
+      mul_operands.push_back(v_replaced);
+      auto mul_op = rewriter.create<tpu::MulOp>(
+          mul_loc, op.getOutput().getType(), mul_operands, attrs);
+      v_replaced.replaceAllUsesExcept(mul_op.getOutput(), mul_op);
+      rewriter.eraseOp(op);
+    } else {
+      replace_pow(op, exponent);
+      rewriter.eraseOp(op);
+    }
+    return;
+  }
 }
 
 static double g_ex = 0;
