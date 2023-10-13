@@ -46,6 +46,9 @@ basic_model_list = {
     "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      N,     N,      N),
     "yolov5s_tf":                 (N,      Y,       Y,      N,      N,      N,      N,     N,      N),
     "retinaface_mnet_with_det":   (N,      N,       N,      N,      Y,      Y,      Y,     N,      N),
+    "nmt_encode":                 (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
+    "nmt_decode10":               (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
+    "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
 }
 
 
@@ -89,6 +92,9 @@ full_model_list = {
     "yolov8n":                    (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
     "nasnet_mobile":              (N,      N,       N,      Y,      N,      Y,      Y,      N,     N),
     "espcn_3x":                   (N,      N,       N,      Y,      N,      Y,      Y,      N,     N),
+    "nmt_encode":                 (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
+    "nmt_decode10":               (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
+    "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
     ######## Pytorch #######      ######
     "bert_pt":                    (N,      Y,       Y,      N,      N,      N,      N,      Y,     Y),
     "bert_base_pt":               (N,      N,       N,      N,      N,      N,      N,      N,     Y),
