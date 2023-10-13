@@ -445,6 +445,9 @@ public:
   virtual unsigned int get_inst_number_per_group(const char *, int) override;
   virtual unsigned int get_group_number() override;
   virtual const unsigned char *get_inst_data(const char *) override;
+  virtual unsigned int get_inst_size(const char *engine_name) override {
+    return 0;
+  }
   virtual void before_codegen() override;
 
 public:

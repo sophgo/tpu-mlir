@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 #pragma once
-#include "tpu_mlir/Builder/BM168x/bmodel.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicNetIr.hpp"
 #include "ProfileCtx.h"
 #include "TensorLocation.hpp"
+#include "tpu_mlir/Builder/BM168x/bmodel.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicNetIr.hpp"
 
 using namespace llvm;
 
@@ -38,6 +38,7 @@ private:
   Offset<bmodel::SubNet> CreateSwitchSubNet(ModuleOp s, func::CallOp call);
   Offset<bmodel::SubNet> CreateMergeSubNet(ModuleOp s, func::CallOp call);
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
+  std::shared_ptr<std::vector<bmodel::Binary>> CreateCmdVector(const char *);
   Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                                           uint64_t coeff_addr,
                                           uint64_t coeff_size);
