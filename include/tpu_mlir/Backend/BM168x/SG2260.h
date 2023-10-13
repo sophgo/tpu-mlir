@@ -57,6 +57,7 @@ public:
     dl_tpu_sync_all();
     dl_tpu_get_id_node(code->cmdid_node);
   }
+  
 
   std::vector<std::shared_ptr<BM168x::Code>> const &getCodebuffer() final {
     return multiCode;

@@ -79,24 +79,3 @@ void BM1684X::after_codegen(int64_t flops) {
 }
 
 void BM1684X::load_custom_functions() { CAST_FUNCTION(set_id_node); }
-
-unsigned int BM1684X::get_total_id(const char *engine_name) {
-  return dl_backend_api_get_total_id(engine_name);
-}
-
-unsigned int BM1684X::get_inst_number_per_group(const char *engine_name,
-                                                int group_idx) {
-  return dl_backend_api_get_tpu_inst_number_per_group(engine_name)[group_idx];
-}
-
-unsigned int BM1684X::get_group_number() {
-  return dl_backend_api_get_tpu_inst_group_number();
-}
-
-const unsigned char *BM1684X::get_inst_data(const char *engine_name) {
-  if (strcmp(engine_name, "tiu:0:0") == 0)
-    return dl_backend_api_get_tpu_inst_data(engine_name);
-  else if (strcmp(engine_name, "gdma:0:0") == 0)
-    return dl_backend_api_get_tpu_inst_data(engine_name);
-  return nullptr;
-}

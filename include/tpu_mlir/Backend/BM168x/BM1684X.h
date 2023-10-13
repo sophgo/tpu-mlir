@@ -17,19 +17,19 @@ typedef void (*set_cmd_len_ptr)(void *gdma_cmd_len_ptr, void *bdc_cmd_len_ptr);
 // tpu-kernel
 typedef void (*tpu_set_id_node)(void *node);
 typedef void (*tpu_get_id_node)(void *node);
-typedef void (*set_id_node)(void* cmdid_node);
-
+typedef void (*set_id_node)(void *cmdid_node);
 
 // multi-core switch interface from backend
 typedef void (*backend_api_set_core_info)(int, int);
 typedef unsigned int (*backend_api_get_tpu_inst_size)(const char *);
 typedef const unsigned char *(*backend_api_get_tpu_inst_data)(const char *);
 typedef unsigned int (*backend_api_get_tpu_inst_group_number)();
-typedef const unsigned int *(*backend_api_get_tpu_inst_number_per_group)(const char *);
-typedef const unsigned int *(*backend_api_get_tpu_inst_size_per_group)(const char *);
+typedef const unsigned int *(*backend_api_get_tpu_inst_number_per_group)(
+    const char *);
+typedef const unsigned int *(*backend_api_get_tpu_inst_size_per_group)(
+    const char *);
 typedef void (*backend_api_clear_tpu_inst_data)();
 typedef unsigned int (*backend_api_get_total_id)(const char *);
-
 
 namespace tpu_mlir {
 namespace backend {
@@ -44,6 +44,7 @@ public:
   // -------------------------------------------------------------------
   // functions from nodechip
   // -------------------------------------------------------------------
+  // clang-format off
   load_lookup_tables dl_load_lookup_tables;
   store_cmd_end dl_store_cmd_end;
   set_cmd_len_ptr dl_set_cmd_len_ptr;
@@ -58,17 +59,33 @@ public:
   backend_api_get_tpu_inst_size_per_group dl_backend_api_get_tpu_inst_size_per_group;
   backend_api_clear_tpu_inst_data dl_backend_api_clear_tpu_inst_data;
   backend_api_get_total_id dl_backend_api_get_total_id;
-
-
+  // clang-format on
 public:
   virtual void after_codegen(int64_t flops = 0) override;
   // arch info
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) override;
-  virtual unsigned int get_total_id(const char*) override;
-  virtual unsigned int get_inst_number_per_group(const char *, int) override;
-  virtual unsigned int get_group_number() override;
-  virtual const unsigned char *get_inst_data(const char*) override;
+  virtual unsigned int get_total_id(const char *engine_name) override {
+    return dl_backend_api_get_total_id(engine_name);
+  }
+  virtual unsigned int get_inst_number_per_group(const char *engine_name,
+                                                 int group_idx) override {
+    const unsigned int *inst_ptr =
+        dl_backend_api_get_tpu_inst_number_per_group(engine_name);
+    if (inst_ptr)
+      return inst_ptr[group_idx];
+    else
+      return 0;
+  }
+  virtual unsigned int get_group_number() override {
+    return dl_backend_api_get_tpu_inst_group_number();
+  }
+  virtual const unsigned char *get_inst_data(const char *engine_name) override {
+    return dl_backend_api_get_tpu_inst_data(engine_name);
+  }
+  virtual unsigned int get_inst_size(const char *engine_name) override {
+    return dl_backend_api_get_tpu_inst_size(engine_name);
+  };
 
 public:
   // specific global info
@@ -114,11 +131,10 @@ protected:
   virtual void load_functions() override;
   virtual void before_codegen() override;
   int core_num;
+
 private:
   set_id_node dl_set_id_node;
   void load_custom_functions();
-
-
 };
 } // namespace backend
 } // namespace tpu_mlir

@@ -288,6 +288,7 @@ public:
   virtual unsigned int get_inst_number_per_group(const char *, int) = 0;
   virtual unsigned int get_group_number() = 0;
   virtual const unsigned char *get_inst_data(const char *) = 0;
+  virtual unsigned int get_inst_size(const char *engine_name) = 0;
 
 protected:
   BM168x(TypeID typeID) : typeID(typeID){};
