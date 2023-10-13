@@ -830,6 +830,20 @@ public:
     }
     module::updateModuleTypes();
     module::setState(module::State::TPU_LOWERED);
+    bool hasTopOp = false;
+    mainFunc_.walk([&](Operation *op) {
+      if (isa<top::WeightOp, top::NoneOp, top::InputOp, ModuleOp, FuncOp,
+              ReturnOp>(op)) {
+        return;
+      }
+      if (!isa<tpu::TpuDialect>(op->getDialect())) {
+        op->dump();
+        hasTopOp = true;
+      }
+    });
+    if (hasTopOp) {
+      llvm_unreachable("unimplemented tpu dialect!");
+    }
   }
 
 protected:
@@ -1452,12 +1466,11 @@ protected:
 
   void init_qtable() {
     LoweringConfig::quantize_map.clear();
-    if (ignore_f16_overflow == false &&
-        module::isF16Modes()) {
+    if (ignore_f16_overflow == false && module::isF16Modes()) {
       mainFunc_.walk([&](Operation *op) {
         // if have other op need convert from f16 to f32, add here.
-        // if need better performence, just set ignore_f16_overflow in model_deploy.
-        // defaultly we need ensure the computation is correct.
+        // if need better performence, just set ignore_f16_overflow in
+        // model_deploy. defaultly we need ensure the computation is correct.
         if (isa<top::LayerNormOp, top::RMSNormOp, top::AvgPoolOp>(op)) {
           auto name = module::getName(op).str();
           LoweringConfig::quantize_map[name] = module::Mode::F32;
