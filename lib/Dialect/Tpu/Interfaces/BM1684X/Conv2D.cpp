@@ -12,6 +12,38 @@
 
 using namespace tpu_mlir::backend;
 
+#define DIV_UP(a, b) ((a) == 0 ? 0 : ((a) - 1) / (b) + 1)
+#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
+
+static int64_t sd_gt_15_buffer(const conv_attr_t& p, double dtype_len,
+    int64_t in_cslice, int64_t in_hslice, int64_t in_dslice, int64_t in_wslice,
+    int64_t out_nslice, int64_t out_cslice, int64_t out_hslice,
+    int64_t out_dslice, int64_t out_wslice){
+  int64_t sz = 0;
+  int cell_num_h = 1, cell_num_w = 1;
+  int max_cell_h = p.kh, max_cell_w = p.kw;
+  if (p.sh > 15){cell_num_h = DIV_UP(p.kh, 15); max_cell_h = DIV_UP(p.kh, cell_num_h);}
+  if (p.sw > 15){cell_num_w = DIV_UP(p.kw, 15); max_cell_w = DIV_UP(p.kw, cell_num_w);}
+  bool use_buffer_h = (p.dh < 16 && p.sh < 16) ? false : true;
+  bool use_buffer_w = (p.dw < 16 && p.sw < 16) ? false : true;
+  int64_t buffer_h_sz = use_buffer_h ?
+                                    ( 1 * DIV_UP( p.ic / p.groups, BM168x::NPU_NUM ) *
+                                      ALIGN(max_cell_h * out_hslice * in_wslice, BM168x::eu_num(dtype_len)) * dtype_len )
+                                    : 0;
+  int64_t buffer_w_sz = use_buffer_w ?
+                      ( 1 * DIV_UP( p.ic / p.groups, BM168x::NPU_NUM ) *
+                        ALIGN( (use_buffer_h ? (max_cell_h * out_hslice): in_hslice ) * max_cell_w * out_wslice,
+                              BM168x::eu_num(dtype_len) ) * dtype_len)
+                      : 0;
+  auto f32_len = BM168x::getFmtBytes(DTYPE_FP32);
+  int64_t output_buffer_sz = DIV_UP( p.oc , BM168x::NPU_NUM ) *
+                             ALIGN(out_hslice * out_wslice, BM168x::eu_num(f32_len)) * f32_len;
+  sz += buffer_h_sz;
+  sz += buffer_w_sz;
+  sz += output_buffer_sz;
+  return sz;
+}
+
 // ======================================
 // GlobalGenInterface
 // ======================================
@@ -97,6 +129,11 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     if(use_3ic_optimize == 0)
       return 0;
   }
+  if (p.sh > 15 || p.sw > 15 || p.dh > 15 || p.dw > 15){
+    sz += sd_gt_15_buffer(p, in_type_len, in_cslice, in_cslice, in_dslice, in_wslice,
+                          out_nslice, out_cslice, out_hslice, out_dslice, out_wslice);
+  }
+
   if (getCoeffMerged()) {
     sz += int32_size;
   }
