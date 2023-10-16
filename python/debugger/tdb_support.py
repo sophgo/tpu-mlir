@@ -9,27 +9,33 @@
 from typing import List, Union, Dict, NamedTuple, Type
 from functools import partial
 import re
+import os
 import pandas as pd
 import numpy as np
-from rich import print as pprint
+from rich import print as pprint, get_console
 import sys
 import cmd
 from enum import Enum
 from .atomic_dialect import BModel2MLIR
-from .target_common import MType, BaseTpuOp, CpuOp, CMDType
+from .target_common import MType, BaseTpuOp, CpuOp, CMDType, DynIrOp
 from .disassembler import BModel
-from .final_mlir import FinalMlirIndex, CMD
 from .target_1688.context import BM1688Context
 
 
 class TdbStatus(Enum):
     # bmodel not loaded
     UNINIT = 0
-    # bmodel is loaded but can not run directly
-    # but some static function can be used
+    # interactive mode with bmodel loaded
     IDLE = 1
-    # can be run by n/c
+    # running in continue/run cmd
     RUNNING = 2
+    # end of executation
+    END = 3
+
+    @property
+    def NO_CAND(self):
+        # no cmd to be executed
+        return self == TdbStatus.UNINIT or self == TdbStatus.END
 
 
 class Display(NamedTuple):
@@ -83,25 +89,26 @@ class Displays:
         return cls._instance
 
 
-def max_with_none(*args):
-    args = [i for i in args if i is not None]
-    if len(args) == 1:
-        return args[0]
-    if len(args) == 0:
-        return 0
-
-    return max(args)
-
-
-def callback(name=None):
+def add_callback(name=None, *filter):
     def outer(func):
         def inner(self: "TdbCmdBackend", *args, **kwargs):
             call_name = name if name is not None else func.__name__
             call_name = call_name.replace("do_", "")
 
-            self.plugins._call_loop(f"before_{func.__name__}")
+            use_cb = len(filter) == 0 or self.status in filter
+            try:
+                if use_cb:
+                    self.plugins._call_loop(f"before_{call_name}")
+            except (KeyboardInterrupt, StopIteration) as e:
+                self.status = TdbStatus.IDLE
+                raise e
             res = func(self, *args, **kwargs)
-            self.plugins._call_loop(f"after_{func.__name__}")
+
+            try:
+                if use_cb:
+                    self.plugins._call_loop(f"after_{call_name}")
+            except (KeyboardInterrupt, StopIteration) as e:
+                raise e
             return res
 
         return inner
@@ -109,14 +116,29 @@ def callback(name=None):
     return outer
 
 
-class TdbCmdBackend(cmd.Cmd):
-    ddr_size = 2**32
+def complete_file(self, text: str, line, begidx, endidx):
+    text = text.split(" ")[-1]
+    head = os.path.dirname(text)
+    if len(head) != 0:
+        head = f"{head}/"
+    tail = os.path.basename(text)
+    if head.strip() == "":
+        res = []
+        for f in os.listdir("."):
+            if not f.startswith(tail):
+                continue
+            if os.path.isdir(f):
+                res.append(f"{f}/")
+            else:
+                res.append(f)
+        return res
 
+    return [f"{f}" for f in os.listdir(head) if f.startswith(tail)]
+
+
+class TdbCmdBackend(cmd.Cmd):
     def __init__(
         self,
-        completekey="tab",
-        stdin=None,
-        stdout=None,
         bmodel_file: str = None,
         final_mlir_fn: str = None,
         tensor_loc_file: str = None,
@@ -124,6 +146,10 @@ class TdbCmdBackend(cmd.Cmd):
         reference_data_fn: List[str] = None,
         extra_plugins: List[str] = True,
         extra_check: List[str] = True,
+        completekey="tab",
+        stdin=None,
+        stdout=None,
+        ddr_size=2**32,
     ):
         super().__init__(completekey, stdin, stdout)
         self.bmodel_file = bmodel_file
@@ -135,22 +161,18 @@ class TdbCmdBackend(cmd.Cmd):
         elif isinstance(reference_data_fn, str):
             reference_data_fn = [reference_data_fn]
         self.reference_data_fns = reference_data_fn
+        self.ddr_size = ddr_size
         self.status = TdbStatus.UNINIT
 
         # should be import locally to avoid circular import
-        from .plugins.breakpoints import Breakpoints
         from .static_check import Checker
 
         self.checker = Checker(self)
-        self.breakpoints = Breakpoints.get_instance()
         self.displays = Displays.get_instance()
-        # self.displays.add_display("self.get_op()")
-        # self.displays.add_display("self.info('mlir')")
-        # self.displays.add_display("self.info('loc')")
 
         self.static_mode = False
         self.enable_message = True
-        self.cmditer: List[Union[BaseTpuOp, CpuOp]]
+        self.cmditer: List[Union[BaseTpuOp, CpuOp, DynIrOp]]
 
         self.plugins = PluginCompact(self)
         # default plugins
@@ -158,6 +180,8 @@ class TdbCmdBackend(cmd.Cmd):
         self.add_plugin("display")  # `display` command
         self.add_plugin("print")  # `print`` command
         self.add_plugin("info")  # `info`` command
+        self.add_plugin("final-mlir")
+        self.add_plugin("reload")  # `reload` command
 
         if len(reference_data_fn) > 0:
             self.add_plugin("data-check")
@@ -170,16 +194,14 @@ class TdbCmdBackend(cmd.Cmd):
 
         self.message(f"Load plugins: {self.plugins}")
 
+    @add_callback("load")
     def _reset(self):
         self._load_bmodel()
         self._load_data()
-        self.cmditer = self.atomic_mlir.create_cmdlist()
-        self.cmd_point = 0
-        # print(len(self.cmditer))
-        self.status = TdbStatus.RUNNING
+
+        self.status = TdbStatus.IDLE
         self.static_mode = False
         self._build_index()
-        self.plugins.after_load()
 
     def _load_bmodel(self):
         bmodel_file = self.bmodel_file
@@ -191,12 +213,12 @@ class TdbCmdBackend(cmd.Cmd):
         self.bmodel = bmodel
         self.message(f"Load {context.device.name} backend")
         self.atomic_mlir = BModel2MLIR(bmodel)
-        self.final_mlir = FinalMlirIndex(self.final_mlir_fn, self.tensor_loc_file)
+        self.cmditer = self.atomic_mlir.create_cmdlist()
+        self.cmd_point = 0
+
         self.message(f"Build {self.final_mlir_fn} index")
         self.message(f"Decode bmodel back into atomic dialect")
         self.message(f"static_mode = {self.static_mode}")
-        # self.final_mlir = ...
-        # self.tensor_loc = ...
 
         self.runner = context.get_runner(self.ddr_size)
         self.LMEM = self.runner.LMEM
@@ -216,11 +238,14 @@ class TdbCmdBackend(cmd.Cmd):
             # load constant data
             self.DDR[addr : addr + len(coeff.data)] = memoryview(coeff.data)
 
+        # self.final_mlir = FinalMlirIndex(self.final_mlir_fn, self.tensor_loc_file)
+
     def _load_data(self):
         file = self.input_data_fn
-        if file is None:
+        if file is None or not os.path.isfile(file):
             self.error(f"file {file} is invalid")
             return
+
         if file.endswith(".dat"):
             inputs = np.fromfile(file, dtype=np.uint8)
             _offset = 0
@@ -240,101 +265,43 @@ class TdbCmdBackend(cmd.Cmd):
     def _build_index(self):
         """ """
         self.cmd2index = {}
-        # create subnet tiu, dma id offset
-        subnet_offsets = {}
-        for loc_index, loc in enumerate(self.final_mlir.loc.tensor_loc):
-            (
-                subnet_id,
-                tiu,
-                dma,
-                core_id,
-            ) = (loc.subnet_id, *loc.tiu_dma_id_before, loc.core_id)
-            tiu_offset, dma_offset = subnet_offsets.get(
-                subnet_id, (float("inf"), float("inf"))
-            )
-            tiu_offset = min(tiu_offset, tiu)
-            dma_offset = min(dma_offset, dma)
-            subnet_offsets[subnet_id] = (tiu_offset, dma_offset)
-
         for executed_id, op in enumerate(self.cmditer, start=1):
             # executed_id indicate the index after op execution, start is 1
             # cmd_point = 0 means no cmd is executed
+            key = op.tuple_key
             if isinstance(op, BaseTpuOp):
-                self.cmd2index[op.tuple_key] = executed_id
+                self.cmd2index[key] = executed_id
+            elif isinstance(op, DynIrOp):
+                self.cmd2index[key] = executed_id
             elif isinstance(op, CpuOp):
-                self.cmd2index[("cpu", op.cmd_id, op.subnet_id)] = executed_id
+                self.cmd2index[key] = executed_id
             else:
-                import pdb
-
-                pdb.set_trace()
-
-        self.before_index2loc = {}
-        self.after_index2loc = {}
-
-        self.index2loc_range = {}
-
-        last_af_index = 0
-        for loc_index, loc in enumerate(self.final_mlir.loc.tensor_loc):
-            # before execution
-            (
-                subnet_id,
-                tiu,
-                dma,
-                core_id,
-            ) = (loc.subnet_id, *loc.tiu_dma_id_before, loc.core_id)
-            x_index = y_index = None
-            tiu_offset, dma_offset = subnet_offsets[subnet_id]
-
-            if tiu - tiu_offset > 0:
-                x_index = self.cmd2index[(subnet_id, tiu - tiu_offset, None, core_id)]
-            if dma - dma_offset > 0:
-                y_index = self.cmd2index[(subnet_id, None, dma - dma_offset, core_id)]
-
-            bf_index = max_with_none(x_index, y_index, last_af_index + 1)
-
-            # assert bf_index not in self.before_index2loc, bf_index
-            self.before_index2loc.setdefault(bf_index, []).append(loc_index)
-
-            # after execution
-            (
-                subnet_id,
-                tiu,
-                dma,
-                core_id,
-            ) = (loc.subnet_id, *loc.tiu_dma_id_after, loc.core_id)
-            x_index = y_index = None
-
-            if tiu - tiu_offset > 0:
-                x_index = self.cmd2index[(subnet_id, tiu - tiu_offset, None, core_id)]
-            if dma - dma_offset > 0:
-                y_index = self.cmd2index[(subnet_id, None, dma - dma_offset, core_id)]
-
-            last_af_index = af_index = max_with_none(x_index, y_index)
-            # assert af_index not in self.after_index2loc, af_index
-            self.after_index2loc.setdefault(af_index, []).append(loc_index)
-
-            for index in range(bf_index, af_index + 1):
-                # assert self.index2loc_range[index] == -1
-                assert index not in self.index2loc_range, index
-                # if index == 17:
-                #     import pdb; pdb.set_trace()
-
-                self.index2loc_range[index] = loc_index
+                # breakpoint()
+                pass
 
     def add_plugin(self, plugin_name: str):
         plugin = self.plugins.add_plugin(plugin_name)
 
-        if isinstance(plugin, cmd.Cmd):
+        if isinstance(plugin, TdbPluginCmd):
             assert not hasattr(self, f"do_{plugin_name}"), plugin_name
 
             func_names = getattr(plugin, "func_names", [plugin_name])
             for func_name in func_names:
                 setattr(self, f"do_{func_name}", plugin.onecmd)
-                setattr(self, f"complete_{func_name}", plugin.completenames)
+                setattr(self, f"complete_{func_name}", plugin.complete_plugin)
                 setattr(self, f"help_{func_name}", partial(plugin.do_help, ""))
 
-    def get_plugin(self, name) -> "TdbPlugin":
-        return self.plugins[name]
+    def get_plugin(self, name: Union[str, Type["TdbPlugin"]]) -> "TdbPlugin":
+        """
+        if plugin not registed, return None for result.
+
+        self.plugins is a instance of class PluginCompact which implement __getitem__,
+        not dict
+        """
+        if isinstance(name, str):
+            return self.plugins[name]
+        else:
+            return self.plugins[name.name]
 
     def set_inputs(self, *inputs):
         # args = self.file.module.functions[0].signature[0]
@@ -353,9 +320,11 @@ class TdbCmdBackend(cmd.Cmd):
         # at a time dir() didn't do it yet.
         return dir(self)
 
-    def get_op_context(self, pre=2, next=2):
-        pre = max(0, self.cmd_point - pre)
-        return self.cmditer[pre : self.cmd_point + next]
+    def get_op_context(self, pre=2, next=2, cmd_point=None):
+        if cmd_point is None:
+            cmd_point = self.cmd_point
+        pre = max(0, cmd_point - pre)
+        return self.cmditer[pre : cmd_point + next + 1]
 
     def get_op(self):
         if self.status == TdbStatus.UNINIT:
@@ -375,28 +344,8 @@ class TdbCmdBackend(cmd.Cmd):
         self.cmd_point += 1
         return op
 
-    def get_mlir_by_atomic(self, op: BaseTpuOp):
-        loc = self.get_loc_by_atomic(op)
-        file_line = self.final_mlir.get_fileline_by_loc(loc.loc_name)
-        return self.final_mlir.lines[file_line]
-
-    def get_mlir_context_by_atomic(self, op: BaseTpuOp, pre=2, next=2) -> List[str]:
-        loc = self.get_loc_by_atomic(op)
-        file_line = self.final_mlir.get_fileline_by_loc(loc.loc_name)
-        return self.final_mlir.lines[max(0, file_line - 1 - pre) : file_line - 1 + next]
-
-    def get_loc_by_atomic(self, op: BaseTpuOp) -> CMD:
-        index = self.cmd2index[op.tuple_key]
-        loc_index = self.index2loc_range[index]
-        return self.final_mlir.loc[loc_index]
-
-    def get_loc_context_by_atomic(self, op: BaseTpuOp, pre=2, next=2) -> List[CMD]:
-        index = self.cmd2index[op.tuple_key]
-        loc_index = self.index2loc_range[index]
-
-        return self.final_mlir.loc[max(0, loc_index - pre) : loc_index + next]
-
-    def next(self):
+    @add_callback("step")
+    def step(self):
         """
         every do_<func> used next() should catch BreakpointStop Exception
         and stop to wait user interaction
@@ -404,30 +353,24 @@ class TdbCmdBackend(cmd.Cmd):
         op = self.get_op()
 
         try:
-            self.plugins.before_next(self)
-        except BreakpointStop as e:
-            raise e
-        # clear breakpoint mark
-        if not self.static_mode:
-            cmd, cmd_type = op.cmd, op.cmd_type
-            if not self.decoder.is_end(cmd):
-                if cmd_type == CMDType.tiu:
-                    self.runner.tiu_compute(cmd)
-                elif cmd_type == CMDType.dma:
-                    self.runner.dma_compute(cmd)
-                elif cmd_type == CMDType.cpu:
-                    self.runner.cpu_compute(cmd)
-                else:
-                    self.error("skip unknown CMDType")
-                # elif self.decoder.is_dynamic(cmd):
-                #     self.runner.dynamic_compute(cmd)
+            if not self.static_mode:
+                cmd, cmd_type = op.cmd, op.cmd_type
+                if not self.decoder.is_end(cmd):
+                    if cmd_type == CMDType.tiu:
+                        self.runner.tiu_compute(cmd)
+                    elif cmd_type == CMDType.dma:
+                        self.runner.dma_compute(cmd)
+                    elif cmd_type == CMDType.cpu:
+                        self.runner.cpu_compute(cmd)
+                    elif cmd_type == CMDType.dyn_ir:
+                        self.runner.dynamic_compute(cmd)
+                    else:
+                        self.error("skip unknown CMDType")
+        except ValueError as e:
+            self.error(e)
+            raise BreakpointStop()
 
-        try:
-            self.plugins.after_next(self)
-        except BreakpointStop as e:
-            raise e
-
-        self.get_nextop()
+        self.cmd_point += 1
 
     def set_inputs_dict(self, inputs):
         args = self.atomic_mlir.functions[0].signature[0]
@@ -450,7 +393,10 @@ class TdbCmdBackend(cmd.Cmd):
 
     def error(self, msg):
         if self.enable_message:
-            pprint("***", msg, file=self.stdout)
+            if isinstance(msg, Exception):
+                get_console().print_exception(show_locals=True)
+            else:
+                pprint("***", msg, file=self.stdout)
 
     def _complete_expression(self, text, line, begidx, endidx):
         # Complete an arbitrary expression.
@@ -550,6 +496,7 @@ class Breakpoint:
         self.index = index
 
         self.hit_conut = 0
+        self.ignore = 0
 
     def __init_subclass__(cls) -> None:
         breakpoint_cls.append(cls)
@@ -568,7 +515,7 @@ class Breakpoint:
         self.enabled = flag
 
     @classmethod
-    def match_break(cls, text) -> bool:
+    def match_break(cls, text, tdb: TdbCmdBackend) -> bool:
         if isinstance(cls.pattern, re.Pattern):
             return cls.pattern.search(text) is not None
         return False
@@ -611,7 +558,7 @@ class TdbPlugin:
     def after_stop(self, tdb: TdbCmdBackend):
         pass
 
-    def after_next(self, tdb: TdbCmdBackend):
+    def after_step(self, tdb: TdbCmdBackend):
         pass
 
     def after_load(self, tdb: TdbCmdBackend):
@@ -619,6 +566,31 @@ class TdbPlugin:
 
     def after_end_execution(self, tdb: TdbCmdBackend):
         pass
+
+
+class TdbPluginCmd(cmd.Cmd):
+    def complete_plugin(self, text="", line="", begidx=0, endidx=0) -> list[str]:
+        i, n = 0, len(line)
+        while i < n and line[i] in self.identchars:
+            i = i + 1
+        i += 1
+        line = line[i:]
+        endidx -= i
+        begidx -= i
+
+        if begidx > 0:
+            cmd, text, foo = self.parseline(line)
+            if cmd == "":
+                compfunc = self.completedefault
+            else:
+                try:
+                    compfunc = getattr(self, "complete_" + cmd)
+                except AttributeError:
+                    compfunc = self.completedefault
+        else:
+            compfunc = self.completenames
+        completion_matches = compfunc(text, line, begidx, endidx)
+        return completion_matches
 
 
 class PluginCompact:
@@ -639,13 +611,15 @@ class PluginCompact:
 
     def _call_loop(self, name: str):
         for plugin in self.plugins.values():
-            getattr(plugin, name)(self.tdb)
+            fn = getattr(plugin, name, None)
+            if fn is not None:
+                fn(self.tdb)
 
     def before_next(self, _: TdbCmdBackend = None):
         self._call_loop(name="before_next")
 
-    def after_next(self, _: TdbCmdBackend = None):
-        self._call_loop(name="after_next")
+    def after_step(self, _: TdbCmdBackend = None):
+        self._call_loop(name="after_step")
 
     def after_stop(self, _: TdbCmdBackend = None):
         self._call_loop(name="after_stop")
@@ -668,3 +642,15 @@ class PluginCompact:
 
 breakpoint_cls: List[Type[Breakpoint]] = []
 register_plugins: Dict[str, TdbPlugin] = {}
+
+
+def codelike_format(res: list, index=None):
+    messages = []
+    for i, c in enumerate(res):
+        if i == index:
+            c = f" => {c}"
+        else:
+            c = f"    {c}"
+        messages.append(c)
+    lis_message = "\n".join(messages)
+    return lis_message

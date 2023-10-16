@@ -20,9 +20,6 @@ __all__ = [
     "Engine",
 ]
 
-# ------------------------------------------------------------
-# utility function
-
 
 # ./tpu-cpuop/include/bmcpu_common.h
 class CpuLayerType(Enum):
@@ -549,6 +546,10 @@ class CpuOp(BaseCmdOp):
     def attribute(self):
         return {}
 
+    @property
+    def tuple_key(self):
+        return (self.cmd.subnet_id, self.cmd.cmd_id, "cpu", 0)
+
 
 @dataclass
 class DynIrOp(BaseCmdOp):
@@ -586,3 +587,24 @@ class DynIrOp(BaseCmdOp):
     @property
     def attribute(self):
         return {}
+
+    @property
+    def tuple_key(self):
+        return (self.cmd.subnet_id, self.cmd.cmd_id, "dynir", 0)
+
+
+def get_type_str(*args) -> str:
+    types = []
+    for i in args:
+        if isinstance(i, (int, float, bytes, bytearray)):
+            type_str = str(i.__class__.__name__)
+        elif isinstance(i, np.ndarray):
+            type_str = f"numpy.ndarray[{i.dtype}]"
+        elif isinstance(i, list):
+            inner = ", ".join(set([get_type_str(ii) for ii in i]))
+            type_str = f"List[{inner}]"
+        else:
+            type_str = str(type(i))
+        types.append(type_str)
+    outer = ", ".join(types)
+    return f"{outer}"

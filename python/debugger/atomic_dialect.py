@@ -124,13 +124,14 @@ class Block(Node):
         self.run_mode = subnet.run_mode
         self.cmds = []
         self.cpu_cmds = []
+        self.ir_cmds = []
 
         if subnet.run_mode == subnet.run_mode.CPU:
-            # TODO
-            self.cpu_cmds = [bmodel_net.decode_cpu_op(i) for i in subnet.cpu_params]
+            self.cpu_cmds.extend(
+                [bmodel_net.decode_cpu_op(i) for i in subnet.cpu_params]
+            )
         elif subnet.run_mode == subnet.run_mode.TPU_DYNAMIC:
-            # TODO
-            self.ir_cmds = bmodel_net.decode_dynamic_ir(subnet.ir_buffer)
+            self.ir_cmds.extend(bmodel_net.decode_dynamic_ir(subnet.ir_buffer))
         elif bmodel_net.core_num > 1:
             self.cmds = [
                 decode_cmdgroup(context, cmd, self.subnet_id, core_id)
@@ -156,10 +157,10 @@ class Block(Node):
                 for op in x.all:
                     self.operations.append(decode_cmd_params(op))
 
+        input_memref = [i.memref for i in subnet.input_tensor]
+        output_memref = [i.memref for i in subnet.output_tensor]
         for cpu_cmd_id, cpu_x in enumerate(self.cpu_cmds):
             # per cpuop, per subnet
-            input_memref = [i.memref for i in subnet.input_tensor]
-            output_memref = [i.memref for i in subnet.output_tensor]
             self.operations.append(
                 decode_cpu_params(
                     op_type=cpu_x.op_type,
@@ -168,6 +169,18 @@ class Block(Node):
                     output_memref=output_memref,
                     subnet_id=subnet.id,
                     cmd_id=cpu_cmd_id,
+                )
+            )
+
+        for ir_cmd_id, x in enumerate(self.ir_cmds):
+            self.operations.append(
+                decoder.decode_ir_param(
+                    subnet.ir_buffer,
+                    subnet.ir_len,
+                    input_memref=input_memref,
+                    output_memref=output_memref,
+                    subnet_id=subnet.id,
+                    cmd_id=ir_cmd_id,
                 )
             )
 
@@ -185,10 +198,10 @@ class Block(Node):
             ops_str = "\n".join([i.op_type.name for i in self.cpu_cmds])
         elif self.run_mode == self.run_mode.TPU_STATIC:
             ops_str = "\n".join((f"{x}" for x in self.operations))
-        # elif self.run_mode == self.run_mode.TPU_DYNAMIC:
+        elif self.run_mode == self.run_mode.TPU_DYNAMIC:
+            ops_str = "\n".join((f"{x}" for x in self.operations))
         else:
             ops_str = f"// not resovled yet for mode {self.run_mode.name}"
-
         comment = f"    //  run_mode={self.run_mode.name}"
 
         ops_str = textwrap.indent(ops_str, INDENT_SPACE)
@@ -219,7 +232,7 @@ class Region(Node):
         super().__init__()
         self.indent = indent
         self.blocks = [Block(x, indent) for x in net_stage.sub_net]
-        self.signature: Tuple[Value, Value] = (
+        self.signature: Tuple[List[Tensor], List[Tensor]] = (
             net_stage.input_tensor,
             net_stage.output_tensor,
         )

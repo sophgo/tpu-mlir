@@ -14,7 +14,7 @@ import ctypes
 from functools import lru_cache
 from ctypes import Structure, POINTER
 from numpy import ndarray
-from .op_support import MemRefBase, Value, CpuOp
+from .op_support import MemRefBase, Value, CpuOp, get_type_str
 from typing import List
 import tempfile
 
@@ -150,7 +150,7 @@ class MemoryBase:
     def clear_memory(self):
         raise NotImplementedError()
 
-    def get_data(self, value: Value):
+    def get_data(self, value: Value) -> np.ndarray:
         raise NotImplementedError()
 
     def set_data(self, value: MemRefBase, data: np.ndarray):
@@ -212,22 +212,35 @@ class CModelRunner:
         output_tensors: List[np.ndarray] = []
         output_shapes = []
         for ipt in command.input_memref:
-            input_tensors.append(self.memory.get_data(ipt).flatten().tolist())
+            input_tensors.append(
+                self.memory.get_data(ipt).astype(np.float32).flatten().tolist()
+            )
             input_shapes.append(ipt.shape)
         for opt in command.output_memref:
             output_tensors.append(np.zeros(opt.shape, dtype=np.float32))
             output_shapes.append(opt.shape)
 
         # TODO add python type check
-        new_output_shape = self.cpu_processor.forward(
+        args = (
             command.op_type.value,  # int
-            command.param,  # bytes
-            len(command.param),  # param_size
+            command.param,  # bytes param
+            len(command.param),  # int param_size
             input_tensors,  # List[List[float]]
             input_shapes,  # List[List[int]]
             output_tensors,  # List[numpy.ndarray[numpy.float32]]
             output_shapes,  # List[List[int]]
         )
+
+        try:
+            new_output_shape = self.cpu_processor.forward(*args)
+        except TypeError:
+            base_expstr = """The following argument types are supported: \n(self: pyruntime_bm.CpuLayer, op_type: int, param: bytes, param_size: int,
+input_tensors: List[List[float]], input_shapes: List[List[int]], output_tensors:
+List[numpy.ndarray[numpy.float32]], output_shapes: List[List[int]]) ->
+List[List[int]]"""
+
+            failure_types = get_type_str(*args)
+            raise TypeError(f"{base_expstr}\n\n but got: {failure_types}")
 
         for idx, opt in enumerate(command.output_memref):
             opt.shape = new_output_shape[
@@ -238,10 +251,8 @@ class CModelRunner:
             self.memory.set_cpu_data(command.cmd_id, data)
 
     def dynamic_compute(self, command, core_id=0):
-        # flake8: noqa
-        # fmt: off
-        import pdb; pdb.set_trace()
-        # fmt: on
+        """skip for no implementation target"""
+        pass
 
 
 class ChipRunner:

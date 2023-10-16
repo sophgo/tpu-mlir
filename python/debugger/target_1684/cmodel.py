@@ -55,6 +55,13 @@ class BM1684Runner(CModelRunner):
         lib.get_atomic_function.argtypes = [ctypes.c_void_p, ctypes.c_uint]
         lib.get_atomic_function.restype = atomic_func_t
 
+        # cmodel
+        lib.bm_api_dynamic_fullnet.argtypes = [ctypes.c_char_p, ctypes.c_int]
+        lib.bm_api_dynamic_fullnet.restype = ctypes.c_int
+
+        lib.cmodel_get_share_memory_addr.argtypes = [ctypes.c_uint32, ctypes.c_int]
+        lib.cmodel_get_share_memory_addr.restype = ctypes.POINTER(ctypes.c_uint32)
+
         # async function
         lib.cmodel_call_atomic.argtypes = [
             ctypes.c_int32,
@@ -66,7 +73,6 @@ class BM1684Runner(CModelRunner):
         self.init_memory(memory_size)
 
     def init_memory(self, memory_size):
-        # import pdb; pdb.set_trace()
         self.lib.cmodel_init(node_idx, memory_size)
         DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
         LMEM = c_array_to_ndarray(
@@ -85,16 +91,54 @@ class BM1684Runner(CModelRunner):
     def __del__(self):
         self.lib.cmodel_deinit(0)
 
-    def _compute(self, command, engine_type):
-        command = np.frombuffer(command, dtype=np.uint8)
+    def _compute(self, command: cmd_base_reg, engine_type):
+        command = np.frombuffer(command.buf, dtype=np.uint8)
         cmd_p = command.ctypes.data_as(ctypes.c_void_p)
+
         return self.lib.get_atomic_function(cmd_p, engine_type)(0, cmd_p)
 
-    def tiu_compute(self, command, _=0):
+    def tiu_compute(self, command: cmd_base_reg, _=0):
         return self._compute(command, 0)
 
-    def dma_compute(self, command, _=0):
+    def dma_compute(self, command: cmd_base_reg, _=0):
         return self._compute(command, 1)
+
+    def copy_message_from_sharemem(self, dst_msg_buf):
+        cur_rp = read_share_reg(0)  # Assuming address 0 is the share register address
+        rp = [0]  # Using a list to mimic passing by reference
+        size = [0]  # Using a list to mimic passing by reference
+        api_id = [0]  # Using a list to mimic passing by reference
+
+        rp[0] = cur_rp
+        src_msg_word = get_share_mem_addr(cur_rp & SHAREMEM_MASK)
+        api_id[0] = src_msg_word[0]
+
+        src_msg_word = get_share_mem_addr(
+            pointer_wrap_around(cur_rp, 1, SHAREMEM_SIZE_BIT) & SHAREMEM_MASK
+        )
+        size[0] = src_msg_word[0]
+
+        if api_id[0] == BM_API_QUIT:
+            return BM_FW_SUCCESS
+
+        if not (size[0] + 2) < MAX_MSG_WORD:
+            print(f"bmfw: api size = 0x{size[0] + 2} is too large than max size!")
+            return BM_FW_ERR_DATA
+
+        for idx in range(size[0]):
+            src_msg_word = get_share_mem_addr(
+                pointer_wrap_around(cur_rp, 2 + idx, SHAREMEM_SIZE_BIT) & SHAREMEM_MASK
+            )
+            dst_msg_buf.append(src_msg_word[0])
+
+        return BM_FW_SUCCESS
+
+    def dynamic_compute(self, command: DynIrOp, core_id=0):
+        # ir_buf = np.frombuffer(command.ir_buffer, dtype=np.uint8)
+        # buf_p = ir_buf.ctypes.data_as(ctypes.c_char_p)
+        # breakpoint()
+        # status = self.lib.bm_api_dynamic_fullnet(buf_p, command.ir_size)
+        return 0
 
     @staticmethod
     def gen_lookup_table():
@@ -212,7 +256,7 @@ class Memory(MemoryBase):
     def set_data(self, value: MemRef, data: np.ndarray):
         m_type = value.mtype
         if m_type == MType.G:
-            assert data.dtype == value.np_dtype
+            assert data.dtype == value.np_dtype, f"{data.dtype} != {value.np_dtype}"
             offset = value.r_addr
             if value.layout == Layout.continuous_XN:
                 assert value.stride is not None

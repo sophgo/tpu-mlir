@@ -220,20 +220,24 @@ class ROData(FBSOptional):
 class Tensor(FBSOptional):
     # fmt: off
     to_DType = {
-        0: DType.f32, DType.f32: 0,
-        1: DType.f16, DType.f16: 1,
-        2: DType.si8, DType.si8: 2,
-        3: DType.ui8, DType.ui8: 3,
-        4: DType.si16, DType.si16: 4,
-        5: DType.ui16, DType.ui16: 5,
-        6: DType.si32, DType.si32: 6,
-        7: DType.ui32, DType.ui32: 7,
+        0:  DType.f32,   DType.f32:  0,
+        1:  DType.f16,   DType.f16:  1,
+        2:  DType.si8,   DType.si8:  2,
+        3:  DType.ui8,   DType.ui8:  3,
+        4:  DType.si16,  DType.si16: 4,
+        5:  DType.ui16,  DType.ui16: 5,
+        6:  DType.si32,  DType.si32: 6,
+        7:  DType.ui32,  DType.ui32: 7,
+        8:  DType.bf16,  DType.bf16: 8,
+        9:  DType.i4,    DType.i4:   9,
+        10: DType.ui4,   DType.ui4:  10,
     }
     # fmt: on
 
     def init(self, fbs: bmodel_fbs.Tensor, _):
         self.name = fbs.Name().decode()
         self.dtype: DType = self.to_DType[fbs.DataType()]
+
         self.device_addr = fbs.DeviceAddr()
         self.st_mode = fbs.GmemStmode()  # 0->1N, 1->2N, 2->4N
         self.mem_type = fbs.MemType()
@@ -551,4 +555,5 @@ class BModel:
         return cpu_param
 
     def decode_dynamic_ir(self, ir_buffer):
-        return ir_buffer
+        # TODO split dynamic ir into multiple
+        return [ir_buffer]

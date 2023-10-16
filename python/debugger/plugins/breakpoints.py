@@ -9,17 +9,18 @@
 
 from typing import List, Union, Dict
 import re
-import cmd
 
 from debugger.tdb_support import (
     TdbCmdBackend,
     TdbPlugin,
+    TdbPluginCmd,
     Breakpoint,
     BreakpointStop,
     breakpoint_cls,
 )
 import pandas as pd
 from ..target_common import CMDType
+from .common import FinalMlirIndexPlugin
 
 
 class AddrBreakpoint(Breakpoint):
@@ -39,22 +40,31 @@ class AddrBreakpoint(Breakpoint):
     """
 
     type = "addr"
-    pattern = re.compile("^([RSLG])([1-9][0-9]+)([rw]{0,2})$")
+    pattern = re.compile("^([RSLG])([0-9]+)([rw]{0,2})$")
 
     def __init__(self, text, cond=None, index=-1) -> None:
         super().__init__(text, cond, index)
         self.mtype, self.address, self.mode = self.pattern.findall(text)[0]
         self.address = int(self.address)
+        if self.mode == "":
+            self.mode = "rw"
 
     def should_stop(self, tdb: TdbCmdBackend) -> bool:
         op = tdb.get_op()
-        for op in op.operands:
+        checked_values = []
+        if "r" in self.mode:
+            checked_values.extend(op.operands)
+        elif "w" in self.mode:
+            checked_values.extend(op.results)
+
+        for op in checked_values:
             if op.is_scalar:
                 continue
             if op.mtype.name != self.mtype:
                 continue
             if self.address == op.r_addr:
                 return True
+
         return False
 
 
@@ -69,6 +79,7 @@ class CmdIdBreakpoint(Breakpoint):
 
     def should_stop(self, tdb: "TdbCmdBackend") -> bool:
         op = tdb.get_op()
+
         if self.match_type != op.cmd_type:
             return False
 
@@ -96,7 +107,12 @@ class ValueIdBreakpoint(Breakpoint):
 
     def should_stop(self, tdb: TdbCmdBackend) -> bool:
         op = tdb.get_op()
-        mlir = tdb.get_mlir_by_atomic(op)
+
+        index = tdb.get_plugin(FinalMlirIndexPlugin)  # type: FinalMlirIndexPlugin
+        if not index.enabled:
+            return False
+
+        mlir = index.get_mlir_by_atomic(op)
         if mlir.find(self.text) >= 0:
             return True
         return False
@@ -108,7 +124,11 @@ class DialectOpBreakpoint(Breakpoint):
 
     def should_stop(self, tdb: TdbCmdBackend) -> bool:
         op = tdb.get_op()
-        mlir = tdb.get_mlir_by_atomic(op)
+        index = tdb.get_plugin(FinalMlirIndexPlugin)  # type: FinalMlirIndexPlugin
+        if not index.enabled:
+            return False
+
+        mlir = index.get_mlir_by_atomic(op)
         if mlir.find(self.text) >= 0:
             return True
         return False
@@ -119,7 +139,7 @@ class ASM1684NameBreakpoint(Breakpoint):
     pattern = re.compile(r"^\w+")
 
     @classmethod
-    def match_break(cls, text) -> bool:
+    def match_break(cls, text, tdb: TdbCmdBackend) -> bool:
         from ..target_1684.regdef import op_class_dic
 
         if text in op_class_dic:
@@ -132,7 +152,7 @@ class ASM1684XNameBreakpoint(Breakpoint):
     pattern = re.compile(r"^\w+")
 
     @classmethod
-    def match_break(cls, text) -> bool:
+    def match_break(cls, text, tdb: TdbCmdBackend) -> bool:
         from ..target_1684x.regdef import op_class_dic
 
         if text in op_class_dic:
@@ -145,7 +165,7 @@ class ASM1688NameBreakpoint(Breakpoint):
     pattern = re.compile(r"^\w+")
 
     @classmethod
-    def match_break(cls, text) -> bool:
+    def match_break(cls, text, tdb: TdbCmdBackend) -> bool:
         from ..target_1688.regdef import op_class_dic
 
         if text in op_class_dic:
@@ -156,9 +176,10 @@ class ASM1688NameBreakpoint(Breakpoint):
 class Breakpoints:
     """Breakpoint manager"""
 
-    def __init__(self) -> None:
+    def __init__(self, tdb: TdbCmdBackend) -> None:
         self.breaks: Dict[int, Breakpoint] = {}
         self.break_id = 1
+        self.tdb = tdb
 
     def __str__(self) -> str:
         table = [["index", "type", "enable", "text", "hit"]]
@@ -174,7 +195,7 @@ class Breakpoints:
 
     def add_break(self, text, cond=None):
         for i in breakpoint_cls:
-            if i.match_break(text):
+            if i.match_break(text, self):
                 breakpoint = i(text, cond, index=self.break_id)
                 self.breaks[self.break_id] = breakpoint
                 self.break_id += 1
@@ -191,8 +212,11 @@ class Breakpoints:
     def should_break(self, tdb: "TdbCmdBackend"):
         for _, v in self.breaks.items():
             if v.enabled and v.should_stop(tdb):
-                v.hit_conut += 1
-                return v
+                if v.ignore > 0:
+                    v.ignore -= 1
+                else:
+                    v.hit_conut += 1
+                    return v
         return None
 
     def enable(self, index: Union[int, List[int]]):
@@ -210,24 +234,17 @@ class Breakpoints:
                 self.breaks[i].toggle_enable(False)
 
     @classmethod
-    def get_instance(cls):
-        if not hasattr(cls, "_instance"):
-            cls._instance = cls()
-
-        return cls._instance
-
-    @classmethod
     def supported_patterns(cls):
         return [f"{i.pattern}({i.type})" for i in breakpoint_cls]
 
 
-class BreakpointManager(TdbPlugin, cmd.Cmd):
+class BreakpointPlugin(TdbPlugin, TdbPluginCmd):
     name = "breakpoint"
     func_names = ["break", "b"]
 
     def __init__(self, tdb: "TdbCmdBackend") -> None:
         super().__init__(tdb)
-        self.breakpoints = Breakpoints.get_instance()
+        self.breakpoints = Breakpoints(tdb)
         self.stoped_op = None
         tdb.do_delete = self.do_delete
         tdb.do_enable = self.do_enable
@@ -297,7 +314,7 @@ class BreakpointManager(TdbPlugin, cmd.Cmd):
     def after_load(self, tdb: TdbCmdBackend):
         self.breakpoints._clear()
 
-    def before_next(
+    def before_step(
         self,
         tdb: "TdbCmdBackend",
     ):
@@ -307,10 +324,10 @@ class BreakpointManager(TdbPlugin, cmd.Cmd):
             return
         break_hit = self.breakpoints.should_break(tdb)
         if break_hit:
-            tdb.error(f"Hit: {break_hit}")
+            tdb.message(f"Hit: {break_hit}")
             raise BreakpointStop(break_hit)
 
-    def after_next(
+    def after_step(
         self,
         tdb: "TdbCmdBackend",
     ):
