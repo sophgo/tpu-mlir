@@ -27,7 +27,6 @@ class DmaCmdOp(BaseTpuOp, Dma):
 
     def __init__(self, cmd: cmd_base_reg) -> None:
         super().__init__(cmd)
-        # import pdb; pdb.set_trace()
 
     def __repr__(self):
         if self.operands == []:

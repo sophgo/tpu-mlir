@@ -1,8 +1,9 @@
-import cmd
-from ..tdb_support import TdbPlugin, TdbStatus
+from ..tdb_support import TdbPlugin, TdbPluginCmd, codelike_format
+from .common import FinalMlirIndexPlugin
+from .breakpoints import BreakpointPlugin
 
 
-class InfoPlugin(TdbPlugin, cmd.Cmd):
+class InfoPlugin(TdbPlugin, TdbPluginCmd):
     name = "info"
 
     def parse_comon(self, arg):
@@ -22,62 +23,65 @@ class InfoPlugin(TdbPlugin, cmd.Cmd):
 
         return index, multi_context, pre, next
 
-    def codelike_format(self, res: list, index=None):
-        messages = []
-        for i, c in enumerate(res):
-            if i == index:
-                c = f" => {c}"
-            else:
-                c = f"    {c}"
-            messages.append(c)
-        lis_message = "\n".join(messages)
-        return lis_message
-
     @property
     def status(self):
         return self.tdb.status
 
     def info_loc(self, arg):
-        if self.status != TdbStatus.RUNNING:
+        if self.status.NO_CAND:
             message = "The program is not being run."
             return message
+
+        index_plugin = self.tdb.get_plugin(
+            FinalMlirIndexPlugin
+        )  # type: FinalMlirIndexPlugin
+        if not index_plugin.enabled:
+            return "final.mlir is not assigned, use index <final.mlir> <tensor_location.json> to rebuild index"
+
         index, multi_context, pre, next = self.parse_comon(arg)
         op = self.tdb.get_op()
         res = (
-            self.tdb.get_loc_context_by_atomic(op, pre, next)
+            index_plugin.get_loc_context_by_atomic(op, pre, next)
             if multi_context
-            else [self.tdb.get_loc_by_atomic(op)]
+            else [index_plugin.get_loc_by_atomic(op)]
         )
-        message = self.codelike_format(res, index)
+        message = codelike_format(res, index)
         return message
 
     def info_mlir(self, arg):
-        if self.status != TdbStatus.RUNNING:
+        if self.status.NO_CAND:
             message = "The program is not being run."
             return message
+
+        index_plugin = self.tdb.get_plugin(
+            FinalMlirIndexPlugin
+        )  # type: FinalMlirIndexPlugin
+        if not index_plugin.enabled:
+            return "final.mlir is not assigned, use index <final.mlir> <tensor_location.json> to rebuild index"
+
         index, multi_context, pre, next = self.parse_comon(arg)
         op = self.tdb.get_op()
         res = (
-            self.tdb.get_mlir_context_by_atomic(op, pre, next)
+            index_plugin.get_mlir_context_by_atomic(op, pre, next)
             if multi_context
-            else [self.tdb.get_mlir_by_atomic(op)]
+            else [index_plugin.get_mlir_by_atomic(op)]
         )
-        message = self.codelike_format(res, index)
+        message = codelike_format(res, index)
         return message
 
     def info_asm(self, arg):
-        if self.status != TdbStatus.RUNNING:
+        if self.status.NO_CAND:
             message = "The program is not being run."
             return message
         index, multi_context, pre, next = self.parse_comon(arg)
         res = (
             self.tdb.get_op_context(pre, next) if multi_context else [self.tdb.get_op()]
         )
-        message = self.codelike_format(res, index)
+        message = codelike_format(res, index)
         return message
 
     def info_reg(self, arg):
-        if self.status != TdbStatus.RUNNING:
+        if self.status.NO_CAND:
             message = "The program is not being run."
             return message
         index, multi_context, pre, next = self.parse_comon(arg)
@@ -85,11 +89,11 @@ class InfoPlugin(TdbPlugin, cmd.Cmd):
             self.tdb.get_op_context(pre, next) if multi_context else [self.tdb.get_op()]
         )
         res = [i.cmd for i in res]
-        message = self.codelike_format(res, index)
+        message = codelike_format(res, index)
         return message
 
     def info_buf(self, arg):
-        if self.status != TdbStatus.RUNNING:
+        if self.status.NO_CAND:
             message = "The program is not being run."
             return message
         index, multi_context, pre, next = self.parse_comon(arg)
@@ -97,11 +101,12 @@ class InfoPlugin(TdbPlugin, cmd.Cmd):
             self.tdb.get_op_context(pre, next) if multi_context else [self.tdb.get_op()]
         )
         res = [i.buf for i in res if i.cmd_type == i.cmd_type]
-        message = self.codelike_format(res, index)
+        message = codelike_format(res, index)
         return message
 
     def info_break(self, arg):
-        return str(self.tdb.breakpoints)
+        b: BreakpointPlugin = self.tdb.get_plugin(BreakpointPlugin)
+        return str(b.breakpoints)
 
     def do_status(self, arg):
         self.tdb.message(self.tdb.status)
@@ -116,12 +121,21 @@ class InfoPlugin(TdbPlugin, cmd.Cmd):
         self.tdb.message(self.info_loc(arg))
 
     def do_reg(self, arg):
-        self.tdb.message(self.info_reg(arg))
+        print(self.info_reg(arg))
 
     def do_buf(self, arg):
-        self.tdb.message(self.info_buf(arg))
+        print(self.info_buf(arg))
 
     def do_break(self, arg):
         self.tdb.message(self.info_break(arg))
 
     do_b = do_break
+
+    def do_progress(self, arg):
+        self.tdb.message(f"asm: {self.tdb.cmd_point} / {len(self.tdb.cmditer)}")
+        index_plugin = self.tdb.get_plugin(
+            FinalMlirIndexPlugin
+        )  # type: FinalMlirIndexPlugin
+        if index_plugin:
+            index = index_plugin.get_locindex_by_atomic(self.tdb.get_op())
+            self.tdb.message(f"mlir: {index} / {len(index_plugin.final_mlir.loc)}")

@@ -62,7 +62,6 @@ class Decoder(DecoderBase):
         op_clazz = op_class_dic[op_info.op_name]
         buffer = buffer_to_bits(cmd_buf[offset : offset + op_clazz.length // 8])
         bits_sec = np.split(buffer, tiu_high_bits)  # slow
-        # import pdb; pdb.set_trace()
         values = [packbits(x) for x in bits_sec]  # slow
         res = op_clazz.from_values(values)  # type: cmd_base_reg
         res.buf = cmd_buf[offset : offset + op_clazz.length // 8]

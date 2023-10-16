@@ -15,12 +15,13 @@ from functools import lru_cache
 from pprint import pformat
 from typing import List, Tuple, Dict
 import json
+import warnings
 import mlir
 import mlir.ir
 from mlir.dialects.func import FuncOp
 from mlir.dialects import quant
 from mlir.ir import *
-from .target_common import DType, CMDType
+from .target_common import DType, CMDType, Layout, CModelContext, MType
 
 
 to_dtype: Dict[str, DType] = {
@@ -79,6 +80,69 @@ class Value:
         self.slice: str = dic["slice"]
         self._type: Type = dic["type"]
         self.dtype = to_dtype[self.memory_type.strip(">").split("x")[-1]].np_dtype()
+        self._dic = dic
+
+    @staticmethod
+    def get_shape_and_dtype(input_string: str):
+        pattern = r"<(\d+(?:x\d+)*)x(\S+)>"
+        matches = re.findall(pattern, input_string)
+        shape = []
+        dtype = []
+        for match in matches:
+            shape.extend(map(int, match[0].split("x")))
+            dtype.append(match[1])
+
+        dtype = to_dtype[dtype[0]]
+        return shape, dtype
+
+    def get_memref(self, context: CModelContext):
+        address = self.address
+        shape, dtype = self.get_shape_and_dtype(self.memory_type)
+        layout = self.layout
+        layout = {
+            "eu_align": Layout.alignEU,
+            "eu_align_group3d": Layout.alignEU,
+            "eu_align_xn": Layout.alignEU_XN,
+            "eu_align_xn_group3d": Layout.alignEU_XN,
+            "compact": Layout.compact,
+            "compact_group3d": Layout.compact,
+            "compact_xn": Layout.compact_XN,
+            "compact_xn_group3d": Layout.compact_XN,
+            "continuous": None,
+            "continuous_xn": None,  # 4N/2N
+            "continuous_group3d": None,
+            # "continuous_xn_group3d": None,
+        }[layout]
+
+        # local memory
+        lmem_start_addr = context.memmap[MType.R][0]
+        if address < lmem_start_addr:
+            address += lmem_start_addr
+        self.name = self.name
+        stride = None
+
+        # global memory
+        if layout is None:
+            # lib/Dialect/Tpu/Interfaces/BM1684X/Load.cpp
+            # load/store case
+            reshape = self.reshape
+            if reshape:
+                _, c, d, h, w = [int(x) for x in self.reshape[1:-1].split("x")]
+                _layout = self.layout
+                if _layout in ("continuous", "continuous_xn"):
+                    stride = (c * d * h * w, h * w, w, 1)
+                elif _layout == "continuous_group3d":
+                    stride = (h * w, d * h * w, w, 1)
+                else:
+                    raise ValueError(f"Not supported layout: {_layout}")
+            else:
+                # global layer
+                stride = context.get_continuous_stride(shape)
+
+            if self.layout == "continuous_xn":  # fix 2N/4N
+                stride = np.int64(stride) * 4 // dtype.itemsize
+                layout = Layout.continuous_XN
+        return context.MemRef(address, shape, dtype, layout=layout, stride=stride)
 
     @property
     @lru_cache()
@@ -132,11 +196,12 @@ class CMD:
             return CMDType.tiu
 
     @property
-    def cmd_id(self):
-        if self.cmd_type == CMDType.tiu:
-            return self.tiu_dma_id_after[0]
-        else:
-            return self.tiu_dma_id_after[1]
+    def tuple_key_before(self):
+        return (self.subnet_id, *self.tiu_dma_id_before, self.core_id)
+
+    @property
+    def tuple_key_after(self):
+        return (self.subnet_id, *self.tiu_dma_id_after, self.core_id)
 
     @property
     def loc_name(self):
@@ -162,6 +227,9 @@ class TensorLoc:
         if isinstance(index, (int, slice)):
             return self.tensor_loc[index]
         raise KeyError(index)
+
+    def __len__(self):
+        return len(self.tensor_loc)
 
 
 def iter_operations(op):
@@ -193,7 +261,7 @@ def iter_operations(op):
 class Location:
     def __init__(self, loc_id_str: str, loc_name: str, fused: List[str] = None) -> None:
         super().__init__()
-        self.loc_id_str = loc_id_str
+        self.loc_ref = loc_id_str
         self.loc_name = loc_name
         self.fused = fused
 
@@ -226,9 +294,9 @@ class Location:
         loc_name = f'"{self.loc_name}"' if self.loc_name != "unknown" else self.loc_name
         if self.fused is not None:
             fused_name = ", ".join([f"{i}" for i in self.fused])
-            return f"{self.loc_id_str} = loc(fused[{fused_name}])"
+            return f"{self.loc_ref} = loc(fused[{fused_name}])"
         else:
-            return f"{self.loc_id_str} = loc({loc_name})"
+            return f"{self.loc_ref} = loc({loc_name})"
 
 
 class FinalMlirIndex:
@@ -253,25 +321,42 @@ class FinalMlirIndex:
         self.module = module
         self.loc = TensorLoc(tensor_loc_file)
 
-        self.locname2locindex = locname2locindex = {}
-        self.locindex2fileline = locindex2fileline = {}
+        self.locname2locref = locname2locref = {}
+        self.locref2locname = locref2locname = {}
+        self.locref2fileline = locref2fileline = {}
+        self.fileline2locref = fileline2locref = {}
+
+        self.operations = iter_operations(self.module)
 
         loc_ref_match = self.loc_ref_match
-        for index, line in enumerate(lines):
+        for lino, line in enumerate(lines, start=1):
             if line.startswith("#loc"):
                 loc = Location.parse(line)
                 if loc.isfused:
                     continue
-                locname2locindex[loc.loc_name] = loc.loc_id_str
+                locname2locref[loc.loc_name] = loc.loc_ref
+                locref2locname[loc.loc_ref] = loc.loc_name
             else:
                 match = loc_ref_match.search(line)
                 if match and "tpu.Store" not in line:
-                    loc_id = match.group(1)
-                    locindex2fileline[loc_id] = index
+                    loc_ref = match.group(1)
+                    locref2fileline[loc_ref] = lino
+                    fileline2locref[lino] = loc_ref
 
-    def get_fileline_by_loc(self, loc_name: str):
-        loc_ref = self.locname2locindex[loc_name]
-        return self.locindex2fileline[loc_ref]
+    def get_fileline_by_locname(self, loc_name: str):
+        loc_ref = self.locname2locref[loc_name]
+        lino = self.locref2fileline.get(loc_ref, None)
+        if lino is None:
+            warnings.warn(
+                "some problem happend when get file-line from loc_name. please submit this problem."
+            )
+            lino = -len(self.locref2fileline)
+            self.locref2fileline[loc_ref] = lino
+        return lino
+
+    def get_locname_by_fileline(self, lino: int):
+        loc_name = self.fileline2locref[lino]
+        return self.locref2locname[loc_name]
 
     def get_operations(self):
         return iter_operations(self.module)
