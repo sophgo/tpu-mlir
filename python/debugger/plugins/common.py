@@ -162,9 +162,9 @@ class FinalMlirIndexPlugin(TdbPlugin):
             tiu_offset, dma_offset = subnet_offsets[subnet_id]
 
             if tiu - tiu_offset > 0:
-                x_index = tdb.cmd2index[(subnet_id, None, tiu - tiu_offset, core_id)]
+                x_index = tdb.cmd2index[(subnet_id, tiu - tiu_offset, None, core_id)]
             if dma - dma_offset > 0:
-                y_index = tdb.cmd2index[(subnet_id, dma - dma_offset, None, core_id)]
+                y_index = tdb.cmd2index[(subnet_id, None, dma - dma_offset, core_id)]
 
             bf_index = max_with_none(x_index, y_index, last_af_index + 1)
 
@@ -179,13 +179,13 @@ class FinalMlirIndexPlugin(TdbPlugin):
                 tiu,
                 dma,
                 core_id,
-            ) = (loc.subnet_id, *loc.tiu_dma_id_after, loc.core_id)
+            ) = loc.tuple_key_after
             x_index = y_index = None
 
             if tiu - tiu_offset > 0:
-                x_index = tdb.cmd2index[(subnet_id, None, tiu - tiu_offset, core_id)]
+                x_index = tdb.cmd2index[(subnet_id, tiu - tiu_offset, None, core_id)]
             if dma - dma_offset > 0:
-                y_index = tdb.cmd2index[(subnet_id, dma - dma_offset, None, core_id)]
+                y_index = tdb.cmd2index[(subnet_id, None, dma - dma_offset, core_id)]
 
             last_af_index = af_index = max_with_none(x_index, y_index)
 
