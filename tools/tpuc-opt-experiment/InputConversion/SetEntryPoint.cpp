@@ -18,8 +18,9 @@ public:
       Operation *operation = op;
       if (auto funcOp = llvm::dyn_cast<mlir::func::FuncOp>(operation)) {
         std::string name = funcOp.getName().str();
-        if (name.compare("main") != 0
-            && funcOp.isPublic() && !funcOp.isDeclaration()) {
+        if (name.compare("main")
+            && funcOp.isPublic()
+              && !funcOp.isDeclaration()) {
           funcOp.setName("main");
         }
       }
