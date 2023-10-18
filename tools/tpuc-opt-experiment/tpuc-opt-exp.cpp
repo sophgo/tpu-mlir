@@ -10,60 +10,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/IR/AsmState.h"
-#include "mlir/IR/Dialect.h"
-#include "mlir/IR/MLIRContext.h"
-#include "mlir/InitAllDialects.h"
-#include "mlir/InitAllExtensions.h"
-#include "mlir/InitAllPasses.h"
-#include "mlir/Pass/Pass.h"
-#include "mlir/Pass/PassManager.h"
-#include "mlir/Support/FileUtilities.h"
-#include "mlir/Target/LLVMIR/Dialect/All.h"
-#include "mlir/Tools/mlir-opt/MlirOptMain.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/InitLLVM.h"
-#include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/ToolOutputFile.h"
-
+#include "include/Utils.h"
 using namespace llvm;
 using namespace mlir;
-
-namespace mlir {
-void registerConvertToTargetEnvPass();
-void registerCloneTestPasses();
-void registerLazyLoadingTestPasses();
-void registerPassManagerTestPass();
-void registerPrintSpirvAvailabilityPass();
-void registerLoopLikeInterfaceTestPasses();
-void registerShapeFunctionTestPasses();
-void registerSideEffectTestPasses();
-void registerSliceAnalysisTestPass();
-void registerSymbolTestPasses();
-void registerRegionTestPasses();
-void registerTestAffineDataCopyPass();
-void registerTestAffineReifyValueBoundsPass();
-void registerTestBytecodeCallbackPasses();
-void registerTestDecomposeAffineOpPass();
-void registerTestAffineLoopUnswitchingPass();
-void registerTestAllReduceLoweringPass();
-void registerTestFunc();
-void registerTestGpuMemoryPromotionPass();
-void registerTestLoopPermutationPass();
-void registerTestMatchers();
-void registerTestOperationEqualPass();
-void registerTestPrintDefUsePass();
-void registerTestPrintInvalidPass();
-void registerTestPrintNestingPass();
-void registerTestPreserveUseListOrders();
-void registerTestReducer();
-void registerTestSpirvEntryPointABIPass();
-void registerTestSpirvModuleCombinerPass();
-void registerTestTraitsPass();
-void registerTosaTestQuantUtilAPIPass();
-void registerVectorizerTestPass();
-
-} // namespace mlir
 
 int main(int argc, char **argv) {
   static llvm::cl::OptionCategory MlirOptions("Frontend Options", "");
@@ -75,6 +24,10 @@ int main(int argc, char **argv) {
   llvm::cl::opt<std::string> output_filename("o",
     llvm::cl::desc("Output filename"), llvm::cl::value_desc("filename"),
     llvm::cl::init("-"), llvm::cl::cat(MlirOptions));
+
+  llvm::cl::opt<std::string> chip_name("chip",
+    llvm::cl::desc("Chip name"),
+    llvm::cl::init("BM1684X"), llvm::cl::cat(MlirOptions));
 
   llvm::cl::opt<bool> split_input_file("split-input-file",
     llvm::cl::desc("Split the input file into pieces and process each "
@@ -129,12 +82,8 @@ int main(int argc, char **argv) {
     // MlirOptMain constructed ctx with our registry so we just load all our
     // already registered dialects.
     ctx->loadAllAvailableDialects();
-    //pm.addInstrumentation(std::make_unique<DisposableGarbageCollector>(ctx));
-    auto errorHandler = [ctx](const Twine &msg) {
-      emitError(UnknownLoc::get(ctx)) << msg;
-      return failure();
-    };
-    return passPipeline.addToPipeline(pm, errorHandler);
+    buildPrecompileTransformPassPipeline(pm, chip_name);
+    return success();
   };
 
   MlirOptMainConfig config;

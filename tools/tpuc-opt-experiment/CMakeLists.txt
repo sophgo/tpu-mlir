@@ -1,7 +1,12 @@
 set(LLVM_OPTIONAL_SOURCES
   null.cpp
 )
-
+include_directories(${PROJECT_SOURCE_DIR}/tools/tpuc-opt-experiment/)
+include_directories(${LLVM_INCLUDE_DIRS})
+include_directories(${MLIR_INCLUDE_DIRS})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/InputConversion)
+include_directories(${CMAKE_INSTALL_PREFIX}/include)
 get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 get_property(extension_libs GLOBAL PROPERTY MLIR_EXTENSION_LIBS)
@@ -11,44 +16,7 @@ set(LLVM_LINK_COMPONENTS
   AsmParser
   )
 
-if(MLIR_INCLUDE_TESTS)
-  set(test_libs
-    ${cuda_test_libs}
-    MLIRTestFuncToLLVM
-    MLIRAffineTransformsTestPasses
-    MLIRArithTestPasses
-    MLIRBufferizationTestPasses
-    MLIRControlFlowTestPasses
-    MLIRDLTITestPasses
-    MLIRFuncTestPasses
-    MLIRGPUTestPasses
-    MLIRLinalgTestPasses
-    MLIRLoopLikeInterfaceTestPasses
-    MLIRMathTestPasses
-    MLIRMemRefTestPasses
-    MLIRNVGPUTestPasses
-    MLIRSCFTestPasses
-    MLIRShapeTestPasses
-    MLIRSPIRVTestPasses
-    MLIRTensorTestPasses
-    MLIRTestAnalysis
-    MLIRTestDialect
-    MLIRTestDynDialect
-    MLIRTestIR
-    MLIRTestOneToNTypeConversionPass
-    MLIRTestPass
-    MLIRTestPDLL
-    MLIRTestReducer
-    MLIRTestRewrite
-    MLIRTestTransformDialect
-    MLIRTestTransforms
-    MLIRTilingInterfaceTestPasses
-    MLIRVectorTestPasses
-    MLIRTestVectorToSPIRV
-    MLIRLLVMTestPasses
-    )
-endif()
-
+add_subdirectory(InputConversion)
 set(LIBS
   ${dialect_libs}
   ${conversion_libs}
@@ -66,6 +34,7 @@ set(LIBS
   MLIRTransformUtils
   MLIRSupport
   MLIRIR
+  MLIRInputConversion
   )
 
 add_llvm_executable(tpuc-opt-exp
