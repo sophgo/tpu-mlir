@@ -26,10 +26,14 @@ from math import *
 from scipy import spatial
 from calibration.data_selector import DataSelector
 
+cur_dir_path = os.path.join(os.path.dirname(__file__))
+calibration_math_path = os.path.join("/".join(cur_dir_path.split("/")[:-2]), "lib/calibration_math.so")
+if not os.path.exists(calibration_math_path):
+    calibration_math_path = "calibration_math.so"
 
 class BaseKldCalibrator:
 
-    def __init__(self, math_lib_path='calibration_math.so'):
+    def __init__(self, math_lib_path=calibration_math_path):
         self.calib_lib = CDLL(math_lib_path)
         self.calib_lib.kl_diversity.restype = c_float
         self.calib_lib.kl_diversity_hist.restype = c_float

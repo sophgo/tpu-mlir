@@ -5,6 +5,11 @@
 # third-party components.
 #
 # ==============================================================================
+try:
+    from tpu_mlir.python import *
+except ImportError:
+    pass
+
 import numpy as np
 import argparse
 import cv2

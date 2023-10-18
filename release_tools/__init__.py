@@ -27,18 +27,22 @@ new_path = [
     f"{package_path}/customlayer/python:",
 ]
 os.environ["PATH"] += "".join(new_path)
-os.environ["LD_LIBRARY_PATH"] = (
-    f"{package_path}/lib/third_party:" + f"{package_path}/lib"
-)
 os.environ["PYTHONPATH"] = (
     f"{package_path}/:"
     + f"{package_path}/python/:"
-    + f"{package_path}/lib/:"
     + f"{package_path}/regression/:"
 )
 os.environ["OMP_NUM_THREADS"] = "4"
 os.environ["TPUC_ROOT"] = f"{package_path}"
 
+# # This is no longer needer because the rpath of .so files have been changed by patchelf tool in release_pip.sh
+# os.environ["LD_LIBRARY_PATH"] = (
+#     f"{package_path}/lib/third_party:" + f"{package_path}/lib"
+# )
+
+sys.path.append(f"{package_path}/")
+sys.path.append(f"{package_path}/python/")
+sys.path.append(f"{package_path}/regression/")
 
 def run_subprocess_py(file_name):
     arguments = sys.argv[1:]
