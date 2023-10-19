@@ -29,8 +29,13 @@ int main(int argc, char **argv) {
   tpu_mlir::test::registerTestTilingInterface();
   mlir::DialectRegistry registry;
   using namespace mlir;
-  registry.insert<linalg::LinalgDialect, func::FuncDialect, scf::SCFDialect,
-                  tensor::TensorDialect>();
+  // clang-format off
+  registry.insert<linalg::LinalgDialect,
+                  func::FuncDialect,
+                  scf::SCFDialect,
+                  tensor::TensorDialect,
+                  arith::ArithDialect>();
+  // clang-format on
 
   return asMainReturnCode(
       MlirOptMain(argc, argv, "TPU MLIR test driver\n", registry));

@@ -1,4 +1,5 @@
 add_subdirectory(TilingInterface)
+add_subdirectory(Dialect)
 
 set(LLVM_LINK_COMPONENTS Core Support)
 
