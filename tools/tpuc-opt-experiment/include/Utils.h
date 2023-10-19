@@ -27,5 +27,6 @@
 #include "llvm/Support/ToolOutputFile.h"
 
 #include "include/Pipelines.h"
+#include "GlobalOptimization/Passes.h"
 #include <string>
 #include <utility>

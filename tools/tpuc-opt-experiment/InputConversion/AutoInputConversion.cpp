@@ -2,7 +2,7 @@
 #include "Passes.h"
 namespace mlir {
 
-//Todo: conversion stablehlo/tosa etc to linalg
+//Todo: conversion stablehlo(from tensorflow), tosa(from tflite) etc to linalg
 struct AutoInputConversionPipelinePass final
     : AutoInputConversionPipelineBase<AutoInputConversionPipelinePass> {
   void runOnOperation() override;
