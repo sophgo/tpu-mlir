@@ -7,6 +7,7 @@ struct EraseUnusedLinalgOperandsPass
     MLIRContext *context = &getContext();
     RewritePatternSet patterns(context);
     linalg::populateEraseUnusedOperandsAndResultsPatterns(patterns);
+    linalg::populateEraseUnnecessaryInputsPatterns(patterns);
     if (failed(applyPatternsAndFoldGreedily(getOperation(),
                                             std::move(patterns)))) {
       return signalPassFailure();
