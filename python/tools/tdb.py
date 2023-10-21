@@ -186,7 +186,7 @@ class TdbInterface(TdbCmdBackend):
         pass
 
 
-def main():
+def parse_args(args=None):
     import argparse
 
     parser = argparse.ArgumentParser(description="TPU Debugger.")
@@ -209,38 +209,31 @@ def main():
         nargs="*",
         type=str,
         # default=None,
-        help="The inputs data of the BModel.",
+        help="The reference data of the BModel.",
     )
     parser.add_argument(
         "--plugins",
         type=str,
         nargs="?",
         default=None,
-        help="The inputs data of the BModel.",
+        help="The extra plugins to be added.",
     )
     parser.add_argument(
         "--ddr_size",
         type=int,
         nargs="?",
         default=2**32,
-        help="The inputs data of the BModel.",
-    )
-    parser.add_argument(
-        "--checks",
-        type=str,
-        nargs="?",
-        default=None,
-        help="The inputs data of the BModel.",
+        help="The ddr_size of cmodel.",
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", default=False, help="use progress bar"
     )
 
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 
-if __name__ == "__main__":
-    args = main()
+def get_tdb(args=None):
+    args = parse_args(args)
     context_dir = args.context_dir
     if os.path.isfile(context_dir) and context_dir.endswith(".bmodel"):
         bmodel_file = context_dir
@@ -251,15 +244,14 @@ if __name__ == "__main__":
         final_mlir_fn = os.path.join(context_dir, "final.mlir")
         tensor_loc_file = os.path.join(context_dir, "tensor_location.json")
 
+    if not os.path.exists(final_mlir_fn) or not os.path.exists(tensor_loc_file):
+        final_mlir_fn = tensor_loc_file = None
+
     input_data_fn = args.inputs
     if input_data_fn is None and os.path.isdir(context_dir):
         input_data_fn = os.path.join(context_dir, "input_ref_data.dat")
 
     reference_data_fn = args.ref_data
-
-    # context_output_ref_fn = os.path.join(context_dir, "output_ref_data.dat")
-    # if reference_data_fn is None and os.path.exists(context_output_ref_fn):
-    #     reference_data_fn = context_output_ref_fn
 
     extra_plugins = args.plugins
     if extra_plugins is None:
@@ -270,12 +262,6 @@ if __name__ == "__main__":
     if args.verbose:
         extra_plugins.append("progress")
 
-    extra_check = args.checks
-    if extra_check is None:
-        extra_check = []
-    else:
-        extra_check = extra_check.split(",")
-
     tdb = TdbInterface(
         bmodel_file=bmodel_file,
         final_mlir_fn=final_mlir_fn,
@@ -283,8 +269,11 @@ if __name__ == "__main__":
         input_data_fn=input_data_fn,
         reference_data_fn=reference_data_fn,
         extra_plugins=extra_plugins,
-        extra_check=extra_check,
         ddr_size=args.ddr_size,
     )
+    return tdb
 
+
+if __name__ == "__main__":
+    tdb = get_tdb()
     tdb.cmdloop()

@@ -8,7 +8,7 @@
 #
 # ==============================================================================
 import os
-from debugger.plugins.data_checker import DataCheck
+from debugger.plugins.data_checker import DataCheck, DumpMode
 from tdb import TdbInterface
 import argparse
 
@@ -30,7 +30,17 @@ def main():
         "--tolerance", default="0.99,0.90", help="tolerance for compare."
     )
     parser.add_argument(
-        "--report", type=str, help="The report file for saving state and internal data."
+        "--dump_mode",
+        type=str,
+        choices=["failed", "all", "never"],
+        default="failed",
+        help="dump mode",
+    )
+    parser.add_argument(
+        "--report",
+        type=str,
+        default="failed_bmodel_outputs.npz",
+        help="bmodel inference result",
     )
     parser.add_argument(
         "--fail_fast", action="store_true", help="Stop if there is a check failure."
@@ -60,11 +70,6 @@ def main():
 
 if __name__ == "__main__":
     args = main()
-    if args.excepts:
-        excepts = [str(s) for s in args.excepts.split(",")]
-    else:
-        excepts = []
-
     context_dir = args.context_dir
     assert os.path.isdir(context_dir)
     bmodel_file = os.path.join(context_dir, "compilation.bmodel")
@@ -85,6 +90,12 @@ if __name__ == "__main__":
     if args.verbose is not None:
         extra_plugins.append("progress")
 
+    if args.excepts:
+        excepts = [str(s) for s in args.excepts.split(",")]
+    else:
+        excepts = []
+
+
     tdb = TdbInterface(
         bmodel_file=bmodel_file,
         final_mlir_fn=final_mlir_fn,
@@ -100,9 +111,16 @@ if __name__ == "__main__":
         plugin.break_when_fail = True
     plugin.set_tol(cosine_similarity_tol=cos_t, euclidean_similarity_tol=euc_t)
 
+    plugin.dump_mode = getattr(DumpMode, args.dump_mode.upper(), DumpMode.FAILED)
+    plugin.excepts.update(excepts)
+
+    tdb.message(f"dump mode = {plugin.dump_mode}")
+
     tdb.do_run("")
-    tdb.message("(<file-line>:[operands]|[results])")
+    tdb.message("(<file-line>:\[operands]|\[results])")
     plugin.do_summary("table")
+    plugin.failed_results_fn = args.report
+    plugin.do_dump_names(args.report)
     msg = """
     type `check` to start analysis and dump data.
     - `check summary table|reduce` to view report of check results.
@@ -113,6 +131,5 @@ if __name__ == "__main__":
     if args.no_interactive:
         if args.report is None:
             args.report = os.path.join(context_dir, "failed_bmodel_outputs.npz")
-        plugin.do_dump(args.report)
     else:
         tdb.cmdloop()

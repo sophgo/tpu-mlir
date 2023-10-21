@@ -108,7 +108,7 @@ class Value(Node):
 class Block(Node):
     CMD = namedtuple("cmd", ["tiu", "dma", "all"])
 
-    def __init__(self, subnet: SubNet, indent=0):
+    def __init__(self, subnet: SubNet, indent=0, ctx_addr=0, ctx_size=0):
         super().__init__()
         self.subnet_id = subnet.id
         self.indent = indent
@@ -181,6 +181,8 @@ class Block(Node):
                     output_memref=output_memref,
                     subnet_id=subnet.id,
                     cmd_id=ir_cmd_id,
+                    ctx_addr=ctx_addr,
+                    ctx_size=ctx_size,
                 )
             )
 
@@ -231,7 +233,11 @@ class Region(Node):
     def __init__(self, net_stage: Parameter, indent=0):
         super().__init__()
         self.indent = indent
-        self.blocks = [Block(x, indent) for x in net_stage.sub_net]
+        self.ctx_addr = net_stage.ctx_addr
+        self.ctx_size = net_stage.ctx_size
+        self.blocks = [
+            Block(x, indent, self.ctx_addr, self.ctx_size) for x in net_stage.sub_net
+        ]
         self.signature: Tuple[List[Tensor], List[Tensor]] = (
             net_stage.input_tensor,
             net_stage.output_tensor,

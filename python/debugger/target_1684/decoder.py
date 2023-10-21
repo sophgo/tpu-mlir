@@ -16,7 +16,13 @@ from .regdef import (
     tiu_high_bits,
     dma_high_bits,
 )
-from ..target_common import cmd_base_reg, DecoderBase, CMDType
+from ..target_common import (
+    cmd_base_reg,
+    DecoderBase,
+    CMDType,
+    DynIrOp,
+    MemRefBase,
+)
 
 
 class TiuHead(ctypes.Structure):

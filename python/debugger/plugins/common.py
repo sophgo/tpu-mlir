@@ -151,6 +151,10 @@ class FinalMlirIndexPlugin(TdbPlugin):
         self.cmdkey2loc: Dict[int, List[ValueView]] = OrderedDict()
 
         for loc_index, loc in enumerate(self.final_mlir.loc.tensor_loc):
+            if loc.tiu_dma_id_before == loc.tiu_dma_id_after:
+                # no cmd operation, like reshape
+                continue
+
             # before execution
             (
                 subnet_id,

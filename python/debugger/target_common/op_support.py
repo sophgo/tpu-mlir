@@ -561,6 +561,10 @@ class DynIrOp(BaseCmdOp):
     cmd_id: int = 0  # assigned in python interface
     subnet_id: int = 0
 
+    ctx_addr: int = 0
+    ctx_size: int = 0
+
+
     @property
     def cmd(self):
         return self

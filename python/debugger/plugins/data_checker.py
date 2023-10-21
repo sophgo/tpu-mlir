@@ -8,9 +8,11 @@
 # ==============================================================================
 
 import numpy as np
+from numpy.lib import format
 from typing import Tuple, Dict, List
 import os
 import json
+import zipfile
 
 from rich import get_console
 from rich.console import Group
@@ -34,10 +36,60 @@ from .common import FinalMlirIndexPlugin, ValueView
 from enum import Enum
 
 
+class IncNpzFile:
+    def __init__(self, file: str):
+        """
+        :param file: the ``npz`` file to write
+        :param mode: must be one of {'x', 'w', 'a'}. See
+               https://docs.python.org/3/library/zipfile.html for detail
+        """
+        self.fn = file
+        self.zip = zipfile.ZipFile(file, mode="a", compression=zipfile.ZIP_DEFLATED)
+        self.keys = set()
+
+    def __setitem__(self, key: str, data) -> None:
+        if key in self.keys:
+            return
+
+        self.keys.add(key)
+        kwargs = {
+            "mode": "w",
+            "force_zip64": True,
+        }
+        if self.zip.fp is None:
+            self.zip = zipfile.ZipFile(
+                self.fn, mode="a", compression=zipfile.ZIP_DEFLATED
+            )
+
+        with self.zip.open(key, **kwargs) as fid:
+            val = np.asanyarray(data)
+            format.write_array(fid, val, allow_pickle=True)
+
+    def __getitem__(self, key: str):
+        self.zip.close()
+        return np.load(self.fn, allow_pickle=True)[key]
+
+    def close(self):
+        if self.zip is not None:
+            self.zip.close()
+            self.zip = None
+
+    def return_npz(self):
+        self.zip.close()
+        return np.load(self.fn, allow_pickle=True)
+
+
+class DumpMode(Enum):
+    NEVER = 0
+    FAILED = 1
+    ALL = 2
+
+
 class CmpState(Enum):
     Pass = 0
     Fail = 1
-    Middle = 2
+    Ignore = 2
+    Middle = 3
     Unknown = 9
 
     @property
@@ -50,6 +102,7 @@ StateFlags = {
     CmpState.Fail: "[red]x[/]",
     CmpState.Middle: "-",
     CmpState.Unknown: "?",
+    CmpState.Ignore: "[gray]-[/]",
 }
 
 
@@ -59,12 +112,14 @@ class ComparedResult:
     cmp: Tuple
     zero_point: int = 0
     scale: int = 1
-    actual: np.ndarray = None
-    desired: np.ndarray = None
+    # actual: np.ndarray = None
+    # desired: np.ndarray = None
     msg: str = ""
 
     @property
     def state(self) -> CmpState:
+        if self.msg == "ignore":
+            return CmpState.Ignore  # ignored by excepts
         if self.cmp is None:
             return CmpState.Unknown
         elif self.cmp[0]:
@@ -160,7 +215,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             self.ref_data.append(np.load(ref_fn))
 
         self.tc = TensorCompare(
-            cosine_similarity_tol=0.99, euclidean_similarity_tol=0.9
+            cosine_similarity_tol=0.99,
+            euclidean_similarity_tol=0.9,
+            signal_to_quantization_noise_tol=float("-inf"),
         )
 
         # loc_index ->
@@ -169,10 +226,15 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         self.compare_all = False
         self.break_when_fail = False
 
+        self.failed_results_fn = "failed_bmodel_outputs.npz"
+        self.excepts = set()
+        self.dump_mode = DumpMode.FAILED
+
     def set_tol(self, cosine_similarity_tol=0.99, euclidean_similarity_tol=0.9):
         self.tc = TensorCompare(
             cosine_similarity_tol=cosine_similarity_tol,
             euclidean_similarity_tol=euclidean_similarity_tol,
+            signal_to_quantization_noise_tol=float("-inf"),
         )
 
     @property
@@ -180,27 +242,35 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         return self.index.enabled
 
     def after_load(self, tdb: TdbCmdBackend):
-        # breakpoint -> (tensors, record)*
         self.index: FinalMlirIndexPlugin = tdb.get_plugin(FinalMlirIndexPlugin)
 
-    def do_dump(self, arg):
+        self._failed_tensor = None
+        self.tdb.message(f"dump mode = {self.dump_mode}")
+
+    @property
+    def failed_tensor(self):
+        if self._failed_tensor is None:
+            file = self.failed_results_fn
+            if os.path.exists(file):
+                os.remove(file)
+                print(f"remove exist {file}")
+            self._failed_tensor = IncNpzFile(file)
+        return self._failed_tensor
+
+    def do_dump_names(self, arg=None):
         """
         dump failed comparison data into npz file
         """
-        failed_tensor = {}
+        failed_names = set()
         for k, v in self.reports.items():
             for cmp_res in v:
                 if cmp_res.state == CmpState.Fail:
-                    name = f"{cmp_res.value_view.value.name}_asm_{cmp_res.value_view.cmd_point}"
-                    failed_tensor[f"{name}_actual"] = cmp_res.actual
-                    failed_tensor[f"{name}_desired"] = cmp_res.desired
+                    failed_names.add(cmp_res.value_view.value.name)
 
-        if arg == "":
-            arg = "failed_bmodel_outputs.npz"
-        arg = os.path.abspath(arg)
-        self.tdb.message(f"saving...")
-        np.savez(arg, **failed_tensor)
-        print(f"{len(failed_tensor)//2} mismatched tensors are saved to '{arg}'")
+        if len(failed_names) > 0:
+            with open(f"{arg}.txt", "w") as w:
+                w.write("\n".join(failed_names))
+                self.tdb.message(f"failed value name list are saved in {arg}.txt")
 
     def do_all(self, arg):
         self.compare_all = True
@@ -244,14 +314,41 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             summary.append(loc_summary)
         return " ".join(summary)
 
+    def failed_summary(self):
+        summary: List[Tuple[int, List[str], List[str]]] = []
+        skip = 0
+        for loc_index, v in self.reports.items():
+            loc_name = self.index.final_mlir.loc[loc_index].loc_name
+            lino = self.index.final_mlir.get_fileline_by_locname(loc_name)
+
+            loc_summary = ([], [])
+            if all([vv.state != CmpState.Fail for vv in v]):
+                skip += 1
+                continue
+
+            for vv in v:
+                if vv.value_view.is_operand:
+                    loc_summary[0].append(vv.state.flag)
+                else:
+                    loc_summary[1].append(vv.state.flag)
+
+            loc_summary = f"({lino}{''.join(loc_summary[0])}|{''.join(loc_summary[1])})"
+            summary.append(loc_summary)
+        self.tdb.message(f"summary failed skip {skip} cmds")
+        return " ".join(summary)
+
     def do_summary(self, arg):
-        if arg == "" or arg not in {"reduce", "table"}:
+        if arg == "" or arg not in {"reduce", "table", "failed"}:
             arg = "table"
 
         if arg == "reduce":
             self.tdb.message(self.reduce_summary())
-        else:
+        elif arg == "table":
             self.tdb.message(self.table_summary())
+        elif arg == "failed":
+            self.tdb.message(self.failed_summary())
+        else:
+            self.tdb.error(f"not support summary mode {arg}")
 
     def do_data(self, arg: str):
         if arg == "":
@@ -329,7 +426,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         )
 
     def complete_summary(self, text="", line="", begidx=0, endidx=0) -> list[str]:
-        cand = ["reduce", "table"]
+        cand = ["reduce", "table", "failed"]
         return [i for i in cand if i.startswith(text)]
 
     def do_ignore_failed(self, arg):
@@ -373,8 +470,11 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         return None
 
-    def check_data(self, value_view: ValueView):
+    def check_data(self, value_view: ValueView) -> ComparedResult:
         value = value_view.value
+        if value.name in self.excepts:
+            value_res = ComparedResult(value_view, None, msg="ignore")
+            return value_res
         context = self.tdb.context
         memref = value.get_memref(context)
 
@@ -388,24 +488,22 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             actual = actual.reshape(desired.shape)
             cmp_res, msg = list(self.tc.assert_allclose(actual, desired))
 
-            if cmp_res[0]:
-                value_res = ComparedResult(
-                    value_view,
-                    cmp=cmp_res,
-                    zero_point=value.zero_point,
-                    scale=value.scale,
-                    msg=msg,
-                )
-            else:
-                value_res = ComparedResult(
-                    value_view,
-                    cmp=cmp_res,
-                    zero_point=value.zero_point,
-                    scale=value.scale,
-                    actual=actual,
-                    desired=desired,
-                    msg=msg,
-                )
+            value_res = ComparedResult(
+                value_view,
+                cmp=cmp_res,
+                zero_point=value.zero_point,
+                scale=value.scale,
+                msg=msg,
+            )
+            cmd_failed = not cmp_res[0]
+            name = f"{value.name}_asm_{value_view.loc_index}_{value_view.cmd_point}"
+            if self.dump_mode == DumpMode.ALL:
+                self.failed_tensor[f"{name}_actual"] = actual
+                if cmd_failed:
+                    self.failed_tensor[f"{name}_desired"] = desired
+            elif self.dump_mode == DumpMode.FAILED and cmd_failed:
+                self.failed_tensor[f"{name}_actual"] = actual
+                self.failed_tensor[f"{name}_desired"] = desired
 
         return value_res
 
@@ -451,3 +549,8 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         ret = self.compare(tdb, False)
         if not ret and self.break_when_fail:
             raise BreakpointStop()
+
+    def after_stop(self, tdb: TdbCmdBackend):
+        # make sure npz file is valid
+        self.failed_tensor.close()
+        return super().after_stop(tdb)
