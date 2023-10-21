@@ -775,7 +775,105 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
     return success();
   }
 };
+
+// Calculate `indices_coeff` for GatherElementsOp when axis != indices_dims - 1
+//               / 1, i = axis
+// axis_flag[i] =
+//               \ 0, else
+// input_stride[i] = input_shape[i-1] * ... * input_shape[0]
+// indices_coeff[i0][i1]...[in-1] = i0 * input_stride[0] * axis_flag[i] + ... + in-1 * input_stride[n-1] * axis_flag[n-1]
+struct GatherElementsPattern : public OpRewritePattern<tpu::GatherElementsOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::GatherElementsOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto indices = op.getIndices();
+    auto indices_shape = module::getShape(indices);
+    auto indices_dims = indices_shape.size();
+    auto axis = op.getAxis();
+    if (axis == indices_dims - 1) {
+      return failure();
+    }
+    if (!op.getIndicesCoeff().getType().isa<NoneType>()) {
+      return failure();
+    }
+    auto input = op.getInput();
+    auto input_shape = module::getShape(input);
+    std::vector<Value> operands;
+    operands.push_back(op.getInput());
+    operands.push_back(indices);
+
+    auto indice_type = module::getElementType(indices);
+    auto type = RankedTensorType::get(indices_shape, indice_type);
+    int indices_shape8[8] = {1, 1, 1, 1, 1, 1, 1, 1};
+    int input_shape8[8] = {1, 1, 1, 1, 1, 1, 1, 1};
+
+    for (int i = 0 ; i < indices_dims; ++ i ) {
+      indices_shape8[i] = indices_shape[i];
+      input_shape8[i] = input_shape[i];
+    }
+    std::vector<int> indices_coeff;
+
+    int tmp = 0;
+    // loop for 8 times
+    for (int i0 = 0; i0 < indices_shape8[0]; ++ i0) {
+      int tmp0 = 0;
+      tmp0 += axis == 0 ? 0 : i0;
+      tmp0 *= input_shape8[1];
+      for (int i1 = 0; i1 < indices_shape8[1]; ++ i1 ) {
+        int tmp1 = tmp0;
+        tmp1 += axis == 1 ? 0 : i1;
+        tmp1 *= input_shape8[2];
+        for (int i2 = 0; i2 < indices_shape8[2]; ++ i2 ) {
+          int tmp2 = tmp1;
+          tmp2 += axis == 2 ? 0 : i2;
+          tmp2 *= input_shape8[3];
+          for (int i3 = 0; i3 < indices_shape8[3]; ++ i3 ) {
+            int tmp3 = tmp2;
+            tmp3 += axis == 3 ? 0 : i3;
+            tmp3 *= input_shape8[4];
+            for (int i4 = 0; i4 < indices_shape8[4]; ++ i4 ) {
+              int tmp4 = tmp3;
+              tmp4 += axis == 4 ? 0 : i4;
+              tmp4 *= input_shape8[5];
+              for (int i5 = 0; i5 < indices_shape8[5]; ++ i5 ) {
+                int tmp5 = tmp4;
+                tmp5 += axis == 5 ? 0 : i5;
+                tmp5 *= input_shape8[6];
+                for (int i6 = 0; i6 < indices_shape8[6]; ++ i6 ) {
+                  int tmp6 = tmp5;
+                  tmp6 += axis == 6 ? 0 : i6;
+                  tmp6 *= input_shape8[7];
+                  for (int i7 = 0; i7 < indices_shape8[7]; ++ i7 ) {
+                    tmp ++;
+                    int tmp7 = tmp6;
+                    tmp7 += i7;
+                    indices_coeff.push_back(tmp7);
+                    // llvm::outs() << tmp << " " << tmp7 << "\n";
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    auto indices_coeff_op = top::WeightOp::create(op, "indices_coeff", indices_coeff, type);
+    operands.push_back(indices_coeff_op);
+
+    operands.push_back(op.getBuffer());
+    rewriter.setInsertionPointAfter(op);
+    auto new_op = rewriter.create<tpu::GatherElementsOp>(op.getLoc(), op.getResult().getType(),
+                                                  operands, op->getAttrs());
+    op.getOutput().replaceAllUsesWith(new_op.getOutput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
 } // namespace bm1684x
+
 
 namespace tpu {
 using namespace bm1684x;
@@ -787,7 +885,8 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
                 GroupConv2NormalConv, TpuReshapeReorderPattern,
                 PermuteAddWeightReorderPattern, MaskedFillPermuteMove,
                 PermuteFuse, patterns::FuseRepeatPattern<tpu::ReshapeOp>,
-                PermuteReorderPattern, PermutePadSwap>(ctx, 8);
+                PermuteReorderPattern, PermutePadSwap,
+                GatherElementsPattern>(ctx, 8);
 }
 } // namespace tpu
 

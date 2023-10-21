@@ -2103,7 +2103,8 @@ def Tpu_GatherElementsOp: Tpu_Op<"GatherElements", [
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$indices,
-
+    AnyTensorOrNone:$indices_coeff,
+    AnyTensorOrNone:$buffer,
     DefaultValuedAttr<I64Attr, "2">:$axis
   );
 

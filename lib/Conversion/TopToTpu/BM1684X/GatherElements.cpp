@@ -35,6 +35,11 @@ static void LoweringGatherElements(PatternRewriter &rewriter,
   } else {
     operands.push_back(op.getIndices());
   }
+
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp); // indices_coeff
+  operands.push_back(noneOp); // buffer
+
   rewriter.replaceOpWithNewOp<tpu::GatherElementsOp>(op, type, operands,
                                                      op->getAttrs());
   return;
