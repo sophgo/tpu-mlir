@@ -21,7 +21,6 @@ from .target_common import MType, BaseTpuOp, CpuOp, CMDType, DynIrOp
 from .disassembler import BModel
 from .target_1688.context import BM1688Context
 
-
 class TdbStatus(Enum):
     # bmodel not loaded
     UNINIT = 0
@@ -144,8 +143,8 @@ class TdbCmdBackend(cmd.Cmd):
         tensor_loc_file: str = None,
         input_data_fn: str = None,
         reference_data_fn: List[str] = None,
-        extra_plugins: List[str] = True,
-        extra_check: List[str] = True,
+        extra_plugins: List[str] = [],
+        extra_check: List[str] = [],
         completekey="tab",
         stdin=None,
         stdout=None,
@@ -166,6 +165,8 @@ class TdbCmdBackend(cmd.Cmd):
 
         # should be import locally to avoid circular import
         from .static_check import Checker
+        # initialize registered plugins
+        from . import plugins as _
 
         self.checker = Checker(self)
         self.displays = Displays.get_instance()

@@ -91,5 +91,5 @@ class BM1688Context(CModelContext):
 
     def get_runner(self, memory_size: int) -> CModelRunner:
         if self._runner is None:
-            self._runner = BM1688Runner(memory_size)
+            self._runner = BM1688Runner(memory_size, self.base_addr)
         return self._runner

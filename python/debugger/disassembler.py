@@ -45,7 +45,7 @@ bmodel_context = _BModelContext()
 
 class FBSArray:
     # flatbuffer array adapter, act like a list.
-    def __init__(self, fbs, field, binary):
+    def __init__(self, fbs, field, *args):
         self.field_name, self.field_cls = field
         name = self.field_name
 
@@ -54,7 +54,7 @@ class FBSArray:
         items = []
         for s in range(getattr(fbs, name + "Length")()):
             cmd = getattr(fbs, name)(s)
-            items.append(self.field_cls(cmd, binary))
+            items.append(self.field_cls(cmd, *args))
         self.items = items
 
     def __getitem__(self, index):
@@ -131,6 +131,16 @@ class CpuParam(FBSOptional):
 
     def __repr__(self) -> str:
         return f"CPU_OP: {self.op_type.name}"
+
+
+class StageIr(FBSOptional):
+    def init(
+        self, fbs: bmodel_fbs.StageIR, binary_ir: bmodel_fbs.Binary, buffer: bytes
+    ):
+        self.ir_len = fbs.IrInfoLen()
+        self.ir_bytelen = self.ir_len * 4  # sizeof(u32)
+        start, size = binary_ir.Start(), binary_ir.Size()
+        self.ir_mem = buffer[start : start + size]
 
 
 class CmdGroup(FBSOptional):
@@ -330,6 +340,7 @@ class KernelModule(FBSOptional):
         return f"kernel: {self.file_name}"
 
 
+# /workspace/nntoolchain/tpu-runtime/include/bmruntime.h:112
 class RunMode(Enum):
     TPU_STATIC = 0
     TPU_DYNAMIC = 1
@@ -341,7 +352,7 @@ class RunMode(Enum):
 
 
 class SubNet(FBSOptional):
-    def init(self, fbs: bmodel_fbs.SubNet, buffer):
+    def init(self, fbs: bmodel_fbs.SubNet, buffer, stage_ir: List[StageIr]):
         # tpu-static, tpu-dynamic, cpu
         self.subnet_mode = fbs.SubnetMode()  # tpu:0 cpu:1
         self.is_dynamic = fbs.IsDynamic() == 1
@@ -371,7 +382,9 @@ class SubNet(FBSOptional):
         self.ir_offset = fbs.IrOffset()
 
         if self.run_mode == RunMode.TPU_DYNAMIC:
-            self.ir_buffer = buffer[self.ir_offset : self.ir_offset + self.ir_len]
+            self.ir_buffer = stage_ir[0].ir_mem[
+                self.ir_offset : self.ir_offset + self.ir_len
+            ]
         elif self.run_mode == RunMode.CPU:
             self.cpu_params: List[CpuParam] = FBSArray(
                 fbs, ("CpuParam", CpuParam), buffer
@@ -408,10 +421,16 @@ class Parameter(FBSOptional):
         self.output_tensor: List[Tensor] = FBSArray(
             fbs, ("OutputTensor", Tensor), buffer
         )
-        self.sub_net: List[SubNet] = FBSArray(fbs, ("SubNet", SubNet), buffer)
+        self.stage_ir: List[StageIr] = FBSArray(
+            fbs, ("StageIr", StageIr), fbs.BinaryIr(), buffer
+        )
+        self.sub_net: List[SubNet] = FBSArray(
+            fbs, ("SubNet", SubNet), buffer, self.stage_ir
+        )
         self.cmd_group: List[CmdGroup] = FBSArray(fbs, ("CmdGroup", CmdGroup), buffer)
         self.ctx_addr = fbs.CtxAddr()
         self.ctx_size = fbs.CtxSize()
+        self.ctx_sizes: List[int] = FBSArray(fbs, ("CtxSizes", int))
         self.coeff_mem = ROData(fbs.CoeffMem(), buffer)
         self.core_num = fbs.CoreNum()
 

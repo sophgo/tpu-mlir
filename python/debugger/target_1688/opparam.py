@@ -1290,12 +1290,12 @@ def DMA_reverse_converter(context: "BM1688Context", reg: DMA_reverse_reg):
 
 @opparam_converter_regitstry("DMA_compress")
 def DMA_compress_converter(context: "BM1688Context", reg: DMA_compress_reg):
-    return [] * 3
+    return ([],) * 3
 
 
 @opparam_converter_regitstry("DMA_decompress ")
 def DMA_decompress_converter(context: "BM1688Context", reg: DMA_decompress__reg):
-    return [] * 3
+    return ([],) * 3
 
 
 @opparam_converter_regitstry("sDMA_sys")

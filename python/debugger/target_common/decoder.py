@@ -34,7 +34,7 @@ class DecoderBase:
             res.cmd_id = cmd_id
         # bind buf for bug checking
         res.core_id = core_id
-        res.buf = buf[offset : offset + clazz.length]
+        res.buf = buf[offset : offset + clazz.length // 8]
         return res
 
     def decode_tiu_cmd(
@@ -89,8 +89,19 @@ class DecoderBase:
         output_memref: List[MemRefBase] = None,
         subnet_id: int = 0,
         cmd_id: int = 0,
+        ctx_addr: int = 0,
+        ctx_size: int = 0,
     ) -> DynIrOp:
-        return DynIrOp(ir_buf, ir_size, input_memref, output_memref, cmd_id, subnet_id)
+        return DynIrOp(
+            ir_buf,
+            ir_size,
+            input_memref,
+            output_memref,
+            cmd_id,
+            subnet_id,
+            ctx_addr=ctx_addr,
+            ctx_size=ctx_size,
+        )
 
     def get_cmd_type(self, cmd: cmd_base_reg) -> CMDType:
         return CMDType.unknown

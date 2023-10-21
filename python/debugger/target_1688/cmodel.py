@@ -19,7 +19,7 @@ from .memmap import *
 
 
 class BM1688Runner(CModelRunner):
-    lib_name = "libcmodel_1686.so"
+    lib_name = "libcmodel_1688.so"
     ENGINE_GDMA = 1
     TAG_WEIGHT = 1
     ENGINE_HAU = 2
@@ -476,7 +476,7 @@ class Memory(MemoryBase):
     def set_data(self, value, data: np.ndarray):
         m_type = value.mtype
         if m_type == MType.G:
-            offset = m_type.r_addr
+            offset = value.r_addr
             assert data.dtype == value.np_dtype
             src_u8 = np.ascontiguousarray(data.flatten()).view(np.uint8)
             self.DDR[offset : offset + src_u8.size] = src_u8.flatten()
