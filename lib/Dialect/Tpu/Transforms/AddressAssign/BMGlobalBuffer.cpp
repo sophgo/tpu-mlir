@@ -40,6 +40,27 @@ public:
   }
 };
 
+class GatherElementsGlobalBuffer : public OpRewritePattern<tpu::GatherElementsOp> {
+public:
+  using OpRewritePattern<tpu::GatherElementsOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::GatherElementsOp GatherElementsOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(GatherElementsOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684XFamily() && !module::isSG2260Family()) {
+      return failure();
+    }
+    auto buffer_type =
+        GatherElementsOp.getIndices().getType().cast<RankedTensorType>();
+    auto buffer = tpu::BufferOp::create(GatherElementsOp, buffer_type);
+    GatherElementsOp.setOperand(3, buffer);
+    return success();
+  }
+};
+
+
 class LSTMGlobalBuffer : public OpRewritePattern<tpu::LSTMOp> {
 public:
   using OpRewritePattern<tpu::LSTMOp>::OpRewritePattern;
@@ -829,6 +850,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
       GatherGlobalBuffer,
+      GatherElementsGlobalBuffer,
       GRUGlobalBuffer,
       LSTMGlobalBuffer,
       ReduceGlobalBuffer,
