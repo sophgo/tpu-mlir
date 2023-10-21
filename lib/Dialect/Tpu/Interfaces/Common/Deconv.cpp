@@ -29,6 +29,7 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
   p.n = ishape[0];
   p.ic = ishape[1];
   p.oc = oshape[1];
+
   auto dims = ishape.size() - 2;
   if (dims == 3) {
     p.id = ishape[2];

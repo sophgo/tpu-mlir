@@ -539,6 +539,72 @@ typedef struct {
   int kzp_dtype;
 } deconv_local_param_t;
 
+typedef struct {
+    /* common param */
+    unsigned long long input_global_addr;
+    unsigned long long weight_global_addr;
+    unsigned long long bias_global_addr;
+    unsigned long long output_global_addr;
+    int input_shape[5];    // (n, ic, it, ih, iw)
+    int groups;
+    int output_c;
+    int kernel[3];         // (kt, kh, kw)
+    int stride[3];         // (t, h, w)
+    int dilation[3];       // (t, h, w)
+    int pad[6];            // (t0, t1, h0, h1, w0, w1)
+    int output_pad[3];     // (t, h, w)
+    int has_bias;
+    int input_dtype;
+    int weight_dtype;
+    int bias_dtype;
+    /* param for float */
+    int output_dtype;
+    int if_relu;
+    float upper_limit;
+    /* param for quant */
+    unsigned long long kzp_global_addr;
+    unsigned long long pad_insert_global_addr;
+    bool kzp_is_const;
+    bool pad_insert_is_const;
+    int kzp_val;
+    int pad_val;
+    int insert_val;
+    int kzp_dtype;
+} deconv3d_global_param_t;
+
+typedef struct {
+    /* common param */
+    unsigned int input_local_addr;
+    unsigned int weight_local_addr;
+    unsigned int bias_local_addr;
+    unsigned int buffer_local_addr;
+    unsigned int output_local_addr;
+    int input_shape[5];    // (it, n, ic, ih, iw)
+    int groups;
+    int output_c;
+    int kernel[3];         // (kt, kh, kw)
+    int stride[3];         // (t, h, w)
+    int dilation[3];       // (t, h, w)
+    int pad[6];            // (t0, t1, h0, h1, w0, w1)
+    int has_bias;
+    int input_dtype;
+    int weight_dtype;
+    int bias_dtype;
+    /* param for float */
+    int output_dtype;
+    int if_relu;
+    float upper_limit;
+    /* param for quant */
+    unsigned int kzp_local_addr;
+    unsigned int pad_insert_local_addr;
+    bool kzp_is_const;
+    bool pad_insert_is_const;
+    int kzp_val;
+    int pad_val;
+    int insert_val;
+    int kzp_dtype;
+} deconv3d_local_param_t;
+
 typedef struct bcbinary_common_spec {
   int32_t binary_type;
   int32_t if_relu;
@@ -1079,10 +1145,12 @@ typedef struct fc_global_spec {
   int32_t round_mode;
 } fc_global_spec_t;
 
-typedef struct w8a16_matmul_spec {
+typedef struct a16_matmul_spec {
   bool has_bias;
+  bool sign;
   bool R_trans;
-} w8a16_matmul_spec_t;
+  int weight_bits;
+} a16_matmul_spec_t;
 
 typedef struct batch_matmul_common_spec {
   int Y_dtype;
@@ -1725,4 +1793,31 @@ typedef struct embedding_backward_param {
     bool is_index_int64;
 } embedding_backward_param_t;
 
+typedef struct 
+{
+  int32_t groups;
+  int32_t ic;
+  int32_t n;
+  int32_t ih;
+  int32_t iw;
+  int32_t oc;
+  int32_t oh;
+  int32_t ow;
+  int32_t kh;
+  int32_t kw;
+  int32_t sh;
+  int32_t sw;
+  int32_t dh;
+  int32_t dw;
+  int32_t pt;
+  int32_t pb;
+  int32_t pl;
+  int32_t pr;
+  bool has_bias;
+}ConvBwdWeight_common_spec_t;
+
+typedef struct 
+{
+  ConvBwdWeight_common_spec_t common;
+}ConvBwdWeight_global_spec_t;
 #endif

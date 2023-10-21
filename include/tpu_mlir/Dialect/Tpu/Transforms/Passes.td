@@ -88,7 +88,9 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
     Option<"model_file", "model_file", "std::string", /*default=*/"",
            "save to model file">,
     Option<"embed_debug_info", "embed_debug_info", "bool", /*default=*/"false",
-           "embed debug and profiling data to model file.">
+           "embed debug and profiling data to model file.">,
+    Option<"model_version", "model_version", "std::string", /*default=*/"\"lastest\"",
+           "model version.">,
   ];
 }
 

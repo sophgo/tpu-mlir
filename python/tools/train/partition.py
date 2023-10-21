@@ -126,7 +126,7 @@ class TpuMlirOperatorSupport(OperatorSupport):
             print('aten.nll_loss_forward not support')
             return False
         if node_name == 'torch.ops.aten.expand':
-            print('aten.expand not support')
+            print('aten.expand not support because of bug')
             return False
         # if node_name == 'torch.ops.aten.relu': #仅仅用于分割测试
         #     print('aten.relu not support')
@@ -134,8 +134,11 @@ class TpuMlirOperatorSupport(OperatorSupport):
         # if node_name == 'torch.ops.aten.sum':
         #     print('aten.sum not support')
         #     return False
+        if node_name == 'torch.ops.aten.max_pool2d_with_indices':
+            print('aten.max_pool2d_with_indices not support by backend')
+            return False
         if node_name == 'torch.ops.aten.max_pool2d_with_indices_backward':
-            print('aten.max_pool2d_with_indices_backward not support')
+            print('aten.max_pool2d_with_indices_backward not support by backend')
             return False
         if node_name == 'output':
             print('output not support')

@@ -19,12 +19,12 @@ void tpu::LayerNormBwdOp::codegen_global_bm1684x() {
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
 
-  // batchnorm_train_param_t param = {0};
-  // param.eps = getEpsilon().convertToDouble();
-  // param.momentum = getMomentum().convertToDouble();
-  // BM168x::call_global_func("backend_api_batchnorm_train_global", &param,
-  //                          sizeof(param), input_spec->data(),
-  //                          output_spec->data());
+  auto normalized_shape = module::getI64Array(getNormalizedShape());
+  layernorm_backward_param_t param = {0};
+  param.axis = input_spec->at(0).dims - normalized_shape->size();
+  BM168x::call_global_func("backend_api_layernorm_backward_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
 
 void tpu::LayerNormBwdOp::codegen_global_bm1684() {

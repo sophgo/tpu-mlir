@@ -1,3 +1,5 @@
+import os
+import copy
 import sys
 import torch
 import pdb
@@ -6,7 +8,6 @@ import numpy as np
 import importlib
 from argparse import Namespace
 MIN_BLOCK_SIZE = 5
-from torch.fx.passes.graph_drawer import FxGraphDrawer
 from mlir.ir import *
 import mlir.dialects.top as top
 from tools.train.TpuMlirModule import TpuMlirModule
@@ -49,21 +50,25 @@ def NoneAndRaise(node):
 class fx2mlir(object):
     def __init__(self,
                  submodule_name: str,
-                 args:Namespace
+                 args:Namespace,
+                 bwd_graph:bool
                 ):
+        self.work_dir = submodule_name.split('_')[0]
+        tmp = 'bwd' if bwd_graph else 'fwd'
+        self.model_name = f'{submodule_name}_{tmp}'
         self.args = args
-        self.bwd = False
+        self.bwd = bwd_graph
         self.bmodel_path = None
-        self.model_name = submodule_name
         self.ctx = Context()
         self.ctx.allow_unregistered_dialects = True
         loc = Location.unknown(self.ctx)
         self.ctx.__enter__()
         loc.__enter__()
 
-        self.weight_file = f'graph_for_jit_{submodule_name}.npz'
+        self.weight_file = f'graph_for_jit_{self.model_name}.npz'
         self.input_nodes = []
         self.output_nodes = []
+        self.output_dtypes = []
         self.return_none_count = 0
         self.operands = dict()
         self.weights_data = dict()
@@ -75,7 +80,7 @@ class fx2mlir(object):
             # Torch Convert, Alphabetically
             #############################
             "convolution": lambda node: self.convert_base_conv_op(node),
-            "aten.convolution_backward": lambda node: self.convert_backward_conv_op(node),
+            "convolution_backward": lambda node: self.convert_backward_conv_op(node),
             "permute": lambda node: self.convert_permute_op(node),
             "relu": lambda node: self.convert_relu_op(node),
             "max_pool2d_with_indices": lambda node: self.convert_maxpool2d_with_indices_op(node),
@@ -96,7 +101,7 @@ class fx2mlir(object):
             "mean": lambda node: self.convert_mean_op(node),
             "clone": lambda node: self.convert_clone_op(node),
             "_native_batch_norm_legit_functional": lambda node: self.convert_batch_norm_op(node),
-            "_native_batch_norm_backward": lambda node: self.convert_batch_norm_backward_op(node),
+            "native_batch_norm_backward": lambda node: self.convert_batch_norm_backward_op(node),
             "full":lambda node: self.convert_full_op(node),
             "arange":lambda node: self.convert_arange_op(node),
             "scalar_tensor":lambda node:self.convert_scalar_tensor_op(node),
@@ -161,7 +166,12 @@ class fx2mlir(object):
                 else:
                     in_ref_data[arg.name] = torch.randn(shape)
                 in_args_txt_list.append("%args{}: {} loc(unknown)".format(i, RankedTensorType.get(shape, F32Type.get()).__str__()))
-        np.savez('in_ref_data.npz', **in_ref_data)
+        np.savez(f'in_ref_data_a_op_{node.name}.npz', **in_ref_data)
+
+        if isinstance(node.meta['val'], (tuple,list)):
+            self.output_dtypes = [i.dtype for i in node.meta['val'] if i is not None]
+        else:
+            self.output_dtypes.append(node.meta['val'].dtype)
 
         output_txt = []
         for shape, dtype in zip(self.get_output_shapes(node), self.get_output_dtypes(node)):
@@ -207,7 +217,7 @@ class fx2mlir(object):
 
         tpu_ir = 'tpu_'+mlir_file
         self.bmodel_path = tpu_ir+'.bmodel'
-        mlir_lowering(mlir_file, tpu_ir, 'F32', "bm1684x")
+        mlir_lowering(mlir_file, tpu_ir, 'F32', self.args.chip)
         if self.args.cmp:
             tensors = mlir_inference(in_ref_data, tpu_ir, True)
             np.savez('tpu_ir_out_data.npz', **tensors)
@@ -225,23 +235,15 @@ class fx2mlir(object):
             f32_blobs_compare('bmodel_out_data.npz', 'ref_data.npz', '0.99,0.99')
 
         print('jit compile ok')
-        return TpuMlirModule(self.bmodel_path, self.return_none_count), list(in_ref_data.values())
+        return TpuMlirModule(self.bmodel_path, self.output_dtypes, self.return_none_count), list(in_ref_data.values())
 
     def convert(self, module):
         print('>>>>>>>>>> starting parsing...')
-        module.to_folder('fx_graph_dumped', self.model_name)
-        with open('fx_graph_dumped/input_shape', "w") as fd:
+        module.to_folder(f'fx_graph_dumped_{self.model_name}', self.model_name)
+        with open(f'fx_graph_dumped_{self.model_name}/input_shape', "w+") as fd:
             for i, node in enumerate(module.graph.nodes):
                 if node.op == 'placeholder':
                     fd.write(f"{node.name}*{list(node.meta['val'].size())}*{node.meta['val'].dtype}\n")
-
-        for node in module.graph.nodes:
-            if node.op == 'placeholder' and node.name == 'tangents_1':
-                self.bwd = True
-                break
-
-        # if not self.bwd:
-        #     return None
 
         in_ref_data = {}
         for i, node in enumerate(module.graph.nodes):
@@ -253,7 +255,7 @@ class fx2mlir(object):
                 if node.meta['val'].dtype == torch.bool:
                     tmp = tmp.astype(np.bool_)
                 in_ref_data[node.name+'_weight_or_param' if node.meta['tensor_meta'].requires_grad else node.name] = tmp
-        np.savez('in_ref_data.npz', **in_ref_data)
+        np.savez(f'in_ref_data_{self.model_name}.npz', **in_ref_data)
 
         # outs = module.forward(*[torch.from_numpy(i) for i in list(in_ref_data.values())])
         # print(f'out num:{len(outs)}', outs[0][0])
@@ -304,8 +306,8 @@ class fx2mlir(object):
             gc.collect()
 
         tpu_ir = 'tpu_'+mlir_file
-        self.bmodel_path = tpu_ir+'.bmodel'
-        mlir_lowering(mlir_file, tpu_ir, 'F32', "bm1684x")
+        self.bmodel_path = os.path.join(self.work_dir, tpu_ir+'.bmodel')
+        mlir_lowering(mlir_file, tpu_ir, 'F32', self.args.chip)
         if self.args.cmp:
             tensors = mlir_inference(in_ref_data, tpu_ir, True)
             np.savez('tpu_ir_out_data.npz', **tensors)
@@ -323,7 +325,7 @@ class fx2mlir(object):
             f32_blobs_compare('bmodel_out_data.npz', 'ref_data.npz', '0.99,0.99')
 
         print('jit compile ok, start cmp')
-        mlir_mod = TpuMlirModule(self.bmodel_path, self.return_none_count)
+        mlir_mod = TpuMlirModule(self.bmodel_path, self.output_dtypes, self.return_none_count)
         # in_ref_data = list(in_ref_data.values())
         # outs = mlir_mod(*in_ref_data) #运行生成的bmodel
         # 在另一个进程中执行估计有可能能成功
@@ -342,9 +344,9 @@ class fx2mlir(object):
         self.output_nodes = node.args[0]
         output_shapes = [list(i.meta['tensor_meta'].shape) for i in node.args[0] if i is not None]
         output_shapes = [[1] if i == [] else i for i in output_shapes]
-        output_dtypes = [i.meta['val'].dtype for i in node.args[0] if i is not None]
-        assert len(output_shapes) == len(output_dtypes)
-        output_txt = ','.join([f'{self.get_tensor_type(shape, self.get_dtype(dtype)).__str__()}' for shape, dtype in zip(output_shapes, output_dtypes)])
+        self.output_dtypes = [i.meta['val'].dtype for i in node.args[0] if i is not None]
+        assert len(output_shapes) == len(self.output_dtypes)
+        output_txt = ','.join([f'{self.get_tensor_type(shape, self.get_dtype(dtype)).__str__()}' for shape, dtype in zip(output_shapes, self.output_dtypes)])
         if len(output_shapes) > 1:
             output_txt = "({})".format(output_txt)
         return output_txt
@@ -460,30 +462,32 @@ class fx2mlir(object):
         dtypes = []
         if 'val' in node.meta:
             if isinstance(node.meta['val'], (tuple,list)):
-                dtypes = [i.dtype for i in node.meta['val'] if i is not None]
+                dtypes = [i.dtype if i is not None else None for i in node.meta['val'] ]
             else:
                 dtypes.append(node.meta['val'].dtype)
         else:
             dtypes.append(torch.float16)
-        dtypes = [self.get_dtype(i) for i in dtypes]
+        dtypes = [self.get_dtype(i) if i is not None else None for i in dtypes]
         # if len(dtypes) == 1:
         #     dtypes = dtypes[0]
         return dtypes
 
-    def get_output_shapes(self, node):
+    def get_output_shapes(self, node, exclude_num = 0):
         shapes = []
         if isinstance(node.meta['val'], (tuple,list)):
-            shapes = [list(i.size()) for i in node.meta['val'] if i is not None]
+            shapes = [list(i.size()) if i is not None else None for i in node.meta['val']]
         else:
             shapes.append(list(node.meta['val'].size()))
 
-        shapes = [[1] if i == [] else i for i in shapes]
+        shapes = [[1] if i is not None and i == [] else i for i in shapes]
+        for _ in range(exclude_num):
+            shapes.pop()
         return shapes
 
     def create_input_op(self, node, func_arg):
         init_args = {}
         output_shapes = self.get_output_shapes(node)
-        if 'tensor_meta' in node.meta and node.meta['tensor_meta'].requires_grad:
+        if not self.bwd and 'tensor_meta' in node.meta and node.meta['tensor_meta'].requires_grad:
             init_args["loc"] = self.get_loc(f'{node.name}_weight_or_param')
             init_args["ip"] = self.insert_point
             init_args["input"] = func_arg
@@ -584,22 +588,35 @@ class fx2mlir(object):
                             output,
                             dim = node.args[2],
                             loc=self.get_loc(node.name),
-                            ip=self.insert_point).output
+                            ip=self.insert_point).grad_input
         self.operands[node] = new_op
 
-    def convert_threshold_backward_op(self,node):
-        # op0 = self.operands[node.args[0]]
-        # dtype = self.get_output_dtypes(node)
-        # shape_input = node.args[1]
-        # dimension = node.args[2]
-        # new_op = top.BroadcastOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
-        #                     op0,
-        #                     shape_input,
-        #                     dimension,
-        #                     loc=self.get_loc(node.name),
+    def convert_threshold_backward_op(self, node):
+        grad_out = self.operands[node.args[0]]
+        shape_z = list(node.args[1].meta['val'].size())
+        dtype = self.get_output_dtypes(node)
+        self_ = self.operands[node.args[1]]
+        threshold = node.args[2]
+        shape = list(node.meta['val'].size())
+        # condition = top.ReluOp(*self.get_tensor_type([shape_z], dtype),
+        #                     self_,
+        #                     loc=self.get_loc(node.name+'_condition'),
         #                     ip=self.insert_point).output
-        # self.operands[node] = new_op
-        pass
+        x_is_const = False
+        y_is_const = True
+        x_const_val = y_const_val = threshold
+        new_op = top.WhereOp(*self.get_tensor_type([shape], dtype),
+                                self_,
+                                grad_out,
+                                self.none_op,
+                                x_is_const = x_is_const,
+                                y_is_const = y_is_const,
+                                x_const_val = x_const_val,
+                                y_const_val = y_const_val,
+                                loc=self.get_loc(node.name),
+                                ip=self.insert_point).output
+
+        self.operands[node] = new_op
 
     def convert_add_op(self, node):
         op0 = self.operands[node.args[0]]
@@ -670,8 +687,8 @@ class fx2mlir(object):
         kernel_shape = node.args[1]
         strides = node.args[2]
         pads = node.args[3]
-        dilation = [1,1]
-        ceil_mode = 0
+        dilation = [1,1] #pytorch默认值
+        ceil_mode = False
         assert (np.array(dilation) == 1).all()
         pads = pads + pads  # the pad of torch is symmetric
         dtype = self.get_output_dtypes(node)
@@ -680,7 +697,6 @@ class fx2mlir(object):
                                 kernel_shape=kernel_shape,
                                 strides=strides,
                                 pads=pads,
-                                do_relu=False,
                                 ceil_mode=ceil_mode,
                                 loc=self.get_loc(node),
                                 ip=self.insert_point)
@@ -759,48 +775,135 @@ class fx2mlir(object):
     def convert_backward_conv_op(self, node):
         # (Tensor grad_output, Tensor input, Tensor weight, SymInt[]? bias_sizes, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups, bool[3] output_mask) -> (Tensor, Tensor, Tensor)
         # (getitem_108, relu_14, primals_55, [0], [1, 1], [1, 1], [1, 1], False, [0, 0], 1, [True, True, False])
-        tangents_1 = self.operands[node.args[0]]
+       #(Tensor grad_output, Tensor input, Tensor weight, SymInt[]? bias_sizes, int[] stride, SymInt[] padding, int[] dilation,
+       #  bool transposed, SymInt[] output_padding, int groups, bool[3] output_mask) -> (Tensor, Tensor, Tensor)
+        # pdb.set_trace()
+        grad_out = self.operands[node.args[0]]
         input = self.operands[node.args[1]]
         weight = self.operands[node.args[2]]
-        kernel_shape = self.get_output_shapes(node.args[2])[0]
+        kernel_shape = list(node.args[2].meta['val'].size())
         kernel_shape = kernel_shape[2:]
+        bias_sizes = node.args[3]
         strides = node.args[4]
         dilations = node.args[6]
+        transposed = node.args[7]
+        output_padding = node.args[8]
         output_mask = node.args[-1]
         group = node.args[-2]
         pads = node.args[5]
         pads = pads + pads
-        bias = self.none_op
-        grad_input = grad_weight = grad_bias =  None
-        shape = self.get_output_shapes(node)
-        if output_mask[0]:
-            grad_input = top.ConvOp(*self.get_tensor_type(shape, dtype),
-                                tangents_1,
-                                weight,
-                                bias,
-                                kernel_shape=kernel_shape,
-                                strides=strides,
-                                dilations=dilations,
-                                pads=pads,
-                                group=group,
-                                do_relu=False,
-                                loc=self.get_loc(f'{node.name}_grad_input'),
-                                ip=self.insert_point).output
-
+        grad_input = grad_weight = grad_bias =  self.none_op
+        shape0 = [] if node.meta['val'][0]==None else list(node.meta['val'][0].size())
+        shape1 = [] if node.meta['val'][1]==None else list(node.meta['val'][1].size())
+        shape2 = [] if node.meta['val'][2]==None else list(node.meta['val'][2].size())
+        dtype = self.get_output_dtypes(node)
+        bias_op = self.none_op
         if output_mask[1]:
-            grad_weight = top.ConvOp(*self.get_tensor_type(shape, dtype),
-                                tangents_1,
-                                input,
-                                bias,
-                                kernel_shape=kernel_shape,
-                                strides=strides,
-                                dilations=dilations,
-                                pads=pads,
-                                group=group,
-                                do_relu=False,
-                                loc=self.get_loc(f'{node.name}_grad_weight'),
-                                ip=self.insert_point).output
-        self.operands[node] = [grad_input, grad_weight, grad_bias]
+            shape = list(node.args[0].meta['val'].size())
+            if shape[2]>56:
+                input_shape = list(node.args[1].meta['val'].size())
+                grad_out_shape = list(node.args[0].meta['val'].size())
+                transposed_grad_weight = top.ConvBwdWeightOp(*self.get_tensor_type([shape1], [dtype[1]]),
+                                                           input,
+                                                           grad_out,
+                                                           group,
+                                                           input_shape,
+                                                           grad_out_shape,
+                                                           kernel_shape,
+                                                           strides,
+                                                           dilations,
+                                                           pads,
+                                                           output_mask[-1],
+                                                           loc=self.get_loc(node.name+'_grad_weight'),
+                                                           ip=self.insert_point).output
+            else:
+	            shape[0],shape[1] = shape[1],shape[0]
+	            transposed_gradout = top.TransposeOp(*self.get_tensor_type([shape], dtype),
+	                                 grad_out,
+	                                 0,
+	                                 1,
+	                                 loc=self.get_loc(node.name+'_transposed_gradout'),
+	                                 ip=self.insert_point).output
+	            shape = list(node.args[1].meta['val'].size())
+	            shape[0],shape[1] = shape[1],shape[0]
+	            transposed_input = top.TransposeOp(*self.get_tensor_type([shape], dtype),
+	                                 input,
+	                                 0,
+	                                 1,
+	                                 loc=self.get_loc(node.name+'_transposed_input'),
+	                                 ip=self.insert_point).output
+	            # kernel_shape_ = list(node.args[1].meta['val'].size())
+	            grad_weight_kernel_shape = list(node.args[0].meta['val'].size())
+	            grad_weight_kernel_shape = grad_weight_kernel_shape[2:]
+	            grad_weight_shape = shape1
+	            grad_weight_shape[0],grad_weight_shape[1] = grad_weight_shape[1],grad_weight_shape[0]
+	            if pads[0]>0 and strides[0]>1:
+	                new_strides = [1,1]
+	                new_pads = copy.deepcopy(pads)
+	                input_shape = list(node.args[1].meta['val'].size())
+	                pad_cal = grad_weight_shape[2]-(pads[0]+input_shape[2]-strides[0]*(grad_weight_kernel_shape[0]-1))
+	                new_pads[2],new_pads[3] = pad_cal,pad_cal
+	                grad_weight = top.ConvOp(*self.get_tensor_type([grad_weight_shape], dtype),
+	                                    transposed_input,
+	                                    transposed_gradout,
+	                                    bias_op,
+	                                    kernel_shape=grad_weight_kernel_shape,
+	                                    strides=new_strides,
+	                                    dilations=strides,
+	                                    pads = new_pads,
+	                                    group=group,
+	                                    do_relu=False,
+	                                    loc=self.get_loc(node.name+'_grad_weight'),
+	                                    ip=self.insert_point).output
+	            else:
+	                grad_weight = top.ConvOp(*self.get_tensor_type([grad_weight_shape], dtype),
+	                                    transposed_input,
+	                                    transposed_gradout,
+	                                    bias_op,
+	                                    kernel_shape=grad_weight_kernel_shape,
+	                                    strides=strides,
+	                                    dilations=strides,
+	                                    pads = pads,
+	                                    group=group,
+	                                    do_relu=False,
+	                                    loc=self.get_loc(node.name+'_grad_weight'),
+	                                    ip=self.insert_point).output
+	            temp_shape = shape1
+	            temp_shape[0],temp_shape[1] = temp_shape[1],temp_shape[0]
+	            # shape = list(node.args[1].meta['val'].size())
+	            transposed_grad_weight = top.TransposeOp(*self.get_tensor_type([temp_shape], dtype),
+	                                grad_weight,
+	                                0,
+	                                1,
+	                                loc=self.get_loc(node.name+'_transposed_grad_weight'),
+	                                ip=self.insert_point).output
+        if output_mask[0]:
+            transposed_weight_shape = shape1
+            transposed_weight_shape[0],transposed_weight_shape[1] = transposed_weight_shape[1],transposed_weight_shape[0]
+            transposed_weight = top.TransposeOp(*self.get_tensor_type([transposed_weight_shape], dtype),
+                                 weight,
+                                 0,
+                                 1,
+                                 loc=self.get_loc(node.name+'_transposed_weight_2'),
+                                 ip=self.insert_point).output
+            grad_input_kernel_shape = list(node.args[0].meta['val'].size())[-1]
+            grad_input_output_shape = list(node.args[1].meta['val'].size())[-1]
+            output_padding = grad_input_output_shape-strides[0]*(grad_input_kernel_shape-1)+2*pads[0]-kernel_shape[0]
+            output_padding = [output_padding]*2
+            grad_input = top.DeconvOp(*self.get_tensor_type([shape0],dtype),
+                                  grad_out,
+                                  transposed_weight,
+                                  bias_op,
+                                  kernel_shape = kernel_shape,
+                                  strides = strides,
+                                  pads = pads,
+                                  group = group,
+                                  dilations = dilations,
+                                  output_padding = output_padding,
+                                  do_relu = False,
+                                  loc=self.get_loc(node.name+'_grad_input'),
+                                  ip=self.insert_point).output
+        self.operands[node] = [grad_input,transposed_grad_weight,None]
 
     def convert_sum_op(self, node): #aten.sum.default                (getitem_6,)
         op0 = self.operands[node.args[0]]
@@ -1182,9 +1285,7 @@ class fx2mlir(object):
         var = self.operands[node.args[4]]
         momentum = node.args[6]
         eps = node.args[7]
-        shape = list(node.meta['val'][0].size())
-        shape2 = list(node.meta['val'][1].size())
-        out = top.BatchNormTrainOp(*self.get_tensor_type([shape, shape2, shape2], dtype),
+        out = top.BatchNormTrainOp(*self.get_tensor_type(self.get_output_shapes(node, 2), dtype),
                                 op0,
                                 mean = mean,
                                 variance = var,
@@ -1194,34 +1295,42 @@ class fx2mlir(object):
                                 momentum=momentum,
                                 loc=self.get_loc(node),
                                 ip=self.insert_point)
-        self.operands[node] = [out.output, out.mean_out, out.variance_out, weight, bias] #todo 确认顺序?
+        self.operands[node] = [out.output, out.mean_out, out.variance_out, mean, var]
 
-    def convert_batch_norm_backward_op(self, node):
+     #- func: native_batch_norm_backward(Tensor grad_out, Tensor input, Tensor? weight, Tensor? running_mean, Tensor? running_var,
+     #                                   Tensor? save_mean, Tensor? save_invstd, bool train, float eps, bool[3] output_mask) -> (Tensor, Tensor, Tensor)
+    def convert_batch_norm_backward_op(self, node): #running_mean和running_var没有使用
+        grad_out = self.operands[node.args[0]]
+        input = self.operands[node.args[1]]
+        weight = self.operands[node.args[2]]
+        mean = self.operands[node.args[5]]
+        invstd = self.operands[node.args[6]]
+        eps = node.args[8]
+        output_mask = node.args[-1]
         dtype = self.get_output_dtypes(node)
-        op0 = self.operands[node.args[0]]
-        weight = self.operands[node.args[1]]
-        bias = self.operands[node.args[2]]
-        mean = self.operands[node.args[3]]
-        var = self.operands[node.args[4]]
-        eps = node.args[7]
-        shape = list(node.meta['val'][0].size())
-        out = top.BatchNormBwdOp(*self.get_tensor_type([shape], dtype),
-                                op0,
-                                mean,
-                                var,
+        gradinput = gradweight = gradbias = self.none_op
+        out = top.BatchNormBwdOp(*self.get_tensor_type(self.get_output_shapes(node),dtype),
+                                grad_out,
+                                input,
                                 weight,
-                                bias,
-                                epsilon=eps,
-                                loc=self.get_loc(node),
+                                mean,
+                                invstd,
+                                epsilon = eps,
+                                loc=self.get_loc([node.name+'grad_input',
+                                                node.name+'grad_weight',
+                                                node.name+'grad_bias']),
                                 ip=self.insert_point)
-        self.operands[node] = [out.output, out.mean_out, out.variance_out]
+        if output_mask[2]:
+            gradbias = out.bias_grad
+        if output_mask[1]:
+            gradweight = out.weight_grad
+        if output_mask[0]:
+            gradinput = out.grad_in
+        self.operands[node] = [gradinput,gradweight,gradbias]
 
     def convert_layer_norm_backward_op(self, node):
         grad_out = self.operands[node.args[0]]
         dtype = self.get_output_dtypes(node)
-        shape0 = list(node.meta['val'][0].size())
-        shape1 = list(node.meta['val'][1].size())
-        shape2 = list(node.meta['val'][2].size())
         assert node.args[1] in self.operands
         input = self.operands[node.args[1]]
         normalized_shape = node.args[2]
@@ -1231,7 +1340,8 @@ class fx2mlir(object):
         rstd = self.operands[node.args[4]]
         weight_opt = self.operands[node.args[5]] if node.args[5] in self.operands else self.none_op
         bias_opt = self.operands[node.args[6]] if node.args[6] in self.operands else self.none_op
-        out = top.LayerNormBwdOp(*self.get_tensor_type([shape0, shape1, shape2], dtype),
+        out = top.LayerNormBwdOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
+                              grad_out,
                               input,
                               mean,
                               rstd,

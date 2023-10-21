@@ -201,6 +201,8 @@ class TORCH_IR_TESTER(object):
             return True
         if self.chip == "bm1686" and bm1686_support:
             return True
+        if self.chip == "mars3" and bm1686_support:
+            return True
         return False
 
     def square_rooted(self, x):
@@ -588,6 +590,7 @@ class TORCH_IR_TESTER(object):
         test = self._test_AvgPool()
         test((nn.AvgPool1d, F.avg_pool1d), (4, 8, 40), 4, 3, 2)
         test((nn.AvgPool1d, F.avg_pool1d), (1, 8, 40), 2, 1, 1, False)
+        # test((nn.AvgPool1d, F.avg_pool1d), (1, 1, 1024), 510, 510, 0, False) /*not supported for bm1684x now*/
 
     def test_AvgPool2d(self):
         test = self._test_AvgPool()
@@ -690,6 +693,7 @@ class TORCH_IR_TESTER(object):
         test = self._test_MaxPool()
         test((nn.MaxPool1d, F.max_pool1d), (4, 8, 40), 4, 3, 2)
         test((nn.MaxPool1d, F.max_pool1d), (1, 8, 40), 2, 1, 0)
+        # test((nn.MaxPool1d, F.max_pool1d), (1, 1, 1024), 510, 510, 0, False) /*not supported for bm1684x now*/
 
     def test_MaxPool2d(self):
         test = self._test_MaxPool()
@@ -1088,7 +1092,7 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x):
                     y = x.type_as(self.other) + 1
-                    return y 
+                    return y
 
             self.trace_and_test([shape], Model())
 
@@ -2823,7 +2827,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1686', 'cv183x'], help="chip platform name")
+                        choices=['bm1684', 'bm1684x', 'bm1686', 'cv183x', 'mars3'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")

@@ -1,0 +1,9 @@
+RUN: bmodel_dis.py %p/bmodel/yolov5s_bm1686_int8_sym.bmodel | FileCheck %s
+
+CHECK:  module attributes {chip = "BM1686", version = 2.2} {
+CHECK-NEXT:  func.func @yolov5s(%G0: memref<1x3x640x640xui8, strides: [1228800, 409600, 640, 1]>) -> (memref<1x255x80x80xsi8, strides: [1632000, 6400, 80, 1]>, memref<1x255x40x40xsi8, strides: [408000, 1600, 40, 1]>, memref<1x255x20x20xsi8, strides: [102000, 400, 20, 1]>) ({
+CHECK-NEXT:  ^bb-1(%images: memref<1x3x640x640xui8, strides: [1228800, 409600, 640, 1]>)
+CHECK-NEXT:    %R0, %D1C0 = "dma.tensor"(%G0, %B0C0) : (memref<1x3x130x640xi8, strides: [1228800, 409600, 640, 1]>, none) -> (memref<1x3x130x640xi8, strides: [83200, 83200, 640, 1]>, none)
+CHECK-NEXT:    %R15, %D2C0 = "dma.tensor"(%G0, %B0C0) : (memref<1x32x1x1168xi8, strides: [37376, 1168, 1168, 1]>, none) -> (memref<1x32x1x1168xi8, strides: [1168, 1168, 1168, 1]>, none)
+CHECK-NEXT:    %B1C0 = "system_tr_wr.wr_imm"(%D2C0) {reg_idx0 = 5, reg_idx1 = 6, reg_idx2 = 127, des_imm0 = 0, des_imm1_h32 = 0, des_imm1_l32 = 122880}
+CHECK-NEXT:    %R11, %B2C0 = "conv.normal"(%R0, %R15.16, %R15.8, %C0, %R0, %D2C0) {kernel = [6, 6], stride = [2, 2], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [2, 0, 2, 2], opt_res_add = False, do_relu = False, sym_range = False, do_rq = True, round_mode = 5, kzp = 0} : (memref<1x3x130x640xui8, strides: [83200, 83200, 640, 1]>, memref<32x3x6x6xsi8>, memref<1x32x1x1xsi32, strides: [1, 1, 1, 1]>, ui8, memref<1x32x1x2xsi32, strides: [2, 2, 2, 1]>, none) -> (memref<1x32x64x320xsi8, strides: [20480, 20480, 320, 1]>, none)

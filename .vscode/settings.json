@@ -76,7 +76,10 @@
         "filesystem": "cpp",
         "compare": "cpp",
         "concepts": "cpp",
-        "numbers": "cpp"
+        "numbers": "cpp",
+        "semaphore": "cpp",
+        "span": "cpp",
+        "stop_token": "cpp"
     },
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,
@@ -93,5 +96,5 @@
         "--style={based_on_style:pep8, indent_width:4, column_limit:100}"
     ],
     "restructuredtext.preview.name": "docutils",
-    "esbonio.sphinx.confDir": ""
+    "esbonio.sphinx.confDir": "."
 }

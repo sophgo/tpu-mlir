@@ -790,7 +790,12 @@ void BMCodegen::codegen(Operation *op) {
       }
       for (; id < core_num; id++) { // consume all the MSG send/wait.
         multi_core->useCore(id);
+        // core_0: 0 -> code    -> 1 -> 0 -> nothing -> 1
+        //         ^               ^    ^               ^
+        //         |               |    |               |
+        // core_1: 0 -> nothing -> 1 -> 0 -> code    -> 1
         multi_core->syncAll();
+        // do nothing. just generate sync message.
         multi_core->syncAll();
       }
       multi_core->useCore(0); // reset the command buffer to 0

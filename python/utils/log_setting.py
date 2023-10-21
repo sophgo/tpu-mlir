@@ -34,6 +34,9 @@ def setup_logger(name, log_level="INFO"):
 
 class logger():
     def __init__(self, log_file_name:str, log_level:str = "DEBUG"):
+        root_logger = logging.getLogger()
+        for h in root_logger.handlers:
+            root_logger.removeHandler(h)
         os.system(f'rm -f {log_file_name}')
         level = logging.DEBUG
         if log_level == "INFO":

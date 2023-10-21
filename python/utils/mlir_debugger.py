@@ -8,6 +8,7 @@
 #
 # ==============================================================================
 import pymlir
+pymlir.set_mem_mode("value_mem")
 from collections import Counter
 from pprint import pformat
 import numpy as np

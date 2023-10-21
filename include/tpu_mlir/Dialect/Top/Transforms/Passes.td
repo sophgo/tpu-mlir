@@ -38,7 +38,7 @@ def ChipAssign : Pass<"chip-assign", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
   let options = [
     Option<"chip", "chip", "std::string", /*default=*/"",
-           "chip: cv183x/cv182x/cv186x/bm1684/bm1684x/bm1686/sg2260">,
+           "chip: cv183x/cv182x/cv186x/bm1684/bm1684x/bm1686/sg2260/mars3">,
   ];
 }
 

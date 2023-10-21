@@ -86,7 +86,12 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
   filter = filter_new;
   shape.assign(shape.size(), 1);
   shape[1] = oc;
-  shape.back() = new_ic * new_hw;
+  if ((new_ic * new_hw > 65535) && (shape.size() == 4)){
+    shape[shape.size()-1] = new_hw;
+    shape[shape.size()-2] = new_ic;
+  }else{
+    shape.back() = new_ic * new_hw;
+  }
 }
 
 template <typename T>

@@ -60,6 +60,8 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
             lib_so = 'libcmodel_1684.so'
         elif chip == "SG2260":
             lib_so = 'libcmodel_sg2260.so'
+        elif chip == "MARS3":
+            lib_so = 'libcmodel_mars3.so'
         cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
         os.system(cmd)
     elif model_file.endswith(".cvimodel"):
@@ -152,6 +154,7 @@ g_mlir_module = None
 
 def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=None) -> dict:
     import pymlir
+    pymlir.set_mem_mode("value_mem")
     from utils.mlir_parser import MlirParser
     global g_mlir_module
     if g_mlir_module != None:
@@ -172,6 +175,12 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
             g_mlir_module.set_tensor_from_int(name, input.astype(np.float32))
         else:
             g_mlir_module.set_tensor(name, input.astype(np.float32))
+    tensors = dict()
+    layer_names = g_mlir_module.all_tensor_names if dump_all else g_mlir_module.output_names
+    # def func2(layer_name):
+    #     if layer_name in layer_names:
+    #         tensors[layer_name] = g_mlir_module.get_tensor(layer_name).copy()
+    # g_mlir_module.after_invoke(func2)
     g_mlir_module.invoke()
     tensors = g_mlir_module.get_all_tensor()
     if dump_all:

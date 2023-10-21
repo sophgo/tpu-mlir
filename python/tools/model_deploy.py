@@ -59,9 +59,9 @@ class DeployTool:
         self.excepts = args.excepts
         self.tolerance = args.tolerance
         self.test_input = args.test_input
+        self.linear_quant_mode = args.linear_quant_mode
         self.quantize = args.quantize.lower()
         self.asymmetric = args.asymmetric
-        self.w8a16_linear = args.w8a16_linear
         self.cali_table = args.calibration_table
         self.quant_input = args.quant_input
         self.quant_output = args.quant_output
@@ -72,6 +72,7 @@ class DeployTool:
         self.customization_format = args.customization_format
         self.fuse_preprocess = args.fuse_preprocess
         self.aligned_input = args.aligned_input
+        self.do_winograd = args.do_winograd
         self.module = MlirParser(args.mlir)
         self.module_name = self.module.module_name
         self.state = self.module.module_state
@@ -88,6 +89,8 @@ class DeployTool:
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         self.dynamic = args.dynamic
         self.compare_all = args.compare_all
+        self.skip_validation = args.skip_validation
+        self.model_version = args.model_version
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
                 self.prefix += "_asym"
@@ -116,7 +119,7 @@ class DeployTool:
             mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
                           self.asymmetric, self.quantize_table, self.customization_format,
                           self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow,
-                          self.w8a16_linear)
+                          self.linear_quant_mode, self.do_winograd)
             if self.do_validate:
                 tool.validate_tpu_mlir()
 
@@ -216,16 +219,12 @@ class DeployTool:
             mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
                           self.quant_input, self.quant_output, self.disable_layer_group,
                           self.merge_weight, self.op_divide, self.num_device, self.num_core,
-                          self.embed_debug_info)
-            if self.do_validate:
+                          self.embed_debug_info, self.model_version)
+            if not self.skip_validation and self.do_validate:
                 tool.validate_model()
 
     def validate_model(self):
         size = os.path.getsize(self.model)
-        if size > 0x8000000:
-            print("Warning: {} is too large and will cost a long time. Please run in board".format(
-                self.model))
-            return
         self.model_npz = "{}_model_outputs.npz".format(self.prefix)
         file_mark(self.model_npz)
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
@@ -251,12 +250,10 @@ if __name__ == '__main__':
                         help="set default qauntization type: F32/BF16/F16/INT8")
     parser.add_argument("--asymmetric", action='store_true',
                         help="do INT8 asymmetric quantization")
-    parser.add_argument("--w8a16_linear", action='store_true',
-                        help="do W8A16Linear for weight matmul")
     parser.add_argument("--ignore_f16_overflow", action='store_true',
-                        help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm")
+                        help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm, RMSNorm, AvgPool")
     parser.add_argument("--chip", required=True, type=str.lower,
-                        choices=['bm1686', 'bm1684x', 'bm1684', 'sg2260',
+                        choices=['bm1686', 'bm1684x', 'bm1684', 'sg2260', 'mars3',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'],
                         help="chip platform name")
     parser.add_argument("--model", required=True, help='output model')
@@ -297,13 +294,21 @@ if __name__ == '__main__':
     parser.add_argument("--num_core", default=1, type=int,
                         help="The number of TPU cores used for parallel computation.")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
+    parser.add_argument("--skip_validation", action='store_true', help='skip checking the correctness of bmodel.')
     parser.add_argument("--merge_weight", action="store_true", default=False,
                         help="merge weights into one weight binary with previous generated cvimodel")
+    parser.add_argument("--linear_quant_mode", default="NORMAL", type=str.upper, choices=["W8A16", "W4A16", "NORMAL"],
+                    help="quantize linear with W8A16 / W4A16 strategy")
+    parser.add_argument("--do_winograd", action="store_true", default=False,
+                        help="do_winograd")
+    parser.add_argument("--model_version", default="latest",
+                        help="if need old version cvimodel, set the verion, such as 1.2")
 
     # yapf: enable
-    args = parser.parse_args() #namespace:所有参数名：参数值
-    if (args.w8a16_linear):
-        assert (args.quantize == "F16" and "W8A16Linear only support F16 quantize mode for now.")
+    args = parser.parse_args()
+    if args.linear_quant_mode != "NORMAL":
+        assert((args.quantize == "F16" or args.quantize == "BF16")
+               and "W8A16 and W4A16 can only be used in F16/ BF16 quantize mode")
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
     if not args.fuse_preprocess and args.customization_format:

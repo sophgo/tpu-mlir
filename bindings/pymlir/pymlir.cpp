@@ -10,7 +10,6 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-
 #include <vector>
 
 // -------------
@@ -46,6 +45,13 @@ typedef std::map<std::string, std::vector<int64_t>> shape_map_t;
 
 namespace py = pybind11;
 
+class PyCallBack : public CallBack {
+public:
+  explicit PyCallBack(py::function &func) : run_(func) {}
+  void run(std::string layer_name) { run_(layer_name); }
+  py::function run_;
+};
+
 // Warning: buffer in C++. New inference will erase old output
 static py::array getPyArray(std::shared_ptr<std::vector<float>> ptr,
                             const std::vector<int64_t> &shape) {
@@ -75,7 +81,6 @@ public:
     }
     context_.reset();
   }
-
   void load(std::string filename) {
     if (context_) {
       context_.reset();
@@ -93,6 +98,7 @@ public:
     }
 
     interpreter_ = std::make_unique<ModuleInterpreter>(module_.get());
+    interpreter_->set_mem_mode(gmem_mode_str_);
     interpreter_->allocate_resources();
     for (auto &name : interpreter_->input_names) {
       input_names.append(name);
@@ -111,7 +117,7 @@ public:
   py::dict getAllTensor() {
     py::dict py_ret;
     for (auto &name : interpreter_->all_tensor_names) {
-      if(!interpreter_->hasTensorMem(name)){
+      if (!interpreter_->hasTensorMem(name)) {
         // skip when part mem or memory allocated failed.
         continue;
       }
@@ -123,6 +129,22 @@ public:
     return py_ret;
   }
 
+  void before_invoke(py::function func) {
+    auto py_ptr = std::make_shared<PyCallBack>(func);
+
+    interpreter_->before_hooks.push_back(std::move(py_ptr));
+  }
+
+  void after_invoke(py::function func) {
+    auto py_ptr = std::make_shared<PyCallBack>(func);
+    interpreter_->after_hooks.push_back(std::move(py_ptr));
+  }
+
+  void clear_hooks() { interpreter_->clear_hooks(); }
+
+  static void set_mem_mode(std::string mem_mode) {
+    py_module::gmem_mode_str_ = mem_mode;
+  }
   void set_tensor(
       std::string name,
       py::array_t<float, py::array::c_style | py::array::forcecast> data) {
@@ -204,6 +226,7 @@ public:
   py::list input_names;
   py::list output_names;
   static std::string version;
+  static std::string gmem_mode_str_;
 
 private:
   std::unique_ptr<mlir::MLIRContext> context_;
@@ -211,6 +234,8 @@ private:
   std::string weightFilePath_;
   std::unique_ptr<ModuleInterpreter> interpreter_;
 };
+
+void set_mem_mode(std::string mem_mode) { py_module::set_mem_mode(mem_mode); }
 
 void debug_only(std::vector<std::string> debug_types) {
   llvm::DebugFlag = true;
@@ -229,24 +254,24 @@ void debug(bool enable) { llvm::DebugFlag = enable; }
 #endif
 
 std::string py_module::version = MLIR_VERSION;
-
+std::string py_module::gmem_mode_str_ = "";
 // wrap as Python module
 PYBIND11_MODULE(pymlir, m) {
   m.doc() = "pybind11 for mlir";
   m.def("debug", &debug, py::arg("enable") = true,
         "enable debugging information");
   m.def("debug", &debug_only, "configure debugging information");
-
+  m.def("set_mem_mode", &set_mem_mode, "set_Gmem_mode_str");
   py::class_<quant_brief_info>(m, "q_info", "simple tensor quant info")
       .def_readwrite("dtype", &quant_brief_info::dtype)
       .def_readwrite("shape", &quant_brief_info::shape)
       .def_readwrite("scale", &quant_brief_info::scale)
       .def_readwrite("zp", &quant_brief_info::zp);
-
   // clang-format off
   py::class_<py_module>(m, "module", "MLIR Module")
       .def(py::init<>())
       .def("load", &py_module::load, "load module from IR")
+      .def("set_mem_mode", &py_module::set_mem_mode)
       .def("set_tensor", &py_module::set_tensor)
       .def("set_tensor_from_int", &py_module::set_tensor_from_int)
       .def("get_tensor", &py_module::get_tensor, "get one tensor data")
@@ -258,10 +283,14 @@ PYBIND11_MODULE(pymlir, m) {
       .def("backward_weight_at", &py_module::backward_weight_at, "invoke the backward weight function of conv op")
       .def("invoke_from", &py_module::invoke_from, "invote from specified layer to the end")
       .def("get_tensor_qinfo", &py_module::format_tensor_qinfo, "get simple quant info of tensor")
+      .def("before_invoke", &py_module::before_invoke, "add a before hook")
+      .def("after_invoke", &py_module::after_invoke, "add a before hook")
+      .def("clear_hooks", &py_module::clear_hooks, "clear hooks")
       .def_readonly("input_names", &py_module::input_names)
       .def_readonly("output_names", &py_module::output_names)
       .def_readonly("all_tensor_names", &py_module::all_tensor_names)
       .def_readonly("all_weight_names", &py_module::all_weight_names)
       .def_readonly_static("version", &py_module::version);
+
   // clang-format on
 }

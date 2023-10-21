@@ -275,12 +275,18 @@ class MLIRImporter(object):
             output_txt += _type.__str__()
             if (_idx + 1) < self.num_output:
                 output_txt += ", "
+        result_types = output_txt
+        result_var_name = "%1"
         if self.num_output > 1:
             output_txt = "({})".format(output_txt)
+            result_types = output_txt[1:-1]
+            result_var_name = ",".join([f"%1#{var_id}" for var_id in range(self.num_output)])
         main_func = """
             module @\"{name}\" attributes {{module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none loc(unknown)
+                    %1:{last_output_num} = \"Placeholder.Op\"() : () -> {output}
+                    return {result_var} : {result_types}
                 }} loc(unknown)
             }} loc(unknown)
         """.format(name=self.model_name,
@@ -289,12 +295,19 @@ class MLIRImporter(object):
                    state=self.state,
                    chip=self.chip,
                    args=args_txt,
-                   output=output_txt)
+                   output=output_txt,
+                   last_output_num=self.num_output,
+                   result_var=result_var_name,
+                   result_types=result_types)
         self.mlir_module = Module.parse(main_func, self.ctx)
         self.func = self.mlir_module.body.operations[0]
         self.entry_block = self.func.regions[0].blocks[0]
         self.insert_point = InsertionPoint(self.entry_block)
         self.none_op = self.entry_block.operations[0].operation.results[0]
+        # remove Placeholder.Op and return Op.
+        # These operations are placeholders and are only used to generate a legal MLIR code.
+        self.entry_block.operations[2].operation.erase()
+        self.entry_block.operations[1].operation.erase()
 
         self.func_args = list()
         for i in self.entry_block.arguments:

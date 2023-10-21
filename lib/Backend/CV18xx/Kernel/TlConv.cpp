@@ -11,8 +11,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/Debug.h>
 
-
-
 #define DEBUG_TYPE "tl_conv"
 
 namespace tpu_mlir {
@@ -313,7 +311,7 @@ static void tl_leaky_relu(uint32_t layer_id,
   bool isIgnorePosPart = (m_i8_pos == 0 || (m_i8_pos == 1 && rshift_pos == 0));
   bool isSlopeSmallerThanOne = ((m_i8_neg >> rshift_neg) == 0);
 
-  if (isIgnorePosPart) {
+  if (isIgnorePosPart && m_i8_neg >= 0) {
     cvk_tiu_mul_param_t p4 = {0};
     p4.res_high = nullptr;
     p4.res_low = &working;
@@ -354,18 +352,20 @@ static void tl_leaky_relu(uint32_t layer_id,
     p13.layer_id = layer_id;
     CV18xx::tiu_max(&p13);
 
-    // 1. working(pos) apply pos rshift and m_i8
-    cvk_tiu_mul_param_t p = {0};
-    p.res_high = nullptr;
-    p.res_low = &working;
-    p.a = &working;
-    p.b_const.val = m_i8_pos;
-    p.b_const.is_signed = true;
-    p.b_is_const = 1;
-    p.rshift_bits = rshift_pos;
-    p.layer_id = layer_id;
-    p.relu_enable = 0;
-    CV18xx::tiu_mul(&p);
+    if (!isIgnorePosPart) {
+      // 1. working(pos) apply pos rshift and m_i8
+      cvk_tiu_mul_param_t p = {0};
+      p.res_high = nullptr;
+      p.res_low = &working;
+      p.a = &working;
+      p.b_const.val = m_i8_pos;
+      p.b_const.is_signed = true;
+      p.b_is_const = 1;
+      p.rshift_bits = rshift_pos;
+      p.layer_id = layer_id;
+      p.relu_enable = 0;
+      CV18xx::tiu_mul(&p);
+    }
 
     // 2. neg -> relu (in-place)
     cvk_tiu_min_param_t p7 = {0};

@@ -345,6 +345,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     DefaultValuedAttr<BoolAttr, "false">:$coeff_merged,
     DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
     DefaultValuedAttr<I64Attr, "0">:$kernel_zp,
+    OptionalAttr<I64Attr>:$use_winograd, // 0 not use, 1 used in toptotpu, 2 apply nodechip
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
@@ -981,21 +982,23 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
   }];
 }
 
-def Tpu_W8A16MatMulOp: Tpu_Op<"W8A16MatMul"> {
-  let summary = "w8a16 matmul operator";
+def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul"> {
+  let summary = "w8a16 / w4a16 matmul operator";
 
   let description = [{
     The special matrix multiplication designed for LLM Linear Layer.
     Weight is saved in int8 with f16 per-channel quant scale.
 
-    y_f16 = x_f16 x (w_int8.to(f16) * scale_f16)
+    y_f16 = x_f16 x (quantized_w.to(f16) * scale_f16)
   }];
 
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$weight,
-    AnyTensorOrNone:$scale, // the scale for W8A16Linear
+    AnyTensorOrNone:$scale, // the scale for quantized weight
     AnyTensorOrNone:$bias,
+    I64Attr:$weight_bits,
+    DefaultValuedAttr<BoolAttr, "true">:$sign,
     DefaultValuedAttr<BoolAttr, "false">:$w_transpose
   );
 
@@ -2020,8 +2023,8 @@ def Tpu_TileOp:Tpu_Op<"Tile", [
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
-    SI32Attr:$axis,
-    I64Attr:$tile,
+    Optional<AnyTensor>:$tileT,
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$tile,
     AnyTensorOrNone:$buffer
   );
   let results = (outs AnyRankedTensor:$output);
@@ -2982,6 +2985,7 @@ def Tpu_LayerNormBwdOp : Tpu_Op<"LayerNormBwd"> {
   }];
   let arguments = (ins
     AnyTensor:$grad_out,
+    AnyTensor:$input,
     AnyTensor:$mean,
     AnyTensor:$variance,
     AnyTensorOrNone:$weight,
@@ -3049,14 +3053,14 @@ def Tpu_BatchNormBwdOp: Tpu_Op<"BatchNormBwd"> {
     AnyTensor:$grad_out,
     AnyTensor:$input,
     AnyTensorOrNone:$weight_opt,
-    AnyTensorOrNone:$running_mean_opt,
-    AnyTensorOrNone:$running_var_opt,
+    AnyTensorOrNone:$saved_mean,
+    AnyTensorOrNone:$saved_invstd,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon
   );
   let results = (outs
-    AnyTensor:$output,
-    AnyTensor:$mean_out,
-    AnyTensor:$variance_out
+    AnyTensor:$grad_in,
+    AnyTensorOrNone:$weight_grad,
+    AnyTensorOrNone:$bias_grad
   );
 }
 
@@ -3107,6 +3111,26 @@ def Tpu_SoftmaxBwdOp: Tpu_Op<"SoftmaxBwd"> {
 
   let results = (outs AnyRankedTensor:$grad_input);
 }
-
+def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight">{
+  let summary = "Convolution Backward operator";
+  let description = [{Gradient of Weight in Convolution Backward}];
+  let arguments = (ins
+  AnyTensor:$input,
+  AnyTensor:$gradout,
+  I64Attr:$groups,
+  I64ArrayAttr:$input_shape,
+  I64ArrayAttr:$grad_out_shape,
+  I64ArrayAttr:$kernel_shape,
+  I64ArrayAttr:$stride,
+  I64ArrayAttr:$dilations,
+  I64ArrayAttr:$padding,
+  BoolAttr:$grad_bias_enable
+  );
+  let results =(outs
+  AnyTensor:$output);
+  let extraClassDeclaration = [{
+    convbwd_weight_attr_t parseParam();
+  }];
+}
 #endif // TPU_OPS
 

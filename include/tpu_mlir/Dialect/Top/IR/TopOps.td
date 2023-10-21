@@ -361,6 +361,7 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     DefaultValuedAttr<BoolAttr, "false">:$dynweight_reorderd,
     DefaultValuedAttr<I64Attr, "1">:$weight_is_coeff,
+    OptionalAttr<BoolAttr>:$do_winograd,
     OptionalAttr<AutoPadModeAttr>:$auto_pad, // only used in shape infer
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,
@@ -1280,7 +1281,8 @@ def Top_ExpandOp: Top_Op<"Expand"> {
 
   let arguments = (ins
     AnyTensor:$input,
-    I64ArrayAttr:$shape
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$shape,
+    Optional<AnyTensor>:$shapeT
   );
 
   let results = (outs AnyTensor:$output);
@@ -1630,8 +1632,8 @@ def Top_TileOp: Top_Op<"Tile"> {
 
   let arguments = (ins
     AnyTensor:$input,
-    SI32Attr:$axis,
-    I64Attr:$tile
+    Optional<AnyTensor>:$tileT,
+    OptionalAttr<I64ArrayAttr>:$tile
   );
 
   let results = (outs AnyTensor:$output);
@@ -2875,7 +2877,7 @@ def Top_BatchNormTrainOp: Top_Op<"BatchNormTrain"> {
 }
 
 def Top_BatchNormBwdOp: Top_Op<"BatchNormBwd"> {
-  let summary = "BatchNormalization train operation";
+  let summary = "BatchNormalization backward operation";
   let description = [{
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
     with additional channel dimension) as described in the paper
@@ -2894,14 +2896,14 @@ def Top_BatchNormBwdOp: Top_Op<"BatchNormBwd"> {
     AnyTensor:$grad_out,
     AnyTensor:$input,
     AnyTensorOrNone:$weight_opt,
-    AnyTensorOrNone:$running_mean_opt,
-    AnyTensorOrNone:$running_var_opt,
+    AnyTensorOrNone:$saved_mean,
+    AnyTensorOrNone:$saved_invstd,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon
   );
   let results = (outs
-    AnyTensor:$output,
-    AnyTensor:$mean_out,
-    AnyTensor:$variance_out
+    AnyTensor:$grad_in,
+    AnyTensorOrNone:$weight_grad,
+    AnyTensorOrNone:$bias_grad
   );
 }
 
@@ -2933,6 +2935,7 @@ def Top_LayerNormBwdOp : Top_Op<"LayerNormBwd"> {
   }];
   let arguments = (ins
     AnyTensor:$grad_out,
+    AnyTensor:$input,
     AnyTensor:$mean,
     AnyTensor:$variance,
     AnyTensorOrNone:$weight,
@@ -2992,4 +2995,25 @@ def Top_SoftmaxBwdOp: Top_Op<"SoftmaxBwd"> {
   let results = (outs AnyRankedTensor:$grad_input);
 }
 
+def Top_ConvBwdWeightOp:Top_Op<"ConvBwd_Weight">{
+  let summary = "Convolution Backward operator";
+  let description = [{Gradient of Weight in Convolution Backward}];
+  let arguments = (ins
+  AnyTensor:$input,
+  AnyTensor:$gradout,
+  I64Attr:$groups,
+  I64ArrayAttr:$input_shape,
+  I64ArrayAttr:$grad_out_shape,
+  I64ArrayAttr:$kernel_shape,
+  I64ArrayAttr:$stride,
+  I64ArrayAttr:$dilations,
+  I64ArrayAttr:$padding,
+  BoolAttr:$grad_bias_enable
+  );
+  let results =(outs
+  AnyTensor:$output);
+  let extraClassDeclaration = [{
+    convbwd_weight_attr_t parseParam();
+  }];
+}
 #endif // Top_OPS

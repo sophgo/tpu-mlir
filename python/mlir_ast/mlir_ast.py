@@ -153,7 +153,7 @@ class MlirASTParser:
         return func
 
     def parse_groupop(self, operation_line) -> GroupOp:
-        ops = []
+        ops: List[Operation] = []
 
         attr = input_types = output_types = loc_label = None
         op_id_str, op_define = operation_line.strip().split("=", maxsplit=1)
@@ -199,6 +199,8 @@ class MlirASTParser:
             output_types,
             loc_label,
         )
+        for op in ops:
+            op._parent = group_op
         return group_op
 
     def parse_simple_operation(self, operation_line: str) -> Operation:
@@ -227,9 +229,9 @@ class MlirAST:
         self.locid2op = {}
         self.locid2opname = {}
         self.opname2locid = {}
-        self.opid2op = {}
+        self.opid2op: Dict[str, Operation] = {}
 
-        self.module = None
+        self.module: Module = None
         self.locid2loc: Dict[str, Location] = {}
 
         self.optype2op = {}
@@ -242,6 +244,7 @@ class MlirAST:
 
         self.max_opd_id: int = 0
         self.max_loc_id: int = 0
+        self.name2func: Dict[str, Func] = {}
 
     def __enter__(self):
         global AST_CONTEXT
@@ -252,6 +255,11 @@ class MlirAST:
         global AST_CONTEXT
         assert AST_CONTEXT == self
         AST_CONTEXT = None
+
+    @property
+    def is_final(self) -> bool:
+        module_state = self.module.attrs["module.state"]
+        return module_state == '"TPU_ADDRESSED"'
 
     @property
     def ops(self) -> List[Operation]:
@@ -276,51 +284,71 @@ class MlirAST:
         self.max_loc_id += 1
         return f"#loc{self.max_loc_id}"
 
-    def add_operation(self, op: Operation, func: Func, group: GroupOp = None):
+    def add_operation(self, op: Operation, func: Func, group_op: GroupOp = None):
         self.locid2op[op.loc_label.loc_id_str] = op
         self.optype2op.setdefault(op.op_type.op_type_name, []).append(op)
         op_name = self.locid2opname[op.loc_label.loc_id_str]
+
+        if group_op is None:
+            local_id_start = 1e7
+        else:
+            local_id_start = int(group_op.ops[0].opd_ids[0][1:])
+
+        def is_local_opid(opd_str):
+            try:
+                return int(opd_str[1:]) >= local_id_start
+            except:
+                return False
+
+        use_ns = self.is_final
+        ns = group_op.name if group_op is not None and use_ns else ""
+        func_ns = func.name + "::" if func is not None and use_ns else ""
+
         for opd_id in op.opd_ids:
             self.update_max_opd_id(opd_id)
-            self.opid2op[opd_id] = op
+            self.opid2op[func_ns + ns + opd_id] = op
         self.opname2op[op_name] = op
         op.name = op_name
 
         preops = self.opname2preop.setdefault(op_name, [])
         if not op.op_type.isa("top.Input", "top.Weight", "top.None", "tosa.const"):
+            visited = set()
             for iop in op.op_type.opds:
-                # print(op.dump())
                 if "arg" in iop:
                     # skip final.mlir function input
                     continue
-                pre_op = self.opid2op[iop]
+
+                if is_local_opid(iop):
+                    ns_iop = func_ns + ns + iop
+                else:
+                    # load out of this group op
+                    ns_iop = func_ns + iop
+
+                pre_op = self.opid2op[ns_iop]
+
                 if pre_op.op_type.isa("top.None", "top.Weight"):
                     continue
                 preops.append(pre_op)
+
+                if iop in visited:
+                    continue
+                visited.add(iop)
+
+                nextops = self.opname2nextop.setdefault(
+                    self.get_op_name_by_op_id(ns_iop), []
+                )
+                nextops.append(op)
             try:
                 pass
             except:
                 print(f"skip add preops for {op.dump()}")
                 return
 
-            for iop in op.op_type.unique_opds:
-                if "arg" in iop:
-                    # skip final.mlir function input
-                    continue
-
-                nextops = self.opname2nextop.setdefault(
-                    self.get_op_name_by_op_id(iop), []
-                )
-                nextop_ids = set(chain(*[i.op_type.unique_opds for i in nextops]))
-
-                if any(iop not in nextop_ids for i in nextops):
-                    continue
-                nextops.append(op)
-
     def set_return(self, op: Return):
         self.return_op = op
 
     def add_function(self, func: Func):
+        self.name2func[func.name] = func
         for op in func.ops:
             if isinstance(op, Return):
                 self.set_return(op)
@@ -328,6 +356,9 @@ class MlirAST:
                 pass
             elif isinstance(op, Operation):
                 self.add_operation(op, func=func)
+                if isinstance(op, GroupOp):
+                    for oop in op.ops:
+                        self.add_operation(oop, func=func, group_op=op)
 
     def add_module(self, module: Module):
         self.module = module

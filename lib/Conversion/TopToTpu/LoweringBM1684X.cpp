@@ -59,7 +59,8 @@ void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns) {
       RangeTryLowering,
       ReshapeTryLowering,
       TopKTryLowering,
-      MinConstTryLowering
+      MinConstTryLowering,
+      TileTryLowering
       // clang-format on
       >(patterns->getContext());
   // TODO: GT LT GE LE MIN MAX SQRT ...
@@ -179,7 +180,9 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       EmbDenseBwdLowering,
       SoftmaxBwdLowering,
       WeightReorderLowering,
-      RangeLowering
+      RangeLowering,
+      ConvBwdWeightLowering,
+      GatherNDLowering
       // clang-format on
       >(patterns->getContext());
 }

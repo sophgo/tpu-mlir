@@ -27,12 +27,14 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
            "a table of Ops that quantized to specific mode">,
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"false",
            "true for asymmetric quantization, or false for symmetric">,
+    Option<"doWinograd", "doWinograd", "bool", /*default=*/"false",
+           "true for trying winograd ,or false for not">,
     Option<"ignore_f16_overflow", "ignore_f16_overflow", "bool", /*default=*/"false",
            "some ops convert from f16 to f32, to avoid f16 overflow">,
     Option<"weightFileName", "weightFileName", "std::string", /*default=*/"",
            "weight file name to save">,
-    Option<"isW8A16Linear", "w8a16_linear", "bool", /*default=*/"false",
-           "true for w8a16 weight matmul">
+    Option<"LinearQuantMode", "linear_quant_mode", "std::string", /*default=*/"",
+           "W4A16/ W8A16 quant mode for linear layer">
   ];
 }
 

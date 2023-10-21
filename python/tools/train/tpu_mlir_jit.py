@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import torch
 import time
 import copy
@@ -6,7 +7,6 @@ from argparse import Namespace
 from torch._dynamo.backends.common import aot_autograd
 from functorch.compile import make_boxed_func
 from torch._functorch import compilers
-from torch.fx.passes.graph_drawer import FxGraphDrawer
 from mlir.ir import *
 import mlir.dialects.top as top
 # import mlir.dialects.train as train
@@ -17,7 +17,7 @@ from tools.train.TpuMlirModule import TpuMlirModule
 from tools.train.fx2mlir import fx2mlir
 from tools.train.fx_pass import fx_pass_for_bmm_expand
 
-PLUGIN_PATH = "/workspace/code/tpu10/tpu-train/libtorch_plugin/build/liblibtorch_plugin.so"
+PLUGIN_PATH = "/workspace/code/tpu12/tpu-train/libtorch_plugin/build/liblibtorch_plugin.so"
 torch.ops.load_library(PLUGIN_PATH)
 
 args = None
@@ -94,19 +94,25 @@ def _get_disc_decomp():
 def convert_module_fx(
     submodule_name: str,
     module: torch.fx.GraphModule,
-    args:Namespace
+    args:Namespace,
+    bwd_graph:bool
 ) -> TpuMlirModule:
-    c = fx2mlir(submodule_name, args)
+    c = fx2mlir(submodule_name, args, bwd_graph)
     return c.convert(module)
 
+def save_fxgraph_dot(name, module):
+    if 'enable_dot_graph' in args.debug:
+        from torch.fx.passes.graph_drawer import FxGraphDrawer
+        g = FxGraphDrawer(module, name)
+        with open(f'{name}.svg', "wb") as f:
+            f.write(g.get_dot_graph().create_svg())
+
 def tpu_mlir_compiler(fx_g, example_inputs):
+    time_str = time.strftime("time%Y%m%d%H%M%S", time.localtime())
+    os.system(f'rm -rf fx_graph_dumped*;mkdir -p {time_str}')
     print('run tpu_mlir_compiler, original graph:')
     fx_g.graph.print_tabular()
-
-    name = f"fx_g{time.time()}"
-    g = FxGraphDrawer(fx_g, name)
-    with open(f"{name}.svg", "wb") as f:
-        f.write(g.get_dot_graph().create_svg())
+    save_fxgraph_dot(f"fx_g_{time_str}", fx_g)
 
     for i, node in enumerate(fx_g.graph.nodes):
         print(f'>>> {i}th op, name:', node.name, 'target:',node.target, 'args:', node.args, 'users:', list(node.users.keys()), 'kwargs:', node.kwargs,
@@ -157,31 +163,22 @@ def tpu_mlir_compiler(fx_g, example_inputs):
         fx_g.graph.lint()
         fx_g.recompile()
 
-        cvt_en = False
+        bwd_graph = len([node for node in fx_g.graph.nodes if node.op == 'placeholder' and node.name == 'tangents_1']) > 0
         partitioned_module = partition(fx_g, min_block_size = 3)
-        name = f"partitioned_module_{time.time()}"
-        g = FxGraphDrawer(partitioned_module, name)
-        with open(f'{name}.svg', "wb") as f:
-            f.write(g.get_dot_graph().create_svg())
+        save_fxgraph_dot(f"partitioned_module_{time_str}", partitioned_module)
 
         if len(list(partitioned_module.named_children())) > 0:
             for name, _ in partitioned_module.named_children():
                 submodule = getattr(partitioned_module, name)
                 print(name, 'submodule:', submodule)
 
-                tpu_mlir_mod = convert_module_fx(name, submodule, args)
+                tpu_mlir_mod = convert_module_fx(f'{time_str}_{name}', submodule, args, bwd_graph)
                 if tpu_mlir_mod is not None:
-                    cvt_en = True
                     setattr(partitioned_module, name, tpu_mlir_mod)
         else:
-            partitioned_module = convert_module_fx('main_mod', partitioned_module, args)
-            if partitioned_module is not None:
-                cvt_en = True
+            partitioned_module = convert_module_fx(f'{time_str}_main_mod', partitioned_module, args, bwd_graph)
 
-    if cvt_en:
-        return make_boxed_func(partitioned_module.forward)
-    else:
-        return make_boxed_func(fx_g_bk.forward)
+    return make_boxed_func(partitioned_module.forward)
 
 # tpu_dev = "cpu"
 # tpu_dev = "cuda:0"

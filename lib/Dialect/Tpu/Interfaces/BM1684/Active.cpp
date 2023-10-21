@@ -33,10 +33,12 @@ void tpu::ActiveOp::codegen_global_bm1684() {
        case ActiveMode::ELU:
        case ActiveMode::EXP:
        case ActiveMode::ABSVAL:
+       case ActiveMode::COS:
        case ActiveMode::FLOOR:
        case ActiveMode::TANH:
        case ActiveMode::LN:
        case ActiveMode::GELU:
+       case ActiveMode::SIN:
        case ActiveMode::SQRT:
        case ActiveMode::MISH:
        case ActiveMode::SQUARE:
@@ -83,6 +85,10 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684(
             case ActiveMode::GELU:
             case ActiveMode::SILU:
                 buffer_size = 2 * tensor_size;
+                break;
+            case ActiveMode::COS:
+            case ActiveMode::SIN:
+                buffer_size = 3 * tensor_size;
                 break;
             default:
                 llvm_unreachable("Not Implement such activate type, please add it.");

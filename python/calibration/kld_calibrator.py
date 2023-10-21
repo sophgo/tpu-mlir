@@ -520,7 +520,6 @@ class SimpleTuner:
         return True
 
     def run(self):
-        #pdb.set_trace()
         self.layer_cos_sim = {}
         all_tensors = self.parser.get_op_name_list()
         self.initial_threshold = copy.deepcopy(self.threshold_table.thresholds_map)
@@ -637,6 +636,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
         self.batch_size = self.parser.get_batch_size()
         self.input_num = self.parser.get_input_num()
         self.ppa_list = []
+
         for i in range(self.input_num):
             tmp = preprocess()
             tmp.load_config(self.parser.get_input_op_by_idx(i))
@@ -789,24 +789,30 @@ class ActivationCalibrator2(BaseKldCalibrator):
     def gen_ref_tensor(self, i, op_name):
         if op_name in self.ref_activations[i]:
             return
-        input_ops = self.parser.get_pre_op_by_op_name(op_name)
-        for input_op in input_ops:
-            if input_op in self.ref_activations[i]:
-                data = self.ref_activations[i][input_op][0]
-                self.module.set_tensor(input_op, data)
-        if len(input_ops) > 0:
+        def set_func(layer_name):
+            if layer_name==op_name:
+                input_ops = self.parser.get_pre_op_by_op_name(op_name)
+                for input_op in input_ops:
+                    if input_op in self.ref_activations[i]:
+                        data = self.ref_activations[i][input_op][0]
+                        self.module.set_tensor(input_op, data)
+        def get_func(layer_name):
+            if layer_name==op_name:
+                count = self.parser.get_use_count_by_op_name(op_name)
+                self.ref_activations[i][op_name] = [self.module.get_tensor(layer_name).copy(), count]
+                outputs = self.parser.get_outputs_by_op_name(op_name)
+                if outputs is not None:
+                    for output in outputs:
+                        if output == op_name:
+                            continue
+                        count = self.parser.get_use_count_by_op_name(output)
+                        if count > 0:
+                            self.ref_activations[i][output] = [self.module.get_tensor(output).copy(), count]
+        self.module.before_invoke(set_func)
+        self.module.after_invoke(get_func)
+        if len(self.parser.get_pre_op_by_op_name(op_name)) > 0:
             value = self.module.invoke_at(op_name)
-            count = self.parser.get_use_count_by_op_name(op_name)
-            self.ref_activations[i][op_name] = [value.copy(), count]
-            outputs = self.parser.get_outputs_by_op_name(op_name)
-            if outputs is not None:
-                for output in outputs:
-                    if output == op_name:
-                        continue
-                    count = self.parser.get_use_count_by_op_name(output)
-                    if count > 0:
-                        self.ref_activations[i][output] = [self.module.get_tensor(output), count]
-
+        self.module.clear_hooks()
     def find_threshold(self, histogram_data_map, histogram_width_map):
         thresholds = {}
         num = len(histogram_data_map)

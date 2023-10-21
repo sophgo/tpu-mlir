@@ -33,10 +33,12 @@ void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
     getRShiftAndMultiplierFromQScale(qscale_pos, &multiplier_pos, &rshift_pos,
                                      false);
   }
-  float qscale_neg = qscale_pos * negative_slope;
+  float qscale_neg = std::fabs(qscale_pos * negative_slope);
   getRShiftAndMultiplierFromQScale(qscale_neg, &multiplier_neg, &rshift_neg,
                                    false);
-
+  if (negative_slope < 0) {
+    multiplier_neg *= -1;
+  }
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("alpha", op.getAlphaAttr()));
   attrs.push_back(rewriter.getNamedAttr(

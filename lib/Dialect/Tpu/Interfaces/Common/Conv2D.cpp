@@ -55,6 +55,12 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
   p.ins_w = ins->at(1);
   p.groups = getGroup();
   p.is_dw = (p.oc == p.ic && p.oc == p.groups && p.groups > 1);
+
+  if (getUseWinograd().value_or(0) != 0) {
+    p.kh = 3;
+    p.kw = 3;
+  }
+  p.use_winograd = getUseWinograd().value_or(0);
   return p;
 }
 
@@ -84,8 +90,174 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
       p.inputs[2][i] = 0.f;
     }
   }
-  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
-  conv->run();
+
+  int use_winograd = getUseWinograd().value_or(0);
+  if (use_winograd) {
+    // AT @ P @ A -> AE @ P
+    float AEQ[4][16] = {
+        {1., 1., 1., 0., 1., 1., 1., 0., 1., 1., 1., 0., 0., 0., 0., 0.},
+        {0., 1., -1., 1., 0., 1., -1., 1., 0., 1., -1., 1., 0., 0., 0., 0.},
+        {0., 0., 0., 0., 1., 1., 1., 0., -1., -1., -1., 0., 1., 1., 1., 0.},
+        {0., 0., 0., 0., 0., 1., -1., 1., 0., -1., 1., -1., 0., 1., -1., 1.}};
+
+    //
+    float BEQ[16][16] = {
+        {1., 0., -1., 0., 0., 0., 0., 0., -1., 0., 1., 0., 0., 0., 0., 0.},
+        {0., 1., 1., 0., 0., 0., 0., 0., 0., -1., -1., 0., 0., 0., 0., 0.},
+        {0., -1., 1., 0., 0., 0., 0., 0., 0., 1., -1., 0., 0., 0., 0., 0.},
+        {0., -1., 0., 1., 0., 0., 0., 0., 0., 1., 0., -1., 0., 0., 0., 0.},
+        {0., 0., 0., 0., 1., 0., -1., 0., 1., 0., -1., 0., 0., 0., 0., 0.},
+        {0., 0., 0., 0., 0., 1., 1., 0., 0., 1., 1., 0., 0., 0., 0., 0.},
+        {0., 0., 0., 0., 0., -1., 1., 0., 0., -1., 1., 0., 0., 0., 0., 0.},
+        {0., 0., 0., 0., 0., -1., 0., 1., 0., -1., 0., 1., 0., 0., 0., 0.},
+        {0., 0., 0., 0., -1., 0., 1., 0., 1., 0., -1., 0., 0., 0., 0., 0.},
+        {0., 0., 0., 0., 0., -1., -1., 0., 0., 1., 1., 0., 0., 0., 0., 0.},
+        {0., 0., 0., 0., 0., 1., -1., 0., 0., -1., 1., 0., 0., 0., 0., 0.},
+        {0., 0., 0., 0., 0., 1., 0., -1., 0., -1., 0., 1., 0., 0., 0., 0.},
+        {0., 0., 0., 0., -1., 0., 1., 0., 0., 0., 0., 0., 1., 0., -1., 0.},
+        {0., 0., 0., 0., 0., -1., -1., 0., 0., 0., 0., 0., 0., 1., 1., 0.},
+        {0., 0., 0., 0., 0., 1., -1., 0., 0., 0., 0., 0., 0., -1., 1., 0.},
+        {0., 0., 0., 0., 0., 1., 0., -1., 0., 0., 0., 0., 0., -1., 0., 1.}};
+
+    int n = attr.n;
+    int ic = attr.ic;
+    int ih = attr.ih;
+    int iw = attr.iw;
+    int pih = attr.ih + attr.phb + attr.pht;
+    int piw = attr.iw + attr.pwl + attr.pwr;
+
+    int window_h = (pih - 4) / 2 + 1;
+    int window_w = (piw - 4) / 2 + 1;
+    int row_num = window_w * window_h;
+
+    int oc = attr.oc;
+    int ow = attr.ow;
+    int oh = attr.oh;
+    auto gt = p.inputs[1] + (ic * oc * 3 * 3); // b, ic, iw, ih
+
+    float *input_unfolded = new float[row_num * attr.ic * 16];
+    float *P = new float[row_num * attr.oc * 16];
+    float *IA_wino = new float[row_num * attr.ic * 16];
+
+    bool need_pad = (attr.phb + attr.pht + attr.pwl + attr.pwr) > 0;
+
+    float *inputs;
+    // for each batch
+    for (int bs = 0; bs < n; bs++) {
+      inputs = need_pad ? new float[ic * pih * piw]
+                        : p.inputs[0] + (bs * ic * ih * iw);
+      if (need_pad) {
+        memset(inputs, attr.pad_value,
+               sizeof(float) * ic * (ih + attr.pht + attr.phb) *
+                   (iw + attr.pwl + attr.pwr));
+        for (int i = 0; i < ic; i++) {
+          for (int j = 0; j < ih; j++) {
+            for (int k = 0; k < iw; k++) {
+              int input_index =
+                  (bs * ic * ih * iw) + (i * ih * iw) + (j * iw) + (k);
+              int output_index =
+                  (i * pih * piw) + ((j + attr.pht) * piw) + (k + attr.pwl);
+
+              inputs[output_index] = p.inputs[0][input_index];
+            }
+          }
+        }
+      }
+
+      /**
+       * 1. unfold image (im2col)
+       * input_unfolded = (
+       *     input_image.unfold(2, 4, 2)
+       *     .unfold(3, 4, 2)
+       *     .permute(0, 2, 3, 1, 4, 5)
+       *     .reshape(row_num * ic, 16)
+       * )
+       */
+      int output_index = 0;
+      for (int i = 0; i < window_h * 2; i += 2) {   // unfold(3, 4, 2)
+        for (int j = 0; j < window_w * 2; j += 2) { // unfold(2, 4, 2)
+          for (int ci = 0; ci < attr.ic; ci++) {    // permute(0, 2, 3, 1, 4, 5)
+            for (int hi = 0; hi < 4; hi++) {
+              for (int wi = 0; wi < 4; wi++) {
+                int input_index =
+                    (ci * pih * piw) + ((i + hi) * piw) + (j + wi);
+                input_unfolded[output_index] = inputs[input_index];
+                output_index++;
+              }
+            }
+          }
+        }
+      }
+
+      // 2.
+      // input_unfolded @ BEQ.transpose(0, 1) -> IA_wino
+      auto matmul = new MatMul();
+      matmul->setup(input_unfolded, (float *)BEQ, 0, IA_wino, 1, 1,
+                    row_num * ic, 16, 16, false, 0, 0, 0, true, false, false,
+                    false);
+      matmul->run();
+      delete matmul;
+
+      // 3.
+      memset(P, 0, sizeof(float) * row_num * attr.oc * 16);
+      // (gt * IA_wino with broadcast and reduce sum) -> P
+
+#pragma omp parallel for schedule(static, omp_schedule(row_num))
+      for (int i = 0; i < row_num; i++) {
+        for (int oi = 0; oi < attr.oc; oi++) { // for each kernel
+          for (int k = 0; k < 16; k++) {       // for each window
+            for (int j = 0; j < ic; j++) {     // for each input channel
+              int input_index = (i * ic * 16) + (j * 16) + (k);
+              // IA_wino[input_index]
+              int gt_index = (oi * ic * 16) + (j * 16) + (k);
+              int output_index = (i * attr.oc * 16) + (oi * 16) + (k);
+              P[output_index] += IA_wino[input_index] * gt[gt_index];
+            }
+          }
+        }
+      }
+
+      // 4.
+      // P @ AEQ.transpose(0, 1) -> wino_res
+      float *wino_res = new float[row_num * attr.oc * 4];
+      matmul = new MatMul();
+      matmul->setup(P, (float *)AEQ, 0, wino_res, 1, 1, row_num * attr.oc, 16,
+                    4, false, 0, 0, 0, true, false, false, 0);
+      matmul->run();
+      delete matmul;
+
+      // 5.
+#pragma omp parallel for schedule(static, omp_schedule(row_num))
+      for (int r = 0; r < row_num; r++) {
+        for (int c = 0; c < oc; c++) {
+          for (int h = 0; h < 2; h++) {
+            for (int w = 0; w < 2; w++) {
+              int wino_res_idx = (r * oc * 4) + (c * 4) + h * 2 + w;
+              int h_idx = ((r * 2) / ow) * 2 + h;
+              int w_idx = (r * 2) % ow + w;
+              int unfolded_idx =
+                  (bs * oc * oh * ow) + (c * oh * ow) + (h_idx * ow) + (w_idx);
+              p.outputs[0][unfolded_idx] = wino_res[wino_res_idx];
+            }
+          }
+        }
+      }
+
+      // fold wino_res -> p.outputs[0]
+      delete[] wino_res;
+    }
+    if (need_pad) {
+      delete[] inputs;
+    }
+    delete[] P;
+    delete[] IA_wino;
+    delete[] input_unfolded;
+
+  } else {
+    conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
+    conv->run();
+  }
+
   // requant
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
@@ -103,6 +275,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     auto multiplier_v =
         module::getI64Array(getMultiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
+    bool use_winograd = attr.use_winograd;
     // do bias after conv prevent precision issue
     auto bias_i32 = std::make_shared<std::vector<int32_t>>(c, 0);
     bool do_relu = getDoRelu();
@@ -118,12 +291,14 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
-      int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);
+      int64_t shift = per_axis       ? rshift_v->at(ic)
+                      : use_winograd ? rshift_v->at(1)
+                                     : rshift_v->at(0);
       int64_t multi = 1;
       if (qmode != tpu::RequantMode::OnlyShift) {
         multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
       }
-      int32_t bias = bias_i32->at(ic);
+      int32_t bias = bias_i32->at(ic + (use_winograd ? c : 0));
       for (int in = 0; in < n; in++) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;
@@ -286,12 +461,6 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
     auto attr = parseParam();
     if (attr.sh > 15 || attr.sw > 15 || attr.dh > 15 || attr.dw > 15 ||
         attr.ic >= (1 << 12) || attr.oc >= (1 << 12)) {
-      return failure();
-    }
-  }
-  if (module::isWeight(getFilter()) == false) {
-    auto Filter_type = BM168x::getDataType(getFilter());
-    if (Filter_type == DTYPE_FP32){
       return failure();
     }
   }

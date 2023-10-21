@@ -22,7 +22,6 @@ struct TopRepeatToTile : public OpRewritePattern<RepeatOp> {
     auto in_shape_ = shape_expand_dim(in_shape, out_shape.size());
     auto last_shape = std::vector<int64_t>(in_shape_);
     auto stype = module::getStorageType(op.getInput());
-    // auto repeats_ = module::getI64Array(getRepeatsAttr());
     int last_i = 0;
     auto last_op = op.getInput();
     if (in_shape.size() < out_shape.size()) {
@@ -42,29 +41,19 @@ struct TopRepeatToTile : public OpRewritePattern<RepeatOp> {
       op.getOutput().replaceAllUsesWith(op.getInput());
       return success();
     }
+    std::vector<int64_t> weight_tile(out_shape.size(), 1);
     for (int i = 0; i <= last_i; ++i) {
       if (in_shape_[i] == out_shape[i])
         continue;
       int64_t tile = out_shape[i] / in_shape_[i];
-      std::vector<NamedAttribute> attrs;
-      attrs.push_back(
-          rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(i)));
-      attrs.push_back(
-          rewriter.getNamedAttr("tile", rewriter.getI64IntegerAttr(tile)));
-
-      if (i == last_i) {
-        rewriter.replaceOpWithNewOp<TileOp>(
-            op, op.getResult().getType(), ValueRange{last_op}, attrs);
-      } else {
-        last_shape[i] = out_shape[i];
-        auto newType = RankedTensorType::get(last_shape, stype);
-        auto new_name = module::getName(op.getOperation()).str() + "___" +
-                        std::to_string(i);
-        auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-        last_op = rewriter.create<TileOp>(
-            name_loc, newType, ValueRange{last_op}, attrs);
-      }
+      weight_tile[i] = tile;
     }
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+          rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr(weight_tile)));
+    rewriter.replaceOpWithNewOp<TileOp>(
+            op, op.getResult().getType(), ValueRange{last_op}, attrs);
+
     return success();
   }
 };

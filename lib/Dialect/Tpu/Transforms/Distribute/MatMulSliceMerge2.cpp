@@ -36,9 +36,10 @@ Value isCastActive(Value in) {
   return nullptr;
 }
 
+template <typename MatMulTy>
 LogicalResult
-MatMulSliceMerge2::matchAndRewrite(tpu::MatMulOp op,
-                                   PatternRewriter &rewriter) const {
+MatMulSliceMerge2<MatMulTy>::matchAndRewrite(MatMulTy op,
+                                             PatternRewriter &rewriter) const {
   if (!isLargeMatMul(op) || module::isOpInDistribution(op)) {
     return failure();
   }
@@ -55,14 +56,14 @@ MatMulSliceMerge2::matchAndRewrite(tpu::MatMulOp op,
   if (!active_value) {
     return failure();
   }
-  // MatMulOp
+  // MatMulOp / A16MatMulOp
   auto mul_right_op =
-      dyn_cast<tpu::MatMulOp>(mul_down_op.getOperand(1).getDefiningOp());
+      dyn_cast<MatMulTy>(mul_down_op.getOperand(1).getDefiningOp());
   if (!mul_right_op) {
     return failure();
   }
   // MatMulOp
-  auto matmul_op = dyn_cast<tpu::MatMulOp>(active_value.getDefiningOp());
+  auto matmul_op = dyn_cast<MatMulTy>(active_value.getDefiningOp());
   if (!matmul_op) {
     return failure();
   }
@@ -77,19 +78,27 @@ MatMulSliceMerge2::matchAndRewrite(tpu::MatMulOp op,
   }
 
   // Bingo !!
-  distributeAfter(rewriter, top_op, op, tpu::DistributionPattern::MatMulSliceMerge2);
+  distributeAfter(rewriter, top_op, op,
+                  tpu::DistributionPattern::MatMulSliceMerge2);
   return success();
 }
 
-template <>
-void splitByDevices<MatMulSliceMerge2>(PatternRewriter &rewriter,
-                                       tpu::DistributionBeginOp op,
-                                       int64_t num_devices) {
+template LogicalResult MatMulSliceMerge2<tpu::MatMulOp>::matchAndRewrite(
+    tpu::MatMulOp op, PatternRewriter &rewriter) const;
+
+template LogicalResult MatMulSliceMerge2<tpu::A16MatMulOp>::matchAndRewrite(
+    tpu::A16MatMulOp op, PatternRewriter &rewriter) const;
+
+template <typename MatMulTy>
+void sliceMerge2Split(MatMulTy mm_left, PatternRewriter &rewriter,
+                      tpu::DistributionBeginOp op, int64_t num_devices) {
   // 1. Define params
   // MatMul params
+  if (!mm_left) {
+    return;
+  }
   std::vector<Operation *> mm(op->user_begin(), op->user_end());
-  auto mm_left = cast<tpu::MatMulOp>(mm[0]);
-  auto mm_right = cast<tpu::MatMulOp>(mm[1]);
+  auto mm_right = cast<MatMulTy>(mm[1]);
   auto topShape = module::getShape(op->getResult(0));
 
   // Swap MatMul->Cast->Active->Cast for MatMul
@@ -97,7 +106,8 @@ void splitByDevices<MatMulSliceMerge2>(PatternRewriter &rewriter,
     std::swap(mm_left, mm_right);
   }
 
-  auto leftFilterOp = mm_left.getRight().getDefiningOp<top::WeightOp>();
+  auto leftFilterOp =
+      mm_left.getOperand(1).template getDefiningOp<top::WeightOp>();
   auto filterShape = module::getShape(leftFilterOp.getOutput());
   auto outputShape = module::getShape(mm_left.getOutput());
   auto num_dims = filterShape.size();
@@ -105,6 +115,8 @@ void splitByDevices<MatMulSliceMerge2>(PatternRewriter &rewriter,
   auto slice_n = ceiling_func(N, num_devices);
   std::vector<Value> end_operands;
   Operation *end_op = nullptr;
+  auto a16_mm_left = dyn_cast<tpu::A16MatMulOp>(mm_left.getOperation());
+  int weight_bits = a16_mm_left ? a16_mm_left.getWeightBits() : 16;
 
   std::vector<Value> operands;
   bool biasAdd = false;
@@ -113,32 +125,43 @@ void splitByDevices<MatMulSliceMerge2>(PatternRewriter &rewriter,
     auto offset = i * slice_n;
     auto length = std::min((i + 1) * slice_n, N) - offset;
     auto suffix = std::to_string(i);
-    auto newShape = {outputShape[0], outputShape[1], length};
+    auto newShape = {outputShape[0], outputShape[1],
+                     (weight_bits == 4 ? 2 : 1) * length};
 
     // 2. Create Left MatMul
-    auto newLeftFilterOp =
-        module::opSliceAxis(mm_left.getRight(), num_dims - 1, offset, length);
+    auto newLeftFilterOp = module::opSliceAxis(mm_left.getOperand(1),
+                                               num_dims - 1, offset, length);
     operands.clear();
     operands.push_back(op->getResult(0));
     operands.push_back(newLeftFilterOp);
+    if (a16_mm_left) {
+      auto scale_op =
+          mm_left->getOperand(2).template getDefiningOp<top::WeightOp>();
+      operands.push_back(scale_op.clone(suffix));
+    }
     operands.push_back(mm_left.getBias());
 
     rewriter.setInsertionPointAfter(mm_left);
-    auto new_mm_left = rewriter.create<tpu::MatMulOp>(
+    auto new_mm_left = rewriter.create<MatMulTy>(
         module::getLocLike(mm_left.getOutput(), "mm_left_" + suffix),
         module::getTypeLike(mm_left.getOutput(), newShape), operands,
         mm_left->getAttrs());
 
     // 3. Create Right MatMul
-    auto newRightFilterOp =
-        module::opSliceAxis(mm_right.getRight(), num_dims - 1, offset, length);
+    auto newRightFilterOp = module::opSliceAxis(mm_right.getOperand(1),
+                                                num_dims - 1, offset, length);
     operands.clear();
     operands.push_back(op->getResult(0));
     operands.push_back(newRightFilterOp);
+    if (a16_mm_left) {
+      auto scale_op =
+          mm_right->getOperand(2).template getDefiningOp<top::WeightOp>();
+      operands.push_back(scale_op.clone(suffix));
+    }
     operands.push_back(mm_right.getBias());
 
     rewriter.setInsertionPointAfter(mm_right);
-    auto new_mm_right = rewriter.create<tpu::MatMulOp>(
+    auto new_mm_right = rewriter.create<MatMulTy>(
         module::getLocLike(mm_right.getOutput(), "mm_right_" + suffix),
         module::getTypeLike(mm_right.getOutput(), newShape), operands,
         mm_right->getAttrs());
@@ -159,21 +182,29 @@ void splitByDevices<MatMulSliceMerge2>(PatternRewriter &rewriter,
     rewriter.setInsertionPointAfter(new_mm_right);
     auto mul_op = rewriter.create<tpu::MulOp>(
         module::getLocLike(next_op->getResult(0), "mul_" + suffix),
-        module::getTypeLike(next_op->getResult(0), newShape), operands, next_op->getAttrs());
+        module::getTypeLike(next_op->getResult(0), newShape), operands,
+        next_op->getAttrs());
 
     // 5. Create Final MatMul
     next_op = *next_op->user_begin();
-    auto newFinalFilterOp = module::opSliceAxis(next_op->getOperand(1),
-                                                num_dims - 2, offset, length);
+    auto newFinalFilterOp =
+        module::opSliceAxis(next_op->getOperand(1), num_dims - 2,
+                            (weight_bits == 4 ? 2 : 1) * offset,
+                            (weight_bits == 4 ? 2 : 1) * length);
     operands.clear();
     operands.push_back(mul_op->getResult(0));
     operands.push_back(newFinalFilterOp);
-
-    auto bias = next_op->getOperand(2);
+    if (a16_mm_left) {
+      auto new_scale = module::opSliceAxis(next_op->getOperand(2), 0,
+                                           (weight_bits == 4 ? 2 : 1) * offset,
+                                           (weight_bits == 4 ? 2 : 1) * length);
+      operands.push_back(new_scale);
+    }
+    auto bias = next_op->getOperand(a16_mm_left ? 3 : 2);
     if (module::isNone(bias)) {
       operands.push_back(bias);
     } else if (module::isWeight(bias)) {
-      auto bias_weight = bias.getDefiningOp<top::WeightOp>();
+      auto bias_weight = bias.template getDefiningOp<top::WeightOp>();
       operands.push_back(bias_weight.clone(suffix));
     } else {
       operands.push_back(module::getNoneOp(op));
@@ -182,9 +213,10 @@ void splitByDevices<MatMulSliceMerge2>(PatternRewriter &rewriter,
     }
 
     rewriter.setInsertionPointAfter(next_op);
-    auto new_mm_final = rewriter.create<tpu::MatMulOp>(
+    auto new_mm_final = rewriter.create<MatMulTy>(
         module::getLocLike(next_op->getResult(0), "mm_final_" + suffix),
-        module::getTypeLike(next_op->getResult(0), topShape), operands, next_op->getAttrs());
+        module::getTypeLike(next_op->getResult(0), topShape), operands,
+        next_op->getAttrs());
     end_operands.push_back(new_mm_final.getOutput());
     end_op = *next_op->user_begin();
   }
@@ -204,6 +236,15 @@ void splitByDevices<MatMulSliceMerge2>(PatternRewriter &rewriter,
   eraseForward(rewriter, mm[0]);
   eraseForward(rewriter, mm[1]);
 }
+
+template void sliceMerge2Split(tpu::MatMulOp mm_left, PatternRewriter &rewriter,
+                               tpu::DistributionBeginOp op,
+                               int64_t num_devices);
+
+template void sliceMerge2Split(tpu::A16MatMulOp mm_left,
+                               PatternRewriter &rewriter,
+                               tpu::DistributionBeginOp op,
+                               int64_t num_devices);
 
 } // namespace tpu
 } // namespace tpu_mlir

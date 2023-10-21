@@ -93,6 +93,11 @@ LargePadConvPattern::matchAndRewrite(tpu::Conv2DOp op,
     input_value = op_pad.getResult();
   }
   op.setOperand(0, input_value);
+
+  // need exchange conv_paddings[1] and conv_paddings[2]
+  auto swap_val = conv_paddings[1];
+  conv_paddings[1] = conv_paddings[2];
+  conv_paddings[2] = swap_val;
   op.setPadsAttr(rewriter.getI64ArrayAttr(conv_paddings));
   return success();
 }

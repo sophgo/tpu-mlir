@@ -17,6 +17,7 @@ from multiprocessing import Lock
 
 
 import pymlir
+pymlir.set_mem_mode("value_mem")
 from utils.mlir_parser import MlirParser
 from utils.preprocess import preprocess
 from calibration.data_selector import DataSelector
@@ -261,7 +262,12 @@ class ref_tensors:
         self.add_name(self.module.all_tensor_names)
         self.add_name(self.parser.get_op_name_list())
         for op in self.ops:
-            self.ops[op] = len(self.parser.get_next_op_by_op_name(op))
+            cnt = 0
+            for op_ in self.parser.ops:
+                for op__ in op_.opds:
+                    if op__ in self.parser.get_op_name_list() and op__ == op:
+                        cnt += 1
+            self.ops[op] = cnt
             if op in self.module.output_names:
                 self.ops[op] += 1
 
@@ -296,7 +302,7 @@ class ref_tensors:
                             self.ops_buffer[out_] = []
                             self.ops_buffer[out_].append(self.module.get_tensor(out_).copy())
                     if l == 0:
-                        loger.logging(f'adding {out_}')
+                        loger.logging(f'adding {out_} cnt {self.ops[out_]}')
         for out_ in self.parser.get_outputs_by_op_name(op):
             if out_ in self.ops and self.ops[out_] > 0:
                 loger.logging(f'setting {out_} {self.ops[out_]}')
@@ -306,7 +312,7 @@ class ref_tensors:
                 self.ops_cnt[in_] -= 1
                 if self.ops_cnt[in_] == 0:
                     del self.ops_buffer[in_]
-                    loger.logging(f'del {in_}')
+                    loger.logging(f'del in {in_}')
         if op not in self.ops_buffer:
             print(f'{op} not in ref tensors!')
             sys.exit(1)
@@ -317,10 +323,12 @@ class ref_tensors:
             return
         if op not in self.ops_buffer:
             print(f"{op} not in buffer when mark used!")
-            sys.exit(1)
+            #sys.exit(1)
         else:
+            loger.logging(f'used, del 1 {op}')
             self.ops_cnt[op] -= 1
             if self.ops_cnt[op] == 0:
+                loger.logging(f'end used, del {op}')
                 del self.ops_buffer[op]
 
 class LrScheduler:

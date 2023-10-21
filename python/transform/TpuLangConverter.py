@@ -215,16 +215,16 @@ class TpuLangConverter(BaseConverter):
                 return self.mlir.ArrayAttr(attr[0], self.MLIRImporterTypeStr[attr[1]])
             elif attr[1].find("int") >= 0:
                 return IntegerAttr.get(self.type_to_mlir[attr[1]], attr[0])
-            elif attr[1] is "bool":
+            elif attr[1] == "bool":
                 return BoolAttr.get(attr[0])
-            elif attr[1] is "string":
+            elif attr[1] == "string":
                 return StringAttr.get(attr[0])
             else:
                 return FloatAttr.get(self.type_to_mlir[attr[1]], attr[0])
 
         for key, value in params.items():
             # DictArrayAttr for custom op
-            if value[1] is "dict" and not value[2]:
+            if value[1] == "dict" and not value[2]:
                 array_attr = []
                 for i, dict in enumerate(value[0]):
                     sub_dict = {}

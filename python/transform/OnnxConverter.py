@@ -481,13 +481,14 @@ class OnnxConverter(BaseConverter):
                     shape_changed = True
                 _shape.append(_dim.dim_value)
             self.addShape(input.name, _shape)
-
+        idx = 0  # avoid confilict for multi dynamic axes
         for o in outputs:
-            # for set arbitrary batch_size
+            # for set arbitrary axes
             _odims = o.type.tensor_type.shape.dim
             for _odim in _odims:
                 if _odim.dim_value <= 0 or shape_changed:
-                    _odim.dim_param = '?'
+                    _odim.dim_param = '?_' + str(idx)
+                    idx += 1
 
     def init_MLIRImporter(self):
         input_shapes = list()
@@ -1145,6 +1146,26 @@ class OnnxConverter(BaseConverter):
                 if num_input > 3 else (list(np.arange(len(ends))), self.mlir.none_op, True)
             steps, step_op, steps_is_const = try_get_slice_input(onnx_node, 4, 'steps') \
                 if num_input > 4 else ([1] * len(axes), self.mlir.none_op, True)
+            if steps[0] == -1 and starts[0] == -1 and ends == -np.iinfo(np.int64).max and self.isWeight(op):
+                in0 = op
+                indices_op_name = 'indices_'+onnx_node.inputs[0]
+                extra_attr = {}
+                dim_length = self.getWeight(onnx_node.inputs[axes])
+                np_tensor = np.arange(dim_length, -1, -1, dtype=np.int64)
+                self.addWeight(indices_op_name, np_tensor)
+                indices_op = self.getWeightOp(indices_op_name)
+                extra_attr.update({"keepdims": True})
+                indices = indices_op
+                new_op = top.GatherOp(self.unranked_type,
+                        in0,
+                        indices,
+                        axis=axes,
+                        **extra_attr,
+                        loc=self.get_loc("{}_{}".format(onnx_node.name, 'Gather')),
+                        ip=self.mlir.insert_point).output
+                self.addOperand(onnx_node.name, new_op)
+                return
+
             ends = list(map(lambda x: np.iinfo(np.int64).max if x >= np.iinfo(np.int64).max else x, ends))
             if not (starts_is_const * ends_is_const * axes_is_const * steps_is_const):
                 new_op = top.SliceAxisOp(self.unranked_type,
@@ -1707,43 +1728,46 @@ class OnnxConverter(BaseConverter):
 
     def convert_expand_op(self, onnx_node):
         assert (onnx_node.op_type == 'Expand')
-        in0 = self.getOperand(onnx_node.inputs[0])
-        shape = self.getWeight(onnx_node.inputs[1])
-        new_op = top.ExpandOp(self.unranked_type,
-                               in0,
-                               shape=shape,
-                               loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
-                               ip=self.mlir.insert_point).output
+        in0 = self.getOp(onnx_node.inputs[0])
+        if self.isWeight(onnx_node.inputs[1]):
+            shape = self.getWeight(onnx_node.inputs[1])
+            new_op = top.ExpandOp(self.unranked_type,
+                                   in0,
+                                   shape=shape,
+                                   loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                   ip=self.mlir.insert_point).output
+        else:
+            shape = self.getOperand(onnx_node.inputs[1])
+            new_op = top.ExpandOp(self.unranked_type,
+                                in0,
+                                shapeT=shape,
+                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
         return
 
     def convert_tile_op(self, onnx_node):
         assert (onnx_node.op_type == "Tile")
-        in0_op = self.getOperand(onnx_node.inputs[0])
-        tile_data = self.getWeight(onnx_node.inputs[1])
-        if np.prod(tile_data) == 1:
-            self.addOperand(onnx_node.name, in0_op)
-            return
-        last_op = in0_op
-        last_i = 0
-        last_name = ""
-        for i in range(tile_data.size):
-            last_i = tile_data.size - i - 1
-            if tile_data[last_i] != 1:
-                break
-        for i in range(last_i + 1):
-            if tile_data[i] == 1:
-                continue
-            last_name = onnx_node.name
-            if i != last_i:
-                last_name += "_{}".format(i)
-            last_op = top.TileOp(self.unranked_type,
-                                 last_op,
-                                 axis=i,
-                                 tile=int(tile_data[i]),
-                                 loc=self.get_loc("{}_{}".format(last_name, onnx_node.op_type)),
-                                 ip=self.mlir.insert_point).output
-        self.addOperand(onnx_node.name, last_op)
+        in0_op = self.getOp(onnx_node.inputs[0])
+        if self.isWeight(onnx_node.inputs[1]):
+            tile_data = self.getWeight(onnx_node.inputs[1])
+            if np.prod(tile_data) == 1:
+                self.addOperand(onnx_node.name, in0_op)
+                return
+            else:
+                new_op = top.TileOp(self.unranked_type,
+                        in0_op,
+                        tile = tile_data,
+                        loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                        ip=self.mlir.insert_point).output
+        else:
+            tile_op = self.getOperand(onnx_node.inputs[1])
+            new_op = top.TileOp(self.unranked_type,
+                        in0_op,
+                        tileT = tile_op,
+                        loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                        ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_topk_op(self, onnx_node):
         assert (onnx_node.op_type == "TopK")
@@ -1976,7 +2000,7 @@ class OnnxConverter(BaseConverter):
                                  loc=self.get_loc("{}_{}".format(onnx_node.name,
                                                                  onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
-        elif num_const == 1:
+        elif num_const >= 1:
             x_is_const = False
             y_is_const = False
             if self.isScalar(tbrn):
@@ -2005,7 +2029,7 @@ class OnnxConverter(BaseConverter):
                                                                  onnx_node.op_type)),
                                  ip=self.mlir.insert_point).output
         else:
-            assert (0)  # TODO: to be implement
+            assert (0)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_not_op(self, onnx_node):
@@ -2475,7 +2499,8 @@ class OnnxConverter(BaseConverter):
 
     def convert_cumsum_op(self, onnx_node):
         assert onnx_node.op_type == "CumSum"
-        assert (self.isWeight(onnx_node.inputs[1]), "Not Constant Not Implemented For Axis")
+        if not self.isWeight(onnx_node.inputs[1]):
+            raise ValueError("Currently, only constant axis is supported")
         axis = self.getWeight(onnx_node.inputs[1])
         operands = list()
         operands.append(self.getOperand(onnx_node.inputs[0]))

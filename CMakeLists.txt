@@ -1,5 +1,18 @@
 cmake_minimum_required(VERSION 3.12)
 
+# These parameters only used for mars3
+macro(variable_test)
+    set(${ARGV0} ${ARGV1} CACHE STRING "")
+    message(STATUS "variable_test ${ARGV0}=${${ARGV0}}, default=${ARGV1}")
+    add_definitions(-D${ARGV0}=${${ARGV0}})
+endmacro()
+
+variable_test(NPU_NUM_test_fp16 8)
+variable_test(IC_PARALLEL_test_fp16 4)
+variable_test(EU_NUM_test_fp16 8)
+variable_test(LOCAL_MEM_SHIFT 17)
+#######################################
+
 if (POLICY CMP0116)
   cmake_policy(SET CMP0116 OLD)
 endif()
@@ -133,3 +146,12 @@ add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(bindings)
 add_subdirectory(python)
+
+#-------------------------------------------------------------------------------
+option(TPUMLIR_INCLUDE_TESTS "Generate build targets for the TPU-MLIR unit tests.")
+
+if(TPUMLIR_INCLUDE_TESTS)
+  add_definitions(-DTPUMLIR_INCLUDE_TESTS)
+  add_subdirectory(unittests)
+  add_subdirectory(test)
+endif()

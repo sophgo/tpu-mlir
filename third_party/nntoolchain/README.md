@@ -1,4 +1,4 @@
-## TPU1684 2023-07-21
+sss## TPU1684 2023-07-21
 sha256: ebfe12c4683ff2345f94faf58e68743d8a8bc606
 
 ``` bash
@@ -9,11 +9,8 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1686 2023-08-29
-sha256: 212abba393e027cbbc8b707276d62fe49a0d69fc
-
-## TPU1686(sg2260) 2023-09-04
-sha256: 25f66fdeaff481614cbc479b7fcceba62846a828
+## TPU1686 2023-09-08
+sha256: fe9856fad49c5da0dd464fb006406eb092d56de5
 
 ``` bash
 pushd  nntoolchain/net_compiler/
@@ -32,13 +29,14 @@ cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoo
 popd
 ```
 
-## tpu-runtime 2023-08-31
-build from tpu-runtime 37226235356cd162c872b14bce25b45d3a1424d8
+## tpu-runtime 2023-09-18
+build from tpu-runtime 969fb471519b9c2cf34398d914e69f27786e8f52
 ``` bash
-pushd nntoolchain/net_compiler/
-source  scripts/envsetup.sh
-rebuild_bmruntime
-cp out/install_bmruntime/lib/libbmrt.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
-cp out/install/lib/libbmlib.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
+pushd libsophon
+mkdir -p build && cd build
+cmake -G Ninja -DPLATFORM=cmode ..
+ninja
+cp tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 popd
 ```

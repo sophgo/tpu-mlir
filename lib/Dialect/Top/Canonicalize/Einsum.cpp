@@ -100,11 +100,9 @@ struct ConvertEinsum : public OpRewritePattern<EinsumOp> {
         auto loc = NameLoc::get(rewriter.getStringAttr(rname + "_reshape"));
         newType = RankedTensorType::get({1, rshape[0], rshape[1], rshape[2]}, module::getElementType(rhs));
         auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
-        // operands.push_back(rrsop);
         newType = RankedTensorType::get({lshape[0], rshape[0], rshape[1], rshape[2]}, module::getElementType(rhs));
         loc = NameLoc::get(rewriter.getStringAttr(rname + "_tile"));
-        attrs.push_back(rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(0)));
-        attrs.push_back(rewriter.getNamedAttr("tile", rewriter.getI64IntegerAttr(lshape[0])));
+        attrs.push_back(rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr({lshape[0], 1, 1, 1})));
         auto tileOp = rewriter.create<TileOp>(loc, newType, ValueRange{rrsop}, attrs);
         attrs.clear();
         operands.push_back(tileOp);
@@ -150,8 +148,7 @@ struct ConvertEinsum : public OpRewritePattern<EinsumOp> {
         newType = RankedTensorType::get({1, rshape[0], rshape[1], rshape[2]}, module::getElementType(rhs));
         auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
         loc = NameLoc::get(rewriter.getStringAttr(rname + "_tile"));
-        attrs.push_back(rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(0)));
-        attrs.push_back(rewriter.getNamedAttr("tile", rewriter.getI64IntegerAttr(lshape[0])));
+        attrs.push_back(rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr({lshape[0], 1, 1, 1})));
         newType = RankedTensorType::get({lshape[0], rshape[0], rshape[1], rshape[2]}, module::getElementType(rhs));
         auto tileOp = rewriter.create<TileOp>(loc, newType, ValueRange{rrsop}, attrs);
         attrs.clear();

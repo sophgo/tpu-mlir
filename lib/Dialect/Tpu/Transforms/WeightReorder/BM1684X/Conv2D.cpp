@@ -15,27 +15,51 @@ using namespace bm1684x;
 // refer to net_compiler: bool BM1684XCoeffArranger::ConvWeightArr(GraphEdge*
 // edge)
 
-LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op, PatternRewriter &rewriter) {
-  if (module::isWeight(op.getFilter()) == false) {
-    auto attr = op.parseParam();
-    auto filter_type = module::getStorageType(op.getFilter());
-    std::vector<int64_t> filter_shape = {1, attr.oc, attr.ic / attr.groups,
-                                          attr.kh * attr.kw};
-    auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-
-    if (!module::isWeight(op.getOperand(1))) {
-      rewriter.setInsertionPointAfterValue(op.getOperand(1));
-      auto name = module::getName(op.getOutput());
-      auto reshape_loc =
-          NameLoc::get(rewriter.getStringAttr(name.str() + "_reorder_filter"));
-      auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
-          reshape_loc, new_filter_type, ValueRange{op.getOperand(1)});
-      new_reshape_op->setAttr("dynamic_weight", rewriter.getBoolAttr(true));
-      op.setOperand(1, new_reshape_op);
-      return success();
-    }
+LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
+                                             PatternRewriter &rewriter) {
+  if (module::isWeight(op.getFilter())) {
+    return failure();
   }
-  return failure();
+  auto attr = op.parseParam();
+  auto filter_type = module::getStorageType(op.getFilter());
+
+  std::vector<int64_t> filter_shape = {1, attr.oc, attr.ic / attr.groups,
+                                       attr.kh * attr.kw};
+  auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
+
+  if (!module::isWeight(op.getOperand(1))) {
+    rewriter.setInsertionPointAfterValue(op.getOperand(1));
+    auto name = module::getName(op.getOutput());
+    auto reshape_loc =
+        NameLoc::get(rewriter.getStringAttr(name.str() + "_reorder_filter"));
+    auto new_reshape_op = rewriter.create<tpu::ReshapeOp>(
+        reshape_loc, new_filter_type, ValueRange{op.getOperand(1)});
+    new_reshape_op->setAttr("dynamic_weight", rewriter.getBoolAttr(true));
+    op.setOperand(1, new_reshape_op);
+  }
+
+  if (attr.has_bias) {
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    auto data_fp32 = biasOp.read<float>();
+    auto count = data_fp32->size();
+    auto data_u16 = std::make_shared<std::vector<uint16_t>>(count);
+
+    bool isF16 = filter_type.isF16();
+    for (uint32_t i = 0; i < count; i++) {
+      data_u16->at(i) =
+          isF16 ? f32_to_f16(data_fp32->at(i)) : f32_to_bf16(data_fp32->at(i));
+    }
+
+    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+    auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
+    op.getBias().setType(new_bias_type);
+
+    auto newBiasOp =
+        top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
+    op->setOperand(2, newBiasOp);
+  }
+
+  return success();
 }
 
 template <>
@@ -556,12 +580,12 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
     return failure();
   }
   if (module::isWeight(op.getFilter()) == false) {
-    return failure();
+    return dynamic_weight_reorder_bm1684x(op, rewriter);
   }
   auto attr = op.parseParam();
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_f32 = filterOp.read<float>();
-  [[maybe_unused]]auto filter_type = module::getStorageType(op.getFilter());
+  [[maybe_unused]] auto filter_type = module::getStorageType(op.getFilter());
   int input_c = attr.ic;
   int output_c = attr.oc;
   int kh = attr.kh;
@@ -714,7 +738,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
 
   // bias op
   if (attr.has_bias) {
-    [[maybe_unused]]auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    [[maybe_unused]] auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_type = RankedTensorType::get(bias_shape, out_type);
     op.getBias().setType(new_type);

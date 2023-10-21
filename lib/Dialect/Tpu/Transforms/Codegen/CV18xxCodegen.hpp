@@ -121,7 +121,7 @@ private:
 
 class CviModelBuilder {
 public:
-  CviModelBuilder(ModuleOp &module);
+  CviModelBuilder(ModuleOp &module, std::string &version);
   // void storeModel(llvm::raw_ostream &output);
   void storeModel(std::string filename);
 

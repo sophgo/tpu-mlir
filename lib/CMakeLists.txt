@@ -5,6 +5,7 @@ add_subdirectory(Support)
 add_subdirectory(Conversion)
 add_subdirectory(Backend)
 add_subdirectory(Builder)
+add_subdirectory(CAPI)
 
 add_mlir_library(TPUMLIRInitAll
   InitAll.cpp
@@ -17,8 +18,8 @@ add_mlir_library(TPUMLIRInitAll
   MLIRSupport
   MLIRFuncDialect
   MLIRQuantDialect
+  MLIRTosaDialect
   MLIRInferenceInterface
   TPUMLIRTopToTpu
-  MLIRTosaDialect
   TPUMLIRTopToTosa
 )

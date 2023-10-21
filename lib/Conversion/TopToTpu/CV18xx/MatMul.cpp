@@ -78,6 +78,10 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     LoweringBF16(rewriter, op);
     return;
   }
+  if (!isa<top::WeightOp>(op.getRight().getDefiningOp())) {
+    LoweringBF16(rewriter, op);
+    return;
+  }
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   auto th_output = module::getThreshold(op.getOutput());

@@ -311,6 +311,7 @@ class BModel:
         def _serialize(self, builder, save_binary_fun):
             module = bmodel_fbs.SubNet
             cmd_group = self.cmd_group.serialize(builder, save_binary_fun)
+            core_commands = self.core_commands.serialize(builder, save_binary_fun)
             input_tensor = self.input_tensor.serialize(builder, save_binary_fun)
             output_tensor = self.output_tensor.serialize(builder, save_binary_fun)
             next_id = builder.CreateNumpyVector(
@@ -318,7 +319,10 @@ class BModel:
             )
             module.Start(builder)
             module.AddSubnetMode(builder, 0)
-            module.AddCmdGroup(builder, cmd_group)
+            if cmd_group:
+                module.AddCmdGroup(builder, cmd_group)
+            if core_commands:
+                module.AddCoreCommands(builder, core_commands)
             module.AddInputTensor(builder, input_tensor)
             module.AddOutputTensor(builder, output_tensor)
             module.AddNextSubnetIds(builder, next_id)
@@ -358,7 +362,8 @@ class BModel:
             module.AddNDynamic(builder, 0)
             module.AddHWDynamic(builder, 0)
             module.AddSubNet(builder, sub_net)
-            module.AddCmdGroup(builder, cmd_group)
+            if cmd_group:
+                module.AddCmdGroup(builder, cmd_group)
             module.AddCoreNum(builder, self.core_num)
             return module.End(builder)
 
@@ -436,7 +441,8 @@ class BModel:
         module.AddTime(builder, time)
         module.AddNet(builder, net)
         module.AddNeuronSize(builder, self.neuron_size)
-        module.AddKernelModule(builder, kernel_module)
+        if kernel_module:
+            module.AddKernelModule(builder, kernel_module)
         model = bmodel_fbs.Model.End(builder)
 
         builder.Finish(model)
@@ -554,6 +560,7 @@ def BModel2MLIR(bmodel_net, decoder: Decoder, indenr_size=2):
             self.chip = bmodel.chip
             self.version = bmodel.version
             self.type = bmodel.type
+            self.core_num = bmodel.core_num
 
         @property
         @functools.lru_cache()

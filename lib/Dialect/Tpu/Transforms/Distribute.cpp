@@ -74,16 +74,21 @@ void distributeAfter(PatternRewriter &rewriter, Operation *op_begin,
 
 bool isLargeMatMul(Operation *op) {
   auto mm = dyn_cast<tpu::MatMulOp>(op);
-  if (!mm) {
+  auto a16_mm = dyn_cast<tpu::A16MatMulOp>(op);
+
+  if (!mm && !a16_mm) {
     return false;
   }
-  if (module::isWeight(mm.getRight()) == false) {
+
+  auto operand = mm ? mm.getOperand(1) : a16_mm.getOperand(1);
+  auto is_4bits = a16_mm && a16_mm.getWeightBits() == 4;
+
+  // int4 strategy saves 2 int4 data in one int8
+  if (!module::isWeight(operand) ||
+      (is_4bits ? 2 : 1) * module::getNumElements(operand) <= WEIGHT_LIMIT) {
     return false;
   }
-  auto num_right = module::getNumElements(mm.getRight());
-  if (num_right <= WEIGHT_LIMIT) {
-    return false;
-  }
+
   return true;
 }
 
@@ -124,15 +129,19 @@ public:
     if (op.getDone()) {
       return failure();
     }
+    auto next_op = *op->user_begin();
     switch (op.getPattern()) {
     case tpu::DistributionPattern::MatMulSliceMerge:
-      splitByDevices<MatMulSliceMerge>(rewriter, op, num_devices);
+      sliceMergeSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);
+      sliceMergeSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op, num_devices);
       break;
     case tpu::DistributionPattern::MatMulSliceMerge2:
-      splitByDevices<MatMulSliceMerge2>(rewriter, op, num_devices);
+      sliceMerge2Split(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);
+      sliceMerge2Split(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op, num_devices);
       break;
     case tpu::DistributionPattern::MatMulTopK:
-      splitByDevices<MatMulTopK>(rewriter, op, num_devices);
+      topKSplit(dyn_cast<tpu::MatMulOp>(next_op), rewriter, op, num_devices);
+      topKSplit(dyn_cast<tpu::A16MatMulOp>(next_op), rewriter, op, num_devices);
       break;
     default:
       return failure();
@@ -159,9 +168,12 @@ public:
     auto mOp = getOperation();
     auto mainFunc = module::getMainFuncOp(mOp);
     if (num_device > 1) {
-      applyPatternOnce<MatMulSliceMerge>(mOp);
-      applyPatternOnce<MatMulSliceMerge2>(mOp);
-      applyPatternOnce<MatMulTopK>(mOp);
+      applyPatternOnce<MatMulSliceMerge<tpu::MatMulOp>>(mOp);
+      applyPatternOnce<MatMulSliceMerge<tpu::A16MatMulOp>>(mOp);
+      applyPatternOnce<MatMulSliceMerge2<tpu::MatMulOp>>(mOp);
+      applyPatternOnce<MatMulSliceMerge2<tpu::A16MatMulOp>>(mOp);
+      applyPatternOnce<MatMulTopK<tpu::MatMulOp>>(mOp);
+      applyPatternOnce<MatMulTopK<tpu::A16MatMulOp>>(mOp);
       applyPatternOnce<DoDistributePattern>(mOp);
       if (mainFunc.getOps<tpu::DistributionBeginOp>().empty()) {
         // no pattern find
