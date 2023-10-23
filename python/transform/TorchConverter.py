@@ -74,6 +74,7 @@ class TorchConverter(BaseConverter):
             # Torch Convert, Alphabetically
             #############################
             "aten::abs": lambda node: self.convert_abs_op(node),
+            "aten::adaptive_avg_pool1d": lambda node: self.convert_adaptive_avgpool_op(node, spatial_rank=1),
             "aten::adaptive_avg_pool2d": lambda node: self.convert_adaptive_avgpool_op(node, spatial_rank=2),
             "aten::add": lambda node: self.convert_add_op(node),
             "aten::addmm": lambda node: self.convert_addmm_op(node),
@@ -98,6 +99,7 @@ class TorchConverter(BaseConverter):
             "aten::contiguous": lambda node: self.convert_skip_op(node),
             "aten::detach": lambda node: self.convert_detach_op(node),
             "aten::div": lambda node: self.convert_div_op(node),
+            "aten::dot": lambda node: self.convert_dot_op(node),
             "aten::dropout": lambda node: self.convert_skip_op(node),
             "aten::elu": lambda node: self.convert_elu_op(node),
             "aten::embedding": lambda node: self.convert_embedding_op(node),
@@ -143,6 +145,7 @@ class TorchConverter(BaseConverter):
             "aten::min": lambda node: self.convert_min_op(node),
             "aten::mish": lambda node: self.convert_mish_op(node),
             "aten::mm": lambda node: self.convert_matmul_op(node),
+            "aten::mv": lambda node: self.convert_matmul_op(node),
             "aten::mul": lambda node: self.convert_mul_op(node),
             "aten::ne": lambda node: self.convert_compare_op(node, "NotEqual"),
             "aten::neg": lambda node: self.convert_neg_op(node),
@@ -465,8 +468,8 @@ class TorchConverter(BaseConverter):
     def convert_adaptive_avgpool_op(self, torch_node: TorchNode, spatial_rank=1):
         op = self.getOp(torch_node.inputs[0])
         output_size = self.const_val[torch_node.inputs[1]]
-        assert (output_size == [1, 1]
-                and "Currently adaptive_avgpool2d is only taken as global_avgpool")
+        assert (output_size == [1, 1] or output_size == [1]
+                and "Currently adaptive_avgpool2d/1d is only taken as global_avgpool")
 
         new_op = top.AdaptiveAvgPoolOp(self.unranked_type,
                                        op,
@@ -853,6 +856,29 @@ class TorchConverter(BaseConverter):
         new_op = top.DivOp(self.unranked_type, [op0, op1],
                            loc=self.get_loc(torch_node.name),
                            ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_dot_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        op1 = self.getOp(torch_node.inputs[1])
+        new_op0 = top.UnsqueezeOp(self.unranked_type,
+                                 op0,
+                                 axes=[0],
+                                 loc=self.get_loc("op0_unsqueeze"),
+                                 ip=self.mlir.insert_point).output
+        new_op1 = top.UnsqueezeOp(self.unranked_type,
+                                 op1,
+                                 axes=[0],
+                                 loc=self.get_loc("op1_unsqueeze"),
+                                 ip=self.mlir.insert_point).output
+        new_op = top.MatMulOp(self.unranked_type,
+                              new_op0,
+                              new_op1,
+                              self.mlir.none_op,
+                              do_relu=False,
+                              right_transpose = True,
+                              loc=self.get_loc(torch_node.name),
+                              ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
 
     def convert_detach_op(self, torch_node: TorchNode):

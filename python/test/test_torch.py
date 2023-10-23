@@ -43,6 +43,7 @@ class TORCH_IR_TESTER(object):
             # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
             "Abs":              (self.test_Abs,               N, Y, Y, Y),
             "Activation":       (self.test_Activation,        Y, Y, Y, Y),
+            "AdaptiveAvgPool1d":(self.test_AdaptiveAvgPool1d, N, Y, N, N),
             "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, N, Y, Y, Y),
             "Add":              (self.test_Add,               N, Y, Y, Y),
             "Add5d":            (self.test_Add5d,             N, Y, Y, Y),
@@ -71,6 +72,7 @@ class TORCH_IR_TESTER(object):
             "ConstantFill":     (self.test_ConstantFill,      Y, Y, Y, Y),
             "DeformConv2D":     (self.test_DeformConv2D,      Y, Y, N, N),
             "Div":              (self.test_Div,               N, Y, Y, Y),
+            "Dot":              (self.test_Dot,               N, Y, N, N),
             "Dropout":          (self.test_Dropout,           N, Y, Y, Y),
             "Elu":              (self.test_Elu,               Y, Y, Y, Y),
             "Embedding":        (self.test_Embedding,         N, Y, Y, Y),
@@ -100,6 +102,7 @@ class TORCH_IR_TESTER(object):
             "MeshGrid":         (self.test_MeshGrid,          N, N, N, N),
             "Min":              (self.test_Min,               N, Y, Y, N),
             "MM":               (self.test_MM,                N, Y, Y, Y),
+            "MV":               (self.test_MV,                N, Y, N, N),
             "Mul":              (self.test_Mul,               N, Y, Y, Y),
             "NewZeros":         (self.test_NewZeros,          N, Y, Y, Y),
             "Reduce":           (self.test_Reduce,            N, Y, Y, Y),
@@ -782,6 +785,27 @@ class TORCH_IR_TESTER(object):
             self._test_binary(torch.div, (32, 32), (32), min=0)
         self._test_binary(torch.div, (2, 32, 16), (2, 1, 16), min=0)
     #######################################################################
+    # Dot
+    # ------------
+    def test_Dot(self):
+        """Dot"""
+        def _test_dot(input_shape, right_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x, y):
+                    x = x.view(-1)
+                    y = y.view(-1)
+                    z = torch.dot(x, y)
+                    return z
+
+            self.trace_and_test([input_shape, right_shape], Model())
+
+        _test_dot((32, 1), (32, 1))
+    #######################################################################
     # Compare
     # ------------
     def test_Compare(self):
@@ -1407,6 +1431,29 @@ class TORCH_IR_TESTER(object):
 
         _test_mm((32, 32), (32, 64), self.is_cv18xx)
         _test_mm((32, 16), (16, 34), self.is_cv18xx)
+
+    #######################################################################
+    # MV
+    # ------------
+    def test_MV(self):
+        """MV"""
+
+        def _test_mv(input_shape, right_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x, y):
+                    y = y.view(-1)
+                    z = torch.mv(x, y)
+                    return z
+
+            self.trace_and_test([input_shape, right_shape], Model())
+
+        _test_mv((64, 32), (32, 1))
+        _test_mv((32, 16), (16, 1))
 
     #######################################################################
     # Addmm
@@ -2517,6 +2564,26 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in_shape], Model())
 
         _test_adaptive_avgpool2d((3, 64, 15, 15), (1, 1))
+
+    #######################################################################
+    # Adaptive AvgPool1d
+    # ------------
+    def test_AdaptiveAvgPool1d(self):
+        """AdaptiveAvgPool1d"""
+
+        def _test_adaptive_avgpool1d(in_shape, output_size):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return F.adaptive_avg_pool1d(x, output_size)
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_adaptive_avgpool1d((3, 64, 32), (1))
 
     #######################################################################
     # Linear
