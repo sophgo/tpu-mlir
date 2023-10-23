@@ -19,7 +19,21 @@ void buildGlobalOptimizationPassPipeline(
     .addPass(mlir::createCanonicalizerPass)
     .addPass(mlir::createCSEPass)
     .addPass(mlir::createStripDebugOpPass);
-  pm.addPass(mlir::createInlinerPass());
+  pm.addPass(mlir::createVerifyInputLegalityPass());
+  pm.addPass(mlir::createSymbolDCEPass());
+
+  //Transform pad operations into linalg.fill + tensor.insert_slice
+  pm.addPass(mlir::createTensorPadToTensorInsertSlicePass());
+
+  FunctionLikeNest(pm)
+    .addPass(mlir::createInterchangeGenericOpsPass)
+    .addPass(mlir::createCollapseDimsPass)
+    .addPass(memref::createResolveShapedTypeResultDimsPass)
+    .addPass(mlir::createCanonicalizerPass)
+    .addPass(mlir::createCSEPass)
+    //Elementwise fusion on-tensor level
+    .addPass([](){
+          return mlir::createFusionOfTensorOpsPass();});
   //ToDo
 }
 

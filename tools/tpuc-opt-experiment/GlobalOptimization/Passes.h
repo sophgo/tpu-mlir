@@ -33,6 +33,21 @@ createGeneralizeLinalgNamedOpsPass();
 
 std::unique_ptr<OperationPass<ModuleOp>>
 createStripDebugOpPass();
+
+std::unique_ptr<OperationPass<ModuleOp>>
+createVerifyInputLegalityPass();
+
+std::unique_ptr<OperationPass<ModuleOp>>
+createTensorPadToTensorInsertSlicePass(bool skipSingleLinalgOpUses=false);
+
+std::unique_ptr<OperationPass<ModuleOp>> createInterchangeGenericOpsPass();
+
+std::unique_ptr<OperationPass<ModuleOp>> createCollapseDimsPass();
+
+//fusion the elementwise base on linalg-on-tensor
+std::unique_ptr<InterfacePass<mlir::FunctionOpInterface>>
+createFusionOfTensorOpsPass(bool fuseMultiUse = false,
+                            unsigned multiUseFusionIteration = 2);
 #define GEN_PASS_CLASSES
 #define GEN_PASS_REGISTRATION
 #include "GlobalOptimization/Passes.h.inc"
