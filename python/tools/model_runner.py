@@ -264,6 +264,31 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         os.remove(onnx_file)
         return dict(filter(lambda x: isinstance(x[1], np.ndarray), zip(output_keys, outs)))
 
+def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -> dict:
+    import paddle
+    paddle.enable_static()
+    exe = paddle.static.Executor(paddle.CPUPlace())
+    [inference_program, feed_target_names, fetch_targets] = (
+        paddle.static.load_inference_model('model', exe))
+    out_name = list()
+    for o in fetch_targets:
+        out_name.append(o.name)
+    feed_dict = dict()
+    for i in inputs:
+        feed_dict[feed_target_names[0]] = inputs[i].astype(np.float32)
+    out_data = exe.run(
+        inference_program,
+        feed = feed_dict,
+        fetch_list = out_name
+    )
+    outputs = dict()
+    for i in range(len(out_name)):
+        outputs[out_name[i]] = out_data[i]
+
+    #返回的是一个字典：
+    return outputs
+
+
 
 def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool = True) -> dict:
     import caffe

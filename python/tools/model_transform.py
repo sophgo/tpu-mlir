@@ -77,7 +77,10 @@ class ModelTransformer(object):
             ppa = preprocess()
             for i in range(self.input_num):
                 pic_path = file_list[i] if i < len(file_list) else file_list[-1]
+                print("pic_path",pic_path)
                 file = os.path.expanduser(pic_path)
+                print("file",file)
+                print(self.module_parsered.get_input_op_by_idx(i))
                 ppa.load_config(self.module_parsered.get_input_op_by_idx(i))
                 inputs[ppa.input_name] = ppa.run(file)
         else:
@@ -208,6 +211,25 @@ class TorchTransformer(ModelTransformer):
         from tools.model_runner import torch_inference
         return torch_inference(inputs, self.model_def)
 
+#添加paddle的转换
+class PaddleTransformer(ModelTransformer):
+    def __init__(self,
+                 model_name,
+                 model_def,
+                 input_shapes: list = [],
+                 output_names:list = [],
+                 preprocessor: dict = {}
+                 ):
+        super().__init__(model_name, model_def)
+        from transform.paddleConverter import PaddleConverter
+        self.converter = PaddleConverter(self.model_name,self.model_def,input_shapes,output_names,
+                                         preprocessor)
+
+    def origin_inference(self,inputs:dict):
+        from tools.model_runner import paddle_inference
+        return paddle_inference(inputs,self.model_def)
+
+
 
 def get_model_transform(args):
     preprocessor = preprocess()
@@ -231,6 +253,9 @@ def get_model_transform(args):
     elif args.model_def.endswith('.pt'):
         tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
                                 args.input_types, args.output_names, preprocessor.to_dict())
+    elif args.model_def.endswith('.pdmodel'):
+        args.model_def = args.model_def[:-len('.pdmodel')]
+        tool = PaddleTransformer(args.model_name,args.model_def,args.input_shapes,args.output_names,preprocessor.to_dict())
     else:
         # TODO: support more AI model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))

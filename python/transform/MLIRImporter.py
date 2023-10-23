@@ -20,6 +20,7 @@ class Platform:
     TFLITE = "TFLITE"
     CAFFE = "CAFFE"
     TPULANG = "TPULANG"
+    PADDLE = "PADDLE"
 
 
 def get_weight_file(model_name: str, state: str, chip: str):
@@ -33,7 +34,7 @@ class MLIRImporter(object):
                  input_shapes: list,
                  output_shapes: list,
                  model_name: str,
-                 platform: str = Platform.ONNX,
+                 platform: str = Platform.PADDLE,
                  input_types: list = [],
                  output_types: list = [],
                  state: str = State.TOP_F32,
