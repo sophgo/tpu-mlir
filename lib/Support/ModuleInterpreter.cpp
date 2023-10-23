@@ -168,6 +168,7 @@ void ModuleInterpreter::allocate_tensor_in_reused_mem() {
           liveRange[v_info].end++;
           vNameMap[v_info] = module::getName(v).str();
         }
+        index++;
       }
     }
   }
@@ -177,12 +178,6 @@ void ModuleInterpreter::allocate_tensor_in_reused_mem() {
     gmemUsed = allocator.assignGaddr(common_ops, liveRange, true, start_addr);
     std::cout << "reused mem is " << gmemUsed << ", all mem is " << total_count
               << std::endl;
-    // for (auto lr : liveRange){
-    //   std::cout << vNameMap[lr.first] << " mem loc is " << gaddrMap[lr.first]
-    //   <<
-    //     " start is "<< lr.second.start<< " end is "<< lr.second.end << "
-    //     tensor size is "<<lr.second.tensor_size << std::endl;
-    //     }
   }
   auto gMem = std::make_shared<std::vector<float>>(gmemUsed);
   // float* ptr = gMem->data();
