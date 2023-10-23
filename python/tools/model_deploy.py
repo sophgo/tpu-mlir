@@ -64,6 +64,8 @@ class DeployTool:
         self.cali_table = args.calibration_table
         self.quant_input = args.quant_input
         self.quant_output = args.quant_output
+        self.quant_input_list = args.quant_input_list
+        self.quant_output_list = args.quant_output_list
         self.quantize_table = args.quantize_table
         self.embed_debug_info = args.debug
         self.model = args.model
@@ -217,7 +219,8 @@ class DeployTool:
             tosa_to_llvm(self.tosa_mlir, self.model)
         else:
             mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
-                          self.quant_input, self.quant_output, self.disable_layer_group, self.opt,
+                          self.quant_input, self.quant_output, self.quant_input_list,
+                          self.quant_output_list, self.disable_layer_group, self.opt,
                           self.merge_weight, self.op_divide, self.num_device, self.num_core,
                           self.embed_debug_info, self.model_version)
             if not self.skip_validation and self.do_validate:
@@ -285,6 +288,10 @@ if __name__ == '__main__':
                         help="strip input type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_output", action="store_true",
                         help="strip output type cast in bmodel, need outside type conversion")
+    parser.add_argument("--quant_input_list", default="", type=str,
+                        help="strip input type cast in bmodel")
+    parser.add_argument("--quant_output_list", default="", type=str,
+                        help="strip output type cast in bmodel")
     parser.add_argument("--disable_layer_group", action="store_true",
                         help="Decide whether to enable layer group pass")
     parser.add_argument("--opt", default=2, type=int, choices=[1, 2], help="Optimization level")

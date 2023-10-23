@@ -108,6 +108,8 @@ def mlir_to_model(tpu_mlir: str,
                   dynamic: bool = False,
                   quant_input: bool = False,
                   quant_output: bool = False,
+                  quant_input_list: str = "",
+                  quant_output_list: str = "",
                   disable_layer_group: bool = False,
                   opt: int = 2,
                   merge_weight: bool = False,
@@ -117,8 +119,8 @@ def mlir_to_model(tpu_mlir: str,
                   embed_debug_info: bool = False,
                   model_version: str = ""):
     # generate final mlir
-    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
-        quant_input, quant_output)
+    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
+        quant_input, quant_output, quant_input_list, quant_output_list)
     lg_param = ''
     if not disable_layer_group:
         lg_param = '--layer-group="opt={}"'.format(opt)
