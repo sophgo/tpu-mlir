@@ -12,6 +12,13 @@ void buildGlobalOptimizationPassPipeline(
       .addPass(mlir::createConvert1X1FilterConv2DToMatmulPass);
   pm.addPass(mlir::createEraseUnusedLinalgOperands());
 
+  FunctionLikeNest(pm)
+    .addPass(mlir::createConvertElementwiseToLinalgPass)
+    .addPass(mlir::createGeneralizeLinalgNamedOpsPass)
+    .addPass(mlir::createLinalgFoldUnitExtentDimsPass)
+    .addPass(mlir::createCanonicalizerPass)
+    .addPass(mlir::createCSEPass)
+    .addPass(mlir::createStripDebugOpPass);
   pm.addPass(mlir::createInlinerPass());
   //ToDo
 }

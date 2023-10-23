@@ -12,6 +12,7 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Dialect/MemRef/Transforms/Transforms.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 
 namespace  mlir
 {
@@ -27,6 +28,11 @@ std::unique_ptr<Pass> createConvert1X1FilterConv2DToMatmulPass();
 std::unique_ptr<OperationPass<mlir::ModuleOp>>
 createEraseUnusedLinalgOperands();
 
+std::unique_ptr<InterfacePass<mlir::FunctionOpInterface>>
+createGeneralizeLinalgNamedOpsPass();
+
+std::unique_ptr<OperationPass<ModuleOp>>
+createStripDebugOpPass();
 #define GEN_PASS_CLASSES
 #define GEN_PASS_REGISTRATION
 #include "GlobalOptimization/Passes.h.inc"

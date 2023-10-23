@@ -25,4 +25,10 @@ def EraseUnusedLinalgOperands :
   let summary = "Erase unused linalg operand and remove dead code.";
   let constructor = "mlir::createEraseUnusedLinalgOperands()";
 }
+
+def GeneralizeLinalgNamedOps :
+    InterfacePass<"generalize-linalg-named-ops", "mlir::FunctionOpInterface"> {
+  let summary = "Convert some Linalg named ops into linalg.generics";
+  let constructor = "mlir::createGeneralizeLinalgNamedOpsPass()";
+}
 #endif
