@@ -87,14 +87,23 @@ void tpu::SliceOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int *strides = new int[MAX_SHAPE_DIMS];
 
   // slice local gen only support dim 4 in bm1684
-  int idx[4] = {(int)out_g_info.n_idx, (int)offset->at(1),
-                (int)out_g_info.h_idx, (int)offset->at(3)};
+  int idx[4] = {(int)out_g_info.n_idx, (int)out_g_info.c_idx,
+                (int)out_g_info.h_idx, (int)out_g_info.w_idx};
 
   int slice[4] = {(int)out_g_info.n_slice, (int)output_shape[1],
                   (int)out_g_info.h_slice, (int)output_shape[3]};
 
+  for (int i = 0; i < 4; i++) {
+    idx[i] = idx[i] >= 0 ? idx[i] : (input_shape[i] + idx[i]);
+    slice[i] = slice[i] >= 0 ? slice[i] : (input_shape[i] + slice[i]);
+  }
+
   for (int i = 0; i < num_dims; ++i) {
-    begin_index[i] = idx[i];
+    // ====== calculate begin_index and end_index ======
+    begin_index[i] =
+        (offset->at(i) >= idx[i] && offset->at(i) <= idx[i] + slice[i])
+            ? (offset->at(i) - idx[i])
+            : 0;
     strides[i] = steps->at(i);
     end_index[i] = begin_index[i] + slice[i] * strides[i];
   }
