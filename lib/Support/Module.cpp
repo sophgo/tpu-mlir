@@ -920,6 +920,12 @@ bool isF16Modes() {
   return mode == Mode::F16 || mode == Mode::W8F16 || mode == Mode::W4F16;
 }
 
+bool isF8Modes() {
+  auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
+  auto mode = symbolizeMode(s).value_or(Mode::F32);
+  return mode == Mode::F8 || mode == Mode::F8E4M3 || mode == Mode::F8E5M2;
+}
+
 void setChip(Chip chip_) {
   chip = chip_;
   auto s = stringifyChip(chip_);

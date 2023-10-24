@@ -106,6 +106,10 @@ void AddLowering::LoweringF16(PatternRewriter &rewriter, top::AddOp op) const {
   lowering_common_f16<tpu::AddOp>(rewriter, op);
 }
 
+void AddLowering::LoweringF8(PatternRewriter &rewriter, top::AddOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 //                / input0 -> dequant \
 // quant add ==> |                      add -> requant
 //                \ input1 -> dequant /

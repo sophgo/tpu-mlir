@@ -95,6 +95,10 @@ void MulLowering::LoweringF16(PatternRewriter &rewriter, top::MulOp op) const {
   lowering_common_f16<tpu::MulOp>(rewriter, op);
 }
 
+void MulLowering::LoweringF8(PatternRewriter &rewriter, top::MulOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::MulOp op) const {
   if (module::isUniformQuantized(op.getInputs()[0], op.getOutput()) == false) {

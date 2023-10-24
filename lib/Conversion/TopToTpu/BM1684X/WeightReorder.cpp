@@ -27,6 +27,11 @@ void WeightReorderLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void WeightReorderLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::WeightReorderOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void WeightReorderLowering::LoweringINT8(PatternRewriter &rewriter, top::WeightReorderOp op,
                           bool asymmetric) const {
   llvm_unreachable("Not Implemented");

@@ -27,6 +27,11 @@ void SoftmaxBwdLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void SoftmaxBwdLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::SoftmaxBwdOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void SoftmaxBwdLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxBwdOp op,
                           bool asymmetric) const {
   llvm_unreachable("Not Implemented");

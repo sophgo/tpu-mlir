@@ -51,6 +51,11 @@ void MaxConstLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::MaxConstOp>(rewriter, op);
 }
 
+void MaxConstLowering::LoweringF8(PatternRewriter &rewriter,
+                                   top::MaxConstOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void MaxConstLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::MaxConstOp op) const {
   lowering_common<tpu::MaxConstOp>(rewriter, op, op.getOutput().getType());

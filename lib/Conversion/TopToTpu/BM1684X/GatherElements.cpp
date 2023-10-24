@@ -75,6 +75,10 @@ void GatherElementsLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringGatherElements(rewriter, op, new_type);
 }
 
+void GatherElementsLowering::LoweringF8(PatternRewriter &rewriter,
+                                         top::GatherElementsOp op) const {
+  llvm_unreachable("Not Implemented");
+}
 void GatherElementsLowering::LoweringQuantized(PatternRewriter &rewriter,
                                                top::GatherElementsOp op) const {
   auto new_type = op.getOutput().getType();

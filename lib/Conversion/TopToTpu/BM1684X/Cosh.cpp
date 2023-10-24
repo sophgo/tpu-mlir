@@ -50,6 +50,11 @@ void CoshLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
+void CoshLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::CoshOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void CoshLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::CoshOp op) const {
   llvm_unreachable("Not Implemented");

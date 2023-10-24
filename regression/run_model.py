@@ -76,6 +76,8 @@ class MODEL_RUN(object):
             "int8_sym": config.get(self.arch, "int8_sym_tolerance", fallback="0.8,0.5"),
             "int8_asym": config.get(self.arch, "int8_asym_tolerance", fallback="0.8,0.5"),
             "int4_sym": config.get(self.arch, "int4_sym_tolerance", fallback="0.8,0.5"),
+            "f8e4m3": config.get(self.arch, "f8e4m3_tolerance", fallback="0.8,0.5"),
+            "f8e5m2": config.get(self.arch, "f8e5m2_tolerance", fallback="0.95,0.95"),
         }
         # set quant_modes according to argument and config files
         self.quant_modes = {
@@ -85,6 +87,8 @@ class MODEL_RUN(object):
             "int8_sym": 0,
             "int8_asym": 0,
             "int4_sym": 0,
+            "f8e4m3": 0,
+            "f8e5m2": 0
         }
         self.do_test = "test_input" in self.ini_content
         if self.ini_content["model_path"].endswith(".tflite"):
@@ -98,6 +102,9 @@ class MODEL_RUN(object):
                     self.quant_modes["f16"] = 1
                     self.quant_modes["bf16"] = 1
                     self.quant_modes["f32"] = 1
+                    if self.arch == 'sg2260':
+                        self.quant_modes["f8e4m3"] = 1
+                        self.quant_modes["f8e5m2"] = 1
         for idx, quant_mode in enumerate(self.quant_modes.keys()):
             if f"do_{quant_mode}" in self.ini_content:
                 self.quant_modes[quant_mode] &= int(self.ini_content[f"do_{quant_mode}"])
@@ -165,32 +172,48 @@ class MODEL_RUN(object):
 
     def make_calibration_table(self):
         '''generate calibration when there is no existing one'''
-        if "specified_cali_table" in self.ini_content.keys():
-            self.cali_table = self.ini_content["specified_cali_table"]
-        else:
-            self.cali_table = os.path.expandvars(
-                f"$REGRESSION_PATH/cali_tables/{self.model_name}_cali_table")
-        if os.path.exists(self.cali_table):
-            return
-        if "dataset" not in self.ini_content:
-            raise RuntimeError("[!Error]: dataset not set for calibration")
-        cmd = ["run_calibration.py"]
-        cmd.extend([
-            f"{self.model_name}.mlir", "--dataset {}".format(self.ini_content["dataset"]),
-            f"-o {self.cali_table}"
-        ])
-        if "tune_num" in self.ini_content:
-            t_num = self.ini_content["tune_num"]
-            cmd.extend([f"--tune_num {t_num}"])
-        if "input_num" in self.ini_content:
-            i_num = self.ini_content["input_num"]
-            cmd.extend([f"--input_num {i_num}"])
-        if "debug_cmd" in self.ini_content:
-            d_cmd = self.ini_content["debug_cmd"]
-            cmd.extend([f"--debug_cmd {d_cmd}"])
-        else:
-            cmd.extend(["--input_num 100"])
-        _os_system(cmd, self.save_log)
+        for mode in self.quant_modes:
+            if self.quant_modes[mode] == 0:
+                continue
+            if mode != 'f8e4m3' and mode != 'f8e5m2':
+                if "specified_cali_table" in self.ini_content.keys():
+                    self.cali_table = self.ini_content["specified_cali_table"]
+                else:
+                    self.cali_table = os.path.expandvars(
+                        f"$REGRESSION_PATH/cali_tables/{self.model_name}_cali_table")
+            else:
+                if "specified_cali_table_{}".format(mode) in self.ini_content.keys():
+                    self.cali_table = self.ini_content["specified_cali_table_{}".format(mode)]
+                else:
+                    self.cali_table = os.path.expandvars(
+                        f"$REGRESSION_PATH/cali_tables/{self.model_name}_cali_table")
+                    self.cali_table = self.cali_table + "_" + mode
+            if os.path.exists(self.cali_table):
+                return
+            if "dataset" not in self.ini_content:
+                raise RuntimeError("[!Error]: dataset not set for calibration")
+            cmd = ["run_calibration.py"]
+            cmd.extend([
+                f"{self.model_name}.mlir", "--dataset {}".format(self.ini_content["dataset"]),
+                f"-o {self.cali_table}"
+            ])
+            if "tune_num" in self.ini_content:
+                t_num = self.ini_content["tune_num"]
+                cmd.extend([f"--tune_num {t_num}"])
+            if "input_num" in self.ini_content:
+                i_num = self.ini_content["input_num"]
+                cmd.extend([f"--input_num {i_num}"])
+            if "debug_cmd" in self.ini_content:
+                d_cmd = self.ini_content["debug_cmd"]
+                if mode == 'f8e4m3' or mode == 'f8e5m2':
+                    d_cmd += "\;fp8"
+                cmd.extend([f"--debug_cmd {d_cmd}"])
+            else:
+                cmd.extend(["--input_num 100"])
+                if mode == 'f8e4m3' or mode == 'f8e5m2':
+                    cmd.extend(["--debug_cmd fp8"])
+
+            _os_system(cmd, self.save_log)
 
     def int4_tmp_test(self):
         '''tmp test script for int4 sym mode, no bmodel generated for now'''
@@ -234,7 +257,7 @@ class MODEL_RUN(object):
 
     def test_input_copy(self, quant_mode):
         test_input = self.ini_content["test_input"] if self.fuse_pre else self.ini_content[
-            "input_npz"]
+           "input_npz"]
         new_test_input = ""
         if self.fuse_pre:
             new_test_input = test_input.replace(".jpg", f"_for_{quant_mode}.jpg").split("/")[-1]
@@ -281,7 +304,7 @@ class MODEL_RUN(object):
             cmd += [f"--num_core {self.num_core}"]
 
         # add for int8 mode
-        if (quant_mode.startswith("int8") or quant_mode.startswith("int4")):
+        if (quant_mode.startswith("int8") or quant_mode.startswith("int4") or quant_mode.startswith("f8")):
             if self.do_cali:
                 cmd += [f"--calibration_table {self.cali_table}"]
                 if "use_quantize_table" in self.ini_content and int(
@@ -392,7 +415,7 @@ class MODEL_RUN(object):
 
             self.run_model_transform(self.model_name)
             if (self.quant_modes["int4_sym"] or self.quant_modes["int8_sym"]
-                    or self.quant_modes["int8_asym"]) and self.do_cali:
+                    or self.quant_modes["int8_asym"] or self.quant_modes['f8e4m3'] or self.quant_modes['f8e5m2']) and self.do_cali:
                 self.make_calibration_table()
             if self.disable_thread:
                 for quant_mode, support in self.quant_modes.items():
@@ -444,8 +467,8 @@ if __name__ == "__main__":
     parser.add_argument("--out_dir", default="", type=str, help="out directory")
     parser.add_argument("--chip", default="bm1684x", type=str.lower, help="chip platform name")
     parser.add_argument("--mode", default="all", type=str.lower,
-                        choices=['all', 'basic', 'f32', 'f16', 'bf16', 'int8_sym', 'int8_asym', 'int4_sym'],
-                        help="quantize mode, 'all' runs all modes except int4, 'baisc' runs f16 and int8 sym only")
+                        choices=['all', 'basic', 'f32', 'f16', 'bf16', 'int8_sym', 'int8_asym', 'int4_sym', 'f8e4m3', 'f8e5m2'],
+                        help="quantize mode, 'all' runs all modes except int4 and f8, 'baisc' runs f16 and int8 sym only")
     parser.add_argument("--dyn_mode", default='store_true', help="dynamic mode")
     parser.add_argument("--merge_weight", action="store_true",
                         help="merge weights into one weight binary with previous generated cvimodel")

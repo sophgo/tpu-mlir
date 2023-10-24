@@ -51,6 +51,10 @@ void ArgLowering::LoweringINT4(PatternRewriter &rewriter, top::ArgOp op,
   LoweringINT8(rewriter, op, asymmetric);
 }
 
+void ArgLowering::LoweringF8(PatternRewriter &rewriter, top::ArgOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void ArgLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::ArgOp op) const {
   llvm_unreachable("Not Implemented");

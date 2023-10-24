@@ -38,6 +38,11 @@ void MaxPoolWithMaskLowering::LoweringF16(PatternRewriter &rewriter,
   llvm_unreachable("Not Implemented");
 }
 
+void MaxPoolWithMaskLowering::LoweringF8(PatternRewriter &rewriter,
+                                          top::MaxPoolWithMaskOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void MaxPoolWithMaskLowering::LoweringQuantized(
     PatternRewriter &rewriter, top::MaxPoolWithMaskOp op) const {
   llvm_unreachable("Not Implemented");

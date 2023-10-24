@@ -38,6 +38,11 @@ void CumSumLowering::LoweringINT4(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void CumSumLowering::LoweringF8(PatternRewriter &rewriter,
+                                        top::CumSumOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void CumSumLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::CumSumOp op) const {
   llvm_unreachable("Not Implemented");

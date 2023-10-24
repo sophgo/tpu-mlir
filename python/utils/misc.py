@@ -81,6 +81,7 @@ def parse_debug_cmd(debug_cmd):
         if len(cmd) == 0:
             continue
         tmp = cmd.split('=')
+        tmp[0] = tmp[0].lower()
         if len(tmp) == 1:
             debug_cmd_dict[tmp[0]] = None
         elif len(tmp) >= 2:

@@ -96,6 +96,11 @@ void ScaleLutLowering::LoweringBF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void ScaleLutLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::ScaleLutOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void ScaleLutLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::ScaleLutOp op) const {
   lowering_common<tpu::ScaleLutOp>(rewriter, op, op.getOutput().getType());

@@ -47,6 +47,11 @@ void SinLowering::LoweringF16(PatternRewriter &rewriter, top::SinOp op) const {
   lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
+void SinLowering::LoweringF8(PatternRewriter &rewriter, top::SinOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
+
 void SinLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::SinOp op) const {
   llvm_unreachable("Not Implemented");

@@ -43,6 +43,10 @@ void MishLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void MishLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::MishOp op) const {
+  llvm_unreachable("Not Implemented");
+}
 void MishLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::MishOp op) const {
   Value table = create_lookup_table(op.getInput(), op.getOutput(), true,

@@ -51,6 +51,11 @@ void ReshapeLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ReshapeOp>(rewriter, op);
 }
 
+void ReshapeLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::ReshapeOp op) const {
+  lowering_common_f16<tpu::ReshapeOp>(rewriter, op);
+}
+
 void ReshapeLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::ReshapeOp op) const {
   lowering_common<tpu::ReshapeOp>(rewriter, op, op.getOutput().getType());

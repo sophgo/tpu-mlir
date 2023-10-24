@@ -79,6 +79,11 @@ void ConcatLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ConcatOp>(rewriter, concatOp.getOperation());
 }
 
+void ConcatLowering::LoweringF8(PatternRewriter &rewriter,
+                                 top::ConcatOp concatOp) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void ConcatLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::ConcatOp concatOp) const {
   auto op = concatOp.getOperation();

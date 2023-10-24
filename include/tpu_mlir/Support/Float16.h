@@ -13,6 +13,34 @@
 
 namespace tpu_mlir {
 
+typedef union {
+  uint16_t bits;
+  struct {
+    uint16_t frac : 10; // mantissa
+    uint16_t exp : 5;   // exponent
+    uint16_t sign : 1;  // sign
+  } format;
+} fp16;
+
+typedef union {
+  uint16_t bits;
+  struct {
+    uint16_t frac : 7; // mantissa
+    uint16_t exp : 8;  // exponent
+    uint16_t sign : 1; // sign
+  } format;
+} bf16;
+
+typedef union {
+  float fval;
+  uint32_t bits;
+  struct {
+    uint32_t frac : 23; // mantissa
+    uint32_t exp : 8;   // exponent
+    uint32_t sign : 1;  // sign
+  } format;
+} fp32;
+
 /*
 convert f32 to f16/bf16 by uint16
 */

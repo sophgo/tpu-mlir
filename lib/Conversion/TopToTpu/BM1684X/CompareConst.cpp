@@ -53,6 +53,11 @@ void CompareConstLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::CompareConstOp>(rewriter, op);
 }
 
+void CompareConstLowering::LoweringF8(PatternRewriter &rewriter,
+                                       top::CompareConstOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void CompareConstLowering::LoweringQuantized(PatternRewriter &rewriter,
                                              top::CompareConstOp op) const {
   llvm_unreachable("Not Implemented");

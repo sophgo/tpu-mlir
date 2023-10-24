@@ -36,6 +36,11 @@ void CustomLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::CustomOp>(rewriter, op);
 }
 
+void CustomLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::CustomOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void CustomLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::CustomOp op) const {
   llvm_unreachable("Not Implemented");

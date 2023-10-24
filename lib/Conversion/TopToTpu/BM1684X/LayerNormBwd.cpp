@@ -71,6 +71,11 @@ void LayerNormBwdLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void LayerNormBwdLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::LayerNormBwdOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void LayerNormBwdLowering::LoweringINT8(PatternRewriter &rewriter, top::LayerNormBwdOp op,
                           bool asymmetric) const {
   llvm_unreachable("Not Implemented");

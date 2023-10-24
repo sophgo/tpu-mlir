@@ -922,7 +922,7 @@ void ConvertTopToTpu::calibration_process() {
                  SetSubConstSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
-    if (!module::isCV18xx()) {
+    if (!module::isCV18xx() && !module::isF8Modes()) {
       patterns.add<KeepMulSignPattern<top::MulOp>, /*KeepMulSignPattern,*/
                  SetSubConstSignPattern>(ctx_);
       applyPatternsAndFoldGreedily(module_, std::move(patterns));
@@ -955,10 +955,12 @@ void ConvertTopToTpu::calibration_process() {
     patterns.add<CompareCalibartion>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
-    patterns.add<SelectiveWhere,
-		SelectiveMaskedFill>(ctx_);
-    applyPatternsAndFoldGreedily(module_, std::move(patterns));
-    patterns.clear();
+    if (!module::isF8Modes()) {
+      patterns.add<SelectiveWhere,
+      SelectiveMaskedFill>(ctx_);
+      applyPatternsAndFoldGreedily(module_, std::move(patterns));
+      patterns.clear();
+    }
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
                  ForwardCalibartion<top::MinConstOp>,
@@ -1065,7 +1067,7 @@ void ConvertTopToTpu::cast_process() {
           } else if (isa<ReturnOp>(op)) {
             auto stype = module::getStorageType(opd);
             if (module::isUniformQuantized(opd) || stype.isBF16() ||
-                stype.isF16()) {
+                stype.isF16() || stype.isFloat8E4M3FN() || stype.isFloat8E5M2()) {
               target_type = type_verify_case_type(op, idx, retTypes[idx], mode);
             }
           } else {

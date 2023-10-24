@@ -32,6 +32,10 @@ void MaxLowering::LoweringF16(PatternRewriter &rewriter, top::MaxOp op) const {
   lowering_common_f16<tpu::MaxOp>(rewriter, op);
 }
 
+void MaxLowering::LoweringF8(PatternRewriter &rewriter, top::MaxOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void MaxLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::MaxOp op) const {
   lowering_common<tpu::MaxOp>(rewriter, op, op.getOutput().getType());

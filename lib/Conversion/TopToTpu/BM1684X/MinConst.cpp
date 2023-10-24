@@ -74,6 +74,11 @@ void MinConstLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::MinConstOp>(rewriter, op);
 }
 
+void MinConstLowering::LoweringF8(PatternRewriter &rewriter,
+                                   top::MinConstOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void MinConstLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::MinConstOp op) const {
   lowering_common<tpu::MinConstOp>(rewriter, op, op.getOutput().getType());

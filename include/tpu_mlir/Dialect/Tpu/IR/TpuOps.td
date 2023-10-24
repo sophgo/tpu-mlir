@@ -357,7 +357,8 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     OptionalAttr<SI32Attr>:$multiplier_pos,
     OptionalAttr<SI32Attr>:$multiplier_neg,
     OptionalAttr<SI32Attr>:$rshift_pos,
-    OptionalAttr<SI32Attr>:$rshift_neg
+    OptionalAttr<SI32Attr>:$rshift_neg,
+    OptionalAttr<F64ArrayAttr>:$out_f8_scale
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -395,7 +396,8 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<F64Attr>:$out_f8_scale
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{

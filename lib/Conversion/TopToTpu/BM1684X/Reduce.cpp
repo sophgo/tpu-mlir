@@ -35,6 +35,11 @@ void ReduceLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ReduceOp>(rewriter, op, 3);
 }
 
+void ReduceLowering::LoweringF8(PatternRewriter &rewriter,
+                                 top::ReduceOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void ReduceLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::ReduceOp op) const {
   llvm_unreachable("Not Implemented");

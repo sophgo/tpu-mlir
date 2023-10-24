@@ -44,6 +44,11 @@ void SoftsignLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void SoftsignLowering::LoweringF8(PatternRewriter &rewriter,
+                                   top::SoftsignOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void SoftsignLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::SoftsignOp op) const {
   Value table =
