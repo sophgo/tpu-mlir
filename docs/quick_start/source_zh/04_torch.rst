@@ -78,7 +78,7 @@ TORCH转MLIR
        --mlir yolov5s_pt.mlir
 
 
-转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是模型的输入文件。
+转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是模型的输入文件。值得注意的是，目前我们仅支持静态模型，模型在编译前需要调用torch.jit.trace()以生成静态模型。
 
 
 MLIR转F16模型

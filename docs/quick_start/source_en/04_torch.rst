@@ -80,7 +80,7 @@ The model conversion command:
        --mlir yolov5s_pt.mlir
 
 
-After converting to mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file of the model.
+After converting to mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file of the model. It is worth noting that we only support static models, and the model needs to call torch.jit.trace() to generate a static model before compilation.
 
 
 MLIR to F16 bmodel
