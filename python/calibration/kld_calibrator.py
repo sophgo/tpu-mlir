@@ -394,8 +394,12 @@ class SimpleTuner:
             self.module.set_tensor(input_op, data)
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
-            count = self.parser.get_use_count_by_op_name(op_name)
-            self.ref_activations[i][op_name] = [value.copy(), count]
+            outputs = self.parser.get_outputs_by_op_name(op_name)
+            count = 0
+            for o_ in outputs:
+                count += self.parser.get_use_count_by_op_name(o_)
+            for o_ in outputs:
+                self.ref_activations[i][o_] = [value.copy(), count]
             if i == 0:
                 tmp += '\ninvoke_at:{}, refcount:{}'.format(op_name, count)
                 #self.print_dbg('have {} users as refcount'.format(count))
@@ -434,7 +438,10 @@ class SimpleTuner:
         # abs_max = max(map(abs, self.initial_threshold[tuned_op][1:]))
         abs_max = self.abs_max_dict[tuned_op]
         #op_no = self.module.all_tensor_names.index(tuned_op)
-        op_no = self.parser.get_op_name_list().index(tuned_op)
+        if tuned_op in self.parser.get_op_name_list():
+            op_no = self.parser.get_op_name_list().index(tuned_op)
+        else:
+            op_no = 0
         self.print_dbg('>>>tuned_op_idx:', op_no, ', tuned_op:', tuned_op, ', threshold:',
                        threshold, 'abs_max:', abs_max, ', evaled_op:', evaled_op)
         if threshold > abs_max:
@@ -855,101 +862,103 @@ class ActivationCalibrator2(BaseKldCalibrator):
             max_value = -inf
             abs_value = None
             max_abs_value = -inf
-            tensor = self.get_ref_tensor(0, evaled_op)
-            if tensor is None:
-                continue
-            tensor_size = (self.get_ref_tensor(0, evaled_op)).size
-            all_data = np.zeros(tensor_size * self.args.input_num, dtype = np.float32)
-            num = self.args.input_num
-            per = 99.99 + i * step
-            res_length = int(num * tensor_size * (1 - per / 100)) + 1
-            all_data_test = np.zeros(self.args.input_num * res_length)
-
-            for idx in range(self.args.input_num):
-                activation = self.get_ref_tensor(idx, evaled_op)
-                if activation is None:
+            outputs = self.parser.get_outputs_by_op_name(evaled_op)
+            for out in outputs:
+                tensor = self.get_ref_tensor(0, out)
+                if tensor is None:
                     continue
-                if 'use_torch_observer_for_cali' in self.debug_cmd:
-                    from torch import Tensor
-                    self.torchObserver_dict[evaled_op](Tensor(activation.astype(np.float32)))
-                else:
-                    min_value = min(np.min(activation), min_value)
-                    max_value = max(np.max(activation), max_value)
-                    abs_value = max(abs(min_value), abs(max_value))
-                    if 'use_percentile9999' in self.debug_cmd:
-                        all_data[idx * tensor_size : (idx + 1) * tensor_size] = activation.flatten()
-                        tmp = np.abs(activation.flatten())
-                        tmp = sort_distr(tmp, res_length)
-                        all_data_test[idx * res_length : (idx + 1) * res_length] = tmp
-                    elif 'use_max' in self.debug_cmd:
-                        max_abs_value = max(np.max(np.abs(activation)), max_abs_value)
+                tensor_size = (self.get_ref_tensor(0, out)).size
+                all_data = np.zeros(tensor_size * self.args.input_num, dtype = np.float32)
+                num = self.args.input_num
+                per = 99.99 + i * step
+                res_length = int(num * tensor_size * (1 - per / 100)) + 1
+                all_data_test = np.zeros(self.args.input_num * res_length)
 
-            if 'use_percentile9999' in self.debug_cmd:
-                # t0 = time.time()
-                # time1 = time.time()
-                # abs_value = np.percentile(np.abs(all_data), 99.99 + i * step)
-                # time2 = time.time()
-                res = np.sort(all_data_test)[-res_length:]
-                inter = num * tensor_size - 1
-                idx = int((per / 100) * inter)
-                ratio = (per / 100) * inter - idx
-                abs_value = res[0] + ratio * (res[1] - res[0]) if res_length != 1 else res[0]
-                # time3 = time.time()
-                # print(abs_value)
-                # print(abs_value_test)
-                # print("并行方法时间： {}s".format(time3 - time2))
-                # print("numpy percentile方法时间： {}s".format(time2 - time1))
-            elif 'use_max' in self.debug_cmd:
-                #t0 = time.time()
-                abs_value = max_abs_value
-            if abs_value != None and abs_value <= 1e-5:
-                # if op's outputs are all close to zero, change it to 1e-5 for them.
-                min_value = -1e-5 if min_value < 0 else 0
-                max_value = 1e-5
-                abs_value = 1e-5
-                print("WARNING: layer {} is all zeros. Please check the "
-                      "input data correctness.".format(evaled_op))
-            self.activations_statistics[evaled_op] = (min_value, max_value, abs_value)
-
-            if 'use_torch_observer_for_cali' not in self.debug_cmd:
                 for idx in range(self.args.input_num):
-                    activation = self.get_ref_tensor(idx, evaled_op)
-                    _, _, abs_value = self.activations_statistics[evaled_op]
-                    hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
-                    if evaled_op not in histogram_data_map:
-                        histogram_data_map[evaled_op] = hist
-                        histogram_width_map[evaled_op] = width
+                    activation = self.get_ref_tensor(idx, out)
+                    if activation is None:
+                        continue
+                    if 'use_torch_observer_for_cali' in self.debug_cmd:
+                        from torch import Tensor
+                        self.torchObserver_dict[out](Tensor(activation.astype(np.float32)))
                     else:
-                        histogram_data_map[evaled_op] += hist
-            else:
-                qmin, qmax = -128, 127
-                scale, zp = self.torchObserver_dict[evaled_op].calculate_qparams()
-                threshold = float(scale * max(-(qmin-zp), (qmax-zp)))
-                threshold = 1e-5 if (threshold <= 1e-5) else threshold  # fix me
-                thresholds_map[evaled_op] = threshold
-                thresholds_map_absmax[evaled_op] = threshold
-                thresholds_map_scale[evaled_op] = scale.numpy()[0]
-                thresholds_map_zp[evaled_op] = zp.numpy()[0]
-                if 'int4' in self.debug_cmd: # give when int4 selected, give symeetric value like in qat, both for int4 and int8
+                        min_value = min(np.min(activation), min_value)
+                        max_value = max(np.max(activation), max_value)
+                        abs_value = max(abs(min_value), abs(max_value))
+                        if 'use_percentile9999' in self.debug_cmd:
+                            all_data[idx * tensor_size : (idx + 1) * tensor_size] = activation.flatten()
+                            tmp = np.abs(activation.flatten())
+                            tmp = sort_distr(tmp, res_length)
+                            all_data_test[idx * res_length : (idx + 1) * res_length] = tmp
+                        elif 'use_max' in self.debug_cmd:
+                            max_abs_value = max(np.max(np.abs(activation)), max_abs_value)
+
+                if 'use_percentile9999' in self.debug_cmd:
+                    # t0 = time.time()
+                    # time1 = time.time()
+                    # abs_value = np.percentile(np.abs(all_data), 99.99 + i * step)
+                    # time2 = time.time()
+                    res = np.sort(all_data_test)[-res_length:]
+                    inter = num * tensor_size - 1
+                    idx = int((per / 100) * inter)
+                    ratio = (per / 100) * inter - idx
+                    abs_value = res[0] + ratio * (res[1] - res[0]) if res_length != 1 else res[0]
+                    # time3 = time.time()
+                    # print(abs_value)
+                    # print(abs_value_test)
+                    # print("并行方法时间： {}s".format(time3 - time2))
+                    # print("numpy percentile方法时间： {}s".format(time2 - time1))
+                elif 'use_max' in self.debug_cmd:
+                    #t0 = time.time()
+                    abs_value = max_abs_value
+                if abs_value != None and abs_value <= 1e-5:
+                    # if op's outputs are all close to zero, change it to 1e-5 for them.
+                    min_value = -1e-5 if min_value < 0 else 0
+                    max_value = 1e-5
+                    abs_value = 1e-5
+                    print("WARNING: layer {} is all zeros. Please check the "
+                          "input data correctness.".format(out))
+                self.activations_statistics[out] = (min_value, max_value, abs_value)
+
+                if 'use_torch_observer_for_cali' not in self.debug_cmd:
+                    for idx in range(self.args.input_num):
+                        activation = self.get_ref_tensor(idx, out)
+                        _, _, abs_value = self.activations_statistics[out]
+                        hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
+                        if out not in histogram_data_map:
+                            histogram_data_map[out] = hist
+                            histogram_width_map[out] = width
+                        else:
+                            histogram_data_map[out] += hist
+                else:
                     qmin, qmax = -128, 127
-                    scale, zp = self.torchObserver_dict[evaled_op].calculate_qparams()
+                    scale, zp = self.torchObserver_dict[out].calculate_qparams()
                     threshold = float(scale * max(-(qmin-zp), (qmax-zp)))
                     threshold = 1e-5 if (threshold <= 1e-5) else threshold  # fix me
-                    thresholds_map[evaled_op] = threshold
-                    thresholds_map_absmax[evaled_op] = threshold
-                    thresholds_map_scale[evaled_op] = threshold/127.5
-                    thresholds_map_zp[evaled_op] = 0
-                    qmin, qmax = -8, 7
-                    scale, zp = self.torchObserver_dict[evaled_op].calculate_qparams()
-                    threshold = float(scale * max(-(qmin-zp), (qmax-zp)))
-                    threshold = 1e-5 if (threshold <= 1e-5) else threshold
-                    thresholds_map4[evaled_op] = threshold
-                    thresholds_map_absmax4[evaled_op] = threshold
-                    thresholds_map_scale4[evaled_op] = threshold/127.5
-                    thresholds_map_zp4[evaled_op] = 0
+                    thresholds_map[out] = threshold
+                    thresholds_map_absmax[out] = threshold
+                    thresholds_map_scale[out] = scale.numpy()[0]
+                    thresholds_map_zp[out] = zp.numpy()[0]
+                    if 'int4' in self.debug_cmd: # give when int4 selected, give symeetric value like in qat, both for int4 and int8
+                        qmin, qmax = -128, 127
+                        scale, zp = self.torchObserver_dict[out].calculate_qparams()
+                        threshold = float(scale * max(-(qmin-zp), (qmax-zp)))
+                        threshold = 1e-5 if (threshold <= 1e-5) else threshold  # fix me
+                        thresholds_map[out] = threshold
+                        thresholds_map_absmax[out] = threshold
+                        thresholds_map_scale[out] = threshold/127.5
+                        thresholds_map_zp[out] = 0
+                        qmin, qmax = -8, 7
+                        scale, zp = self.torchObserver_dict[out].calculate_qparams()
+                        threshold = float(scale * max(-(qmin-zp), (qmax-zp)))
+                        threshold = 1e-5 if (threshold <= 1e-5) else threshold
+                        thresholds_map4[out] = threshold
+                        thresholds_map_absmax4[out] = threshold
+                        thresholds_map_scale4[out] = threshold/127.5
+                        thresholds_map_zp4[out] = 0
 
-            for idx in range(self.args.input_num):
-                self.clear_ref_tensor(idx, evaled_op)
+                for idx in range(self.args.input_num):
+                    self.clear_ref_tensor(idx, out)
         pbar.close()
 
         if 'use_torch_observer_for_cali' not in self.debug_cmd:
@@ -997,56 +1006,60 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 f.write("# sample number: {}\n###\n".format(self.num_samples))
                 f.write("# op_name    threshold    min    max\n")
                 for i, op_name in enumerate(op_layers):
-                    if 'int4' in self.debug_cmd:
-                        if 'use_torch_observer_for_cali' in self.debug_cmd:
-                            qmin, qmax = -128, 127
-                            scale = thresholds_map_scale[op_name]
-                            zp = thresholds_map_zp[op_name]
-                            threshold = float(scale * max(-(qmin-zp), qmax-zp))
-                            min_value = -threshold*128.0/127.0
-                            max_value = threshold
-                        else:
-                            threshold = thresholds_map[op_name]
-                            min_value, max_value = -threshold*128.0/127.0, threshold
-                        thresholds_map_list.append(threshold)
-                        f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
-                                                               max_value))
-                    else:
-                        if 'use_torch_observer_for_cali' in self.debug_cmd:
-                            qmin, qmax = -128, 127
-                            scale = thresholds_map_scale[op_name]
-                            zp = thresholds_map_zp[op_name]
-                            threshold = float(scale * max(-(qmin-zp), qmax-zp))
-                            min_value = float(scale * (qmin - zp))
-                            max_value = float(scale * (qmax - zp))
-                        else:
-                            if op_name in thresholds_map:
-                                threshold = thresholds_map[op_name]
+                    outputs = self.parser.get_outputs_by_op_name(op_name)
+                    for out in outputs:
+                        if 'int4' in self.debug_cmd:
+                            if 'use_torch_observer_for_cali' in self.debug_cmd:
+                                qmin, qmax = -128, 127
+                                scale = thresholds_map_scale[out]
+                                zp = thresholds_map_zp[out]
+                                threshold = float(scale * max(-(qmin-zp), qmax-zp))
+                                min_value = -threshold*128.0/127.0
+                                max_value = threshold
                             else:
-                                threshold = 1.0
-                            if op_name in self.activations_statistics:
-                                min_value, max_value, _ = self.activations_statistics[op_name]
+                                threshold = thresholds_map[out]
+                                min_value, max_value = -threshold*128.0/127.0, threshold
+                            thresholds_map_list.append(threshold)
+                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value,
+                                                                   max_value))
+                        else:
+                            if 'use_torch_observer_for_cali' in self.debug_cmd:
+                                qmin, qmax = -128, 127
+                                scale = thresholds_map_scale[out]
+                                zp = thresholds_map_zp[out]
+                                threshold = float(scale * max(-(qmin-zp), qmax-zp))
+                                min_value = float(scale * (qmin - zp))
+                                max_value = float(scale * (qmax - zp))
                             else:
-                                min_value, max_value = -1,1
-                        thresholds_map_list.append(threshold)
-                        f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
-                                                               max_value))
+                                if out in thresholds_map:
+                                    threshold = thresholds_map[out]
+                                else:
+                                    threshold = 1.0
+                                if out in self.activations_statistics:
+                                    min_value, max_value, _ = self.activations_statistics[out]
+                                else:
+                                    min_value, max_value = -1,1
+                            thresholds_map_list.append(threshold)
+                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value,
+                                                                   max_value))
                 if 'int4' in self.debug_cmd and ('use_torch_observer_for_cali' in self.debug_cmd or 'use_percentile9999' in self.debug_cmd or 'use_max' in self.debug_cmd):
                     f.write("\n")
                     f.write("#int4_th\n")
                     for i, op_name in enumerate(op_layers):
-                        if 'use_torch_observer_for_cali' in self.debug_cmd:
-                            qmin, qmax = -8, 7
-                            scale = thresholds_map_scale4[op_name]
-                            zp = thresholds_map_zp4[op_name]
-                            threshold = float(scale * max(-(qmin-zp), qmax-zp))
-                            min_value = -threshold*128.0/127.0
-                            max_value = threshold
-                        else:
-                            threshold = thresholds_map4[op_name]
-                            min_value, max_value = -threshold*128.0/127.0, threshold
-                        f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
-                                                                max_value))
+                        outputs = self.parser.get_outputs_by_op_name(op_name)
+                        for out in outputs:
+                            if 'use_torch_observer_for_cali' in self.debug_cmd:
+                                qmin, qmax = -8, 7
+                                scale = thresholds_map_scale4[out]
+                                zp = thresholds_map_zp4[out]
+                                threshold = float(scale * max(-(qmin-zp), qmax-zp))
+                                min_value = -threshold*128.0/127.0
+                                max_value = threshold
+                            else:
+                                threshold = thresholds_map4[out]
+                                min_value, max_value = -threshold*128.0/127.0, threshold
+                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value,
+                                                                    max_value))
 
             # if 'use_torch_observer_for_cali' in self.debug_cmd:
             #     exit(0)
