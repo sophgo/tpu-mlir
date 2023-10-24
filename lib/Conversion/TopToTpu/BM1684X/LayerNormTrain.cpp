@@ -77,6 +77,11 @@ void LayerNormTrainLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringLayerNorm(rewriter, op, rewriter.getF16Type());
 }
 
+void LayerNormTrainLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::LayerNormTrainOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void LayerNormTrainLowering::LoweringINT8(PatternRewriter &rewriter, top::LayerNormTrainOp op,
                           bool asymmetric) const {
   llvm_unreachable("Not Implemented");

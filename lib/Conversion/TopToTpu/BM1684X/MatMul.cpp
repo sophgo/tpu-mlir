@@ -497,6 +497,11 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
                                              op->getAttrs());
 }
 
+void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
+                                 top::MatMulOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::MatMulOp op) const {
   if (!module::isUniformQuantized(op.getInput(), op.getRight(),

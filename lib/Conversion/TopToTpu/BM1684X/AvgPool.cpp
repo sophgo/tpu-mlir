@@ -128,6 +128,11 @@ void AvgPoolLowering::LoweringF16(PatternRewriter &rewriter,
   }
 }
 
+void AvgPoolLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::AvgPoolOp poolOp) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void AvgPoolLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::AvgPoolOp poolOp) const {
   if (false ==

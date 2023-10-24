@@ -77,6 +77,11 @@ void RangeLowering::LoweringF16(PatternRewriter &rewriter,
   llvm_unreachable("Not implemented");
 }
 
+void RangeLowering::LoweringF8(PatternRewriter &rewriter,
+                                top::RangeOp op) const {
+  llvm_unreachable("Not implemented");
+}
+
 void RangeLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::RangeOp op) const {
   llvm_unreachable("Not implemented");

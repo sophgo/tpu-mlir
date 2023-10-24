@@ -70,6 +70,12 @@ void TopKLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void TopKLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::TopKOp op) const {
+  // LoweringTopK(rewriter, op, rewriter.getF16Type());
+  llvm_unreachable("FIXME: not implement");
+}
+
 void TopKLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::TopKOp op) const {
   llvm_unreachable("Not Implemented");

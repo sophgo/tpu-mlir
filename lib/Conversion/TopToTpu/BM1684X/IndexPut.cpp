@@ -88,6 +88,11 @@ void IndexPutLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringIndexPut(rewriter, op, new_type);
 }
 
+void IndexPutLowering::LoweringF8(PatternRewriter &rewriter,
+                                 top::IndexPutOp op) const {
+  llvm_unreachable("not implemented");
+}
+
 void IndexPutLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::IndexPutOp op) const {
   auto new_type = op.getOutput().getType();

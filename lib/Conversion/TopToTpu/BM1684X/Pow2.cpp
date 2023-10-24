@@ -56,6 +56,10 @@ void Pow2Lowering::LoweringF16(PatternRewriter &rewriter, top::Pow2Op op) const 
   LoweringF32(rewriter, op);
 }
 
+void Pow2Lowering::LoweringF8(PatternRewriter &rewriter, top::Pow2Op op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void Pow2Lowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::Pow2Op op) const {
   llvm_unreachable("Not Implemented");

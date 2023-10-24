@@ -62,6 +62,11 @@ void NonZeroLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringNonZero(rewriter, op, 2);
 }
 
+void NonZeroLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::NonZeroOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void NonZeroLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::NonZeroOp nonzeroOp) const {
   llvm_unreachable("Not Implemented");

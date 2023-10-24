@@ -133,6 +133,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   mlir::Value clone_bf16(mlir::Operation * OwnerOp, std::string name = "");
   mlir::Value clone_f16(mlir::Operation * OwnerOp);
   mlir::Value clone_int(mlir::Operation *OwnerOp);
+  mlir::Value clone_f8e4m3(mlir::Operation *OwnerOp, bool per_channel_scale = false);
+  mlir::Value clone_f8e5m2(mlir::Operation *OwnerOp);
   mlir::Value clone(llvm::StringRef suffix);
   mlir::Value split(int begin, int end, int axis, mlir::Type to_type, std::string suffix);
   }];

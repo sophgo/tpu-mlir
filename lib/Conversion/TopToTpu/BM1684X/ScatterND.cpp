@@ -65,6 +65,11 @@ void ScatterNDLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void ScatterNDLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::ScatterNDOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void ScatterNDLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::ScatterNDOp op) const {
   LoweringF32(rewriter, op);

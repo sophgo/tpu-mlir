@@ -53,6 +53,11 @@ void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void SigmoidLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::SigmoidOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SigmoidOp op) const {
   bool log = op.getLog();

@@ -69,6 +69,11 @@ void WhereLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::WhereOp>(rewriter, op);
 }
 
+void WhereLowering::LoweringF8(PatternRewriter &rewriter,
+                                top::WhereOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void WhereLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::WhereOp op) const {
   llvm_unreachable("Not Implemented");

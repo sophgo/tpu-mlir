@@ -88,6 +88,11 @@ void InterpLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringInterp(rewriter, op, rewriter.getF16Type());
 }
 
+void InterpLowering::LoweringF8(PatternRewriter &rewriter,
+                                   top::InterpOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void InterpLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::InterpOp op) const {
   LoweringInterp(rewriter, op, op.getOutput().getType());

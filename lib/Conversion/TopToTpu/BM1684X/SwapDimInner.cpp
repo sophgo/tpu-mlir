@@ -38,6 +38,11 @@ void SwapDimInnerLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::SwapDimInnerOp>(rewriter, op);
 }
 
+void SwapDimInnerLowering::LoweringF8(PatternRewriter &rewriter,
+                                       top::SwapDimInnerOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void SwapDimInnerLowering::LoweringQuantized(PatternRewriter &rewriter,
                                              top::SwapDimInnerOp op) const {
   lowering_common<tpu::SwapDimInnerOp>(rewriter, op.getOperation(),

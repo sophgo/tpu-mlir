@@ -71,10 +71,16 @@ void BatchNormTrainLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringBatchNorm(rewriter, op, rewriter.getF16Type());
 }
 
+void BatchNormTrainLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::BatchNormTrainOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void BatchNormTrainLowering::LoweringINT8(PatternRewriter &rewriter, top::BatchNormTrainOp op,
                           bool asymmetric) const {
   llvm_unreachable("Not Implemented");
 }
+
 void BatchNormTrainLowering::LoweringINT4(PatternRewriter &rewriter, top::BatchNormTrainOp op,
                           bool asymmetric) const {
   llvm_unreachable("Not Implemented");

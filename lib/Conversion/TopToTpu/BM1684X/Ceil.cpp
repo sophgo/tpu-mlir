@@ -50,6 +50,11 @@ void CeilLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ActiveOp>(rewriter, op);
 }
 
+void CeilLowering::LoweringF8(PatternRewriter &rewriter,
+                              top::CeilOp ceilOp) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void CeilLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::CeilOp ceilOp) const {
   llvm_unreachable("Not Implemented");

@@ -47,6 +47,10 @@ void TanhLowering::LoweringF16(PatternRewriter &rewriter, top::TanhOp op) const 
   lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
+void TanhLowering::LoweringF8(PatternRewriter &rewriter, top::TanhOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void TanhLowering::LoweringQuantized(PatternRewriter &rewriter, top::TanhOp op) const {
   llvm_unreachable("Not Implemented");
 }

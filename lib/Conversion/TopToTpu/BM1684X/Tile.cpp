@@ -61,6 +61,11 @@ void TileLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::TileOp>(rewriter, op, 2);
 }
 
+void TileLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::TileOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void TileLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::TileOp op) const {
   lowering_common<tpu::TileOp>(rewriter, op, op.getOutput().getType(), 2);

@@ -37,6 +37,11 @@ void StridedSliceLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::StridedSliceOp>(rewriter, op);
 }
 
+void StridedSliceLowering::LoweringF8(PatternRewriter &rewriter,
+                                       top::StridedSliceOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void StridedSliceLowering::LoweringQuantized(PatternRewriter &rewriter,
                                              top::StridedSliceOp op) const {
   lowering_common<tpu::StridedSliceOp>(rewriter, op, op.getOutput().getType());

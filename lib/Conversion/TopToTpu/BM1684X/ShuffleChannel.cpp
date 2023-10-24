@@ -37,6 +37,11 @@ void ShuffleChannelLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ShuffleChannelOp>(rewriter, op);
 }
 
+void ShuffleChannelLowering::LoweringF8(PatternRewriter &rewriter,
+                                      top::ShuffleChannelOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void ShuffleChannelLowering::LoweringQuantized(PatternRewriter &rewriter,
                                             top::ShuffleChannelOp op) const {
   lowering_common<tpu::ShuffleChannelOp>(rewriter, op.getOperation(),

@@ -9,6 +9,7 @@
 # ==============================================================================
 
 import os
+import sys
 import gc
 import time
 import copy
@@ -620,6 +621,22 @@ class ActivationCalibrator2(BaseKldCalibrator):
         self.start_time = time.time()
         self.tuned_op_list = []
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
+        if 'fp8' in self.debug_cmd:
+            if 'int4' in self.debug_cmd:
+                print('can not calibration both for int4 and fp8')
+                sys.exit(1)
+            if 'use_torch_observer_for_cali' in self.debug_cmd:
+                print('not use use_torch_observer_for_cali for fp8')
+                self.debug_cmd.pop('use_torch_observer_for_cali')
+            if 'use_max' not in self.debug_cmd:
+                self.debug_cmd['use_max']=1
+            if 'use_percentile9999' in self.debug_cmd:
+                print('only use max for fp8')
+                self.debug_cmd.pop('use_percentile9999')
+            if 'tune_steps' in self.debug_cmd:
+                self.debug_cmd.pop('tune_steps')
+            print(f'final dbg cmd is {self.debug_cmd}')
+            self.args.tune_num = 0
         # if 'input_calibration_table' in self.debug_cmd:
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
@@ -1002,12 +1019,17 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 cali_table += ".1"
             with open(cali_table, 'w') as f:
                 f.write("# genetated time: {}\n".format(datetime.datetime.now()))
-                f.write("# histogram number: {}\n".format(self.histogram_bin_num))
+                if 'fp8' in self.debug_cmd:
+                    f.write("#tpu-mlir-fp8 caliration table\n")
+                else:
+                    f.write("# histogram number: {}\n".format(self.histogram_bin_num))
                 f.write("# sample number: {}\n###\n".format(self.num_samples))
                 f.write("# op_name    threshold    min    max\n")
                 for i, op_name in enumerate(op_layers):
                     outputs = self.parser.get_outputs_by_op_name(op_name)
                     for out in outputs:
+                        if out not in thresholds_map:
+                            continue   # possible useless leaf output
                         if 'int4' in self.debug_cmd:
                             if 'use_torch_observer_for_cali' in self.debug_cmd:
                                 qmin, qmax = -128, 127
@@ -1021,7 +1043,13 @@ class ActivationCalibrator2(BaseKldCalibrator):
                                 min_value, max_value = -threshold*128.0/127.0, threshold
                             thresholds_map_list.append(threshold)
                             f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value,
-                                                                   max_value))
+                                                               max_value))
+                        elif 'fp8' in self.debug_cmd:
+                            threshold = thresholds_map[out]
+                            min_value, max_value = -threshold*128.0/127.0, threshold
+                            thresholds_map_list.append(threshold)
+                            f.write("{} {:.7f} {:.7f} {:.7f}\n".format(out, threshold, min_value,
+                                                               max_value))
                         else:
                             if 'use_torch_observer_for_cali' in self.debug_cmd:
                                 qmin, qmax = -128, 127
@@ -1048,6 +1076,8 @@ class ActivationCalibrator2(BaseKldCalibrator):
                     for i, op_name in enumerate(op_layers):
                         outputs = self.parser.get_outputs_by_op_name(op_name)
                         for out in outputs:
+                            if out not in thresholds_map_zp4:
+                                continue
                             if 'use_torch_observer_for_cali' in self.debug_cmd:
                                 qmin, qmax = -8, 7
                                 scale = thresholds_map_scale4[out]

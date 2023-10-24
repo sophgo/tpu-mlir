@@ -70,6 +70,11 @@ void MaxPoolLowering::LoweringF16(PatternRewriter &rewriter,
   }
 }
 
+void MaxPoolLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::MaxPoolOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void MaxPoolLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::MaxPoolOp op) const {
   op->setAttr("pool_mode",

@@ -46,6 +46,11 @@ void ReciprocalLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void ReciprocalLowering::LoweringF8(PatternRewriter &rewriter,
+                                     top::ReciprocalOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void ReciprocalLowering::LoweringQuantized(PatternRewriter &rewriter,
                                            top::ReciprocalOp op) const {
   llvm_unreachable("Not Implemented");

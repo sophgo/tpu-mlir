@@ -57,6 +57,11 @@ void GridSamplerLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void GridSamplerLowering::LoweringF8(PatternRewriter &rewriter,
+                                      top::GridSamplerOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void GridSamplerLowering::LoweringQuantized(PatternRewriter &rewriter,
                                             top::GridSamplerOp op) const {
   llvm_unreachable("Not Implemented");

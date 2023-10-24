@@ -45,6 +45,11 @@ void SoftplusLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void SoftplusLowering::LoweringF8(PatternRewriter &rewriter,
+                                   top::SoftplusOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void SoftplusLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::SoftplusOp op) const {
   Value table =

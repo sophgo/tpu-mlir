@@ -70,6 +70,11 @@ void GatherLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringGather(rewriter, op, new_type);
 }
 
+void GatherLowering::LoweringF8(PatternRewriter &rewriter,
+                                 top::GatherOp op) const {
+ llvm_unreachable("Not Implemented");
+}
+
 void GatherLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::GatherOp op) const {
   auto new_type = op.getOutput().getType();

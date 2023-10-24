@@ -200,6 +200,11 @@ void ScaleLowering::LoweringF16(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands, attrs);
 }
 
+void ScaleLowering::LoweringF8(PatternRewriter &rewriter,
+                                top::ScaleOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void ScaleLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::ScaleOp op) const {
   lowering_common<tpu::ScaleOp>(rewriter, op, op.getOutput().getType());

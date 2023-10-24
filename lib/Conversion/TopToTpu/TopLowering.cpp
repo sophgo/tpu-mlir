@@ -357,6 +357,14 @@ Type getQuantBoolType(Value v) {
   return RankedTensorType::get(type.getShape(), qtype);
 }
 
+Type getQuantF8E4M3Type(Value v) {
+  return getQuantFloatType<Float8E4M3FNType>(v);
+}
+
+Type getQuantF8E5M2Type(Value v) {
+  return getQuantFloatType<Float8E5M2Type>(v);
+}
+
 Value do_transpose(Location name_loc, Value input,
                    std::vector<int64_t> &order) {
   auto ctx = input.getContext();

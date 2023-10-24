@@ -121,6 +121,11 @@ void ScatterElementsLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringScatterElements(rewriter, op, new_type);
 }
 
+void ScatterElementsLowering::LoweringF8(PatternRewriter &rewriter,
+                                      top::ScatterElementsOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void ScatterElementsLowering::LoweringQuantized(PatternRewriter &rewriter,
                                             top::ScatterElementsOp op) const {
   // lowering_common<tpu::ScatterElementsOp>(rewriter, op.getOperation(),

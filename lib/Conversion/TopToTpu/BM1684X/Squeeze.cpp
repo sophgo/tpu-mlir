@@ -53,6 +53,11 @@ void SqueezeLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::SqueezeOp>(rewriter, op);
 }
 
+void SqueezeLowering::LoweringF8(PatternRewriter &rewriter,
+                                   top::SqueezeOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void SqueezeLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::SqueezeOp op) const {
   lowering_common<tpu::SqueezeOp>(rewriter, op, op.getOutput().getType());
