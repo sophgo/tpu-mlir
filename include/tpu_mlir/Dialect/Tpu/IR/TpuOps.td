@@ -236,6 +236,7 @@ def Tpu_ActiveMode : I32EnumAttr<"ActiveMode",
       I32EnumAttrCase<"LOG_SIGMOID", 32>,
       I32EnumAttrCase<"SOFT_PLUS", 33>,
       I32EnumAttrCase<"SOFT_SIGN", 34>,
+      I32EnumAttrCase<"LOG2", 35>,
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";

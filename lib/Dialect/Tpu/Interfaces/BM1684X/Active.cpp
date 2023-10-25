@@ -82,6 +82,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
                    align_up(10 * dtype_len, Arch::EU_BYTES);
     break;
   case ActiveMode::LN:
+  case ActiveMode::LOG2:
   case ActiveMode::TAN:
   case ActiveMode::SIN:
   case ActiveMode::COS:
