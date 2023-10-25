@@ -31,8 +31,10 @@ void buildGlobalOptimizationPassPipeline(
     .addPass(memref::createResolveShapedTypeResultDimsPass)
     .addPass(mlir::createCanonicalizerPass)
     .addPass(mlir::createCSEPass)
-    //Elementwise fusion on-tensor level
-    .addPass([](){
+    /* Elementwise fusion on-tensor level,
+       why not use mlir::createLinalgElementwiseOpFusionPass,
+       it can't fusion when multi-use */
+    .addPass([]() {
           return mlir::createFusionOfTensorOpsPass();});
   //ToDo
 }
