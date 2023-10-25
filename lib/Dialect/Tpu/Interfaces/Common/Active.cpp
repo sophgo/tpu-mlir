@@ -73,6 +73,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::LN:
     active_func(p, num_element, [](double val) { return std::log(val); });
     break;
+  case ActiveMode::LOG2:
+    active_func(p, num_element, [](double val) { return std::log2(val); });
+    break;
   case ActiveMode::SQRT:
     active_func(p, num_element, [](double val) { return std::sqrt(val); });
     break;

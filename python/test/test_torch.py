@@ -22,6 +22,7 @@ import torch.jit as jit
 import traceback
 
 from torchvision.ops import DeformConv2d
+from torchvision.ops import roi_align
 
 
 class TORCH_IR_TESTER(object):
@@ -110,6 +111,7 @@ class TORCH_IR_TESTER(object):
             "Repeat":           (self.test_Repeat,            N, Y, Y, Y),
             "Reshape":          (self.test_Reshape,           N, Y, Y, Y),
             "RMSNorm":          (self.test_RMSNorm,           N, Y, Y, N),
+            "RoiAlign":         (self.test_RoiAlign,          N, Y, Y, N),
             "PixelShuffle":     (self.test_PixelShuffle,      N, Y, Y, Y),
             "PixelUnshuffle":   (self.test_PixelUnshuffle,    N, Y, Y, Y),
             "PRelu":            (self.test_PRelu,             N, Y, Y, Y),
@@ -1688,7 +1690,7 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([(4, 3, 16, 16)], Model())
 
-        for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.tan, torch.tanh, torch.exp]:
+        for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.tan, torch.tanh, torch.exp, torch.sort]:
             _test_math(f)
 
     #######################################################################
@@ -2902,6 +2904,44 @@ class TORCH_IR_TESTER(object):
 
         self.trace_and_test([(4, 3, 32, 32)], Model())
         self.trace_and_test([(1, 65, 4, 4)], Model())
+
+    #######################################################################
+    # RoiAlign
+    # ------------
+    def test_RoiAlign(self):
+        roi_num = 5
+        N, C, H, W = 3, 3, 64, 64
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.boxes = self.gen_rand_rois(N, H, W, roi_num)
+
+            def gen_rand_rois(self, N, H, W, roi_num) -> torch.Tensor:
+                batch_indice = torch.randint(0, N, (roi_num, ), dtype=torch.int32).float()
+                roi_xl = torch.rand(roi_num, dtype=torch.float32) * (W - 1)
+                roi_xh = torch.rand(roi_num, dtype=torch.float32) * (W - 1)
+                roi_yl = torch.rand(roi_num, dtype=torch.float32) * (H - 1)
+                roi_yh = torch.rand(roi_num, dtype=torch.float32) * (H - 1)
+                for i in range(roi_num):
+                    if roi_xl[i] > roi_xh[i]:
+                        roi_xl[i], roi_xh[i] = roi_xh[i], roi_xl[i]
+                    if roi_yl[i] > roi_yh[i]:
+                        roi_yl[i], roi_yh[i] = roi_yh[i], roi_yl[i]
+                batch_indice.unsqueeze_(1)
+                roi_xl.unsqueeze_(1)
+                roi_yl.unsqueeze_(1)
+                roi_xh.unsqueeze_(1)
+                roi_yh.unsqueeze_(1)
+                rois = torch.cat((batch_indice, roi_xl, roi_yl, roi_xh, roi_yh), 1)
+                return rois
+
+            def forward(self, x):
+                y = roi_align(x, self.boxes, [8, 8])
+                return y
+
+        self.trace_and_test([(N, C, H, W)], Model())
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     try:

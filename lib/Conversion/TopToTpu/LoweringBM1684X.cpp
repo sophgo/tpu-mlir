@@ -102,6 +102,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       GELULowering,
       LeakyReluLowering,
       LogLowering,
+      LogBLowering,
       LRNLowering,
       LSTMLowering,
       MatMulLowering,

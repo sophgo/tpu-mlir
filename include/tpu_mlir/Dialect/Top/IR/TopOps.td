@@ -1261,6 +1261,21 @@ def Top_LogOp: Top_Op<"Log"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_LogBOp: Top_Op<"LogB"> {
+  let summary = "LogB operator";
+
+  let description = [{
+    Calculates the log of the given input tensor to the base B, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$base
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_LRNOp: Top_Op<"LRN"> {
   let summary = "Local Response Normalization";
 

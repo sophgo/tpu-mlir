@@ -132,6 +132,8 @@ class TorchConverter(BaseConverter):
             "aten::linear": lambda node: self.convert_linear_op(node),
             "aten::log_sigmoid": lambda node: self.convert_sigmoid_op(node, log=True),
             "aten::log_softmax": lambda node: self.convert_softmax_op(node, log=True),
+            "aten::log": lambda node: self.convert_log_op(node),
+            "aten::log2": lambda node: self.convert_log2_op(node),
             "aten::lstm": lambda node: self.convert_lstm_op(node),
             "aten::lt": lambda node: self.convert_compare_op(node, "Less"),
             "aten::masked_fill": lambda node: self.convert_masked_fill(node),
@@ -183,6 +185,7 @@ class TorchConverter(BaseConverter):
             "aten::slice": lambda node: self.convert_slice_op(node),
             "aten::softmax": lambda node: self.convert_softmax_op(node),
             "aten::softplus": lambda node: self.convert_softplus_op(node),
+            "aten::sort": lambda node: self.convert_sort_op(node),
             "aten::squeeze": lambda node: self.convert_squeeze_op(node),
             "aten::stack": lambda node: self.convert_stack_op(node),
             "aten::sub": lambda node: self.convert_sub_op(node),
@@ -194,6 +197,7 @@ class TorchConverter(BaseConverter):
             "aten::tile": lambda node: self.convert_repeat_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
             "aten::to": lambda node: self.convert_to_op(node),
+            "aten::topk": lambda node: self.convert_topk_op(node),
             "aten::type_as": lambda node:  self.convert_to_op(node),
             "aten::unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "aten::upsample_bilinear2d": lambda node: self.convert_upsample_op(node, mode='bilinear'),
@@ -216,6 +220,7 @@ class TorchConverter(BaseConverter):
             # "prim::If": lambda node: self.convert_if(node),
             ###### torchvision ######
             "torchvision::deform_conv2d": lambda node: self.convert_deform_conv2d_op(node),
+            "torchvision::roi_align": lambda node: self.convert_roi_align_op(node),
         }
         # yapf: enable
         self.check_op_types()
@@ -1958,3 +1963,87 @@ class TorchConverter(BaseConverter):
                             loc=self.get_loc(torch_node.name+"_add"),
                             ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op4)
+
+    def convert_roi_align_op(self, torch_node: TorchNode):
+        input = self.getOp(torch_node.inputs[0])
+        rois = self.getOp(torch_node.inputs[1])
+        spatial_scale = self.const_val[torch_node.inputs[2]]
+        output_height = self.const_val[torch_node.inputs[3]]
+        output_width = self.const_val[torch_node.inputs[4]]
+        sampling_ratio = self.const_val[torch_node.inputs[5]]
+        align_corners = self.const_val[torch_node.inputs[6]]
+        mode = "Avg"
+        new_op = top.RoiAlignOp(self.unranked_type,
+                                input,
+                                rois,
+                                mode=StringAttr.get(mode),
+                                output_height=output_height,
+                                output_width=output_width,
+                                sampling_ratio=sampling_ratio,
+                                spatial_scale=spatial_scale,
+                                align_corners=align_corners,
+                                loc=self.get_loc(torch_node.name),
+                                ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_log2_op(self, torch_node: TorchNode):
+        input = self.getOp(torch_node.inputs[0])
+        new_op = top.LogBOp(self.unranked_type,
+                           input,
+                           2,
+                           loc=self.get_loc(torch_node.name),
+                           ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_log_op(self, torch_node: TorchNode):
+        input = self.getOp(torch_node.inputs[0])
+        new_op = top.LogOp(self.unranked_type,
+                           input,
+                           loc=self.get_loc(torch_node.name),
+                           ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_sort_op(self, torch_node: TorchNode):
+        input = self.getOp(torch_node.inputs[0])
+        input_shape = self.getShape(torch_node.inputs[0])
+        axis = self.const_val[torch_node.inputs[-2]]
+        descending = self.const_val[torch_node.inputs[-1]]
+        if len(torch_node.inputs) == 4:
+            stable = self.const_val[torch_node.inputs[1]]
+        else:
+            stable = False
+        new_op = top.TopKOp(self.unranked_type,
+                           self.unranked_type,
+                           input = input,
+                           axis = axis,
+                           K = input_shape[axis],
+                           kT = None,
+                           largest = descending,
+                           sorted = True,
+                           loc=self.get_loc(torch_node.outputs),
+                           ip=self.mlir.insert_point)
+        values = new_op.values
+        indices = new_op.indices
+        self.addOperand(torch_node.outputs[0], values)
+        self.addOperand(torch_node.outputs[1], indices)
+
+    def convert_topk_op(self, torch_node: TorchNode):
+        input = self.getOp(torch_node.inputs[0])
+        K = self.const_val[torch_node.inputs[1]]
+        axis = self.const_val[torch_node.inputs[2]]
+        largest = self.const_val[torch_node.inputs[3]]
+        sorted = self.const_val[torch_node.inputs[4]]
+        new_op = top.TopKOp(self.unranked_type,
+                           self.unranked_type,
+                           input = input,
+                           axis = axis,
+                           K = K,
+                           kT = None,
+                           largest = largest,
+                           sorted = sorted,
+                           loc=self.get_loc(torch_node.outputs),
+                           ip=self.mlir.insert_point)
+        values = new_op.values
+        indices = new_op.indices
+        self.addOperand(torch_node.outputs[0], values)
+        self.addOperand(torch_node.outputs[1], indices)
