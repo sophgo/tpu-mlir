@@ -2244,6 +2244,8 @@ class TORCH_IR_TESTER(object):
         if self.chip in ["bm1684x", "bm1688"]:
             _test_upsample((1, 3, 224), None, 2)
             _test_upsample((1, 3, 224), (500), None)
+        if self.chip in ["bm1684x"]:
+            _test_upsample((1, 3, 5, 2, 4), None, (1, 2, 3)) # add for upsample_nearest_3d, only support scale_d = 1
 
     #######################################################################
     def test_IndexPut(self):

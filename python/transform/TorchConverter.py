@@ -211,6 +211,7 @@ class TorchConverter(BaseConverter):
             "aten::upsample_linear1d": lambda node: self.convert_upsample_op(node, mode='linear'),
             "aten::upsample_nearest1d": lambda node: self.convert_upsample_op(node, mode='nearest'),
             "aten::upsample_nearest2d": lambda node: self.convert_upsample_op(node, mode='nearest'),
+            "aten::upsample_nearest3d": lambda node: self.convert_upsample_op(node, mode='nearest'),
             "aten::view": lambda node: self.convert_reshape_op(node),
             "aten::where": lambda node: self.convert_where_op(node),
             "aten::zeros": lambda node: self.convert_constant_fill_op(node, 0),

@@ -224,8 +224,8 @@ void top::InterpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::InterpOp::inference(InferenceParameter &p) {
     int64_t n, c, ih, iw, oh, ow;
-    module::getNCHW(getInput(), n, c, ih, iw);
-    module::getNCHW(getOutput(), n, c, oh, ow);
+    module::getNCHW(getInput(), n, c, ih, iw, false);
+    module::getNCHW(getOutput(), n, c, oh, ow, false);
     PLATFORM_SUPPORT platform_sp;
     int coord = 0;
     bool align_corners = (getCoordMode() == "align_corners");
@@ -309,6 +309,9 @@ void top::InterpOp::shape_inference() {
     if (getMode() == "nearest" || getMode() == "linear") {
         if (!module::isNone(target_shape_)) {
             auto target_shape = target_shape_.getDefiningOp<top::WeightOp>().read<float>();
+            if (nof_dims == 5) {
+                assert(target_shape->at(0) == in_shape[nof_dims - 3]); // upsample_nearest_3d only support scale_d = 1
+            }
             out_shape[widx] = (int)target_shape->at(nof_dims - 2 - 1);
             if (nof_dims >= 4) {
                 out_shape[hidx] =
