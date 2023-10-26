@@ -78,6 +78,7 @@ class TORCH_IR_TESTER(object):
             "Elu":              (self.test_Elu,               Y, Y, Y, Y),
             "Embedding":        (self.test_Embedding,         N, Y, Y, Y),
             "Flatten":          (self.test_Flatten,           N, Y, Y, N),
+            "Flip":             (self.test_Flip,              N, Y, Y, N),
             "Floor":            (self.test_Floor,             N, Y, Y, N),
             "FloorDiv":         (self.test_FloorDiv,          N, Y, Y, N),
             "Gather":           (self.test_Gather,            N, N, N, N),
@@ -2588,6 +2589,30 @@ class TORCH_IR_TESTER(object):
         _test_flatten((3, 16, 32, 64))
         _test_flatten((3, 16, 32, 64), end_dim=2)
         _test_flatten((3, 16, 32, 64), start_dim=1)
+
+    #######################################################################
+    # Flip
+    # ------------
+    def test_Flip(self):
+        """Flip"""
+
+        def _test_flip(in_shape, flip_dims):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    # self.flatten = nn.Flatten(start_dim=start_dim, end_dim=end_dim)
+
+                def forward(self, x):
+                    flipped_tensor = torch.flip(x, flip_dims)
+                    return flipped_tensor
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_flip((3, 16, 32, 64), flip_dims=[-1])
+        _test_flip((3, 16, 32, 64), flip_dims=[0, 1])
+        _test_flip((3, 16, 32, 64), flip_dims=[0, 2,3])
 
     #######################################################################
     # Adaptive AvgPool2d
