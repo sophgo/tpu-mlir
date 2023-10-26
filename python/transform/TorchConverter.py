@@ -108,6 +108,7 @@ class TorchConverter(BaseConverter):
             "aten::expand": lambda node: self.convert_expand_op(node),
             "aten::expand_as": lambda node: self.convert_expand_as_op(node),
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
+            "aten::flip": lambda node: self.convert_flip_op(node),
             "aten::floor": lambda node: self.convert_floor_op(node),
             "aten::floor_divide": lambda node: self.convert_floor_divide_op(node),
             "aten::flatten": lambda node: self.convert_flatten_op(node),
@@ -909,6 +910,29 @@ class TorchConverter(BaseConverter):
                                loc=self.get_loc(torch_node.name),
                                ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, floor_op)
+
+    def convert_flip_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        shape = self.getShape(torch_node.inputs[0])
+        dim_max = len(shape)
+        axis_data = self.getWeight(torch_node.inputs[1])
+        last_op = op0
+
+        for i in range(len(axis_data)):
+            if axis_data[i] < 0:
+                axis_data[i] = dim_max + axis_data[i]
+            shape_val = shape[int(axis_data[i])]
+            indices = np.linspace(shape_val - 1, 0, num=shape_val, endpoint=True)
+            indices_name = torch_node.name + "_indices_"+str(i)
+            self.addWeight(indices_name, indices)
+            indices_op = self.getWeightOp(indices_name)
+            last_op = top.GatherOp(self.unranked_type,
+                              last_op,
+                              indices_op,
+                              axis=axis_data[i],
+                              loc=self.get_loc("{}_gather_{}".format(torch_node.name, i)),
+                              ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, last_op)
 
     def convert_floor_divide_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
