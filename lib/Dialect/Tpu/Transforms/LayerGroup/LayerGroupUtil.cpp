@@ -785,8 +785,8 @@ static bool backward_update_slice(const LgInfo &lg_info,
           for (auto user : pre_op->getUsers()) {
             if (!(std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
                             user) != lg_info.group_ops.end() &&
-                  isa<tpu::Conv2DOp>(user) &&
-                  module::isUniformQuantized(in))) {
+                  isa<tpu::Conv2DOp>(user) && module::isUniformQuantized(in)) ||
+                lg_info.group_outs.size() != 1) {
               return false;
             }
           }
