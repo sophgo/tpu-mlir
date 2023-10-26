@@ -133,6 +133,9 @@ LogicalResult tpu::GroupNormOp::LocalGenSupport() {
       return failure();
     }
   }
+  if (module::isSG2260Family()) {
+    return failure();
+  }
   return success();
 }
 
