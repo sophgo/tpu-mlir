@@ -100,6 +100,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       GridSamplerLowering,
       GRULowering,
       GELULowering,
+      IndexPutLowering,
       LeakyReluLowering,
       LogLowering,
       LogBLowering,

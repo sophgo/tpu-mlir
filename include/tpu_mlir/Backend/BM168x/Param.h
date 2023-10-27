@@ -732,6 +732,12 @@ typedef struct index_select_global_spec {
   index_select_common_spec_t common;
 } index_select_global_spec_t;
 
+typedef struct index_put_spec{
+    int mode;
+    int accumulate;
+    uint64_t buffer_addr;
+} index_put_spec_t;
+
 typedef struct roi_align_spec {
   int pooled_height;
   int pooled_width;

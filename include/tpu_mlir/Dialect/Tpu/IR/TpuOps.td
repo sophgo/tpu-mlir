@@ -2328,6 +2328,23 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
   );
 }
 
+def Tpu_IndexPutOp : Tpu_Op<"IndexPut"> {
+  let summary = "IndexPut operation";
+  let description = [{
+    aten::index_put_
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyRankedTensor:$indices,
+    AnyRankedTensor:$values,
+    AnyTensorOrNone:$buffer, //for accumulate is True
+    DefaultValuedAttr<BoolAttr, "false">:$accumulate
+  );
+  let results = (outs
+    AnyRankedTensor:$output
+  );
+}
+
 def Tpu_InstanceNormOp : Tpu_Op<"InstanceNorm", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
