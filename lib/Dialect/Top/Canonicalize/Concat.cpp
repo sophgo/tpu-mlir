@@ -483,7 +483,10 @@ struct RemoveInvaidShapeConcatInput : public OpRewritePattern<ConcatOp> {
       auto slice_op = dyn_cast<SliceOp>(in_op);
       if (slice_op) {
         auto oslice_shape = module::getShape(slice_op.getOutput());
-        if (oslice_shape.size() == 1 && oslice_shape[0] == 0) {
+        for (auto &shape : oslice_shape) {
+          if (shape != 0) {
+            continue;
+          }
           concat_op.setOperand(i, none_op);
           rewriter.eraseOp(slice_op);
           hasNoneorInvaidShape = true;
