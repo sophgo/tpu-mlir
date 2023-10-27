@@ -85,6 +85,8 @@ class TORCH_IR_TESTER(object):
             "GridSampler":      (self.test_GridSampler,       N, Y, N, Y),
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, Y, N),
             "GRU":              (self.test_GRU,               Y, Y, Y, Y),
+            "IndexPut":         (self.test_IndexPut,          N, Y, Y, N),
+            "Index":            (self.test_IndexPut,          N, Y, Y, N),
             "IndexSelect":      (self.test_IndexSelect,       N, Y, Y, Y),
             "InstanceNorm":     (self.test_InstanceNorm,      Y, Y, Y, Y),
             "Interp":           (self.test_Interp,            N, Y, Y, Y),
@@ -913,13 +915,13 @@ class TORCH_IR_TESTER(object):
                     c = a + self.b
                     return c
             self.trace_and_test([in0_shape], Model())
-        
+
         _test_Roll((4,2), 1)
         _test_Roll((4,2), 1, 0)
         _test_Roll((4,2), -1, 0)
         _test_Roll((4,2), (4,2), (0,1))
         _test_Roll((4,2), (123,-133), (1,0))
-        
+
 
     #######################################################################
     # Chunk
@@ -1259,7 +1261,7 @@ class TORCH_IR_TESTER(object):
     # NonZero
     # ------------
     def test_NonZero(self):
-        
+
         def _test_NonZero(in0_shape):
             class Model(nn.Module):
                 def __init__(self):
@@ -2218,6 +2220,29 @@ class TORCH_IR_TESTER(object):
         if self.chip in ["bm1684x", "bm1688"]:
             _test_upsample((1, 3, 224), None, 2)
             _test_upsample((1, 3, 224), (500), None)
+
+    #######################################################################
+    def test_IndexPut(self):
+        """IndexPut & Index"""
+        def _test_index_put_(in_shape, index_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    high = in_shape[0]
+                    self.index = torch.randint(0, high, index_shape)
+                    val_shape = [index_shape[0]]
+                    val_shape[1:] = in_shape[1:]
+                    self.new_val = torch.randn(val_shape)
+
+                def forward(self, x):
+                    x[self.index] += self.new_val
+                    return x
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_index_put_((10, 3, 64, 64), (2,) )
 
     #######################################################################
     # IndexSelect

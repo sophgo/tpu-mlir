@@ -127,6 +127,9 @@ class TorchConverter(BaseConverter):
             "aten::instance_norm": lambda node: self.convert_instance_norm_op(node),
             # "aten::is_floating_point": lambda node: self.convert_is_type_op(node, "float"),
             "aten::Int": lambda node: self.convert_skip_op(node),
+            "aten::index": lambda node: self.convert_index_op(node),
+            "aten::index_put_": lambda node: self.convert_index_put_op(node),
+            "aten::index_put": lambda node: self.convert_index_put_op(node),
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
             "aten::le": lambda node: self.convert_compare_op(node, "LessOrEqual"),
             "aten::leaky_relu": lambda node: self.convert_leaky_relu_op(node),
@@ -250,6 +253,7 @@ class TorchConverter(BaseConverter):
 
         unknown_ops = []
         for op_type in op_types:
+            print(op_type)
             if op_type not in known_ops:
                 if not (op_type.endswith("_") and op_type[:-1] in known_ops):
                     unknown_ops.append(op_type)
@@ -959,6 +963,29 @@ class TorchConverter(BaseConverter):
         in_op = self.getOp(torch_node.inputs[0])
         self.addOperand(torch_node.name, in_op)
 
+    def convert_index_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        indices = self.getOp(torch_node.inputs[1])
+        new_op = top.GatherOp(self.unranked_type,
+                            op0,
+                            indices,
+                            axis=0,
+                            loc=self.get_loc(torch_node.name),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_index_put_op(self, torch_node: TorchNode):
+        input = self.getOp(torch_node.inputs[0])
+        indices = self.getOp(torch_node.inputs[1])
+        values = self.getOp(torch_node.inputs[2])
+        new_op = top.IndexPutOp(self.unranked_type,
+                                      input,
+                                      indices,
+                                      values,
+                                      loc=self.get_loc(torch_node.name),
+                                      ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
+
     def convert_to_op(self, torch_node: TorchNode):
         in_op = self.getOp(torch_node.inputs[0])
         self.addOperand(torch_node.name, in_op)
@@ -1129,7 +1156,7 @@ class TorchConverter(BaseConverter):
     #
     #       roll => flatten -> slice0 -> concat -> reshape
     #                        \        /
-    #                          slice1  
+    #                          slice1
     #
     #
     #
@@ -1138,10 +1165,10 @@ class TorchConverter(BaseConverter):
     #    for i in dims:
     #       roll => slice1_i -> concat_i
     #             \          /
-    #               slice2_i 
-    # 
+    #               slice2_i
+    #
     #    concat(concat_0, ···， concat_dims)
-    #                   
+    #
         in_op = self.getOp(torch_node.inputs[0])
         shape = self.getShape(torch_node.inputs[0])
         shifts = self.const_val[torch_node.inputs[1]]
@@ -1162,7 +1189,7 @@ class TorchConverter(BaseConverter):
                                         end_dim=end_dim,
                                         loc=self.get_loc(torch_node.name + "_expand_0"),
                                         ip=self.mlir.insert_point).output
-            
+
             new_scliceop_0 = top.SliceOp(self.unranked_type,
                                         new_FlattenOp,
                                         self.mlir.none_op,
@@ -1174,7 +1201,7 @@ class TorchConverter(BaseConverter):
                                         axes=[0],
                                         loc=self.get_loc(torch_node.name + "_expand_1"),
                                         ip=self.mlir.insert_point).output
-            
+
             new_scliceop_1 = top.SliceOp(self.unranked_type,
                                         new_FlattenOp,
                                         self.mlir.none_op,
@@ -1263,9 +1290,9 @@ class TorchConverter(BaseConverter):
                                             ip=self.mlir.insert_point).output
                 cur_in_op = new_concat_op
                 add_op = new_concat_op
-                    
+
             self.addOperand(torch_node.name, add_op)
-            
+
 
     def convert_stack_op(self, torch_node: TorchNode):
         inputs = self.tensor_list[torch_node.inputs[0]]

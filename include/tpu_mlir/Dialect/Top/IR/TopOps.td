@@ -2049,6 +2049,25 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_IndexPutOp : Top_Op<"IndexPut"> {
+  let summary = "Index_put_ operation";
+  let description = [{
+    if accumulate
+      input[indices] += values
+    else
+      input[indices] = values
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$indices,
+    AnyTensor:$values,
+    DefaultValuedAttr<BoolAttr, "false">:$accumulate
+  );
+  let results = (outs
+    AnyTensor:$output
+  );
+}
+
 def Top_InstanceNormOp : Top_Op<"InstanceNorm"> {
   let summary = "Instance Norm operation";
   let description = [{

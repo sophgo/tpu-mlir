@@ -661,6 +661,31 @@ public:
   }
 };
 
+class IndexPutGlobalBuffer : public OpRewritePattern<tpu::IndexPutOp> {
+public:
+  using OpRewritePattern<tpu::IndexPutOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::IndexPutOp IndexPutOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(IndexPutOp.getBuffer()) || !IndexPutOp.getAccumulate()) {
+      return failure();
+    }
+    if (!module::isBM1684XFamily()) {
+      return failure();
+    }
+    auto elment_num = module::getNumElements(IndexPutOp.getValues());
+    auto type = module::getStorageType(IndexPutOp.getValues());
+    // add buffer
+    std::vector<int64_t> buffer_shape = {elment_num}; // double buffer
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(IndexPutOp, buffer_type);
+    IndexPutOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == IndexPutOp.getBuffer() && operand.getOwner() == IndexPutOp;
+    });
+    return success();
+  }
+};
+
 class PadGlobalBuffer : public OpRewritePattern<tpu::PadOp> {
 public:
   using OpRewritePattern<tpu::PadOp>::OpRewritePattern;
@@ -863,6 +888,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       NonZeroGlobalBuffer,
       DeformGatherGlobalBuffer,
       TileGlobalBuffer,
+      IndexPutGlobalBuffer,
       PadGlobalBuffer,
       Space2BatchGlobalBuffer,
       Batch2SpaceGlobalBuffer,
