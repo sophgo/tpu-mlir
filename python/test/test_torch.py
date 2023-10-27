@@ -106,12 +106,14 @@ class TORCH_IR_TESTER(object):
             "MV":               (self.test_MV,                N, Y, N, N),
             "Mul":              (self.test_Mul,               N, Y, Y, Y),
             "NewZeros":         (self.test_NewZeros,          N, Y, Y, Y),
+            "NonZero":          (self.test_NonZero,           N, Y, Y, N),
             "Reduce":           (self.test_Reduce,            N, Y, Y, Y),
             "Remainder":        (self.test_Remainder,         N, Y, N, N),
             "Repeat":           (self.test_Repeat,            N, Y, Y, Y),
             "Reshape":          (self.test_Reshape,           N, Y, Y, Y),
             "RMSNorm":          (self.test_RMSNorm,           N, Y, Y, N),
             "RoiAlign":         (self.test_RoiAlign,          N, Y, Y, N),
+            "Roll":             (self.test_Roll,              N, Y, Y, N),
             "PixelShuffle":     (self.test_PixelShuffle,      N, Y, Y, Y),
             "PixelUnshuffle":   (self.test_PixelUnshuffle,    N, Y, Y, Y),
             "PRelu":            (self.test_PRelu,             N, Y, Y, Y),
@@ -895,6 +897,28 @@ class TORCH_IR_TESTER(object):
         input_shape = [14, 25, 40] + normalize_shape
         self.trace_and_test([input_shape], Model())
 
+    #######################################################################
+    # Roll
+    # ------------
+    def test_Roll(self):
+        """Concat"""
+        def _test_Roll(in0_shape, shifts, dim = None):
+            class Model(torch.nn.Module):
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.b = torch.rand(in0_shape)
+                def forward(self, x):
+                    a = torch.roll(x, shifts, dim)
+                    c = a + self.b
+                    return c
+            self.trace_and_test([in0_shape], Model())
+        
+        _test_Roll((4,2), 1)
+        _test_Roll((4,2), 1, 0)
+        _test_Roll((4,2), -1, 0)
+        _test_Roll((4,2), (4,2), (0,1))
+        _test_Roll((4,2), (123,-133), (1,0))
+        
 
     #######################################################################
     # Chunk
@@ -1206,7 +1230,6 @@ class TORCH_IR_TESTER(object):
         _test_mesh_grid((1, 3, 32, 64))
         _test_mesh_grid((1, 3, 64, 4), 'xy')
 
-
     #######################################################################
     # NewZeros
     # ------------
@@ -1230,6 +1253,25 @@ class TORCH_IR_TESTER(object):
         _test_newzeros((2, 3, 64, 64), torch.float32)
         _test_newzeros((3, 64, 64), torch.int32)
         _test_newzeros((64, 64))
+
+    #######################################################################
+    # NonZero
+    # ------------
+    def test_NonZero(self):
+        
+        def _test_NonZero(in0_shape):
+            class Model(nn.Module):
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = torch.nonzero(x)
+                    return y
+
+            self.trace_and_test([in0_shape], Model())
+
+        _test_NonZero([1, 4, 64, 32])
+        _test_NonZero([64])
 
     #######################################################################
     # Reshape

@@ -153,6 +153,7 @@ class TorchConverter(BaseConverter):
             "aten::neg": lambda node: self.convert_neg_op(node),
             "aten::new_ones": lambda node: self.convert_new_constant_fill_op(node, 1),
             "aten::new_zeros": lambda node: self.convert_new_constant_fill_op(node, 0),
+            "aten::nonzero": lambda node: self.convert_nonzero_op(node),
             "aten::ones": lambda node: self.convert_constant_fill_op(node, 1),
             "aten::ones_like": lambda node: self.convert_constant_like_op(node, 1),
             "aten::pad": lambda node: self.convert_pad_op(node, mode='unknown'),
@@ -169,6 +170,7 @@ class TorchConverter(BaseConverter):
             "aten::replication_pad1d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::replication_pad2d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::reshape": lambda node: self.convert_reshape_op(node),
+            "aten::roll": lambda node: self.convert_roll_op(node),
             "aten::rsqrt": lambda node: self.convert_rsqrt_op(node),
             "aten::rsub": lambda node: self.convert_sub_op(node, is_reverse=True),
             "aten::ScalarImplicit": lambda node: self.convert_skip_op(node),
@@ -726,6 +728,16 @@ class TorchConverter(BaseConverter):
                                     ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, new_op)
 
+    def convert_nonzero_op(self, onnx_node):
+        assert (len(onnx_node.inputs) == 1)
+        input_data = self.getOp(onnx_node.inputs[0])
+        new_op = top.NonZeroOp(self.unranked_type,
+                               input_data,
+                               order=StringAttr.get("ColMajor"),
+                               loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                               ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
     def convert_expand_op(self, torch_node: TorchNode):
         implict = False
         if torch_node.inputs[2] in self.const_val:
@@ -1086,6 +1098,150 @@ class TorchConverter(BaseConverter):
                                 loc=self.get_loc(torch_node.name),
                                 ip=self.mlir.insert_point).output
             self.addOperand(torch_node.name, new_op)
+
+    def convert_roll_op(self, torch_node: TorchNode):
+    #
+    # ====== case1 (dims is None): =========
+    #
+    #       roll => flatten -> slice0 -> concat -> reshape
+    #                        \        /
+    #                          slice1  
+    #
+    #
+    #
+    # ====== case2 (dims is not None): ========
+    #
+    #    for i in dims:
+    #       roll => slice1_i -> concat_i
+    #             \          /
+    #               slice2_i 
+    # 
+    #    concat(concat_0, ···， concat_dims)
+    #                   
+        in_op = self.getOp(torch_node.inputs[0])
+        shape = self.getShape(torch_node.inputs[0])
+        shifts = self.const_val[torch_node.inputs[1]]
+        dims = self.const_val[torch_node.inputs[2]]
+
+        if not dims:
+            start_dim = 0
+            end_dim = -1
+            length = 1
+            for i in shape:
+                length *= i
+
+            slices_new = []
+
+            new_FlattenOp = top.FlattenOp(self.unranked_type,
+                                        in_op,
+                                        start_dim=start_dim,
+                                        end_dim=end_dim,
+                                        loc=self.get_loc(torch_node.name + "_expand_0"),
+                                        ip=self.mlir.insert_point).output
+            
+            new_scliceop_0 = top.SliceOp(self.unranked_type,
+                                        new_FlattenOp,
+                                        self.mlir.none_op,
+                                        self.mlir.none_op,
+                                        self.mlir.none_op,
+                                        offset=[length - (shifts[0] % length)],
+                                        steps=[1],
+                                        ends=[length],
+                                        axes=[0],
+                                        loc=self.get_loc(torch_node.name + "_expand_1"),
+                                        ip=self.mlir.insert_point).output
+            
+            new_scliceop_1 = top.SliceOp(self.unranked_type,
+                                        new_FlattenOp,
+                                        self.mlir.none_op,
+                                        self.mlir.none_op,
+                                        self.mlir.none_op,
+                                        offset=[0],
+                                        steps=[1],
+                                        ends=[length - (shifts[0] % length)],
+                                        axes=[0],
+                                        loc=self.get_loc(torch_node.name + "_expand_2"),
+                                        ip=self.mlir.insert_point).output
+            slices_new.append(new_scliceop_0)
+            slices_new.append(new_scliceop_1)
+
+            new_concat_op = top.ConcatOp(self.unranked_type,
+                                        slices_new,
+                                        axis=0,
+                                        loc=self.get_loc(torch_node.name +"_expand_3"),
+                                        ip=self.mlir.insert_point).output
+            new_op = top.ReshapeOp(self.unranked_type,
+                                   new_concat_op,
+                                   shape=shape,
+                                   loc=self.get_loc(torch_node.name),
+                                   ip=self.mlir.insert_point).output
+            self.addOperand(torch_node.name, new_op)
+
+        else:
+            assert len(shifts) == len(dims)
+            add_op = None
+            cur_in_op = in_op
+            idx = 0
+            for dim, shift in zip(dims, shifts):
+                len_shape = len(shape)
+                offset_0 = [0] * len_shape
+                steps_0 = [1] * len_shape
+                axes_0 = list(range(0, len_shape, 1))
+                offset_0[dim] = shape[dim] - (shift % shape[dim])
+                slices_new = []
+                new_scliceop_0 = top.SliceOp(self.unranked_type,
+                                            cur_in_op,
+                                            self.mlir.none_op,
+                                            self.mlir.none_op,
+                                            self.mlir.none_op,
+                                            offset= offset_0,
+                                            steps=steps_0,
+                                            ends=shape,
+                                            axes=axes_0,
+                                            loc=self.get_loc(torch_node.name
+                                                                + "_expand0" + str(dim) + str(shift)),
+                                            ip=self.mlir.insert_point).output
+
+                offset_1 = [0] * len_shape
+                steps_1 = steps_0
+                axes_1 = axes_0
+                ends_1 = shape.copy()
+                ends_1[dim] = ends_1[dim] - (shift % ends_1[dim])
+
+                new_scliceop_1 = top.SliceOp(self.unranked_type,
+                                            cur_in_op,
+                                            self.mlir.none_op,
+                                            self.mlir.none_op,
+                                            self.mlir.none_op,
+                                            offset=offset_1,
+                                            steps=steps_1,
+                                            ends=ends_1,
+                                            axes=axes_1,
+                                            loc=self.get_loc(torch_node.name
+                                                                + "_expand1" + str(dim) + str(shift)),
+                                            ip=self.mlir.insert_point).output
+                slices_new.append(new_scliceop_0)
+                slices_new.append(new_scliceop_1)
+                if idx == len(dims) - 1:
+                    new_concat_op = top.ConcatOp(self.unranked_type,
+                                            slices_new,
+                                            axis=dim,
+                                            loc=self.get_loc(torch_node.name),
+                                            ip=self.mlir.insert_point).output
+                    add_op = new_concat_op
+                    break
+                idx += 1
+                new_concat_op = top.ConcatOp(self.unranked_type,
+                                            slices_new,
+                                            axis=dim,
+                                            loc=self.get_loc(torch_node.name
+                                                                + "_expand2" + str(dim) + str(shift)),
+                                            ip=self.mlir.insert_point).output
+                cur_in_op = new_concat_op
+                add_op = new_concat_op
+                    
+            self.addOperand(torch_node.name, add_op)
+            
 
     def convert_stack_op(self, torch_node: TorchNode):
         inputs = self.tensor_list[torch_node.inputs[0]]
