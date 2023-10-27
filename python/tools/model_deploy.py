@@ -76,6 +76,7 @@ class DeployTool:
         self.module_name = self.module.module_name
         self.state = self.module.module_state
         self.disable_layer_group = args.disable_layer_group
+        self.opt = args.opt
         self.merge_weight = args.merge_weight
         self.op_divide = args.op_divide
         self.ignore_f16_overflow = args.ignore_f16_overflow
@@ -216,7 +217,7 @@ class DeployTool:
             tosa_to_llvm(self.tosa_mlir, self.model)
         else:
             mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
-                          self.quant_input, self.quant_output, self.disable_layer_group,
+                          self.quant_input, self.quant_output, self.disable_layer_group, self.opt,
                           self.merge_weight, self.op_divide, self.num_device, self.num_core,
                           self.embed_debug_info, self.model_version)
             if not self.skip_validation and self.do_validate:
@@ -286,6 +287,7 @@ if __name__ == '__main__':
                         help="strip output type cast in bmodel, need outside type conversion")
     parser.add_argument("--disable_layer_group", action="store_true",
                         help="Decide whether to enable layer group pass")
+    parser.add_argument("--opt", default=2, type=int, choices=[1, 2], help="Optimization level")
     parser.add_argument("--op_divide", action="store_true",
                         help="if do large global op divide.")
     parser.add_argument("--num_device", default=1, type=int,
