@@ -158,6 +158,7 @@ class TorchConverter(BaseConverter):
             "aten::new_ones": lambda node: self.convert_new_constant_fill_op(node, 1),
             "aten::new_zeros": lambda node: self.convert_new_constant_fill_op(node, 0),
             "aten::nonzero": lambda node: self.convert_nonzero_op(node),
+            "aten::new_full": lambda node: self.convert_new_full(node),
             "aten::ones": lambda node: self.convert_constant_fill_op(node, 1),
             "aten::ones_like": lambda node: self.convert_constant_like_op(node, 1),
             "aten::pad": lambda node: self.convert_pad_op(node, mode='unknown'),
@@ -742,6 +743,17 @@ class TorchConverter(BaseConverter):
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
+        
+    def convert_new_full(self, torch_node: TorchNode):
+        assert (len(torch_node.inputs) >= 2)
+        op0 = self.getOp(torch_node.inputs[1])
+        fill_value = self.const_val[torch_node.inputs[2]]
+        new_op = top.ConstantFillOp(self.unranked_type,
+                                    op0,
+                                    value=fill_value,
+                                    loc=self.get_loc(torch_node.name),
+                                    ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op)
 
     def convert_expand_op(self, torch_node: TorchNode):
         implict = False

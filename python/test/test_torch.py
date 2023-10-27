@@ -110,6 +110,7 @@ class TORCH_IR_TESTER(object):
             "Mul":              (self.test_Mul,               N, Y, Y, Y),
             "NewZeros":         (self.test_NewZeros,          N, Y, Y, Y),
             "NonZero":          (self.test_NonZero,           N, Y, Y, N),
+            "New_full":         (self.test_New_full,          N, Y, Y, Y),
             "Reduce":           (self.test_Reduce,            N, Y, Y, Y),
             "Remainder":        (self.test_Remainder,         N, Y, N, N),
             "Repeat":           (self.test_Repeat,            N, Y, Y, Y),
@@ -1275,6 +1276,29 @@ class TORCH_IR_TESTER(object):
 
         _test_NonZero([1, 4, 64, 32])
         _test_NonZero([64])
+
+    #######################################################################
+    # New_full
+    # ------------
+    def test_New_full(self):
+
+        def _test_new_full(size, fill_value, dtype=None):
+
+            class Model(torch.nn.Module):
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.coeff = torch.randn(1, 3)
+
+                def forward(self, x):
+                    y = self.coeff.new_full(size, fill_value, dtype=dtype)
+                    y = y + x
+                    return y * 10
+
+            self.trace_and_test([size], Model())
+
+        _test_new_full((3,4), 3.14, torch.float32)
+        _test_new_full((4,), 3)
+
 
     #######################################################################
     # Reshape
