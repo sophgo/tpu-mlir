@@ -547,6 +547,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add const operator";
 
@@ -665,6 +666,7 @@ def Tpu_SubOp: Tpu_Op<"Sub",
 def Tpu_SubConstOp: Tpu_Op<"SubConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub const operator";
 
@@ -772,6 +774,7 @@ def Tpu_MinOp: Tpu_Op<"Min", [
 
 def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
    InOutSameShape, SupportElementwise,
+   DeclareOpInterfaceMethods<IndexingMapsInterface>,
    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max_const operator";
@@ -799,6 +802,7 @@ def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
 
 def Tpu_MinConstOp: Tpu_Op<"MinConst", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "min_const operator";
@@ -826,6 +830,7 @@ def Tpu_MinConstOp: Tpu_Op<"MinConst", [
 
 def Tpu_ActiveOp: Tpu_Op<"Active",[
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
   let summary = "Active operator";
@@ -849,6 +854,7 @@ def Tpu_ActiveOp: Tpu_Op<"Active",[
 
 def Tpu_ClipOp: Tpu_Op<"Clip",
   [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+   DeclareOpInterfaceMethods<IndexingMapsInterface>,
    DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
   let summary = "Clip operator";
   let description = [{
@@ -867,6 +873,7 @@ def Tpu_ClipOp: Tpu_Op<"Clip",
 
 def Tpu_MulConstOp: Tpu_Op<"MulConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul const operator";
@@ -894,6 +901,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [
 
 def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "ConstantBinary (Div) operator";
@@ -1108,6 +1116,7 @@ def Tpu_RangeOp: Tpu_Op<"Range"> {
 
 def Tpu_ReluOp: Tpu_Op<"Relu", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]>{
   let summary = "Relu operator";
@@ -1169,6 +1178,7 @@ def Tpu_ReverseOp:Tpu_Op<"Reverse", [InOutSameShape]> {
 
 def Tpu_CastOp:Tpu_Op<"Cast", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
@@ -1231,6 +1241,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
 
 def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
@@ -1269,6 +1280,7 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
 
 def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
@@ -1307,6 +1319,7 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
 
 def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
@@ -1472,6 +1485,7 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
 
 def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
    InOutSameShape, SupportElementwise,
+   DeclareOpInterfaceMethods<IndexingMapsInterface>,
    DeclareOpInterfaceMethods<LocalGenInterface>,
    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "leakyrelu operation";
@@ -1537,6 +1551,7 @@ def Tpu_ShapePackOp:Tpu_Op<"ShapePack", [
 
 def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
     InOutSameShape, SupportElementwise,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
@@ -2121,6 +2136,7 @@ def Tpu_GatherElementsOp: Tpu_Op<"GatherElements", [
 def Tpu_PReluOp : Tpu_Op<"PReluOp", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   InOutSameShape]> {
   let summary = "PReluOp operator";
   let description = [{
@@ -2254,6 +2270,7 @@ def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
 }
 
 def Tpu_CompareOp: Tpu_Op<"Compare", [
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Compare operator";
@@ -2271,6 +2288,7 @@ def Tpu_CompareOp: Tpu_Op<"Compare", [
 
 def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "CompareConst operator";

@@ -191,3 +191,10 @@ void tpu::ActiveOp::assign_fw_param(void *param) {
   layer_param.res_sign = module::isSign(getOutput());
   memcpy(param, &layer_param, sizeof(fw_active_layer_param_t));
 }
+
+ArrayAttr tpu::ActiveOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};
