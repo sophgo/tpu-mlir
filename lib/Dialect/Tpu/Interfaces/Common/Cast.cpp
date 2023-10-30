@@ -254,3 +254,10 @@ void tpu::CastOp::assign_fw_param(void *param) {
   fw_param.round_mode = ROUND_INF; // if support other round_mode, change here
   memcpy(param, &fw_param, sizeof(fw_dtype_convert_layer_param_t));
 }
+
+ArrayAttr tpu::CastOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};
