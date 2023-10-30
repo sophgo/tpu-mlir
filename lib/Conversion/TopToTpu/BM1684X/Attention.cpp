@@ -12,19 +12,6 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-const int64_t NPU_NUM = 64;
-
-template <typename T>
-int64_t data_copy(top::WeightOp weight, int64_t offset,
-                  std::shared_ptr<std::vector<T>> &new_weight) {
-  auto data_fp32 = weight.read<T>();
-  auto count = data_fp32->size();
-  auto shape = module::getShape(weight);
-  auto len = shape.size() == 2 ? align_up(shape[0], NPU_NUM) * shape[1] : count;
-  memcpy(new_weight->data() + offset, data_fp32->data(), count * sizeof(T));
-  return offset + len;
-}
-
 Value get_weight(Value weight, int head, int idx, int axis, Type to_type,
                  std::string base_name) {
   auto op = weight.getDefiningOp();
@@ -93,65 +80,6 @@ top::AttentionOp attention_head(PatternRewriter &rewriter, top::AttentionOp op,
   return attention;
 }
 
-template <typename T>
-Value weight_reorder(top::AttentionOp op, Type to_type, int N_q, int N_k,
-                     int d) {
-  auto q_w = op.getQueriesWeight().getDefiningOp<top::WeightOp>();
-  auto k_w = op.getKeysWeight().getDefiningOp<top::WeightOp>();
-  auto v_w = op.getValuesWeight().getDefiningOp<top::WeightOp>();
-  int64_t weight_h = (align_up(N_q, NPU_NUM) + align_up(N_k, NPU_NUM) + N_k);
-  auto new_weight = std::make_shared<std::vector<T>>(weight_h * d);
-
-  int offset = data_copy(q_w, 0, new_weight);
-  offset = data_copy(k_w, offset, new_weight);
-  offset = data_copy(v_w, offset, new_weight);
-
-  std::vector<int64_t> weight_shape = {1, weight_h, d};
-  auto new_type = RankedTensorType::get(weight_shape, to_type);
-  auto new_op =
-      top::WeightOp::create(op, "filter_reorder", *new_weight, new_type);
-  return new_op;
-}
-
-template <typename T>
-Value bias_reorder(top::AttentionOp op, Type to_type, int N_q, int d) {
-  auto q_bias = op.getQueriesBias();
-  auto k_bias = op.getKeysBias();
-  auto v_bias = op.getValuesBias();
-  auto o_bias = op.getOutBias();
-  int64_t bias_len = module::isNone(q_bias) ? 0 : d;
-  bias_len += module::isNone(k_bias) ? 0 : d;
-  bias_len += module::isNone(v_bias) ? 0 : d;
-  bias_len += module::isNone(o_bias) ? 0 : N_q;
-  if (bias_len) {
-    int offset = 0;
-    auto new_weight = std::make_shared<std::vector<T>>(bias_len);
-    if (!module::isNone(q_bias)) {
-      auto q_b = q_bias.getDefiningOp<top::WeightOp>();
-      offset = data_copy(q_b, 0, new_weight);
-    }
-    if (!module::isNone(k_bias)) {
-      auto k_b = k_bias.getDefiningOp<top::WeightOp>();
-      offset = data_copy(k_b, offset, new_weight);
-    }
-    if (!module::isNone(v_bias)) {
-      auto v_b = v_bias.getDefiningOp<top::WeightOp>();
-      offset = data_copy(v_b, offset, new_weight);
-    }
-    if (!module::isNone(o_bias)) {
-      auto o_b = o_bias.getDefiningOp<top::WeightOp>();
-      offset = data_copy(o_b, offset, new_weight);
-    }
-    std::vector<int64_t> weight_shape = {1, 1, bias_len};
-    auto new_type = RankedTensorType::get(weight_shape, to_type);
-    auto new_op =
-        top::WeightOp::create(op, "bias_reorder", *new_weight, new_type);
-    return new_op;
-  } else {
-    return q_bias;
-  }
-}
-
 template <typename T1, typename T2>
 void attention_reorder(PatternRewriter &rewriter, top::AttentionOp op,
                        Type w_type, Type b_type) {
@@ -162,19 +90,6 @@ void attention_reorder(PatternRewriter &rewriter, top::AttentionOp op,
   if (op.getInput() == op.getKeys()) {
     op->setOperand(1, none_op);
   }
-  auto q_shape = module::getShape(op.getQueriesWeight());
-  auto k_shape = module::getShape(op.getKeysWeight());
-
-  auto new_op =
-      weight_reorder<T1>(op, w_type, q_shape[0], k_shape[0], k_shape[1]);
-  op->setOperand(3, new_op);
-  auto bias_op = bias_reorder<T2>(op, b_type, q_shape[0], k_shape[1]);
-  op->setOperand(4, bias_op);
-  op->setOperand(5, none_op);
-  op->setOperand(6, none_op);
-  op->setOperand(7, none_op);
-  op->setOperand(8, none_op);
-  op->setOperand(10, none_op);
 
   {
     auto shape = module::getShape(op.getOutWeight());
