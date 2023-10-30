@@ -10,6 +10,7 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 
 LogicalResult tpu::MulOp::init(InferenceParameter &p) {
   auto binary = new Binary();
@@ -157,3 +158,7 @@ void tpu::MulOp::assign_fw_param(void *param) {
   memcpy(&(fw_broadcast_binary_layer_param->b_shape[0]), &b_shape[0],
          MAX_SHAPE_DIMS * sizeof(int));
 }
+
+ArrayAttr tpu::MulOp::getIndexingMaps() {
+  return getBinaryIndexingMaps(getOperation());
+};
