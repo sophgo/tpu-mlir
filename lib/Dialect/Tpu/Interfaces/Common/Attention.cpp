@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Dnnl/Attention.h"
 
-const int64_t NPU_NUM = 64;
-
 LogicalResult tpu::AttentionOp::init(InferenceParameter &p) {
   auto attention = new Attention();
   auto in_shape = module::getShape(getInput());
@@ -31,18 +29,12 @@ LogicalResult tpu::AttentionOp::init(InferenceParameter &p) {
   auto quant_param = module::getI64Array(getQuantParam());
 
   float *q_weight = p.inputs[3];
-  float *k_weight = q_weight + align_up(in_shape[2], NPU_NUM) * d;
-  float *v_weight = k_weight + align_up(key_shape[2], NPU_NUM) * d;
-  float *bias_offset = p.inputs[4];
-  float *q_bias = has_bias&0x01 ? bias_offset : nullptr;
-  int len = has_bias&0x01 ? d : 0;
-  float *k_bias = has_bias&0x02 ? bias_offset + len : nullptr;
-  len += has_bias&0x02 ? d : 0;
-  float *v_bias = has_bias&0x04 ? bias_offset + len : nullptr;
-  len += has_bias&0x04 ? d : 0;
-  float *o_bias = has_bias&0x08 ? bias_offset + len : nullptr;
-  len += has_bias&0x08 ? N_q : 0;
-  // float *table = has_bias&0x10 ? bias_offset + len : nullptr;
+  float *k_weight = p.inputs[5];
+  float *v_weight = p.inputs[7];
+  float *q_bias = has_bias&0x01 ? p.inputs[4] : nullptr;
+  float *k_bias = has_bias&0x02 ? p.inputs[6] : nullptr;
+  float *v_bias = has_bias&0x04 ? p.inputs[8] : nullptr;
+  float *o_bias = has_bias&0x08 ? p.inputs[10] : nullptr;
   int type = out_type.isF16() ? 1 : 0;
   type = out_type.isBF16() ? 2 : type;
   type = out_type.isInteger(32) ? 3 : type;
