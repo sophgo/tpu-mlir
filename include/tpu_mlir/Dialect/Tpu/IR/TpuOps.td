@@ -513,6 +513,7 @@ def Tpu_PoolMaskOp: Tpu_Op<"PoolMask"> {
 def Tpu_AddOp: Tpu_Op<"Add", [
   SupportFuseRelu, SupportEarlyStride,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add operator";
 
@@ -634,6 +635,7 @@ def Tpu_DepackRawOp: Tpu_Op<"DepackRaw",
 def Tpu_SubOp: Tpu_Op<"Sub",
     [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub operator";
 
@@ -689,6 +691,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst", [
 def Tpu_MulOp: Tpu_Op<"Mul",
     [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul operator";
 
@@ -715,6 +718,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
 
 def Tpu_MaxOp: Tpu_Op<"Max", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max operator";
 
@@ -741,6 +745,7 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
 
 def Tpu_MinOp: Tpu_Op<"Min", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "min operator";
 
@@ -1657,7 +1662,8 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
 }
 
 def Tpu_DivOp: Tpu_Op<"Div", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
   let summary = "div operator";
 
   let description = [{

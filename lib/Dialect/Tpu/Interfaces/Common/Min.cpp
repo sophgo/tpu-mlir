@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 
 LogicalResult tpu::MinOp::init(InferenceParameter &p) {
   auto binary = new Binary();
@@ -92,3 +93,7 @@ void tpu::MinOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
 void tpu::MinOp::assign_fw_param(void *param) {
   IR_PARAM_BROADCAST_BINARY(BINARY_MIN);
 }
+
+ArrayAttr tpu::MinOp::getIndexingMaps() {
+  return getBinaryIndexingMaps(getOperation());
+};
