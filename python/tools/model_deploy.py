@@ -289,9 +289,9 @@ if __name__ == '__main__':
     parser.add_argument("--quant_output", action="store_true",
                         help="strip output type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_input_list", default="", type=str,
-                        help="strip input type cast in bmodel")
+                        help="choose index to strip cast, such as 1,3 means first & third input`s cast")
     parser.add_argument("--quant_output_list", default="", type=str,
-                        help="strip output type cast in bmodel")
+                        help="choose index to strip cast, such as 1,3 means first & third output`s cast")
     parser.add_argument("--disable_layer_group", action="store_true",
                         help="Decide whether to enable layer group pass")
     parser.add_argument("--opt", default=2, type=int, choices=[1, 2], help="Optimization level")
