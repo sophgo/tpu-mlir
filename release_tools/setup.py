@@ -26,7 +26,7 @@ setup(
         "tqdm>=4.66.1",
         "Pillow>=10.0.1",
         "plotly>=5.17.0",
-        "opencv-python>=4.8.0.76",
+        "opencv-python-headless==4.8.0.74",
         "protobuf==3.20.3",
         "graphviz==0.20.1",
         "pycocotools==2.0.6",

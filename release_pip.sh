@@ -50,6 +50,10 @@ cp /usr/lib/x86_64-linux-gnu/libc.so.6 ${release_archive}/lib/third_party/
 cp /usr/lib/x86_64-linux-gnu/libomp.so.5 ${release_archive}/lib/third_party/
 cp /usr/lib/x86_64-linux-gnu/libglib-2.0.so.0 ${release_archive}/lib/third_party/
 cp /usr/lib/x86_64-linux-gnu/libgthread-2.0.so.0 ${release_archive}/lib/third_party/
+cp /usr/lib/x86_64-linux-gnu/libomp.so.5 ${release_archive}/lib/third_party/
+cp /usr/lib/x86_64-linux-gnu/libGL.so.1 ${release_archive}/lib/third_party/
+cp /usr/lib/x86_64-linux-gnu/libGLdispatch.so.0 ${release_archive}/lib/third_party/
+cp /usr/lib/x86_64-linux-gnu/libGLX.so.0 ${release_archive}/lib/third_party/
 
 # collect_oneDNN_dependence
 cp /usr/local/lib/libdnnl.so ${release_archive}/lib/third_party/
@@ -64,11 +68,14 @@ python ${release_archive}/entryconfig.py bin/ python/tools/ python/samples/
 
 # set rpath
 pushd ${release_archive}
-find ./bin/ -maxdepth 1 -type f -exec sh -c 'patchelf --set-rpath "\$ORIGIN/../lib/:\$ORIGIN/../lib/third_party/" "$0"' {} \;
-patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/' ./python/mlir/_mlir_libs/libTPUMLIRPythonCAPI.so.18git
-find ./python/ -maxdepth 1 -type f -exec sh -c 'patchelf --force-rpath --set-rpath "\$ORIGIN/../lib/:\$ORIGIN/../lib/third_party/" "$0"' {} \;
 find ./lib/ -maxdepth 1 -type f -exec sh -c 'patchelf --force-rpath --set-rpath "\$ORIGIN/./:\$ORIGIN/./third_party/" "$0"' {} \;
 find ./lib/third_party/ -maxdepth 1 -type f -exec sh -c 'patchelf --force-rpath --set-rpath "\$ORIGIN/../:\$ORIGIN/./" "$0"' {} \;
+find ./bin/ -maxdepth 1 -type f -exec sh -c 'patchelf --set-rpath "\$ORIGIN/../lib/:\$ORIGIN/../lib/third_party/" "$0"' {} \;
+find ./python/ -maxdepth 1 -type f -exec sh -c 'patchelf --force-rpath --set-rpath "\$ORIGIN/../lib/:\$ORIGIN/../lib/third_party/" "$0"' {} \;
+patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/' ./python/mlir/_mlir_libs/libTPUMLIRPythonCAPI.so.18git
+patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/:$ORIGIN/' ./python/mlir/_mlir_libs/_mlir.cpython-310-x86_64-linux-gnu.so
+patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/:$ORIGIN/' ./python/mlir/_mlir_libs/_mlirDialectsQuant.cpython-310-x86_64-linux-gnu.so
+patchelf --set-rpath '$ORIGIN/../../../lib/:$ORIGIN/../../../lib/third_party/:$ORIGIN/' ./python/mlir/_mlir_libs/_mlirRegisterEverything.cpython-310-x86_64-linux-gnu.so
 popd
 
 # build pip package

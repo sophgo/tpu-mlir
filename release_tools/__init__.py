@@ -47,9 +47,9 @@ sys.path.append(f"{package_path}/regression/")
 def run_subprocess_py(file_name):
     arguments = sys.argv[1:]
     if arguments:
-        command = ["python", file_name] + arguments
+        command = ["python3", file_name] + arguments
     else:
-        command = ["python", file_name]
+        command = ["python3", file_name]
     process = subprocess.Popen(command)
     return_code = process.wait()
     if return_code != 0:
