@@ -1173,6 +1173,8 @@ typedef struct a16_matmul_spec {
   bool sign;
   bool R_trans;
   int weight_bits;
+  bool has_zp;
+  int q_group_size;
 } a16_matmul_spec_t;
 
 typedef struct batch_matmul_common_spec {

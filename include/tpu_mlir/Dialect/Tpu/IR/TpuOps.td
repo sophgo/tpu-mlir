@@ -1054,11 +1054,14 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul"> {
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$weight,
-    AnyTensorOrNone:$scale, // the scale for quantized weight
-    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$scale, // scales for weight quant
+    AnyTensorOrNone:$zp, // zero points for weight quant
+    AnyTensorOrNone:$bias, // note: bias has to be the last operand
     I64Attr:$weight_bits,
     DefaultValuedAttr<BoolAttr, "true">:$sign,
-    DefaultValuedAttr<BoolAttr, "false">:$w_transpose
+    DefaultValuedAttr<BoolAttr, "false">:$w_transpose,
+    // do per-group quant if q_group_size > 0, otherwise per-channel
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size
   );
 
   let hasCanonicalizeMethod = 1;

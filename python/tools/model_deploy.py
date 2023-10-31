@@ -93,6 +93,7 @@ class DeployTool:
         self.compare_all = args.compare_all
         self.skip_validation = args.skip_validation
         self.model_version = args.model_version
+        self.q_group_size = args.q_group_size
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
                 self.prefix += "_asym"
@@ -121,7 +122,7 @@ class DeployTool:
             mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
                           self.asymmetric, self.quantize_table, self.customization_format,
                           self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow,
-                          self.do_winograd)
+                          self.do_winograd, self.q_group_size)
             if self.do_validate:
                 tool.validate_tpu_mlir()
 
@@ -309,9 +310,14 @@ if __name__ == '__main__':
                         help="do_winograd")
     parser.add_argument("--model_version", default="latest",
                         help="if need old version cvimodel, set the verion, such as 1.2")
+    parser.add_argument("--q_group_size", default=0, type=int,
+                        help="group size for per-group quant, only used in W4A16 quant mode")
 
     # yapf: enable
     args = parser.parse_args()
+    if args.q_group_size:
+        assert(args.quantize in ['W4F16', 'W4BF16'] and "only W4A16 mode needs q_group_size")
+
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
     if not args.fuse_preprocess and args.customization_format:

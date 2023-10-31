@@ -801,6 +801,7 @@ void ConvertTopToTpu::runOnOperation() {
     auto mode = module::symbolizeMode(mode_);
     assert(mode.has_value());
     module::setMode(mode.value());
+    module::setQuantGroupSize(quantGroupSize);
     if (weightFileName != "") {
       module::setWeightFileName(weightFileName);
     }
