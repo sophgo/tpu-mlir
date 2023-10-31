@@ -6,16 +6,11 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Conversion/Conversion.h"
+#include "tpu_mlir/Conversion/TopToTpu/ConvertTopToTpu.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include <regex>
-
-namespace mlir {
-#define GEN_PASS_DEF_CONVERTTOPTOTPU
-#include "tpu_mlir/Conversion/Passes.h.inc"
-} // namespace mlir
 
 namespace tpu_mlir {
 
@@ -797,9 +792,7 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
   }
 };
 
-struct ConvertTopToTpu : public ::impl::ConvertTopToTpuBase<ConvertTopToTpu> {
-public:
-  void runOnOperation() override {
+void ConvertTopToTpu::runOnOperation() {
     module_ = getOperation();
     ctx_ = &getContext();
     mainFunc_ = module::getMainFuncOp(module_);
@@ -913,8 +906,7 @@ public:
     }
   }
 
-protected:
-  void calibration_process() {
+void ConvertTopToTpu::calibration_process() {
     if (!module::isState(module::State::TOP_CALIBRATED)) {
       return;
     }
@@ -1013,7 +1005,7 @@ protected:
     patterns.clear();
   }
 
-  void host2device_convert_process() {
+void ConvertTopToTpu::host2device_convert_process() {
     // return types
     mainFunc_.walk([&](Operation *op) {
       if (!isa<ReturnOp>(op))
@@ -1024,7 +1016,7 @@ protected:
     });
   }
 
-  void relu_process() {
+void ConvertTopToTpu::relu_process() {
     Builder builder(ctx_);
     mainFunc_.walk([&](Operation *op) {
       if (module::isTpuOp(op)) {
@@ -1038,7 +1030,7 @@ protected:
     });
   }
 
-  void cast_process() {
+void ConvertTopToTpu::cast_process() {
     // return types
     auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
@@ -1088,7 +1080,7 @@ protected:
     });
   }
 
-  int userCnt(Operation *op) {
+int ConvertTopToTpu::userCnt(Operation *op) {
     auto out = op->getResult(0);
     if (out.getUsers().empty())
       return 0;
@@ -1105,7 +1097,7 @@ protected:
 
   // SISO is single input single output, not counting weight and none and
   // input/output
-  bool isSISO(Operation *op) {
+bool ConvertTopToTpu::isSISO(Operation *op) {
     int cnt = 0;
     for (auto in : op->getOperands()) {
       if (isa<top::InputOp>(in.getDefiningOp()) ||
@@ -1126,7 +1118,7 @@ protected:
 
   // return a set of end layernorms after ffn , the count would be the number of
   // encoder ffn part
-  void match_encoder_ffn(std::set<Operation *> &ffn) {
+void ConvertTopToTpu::match_encoder_ffn(std::set<Operation *> &ffn) {
     mainFunc_.walk([&](Operation *op) {
       if (auto lnop = dyn_cast<top::LayerNormOp>(op)) {
         if (auto addop =
@@ -1173,7 +1165,7 @@ protected:
 
   // return a set of end layernorms after ffn , the count would be the number of
   // encoder ffn part
-  void match_mha(std::set<Operation *> &mha) {
+void ConvertTopToTpu::match_mha(std::set<Operation *> &mha) {
     mainFunc_.walk([&](Operation *op) {
       if (auto lnop = dyn_cast<top::LayerNormOp>(op)) {
         if (auto addop =
@@ -1311,7 +1303,7 @@ protected:
     });
   }
 
-  void match_attention(std::set<Operation *> &attention) {
+void ConvertTopToTpu::match_attention(std::set<Operation *> &attention) {
     mainFunc_.walk([&](Operation *op) {
       if (auto atop = dyn_cast<top::AttentionOp>(op)) {
         attention.insert(op);
@@ -1319,7 +1311,7 @@ protected:
     });
   }
 
-  bool bert_mix_precision() {
+bool ConvertTopToTpu::bert_mix_precision() {
     std::set<Operation *> ffn;
     std::set<Operation *> mha;
     std::set<Operation *> attention;
@@ -1374,7 +1366,7 @@ protected:
       return false;
   }
 
-  void set_add_before_softmax_fp32() {
+void ConvertTopToTpu::set_add_before_softmax_fp32() {
     mainFunc_.walk([&](Operation *op) {
       if (auto addop = dyn_cast<top::AddOp>(op)) {
         if (isa<top::InputOp>(addop)) {
@@ -1419,13 +1411,14 @@ protected:
     });
   }
 
-  void qtable_process() {
+void ConvertTopToTpu::qtable_process() {
     bert_mix_precision();
+    swin_t_mix_precision();
     set_add_before_softmax_fp32();
   }
 
-  Value do_cast(Value v, Type to, TypeCastMode mode,
-                Operation *user_op = nullptr) {
+Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
+                Operation *user_op) {
     auto to_stype = module::getStorageType(to);
     // check whether value has been casted
     for (auto user : v.getUsers()) {
@@ -1505,7 +1498,7 @@ protected:
     return v;
   }
 
-  Value insert_18xx_cpu_cast(OpBuilder &builder, Value &v, NameLoc &loc,
+Value ConvertTopToTpu::insert_18xx_cpu_cast(OpBuilder &builder, Value &v, NameLoc &loc,
                              Type &newType) {
     float scale = module::getUniformQuantizedType(newType).getScale();
     scale = 1 / scale;
@@ -1526,7 +1519,7 @@ protected:
     return castOp.getOutputs()[0];
   }
 
-  static module::Mode qmode(const std::string &mode) {
+module::Mode ConvertTopToTpu::qmode(const std::string &mode) {
     std::string tmp = StringRef(mode).upper();
     auto mode_ = module::symbolizeMode(tmp);
     if (mode_.has_value()) {
@@ -1536,8 +1529,7 @@ protected:
     llvm_unreachable("Unknown quantize mode");
     return module::Mode::F32;
   }
-
-  void init_qtable() {
+void ConvertTopToTpu::init_qtable() {
     LoweringConfig::quantize_map.clear();
     if (ignore_f16_overflow == false && module::isF16Modes()) {
       mainFunc_.walk([&](Operation *op) {
@@ -1605,12 +1597,6 @@ protected:
       assert(false);
     }
   }
-
-protected:
-  ModuleOp module_;
-  FuncOp mainFunc_;
-  MLIRContext *ctx_;
-};
 
 std::unique_ptr<Pass> createConvertTopToTpu() {
   return std::make_unique<ConvertTopToTpu>();
