@@ -772,6 +772,26 @@ public:
   }
 };
 
+class ScatterElementsGlobalBuffer : public OpRewritePattern<tpu::ScatterElementsOp> {
+public:
+  using OpRewritePattern<tpu::ScatterElementsOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::ScatterElementsOp ScatterElementsOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(ScatterElementsOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684XFamily() && !module::isSG2260Family()) {
+      return failure();
+    }
+    auto buffer_type =
+        ScatterElementsOp.getIndices().getType().cast<RankedTensorType>();
+    auto buffer = tpu::BufferOp::create(ScatterElementsOp, buffer_type);
+    ScatterElementsOp.setOperand(4, buffer);
+    return success();
+  }
+};
+
 class ScatterNDGlobalBuffer : public OpRewritePattern<tpu::ScatterNDOp> {
 public:
   using OpRewritePattern<tpu::ScatterNDOp>::OpRewritePattern;
@@ -890,6 +910,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       TileGlobalBuffer,
       IndexPutGlobalBuffer,
       PadGlobalBuffer,
+      ScatterElementsGlobalBuffer,
       Space2BatchGlobalBuffer,
       Batch2SpaceGlobalBuffer,
       ScatterNDGlobalBuffer,

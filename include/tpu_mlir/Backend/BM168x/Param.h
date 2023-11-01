@@ -723,6 +723,14 @@ typedef struct gather_elements_global {
     uint64_t intermediate_buffer_global_addr;
 } gather_elements_global_param_t;
 
+typedef struct scatter_elements_global_spec {
+  int data_dims;
+  int indices_dims;
+  int updates_dims;
+  uint64_t intermediate_buffer_global_addr;
+  int axis;
+} scatter_elements_global_spec_t;
+
 typedef struct index_select_common_spec {
   int axis;
   int index_is_coeff; // use for dyn
