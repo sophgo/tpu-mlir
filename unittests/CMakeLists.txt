@@ -7,3 +7,4 @@ endfunction()
 
 add_subdirectory(Backend)
 add_subdirectory(Linalg)
+add_subdirectory(Target)
