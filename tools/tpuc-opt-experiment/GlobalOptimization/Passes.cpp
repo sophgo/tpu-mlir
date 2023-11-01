@@ -35,7 +35,10 @@ void buildGlobalOptimizationPassPipeline(
        why not use mlir::createLinalgElementwiseOpFusionPass,
        it can't fusion when multi-use */
     .addPass([]() {
-          return mlir::createFusionOfTensorOpsPass();});
+          return mlir::createFusionOfTensorOpsPass();})
+    .addPass(mlir::createCanonicalizerPass)
+    .addPass(mlir::createCSEPass)
+    .addPass(mlir::createSubgraphSplitPass);
   //ToDo
 }
 

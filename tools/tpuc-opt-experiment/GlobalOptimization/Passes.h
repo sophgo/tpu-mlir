@@ -48,6 +48,9 @@ std::unique_ptr<OperationPass<ModuleOp>> createCollapseDimsPass();
 std::unique_ptr<InterfacePass<mlir::FunctionOpInterface>>
 createFusionOfTensorOpsPass(bool fuseMultiUse = false,
                             unsigned multiUseFusionIteration = 2);
+
+std::unique_ptr<InterfacePass<mlir::FunctionOpInterface>>
+createSubgraphSplitPass();
 #define GEN_PASS_CLASSES
 #define GEN_PASS_REGISTRATION
 #include "GlobalOptimization/Passes.h.inc"
