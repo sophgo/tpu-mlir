@@ -15,7 +15,8 @@ namespace bm1684x {
 void GridSamplerLowering::LoweringF32(PatternRewriter &rewriter,
                                       top::GridSamplerOp op) const {
   int mode = op.getMode();
-  if (mode == 0) {
+  auto dims = module::getShape(op.getInput()).size();
+  if (mode == 0 || dims > 4) {
     std::vector<NamedAttribute> attrs;
     std::vector<NamedAttribute> cpu_param;
     attrs.emplace_back(rewriter.getNamedAttr(

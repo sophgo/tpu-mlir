@@ -83,6 +83,7 @@ class TORCH_IR_TESTER(object):
             "FloorDiv":         (self.test_FloorDiv,          N, Y, Y, N),
             "Gather":           (self.test_Gather,            N, N, N, N),
             "GridSampler":      (self.test_GridSampler,       N, Y, N, Y),
+            "GridSampler3D":    (self.test_GridSampler3D,     N, Y, N, N),
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, Y, N),
             "GRU":              (self.test_GRU,               Y, Y, Y, Y),
             "IndexPut":         (self.test_IndexPut,          N, Y, Y, N),
@@ -2921,6 +2922,47 @@ class TORCH_IR_TESTER(object):
                     _test_grid_sampler((1, 3, 100, 150), (1, 40, 80, 2), mode,
                                        padding_mode, align_corners)
                     _test_grid_sampler((1, 3, 50, 50), (1, 1, 1, 2), mode,
+                                       padding_mode, align_corners)
+
+    #######################################################################
+    # GridSampler3D
+    # ------------
+    def test_GridSampler3D(self):
+        """GridSampler3D"""
+
+        def _test_grid_sampler(in_shape, grid_shape, mode, padding_mode, align_corners):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    input_tensor = torch.randn(in_shape, dtype=torch.float32)
+                    grid = torch.rand(grid_shape, dtype=torch.float32)
+
+
+                def forward(self, input_tensor, grid):
+                    output_tensor = torch.grid_sampler(input_tensor,
+                                                       grid,
+                                                       interpolation_mode=mode,
+                                                       padding_mode=padding_mode,
+                                                       align_corners=align_corners)
+                    return output_tensor
+
+            self.trace_and_test([in_shape, grid_shape], Model(), [
+                                self.Desc('float32', -10, 10), self.Desc('float32', -1, 1)])
+
+        mode_list = [0, 1]
+        padding_mode_list = [0, 1]
+        align_corners_list = [False, True]
+
+        for mode in mode_list:
+            for padding_mode in padding_mode_list:
+                for align_corners in align_corners_list:
+                    _test_grid_sampler((1, 3, 100, 150, 150), (1, 100, 150, 150, 3), mode,
+                                       padding_mode, align_corners)
+                    _test_grid_sampler((1, 3, 100, 150, 150), (1, 40, 80, 120, 3), mode,
+                                       padding_mode, align_corners)
+                    _test_grid_sampler((1, 3, 50, 50, 50), (1, 1, 1, 1, 3), mode,
                                        padding_mode, align_corners)
 
     #######################################################################
