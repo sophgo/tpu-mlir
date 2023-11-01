@@ -156,6 +156,7 @@ class ONNX_IR_TESTER(object):
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
             "Round":        (self.test_Round,         N, Y, N, N),
             "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y),
+            "ScatterElements": (self.test_ScatterElements, N, Y, N, N),
             "ScatterND":    (self.test_ScatterND,     N, Y, Y, N),
             "Shape":        (self.test_Shape,         Y, Y, Y, N),
             "ShapeCast":    (self.test_ShapeCast,     N, N, N, N),
@@ -2463,7 +2464,7 @@ class ONNX_IR_TESTER(object):
         starts_data = np.array([2, 10, 10, 12], dtype=np.int64)
         ends_data = np.array([5, 42, 42, 36], dtype=np.int64)
         axes_data = np.array([0, 1, 2, 3], dtype=np.int64)
-        steps_data = np.array([1, 2, 2, 3], dtype=np.int64)
+        steps_data = np.array([1, 3, 2, 3], dtype=np.int64)
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
@@ -5522,6 +5523,81 @@ class ONNX_IR_TESTER(object):
     def test_PadPool3d(self, case_name):
         self.PadPoolBase(case_name, [1, 16, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 0, 1, 2], \
                 [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
+
+    def test_ScatterElements(self, case_name):
+
+        input_data = [{
+            "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+        }, {
+            "data": np.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]], dtype=np.float32)
+        }, {
+            "data": np.random.randn(1, 13294, 4).astype(np.float32)
+        }, {
+            "data": np.arange(256).reshape(4, 4, 4, 4).astype(np.float32)
+        }, {
+            "data": np.random.randn(16, 17, 18, 19).astype(np.float32)
+        }, {
+            "data": np.random.randn(16, 17, 18, 19, 20).astype(np.float32)
+        }, {
+            "data": np.random.randn(15, 16, 17, 18, 19, 20).astype(np.float32)
+        }, {
+            "data": np.random.randn(2, 2, 2, 2, 2, 2, 2).astype(np.float32)
+        }, {
+            "data": np.random.randn(2, 2, 2, 2, 2, 2, 2, 2).astype(np.float32)
+        }, {
+            "data": np.random.randn(2, 65536, 2).astype(np.float32)
+        }]
+
+        indices_data = [
+            np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.int32),
+            np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.int32),
+            np.random.randint(0, 13294, [1, 900, 4]),
+            np.random.randint(0, 4, [4, 4, 9, 4]),
+            np.random.randint(0, 18, [16, 17, 25, 19]),
+            np.random.randint(0, 20, [16, 17, 18, 19, 21]),
+            np.random.randint(0, 20, [15, 16, 17, 18, 19, 21]),
+            np.random.randint(0, 2, [2, 2, 2, 2, 2, 2, 8]),
+            np.random.randint(0, 2,  [2, 2, 2, 2, 10, 2, 2, 2]),
+            np.random.randint(0, 2, [2, 65536, 2])]
+
+        updates_data = [
+            np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.float32),
+            np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.float32),
+            np.random.randn(1, 900, 4).astype(np.float32),
+            np.random.randn(4, 4, 9, 4).astype(np.float32),
+            np.random.randn(16, 17, 25, 19).astype(np.float32),
+            np.random.randn(16, 17, 18, 19, 21).astype(np.float32),
+            np.random.randn(15, 16, 17, 18, 19, 21).astype(np.float32),
+            np.random.randn(2, 2, 2, 2, 2, 2, 8).astype(np.float32),
+            np.random.randn(2, 2, 2, 2, 10, 2, 2, 2).astype(np.float32),
+            np.random.randn(2,65536, 2).astype(np.float32)]
+
+        axis_data = [1, 0, 1, 2, 2, 4, 5, 6, 4, 2]
+
+        for i in range(len(input_data)):
+            # if i != 9:
+            #     continue
+            data_, indices_, updates_, axis_ = input_data[i]["data"], indices_data[i], updates_data[i], axis_data[i]
+            data = helper.make_tensor_value_info('data', TensorProto.FLOAT, data_.shape)
+            indices = helper.make_tensor_value_info("indices", TensorProto.INT64, indices_.shape)
+            updates = helper.make_tensor_value_info("updates", TensorProto.FLOAT, updates_.shape)
+            input_ = {
+                "data": data_,
+                "indices": indices_,
+                "updates": updates_
+            }
+
+            scatter_node = helper.make_node("ScatterElements",
+                                             inputs=["data", "indices", "updates"],
+                                             outputs=["scatter_output"],
+                                             axis=axis_)
+            output_ = helper.make_tensor_value_info("scatter_output", TensorProto.FLOAT, data_.shape)
+            graph_def = helper.make_graph([scatter_node],
+                                            case_name,
+                                            [data, indices, updates],
+                                            [output_])
+            self.onnx_and_test(graph_def, input_data = input_)
+
 
     def test_ScatterND(self, case_name):
         if self.chip in ['bm1684x', 'bm1688', 'cv186']:

@@ -2574,7 +2574,8 @@ def TPU_SwapDimInnerOp: Tpu_Op<"SwapDimInner" ,[
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements">  {
+def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements", [
+  DeclareOpInterfaceMethods<TypeInterface>]>  {
   let summary = "ScatterElements op";
   let description = [{
     ScatterElements takes three inputs data, updates, and indices
@@ -2602,6 +2603,8 @@ def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements">  {
     AnyRankedTensor:$input,
     AnyRankedTensor:$indices,
     AnyRankedTensor:$updates,
+    AnyTensorOrNone:$indices_coeff,
+    AnyTensorOrNone:$buffer,
     I64Attr:$axis
   );
 

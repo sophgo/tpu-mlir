@@ -10,7 +10,7 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ```
 
 ## TPU1686 2023-10-24
-sha256: e26a32d4ab56f45a38311fa13cdc48db503c1979
+sha256: 7a4ae833a99dadbd2972365236e679fdcff4c991
 
 ``` bash
 #bm1684x
