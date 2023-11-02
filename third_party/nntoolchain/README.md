@@ -10,30 +10,31 @@ cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nnto
 ```
 
 ## TPU1686 2023-10-24
-sha256: 607bf3543188cd9e65060fce092459822d54d90a
+sha256: 3e8e483db93e36fbb9ac476f9f42290d5435210f
 
 ``` bash
 #bm1684x
 cd TPU1686
 source  scripts/envsetup.sh bm1684x
 rebuild_backend_lib_cmodel
+cp build/backend_api/libbackend_bm1684x.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_1684x.so
+cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_1684x.so
+rebuild_firmware
+cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
+
+#bm1686
+cd TPU1686
+source  scripts/envsetup.sh bm1686
+rebuild_backend_lib_cmodel
+cp build/backend_api/libbackend_bm1686.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_1688.so
+cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_1688.so
+
 #sg2260
+cd TPU1686
 source  scripts/envsetup.sh sg2260
 rebuild_backend_lib_cmodel
-# cp out/install/lib/libcmodel_1684x.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
-# cp bmcompiler/libbackend/libbackend_1684x.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
-# cp out/install/lib/libcmodel_1686.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_1688.so
-cp build/backend_api/libbackend_sg2260.so ../../tpu-mlir/third_party/nntoolchain/lib/
-cp build/backend_api/libbackend_sg2260.so ../../tpu-mlir/install/lib/
-cp build_runtime/firmware_core/libcmodel_firmware.so ../../tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2260.so
-cp build_runtime/firmware_core/libcmodel_firmware.so ../../tpu-mlir/install/lib/libcmodel_sg2260.so
-popd
-# pushd nntoolchain/TPU1686/
-# source scripts/envsetup.sh
-# rebuild_firmware
-# cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
-# popd
-```
+cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2260.so
+cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2260.so
 
 ## tpu-runtime 2023-09-18
 build from tpu-runtime 969fb471519b9c2cf34398d914e69f27786e8f52
