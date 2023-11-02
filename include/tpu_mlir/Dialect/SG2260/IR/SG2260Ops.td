@@ -32,10 +32,36 @@ def SG2260_MatMulOp : SG2260_Op<"matmul",
     Optional<AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>>:$bias,
     SG2260_DMAIdType:$dependency,
     DefaultValuedAttr<BoolAttr, "false">:$left_is_transposed,
-    DefaultValuedAttr<BoolAttr, "false">:$add_restult,
+    DefaultValuedAttr<BoolAttr, "false">:$add_result,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     ShortMatrix2RegDefProperties:$reg
     );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_ConvOp : SG2260_Op<"conv",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Convolution.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$kernel,
+    Optional<AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>>:$bias,
+    SG2260_DMAIdType:$dependency,
+    I64Attr:$oc,
+    I64Attr:$kh,
+    I64Attr:$kw,
+    DefaultValuedAttr<I64Attr, "1">:$sh,
+    DefaultValuedAttr<I64Attr, "1">:$sw,
+    DefaultValuedAttr<I64Attr, "1">:$dh,
+    DefaultValuedAttr<I64Attr, "1">:$dw,
+    DefaultValuedAttr<I64Attr, "0">:$ph,
+    DefaultValuedAttr<I64Attr, "0">:$pw,
+    DefaultValuedAttr<BoolAttr, "false">:$add_result,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    ShortConvRegDefProperties:$reg
+  );
   let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
   let hasVerifier = 1;
 }

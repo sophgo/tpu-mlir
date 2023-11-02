@@ -73,4 +73,56 @@ TEST(SG2260IR, MatMulOp) {
   EXPECT_EQ(reg.cmd_id_dep, 1);
 }
 
+TEST(SG2260IR, ConvOp) {
+  using namespace tpu_mlir;
+
+  DialectRegistry registry;
+  registry.insert<sg2260::SG2260Dialect, func::FuncDialect>();
+
+  MLIRContext context(registry);
+
+  for (StringRef name : registry.getDialectNames())
+    context.getOrLoadDialect(name);
+
+  OpBuilder builder(&context);
+  auto uloc = builder.getUnknownLoc();
+  auto theModule = mlir::ModuleOp::create(uloc);
+  builder.setInsertionPointToEnd(theModule.getBody());
+  auto inputType = MemRefType::get({2, 8, 64, 64}, builder.getF16Type());
+  llvm::SmallVector<mlir::Type, 4> argTypes(2, inputType);
+
+  auto id1 = builder.getType<sg2260::DMAIdType>(1);
+  argTypes.push_back(id1);
+  auto funcType = builder.getFunctionType(argTypes, std::nullopt);
+  auto function = builder.create<func::FuncOp>(uloc, "main", funcType);
+  builder.setInsertionPointToEnd(function.addEntryBlock());
+
+  auto id2 = builder.getType<sg2260::TIUIdType>(2);
+  auto conv0 = builder.create<sg2260::ConvOp>(
+      uloc, inputType, id2, function.getArgument(0), function.getArgument(1),
+      nullptr, function.getArgument(2), 32, 3, 3,
+      1, 1, 1, 1, 0, 0, false, false);
+
+  auto id3 = builder.getType<sg2260::TIUIdType>(3);
+  builder.create<sg2260::ConvOp>(
+      uloc, inputType, id3, conv0.getResult(), function.getArgument(1),
+      nullptr, function.getArgument(2), 16, 3, 3,
+      1, 1, 1, 1, 0, 0, false, false);
+  builder.create<func::ReturnOp>(uloc);
+
+  auto &reg = conv0.getProperties().reg;
+  EXPECT_EQ(reg.res0_n, 0);
+  EXPECT_EQ(reg.opd0_c, 0);
+  EXPECT_EQ(reg.opd0_w, 0);
+  EXPECT_EQ(reg.cmd_id_dep, 0);
+
+  conv0.verify(); // set the register
+
+  EXPECT_EQ(reg.res0_n, 2);
+  EXPECT_EQ(reg.opd0_c, 8);
+  EXPECT_EQ(reg.opd0_h, 64);
+  EXPECT_EQ(reg.opd0_w, 64);
+  EXPECT_EQ(reg.cmd_id_dep, 1);
+}
+
 } // namespace
