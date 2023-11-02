@@ -28,6 +28,16 @@ void MatMulOp::getAsmResultNames(
   setNameFn(getId(), specialName.str());
 }
 
+void ConvOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  setNameFn(getResult(), "R0");
+  auto id = getId().getType().getId();
+  llvm::SmallString<32> specialId;
+  llvm::raw_svector_ostream specialName(specialId);
+  specialName << "tid" << id;
+  setNameFn(getId(), specialName.str());
+}
+
 template <typename T>
 Attribute dummyPropertiesAsAttribute(::mlir::MLIRContext *ctx, T &property) {
   Builder b{ctx};
@@ -91,14 +101,47 @@ private:
   Value value;
 };
 
+typedef enum {
+  CONV = 0,
+  PD   = 1,
+  MM   = 2,
+  AR   = 3,
+  RQDQ = 4,
+  TRANS_BC = 5,
+  SG   = 6,
+  LAR  = 7,
+  SFU  = 9,
+  LIN  = 10,
+  SYS_TRWR = 12,
+  CMP  = 13,
+  VC   = 14,
+  SYS  = 15,
+} TSK_TYPE;
+
+typedef enum {
+  PAD_CONSTANT    = 0,
+  PAD_REFLECTION  = 1,
+  PAD_REPLICATION = 2,
+  PAD_CIRCULAR    = 3
+} PAD_MODE;
+
+typedef enum {
+  MM_NORMAL = 1,
+  MM_WRQ = 2,
+  MM_WRQ_RELU = 3,
+  MM_NN = 4,
+  MM_NT = 5,
+  MM_TT = 6,
+} MM_OP;
+
 LogicalResult MatMulOp::verify() {
   auto &reg = getProperties().reg;
   reg.cmd_short = true;
-  reg.tsk_typ = 2;
-  reg.tsk_eu_typ = 1;
+  reg.tsk_typ = TSK_TYPE::MM;
+  reg.tsk_eu_typ = MM_OP::MM_NORMAL;
   reg.cmd_id_dep = getDependency().getType().getId();
   reg.opt_left_tran = getLeftIsTransposed();
-  reg.opt_res_add = getAddRestult();
+  reg.opt_res_add = getAddResult();
   reg.opt_relu = getDoRelu();
 
   auto leftInfo = getValueInfo(getLeft());
@@ -113,7 +156,7 @@ LogicalResult MatMulOp::verify() {
     reg.opd0_n = shape[0];
     reg.opd0_c = shape[1];
     reg.opd0_w = shape[3];
-  };
+  }
 
   auto rightInfo = getValueInfo(getRight());
 
@@ -140,6 +183,88 @@ LogicalResult MatMulOp::verify() {
     reg.opt_opd2_sign = biasInfo.getSign();
     reg.opt_opd2_const = biasInfo.isConst();
   }
+  return success();
+}
+
+LogicalResult ConvOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.cmd_short = true;
+  reg.tsk_typ = TSK_TYPE::CONV;
+  reg.tsk_eu_typ = 0;
+  reg.cmd_id_dep = getDependency().getType().getId();
+  reg.opt_res_add = getAddResult();
+  reg.opt_relu = getDoRelu();
+
+  auto outInfo = getValueInfo(getResult());
+  reg.opt_res0_sign = outInfo.getSign();
+  reg.res0_n = outInfo.getShape()[0];
+  reg.res0_c = outInfo.getShape()[1];
+  reg.res0_h = outInfo.getShape()[2];
+  reg.res0_w = outInfo.getShape()[3];
+  reg.res0_addr = outInfo.getAddr();
+
+  auto inputInfo = getValueInfo(getInput());
+  if (inputInfo.getShape()[0] != outInfo.getShape()[0])
+    return failure();
+
+  reg.opt_opd0_prec = inputInfo.getPrec();
+  reg.opt_opd0_sign = inputInfo.getSign();
+  reg.opd0_addr = inputInfo.getAddr();
+  {
+    auto shape = inputInfo.getShape();
+    reg.opd0_c = shape[1];
+    reg.opd0_h = shape[2];
+    reg.opd0_w = shape[3];
+  }
+
+  reg.short_opd0_str = 0;
+
+  auto kerInfo = getValueInfo(getKernel());
+
+  if (inputInfo.getPrec() != kerInfo.getPrec())
+    return failure();
+
+  reg.opt_kernel_rotate = false;
+  reg.opt_opd1_sign = kerInfo.getSign();
+  reg.opd1_addr = kerInfo.getAddr();
+
+  if (kerInfo.isConst()) {
+    reg.opt_opd1_const = true;
+  } else {
+    reg.opt_opd1_const = false;
+    auto shape = kerInfo.getShape();
+    if (getOc() != shape[1])
+      return failure();
+    if (getKh() != shape[2])
+      return failure();
+    if (getKw() != shape[3])
+      return failure();
+    reg.opd1_h = shape[2];
+    reg.opd1_w = shape[3];
+  }
+
+  reg.pad_mode = PAD_CONSTANT;
+  reg.opd0_up_pad = getPh();
+  reg.opd0_dn_pad = getPh();
+  reg.opd0_lf_pad = getPw();
+  reg.opd0_rt_pad = getPw();
+
+  reg.res_op_x_str = getSw();
+  reg.res_op_y_str = getSh();
+  reg.opt_opd3_const = false;
+
+  reg.opd0_x_ins0 = 0;
+  reg.opd0_y_ins0 = 0;
+  reg.opd1_x_ins0 = getDw();
+  reg.opd1_y_ins0 = getDh();
+
+  if (getBias()) {
+    auto biasInfo = getValueInfo(getBias());
+    reg.opd2_addr = biasInfo.getAddr();
+    reg.opt_opd2_sign = biasInfo.getSign();
+    reg.opt_opd2_const = biasInfo.isConst();
+  }
+
   return success();
 }
 

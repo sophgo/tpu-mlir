@@ -50,6 +50,7 @@ class RegProperty<string name> : Property<name> {
 }];
 }
 def ShortMatrix2RegDefProperties : RegProperty<"ShortMatrix2RegDef">;
+def ShortConvRegDefProperties : RegProperty<"ShortConvRegDef">;
 
 
 #endif
