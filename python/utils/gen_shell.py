@@ -181,9 +181,12 @@ harness:
 
 
 def get_ordered_input_names(callable, without_first=True):
-    tensor_args = inspect.getargspec(callable).args
-    if without_first:
-        tensor_args = tensor_args[1:]
+    try:
+        tensor_args = inspect.getargspec(callable).args
+        if without_first:
+            tensor_args = tensor_args[1:]
+    except:
+        tensor_args = list(inspect.signature(callable).parameters.keys())
     return tensor_args
 
 
@@ -284,8 +287,7 @@ def generate(
         model_name, shape_list, workspace_root, suf="onnx" if use_onnx else "pt"
     )
 
-    input_names = inspect.getargspec(model.forward).args[1:]
-
+    input_names = get_ordered_input_names(model.forward)
     def detach(v):
         try:
             return v.cpu().detach().numpy()
@@ -312,7 +314,6 @@ def generate(
         opset_version=10,  # the ONNX version to export the model to
         do_constant_folding=True,
         input_names=list(data_dic),
-        
     )  # whether to execute constant folding for optimization)
 
 
