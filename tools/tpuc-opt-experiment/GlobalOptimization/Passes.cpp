@@ -3,7 +3,7 @@ namespace mlir {
 
 using FunctionLikeNest = MultiOpNest<mlir::func::FuncOp>;
 void buildGlobalOptimizationPassPipeline(
-    OpPassManager &pm) {
+    OpPassManager &pm, bool dynamic_mode) {
   // Preprocessing passes to get the program into a canonical state.
   FunctionLikeNest(pm)
       .addPass(mlir::createRemoveZeroExtentTensorsPass)
@@ -38,7 +38,10 @@ void buildGlobalOptimizationPassPipeline(
           return mlir::createFusionOfTensorOpsPass();})
     .addPass(mlir::createCanonicalizerPass)
     .addPass(mlir::createCSEPass)
-    .addPass(mlir::createSubgraphSplitPass);
+    .addPass(mlir::createSCCPPass);
+  pm.addPass(mlir::createSubgraphSplitPass(dynamic_mode));
+  //pm.addPass(mlir::createRemoveDeadValuesPass());
+  pm.addPass(mlir::createSymbolDCEPass());
   //ToDo
 }
 

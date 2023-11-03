@@ -13,11 +13,12 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Dialect/MemRef/Transforms/Transforms.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
-
+#include "mlir/Transforms/Passes.h"
 namespace  mlir
 {
 void buildGlobalOptimizationPassPipeline(
-    OpPassManager &mainPassManager);
+    OpPassManager &mainPassManager,
+    bool dynamic_mode = false);
 
 std::unique_ptr<Pass> createDetachElementwiseFromNamedOpsPass();
 std::unique_ptr<InterfacePass<mlir::FunctionOpInterface>>
@@ -49,8 +50,8 @@ std::unique_ptr<InterfacePass<mlir::FunctionOpInterface>>
 createFusionOfTensorOpsPass(bool fuseMultiUse = false,
                             unsigned multiUseFusionIteration = 2);
 
-std::unique_ptr<InterfacePass<mlir::FunctionOpInterface>>
-createSubgraphSplitPass();
+std::unique_ptr<OperationPass<ModuleOp>>
+createSubgraphSplitPass(bool dynamic_mode=false);
 #define GEN_PASS_CLASSES
 #define GEN_PASS_REGISTRATION
 #include "GlobalOptimization/Passes.h.inc"
