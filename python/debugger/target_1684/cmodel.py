@@ -145,7 +145,7 @@ class BM1684Runner(CModelRunner):
         return []
 
 
-class Memory(MemoryBase):
+class Memory(CModelMemory):
     """
     Memory agent. Extract/Set data from a give MemRef object.
     This class should handle all the tenors type in all kinds of storage.

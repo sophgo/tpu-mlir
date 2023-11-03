@@ -13,7 +13,7 @@ from itertools import chain
 from typing import Tuple
 import numpy as np
 
-from debugger.target_common.cmodel import CModelRunner
+from debugger.target_common import CModelRunner
 from ..target_common import *
 from .memmap import *
 
@@ -235,7 +235,7 @@ class BM1688Runner(CModelRunner):
         return list(chain.from_iterable((align_to_64bytes(x) for x in table)))
 
 
-class Memory(MemoryBase):
+class Memory(CModelMemory):
     """
     Memory agent. Extract/Set data from a give MemRef object.
     This class should handle all the tenors type in all kinds of storage.

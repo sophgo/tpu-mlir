@@ -14,6 +14,7 @@ from typing import List, Dict
 from rich.progress import (
     Progress as Progressbar,
     TimeRemainingColumn,
+    TimeElapsedColumn,
     TaskProgressColumn,
     TextColumn,
     ProgressColumn,
@@ -374,6 +375,7 @@ class ProgressPlugin(TdbPlugin):
                 ),
                 TaskProgressColumn(show_speed=True),
                 TimeRemainingColumn(elapsed_when_finished=True),
+                TimeElapsedColumn(),
             )
         )
 

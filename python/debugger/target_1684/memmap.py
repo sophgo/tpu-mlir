@@ -7,7 +7,7 @@
 #
 # ==============================================================================
 from functools import lru_cache
-from ..target_common import DType, MType, Layout, MemRefBase, Device
+from ..target_common import DType, MType, Layout, MemRefBase, Target
 
 NPU_NUM = 64
 BANK_SIZE = 4 * 2**14
@@ -75,7 +75,7 @@ class MemRef(MemRefBase):
     A description of tensor in memory.
     """
 
-    device = Device.BM1684
+    device = Target.BM1684
 
     def __init__(self, address, shape, dtype: DType, stride=None, layout=None):
         super().__init__(address, shape, dtype, stride, layout)

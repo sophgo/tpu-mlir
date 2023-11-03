@@ -22,6 +22,7 @@ from rich.table import Table
 from rich.panel import Panel
 from ..final_mlir import Value
 from numpy_helper.npz_compare import TensorCompare as _TensorCompare
+from ..target_common import MType
 from ..tdb_support import (
     BreakpointStop,
     TdbCmdBackend,
@@ -56,7 +57,7 @@ class IncNpzFile:
             "mode": "w",
             "force_zip64": True,
         }
-        if self.zip.fp is None:
+        if self.zip is None or self.zip.fp is None:
             self.zip = zipfile.ZipFile(
                 self.fn, mode="a", compression=zipfile.ZIP_DEFLATED
             )
@@ -216,7 +217,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         self.tc = TensorCompare(
             cosine_similarity_tol=0.99,
-            euclidean_similarity_tol=0.9,
+            euclidean_similarity_tol=0.99,
             signal_to_quantization_noise_tol=float("-inf"),
         )
 
@@ -475,8 +476,13 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
         if value.name in self.excepts:
             value_res = ComparedResult(value_view, None, msg="ignore")
             return value_res
+
         context = self.tdb.context
         memref = value.get_memref(context)
+
+        if memref.mtype != MType.G and not context.memory.using_cmodel:
+            value_res = ComparedResult(value_view, None, msg="ignore")
+            return value_res
 
         raw_data = context.memory.get_data(memref)
         actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
@@ -504,6 +510,9 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             elif self.dump_mode == DumpMode.FAILED and cmd_failed:
                 self.failed_tensor[f"{name}_actual"] = actual
                 self.failed_tensor[f"{name}_desired"] = desired
+
+            # if cmd_failed:
+            #     breakpoint()
 
         return value_res
 

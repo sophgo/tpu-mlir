@@ -37,6 +37,15 @@ rebuild_backend_lib_cmodel
 cp build/backend_api/libbackend_sg2260.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_sg2260.so
 cp build_runtime/firmware_core/libcmodel_firmware.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_sg2260.so
 
+```bash
+pushd nntoolchain/TPU1686/
+source scripts/envsetup.sh
+rebuild_firmware
+cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
+popd
+```
+
+
 ## tpu-runtime 2023-09-18
 build from tpu-runtime 969fb471519b9c2cf34398d914e69f27786e8f52
 ``` bash

@@ -21,6 +21,7 @@ from .target_common import MType, BaseTpuOp, CpuOp, CMDType, DynIrOp
 from .disassembler import BModel
 from .target_1688.context import BM1688Context
 
+
 class TdbStatus(Enum):
     # bmodel not loaded
     UNINIT = 0
@@ -165,6 +166,7 @@ class TdbCmdBackend(cmd.Cmd):
 
         # should be import locally to avoid circular import
         from .static_check import Checker
+
         # initialize registered plugins
         from . import plugins as _
 
@@ -222,8 +224,7 @@ class TdbCmdBackend(cmd.Cmd):
         self.message(f"static_mode = {self.static_mode}")
 
         self.runner = context.get_runner(self.ddr_size)
-        self.LMEM = self.runner.LMEM
-        self.DDR = self.runner.DDR
+
         self.context = context
         self.memory = context.memory
         self.decoder = context.decoder
@@ -237,7 +238,14 @@ class TdbCmdBackend(cmd.Cmd):
                 address = self.context.fix_tag(address)
             addr = address - self.context.memmap[MType.G][0]
             # load constant data
-            self.DDR[addr : addr + len(coeff.data)] = memoryview(coeff.data)
+            if self.runner.using_cmodel:
+                self.LMEM = self.runner.LMEM
+                self.DDR = self.runner.DDR
+                self.DDR[addr : addr + len(coeff.data)] = memoryview(coeff.data)
+            else:
+                self.memory.set_data_to_address(
+                    coeff.address, np.frombuffer(coeff.data, dtype=np.uint8)
+                )
 
         # self.final_mlir = FinalMlirIndex(self.final_mlir_fn, self.tensor_loc_file)
 
@@ -262,6 +270,8 @@ class TdbCmdBackend(cmd.Cmd):
         elif file.endswith(".npz"):
             inputs = np.load(file)
             self.set_inputs_dict(inputs)
+
+
 
     def _build_index(self):
         """ """

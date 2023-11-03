@@ -245,13 +245,13 @@ class BM1684XRunner(CModelRunner):
         return list(chain.from_iterable((align_to_64bytes(x) for x in table)))
 
 
-class Memory(MemoryBase):
+class Memory(CModelMemory):
     """
     Memory agent. Extract/Set data from a give MemRef object.
     This class should handle all the tenors type in all kinds of storage.
     """
 
-    device = Device.BM1684X
+    device = Target.BM1684X
 
     def _local_mem_to_numpy(self, memref: MemRef):
         NPU_OFFSET = memref.npu_offset
@@ -414,6 +414,7 @@ class Memory(MemoryBase):
             np.ctypeslib.as_array(memref.stride) * memref.itemsize,
             writeable=False,
         )
+
         if memref.dtype == DType.bf16:
             return bf16_to_fp32(data)
         return data
