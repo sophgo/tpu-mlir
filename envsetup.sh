@@ -23,11 +23,22 @@ export PATH=$PROJECT_ROOT/python/test:$PATH
 export PATH=$PROJECT_ROOT/python/samples:$PATH
 export PATH=$PROJECT_ROOT/third_party/customlayer/python:$PATH
 
-export LD_LIBRARY_PATH=$INSTALL_PATH/lib:$PROJECT_ROOT/capi/lib:$LD_LIBRARY_PATH
-
+export CMODEL_LD_LIBRARY_PATH=$INSTALL_PATH/lib:$PROJECT_ROOT/capi/lib:$LD_LIBRARY_PATH
+export CHIP_LD_LIBRARY_PATH=/opt/sophon/libsophon-current/lib/:$INSTALL_PATH/lib:$PROJECT_ROOT/capi/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$CMODEL_LD_LIBRARY_PATH
+export USING_CMODEL=True
 export PYTHONPATH=$INSTALL_PATH/python:$PYTHONPATH
 export PYTHONPATH=/usr/local/python_packages/:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/customlayer/python:$PYTHONPATH
 
 export OMP_NUM_THREADS=4
+
+function use_cmodel(){
+    export USING_CMODEL=True
+    export LD_LIBRARY_PATH=$CMODEL_LD_LIBRARY_PATH
+}
+function use_chip(){
+    export USING_CMODEL=False
+    export LD_LIBRARY_PATH=$CHIP_LD_LIBRARY_PATH
+}

@@ -14,9 +14,9 @@ from .memmap import memmap, get_memory_type, local_layout_to_stride, MemRef
 from .decoder import decoder_instance
 
 
-class BM1684Context(CModelContext):
+class BM1684Context(BModelContext):
     MemRef = MemRef
-    device = Device.BM1684
+    device = Target.BM1684
     decoder = decoder_instance
 
     memmap = memmap
@@ -50,6 +50,7 @@ class BM1684Context(CModelContext):
         return [x[1] for x in cmd_sorted]
 
     def get_runner(self, memory_size: int) -> CModelRunner:
-        if self._runner is None:
-            self._runner = BM1684Runner(memory_size)
-        return self._runner
+        assert self.using_cmodel, "1684 currently only support cmodel mode"
+        if self._cmodel_runner is None:
+            self._cmodel_runner = BM1684Runner(memory_size)
+        return self._cmodel_runner

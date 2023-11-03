@@ -20,7 +20,7 @@ from .disassembler import (
 )
 
 from .target_common import (
-    CModelContext,
+    BModelContext,
     BaseTpuOp,
     use_backend,
 )
@@ -44,7 +44,7 @@ def BModel2MLIR(bmodel_net: BModel):
 
 
 def decode_cmdgroup(
-    context: CModelContext, cmd_group: CmdGroup, subnet_id: int, core_id=0
+    context: BModelContext, cmd_group: CmdGroup, subnet_id: int, core_id=0
 ) -> StaticCmdGroup:
     context = context
     decoder = context.decoder
@@ -60,7 +60,7 @@ def decode_cmdgroup(
 
 
 class _AtomicContext:
-    def __call__(self, bmodel_net: BModel, cmodel_context: CModelContext) -> Any:
+    def __call__(self, bmodel_net: BModel, cmodel_context: BModelContext) -> Any:
         self.bmodel_net = bmodel_net
         self.cmodel_context = cmodel_context
         return self
@@ -128,7 +128,7 @@ class Block(Node):
 
         if subnet.run_mode == subnet.run_mode.CPU:
             self.cpu_cmds.extend(
-                [bmodel_net.decode_cpu_op(i) for i in subnet.cpu_params]
+                [bmodel_net.decode_cpu_op(i) for i in subnet.cpu_param]
             )
         elif subnet.run_mode == subnet.run_mode.TPU_DYNAMIC:
             self.ir_cmds.extend(bmodel_net.decode_dynamic_ir(subnet.ir_buffer))

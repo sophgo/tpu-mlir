@@ -21,7 +21,7 @@ import mlir.ir
 from mlir.dialects.func import FuncOp
 from mlir.dialects import quant
 from mlir.ir import *
-from .target_common import DType, CMDType, Layout, CModelContext, MType
+from .target_common import DType, CMDType, Layout, BModelContext, MType
 
 
 to_dtype: Dict[str, DType] = {
@@ -95,7 +95,7 @@ class Value:
         dtype = to_dtype[dtype[0]]
         return shape, dtype
 
-    def get_memref(self, context: CModelContext):
+    def get_memref(self, context: BModelContext):
         address = self.address
         shape, dtype = self.get_shape_and_dtype(self.memory_type)
         layout = self.layout

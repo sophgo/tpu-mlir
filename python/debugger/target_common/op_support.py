@@ -91,7 +91,7 @@ class CpuLayerType(Enum):
     CPU_LAYER_UNKNOW = 60
 
 
-class Device(Enum):
+class Target(Enum):
     BM1684X = "BM1684X"
     BM1684 = "BM1684"
     BM1688 = "BM1688"
@@ -288,7 +288,7 @@ class MemRefBase(Value):
     A description of tensor in memory.
     """
 
-    device: Device = None
+    device: Target = None
     is_scalar = False
 
     def __init__(self, address, shape, dtype: DType, stride=None, layout=None):
@@ -563,7 +563,6 @@ class DynIrOp(BaseCmdOp):
 
     ctx_addr: int = 0
     ctx_size: int = 0
-
 
     @property
     def cmd(self):
