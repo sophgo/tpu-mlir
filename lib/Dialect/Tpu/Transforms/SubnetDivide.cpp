@@ -428,6 +428,19 @@ public:
     return ret;
   }
 
+  Value insert_host2device(Value v, Type to) {
+    auto ctx = v.getContext();
+    OpBuilder builder(ctx);
+    builder.setInsertionPointAfterValue(v);
+    auto name = module::getName(v).str();
+    name += "_host2device";
+    auto newType =
+        RankedTensorType::get(module::getShape(v), module::getStorageType(v));
+    auto loc = NameLoc::get(builder.getStringAttr(name));
+    auto hdOp = builder.create<tpu::Host2DeviceOp>(loc, newType, ValueRange{v});
+    return hdOp.getOutput();
+  }
+
   InfoVec base_subnet_split(ModuleOp sub) {
     subnet_basic_info::reset_id();
     InfoVec subnet_infos;
@@ -547,10 +560,16 @@ public:
        according to data depence , control flow, Op type */
     dfs();
 
-    /* move the WeightOp and NoneOp's position between subnets
-       and get the input and output of subnet */
+    /*  1. move the WeightOp and NoneOp's position between subnets
+           and get the input and output of subnet 
+
+        2. if subnet's output in host -> host2device */
+       
     std::vector<Operation *> to_move_ops;
     for (int i = 0; i < subnet_infos.size(); i++) {
+      bool add_h2d_flag = false;
+      Value h2dval;
+      std::vector<Operation *> h2dvec;
       for (auto it = subnet_infos[i]->ops.begin();
            it != subnet_infos[i]->ops.end();) {
         if (!isa<top::WeightOp, top::NoneOp>(*it)) {
@@ -558,8 +577,39 @@ public:
             for (auto user : (*it)->getResult(k).getUsers()) {
               if (std::find(subnet_infos[i]->ops.begin(),
                             subnet_infos[i]->ops.end(),
-                            user) == subnet_infos[i]->ops.end())
-                subnet_infos[i]->outs.emplace_back((*it)->getResult(k));
+                            user) == subnet_infos[i]->ops.end()) {
+
+                // if subnet's output in host -> host2device
+                auto output_op_p = (*it);
+                if ((output_op_p)->hasTrait<trait::ShapeProducer>()) {
+                  // if Op hasTrait<trait::ShapeProducer>()), Op is in host !
+
+                  for (auto user : output_op_p->getResult(k).getUsers()) {
+                    // note: user is in another subnet
+
+                    for (auto idx = 0; idx < user->getNumOperands(); idx++) {
+                      // insert host2device
+                    
+                      if (user->getOperand(idx) == output_op_p->getResult(k)) {
+                        h2dval = insert_host2device(user->getOperand(idx),
+                                                    user->getOperand(idx).getType());
+                        user->setOperand(idx, h2dval);
+                        break;
+                      }
+                    }
+                  }
+
+                  add_h2d_flag = true; // subnet_infos[i] can't updata now!
+                  h2dvec.emplace_back(h2dval.getDefiningOp());
+
+                  subnet_infos[i]->outs.emplace_back(h2dval); // h2dval is subnet output now
+                  break;
+                } else {
+                  // subnet's output is in device,
+                  subnet_infos[i]->outs.emplace_back((*it)->getResult(k));
+                  break;
+                }
+              }
             }
           }
 
@@ -598,6 +648,13 @@ public:
           } else {
             ++it;
           }
+        }
+      }
+
+      // if need to add host2device Op, updata subnet_infos[i] now !
+      if (add_h2d_flag) {
+        for (auto h2dOp : h2dvec) {
+          subnet_infos[i]->ops.emplace_back(h2dOp);
         }
       }
     }
