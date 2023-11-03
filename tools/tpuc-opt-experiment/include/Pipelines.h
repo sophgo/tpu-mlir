@@ -3,6 +3,6 @@
 namespace  mlir
 {
 void buildPrecompileTransformPassPipeline(
-    OpPassManager &pm, std::string target);
+    OpPassManager &pm, std::string target, bool dynamic_mode);
 } // namespace  mlir
 

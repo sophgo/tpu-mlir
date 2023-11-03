@@ -48,6 +48,11 @@ int main(int argc, char **argv) {
     llvm::cl::desc("Allow operation with no registered dialects"),
     llvm::cl::init(false), llvm::cl::cat(MlirOptions));
 
+  llvm::cl::opt<bool> dynamic_mode(
+    "Dynamic mode",
+    llvm::cl::desc("Dynamic mode"),
+    llvm::cl::init(false), llvm::cl::cat(MlirOptions));
+
   llvm::InitLLVM y(argc, argv);
   registerAllPasses();
   DialectRegistry registry;
@@ -81,7 +86,7 @@ int main(int argc, char **argv) {
     // MlirOptMain constructed ctx with our registry so we just load all our
     // already registered dialects.
     ctx->loadAllAvailableDialects();
-    buildPrecompileTransformPassPipeline(pm, chip_name);
+    buildPrecompileTransformPassPipeline(pm, chip_name, dynamic_mode);
     return success();
   };
 
