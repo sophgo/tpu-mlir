@@ -10,6 +10,7 @@ add_mlir_library(MLIRInputConversion
 
   DEPENDS
     InputConversionPassIncGen
+    GlobalOptimizationPassIncGen
 
   LINK_LIBS PUBLIC
     LLVMSupport
