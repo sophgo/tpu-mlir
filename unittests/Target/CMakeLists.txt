@@ -10,5 +10,6 @@ target_link_libraries(
 
 target_include_directories(TPUMLIRIRSG2260Tests
   PUBLIC
-  ${PROJECT_SOURCE_DIR}/test/lib/Dialect
+  ${PROJECT_SOURCE_DIR}/experimental/include/
+  ${CMAKE_BINARY_DIR}/experimental/include/
 )

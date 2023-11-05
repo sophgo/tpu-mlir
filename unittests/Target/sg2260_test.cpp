@@ -12,7 +12,7 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/Parser/Parser.h"
-#include "tpu_mlir/Dialect/SG2260/IR/SG2260.h"
+#include "tpu-mlir/Dialect/SG2260/IR/SG2260.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "gtest/gtest.h"
 

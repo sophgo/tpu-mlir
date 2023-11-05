@@ -12,7 +12,7 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/Matchers.h"
-#include "tpu_mlir/Dialect/SG2260/IR/SG2260.h"
+#include "tpu-mlir/Dialect/SG2260/IR/SG2260.h"
 #include "llvm/ADT/SmallString.h"
 
 using namespace mlir;
@@ -269,4 +269,4 @@ LogicalResult ConvOp::verify() {
 }
 
 #define GET_OP_CLASSES
-#include "tpu_mlir/Dialect/SG2260/IR/SG2260Ops.cpp.inc"
+#include "tpu-mlir/Dialect/SG2260/IR/SG2260Ops.cpp.inc"
