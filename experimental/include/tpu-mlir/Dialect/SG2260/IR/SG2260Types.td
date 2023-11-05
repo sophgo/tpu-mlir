@@ -11,7 +11,7 @@
 #define TPUMLIR_DIALECT_SG2260_IR_SG2260TYPES
 
 include "mlir/IR/AttrTypeBase.td"
-include "tpu_mlir/Dialect/SG2260/IR/SG2260.td"
+include "SG2260.td"
 
 class SG2260_Type<string name, string typeMnemonic, list<Trait> traits = []>
     : TypeDef<SG2260_Dialect, name, traits> {
@@ -27,15 +27,15 @@ class InsID<string name, string typeMnemonic>
 def SG2260_TIUIdType : InsID<"TIUId", "tiu.id"> {
   let summary = "TIU identifier.";
   let description = [{
-   The ID used by TIU insturcion.
-}];
+    The ID used by TIU insturcion.
+  }];
 }
 
 def SG2260_DMAIdType : InsID<"DMAId", "dma.id"> {
   let summary = "DMA identifier.";
   let description = [{
-   The ID used by DMA insturcion.
-}];
+    The ID used by DMA insturcion.
+  }];
 }
 
 
@@ -47,7 +47,7 @@ class RegProperty<string name> : Property<name> {
   let readFromMlirBytecode = [{
     (void)$_storage;
     return ::mlir::success();
-}];
+  }];
 }
 def ShortMatrix2RegDefProperties : RegProperty<"ShortMatrix2RegDef">;
 def ShortConvRegDefProperties : RegProperty<"ShortConvRegDef">;

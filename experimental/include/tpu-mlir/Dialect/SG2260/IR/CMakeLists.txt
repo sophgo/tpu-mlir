@@ -10,4 +10,4 @@ set(LLVM_TARGET_DEFINITIONS SG2260.td)
 mlir_tablegen(SG2260Dialect.h.inc -gen-dialect-decls -dialect=sg2260)
 mlir_tablegen(SG2260Dialect.cpp.inc -gen-dialect-defs -dialect=sg2260)
 
-add_public_tablegen_target(MLIRSG2260Gen)
+add_public_tablegen_target(TPUMLIRSG2260Gen)

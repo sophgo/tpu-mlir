@@ -17,11 +17,11 @@
 #include "mlir/IR/OpDefinition.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/Types.h"
-#include "tpu_mlir/Dialect/SG2260/IR/SG2260Dialect.h.inc"
+#include "tpu-mlir/Dialect/SG2260/IR/SG2260Dialect.h.inc"
 
 #define GET_TYPEDEF_CLASSES
-#include "tpu_mlir/Dialect/SG2260/IR/SG2260Types.h.inc"
+#include "tpu-mlir/Dialect/SG2260/IR/SG2260Types.h.inc"
 
 #include "SG2260RegDef.h"
 #define GET_OP_CLASSES
-#include "tpu_mlir/Dialect/SG2260/IR/SG2260Ops.h.inc"
+#include "tpu-mlir/Dialect/SG2260/IR/SG2260Ops.h.inc"

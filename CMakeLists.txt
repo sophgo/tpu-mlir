@@ -152,6 +152,9 @@ add_subdirectory(bindings)
 add_subdirectory(python)
 
 #-------------------------------------------------------------------------------
+add_subdirectory(experimental)
+
+#-------------------------------------------------------------------------------
 option(TPUMLIR_INCLUDE_TESTS "Generate build targets for the TPU-MLIR unit tests.")
 
 if(TPUMLIR_INCLUDE_TESTS)

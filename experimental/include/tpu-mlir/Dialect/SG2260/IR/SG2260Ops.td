@@ -15,8 +15,8 @@ include "mlir/IR/OpBase.td"
 include "mlir/IR/OpAsmInterface.td"
 include "mlir/IR/AttrTypeBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "tpu_mlir/Dialect/SG2260/IR/SG2260.td"
-include "tpu_mlir/Dialect/SG2260/IR/SG2260Types.td"
+include "SG2260.td"
+include "SG2260Types.td"
 
 
 class SG2260_Op<string mnemonic, list<Trait> traits = []>
