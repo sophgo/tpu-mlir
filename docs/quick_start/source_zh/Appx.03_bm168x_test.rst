@@ -16,7 +16,7 @@
 获取 ``model-zoo`` 模型
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-在 ``tpu-mlir_xxxx.tar.gz`` (tpu-mlir的发布包)的同级目录下, 使用以下命令克隆 ``model-zoo`` 工程:
+在欲使用的工作目录下, 使用以下命令克隆 ``model-zoo`` 工程:
 
 .. code :: shell
 
@@ -178,7 +178,6 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 ::
 
    ├── tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
-   ├── tpu-mlir_xxxx.tar.gz
    └── model-zoo
 
 准备工具链编译环境
@@ -191,16 +190,19 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
    $ sudo usermod -aG docker $USER
    $ newgrp docker
 
-然后，在 ``tpu-mlir_xxxx.tar.gz`` 目录下(注意, ``tpu-mlir_xxxx.tar.gz`` 和
-``model-zoo`` 需要在同一级目录), 执行以下命令:
+然后，在欲使用的工作目录(即 ``model-zoo`` 所在目录)下执行以下命令:
 
 .. code :: shell
 
-   $ tar zxf tpu-mlir_xxxx.tar.gz
    $ docker pull sophgo/tpuc_dev:v3.1
    $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v3.1
 
 运行命令后会处于Docker的容器中。
+在Docker容器中安装tpu_mlir:
+
+.. code :: shell
+
+   $ pip install tpu_mlir[all]
 
 模型性能和精度测试流程
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -212,8 +214,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 
 .. code :: shell
 
-   $ cd tpu-mlir_xxxx
-   $ source envsetup.sh
+   $ source $(which envsetup.sh)
 
 该过程结束后不会有任何提示。之后使用以下命令安装 ``tpu-perf``:
 
@@ -231,7 +232,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --target BM1684X --mlir -l full_cases.txt
 
-``--target`` 用于指定芯片型号，目前支持 ``BM1684``、``BM1684X``、``BM1686``和``CV186X``。
+``--target`` 用于指定芯片型号，目前支持 ``BM1684``、``BM1684X``、``BM1688``和``CV186X``。
 
 此时会编译以下模型（由于model-zoo的模型在持续添加中，这里只列出部分模型；同时该
 过程也编译了用于测试精度的模型，后续精度测试部分无需再编译模型。）:
@@ -273,7 +274,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
    $ cd model-zoo
    $ python3 -m tpu_perf.run --target BM1684X --mlir -l full_cases.txt
 
-``--target`` 用于指定芯片型号，目前支持 ``BM1684``、``BM1684X``、``BM1686``和``CV186X``。
+``--target`` 用于指定芯片型号，目前支持 ``BM1684``、``BM1684X``、``BM1688``和``CV186X``。
 
 注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
 ``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
@@ -316,7 +317,7 @@ PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 精度。
    $ cd model-zoo
    $ python3 -m tpu_perf.precision_benchmark --target BM1684X --mlir -l full_cases.txt
 
-``--target`` 用于指定芯片型号，目前支持 ``BM1684``、``BM1684X``、``BM1686``和``CV186X``。
+``--target`` 用于指定芯片型号，目前支持 ``BM1684``、``BM1684X``、``BM1688``和``CV186X``。
 
 各类精度数据在 output 目录中的各个 csv 文件可以获得。
 

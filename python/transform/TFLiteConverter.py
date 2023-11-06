@@ -223,7 +223,13 @@ class TFLiteConverter(BaseConverter):
         self.tflie = TFLiteReader(tflite_file)
         self.graph = next(self.tflie.subgraph)
         self.preprocess_args = {}
-
+        if 'preprocess_list' in preprocess_args:
+            if preprocess_args['preprocess_list'] is not None:
+                for input_index in preprocess_args['preprocess_list']:
+                    assert( 0 < input_index <= len(self.graph.inputs)
+                        and "Please check --preprocess_list is right input")
+            else:
+                preprocess_args['preprocess_list'] = [ i + 1 for i in range(len(self.graph.inputs)) ]
         self.need_transpose = False
         if 'channel_format' in preprocess_args:
             if preprocess_args['channel_format'] != "none":

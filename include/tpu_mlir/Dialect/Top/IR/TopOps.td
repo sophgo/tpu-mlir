@@ -61,7 +61,7 @@ def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","Le
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
 def InterpModeAttr: AnyStrAttrOf<["nearest","linear"]>;
 def InterpCoordModeAttr: AnyStrAttrOf<["align_corners", "half_pixel", "pytorch_half_pixel", "asymmetric"]>;
-def PixelFormatAttr: AnyStrAttrOf<["rgb","bgr","gray","rgba"]>;
+def PixelFormatAttr: AnyStrAttrOf<["rgb","bgr","gray","rgba","gbrg","grbg","bggr","rggb"]>;
 def ChannelFormatAttr: AnyStrAttrOf<["nhwc","nchw"]>;
 def PadModeAttr: AnyStrAttrOf<["normal","center"]>;
 def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_SIZE"]>;
@@ -134,6 +134,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   mlir::Value clone_f16(mlir::Operation * OwnerOp);
   mlir::Value clone_int(mlir::Operation *OwnerOp);
   mlir::Value clone(llvm::StringRef suffix);
+  mlir::Value split(int begin, int end, int axis, mlir::Type to_type, std::string suffix);
   }];
 }
 
@@ -145,6 +146,8 @@ def Top_InputOp: Top_BaseOp<"Input"> {
 
   let arguments = (
     ins AnyRankedTensor:$input,
+    // whether need preprocess
+    DefaultValuedAttr<BoolAttr, "false">:$do_preprocess,
     // preprocess for input
     OptionalAttr<PixelFormatAttr>:$pixel_format,
     OptionalAttr<ChannelFormatAttr>:$channel_format,
@@ -157,7 +160,10 @@ def Top_InputOp: Top_BaseOp<"Input"> {
     OptionalAttr<F64ArrayAttr>:$mean,
     //for cv18xx fusepreprocess
     OptionalAttr<StrAttr>:$customization_format,
-    OptionalAttr<BoolAttr>:$aligned
+    OptionalAttr<BoolAttr>:$aligned,
+    //for raw image preprocess
+    OptionalAttr<F64Attr>:$white_level,
+    OptionalAttr<F64Attr>:$black_level
   );
 
   let results = (outs AnyTensor:$output);
@@ -700,6 +706,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<I64Attr>:$weight_bits,
     OptionalAttr<F64Attr>:$in_int4_scale,
     OptionalAttr<F64Attr>:$in_int4_zp,
     OptionalAttr<F64Attr>:$out_int8_scale,
@@ -935,6 +942,20 @@ def Top_SigmoidOp : Top_Op<"Sigmoid", [SupportPermuteMove]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_SignOp : Top_Op<"Sign"> {
+  let summary = " Sign Operator";
+  let description = [{
+     Calculate the sign of the given input tensor element-wise.
+     If input > 0, output 1. if input < 0, output -1. if input == 0,
+     output 0.
+  }];
+  let arguments = (
+    ins AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_SoftsignOp: Top_Op<"Softsign"> {
   let summary = " Softsign Operator";
   let description = [{
@@ -1104,7 +1125,7 @@ def Top_SliceAxisOp: Top_Op<"SliceAxis"> {
     AnyTensor:$input,
     AnyTensor:$axis,
     AnyTensor:$start,
-    AnyTensor:$step,
+    AnyTensorOrNone:$step,
     AnyTensor:$end
   );
   let results = (outs AnyTensor:$output);
@@ -1235,6 +1256,21 @@ def Top_LogOp: Top_Op<"Log"> {
 
   let arguments = (ins
     AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_LogBOp: Top_Op<"LogB"> {
+  let summary = "LogB operator";
+
+  let description = [{
+    Calculates the log of the given input tensor to the base B, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$base
   );
 
   let results = (outs AnyTensor:$output);
@@ -2013,6 +2049,25 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_IndexPutOp : Top_Op<"IndexPut"> {
+  let summary = "Index_put_ operation";
+  let description = [{
+    if accumulate
+      input[indices] += values
+    else
+      input[indices] = values
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$indices,
+    AnyTensor:$values,
+    DefaultValuedAttr<BoolAttr, "false">:$accumulate
+  );
+  let results = (outs
+    AnyTensor:$output
+  );
+}
+
 def Top_InstanceNormOp : Top_Op<"InstanceNorm"> {
   let summary = "Instance Norm operation";
   let description = [{
@@ -2395,7 +2450,28 @@ def Top_PreprocessOp: Top_Op<"Preprocess"> {
     I64ArrayAttr:$resize_dims,
     F64ArrayAttr:$scale,
     F64ArrayAttr:$mean,
+    //for raw image preprocess
+    F64Attr:$white_level,
+    F64Attr:$black_level,
     DefaultValuedAttr<BoolAttr, "true">:$sign
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_DepackRawOp: Top_Op<"DepackRaw"> {
+  let summary = "Postprocess for raw image.";
+  let description = [{
+    postprocess raw image from 4 channels to mixed pixel pattern,
+    remove padding first if padded before,
+    then for each channel depack to 2 * 2 image block.
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$padding_h,
+    I64Attr:$padding_w,
+    F64Attr:$white_level,
+    F64Attr:$black_level,
+    I64ArrayAttr:$channel_order
   );
   let results = (outs AnyTensor:$output);
 }

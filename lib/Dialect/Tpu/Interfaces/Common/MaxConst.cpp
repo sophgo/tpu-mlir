@@ -65,3 +65,10 @@ LogicalResult tpu::MaxConstOp::LocalGenSupport() { return success(); }
 void tpu::MaxConstOp::assign_fw_param(void *param) {
   IR_PARAM_CONST_BINARY(BINARY_MAX);
 }
+
+ArrayAttr tpu::MaxConstOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};

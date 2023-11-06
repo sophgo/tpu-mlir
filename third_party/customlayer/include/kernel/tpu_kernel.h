@@ -1941,7 +1941,7 @@ void tpu_bdc_int8_sym_quant_conv2d_for_deconv2d(
     bool              has_bias,
     bool              result_relu);
 
-// only supported bm1686
+// only supported bm1688
 void tpu_bdc_conv2d_requant_pc(
     local_addr_t      output_addr,
     local_addr_t      input_addr,
@@ -1963,7 +1963,7 @@ void tpu_bdc_conv2d_requant_pc(
     bool              result_relu,
     bool              has_requant,
     bool              sym_range);
-// only supported bm1686
+// only supported bm1688
 void tpu_bdc_conv2d_requant_C(
     local_addr_t      output_addr,
     local_addr_t      input_addr,

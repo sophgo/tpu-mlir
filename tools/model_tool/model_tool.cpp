@@ -115,6 +115,111 @@ static void combine(int argc, char **argv) {
   }
 }
 
+static void update_kernel(ModelGen &model_gen, shared_ptr<MODEL_CTX_T>& model_info, uint8_t* module_binary, size_t binary_size, string module_name)
+{
+  model_gen.AddChip(model_info->model_ctx->model()->chip()->str());
+  model_gen.AddNumDevice(model_info->model_ctx->model()->device_num());
+  auto &builder = model_gen.Builder();
+  auto model = model_info->model_ctx->model();
+  for (uint32_t net_idx = 0; net_idx < model->net()->size(); net_idx++) {
+    auto net = model->net()->Get(net_idx);
+    if (net->parameter() == NULL || net->parameter()->size() == 0) {
+      continue;
+    }
+    auto net_name = net->name()->str();
+    for (uint32_t idx = 0; idx < net->parameter()->size(); idx++) {
+      shared_ptr<NET_INDEX_T> net_idx(new NET_INDEX_T);
+      auto netT = net->parameter()->Get(idx)->UnPack();
+      auto net_offset = NetParameter::Pack(builder, netT);
+      auto cascade = net->cascade();
+      if (cascade) {
+        // no more stage
+        assert(net->parameter()->size() == 1);
+      }
+      model_gen.AddNet(net_name, net_offset, &net_idx->net_idx, &net_idx->stage_idx, cascade);
+      delete netT;
+      model_info->net_index_v.push_back(net_idx);
+    }
+  }
+  auto kernel_module = model_gen.WriteBinary(binary_size, module_binary);
+  model_gen.AddKernelModule(module_name, kernel_module);
+  model_gen.Finish();
+  for (auto &net_index : model_info->net_index_v) {
+    update_net(model_gen, *model_info->model_ctx, net_index->net_idx, net_index->stage_idx);
+  }
+}
+
+static void update_kernel_module(int argc, char **argv) {
+  // tpu_model --kernel_add xx.bmodel xx.so
+  if (argc != 4) {
+    FATAL("--update_kernel parameter error.");
+  }
+  string model_path = argv[2];
+  string kernel_path = argv[3];
+  ifstream f_kernel(kernel_path, ios::in | ios::binary);
+  if (!f_kernel) {
+    FATAL("module name [%s] is not correct", kernel_path.c_str());
+  }
+  shared_ptr<MODEL_CTX_T> model_info(new MODEL_CTX_T);
+  model_info->model_ctx = make_shared<ModelCtx>(model_path);
+  if (model_info->model_ctx == NULL || !(*model_info->model_ctx)) {
+    FATAL("file[%s] is not correct", model_path.c_str());
+  }
+
+  f_kernel.seekg(0, f_kernel.end);
+  int binary_size = f_kernel.tellg();
+  f_kernel.seekg(0, f_kernel.beg);
+  shared_ptr<char> module_binary(new char[binary_size]);
+  f_kernel.read(module_binary.get(), binary_size);
+  string module_name = kernel_path.substr(kernel_path.find_last_of('/')+1);
+
+  ModelGen model_gen;
+  update_kernel(model_gen, model_info, (uint8_t*)module_binary.get(), binary_size, module_name);
+  model_gen.Save(model_path);
+  cout << "Success: update to [" << module_name << "]." << endl;
+
+  f_kernel.close();
+}
+
+static void dump_kernel_module(int argc, char **argv) {
+  // tpu_model --kernel_dump xx.bmodel -o xx.so
+  if (argc != 3 && argc != 5) {
+    FATAL("--dump_kernel parameter error.");
+  }
+  ModelCtx model_ctx(argv[2]);
+  if (!model_ctx) {
+    FATAL("file[%s] is not correct", argv[2]);
+  }
+  auto kernel_module = model_ctx.model()->kernel_module();
+  if (kernel_module) {
+    auto module_binary = kernel_module->binary();
+    string module_name = kernel_module->file_name()->str();
+    size_t binary_size = module_binary->size();
+    string save_name = module_name;
+    if(argc == 5) {
+      if (strcmp(argv[3], "-o") == 0) {
+        save_name = argv[4];
+        if (save_name.length()<3 || save_name.compare(save_name.length()-3, 3, ".so")) {
+          save_name = save_name.compare(save_name.length()-1, 1, "/") ? save_name + "/" + module_name : save_name + module_name;
+        }
+      } else {
+        FATAL("--dump_kernel parameter error.");
+      }
+    }
+    ofstream ofile(save_name, ios::out | ios::trunc | ios::binary);
+    if (!ofile) {
+      FATAL("save file[%s] failed\n", save_name.c_str());
+    }
+    std::unique_ptr<uint8_t> binary(new uint8_t[binary_size]);
+    model_ctx.read_binary(module_binary, binary.get());
+    ofile.write((char*)binary.get(), binary_size);
+    cout << "Success: dump kernel_module to [" << save_name << "]." << endl;
+    ofile.close();
+  } else {
+    FATAL("no kernel_module found.");
+  }
+}
+
 static void combine(int argc, char **argv, bool is_dir) {
   if (isCv18xx(argv[2])) {
     cout << "cv18xx not supported!" << endl;
@@ -131,8 +236,12 @@ static void dump(int argc, char **argv) {
   }
 }
 
+#ifndef MLIR_VERSION
+#define MLIR_VERSION "version unknown"
+#endif
+
 int main(int argc, char **argv) {
-  if (argc < 3) {
+  if (argc < 2) {
     usage();
     exit(-1);
   }
@@ -158,6 +267,12 @@ int main(int argc, char **argv) {
     combine(argc, argv, true);
   } else if (cmd == "--dump") {
     dump(argc, argv);
+  } else if (cmd == "--version") {
+    printf("%s\n", MLIR_VERSION);
+  } else if (cmd == "--kernel_dump") {
+    dump_kernel_module(argc, argv);
+  } else if (cmd == "--kernel_update") {
+    update_kernel_module(argc, argv);
   } else {
     usage();
     exit(-1);

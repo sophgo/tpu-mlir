@@ -20,8 +20,7 @@ class LocalGenInterfaceDecorator;
 class GlobalGenInterfaceDecorator;
 class ScopeVar;
 
-template <typename T>
-class Table {
+template <typename T> class Table {
 public:
   Table(){};
   bool contains(T key) { return prefix_record.contains(key); }
@@ -47,10 +46,9 @@ public:
   }
   ~TensorLocationImpl() { J.arrayEnd(); }
 
-  template <typename... Args>
-  void before_codegen_local(Args...) {
-    cmd_before[0] = (*BM168x::instance())->bdc_total_id;
-    cmd_before[1] = (*BM168x::instance())->gdma_total_id;
+  template <typename... Args> void before_codegen_local(Args...) {
+    cmd_before[0] = (*BM168x::instance()).get_total_id("tiu:0:0");
+    cmd_before[1] = (*BM168x::instance()).get_total_id("gdma:0:0");
   };
 
   void after_codegen_local(Operation *op, int64_t n_step, int64_t c_step,
@@ -58,8 +56,8 @@ public:
                            group_type_t group_type, local_sec_info_t &sec_info);
 
   void before_codegen_global(Operation *op) {
-    cmd_before[0] = (*BM168x::instance())->bdc_total_id;
-    cmd_before[1] = (*BM168x::instance())->gdma_total_id;
+    cmd_before[0] = (*BM168x::instance()).get_total_id("tiu:0:0");
+    cmd_before[1] = (*BM168x::instance()).get_total_id("gdma:0:0");
   };
   void after_codegen_global(Operation *op);
 
@@ -82,8 +80,7 @@ class TensorLocation {
 
 public:
   TensorLocation() { getImpl().reset(); }
-  template <typename... Args>
-  TensorLocation(Args... args) {
+  template <typename... Args> TensorLocation(Args... args) {
     getImpl() = std::make_unique<TensorLocationImpl>(args...);
   };
 
@@ -135,8 +132,7 @@ public:
 class LocalGenInterfaceDecorator : public LocalGenInterface {
 public:
   LocalGenInterfaceDecorator(Operation *op) : LocalGenInterface(op){};
-  template <typename... Args>
-  void codegen_local_bm168x(Args... args) {
+  template <typename... Args> void codegen_local_bm168x(Args... args) {
     TensorLocation::getImpl()->before_codegen_local(getOperation(), args...);
     LocalGenInterface::codegen_local_bm168x(args...);
     TensorLocation::getImpl()->after_codegen_local(getOperation(), args...);

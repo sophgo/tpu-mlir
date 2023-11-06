@@ -35,7 +35,7 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi, shift_val, zero_point;
-      if (module::isBM1686()) {
+      if (module::isBM1688()) {
         multi = p.inputs[1][c * 2];
         uint32_t tmp = p.inputs[1][c * 2 + 1];
         shift_val = (int64_t)((char)(tmp & 0xff));
@@ -59,7 +59,7 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi, rshift_val, zero_point;
-      if (module::isBM1686()) {
+      if (module::isBM1688()) {
         multi = p.inputs[1][c * 2];
         uint32_t tmp = p.inputs[1][c * 2 + 1];
         rshift_val = (int64_t)(-(char)(tmp & 0xff));

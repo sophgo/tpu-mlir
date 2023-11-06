@@ -38,7 +38,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # ONNX Test Case, Alphabetically
             #########################################
-            # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
             "Abs":          (self.test_Abs,           Y, Y, Y, Y),
             "Add":          (self.test_Add,           Y, Y, Y, Y),
             "And":          (self.test_And,           N, Y, Y, N),
@@ -100,7 +100,7 @@ class ONNX_IR_TESTER(object):
             "Flip":         (self.test_Flip,          Y, Y, Y, N),
             "Floor":        (self.test_floor,         Y, Y, Y, N),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y),
-            "GatherElements": (self.test_GatherElements,      Y, N, N, N),
+            "GatherElements": (self.test_GatherElements,      Y, Y, N, N),
             "GatherND":     (self.test_GatherND,      Y, Y, Y, Y),
             "Gather2":      (self.test_Gather2,       N, Y, Y, N),
             "Gather3":      (self.test_Gather3,       Y, Y, Y, N),
@@ -156,6 +156,7 @@ class ONNX_IR_TESTER(object):
             "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
             "Round":        (self.test_Round,         N, Y, N, N),
             "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y),
+            "ScatterElements": (self.test_ScatterElements, N, Y, N, N),
             "ScatterND":    (self.test_ScatterND,     N, Y, Y, N),
             "Shape":        (self.test_Shape,         Y, Y, Y, N),
             "ShapeCast":    (self.test_ShapeCast,     N, N, N, N),
@@ -165,6 +166,7 @@ class ONNX_IR_TESTER(object):
             "Softplus":     (self.test_Softplus,      Y, Y, Y, Y),
             "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y),
             "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y),
+            "Sign":         (self.test_Sign,          N, Y, Y, N),
             "Slice":        (self.test_Slice,         Y, Y, Y, Y),
             "Slice2":       (self.test_Slice2,        Y, Y, Y, Y),
             "Slice3":       (self.test_Slice3,        Y, Y, Y, Y),
@@ -196,7 +198,7 @@ class ONNX_IR_TESTER(object):
             #####################################
             # Torch Test Case, Alphabetically
             #####################################
-            # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
             "TorchActivation":      (self.test_TorchActivation,     N, Y, Y, Y),
             "TorchArg":             (self.test_TorchArg,            N, Y, Y, N),
             "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N, N),
@@ -231,7 +233,7 @@ class ONNX_IR_TESTER(object):
             #########################################
             # Special Pass test case, Alphabetically
             #########################################
-            # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
             "ArgError":         (self.test_ArgError,        N, Y, Y, Y),
             "ArgReducefull":    (self.test_ArgReducefull,   Y, Y, Y, N),
             "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y),
@@ -304,7 +306,7 @@ class ONNX_IR_TESTER(object):
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
         else:
-            if self.chip == "bm1686" or self.chip == "cv186x":
+            if self.chip == "bm1688" or self.chip == "cv186x":
                 self.support_quant_modes.append("int4")
             if self.mode not in self.support_quant_modes:
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
@@ -324,14 +326,14 @@ class ONNX_IR_TESTER(object):
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1686_support, cv183x_support = self.test_cases[case]
+        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support = self.test_cases[case]
         if self.is_cv18xx and cv183x_support:
             return True
         if self.chip == "bm1684" and bm1684_support:
             return True
         if self.chip == "bm1684x" and bm1684x_support:
             return True
-        if self.chip == "bm1686" and bm1686_support:
+        if self.chip == "bm1688" and bm1688_support:
             return True
         return False
 
@@ -1729,24 +1731,27 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Resize(self, case_name):
-        input_shape = [1, 16, 32, 32]
-        output_shape = [1, 16, 64, 64]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        roi_data = np.array([], dtype=np.float32)
-        scales_data = np.array([1, 1, 2, 2], dtype=np.float32)
-        roi = helper.make_tensor('roi', TensorProto.FLOAT, [0], roi_data)
-        scales = helper.make_tensor('scales', TensorProto.FLOAT, [4], scales_data)
-        resize_def = helper.make_node('Resize',
-                                      inputs=['input', 'roi', 'scales'],
-                                      outputs=['output'],
-                                      mode='nearest',
-                                      nearest_mode='floor',
-                                      coordinate_transformation_mode='asymmetric')
-        graph_def = helper.make_graph([resize_def],
-                                      case_name, [input], [output],
-                                      initializer=[roi, scales])
-        self.onnx_and_test(graph_def)
+        case0 = [[1, 16, 32, 32], [1, 16, 64, 64], [1, 1, 2, 2], [4], 'nearest', 'asymmetric']
+        case1 = [[2, 3, 224], [2, 3, 448], [1, 1, 2], [3], 'linear', 'half_pixel']
+        cases = (case0, case1) if self.chip in ['bm1684x', 'bm1688'] else (case0,)
+        for idx, case in enumerate(cases):
+            input_shape, output_shape, scales, dim, mode, coor_mode = case
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+            roi_data = np.array([], dtype=np.float32)
+            scales_data = np.array(scales, dtype=np.float32)
+            roi = helper.make_tensor('roi', TensorProto.FLOAT, [0], roi_data)
+            scales = helper.make_tensor('scales', TensorProto.FLOAT, dim, scales_data)
+            resize_def = helper.make_node('Resize',
+                                        inputs=['input', 'roi', 'scales'],
+                                        outputs=['output'],
+                                        mode=mode,
+                                        nearest_mode='floor',
+                                        coordinate_transformation_mode=coor_mode)
+            graph_def = helper.make_graph([resize_def],
+                                        case_name, [input], [output],
+                                        initializer=[roi, scales])
+            self.onnx_and_test(graph_def)
 
     def test_Resize2(self, case_name):
         input_shape = [1, 32, 208, 30]
@@ -2037,6 +2042,53 @@ class ONNX_IR_TESTER(object):
             [output],
         )
         self.onnx_and_test(graph_def)
+
+    def test_Nms2(self, case_name):
+        # params for Nms
+        num_batches = 1
+        num_classes = 80
+        spatial_dimension = 50 #15200
+        in_shape = [num_batches, spatial_dimension, 4]
+        score_shape = [num_batches, num_classes, spatial_dimension]
+
+        nonzero_input_shape = [2,6]
+        nonzero_input = helper.make_tensor_value_info('nonzero_input', TensorProto.FLOAT, nonzero_input_shape)
+        boxes = helper.make_tensor_value_info('boxes', TensorProto.FLOAT, in_shape)
+        scores = helper.make_tensor_value_info('scores', TensorProto.FLOAT, score_shape)
+        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.INT64, [])
+
+        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [1], vals=[0])
+        indices1 = helper.make_tensor('indices1', TensorProto.INT64, [1], vals=[0])
+
+        iou_threshold = helper.make_tensor(name='iou_threshold',
+                                           data_type=TensorProto.FLOAT,
+                                           dims=[1],
+                                           vals=0.5 * np.ones(1))
+        score_threshold = helper.make_tensor(name='score_threshold',
+                                             data_type=TensorProto.FLOAT,
+                                             dims=[1],
+                                             vals=0.05 * np.ones(1))
+
+        gather0_def = helper.make_node('Gather', inputs=['nonzero_input', 'indices0'], axis=0, outputs=['gather0'])
+        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
+        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
+        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
+        gather_def = helper.make_node('Gather', inputs=['shape', 'indices1'], axis=0, outputs=['max_output_boxes_per_class'])
+        nms_def = helper.make_node(
+            'NonMaxSuppression',
+            inputs=['boxes', 'scores', 'max_output_boxes_per_class', 'iou_threshold', 'score_threshold'],
+            outputs=['Y_Value'],
+        )
+        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def, shape_def, gather_def, nms_def],
+                                case_name, [nonzero_input, boxes, scores], [Y_Value],
+                                initializer=[indices0, indices1, iou_threshold, score_threshold])
+
+        input_data={
+            'nonzero_input' : np.array([[1, 0, 3, 0, 4, 0], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
+            'boxes' : np.random.rand(*in_shape).astype(np.float32),
+            'scores' : np.random.rand(*score_shape).astype(np.float32)
+                    }
+        self.onnx_and_test_bmodel(graph_def, static_shape=False, input_data=input_data, only_cmp_with_bmodel=True)
 
     def test_Nms(self, case_name):
         num_batches = 1
@@ -2391,13 +2443,28 @@ class ONNX_IR_TESTER(object):
 
         self.onnx_and_test(graph_def)
 
+    def test_Sign(self, case_name):
+        input_shape = [4, 2, 200, 100]
+        output_shape = [4, 2, 200, 100]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        sign_def = helper.make_node(
+            case_name,
+            inputs=['input'],
+            outputs=['output'],
+        )
+        graph_def = helper.make_graph([sign_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
     def test_Slice(self, case_name):
         input_shape = [5, 116, 64, 64]
         output_shape = [3, 16, 16, 8]
         starts_data = np.array([2, 10, 10, 12], dtype=np.int64)
         ends_data = np.array([5, 42, 42, 36], dtype=np.int64)
         axes_data = np.array([0, 1, 2, 3], dtype=np.int64)
-        steps_data = np.array([1, 2, 2, 3], dtype=np.int64)
+        steps_data = np.array([1, 3, 2, 3], dtype=np.int64)
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
@@ -4153,37 +4220,87 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_GatherElements(self, case_name):
-        input_data = {
-            "data": np.array([[[1, 1], [2, 2]], [[3, 3], [4, 4]]], dtype=np.float32)
-        }
+        if self.chip in ['bm1684x']:
+            # samples too large for regression is commented
+            # but all samples following should be passed
+            input_data = [{
+                "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+            }, {
+                "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+            }, {
+                "data": np.random.randn(1, 13294, 4).astype(np.float32)
+            }, {
+                "data": np.arange(256).reshape(4, 4, 4, 4).astype(np.float32)
+            }, {
+                "data": np.random.randn(16, 17, 18, 19).astype(np.float32)
+                # "data": np.arange(16 * 17 * 18 * 19).reshape(16, 17, 18, 19).astype(np.float32) # for f32 debug
+            }, {
+                "data": np.random.randn(16, 17, 18, 19, 20).astype(np.float32)
+            # }, {
+            #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
+            # }, {
+            #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
+            # }, {
+            #     "data": np.random.randn(5, 8, 8, 512, 512).astype(np.float32)
+            # }, {
+            #     "data": np.random.randn(655340, 2).astype(np.float32)
+            }]
+            indices_data = [
+                np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.int64),
+                np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.int64),
+                np.random.randint(0, 13294, [1, 900, 4]),
+                np.random.randint(0, 4, [2, 3, 9, 4]),
+                np.random.randint(0, 18, [15, 12, 39, 15]),
+                np.random.randint(0, 18, [15, 12, 39, 15, 13]),
+                # np.random.randint(0, 512, [3, 7, 1025, 510]),
+                # np.random.randint(0, 8, [3, 128, 511, 88]),
+                # np.random.randint(0, 8, [3, 6, 128, 511, 88]),
+                # np.random.randint(0, 2, [65536, 2]),
+            ]
+            # axis_data = [1, 0, 1, 2, 2, 2, 2, 1, 2, 1]
+            axis_data = [1, 0, 1, 2, 2, 2]
+        elif self.chip in ['bm1684']:
+            input_data = [{
+                "data": np.array([[[0, 0], [2, 2]], [[4, 5], [6, 7]]], dtype=np.float32),
+            }]
+            indices_data = [np.array([[[0, 1], [1, 0]], [[1, 0], [0, 1]]], dtype=np.int64)]
+            axis_data = [2]
+        for i in range(len(input_data)):
+            # if i != 8:
+            #     continue
+            input_ = input_data[i]
+            indices_ = indices_data[i]
+            axis_ = axis_data[i]
+            input = helper.make_tensor_value_info('data', TensorProto.FLOAT, input_["data"].shape)
+            indices = helper.make_tensor(
+                "indices",
+                TensorProto.INT64,
+                indices_.shape,
+                indices_,
+            )
 
-        indices = np.array([[[0, 0], [0, 0]], [[1, 1], [0, 0]]], dtype=np.int64)
-        input = helper.make_tensor_value_info('data', TensorProto.FLOAT, input_data["data"].shape)
-        output_shape = [2,2,2]
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        axis = 2
-        indices = helper.make_tensor(
-            "indices",
-            TensorProto.INT64,
-            indices.shape,
-            indices,
-        )
-        add_const = helper.make_tensor(name='const_add',
-                                data_type=TensorProto.FLOAT,
-                                dims=[],
-                                vals=[2.0])
-        gather_node = onnx.helper.make_node("GatherElements",
-                                            inputs=["data", "indices"],
-                                            outputs=["gather_output"],
-                                            axis=axis)
-        add_node = onnx.helper.make_node("Add",
-                                    inputs=["gather_output", "const_add"],
-                                    outputs=["output"])
-
-        graph_def = helper.make_graph([gather_node,add_node],
-                                      case_name, [input], [output],
-                                      initializer=[indices,add_const])
-        self.onnx_and_test(graph_def,input_data=input_data)
+            gather_node = onnx.helper.make_node("GatherElements",
+                                                inputs=["data", "indices"],
+                                                outputs=["gather_output"],
+                                                axis=axis_)
+            if self.chip in ['bm1684x']:
+                output_gather = helper.make_tensor_value_info('gather_output', TensorProto.FLOAT, indices_data[i].shape)
+                graph_def = helper.make_graph([gather_node],
+                                            case_name, [input], [output_gather],
+                                            initializer=[indices])
+            elif self.chip in ['bm1684']:
+                output = helper.make_tensor_value_info('output', TensorProto.FLOAT, indices_data[i].shape)
+                add_const = helper.make_tensor(name='const_add',
+                                        data_type=TensorProto.FLOAT,
+                                        dims=[],
+                                        vals=[2.0])
+                add_node = onnx.helper.make_node("Add",
+                                            inputs=["gather_output", "const_add"],
+                                            outputs=["output"])
+                graph_def = helper.make_graph([gather_node,add_node],
+                                            case_name, [input], [output],
+                                            initializer=[indices,add_const])
+            self.onnx_and_test(graph_def,input_data=input_)
 
     def test_GatherND(self, case_name):
         input_datas = [{
@@ -5407,11 +5524,86 @@ class ONNX_IR_TESTER(object):
         self.PadPoolBase(case_name, [1, 16, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 0, 1, 2], \
                 [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
 
+    def test_ScatterElements(self, case_name):
+
+        input_data = [{
+            "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+        }, {
+            "data": np.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]], dtype=np.float32)
+        }, {
+            "data": np.random.randn(1, 13294, 4).astype(np.float32)
+        }, {
+            "data": np.arange(256).reshape(4, 4, 4, 4).astype(np.float32)
+        }, {
+            "data": np.random.randn(16, 17, 18, 19).astype(np.float32)
+        }, {
+            "data": np.random.randn(16, 17, 18, 19, 20).astype(np.float32)
+        }, {
+            "data": np.random.randn(15, 16, 17, 18, 19, 20).astype(np.float32)
+        }, {
+            "data": np.random.randn(2, 2, 2, 2, 2, 2, 2).astype(np.float32)
+        }, {
+            "data": np.random.randn(2, 2, 2, 2, 2, 2, 2, 2).astype(np.float32)
+        }, {
+            "data": np.random.randn(2, 65536, 2).astype(np.float32)
+        }]
+
+        indices_data = [
+            np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.int32),
+            np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.int32),
+            np.random.randint(0, 13294, [1, 900, 4]),
+            np.random.randint(0, 4, [4, 4, 9, 4]),
+            np.random.randint(0, 18, [16, 17, 25, 19]),
+            np.random.randint(0, 20, [16, 17, 18, 19, 21]),
+            np.random.randint(0, 20, [15, 16, 17, 18, 19, 21]),
+            np.random.randint(0, 2, [2, 2, 2, 2, 2, 2, 8]),
+            np.random.randint(0, 2,  [2, 2, 2, 2, 10, 2, 2, 2]),
+            np.random.randint(0, 2, [2, 65536, 2])]
+
+        updates_data = [
+            np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.float32),
+            np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.float32),
+            np.random.randn(1, 900, 4).astype(np.float32),
+            np.random.randn(4, 4, 9, 4).astype(np.float32),
+            np.random.randn(16, 17, 25, 19).astype(np.float32),
+            np.random.randn(16, 17, 18, 19, 21).astype(np.float32),
+            np.random.randn(15, 16, 17, 18, 19, 21).astype(np.float32),
+            np.random.randn(2, 2, 2, 2, 2, 2, 8).astype(np.float32),
+            np.random.randn(2, 2, 2, 2, 10, 2, 2, 2).astype(np.float32),
+            np.random.randn(2,65536, 2).astype(np.float32)]
+
+        axis_data = [1, 0, 1, 2, 2, 4, 5, 6, 4, 2]
+
+        for i in range(len(input_data)):
+            # if i != 9:
+            #     continue
+            data_, indices_, updates_, axis_ = input_data[i]["data"], indices_data[i], updates_data[i], axis_data[i]
+            data = helper.make_tensor_value_info('data', TensorProto.FLOAT, data_.shape)
+            indices = helper.make_tensor_value_info("indices", TensorProto.INT64, indices_.shape)
+            updates = helper.make_tensor_value_info("updates", TensorProto.FLOAT, updates_.shape)
+            input_ = {
+                "data": data_,
+                "indices": indices_,
+                "updates": updates_
+            }
+
+            scatter_node = helper.make_node("ScatterElements",
+                                             inputs=["data", "indices", "updates"],
+                                             outputs=["scatter_output"],
+                                             axis=axis_)
+            output_ = helper.make_tensor_value_info("scatter_output", TensorProto.FLOAT, data_.shape)
+            graph_def = helper.make_graph([scatter_node],
+                                            case_name,
+                                            [data, indices, updates],
+                                            [output_])
+            self.onnx_and_test(graph_def, input_data = input_)
+
+
     def test_ScatterND(self, case_name):
-        if self.chip in ['bm1684x', 'bm1686', 'cv186']:
-            x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2,3,20,40]]
-            idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 2, 5], [2,3,20,4]]
-            update_shapes = [[160, 160], [1, 3, 128, 128, 2],  [2,3,20]]
+        if self.chip in ['bm1684x', 'bm1688', 'cv186']:
+            x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2,3,20,40], [1, 13294, 256]]
+            idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 2, 5], [2,3,20,4], [1, 13294, 256, 3]]
+            update_shapes = [[160, 160], [1, 3, 128, 128, 2],  [2,3,20], [1, 13294, 256]]
         else:
             x_shapes = [[320, 320], [1, 5, 256]]
             idx_shapes = [[160, 160, 2], [1, 1, 2]]
@@ -6181,7 +6373,7 @@ def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_case
 
 
 def test_int4(tester: ONNX_IR_TESTER):
-    tester.chip = "bm1686"
+    tester.chip = "bm1688"
     tester.mode = "int4"
     tester.dynamic = False
     tester.simple = False
@@ -6269,7 +6461,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1686', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'sg2260'],
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'sg2260'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4'],

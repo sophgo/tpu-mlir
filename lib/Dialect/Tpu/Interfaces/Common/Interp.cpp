@@ -203,8 +203,8 @@ void tpu::InterpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::InterpOp::inference(InferenceParameter &p) {
       int64_t n, c, ih, iw, oh, ow;
-    module::getNCHW(getInput(), n, c, ih, iw);
-    module::getNCHW(getOutput(), n, c, oh, ow);
+    module::getNCHW(getInput(), n, c, ih, iw, false);
+    module::getNCHW(getOutput(), n, c, oh, ow, false);
     PLATFORM_SUPPORT platform_sp;
     int coord = 0;
     bool align_corners = (getCoordMode() == tpu::ResizeCoordMode::align_corners);

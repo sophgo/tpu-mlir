@@ -106,3 +106,10 @@ void tpu::AddConstOp::assign_fw_param(void *param) {
   memcpy(param, &fw_const_binary_layer_param,
          sizeof(fw_const_binary_layer_param_t));
 }
+
+ArrayAttr tpu::AddConstOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};

@@ -62,3 +62,10 @@ LogicalResult tpu::MulConstOp::LocalGenSupport() { return success(); }
 void tpu::MulConstOp::assign_fw_param(void *param) {
   IR_PARAM_CONST_BINARY(BINARY_MUL);
 }
+
+ArrayAttr tpu::MulConstOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};

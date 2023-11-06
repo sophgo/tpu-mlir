@@ -434,6 +434,7 @@ class ReForm(object):
         self.nodes = model.graph.node
         self.weight = model.graph.initializer
         self.gout = model.graph.output
+        self.ginfo = model.graph.value_info
         # store node shape
         self.shape_info = [info for info in model.graph.value_info]
         self.shape_info.extend(model.graph.output)
@@ -823,6 +824,40 @@ class ReForm(object):
         for op in cast_ops:
             self.nodes.remove(op)
 
+    # remove invalid slice node which shape is 0
+    def remove_invalid_slice(self):
+        node_slice_name = []
+        node_invalid_slice_name = []
+        delete_info_ops = []
+        delte_node_ops = []
+
+        for node in self.nodes:
+            if node.op_type == "Slice":
+                node_slice_name.append(node.output[0])
+
+        if len(node_slice_name) > 0:
+            for info in self.ginfo:
+                if info.name in node_slice_name:
+                    for info_dim in info.type.tensor_type.shape.dim:
+                        if info_dim.HasField("dim_value") and info_dim.dim_value == 0:
+                            node_invalid_slice_name.append(info.name)
+                            delete_info_ops.append(info)
+
+        if len(node_invalid_slice_name) > 0:
+            for node in self.nodes:
+                if node.output[0] in node_invalid_slice_name:
+                    delte_node_ops.append(node)
+                for i, input_name in enumerate(node.input):
+                    if input_name in node_invalid_slice_name:
+                        del node.input[i]
+
+        for op in delete_info_ops:
+            self.ginfo.remove(op)
+
+        for op in delte_node_ops:
+            self.nodes.remove(op)
+
+
     def graph_opt(self):
         replaced = False
         for reform_info in self.reform_info_list:
@@ -836,6 +871,7 @@ class ReForm(object):
     def __call__(self, reform_info_list):
         self.reform_info_list = reform_info_list
         self.remove_cast()
+        self.remove_invalid_slice()
         self.remove_duplicate()
         self.graph_opt()
         return self.node_name_mapping, self.nodes, self.weight

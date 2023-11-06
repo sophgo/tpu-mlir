@@ -24,12 +24,35 @@ bool isF16toF32(tpu::CastOp op) {
   return isF32(op.getOutput()) && isF16(op.getInput());
 }
 
+std::vector<int64_t> string2vec(std::string slist) {
+  std::vector<int64_t> outvec;
+  std::string idx_str = "";
+  for (auto s: slist) {
+    int idx;
+    if (s == ',') {
+      idx = atoi(idx_str.c_str());
+      idx_str = "";
+      outvec.push_back(idx);
+    } else {
+      idx_str += s;
+    }
+  }
+  if (idx_str.size()) outvec.push_back(atoi(idx_str.c_str()));
+  return outvec;
+}
+
 struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
-  StripInputQuantTpuCastPattern(MLIRContext *context)
-      : OpRewritePattern<tpu::CastOp>(context) {}
+  StripInputQuantTpuCastPattern(MLIRContext *context, std::vector<int64_t> quant_input_idx)
+      : OpRewritePattern<tpu::CastOp>(context), quant_input_idx(quant_input_idx) {}
   LogicalResult matchAndRewrite(tpu::CastOp op,
                                 PatternRewriter &rewriter) const override {
     if (auto inputOp = op.getInput().getDefiningOp<top::InputOp>()) {
+      int idx = module::getIdx(inputOp.getOperand());
+      for (int i=0; i<quant_input_idx.size(); i++)
+      {
+        if ( quant_input_idx[i] == idx + 1 ) break;
+        if ( i == quant_input_idx.size()-1 ) return failure();
+      }
       auto out = inputOp.getOutput();
       if (!out.hasOneUse()) {
         return failure();
@@ -72,6 +95,9 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
     }
     return failure();
   };
+
+  private:
+    std::vector<int64_t> quant_input_idx;
 };
 
 struct StripInputQuantCpuCastPattern
@@ -116,13 +142,19 @@ struct StripInputQuantCpuCastPattern
 };
 
 struct StripOutputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
-  StripOutputQuantTpuCastPattern(MLIRContext *context)
-      : OpRewritePattern<tpu::CastOp>(context) {}
+  StripOutputQuantTpuCastPattern(MLIRContext *context, std::vector<int64_t> quant_output_idx)
+      : OpRewritePattern<tpu::CastOp>(context), quant_output_idx(quant_output_idx) {}
   LogicalResult matchAndRewrite(tpu::CastOp op,
                                 PatternRewriter &rewriter) const override {
 
     if (op.getOutput().hasOneUse() &&
         isa<ReturnOp>(op.getOutput().use_begin().getUser())) {
+      auto ReturnOp = op.getOutput().use_begin().getUser();
+      for (int i=0; i<quant_output_idx.size(); i++)
+      {
+        if ( ReturnOp->getOperand(quant_output_idx[i]-1) == op.getOutput()) break;
+        if ( i == quant_output_idx.size()-1 ) return failure();
+      }
       auto in = op.getInput();
       if (!module::isUniformQuantized(in) && !isF16toF32(op)) {
         return failure();
@@ -132,6 +164,9 @@ struct StripOutputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
     }
     return failure();
   };
+
+  private:
+    std::vector<int64_t> quant_output_idx;
 };
 
 struct StripOutputQuantCpuCastPattern
@@ -155,16 +190,19 @@ class StripIOQuantPass : public StripIOQuantBase<StripIOQuantPass> {
 public:
   StripIOQuantPass() {}
   void runOnOperation() override {
+    llvm::errs() << "Entering StripIOQuantPass.\n";
     auto mOp = getOperation();
     auto func = module::getMainFuncOp(mOp);
     auto ctx = func.getContext();
     RewritePatternSet patterns(ctx);
-    if (quant_input) {
-      patterns.add<StripInputQuantTpuCastPattern>(ctx);
+    if ( quant_input ) {
+      std::vector<int64_t> quant_input_idx = string2vec(quant_input_list);
+      patterns.add<StripInputQuantTpuCastPattern>(ctx, quant_input_idx);
       patterns.add<StripInputQuantCpuCastPattern>(ctx);
     }
-    if (quant_output) {
-      patterns.add<StripOutputQuantTpuCastPattern>(ctx);
+    if ( quant_output ) {
+      std::vector<int64_t> quant_output_idx = string2vec(quant_output_list);
+      patterns.add<StripOutputQuantTpuCastPattern>(ctx, quant_output_idx);
       patterns.add<StripOutputQuantCpuCastPattern>(ctx);
     }
     applyPatternsAndFoldGreedily(func, std::move(patterns));

@@ -30,6 +30,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createChipOptimizePass();
 std::unique_ptr<OperationPass<ModuleOp>> createOpDividePass();
 std::unique_ptr<OperationPass<ModuleOp>> createDistributePass();
 std::unique_ptr<OperationPass<ModuleOp>> createParallelPass();
+std::unique_ptr<OperationPass<ModuleOp>> createWeightFoldPass();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

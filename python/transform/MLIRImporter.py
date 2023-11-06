@@ -169,6 +169,11 @@ class MLIRImporter(object):
                     k: StringAttr.get(v) if isinstance(v, str) else v
                     for k, v in kargs.items()
                 }
+        if 'preprocess_list' in kargs and kargs['preprocess_list'] is not None:
+            if index + 1 in kargs['preprocess_list'] :
+                    init_args["do_preprocess"] = 1
+            if 'preprocess_list' in init_args:
+                del init_args["preprocess_list"]
         init_args["loc"] = loc
         init_args["ip"] = self.insert_point
         init_args["input"] = self.func_args[index]

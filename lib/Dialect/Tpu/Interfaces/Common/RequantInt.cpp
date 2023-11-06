@@ -87,3 +87,10 @@ mlir::Type tpu::RequantIntOp::type_verify(uint64_t opd_idx,
   }
   return do_nothing(mode);
 }
+
+ArrayAttr tpu::RequantIntOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};

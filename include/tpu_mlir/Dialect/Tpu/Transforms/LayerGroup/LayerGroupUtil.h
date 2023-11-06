@@ -21,7 +21,7 @@
 
 namespace tpu_mlir {
 namespace tpu {
-
+typedef std::pair<int64_t, int64_t> slice_pair_t; // idx and slice
 shape_secs_t get_group_max_secs(const LgInfo &lg_info);
 bool init_group_data_secs(const LgInfo &lg_info,
                                         shape_secs_t &shape_secs);
@@ -49,6 +49,11 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
 void get_max_slice_nchdw(const slice_info_t &slice_info, int64_t &max_nslice,
                          int64_t &max_cslice, int64_t &max_hslice,
                          int64_t &max_dslice, int64_t &max_wslice);
+
+std::vector<slice_pair_t> get_max_slice_nchdw_and_idx(
+    const slice_info_t &slice_info, int64_t &max_nslice, int64_t &max_cslice,
+    int64_t &max_hslice, int64_t &max_dslice, int64_t &max_wslice);
+
 void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
                     int64_t &dhw_secs, const shape_secs_t &max_shape_secs);
 

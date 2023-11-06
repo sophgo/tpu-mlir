@@ -22,6 +22,7 @@ import torch.jit as jit
 import traceback
 
 from torchvision.ops import DeformConv2d
+from torchvision.ops import roi_align
 
 
 class TORCH_IR_TESTER(object):
@@ -40,9 +41,10 @@ class TORCH_IR_TESTER(object):
             ##################################
             # Torch Test Case, Alphabetically
             ##################################
-            # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
             "Abs":              (self.test_Abs,               N, Y, Y, Y),
             "Activation":       (self.test_Activation,        Y, Y, Y, Y),
+            "AdaptiveAvgPool1d":(self.test_AdaptiveAvgPool1d, N, Y, N, N),
             "AdaptiveAvgPool2d":(self.test_AdaptiveAvgPool2d, N, Y, Y, Y),
             "Add":              (self.test_Add,               N, Y, Y, Y),
             "Add5d":            (self.test_Add5d,             N, Y, Y, Y),
@@ -71,16 +73,20 @@ class TORCH_IR_TESTER(object):
             "ConstantFill":     (self.test_ConstantFill,      Y, Y, Y, Y),
             "DeformConv2D":     (self.test_DeformConv2D,      Y, Y, N, N),
             "Div":              (self.test_Div,               N, Y, Y, Y),
+            "Dot":              (self.test_Dot,               N, Y, N, N),
             "Dropout":          (self.test_Dropout,           N, Y, Y, Y),
             "Elu":              (self.test_Elu,               Y, Y, Y, Y),
             "Embedding":        (self.test_Embedding,         N, Y, Y, Y),
             "Flatten":          (self.test_Flatten,           N, Y, Y, N),
+            "Flip":             (self.test_Flip,              N, Y, Y, N),
             "Floor":            (self.test_Floor,             N, Y, Y, N),
             "FloorDiv":         (self.test_FloorDiv,          N, Y, Y, N),
             "Gather":           (self.test_Gather,            N, N, N, N),
             "GridSampler":      (self.test_GridSampler,       N, Y, N, Y),
             "GroupNorm":        (self.test_GroupNorm,         Y, Y, Y, N),
             "GRU":              (self.test_GRU,               Y, Y, Y, Y),
+            "IndexPut":         (self.test_IndexPut,          N, Y, Y, N),
+            "Index":            (self.test_IndexPut,          N, Y, Y, N),
             "IndexSelect":      (self.test_IndexSelect,       N, Y, Y, Y),
             "InstanceNorm":     (self.test_InstanceNorm,      Y, Y, Y, Y),
             "Interp":           (self.test_Interp,            N, Y, Y, Y),
@@ -92,6 +98,7 @@ class TORCH_IR_TESTER(object):
             "MaskedFill":       (self.test_MaskedFill,        Y, Y, Y, N),
             "Math":             (self.test_Math,              N, Y, Y, N),
             "MatMul":           (self.test_MatMul,            N, Y, Y, Y),
+            "MatMulSlice":      (self.test_MatMulSlice,       N, Y, Y, Y),
             "Max":              (self.test_Max,               N, Y, Y, N),
             "MaxPool1d":        (self.test_MaxPool1d,         N, Y, Y, Y),
             "MaxPool2d":        (self.test_MaxPool2d,         N, Y, Y, Y),
@@ -99,13 +106,18 @@ class TORCH_IR_TESTER(object):
             "MeshGrid":         (self.test_MeshGrid,          N, N, N, N),
             "Min":              (self.test_Min,               N, Y, Y, N),
             "MM":               (self.test_MM,                N, Y, Y, Y),
+            "MV":               (self.test_MV,                N, Y, N, N),
             "Mul":              (self.test_Mul,               N, Y, Y, Y),
             "NewZeros":         (self.test_NewZeros,          N, Y, Y, Y),
+            "NonZero":          (self.test_NonZero,           N, Y, Y, N),
+            "New_full":         (self.test_New_full,          N, Y, Y, Y),
             "Reduce":           (self.test_Reduce,            N, Y, Y, Y),
             "Remainder":        (self.test_Remainder,         N, Y, N, N),
             "Repeat":           (self.test_Repeat,            N, Y, Y, Y),
             "Reshape":          (self.test_Reshape,           N, Y, Y, Y),
             "RMSNorm":          (self.test_RMSNorm,           N, Y, Y, N),
+            "RoiAlign":         (self.test_RoiAlign,          N, Y, Y, N),
+            "Roll":             (self.test_Roll,              N, Y, Y, N),
             "PixelShuffle":     (self.test_PixelShuffle,      N, Y, Y, Y),
             "PixelUnshuffle":   (self.test_PixelUnshuffle,    N, Y, Y, Y),
             "PRelu":            (self.test_PRelu,             N, Y, Y, Y),
@@ -117,6 +129,7 @@ class TORCH_IR_TESTER(object):
             "Pow":              (self.test_Pow,               N, Y, Y, Y),
             "Scatter":          (self.test_Scatter,           N, N, N, N),
             "Select":           (self.test_Select,            N, Y, Y, Y),
+            "Sign":             (self.test_Sign,              N, Y, Y, N),
             "Slice":            (self.test_Slice,             N, Y, Y, Y),
             "Softmax":          (self.test_Softmax,           N, Y, Y, Y),
             "Softmin":          (self.test_Softmin,           N, Y, Y, Y),
@@ -192,16 +205,16 @@ class TORCH_IR_TESTER(object):
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1686_support, cv183x_support = self.test_cases[case]
+        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support = self.test_cases[case]
         if self.is_cv18xx and cv183x_support:
             return True
         if self.chip == "bm1684" and bm1684_support:
             return True
         if self.chip == "bm1684x" and bm1684x_support:
             return True
-        if self.chip == "bm1686" and bm1686_support:
+        if self.chip == "bm1688" and bm1688_support:
             return True
-        if self.chip == "mars3" and bm1686_support:
+        if self.chip == "mars3" and bm1688_support:
             return True
         return False
 
@@ -775,10 +788,31 @@ class TORCH_IR_TESTER(object):
     # ------------
     def test_Div(self):
         """Div"""
-        if self.chip != "bm1686":
+        if self.chip != "bm1688":
             self._test_binary(torch.div, (1, 3, 32, 31), (1, 3, 32, 1), min=0)
             self._test_binary(torch.div, (32, 32), (32), min=0)
         self._test_binary(torch.div, (2, 32, 16), (2, 1, 16), min=0)
+    #######################################################################
+    # Dot
+    # ------------
+    def test_Dot(self):
+        """Dot"""
+        def _test_dot(input_shape, right_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x, y):
+                    x = x.view(-1)
+                    y = y.view(-1)
+                    z = torch.dot(x, y)
+                    return z
+
+            self.trace_and_test([input_shape, right_shape], Model())
+
+        _test_dot((32, 1), (32, 1))
     #######################################################################
     # Compare
     # ------------
@@ -866,6 +900,28 @@ class TORCH_IR_TESTER(object):
 
         input_shape = [14, 25, 40] + normalize_shape
         self.trace_and_test([input_shape], Model())
+
+    #######################################################################
+    # Roll
+    # ------------
+    def test_Roll(self):
+        """Concat"""
+        def _test_Roll(in0_shape, shifts, dim = None):
+            class Model(torch.nn.Module):
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.b = torch.rand(in0_shape)
+                def forward(self, x):
+                    a = torch.roll(x, shifts, dim)
+                    c = a + self.b
+                    return c
+            self.trace_and_test([in0_shape], Model())
+
+        _test_Roll((4,2), 1)
+        _test_Roll((4,2), 1, 0)
+        _test_Roll((4,2), -1, 0)
+        _test_Roll((4,2), (4,2), (0,1))
+        _test_Roll((4,2), (123,-133), (1,0))
 
 
     #######################################################################
@@ -1145,6 +1201,8 @@ class TORCH_IR_TESTER(object):
         _test_pow((2, 3, 64, 64), 2, -10)
         _test_pow((3, 64, 64), 3)
         _test_pow((64, 64), 0.5)
+        _test_pow((1, 3, 100, 100), 5, min=-10)
+        _test_pow((1, 3, 100, 100), 4, min=-10)
 
     #######################################################################
     # MeshGrid
@@ -1176,7 +1234,6 @@ class TORCH_IR_TESTER(object):
         _test_mesh_grid((1, 3, 32, 64))
         _test_mesh_grid((1, 3, 64, 4), 'xy')
 
-
     #######################################################################
     # NewZeros
     # ------------
@@ -1200,6 +1257,48 @@ class TORCH_IR_TESTER(object):
         _test_newzeros((2, 3, 64, 64), torch.float32)
         _test_newzeros((3, 64, 64), torch.int32)
         _test_newzeros((64, 64))
+
+    #######################################################################
+    # NonZero
+    # ------------
+    def test_NonZero(self):
+
+        def _test_NonZero(in0_shape):
+            class Model(nn.Module):
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = torch.nonzero(x)
+                    return y
+
+            self.trace_and_test([in0_shape], Model())
+
+        _test_NonZero([1, 4, 64, 32])
+        _test_NonZero([64])
+
+    #######################################################################
+    # New_full
+    # ------------
+    def test_New_full(self):
+
+        def _test_new_full(size, fill_value, dtype=None):
+
+            class Model(torch.nn.Module):
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.coeff = torch.randn(1, 3)
+
+                def forward(self, x):
+                    y = self.coeff.new_full(size, fill_value, dtype=dtype)
+                    y = y + x
+                    return y * 10
+
+            self.trace_and_test([size], Model())
+
+        _test_new_full((3,4), 3.14, torch.float32)
+        _test_new_full((4,), 3)
+
 
     #######################################################################
     # Reshape
@@ -1319,7 +1418,7 @@ class TORCH_IR_TESTER(object):
     def test_Interp(self):
         """Interp"""
 
-        def _test_interp(input_shape, scale):
+        def _test_interp(input_shape, size=None, scale=None, mode=None):
 
             class Model(nn.Module):
 
@@ -1328,17 +1427,20 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x):
                     y = nn.functional.interpolate(x,
-                                                  None,
+                                                  size,
                                                   scale,
-                                                  mode='bilinear',
+                                                  mode=mode,
                                                   align_corners=False)
                     return y
 
             self.trace_and_test([input_shape], Model())
 
-        _test_interp((1, 3, 100, 100), 4)
-        _test_interp((1, 1, 32, 32), 10)
-        _test_interp((2, 32, 16, 16), 16)
+        _test_interp((1, 3, 100, 100), None, 4, 'bilinear')
+        _test_interp((1, 1, 32, 32), None, 10,'bilinear')
+        _test_interp((2, 32, 16, 16), None, 16, 'bilinear')
+        if self.chip in ["bm1684x", "bm1688"]:
+            _test_interp((2, 3, 224), None, 2, 'linear')
+            _test_interp((2, 3, 224), (100), None, 'linear')
 
     #######################################################################
     # BMM
@@ -1400,6 +1502,29 @@ class TORCH_IR_TESTER(object):
 
         _test_mm((32, 32), (32, 64), self.is_cv18xx)
         _test_mm((32, 16), (16, 34), self.is_cv18xx)
+
+    #######################################################################
+    # MV
+    # ------------
+    def test_MV(self):
+        """MV"""
+
+        def _test_mv(input_shape, right_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x, y):
+                    y = y.view(-1)
+                    z = torch.mv(x, y)
+                    return z
+
+            self.trace_and_test([input_shape, right_shape], Model())
+
+        _test_mv((64, 32), (32, 1))
+        _test_mv((32, 16), (16, 1))
 
     #######################################################################
     # Addmm
@@ -1634,7 +1759,7 @@ class TORCH_IR_TESTER(object):
 
             self.trace_and_test([(4, 3, 16, 16)], Model())
 
-        for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.tan, torch.tanh, torch.exp]:
+        for f in [torch.cos, torch.cosh, torch.sin, torch.sinh, torch.tan, torch.tanh, torch.exp, torch.sort]:
             _test_math(f)
 
     #######################################################################
@@ -1924,6 +2049,36 @@ class TORCH_IR_TESTER(object):
         # _test_attention1((1, 384, 64), (1, 384, 64), 32, 2, False)
 
     #######################################################################
+    # MatmulSlice
+    # ------------
+
+    def test_MatMulSlice(self):
+
+        def _test_matmul_slice(shape, size, num):
+            import math
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.w = torch.randn((shape[2], size * num)) / math.sqrt(shape[2])
+                    self.b = torch.randn(size * num)
+
+                def forward(self, x):
+                    m = torch.matmul(x, self.w)# + self.b
+                    for i in range(num):
+                      s = m[:, :, i * size : (i+1) * size]
+                      if i == 0:
+                        y = s
+                      else:
+                        y *= s
+                    return y
+
+            self.trace_and_test([shape], Model(), [self.Desc('float32', -1, 1)])
+
+        _test_matmul_slice((1, 384, 768), 128, 3)
+        _test_matmul_slice((1, 384, 768), 96, 4)
+
+    #######################################################################
     # Select
     # ------------
     def test_Select(self):
@@ -2086,6 +2241,34 @@ class TORCH_IR_TESTER(object):
         _test_upsample((1, 3, 32, 32), 64, None)
         _test_upsample((1, 3, 32, 32), (81), None)
         _test_upsample((1, 3, 32, 32), (64, 65), None)
+        if self.chip in ["bm1684x", "bm1688"]:
+            _test_upsample((1, 3, 224), None, 2)
+            _test_upsample((1, 3, 224), (500), None)
+        if self.chip in ["bm1684x"]:
+            _test_upsample((1, 3, 5, 2, 4), None, (1, 2, 3)) # add for upsample_nearest_3d, only support scale_d = 1
+
+    #######################################################################
+    def test_IndexPut(self):
+        """IndexPut & Index"""
+        def _test_index_put_(in_shape, index_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    high = in_shape[0]
+                    self.index = torch.randint(0, high, index_shape)
+                    val_shape = [index_shape[0]]
+                    val_shape[1:] = in_shape[1:]
+                    self.new_val = torch.randn(val_shape)
+
+                def forward(self, x):
+                    x[self.index] += self.new_val
+                    return x
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_index_put_((10, 3, 64, 64), (2,) )
 
     #######################################################################
     # IndexSelect
@@ -2459,6 +2642,30 @@ class TORCH_IR_TESTER(object):
         _test_flatten((3, 16, 32, 64), start_dim=1)
 
     #######################################################################
+    # Flip
+    # ------------
+    def test_Flip(self):
+        """Flip"""
+
+        def _test_flip(in_shape, flip_dims):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    # self.flatten = nn.Flatten(start_dim=start_dim, end_dim=end_dim)
+
+                def forward(self, x):
+                    flipped_tensor = torch.flip(x, flip_dims)
+                    return flipped_tensor
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_flip((3, 16, 32, 64), flip_dims=[-1])
+        _test_flip((3, 16, 32, 64), flip_dims=[0, 1])
+        _test_flip((3, 16, 32, 64), flip_dims=[0, 2,3])
+
+    #######################################################################
     # Adaptive AvgPool2d
     # ------------
     def test_AdaptiveAvgPool2d(self):
@@ -2477,6 +2684,26 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in_shape], Model())
 
         _test_adaptive_avgpool2d((3, 64, 15, 15), (1, 1))
+
+    #######################################################################
+    # Adaptive AvgPool1d
+    # ------------
+    def test_AdaptiveAvgPool1d(self):
+        """AdaptiveAvgPool1d"""
+
+        def _test_adaptive_avgpool1d(in_shape, output_size):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return F.adaptive_avg_pool1d(x, output_size)
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_adaptive_avgpool1d((3, 64, 32), (1))
 
     #######################################################################
     # Linear
@@ -2778,6 +3005,62 @@ class TORCH_IR_TESTER(object):
 
         _test_remainder(torch.remainder, (1, 16, 32, 32), (1, 16, 32, 32))
 
+    #######################################################################
+    # Sign
+    # ------------
+    def test_Sign(self):
+        """Sign"""
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                o = torch.sign(x)
+                return o
+
+        self.trace_and_test([(4, 3, 32, 32)], Model())
+        self.trace_and_test([(1, 65, 4, 4)], Model())
+
+    #######################################################################
+    # RoiAlign
+    # ------------
+    def test_RoiAlign(self):
+        roi_num = 5
+        N, C, H, W = 3, 3, 64, 64
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.boxes = self.gen_rand_rois(N, H, W, roi_num)
+
+            def gen_rand_rois(self, N, H, W, roi_num) -> torch.Tensor:
+                batch_indice = torch.randint(0, N, (roi_num, ), dtype=torch.int32).float()
+                roi_xl = torch.rand(roi_num, dtype=torch.float32) * (W - 1)
+                roi_xh = torch.rand(roi_num, dtype=torch.float32) * (W - 1)
+                roi_yl = torch.rand(roi_num, dtype=torch.float32) * (H - 1)
+                roi_yh = torch.rand(roi_num, dtype=torch.float32) * (H - 1)
+                for i in range(roi_num):
+                    if roi_xl[i] > roi_xh[i]:
+                        roi_xl[i], roi_xh[i] = roi_xh[i], roi_xl[i]
+                    if roi_yl[i] > roi_yh[i]:
+                        roi_yl[i], roi_yh[i] = roi_yh[i], roi_yl[i]
+                batch_indice.unsqueeze_(1)
+                roi_xl.unsqueeze_(1)
+                roi_yl.unsqueeze_(1)
+                roi_xh.unsqueeze_(1)
+                roi_yh.unsqueeze_(1)
+                rois = torch.cat((batch_indice, roi_xl, roi_yl, roi_xh, roi_yh), 1)
+                return rois
+
+            def forward(self, x):
+                y = roi_align(x, self.boxes, [8, 8])
+                return y
+
+        self.trace_and_test([(N, C, H, W)], Model())
+
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     try:
         tester.test_single(case)
@@ -2827,7 +3110,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1686', 'cv183x', 'mars3'], help="chip platform name")
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'mars3'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")

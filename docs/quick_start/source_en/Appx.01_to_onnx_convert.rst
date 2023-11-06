@@ -119,8 +119,18 @@ PaddlePaddle model to ONNX
 ---------------------------
 
 This section uses the SqueezeNet1_1 model provided in the official PaddlePaddle repository as a conversion example.
+This section requires additional installation of openssl-1.1.1o (ubuntu 22.04 provides openssl-3.0.2 by default).
 
-Step 0: Create a working directory
+Step 0: Install openssl-1.1.1o
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: shell
+   :linenos:
+   wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
+   sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
+
+If the link is expired, check http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/?C=M;O=D for a valid one.
+
+Step 1: Create a working directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Create and enter the pp_model directory using the command line.
@@ -131,7 +141,7 @@ Create and enter the pp_model directory using the command line.
    $ mkdir pp_model
    $ cd pp_model
 
-Step 1: Prepare the model
+Step 2: Prepare the model
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Download the model with the following commands:
@@ -157,7 +167,7 @@ In addition, use the paddle_infer_shape.py script from the PaddlePaddle project 
 
 After running all commands, we will be in the SqueezeNet1_1_infer directory, and there will be a new_model directory under this directory.
 
-Step 2: Convert the model
+Step 3: Convert the model
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Install the paddle2onnx tool through the following commands, and use this tool to convert the PaddlePaddle model to the ONNX format:

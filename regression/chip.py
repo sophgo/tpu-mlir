@@ -16,7 +16,7 @@ chip_support = {
     # chip_name: (F32, F16, BF16, INT8_sym, INT8_asym, INT4_sym, dynamic, model_type)
     "bm1684":    (Y,   N,   N,    Y,        N,         N,        N,       "bmodel"),
     "bm1684x":   (Y,   Y,   Y,    Y,        N,         N,        N,       "bmodel"),
-    "bm1686":    (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
+    "bm1688":    (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
     # "mars3":     (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
     "cv180x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
     "cv181x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
@@ -39,7 +39,7 @@ chip_support = {
 # Model Support
 ######################################
 basic_model_list = {
-    # model_name:              (bm1684, bm1684x, bm1686, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
+    # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
     "mobilenet_v2_cf":            (N,      Y,       Y,      Y,      N,      Y,      Y,     N,      N),
     "resnet50_v2":                (Y,      N,       N,      N,      N,      Y,      Y,     N,      Y),
     "yolov5s":                    (N,      Y,       Y,      N,      N,      Y,      Y,     Y,      Y),
@@ -50,7 +50,7 @@ basic_model_list = {
 
 
 full_model_list = {
-    # model_name:              (bm1684, bm1684x, bm1686, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
+    # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
     ######## onnx ###############
     "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "blazeface":                  (N,      Y,       N,      Y,      N,      Y,      Y,      N,     N),
@@ -59,7 +59,7 @@ full_model_list = {
     "ecanet50":                   (N,      Y,       N,      N,      N,      N,      Y,      N,     N),
     "efficientdet-d0":            (N,      N,       N,      Y,      N,      Y,      Y,      N,     N),
     "efficientnet":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
-    "inception_v3":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
+    "inception_v3":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "mnist-12":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "mobilenet_v2":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "resnet18_v1":                (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     N),
@@ -69,7 +69,7 @@ full_model_list = {
     "res2net50":                  (N,      Y,       N,      N,      N,      N,      Y,      N,     N),
     "retinaface":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "se-resnet50":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
-    "shufflenet_v2":              (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     Y),
+    "shufflenet_v2":              (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     N),
     "squeezenet1.0":              (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "ssd-12":                     (N,      Y,       Y,      N,      N,      N,      N,      Y,     Y),
     "ultraface_640":              (N,      Y,       Y,      N,      N,      N,      N,      Y,     N),

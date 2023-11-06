@@ -49,3 +49,10 @@ void tpu::MulShiftOp::assign_fw_param(void *param) {
   layer_param.res_sign = module::isSign(getOutput());
   memcpy(param, &layer_param, sizeof(fw_mulshift_layer_param_t));
 }
+
+ArrayAttr tpu::MulShiftOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};

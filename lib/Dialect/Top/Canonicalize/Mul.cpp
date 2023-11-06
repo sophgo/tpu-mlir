@@ -42,6 +42,12 @@ struct MulToSiLU : public OpRewritePattern<MulOp> {
   }
 };
 
+/**
+ * Weight[1] \
+ *            Mul =>  Any -> MulConst(const=WeightData)
+ * Any       /
+ *
+ */
 struct MulToMulConst : public OpRewritePattern<MulOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -55,43 +61,46 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
       return failure();
     }
 
-    int left_elt_num = module::getNumElements(op.getInputs()[0]);
-    int right_elt_num = module::getNumElements(op.getInputs()[1]);
-    if (left_elt_num > 1 && right_elt_num > 1) {
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32()) {
       return failure();
     }
-    auto storage_type = module::getStorageType(op.getOutput());
-    if (!storage_type.isF32())
+
+    int is_const[2];
+
+    is_const[0] = module::getNumElements(op.getInputs()[0]) == 1;
+    is_const[1] = module::getNumElements(op.getInputs()[1]) == 1;
+    if (!is_const[0] && !is_const[1]) {
       return failure();
+    }
 
     Value new_input;
     std::shared_ptr<std::vector<float>> const_val;
-    bool weight_flag = false;
-    if (left_elt_num == 1) {
-      if (auto left_op =
-              dyn_cast<WeightOp>(op.getInputs()[0].getDefiningOp())) {
-        weight_flag = true;
-        const_val = left_op.read<float>();
+    int weight_index = -1;
+
+    for (int i = 0; i < 2; i++) {
+      if (!is_const[i]) {
+        continue;
       }
-      new_input = op.getInputs()[1];
-    }
-    if (!weight_flag && right_elt_num == 1) {
-      if (auto right_op =
-              dyn_cast<WeightOp>(op.getInputs()[1].getDefiningOp())) {
-        weight_flag = true;
-        const_val = right_op.read<float>();
+      if (auto weight_op =
+              dyn_cast<WeightOp>(op.getInputs()[i].getDefiningOp())) {
+        const_val = weight_op.read<float>();
+        weight_index = i;
+        new_input = op.getInputs()[1 - i]; // take another operand as new input
+        break;
       }
-      new_input = op.getInputs()[0];
     }
 
-    if (!weight_flag) {
+    if (weight_index == -1) {
       return failure();
     }
+
     if (const_val->at(0) == 1.0f) {
+      // erase mul
       rewriter.replaceOp(op, {new_input});
       return success();
     }
-    Type output = op.getOutput().getType();
+    Type output = new_input.getType();
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "const_val", rewriter.getF64FloatAttr(const_val->at(0))));

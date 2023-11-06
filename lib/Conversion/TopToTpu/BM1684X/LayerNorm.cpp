@@ -24,9 +24,9 @@ static void LoweringLayerNorm(PatternRewriter &rewriter, top::LayerNormOp op,
       auto weightOp = opd.getDefiningOp<top::WeightOp>();
       if (type.isBF16()) {
         opds.push_back(weightOp.clone_bf16(op));
-      } else if (type.isF16()) {
-        opds.push_back(weightOp.clone_f16(op));
       } else {
+        // F16 RMSNorm still does F32 computation in backend
+        // so weight doesnt need to be quantized
         opds.push_back(opd);
       }
     } else {
@@ -75,7 +75,7 @@ void LayerNormLowering::LoweringINT4(PatternRewriter &rewriter,
 
 void LayerNormLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::LayerNormOp op) const {
-  if (module::isBM1686()) {
+  if (module::isBM1688()) {
     LoweringLayerNorm(rewriter, op, rewriter.getF32Type());
   } else {
     LoweringLayerNorm(rewriter, op, rewriter.getBF16Type());

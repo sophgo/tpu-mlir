@@ -261,9 +261,9 @@ private:
   Concept *impl = nullptr;
 };
 
-class BM1686 : public Backend, MultiCoreInterface {
+class BM1688 : public Backend, MultiCoreInterface {
 public:
-  BM1686() : Backend(mlir::TypeID::get<BM1686>()), MultiCoreInterface(this){};
+  BM1688() : Backend(mlir::TypeID::get<BM1688>()), MultiCoreInterface(this){};
   bool setCoreNum() { return true; };
   static bool classof(const Backend *bm168x) {
     return bm168x->getTypeID() == mlir::TypeID::get<BM1684>();
@@ -271,8 +271,8 @@ public:
 };
 
 TEST(InterfaceTest, ConceptInterface) {
-  BM1686 bm1686;
-  Backend *backend = &bm1686;
+  BM1688 bm1688;
+  Backend *backend = &bm1688;
   EXPECT_TRUE(llvm::isa<MultiCoreInterface>(backend));
   if (auto multi = llvm::dyn_cast<MultiCoreInterface>(backend))
     EXPECT_TRUE(multi.setCoreNum());

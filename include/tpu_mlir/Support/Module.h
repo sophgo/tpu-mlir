@@ -78,6 +78,8 @@ void setInputs(ArrayRef<StringRef> inputs);
 std::shared_ptr<std::vector<StringRef>> getInputs();
 void setOutputs(ArrayRef<StringRef> outputs);
 std::shared_ptr<std::vector<StringRef>> getOutputs();
+bool isBF16Modes();
+bool isF16Modes();
 
 Platform getPlatform();
 bool isPlatform(Platform plt);
@@ -86,8 +88,6 @@ int64_t getFLOPs();
 void setFLOPs(int64_t flops);
 bool isAsymmetric();
 void setAsymmetric(bool is_asymmetric);
-std::string getLinearQuantMode();
-void setLinearQuantMode(std::string linear_quant_mode);
 llvm::StringRef getPostprocess();
 void setPostprocess(StringRef post);
 
@@ -178,7 +178,7 @@ bool isCV18xx();
 bool isBM1684Family();
 bool isBM1684XFamily();
 bool isSG2260Family();
-bool isBM1686();
+bool isBM1688();
 bool isBM1684X();
 
 //-----------------------------------------------------------------
