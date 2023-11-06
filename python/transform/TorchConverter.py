@@ -744,7 +744,7 @@ class TorchConverter(BaseConverter):
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
-        
+
     def convert_new_full(self, torch_node: TorchNode):
         assert (len(torch_node.inputs) >= 2)
         op0 = self.getOp(torch_node.inputs[1])
@@ -930,25 +930,21 @@ class TorchConverter(BaseConverter):
 
     def convert_flip_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
-        shape = self.getShape(torch_node.inputs[0])
-        dim_max = len(shape)
         axis_data = self.getWeight(torch_node.inputs[1])
         last_op = op0
 
         for i in range(len(axis_data)):
-            if axis_data[i] < 0:
-                axis_data[i] = dim_max + axis_data[i]
-            shape_val = shape[int(axis_data[i])]
-            indices = np.linspace(shape_val - 1, 0, num=shape_val, endpoint=True)
-            indices_name = torch_node.name + "_indices_"+str(i)
-            self.addWeight(indices_name, indices)
-            indices_op = self.getWeightOp(indices_name)
-            last_op = top.GatherOp(self.unranked_type,
-                              last_op,
-                              indices_op,
-                              axis=axis_data[i],
-                              loc=self.get_loc("{}_gather_{}".format(torch_node.name, i)),
-                              ip=self.mlir.insert_point).output
+            last_op = top.SliceOp(self.unranked_type,
+                                last_op,
+                                self.mlir.none_op,
+                                self.mlir.none_op,
+                                self.mlir.none_op,
+                                offset=[-1],
+                                steps=[-1],
+                                ends=[np.iinfo(np.int64).min],
+                                axes=[axis_data[i]],
+                                loc=self.get_loc("{}_slice_{}".format(torch_node.name, i)),
+                                ip=self.mlir.insert_point).output
         self.addOperand(torch_node.name, last_op)
 
     def convert_floor_divide_op(self, torch_node: TorchNode):
@@ -1611,7 +1607,7 @@ class TorchConverter(BaseConverter):
 
     def convert_pad_op(self, torch_node: TorchNode, mode: str = 'unknown'):
         op = self.getOp(torch_node.inputs[0])
-        pads = self.const_val[torch_node.inputs[1]]
+        pads = self.get_input_by_name(torch_node.inputs[1])
         val = 0.0
         if (mode == 'reflect' or mode == 'replicate'):
             pass

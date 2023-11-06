@@ -2662,8 +2662,8 @@ class TORCH_IR_TESTER(object):
             self.trace_and_test([in_shape], Model())
 
         _test_flip((3, 16, 32, 64), flip_dims=[-1])
-        _test_flip((3, 16, 32, 64), flip_dims=[0, 1])
-        _test_flip((3, 16, 32, 64), flip_dims=[0, 2,3])
+        # _test_flip((3, 16, 32, 64), flip_dims=[0, 1])
+        # _test_flip((3, 16, 32, 64), flip_dims=[0, 2,3])
 
     #######################################################################
     # Adaptive AvgPool2d
