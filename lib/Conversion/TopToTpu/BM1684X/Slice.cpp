@@ -84,7 +84,9 @@ void SliceLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SliceLowering::LoweringF8(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
-  llvm_unreachable("FIXME: not implement");
+  _try_insert_device2host(op);
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  lowering_common_f8<tpu::SliceOp>(rewriter, op, isE4, 5);
 }
 
 void SliceLowering::LoweringQuantized(PatternRewriter &rewriter,
