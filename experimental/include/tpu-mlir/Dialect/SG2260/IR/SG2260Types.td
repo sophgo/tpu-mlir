@@ -18,6 +18,10 @@ class SG2260_Type<string name, string typeMnemonic, list<Trait> traits = []>
   let mnemonic = typeMnemonic;
 }
 
+def SG2260_IntArrayAttr2 : ConfinedAttr<DenseI64ArrayAttr, [DenseArrayCount<2>]>;
+def SG2260_IntArrayAttr3 : ConfinedAttr<DenseI64ArrayAttr, [DenseArrayCount<3>]>;
+def SG2260_IntArrayAttr4 : ConfinedAttr<DenseI64ArrayAttr, [DenseArrayCount<4>]>;
+
 class InsID<string name, string typeMnemonic>
     : SG2260_Type<name, typeMnemonic> {
   let parameters = (ins "unsigned":$id);
