@@ -98,16 +98,21 @@ TEST(SG2260IR, ConvOp) {
   builder.setInsertionPointToEnd(function.addEntryBlock());
 
   auto id2 = builder.getType<sg2260::TIUIdType>(2);
+  SmallVector<int64_t> kernel{3, 3};
+  SmallVector<int64_t> dialation{3, 3};
+  SmallVector<int64_t> stride{3, 3};
+  SmallVector<int64_t> insert0{3, 3};
+  SmallVector<int64_t> pads{0, 0, 0, 0};
   auto conv0 = builder.create<sg2260::ConvOp>(
       uloc, inputType, id2, function.getArgument(0), function.getArgument(1),
-      nullptr, function.getArgument(2), 32, 3, 3,
-      1, 1, 1, 1, 0, 0, false, false);
+      nullptr, function.getArgument(2), kernel, stride, dialation, insert0,
+      insert0, pads, false, false);
 
   auto id3 = builder.getType<sg2260::TIUIdType>(3);
   builder.create<sg2260::ConvOp>(
-      uloc, inputType, id3, conv0.getResult(), function.getArgument(1),
-      nullptr, function.getArgument(2), 16, 3, 3,
-      1, 1, 1, 1, 0, 0, false, false);
+      uloc, inputType, id3, conv0.getResult(), function.getArgument(1), nullptr,
+      function.getArgument(2), kernel, stride, dialation, insert0, insert0,
+      pads, false, false);
   builder.create<func::ReturnOp>(uloc);
 
   auto &reg = conv0.getProperties().reg;

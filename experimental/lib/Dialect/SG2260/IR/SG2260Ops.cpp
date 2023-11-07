@@ -231,32 +231,34 @@ LogicalResult ConvOp::verify() {
   if (kerInfo.isConst()) {
     reg.opt_opd1_const = true;
   } else {
+    auto resInfo = getValueInfo(getResult());
     reg.opt_opd1_const = false;
-    auto shape = kerInfo.getShape();
-    if (getOc() != shape[1])
+    auto kerShape = kerInfo.getShape();
+    auto resShape = resInfo.getShape();
+    if (resShape[1] != kerShape[1])
       return failure();
-    if (getKh() != shape[2])
+    if (getKernelShape()[0] != kerShape[2])
       return failure();
-    if (getKw() != shape[3])
+    if (getKernelShape()[1] != kerShape[2])
       return failure();
-    reg.opd1_h = shape[2];
-    reg.opd1_w = shape[3];
+    reg.opd1_h = getKernelShape()[0];
+    reg.opd1_w = getKernelShape()[1];
   }
 
   reg.pad_mode = PAD_CONSTANT;
-  reg.opd0_up_pad = getPh();
-  reg.opd0_dn_pad = getPh();
-  reg.opd0_lf_pad = getPw();
-  reg.opd0_rt_pad = getPw();
+  reg.opd0_up_pad = getPads()[0];
+  reg.opd0_dn_pad = getPads()[1];
+  reg.opd0_lf_pad = getPads()[2];
+  reg.opd0_rt_pad = getPads()[3];
 
-  reg.res_op_x_str = getSw();
-  reg.res_op_y_str = getSh();
+  reg.res_op_x_str = getStrides()[0];
+  reg.res_op_y_str = getStrides()[1];
   reg.opt_opd3_const = false;
 
-  reg.opd0_x_ins0 = 0;
-  reg.opd0_y_ins0 = 0;
-  reg.opd1_x_ins0 = getDw();
-  reg.opd1_y_ins0 = getDh();
+  reg.opd0_x_ins0 = getInputInsert0()[0];
+  reg.opd0_y_ins0 = getInputInsert0()[1];
+  reg.opd1_x_ins0 = getKernelInsert0()[0];
+  reg.opd1_y_ins0 = getKernelInsert0()[1];
 
   if (getBias()) {
     auto biasInfo = getValueInfo(getBias());
