@@ -55,7 +55,8 @@ void SqueezeLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SqueezeLowering::LoweringF8(PatternRewriter &rewriter,
                                    top::SqueezeOp op) const {
-  llvm_unreachable("FIXME: not implement");
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  lowering_common_f8<tpu::SqueezeOp>(rewriter, op, isE4);
 }
 
 void SqueezeLowering::LoweringQuantized(PatternRewriter &rewriter,
