@@ -254,11 +254,13 @@ float get_f8e5m2_min() {
 }
 
 void F8E4M3(float *p_src, float *p_dst, int num, float scale) {
+#pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i=0;i<num;i++) {
     p_dst[i] = f8e4m3_to_f32(f32_to_f8e4m3(p_src[i]/scale));
   }
 }
 void F8E5M2(float *p_src, float *p_dst, int num, float scale) {
+#pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i=0;i<num;i++) {
     p_dst[i] = f8e5m2_to_f32(f32_to_f8e5m2(p_src[i]/scale));
   }

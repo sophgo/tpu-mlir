@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 
 namespace tpu_mlir {
@@ -106,8 +106,52 @@ void AddLowering::LoweringF16(PatternRewriter &rewriter, top::AddOp op) const {
   lowering_common_f16<tpu::AddOp>(rewriter, op);
 }
 
-void AddLowering::LoweringF8(PatternRewriter &rewriter, top::AddOp op) const {
-  llvm_unreachable("FIXME: not implement");
+void AddLowering::LoweringF8(PatternRewriter &rewriter,
+                             top::AddOp addOp) const {
+  auto op = addOp.getOperation();
+  const int numInputs = op->getNumOperands();
+  if (module::getMode() == module::Mode::F8E5M2)
+    lowering_common_f8<tpu::AddOp>(rewriter, addOp, false, numInputs);
+  else if (module::getMode() == module::Mode::F8E4M3) {
+    std::vector<Value> operands;
+    std::vector<double> scale_v(numInputs);
+    auto coeff_v = module::getF64Array(addOp.getCoeff(), numInputs, 1.0);
+    auto qtype_out = module::getCalibratedType(addOp.getOutput());
+    double out_scale = qtype_out.getMax();
+    double cur_scale;
+    Value cur_weight;
+    for (int i = 0; i < numInputs; i++) {
+      auto inValue = op->getOperand(i);
+      if (!isa<BlockArgument>(inValue) &&
+          isa<top::WeightOp>(inValue.getDefiningOp())) {
+        auto weightOp = dyn_cast<top::WeightOp>(inValue.getDefiningOp());
+        auto data = weightOp.read<float>();
+        auto cnt = data->size();
+#pragma omp parallel for schedule(static, omp_schedule(cnt))
+        for (int i = 0; i < cnt; i++)
+          data->at(i) = data->at(i) * get_f8e4m3_max() / out_scale;
+        (void)weightOp.update(*data, cnt);
+        cur_weight = weightOp.clone_f16(op);
+        cur_scale = 1.;
+        operands.push_back(cur_weight);
+      } else {
+        auto qtype_int = module::getCalibratedType(inValue);
+        auto in_scale = qtype_int.getMax();
+        cur_scale = coeff_v->at(i) * in_scale / out_scale;
+        operands.push_back(inValue);
+      }
+      scale_v[i] = cur_scale;
+    }
+    std::vector<NamedAttribute> attrs;
+    for (auto &attr : op->getAttrs())
+      attrs.push_back(attr);
+    attrs.push_back(rewriter.getNamedAttr("out_f8_scales",
+                                          rewriter.getF64ArrayAttr(scale_v)));
+    auto newType = getQuantF8E4M3Type(addOp.getOutput());
+    rewriter.replaceOpWithNewOp<tpu::AddOp>(op, newType, operands, attrs);
+  } else {
+    llvm_unreachable("FIXME: not implement");
+  }
 }
 
 //                / input0 -> dequant \
