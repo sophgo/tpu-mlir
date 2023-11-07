@@ -531,20 +531,15 @@ void tpu::Conv2DOp::assign_fw_param(void *param) {
 
 ArrayAttr tpu::Conv2DOp::getIndexingMaps() {
   MLIRContext *context = getContext();
-  AffineMap identity2Map = AffineMap::getMultiDimIdentityMap(2, context);
-  AffineMap inputMap = AffineMap::get(2, 0, identity2Map.getResult(0));
-  AffineMap filterMap = AffineMap::get(2, 0, identity2Map.getResult(1));
-  AffineMap emptyMap = AffineMap::get(2, 0, context);
+  // TODO: split OC
+  AffineMap identity1Map = AffineMap::getMultiDimIdentityMap(1, context);
+  AffineMap emptyMap = AffineMap::get(1, 0, context);
 
-  SmallVector<AffineMap> indexingMaps{inputMap, filterMap};
+  SmallVector<AffineMap> indexingMaps{identity1Map, emptyMap};
 
   for (int i = 2, n = getNumOperands(); i < n; ++i) {
-    if (module::isNone(getOperand(i)))
-      indexingMaps.push_back(emptyMap);
-    else
-      indexingMaps.push_back(filterMap);
+    indexingMaps.push_back(emptyMap);
   }
-  indexingMaps.push_back(identity2Map);
-  return Builder(getContext()).getAffineMapArrayAttr({});
+  indexingMaps.push_back(identity1Map);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
