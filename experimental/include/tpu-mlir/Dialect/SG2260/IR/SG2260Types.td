@@ -49,8 +49,8 @@ class RegProperty<string name> : Property<name> {
     return ::mlir::success();
   }];
 }
-def ShortMatrix2RegDefProperties : RegProperty<"ShortMatrix2RegDef">;
-def ShortConvRegDefProperties : RegProperty<"ShortConvRegDef">;
-
+def ShortMatrix2RegDefProperties : RegProperty<"ShortMMRegDef">;
+def ShortConvRegDefProperties : RegProperty<"ShortCONVRegDef">;
+def ShortARRegDefProperties : RegProperty<"ShortARRegDef">;
 
 #endif

@@ -217,7 +217,7 @@ LogicalResult ConvOp::verify() {
     reg.opd0_w = shape[3];
   }
 
-  reg.short_opd0_str = 0;
+  reg.opd0_str = 0;
 
   auto kerInfo = getValueInfo(getKernel());
 
