@@ -484,6 +484,7 @@ static void lowering_common_f16(PatternRewriter &rewriter, Operation *from,
   lowering_common_float<OpTy, Float16Type>(rewriter, from, num_operands);
 }
 
+
 // from int8 to int8, convert one (scale zp) to another (scale zp)
 Value do_transfer(Value in, Value out, bool asymmetric);
 Value do_transfer_fp(Value in, Value out, bool asymmetric);

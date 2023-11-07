@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float8.h"
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
@@ -56,12 +57,37 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   memset(p.outputs[0], 0, num_elem * sizeof(float));
   auto asym = module::isAsymmetric();
   if (out_type.isa<FloatType>()) {
-    auto binary = (Binary *)p.handle;
-    binary->run();
-    if (out_type.isBF16()) {
-      BF16(p.outputs[0], p.outputs[0], num_elem);
-    } else if (out_type.isF16()) {
-      F16(p.outputs[0], p.outputs[0], num_elem);
+    if (out_type.isa<Float8E4M3FNType>()) {
+      auto out_qtype = module::getCalibratedType(getOutput());
+      [[maybe_unused]] double out_scale_reciprocal =
+          get_f8e4m3_max() / out_qtype.getMax();
+      auto scales = module::getF64Array(getOutF8Scales(), 2, 1.);
+      auto lhs_num_elem = module::getNumElements(getInputs()[0]);
+      auto rhs_num_elem = module::getNumElements(getInputs()[1]);
+      std::vector<float> lhs_tmp(lhs_num_elem);
+      std::vector<float> rhs_tmp(rhs_num_elem);
+#pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
+      for (int i = 0; i < lhs_num_elem; i++)
+        lhs_tmp[i] = p.inputs[0][i] * scales->at(0);
+#pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
+      for (int i = 0; i < rhs_num_elem; i++)
+        rhs_tmp[i] = p.inputs[1][i] * scales->at(1);
+      auto binary = (Binary *)p.handle;
+      (*binary)
+          .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
+          .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
+          .run();
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0);
+    } else {
+      auto binary = (Binary *)p.handle;
+      binary->run();
+      if (out_type.isBF16()) {
+        BF16(p.outputs[0], p.outputs[0], num_elem);
+      } else if (out_type.isF16()) {
+        F16(p.outputs[0], p.outputs[0], num_elem);
+      } else if (out_type.isFloat8E5M2()) {
+        F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
+      }
     }
   } else if (out_type.isInteger(32)) {
     // auto in0 = reinterpret_cast<int32_t*>(p.inputs[0]);
