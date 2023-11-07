@@ -260,6 +260,9 @@ public:
         min = info.min < 0 ? (-info.threshold) : 0;
         max = info.threshold;
       }
+    } else if (isa<top::SubOp>(op)) {
+      min = info.min < 0 ? (-info.threshold) : -1e-5;
+      max = info.threshold;
     } else if (isAsymmetric == false) {
       min = info.min < 0 ? (-info.threshold) : 0;
       max = info.threshold;
@@ -267,7 +270,8 @@ public:
       min = info.min;
       max = info.max;
     }
-    if (op->hasAttr("do_relu") &&
+    if (!isa<top::SubOp>(op) &&
+        op->hasAttr("do_relu") &&
         op->getAttr("do_relu").cast<BoolAttr>().getValue()) {
       min = 0;
     }
