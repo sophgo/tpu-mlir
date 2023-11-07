@@ -170,6 +170,8 @@ public:
         resType.push_back(output.getType());
       }
 
+      auto moduleOp = SymbolTable::getNearestSymbolTable(funcOp);
+      builder.setInsertionPointToStart(&moduleOp->getRegion(0).front());
       int64_t id = subnet->index;
       std::string func_name = funcOp.getName().str() + "subfunc_" + std::to_string(id);
       std::vector<NamedAttribute> attrs;
@@ -182,8 +184,7 @@ public:
 
       auto fnType = FunctionType::get(
             &getContext(), llvm::ArrayRef<Type>{argType}, llvm::ArrayRef<Type>{resType});
-      auto fnOp = mlir::func::FuncOp::create(
-                                 builder.getUnknownLoc(),
+      auto fnOp = builder.create<func::FuncOp>(builder.getUnknownLoc(),
                                  func_name, fnType,
                                  ArrayRef<NamedAttribute>(attrs));
 
@@ -216,8 +217,6 @@ public:
           return fnOp->isProperAncestor(operand.getOwner());
         });
       }
-
-      funcOp->getParentOfType<mlir::ModuleOp>().push_back(fnOp);
     }
   }
 
