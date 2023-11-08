@@ -9,7 +9,7 @@
 
 
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Support/Float16.h"
 
 
 LogicalResult tpu::CompareConstOp::init(InferenceParameter &p) {
@@ -19,7 +19,15 @@ void tpu::CompareConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CompareConstOp::inference(InferenceParameter &p) {
   const auto num_element = module::getNumElements(getOutput());
-  const float const_val_ = getConstVal().convertToDouble();
+  float _const_val_ = getConstVal().convertToDouble();
+  auto in_type = module::getStorageType(getInput());
+  if (in_type.isF16()) {
+    _const_val_ = F16(_const_val_);
+  }
+  if (in_type.isBF16()) {
+    _const_val_ = BF16(_const_val_);
+  }
+  const float const_val_ = _const_val_;
   if (!getInversed()) {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
     for (int i = 0; i < num_element; ++i) {
