@@ -104,7 +104,7 @@ public:
       auto uniform_type = module::getUniformQuantizedType(op.getResult());
       qscale = uniform_type.getScale();
     }
-    // FP mode, insert permute and slice before castOp 
+    // FP mode, insert permute and slice before castOp
     else {
       currentOut = castOp0.getInput();
       auto castOut = castOp0.getOutput();
@@ -323,7 +323,9 @@ private:
     for (int i = 0; i < c; i++) {
       scales[i] /= qscale;
       bias[i] /= qscale;
-      if (to_uint8(255 * scales[i]) != 255) {
+      if (scales[i] >= 0.99 && scales[i] <= 1.01 && bias[i] == 0.0) {
+        // in out will be same, no need do ScaleLut
+      } else {
         in_out_equal = false;
       }
     }
