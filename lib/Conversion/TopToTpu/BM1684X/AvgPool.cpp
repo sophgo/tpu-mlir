@@ -129,8 +129,29 @@ void AvgPoolLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void AvgPoolLowering::LoweringF8(PatternRewriter &rewriter,
-                                  top::AvgPoolOp poolOp) const {
-  llvm_unreachable("FIXME: not implement");
+                                 top::AvgPoolOp poolOp) const {
+  auto op = poolOp.getOperation();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  double fp_out_scale;
+  assert(op->getNumOperands() == 1);
+  double out_scale = module::getCalibratedType(poolOp.getOutput()).getMax();
+  double in_scale = module::getCalibratedType(poolOp.getInput()).getMax();
+  fp_out_scale = in_scale / out_scale;
+  Operation *newOp;
+  if (poolOp.getKernelShape().size() == 3) {
+    newOp =
+        lowering_common_f8<tpu::Pool3DOp>(rewriter, op, isE4, 2).getOperation();
+  } else if (poolOp.getKernelShape().size() == 2) {
+    newOp =
+        lowering_common_f8<tpu::Pool2DOp>(rewriter, op, isE4).getOperation();
+  } else {
+    newOp =
+        lowering_common_f8<tpu::Pool1DOp>(rewriter, op, isE4).getOperation();
+  }
+  if (isE4)
+    newOp->setAttr("fp8_out_scale", rewriter.getF64FloatAttr(fp_out_scale));
 }
 
 void AvgPoolLowering::LoweringQuantized(PatternRewriter &rewriter,

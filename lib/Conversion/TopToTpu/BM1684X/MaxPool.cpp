@@ -71,8 +71,17 @@ void MaxPoolLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void MaxPoolLowering::LoweringF8(PatternRewriter &rewriter,
-                                  top::MaxPoolOp op) const {
-  llvm_unreachable("Not Implemented");
+                                 top::MaxPoolOp op) const {
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  if (op.getKernelShape().size() == 3) {
+    lowering_common_f8<tpu::Pool3DOp>(rewriter, op, isE4, 2);
+  } else if (op.getKernelShape().size() == 2) {
+    lowering_common_f8<tpu::Pool2DOp>(rewriter, op, isE4);
+  } else {
+    lowering_common_f8<tpu::Pool1DOp>(rewriter, op, isE4);
+  }
 }
 
 void MaxPoolLowering::LoweringQuantized(PatternRewriter &rewriter,

@@ -433,7 +433,9 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     /// asymmetric quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    /// fp8 quantize param
+    OptionalAttr<F64Attr>:$fp8_out_scale
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -465,7 +467,9 @@ def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D",[
     /// asymmetric quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    /// fp8 quantize param
+    OptionalAttr<F64Attr>:$fp8_out_scale
   );
 }
 
