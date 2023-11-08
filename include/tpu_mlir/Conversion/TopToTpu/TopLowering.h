@@ -527,6 +527,8 @@ Value do_binary_saclar(Value input, Type to_type, int64_t scalar,
   return newOp.getOutput();
 }
 
+
+Value do_f8_relu(Value input, Type to_type, double relu_limit);
 Value do_reshape(Value input, RankedTensorType to_type);
 Value do_transpose(Location name_loc, Value input, std::vector<int64_t> &order);
 Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,

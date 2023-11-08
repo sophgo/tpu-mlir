@@ -645,6 +645,9 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
   auto qtype_in = module::getCalibratedType(in);
   auto qtype_out = module::getCalibratedType(out);
 
+  bool do_relu = op.getDoRelu();
+  auto relu_limit = op.getReluLimit().convertToDouble();
+
   if (module::getMode() == module::Mode::F8E4M3) {
     in_scale = qtype_in.getMax() / get_f8e4m3_max();
     out_scale = qtype_out.getMax() / get_f8e4m3_max();
@@ -691,7 +694,13 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
   operands.push_back(op.getBias());
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
+    if (attr.getName() == "do_relu") {
+      attrs.push_back(rewriter.getNamedAttr("do_relu", rewriter.getBoolAttr(false)));
+    } else if (attr.getName() == "relu_limit") {
+      attrs.push_back(rewriter.getNamedAttr("relu_limit", rewriter.getF64FloatAttr(-1.0)));
+    } else {
+      attrs.push_back(attr);
+    }
   }
   bool with_bias = !module::isNone(op.getBias());
 
@@ -714,14 +723,26 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
     auto newType = getQuantF8E4M3Type(op.getOutput());
     auto newValue =
         CreateConvOp(rewriter, p.dims, op->getLoc(), newType, operands, attrs);
-
     rewriter.replaceOp(op, {newValue});
+
+    if (do_relu) {
+      rewriter.setInsertionPointAfterValue(newValue);
+      auto newTypeRelu = getQuantF8E4M3Type(newValue);
+      auto relu_out = do_f8_relu(newValue, newTypeRelu, relu_limit);
+      rewriter.replaceAllUsesExcept(newValue, relu_out, relu_out.getDefiningOp());
+    }
   } else {
     auto newType = getQuantF8E5M2Type(op.getOutput());
     auto newValue =
         CreateConvOp(rewriter, p.dims, op->getLoc(), newType, operands, attrs);
 
     rewriter.replaceOp(op, {newValue});
+    if (do_relu) {
+      rewriter.setInsertionPointAfterValue(newValue);
+      auto newTypeRelu = getQuantF8E5M2Type(newValue);
+      auto relu_out = do_f8_relu(newValue, newTypeRelu, relu_limit);
+      rewriter.replaceAllUsesExcept(newValue, relu_out, relu_out.getDefiningOp());
+    }
   }
 }
 
