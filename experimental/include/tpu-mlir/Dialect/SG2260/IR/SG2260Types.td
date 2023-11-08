@@ -12,6 +12,7 @@
 
 include "mlir/IR/AttrTypeBase.td"
 include "SG2260.td"
+include "mlir/IR/EnumAttr.td"
 
 class SG2260_Type<string name, string typeMnemonic, list<Trait> traits = []>
     : TypeDef<SG2260_Dialect, name, traits> {
@@ -42,6 +43,18 @@ def SG2260_DMAIdType : InsID<"DMAId", "dma.id"> {
   }];
 }
 
+def SG2260_PaddingMode: I32EnumAttr<"PaddingMode",
+    "requant mode supported by PadOp",
+    [
+      I32EnumAttrCase<"constant", 0>,
+      I32EnumAttrCase<"reflect", 1>,
+      I32EnumAttrCase<"replication", 2>,
+      I32EnumAttrCase<"circular", 3>
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::sg2260";
+}
+def SG2260_PaddingModeAttr : EnumAttr<SG2260_Dialect, SG2260_PaddingMode, "Pad_Mode">;
 
 class RegProperty<string name> : Property<name> {
   let convertToAttribute = [{ dummyPropertiesAsAttribute($_ctxt, $_storage) }];
@@ -56,5 +69,6 @@ class RegProperty<string name> : Property<name> {
 def ShortMatrix2RegDefProperties : RegProperty<"ShortMMRegDef">;
 def ShortConvRegDefProperties : RegProperty<"ShortCONVRegDef">;
 def ShortARRegDefProperties : RegProperty<"ShortARRegDef">;
+def DMATensorRegDefProperties : RegProperty<"DMATensorRegDef">;
 
 #endif
