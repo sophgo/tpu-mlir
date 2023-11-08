@@ -85,4 +85,46 @@ def SG2260_DMATensorOp : SG2260_DMATensor<"">;
 def SG2260_DMATensorTransOp : SG2260_DMATensor<".trans">;
 def SG2260_DMATensorBroadcastOp : SG2260_DMATensor<".broadcast">;
 
+class SG2260_ArithmeticOp<string mnemonic> : SG2260_Op<"arithmetic." # mnemonic,
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Arithmetic.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$lhs,
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$rhs,
+    Optional<AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>>:$shift,
+    SG2260_DMAIdType:$dependency,
+
+    DefaultValuedAttr<BoolAttr, "false">:$is_saturation,
+    DefaultValuedAttr<SG2260_RoundModeAttr, "sg2260::RoundMode::HalfAwayFromZero">:$round_mode,
+    ShortARRegDefProperties:$reg
+    );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+class SG2260_BinaryOp<string mnemonic> : SG2260_ArithmeticOp<mnemonic> {
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$lhs,
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$rhs,
+    SG2260_DMAIdType:$dependency,
+    ShortARRegDefProperties:$reg
+    );
+}
+
+def SG2260_AndOp: SG2260_BinaryOp<"and"> {
+  let description = [{And Operation.}];
+}
+def SG2260_OrOp: SG2260_BinaryOp<"or"> {
+  let description = [{Or Operation.}];
+}
+def SG2260_XorOp: SG2260_BinaryOp<"xor"> {
+  let description = [{Xor Operation.}];
+}
+def SG2260_AddOp: SG2260_ArithmeticOp<"add"> {
+  let description = [{Add Operation.}];
+}
+
+
+
 #endif // SG2260
