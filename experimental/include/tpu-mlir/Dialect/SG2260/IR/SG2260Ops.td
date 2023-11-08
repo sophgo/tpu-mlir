@@ -22,6 +22,8 @@ include "SG2260Types.td"
 class SG2260_Op<string mnemonic, list<Trait> traits = []>
     : Op<SG2260_Dialect, mnemonic, traits>;
 
+// TIU operartions  ------------------------------------------------------------
+
 def SG2260_MatMulOp : SG2260_Op<"matmul",
   [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
   let summary = "";
@@ -57,10 +59,30 @@ def SG2260_ConvOp : SG2260_Op<"conv",
     DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0, 0, 0}">:$pads,
     DefaultValuedAttr<BoolAttr, "false">:$add_result,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<SG2260_PaddingModeAttr, "sg2260::PaddingMode::constant">:$pad_mode,
     ShortConvRegDefProperties:$reg
   );
   let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
   let hasVerifier = 1;
 }
+
+// DMA operartions  ------------------------------------------------------------
+
+class SG2260_DMATensor<string eu_type> : SG2260_Op<"dma.tensor" # eu_type ,
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{DMA Tensor.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$source,
+    SG2260_TIUIdType:$dependency,
+    DMATensorRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $target, SG2260_DMAIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_DMATensorOp : SG2260_DMATensor<"">;
+def SG2260_DMATensorTransOp : SG2260_DMATensor<".trans">;
+def SG2260_DMATensorBroadcastOp : SG2260_DMATensor<".broadcast">;
 
 #endif // SG2260

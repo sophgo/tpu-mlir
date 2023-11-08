@@ -18,24 +18,51 @@
 using namespace mlir;
 using namespace tpu_mlir::sg2260;
 
-void MatMulOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  setNameFn(getResult(), "R0");
-  auto id = getId().getType().getId();
-  llvm::SmallString<32> specialId;
-  llvm::raw_svector_ostream specialName(specialId);
-  specialName << "tid" << id;
-  setNameFn(getId(), specialName.str());
+void getAsmResultNames(function_ref<void(Value, StringRef)> setNameFn,
+                       Operation::result_range restults) {
+  auto setFun = [&setNameFn](Value value) -> void {
+    if (isa<MemRefType>(value.getType()))
+      return setNameFn(value, "R0"); // TODO
+    if (auto tiuId = dyn_cast<TIUIdType>(value.getType())) {
+      auto id = tiuId.getId();
+      llvm::SmallString<32> specialId;
+      llvm::raw_svector_ostream specialName(specialId);
+      specialName << "tiu" << id;
+      return setNameFn(value, specialName.str());
+    }
+    if (auto dmaId = dyn_cast<DMAIdType>(value.getType())) {
+      auto id = dmaId.getId();
+      llvm::SmallString<32> specialId;
+      llvm::raw_svector_ostream specialName(specialId);
+      specialName << "dma" << id;
+      return setNameFn(value, specialName.str());
+    }
+  };
+  llvm::for_each(restults, setFun);
 }
 
-void ConvOp::getAsmResultNames(
+void MatMulOp::getAsmResultNames(
     function_ref<void(Value, StringRef)> setNameFn) {
-  setNameFn(getResult(), "R0");
-  auto id = getId().getType().getId();
-  llvm::SmallString<32> specialId;
-  llvm::raw_svector_ostream specialName(specialId);
-  specialName << "tid" << id;
-  setNameFn(getId(), specialName.str());
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void ConvOp::getAsmResultNames(function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void DMATensorOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void DMATensorTransOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void DMATensorBroadcastOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
 }
 
 template <typename T>
@@ -61,11 +88,21 @@ struct getValueInfo {
 
   bool isConst() { return matchPattern(value, m_Constant()); }
 
+  uint64_t getConst() { return 0; }
+
   uint64_t getAddr() { return 0; }
+
   llvm::ArrayRef<int64_t> getShape() {
     if (isConst())
       return {};
     return cast<ShapedType>(value.getType()).getShape();
+  }
+
+  llvm::ArrayRef<int64_t> getStride() {
+    if (isConst())
+      return {};
+    // TODO
+    return cast<MemRefType>(value.getType()).getShape();
   }
 
   Type getDtype() {
@@ -101,44 +138,11 @@ private:
   Value value;
 };
 
-typedef enum {
-  CONV = 0,
-  PD   = 1,
-  MM   = 2,
-  AR   = 3,
-  RQDQ = 4,
-  TRANS_BC = 5,
-  SG   = 6,
-  LAR  = 7,
-  SFU  = 9,
-  LIN  = 10,
-  SYS_TRWR = 12,
-  CMP  = 13,
-  VC   = 14,
-  SYS  = 15,
-} TSK_TYPE;
-
-typedef enum {
-  PAD_CONSTANT    = 0,
-  PAD_REFLECTION  = 1,
-  PAD_REPLICATION = 2,
-  PAD_CIRCULAR    = 3
-} PAD_MODE;
-
-typedef enum {
-  MM_NORMAL = 1,
-  MM_WRQ = 2,
-  MM_WRQ_RELU = 3,
-  MM_NN = 4,
-  MM_NT = 5,
-  MM_TT = 6,
-} MM_OP;
-
 LogicalResult MatMulOp::verify() {
   auto &reg = getProperties().reg;
   reg.cmd_short = true;
-  reg.tsk_typ = TSK_TYPE::MM;
-  reg.tsk_eu_typ = MM_OP::MM_NORMAL;
+  reg.tsk_typ = tiuType::MM();
+  reg.tsk_eu_typ = tiuType::MM::NORMAL;
   reg.cmd_id_dep = getDependency().getType().getId();
   reg.opt_left_tran = getLeftIsTransposed();
   reg.opt_res_add = getAddResult();
@@ -189,8 +193,8 @@ LogicalResult MatMulOp::verify() {
 LogicalResult ConvOp::verify() {
   auto &reg = getProperties().reg;
   reg.cmd_short = true;
-  reg.tsk_typ = TSK_TYPE::CONV;
-  reg.tsk_eu_typ = 0;
+  reg.tsk_typ = tiuType::CONV();
+  reg.tsk_eu_typ = tiuType::CONV::NORMAL;
   reg.cmd_id_dep = getDependency().getType().getId();
   reg.opt_res_add = getAddResult();
   reg.opt_relu = getDoRelu();
@@ -245,7 +249,7 @@ LogicalResult ConvOp::verify() {
     reg.opd1_w = getKernelShape()[1];
   }
 
-  reg.pad_mode = PAD_CONSTANT;
+  reg.pad_mode = (int)getPadMode();
   reg.opd0_up_pad = getPads()[0];
   reg.opd0_dn_pad = getPads()[1];
   reg.opd0_lf_pad = getPads()[2];
@@ -267,6 +271,75 @@ LogicalResult ConvOp::verify() {
     reg.opt_opd2_const = biasInfo.isConst();
   }
 
+  return success();
+}
+
+LogicalResult DMATensorBaseVerify(DMATensorRegDef &reg, Operation *op) {
+  if (!isa<DMATensorOp, DMATensorTransOp, DMATensorBroadcastOp>(op))
+    return failure();
+
+  reg.cmd_short = true;
+  reg.cmd_id_dep = cast<TIUIdType>(op->getOperandTypes()[1]).getId();
+  reg.cmd_type = dmaType::TENSOR();
+  auto srcInfo = getValueInfo(op->getOperand(0));
+  reg.src_data_format = srcInfo.getPrec();
+  if (srcInfo.isConst()) {
+    reg.fill_constant_en = true;
+    reg.constant_value = srcInfo.getConst();
+  } else {
+    auto srcShape = srcInfo.getShape();
+    reg.src_nsize = srcShape[0];
+    reg.src_csize = srcShape[1];
+    reg.src_hsize = srcShape[2];
+    reg.src_wsize = srcShape[3];
+    auto srcStride = srcInfo.getStride();
+    reg.src_nstride = srcStride[0];
+    reg.src_cstride = srcStride[1];
+    reg.src_hstride = srcStride[2];
+    reg.src_wstride = srcStride[3];
+  }
+
+  auto dstInfo = getValueInfo(op->getOpResult(0));
+  auto desShape = dstInfo.getShape();
+  reg.dst_nsize = desShape[0];
+  reg.dst_csize = desShape[1];
+  reg.dst_hsize = desShape[2];
+  reg.dst_wsize = desShape[3];
+  auto dstStride = dstInfo.getStride();
+  reg.dst_nstride = dstStride[0];
+  reg.dst_cstride = dstStride[1];
+  reg.dst_hstride = dstStride[2];
+  reg.dst_wstride = dstStride[3];
+  return success();
+}
+
+LogicalResult DMATensorOp::verify() {
+  auto ret = DMATensorBaseVerify(getProperties().reg, getOperation());
+  if (ret.failed())
+    return failure();
+
+  auto reg = getProperties().reg;
+  reg.cmd_special_function = dmaType::TENSOR::NONE;
+  return success();
+}
+
+LogicalResult DMATensorTransOp::verify() {
+  auto ret = DMATensorBaseVerify(getProperties().reg, getOperation());
+  if (ret.failed())
+    return failure();
+
+  auto reg = getProperties().reg;
+  reg.cmd_special_function = dmaType::TENSOR::TRANS;
+  return success();
+}
+
+LogicalResult DMATensorBroadcastOp::verify() {
+  auto ret = DMATensorBaseVerify(getProperties().reg, getOperation());
+  if (ret.failed())
+    return failure();
+
+  auto reg = getProperties().reg;
+  reg.cmd_special_function = dmaType::TENSOR::BROADCAST;
   return success();
 }
 
