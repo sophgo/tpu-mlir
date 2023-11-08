@@ -277,6 +277,7 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
   assert(dtype.isF32());
   auto data = read<float>();
   auto count = data->size();
+  auto cnt_p_c = count / shape[0];
   auto data_f8 = std::make_shared<std::vector<uint8_t>>(count);
 
   f64_array_t weight_scale_v;
@@ -289,9 +290,9 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
       // search for the max value and set scale to it
       std::vector<double> weight_scale_v_;
       for (size_t i=0;i<shape[0];i++) {
-        float absmax = std::abs(data->at(i*shape[0]));
-        for (size_t j=0;j<count/shape[0];j++) {
-          absmax = std::abs(data->at(i*shape[0]+j)) > absmax ? std::abs(data->at(i*shape[0]+j)) : absmax;
+        float absmax = std::abs(data->at(i*cnt_p_c));
+        for (size_t j=0;j<cnt_p_c;j++) {
+          absmax = std::abs(data->at(i*cnt_p_c+j)) > absmax ? std::abs(data->at(i*cnt_p_c+j)) : absmax;
         }
         absmax = absmax > 1e-8 ? absmax: 1e-8;
         weight_scale_v_.push_back(absmax / get_f8e4m3_max());
@@ -300,7 +301,7 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
     }
 #pragma omp parallel for schedule(static, omp_schedule(count))
     for (uint32_t i = 0; i < count; i++) {
-      data->at(i) = data->at(i)/weight_scale_v.get()->at((int)(i/(count/shape[0])));
+      data->at(i) = data->at(i)/weight_scale_v.get()->at((int)(i/cnt_p_c));
     }
   } else {
     float absmax = std::abs(data->at(0));
