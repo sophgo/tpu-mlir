@@ -499,7 +499,7 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
 
 void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
-  llvm_unreachable("Not Implemented");
+  LoweringF32(rewriter, op);
 }
 
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,

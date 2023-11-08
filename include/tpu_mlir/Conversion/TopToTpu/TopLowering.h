@@ -361,7 +361,7 @@ public:
 // Lowering to a new Operation, with the same operands and same attrs, and
 // newType
 template <typename OpTy>
-static void lowering_common(PatternRewriter &rewriter, Operation *from,
+static OpTy lowering_common(PatternRewriter &rewriter, Operation *from,
                             Type newType, int num_operands = 0) {
   auto stype = module::getStorageType(newType);
   std::vector<Value> operands;
@@ -395,7 +395,7 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
       operands.push_back(noneOp);
     }
   }
-  rewriter.replaceOpWithNewOp<OpTy>(from, newType, operands, from->getAttrs());
+  return rewriter.replaceOpWithNewOp<OpTy>(from, newType, operands, from->getAttrs());
 }
 
 // lowering to a new Operation, with same operands and same attrs, and quantize
@@ -415,15 +415,15 @@ Type getQuantF8E5M2Type(Value v);
 
 
 template <typename OpTy>
-static void lowering_common_f8(PatternRewriter &rewriter, Operation *from, bool isE4,
+static OpTy lowering_common_f8(PatternRewriter &rewriter, Operation *from, bool isE4,
                                  int num_operands = 0) {
   assert(from->getNumResults() == 1);
   if (isE4) {
     auto newType = getQuantF8E4M3Type(from->getResult(0));
-    lowering_common<OpTy>(rewriter, from, newType, num_operands);
+    return lowering_common<OpTy>(rewriter, from, newType, num_operands);
   } else {
     auto newType = getQuantF8E5M2Type(from->getResult(0));
-    lowering_common<OpTy>(rewriter, from, newType, num_operands);
+    return lowering_common<OpTy>(rewriter, from, newType, num_operands);
   }
 }
 
