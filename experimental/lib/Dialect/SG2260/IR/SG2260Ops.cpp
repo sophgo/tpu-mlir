@@ -65,6 +65,31 @@ void DMATensorBroadcastOp::getAsmResultNames(
   ::getAsmResultNames(setNameFn, getResults());
 }
 
+void AddOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void SubOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void MulOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void MaxOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void MinOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
 void AndOp::getAsmResultNames(
     function_ref<void(Value, StringRef)> setNameFn) {
   ::getAsmResultNames(setNameFn, getResults());
@@ -80,7 +105,27 @@ void OrOp::getAsmResultNames(
   ::getAsmResultNames(setNameFn, getResults());
 }
 
-void AddOp::getAsmResultNames(
+void CopyOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void AbsOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void NotOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void CLZOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void CLOOp::getAsmResultNames(
     function_ref<void(Value, StringRef)> setNameFn) {
   ::getAsmResultNames(setNameFn, getResults());
 }
@@ -170,71 +215,6 @@ struct getValueInfo {
 private:
   Value value;
 };
-
-typedef enum {
-  CONV = 0,
-  PD   = 1,
-  MM   = 2,
-  AR   = 3,
-  RQDQ = 4,
-  TRANS_BC = 5,
-  SG   = 6,
-  LAR  = 7,
-  SFU  = 9,
-  LIN  = 10,
-  SYS_TRWR = 12,
-  CMP  = 13,
-  VC   = 14,
-  SYS  = 15,
-} TSK_TYPE;
-
-typedef enum {
-  MUL = 0,
-  NOT = 1,
-  ADD = 2,
-  SUB = 3,
-  MAX = 4,
-  MIN = 5,
-  LOGIC_SHIFT = 6,
-  AND = 7,
-  OR  = 8,
-  XOR = 9,
-  SELECT_GREAT = 10,
-  SELECT_EQUAL = 11,
-  DIV = 12,
-  SELECT_LESS  = 13,
-  DATA_CONVERT = 14,
-  ADD_SATU = 15,
-  SUB_SATU = 16,
-  CLAMP = 17,
-  MAC = 18,
-  COPY = 19,
-  MUL_SATU = 20,
-  ARITH_SHIFT = 21,
-  ROTATE_SHIFT = 22,
-  MULHDR = 23,
-  ABS = 26,
-  FSUBABS = 27,
-  COPY_MB = 28,
-  GET_FRIST_ONE = 29,
-  GET_FRIST_ZERO = 30,
-} AR_TYPE;
-
-typedef enum {
-  PAD_CONSTANT    = 0,
-  PAD_REFLECTION  = 1,
-  PAD_REPLICATION = 2,
-  PAD_CIRCULAR    = 3
-} PAD_MODE;
-
-typedef enum {
-  MM_NORMAL = 1,
-  MM_WRQ = 2,
-  MM_WRQ_RELU = 3,
-  MM_NN = 4,
-  MM_NT = 5,
-  MM_TT = 6,
-} MM_OP;
 
 LogicalResult MatMulOp::verify() {
   auto &reg = getProperties().reg;
@@ -441,12 +421,14 @@ LogicalResult DMATensorBroadcastOp::verify() {
   return success();
 }
 
-LogicalResult binary_op_verify(
-    ShortARRegDef &reg, getValueInfo& leftInfo, getValueInfo& rightInfo,
-    getValueInfo& outInfo) {
+LogicalResult binary_op_verify(ShortARRegDef &reg, Operation *op, bool input_exchange = false) {
   reg.cmd_short = true;
-  reg.tsk_typ = TSK_TYPE::AR;
+  reg.tsk_typ = tiuType::AR();
+  reg.cmd_id_dep = cast<TIUIdType>(op->getOperandTypes()[1]).getId();
   reg.tsk_opd_num = 2;
+  auto leftInfo = getValueInfo(op->getOperand(input_exchange ? 1 : 0));
+  auto rightInfo = getValueInfo(op->getOperand(input_exchange ? 0 : 1));
+  auto outInfo = getValueInfo(op->getOpResult(0));
 
   // left
   reg.opt_opd0_prec = leftInfo.getPrec();
@@ -509,16 +491,18 @@ LogicalResult binary_op_verify(
   return success();
 }
 
-LogicalResult logical_binary_op_verify(
-    ShortARRegDef &reg, getValueInfo& leftInfo, getValueInfo& rightInfo,
-    getValueInfo& outInfo) {
+LogicalResult logical_binary_op_verify(ShortARRegDef &reg, Operation *op) {
 
-  assert(leftInfo.getPrec() == rightInfo.getPrec());
-  assert(leftInfo.getPrec() == outInfo.getPrec());
-  assert(leftInfo.getSign() == rightInfo.getSign());
-  assert(leftInfo.getSign() == outInfo.getSign());
+  auto leftInfo = getValueInfo(op->getOperand(0));
+  auto rightInfo = getValueInfo(op->getOperand(1));
+  auto outInfo = getValueInfo(op->getOpResult(0));
+  if (leftInfo.getPrec() != rightInfo.getPrec() || leftInfo.getPrec() != outInfo.getPrec() ||
+      leftInfo.getSign() != rightInfo.getSign() || leftInfo.getSign() != outInfo.getSign())
+    return failure();
 
-  binary_op_verify(reg, leftInfo, rightInfo, outInfo);
+  auto ret = binary_op_verify(reg, op);
+  if (ret.failed())
+    return failure();
   if (reg.opt_opd0_prec == HWType::HW_FP32) {
     reg.opt_opd0_prec = HWType::HW_INT32;
     reg.opt_opd1_prec = HWType::HW_INT32;
@@ -537,63 +521,338 @@ LogicalResult logical_binary_op_verify(
 
 LogicalResult AndOp::verify() {
   auto &reg = getProperties().reg;
-  reg.tsk_eu_typ = AR_TYPE::AND;
-  reg.cmd_id_dep = getDependency().getType().getId();
-
-  auto leftInfo = getValueInfo(getLhs());
-  auto rightInfo = getValueInfo(getRhs());
-  auto outInfo = getValueInfo(getResult());
-
-  return logical_binary_op_verify(reg, leftInfo, rightInfo, outInfo);
+  reg.tsk_eu_typ = tiuType::AR::AND;
+  return logical_binary_op_verify(reg, getOperation());
 }
 
 LogicalResult OrOp::verify() {
   auto &reg = getProperties().reg;
-  reg.tsk_eu_typ = AR_TYPE::OR;
-  reg.cmd_id_dep = getDependency().getType().getId();
-
-  auto leftInfo = getValueInfo(getLhs());
-  auto rightInfo = getValueInfo(getRhs());
-  auto outInfo = getValueInfo(getResult());
-
-  return logical_binary_op_verify(reg, leftInfo, rightInfo, outInfo);
+  reg.tsk_eu_typ = tiuType::AR::OR;
+  return logical_binary_op_verify(reg, getOperation());
 }
 
 LogicalResult XorOp::verify() {
   auto &reg = getProperties().reg;
-  reg.tsk_eu_typ = AR_TYPE::XOR;
-  reg.cmd_id_dep = getDependency().getType().getId();
-
-  auto leftInfo = getValueInfo(getLhs());
-  auto rightInfo = getValueInfo(getRhs());
-  auto outInfo = getValueInfo(getResult());
-
-  return logical_binary_op_verify(reg, leftInfo, rightInfo, outInfo);
+  reg.tsk_eu_typ = tiuType::AR::XOR;
+  return logical_binary_op_verify(reg, getOperation());
 }
 
-LogicalResult AddOp::verify() {
-  auto &reg = getProperties().reg;
-  reg.tsk_eu_typ = AR_TYPE::ADD;
-  reg.cmd_id_dep = getDependency().getType().getId();
+LogicalResult compare_binary_op_verify(ShortARRegDef &reg, Operation *op) {
 
-  auto leftInfo = getValueInfo(getLhs());
-  auto rightInfo = getValueInfo(getRhs());
-  auto outInfo = getValueInfo(getResult());
-  binary_op_verify(reg, leftInfo, rightInfo, outInfo);
+  auto leftInfo = getValueInfo(op->getOperand(0));
+  auto rightInfo = getValueInfo(op->getOperand(1));
+  auto outInfo = getValueInfo(op->getOpResult(0));
+  if (leftInfo.getPrec() != rightInfo.getPrec() ||
+      leftInfo.getPrec() != outInfo.getPrec() ||
+      leftInfo.getSign() != rightInfo.getSign() ||
+      leftInfo.getSign() != outInfo.getSign()) {
+    return failure();
+  }
+
+  return binary_op_verify(reg, op);
+}
+
+LogicalResult MaxOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::AR::MAX;
+  return compare_binary_op_verify(reg, getOperation());
+}
+
+LogicalResult MinOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::AR::MIN;
+  return compare_binary_op_verify(reg, getOperation());
+}
+
+LogicalResult binary_op_check(ShortARRegDef &reg, Operation *op) {
+  // type check
+  auto leftInfo = getValueInfo(op->getOperand(0));
+  auto rightInfo = getValueInfo(op->getOperand(1));
+  auto outInfo = getValueInfo(op->getOpResult(0));
+  if ((leftInfo.getPrec() == HWType::HW_FP32 ||
+       leftInfo.getPrec() == HWType::HW_FP16 ||
+       leftInfo.getPrec() == HWType::HW_BFP16) &&
+      rightInfo.getPrec() != HWType::HW_FP8) {
+    if (leftInfo.getPrec() != rightInfo.getPrec() ||
+        leftInfo.getPrec() != outInfo.getPrec()) {
+      return failure();
+    }
+  } else if (leftInfo.getPrec() == HWType::HW_FP8) {
+    if (rightInfo.getPrec() != HWType::HW_FP8 ||
+        rightInfo.getPrec() != HWType::HW_FP16 ||
+        rightInfo.getPrec() != HWType::HW_FP32) {
+      return failure();
+    }
+  } else if (rightInfo.getPrec() == HWType::HW_FP8) {
+    if (leftInfo.getPrec() != HWType::HW_FP8 ||
+        leftInfo.getPrec() != HWType::HW_FP16 ||
+        leftInfo.getPrec() != HWType::HW_FP32) {
+      return failure();
+    }
+  } else {
+    // int8/int16/int32
+    if (!(leftInfo.getDtype().isIntOrIndex() &&
+          rightInfo.getDtype().isIntOrIndex() &&
+          outInfo.getDtype().isIntOrIndex())) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+LogicalResult compute_binary_op_verify(ShortARRegDef &reg, Operation *op, bool input_exchange) {
+
+  auto ret = binary_op_verify(reg, op, input_exchange);
+  if (ret.failed())
+    return failure();
   // shift
-  if (getShift()) {
-    auto shiftInfo = getValueInfo(getShift());
+  if (op->getNumOperands() > 2) {
+    auto shiftInfo = getValueInfo(op->getOperand(2));
     reg.opt_opd2_prec = shiftInfo.getPrec();
     reg.opt_opd2_sign = shiftInfo.getSign();
     reg.opd2_addr = shiftInfo.getAddr();
     reg.opt_opd2_const = shiftInfo.isConst();
-    reg.opd2_n_str = (int)getRoundMode();
+    reg.tsk_opd_num = 3;
+    if (shiftInfo.getLayout() != Layout::COMPACT)
+      return failure();
+    if (shiftInfo.getPrec() == HWType::HW_INT8)
+      return failure();
   }
+  ret = binary_op_check(reg, op);
+  if (ret.failed())
+    return failure();
 
-  // TODO: type check
+  return binary_op_verify(reg, op);
+}
 
+LogicalResult AddOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = getIsSaturation() && getLhs().getType().isIntOrIndex() ? tiuType::AR::ADD_SATU : tiuType::AR::ADD;
+  reg.sym_range = getIsSaturation();
+
+  auto leftInfo = getValueInfo(getLhs());
+  auto rightInfo = getValueInfo(getRhs());
+  auto outInfo = getValueInfo(getResult());
+  bool input_exchange = rightInfo.getPrec() == HWType::HW_FP8 &&
+                        leftInfo.getPrec() != HWType::HW_FP8;
+  auto ret = compute_binary_op_verify(reg, getOperation(), input_exchange);
+  if (ret.failed())
+    return failure();
+  if (getShift())
+    reg.opd2_n_str = (int)(getRoundMode());
+
+  // sign_check
+  if (leftInfo.getDtype().isIntOrIndex()) {
+    if (leftInfo.getDtype().isSignedInteger() || rightInfo.getDtype().isSignedInteger()) {
+      if (!outInfo.getDtype().isSignedInteger())
+        return failure();
+    } else {
+      if (!outInfo.getDtype().isUnsignedInteger())
+        return failure();
+    }
+  }
   return success();
 }
+
+LogicalResult MulOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = getIsSaturation() && getLhs().getType().isIntOrIndex() ? tiuType::AR::MUL_SATU : tiuType::AR::MUL;
+  reg.sym_range = getIsSaturation();
+
+  auto leftInfo = getValueInfo(getLhs());
+  auto rightInfo = getValueInfo(getRhs());
+  auto outInfo = getValueInfo(getResult());
+  bool input_exchange = rightInfo.getPrec() == HWType::HW_FP8 &&
+                        leftInfo.getPrec() != HWType::HW_FP8;
+  auto ret = compute_binary_op_verify(reg, getOperation(), input_exchange);
+  if (ret.failed())
+    return failure();
+  if (getShift())
+    reg.opd2_n_str = (int)(getRoundMode());
+
+  // sign_check
+  if (leftInfo.getDtype().isIntOrIndex()) {
+    if (leftInfo.getDtype().isSignedInteger() || rightInfo.getDtype().isSignedInteger()) {
+      if (!outInfo.getDtype().isSignedInteger())
+        return failure();
+    } else {
+      if (!outInfo.getDtype().isUnsignedInteger())
+        return failure();
+    }
+  }
+  return success();
+}
+
+LogicalResult SubOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = getIsSaturation() && getLhs().getType().isIntOrIndex() ? tiuType::AR::SUB_SATU : tiuType::AR::SUB;
+  reg.sym_range = getIsSaturation();
+
+  auto leftInfo = getValueInfo(getLhs());
+  auto rightInfo = getValueInfo(getRhs());
+  auto outInfo = getValueInfo(getResult());
+  bool input_exchange = leftInfo.getPrec() == HWType::HW_FP8 &&
+                        rightInfo.getPrec() != HWType::HW_FP8;
+  auto ret = compute_binary_op_verify(reg, getOperation(), input_exchange);
+  if (ret.failed())
+    return failure();
+  if (getShift())
+    reg.opd2_n_str = (int)(getRoundMode());
+
+  // sign_check
+  if (leftInfo.getDtype().isIntOrIndex()) {
+    if (!outInfo.getDtype().isSignedInteger())
+      return failure();
+  }
+  return success();
+}
+
+LogicalResult ar_unary_op_verify(ShortARRegDef &reg, Operation *op) {
+
+  auto inInfo = getValueInfo(op->getOperand(0));
+  auto outInfo = getValueInfo(op->getOpResult(0));
+  reg.cmd_short = true;
+  reg.tsk_typ = tiuType::AR();
+  reg.cmd_id_dep = cast<TIUIdType>(op->getOperandTypes()[1]).getId();
+  reg.tsk_opd_num = 1;
+
+  // in
+  reg.opt_opd0_prec = inInfo.getPrec();
+  reg.opt_opd0_sign = inInfo.getSign();
+  reg.opd0_addr = inInfo.getAddr();
+  if (inInfo.isConst()) {
+    return failure();
+  } else {
+    reg.opt_opd0_const = false;
+    if (inInfo.getLayout() == Layout::FREE) {
+      reg.opd0_str = false;
+      auto stride = inInfo.getStride();
+      reg.opd0_n_str = stride[0];
+      reg.opd0_c_str = stride[1];
+      reg.opd0_h_str = stride[2];
+      reg.opd0_w_str = stride[3];
+    } else {
+      reg.opd0_str = true;
+    }
+  }
+
+  // out
+  reg.opt_res0_prec = outInfo.getPrec();
+  reg.res0_addr = outInfo.getAddr();
+  auto shape = outInfo.getShape();
+  reg.res0_n = shape[0];
+  reg.res0_c = shape[1];
+  reg.res0_h = shape[2];
+  reg.res0_w = shape[3];
+  if (outInfo.getLayout() == Layout::FREE) {
+    reg.res0_str = false;
+    auto stride = outInfo.getStride();
+    reg.res0_n_str = stride[0];
+    reg.res0_c_str = stride[1];
+    reg.res0_h_str = stride[2];
+    reg.res0_w_str = stride[3];
+  } else {
+    reg.res0_str = true;
+  }
+  return success();
+}
+
+LogicalResult CopyOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::AR::COPY;
+
+  auto inInfo = getValueInfo(getLhs());
+  auto outInfo = getValueInfo(getResult());
+  auto ret = ar_unary_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+
+  if (inInfo.getPrec() != outInfo.getPrec() ||
+      inInfo.getSign() != outInfo.getSign()) {
+    return failure();
+  }
+  return success();
+}
+
+LogicalResult AbsOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::AR::ABS;
+
+  auto inInfo = getValueInfo(getLhs());
+  auto outInfo = getValueInfo(getResult());
+  auto ret = ar_unary_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+
+  if (inInfo.getPrec() != outInfo.getPrec() ||
+      inInfo.getSign() != outInfo.getSign()) {
+    return failure();
+  }
+  return success();
+}
+
+LogicalResult NotOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::AR::NOT;
+
+  auto inInfo = getValueInfo(getLhs());
+  auto outInfo = getValueInfo(getResult());
+  auto ret = ar_unary_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+
+  if (reg.opt_opd0_prec == HWType::HW_FP32) {
+    reg.opt_opd0_prec = HWType::HW_INT32;
+    reg.opt_res0_prec = HWType::HW_INT32;
+  } else if (reg.opt_opd0_prec == HWType::HW_FP16 || reg.opt_opd0_prec == HWType::HW_BFP16) {
+    reg.opt_opd0_prec = HWType::HW_INT16;
+    reg.opt_res0_prec = HWType::HW_INT16;
+  } else if (reg.opt_opd0_prec == HWType::HW_FP8) {
+    reg.opt_opd0_prec = HWType::HW_INT8;
+    reg.opt_res0_prec = HWType::HW_INT8;
+  }
+  if (inInfo.getPrec() != outInfo.getPrec()) {
+    return failure();
+  }
+  return success();
+}
+
+LogicalResult ar_count_verify(ShortARRegDef &reg, Operation *op) {
+  auto outInfo = getValueInfo(op->getOpResult(0));
+  auto ret = ar_unary_op_verify(reg, op);
+  if (ret.failed())
+    return failure();
+
+  if (!outInfo.getDtype().isIntOrIndex())
+    return failure();
+  if (reg.opt_opd0_prec == HWType::HW_FP32) {
+    reg.opt_opd0_prec = HWType::HW_INT32;
+  } else if (reg.opt_opd0_prec == HWType::HW_FP16 || reg.opt_opd0_prec == HWType::HW_BFP16) {
+    reg.opt_opd0_prec = HWType::HW_INT16;
+    if (reg.opt_res0_prec == HWType::HW_INT32) {
+      return failure();
+    }
+  } else if (reg.opt_opd0_prec == HWType::HW_FP8) {
+    reg.opt_opd0_prec = HWType::HW_INT8;
+    if (reg.opt_res0_prec == HWType::HW_INT32 || reg.opt_res0_prec == HWType::HW_INT16) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+LogicalResult CLOOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::AR::GET_FIRST_ONE;
+  return ar_count_verify(reg, getOperation());
+}
+
+LogicalResult CLZOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::AR::GET_FIRST_ZERO;
+  return ar_count_verify(reg, getOperation());
+}
+
 
 #define GET_OP_CLASSES
 #include "tpu-mlir/Dialect/SG2260/IR/SG2260Ops.cpp.inc"
