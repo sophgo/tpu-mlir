@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 
@@ -45,6 +46,15 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
+    } else if (out_type.isFloat8E4M3FN()) {
+      if (!getOutF8Scales().has_value())
+        llvm_unreachable("should have out scale for Mul in f8 mode");
+      f64_array_t scales = module::getF64Array(getOutF8Scales().value());
+      [[maybe_unused]] auto out_scale = scales->at(0);
+      [[maybe_unused]] auto out_scale_reciprocal = 1 / scales->at(0);
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, out_scale_reciprocal);
+    } else if (out_type.isFloat8E5M2()) {
+      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }

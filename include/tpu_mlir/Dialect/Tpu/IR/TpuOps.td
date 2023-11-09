@@ -716,6 +716,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
+    OptionalAttr<F64ArrayAttr>:$out_f8_scales,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
