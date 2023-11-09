@@ -72,7 +72,7 @@ void GatherLowering::LoweringF16(PatternRewriter &rewriter,
 
 void GatherLowering::LoweringF8(PatternRewriter &rewriter,
                                  top::GatherOp op) const {
- llvm_unreachable("Not Implemented");
+  LoweringF16(rewriter, op);
 }
 
 void GatherLowering::LoweringQuantized(PatternRewriter &rewriter,
