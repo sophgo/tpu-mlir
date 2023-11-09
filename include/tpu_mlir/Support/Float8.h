@@ -42,7 +42,7 @@ float f8e5m2_to_f16(uint8_t src);
 */
 float F8E4M3(float src);
 float F8E5M2(float src);
-void F8E4M3(float *p_src, float *p_dst, int num, float scale);
-void F8E5M2(float *p_src, float *p_dst, int num, float scale);
+void F8E4M3(const float *p_src, float *p_dst, int num, float scale);
+void F8E5M2(const float *p_src, float *p_dst, int num, float scale);
 
 } // namespace tpu_mlir
