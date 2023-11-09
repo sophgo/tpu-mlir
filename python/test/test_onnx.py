@@ -31,7 +31,8 @@ class ONNX_IR_TESTER(object):
                  mode: str = "all",
                  dynamic: bool = False,
                  simple: bool = False,
-                 disable_thread: bool = False):
+                 disable_thread: bool = False,
+                 num_core: int = 1):
         Y, N = True, False
         # yapf: disable
         self.test_cases = {
@@ -291,6 +292,7 @@ class ONNX_IR_TESTER(object):
         self.dynamic = dynamic
         self.simple = simple
         self.multithread = not disable_thread
+        self.num_core = num_core
         if self.simple:
             self.support_quant_modes = ["f16", "int8"]
             self.support_asym = [False]
@@ -418,7 +420,7 @@ class ONNX_IR_TESTER(object):
             quant_input = False
             quant_output = False
         mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, self.dynamic, quant_input,
-                      quant_output)
+                      quant_output, num_core=self.num_core)
         return (tpu_mlir + ".mlir", bmodel)
 
     def inference_and_compare(self,
@@ -6486,10 +6488,11 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
+    parser.add_argument("--num_core", default=1, type=int, help='The numer of TPU cores used for parallel computation')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     # yapf: enable
     args = parser.parse_args()
-    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread)
+    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread, args.num_core)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
