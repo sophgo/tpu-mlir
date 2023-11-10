@@ -154,36 +154,50 @@ class StageIr(FBSOptional):
         return module.End(builder)
 
 
+class Binary(FBSOptional):
+    def init(self, fbs: bmodel_fbs.Binary, buffer: bytes):
+        binary = (fbs.Start(), fbs.Size())
+        self.__data = buffer[binary[0] : sum(binary)]
+
+    def __bytes__(self):
+        return bytes(self.__data)
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            return self.__data[key]
+        return self.__data[key]
+
+    def __len__(self):
+        return len(self.__data)
+
+    def _serialize(self, builder, save_binary_fun):
+        data_range = save_binary_fun(self.__data)
+        return bmodel_fbs.Binary.CreateBinary(builder, *data_range)
+
+    def __array__(self, dtype=np.uint8):
+        # Convert to numpy array
+        return np.frombuffer(self.__data, dtype=dtype)
+
+    def __repr__(self):
+        return f"bin:{len(self.__data)}"
+
+
 class CmdGroup(FBSOptional):
     def init(self, fbs: bmodel_fbs.CmdGroup, buffer: bytes):
         self.tiu_num = fbs.BdcNum()
         self.dma_num = fbs.GdmaNum()
-        if fbs.BinaryBdc():
-            binary_tiu = (fbs.BinaryBdc().Start(), fbs.BinaryBdc().Size())
-            self.tiu_cmd = buffer[binary_tiu[0] : sum(binary_tiu)]
-        else:
-            self.tiu_cmd = []
-        if fbs.BinaryGdma():
-            binary_dma = (fbs.BinaryGdma().Start(), fbs.BinaryGdma().Size())
-            self.dma_cmd = buffer[binary_dma[0] : sum(binary_dma)]
-        else:
-            self.dma_cmd = []
+        self.tiu_cmd = Binary(fbs.BinaryBdc(), buffer)
+        self.dma_cmd = Binary(fbs.BinaryGdma(), buffer)
 
     def _serialize(self, builder, save_binary_fun):
         module = bmodel_fbs.CmdGroup
         module.Start(builder)
         module.AddBdcNum(builder, self.tiu_num)  # 0
         module.AddGdmaNum(builder, self.dma_num)  # 1
-        tiu_range = save_binary_fun(self.tiu_cmd)
-        bmodel_fbs.CmdGroup.AddBinaryBdc(
-            builder, bmodel_fbs.Binary.CreateBinary(builder, *tiu_range)
-        )  # 2
-        dma_range = save_binary_fun(self.dma_cmd)
-        bmodel_fbs.CmdGroup.AddBinaryGdma(
-            builder, bmodel_fbs.Binary.CreateBinary(builder, *dma_range)
-        )  # 3
-        module.AddBdcCmdByte(builder, tiu_range[1])  # 4
-        module.AddGdmaCmdByte(builder, dma_range[1])  # 5
+        module.AddBinaryBdc(builder, self.tiu_cmd.serialize(builder, save_binary_fun))
+        module.AddBinaryGdma(builder, self.dma_cmd.serialize(builder, save_binary_fun))
+        module.AddBdcCmdByte(builder, len(self.tiu_cmd))  # 4
+        module.AddGdmaCmdByte(builder, len(self.dma_cmd))  # 5
         return module.End(builder)
 
     def __repr__(self):
@@ -193,22 +207,38 @@ class CmdGroup(FBSOptional):
 
 class CoreCmdGroup(FBSOptional):
     def init(self, fbs: bmodel_fbs.CoreCommands, buffer: bytes):
-        self.gdma_tiu_commands: List[CmdGroup] = FBSArray(
-            fbs, ("GdmaTiuCommands", CmdGroup), buffer
-        )
+        self.gdma_tiu_commands = FBSArray(fbs, ("GdmaTiuCommands", CmdGroup), buffer)
+        self.sdma_commands = FBSArray(fbs, ("SdmaCommands", Binary), buffer)
+        self.hau_commands = FBSArray(fbs, ("HauCommands", Binary), buffer)
+        self.cdma_commands = FBSArray(fbs, ("CdmaCommands", Binary), buffer)
 
     def _serialize(self, builder, save_binary_fun):
         module = bmodel_fbs.CoreCommands
         gdma_tiu_commands = self.gdma_tiu_commands.serialize(builder, save_binary_fun)
+        sdma_commands = self.sdma_commands.serialize(builder, save_binary_fun)
+        hau_commands = self.hau_commands.serialize(builder, save_binary_fun)
+        cdma_commands = self.cdma_commands.serialize(builder, save_binary_fun)
+
         module.Start(builder)
         if gdma_tiu_commands:
-            module.AddGdmaTiuCommands(builder, gdma_tiu_commands)  # 0
+            module.AddGdmaTiuCommands(builder, gdma_tiu_commands)
+        if sdma_commands:
+            module.AddSdmaCommands(builder, sdma_commands)
+        if hau_commands:
+            module.AddHauCommands(builder, hau_commands)
+        if cdma_commands:
+            module.AddCdmaCommands(builder, cdma_commands)
 
         return module.End(builder)
 
     def __repr__(self):
         if self:
-            return f"gdma_tiu_commands: {self.gdma_tiu_commands}"
+            return (
+                f"gdma_tiu_commands: {self.gdma_tiu_commands}"
+                + f", sdma_commands: {self.sdma_commands}"
+                + f", hau_commands: {self.hau_commands}"
+                + f", cdma_commands: {self.cdma_commands}"
+            )
 
 
 class ROData(FBSOptional):
@@ -473,11 +503,7 @@ class Parameter(FBSOptional):
         self.stage_ir: List[StageIr] = FBSArray(
             fbs, ("StageIr", StageIr), fbs.BinaryIr(), buffer
         )
-        self.binary_ir = None
-        if fbs.BinaryIr():
-            start, size = fbs.BinaryIr().Start(), fbs.BinaryIr().Size()
-            self.binary_ir = buffer[start : start + size]
-
+        self.binary_ir = Binary(fbs.BinaryIr(), buffer)
         self.sub_net: List[SubNet] = FBSArray(
             fbs, ("SubNet", SubNet), buffer, self.binary_ir
         )
@@ -488,11 +514,7 @@ class Parameter(FBSOptional):
         self.coeff_mem = ROData(fbs.CoeffMem(), buffer)
         self.core_num = fbs.CoreNum()
         self.cpu_mem_size = fbs.CpuMemSize()
-
-        self.net_profile = None
-        if fbs.NetProfile():
-            start, size = fbs.NetProfile().Start(), fbs.NetProfile().Size()
-            self.net_profile = buffer[start : start + size]
+        self.net_profile = Binary(fbs.NetProfile(), buffer)
 
     def _serialize(self, builder, save_binary_fun):
         module = bmodel_fbs.NetParameter
@@ -503,7 +525,8 @@ class Parameter(FBSOptional):
         cmd_group = self.cmd_group.serialize(builder, save_binary_fun)
         coeff_mem = self.coeff_mem.serialize(builder, save_binary_fun)
         stage_ir = self.stage_ir.serialize(builder, save_binary_fun)
-        self.stage_ir
+        binary_ir = self.binary_ir.serialize(builder, save_binary_fun)
+        net_profile = self.net_profile.serialize(builder, save_binary_fun)
 
         ctx_sizes = builder.CreateNumpyVector(np.array(self.ctx_sizes, dtype=np.uint64))
 
@@ -519,19 +542,12 @@ class Parameter(FBSOptional):
         module.AddHWDynamic(builder, 0)  # 7
         if cmd_group:
             module.AddCmdGroup(builder, cmd_group)  # 8
-
-        if self.net_profile:
-            net_profile_range = save_binary_fun(self.net_profile)
-            module.AddNetProfile(
-                builder, bmodel_fbs.Binary.CreateBinary(builder, *net_profile_range)
-            )
-
-        module.AddStageIr(builder, stage_ir)  # 10
-        if self.binary_ir:
-            binary_ir_range = save_binary_fun(self.binary_ir)
-            module.AddBinaryIr(
-                builder, bmodel_fbs.Binary.CreateBinary(builder, *binary_ir_range)
-            )  # 11
+        if net_profile:
+            module.AddNetProfile(builder, net_profile)
+        if stage_ir:
+            module.AddStageIr(builder, stage_ir)  # 10
+        if binary_ir:
+            module.AddBinaryIr(builder, binary_ir)  # 11
         module.AddSubNet(builder, sub_net)  # 12
         module.AddCpuMemSize(builder, self.cpu_mem_size)  # 13
 
