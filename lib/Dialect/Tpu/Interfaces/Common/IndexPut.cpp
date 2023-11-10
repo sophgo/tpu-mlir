@@ -37,3 +37,26 @@ LogicalResult tpu::IndexPutOp::inference(InferenceParameter &p) {
   return success();
 }
 
+mlir::Type tpu::IndexPutOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  auto op = getOperation();
+  if (opd_idx == 1) {
+    // indices
+    auto opd = op->getOperand(1);
+    auto in_op = opd.getDefiningOp();
+    if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)) {
+      return do_nothing(mode);
+    }
+    auto stype = module::getStorageType(opd);
+    if (stype.isIntOrIndex()) {
+      return do_nothing(mode);
+    }
+    mode = TypeCastMode::DO_CAST;
+    auto bitwidth = stype.getIntOrFloatBitWidth();
+    if (module::isBM1684XFamily() || module::isSG2260Family()) {
+      // indices should be int32 in BM1684x
+      bitwidth = 32;
+    }
+    return Builder(op).getIntegerType(bitwidth);
+  }
+  return type_verify_case_same(op, opd_idx, mode);
+}

@@ -2339,7 +2339,8 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
   );
 }
 
-def Tpu_IndexPutOp : Tpu_Op<"IndexPut"> {
+def Tpu_IndexPutOp : Tpu_Op<"IndexPut", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "IndexPut operation";
   let description = [{
     aten::index_put_
