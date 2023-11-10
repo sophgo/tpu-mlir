@@ -37,7 +37,8 @@ void PermuteLowering::LoweringF16(PatternRewriter &rewriter,
 
 void PermuteLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::PermuteOp op) const {
-  llvm_unreachable("Not Implemented");
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  lowering_common_f8<tpu::PermuteOp>(rewriter, op, isE4);
 }
 
 void PermuteLowering::LoweringQuantized(PatternRewriter &rewriter,

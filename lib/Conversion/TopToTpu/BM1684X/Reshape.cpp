@@ -53,7 +53,8 @@ void ReshapeLowering::LoweringF16(PatternRewriter &rewriter,
 
 void ReshapeLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::ReshapeOp op) const {
-  lowering_common_f16<tpu::ReshapeOp>(rewriter, op);
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  lowering_common_f8<tpu::ReshapeOp>(rewriter, op, isE4);
 }
 
 void ReshapeLowering::LoweringQuantized(PatternRewriter &rewriter,
