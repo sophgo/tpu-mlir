@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
-
+#include "tpu_mlir/Support/Float8.h"
 namespace tpu_mlir {
 namespace bm1684x {
 
@@ -85,7 +85,7 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
 }
 
 void SubLowering::LoweringINT4(PatternRewriter &rewriter, top::SubOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void SubLowering::LoweringF32(PatternRewriter &rewriter, top::SubOp op) const {
@@ -96,8 +96,49 @@ void SubLowering::LoweringBF16(PatternRewriter &rewriter, top::SubOp op) const {
   lowering_common_bf16<tpu::SubOp>(rewriter, op);
 }
 
-void SubLowering::LoweringF8(PatternRewriter &rewriter, top::SubOp op) const {
-  llvm_unreachable("Not Implemented");
+void SubLowering::LoweringF8(PatternRewriter &rewriter,
+                             top::SubOp subOp) const {
+  // llvm_unreachable("Not Implemented");
+  auto op = subOp.getOperation();
+  const int numInputs = op->getNumOperands();
+  if (module::getMode() == module::Mode::F8E5M2) {
+    lowering_common_f8<tpu::SubOp>(rewriter, subOp, false, numInputs);
+    return;
+  }
+  std::vector<Value> operands;
+  std::vector<double> scale_v(numInputs);
+  auto coeff_v = module::getF64Array(subOp.getCoeff(), numInputs, 1.0);
+  auto qtype_out = module::getCalibratedType(subOp.getOutput());
+  double out_scale = qtype_out.getMax();
+  double cur_scale;
+  Value cur_weight;
+  for (int i = 0; i < numInputs; i++) {
+    Value inValue = op->getOperand(i);
+    if (auto weightOp = dyn_cast<top::WeightOp>(inValue.getDefiningOp())) {
+      auto data = weightOp.read<float>();
+      auto cnt = data->size();
+#pragma omp parallel for schedule(static, omp_schedule(cnt))
+      for (int j = 0; j < cnt; j++)
+        data->at(j) = data->at(j) * get_f8e4m3_max() / out_scale;
+      (void)weightOp.update(*data, cnt);
+      cur_weight = weightOp.clone_f16(op);
+      cur_scale = 1.;
+      operands.push_back(cur_weight);
+    } else {
+      auto qtype_int = module::getCalibratedType(inValue);
+      auto in_scale = qtype_int.getMax();
+      cur_scale = coeff_v->at(i) * in_scale / out_scale;
+      operands.push_back(inValue);
+    }
+    scale_v[i] = cur_scale;
+  }
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs())
+    attrs.push_back(attr);
+  attrs.push_back(rewriter.getNamedAttr("out_f8_scales",
+                                        rewriter.getF64ArrayAttr(scale_v)));
+  auto newType = getQuantF8E4M3Type(subOp.getOutput());
+  rewriter.replaceOpWithNewOp<tpu::SubOp>(op, newType, operands, attrs);
 }
 
 void SubLowering::LoweringF16(PatternRewriter &rewriter, top::SubOp op) const {

@@ -1406,7 +1406,7 @@ ModuleInterpreter::getTensor(const std::string &name, bool express_type) {
       double scale = qtype.getMax();
       for (i = 0; i < tensor_size; i++) {
         data_fp32->data()[i] =
-            (*(mem->data() + offset + i) * (float)scale / 448.);
+            (*(mem->data() + offset + i) * (float)scale / get_f8e4m3_max());
       }
       return std::move(data_fp32);
     }
