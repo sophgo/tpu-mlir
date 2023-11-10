@@ -570,6 +570,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
+    DefaultValuedAttr<F64Attr, "1.0">:$f8_scale,  // input scale
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -692,6 +693,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst", [
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
+    DefaultValuedAttr<F64Attr, "1.0">:$f8_scale,  // input scale
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
