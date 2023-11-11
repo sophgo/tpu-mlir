@@ -7,7 +7,7 @@
 #
 # ==============================================================================
 
-from ..target_common import DType, MType, Layout, MemRefBase, Device
+from ..target_common import DType, MType, Layout, MemRefBase, Target
 from typing import Tuple, TYPE_CHECKING
 import functools
 
@@ -131,7 +131,7 @@ class MemRef(MemRefBase):
     A description of tensor in memory.
     """
 
-    device = Device.BM1688
+    device = Target.BM1688
 
     def __init__(
         self,

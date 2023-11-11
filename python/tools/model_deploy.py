@@ -93,6 +93,7 @@ class DeployTool:
         self.compare_all = args.compare_all
         self.skip_validation = args.skip_validation
         self.model_version = args.model_version
+        self.q_group_size = args.q_group_size
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
                 self.prefix += "_asym"
@@ -121,7 +122,7 @@ class DeployTool:
             mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
                           self.asymmetric, self.quantize_table, self.customization_format,
                           self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow,
-                          self.do_winograd)
+                          self.do_winograd, self.q_group_size)
             if self.do_validate:
                 tool.validate_tpu_mlir()
 
@@ -249,8 +250,8 @@ if __name__ == '__main__':
                         help="calibration table for int8 quantization")
     parser.add_argument("--quantize_table",
                         help="table of OPs that quantized to specific mode")
-    parser.add_argument("--quantize", default="F32", type=str.upper, choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'QDQ', 'W8F16', 'W8BF16', 'W4F16', 'W4BF16'],
-                        help="set default qauntization type: F32/BF16/F16/INT8")
+    parser.add_argument("--quantize", default="F32", type=str.upper, choices=['F32', 'BF16', 'F16', 'INT8', 'INT4', 'QDQ', 'W8F16', 'W8BF16', 'W4F16', 'W4BF16', "F8E4M3", "F8E5M2"],
+                        help="set default qauntization type: F32/BF16/F16/INT8/F8")
     parser.add_argument("--asymmetric", action='store_true',
                         help="do INT8 asymmetric quantization")
     parser.add_argument("--ignore_f16_overflow", action='store_true',
@@ -309,9 +310,16 @@ if __name__ == '__main__':
                         help="do_winograd")
     parser.add_argument("--model_version", default="latest",
                         help="if need old version cvimodel, set the verion, such as 1.2")
+    parser.add_argument("--q_group_size", default=0, type=int,
+                        help="group size for per-group quant, only used in W4A16 quant mode")
 
     # yapf: enable
     args = parser.parse_args()
+    if args.quantize in ['W8F16', 'W4F16', 'W8BF16', 'W4BF16']:
+        assert(args.num_device == 1 and "W8A16 and W4A16 not support multi device for now")
+    if args.q_group_size:
+        assert(args.quantize in ['W4F16', 'W4BF16'] and "only W4A16 mode needs q_group_size")
+
     if args.customization_format.startswith("YUV"):
         args.aligned_input = True
     if not args.fuse_preprocess and args.customization_format:

@@ -44,6 +44,12 @@ class TdbInterface(TdbCmdBackend):
     def do_py(self, arg):
         try:
             self.message(eval(arg))
+        except SyntaxError:
+            try:
+                exec(arg)
+                globals().update(locals())
+            except BaseException as e:
+                self.error(e)
         except BaseException as e:
             self.error(e)
 

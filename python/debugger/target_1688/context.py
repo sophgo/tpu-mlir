@@ -17,8 +17,8 @@ from ..target_common import *
 from .opparam import get_opparam_converter_with_context, opparam_converter
 
 
-class BM1688Context(CModelContext):
-    device = Device.BM1688
+class BM1688Context(BModelContext):
+    device = Target.BM1688
 
     memmap = memmap
 
@@ -90,6 +90,7 @@ class BM1688Context(CModelContext):
         return [x[1] for x in cmd_sorted]
 
     def get_runner(self, memory_size: int) -> CModelRunner:
-        if self._runner is None:
-            self._runner = BM1688Runner(memory_size, self.base_addr)
-        return self._runner
+        assert self.using_cmodel, "1688 currently only support cmodel mode"
+        if self._cmodel_runner is None:
+            self._cmodel_runner = BM1688Runner(memory_size, self.base_addr)
+        return self._cmodel_runner

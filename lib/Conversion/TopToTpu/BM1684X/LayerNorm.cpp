@@ -87,6 +87,11 @@ void LayerNormLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringLayerNorm(rewriter, op, rewriter.getF16Type());
 }
 
+void LayerNormLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::LayerNormOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void LayerNormLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::LayerNormOp op) const {
   llvm_unreachable("Not Implemented");

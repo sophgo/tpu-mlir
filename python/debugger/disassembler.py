@@ -122,12 +122,15 @@ class CpuParam(FBSOptional):
 
     def _serialize(self, builder, save_binary_fun):
         module = bmodel_fbs.CpuParam
+        cpu_const = self.cpu_const.serialize(builder, save_binary_fun)
         module.Start(builder)
         module.AddOpType(builder, self.op_type)
         cpu_range = save_binary_fun(self.cpu_cmd)
         module.AddBinaryParam(
             builder, bmodel_fbs.Binary.CreateBinary(builder, *cpu_range)
         )
+        module.AddCpuConst(builder, cpu_const)
+        return module.End(builder)
 
     def __repr__(self) -> str:
         return f"CPU_OP: {self.op_type.name}"
@@ -139,8 +142,16 @@ class StageIr(FBSOptional):
     ):
         self.ir_len = fbs.IrInfoLen()
         self.ir_bytelen = self.ir_len * 4  # sizeof(u32)
-        start, size = binary_ir.Start(), binary_ir.Size()
-        self.ir_mem = buffer[start : start + size]
+
+    def _serialize(self, builder, save_binary_fun):
+        module = bmodel_fbs.StageIR
+        module.Start(builder)
+        module.AddIrInfoLen(builder, self.ir_len)  # 0
+        module.AddHeightHigh(builder, 0)  # 1
+        module.AddHeightLow(builder, 0)  # 2
+        module.AddWidthHigh(builder, 0)  # 3
+        module.AddWidthLow(builder, 0)  # 4
+        return module.End(builder)
 
 
 class CmdGroup(FBSOptional):
@@ -161,18 +172,18 @@ class CmdGroup(FBSOptional):
     def _serialize(self, builder, save_binary_fun):
         module = bmodel_fbs.CmdGroup
         module.Start(builder)
-        module.AddBdcNum(builder, self.tiu_num)
-        module.AddGdmaNum(builder, self.dma_num)
+        module.AddBdcNum(builder, self.tiu_num)  # 0
+        module.AddGdmaNum(builder, self.dma_num)  # 1
         tiu_range = save_binary_fun(self.tiu_cmd)
         bmodel_fbs.CmdGroup.AddBinaryBdc(
             builder, bmodel_fbs.Binary.CreateBinary(builder, *tiu_range)
-        )
+        )  # 2
         dma_range = save_binary_fun(self.dma_cmd)
         bmodel_fbs.CmdGroup.AddBinaryGdma(
             builder, bmodel_fbs.Binary.CreateBinary(builder, *dma_range)
-        )
-        module.AddBdcCmdByte(builder, tiu_range[1])
-        module.AddGdmaCmdByte(builder, dma_range[1])
+        )  # 3
+        module.AddBdcCmdByte(builder, tiu_range[1])  # 4
+        module.AddGdmaCmdByte(builder, dma_range[1])  # 5
         return module.End(builder)
 
     def __repr__(self):
@@ -191,7 +202,8 @@ class CoreCmdGroup(FBSOptional):
         gdma_tiu_commands = self.gdma_tiu_commands.serialize(builder, save_binary_fun)
         module.Start(builder)
         if gdma_tiu_commands:
-            module.AddGdmaTiuCommands(builder, gdma_tiu_commands)
+            module.AddGdmaTiuCommands(builder, gdma_tiu_commands)  # 0
+
         return module.End(builder)
 
     def __repr__(self):
@@ -205,6 +217,7 @@ class ROData(FBSOptional):
         self.check_code = fbs.CheckCodeAsNumpy()
         binary_data = (fbs.BinaryCoeff().Start(), fbs.BinaryCoeff().Size())
         self.data = buffer[binary_data[0] : sum(binary_data)]
+        self.coeff_size = binary_data[1]
 
     def _serialize(self, builder, save_binary_fun):
         module = bmodel_fbs.CoeffMem
@@ -213,12 +226,12 @@ class ROData(FBSOptional):
             np.array(self.check_code, dtype=np.uint8)
         )
         module.Start(builder)
-        module.AddAddress(builder, self.address)
-        module.AddCheckCode(builder, check_code)
+        module.AddAddress(builder, self.address)  # 0
+        module.AddCheckCode(builder, check_code)  # 1
         coeff_range = save_binary_fun(self.data)
         module.AddBinaryCoeff(
             builder, bmodel_fbs.Binary.CreateBinary(builder, *coeff_range)
-        )
+        )  # 4
         return module.End(builder)
 
     def __repr__(self):
@@ -258,6 +271,9 @@ class Tensor(FBSOptional):
         self.size = fbs.Size()
 
         self._bmodel = bmodel_context.bmodel_net
+        self.cpu_addr = fbs.CpuAddr()
+        self.hidden = fbs.Hidden()
+        self.index = fbs.Index()
 
     @property
     @lru_cache()
@@ -299,16 +315,19 @@ class Tensor(FBSOptional):
             builder.PrependUOffsetTRelative(shape)
         shapes = builder.EndVector(len(self.shape))
         module.Start(builder)
-        module.AddName(builder, name)
-        module.AddDataType(builder, self.to_DType[self.dtype])
-        module.AddGmemStmode(builder, self.st_mode)
-        module.AddDeviceAddr(builder, self.device_addr)
-        module.AddPadH(builder, self.pad_h)
-        module.AddShape(builder, shapes)
-        module.AddScale(builder, self.scale)
-        module.AddZeroPoint(builder, self.zero_point)
-        module.AddSize(builder, self.size)
-        module.AddMemType(builder, self.mem_type)
+        module.AddName(builder, name)  # 0
+        module.AddDataType(builder, self.to_DType[self.dtype])  # 1
+        module.AddGmemStmode(builder, self.st_mode)  # 2
+        module.AddDeviceAddr(builder, self.device_addr)  # 3
+        module.AddSize(builder, self.size)  # 4
+        module.AddShape(builder, shapes)  # 5
+        module.AddMemType(builder, self.mem_type)  # 6
+        module.AddScale(builder, self.scale)  # 7
+        module.AddCpuAddr(builder, self.cpu_addr)  # 8
+        module.AddPadH(builder, self.pad_h)  # 9
+        module.AddZeroPoint(builder, self.zero_point)  # 10
+        module.AddHidden(builder, self.hidden)  # 11
+        module.AddIndex(builder, self.index)  # 12
         return module.End(builder)
 
     @property
@@ -329,11 +348,11 @@ class KernelModule(FBSOptional):
         module = bmodel_fbs.KernelModule
         file_name = builder.CreateString(self.file_name)
         module.Start(builder)
-        module.AddFileName(builder, file_name)
+        module.AddFileName(builder, file_name)  # 0
         binary_range = save_binary_fun(self.data)
         module.AddBinary(
             builder, bmodel_fbs.Binary.CreateBinary(builder, *binary_range)
-        )
+        )  # 1
         return module.End(builder)
 
     def __repr__(self) -> str:
@@ -351,8 +370,12 @@ class RunMode(Enum):
     UNKNOWN = 9
 
 
+# class MergeParam()
+#
+
+
 class SubNet(FBSOptional):
-    def init(self, fbs: bmodel_fbs.SubNet, buffer, stage_ir: List[StageIr]):
+    def init(self, fbs: bmodel_fbs.SubNet, buffer, binary_ir: bytes):
         # tpu-static, tpu-dynamic, cpu
         self.subnet_mode = fbs.SubnetMode()  # tpu:0 cpu:1
         self.is_dynamic = fbs.IsDynamic() == 1
@@ -381,12 +404,13 @@ class SubNet(FBSOptional):
         self.ir_len = fbs.IrLen()
         self.ir_offset = fbs.IrOffset()
 
+        # self.merge_param = fbs.MergeParam()
+        # self.switch_param = fbs.SwitchParam()
+        self.ir_buffer = self.cpu_param = None
         if self.run_mode == RunMode.TPU_DYNAMIC:
-            self.ir_buffer = stage_ir[0].ir_mem[
-                self.ir_offset : self.ir_offset + self.ir_len
-            ]
+            self.ir_buffer = binary_ir[self.ir_offset : self.ir_offset + self.ir_len]
         elif self.run_mode == RunMode.CPU:
-            self.cpu_params: List[CpuParam] = FBSArray(
+            self.cpu_param: List[CpuParam] = FBSArray(
                 fbs, ("CpuParam", CpuParam), buffer
             )
 
@@ -399,20 +423,45 @@ class SubNet(FBSOptional):
         next_id = builder.CreateNumpyVector(
             np.array(self.next_subnet_ids, dtype=np.int32)
         )
+
         module.Start(builder)
-        module.AddSubnetMode(builder, 0)
+        module.AddSubnetMode(builder, 0)  # 0
         if cmd_group:
-            module.AddCmdGroup(builder, cmd_group)
+            module.AddCmdGroup(builder, cmd_group)  # 1
+
+        if self.cpu_param:
+            cpu_param = self.cpu_param.serialize(builder, save_binary_fun)
+            module.AddCpuParam(builder, cpu_param)  # 2
+
+        module.AddInputTensor(builder, input_tensor)  # 3
+        module.AddOutputTensor(builder, output_tensor)  # 4
+
+        module.AddIsDynamic(builder, self.is_dynamic)  # 5
+        module.AddIrOffset(builder, self.ir_offset)  # 6
+        module.AddIrLen(builder, self.ir_len)  # 7
+        module.AddNDynamic(builder, 0)  # 8
+        module.AddHWDynamic(builder, 0)  # 9
+        module.AddId(builder, self.id)  # 10
+        module.AddNextSubnetIds(builder, next_id)  # 11
+
+        # module.AddMergeParam(builder, self.merge_param)  # 12
+        # module.AddSwitchParam(builder, self.switch_param)  # 13
+
         if core_commands:
-            module.AddCoreCommands(builder, core_commands)
-        module.AddInputTensor(builder, input_tensor)
-        module.AddOutputTensor(builder, output_tensor)
-        module.AddNextSubnetIds(builder, next_id)
+            module.AddCoreCommands(builder, core_commands)  # 14
         return module.End(builder)
 
     def __repr__(self):
         if self:
             return pformat(self.__dict__, indent=2)
+
+
+class NetStatic(FBSOptional):
+    pass
+
+
+class NetDynamic(FBSOptional):
+    pass
 
 
 class Parameter(FBSOptional):
@@ -424,8 +473,13 @@ class Parameter(FBSOptional):
         self.stage_ir: List[StageIr] = FBSArray(
             fbs, ("StageIr", StageIr), fbs.BinaryIr(), buffer
         )
+        self.binary_ir = None
+        if fbs.BinaryIr():
+            start, size = fbs.BinaryIr().Start(), fbs.BinaryIr().Size()
+            self.binary_ir = buffer[start : start + size]
+
         self.sub_net: List[SubNet] = FBSArray(
-            fbs, ("SubNet", SubNet), buffer, self.stage_ir
+            fbs, ("SubNet", SubNet), buffer, self.binary_ir
         )
         self.cmd_group: List[CmdGroup] = FBSArray(fbs, ("CmdGroup", CmdGroup), buffer)
         self.ctx_addr = fbs.CtxAddr()
@@ -433,29 +487,57 @@ class Parameter(FBSOptional):
         self.ctx_sizes: List[int] = FBSArray(fbs, ("CtxSizes", int))
         self.coeff_mem = ROData(fbs.CoeffMem(), buffer)
         self.core_num = fbs.CoreNum()
+        self.cpu_mem_size = fbs.CpuMemSize()
+
+        self.net_profile = None
+        if fbs.NetProfile():
+            start, size = fbs.NetProfile().Start(), fbs.NetProfile().Size()
+            self.net_profile = buffer[start : start + size]
 
     def _serialize(self, builder, save_binary_fun):
         module = bmodel_fbs.NetParameter
+
         input_tensor = self.input_tensor.serialize(builder, save_binary_fun)
         output_tensor = self.output_tensor.serialize(builder, save_binary_fun)
         sub_net = self.sub_net.serialize(builder, save_binary_fun)
         cmd_group = self.cmd_group.serialize(builder, save_binary_fun)
         coeff_mem = self.coeff_mem.serialize(builder, save_binary_fun)
+        stage_ir = self.stage_ir.serialize(builder, save_binary_fun)
+        self.stage_ir
+
+        ctx_sizes = builder.CreateNumpyVector(np.array(self.ctx_sizes, dtype=np.uint64))
 
         module.Start(builder)
-        module.AddInputTensor(builder, input_tensor)
-        module.AddOutputTensor(builder, output_tensor)
-        module.AddCtxAddr(builder, self.ctx_addr)
-        module.AddCtxSize(builder, self.ctx_size)
+        module.AddInputTensor(builder, input_tensor)  # 0
+        module.AddOutputTensor(builder, output_tensor)  # 1
+        module.AddCtxAddr(builder, self.ctx_addr)  # 2
+        module.AddCtxSize(builder, self.ctx_size)  # 3
         if coeff_mem:
-            module.AddCoeffMem(builder, coeff_mem)
-        module.AddIsDynamic(builder, 0)
-        module.AddNDynamic(builder, 0)
-        module.AddHWDynamic(builder, 0)
-        module.AddSubNet(builder, sub_net)
+            module.AddCoeffMem(builder, coeff_mem)  # 4
+        module.AddIsDynamic(builder, 0)  # 5
+        module.AddNDynamic(builder, 0)  # 6
+        module.AddHWDynamic(builder, 0)  # 7
         if cmd_group:
-            module.AddCmdGroup(builder, cmd_group)
-        module.AddCoreNum(builder, self.core_num)
+            module.AddCmdGroup(builder, cmd_group)  # 8
+
+        if self.net_profile:
+            net_profile_range = save_binary_fun(self.net_profile)
+            module.AddNetProfile(
+                builder, bmodel_fbs.Binary.CreateBinary(builder, *net_profile_range)
+            )
+
+        module.AddStageIr(builder, stage_ir)  # 10
+        if self.binary_ir:
+            binary_ir_range = save_binary_fun(self.binary_ir)
+            module.AddBinaryIr(
+                builder, bmodel_fbs.Binary.CreateBinary(builder, *binary_ir_range)
+            )  # 11
+        module.AddSubNet(builder, sub_net)  # 12
+        module.AddCpuMemSize(builder, self.cpu_mem_size)  # 13
+
+        module.AddCtxSizes(builder, ctx_sizes)  # 14
+        # module.AddNetStat(builder, ) # 15
+        module.AddCoreNum(builder, self.core_num)  # 16
         return module.End(builder)
 
     def __repr__(self) -> str:
@@ -469,13 +551,33 @@ class Net:
             fbs, ("Parameter", Parameter), buffer
         )
 
+        self.cascade = fbs.Cascade()
+
+        # for old bmodel, not use any more
+        # self.net_static = FBSArray(fbs, ("NetStatic", NetStatic))
+        # self.net_dynamic = FBSArray(fbs, ("NetStatic", NetDynamic))
+
     def serialize(self, builder, save_binary_fun):
         module = bmodel_fbs.Net
         name = builder.CreateString(self.name)
         parameter = self.parameter.serialize(builder, save_binary_fun)
+
+        # net_static = self.net_static.serialize(builder, save_binary_fun)
+        # net_dynamic = self.net_dynamic.serialize(builder, save_binary_fun)
+
         module.Start(builder)
-        module.AddName(builder, name)
-        module.AddParameter(builder, parameter)
+        module.AddName(builder, name)  # 0
+
+        # breakpoint()
+        # if net_static:
+        #     module.AddNetStatic(builder, net_static)  # 1
+        # if net_dynamic:
+        #     module.AddNetDynamic(builder, net_dynamic)  # 2
+
+        module.AddParameter(builder, parameter)  # 3
+
+        if self.cascade:
+            module.AddCascade(builder, self.cascade)
         return module.End(builder)
 
     def __repr__(self) -> str:
@@ -507,16 +609,20 @@ class BModel:
                 )
                 binary_desc = file_obj.read(self.head["flatbuffers_size"][0])
                 binary = file_obj.read(self.head["binary_size"][0])
-            bmodel = bmodel_fbs.Model.GetRootAsModel(binary_desc, 0)
+            bmodel: bmodel_fbs.Model = bmodel_fbs.Model.GetRootAsModel(binary_desc, 0)
 
             self.chip = bmodel.Chip().decode()
             self.version = bmodel.Version().decode()
             self.type = bmodel.Type().decode()
             self.kernel_module = KernelModule(bmodel.KernelModule(), binary)
             self.neuron_size = bmodel.NeuronSize()
+
             self.time = bmodel.Time().decode()
             self.net: List[Net] = FBSArray(bmodel, ("Net", Net), binary)
+            self.device_num = bmodel.DeviceNum()
+
             self.core_num = self.net[0].parameter[0].core_num
+
             self.context = get_target_context(self.chip)
 
     def __repr__(self):
@@ -539,19 +645,21 @@ class BModel:
         version = builder.CreateString(self.version)
         type_ = builder.CreateString(self.type)
         time = builder.CreateString(self.time)
-
+        net = self.net.serialize(builder, save_binary)
         kernel_module = self.kernel_module.serialize(builder, save_binary)
 
-        net = self.net.serialize(builder, save_binary)
         module.Start(builder)
-        module.AddType(builder, type_)
-        module.AddVersion(builder, version)
-        module.AddChip(builder, chip)
-        module.AddTime(builder, time)
-        module.AddNet(builder, net)
-        module.AddNeuronSize(builder, self.neuron_size)
+        module.AddType(builder, type_)  # id 0
+        module.AddVersion(builder, version)  # id 1
+        module.AddTime(builder, time)  # 2
+        module.AddChip(builder, chip)  # 3
+        module.AddNet(builder, net)  # 4
+        module.AddNeuronSize(builder, self.neuron_size)  # 5
+
         if kernel_module:
-            module.AddKernelModule(builder, kernel_module)
+            module.AddKernelModule(builder, kernel_module)  # 6
+
+        module.AddDeviceNum(builder, self.device_num)  # 7
         model = bmodel_fbs.Model.End(builder)
 
         builder.Finish(model)

@@ -53,6 +53,11 @@ void HardSwishLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ActiveOp>(rewriter, op);
 }
 
+void HardSwishLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::HardSwishOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void HardSwishLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::HardSwishOp op) const {
   llvm_unreachable("Not Implemented");

@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 float requant(const float &data, const quant::UniformQuantizedType &qtype) {
@@ -84,6 +85,22 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     F16(p.inputs[0], p.outputs[0], num_elem);
   } else if (in_type.isF32() && out_type.isBF16()) {
     BF16(p.inputs[0], p.outputs[0], num_elem, false);
+  } else if ((in_type.isF32() || in_type.isF16()) && out_type.isFloat8E4M3FN()) {
+    auto qtype_in = module::getCalibratedType(getInput());
+    float in_scale = qtype_in.getMax() / get_f8e4m3_max();
+    F8E4M3(p.inputs[0], p.outputs[0], num_elem, in_scale);
+  } else if ((in_type.isF32() || in_type.isF16()) && out_type.isFloat8E5M2()) {
+    F8E5M2(p.inputs[0], p.outputs[0], num_elem, 1.0);
+  } else if (in_type.isFloat8E4M3FN() && (out_type.isF32() || out_type.isF16())) {
+    auto qtype_in = module::getCalibratedType(getInput());
+    float in_scale = qtype_in.getMax()/get_f8e4m3_max();
+    for (int i=0;i<num_elem;i++) {
+      p.outputs[0][i] = p.inputs[0][i]*in_scale;
+    }
+  } else if (in_type.isFloat8E5M2() && (out_type.isF32() || out_type.isF16())) {
+    for (int i=0;i<num_elem;i++) {
+      p.outputs[0][i] = p.inputs[0][i];
+    }
   } else if (isOutQuant && false == isInQuant) {
     // FP32|BF16|F16|... => INT8|UINT8|...
     auto qtype = module::getUniformQuantizedType(getOutput());

@@ -24,6 +24,10 @@ void RoiAlignLowering::LoweringF16(PatternRewriter &rewriter, top::RoiAlignOp op
   LoweringF32(rewriter, op);
 }
 
+void RoiAlignLowering::LoweringF8(PatternRewriter &rewriter, top::RoiAlignOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void RoiAlignLowering::LoweringINT4(PatternRewriter &rewriter, top::RoiAlignOp op,
                                     bool asymmetric) const {
   LoweringF32(rewriter, op);

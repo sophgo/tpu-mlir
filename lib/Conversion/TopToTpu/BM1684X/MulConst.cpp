@@ -65,6 +65,10 @@ void MulConstLowering::LoweringF16(PatternRewriter &rewriter,
     lowering_common_f16<tpu::MulConstOp>(rewriter, op);
 }
 
+void MulConstLowering::LoweringF8(PatternRewriter &rewriter,
+                                   top::MulConstOp op) const {
+  llvm_unreachable("Not Implemented");
+}
 void MulConstLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::MulConstOp op) const {
   llvm_unreachable("Not Implemented");

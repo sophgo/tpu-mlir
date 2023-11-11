@@ -88,6 +88,10 @@ DATA_TYPE_T BM168x::getDataType(mlir::Type type) {
     return DTYPE_BFP16;
   } else if (type.isF16()) {
     return DTYPE_FP16;
+  } else if (type.isFloat8E4M3FN()) {
+    return DTYPE_F8E4M3;
+  } else if (type.isFloat8E5M2()) {
+    return DTYPE_F8E5M2;
   }
   type.dump();
   llvm_unreachable("Unsupport type \n");
@@ -98,6 +102,8 @@ int BM168x::getGdmaFormat(DATA_TYPE_T data_type) {
   switch (data_type) {
   case DTYPE_INT8:
   case DTYPE_UINT8:
+  case DTYPE_F8E4M3:
+  case DTYPE_F8E5M2:
     return GDMA_VALUE_FORMAT_INT8;
   /*case DTYPE_INT4:   // for SG2260
   case DTYPE_UINT4:

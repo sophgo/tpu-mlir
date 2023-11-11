@@ -41,6 +41,11 @@ void PreprocessLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::PreprocessOp>(rewriter, op, 1);
 }
 
+void PreprocessLowering::LoweringF8(PatternRewriter &rewriter,
+                                     top::PreprocessOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void PreprocessLowering::LoweringQuantized(PatternRewriter &rewriter,
                                            top::PreprocessOp op) const {
   llvm_unreachable("Not Implemented");

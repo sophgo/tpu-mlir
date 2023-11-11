@@ -74,6 +74,8 @@ typedef enum {
   DTYPE_BFP16 = 8,
   DTYPE_INT4 = 9,
   DTYPE_UINT4 = 10,
+  DTYPE_F8E4M3 = 11,
+  DTYPE_F8E5M2 = 12,
   DTYPE_UNKNOWN = -1,
 } DATA_TYPE_T;
 
@@ -1171,6 +1173,8 @@ typedef struct a16_matmul_spec {
   bool sign;
   bool R_trans;
   int weight_bits;
+  bool has_zp;
+  int q_group_size;
 } a16_matmul_spec_t;
 
 typedef struct batch_matmul_common_spec {

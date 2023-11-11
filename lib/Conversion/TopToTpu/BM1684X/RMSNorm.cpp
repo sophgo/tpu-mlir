@@ -80,6 +80,11 @@ void RMSNormLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringRMSNorm(rewriter, op, rewriter.getF16Type());
 }
 
+void RMSNormLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::RMSNormOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void RMSNormLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::RMSNormOp op) const {
   llvm_unreachable("Not Implemented");

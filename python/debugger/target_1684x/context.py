@@ -6,19 +6,20 @@
 # third-party components.
 #
 # ==============================================================================
-
+import os
 from typing import List
 from ..target_common import *
-from .cmodel import MemRef, BM1684XRunner
+from .cmodel import BM1684XRunner as BM1684XCModel
+from .pcie import BM1684XRunner as BM1684XPcie
 from .decoder import decoder_instance
-from .memmap import memmap
+from .memmap import memmap, MemRef
 from .regdef import sDMA_sys_reg as dma_sys, SYSID_reg as tiu_sys
 from .memmap import *
 
 
-class BM1684XContext(CModelContext):
+class BM1684XContext(BModelContext):
     MemRef = MemRef
-    device = Device.BM1684X
+    device = Target.BM1684X
     decoder = decoder_instance
 
     memmap = memmap
@@ -56,6 +57,13 @@ class BM1684XContext(CModelContext):
         return [x[1] for x in cmd_sorted]
 
     def get_runner(self, memory_size: int) -> CModelRunner:
-        if self._runner is None:
-            self._runner = BM1684XRunner(memory_size)
-        return self._runner
+        if self.using_cmodel:
+            if self._cmodel_runner is None:
+                self._cmodel_runner = BM1684XCModel(memory_size)
+            runner = self._cmodel_runner
+        else:
+            if self._chip_runner is None:
+                self._chip_runner = BM1684XPcie(memory_size)
+            runner = self._chip_runner
+
+        return runner

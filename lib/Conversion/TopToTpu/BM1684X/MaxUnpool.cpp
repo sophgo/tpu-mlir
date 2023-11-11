@@ -36,6 +36,11 @@ void MaxUnpoolLowering::LoweringF16(PatternRewriter &rewriter,
   llvm_unreachable("Not Implemented");
 }
 
+void MaxUnpoolLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::MaxUnpoolOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void MaxUnpoolLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::MaxUnpoolOp op) const {
   llvm_unreachable("Not Implemented");

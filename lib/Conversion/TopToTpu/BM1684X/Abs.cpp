@@ -48,6 +48,10 @@ void AbsLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ActiveOp>(rewriter, op);
 }
 
+void AbsLowering::LoweringF8(PatternRewriter &rewriter,
+                              top::AbsOp absOp) const {
+  llvm_unreachable("FIXME: not implement");
+}
 void AbsLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::AbsOp absOp) const {
   llvm_unreachable("Not Implemented");

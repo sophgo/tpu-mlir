@@ -10,6 +10,7 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float8.h"
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 
@@ -265,6 +266,20 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
+    } else if (out_type.isFloat8E4M3FN()) {
+      if (!getOutF8Scale().has_value())
+        llvm_unreachable("should have out scale for conv2d in f8 mode");
+      f64_array_t quant_scale_v = module::getF64Array(getOutF8Scale().value());
+
+      for (int i=0;i<quant_scale_v.get()->size();i++) {
+        size_t out_c_num = num_elem/quant_scale_v.get()->size();
+        for (int j=0;j<out_c_num;j++) {
+          p.outputs[0][i*out_c_num+j] = p.outputs[0][i*out_c_num+j] * quant_scale_v.get()->at(i);
+          p.outputs[0][i*out_c_num+j] = f8e4m3_to_f32(f32_to_f8e4m3(p.outputs[0][i*out_c_num+j]));
+        }
+      }
+    } else if (out_type.isFloat8E5M2()) {
+      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
@@ -516,20 +531,15 @@ void tpu::Conv2DOp::assign_fw_param(void *param) {
 
 ArrayAttr tpu::Conv2DOp::getIndexingMaps() {
   MLIRContext *context = getContext();
-  AffineMap identity2Map = AffineMap::getMultiDimIdentityMap(2, context);
-  AffineMap inputMap = AffineMap::get(2, 0, identity2Map.getResult(0));
-  AffineMap filterMap = AffineMap::get(2, 0, identity2Map.getResult(1));
-  AffineMap emptyMap = AffineMap::get(2, 0, context);
+  // TODO: split OC
+  AffineMap identity1Map = AffineMap::getMultiDimIdentityMap(1, context);
+  AffineMap emptyMap = AffineMap::get(1, 0, context);
 
-  SmallVector<AffineMap> indexingMaps{inputMap, filterMap};
+  SmallVector<AffineMap> indexingMaps{identity1Map, emptyMap};
 
   for (int i = 2, n = getNumOperands(); i < n; ++i) {
-    if (module::isNone(getOperand(i)))
-      indexingMaps.push_back(emptyMap);
-    else
-      indexingMaps.push_back(filterMap);
+    indexingMaps.push_back(emptyMap);
   }
-  indexingMaps.push_back(identity2Map);
-  return Builder(getContext()).getAffineMapArrayAttr({});
+  indexingMaps.push_back(identity1Map);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }

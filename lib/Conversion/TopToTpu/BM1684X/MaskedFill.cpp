@@ -35,6 +35,11 @@ void MaskedFillLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::MaskedFillOp>(rewriter, op);
 }
 
+void MaskedFillLowering::LoweringF8(PatternRewriter &rewriter,
+                                     top::MaskedFillOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void MaskedFillLowering::LoweringQuantized(PatternRewriter &rewriter,
                                            top::MaskedFillOp op) const {
   llvm_unreachable("Not Implemented");

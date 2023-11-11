@@ -62,6 +62,10 @@ void PadLowering::LoweringF16(PatternRewriter &rewriter, top::PadOp op) const {
   lowering_common_f16<tpu::PadOp>(rewriter, op, 4);
 }
 
+void PadLowering::LoweringF8(PatternRewriter &rewriter, top::PadOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void PadLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::PadOp op) const {
   auto op_ = op.getOperation();

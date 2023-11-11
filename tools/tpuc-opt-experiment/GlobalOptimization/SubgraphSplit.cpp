@@ -35,11 +35,12 @@ static void getInputsOutputs(std::vector<Operation *> &ops,
   }
   for (auto op : ops) {
     for (auto v : op->getOperands()) {
-      if (v.isa<BlockArgument>()) {
-        inputs.push_back(v);
+      if (find(inputs.begin(), inputs.end(), v) != inputs.end()) {
         continue;
       }
-      if (find(inputs.begin(), inputs.end(), v) != inputs.end()) {
+
+      if (v.isa<BlockArgument>()) {
+        inputs.push_back(v);
         continue;
       }
 
@@ -59,6 +60,16 @@ static void getInputsOutputs(std::vector<Operation *> &ops,
       }
     }
   }
+
+  /*inputs.erase(
+      std::unique(inputs.begin(), inputs.end(), [](const Value &lhs, const Value &rhs) {
+        return lhs.getImpl() < rhs.getImpl();
+      }), inputs.end());
+
+  outputs.erase(
+      std::unique(outputs.begin(), outputs.end(), [](const Value &lhs, const Value &rhs) {
+        return lhs.getImpl() < rhs.getImpl();
+      }), outputs.end());*/
 }
 
 struct subnet_basic_info;
@@ -159,6 +170,8 @@ public:
         resType.push_back(output.getType());
       }
 
+      auto moduleOp = SymbolTable::getNearestSymbolTable(funcOp);
+      builder.setInsertionPointToStart(&moduleOp->getRegion(0).front());
       int64_t id = subnet->index;
       std::string func_name = funcOp.getName().str() + "subfunc_" + std::to_string(id);
       std::vector<NamedAttribute> attrs;
@@ -171,8 +184,7 @@ public:
 
       auto fnType = FunctionType::get(
             &getContext(), llvm::ArrayRef<Type>{argType}, llvm::ArrayRef<Type>{resType});
-      auto fnOp = mlir::func::FuncOp::create(
-                                 builder.getUnknownLoc(),
+      auto fnOp = builder.create<func::FuncOp>(builder.getUnknownLoc(),
                                  func_name, fnType,
                                  ArrayRef<NamedAttribute>(attrs));
 
@@ -205,8 +217,6 @@ public:
           return fnOp->isProperAncestor(operand.getOwner());
         });
       }
-
-      funcOp->getParentOfType<mlir::ModuleOp>().push_back(fnOp);
     }
   }
 

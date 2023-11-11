@@ -37,6 +37,11 @@ void ReverseLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void ReverseLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::ReverseOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void ReverseLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::ReverseOp op) const {
   LoweringF32(rewriter, op);

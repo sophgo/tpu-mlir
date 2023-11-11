@@ -437,7 +437,7 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
       if (i == 1 && op.getWeightBits().has_value() &&
           wOp.getType().cast<RankedTensorType>().getShape().size() == 2) {
         auto noneOp = module::getNoneOp(op);
-        operands.insert(operands.end(), {in, noneOp, op->getOperand(2)});
+        operands.insert(operands.end(), {in, noneOp, noneOp, op->getOperand(2)});
         std::vector<NamedAttribute> attrs;
         auto weight_bits = rewriter.getNamedAttr(
             "weight_bits",
@@ -474,7 +474,7 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
       if (i == 1 && op.getWeightBits().has_value() &&
           wOp.getType().cast<RankedTensorType>().getShape().size() == 2) {
         auto noneOp = module::getNoneOp(op);
-        operands.insert(operands.end(), {in, noneOp, op->getOperand(2)});
+        operands.insert(operands.end(), {in, noneOp, noneOp, op->getOperand(2)});
         std::vector<NamedAttribute> attrs;
         auto weight_bits = rewriter.getNamedAttr(
             "weight_bits",
@@ -495,6 +495,11 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
   }
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
                                              op->getAttrs());
+}
+
+void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
+                                 top::MatMulOp op) const {
+  LoweringF32(rewriter, op);
 }
 
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,

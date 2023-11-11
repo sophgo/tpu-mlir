@@ -79,6 +79,10 @@ void GRULowering::LoweringF16(PatternRewriter &rewriter, top::GRUOp op) const {
   LoweringGRU(rewriter, op, rewriter.getF32Type());
 }
 
+void GRULowering::LoweringF8(PatternRewriter &rewriter, top::GRUOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void GRULowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::GRUOp op) const {
   llvm_unreachable("Not Implemented");

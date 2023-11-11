@@ -22,7 +22,7 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
   let dependentDialects = ["tpu_mlir::top::TopDialect", "tpu_mlir::tpu::TpuDialect"];
   let options = [
     Option<"mode", "mode", "std::string", /*default=*/"",
-           "default quantization mode: INT8/BF16/F32">,
+           "default quantization mode: INT8/BF16/F32/F8/F8E4M3/F8E5M2">,
     Option<"qtable", "qtable", "std::string", /*default=*/"",
            "a table of Ops that quantized to specific mode">,
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"false",
@@ -32,7 +32,9 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
     Option<"ignore_f16_overflow", "ignore_f16_overflow", "bool", /*default=*/"false",
            "some ops convert from f16 to f32, to avoid f16 overflow">,
     Option<"weightFileName", "weightFileName", "std::string", /*default=*/"",
-           "weight file name to save">
+           "weight file name to save">,
+    Option<"quantGroupSize", "q_group_size", "int", /*default=*/"",
+           "group size for per-group W4A16 quant">
   ];
 }
 

@@ -40,6 +40,10 @@ void DivLowering::LoweringF16(PatternRewriter &rewriter, top::DivOp op) const {
   }
 }
 
+void DivLowering::LoweringF8(PatternRewriter &rewriter, top::DivOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void DivLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::DivOp op) const {
   lowering_common<tpu::DivOp>(rewriter, op.getOperation(),

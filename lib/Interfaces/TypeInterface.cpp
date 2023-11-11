@@ -39,6 +39,14 @@ std::string type_string(mlir::Type type) {
     str = "f16";
   } else if (t.isBF16()) {
     str = "bf16";
+  } else if (t.isFloat8E5M2()) {
+    str = "f8e5m2";
+  } else if (t.isFloat8E5M2FNUZ()) {
+    str = "f8e5m2";
+  } else if (t.isFloat8E4M3FN()) {
+    str = "f8e4m3";
+  } else if (t.isFloat8E4M3FNUZ()) {
+    str = "f8e4m3";
   } else if (t.isIntOrIndex()) {
     if (t.isUnsignedInteger()) {
       str = "ui";

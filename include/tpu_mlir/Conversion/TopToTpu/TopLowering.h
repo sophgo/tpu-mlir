@@ -303,6 +303,11 @@ public:
       }
       LoweringBF16(rewriter, opTy);
       break;
+    case module::Mode::F8:
+    case module::Mode::F8E4M3:
+    case module::Mode::F8E5M2:
+      LoweringF8(rewriter, opTy);
+      break;
     default:
       LoweringF32(rewriter, opTy);
       break;
@@ -326,6 +331,9 @@ public:
     llvm_unreachable("Not Implemented");
   }
   virtual void LoweringF32(PatternRewriter &rewriter, OpTy opTy) const {
+    llvm_unreachable("Not Implemented");
+  }
+  virtual void LoweringF8(PatternRewriter &rewriter, OpTy opTy) const {
     llvm_unreachable("Not Implemented");
   }
   virtual void LoweringQuantized(PatternRewriter &rewriter, OpTy opTy) const {
@@ -353,7 +361,7 @@ public:
 // Lowering to a new Operation, with the same operands and same attrs, and
 // newType
 template <typename OpTy>
-static void lowering_common(PatternRewriter &rewriter, Operation *from,
+static OpTy lowering_common(PatternRewriter &rewriter, Operation *from,
                             Type newType, int num_operands = 0) {
   auto stype = module::getStorageType(newType);
   std::vector<Value> operands;
@@ -370,6 +378,10 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
         operands.push_back(wOp.clone_f16(from));
       } else if (stype.isBF16()) {
         operands.push_back(wOp.clone_bf16(from));
+      } else if (stype.isFloat8E5M2()) {
+        operands.push_back(wOp.clone_f8e5m2(from));
+      } else if (stype.isFloat8E4M3FN()) {
+        operands.push_back(wOp.clone_f8e4m3(from, false));
       } else {
         operands.push_back(in);
       }
@@ -383,7 +395,7 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
       operands.push_back(noneOp);
     }
   }
-  rewriter.replaceOpWithNewOp<OpTy>(from, newType, operands, from->getAttrs());
+  return rewriter.replaceOpWithNewOp<OpTy>(from, newType, operands, from->getAttrs());
 }
 
 // lowering to a new Operation, with same operands and same attrs, and quantize
@@ -395,6 +407,24 @@ static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
   assert(from->getNumResults() == 1);
   auto newType = getQuantInt8Type(from->getResult(0), asymmetric);
   lowering_common<OpTy>(rewriter, from, newType, num_operands);
+}
+
+
+Type getQuantF8E4M3Type(Value v);
+Type getQuantF8E5M2Type(Value v);
+
+
+template <typename OpTy>
+static OpTy lowering_common_f8(PatternRewriter &rewriter, Operation *from, bool isE4,
+                                 int num_operands = 0) {
+  assert(from->getNumResults() == 1);
+  if (isE4) {
+    auto newType = getQuantF8E4M3Type(from->getResult(0));
+    return lowering_common<OpTy>(rewriter, from, newType, num_operands);
+  } else {
+    auto newType = getQuantF8E5M2Type(from->getResult(0));
+    return lowering_common<OpTy>(rewriter, from, newType, num_operands);
+  }
 }
 
 template <typename ElemTy = Float32Type>
@@ -454,6 +484,7 @@ static void lowering_common_f16(PatternRewriter &rewriter, Operation *from,
   lowering_common_float<OpTy, Float16Type>(rewriter, from, num_operands);
 }
 
+
 // from int8 to int8, convert one (scale zp) to another (scale zp)
 Value do_transfer(Value in, Value out, bool asymmetric);
 Value do_transfer_fp(Value in, Value out, bool asymmetric);
@@ -496,6 +527,8 @@ Value do_binary_saclar(Value input, Type to_type, int64_t scalar,
   return newOp.getOutput();
 }
 
+
+Value do_f8_relu(Value input, Type to_type, double relu_limit);
 Value do_reshape(Value input, RankedTensorType to_type);
 Value do_transpose(Location name_loc, Value input, std::vector<int64_t> &order);
 Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,

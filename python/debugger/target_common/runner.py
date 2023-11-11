@@ -129,6 +129,7 @@ def open_lib(lib_name):
                 break
         if not lib_full_name:
             raise OSError
+
         lib_temp_name = temp_position(lib_full_name)
 
         return ctypes.CDLL(lib_temp_name)
@@ -137,23 +138,29 @@ def open_lib(lib_name):
      Error was: {e}"""
         raise OSError(msg)
     finally:
-        os.remove(lib_temp_name)
+        # os.remove(lib_temp_name)
+        pass
 
 
 class MemoryBase:
-    def __init__(self, LMEM: ndarray, DDR: ndarray, SMEM: ndarray) -> None:
-        self.LMEM = LMEM.ravel()
-        self.DDR = DDR.ravel()
-        self.SMEM = SMEM.ravel()
+    using_cmodel = True
+
+    def __init__(self):
         self.CPU_MEM = {}
 
     def clear_memory(self):
+        raise NotImplementedError()
+
+    def get_data_from_address(self, address: int, size) -> np.ndarray:
         raise NotImplementedError()
 
     def get_data(self, value: Value) -> np.ndarray:
         raise NotImplementedError()
 
     def set_data(self, value: MemRefBase, data: np.ndarray):
+        raise NotImplementedError()
+
+    def set_data_to_address(self, address: int, data: np.ndarray):
         raise NotImplementedError()
 
     def set_cpu_data(self, cmd_id: int, data: List[np.ndarray]):
@@ -170,11 +177,18 @@ class MemoryBase:
         pass
 
 
-class CModelRunner:
+class Runner:
     memory: MemoryBase
     DDR: ndarray
     LMEM: ndarray
     SMEM: ndarray
+    using_cmodel = True
+
+    def tiu_compute(self, command, core_id=0):
+        raise NotImplementedError()
+
+    def dma_compute(self, command, core_id=0):
+        raise NotImplementedError()
 
     @property
     @lru_cache()
@@ -183,24 +197,6 @@ class CModelRunner:
 
         cpu_processer = pyruntime_bm.CpuLayer()
         return cpu_processer
-
-    @property
-    def DDR(self):
-        return self.memory.DDR
-
-    @property
-    def LMEM(self):
-        return self.memory.LMEM
-
-    @property
-    def SMEM(self):
-        return self.memory.SMEM
-
-    def tiu_compute(self, command, core_id=0):
-        raise NotImplementedError()
-
-    def dma_compute(self, command, core_id=0):
-        raise NotImplementedError()
 
     def cpu_compute(self, command: CpuOp, core_id=0):
         assert all(
@@ -255,15 +251,37 @@ List[List[int]]"""
         pass
 
 
-class ChipRunner:
+class CModelRunner(Runner):
+    using_cmodel = True
+
+    @property
+    def DDR(self):
+        return self.memory.DDR
+
+    @property
+    def LMEM(self):
+        return self.memory.LMEM
+
+    @property
+    def SMEM(self):
+        return self.memory.SMEM
+
+
+class CModelMemory(MemoryBase):
+    using_cmodel = True
+
+    def __init__(self, LMEM: ndarray, DDR: ndarray, SMEM: ndarray) -> None:
+        self.LMEM = LMEM.ravel()
+        self.DDR = DDR.ravel()
+        self.SMEM = SMEM.ravel()
+
+
+class DeviceRunner(Runner):
     """
     TODO
     """
 
-    memory: MemoryBase
-    DDR: ndarray
-    LMEM: ndarray
-    SMEM: ndarray
+    using_cmodel = False
 
     @property
     def DDR(self):
@@ -282,3 +300,10 @@ class ChipRunner:
 
     def dma_compute(self, command, core_id=0):
         raise NotImplementedError()
+
+
+class DeviceMemory(MemoryBase):
+    using_cmodel = False
+
+    def __init__(self, lib) -> None:
+        super().__init__()

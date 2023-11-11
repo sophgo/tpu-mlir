@@ -34,6 +34,7 @@ struct Attr {
   static constexpr llvm::StringRef INPUTS = "module.inputs";
   static constexpr llvm::StringRef OUTPUTS = "module.outputs";
   static constexpr llvm::StringRef TRAIN = "module.train";
+  static constexpr llvm::StringRef QUANT_GROUP_SIZE = "module.q_group_size";
 };
 
 static ModuleOp m = nullptr;
@@ -920,6 +921,12 @@ bool isF16Modes() {
   return mode == Mode::F16 || mode == Mode::W8F16 || mode == Mode::W4F16;
 }
 
+bool isF8Modes() {
+  auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
+  auto mode = symbolizeMode(s).value_or(Mode::F32);
+  return mode == Mode::F8 || mode == Mode::F8E4M3 || mode == Mode::F8E5M2;
+}
+
 void setChip(Chip chip_) {
   chip = chip_;
   auto s = stringifyChip(chip_);
@@ -978,6 +985,18 @@ bool isAsymmetric() {
 
 void setAsymmetric(bool is_asymmetric) {
   m->setAttr(Attr::ASYMMETRIC, BoolAttr::get(ctx, is_asymmetric));
+}
+
+int getQuantGroupSize() {
+  if (m->hasAttrOfType<IntegerAttr>(Attr::QUANT_GROUP_SIZE)) {
+    return m->getAttrOfType<IntegerAttr>(Attr::QUANT_GROUP_SIZE).getValue().getSExtValue();
+  }
+  return 0;
+}
+
+void setQuantGroupSize(int q_group_size) {
+  auto intType = IntegerType::get(ctx, 64);
+  m->setAttr(Attr::QUANT_GROUP_SIZE, IntegerAttr::get(intType, q_group_size));
 }
 
 bool isTrain() {

@@ -55,6 +55,10 @@ void EluLowering::LoweringF16(PatternRewriter &rewriter,
   set_elu_attr(rewriter, op);
   lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
+void EluLowering::LoweringF8(PatternRewriter &rewriter,
+                                top::EluOp op) const {
+  llvm_unreachable("Not Implemented");
+}
 void EluLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::EluOp op) const {
   LoweringINT8(rewriter, op, true);

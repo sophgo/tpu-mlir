@@ -35,6 +35,11 @@ void PermuteLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::PermuteOp>(rewriter, op, 2);
 }
 
+void PermuteLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::PermuteOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void PermuteLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::PermuteOp op) const {
   lowering_common<tpu::PermuteOp>(rewriter, op, op.getOutput().getType(), 2);

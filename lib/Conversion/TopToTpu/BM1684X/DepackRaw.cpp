@@ -48,6 +48,11 @@ void DepackRawLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringDepackRaw(rewriter, op);
 }
 
+void DepackRawLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::DepackRawOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void DepackRawLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::DepackRawOp op) const {
   llvm_unreachable("Not Implemented");

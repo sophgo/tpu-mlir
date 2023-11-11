@@ -25,6 +25,7 @@ def SG2260_Dialect : Dialect {
   let cppNamespace = "::tpu_mlir::sg2260";
   let description = [{The SG2260 chip Atomic instruciton.}];
   let useDefaultTypePrinterParser = 1;
+  let useDefaultAttributePrinterParser = 1;
   let extraClassDeclaration = [{
        void registerTypes();
   }];

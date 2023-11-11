@@ -8,16 +8,19 @@
 # ==============================================================================
 
 from .decoder import DecoderBase
-from .cmodel import (
+from .runner import (
     c_array_to_ndarray,
     MemoryBase,
     CModelRunner,
+    DeviceRunner,
+    CModelMemory,
+    DeviceMemory,
     lib_wrapper,
     open_lib,
     local_mem,
 )
 from .context import (
-    CModelContext,
+    BModelContext,
     get_target_context,
     use_backend,
 )
@@ -33,7 +36,7 @@ from .op_support import (
     BaseTpuOp,
     get_dtype,
     bf16_to_fp32,
-    Device,
+    Target,
     ExtEnum,
     ALIGN,
     DIV_UP,

@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::top;
@@ -51,6 +52,20 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
     auto data_f32 = std::make_shared<std::vector<float>>(data_u16->size());
     for (uint64_t i = 0; i < data_u16->size(); i++) {
       data_f32->data()[i] = bf16_to_f32(data_u16->data()[i]);
+    }
+    return data_f32;
+  } else if (dtype.isFloat8E4M3FN()) {
+    auto data_u8 = read<uint8_t>();
+    auto data_f32 = std::make_shared<std::vector<float>>(data_u8->size());
+    for (uint64_t i = 0; i < data_u8->size(); i++) {
+      data_f32->data()[i] = f8e4m3_to_f32(data_u8->data()[i]);
+    }
+    return data_f32;
+  } else if (dtype.isFloat8E5M2()) {
+    auto data_u8 = read<uint8_t>();
+    auto data_f32 = std::make_shared<std::vector<float>>(data_u8->size());
+    for (uint64_t i = 0; i < data_u8->size(); i++) {
+      data_f32->data()[i] = f8e5m2_to_f32(data_u8->data()[i]);
     }
     return data_f32;
   } else if (dtype.isUnsignedInteger(16)) {
@@ -128,6 +143,12 @@ std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
     auto bytes = data_u16->size() * sizeof(uint16_t);
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
     memcpy(data_u8->data(), data_u16->data(), bytes);
+    return std::move(data_u8);
+  } else if (dtype.isa<Float8E4M3FNType, Float8E5M2Type>()) {
+    auto data_f8 = read<uint8_t>();
+    auto bytes = data_f8->size();
+    auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
+    memcpy(data_u8->data(), data_u8->data(), bytes);
     return std::move(data_u8);
   }
   dump();
@@ -242,6 +263,99 @@ Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto new_type = RankedTensorType::get(type.getShape(), builder.getF16Type());
   auto ret =
       module::weightFile().addTensor(new_name, data_f16->data(), new_type);
+  assert(succeeded(ret));
+  auto nameAttr = builder.getStringAttr(new_name);
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
+                                             ValueRange{});
+  return newOp.getResult();
+};
+
+Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
+  auto type = getType().cast<RankedTensorType>();
+  auto shape = type.getShape();
+  auto dtype = type.getElementType();
+  assert(dtype.isF32());
+  auto data = read<float>();
+  auto count = data->size();
+  auto cnt_p_c = count / shape[0];
+  auto data_f8 = std::make_shared<std::vector<uint8_t>>(count);
+
+  f64_array_t weight_scale_v;
+  if (per_channel_scale) {
+    if (getScale().has_value()) {
+      weight_scale_v = module::getF64Array(getScale().value());
+      assert(shape[0] == weight_scale_v->size());
+    }
+    else {
+      // search for the max value and set scale to it
+      std::vector<double> weight_scale_v_;
+      for (size_t i=0;i<shape[0];i++) {
+        float absmax = std::abs(data->at(i*cnt_p_c));
+        for (size_t j=0;j<cnt_p_c;j++) {
+          absmax = std::abs(data->at(i*cnt_p_c+j)) > absmax ? std::abs(data->at(i*cnt_p_c+j)) : absmax;
+        }
+        absmax = absmax > 1e-8 ? absmax: 1e-8;
+        weight_scale_v_.push_back(absmax / get_f8e4m3_max());
+      }
+      weight_scale_v = std::make_shared<std::vector<double>>(weight_scale_v_);
+    }
+#pragma omp parallel for schedule(static, omp_schedule(count))
+    for (uint32_t i = 0; i < count; i++) {
+      data->at(i) = data->at(i)/weight_scale_v.get()->at((int)(i/cnt_p_c));
+    }
+  } else {
+    float absmax = std::abs(data->at(0));
+    for (int i=0;i<count;i++)
+      absmax = absmax>std::abs(data->at(i)) ? absmax : std::abs(data->at(i));
+    weight_scale_v = std::make_shared<std::vector<double>>(1, absmax / get_f8e4m3_max());
+  }
+#pragma omp parallel for schedule(static, omp_schedule(count))
+  for (uint32_t i = 0; i < count; i++) {
+    data_f8->at(i) = f32_to_f8e4m3(data->at(i));
+  }
+  // FIXME: should calculate the scale and set the scale attr
+  auto ctx = OwnerOp->getContext();
+  OpBuilder builder(ctx);
+
+  builder.setInsertionPoint(OwnerOp);
+  // if the weightop will be used by 2 ops, it need to create a new WeightOp
+  std::string new_name = module::getName(OwnerOp).str() + module::getName(getOperation()).str() + "_f8e4m3";
+  auto new_type = RankedTensorType::get(type.getShape(),builder.getFloat8E4M3FNType()); // builder.getFloat8E5M2Type());
+  auto ret =
+      module::weightFile().addTensor(new_name, data_f8->data(), new_type);
+  assert(succeeded(ret));
+  auto nameAttr = builder.getStringAttr(new_name);
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
+                                             ValueRange{});
+  if (!getScale().has_value()) {
+    newOp.getOperation()->setAttr("scale", builder.getF64ArrayAttr(ArrayRef<double>{*weight_scale_v}));
+  }
+
+  return newOp.getResult();
+};
+
+Value WeightOp::clone_f8e5m2(Operation *OwnerOp) {
+  auto type = getType().cast<RankedTensorType>();
+  auto dtype = type.getElementType();
+  assert(dtype.isF32());
+  auto data = read<float>();
+  auto count = data->size();
+  auto data_f8 = std::make_shared<std::vector<uint8_t>>(count);
+
+#pragma omp parallel for schedule(static, omp_schedule(count))
+  for (uint32_t i = 0; i < count; i++) {
+    data_f8->at(i) = f32_to_f8e5m2(data->at(i));
+  }
+  // FIXME: scale set to 1.0
+  auto ctx = OwnerOp->getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPoint(OwnerOp);
+  // if the weightop will be used by 2 ops, it need to create a new WeightOp
+  std::string new_name = module::getName(OwnerOp).str() +
+                         module::getName(getOperation()).str() + "_f8e5m2";
+  auto new_type = RankedTensorType::get(type.getShape(),builder.getFloat8E5M2Type()); // builder.getFloat8E5M2Type());
+  auto ret =
+      module::weightFile().addTensor(new_name, data_f8->data(), new_type);
   assert(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,

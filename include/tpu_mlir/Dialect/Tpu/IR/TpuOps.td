@@ -357,7 +357,8 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     OptionalAttr<SI32Attr>:$multiplier_pos,
     OptionalAttr<SI32Attr>:$multiplier_neg,
     OptionalAttr<SI32Attr>:$rshift_pos,
-    OptionalAttr<SI32Attr>:$rshift_neg
+    OptionalAttr<SI32Attr>:$rshift_neg,
+    OptionalAttr<F64ArrayAttr>:$out_f8_scale
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -395,7 +396,8 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<F64Attr>:$out_f8_scale
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -431,7 +433,9 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     /// asymmetric quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    /// fp8 quantize param
+    OptionalAttr<F64Attr>:$fp8_out_scale
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -463,7 +467,9 @@ def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D",[
     /// asymmetric quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    /// fp8 quantize param
+    OptionalAttr<F64Attr>:$fp8_out_scale
   );
 }
 
@@ -534,6 +540,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
+    OptionalAttr<F64ArrayAttr>:$out_f8_scales, // for fp8 quant
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -709,6 +716,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
+    OptionalAttr<F64ArrayAttr>:$out_f8_scales,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -1051,11 +1059,14 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul"> {
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$weight,
-    AnyTensorOrNone:$scale, // the scale for quantized weight
-    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$scale, // scales for weight quant
+    AnyTensorOrNone:$zp, // zero points for weight quant
+    AnyTensorOrNone:$bias, // note: bias has to be the last operand
     I64Attr:$weight_bits,
     DefaultValuedAttr<BoolAttr, "true">:$sign,
-    DefaultValuedAttr<BoolAttr, "false">:$w_transpose
+    DefaultValuedAttr<BoolAttr, "false">:$w_transpose,
+    // do per-group quant if q_group_size > 0, otherwise per-channel
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size
   );
 
   let hasCanonicalizeMethod = 1;

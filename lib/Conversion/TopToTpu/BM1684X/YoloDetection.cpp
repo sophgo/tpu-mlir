@@ -47,6 +47,11 @@ void YoloDetectionLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void YoloDetectionLowering::LoweringF8(PatternRewriter &rewriter,
+                                        top::YoloDetectionOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void YoloDetectionLowering::LoweringQuantized(PatternRewriter &rewriter,
                                               top::YoloDetectionOp op) const {
   llvm_unreachable("Not Implemented");

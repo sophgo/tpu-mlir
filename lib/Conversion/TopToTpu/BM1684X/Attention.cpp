@@ -360,6 +360,11 @@ void AttentionLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_multi_attention_float<Float16Type>(rewriter, op);
 }
 
+void AttentionLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::AttentionOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void AttentionLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::AttentionOp op) const {
   llvm_unreachable("Not Implemented");

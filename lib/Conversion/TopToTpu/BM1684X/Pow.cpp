@@ -111,16 +111,22 @@ void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.getInput(), table});
 }
+
 void PowLowering::LoweringINT4(PatternRewriter &rewriter, top::PowOp op,
                                    bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
+
 void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void PowLowering::LoweringF16(PatternRewriter &rewriter, top::PowOp op) const {
   LoweringF32(rewriter, op);
+}
+
+void PowLowering::LoweringF8(PatternRewriter &rewriter, top::PowOp op) const {
+  llvm_unreachable("Not Implemented");
 }
 
 void PowLowering::LoweringQuantized(PatternRewriter &rewriter,

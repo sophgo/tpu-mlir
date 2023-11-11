@@ -32,6 +32,10 @@ void MinLowering::LoweringF16(PatternRewriter &rewriter, top::MinOp op) const {
   lowering_common_f16<tpu::MinOp>(rewriter, op);
 }
 
+void MinLowering::LoweringF8(PatternRewriter &rewriter, top::MinOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void MinLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::MinOp op) const {
   lowering_common<tpu::MinOp>(rewriter, op, op.getOutput().getType());

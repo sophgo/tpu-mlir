@@ -48,6 +48,11 @@ void FloorLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
 }
 
+void FloorLowering::LoweringF8(PatternRewriter &rewriter,
+                                top::FloorOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void FloorLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::FloorOp op) const {
   Value table = create_lookup_table(op.getInput(), op.getOutput(), true,

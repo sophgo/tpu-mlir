@@ -65,6 +65,10 @@ void LogBLowering::LoweringF16(PatternRewriter &rewriter, top::LogBOp op) const 
   }
 }
 
+void LogBLowering::LoweringF8(PatternRewriter &rewriter, top::LogBOp op) const {
+  llvm_unreachable("not implement");
+}
+
 void LogBLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::LogBOp op) const {
   llvm_unreachable("Not Implemented");

@@ -50,6 +50,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
                       top::OP##Op op) const override;                          \
     void LoweringF16(PatternRewriter &rewriter,                                \
                      top::OP##Op op) const override;                           \
+    void LoweringF8(PatternRewriter &rewriter,                                 \
+                     top::OP##Op op) const override;                           \
     void LoweringF32(PatternRewriter &rewriter,                                \
                      top::OP##Op op) const override;                           \
     void LoweringQuantized(PatternRewriter &rewriter,                          \

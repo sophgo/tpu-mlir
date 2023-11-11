@@ -77,6 +77,10 @@ void ConvBwdWeightLowering::LoweringF16(PatternRewriter &rewriter, top::ConvBwdW
   LoweringF32(rewriter, op);
 }
 
+void ConvBwdWeightLowering::LoweringF8(PatternRewriter &rewriter, top::ConvBwdWeightOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void ConvBwdWeightLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::ConvBwdWeightOp op) const {
     llvm_unreachable("Not Implemented");

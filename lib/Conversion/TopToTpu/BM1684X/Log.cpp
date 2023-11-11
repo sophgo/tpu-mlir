@@ -45,6 +45,10 @@ void LogLowering::LoweringF16(PatternRewriter &rewriter, top::LogOp op) const {
   lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
 }
 
+void LogLowering::LoweringF8(PatternRewriter &rewriter, top::LogOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void LogLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::LogOp op) const {
   llvm_unreachable("Not Implemented");

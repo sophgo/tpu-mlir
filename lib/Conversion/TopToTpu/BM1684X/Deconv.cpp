@@ -273,6 +273,11 @@ void DeconvLowering::LoweringF16(PatternRewriter &rewriter,
   rewriter.replaceOp(op, {newValue});
 }
 
+void DeconvLowering::LoweringF8(PatternRewriter &rewriter,
+                                 top::DeconvOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void DeconvLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::DeconvOp op) const {
   llvm_unreachable("Not Implemented");

@@ -21,6 +21,8 @@ void tpu::A16MatMulOp::codegen_global_bm1684x() {
   spec.R_trans = getWTranspose();
   spec.sign = getSign();
   spec.weight_bits = getWeightBits();
+  spec.has_zp = !module::isNone(getZp());
+  spec.q_group_size = getQGroupSize();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);

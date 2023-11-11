@@ -41,6 +41,10 @@ template <typename T> static bool check_type(Type eltType) {
         (std::is_same<T, int32_t>::value || std::is_same<T, uint32_t>::value);
   } else if (eltType.isInteger(4)) {
     same = (std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value);
+  } else if (eltType.isFloat8E4M3FN()) {
+    same = std::is_same<T, uint8_t>::value;
+  } else if (eltType.isFloat8E5M2()) {
+    same = std::is_same<T, uint8_t>::value;
   } else {
     // eltType.isF64()
     // ...

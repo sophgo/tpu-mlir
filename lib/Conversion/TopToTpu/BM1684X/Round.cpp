@@ -50,6 +50,11 @@ void RoundLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ActiveOp>(rewriter, op);
 }
 
+void RoundLowering::LoweringF8(PatternRewriter &rewriter,
+                              top::RoundOp roundOp) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void RoundLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::RoundOp roundOp) const {
   llvm_unreachable("Not Implemented");

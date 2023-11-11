@@ -62,6 +62,11 @@ void SignLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::ActiveOp>(rewriter, op_);
 }
 
+void SignLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::SignOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void SignLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::SignOp op) const {
   Value table = create_lookup_table(op.getInput(), op.getOutput(), true,

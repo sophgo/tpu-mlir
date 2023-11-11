@@ -6,19 +6,19 @@
 # third-party components.
 #
 # ==============================================================================
-
-from .cmodel import MemRefBase, MemoryBase, CModelRunner
+import os
+from .runner import MemRefBase, MemoryBase, Runner
 from contextlib import contextmanager
 import numpy as np
 from typing import Dict, Tuple, List, Type
 from .decoder import DecoderBase
-from .op_support import cmd_base_reg, MType, Device
+from .op_support import cmd_base_reg, MType, Target
 
 
-class CModelContext:
+class BModelContext:
     base_addr = [0, 0]  # special defined for 1688
     MemRef = MemRefBase
-    device: Device
+    device: Target
     decoder: DecoderBase
 
     memmap: Dict[MType, Tuple[int, int]]
@@ -26,7 +26,9 @@ class CModelContext:
     tiu_sys: cmd_base_reg = None
 
     def __init__(self) -> None:
-        self._runner: CModelRunner = None
+        self.using_cmodel = eval(os.environ.get("USING_CMODEL", "True"))
+        self._cmodel_runner: Runner = None
+        self._chip_runner: Runner = None
 
     @staticmethod
     def get_continuous_stride(shape):
@@ -34,7 +36,10 @@ class CModelContext:
 
     @property
     def memory(self) -> MemoryBase:
-        return self._runner.memory
+        if self.using_cmodel:
+            return self._cmodel_runner.memory
+        else:
+            return self._chip_runner.memory
 
     @classmethod
     def get_instance(cls):
@@ -56,11 +61,11 @@ class CModelContext:
     def merge_instruction(tiu: List[cmd_base_reg], dma: List[cmd_base_reg]):
         raise NotImplementedError()
 
-    def get_runner(self, memory_size: int) -> CModelRunner:
+    def get_runner(self, memory_size: int) -> Runner:
         raise NotImplementedError()
 
 
-def get_target_context_cls(chip: str) -> Type[CModelContext]:
+def get_target_context_cls(chip: str) -> Type[BModelContext]:
     assert chip in {"BM1684X", "BM1684", "BM1688"}
 
     context = None
@@ -81,7 +86,7 @@ def get_target_context_cls(chip: str) -> Type[CModelContext]:
     return context
 
 
-def get_target_context(chip: str) -> CModelContext:
+def get_target_context(chip: str) -> BModelContext:
     assert chip in {"BM1684X", "BM1684", "BM1688"}
     context_cls = get_target_context_cls(chip)
     return context_cls()

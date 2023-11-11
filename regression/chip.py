@@ -13,17 +13,17 @@
 Y, N = True, False
 
 chip_support = {
-    # chip_name: (F32, F16, BF16, INT8_sym, INT8_asym, INT4_sym, dynamic, model_type)
-    "bm1684":    (Y,   N,   N,    Y,        N,         N,        N,       "bmodel"),
-    "bm1684x":   (Y,   Y,   Y,    Y,        N,         N,        N,       "bmodel"),
-    "bm1688":    (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
-    # "mars3":     (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
-    "cv180x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
-    "cv181x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
-    "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
-    "cv183x":    (N,   N,   Y,    Y,        N,         N,        N,       "cvimodel"),
-    "cv186x":    (Y,   Y,   Y,    Y,        N,         Y,        N,       "bmodel"),
-    "sg2260":    (Y,   Y,   Y,    N,        N,         Y,        N,       "bmodel"),
+    # chip_name: (F32, F16, BF16, INT8_sym, INT8_asym, INT4_sym, f8e4m3, f8e5m2, dynamic, model_type)
+    "bm1684":    (Y,   N,   N,    Y,        N,         N,        N,      N,      N,       "bmodel"),
+    "bm1684x":   (Y,   Y,   Y,    Y,        N,         N,        N,      N,      N,       "bmodel"),
+    "bm1688":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
+    # "mars3":     (Y,   Y,   Y,    Y,        N,         Y,       N,      N,       N,      "bmodel"),
+    "cv180x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
+    "cv181x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
+    "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
+    "cv183x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
+    "cv186x":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
+    "sg2260":    (Y,   Y,   Y,    N,        N,         Y,        Y,      Y,      N,       "bmodel"),
 }
 
 '''
@@ -46,6 +46,9 @@ basic_model_list = {
     "yolov5s_pt":                 (N,      Y,       N,      N,      N,      N,      N,     N,      N),
     "yolov5s_tf":                 (N,      Y,       Y,      N,      N,      N,      N,     N,      N),
     "retinaface_mnet_with_det":   (N,      N,       N,      N,      Y,      Y,      Y,     N,      N),
+    "nmt_encode":                 (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
+    "nmt_decode10":               (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
+    "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
 }
 
 
@@ -62,8 +65,8 @@ full_model_list = {
     "inception_v3":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "mnist-12":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "mobilenet_v2":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
-    "resnet18_v1":                (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     N),
-    "resnet18_v2":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
+    "resnet18_v1":                (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     Y),
+    "resnet18_v2":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "resnet50_v1":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "resnet50_v2":                (Y,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "res2net50":                  (N,      Y,       N,      N,      N,      N,      Y,      N,     N),
@@ -89,9 +92,12 @@ full_model_list = {
     "yolov8n":                    (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
     "nasnet_mobile":              (N,      N,       N,      Y,      N,      Y,      Y,      N,     N),
     "espcn_3x":                   (N,      N,       N,      Y,      N,      Y,      Y,      N,     N),
+    "nmt_encode":                 (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
+    "nmt_decode10":               (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
+    "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
     ######## Pytorch #######      ######
     "bert_pt":                    (N,      Y,       Y,      N,      N,      N,      N,      Y,     Y),
-    "bert_base_pt":               (N,      N,       N,      N,      N,      N,      N,      N,     N),
+    "bert_base_pt":               (N,      N,       N,      N,      N,      N,      N,      N,     Y),
     "bert_large_pt":              (N,      N,       N,      N,      N,      N,      N,      N,     N),
     "resnet50_pt":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "sd_encoder_pt":              (N,      Y,       Y,      N,      N,      N,      N,      Y,     N),
