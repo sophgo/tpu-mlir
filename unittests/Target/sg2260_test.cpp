@@ -102,17 +102,17 @@ TEST(SG2260IR, ConvOp) {
   SmallVector<int64_t> kernel{3, 3};
   SmallVector<int64_t> dialation{3, 3};
   SmallVector<int64_t> stride{3, 3};
-  SmallVector<int64_t> insert0{3, 3};
+  SmallVector<int64_t> insertion{3, 3};
   SmallVector<int64_t> pads{0, 0, 0, 0};
   auto conv0 = builder.create<sg2260::ConvOp>(
       uloc, inputType, id2, function.getArgument(0), function.getArgument(1),
-      nullptr, function.getArgument(2), kernel, stride, dialation, insert0,
-      insert0, pads, false, false, sg2260::PaddingMode::constant);
+      nullptr, function.getArgument(2), kernel, stride, dialation, insertion,
+      pads, false, false, sg2260::PaddingMode::constant);
 
   auto id3 = builder.getType<sg2260::TIUIdType>(3);
   builder.create<sg2260::ConvOp>(
       uloc, inputType, id3, conv0.getResult(), function.getArgument(1), nullptr,
-      function.getArgument(2), kernel, stride, dialation, insert0, insert0,
+      function.getArgument(2), kernel, stride, dialation, insertion,
       pads, false, false, sg2260::PaddingMode::constant);
   builder.create<func::ReturnOp>(uloc);
 
@@ -192,4 +192,4 @@ TEST(SG2260IR, DMATensorOp) {
   // theModule.dump();
 }
 
-} // namespace
+}

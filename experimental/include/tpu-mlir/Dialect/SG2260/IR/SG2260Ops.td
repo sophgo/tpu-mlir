@@ -18,6 +18,17 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 include "SG2260.td"
 include "SG2260Types.td"
 
+class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
+  CPred<!foldl(
+      "$_self.cast<StringAttr>().getValue() == \"" # !head(cases) # "\"",
+      !foreach(case, !tail(cases),
+               "$_self.cast<StringAttr>().getValue() == \"" # case # "\""),
+      prev, cur, prev # " || " # cur)>,
+  "string attribute whose value is " #
+    !foldl(/*init*/!head(cases), /*list*/!tail(cases),
+           prev, cur, prev # ", or " # cur)>;
+def VCOpTypeAttr: AnyStrAttrOf<["VC_ADD","VC_SUB","VC_MUL","VC_DIV","VC_MAX","VC_MIN","VC_AND",
+  "VC_OR","VC_XOR","VC_SG","VC_SE","VC_SL","VC_ADD_SATU","VC_SUB_SATU","VC_MUL_SATU"]>;
 
 class SG2260_Op<string mnemonic, list<Trait> traits = []>
     : Op<SG2260_Dialect, mnemonic, traits>;
@@ -36,7 +47,7 @@ def SG2260_MatMulOp : SG2260_Op<"matmul",
     DefaultValuedAttr<BoolAttr, "false">:$left_is_transposed,
     DefaultValuedAttr<BoolAttr, "false">:$add_result,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    ShortMatrix2RegDefProperties:$reg
+    ShortMMRegDefProperties:$reg
     );
   let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
   let hasVerifier = 1;
@@ -54,8 +65,7 @@ def SG2260_ConvOp : SG2260_Op<"conv",
     SG2260_IntArrayAttr2:$kernel_shape,
     DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{1, 1}">:$strides,
     DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0}">:$dilations,
-    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0}">:$input_insert0,
-    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0}">:$kernel_insert0,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0}">:$insertions,
     DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0, 0, 0}">:$pads,
     DefaultValuedAttr<BoolAttr, "false">:$add_result,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
@@ -151,6 +161,190 @@ def SG2260_CLOOp: SG2260_UnaryOp<"clo"> {
   let description = [{Count leading ones Operation. Get first one}];
 }
 
+class SG2260_MaxMinPoolOp<string mnemonic> : SG2260_Op<"maxminpool." # mnemonic,
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{MaxMin Pool.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_DMAIdType:$dependency,
+    SG2260_IntArrayAttr2:$kernel_shape,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{1, 1}">:$strides,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0}">:$dilations,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0}">:$insertions,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0, 0, 0}">:$pads,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<SG2260_PaddingModeAttr, "sg2260::PaddingMode::constant">:$pad_mode,
+    ShortPorDRegDefProperties:$reg
+    );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_MaxPoolOp : SG2260_MaxMinPoolOp<"max_pool"> {
+  let description = [{Max Pool.}];
+}
+
+def SG2260_MinPoolOp : SG2260_MaxMinPoolOp<"min_pool"> {
+  let description = [{Min Pool.}];
+}
+
+def SG2260_AvgPoolOp : SG2260_Op<"avg_pool",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Avg Pooling.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    F64Attr:$scale,
+    SG2260_DMAIdType:$dependency,
+    SG2260_IntArrayAttr2:$kernel_shape,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{1, 1}">:$strides,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0}">:$dilations,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0}">:$insertions,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0, 0, 0}">:$pads,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<SG2260_PaddingModeAttr, "sg2260::PaddingMode::constant">:$pad_mode,
+    ShortPorDRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_DepthwiseOp : SG2260_Op<"depthwise",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Depthwise Conv.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$kernel,
+    Optional<AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>>:$bias,
+    SG2260_DMAIdType:$dependency,
+    SG2260_IntArrayAttr2:$kernel_shape,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{1, 1}">:$strides,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0}">:$dilations,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0}">:$insertions,
+    DefaultValuedAttr<SG2260_IntArrayAttr2, "SmallVector<int64_t>{0, 0, 0, 0}">:$pads,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<SG2260_PaddingModeAttr, "sg2260::PaddingMode::constant">:$pad_mode,
+    ShortPorDRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_VectorCorrOp : SG2260_Op<"VectorCorrelation",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Vector Correlation.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$left,
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$right,
+    SG2260_DMAIdType:$dependency,
+    VCOpTypeAttr:$op_type,
+    ShortVCRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_CWTransOp : SG2260_Op<"CWTrans",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{CW Transpose.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_DMAIdType:$dependency,
+    BoolAttr:$is_cw_trans,
+    ShortCWBCRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_LaneBroadOp : SG2260_Op<"LaneBroad",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Lane Broadcast.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_DMAIdType:$dependency,
+    ShortCWBCRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_LaneCopyOp : SG2260_Op<"LaneCopy",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Lane Copy.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_DMAIdType:$dependency,
+    ShortCWBCRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_StaticBroadOp : SG2260_Op<"StaticBroad",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Static Broadcast.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_DMAIdType:$dependency,
+    I64Attr:$output_c,
+    ShortCWBCRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_StaticDistOp : SG2260_Op<"StaticDist",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Static Distribute.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_DMAIdType:$dependency,
+    I64Attr:$output_c,
+    ShortCWBCRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_TIUSendMsgOp : SG2260_Op<"SendMsg",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Send Msg.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_DMAIdType:$dependency,
+    I64Attr:$msg_id,
+    I64Attr:$wait_cnt,
+    SYSRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_TIUWaitMsgOp : SG2260_Op<"WaitMsg",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{Wait Msg.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_DMAIdType:$dependency,
+    I64Attr:$msg_id,
+    I64Attr:$send_cnt,
+    SYSRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
 // DMA operartions  ------------------------------------------------------------
 
 class SG2260_DMATensor<string eu_type> : SG2260_Op<"dma.tensor" # eu_type ,
@@ -169,5 +363,93 @@ class SG2260_DMATensor<string eu_type> : SG2260_Op<"dma.tensor" # eu_type ,
 def SG2260_DMATensorOp : SG2260_DMATensor<"">;
 def SG2260_DMATensorTransOp : SG2260_DMATensor<".trans">;
 def SG2260_DMATensorBroadcastOp : SG2260_DMATensor<".broadcast">;
+
+def SG2260_GDMAMatrixMoveOp : SG2260_Op<"GDMAMatrixMove",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{GDMA Matrix Move.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_TIUIdType:$dependency,
+    DefaultValuedAttr<BoolAttr, "false">:$transpose,
+    GDMAMatrixRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_DMAIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_GDMAGeneralMoveOp : SG2260_Op<"GDMAGeneralMove",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{GDMA General Move.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_TIUIdType:$dependency,
+    I64Attr:$count,
+    GDMAGeneralRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_DMAIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_GDMAGeneralBroadcastOp : SG2260_Op<"GDMAGeneralBroadcast",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{GDMA General Broadcast.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    SG2260_TIUIdType:$dependency,
+    I64Attr:$count,
+    I64Attr:$output_c,
+    GDMAGeneralRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_DMAIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_GDMAGatherOp : SG2260_Op<"GDMAGather",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{GDMA Gather.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$index,
+    SG2260_TIUIdType:$dependency,
+    I64Attr:$const_val,
+    GDMAGatherRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_DMAIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_GDMAScatterOp : SG2260_Op<"GDMAScatter",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{GDMA Scatter.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$index,
+    SG2260_TIUIdType:$dependency,
+    I64Attr:$const_val,
+    GDMAScatterRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_DMAIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_GDMAScatterAddOp : SG2260_Op<"GDMAScatterAdd",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{GDMA Scatter.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$input,
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$index,
+    SG2260_TIUIdType:$dependency,
+    I64Attr:$const_val,
+    GDMAScatterRegDefProperties:$reg
+  );
+  let results = (outs AnyMemRef : $result, SG2260_DMAIdType : $id);
+  let hasVerifier = 1;
+}
 
 #endif // SG2260
