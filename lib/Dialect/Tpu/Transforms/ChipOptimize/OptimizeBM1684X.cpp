@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "Common.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -16,6 +16,9 @@ namespace tpu_mlir {
 
 namespace bm1684x {
 class MatMulHdimBatchPattern : public OpRewritePattern<tpu::MatMulOp> {
+  // Case1: Permute -> MatMul <- Permute
+  // Cast2: Reshape -> MatMul <- Permute
+  // Case3: Left    -> MatMul <- Permute
 public:
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(tpu::MatMulOp op,
@@ -25,6 +28,7 @@ public:
     //    return failure();
     //  }
 
+    // 1. Define Left and Right
     auto left = op.getInput();
     auto right = op.getRight();
 
@@ -32,50 +36,153 @@ public:
     if (stype.isF32()) {
       return failure();
     }
+
+    // 2. Check Left and Right
     auto l_is_weight = module::isWeight(left);
     auto r_is_weight = module::isWeight(right);
     if (l_is_weight && r_is_weight) {
       return failure();
     }
+    auto l_op = left.getDefiningOp();
+    auto r_op = right.getDefiningOp();
+    if (!isa<tpu::PermuteOp>(l_op) && !isa<tpu::PermuteOp>(r_op)) {
+      return failure();
+    }
 
+    // 3. Convert MatMul to HdimBatch MatMul
     if (!l_is_weight && !r_is_weight) {
-      auto l_trans_op = dyn_cast<tpu::PermuteOp>(left.getDefiningOp());
-      if (!(l_trans_op && l_trans_op->hasOneUse())) {
-        return failure();
-      }
-      auto r_trans_op = dyn_cast<tpu::PermuteOp>(right.getDefiningOp());
-      if (!(r_trans_op && r_trans_op->hasOneUse())) {
-        return failure();
+      // When Left and Right is Tensor
+
+      auto l_output_shape = module::getShape(l_op->getResult(0));
+      auto r_output_shape = module::getShape(r_op->getResult(0));
+      // Swap Left and Right
+      if (isa<tpu::PermuteOp>(l_op) && !isa<tpu::PermuteOp>(r_op) &&
+          l_output_shape[2] == r_output_shape[2]) {
+        std::swap(l_op, r_op);
       }
 
-      auto l_order = module::getI64Array(l_trans_op.getOrder());
-      auto r_order = module::getI64Array(r_trans_op.getOrder());
-      if (false == (l_order->size() == 4 && l_order->at(0) == 0 &&
-                    l_order->at(1) == 2 && r_order->size() == 4 &&
-                    r_order->at(0) == 0 && r_order->at(1) == 2)) {
-        return failure();
+      if (isa<tpu::PermuteOp>(l_op) && isa<tpu::PermuteOp>(r_op)) {
+        // Case1
+        // Left  -> Permute -\              Left  -\
+        //                   ->  MatMul ->         -> MatMul
+        // Right -> Permute -/              Right -/
+        auto l_trans_op = dyn_cast<tpu::PermuteOp>(l_op);
+        auto r_trans_op = dyn_cast<tpu::PermuteOp>(r_op);
+        if (!l_trans_op->hasOneUse() || !r_trans_op->hasOneUse()) {
+          return failure();
+        }
+        auto l_order = module::getI64Array(l_trans_op.getOrder());
+        auto r_order = module::getI64Array(r_trans_op.getOrder());
+        if (false == (l_order->size() == 4 && l_order->at(0) == 0 &&
+                      l_order->at(1) == 2 && r_order->size() == 4 &&
+                      r_order->at(0) == 0 && r_order->at(1) == 2)) {
+          return failure();
+        }
+        auto l_trans = op.getLeftTranspose();
+        auto r_trans = op.getRightTranspose();
+        if (l_order->at(2) == 3 && l_order->at(3) == 1) {
+          l_trans = !l_trans;
+        }
+        if (r_order->at(2) == 3 && r_order->at(3) == 1) {
+          r_trans = !r_trans;
+        }
+        if (l_trans == true && r_trans == false) {
+          // mm2 not support l_trans && !r_trans
+          return failure();
+        }
+        auto hdim_is_batch = op.getHdimIsBatch();
+        op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
+        op->setAttr("left_transpose", rewriter.getBoolAttr(l_trans));
+        op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
+        op->setOperand(0, l_trans_op.getInput());
+        op->setOperand(1, r_trans_op.getInput());
+        rewriter.eraseOp(l_trans_op);
+        rewriter.eraseOp(r_trans_op);
+      } else if (isa<tpu::ReshapeOp>(l_op) && isa<tpu::PermuteOp>(r_op)) {
+        // Case2
+        // Left  -> Reshape -\              Left  -\
+        //                   ->  MatMul ->         -> MatMul
+        // Right -> Permute -/              Right -/
+        auto l_trans_op = dyn_cast<tpu::ReshapeOp>(l_op);
+        auto r_trans_op = dyn_cast<tpu::PermuteOp>(r_op);
+        if (!l_trans_op->hasOneUse() || !r_trans_op->hasOneUse()) {
+          return failure();
+        }
+
+        auto r_order = module::getI64Array(r_trans_op.getOrder());
+        auto r_shape = module::getShape(r_trans_op.getOutput());
+        auto l_in_shape = module::getShape(l_trans_op.getInput());
+        auto l_out_shape = module::getShape(l_trans_op.getOutput());
+        if (false == (r_order->size() == 4 && r_order->at(0) == 0 &&
+                      r_order->at(1) == 2 && l_out_shape[1] == r_shape[1] &&
+                      l_in_shape[1] == l_out_shape[2])) {
+          return failure();
+        }
+
+        auto r_trans = op.getRightTranspose();
+        if (r_order->at(2) == 3 && r_order->at(3) == 1) {
+          r_trans = !r_trans;
+        }
+
+        // Define Param
+        auto hdim_is_batch = op.getHdimIsBatch();
+        op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
+        op->setAttr("left_transpose", rewriter.getBoolAttr(false));
+        op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
+        op->setOperand(0, l_trans_op.getInput());
+        op->setOperand(1, r_trans_op.getInput());
+        rewriter.eraseOp(l_trans_op);
+        rewriter.eraseOp(r_trans_op);
+      } else if (!isa<tpu::PermuteOp>(l_op) && isa<tpu::PermuteOp>(r_op)) {
+        // Case3
+        // Left  ->         -\              Left  Permute -\
+        //                   ->  MatMul ->                -> MatMul
+        // Right -> Permute -/              Right         -/
+        auto l_trans_op = l_op;
+        auto r_trans_op = dyn_cast<tpu::PermuteOp>(r_op);
+        if (!l_trans_op->hasOneUse() || !r_trans_op->hasOneUse()) {
+          return failure();
+        }
+
+        auto r_order = module::getI64Array(r_trans_op.getOrder());
+        auto r_shape = module::getShape(r_trans_op.getOutput());
+        auto l_shape = module::getShape(l_trans_op->getResult(0));
+        if (false == (r_order->size() == 4 && r_order->at(0) == 0 &&
+                      r_order->at(1) == 2 && l_shape[1] == r_shape[1])) {
+          return failure();
+        }
+        auto op_name = module::getName(l_op->getResult(0)).str();
+        // Add ReshapeOp or PermuteOp
+        Operation *new_l_trans_op;
+
+        std::vector<NamedAttribute> attrs;
+        std::vector<int64_t> out_order = {0, 2, 1, 3};
+        auto l_trans_type = RankedTensorType::get(
+            {l_shape[0], l_shape[2], l_shape[1], l_shape[3]},
+            module::getElementType(left));
+        attrs.push_back(rewriter.getNamedAttr(
+            "order", rewriter.getI64ArrayAttr(out_order)));
+        new_l_trans_op = rewriter.create<tpu::PermuteOp>(
+            NameLoc::get(rewriter.getStringAttr(op_name + "_permute")),
+            l_trans_type,
+            ValueRange{l_trans_op->getResult(0), module::getNoneOp(op)}, attrs);
+
+        auto r_trans = op.getRightTranspose();
+        if (r_order->at(2) == 3 && r_order->at(3) == 1) {
+          r_trans = !r_trans;
+        }
+
+        // Define Param
+        auto hdim_is_batch = op.getHdimIsBatch();
+        op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
+        op->setAttr("left_transpose", rewriter.getBoolAttr(false));
+        op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
+        op->setOperand(0, new_l_trans_op->getResult(0));
+        op->setOperand(1, r_trans_op.getInput());
+        rewriter.eraseOp(r_trans_op);
       }
-      auto l_trans = op.getLeftTranspose();
-      auto r_trans = op.getRightTranspose();
-      if (l_order->at(2) == 3 && l_order->at(3) == 1) {
-        l_trans = !l_trans;
-      }
-      if (r_order->at(2) == 3 && r_order->at(3) == 1) {
-        r_trans = !r_trans;
-      }
-      if (l_trans == true && r_trans == false) {
-        // mm2 not support l_trans && !r_trans
-        return failure();
-      }
-      auto hdim_is_batch = op.getHdimIsBatch();
-      op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
-      op->setAttr("left_transpose", rewriter.getBoolAttr(l_trans));
-      op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
-      op->setOperand(0, l_trans_op.getInput());
-      op->setOperand(1, r_trans_op.getInput());
-      rewriter.eraseOp(l_trans_op);
-      rewriter.eraseOp(r_trans_op);
-    } else { // left or right is weight
+    } else {
+      // When Left or Right is weight
       auto trans_op = r_is_weight
                           ? dyn_cast<tpu::PermuteOp>(left.getDefiningOp())
                           : dyn_cast<tpu::PermuteOp>(right.getDefiningOp());
@@ -149,7 +256,8 @@ public:
       rewriter.eraseOp(trans_op);
       rewriter.eraseOp(weight_op);
     }
-    // modify matmul out shape and name
+
+    // 4. Modify matmul out shape and name
     auto mat_out = op->getResult(0);
     auto trans_type = mat_out.getType();
     auto out_shape = module::getShape(mat_out);
@@ -162,7 +270,7 @@ public:
     auto ori_loc = op->getLoc();
     module::setLocSuffix(op, "hdim_is_batch");
 
-    // Add Transpose(0,2,1,3) to output
+    // 5. Add Transpose(0,2,1,3) to output
     rewriter.setInsertionPointAfter(op);
     std::vector<NamedAttribute> attrs;
     std::vector<int64_t> out_order = {0, 2, 1, 3};
@@ -781,7 +889,8 @@ struct PermuteFuse : public OpRewritePattern<tpu::PermuteOp> {
 // axis_flag[i] =
 //               \ 0, else
 // input_stride[i] = input_shape[i-1] * ... * input_shape[0]
-// indices_coeff[i0][i1]...[in-1] = i0 * input_stride[0] * axis_flag[i] + ... + in-1 * input_stride[n-1] * axis_flag[n-1]
+// indices_coeff[i0][i1]...[in-1] = i0 * input_stride[0] * axis_flag[i] + ... +
+// in-1 * input_stride[n-1] * axis_flag[n-1]
 struct GatherElementsPattern : public OpRewritePattern<tpu::GatherElementsOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -809,7 +918,7 @@ struct GatherElementsPattern : public OpRewritePattern<tpu::GatherElementsOp> {
     int indices_shape8[8] = {1, 1, 1, 1, 1, 1, 1, 1};
     int input_shape8[8] = {1, 1, 1, 1, 1, 1, 1, 1};
 
-    for (int i = 0 ; i < indices_dims; ++ i ) {
+    for (int i = 0; i < indices_dims; ++i) {
       indices_shape8[i] = indices_shape[i];
       input_shape8[i] = input_shape[i];
     }
@@ -817,36 +926,36 @@ struct GatherElementsPattern : public OpRewritePattern<tpu::GatherElementsOp> {
 
     int tmp = 0;
     // loop for 8 times
-    for (int i0 = 0; i0 < indices_shape8[0]; ++ i0) {
+    for (int i0 = 0; i0 < indices_shape8[0]; ++i0) {
       int tmp0 = 0;
       tmp0 += axis == 0 ? 0 : i0;
       tmp0 *= input_shape8[1];
-      for (int i1 = 0; i1 < indices_shape8[1]; ++ i1 ) {
+      for (int i1 = 0; i1 < indices_shape8[1]; ++i1) {
         int tmp1 = tmp0;
         tmp1 += axis == 1 ? 0 : i1;
         tmp1 *= input_shape8[2];
-        for (int i2 = 0; i2 < indices_shape8[2]; ++ i2 ) {
+        for (int i2 = 0; i2 < indices_shape8[2]; ++i2) {
           int tmp2 = tmp1;
           tmp2 += axis == 2 ? 0 : i2;
           tmp2 *= input_shape8[3];
-          for (int i3 = 0; i3 < indices_shape8[3]; ++ i3 ) {
+          for (int i3 = 0; i3 < indices_shape8[3]; ++i3) {
             int tmp3 = tmp2;
             tmp3 += axis == 3 ? 0 : i3;
             tmp3 *= input_shape8[4];
-            for (int i4 = 0; i4 < indices_shape8[4]; ++ i4 ) {
+            for (int i4 = 0; i4 < indices_shape8[4]; ++i4) {
               int tmp4 = tmp3;
               tmp4 += axis == 4 ? 0 : i4;
               tmp4 *= input_shape8[5];
-              for (int i5 = 0; i5 < indices_shape8[5]; ++ i5 ) {
+              for (int i5 = 0; i5 < indices_shape8[5]; ++i5) {
                 int tmp5 = tmp4;
                 tmp5 += axis == 5 ? 0 : i5;
                 tmp5 *= input_shape8[6];
-                for (int i6 = 0; i6 < indices_shape8[6]; ++ i6 ) {
+                for (int i6 = 0; i6 < indices_shape8[6]; ++i6) {
                   int tmp6 = tmp5;
                   tmp6 += axis == 6 ? 0 : i6;
                   tmp6 *= input_shape8[7];
-                  for (int i7 = 0; i7 < indices_shape8[7]; ++ i7 ) {
-                    tmp ++;
+                  for (int i7 = 0; i7 < indices_shape8[7]; ++i7) {
+                    tmp++;
                     int tmp7 = tmp6;
                     tmp7 += i7;
                     indices_coeff.push_back(tmp7);
@@ -860,20 +969,22 @@ struct GatherElementsPattern : public OpRewritePattern<tpu::GatherElementsOp> {
       }
     }
 
-    auto indices_coeff_op = top::WeightOp::create(op, "indices_coeff", indices_coeff, type);
+    auto indices_coeff_op =
+        top::WeightOp::create(op, "indices_coeff", indices_coeff, type);
     operands.push_back(indices_coeff_op);
 
     operands.push_back(op.getBuffer());
     rewriter.setInsertionPointAfter(op);
-    auto new_op = rewriter.create<tpu::GatherElementsOp>(op.getLoc(), op.getResult().getType(),
-                                                  operands, op->getAttrs());
+    auto new_op = rewriter.create<tpu::GatherElementsOp>(
+        op.getLoc(), op.getResult().getType(), operands, op->getAttrs());
     op.getOutput().replaceAllUsesWith(new_op.getOutput());
     rewriter.eraseOp(op);
     return success();
   }
 };
 
-struct ScatterElementsPattern : public OpRewritePattern<tpu::ScatterElementsOp> {
+struct ScatterElementsPattern
+    : public OpRewritePattern<tpu::ScatterElementsOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(tpu::ScatterElementsOp op,
@@ -901,7 +1012,7 @@ struct ScatterElementsPattern : public OpRewritePattern<tpu::ScatterElementsOp> 
     int indices_shape8[8] = {1, 1, 1, 1, 1, 1, 1, 1};
     int input_shape8[8] = {1, 1, 1, 1, 1, 1, 1, 1};
 
-    for (int i = 0 ; i < indices_dims; ++ i ) {
+    for (int i = 0; i < indices_dims; ++i) {
       indices_shape8[i] = indices_shape[i];
       input_shape8[i] = input_shape[i];
     }
@@ -909,36 +1020,36 @@ struct ScatterElementsPattern : public OpRewritePattern<tpu::ScatterElementsOp> 
 
     int tmp = 0;
     // loop for 8 times
-    for (int i0 = 0; i0 < indices_shape8[0]; ++ i0) {
+    for (int i0 = 0; i0 < indices_shape8[0]; ++i0) {
       int tmp0 = 0;
       tmp0 += axis == 0 ? 0 : i0;
       tmp0 *= input_shape8[1];
-      for (int i1 = 0; i1 < indices_shape8[1]; ++ i1 ) {
+      for (int i1 = 0; i1 < indices_shape8[1]; ++i1) {
         int tmp1 = tmp0;
         tmp1 += axis == 1 ? 0 : i1;
         tmp1 *= input_shape8[2];
-        for (int i2 = 0; i2 < indices_shape8[2]; ++ i2 ) {
+        for (int i2 = 0; i2 < indices_shape8[2]; ++i2) {
           int tmp2 = tmp1;
           tmp2 += axis == 2 ? 0 : i2;
           tmp2 *= input_shape8[3];
-          for (int i3 = 0; i3 < indices_shape8[3]; ++ i3 ) {
+          for (int i3 = 0; i3 < indices_shape8[3]; ++i3) {
             int tmp3 = tmp2;
             tmp3 += axis == 3 ? 0 : i3;
             tmp3 *= input_shape8[4];
-            for (int i4 = 0; i4 < indices_shape8[4]; ++ i4 ) {
+            for (int i4 = 0; i4 < indices_shape8[4]; ++i4) {
               int tmp4 = tmp3;
               tmp4 += axis == 4 ? 0 : i4;
               tmp4 *= input_shape8[5];
-              for (int i5 = 0; i5 < indices_shape8[5]; ++ i5 ) {
+              for (int i5 = 0; i5 < indices_shape8[5]; ++i5) {
                 int tmp5 = tmp4;
                 tmp5 += axis == 5 ? 0 : i5;
                 tmp5 *= input_shape8[6];
-                for (int i6 = 0; i6 < indices_shape8[6]; ++ i6 ) {
+                for (int i6 = 0; i6 < indices_shape8[6]; ++i6) {
                   int tmp6 = tmp5;
                   tmp6 += axis == 6 ? 0 : i6;
                   tmp6 *= input_shape8[7];
-                  for (int i7 = 0; i7 < indices_shape8[7]; ++ i7 ) {
-                    tmp ++;
+                  for (int i7 = 0; i7 < indices_shape8[7]; ++i7) {
+                    tmp++;
                     int tmp7 = tmp6;
                     tmp7 += i7;
                     indices_coeff.push_back(tmp7);
@@ -952,32 +1063,171 @@ struct ScatterElementsPattern : public OpRewritePattern<tpu::ScatterElementsOp> 
       }
     }
 
-    auto indices_coeff_op = top::WeightOp::create(op, "indices_coeff", indices_coeff, type);
+    auto indices_coeff_op =
+        top::WeightOp::create(op, "indices_coeff", indices_coeff, type);
     operands.push_back(indices_coeff_op);
 
     operands.push_back(op.getBuffer());
     rewriter.setInsertionPointAfter(op);
-    auto new_op = rewriter.create<tpu::ScatterElementsOp>(op.getLoc(), op.getResult().getType(),
-                                                  operands, op->getAttrs());
+    auto new_op = rewriter.create<tpu::ScatterElementsOp>(
+        op.getLoc(), op.getResult().getType(), operands, op->getAttrs());
     op.getOutput().replaceAllUsesWith(new_op.getOutput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+// permute + add + cast + softmax + cast + permute
+// -> add + cast + softmax + cast
+struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in = op.getInput();
+    auto out = op->getResult(0);
+    if (in.hasOneUse() == false) {
+      return failure();
+    }
+    if (!op->hasOneUse()) {
+      return failure();
+    }
+    auto cast_bottom_op = dyn_cast<tpu::CastOp>(in.getDefiningOp());
+    if (!cast_bottom_op) {
+      return failure();
+    }
+    auto softmax_op =
+        dyn_cast<tpu::SoftmaxOp>(cast_bottom_op->getOperand(0).getDefiningOp());
+    if (!softmax_op) {
+      return failure();
+    }
+    auto cast_top_op =
+        dyn_cast<tpu::CastOp>(softmax_op->getOperand(0).getDefiningOp());
+    if (!cast_top_op) {
+      return failure();
+    }
+    auto add_op =
+        dyn_cast<tpu::AddOp>(cast_top_op->getOperand(0).getDefiningOp());
+    if (!add_op) {
+      return failure();
+    }
+    auto mul_const_op =
+        dyn_cast<tpu::MulConstOp>(add_op->getOperand(0).getDefiningOp());
+    if (!mul_const_op) {
+      return failure();
+    }
+    auto permute_op =
+        dyn_cast<tpu::PermuteOp>(mul_const_op->getOperand(0).getDefiningOp());
+    if (!permute_op) {
+      return failure();
+    }
+    auto top_order = module::getI64Array(permute_op.getOrder());
+    auto bottom_order = module::getI64Array(op.getOrder());
+    if (false == (top_order->size() == 4 && top_order->at(0) == 0 &&
+                  top_order->at(1) == 2 && top_order->at(2) == 1 &&
+                  top_order->at(3) == 3)) {
+      return failure();
+    }
+    if (false == (bottom_order->size() == 4 && bottom_order->at(0) == 0 &&
+                  bottom_order->at(1) == 2 && bottom_order->at(2) == 1 &&
+                  bottom_order->at(3) == 3)) {
+      return failure();
+    }
+    // Define Param
+    auto ori_shape = module::getShape(out);
+    // MulConstOp
+    module::setShape(mul_const_op->getOperand(0), ori_shape);
+    module::setShape(mul_const_op->getResult(0), ori_shape);
+    // AddOp
+    module::setShape(add_op->getOperand(0), ori_shape);
+    module::setShape(add_op->getResult(0), ori_shape);
+    // CastOp
+    module::setShape(cast_top_op->getOperand(0), ori_shape);
+    module::setShape(cast_top_op->getResult(0), ori_shape);
+    // SoftmaxOp
+    module::setShape(softmax_op->getOperand(0), ori_shape);
+    module::setShape(softmax_op->getResult(0), ori_shape);
+    // CastOp
+    module::setShape(cast_bottom_op->getOperand(0), ori_shape);
+    module::setShape(cast_bottom_op->getResult(0), ori_shape);
+
+    // AddOp
+    rewriter.setInsertionPoint(add_op);
+    auto mask_shape = module::getShape(add_op->getOperand(1));
+    auto mask_name = module::getName(add_op->getOperand(1)).str();
+    if (mask_shape[1] != 1) {
+      return failure();
+    }
+    auto new_mask_type = RankedTensorType::get(
+        {mask_shape[0], mask_shape[2], mask_shape[1], mask_shape[3]},
+        module::getElementType(out));
+    if (mask_shape[1] == 1 && mask_shape[2] == 1) {
+      // nothing to do
+    } else {
+      auto reshape_op = rewriter.create<tpu::ReshapeOp>(
+          NameLoc::get(rewriter.getStringAttr(mask_name + "_reshape")),
+          new_mask_type, add_op->getOperand(1));
+      add_op->setOperand(1, reshape_op->getResult(0));
+    }
+    mul_const_op->setOperand(0, permute_op->getOperand(0));
+    rewriter.eraseOp(permute_op);
+
+    // PermuteOp
+    auto next_op = *op->getResult(0).user_begin();
+    next_op->setOperand(0, op->getOperand(0));
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+// permute + reshape -> reshape
+struct PermuteReshapeFuse : public OpRewritePattern<tpu::PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in = op.getInput();
+    if (in.hasOneUse() == false) {
+      return failure();
+    }
+    if (!op->hasOneUse()) {
+      return failure();
+    }
+    auto reshape_op = dyn_cast<tpu::ReshapeOp>(*op->getResult(0).user_begin());
+    if (!reshape_op) {
+      return failure();
+    }
+    auto order = module::getI64Array(op.getOrder());
+    if (false ==
+        (order->size() == 4 && order->at(0) == 0 && order->at(1) == 2 &&
+         order->at(2) == 1 && order->at(3) == 3)) {
+      return failure();
+    }
+    auto input_shape = module::getShape(in);
+    if (false == (input_shape[0] == 1 && input_shape[1] == 1)) {
+      return failure();
+    }
+    // ReshapeOp
+    module::setShape(reshape_op->getOperand(0), input_shape);
+    reshape_op->setOperand(0, op->getOperand(0));
     rewriter.eraseOp(op);
     return success();
   }
 };
 } // namespace bm1684x
 
-
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
   patterns->add<LargePadConvPattern>(ctx, 9);
-  patterns->add<MatMulHdimBatchPattern, MatMulRemoveReshapePattern,
-                MatMulLeftReusePattern, MoveReshapeAfterAdd,
-                GroupConv2NormalConv, TpuReshapeReorderPattern,
-                PermuteAddWeightReorderPattern, MaskedFillPermuteMove,
-                PermuteFuse, patterns::FuseRepeatPattern<tpu::ReshapeOp>,
-                GatherElementsPattern, ScatterElementsPattern>(ctx, 8);
+  patterns
+      ->add<MatMulHdimBatchPattern, MatMulRemoveReshapePattern,
+            MatMulLeftReusePattern, MoveReshapeAfterAdd, GroupConv2NormalConv,
+            TpuReshapeReorderPattern, PermuteAddWeightReorderPattern,
+            MaskedFillPermuteMove, PermuteFuse, PermuteFuseAddSoftmax,
+            patterns::FuseRepeatPattern<tpu::ReshapeOp>, GatherElementsPattern,
+            ScatterElementsPattern, PermuteReshapeFuse>(ctx, 8);
 }
 } // namespace tpu
 
