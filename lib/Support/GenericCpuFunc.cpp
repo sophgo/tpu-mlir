@@ -2139,6 +2139,7 @@ int BMCpuOp::getCpuOpType() {
       .Case("tensor_scatter", CPU_TENSOR_SCATTER_OP)
       .Case("grid_sampler", CPU_GRID_SAMPLER)
       .Case("deform_gather", CPU_DEFORM_GATHER)
+      .Case("roi_align", CPU_PYTORCH_ROI_ALIGN)
       .Default(CPU_LAYER_UNKNOW);
 }
 
@@ -2234,6 +2235,19 @@ void BMCpuOp::get_deform_gather_param() {
   memcpy(this->param, &cpu_param, this->param_size);
 }
 
+void BMCpuOp::get_roi_align_param() {
+  cpu_pytorch_roi_align_param_t cpu_param{};
+  mlir::DictionaryAttr paramDic = op_.getParam().value();
+  cpu_param.pooled_height = paramDic.get("output_height").cast<IntegerAttr>().getInt();
+  cpu_param.pooled_width = paramDic.get("output_width").cast<IntegerAttr>().getInt();
+  cpu_param.spatial_scale = paramDic.get("spatial_scale").cast<FloatAttr>().getValueAsDouble();
+  cpu_param.sampling_ratio = paramDic.get("sampling_ratio").cast<IntegerAttr>().getInt();
+  cpu_param.align = paramDic.get("align_corners").cast<BoolAttr>().getValue();
+  this->param_size = sizeof(cpu_pytorch_roi_align_param_t);
+  this->param = (void *)malloc(this->param_size);
+  memcpy(this->param, &cpu_param, this->param_size);
+}
+
 void BMCpuOp::getCpuParam() {
   switch (this->op_type) {
   case CPU_TOPK:
@@ -2256,6 +2270,9 @@ void BMCpuOp::getCpuParam() {
     break;
   case CPU_DEFORM_GATHER:
     get_deform_gather_param();
+    break;
+  case CPU_PYTORCH_ROI_ALIGN:
+    get_roi_align_param();
     break;
   case CPU_LAYER_UNKNOW:
     llvm_unreachable("Unknow CPU Op");

@@ -554,6 +554,7 @@ private:
   void get_tensor_scatter_param();
   void get_grid_sampler_param();
   void get_deform_gather_param();
+  void get_roi_align_param();
 };
 
 struct NmsParam {
