@@ -172,7 +172,7 @@ class MlirParser:
         self.return_op = None
         self._none_type = mlir.ir.Type.parse("none", self.ctx)
 
-        cache_map = {} #用字典创建算子连接图，如loc1 = loc("images")
+        cache_map = {}
         for i in range(len(self.body.operations)):
             prev_op = self.body.operations[i]
             if (

@@ -326,8 +326,8 @@ if __name__ == '__main__':
         assert (0 and "Error! If not fuse_preprocess, customization_format shouldn't be set.")
     tool = DeployTool(args)
     # lowering to tpu/tosa
-    tool.lowering() #top.mlir to final.mlir
+    tool.lowering()
     # generate model
-    tool.build_model() #final.mlir to bmodel
+    tool.build_model()
     if not args.debug:
         tool.cleanup()
