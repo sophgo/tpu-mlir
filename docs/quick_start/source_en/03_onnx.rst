@@ -385,7 +385,7 @@ Take the output of the last command as an example (the log is partially truncate
    [BMRT][print_array:702] INFO:  --> output ref_data: < 0 0 0 0 0 0 0 0 0 0 0 0 0 0...
    [BMRT][bmrt_test:982] INFO:reading output #2, bytesize=408000
    [BMRT][print_array:702] INFO:  --> output ref_data: < 0 0 0 0 0 0 0 0 0 0 0 0 0 0...
-   [BMRT][bmrt_test:1014] INFO:net[yolov5s] stage[0], launch total time is 4122 us (npu 4009 us, cpu 113 us)
+   [BMRT][bmrt_test:1014] INFO:net[yolov5s] stage[0], launch total time is 4122 us (npu 4009 us, normal 113 us)
    [BMRT][bmrt_test:1017] INFO:+++ The network[yolov5s] stage[0] output_data +++
    [BMRT][print_array:702] INFO:output data #0 shape: [1 3 80 80 85 ] < 0.301003    ...
    [BMRT][print_array:702] INFO:output data #1 shape: [1 3 40 40 85 ] < 0 0.228689  ...
@@ -399,7 +399,7 @@ Take the output of the last command as an example (the log is partially truncate
 The following information can be learned from the output above:
 
 1. Lines 05-08: the input and output information of bmodel
-2. Line 19: running time on the TPU, of which the TPU takes 4009us and the CPU takes 113us. The CPU time here mainly refers to the waiting time of calling at HOST
+2. Line 19: running time on the TPU, of which the TPU takes 4009us and the non-accelerated part takes 113us. The time of the latter mainly refers to the waiting time of calling at HOST
 3. Line 24: the time to load data into the NPU's DDR
 4. Line 25: the total time of Line 19
 5. Line 26: the output data retrieval time

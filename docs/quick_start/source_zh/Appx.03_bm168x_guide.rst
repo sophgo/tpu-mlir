@@ -1,7 +1,7 @@
-附录03: BM168x芯片使用指南
+附录03: BM168x使用指南
 ===============================
 
-BM168x支持ONNX系列、pytorch模型、Caffe模型和TFLite模型。本章节以BM1684x芯片为例,介绍BM168x系列芯片bmodel文件的合并方法。
+BM168x支持ONNX系列、pytorch模型、Caffe模型和TFLite模型。本章节以BM1684x为例,介绍BM168x系列bmodel文件的合并方法。
 
 
 .. _merge weight:

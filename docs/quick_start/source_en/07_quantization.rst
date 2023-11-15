@@ -265,7 +265,7 @@ Also ``full_loss_table.txt`` is generated, context as blow:
 .. code-block:: shell
     :linenos:
 
-    # chip: bm1684x  mix_mode: F16
+    # platform: bm1684x  mix_mode: F16
     ###
     No.0   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu                Cos: 0.994063
     No.1   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu                Cos: 0.997447
@@ -534,7 +534,7 @@ Use ``run_sensitive_layer`` and bad cases to search sensitive layers, parameters
      - N
      - float type of mix precision
 
-In this example, 100 images are used for calibration and 30 images are used for inference, and the command is as follows (for the chip of CV18xx series, set the chip to the corresponding chip name) :
+In this example, 100 images are used for calibration and 30 images are used for inference, and the command is as follows (for the processor of CV18xx series, set the processor to the corresponding processor name):
 
 The operation is as follows:
 

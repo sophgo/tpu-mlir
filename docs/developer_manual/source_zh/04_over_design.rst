@@ -9,9 +9,9 @@
 TPU-MLIR将网络模型的编译过程分两层处理:
 
 Top Dialect
-   与芯片无关层, 包括图优化、量化、推理等等
+   与硬件无关层, 包括图优化、量化、推理等等
 Tpu Dialect
-   与芯片相关层, 包括权重重排、算子切分、地址分配、推理等等
+   与硬件相关层, 包括权重重排、算子切分、地址分配、推理等等
 
 整体的流程如(:ref:`main_flow`)图中所示, 通过Pass将模型逐渐转换成最终的指令, 这里具体说明Top层和Tpu层每个Pass做的什么功能。
 后面章节会对每个Pass的关键点做详细说明。
@@ -36,11 +36,11 @@ canonicalize
 extra-optimize
    额外的pattern实现, 比如求FLOPs、去除无效输出等等。
 chip-assign
-   配置chip, 如bm1684x或者cv183x等等; 并根据chip对top层进行调整, 比如cv18xx将输入全部调整为F32。
+   配置处理器, 如bm1684x或者cv183x等等; 并根据处理器对top层进行调整, 比如cv18xx将输入全部调整为F32。
 import-calibration-table
    按照calibration table, 给每个op插入min和max, 用于后续量化; 对应对称量化则插入threshold
 chip-top-optimize
-   与chip相关的top层算子优化, 这是一个妥协, 有些top算子与chip具有相关性
+   与处理器相关的top层算子优化, 这是一个妥协, 有些top算子与处理器具有相关性
 convert-top-to-tpu
    将top层下层到tpu层; 如果是浮点类型(F32/F16/BF16), top层op基本上直接转换成相应的tpu层op即可; 如果是INT8类型, 则需要量化转换
 
@@ -54,11 +54,11 @@ canonicalize
 strip-io-quant
    决定输入或输出是否是量化类型, 否则就是默认F32类型
 chip-tpu-optimize
-   与chip相关的tpu层算子优化
+   与处理器相关的tpu层算子优化
 weight-reorder
-   根据芯片特征对个别op的权重进行重新排列, 比如卷积的filter和bias
+   根据硬件特征对个别op的权重进行重新排列, 比如卷积的filter和bias
 subnet-divide
-   将网络按照TPU/CPU切分成不同的子网络, 如果所有算子都是TPU, 则子网络只有一个
+   将网络按照处理器类型切分成不同的子网络, 如果所有算子都是TPU, 则子网络只有一个
 op-reorder
    对op进行顺序调整, 让使用者离被使用者尽可能的靠近; 也有针对attention一类操作做特殊处理
 layer-group

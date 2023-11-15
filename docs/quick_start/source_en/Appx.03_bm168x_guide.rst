@@ -1,8 +1,8 @@
 Appendix.03: BM168x Guidance
 =============================
 
-BM168x series chip currently supports ONNX, pytorch, Caffe and TFLite models.
-This chapter takes the BM1684x chip as an example to introduce merging bmodel files of the BM168x series chips.
+BM168x series processor currently supports ONNX, pytorch, Caffe and TFLite models.
+This chapter takes the BM1684x processor as an example to introduce merging bmodel files of the BM168x series processors.
 
 .. _merge weight:
 

@@ -40,7 +40,7 @@ include "tpu_mlir/Traits/Traits.td"
 
 def Tpu_Dialect : Dialect {
   let name = "tpu";
-  let summary = "A tpu dialect for the SOPHGO AI chips";
+  let summary = "A tpu dialect for the SOPHGO Deep Learning processors";
   let cppNamespace = "::tpu_mlir::tpu";
   let useDefaultAttributePrinterParser = 1;
 }

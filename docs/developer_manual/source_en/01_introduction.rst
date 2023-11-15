@@ -1,7 +1,7 @@
 TPU-MLIR Introduction
 =====================
 
-TPU-MLIR is the TPU compiler project for AI chips. This project provides a complete toolchain, which can convert pre-trained neural networks under different frameworks into binary files ``bmodel`` that can be efficiently run on TPUs.
+TPU-MLIR is the TPU compiler project for Depp Learning processors. This project provides a complete toolchain, which can convert pre-trained neural networks under different frameworks into binary files ``bmodel`` that can be efficiently run on TPUs.
 The code has been open-sourced to github: https://github.com/sophgo/tpu-mlir .
 
 The overall architecture of TPU-MLIR is as follows:
