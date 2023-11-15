@@ -1,5 +1,5 @@
-#ifndef NODECHIP_ABSADD_H_
-#define NODECHIP_ABSADD_H_
+#ifndef BACKEND_CEILADD_H_
+#define BACKEND_CEILADD_H_
 
 #include "tpu_kernel.h"
 
@@ -7,11 +7,11 @@
 extern "C" {
 #endif
 
-void nodechip_swapchannel_global(
+void backend_ceiladd_f32_global(
     global_addr_t input_global_addr,
     global_addr_t output_global_addr,
     const int *shape,
-    const int *order,
+    float b_val,
     data_type_t dtype);
 
 #ifdef __cplusplus

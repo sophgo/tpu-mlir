@@ -1,6 +1,6 @@
 #include "tpu_utils.h"
 #include "api_absadd.h"
-#include "nodechip_absadd.h"
+#include "backend_absadd.h"
 
 // parse param function
 absadd_param_t absadd_parse_param(custom_param_t* param) {
@@ -17,7 +17,7 @@ void api_absadd_global(
 {
     absadd_param_t absadd_param = absadd_parse_param(param);
 
-    nodechip_absadd_f32_global(
+    backend_absadd_f32_global(
         input->addr,
         output->addr,
         input->shape,

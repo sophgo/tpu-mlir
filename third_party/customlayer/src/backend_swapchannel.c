@@ -1,7 +1,7 @@
-#include "nodechip_swapchannel.h"
+#include "backend_swapchannel.h"
 #include "common.h"
 
-void nodechip_swapchannel_global(
+void backend_swapchannel_global(
     global_addr_t input_global_addr,
     global_addr_t output_global_addr,
     const int *shape,
