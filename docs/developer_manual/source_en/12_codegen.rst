@@ -12,7 +12,7 @@ Workflow
 ----------------
 The general process of CodeGen can be divided into three parts: instruction generation, instruction storage and instruction retrieval.
 
-  Instruction generation: Encapsulate the back-end functions of different chips into classes, execute the op's CodeGen interface, and generate corresponding instructions (binary code);
+  Instruction generation: Encapsulate the back-end functions of different processors into classes, execute the op's CodeGen interface, and generate corresponding instructions (binary code);
 
   Instruction storage: Store the instruction (binary code) in the specified data structure through store_cmd;
 
@@ -34,7 +34,7 @@ The workflow is as follows:
 
 The following introduces the data structures required in the CodeGen process:
 
-The instructions differ based on the chip's engine, e.g., 1684 has GDMA and TIU, while new architecture chips like sg2260 have sdma, cdma, etc. Using the most common engines, BDC (later renamed to TIU) and GDMA, as examples:
+The instructions differ based on the processor's engine, e.g., 1684 has GDMA and TIU, while new architecture processors like sg2260 have sdma, cdma, etc. Using the most common engines, BDC (later renamed to TIU) and GDMA, as examples:
 
 .. code-block:: shell
 
@@ -66,7 +66,7 @@ bdc_bytes: bdc instruction byte number
 
 BM168X and Related classes in TPU-MLIR
 ----------------
-These related classes are defined in the folder `tpu-mlir/include/tpu_mlir/Backend`. Their purpose is to encapsulate different chip backends, thereby isolating the backend from the CodeGen process.
+These related classes are defined in the folder `tpu-mlir/include/tpu_mlir/Backend`. Their purpose is to encapsulate different processor backends, thereby isolating the backend from the CodeGen process.
 
 The inheritance relationship is as follows:
 
@@ -80,7 +80,7 @@ The inheritance relationship is as follows:
 
    BM168X and its related class inheritance relationships in TPU-MLIR
 
-Only one class exists during a single run (singleton design pattern). When this class is initialized, it undergoes: reading the backend dynamic link library, loading functions (setting backend function pointers), initializing instruction data structures, and setting some chip-related parameters like NPU_NUM, L2_SRAM starting address, etc.
+Only one class exists during a single run (singleton design pattern). When this class is initialized, it undergoes: reading the backend dynamic link library, loading functions (setting backend function pointers), initializing instruction data structures, and setting some hardware-related parameters like NPU_NUM, L2_SRAM starting address, etc.
 
 Backend Function Loading
 ----------------

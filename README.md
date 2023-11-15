@@ -1,4 +1,4 @@
-![](./docs/assets/sophgo_chip.png)
+![](./docs/assets/sophgo_cover.png)
 
 # TPU-MLIR
 
@@ -6,9 +6,9 @@ For Chinese version: [README](https://github.com/sophgo/tpu-mlir/blob/master/REA
 
 TPU-MLIR is an open-source machine-learning compiler based on MLIR for TPU. This project provides a complete toolchain, which can convert pre-trained neural networks from different frameworks into binary files `bmodel` that can be efficiently operated on TPUs.
 
-SOPHGO aims to become a leading global provider of general-purpose computing power. SOPHGO focuses on the research, development, and promotion of computing products such as AI and RISC-V CPUs, and has built a comprehensive application matrix covering the 'cloud, edge, and endpoint' scenarios with its self-developed products. SOPHGO provides computing products and integrated solutions for applications such as smart cities, intelligent computing centers, smart security, intelligent transportation, safety production, industrial quality inspection, and intelligent terminals. The company has research and development centers in more than 10 cities in China including Beijing, Shanghai, Shenzhen, Qingdao, and Xiamen, as well as in the United States and Singapore.
+SOPHGO aims to become a leading global provider of general-purpose computing power. SOPHGO focuses on the research, development, and promotion of computing products such as Deep Learning and RISC-V processors, and has built a comprehensive application matrix covering the 'cloud, edge, and endpoint' scenarios with its self-developed products. SOPHGO provides computing products and integrated solutions for applications such as smart cities, intelligent computing centers, smart security, intelligent transportation, safety production, industrial quality inspection, and intelligent terminals. The company has research and development centers in more than 10 cities in China including Beijing, Shanghai, Shenzhen, Qingdao, and Xiamen, as well as in the United States and Singapore.
 
-Currently, supported AI frameworks are PyTorch, ONNX, TFLite and Caffe. Models from other frameworks need to be converted to ONNX models.
+Currently, supported Deep Learning frameworks are PyTorch, ONNX, TFLite and Caffe. Models from other frameworks need to be converted to ONNX models.
 
 # Resources
 
@@ -27,7 +27,7 @@ Here are some resources to help you better understand the project:
 
 | Index | Topic | Video Links |
 | :---: | --- | --- |
-| 01 | What is AI Compiler? | [AI Compiler Intro](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
+| 01 | What is Depp Learning Compiler? | [Depp Learning Compiler Intro](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
 | 02 | MLIR Intro | [Basic Syntax (1)](https://www.bilibili.com/video/BV1CP411n7fj/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Basic Syntax (2)](https://www.bilibili.com/video/BV1Gt4y1F7mt/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Basic Syntax (3)](https://www.bilibili.com/video/BV1UN4y1w72r/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Dialect Conversion](https://www.bilibili.com/video/BV1UG411c7nm/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Pattern Rewriting](https://www.bilibili.com/video/BV1R44y1d7xv/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
 | 03 | TPU-MLIR Intro | [Overview](https://www.bilibili.com/video/BV19d4y1B7eR/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Front-end Conversion](https://www.bilibili.com/video/BV1yv4y1S7WT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Lowering](https://www.bilibili.com/video/BV1gg411z7mC/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 | 04 | Quantization | [Overview](https://www.bilibili.com/video/BV1d8411j7t4/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Formula Derivation](https://www.bilibili.com/video/BV1SW4y1H7Uu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Calibration](https://www.bilibili.com/video/BV1qK411R75k/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [QAT](https://www.bilibili.com/video/BV12g411J7WQ/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|

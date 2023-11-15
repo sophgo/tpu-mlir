@@ -232,7 +232,7 @@ def get_model_transform(args):
         tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
                                 args.input_types, args.output_names, preprocessor.to_dict())
     else:
-        # TODO: support more AI model types
+        # TODO: support more deep learning model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))
     return tool
 

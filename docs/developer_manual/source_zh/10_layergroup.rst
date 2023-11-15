@@ -4,7 +4,7 @@ LayerGroup
 基本概念
 --------------
 
-TPU芯片分为片外内存(或称Global Memory, 简称GMEM)和片内内存(或称Local Memory, 简称LMEM)。
+TPU分为片外内存(或称Global Memory, 简称GMEM)和片内内存(或称Local Memory, 简称LMEM)。
 
 通常片外内存非常大(比如4GB), 片内内存非常小(比如16MB)。神经网络模型的数据量和计算量
 

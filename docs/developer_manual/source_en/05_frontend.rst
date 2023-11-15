@@ -5,7 +5,7 @@ This chapter takes the onnx model as an example to introduce the front-end conve
 
 Main Work
 ----------------
-The front-end is mainly responsible for transforming the original model into a Top (chip-independent) mlir model (without the Canonicalize part, so the generated file is named "\*_origin.mlir"). This process creates and adds the corresponding operators (Op) based on the original model and the input arguments when running model_transform.py. The transformed model and weights will be saved in mlir and npz file respectively.
+The front-end is mainly responsible for transforming the original model into a Top (hardware-independent) mlir model (without the Canonicalize part, so the generated file is named "\*_origin.mlir"). This process creates and adds the corresponding operators (Op) based on the original model and the input arguments when running model_transform.py. The transformed model and weights will be saved in mlir and npz file respectively.
 
 Workflow
 ----------------

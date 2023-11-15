@@ -5,7 +5,7 @@ TpuLang接口
 
 主要工作
 -----------
-TpuLang提供了mlir对外的接口函数。用户通过Tpulang可以直接组建用户自己的网络，将模型转换为 Top 层(芯片无关层) mlir 模型
+TpuLang提供了mlir对外的接口函数。用户通过Tpulang可以直接组建用户自己的网络，将模型转换为 Top 层(硬件无关层) mlir 模型
 (不包含 Canonicalize 部分, 因此生成的文件名为“\*_origin.mlir”)。这个过程会根据输入的接口函数逐
 一创建并添加算子(Op), 最终生成 mlir 文件与保存权重的 npz 文件。
 

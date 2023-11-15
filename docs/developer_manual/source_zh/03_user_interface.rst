@@ -336,7 +336,7 @@ run_qtable.py
     # genetated time: 2022-11-09 21:35:47.981562
     # sample number: 3
     # all int8 loss: -39.03119206428528
-    # chip: bm1684x  mix_mode: F32
+    # platform: bm1684x  mix_mode: F32
     ###
     # op_name   quantize_mode
     conv2_1/linear/bn F32
@@ -352,7 +352,7 @@ run_qtable.py
     # genetated time: 2022-11-09 22:30:31.912270
     # sample number: 3
     # all int8 loss: -39.03119206428528
-    # chip: bm1684x  mix_mode: F32
+    # platform: bm1684x  mix_mode: F32
     ###
     No.0 : Layer: conv2_1/linear/bn Loss: -36.14866065979004
     No.1 : Layer: conv2_2/dwise/bn  Loss: -37.15774385134379

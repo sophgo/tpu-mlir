@@ -90,7 +90,7 @@ For example:
    &=> y = x \times \frac{2119995857}{1 \ll 34} \\
    &=> y = (x \times 2119995857) \gg 34
 
-The higher the number of bits supported by Multiplier, the closer to Scale it will be, but that leads to worse performance. Therefore, generally, the chip will use a 32-bit or 8-bit Multiplier.
+The higher the number of bits supported by Multiplier, the closer to Scale it will be, but that leads to worse performance. Therefore, generally, the hardware will use a 32-bit or 8-bit Multiplier.
 
 Quantization derivation
 ------------------------

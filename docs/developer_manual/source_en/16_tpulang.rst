@@ -6,7 +6,7 @@ This chapter mainly introduces the process of converting models using TpuLang.
 Main Work
 -----------
 
-TpuLang provides mlir external interface functions. Users can directly build their own network through Tpulang, and convert the model to the Top layer (chip-independent layer) mlir model (the Canonicalize part is not included, so the generated file name is "\*_origin.mlir"). This process will create and add operators (Op) one by one according to the input interface functions. Finally, a mlir model file and a corresponding weight npz file will be generated.
+TpuLang provides mlir external interface functions. Users can directly build their own network through Tpulang, and convert the model to the Top layer (hardware-independent layer) mlir model (the Canonicalize part is not included, so the generated file name is "\*_origin.mlir"). This process will create and add operators (Op) one by one according to the input interface functions. Finally, a mlir model file and a corresponding weight npz file will be generated.
 
 
 Work Process

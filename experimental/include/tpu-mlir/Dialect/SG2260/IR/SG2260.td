@@ -23,7 +23,7 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 def SG2260_Dialect : Dialect {
   let name = "sg2260";
   let cppNamespace = "::tpu_mlir::sg2260";
-  let description = [{The SG2260 chip Atomic instruciton.}];
+  let description = [{The SG2260 Atomic instruciton.}];
   let useDefaultTypePrinterParser = 1;
   let useDefaultAttributePrinterParser = 1;
   let extraClassDeclaration = [{
