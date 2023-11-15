@@ -200,6 +200,7 @@ class OnnxConverter(BaseConverter):
             "NonMaxSuppression": lambda node: self.convert_nms_op(node),
             "Not": lambda node: self.convert_not_op(node),
             "NonZero": lambda node: self.convert_nonzero_op(node),
+            "OneHot": lambda node: self.convert_onehot_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
             "PixelNormalization": lambda node: self.convert_pixel_norm_op(node),
             "PRelu": lambda node: self.convert_prelu_op(node),
@@ -2380,6 +2381,77 @@ class OnnxConverter(BaseConverter):
                                order=StringAttr.get("RowMajor"),
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_onehot_op(self, onnx_node):
+        assert (onnx_node.op_type == "OneHot")
+        assert (len(onnx_node.inputs) == 3)
+        assert (len(onnx_node.outputs) == 1)
+        indices = self.getOp(onnx_node.inputs[0])
+        depth = self.getOp(onnx_node.inputs[1])      #  -depth <= indeces[i] <= depth-1
+        values = self.getOp(onnx_node.inputs[2])
+        axis = onnx_node.attrs.get("axis",-1)
+        assert (axis == -1)
+        ind_dims = list(self.getWeight(onnx_node.inputs[0]).shape)
+        ind_dims.extend(self.getWeight(onnx_node.inputs[1]))
+        ind_unsq = list(self.getWeight(onnx_node.inputs[0]).shape)
+        ind_unsq.extend([1])
+        padding_shape = np.array(ind_dims).astype(np.int64)
+        output_name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        min_value = 0
+        max_value = 0
+        if (self.isWeight(values)):
+            min_value = top.ReduceOp(self.unranked_type,
+                                    self.getWeightOp(values),
+                                    axes=[0],
+                                    keepdims=1,
+                                    mode=StringAttr.get("ReduceMin"),
+                                    loc=self.get_loc(output_name + "_min"),
+                                    ip=self.mlir.insert_point).output
+            max_value = top.ReduceOp(self.unranked_type,
+                                    self.getWeightOp(values),
+                                    axes=[0],
+                                    keepdims=1,
+                                    mode=StringAttr.get("ReduceMax"),
+                                    loc=self.get_loc(output_name + "_max"),
+                                    ip=self.mlir.insert_point).output
+        else:
+            min_value = top.ReduceOp(self.unranked_type,
+                                    values,
+                                    axes=[0],
+                                    keepdims=1,
+                                    mode=StringAttr.get("ReduceMin"),
+                                    loc=self.get_loc(output_name + "_min"),
+                                    ip=self.mlir.insert_point).output
+            max_value = top.ReduceOp(self.unranked_type,
+                                    values,
+                                    axes=[0],
+                                    keepdims=1,
+                                    mode=StringAttr.get("ReduceMax"),
+                                    loc=self.get_loc(output_name + "_max"),
+                                    ip=self.mlir.insert_point).output
+        input_data = top.ExpandOp(self.unranked_type,
+                                min_value,
+                                shape=padding_shape,
+                                loc=self.get_loc(output_name + "_expandmin"),
+                                ip=self.mlir.insert_point).output
+        updates = top.ExpandOp(self.unranked_type,
+                                max_value,
+                                shape=ind_unsq,
+                                loc=self.get_loc(output_name + "_expandmax"),
+                                ip=self.mlir.insert_point).output
+        indices_unsq = top.UnsqueezeOp(self.unranked_type,
+                                indices,
+                                loc=self.get_loc(output_name + "_indices_unsqeeze"),
+                                ip=self.mlir.insert_point,
+                                axes=[1]).output
+        new_op = top.ScatterElementsOp(self.unranked_type,
+                                input_data,
+                                indices_unsq,
+                                updates,
+                                axis=1,
+                                loc=self.get_loc(output_name + "_scatter_elements"),
+                                ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def parse_subgraph(self, op, region_idx, graph_node):
