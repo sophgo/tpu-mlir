@@ -20,7 +20,6 @@ rebuild_backend_lib_cmodel
 cp build/backend_api/libbackend_bm1684x.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libbackend_1684x.so
 cp build_runtime/firmware_core/libcmodel_firmware.so  /workspace/tpu-mlir/third_party/nntoolchain/lib/libcmodel_1684x.so
 rebuild_firmware
-#old version:817cb9a30ad481908d7659b1951404c70f6dcee3
 cp build/firmware_core/libfirmware_core.so /workspace/tpu-mlir/third_party/nntoolchain/lib/libbm1684x_kernel_module.so
 
 #bm1686

@@ -2919,8 +2919,7 @@ def Tpu_Batch2SpaceOp: Tpu_Op<"Batch2Space"> {
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_IdentityOp : Tpu_Op<"Identity",[
-  NoMemoryEffect]> {
+def Tpu_IdentityOp : Tpu_Op<"Identity"> {
   let summary = "identity operator";
 
   let description = [{
