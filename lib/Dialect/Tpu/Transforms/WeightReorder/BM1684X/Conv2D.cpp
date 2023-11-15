@@ -275,13 +275,17 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     filter_offset = align_up(quant_offset + quant_w_bytes, filter_align);
   }
   int64_t merge_w = filter_offset + filter_w_bytes;
+  if (merge_w > MAX_TPU_DIM)
+    merge_w = attr.is_dw ?
+              align_up(merge_w, ceiling_func(attr.oc, (int64_t)IC_PARALLEL)):
+              align_up(merge_w, IC_PARALLEL);
   // merge requant/bias/filter
   auto new_coeff = std::make_shared<std::vector<int8_t>>(new_oc * merge_w, 0);
   std::vector<int64_t> coeff_shape = {1, new_oc, 1, merge_w};
   if (isINT4Conv)
     coeff_shape[3] <<= 1;
   for (int i = 0; i < new_oc; i++) {
-    auto coeff_ptr = new_coeff->data() + i * merge_w;
+    auto coeff_ptr = new_coeff->data() + i * (filter_offset + filter_w_bytes);
     auto bias_ptr =
         attr.has_bias ? (bias_new->data() + i * bias_shape[3]) : nullptr;
     auto filter_ptr = filter_data->data() + i * filter_shape[3];
