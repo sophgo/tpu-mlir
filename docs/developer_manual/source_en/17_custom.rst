@@ -31,7 +31,7 @@ Add TpuLang Custom Operator
 
 2. Develop backend operators based on TPU-Kernel
 
-  Assuming the current path is $TPUC_ROOT/customlayer, add the nodechip_{op_name}.h header file in the ./include directory to declare the custom operator functions for the global layer and local layer (void nodechip_{op_name}_global and void nodechip_{op_name}_local, respectively). Then, add the nodechip_{op_name}.c file in the ./src directory and invoke the TPU-Kernel interfaces to implement the corresponding functions.
+  Assuming the current path is $TPUC_ROOT/customlayer, add the backend_{op_name}.h header file in the ./include directory to declare the custom operator functions for the global layer and local layer (void backend_{op_name}_global and void backend_{op_name}_local, respectively). Then, add the backend_{op_name}.c file in the ./src directory and invoke the TPU-Kernel interfaces to implement the corresponding functions.
 
 3. Define the operator's parameter structure and write the operator's interface
 
@@ -135,12 +135,12 @@ This subsection provides a sample of swapchanel operator implementation and appl
 
   The following is the declaration in the header file
 
-  ${TPUC_ROOT}/customlayer/include/nodechip_swapchannel.h:
+  ${TPUC_ROOT}/customlayer/include/backend_swapchannel.h:
 
   .. code-block:: cpp
 
-    #ifndef NODECHIP_ABSADD_H_
-    #define NODECHIP_ABSADD_H_
+    #ifndef BACKEND_SWAPCHANNEL_H_
+    #define BACKEND_SWAPCHANNEL_H_
 
     #include "tpu_kernel.h"
 
@@ -148,7 +148,7 @@ This subsection provides a sample of swapchanel operator implementation and appl
     extern "C" {
     #endif
 
-    void nodechip_swapchannel_global(
+    void backend_swapchannel_global(
         global_addr_t input_global_addr,
         global_addr_t output_global_addr,
         const int *shape,
@@ -162,14 +162,14 @@ This subsection provides a sample of swapchanel operator implementation and appl
     #endif
 
 
-  The code of ${TPUC_ROOT}/customlayer/src/nodechip_swapchannel.c:
+  The code of ${TPUC_ROOT}/customlayer/src/backend_swapchannel.c:
 
   .. code-block:: c
 
-    #include "nodechip_swapchannel.h"
+    #include "backend_swapchannel.h"
     #include "common.h"
 
-    void nodechip_swapchannel_global(
+    void backend_swapchannel_global(
         global_addr_t input_global_addr,
         global_addr_t output_global_addr,
         const int *shape,
@@ -234,7 +234,7 @@ This subsection provides a sample of swapchanel operator implementation and appl
 
     #include "tpu_utils.h"
     #include "api_swapchannel.h"
-    #include "nodechip_swapchannel.h"
+    #include "backend_swapchannel.h"
 
     // parse param function
     swapchannel_param_t parsParam(custom_param_t* param) {
@@ -253,7 +253,7 @@ This subsection provides a sample of swapchanel operator implementation and appl
     {
         swapchannel_param_t sc_param = parsParam(param);
 
-        nodechip_swapchannel_global(
+        backend_swapchannel_global(
             input->addr,
             output->addr,
             input->shape,

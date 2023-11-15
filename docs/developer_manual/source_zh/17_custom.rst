@@ -36,13 +36,13 @@ TpuLang自定义算子添加
 
 2. 基于tpu-kernel编写后端算子
 
-  假定当前处于 $TPUC_ROOT/customlayer 路径下，在./include目录下添加 nodechip_{op_name}.h 头文件，声明global layer与local layer的自定义算子函数 void nodechip_{op_name}_global 和 void nodechip_{op_name}_local ， 并在 ./src 下添加 nodechip_{op_name}.c 文件，在其中调用tpu-kernel接口实现相应的函数。
+  假定当前处于 $TPUC_ROOT/customlayer 路径下，在./include目录下添加 backend_{op_name}.h 头文件，声明global layer与local layer的自定义算子函数 void backend_{op_name}_global 和 void backend_{op_name}_local ， 并在 ./src 下添加 backend_{op_name}.c 文件，在其中调用tpu-kernel接口实现相应的函数。
 
 3. 定义算子参数结构体与编写算子调用接口
 
   a. 根据算子所需的参数在 ./include/backend_custom_param.h 头文件中添加相应的结构体 {op_name}_param_t ，用于接收来自工具链前端的参数。
 
-  b. 在 ./include 目录下添加 api_{op_name}.h 头文件，声明自定义算子函数的调用接口 void api_{op_name}_global 和 api_{op_name}_local（分别用于调用 void nodechip_{op_name}_global 和 void nodechip_{op_name}_local ），并在 ./src 目录下添加 api_{op_name}.c 文件实现相应的接口函数。
+  b. 在 ./include 目录下添加 api_{op_name}.h 头文件，声明自定义算子函数的调用接口 void api_{op_name}_global 和 api_{op_name}_local（分别用于调用 void backend_{op_name}_global 和 void backend_{op_name}_local ），并在 ./src 目录下添加 api_{op_name}.c 文件实现相应的接口函数。
 
   c. 同时，用户需要根据算子所需的参数实现相应的函数用于解析由工具链前端传递过来的参数。工具链前端的参数是通过custom_param_t数组的指针进行传递，每个custom_param_t结构体中包含了一个参数的信息，参数值会被存放在相应数据类型（其中包含了整数，浮点数，整数数组与浮点数数组）的custom_param_t成员变量中。参数的顺序与用户在调用tpulang接口时提供的参数顺序相同。custom_param_t结构体的定义如下：
 
@@ -138,12 +138,12 @@ TpuLang示例
 
 1. 后端算子实现
 
-  ${TPUC_ROOT}/customlayer/include/nodechip_swapchannel.h 头文件声明如下：
+  ${TPUC_ROOT}/customlayer/include/backend_swapchannel.h 头文件声明如下：
 
   .. code-block:: cpp
 
-    #ifndef NODECHIP_ABSADD_H_
-    #define NODECHIP_ABSADD_H_
+    #ifndef BACKEND_SWAPCHANNEL_H_
+    #define BACKEND_SWAPCHANNEL_H_
 
     #include "tpu_kernel.h"
 
@@ -151,7 +151,7 @@ TpuLang示例
     extern "C" {
     #endif
 
-    void nodechip_swapchannel_global(
+    void backend_swapchannel_global(
         global_addr_t input_global_addr,
         global_addr_t output_global_addr,
         const int *shape,
@@ -165,21 +165,26 @@ TpuLang示例
     #endif
 
 
-  ${TPUC_ROOT}/customlayer/src/nodechip_swapchannel.c 代码如下：
+  ${TPUC_ROOT}/customlayer/src/backend_swapchannel.c 代码如下：
 
   .. code-block:: c
 
-    #include "nodechip_swapchannel.h"
+    #include "backend_swapchannel.h"
     #include "common.h"
 
-    void nodechip_swapchannel_global(
+    void backend_swapchannel_global(
         global_addr_t input_global_addr,
         global_addr_t output_global_addr,
         const int *shape,
         const int *order,
         data_type_t dtype)
     {
-        dim4 channel_shape = {.n = shape[0], .c = 1, .h = shape[2], .w = shape[3]};
+        dim4 channel_shape = {.n = shape[0], .c = shape[1], .h = shape[2], .w = shape[3]};
+        dim4 stride = {0};
+        stride.w = 1, stride.h = channel_shape.w;
+        stride.c = stride.h * channel_shape.h;
+        stride.n = stride.c * channel_shape.c;
+        channel_shape.c = 1;
         int data_size = tpu_data_type_size(dtype);
         int offset = channel_shape.w * channel_shape.h * data_size;
         for (int i = 0; i < 3; i++) {
@@ -187,8 +192,8 @@ TpuLang示例
                 output_global_addr + i * offset,
                 input_global_addr + order[i] * offset,
                 &channel_shape,
-                NULL,
-                NULL,
+                &stride,
+                &stride,
                 dtype);
         }
     }
@@ -233,7 +238,7 @@ TpuLang示例
 
     #include "tpu_utils.h"
     #include "api_swapchannel.h"
-    #include "nodechip_swapchannel.h"
+    #include "backend_swapchannel.h"
 
     // parse param function
     swapchannel_param_t parsParam(custom_param_t* param) {
@@ -252,7 +257,7 @@ TpuLang示例
     {
         swapchannel_param_t sc_param = parsParam(param);
 
-        nodechip_swapchannel_global(
+        backend_swapchannel_global(
             input->addr,
             output->addr,
             input->shape,

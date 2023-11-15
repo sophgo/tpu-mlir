@@ -1,6 +1,6 @@
 #include "tpu_utils.h"
 #include "api_ceiladd.h"
-#include "nodechip_ceiladd.h"
+#include "backend_ceiladd.h"
 
 // parse param function
 ceiladd_param_t ceiladd_parse_param(custom_param_t* param) {
@@ -18,7 +18,7 @@ void api_ceiladd_global(
 {
     ceiladd_param_t ceiladd_param = ceiladd_parse_param(param);
 
-    nodechip_ceiladd_f32_global(
+    backend_ceiladd_f32_global(
         input->addr,
         output->addr,
         input->shape,
