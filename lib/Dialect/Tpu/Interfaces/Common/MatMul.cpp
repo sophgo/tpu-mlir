@@ -408,28 +408,38 @@ ArrayAttr tpu::MatMulOp::getIndexingMaps() {
       module::getStorageType(getInput()).isInteger(4))
     return Builder(getContext()).getAffineMapArrayAttr({});
 
-  auto dims = module::getShape(getInput()).size();
-  bool has_ts = getLeftTranspose() || getOutputTranspose();
-  int dims_parallel = dims - 1 - has_ts;
-  if (dims_parallel == 0)
+  auto outShape = module::getShape(getOutput());
+  auto inputShape = module::getShape(getInput());
+  auto rightShape = module::getShape(getRight());
+  // compute the parallel dimensions
+  bool hasTS = getLeftTranspose() || getOutputTranspose();
+  int maxParallelDims = outShape.size() - 1 - hasTS - getHdimIsBatch();
+
+  if (maxParallelDims < 1)
     return Builder(getContext()).getAffineMapArrayAttr({});
 
-  AffineMap identityMap =
-      AffineMap::getMultiDimIdentityMap(dims_parallel, context);
+  AffineMap outMap =
+      AffineMap::getMultiDimIdentityMap(maxParallelDims, context);
+  int inputParalleDims =
+      std::min(std::max((int)inputShape.size() - 1, 0), maxParallelDims);
+  int rightParalleDims =
+      std::min(std::max((int)rightShape.size() - 2, 0), maxParallelDims);
 
-  AffineMap emptyMap = AffineMap::get(dims_parallel, 0, context);
-  AffineMap rightMatrixMap = AffineMap::get(
-      dims_parallel, 0, identityMap.getResults().slice(0, dims_parallel - 1),
-      context);
+  AffineMap inputMap =
+      AffineMap::get(maxParallelDims, 0,
+                     outMap.getResults().slice(0, inputParalleDims), context);
 
-  SmallVector<AffineMap> indexingMaps{identityMap, rightMatrixMap};
+  AffineMap rightMap =
+      AffineMap::get(maxParallelDims, 0,
+                     outMap.getResults().slice(0, rightParalleDims), context);
+  AffineMap emptyMap = AffineMap::get(maxParallelDims, 0, context);
+
+  SmallVector<AffineMap> indexingMaps{inputMap, rightMap};
 
   for (int i = 2, n = getNumOperands(); i < n; ++i) {
-    if (module::isNone(getOperand(i)))
-      indexingMaps.push_back(emptyMap);
-    else
-      indexingMaps.push_back(rightMatrixMap);
+    indexingMaps.push_back(emptyMap);
   }
-  indexingMaps.push_back(identityMap);
+
+  indexingMaps.push_back(outMap);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
