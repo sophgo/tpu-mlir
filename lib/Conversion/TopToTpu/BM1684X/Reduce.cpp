@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
-
+#include "tpu_mlir/Support/Float8.h"
 namespace tpu_mlir {
 namespace bm1684x {
 
@@ -37,7 +37,8 @@ void ReduceLowering::LoweringF16(PatternRewriter &rewriter,
 
 void ReduceLowering::LoweringF8(PatternRewriter &rewriter,
                                  top::ReduceOp op) const {
-  llvm_unreachable("Not Implemented");
+  // llvm_unreachable("Not Implemented");
+  lowering_common_f16<tpu::ReduceOp>(rewriter, op, 3);
 }
 
 void ReduceLowering::LoweringQuantized(PatternRewriter &rewriter,
