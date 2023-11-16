@@ -51,8 +51,9 @@ inline std::string fmt_shape(ArrayRef<T> shape, StringRef dtype = {}) {
 
 inline std::string get_dtype_str(int dtype) {
   assert(dtype >= 0);
-  std::string dtype_str[] = {"f32",  "f16",  "si8",  "ui8", "si16", "ui16",
-                             "si32", "ui32", "bf16", "si4", "ui4"};
+  std::string dtype_str[] = {"f32",  "f16",  "si8",    "ui8",   "si16",
+                             "ui16", "si32", "ui32",   "bf16",  "si4",
+                             "ui4",  "f20",  "f8e5m2", "f8e4m3"};
   return dtype_str[dtype];
 }
 
