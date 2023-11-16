@@ -525,9 +525,6 @@ class Parameter(FBSOptional):
         cmd_group = self.cmd_group.serialize(builder, save_binary_fun)
         coeff_mem = self.coeff_mem.serialize(builder, save_binary_fun)
         stage_ir = self.stage_ir.serialize(builder, save_binary_fun)
-        binary_ir = self.binary_ir.serialize(builder, save_binary_fun)
-        net_profile = self.net_profile.serialize(builder, save_binary_fun)
-
         ctx_sizes = builder.CreateNumpyVector(np.array(self.ctx_sizes, dtype=np.uint64))
 
         module.Start(builder)
@@ -542,10 +539,13 @@ class Parameter(FBSOptional):
         module.AddHWDynamic(builder, 0)  # 7
         if cmd_group:
             module.AddCmdGroup(builder, cmd_group)  # 8
+        # Structs should be stored inline in their parent.
+        net_profile = self.net_profile.serialize(builder, save_binary_fun)
         if net_profile:
             module.AddNetProfile(builder, net_profile)
         if stage_ir:
             module.AddStageIr(builder, stage_ir)  # 10
+        binary_ir = self.binary_ir.serialize(builder, save_binary_fun)
         if binary_ir:
             module.AddBinaryIr(builder, binary_ir)  # 11
         module.AddSubNet(builder, sub_net)  # 12
