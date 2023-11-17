@@ -236,6 +236,7 @@ def Tpu_ActiveMode : I32EnumAttr<"ActiveMode",
       I32EnumAttrCase<"LOG_SIGMOID", 32>,
       I32EnumAttrCase<"SOFT_PLUS", 33>,
       I32EnumAttrCase<"SOFT_SIGN", 34>,
+      I32EnumAttrCase<"LOG2", 35>,
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
@@ -356,7 +357,8 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     OptionalAttr<SI32Attr>:$multiplier_pos,
     OptionalAttr<SI32Attr>:$multiplier_neg,
     OptionalAttr<SI32Attr>:$rshift_pos,
-    OptionalAttr<SI32Attr>:$rshift_neg
+    OptionalAttr<SI32Attr>:$rshift_neg,
+    OptionalAttr<F64ArrayAttr>:$out_f8_scale
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -394,7 +396,8 @@ def Tpu_Conv3DOp: Tpu_Op<"Conv3D", [SupportFuseRelu,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    OptionalAttr<F64Attr>:$out_f8_scale
   );
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
@@ -430,7 +433,9 @@ class Tpu_PoolOp <string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     /// asymmetric quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    /// fp8 quantize param
+    OptionalAttr<F64Attr>:$fp8_out_scale
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -462,7 +467,9 @@ def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D",[
     /// asymmetric quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    /// fp8 quantize param
+    OptionalAttr<F64Attr>:$fp8_out_scale
   );
 }
 
@@ -512,6 +519,7 @@ def Tpu_PoolMaskOp: Tpu_Op<"PoolMask"> {
 def Tpu_AddOp: Tpu_Op<"Add", [
   SupportFuseRelu, SupportEarlyStride,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "BackwardW", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add operator";
 
@@ -532,6 +540,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
+    OptionalAttr<F64ArrayAttr>:$out_f8_scales, // for fp8 quant
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -545,6 +554,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add const operator";
 
@@ -571,7 +581,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [
 }
 
 def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
-  let summary = "FusePreprcess, it's just a placeholder op.";
+  let summary = "FusePreprocess, it's just a placeholder op.";
   let description = [{
     It may be divided to permute + slice + scale/scale_lut ops.
   }];
@@ -583,15 +593,57 @@ def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
     I64ArrayAttr:$resize_dims,
     F64ArrayAttr:$scale,
     F64ArrayAttr:$mean,
+    //for gbrg raw image preprocess
+    F64Attr:$white_level,
+    F64Attr:$black_level,
     DefaultValuedAttr<BoolAttr, "true">:$sign
   );
   let hasCanonicalizeMethod = 1;
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_PackRawOp: Tpu_Op<"PackRaw"> {
+  let summary = "Preprocess for raw image.";
+  let description = [{
+    1. preprocess raw image from 3 byte 2 pixel to 2 byte 1 pixel,
+      for each row pixel fill 0 in top 4 bits;
+      for each img block pack to 4 channels pattern;
+    2. cast to float then normalize and clip by black & white level;
+    3. cast to odtype then pad img to align padding param and move to ddr;
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    F64Attr:$white_level,
+    F64Attr:$black_level,
+    F64Attr:$threshold,
+    I64ArrayAttr:$channel_order
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_DepackRawOp: Tpu_Op<"DepackRaw",
+    [DeclareOpInterfaceMethods<TypeInterface>]> {
+  let summary = "Postprocess for raw image.";
+  let description = [{
+    1. depack channel (b, bh * bw, ih + ph, iw + pw) -> (b, 1, oh * bh, ow * bw)
+    2. cast to INT16 then postprocess img to raw pattern ( 3 byte 2 pixel )
+    3. (b, bh * bw, ih + ph, iw + pw) 16bit -> (b, 1, oh * bh, ow * bw * 3 / 2) 8bit
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$padding_h,
+    I64Attr:$padding_w,
+    F64Attr:$white_level,
+    F64Attr:$black_level,
+    I64ArrayAttr:$channel_order
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_SubOp: Tpu_Op<"Sub",
     [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub operator";
 
@@ -621,6 +673,7 @@ def Tpu_SubOp: Tpu_Op<"Sub",
 def Tpu_SubConstOp: Tpu_Op<"SubConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub const operator";
 
@@ -647,6 +700,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst", [
 def Tpu_MulOp: Tpu_Op<"Mul",
     [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul operator";
 
@@ -662,6 +716,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
+    OptionalAttr<F64ArrayAttr>:$out_f8_scales,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -673,6 +728,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
 
 def Tpu_MaxOp: Tpu_Op<"Max", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max operator";
 
@@ -699,6 +755,7 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
 
 def Tpu_MinOp: Tpu_Op<"Min", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "min operator";
 
@@ -725,6 +782,7 @@ def Tpu_MinOp: Tpu_Op<"Min", [
 
 def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
    InOutSameShape, SupportElementwise,
+   DeclareOpInterfaceMethods<IndexingMapsInterface>,
    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max_const operator";
@@ -752,6 +810,7 @@ def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
 
 def Tpu_MinConstOp: Tpu_Op<"MinConst", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "min_const operator";
@@ -779,6 +838,7 @@ def Tpu_MinConstOp: Tpu_Op<"MinConst", [
 
 def Tpu_ActiveOp: Tpu_Op<"Active",[
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
   let summary = "Active operator";
@@ -802,6 +862,7 @@ def Tpu_ActiveOp: Tpu_Op<"Active",[
 
 def Tpu_ClipOp: Tpu_Op<"Clip",
   [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+   DeclareOpInterfaceMethods<IndexingMapsInterface>,
    DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
   let summary = "Clip operator";
   let description = [{
@@ -820,6 +881,7 @@ def Tpu_ClipOp: Tpu_Op<"Clip",
 
 def Tpu_MulConstOp: Tpu_Op<"MulConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul const operator";
@@ -847,6 +909,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [
 
 def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "ConstantBinary (Div) operator";
@@ -945,6 +1008,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "matmul operator";
 
@@ -995,11 +1059,14 @@ def Tpu_A16MatMulOp: Tpu_Op<"A16MatMul"> {
   let arguments = (ins
     AnyRankedTensor:$input,
     AnyRankedTensor:$weight,
-    AnyTensorOrNone:$scale, // the scale for quantized weight
-    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$scale, // scales for weight quant
+    AnyTensorOrNone:$zp, // zero points for weight quant
+    AnyTensorOrNone:$bias, // note: bias has to be the last operand
     I64Attr:$weight_bits,
     DefaultValuedAttr<BoolAttr, "true">:$sign,
-    DefaultValuedAttr<BoolAttr, "false">:$w_transpose
+    DefaultValuedAttr<BoolAttr, "false">:$w_transpose,
+    // do per-group quant if q_group_size > 0, otherwise per-channel
+    DefaultValuedAttr<I64Attr, "0">:$q_group_size
   );
 
   let hasCanonicalizeMethod = 1;
@@ -1060,6 +1127,7 @@ def Tpu_RangeOp: Tpu_Op<"Range"> {
 
 def Tpu_ReluOp: Tpu_Op<"Relu", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]>{
   let summary = "Relu operator";
@@ -1121,6 +1189,7 @@ def Tpu_ReverseOp:Tpu_Op<"Reverse", [InOutSameShape]> {
 
 def Tpu_CastOp:Tpu_Op<"Cast", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
@@ -1183,6 +1252,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
 
 def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
@@ -1221,6 +1291,7 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
 
 def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
@@ -1259,6 +1330,7 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
 
 def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>]> {
@@ -1424,6 +1496,7 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
 
 def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
    InOutSameShape, SupportElementwise,
+   DeclareOpInterfaceMethods<IndexingMapsInterface>,
    DeclareOpInterfaceMethods<LocalGenInterface>,
    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "leakyrelu operation";
@@ -1489,6 +1562,7 @@ def Tpu_ShapePackOp:Tpu_Op<"ShapePack", [
 
 def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
     InOutSameShape, SupportElementwise,
+    DeclareOpInterfaceMethods<IndexingMapsInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
@@ -1614,7 +1688,8 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
 }
 
 def Tpu_DivOp: Tpu_Op<"Div", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>]> {
   let summary = "div operator";
 
   let description = [{
@@ -1779,7 +1854,8 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
     I64Attr:$axis,
     I64Attr:$K,
     DefaultValuedAttr<BoolAttr, "true">:$largest,
-    DefaultValuedAttr<BoolAttr, "true">:$sorted
+    DefaultValuedAttr<BoolAttr, "true">:$sorted,
+    DefaultValuedAttr<BoolAttr, "false">:$values_used_only
   );
   let results = (outs
     AnyTensorOrNone:$values,
@@ -2060,7 +2136,8 @@ def Tpu_GatherElementsOp: Tpu_Op<"GatherElements", [
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$indices,
-
+    AnyTensorOrNone:$indices_coeff,
+    AnyTensorOrNone:$buffer,
     DefaultValuedAttr<I64Attr, "2">:$axis
   );
 
@@ -2070,6 +2147,7 @@ def Tpu_GatherElementsOp: Tpu_Op<"GatherElements", [
 def Tpu_PReluOp : Tpu_Op<"PReluOp", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   InOutSameShape]> {
   let summary = "PReluOp operator";
   let description = [{
@@ -2203,6 +2281,7 @@ def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
 }
 
 def Tpu_CompareOp: Tpu_Op<"Compare", [
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Compare operator";
@@ -2220,6 +2299,7 @@ def Tpu_CompareOp: Tpu_Op<"Compare", [
 
 def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
   InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "CompareConst operator";
@@ -2253,6 +2333,23 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
     I64ArrayAttr:$normalized_shape,
     SI32Attr:$axis,
     F64Attr:$eps
+  );
+  let results = (outs
+    AnyRankedTensor:$output
+  );
+}
+
+def Tpu_IndexPutOp : Tpu_Op<"IndexPut"> {
+  let summary = "IndexPut operation";
+  let description = [{
+    aten::index_put_
+  }];
+  let arguments = (ins
+    AnyRankedTensor:$input,
+    AnyRankedTensor:$indices,
+    AnyRankedTensor:$values,
+    AnyTensorOrNone:$buffer, //for accumulate is True
+    DefaultValuedAttr<BoolAttr, "false">:$accumulate
   );
   let results = (outs
     AnyRankedTensor:$output
@@ -2488,7 +2585,8 @@ def TPU_SwapDimInnerOp: Tpu_Op<"SwapDimInner" ,[
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements">  {
+def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements", [
+  DeclareOpInterfaceMethods<TypeInterface>]>  {
   let summary = "ScatterElements op";
   let description = [{
     ScatterElements takes three inputs data, updates, and indices
@@ -2516,6 +2614,8 @@ def Tpu_ScatterElementsOp: Tpu_Op<"ScatterElements">  {
     AnyRankedTensor:$input,
     AnyRankedTensor:$indices,
     AnyRankedTensor:$updates,
+    AnyTensorOrNone:$indices_coeff,
+    AnyTensorOrNone:$buffer,
     I64Attr:$axis
   );
 
@@ -3133,4 +3233,3 @@ def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight">{
   }];
 }
 #endif // TPU_OPS
-

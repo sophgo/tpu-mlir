@@ -119,6 +119,18 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
       p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
                             std::multiplies<int64_t>());
     }
+    int b_temp = 1;
+    for (int i = 1; i < b_dims - 2; i++) {
+      b_temp *= b_s[i];
+    }
+    if (a_s[0] == b_s[0] && b_temp == 1 && b_dims > 2){
+      p.batch = b_s[0];
+      int a_temp = 1;
+      for(int i = 1; i < a_dims - 2; i++){
+        a_temp *= a_s[i];
+      }
+      p.M = a_s[o_dims - 2] * a_temp;
+    }
   }
   return p;
 }
@@ -233,7 +245,7 @@ LogicalResult tpu::MatMulOp::canonicalize(tpu::MatMulOp op,
   if (!out_stype.isa<FloatType>()) {
     return failure();
   }
-  if (module::isBM1686() && !out_stype.isF32()) {
+  if (module::isBM1688() && !out_stype.isF32()) {
     // only f32 support
     return failure();
   }
@@ -379,4 +391,36 @@ void tpu::MatMulOp::assign_fw_param(void *param) {
     memcpy(param, &fw_batch_matmul_layer_param,
            sizeof(fw_batch_matmul_layer_param_t));
   }
+}
+
+ArrayAttr tpu::MatMulOp::getIndexingMaps() {
+  MLIRContext *context = getContext();
+  if (module::isWeight(getRight()) &&
+      module::getStorageType(getInput()).isInteger(4))
+    return Builder(getContext()).getAffineMapArrayAttr({});
+
+  auto dims = module::getShape(getInput()).size();
+  bool has_ts = getLeftTranspose() || getOutputTranspose();
+  int dims_parallel = dims - 1 - has_ts;
+  if (dims_parallel == 0)
+    return Builder(getContext()).getAffineMapArrayAttr({});
+
+  AffineMap identityMap =
+      AffineMap::getMultiDimIdentityMap(dims_parallel, context);
+
+  AffineMap emptyMap = AffineMap::get(dims_parallel, 0, context);
+  AffineMap rightMatrixMap = AffineMap::get(
+      dims_parallel, 0, identityMap.getResults().slice(0, dims_parallel - 1),
+      context);
+
+  SmallVector<AffineMap> indexingMaps{identityMap, rightMatrixMap};
+
+  for (int i = 2, n = getNumOperands(); i < n; ++i) {
+    if (module::isNone(getOperand(i)))
+      indexingMaps.push_back(emptyMap);
+    else
+      indexingMaps.push_back(rightMatrixMap);
+  }
+  indexingMaps.push_back(identityMap);
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }

@@ -76,7 +76,16 @@ void GroupNormLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void GroupNormLowering::LoweringF16(PatternRewriter &rewriter,
                                     top::GroupNormOp op) const {
-  LoweringGroupNorm(rewriter, op, rewriter.getF32Type());
+  if (module::isSG2260Family()){
+    LoweringGroupNorm(rewriter, op, rewriter.getF16Type());
+  }else{
+    LoweringGroupNorm(rewriter, op, rewriter.getF32Type());
+  }
+}
+
+void GroupNormLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::GroupNormOp op) const {
+  llvm_unreachable("Not Implemented");
 }
 
 void GroupNormLowering::LoweringQuantized(PatternRewriter &rewriter,

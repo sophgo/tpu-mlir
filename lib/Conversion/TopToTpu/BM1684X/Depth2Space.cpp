@@ -37,6 +37,11 @@ void Depth2SpaceLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::Depth2SpaceOp>(rewriter, op);
 }
 
+void Depth2SpaceLowering::LoweringF8(PatternRewriter &rewriter,
+                                      top::Depth2SpaceOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void Depth2SpaceLowering::LoweringQuantized(PatternRewriter &rewriter,
                                             top::Depth2SpaceOp op) const {
   lowering_common<tpu::Depth2SpaceOp>(rewriter, op.getOperation(),

@@ -258,8 +258,8 @@ void TensorLocationImpl::record_loc(Operation *op, const json::Array &operands,
       J.value(cmd_before[1]);
     });
     J.attributeArray("tiu_dma_id(after)", [&] {
-      J.value((*BM168x::instance())->bdc_total_id);
-      J.value((*BM168x::instance())->gdma_total_id);
+      J.value((*BM168x::instance()).get_total_id("tiu:0:0"));
+      J.value((*BM168x::instance()).get_total_id("gdma:0:0"));
     });
     J.attributeArray("operands", [&] {
       for (auto &v : operands)

@@ -21,3 +21,10 @@ LogicalResult tpu::ReluOp::inference(InferenceParameter &p) {
                 limit, module::getStorageType(getOutput()));
   return success();
 }
+
+ArrayAttr tpu::ReluOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};

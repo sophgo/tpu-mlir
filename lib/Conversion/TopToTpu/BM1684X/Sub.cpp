@@ -96,6 +96,10 @@ void SubLowering::LoweringBF16(PatternRewriter &rewriter, top::SubOp op) const {
   lowering_common_bf16<tpu::SubOp>(rewriter, op);
 }
 
+void SubLowering::LoweringF8(PatternRewriter &rewriter, top::SubOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void SubLowering::LoweringF16(PatternRewriter &rewriter, top::SubOp op) const {
   lowering_common_f16<tpu::SubOp>(rewriter, op);
 }

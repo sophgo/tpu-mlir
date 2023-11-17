@@ -191,6 +191,11 @@ void SoftmaxLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void SoftmaxLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::SoftmaxOp op) const {
+  LoweringF32(rewriter, op);
+}
+
 void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SoftmaxOp op) const {
   if (module::isUniformQuantized(op.getInput(), op.getOutput()) == false) {

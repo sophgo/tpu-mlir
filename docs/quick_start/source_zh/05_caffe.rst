@@ -3,14 +3,15 @@
 
 本章以 ``mobilenet_v2_deploy.prototxt`` 和 ``mobilenet_v2.caffemodel`` 为例, 介绍如何编译迁移一个caffe模型至BM1684X TPU平台运行。
 
-本章需要如下文件(其中xxxx对应实际的版本信息):
+本章需要安装tpu_mlir。
 
-**tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
 
-加载tpu-mlir
+安装tpu-mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[caffe]
 
 
 准备工作目录
@@ -28,13 +29,32 @@
    $ mkdir mobilenet_v2 && cd mobilenet_v2
    $ wget https://raw.githubusercontent.com/shicai/MobileNet-Caffe/master/mobilenet_v2_deploy.prototxt
    $ wget https://github.com/shicai/MobileNet-Caffe/raw/master/mobilenet_v2.caffemodel
-   $ cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ tpu_mlir_get_resource regression/dataset/ILSVRC2012 .
+   $ tpu_mlir_get_resource regression/image .
    $ mkdir workspace && cd workspace
 
 
-这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
+这里的 ``tpu_mlir_get_resource`` 命令用于从tpu_mlir的包安装根目录向外复制文件。
 
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file的路径为相对于tpu_mlir的包安装根目录的位置，tpu_mlir包根目录下文件结构如下:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 Caffe转MLIR
 ------------------
@@ -46,7 +66,7 @@ Caffe转MLIR
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name mobilenet_v2 \
        --model_def ../mobilenet_v2_deploy.prototxt \
        --model_data ../mobilenet_v2.caffemodel \
@@ -69,7 +89,7 @@ MLIR转F32模型
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize F32 \
        --chip bm1684x \
@@ -96,7 +116,7 @@ MLIR转INT8模型
 
 .. code-block:: shell
 
-   $ run_calibration.py mobilenet_v2.mlir \
+   $ run_calibration mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
        -o mobilenet_v2_cali_table
@@ -112,7 +132,7 @@ MLIR转INT8模型
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \

@@ -18,6 +18,12 @@ def OpReorder : Pass<"op-reorder", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def WeightFold : Pass<"weight-fold", "ModuleOp"> {
+  let summary = "fold weight if all input of an operation is weight";
+  let constructor = "createWeightFoldPass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 def WeightReorder : Pass<"weight-reorder", "ModuleOp"> {
   let summary = "weight reorder in tpu by tpuc-opt";
   let constructor = "createWeightReorderPass()";
@@ -103,6 +109,10 @@ def StripIOQuant : Pass<"strip-io-quant", "ModuleOp"> {
            "strip input quant.">,
     Option<"quant_output", "quant_output", "bool", /*default=*/"false",
            "strip output quant.">,
+    Option<"quant_input_list", "quant_input_list", "std::string", /*default=*/"",
+           "choose index to strip input quant.">,
+    Option<"quant_output_list", "quant_output_list", "std::string", /*default=*/"",
+           "choose index to strip output quant.">,
   ];
 }
 

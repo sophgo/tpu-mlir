@@ -105,6 +105,7 @@ class TorchInterpreter():
             ['dtype', 'layout', 'device', 'pin_memory', 'non_blocking', 'copy', 'memory_format'],
             "aten::new_zeros": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::new_ones": ['dtype', 'layout', 'device', 'pin_memory'],
+            "aten::new_full": ['dtype', 'layout', 'device', 'pin_memory'],
             "aten::meshgrid": ['indexing'],
             "aten::empty": ['dtype', 'layout', 'device', 'pin_memory','memory_format'],
             "aten::baddbmm": ['beta','alpha'],

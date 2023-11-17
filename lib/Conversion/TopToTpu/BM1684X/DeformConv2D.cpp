@@ -119,6 +119,11 @@ void DeformConv2DLowering::LoweringINT4(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void DeformConv2DLowering::LoweringF8(PatternRewriter& rewriter,
+    top::DeformConv2DOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void DeformConv2DLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::DeformConv2DOp op) const {
   LoweringF32(rewriter, op);

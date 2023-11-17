@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 
 LogicalResult tpu::CompareOp::init(InferenceParameter &p) {
 
@@ -57,3 +58,7 @@ LogicalResult tpu::CompareOp::inference(InferenceParameter &p) {
 LogicalResult tpu::CompareOp::LocalGenSupport() {
   return BroadCastBinaryLocalGenSupport(getOperation());
 }
+
+ArrayAttr tpu::CompareOp::getIndexingMaps() {
+  return getBinaryIndexingMaps(getOperation());
+};

@@ -10,7 +10,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/Patterns.h"
 
-
 using namespace tpu_mlir::top;
 
 // reshape (in == out)
@@ -146,7 +145,7 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
     MulConstOp mulconst_op = NULL;
     AddConstOp addconst_op = NULL;
 
-    for (auto in:mul_op.getInputs()) {
+    for (auto in : mul_op.getInputs()) {
       if (isa<MulConstOp>(in.getDefiningOp()))
         mulconst_op = dyn_cast<MulConstOp>(in.getDefiningOp());
       else if (isa<AddConstOp>(in.getDefiningOp()))
@@ -181,7 +180,7 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
     MulConstOp mulconst_op2 = NULL;
     PowOp pow_op = NULL;
     ReshapeOp reshape_op = NULL;
-    for (auto in:add_op.getInputs()) {
+    for (auto in : add_op.getInputs()) {
       if (isa<MulConstOp>(in.getDefiningOp()))
         mulconst_op2 = dyn_cast<MulConstOp>(in.getDefiningOp());
       else if (isa<ReshapeOp>(in.getDefiningOp()))
@@ -190,7 +189,7 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
         return failure();
     }
     if (!isa<PowOp>(mulconst_op2.getInput().getDefiningOp()))
-        return failure();
+      return failure();
     else
         pow_op = dyn_cast<PowOp>(mulconst_op2.getInput().getDefiningOp());
     if (!mulconst_op2.getOutput().hasOneUse() || !pow_op.getOutput().hasOneUse())
@@ -200,10 +199,10 @@ struct MergeGeluPattern : public OpRewritePattern<ReshapeOp> {
       return failure();
     int cnt = 0;
     int all = 0;
-    for (auto out:reshape_op.getOutput().getUsers()) {
+    for (auto out : reshape_op.getOutput().getUsers()) {
       if (out == mulconst_op || out == pow_op || out == add_op)
-        cnt ++;
-      all ++;
+        cnt++;
+      all++;
     }
     if (cnt != 3 || all != 3)
       return failure();
@@ -275,12 +274,48 @@ struct ReshapeMovePattern : public OpRewritePattern<ReshapeOp> {
   }
 };
 
+/**
+ * Reshape(tensor<1xf32>) -> tensor<f32>
+ * Unsqueeze(tensor<f32>) -> tensor<1xf32>
+ **/
+struct InValidReshapeMergePattern : public OpRewritePattern<ReshapeOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ReshapeOp op,
+                                PatternRewriter &rewriter) const override {
+    // check topo
+    // have one user only
+    if (!op.getOutput().hasOneUse()) {
+      return failure();
+    }
+
+    auto shape = module::getShape(op.getOutput());
+    if (shape.size() > 0) {
+      return failure();
+    }
+
+    // move trait
+    for (auto nextOp : op.getResult().getUsers()) {
+      // ops that support permute move should also support reshape move
+      if (auto unsqueezeOp = dyn_cast<top::UnsqueezeOp>(nextOp)) {
+        unsqueezeOp.replaceAllUsesWith(op.getInput());
+        rewriter.eraseOp(nextOp);
+      } else {
+        llvm_unreachable("not supported this situation!");
+      }
+      // if (!isa<top::UnsqueezeOp>(nextOp)) {
+      // }
+    }
+
+    rewriter.eraseOp(op);
+
+    return success();
+  }
+};
+
 void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
-  results.insert<patterns::FuseRepeatPattern<top::ReshapeOp>,
-                 TopFuseReshape2,
-                 TopFuseReshape3,
-                 ReshapeInstanceNormPattern,
-                 MergeGeluPattern,
-                 ReshapeMovePattern>(context);
+  results.insert<patterns::FuseRepeatPattern<top::ReshapeOp>, TopFuseReshape2,
+                 TopFuseReshape3, ReshapeInstanceNormPattern, MergeGeluPattern,
+                 ReshapeMovePattern, InValidReshapeMergePattern>(context);
 }

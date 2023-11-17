@@ -73,6 +73,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::LN:
     active_func(p, num_element, [](double val) { return std::log(val); });
     break;
+  case ActiveMode::LOG2:
+    active_func(p, num_element, [](double val) { return std::log2(val); });
+    break;
   case ActiveMode::SQRT:
     active_func(p, num_element, [](double val) { return std::sqrt(val); });
     break;
@@ -141,6 +144,17 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::ROUND:
     active_func(p, num_element, [](double val) { return std::round(val); });
     break;
+  case ActiveMode::SIGN:
+    active_func(p, num_element, [](double val) {
+      if (val < 0) {
+        return -1;
+      } else if (val > 0) {
+        return 1;
+      } else {
+        return 0;
+      }
+    });
+    break;
   default:
     llvm_unreachable("Not Implemented");
   }
@@ -166,12 +180,21 @@ LogicalResult tpu::ActiveOp::LocalGenSupport() {
 void tpu::ActiveOp::assign_fw_param(void *param) {
   fw_active_layer_param_t layer_param = {0};
   layer_param.active_type = (int)getMode();
-  layer_param.if_relu = 0; //not implement
+  layer_param.if_relu = 0; // not implement
   layer_param.relu_upper_limit = 0.f;
-  layer_param.ic = module::getShape(getInput())[1];
-  layer_param.input_scale_back2float = 1.f; //not implement
-  layer_param.output_scale_back2float = 1.f; //not implement
+  auto shape = module::getShape(getInput());
+
+  layer_param.ic = shape.size() > 1 ? shape[1] : 1;
+  layer_param.input_scale_back2float = 1.f;  // not implement
+  layer_param.output_scale_back2float = 1.f; // not implement
   layer_param.opd_sign = module::isSign(getInput());
   layer_param.res_sign = module::isSign(getOutput());
   memcpy(param, &layer_param, sizeof(fw_active_layer_param_t));
 }
+
+ArrayAttr tpu::ActiveOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};

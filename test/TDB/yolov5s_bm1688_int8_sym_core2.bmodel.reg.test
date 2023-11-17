@@ -1,0 +1,60 @@
+RUN: bmodel_dis.py --format reg-set %p/bmodel/yolov5s_bm1688_int8_sym_core2.bmodel | FileCheck %s
+
+CHECK:  {
+CHECK-NEXT:    "core(0).subnet(-1).group(0)": {
+CHECK-NEXT:      "tiu": [
+CHECK-NEXT:        {
+CHECK-NEXT:          "name": "SYS",
+CHECK-NEXT:          "cmd": {
+CHECK-NEXT:            "rsvd0": 0,
+CHECK-NEXT:            "rsvd1": 0,
+CHECK:            "tsk_typ": 15,
+CHECK:            "imm": 262174
+CHECK:            "imm0": 0,
+CHECK:            "imm1": 122880
+CHECK:            "cmd_short": 1,
+CHECK:            "opt_opd1_prec": 0,
+CHECK:            "opt_opd1_sign": 1,
+CHECK:            "opt_res_add": 0,
+CHECK:            "opd0_dn_pad": 0,
+CHECK:            "short_opd0_str": 0,
+CHECK:            "opd0_n_str": 0,
+CHECK:            "opd0_h": 130,
+CHECK:            "opd1_addr": 122896,
+CHECK:        },
+CHECK:            "cmd_id_dep": 5,
+CHECK:            "res0_n": 1,
+CHECK:            "rsvd1": 0,
+CHECK:          "name": "sSG",
+CHECK:            "opt_opd3_const": 0,
+CHECK:            "res0_n": 1,
+CHECK:            "opd1_w": 20480,
+CHECK:            "opd1_addr": 90112,
+CHECK:        {
+CHECK:            "tsk_eu_typ": 20,
+CHECK:            "rsvd0": 0,
+CHECK:            "opt_opd0_sign": 1,
+CHECK:            "rsvd1": 0,
+CHECK:            "opd1_addr": 67,
+CHECK:            "opd1_n_str": 0,
+CHECK:            "rsvd2": 0,
+CHECK:        {
+CHECK:            "opt_opd5_const": 0,
+CHECK:            "opt_kernel_rotate": 0,
+CHECK:            "pwr_step": 0,
+CHECK:            "opd0_x_ins0": 0,
+CHECK:            "opd0_rt_pad": 2,
+CHECK:            "intr_en": 0,
+CHECK:            "opd1_h": 5,
+CHECK:            "res1_addr": 0,
+CHECK:      "dma": [
+CHECK:            "cmd_short": 1,
+CHECK:            "src_data_format": 0,
+CHECK:          "name": "DMA_tensor（0x000）",
+CHECK:            "resered": 0,
+CHECK:            "src_data_format": 0,
+CHECK:            "dst_nstride": 83200,
+CHECK:            "src_hsize": 130,
+CHECK:            "src_start_addr_h8": 160,
+CHECK:        }
+CHECK:  }

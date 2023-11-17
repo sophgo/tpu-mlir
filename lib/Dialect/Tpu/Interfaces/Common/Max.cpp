@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
-
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 
 
 LogicalResult tpu::MaxOp::init(InferenceParameter &p) {
@@ -95,3 +95,7 @@ void tpu::MaxOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
 void tpu::MaxOp::assign_fw_param(void *param) {
   IR_PARAM_BROADCAST_BINARY(BINARY_MAX);
 }
+
+ArrayAttr tpu::MaxOp::getIndexingMaps() {
+  return getBinaryIndexingMaps(getOperation());
+};

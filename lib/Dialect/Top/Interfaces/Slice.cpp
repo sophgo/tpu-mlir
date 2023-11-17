@@ -137,4 +137,12 @@ void top::SliceOp::shape_inference() {
     }
   }
   module::setShapeOrVerify(getOutput(), output_shape);
+
+  if (module::isShape(getInput())) {
+    auto input_v = module::getShapeTensorValue(getInput());
+    auto out_shape = module::getShape(getOutput());
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), {input_v}, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }

@@ -5,6 +5,10 @@
 # third-party components.
 #
 # ==============================================================================
+try:
+    from tpu_mlir.python import *
+except ImportError:
+    pass
 
 import cv2
 import onnxruntime as ort

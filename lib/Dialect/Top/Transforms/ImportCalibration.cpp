@@ -38,6 +38,7 @@ public:
     std::map<std::string, cali_info> calibration_map;
     std::map<std::string, cali_info> calibration_map_int4;
     std::map<std::string, f64_array_t> per_chan_scales_map;
+    std::map<std::string, cali_info> calibration_map_fp8;
     std::ifstream infile(this->tableFile);
     if (!infile) {
       llvm_unreachable("can't open calibration table file!");
@@ -45,8 +46,30 @@ public:
     std::string line;
     std::regex cali_pattern("\\S+\\s+[-0-9.e]+\\s+[-0-9.e]+\\s+[-0-9.e]+");
     std::regex info_pattern("#.*");
+    bool int8_th_meeted = true;
     bool weight_scale_meeted = false;
     bool int4_th_meeted = false;
+    bool fp8_th_meeted = false;
+
+    auto check_flag_line = [](std::string line, std::regex pattern) {
+      // 1 for weight scale block, both fp8 and int4 int8 from mqbench
+      // 2 for int4 th block
+      // 3 for fp8 th block from tpu-mlir
+      // 4 for fp8 th block from mqbench
+      if (std::regex_match(line, pattern)) {
+        if (std::string::npos != line.find("#weight_scale"))
+          return 1;
+        if (std::string::npos != line.find("#int4_th"))
+          return 2;
+        if (std::string::npos != line.find("#tpu-mlir-fp8"))
+          return 3;
+        if (std::string::npos != line.find("#mqbench-fp8"))
+          return 4;
+        return 0;
+      } else
+        return 0;
+    };
+
     while (std::getline(infile, line)) {
       if (line.back() == '\r') {
         line.pop_back();
@@ -54,44 +77,56 @@ public:
 
       std::istringstream iss(line);
       std::string name;
-      if (weight_scale_meeted) { // third run, read weight_scale
-        std::string name;
-        double value;
-        int num = 0;
-        std::istringstream iss(line);
-        iss >> name;
-        iss >> num;
-        auto vScales = std::make_shared<std::vector<double>>(num);
-        for (int i = 0; i < num; i++) {
-          iss >> value;
-          vScales->data()[i] = value;
-        }
-        per_chan_scales_map[name] = vScales;
-      } else if (int4_th_meeted) { // second run, read int4 th
-        if (std::regex_match(line, cali_pattern)) {
-          cali_info info = {0, 0, 0};
-          if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
-            llvm::errs() << line;
-            llvm_unreachable("\n  => not match required format\n");
+      auto block_type = check_flag_line(line, info_pattern);
+      if (0 == block_type) {
+        if (int8_th_meeted) {
+          if (std::regex_match(line, cali_pattern)) { // first run, read int8 th
+            cali_info info = {0, 0, 0};
+            if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
+              llvm::errs() << line;
+              llvm_unreachable("\n  => not match required format\n");
+            }
+            calibration_map[name] = info;
           }
-          calibration_map_int4[name] = info;
-        } else if (std::regex_match(line, info_pattern) &&
-                   std::string::npos != line.find("#weight_scale")) {
-          int4_th_meeted = false;
-          weight_scale_meeted = true;
+        } else if (weight_scale_meeted) {
+          std::string name;
+          double value;
+          int num = 0;
+          std::istringstream iss(line);
+          iss >> name;
+          iss >> num;
+          auto vScales = std::make_shared<std::vector<double>>(num);
+          for (int i = 0; i < num; i++) {
+            iss >> value;
+            vScales->data()[i] = value;
+          }
+          per_chan_scales_map[name] = vScales;
+        } else if (int4_th_meeted) {
+          if (std::regex_match(line, cali_pattern)) {
+            cali_info info = {0, 0, 0};
+            if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
+              llvm::errs() << line;
+              llvm_unreachable("\n  => not match required format\n");
+            }
+            calibration_map_int4[name] = info;
+          }
+        } else if (fp8_th_meeted) {
+          if (std::regex_match(line, cali_pattern)) {
+            cali_info info = {0, 0, 0};
+            if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
+              llvm::errs() << line;
+              llvm_unreachable("\n  => not match required format\n");
+            }
+            calibration_map_fp8[name] = info;
+          }
+        } else {
+          llvm_unreachable("error th block type logic!\n");
         }
       } else {
-        if (std::regex_match(line, cali_pattern)) { // first run, read int8 th
-          cali_info info = {0, 0, 0};
-          if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
-            llvm::errs() << line;
-            llvm_unreachable("\n  => not match required format\n");
-          }
-          calibration_map[name] = info;
-        } else if (std::regex_match(line, info_pattern) &&
-                   std::string::npos != line.find("#int4_th")) {
-          int4_th_meeted = true;
-        }
+        int8_th_meeted = block_type == 0;
+        weight_scale_meeted = block_type == 1;
+        int4_th_meeted = block_type == 2;
+        fp8_th_meeted = ((block_type == 3) || (block_type == 4));
       }
     }
     double min, max;
@@ -121,8 +156,13 @@ public:
                 info = calibration_map_int4[name];
               }
             }
-
-            getMinMax(op, info, min, max);
+            if (calibration_map_fp8.find(name) != calibration_map_fp8.end()) {
+              info = calibration_map_fp8[name];
+              max = info.threshold;
+              min = -max;
+            } else {
+              getMinMax(op, info, min, max);
+            }
             if (module::isCV18xx()) {
               min = -max;
             }
@@ -131,13 +171,15 @@ public:
             }
             auto quant_type = quant::CalibratedQuantizedType::get(
                 type.getElementType(), min, max);
-            auto new_type = RankedTensorType::get(type.getShape(), quant_type);
+            auto new_type =
+                RankedTensorType::get(type.getShape(), quant_type);
             value.setType(new_type);
           }
         } else if (isa<WeightOp>(op)) {
           auto user = op->user_begin();
           std::string str = module::getName(*user).str() + "_weight";
           if (per_chan_scales_map.count(str)) {
+            // use for fp8, too, but in fact it is th.
             op->setAttr("scale", builder.getF64ArrayAttr(ArrayRef<double>{
                                      *per_chan_scales_map[str]}));
           }
@@ -187,6 +229,7 @@ public:
     module::updateModuleTypes();
     module::setState(module::State::TOP_CALIBRATED);
   }
+
   void getMinMax(Operation *op, const cali_info &info, double &min,
                  double &max) {
     if (isa<top::AbsOp>(op)) {
@@ -224,7 +267,8 @@ public:
       min = info.min;
       max = info.max;
     }
-    if (op->hasAttr("do_relu") && op->getAttr("do_relu").cast<BoolAttr>().getValue()) {
+    if (op->hasAttr("do_relu") &&
+        op->getAttr("do_relu").cast<BoolAttr>().getValue()) {
       min = 0;
     }
   }
@@ -233,6 +277,5 @@ public:
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass() {
   return std::make_unique<ImportCalibrationTablePass>();
 }
-
 } // namespace top
 } // namespace tpu_mlir

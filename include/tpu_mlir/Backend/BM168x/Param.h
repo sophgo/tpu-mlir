@@ -74,6 +74,8 @@ typedef enum {
   DTYPE_BFP16 = 8,
   DTYPE_INT4 = 9,
   DTYPE_UINT4 = 10,
+  DTYPE_F8E4M3 = 11,
+  DTYPE_F8E5M2 = 12,
   DTYPE_UNKNOWN = -1,
 } DATA_TYPE_T;
 
@@ -717,6 +719,20 @@ typedef struct {
   int round_mode;
 } requant_int_param_t;
 
+typedef struct gather_elements_global {
+    int axis;
+    int index_is_coeff; // use for dyn
+    uint64_t intermediate_buffer_global_addr;
+} gather_elements_global_param_t;
+
+typedef struct scatter_elements_global_spec {
+  int data_dims;
+  int indices_dims;
+  int updates_dims;
+  uint64_t intermediate_buffer_global_addr;
+  int axis;
+} scatter_elements_global_spec_t;
+
 typedef struct index_select_common_spec {
   int axis;
   int index_is_coeff; // use for dyn
@@ -725,6 +741,12 @@ typedef struct index_select_common_spec {
 typedef struct index_select_global_spec {
   index_select_common_spec_t common;
 } index_select_global_spec_t;
+
+typedef struct index_put_spec{
+    int mode;
+    int accumulate;
+    uint64_t buffer_addr;
+} index_put_spec_t;
 
 typedef struct roi_align_spec {
   int pooled_height;
@@ -923,6 +945,7 @@ typedef struct transpose_param {
 typedef struct reshape_spec {
   int32_t dims;
   int32_t shape[MAX_SHAPE_DIMS];
+  int eu_align;
 } reshape_spec_t;
 
 typedef struct {
@@ -1150,6 +1173,8 @@ typedef struct a16_matmul_spec {
   bool sign;
   bool R_trans;
   int weight_bits;
+  bool has_zp;
+  int q_group_size;
 } a16_matmul_spec_t;
 
 typedef struct batch_matmul_common_spec {
@@ -1759,6 +1784,20 @@ typedef struct dyn_nms_global_spec {
   unsigned long long buffer_addr;
   int detected_box_num;
 } dyn_nms_global_spec_t;
+
+typedef struct pack_raw_spec {
+  float white_level;
+  float black_level;
+  float threshold;
+  int channel_order[4];
+} pack_raw_spec_t;
+
+typedef struct depack_raw_spec {
+  int pad[2];
+  float white_level;
+  float black_level;
+  int channel_order[4];
+} depack_raw_spec_t;
 #ifdef __cplusplus
 }
 
@@ -1793,7 +1832,7 @@ typedef struct embedding_backward_param {
     bool is_index_int64;
 } embedding_backward_param_t;
 
-typedef struct 
+typedef struct
 {
   int32_t groups;
   int32_t ic;
@@ -1816,7 +1855,7 @@ typedef struct
   bool has_bias;
 }ConvBwdWeight_common_spec_t;
 
-typedef struct 
+typedef struct
 {
   ConvBwdWeight_common_spec_t common;
 }ConvBwdWeight_global_spec_t;

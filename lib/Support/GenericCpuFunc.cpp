@@ -2149,6 +2149,7 @@ void BMCpuOp::get_topk_param() {
   cpu_param.axis = paramDic.get("axis").cast<IntegerAttr>().getInt();
   cpu_param.sorted = paramDic.get("sorted").cast<BoolAttr>().getValue();
   cpu_param.descending = paramDic.get("largest").cast<BoolAttr>().getValue();
+  cpu_param.values_used_only = paramDic.get("values_used_only").cast<BoolAttr>().getValue();
   this->param_size = sizeof(cpu_topk_param_t);
   this->param = (void *)malloc(this->param_size);
   memcpy(this->param, &cpu_param, this->param_size);
@@ -3162,7 +3163,11 @@ void ScatterNDFunc::invoke() {
     auto index_data = indices + idx * index_depth_;
     int out_offset = 0;
     for (int i = 0; i < outer_stride.size(); ++i) {
-      out_offset += (int)index_data[i] * outer_stride[i];
+      int real_index_data = (int)index_data[i];
+      if ((int)index_data[i] < 0) {
+        real_index_data += input_shape[i];
+      }
+      out_offset +=real_index_data * outer_stride[i];
     }
     auto out_ = out + out_offset;
     auto updates_data = updates + idx * outer_stride.back();

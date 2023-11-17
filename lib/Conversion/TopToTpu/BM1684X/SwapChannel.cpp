@@ -34,6 +34,11 @@ void SwapChannelLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::SwapChannelOp>(rewriter, op);
 }
 
+void SwapChannelLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::SwapChannelOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void SwapChannelLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SwapChannelOp op) const {
   lowering_common<tpu::SwapChannelOp>(rewriter, op, op.getOutput().getType());

@@ -85,6 +85,11 @@ void LSTMLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringLSTM(rewriter, op, rewriter.getF32Type());
 }
 
+void LSTMLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::LSTMOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void LSTMLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::LSTMOp op) const {
   llvm_unreachable("Not Implemented");

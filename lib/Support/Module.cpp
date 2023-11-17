@@ -33,8 +33,8 @@ struct Attr {
   static constexpr llvm::StringRef STEP = "module.step";
   static constexpr llvm::StringRef INPUTS = "module.inputs";
   static constexpr llvm::StringRef OUTPUTS = "module.outputs";
-  static constexpr llvm::StringRef LINEAR_QUANT_MODE = "module.linear_quant_mode";
   static constexpr llvm::StringRef TRAIN = "module.train";
+  static constexpr llvm::StringRef QUANT_GROUP_SIZE = "module.q_group_size";
 };
 
 static ModuleOp m = nullptr;
@@ -643,12 +643,11 @@ void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
   if (GROUP_3D == group_type) {
     n = num_dims > 0 ? shape[0] : 1;
     c = num_dims > 1 ? shape[1] : 1;
-    d = num_dims > 2 ? shape[2] : 1;
-    h = num_dims > 3 ? shape[3] : 1;
+    d = num_dims > 4 ? shape[2] : 1;
+    h = num_dims > 4 ? shape[3] : (num_dims > 2 ? shape[2] : 1);
     w = 1;
-    for (size_t i = 4; i < num_dims; ++i) {
+    for (int i = (num_dims > 4) ? 4 : 3; i < num_dims; i++)
       w *= shape[i];
-    }
     return;
   } else if (GROUP_MM_INT4 == group_type) {
     assert(num_dims == 2);
@@ -910,6 +909,24 @@ Mode getMode() {
   return symbolizeMode(s).value_or(Mode::F32);
 }
 
+bool isBF16Modes() {
+  auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
+  auto mode = symbolizeMode(s).value_or(Mode::F32);
+  return mode == Mode::BF16 || mode == Mode::W8BF16 || mode == Mode::W4BF16;
+}
+
+bool isF16Modes() {
+  auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
+  auto mode = symbolizeMode(s).value_or(Mode::F32);
+  return mode == Mode::F16 || mode == Mode::W8F16 || mode == Mode::W4F16;
+}
+
+bool isF8Modes() {
+  auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
+  auto mode = symbolizeMode(s).value_or(Mode::F32);
+  return mode == Mode::F8 || mode == Mode::F8E4M3 || mode == Mode::F8E5M2;
+}
+
 void setChip(Chip chip_) {
   chip = chip_;
   auto s = stringifyChip(chip_);
@@ -970,19 +987,16 @@ void setAsymmetric(bool is_asymmetric) {
   m->setAttr(Attr::ASYMMETRIC, BoolAttr::get(ctx, is_asymmetric));
 }
 
-std::string getLinearQuantMode() {
-  if (m->hasAttrOfType<StringAttr>(Attr::LINEAR_QUANT_MODE)) {
-    return m->getAttrOfType<StringAttr>(Attr::LINEAR_QUANT_MODE).getValue().str();
+int getQuantGroupSize() {
+  if (m->hasAttrOfType<IntegerAttr>(Attr::QUANT_GROUP_SIZE)) {
+    return m->getAttrOfType<IntegerAttr>(Attr::QUANT_GROUP_SIZE).getValue().getSExtValue();
   }
-  return "NORMAL";
+  return 0;
 }
 
-void setLinearQuantMode(std::string linear_quant_mode) {
-  if (strcasecmp("W4A16", linear_quant_mode.c_str()) != 0 &&
-      strcasecmp("W8A16", linear_quant_mode.c_str()) != 0) {
-    linear_quant_mode = "NORMAL";
-  }
-  m->setAttr(Attr::LINEAR_QUANT_MODE, StringAttr::get(ctx, linear_quant_mode));
+void setQuantGroupSize(int q_group_size) {
+  auto intType = IntegerType::get(ctx, 64);
+  m->setAttr(Attr::QUANT_GROUP_SIZE, IntegerAttr::get(intType, q_group_size));
 }
 
 bool isTrain() {
@@ -1066,13 +1080,13 @@ bool isCV18xx() {
 }
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
-  return (chip == Chip::BM1684X || chip == Chip::BM1686 ||
+  return (chip == Chip::BM1684X || chip == Chip::BM1688 ||
           chip == Chip::CV186X || chip == Chip::MARS3);
 }
-bool isSG2260Family() {
-  return (chip == Chip::SG2260);
+bool isSG2260Family() { return (chip == Chip::SG2260); }
+bool isBM1688() {
+  return (chip == Chip::BM1688 || chip == Chip::CV186X || chip == Chip::MARS3);
 }
-bool isBM1686() { return (chip == Chip::BM1686 || chip == Chip::CV186X || chip == Chip::MARS3); }
 bool isBM1684X() { return (chip == Chip::BM1684X); }
 
 ModuleOp getModuleOp() { return m; }

@@ -65,7 +65,7 @@ void LayerNormTrainLowering::LoweringF32(PatternRewriter &rewriter,
 
 void LayerNormTrainLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::LayerNormTrainOp op) const {
-  if (module::isBM1686()) {
+  if (module::isBM1688()) {
     LoweringLayerNorm(rewriter, op, rewriter.getF32Type());
   } else {
     LoweringLayerNorm(rewriter, op, rewriter.getBF16Type());
@@ -75,6 +75,11 @@ void LayerNormTrainLowering::LoweringBF16(PatternRewriter &rewriter,
 void LayerNormTrainLowering::LoweringF16(PatternRewriter &rewriter,
                                     top::LayerNormTrainOp op) const {
   LoweringLayerNorm(rewriter, op, rewriter.getF16Type());
+}
+
+void LayerNormTrainLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::LayerNormTrainOp op) const {
+  llvm_unreachable("Not Implemented");
 }
 
 void LayerNormTrainLowering::LoweringINT8(PatternRewriter &rewriter, top::LayerNormTrainOp op,

@@ -38,244 +38,246 @@ class ONNX_IR_TESTER(object):
             #########################################
             # ONNX Test Case, Alphabetically
             #########################################
-            # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
-            "Abs":          (self.test_Abs,           Y, Y, Y, Y),
-            "Add":          (self.test_Add,           Y, Y, Y, Y),
-            "And":          (self.test_And,           N, Y, Y, N),
-            "AddBcast":     (self.test_AddBcast,      Y, Y, N, N),
-            "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N),
-            "AddBcast3":    (self.test_AddBcast3,     N, N, N, N),  # failed cases
-            "Arg":          (self.test_Arg,           Y, Y, Y, Y),
-            "AddWeight":     (self.test_AddWeight,    Y, Y, Y, Y),
-            "AddWeight2":     (self.test_AddWeight2,  Y, Y, Y, Y),
-            "AvgPool1d":    (self.test_AvgPool1d,     Y, Y, Y, Y),
-            "AvgPool2d":    (self.test_AvgPool2d,     Y, Y, Y, Y),
-            "AvgPool3d":    (self.test_AvgPool3d,     N, Y, Y, Y),
-            "AvgPoolOdd":   (self.test_AvgPoolOdd,    Y, Y, Y, Y),
-            "PadAvgPool2d": (self.test_PadAvgPool2d,  Y, Y, Y, Y),
-            "BatchMatMul":  (self.test_BatchMatMul,   Y, Y, Y, Y),
-            "BCastAdd":     (self.test_BCastAdd,      Y, Y, Y, Y),
-            "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y),
-            "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y),
-            "Cast":         (self.test_Cast,          Y, Y, Y, Y),
-            "CompareCst":   (self.test_CompareCst,    Y, Y, Y, Y),
-            "Compare":      (self.test_Compare,       Y, Y, Y, N),
-            "Compare2":     (self.test_Compare2,      Y, N, N, N),
-            "Concat":       (self.test_Concat,        Y, Y, Y, Y),
-            "Concat2":      (self.test_Concat2,       Y, Y, Y, Y),
-            "Concat3":      (self.test_Concat3,       N, Y, Y, N),
-            "ConstOfShape": (self.test_ConstOfShape,  N, Y, Y, N),
-            "Conv1d":       (self.test_Conv1d,        Y, Y, Y, Y),
-            "Conv1dbigd":   (self.test_Conv1d_bigd,   Y, N, N, N),
-            "Conv2d":       (self.test_Conv2d,        Y, Y, Y, Y),
-            "Conv2dbigd":   (self.test_Conv2d_bigd,   Y, N, N, N),
-            "Conv3d":       (self.test_Conv3d,        N, Y, Y, Y),
-            "ConvPool3d":   (self.test_ConvPool3d,    Y, Y, Y, N),
-            "ConvStride":   (self.test_ConvStride,    Y, Y, Y, Y),
-            "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y),
-            "ConvTrans":    (self.test_ConvTrans,     N, Y, Y, Y),
-            "ConvTrans2":   (self.test_ConvTrans2,    N, Y, Y, Y),  #no pad
-            "Clip":         (self.test_Clip,          Y, Y, Y, Y),
-            "CumSum":       (self.test_CumSum,        N, Y, N, N),
-            "DepthToSpace": (self.test_DepthToSpace,  Y, Y, Y, Y),
-            "Deconv":       (self.test_Deconv,        Y, Y, Y, Y),
-            "DeconvDF":     (self.test_DeconvDynW,    N, Y, N, N),
-            "Deconv2":      (self.test_Deconv2,       Y, N, N, Y),
-            "Deconv3d":     (self.test_Deconv3d,      Y, N, N, N),
-            "Div":          (self.test_Div,           Y, Y, Y, Y),
-            "DivBcast":     (self.test_DivBcast,      Y, Y, Y, N),
-            "DivBcast2":    (self.test_DivBcast2,     Y, Y, Y, N),
-            "Einsum":       (self.test_Einsum,        Y, Y, Y, Y),
-            "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y),
-            "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y),
-            "Einsum4":      (self.test_Einsum4,       N, Y, Y, N),
-            "Einsum5":      (self.test_Einsum5,       N, Y, Y, N),
-            "Elu":          (self.test_Elu,           Y, Y, Y, N),
-            "Erf":          (self.test_Erf,           N, Y, Y, N),
-            "Exp":          (self.test_Exp,           Y, Y, Y, Y),
-            "Expand":       (self.test_Expand,        Y, Y, Y, Y),
-            "Expand2":      (self.test_Expand2,       Y, Y, Y, Y),
-            "ExpandDyn":    (self.test_ExpandDyn,     N, Y, Y, N),
-            "Flatten":      (self.test_Flatten,       Y, Y, Y, Y),
-            "Flip":         (self.test_Flip,          Y, Y, Y, N),
-            "Floor":        (self.test_floor,         Y, Y, Y, N),
-            "Gather":       (self.test_Gather,        Y, Y, Y, Y),
-            "GatherElements": (self.test_GatherElements,      Y, N, N, N),
-            "GatherND":     (self.test_GatherND,      Y, Y, Y, Y),
-            "Gather2":      (self.test_Gather2,       N, Y, Y, N),
-            "Gather3":      (self.test_Gather3,       Y, Y, Y, N),
-            "Gemm":         (self.test_Gemm,          Y, Y, Y, Y),
-            "GlobalAveragePool":(self.test_GlobalAveragePool, Y, Y, Y, Y),
-            "GlobalMaxPool":(self.test_GlobalMaxPool, Y, Y, Y, Y),
-            "GroupFC":      (self.test_GroupFC,       Y, Y, Y, Y),
-            "GRU":          (self.test_GRU,           N, Y, Y, Y),  # test gru output Y
-            "GRU2":         (self.test_GRU2,          N, Y, Y, Y),  # test gru output Yh
-            "GRU3":         (self.test_GRU3,          N, Y, Y, Y),  # test gru output Y and Yh
-            "LeakyRelu":    (self.test_LeakyRelu,     Y, Y, Y, Y),
-            "Log":          (self.test_Log,           Y, Y, Y, Y),
-            "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y),
-            "LRN":          (self.test_LRN,           Y, Y, Y, Y),
-            "LSTM":         (self.test_LSTM,          N, Y, Y, Y),  # output_y
-            "LSTM2":        (self.test_LSTM2,         N, Y, Y, Y),  # output all
-            "LSTM3":        (self.test_LSTM3,         Y, Y, Y, Y),  # output_yh and output_yc
-            "MaxPool1d":    (self.test_MaxPool1d,     Y, Y, Y, Y),
-            "MaxPool2d":    (self.test_MaxPool2d,     Y, Y, Y, Y),
-            "MaxPool3d":    (self.test_MaxPool3d,     N, Y, Y, Y),
-            "MatMul":       (self.test_MatMul,        Y, Y, Y, Y),
-            "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y),
-            "Max":          (self.test_Max,           Y, Y, Y, Y),
-            "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N),
-            "Not":          (self.test_Not,           N, Y, Y, N),
-            "Mul":          (self.test_Mul,           Y, Y, Y, Y),
-            "MulMerge":     (self.test_MulMerge,      Y, Y, Y, N),
-            "MulBcast":     (self.test_MulBcast,      Y, Y, Y, N),
-            "MulBcast2":    (self.test_MulBcast2,     Y, Y, Y, N),
-            "Min":          (self.test_Min,           Y, Y, Y, Y),
-            "MinBcast":     (self.test_MinBcast,      Y, Y, Y, N),
-            "MulConst":     (self.test_MulConst,      Y, Y, Y, Y),
-            "Neg":          (self.test_Neg,           Y, Y, Y, Y),
-            "Pad":          (self.test_Pad,           Y, Y, Y, Y),  # zero pad
-            "Pad1":         (self.test_Pad1,          Y, Y, Y, Y),  # pad val
-            "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y),
-            "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y),
-            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y),  # y = x ^ n
-            "Pow2":         (self.test_Pow2,          Y, Y, Y, N),  # y = n ^ x
-            "PRelu":        (self.test_PRelu,         Y, Y, Y, Y),
-            "Range":        (self.test_Range,         N, Y, Y, N),
-            "Resize":       (self.test_Resize,        Y, Y, Y, Y),
-            "Resize2":      (self.test_Resize2,       N, Y, Y, Y),
-            "Reshape":      (self.test_Reshape,       Y, Y, Y, N),
-            "Reduce":       (self.test_Reduce,        Y, Y, Y, Y),
-            "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y),
-            "ReduceL2":     (self.test_ReduceL2,      Y, Y, Y, Y),
-            "ReduceMean":   (self.test_ReduceMean,    Y, Y, Y, Y),
-            "ReduceSum":    (self.test_ReduceSum,     Y, Y, Y, Y),
-            "ReduceProd":   (self.test_ReduceProd,    Y, Y, Y, N),
-            "Reciprocal":   (self.test_Reciprocal,    Y, Y, Y, Y),
-            "Relu":         (self.test_Relu,          Y, Y, Y, Y),
-            "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N),
-            "Round":        (self.test_Round,         N, Y, N, N),
-            "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y),
-            "ScatterND":    (self.test_ScatterND,     N, Y, Y, N),
-            "Shape":        (self.test_Shape,         Y, Y, Y, N),
-            "ShapeCast":    (self.test_ShapeCast,     N, N, N, N),
-            "ShapeSlice":   (self.test_ShapeSlice,    Y, N, N, N),
-            "SiLU":         (self.test_SiLU,          Y, Y, Y, Y),
-            "Softmax":      (self.test_Softmax,       Y, Y, Y, Y),
-            "Softplus":     (self.test_Softplus,      Y, Y, Y, Y),
-            "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y),
-            "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y),
-            "Slice":        (self.test_Slice,         Y, Y, Y, Y),
-            "Slice2":       (self.test_Slice2,        Y, Y, Y, Y),
-            "Slice3":       (self.test_Slice3,        Y, Y, Y, Y),
-            "Dynamic_Slice":(self.test_Dynamic_Slice, N, Y, Y, N),
-            "Split":        (self.test_Split,         Y, Y, Y, Y),
-            "Split2":        (self.test_Split2,       Y, Y, Y, Y),
-            "Scale":        (self.test_Scale,         Y, Y, Y, Y),
-            "Sqrt":         (self.test_Sqrt,          Y, Y, Y, Y),
-            "Sub":          (self.test_Sub,           Y, Y, Y, Y),
-            "Sub2":         (self.test_Sub2,          Y, Y, Y, Y),
-            "SubBcast":     (self.test_SubBcast,      Y, Y, Y, N),
-            "SubBcast2":    (self.test_SubBcast2,     Y, Y, Y, N),
-            "SubConst":     (self.test_SubConst,      Y, Y, Y, Y),
-            "SubConst2":    (self.test_SubConst2,     Y, Y, Y, Y),
-            "Sum":          (self.test_Sum,           Y, Y, Y, Y),
-            "Tanh":         (self.test_Tanh,          Y, Y, Y, Y),
-            "Tile":         (self.test_Tile,          Y, Y, Y, Y),
-            "TileDyn":      (self.test_TileDyn,       N, Y, Y, N),
-            "Transpose":    (self.test_Transpose,     Y, Y, Y, Y),
-            "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y),
-            "TopK":         (self.test_TopK,          N, Y, Y, N),
-            "TopK2":        (self.test_TopK2,         N, Y, N, N),
-            "Upsample":     (self.test_Upsample,      Y, Y, Y, N),
-            "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N),
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, sg2260_support)
+            "Abs":          (self.test_Abs,           Y, Y, Y, Y, Y),
+            "Add":          (self.test_Add,           Y, Y, Y, Y, Y),
+            "And":          (self.test_And,           N, Y, Y, N, Y),
+            "AddBcast":     (self.test_AddBcast,      Y, Y, N, N, Y),
+            "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N, Y),
+            "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N),  # failed cases
+            "Arg":          (self.test_Arg,           Y, Y, Y, Y, Y),
+            "AddWeight":     (self.test_AddWeight,    Y, Y, Y, Y, Y),
+            "AddWeight2":     (self.test_AddWeight2,  Y, Y, Y, Y, Y),
+            "AvgPool1d":    (self.test_AvgPool1d,     Y, Y, Y, Y, Y),
+            "AvgPool2d":    (self.test_AvgPool2d,     Y, Y, Y, Y, Y),
+            "AvgPool3d":    (self.test_AvgPool3d,     N, Y, Y, Y, Y),
+            "AvgPoolOdd":   (self.test_AvgPoolOdd,    Y, Y, Y, Y, Y),
+            "PadAvgPool2d": (self.test_PadAvgPool2d,  Y, Y, Y, Y, Y),
+            "BatchMatMul":  (self.test_BatchMatMul,   Y, Y, Y, Y, Y),
+            "BCastAdd":     (self.test_BCastAdd,      Y, Y, Y, Y, Y),
+            "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y, Y),
+            "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y, Y),
+            "Cast":         (self.test_Cast,          Y, Y, Y, Y, Y),
+            "CompareCst":   (self.test_CompareCst,    Y, Y, Y, Y, Y),
+            "Compare":      (self.test_Compare,       Y, Y, Y, N, Y),
+            "Compare2":     (self.test_Compare2,      Y, N, N, N, N),
+            "Concat":       (self.test_Concat,        Y, Y, Y, Y, Y),
+            "Concat2":      (self.test_Concat2,       Y, Y, Y, Y, Y),
+            "Concat3":      (self.test_Concat3,       N, Y, Y, N, Y),
+            "ConstOfShape": (self.test_ConstOfShape,  N, Y, Y, N, Y),
+            "Conv1d":       (self.test_Conv1d,        Y, Y, Y, Y, Y),
+            "Conv1dbigd":   (self.test_Conv1d_bigd,   Y, N, N, N, N),
+            "Conv2d":       (self.test_Conv2d,        Y, Y, Y, Y, Y),
+            "Conv2dbigd":   (self.test_Conv2d_bigd,   Y, N, N, N, N),
+            "Conv3d":       (self.test_Conv3d,        N, Y, Y, Y, Y),
+            "ConvPool3d":   (self.test_ConvPool3d,    Y, Y, Y, N, Y),
+            "ConvStride":   (self.test_ConvStride,    Y, Y, Y, Y, Y),
+            "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y, Y),
+            "ConvTrans":    (self.test_ConvTrans,     N, Y, Y, Y, Y),
+            "ConvTrans2":   (self.test_ConvTrans2,    N, Y, Y, Y, Y),  #no pad
+            "Clip":         (self.test_Clip,          Y, Y, Y, Y, Y),
+            "CumSum":       (self.test_CumSum,        N, Y, N, N, Y),
+            "DepthToSpace": (self.test_DepthToSpace,  Y, Y, Y, Y, Y),
+            "Deconv":       (self.test_Deconv,        Y, Y, Y, Y, Y),
+            "DeconvDF":     (self.test_DeconvDynW,    N, Y, N, N, Y),
+            "Deconv2":      (self.test_Deconv2,       Y, N, N, Y, N),
+            "Deconv3d":     (self.test_Deconv3d,      Y, N, N, N, N),
+            "Div":          (self.test_Div,           Y, Y, Y, Y, Y),
+            "DivBcast":     (self.test_DivBcast,      Y, Y, Y, N, Y),
+            "DivBcast2":    (self.test_DivBcast2,     Y, Y, Y, N, Y),
+            "Einsum":       (self.test_Einsum,        Y, Y, Y, Y, Y),
+            "Einsum2":      (self.test_Einsum2,       Y, Y, Y, Y, Y),
+            "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y, Y),
+            "Einsum4":      (self.test_Einsum4,       N, Y, Y, N, Y),
+            "Einsum5":      (self.test_Einsum5,       N, Y, Y, N, Y),
+            "Elu":          (self.test_Elu,           Y, Y, Y, N, Y),
+            "Erf":          (self.test_Erf,           N, Y, Y, N, Y),
+            "Exp":          (self.test_Exp,           Y, Y, Y, Y, Y),
+            "Expand":       (self.test_Expand,        Y, Y, Y, Y, Y),
+            "Expand2":      (self.test_Expand2,       Y, Y, Y, Y, Y),
+            "ExpandDyn":    (self.test_ExpandDyn,     N, Y, Y, N, Y),
+            "Flatten":      (self.test_Flatten,       Y, Y, Y, Y, Y),
+            "Flip":         (self.test_Flip,          Y, Y, Y, N, Y),
+            "Floor":        (self.test_floor,         Y, Y, Y, N, Y),
+            "Gather":       (self.test_Gather,        Y, Y, Y, Y, Y),
+            "GatherElements": (self.test_GatherElements,      Y, Y, N, N, Y),
+            "GatherND":     (self.test_GatherND,      Y, Y, Y, Y, Y),
+            "Gather2":      (self.test_Gather2,       N, Y, Y, N, Y),
+            "Gather3":      (self.test_Gather3,       Y, Y, Y, N, Y),
+            "Gemm":         (self.test_Gemm,          Y, Y, Y, Y, Y),
+            "GlobalAveragePool":(self.test_GlobalAveragePool, Y, Y, Y, Y, Y),
+            "GlobalMaxPool":(self.test_GlobalMaxPool, Y, Y, Y, Y, Y),
+            "GroupFC":      (self.test_GroupFC,       Y, Y, Y, Y, Y),
+            "GRU":          (self.test_GRU,           N, Y, Y, Y, Y),  # test gru output Y
+            "GRU2":         (self.test_GRU2,          N, Y, Y, Y, Y),  # test gru output Yh
+            "GRU3":         (self.test_GRU3,          N, Y, Y, Y, Y),  # test gru output Y and Yh
+            "LeakyRelu":    (self.test_LeakyRelu,     Y, Y, Y, Y, Y),
+            "Log":          (self.test_Log,           Y, Y, Y, Y, Y),
+            "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y, Y),
+            "LRN":          (self.test_LRN,           Y, Y, Y, Y, Y),
+            "LSTM":         (self.test_LSTM,          N, Y, Y, Y, Y),  # output_y
+            "LSTM2":        (self.test_LSTM2,         N, Y, Y, Y, Y),  # output all
+            "LSTM3":        (self.test_LSTM3,         Y, Y, Y, Y, Y),  # output_yh and output_yc
+            "MaxPool1d":    (self.test_MaxPool1d,     Y, Y, Y, Y, Y),
+            "MaxPool2d":    (self.test_MaxPool2d,     Y, Y, Y, Y, Y),
+            "MaxPool3d":    (self.test_MaxPool3d,     N, Y, Y, Y, Y),
+            "MatMul":       (self.test_MatMul,        Y, Y, Y, Y, Y),
+            "MatMul2":      (self.test_MatMul2,       Y, Y, Y, Y, Y),
+            "Max":          (self.test_Max,           Y, Y, Y, Y, Y),
+            "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N, Y),
+            "Not":          (self.test_Not,           N, Y, Y, N, Y),
+            "Mul":          (self.test_Mul,           Y, Y, Y, Y, Y),
+            "MulMerge":     (self.test_MulMerge,      Y, Y, Y, N, Y),
+            "MulBcast":     (self.test_MulBcast,      Y, Y, Y, N, Y),
+            "MulBcast2":    (self.test_MulBcast2,     Y, Y, Y, N, Y),
+            "Min":          (self.test_Min,           Y, Y, Y, Y, Y),
+            "MinBcast":     (self.test_MinBcast,      Y, Y, Y, N, Y),
+            "MulConst":     (self.test_MulConst,      Y, Y, Y, Y, Y),
+            "Neg":          (self.test_Neg,           Y, Y, Y, Y, Y),
+            "Pad":          (self.test_Pad,           Y, Y, Y, Y, Y),  # zero pad
+            "Pad1":         (self.test_Pad1,          Y, Y, Y, Y, Y),  # pad val
+            "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y, Y),
+            "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y, Y),
+            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y, Y),  # y = x ^ n
+            "Pow2":         (self.test_Pow2,          Y, Y, Y, N, Y),  # y = n ^ x
+            "PRelu":        (self.test_PRelu,         Y, Y, Y, Y, Y),
+            "Range":        (self.test_Range,         N, Y, Y, N, Y),
+            "Resize":       (self.test_Resize,        Y, Y, Y, Y, Y),
+            "Resize2":      (self.test_Resize2,       N, Y, Y, Y, Y),
+            "Reshape":      (self.test_Reshape,       Y, Y, Y, N, Y),
+            "Reduce":       (self.test_Reduce,        Y, Y, Y, Y, Y),
+            "Reduce2":      (self.test_Reduce2,       Y, Y, Y, Y, Y),
+            "ReduceL2":     (self.test_ReduceL2,      Y, Y, Y, Y, Y),
+            "ReduceMean":   (self.test_ReduceMean,    Y, Y, Y, Y, Y),
+            "ReduceSum":    (self.test_ReduceSum,     Y, Y, Y, Y, Y),
+            "ReduceProd":   (self.test_ReduceProd,    Y, Y, Y, N, Y),
+            "Reciprocal":   (self.test_Reciprocal,    Y, Y, Y, Y, Y),
+            "Relu":         (self.test_Relu,          Y, Y, Y, Y, Y),
+            "ReluOnly":     (self.test_ReluOnly,      Y, N, Y, N, N),
+            "Round":        (self.test_Round,         N, Y, N, N, Y),
+            "PermuteMove":  (self.test_PermuteMove,   Y, Y, Y, Y, Y),
+            "ScatterElements": (self.test_ScatterElements, N, Y, N, N, Y),
+            "ScatterND":    (self.test_ScatterND,     N, Y, Y, N, Y),
+            "Shape":        (self.test_Shape,         Y, Y, Y, N, Y),
+            "ShapeCast":    (self.test_ShapeCast,     N, N, N, N, N),
+            "ShapeSlice":   (self.test_ShapeSlice,    Y, N, N, N, N),
+            "SiLU":         (self.test_SiLU,          Y, Y, Y, Y, Y),
+            "Softmax":      (self.test_Softmax,       Y, Y, Y, Y, Y),
+            "Softplus":     (self.test_Softplus,      Y, Y, Y, Y, Y),
+            "Squeeze":      (self.test_Squeeze,       Y, Y, Y, Y, Y),
+            "Sigmoid":      (self.test_Sigmoid,       Y, Y, Y, Y, Y),
+            "Sign":         (self.test_Sign,          N, Y, Y, N, Y),
+            "Slice":        (self.test_Slice,         Y, Y, Y, Y, Y),
+            "Slice2":       (self.test_Slice2,        Y, Y, Y, Y, Y),
+            "Slice3":       (self.test_Slice3,        Y, Y, Y, Y, Y),
+            "Dynamic_Slice":(self.test_Dynamic_Slice, N, Y, Y, N, Y),
+            "Split":        (self.test_Split,         Y, Y, Y, Y, Y),
+            "Split2":        (self.test_Split2,       Y, Y, Y, Y, Y),
+            "Scale":        (self.test_Scale,         Y, Y, Y, Y, Y),
+            "Sqrt":         (self.test_Sqrt,          Y, Y, Y, Y, Y),
+            "Sub":          (self.test_Sub,           Y, Y, Y, Y, Y),
+            "Sub2":         (self.test_Sub2,          Y, Y, Y, Y, Y),
+            "SubBcast":     (self.test_SubBcast,      Y, Y, Y, N, Y),
+            "SubBcast2":    (self.test_SubBcast2,     Y, Y, Y, N, Y),
+            "SubConst":     (self.test_SubConst,      Y, Y, Y, Y, Y),
+            "SubConst2":    (self.test_SubConst2,     Y, Y, Y, Y, Y),
+            "Sum":          (self.test_Sum,           Y, Y, Y, Y, Y),
+            "Tanh":         (self.test_Tanh,          Y, Y, Y, Y, Y),
+            "Tile":         (self.test_Tile,          Y, Y, Y, Y, Y),
+            "TileDyn":      (self.test_TileDyn,       N, Y, Y, N, Y),
+            "Transpose":    (self.test_Transpose,     Y, Y, Y, Y, Y),
+            "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y, Y),
+            "TopK":         (self.test_TopK,          N, Y, Y, N, Y),
+            "TopK2":        (self.test_TopK2,         N, Y, N, N, Y),
+            "Upsample":     (self.test_Upsample,      Y, Y, Y, N, Y),
+            "Unsqueeze":    (self.test_Unsqueeze,     Y, Y, Y, N, Y),
             # Only 1D shape is supported currently
             # "ShapeUnsqueeze":  (self.test_ShapeUnsqueeze,  N, Y, Y, N),
             # "ShapeSqueeze":    (self.test_ShapeSqueeze,    N, Y, Y, N),
-            "Where":        (self.test_Where,         N, Y, Y, Y),
+            "Where":        (self.test_Where,         N, Y, Y, Y, Y),
             #####################################
             # Torch Test Case, Alphabetically
             #####################################
-            # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
-            "TorchActivation":      (self.test_TorchActivation,     N, Y, Y, Y),
-            "TorchArg":             (self.test_TorchArg,            N, Y, Y, N),
-            "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N, N),
-            "TorchChunk":           (self.test_TorchChunk,          N, Y, Y, Y),
-            "TorchConv2d":          (self.test_TorchConv2d,         N, N, N, Y),
-            "TorchConv3dTrans":     (self.test_TorchConv3dTrans,    N, Y, Y, Y),
-            "TorchHardSwish":       (self.test_TorchHardSwish,      Y, Y, Y, Y),
-            "TorchHardSigmoid":     (self.test_TorchHardSigmoid,    Y, Y, Y, Y),
-            "TorchGelu":            (self.test_TorchGelu,           Y, Y, Y, Y),
-            "TorchGroupNorm":       (self.test_TorchGroupNorm,      Y, Y, Y, N),
-            "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, Y, Y, N),
-            "TorchGRU":             (self.test_TorchGRU,            N, Y, Y, Y),
-            "TorchIdentity":        (self.test_TorchIdentity,       Y, Y, Y, Y),
-            "TorchIndexCopy":       (self.test_TorchIndexCopy,      N, N, N, N),
-            "TorchInstanceNorm":    (self.test_TorchInstanceNorm,   N, Y, Y, N),
-            "TorchInstanceNorm2":   (self.test_TorchInstanceNorm2,  N, Y, Y, N),
-            "TorchLayerGroup":      (self.test_TorchLayerGroup,     Y, Y, Y, Y),
-            "TorchLayerNorm":       (self.test_TorchLayerNorm,      Y, Y, Y, Y),
-            "TorchLayerNorm2":      (self.test_TorchLayerNorm2,     Y, Y, Y, Y),
-            "TorchLogSoftmax":      (self.test_TorchLogSoftmax,     Y, Y, Y, Y),
-            "TorchLSTM":            (self.test_TorchLSTM,           Y, Y, Y, Y),
-            "TorchMaskedFill":      (self.test_TorchMaskedFill,     N, Y, Y, N),
-            "TorchNonZero":         (self.test_TorchNonZero,        N, Y, Y, N),
-            "TorchReflectionPad":   (self.test_TorchReflectionPad,  N, Y, Y, Y),
-            "TorchRMSNorm":         (self.test_TorchRMSNorm,        N, Y, Y, N),
-            "TorchRoiAlign":        (self.test_TorchRoiAlign,       N, Y, Y, N),
-            "TorchScatterND":       (self.test_TorchScatterND,      N, Y, Y, Y),
-            "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y),
-            "TorchStd":             (self.test_TorchStd,            N, Y, Y, Y),
-            "TorchWhere":           (self.test_TorchWhere,          N, Y, Y, N),
-            "TorchZeroPad":         (self.test_TorchZeroPad,        N, Y, Y, Y),
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
+            "TorchActivation":      (self.test_TorchActivation,     N, Y, Y, Y, Y),
+            "TorchArg":             (self.test_TorchArg,            N, Y, Y, N, Y),
+            "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N, N, N),
+            "TorchChunk":           (self.test_TorchChunk,          N, Y, Y, Y, Y),
+            "TorchConv2d":          (self.test_TorchConv2d,         N, N, N, Y, N),
+            "TorchConv3dTrans":     (self.test_TorchConv3dTrans,    N, Y, Y, Y, Y),
+            "TorchHardSwish":       (self.test_TorchHardSwish,      Y, Y, Y, Y, Y),
+            "TorchHardSigmoid":     (self.test_TorchHardSigmoid,    Y, Y, Y, Y, Y),
+            "TorchGelu":            (self.test_TorchGelu,           Y, Y, Y, Y, Y),
+            "TorchGroupNorm":       (self.test_TorchGroupNorm,      Y, Y, Y, N, Y),
+            "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, Y, Y, N, Y),
+            "TorchGRU":             (self.test_TorchGRU,            N, Y, Y, Y, Y),
+            "TorchIdentity":        (self.test_TorchIdentity,       Y, Y, Y, Y, Y),
+            "TorchIndexCopy":       (self.test_TorchIndexCopy,      N, N, N, N, N),
+            "TorchInstanceNorm":    (self.test_TorchInstanceNorm,   N, Y, Y, N, Y),
+            "TorchInstanceNorm2":   (self.test_TorchInstanceNorm2,  N, Y, Y, N, Y),
+            "TorchLayerGroup":      (self.test_TorchLayerGroup,     Y, Y, Y, Y, Y),
+            "TorchLayerNorm":       (self.test_TorchLayerNorm,      Y, Y, Y, Y, Y),
+            "TorchLayerNorm2":      (self.test_TorchLayerNorm2,     Y, Y, Y, Y, Y),
+            "TorchLogSoftmax":      (self.test_TorchLogSoftmax,     Y, Y, Y, Y, Y),
+            "TorchLSTM":            (self.test_TorchLSTM,           Y, Y, Y, Y, Y),
+            "TorchMaskedFill":      (self.test_TorchMaskedFill,     N, Y, Y, N, Y),
+            "TorchNonZero":         (self.test_TorchNonZero,        N, Y, Y, N, Y),
+            "TorchReflectionPad":   (self.test_TorchReflectionPad,  N, Y, Y, Y, Y),
+            "TorchRMSNorm":         (self.test_TorchRMSNorm,        N, Y, Y, N, Y),
+            "TorchRoiAlign":        (self.test_TorchRoiAlign,       N, Y, Y, N, Y),
+            "TorchScatterND":       (self.test_TorchScatterND,      N, Y, Y, Y, Y),
+            "TorchSize":            (self.test_TorchSize,           Y, Y, Y, Y, Y),
+            "TorchStd":             (self.test_TorchStd,            N, Y, Y, Y, Y),
+            "TorchWhere":           (self.test_TorchWhere,          N, Y, Y, N, Y),
+            "TorchZeroPad":         (self.test_TorchZeroPad,        N, Y, Y, Y, Y),
             #########################################
             # Special Pass test case, Alphabetically
             #########################################
-            # case: (test, bm1684_support, bm1684x_support, bm1686_support, cv183x_support)
-            "ArgError":         (self.test_ArgError,        N, Y, Y, Y),
-            "ArgReducefull":    (self.test_ArgReducefull,   Y, Y, Y, N),
-            "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y),
-            "ConcatToSpace":    (self.test_ConcatToSpace,   N, Y, Y, N),
-            "Conv3dTo2d":       (self.test_Conv3dTo2d,      N, Y, Y, Y),
-            "Depth2SpaceWithPermute": (self.test_Depth2SpaceWithPermute, Y, Y, Y, N),
-            "Div2Mul":          (self.test_Div2Mul,         Y, Y, Y, Y),
-            "ConvSlice":        (self.test_ConvSlice,       Y, Y, Y, N),
-            "Gather2Slice":     (self.test_Gather2Slice,    Y, Y, Y, Y),
-            "Gather2Slice2":    (self.test_Gather2Slice2,   N, Y, Y, Y),
-            "GatherUnsueeze":   (self.test_GatherUnsueeze,  Y, Y, Y, Y),
-            "GLMTilePermute":   (self.test_GLMTilePermute,  N, Y, N, N),
-            "Mul2Scale":        (self.test_Mul2Scale,       Y, Y, Y, Y),
-            "MatMulTranspose":  (self.test_MatMulTranspose, N, Y, Y, Y),
-            "MatMulTranspose2":  (self.test_MatMulTranspose2, N, Y, Y, Y),
-            "MatMulTranspose3":  (self.test_MatMulTranspose3, N, Y, Y, Y),
-            "PadConv1d":        (self.test_PadConv1d,       N, N, N, Y),
-            "PadConv2d":        (self.test_PadConv2d,       Y, Y, Y, Y),
-            "PadConv3d":        (self.test_PadConv3d,       N, N, N, N),
-            "PadPool1d":        (self.test_PadPool1d,       N, Y, Y, Y),
-            "PadPool2d":        (self.test_PadPool2d,       N, N, N, Y),
-            "PadPool3d":        (self.test_PadPool3d,       N, N, N, Y),
-            "PixelNorm":        (self.test_PixelNorm,       N, Y, Y, N),
-            "PixelNorm2":       (self.test_PixelNorm2,      N, Y, Y, N),
-            "PermuteBinary":    (self.test_PermuteBinary,   N, Y, Y, Y),
-            "PermuteFuse":      (self.test_PermuteFuse,     N, Y, Y, Y),
-            "PermutePad":       (self.test_PermutePad,      N, Y, Y, N),
-            "PermuteToReorg":   (self.test_PermuteToReorg,  N, Y, Y, Y),
-            "PermuteToReorg2":  (self.test_PermuteToReorg2, N, Y, Y, Y),
-            "PermuteToReshape": (self.test_PermuteToReshape,Y, Y, Y, N),
-            "Permute5dSplit":   (self.test_Permute5dSplit,  Y, Y, Y, Y),
-            "Permute7d":        (self.test_Permute7d,       Y, Y, Y, N),
-            "PoolAfterRelu":    (self.test_PoolAfterRelu,   N, Y, Y, Y),
-            "PoolSignError":    (self.test_PoolSignError,   N, Y, Y, Y),
-            "ReshapeFuse":      (self.test_ReshapeFuse,     Y, Y, Y, Y),
-            "ReshapeN":         (self.test_ReshapeN,     Y, N, N, N),
-            "ReduceTranspose":  (self.test_ReduceTranspose, Y, Y, Y, N),
-            "ReduceFuse":       (self.test_ReduceFuse,      Y, Y, Y, Y),
-            "SwapDimInner":     (self.test_SwapDimInner,    Y, Y, Y, N),
-            "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N),
-            "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N),
-            "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y),
-            "If":               (self.test_If,              N, Y, Y, N),
-            "Loop" :            (self.test_Loop,            N, Y, Y, N)
+            # case: (test, bm1684_support, bm1684x_support, bm1688_support, cv183x_support)
+            "ArgError":         (self.test_ArgError,        N, Y, Y, Y, Y),
+            "ArgReducefull":    (self.test_ArgReducefull,   Y, Y, Y, N, Y),
+            "ConcatFuse":       (self.test_ConcatFuse,      Y, Y, Y, Y, Y),
+            "ConcatToSpace":    (self.test_ConcatToSpace,   N, Y, Y, N, Y),
+            "Conv3dTo2d":       (self.test_Conv3dTo2d,      N, Y, Y, Y, Y),
+            "Depth2SpaceWithPermute": (self.test_Depth2SpaceWithPermute, Y, Y, Y, N, Y),
+            "Div2Mul":          (self.test_Div2Mul,         Y, Y, Y, Y, Y),
+            "ConvSlice":        (self.test_ConvSlice,       Y, Y, Y, N, Y),
+            "Gather2Slice":     (self.test_Gather2Slice,    Y, Y, Y, Y, Y),
+            "Gather2Slice2":    (self.test_Gather2Slice2,   N, Y, Y, Y, Y),
+            "GatherUnsueeze":   (self.test_GatherUnsueeze,  Y, Y, Y, Y, Y),
+            "GLMTilePermute":   (self.test_GLMTilePermute,  N, Y, N, N, Y),
+            "Mul2Scale":        (self.test_Mul2Scale,       Y, Y, Y, Y, Y),
+            "MatMulTranspose":  (self.test_MatMulTranspose, N, Y, Y, Y, Y),
+            "MatMulTranspose2":  (self.test_MatMulTranspose2, N, Y, Y, Y, Y),
+            "MatMulTranspose3":  (self.test_MatMulTranspose3, N, Y, Y, Y, Y),
+            "PadConv1d":        (self.test_PadConv1d,       N, N, N, Y, N),
+            "PadConv2d":        (self.test_PadConv2d,       Y, Y, Y, Y, Y),
+            "PadConv3d":        (self.test_PadConv3d,       N, N, N, N, N),
+            "PadPool1d":        (self.test_PadPool1d,       N, Y, Y, Y, Y),
+            "PadPool2d":        (self.test_PadPool2d,       N, N, N, Y, N),
+            "PadPool3d":        (self.test_PadPool3d,       N, N, N, Y, N),
+            "PixelNorm":        (self.test_PixelNorm,       N, Y, Y, N, Y),
+            "PixelNorm2":       (self.test_PixelNorm2,      N, Y, Y, N, Y),
+            "PermuteBinary":    (self.test_PermuteBinary,   N, Y, Y, Y, Y),
+            "PermuteFuse":      (self.test_PermuteFuse,     N, Y, Y, Y, Y),
+            "PermutePad":       (self.test_PermutePad,      N, Y, Y, N, Y),
+            "PermuteToReorg":   (self.test_PermuteToReorg,  N, Y, Y, Y, Y),
+            "PermuteToReorg2":  (self.test_PermuteToReorg2, N, Y, Y, Y, Y),
+            "PermuteToReshape": (self.test_PermuteToReshape,Y, Y, Y, N, Y),
+            "Permute5dSplit":   (self.test_Permute5dSplit,  Y, Y, Y, Y, Y),
+            "Permute7d":        (self.test_Permute7d,       Y, Y, Y, N, Y),
+            "PoolAfterRelu":    (self.test_PoolAfterRelu,   N, Y, Y, Y, Y),
+            "PoolSignError":    (self.test_PoolSignError,   N, Y, Y, Y, Y),
+            "ReshapeFuse":      (self.test_ReshapeFuse,     Y, Y, Y, Y, Y),
+            "ReshapeN":         (self.test_ReshapeN,     Y, N, N, N, N),
+            "ReduceTranspose":  (self.test_ReduceTranspose, Y, Y, Y, N, Y),
+            "ReduceFuse":       (self.test_ReduceFuse,      Y, Y, Y, Y, Y),
+            "SwapDimInner":     (self.test_SwapDimInner,    Y, Y, Y, N, Y),
+            "SliceToReverse":   (self.test_SliceToReverse,  N, Y, Y, N, Y),
+            "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N, Y),
+            "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y),
+            "If":               (self.test_If,              N, Y, Y, N, Y),
+            "Loop" :            (self.test_Loop,            N, Y, Y, N, Y)
         }
         # yapf: enable
 
@@ -300,11 +302,14 @@ class ONNX_IR_TESTER(object):
         elif self.chip == "bm1684":
             self.support_quant_modes = ["f32", "int8"]
             self.support_asym = [False]
+        elif self.chip == "sg2260":
+            self.support_quant_modes.append("f8e4m3")
+            self.support_quant_modes.append("f8e5m2")
         self.mode = mode.lower()
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
         else:
-            if self.chip == "bm1686" or self.chip == "cv186x":
+            if self.chip == "bm1688" or self.chip == "cv186x":
                 self.support_quant_modes.append("int4")
             if self.mode not in self.support_quant_modes:
                 raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
@@ -317,21 +322,23 @@ class ONNX_IR_TESTER(object):
         if case in self.test_cases:
             os.makedirs(case, exist_ok=True)
             os.chdir(case)
-            func, _, _, _, _ = self.test_cases[case]
+            func, _, _, _, _, _ = self.test_cases[case]
             func(case)
             print("====== TEST {} Success ======".format(case))
         else:
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1686_support, cv183x_support = self.test_cases[case]
+        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, sg2260_support = self.test_cases[case]
         if self.is_cv18xx and cv183x_support:
             return True
         if self.chip == "bm1684" and bm1684_support:
             return True
         if self.chip == "bm1684x" and bm1684x_support:
             return True
-        if self.chip == "bm1686" and bm1686_support:
+        if self.chip == "bm1688" and bm1688_support:
+            return True
+        if self.chip == "sg2260" and sg2260_support:
             return True
         return False
 
@@ -347,7 +354,7 @@ class ONNX_IR_TESTER(object):
                 inputs[name] = np.random.randint(0, 2, shape).astype(np.bool_)
         return inputs
 
-    def onnx_convert(self, input_data: dict, graph_def, model_name: str, static_shape=True, version=13):
+    def onnx_convert(self, input_data: dict, graph_def, model_name: str, quant_modes: list, static_shape=True, version=13):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
@@ -376,7 +383,8 @@ class ONNX_IR_TESTER(object):
         file_mark(self.ref_npz)
         np.savez(self.ref_npz, **top_mlir_outs)
         self.table_name = "{}_cali_table".format(model_name)
-        self.make_test_calibration_table(top_mlir_outs, self.table_name)
+        for qmode in quant_modes:
+            self.make_test_calibration_table(top_mlir_outs, self.table_name, qmode)
 
         return (onnx_outs, top_mlir_outs, input_npz, node_name_mapping)
 
@@ -388,6 +396,8 @@ class ONNX_IR_TESTER(object):
         if quant_mode == "int8" or quant_mode == "int4":
             tpu_mlir += "_asym" if isAsym else "_sym"
             table = self.table_name
+        elif quant_mode == "f8e4m3" or quant_mode == "f8e5m2":
+            table = self.table_name+"_"+quant_mode
 
         # lowering
         mlir_lowering(top_mlir,
@@ -427,6 +437,8 @@ class ONNX_IR_TESTER(object):
             ref_tpu_tolerance = "0.90,0.60"
         elif quant_mode == "bf16":
             ref_tpu_tolerance = "0.95,0.80"
+        elif quant_mode == "f8e4m3" or quant_mode == "f8e5m2":
+            ref_tpu_tolerance = "0.95,0.80"
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
         file_mark(tpu_npz)
         show_fake_cmd(input_npz, tpu_mlir, tpu_npz)
@@ -462,6 +474,8 @@ class ONNX_IR_TESTER(object):
         elif quant_mode == "int4":
             ref_bmodel_tolerance = "0.90,0.60"
         elif quant_mode == "bf16":
+            ref_bmodel_tolerance = "0.95,0.80"
+        elif quant_mode == "f8e4m3" or quant_mode == "f8e5m2":
             ref_bmodel_tolerance = "0.95,0.80"
         model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
         file_mark(model_npz)
@@ -502,9 +516,13 @@ class ONNX_IR_TESTER(object):
 
         print("[Success] test {} {}".format(model_name, msg))
 
-    def make_test_calibration_table(self, tensors, table_name):
+    def make_test_calibration_table(self, tensors, table_name, qmode = None):
         # simple calibration table
+        if qmode == 'f8e4m3' or qmode == 'f8e5m2':
+            table_name = table_name + "_" + qmode
         with open(table_name, 'w') as f:
+            if qmode == 'f8e4m3' or qmode == 'f8e5m2':
+                f.write("#tpu-mlir-fp8 caliration table\n")
             for name in tensors:
                 flatten_tensor = tensors[name].flatten()
                 max_val = max(flatten_tensor)
@@ -592,7 +610,7 @@ class ONNX_IR_TESTER(object):
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
-            input_data, graph_def, model_name, static_shape=static_shape, version=version)
+            input_data, graph_def, model_name, quant_modes, static_shape=static_shape, version=version)
         # this assumes that outputs are in order, i.e. the last one is the output
         if check_last:
             top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
@@ -641,7 +659,7 @@ class ONNX_IR_TESTER(object):
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
-            input_data, graph_def, model_name, static_shape=static_shape, version=version)
+            input_data, graph_def, model_name, quant_modes, static_shape=static_shape, version=version)
         # this assumes that outputs are in order, i.e. the last one is the output
         if check_last:
             top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
@@ -1729,24 +1747,27 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Resize(self, case_name):
-        input_shape = [1, 16, 32, 32]
-        output_shape = [1, 16, 64, 64]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        roi_data = np.array([], dtype=np.float32)
-        scales_data = np.array([1, 1, 2, 2], dtype=np.float32)
-        roi = helper.make_tensor('roi', TensorProto.FLOAT, [0], roi_data)
-        scales = helper.make_tensor('scales', TensorProto.FLOAT, [4], scales_data)
-        resize_def = helper.make_node('Resize',
-                                      inputs=['input', 'roi', 'scales'],
-                                      outputs=['output'],
-                                      mode='nearest',
-                                      nearest_mode='floor',
-                                      coordinate_transformation_mode='asymmetric')
-        graph_def = helper.make_graph([resize_def],
-                                      case_name, [input], [output],
-                                      initializer=[roi, scales])
-        self.onnx_and_test(graph_def)
+        case0 = [[1, 16, 32, 32], [1, 16, 64, 64], [1, 1, 2, 2], [4], 'nearest', 'asymmetric']
+        case1 = [[2, 3, 224], [2, 3, 448], [1, 1, 2], [3], 'linear', 'half_pixel']
+        cases = (case0, case1) if self.chip in ['bm1684x', 'bm1688'] else (case0,)
+        for idx, case in enumerate(cases):
+            input_shape, output_shape, scales, dim, mode, coor_mode = case
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+            roi_data = np.array([], dtype=np.float32)
+            scales_data = np.array(scales, dtype=np.float32)
+            roi = helper.make_tensor('roi', TensorProto.FLOAT, [0], roi_data)
+            scales = helper.make_tensor('scales', TensorProto.FLOAT, dim, scales_data)
+            resize_def = helper.make_node('Resize',
+                                        inputs=['input', 'roi', 'scales'],
+                                        outputs=['output'],
+                                        mode=mode,
+                                        nearest_mode='floor',
+                                        coordinate_transformation_mode=coor_mode)
+            graph_def = helper.make_graph([resize_def],
+                                        case_name, [input], [output],
+                                        initializer=[roi, scales])
+            self.onnx_and_test(graph_def)
 
     def test_Resize2(self, case_name):
         input_shape = [1, 32, 208, 30]
@@ -2037,6 +2058,53 @@ class ONNX_IR_TESTER(object):
             [output],
         )
         self.onnx_and_test(graph_def)
+
+    def test_Nms2(self, case_name):
+        # params for Nms
+        num_batches = 1
+        num_classes = 80
+        spatial_dimension = 50 #15200
+        in_shape = [num_batches, spatial_dimension, 4]
+        score_shape = [num_batches, num_classes, spatial_dimension]
+
+        nonzero_input_shape = [2,6]
+        nonzero_input = helper.make_tensor_value_info('nonzero_input', TensorProto.FLOAT, nonzero_input_shape)
+        boxes = helper.make_tensor_value_info('boxes', TensorProto.FLOAT, in_shape)
+        scores = helper.make_tensor_value_info('scores', TensorProto.FLOAT, score_shape)
+        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.INT64, [])
+
+        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [1], vals=[0])
+        indices1 = helper.make_tensor('indices1', TensorProto.INT64, [1], vals=[0])
+
+        iou_threshold = helper.make_tensor(name='iou_threshold',
+                                           data_type=TensorProto.FLOAT,
+                                           dims=[1],
+                                           vals=0.5 * np.ones(1))
+        score_threshold = helper.make_tensor(name='score_threshold',
+                                             data_type=TensorProto.FLOAT,
+                                             dims=[1],
+                                             vals=0.05 * np.ones(1))
+
+        gather0_def = helper.make_node('Gather', inputs=['nonzero_input', 'indices0'], axis=0, outputs=['gather0'])
+        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
+        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
+        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
+        gather_def = helper.make_node('Gather', inputs=['shape', 'indices1'], axis=0, outputs=['max_output_boxes_per_class'])
+        nms_def = helper.make_node(
+            'NonMaxSuppression',
+            inputs=['boxes', 'scores', 'max_output_boxes_per_class', 'iou_threshold', 'score_threshold'],
+            outputs=['Y_Value'],
+        )
+        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def, shape_def, gather_def, nms_def],
+                                case_name, [nonzero_input, boxes, scores], [Y_Value],
+                                initializer=[indices0, indices1, iou_threshold, score_threshold])
+
+        input_data={
+            'nonzero_input' : np.array([[1, 0, 3, 0, 4, 0], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
+            'boxes' : np.random.rand(*in_shape).astype(np.float32),
+            'scores' : np.random.rand(*score_shape).astype(np.float32)
+                    }
+        self.onnx_and_test_bmodel(graph_def, static_shape=False, input_data=input_data, only_cmp_with_bmodel=True)
 
     def test_Nms(self, case_name):
         num_batches = 1
@@ -2391,13 +2459,28 @@ class ONNX_IR_TESTER(object):
 
         self.onnx_and_test(graph_def)
 
+    def test_Sign(self, case_name):
+        input_shape = [4, 2, 200, 100]
+        output_shape = [4, 2, 200, 100]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        sign_def = helper.make_node(
+            case_name,
+            inputs=['input'],
+            outputs=['output'],
+        )
+        graph_def = helper.make_graph([sign_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
     def test_Slice(self, case_name):
         input_shape = [5, 116, 64, 64]
         output_shape = [3, 16, 16, 8]
         starts_data = np.array([2, 10, 10, 12], dtype=np.int64)
         ends_data = np.array([5, 42, 42, 36], dtype=np.int64)
         axes_data = np.array([0, 1, 2, 3], dtype=np.int64)
-        steps_data = np.array([1, 2, 2, 3], dtype=np.int64)
+        steps_data = np.array([1, 3, 2, 3], dtype=np.int64)
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
@@ -4153,37 +4236,87 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_GatherElements(self, case_name):
-        input_data = {
-            "data": np.array([[[1, 1], [2, 2]], [[3, 3], [4, 4]]], dtype=np.float32)
-        }
+        if self.chip in ['bm1684x']:
+            # samples too large for regression is commented
+            # but all samples following should be passed
+            input_data = [{
+                "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+            }, {
+                "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+            }, {
+                "data": np.random.randn(1, 13294, 4).astype(np.float32)
+            }, {
+                "data": np.arange(256).reshape(4, 4, 4, 4).astype(np.float32)
+            }, {
+                "data": np.random.randn(16, 17, 18, 19).astype(np.float32)
+                # "data": np.arange(16 * 17 * 18 * 19).reshape(16, 17, 18, 19).astype(np.float32) # for f32 debug
+            }, {
+                "data": np.random.randn(16, 17, 18, 19, 20).astype(np.float32)
+            # }, {
+            #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
+            # }, {
+            #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
+            # }, {
+            #     "data": np.random.randn(5, 8, 8, 512, 512).astype(np.float32)
+            # }, {
+            #     "data": np.random.randn(655340, 2).astype(np.float32)
+            }]
+            indices_data = [
+                np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.int64),
+                np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.int64),
+                np.random.randint(0, 13294, [1, 900, 4]),
+                np.random.randint(0, 4, [2, 3, 9, 4]),
+                np.random.randint(0, 18, [15, 12, 39, 15]),
+                np.random.randint(0, 18, [15, 12, 39, 15, 13]),
+                # np.random.randint(0, 512, [3, 7, 1025, 510]),
+                # np.random.randint(0, 8, [3, 128, 511, 88]),
+                # np.random.randint(0, 8, [3, 6, 128, 511, 88]),
+                # np.random.randint(0, 2, [65536, 2]),
+            ]
+            # axis_data = [1, 0, 1, 2, 2, 2, 2, 1, 2, 1]
+            axis_data = [1, 0, 1, 2, 2, 2]
+        elif self.chip in ['bm1684']:
+            input_data = [{
+                "data": np.array([[[0, 0], [2, 2]], [[4, 5], [6, 7]]], dtype=np.float32),
+            }]
+            indices_data = [np.array([[[0, 1], [1, 0]], [[1, 0], [0, 1]]], dtype=np.int64)]
+            axis_data = [2]
+        for i in range(len(input_data)):
+            # if i != 8:
+            #     continue
+            input_ = input_data[i]
+            indices_ = indices_data[i]
+            axis_ = axis_data[i]
+            input = helper.make_tensor_value_info('data', TensorProto.FLOAT, input_["data"].shape)
+            indices = helper.make_tensor(
+                "indices",
+                TensorProto.INT64,
+                indices_.shape,
+                indices_,
+            )
 
-        indices = np.array([[[0, 0], [0, 0]], [[1, 1], [0, 0]]], dtype=np.int64)
-        input = helper.make_tensor_value_info('data', TensorProto.FLOAT, input_data["data"].shape)
-        output_shape = [2,2,2]
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        axis = 2
-        indices = helper.make_tensor(
-            "indices",
-            TensorProto.INT64,
-            indices.shape,
-            indices,
-        )
-        add_const = helper.make_tensor(name='const_add',
-                                data_type=TensorProto.FLOAT,
-                                dims=[],
-                                vals=[2.0])
-        gather_node = onnx.helper.make_node("GatherElements",
-                                            inputs=["data", "indices"],
-                                            outputs=["gather_output"],
-                                            axis=axis)
-        add_node = onnx.helper.make_node("Add",
-                                    inputs=["gather_output", "const_add"],
-                                    outputs=["output"])
-
-        graph_def = helper.make_graph([gather_node,add_node],
-                                      case_name, [input], [output],
-                                      initializer=[indices,add_const])
-        self.onnx_and_test(graph_def,input_data=input_data)
+            gather_node = onnx.helper.make_node("GatherElements",
+                                                inputs=["data", "indices"],
+                                                outputs=["gather_output"],
+                                                axis=axis_)
+            if self.chip in ['bm1684x']:
+                output_gather = helper.make_tensor_value_info('gather_output', TensorProto.FLOAT, indices_data[i].shape)
+                graph_def = helper.make_graph([gather_node],
+                                            case_name, [input], [output_gather],
+                                            initializer=[indices])
+            elif self.chip in ['bm1684']:
+                output = helper.make_tensor_value_info('output', TensorProto.FLOAT, indices_data[i].shape)
+                add_const = helper.make_tensor(name='const_add',
+                                        data_type=TensorProto.FLOAT,
+                                        dims=[],
+                                        vals=[2.0])
+                add_node = onnx.helper.make_node("Add",
+                                            inputs=["gather_output", "const_add"],
+                                            outputs=["output"])
+                graph_def = helper.make_graph([gather_node,add_node],
+                                            case_name, [input], [output],
+                                            initializer=[indices,add_const])
+            self.onnx_and_test(graph_def,input_data=input_)
 
     def test_GatherND(self, case_name):
         input_datas = [{
@@ -5407,11 +5540,86 @@ class ONNX_IR_TESTER(object):
         self.PadPoolBase(case_name, [1, 16, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 0, 1, 2], \
                 [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
 
+    def test_ScatterElements(self, case_name):
+
+        input_data = [{
+            "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+        }, {
+            "data": np.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]], dtype=np.float32)
+        }, {
+            "data": np.random.randn(1, 13294, 4).astype(np.float32)
+        }, {
+            "data": np.arange(256).reshape(4, 4, 4, 4).astype(np.float32)
+        }, {
+            "data": np.random.randn(16, 17, 18, 19).astype(np.float32)
+        }, {
+            "data": np.random.randn(16, 17, 18, 19, 20).astype(np.float32)
+        }, {
+            "data": np.random.randn(15, 16, 17, 18, 19, 20).astype(np.float32)
+        }, {
+            "data": np.random.randn(2, 2, 2, 2, 2, 2, 2).astype(np.float32)
+        }, {
+            "data": np.random.randn(2, 2, 2, 2, 2, 2, 2, 2).astype(np.float32)
+        }, {
+            "data": np.random.randn(2, 65536, 2).astype(np.float32)
+        }]
+
+        indices_data = [
+            np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.int32),
+            np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.int32),
+            np.random.randint(0, 13294, [1, 900, 4]),
+            np.random.randint(0, 4, [4, 4, 9, 4]),
+            np.random.randint(0, 18, [16, 17, 25, 19]),
+            np.random.randint(0, 20, [16, 17, 18, 19, 21]),
+            np.random.randint(0, 20, [15, 16, 17, 18, 19, 21]),
+            np.random.randint(0, 2, [2, 2, 2, 2, 2, 2, 8]),
+            np.random.randint(0, 2,  [2, 2, 2, 2, 10, 2, 2, 2]),
+            np.random.randint(0, 2, [2, 65536, 2])]
+
+        updates_data = [
+            np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.float32),
+            np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.float32),
+            np.random.randn(1, 900, 4).astype(np.float32),
+            np.random.randn(4, 4, 9, 4).astype(np.float32),
+            np.random.randn(16, 17, 25, 19).astype(np.float32),
+            np.random.randn(16, 17, 18, 19, 21).astype(np.float32),
+            np.random.randn(15, 16, 17, 18, 19, 21).astype(np.float32),
+            np.random.randn(2, 2, 2, 2, 2, 2, 8).astype(np.float32),
+            np.random.randn(2, 2, 2, 2, 10, 2, 2, 2).astype(np.float32),
+            np.random.randn(2,65536, 2).astype(np.float32)]
+
+        axis_data = [1, 0, 1, 2, 2, 4, 5, 6, 4, 2]
+
+        for i in range(len(input_data)):
+            # if i != 9:
+            #     continue
+            data_, indices_, updates_, axis_ = input_data[i]["data"], indices_data[i], updates_data[i], axis_data[i]
+            data = helper.make_tensor_value_info('data', TensorProto.FLOAT, data_.shape)
+            indices = helper.make_tensor_value_info("indices", TensorProto.INT64, indices_.shape)
+            updates = helper.make_tensor_value_info("updates", TensorProto.FLOAT, updates_.shape)
+            input_ = {
+                "data": data_,
+                "indices": indices_,
+                "updates": updates_
+            }
+
+            scatter_node = helper.make_node("ScatterElements",
+                                             inputs=["data", "indices", "updates"],
+                                             outputs=["scatter_output"],
+                                             axis=axis_)
+            output_ = helper.make_tensor_value_info("scatter_output", TensorProto.FLOAT, data_.shape)
+            graph_def = helper.make_graph([scatter_node],
+                                            case_name,
+                                            [data, indices, updates],
+                                            [output_])
+            self.onnx_and_test(graph_def, input_data = input_)
+
+
     def test_ScatterND(self, case_name):
-        if self.chip in ['bm1684x', 'bm1686', 'cv186']:
-            x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2,3,20,40]]
-            idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 2, 5], [2,3,20,4]]
-            update_shapes = [[160, 160], [1, 3, 128, 128, 2],  [2,3,20]]
+        if self.chip in ['bm1684x', 'bm1688', 'cv186']:
+            x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2,3,20,40], [1, 13294, 256]]
+            idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 2, 5], [2,3,20,4], [1, 13294, 256, 3]]
+            update_shapes = [[160, 160], [1, 3, 128, 128, 2],  [2,3,20], [1, 13294, 256]]
         else:
             x_shapes = [[320, 320], [1, 5, 256]]
             idx_shapes = [[160, 160, 2], [1, 1, 2]]
@@ -6181,7 +6389,7 @@ def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_case
 
 
 def test_int4(tester: ONNX_IR_TESTER):
-    tester.chip = "bm1686"
+    tester.chip = "bm1688"
     tester.mode = "int4"
     tester.dynamic = False
     tester.simple = False
@@ -6269,10 +6477,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1686', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'sg2260'],
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'sg2260'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
-    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4'],
+    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8e4m3', 'f8e5m2'],
                         help="chip platform name")
     parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')

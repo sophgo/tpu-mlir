@@ -27,6 +27,11 @@ void EmbDenseBwdLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void EmbDenseBwdLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::EmbDenseBwdOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void EmbDenseBwdLowering::LoweringINT8(PatternRewriter &rewriter, top::EmbDenseBwdOp op,
                           bool asymmetric) const {
   llvm_unreachable("Not Implemented");

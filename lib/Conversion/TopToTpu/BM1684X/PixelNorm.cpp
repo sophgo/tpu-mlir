@@ -130,6 +130,11 @@ void PixelNormLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringPixelNorm_FP(rewriter, op, rewriter.getF16Type());
 }
 
+void PixelNormLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::PixelNormOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void PixelNormLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::PixelNormOp op,
                                      bool asymmetric) const {

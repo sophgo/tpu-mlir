@@ -28,10 +28,16 @@ void BatchNormBwdLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void BatchNormBwdLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::BatchNormBwdOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void BatchNormBwdLowering::LoweringINT8(PatternRewriter &rewriter, top::BatchNormBwdOp op,
                           bool asymmetric) const {
   llvm_unreachable("Not Implemented");
 }
+
 void BatchNormBwdLowering::LoweringINT4(PatternRewriter &rewriter, top::BatchNormBwdOp op,
                           bool asymmetric) const {
   llvm_unreachable("Not Implemented");

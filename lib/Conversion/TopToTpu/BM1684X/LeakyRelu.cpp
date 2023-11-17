@@ -52,6 +52,11 @@ void LeakyReluLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::LeakyReluOp>(rewriter, op);
 }
 
+void LeakyReluLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::LeakyReluOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void LeakyReluLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::LeakyReluOp op) const {
   llvm_unreachable("Not Implemented");

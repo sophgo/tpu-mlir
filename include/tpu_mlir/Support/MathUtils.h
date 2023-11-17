@@ -144,10 +144,37 @@ void dilate_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
                    float pad_value, int ins_h, int ins_w, float ins_value);
 void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
                    float zero_point);
-void tensor_hw_transpose(float *dst, float *src, int64_t N, int64_t C,
-                         int64_t H, int64_t W);
-void tensor_hc_transpose(float *dst, float *src, int64_t N, int64_t C,
-                         int64_t H, int64_t W);
+template <typename T>
+void tensor_hw_transpose(T *dst, T *src, int64_t N, int64_t C,
+                         int64_t H, int64_t W) {
+#pragma omp parallel for schedule(static, omp_schedule(N *C))
+  for (int64_t nc = 0; nc < N * C; ++nc) {
+    int64_t nc_offset = nc * H * W;
+    for (int w = 0; w < W; ++w) {
+      for (int h = 0; h < H; ++h) {
+        int64_t d_offset = nc_offset + w * H + h;
+        int64_t s_offset = nc_offset + h * W + w;
+        dst[d_offset] = src[s_offset];
+      }
+    }
+  }
+}
+template <typename T>
+void tensor_hc_transpose(T *dst, T *src, int64_t N, int64_t C,
+                         int64_t H, int64_t W) {
+#pragma omp parallel for schedule(static, omp_schedule(N))
+  for (int64_t n = 0; n < N; ++n) {
+    for (int64_t h = 0; h < H; ++h) {
+      for (int64_t c = 0; c < C; ++c) {
+        for (int64_t w = 0; w < W; ++w) {
+          int64_t s_offset = w + h * W + c * H * W + n * C * H * W;
+          int64_t d_offset = w + c * W + h * C * W + n * C * H * W;
+          dst[d_offset] = src[s_offset];
+        }
+      }
+    }
+  }
+}
 void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
                   std::vector<int64_t> &shape, int slice_num, int axis);
 template <typename T>

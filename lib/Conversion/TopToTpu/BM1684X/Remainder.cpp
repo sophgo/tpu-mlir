@@ -60,6 +60,11 @@ void RemainderLowering::LoweringBF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void RemainderLowering::LoweringF8(PatternRewriter& rewriter,
+    top::RemainderOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void RemainderLowering::LoweringINT8(PatternRewriter &rewriter,
                                         top::RemainderOp op,
                                         bool asymmetric) const {

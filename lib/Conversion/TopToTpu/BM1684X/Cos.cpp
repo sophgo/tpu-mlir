@@ -47,6 +47,10 @@ void CosLowering::LoweringF16(PatternRewriter &rewriter, top::CosOp op) const {
   lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
+void CosLowering::LoweringF8(PatternRewriter &rewriter, top::CosOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void CosLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::CosOp op) const {
   llvm_unreachable("Not Implemented");

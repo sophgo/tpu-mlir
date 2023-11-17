@@ -50,6 +50,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
                       top::OP##Op op) const override;                          \
     void LoweringF16(PatternRewriter &rewriter,                                \
                      top::OP##Op op) const override;                           \
+    void LoweringF8(PatternRewriter &rewriter,                                 \
+                     top::OP##Op op) const override;                           \
     void LoweringF32(PatternRewriter &rewriter,                                \
                      top::OP##Op op) const override;                           \
     void LoweringQuantized(PatternRewriter &rewriter,                          \
@@ -74,6 +76,7 @@ LOWERING_BM1684X(CumSum)
 LOWERING_BM1684X(Custom)
 LOWERING_BM1684X(Deconv)
 LOWERING_BM1684X(DeformConv2D)
+LOWERING_BM1684X(DepackRaw)
 LOWERING_BM1684X(Depth2Space)
 LOWERING_BM1684X(Div)
 LOWERING_BM1684X(Elu)
@@ -88,11 +91,13 @@ LOWERING_BM1684X(GRU)
 LOWERING_BM1684X(GELU)
 LOWERING_BM1684X(HardSigmoid)
 LOWERING_BM1684X(HardSwish)
+LOWERING_BM1684X(IndexPut)
 LOWERING_BM1684X(Interp)
 LOWERING_BM1684X(InstanceNorm)
 LOWERING_BM1684X(LayerNorm)
 LOWERING_BM1684X(LeakyRelu)
 LOWERING_BM1684X(Log)
+LOWERING_BM1684X(LogB)
 LOWERING_BM1684X(LRN)
 LOWERING_BM1684X(LSTM)
 LOWERING_BM1684X(MaskedFill)
@@ -130,6 +135,7 @@ LOWERING_BM1684X(ScatterElements)
 LOWERING_BM1684X(ScatterND)
 LOWERING_BM1684X(ShuffleChannel)
 LOWERING_BM1684X(Sigmoid)
+LOWERING_BM1684X(Sign)
 LOWERING_BM1684X(SiLU)
 LOWERING_BM1684X(Sin)
 LOWERING_BM1684X(Sinh)

@@ -31,18 +31,27 @@ public:
       returnTypes.push_back(returnOp->getOperand(i).getType());
     }
     std::vector<mlir::Type> argumentTypes;
-
     std::map<std::string, std::pair<std::string, std::string>> attributes_map =
         {{"RGB_PLANAR", {"rgb", "nchw"}},  {"RGB_PACKED", {"rgb", "nhwc"}},
          {"BGR_PLANAR", {"bgr", "nchw"}},  {"BGR_PACKED", {"bgr", "nhwc"}},
-         {"GRAYSCALE", {"gray", "nchw"}},  {"YUV420_PLANAR", {"bgr", "nchw"}},
+         {"GRAYSCALE", {"gray", "nchw"}},   {"YUV420_PLANAR", {"bgr", "nchw"}},
          {"YUV_NV21", {"bgr", "nchw"}},    {"YUV_NV12", {"bgr", "nchw"}},
-         {"RGBA_PLANAR", {"rgba", "nchw"}}};
+         {"RGBA_PLANAR", {"rgba", "nchw"}}, {"GBRG_RAW", {"gbrg", "nchw"}},
+         {"GRBG_RAW", {"grbg", "nchw"}}, {"BGGR_RAW", {"bggr", "nchw"}},
+         {"RGGB_RAW", {"rggb", "nchw"}}};
     std::string quant_mode = this->mode;
     std::string pixel_format = this->customization_format;
+
     fn.walk([&](top::InputOp inputOp) {
-      double max, min;
+      // get all inputOp's uses
+      std::vector<Operation *> uses;
+      for (auto &use : inputOp.getResult().getUses()) {
+        auto opd = use.getOwner();
+        uses.emplace_back(opd);
+      }
+
       // check if there is calibration table (for mix precision case)
+      double max, min;
       if (module::isCalibratedType(inputOp.getOutput())) {
         auto itype = module::getCalibratedType(inputOp.getOutput());
         max = itype.getMax();
@@ -52,90 +61,127 @@ public:
         min = -128;
       }
 
+      // no need preprocess, just verify argument
+      if (inputOp.getResult().getType().getShape().size() < 4)
+      {
+        std::vector<int64_t> input_shape;
+        for (int i = 0; i < inputOp.getResult().getType().getShape().size(); ++i)
+        {
+          input_shape.push_back(inputOp.getResult().getType().getShape()[i]);
+        }
+        auto arg_type = RankedTensorType::get(input_shape, builder.getF32Type());
+        inputOp.getOperand().setType(arg_type);
+        argumentTypes.push_back(arg_type);
+        mlir::Value currentOut = inputOp.getResult();
+        builder.setInsertionPointAfterValue(currentOut);
+        for (auto use_op : uses) {
+          for (int i = 0; i < (int)use_op->getNumOperands(); i++) {
+            if (use_op->getOperand(i) == inputOp.getResult()) {
+              use_op->setOperand(i, currentOut);
+            }
+          }
+        }
+        return;
+      };
+
+      // Get the original channel_order(rgb,bgr,etc..) and save it to preprocessOp.
       auto name = module::getName(inputOp.getOutput()).str();
-      auto resized_dims = module::getI64Array(inputOp.getResizeDims().value());
-      // Get the original channel_order(rgb,bgr,etc..) and save it to
-      // preprocessOp.
+      auto input_loc = NameLoc::get(builder.getStringAttr(name + "_raw"));
       auto channel_order = inputOp.getPixelFormat().value().str();
-      module::getNCHW(inputOp.getResult(), n, c, h, w, false);
-      std::vector<int64_t> dims;
-      if (resized_dims->size() == 2) {
-        resize_h = resized_dims->at(0);
-        resize_w = resized_dims->at(1);
-      } else {
-        resize_h = h;
-        resize_w = w;
-      }
       auto color = std::get<0>(attributes_map[pixel_format]);
       auto layout = std::get<1>(attributes_map[pixel_format]);
-      std::vector<Operation *> uses;
-      for (auto &use : inputOp.getResult().getUses()) {
-        auto opd = use.getOwner();
-        uses.emplace_back(opd);
-      }
-
-      // set the real shape of function's args.
-      std::vector<int64_t> arg_shape{n, c, resize_h, resize_w};
-      std::vector<int64_t> input_shape{n, c, resize_h, resize_w};
-      if (layout == "nhwc") {
-        arg_shape[1] = resize_h;
-        arg_shape[2] = resize_w;
-        arg_shape[3] = c;
-        input_shape[1] = resize_h;
-        input_shape[2] = resize_w;
-        input_shape[3] = c;
-      }
-
-      auto arg_type =
-          RankedTensorType::get(arg_shape, builder.getIntegerType(8, false));
-      argumentTypes.push_back(arg_type);
-
-      auto input_loc = NameLoc::get(builder.getStringAttr(name + "_raw"));
-      inputOp.getOperand().setType(arg_type);
       inputOp.getResult().setLoc(input_loc);
       inputOp.setPixelFormat(color);
       inputOp.setChannelFormat(layout);
       inputOp.setCustomizationFormat(pixel_format);
-      auto uni_type = quant::UniformQuantizedType::get(
-          0, IntegerType::get(ctx_, 8), builder.getF32Type(), 1.0, 0, 0, 255);
+
+      // if input need preprocess, set the real shape of function's args.
+      module::getNCHW(inputOp.getResult(), n, c, h, w, false);
+      std::vector<int64_t> arg_shape{n, c, h, w};
+      std::vector<int64_t> input_shape{n, c, h, w};
+      if ( inputOp.getDoPreprocess() )
+      {
+        auto resized_dims = module::getI64Array(inputOp.getResizeDims().value());
+        if (resized_dims->size() == 2) {
+          resize_h = resized_dims->at(0);
+          resize_w = resized_dims->at(1);
+          arg_shape[2] = resize_h;
+          arg_shape[3] = resize_w;
+          input_shape[2] = resize_h;
+          input_shape[3] = resize_w;
+        } else {
+          resize_h = h;
+          resize_w = w;
+        }
+        if (layout == "nhwc") {
+          arg_shape[1] = resize_h;
+          arg_shape[2] = resize_w;
+          arg_shape[3] = c;
+          input_shape[1] = resize_h;
+          input_shape[2] = resize_w;
+          input_shape[3] = c;
+        }
+        if (color == "gbrg" || color == "grbg" || color == "rggb" || color == "bggr") {
+          assert ( c == 4 && "processed raw image should include 4 channel");
+          arg_shape[1] = 1;
+          arg_shape[2] = h * 2;
+          arg_shape[3] = w * 3;
+          input_shape[1] = 1;
+          input_shape[2] = h * 2;
+          input_shape[3] = w * 3;
+        }
+      }
+
+      // set inputOp type, if need preprocess, default uint8->f32, else f32->f32
+      auto uni_type = quant::UniformQuantizedType::get( 0, IntegerType::get(ctx_, 8), builder.getF32Type(), 1.0, 0, 0, 255);
+      auto arg_type = RankedTensorType::get(arg_shape, builder.getIntegerType(8, false));
       auto input_type = RankedTensorType::get(input_shape, uni_type);
-      inputOp.getResult().setType(input_type);
+      if ( inputOp.getDoPreprocess() )
+      {
+        inputOp.getOperand().setType(arg_type);
+        inputOp.getResult().setType(input_type);
+      }
+      else
+      {
+        arg_type = RankedTensorType::get(arg_shape, builder.getF32Type());
+      }
+      argumentTypes.push_back(arg_type);
 
       mlir::Value currentOut = inputOp.getResult();
       builder.setInsertionPointAfterValue(currentOut);
 
-      // insert preprocessOp
-      std::vector<NamedAttribute> attrs;
-      auto mean = module::getF64Array(inputOp.getMeanAttr());
-      bool sign = false;
-      attrs.emplace_back(builder.getNamedAttr(
-          "quant_mode", builder.getStringAttr(quant_mode)));
-      attrs.emplace_back(builder.getNamedAttr(
-          "customization_format", builder.getStringAttr(pixel_format)));
-      attrs.emplace_back(builder.getNamedAttr(
-          "channel_order", builder.getStringAttr(channel_order)));
-      attrs.emplace_back(
-          builder.getNamedAttr("resize_dims", inputOp.getResizeDimsAttr()));
-      attrs.emplace_back(builder.getNamedAttr("scale", inputOp.getScaleAttr()));
-      attrs.emplace_back(builder.getNamedAttr("mean", inputOp.getMeanAttr()));
-      auto loc = NameLoc::get(builder.getStringAttr(name + "_preprocess"));
-      for (int i = 0; i < mean->size(); i++) {
-        if (mean->at(i) != 0) {
-          sign = true;
-          break;
+      // if input need preprocess, insert preprocessOp
+      if ( inputOp.getDoPreprocess() )
+      {
+        bool sign = false;
+        auto mean = module::getF64Array(inputOp.getMeanAttr());
+        for (int i = 0; i < mean->size(); i++) {
+          if (mean->at(i) != 0) {
+            sign = true;
+            break;
+          }
         }
+        std::vector<NamedAttribute> attrs;
+        attrs.emplace_back(builder.getNamedAttr("quant_mode", builder.getStringAttr(quant_mode)));
+        attrs.emplace_back(builder.getNamedAttr("customization_format", builder.getStringAttr(pixel_format)));
+        attrs.emplace_back(builder.getNamedAttr("channel_order", builder.getStringAttr(channel_order)));
+        attrs.emplace_back(builder.getNamedAttr("resize_dims", inputOp.getResizeDimsAttr()));
+        attrs.emplace_back(builder.getNamedAttr("scale", inputOp.getScaleAttr()));
+        attrs.emplace_back(builder.getNamedAttr("mean", inputOp.getMeanAttr()));
+        attrs.emplace_back(builder.getNamedAttr("white_level", inputOp.getWhiteLevelAttr()));
+        attrs.emplace_back(builder.getNamedAttr("black_level", inputOp.getBlackLevelAttr()));
+        attrs.emplace_back(builder.getNamedAttr("sign", builder.getBoolAttr(sign)));
+
+        auto loc = NameLoc::get(builder.getStringAttr(name + "_preprocess"));
+        auto cali_type = quant::CalibratedQuantizedType::get(builder.getF32Type(), min, max);
+        auto type = RankedTensorType::get({n, c, h, w}, cali_type);
+        auto newOp = builder.create<top::PreprocessOp>(loc, type, ArrayRef<Value>{currentOut}, attrs);
+        currentOut = newOp.getResult();
+        // reset inputOp's scale and mean
+        inputOp.setScaleAttr(builder.getF64ArrayAttr({1.0, 1.0, 1.0}));
+        inputOp.setMeanAttr(builder.getF64ArrayAttr({0.0, 0.0, 0.0}));
       }
-      attrs.emplace_back(
-          builder.getNamedAttr("sign", builder.getBoolAttr(sign)));
-      auto cali_type =
-          quant::CalibratedQuantizedType::get(builder.getF32Type(), min, max);
-      auto type = RankedTensorType::get({n, c, h, w}, cali_type);
-      auto newOp = builder.create<top::PreprocessOp>(
-          loc, type, ArrayRef<Value>{currentOut}, attrs);
-      currentOut = newOp.getResult();
-      // reset inputOp's scale and mean
-      inputOp.setScaleAttr(builder.getF64ArrayAttr({1.0, 1.0, 1.0}));
-      inputOp.setMeanAttr(builder.getF64ArrayAttr({0.0, 0.0, 0.0}));
+
       // update operand of all inputOp's uses
       for (auto use_op : uses) {
         for (int i = 0; i < (int)use_op->getNumOperands(); i++) {

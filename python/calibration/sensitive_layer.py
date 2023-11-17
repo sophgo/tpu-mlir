@@ -74,7 +74,7 @@ class SensitiveLayer:
                 return
 
             if self.args.tune_num > 0:
-                cali_table = cali_table.strip(".1")
+                cali_table = cali_table.rsplit(".1", 1)[0]
             calibrator.args.calibration_table = cali_table
             tunner = SimpleTuner(calibrator.args, calibrator.tune_ds, calibrator.ppa_list, thresholds_map_absmax)
             thresholds_map = tunner.run()

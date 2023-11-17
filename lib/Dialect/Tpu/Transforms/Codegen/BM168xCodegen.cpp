@@ -112,8 +112,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
   std::vector<Offset<bmodel::SubNet>> subnet_v;
   auto context = std::make_unique<Context>();
-  int dynamic_mode = (module::isBM1684XFamily()
-                     || module::isSG2260Family()) ? 2 : 1;
+  int dynamic_mode =
+      (module::isBM1684XFamily() || module::isSG2260Family()) ? 2 : 1;
   bool first_dynamic = false;
 
   s.walk<WalkOrder::PreOrder>([&](func::FuncOp func) {
@@ -378,12 +378,12 @@ BMCodegen::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
 std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>>
 BMCodegen::CreateCmdGroupVector() {
   auto cmd_group_v = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
-  auto gdma_ptr = (uint8_t *)(*bm168x)->gdma_buffer.data();
-  auto bdc_ptr = (uint8_t *)(*bm168x)->bdc_buffer.data();
+  auto gdma_ptr = (uint8_t *)bm168x->get_inst_data("gdma:0:0");
+  auto bdc_ptr = (uint8_t *)bm168x->get_inst_data("tiu:0:0");
   int bdc_offset = 0, gdma_offset = 0;
-  for (int group_idx = 0; group_idx < (*bm168x)->cmdid_groupnum; group_idx++) {
-    auto bdc_num = (*bm168x)->bdc_group_id[group_idx];
-    auto gdma_num = (*bm168x)->gdma_group_id[group_idx];
+  for (int group_idx = 0; group_idx < bm168x->get_group_number(); group_idx++) {
+    auto bdc_num = bm168x->get_inst_number_per_group("tiu:0:0", group_idx);
+    auto gdma_num = bm168x->get_inst_number_per_group("gdma:0:0", group_idx);
     bmodel::Binary binary_bdc;
     bmodel::Binary binary_gdma;
     auto bdc_len = bm168x->get_bdc_len(bdc_num, group_idx);
@@ -413,6 +413,24 @@ BMCodegen::CreateCmdGroupVector() {
     return 0;
   }
   return std::move(cmd_group_v);
+}
+
+std::shared_ptr<std::vector<bmodel::Binary>>
+BMCodegen::CreateCmdVector(const char *engine_name) {
+  auto cmd_v = std::make_shared<std::vector<bmodel::Binary>>();
+  // auto &builder = model_gen->Builder();
+  auto inst_ptr = (uint8_t *)bm168x->get_inst_data(engine_name);
+
+  auto inst_num = bm168x->get_inst_number_per_group(engine_name, 0);
+  auto inst_len = bm168x->get_inst_size(engine_name);
+  if (inst_ptr == nullptr || inst_num == 0)
+    return cmd_v;
+  // auto binary_engine_cmd = std::make_shared<bmodel::Binary>();
+  // if (inst_num != 0) {
+  bmodel::Binary binary_engine_cmd;
+  binary_engine_cmd = model_gen->WriteBinary(inst_len, inst_ptr);
+  cmd_v->push_back(binary_engine_cmd);
+  return cmd_v;
 }
 
 Offset<bmodel::SwitchParam>
@@ -510,6 +528,7 @@ void BMCodegen::codegen_for_overlap_ops(
 
 void BMCodegen::codegen_for_group(GroupOp gOp, Operation *prev_op,
                                   Operation *next_op) {
+
   auto nsecs = gOp.getNsecs();
   auto hsecs = gOp.getHsecs();
   auto dsecs = gOp.getDsecs();
@@ -873,8 +892,20 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call) {
       multi_core->useCore(i);
       auto cmd_group_v = CreateCmdGroupVector();
       auto cmd_group = builder.CreateVector(*cmd_group_v);
+      // for sg2260
+      auto sdma_cmds_bin = CreateCmdVector("sdma:0:0");
+      auto hau_cmds_bin = CreateCmdVector("hau:0:0");
+      auto sdma_cmds = builder.CreateVectorOfStructs(sdma_cmds_bin->data(),
+                                                     sdma_cmds_bin->size());
+      auto hau_cmds = builder.CreateVectorOfStructs(hau_cmds_bin->data(),
+                                                    hau_cmds_bin->size());
       bmodel::CoreCommandsBuilder ccb(builder);
       ccb.add_gdma_tiu_commands(cmd_group);
+      if (sdma_cmds_bin->size())
+        ccb.add_sdma_commands(sdma_cmds);
+      if (hau_cmds_bin->size())
+        ccb.add_hau_commands(hau_cmds);
+
       core_commands.push_back(ccb.Finish());
     }
   } else {

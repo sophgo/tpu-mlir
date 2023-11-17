@@ -42,6 +42,10 @@ void NmsLowering::LoweringF16(PatternRewriter &rewriter, top::NmsOp op) const {
   LoweringF32(rewriter, op);
 }
 
+void NmsLowering::LoweringF8(PatternRewriter &rewriter, top::NmsOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void NmsLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::NmsOp op) const {
   llvm_unreachable("Not Implemented");

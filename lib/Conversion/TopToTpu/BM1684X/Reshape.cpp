@@ -23,11 +23,8 @@ void ReshapeTryLowering::Lowering(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto v = op.getResult();
-  auto shape = module::getShape(v);
-  auto ctx = v.getContext();
-  Type new_type = RankedTensorType::get(shape, IntegerType::get(ctx, 32));
-  rewriter.replaceOpWithNewOp<tpu::ShapeAssignOp>(op, new_type,
+
+  rewriter.replaceOpWithNewOp<tpu::ShapeAssignOp>(op, op.getOutput().getType(),
                                                   op.getOperands(), attrs);
 }
 
@@ -50,6 +47,11 @@ void ReshapeLowering::LoweringBF16(PatternRewriter &rewriter,
 }
 
 void ReshapeLowering::LoweringF16(PatternRewriter &rewriter,
+                                  top::ReshapeOp op) const {
+  lowering_common_f16<tpu::ReshapeOp>(rewriter, op);
+}
+
+void ReshapeLowering::LoweringF8(PatternRewriter &rewriter,
                                   top::ReshapeOp op) const {
   lowering_common_f16<tpu::ReshapeOp>(rewriter, op);
 }

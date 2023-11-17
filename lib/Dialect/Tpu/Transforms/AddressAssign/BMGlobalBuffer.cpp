@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM1688.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
@@ -39,6 +39,27 @@ public:
     return success();
   }
 };
+
+class GatherElementsGlobalBuffer : public OpRewritePattern<tpu::GatherElementsOp> {
+public:
+  using OpRewritePattern<tpu::GatherElementsOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::GatherElementsOp GatherElementsOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(GatherElementsOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684XFamily() && !module::isSG2260Family()) {
+      return failure();
+    }
+    auto buffer_type =
+        GatherElementsOp.getIndices().getType().cast<RankedTensorType>();
+    auto buffer = tpu::BufferOp::create(GatherElementsOp, buffer_type);
+    GatherElementsOp.setOperand(3, buffer);
+    return success();
+  }
+};
+
 
 class LSTMGlobalBuffer : public OpRewritePattern<tpu::LSTMOp> {
 public:
@@ -389,7 +410,7 @@ public:
 
   LogicalResult matchAndRewrite(tpu::InterpOp interpOp,
                                 PatternRewriter &rewriter) const override {
-    if (!module::isBM1686())
+    if (!module::isBM1688())
       return failure();
 
     if (!module::isNone(interpOp.getBuffer())) {
@@ -640,6 +661,31 @@ public:
   }
 };
 
+class IndexPutGlobalBuffer : public OpRewritePattern<tpu::IndexPutOp> {
+public:
+  using OpRewritePattern<tpu::IndexPutOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::IndexPutOp IndexPutOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(IndexPutOp.getBuffer()) || !IndexPutOp.getAccumulate()) {
+      return failure();
+    }
+    if (!module::isBM1684XFamily()) {
+      return failure();
+    }
+    auto elment_num = module::getNumElements(IndexPutOp.getValues());
+    auto type = module::getStorageType(IndexPutOp.getValues());
+    // add buffer
+    std::vector<int64_t> buffer_shape = {elment_num}; // double buffer
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(IndexPutOp, buffer_type);
+    IndexPutOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == IndexPutOp.getBuffer() && operand.getOwner() == IndexPutOp;
+    });
+    return success();
+  }
+};
+
 class PadGlobalBuffer : public OpRewritePattern<tpu::PadOp> {
 public:
   using OpRewritePattern<tpu::PadOp>::OpRewritePattern;
@@ -726,6 +772,26 @@ public:
   }
 };
 
+class ScatterElementsGlobalBuffer : public OpRewritePattern<tpu::ScatterElementsOp> {
+public:
+  using OpRewritePattern<tpu::ScatterElementsOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::ScatterElementsOp ScatterElementsOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(ScatterElementsOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684XFamily() && !module::isSG2260Family()) {
+      return failure();
+    }
+    auto buffer_type =
+        ScatterElementsOp.getIndices().getType().cast<RankedTensorType>();
+    auto buffer = tpu::BufferOp::create(ScatterElementsOp, buffer_type);
+    ScatterElementsOp.setOperand(4, buffer);
+    return success();
+  }
+};
+
 class ScatterNDGlobalBuffer : public OpRewritePattern<tpu::ScatterNDOp> {
 public:
   using OpRewritePattern<tpu::ScatterNDOp>::OpRewritePattern;
@@ -756,7 +822,7 @@ public:
       return failure();
     }
     if (!module::isBM1684XFamily()
-        || (module::isBM1684XFamily() && !module::isBM1686())) {
+        || (module::isBM1684XFamily() && !module::isBM1688())) {
       return failure();
     }
 
@@ -780,7 +846,7 @@ public:
       return failure();
     }
     if (!module::isBM1684XFamily()
-        || (module::isBM1684XFamily() && !module::isBM1686())) {
+        || (module::isBM1684XFamily() && !module::isBM1688())) {
       return failure();
     }
     auto process = module::getPostprocess();
@@ -808,7 +874,7 @@ public:
     }
 
     if (!module::isBM1684XFamily()
-        || (module::isBM1684XFamily() && !module::isBM1686())) {
+        || (module::isBM1684XFamily() && !module::isBM1688())) {
       return failure();
     }
 
@@ -829,6 +895,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
       GatherGlobalBuffer,
+      GatherElementsGlobalBuffer,
       GRUGlobalBuffer,
       LSTMGlobalBuffer,
       ReduceGlobalBuffer,
@@ -841,7 +908,9 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       NonZeroGlobalBuffer,
       DeformGatherGlobalBuffer,
       TileGlobalBuffer,
+      IndexPutGlobalBuffer,
       PadGlobalBuffer,
+      ScatterElementsGlobalBuffer,
       Space2BatchGlobalBuffer,
       Batch2SpaceGlobalBuffer,
       ScatterNDGlobalBuffer,

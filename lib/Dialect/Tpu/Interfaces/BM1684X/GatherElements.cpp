@@ -17,9 +17,10 @@ using namespace tpu_mlir::backend;
 
 void tpu::GatherElementsOp::codegen_global_bm1684x() {
   auto op = getOperation();
-  index_select_common_spec_t param{0};
+  gather_elements_global_param_t param{0};
   param.axis = getAxis();
   param.index_is_coeff = false;
+  param.intermediate_buffer_global_addr = module::getAddress(getBuffer());
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   BM168x::call_global_func("backend_api_gather_global", &param,

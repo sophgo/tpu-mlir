@@ -203,7 +203,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - Quantization type (F32/F16/BF16/INT8)
    * - chip
      - Y
-     - The platform that the model will use. Support bm1686/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
+     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
      - N
      - The quantization table path. Required when it is INT8 quantization
@@ -233,7 +233,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - to keep all intermediate files for debug
    * - core
      - N
-     - When the target is selected as bm1686 or cv186x, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
+     - When the target is selected as bm1688 or cv186x, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
 
 .. _tools:
 

@@ -34,6 +34,10 @@ void LRNLowering::LoweringF16(PatternRewriter &rewriter, top::LRNOp op) const {
   LoweringF32(rewriter, op);
 }
 
+void LRNLowering::LoweringF8(PatternRewriter &rewriter, top::LRNOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void LRNLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::LRNOp op) const {
   llvm_unreachable("Not Implemented");

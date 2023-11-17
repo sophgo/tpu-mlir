@@ -63,7 +63,12 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
             module::getShape(op.getOutput()).size() == 0) {
           module::setShape(op.getResult(), {1});
         }
-
+        for (auto user: op->getUsers()) {
+          for (auto res: user->getResults()) {
+            if (!isa<UnrankedTensorType>(res.getType()) && module::getShape(res).size() == 0)
+            module::setShape(res, {1});
+          }
+        }
         return failure();
       }
 
@@ -95,6 +100,7 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> steps(input_shape.size(), 1);
       std::vector<int64_t> ends(input_shape.size(), 1);
+      offsets[ax] = (int64_t)inds_f32->at(0);
       int64_t step = offsets[ax] - steps[ax];
       if (step <= 0)
         return failure();

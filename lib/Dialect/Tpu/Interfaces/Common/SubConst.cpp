@@ -70,3 +70,10 @@ LogicalResult tpu::SubConstOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+ArrayAttr tpu::SubConstOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};

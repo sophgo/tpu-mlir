@@ -8,64 +8,185 @@
 #
 # graphvis api doc: https://graphviz.org/doc/info/lang.html
 # ==============================================================================
-from mlir_ast import MlirASTParser
+from collections import defaultdict
 import os
 import numpy as np
-from mlir_ast.nodes import GroupOp, Operation, CallFunc, Func
+
 import argparse
 import pydot
-from pprint import pformat
 import json
+from mlir.ir import *
+from tqdm import tqdm
+import mlir.ir
+from mlir.dialects.func import FuncOp
+from typing import List
+import re
+from utils.log_setting import setup_logger
+
+logger = setup_logger("mlir2graph")
+
+escape_pattern = re.compile('[:"]')
+
+# picked from https://graphviz.org/doc/info/colors.html
+INPUT_COLOR = "cadetblue1"
+SUBNET_COLOR = "antiquewhite"
+GROUP_COLOR = "gray95"
+FAILED_COLOR = "red"
 
 
 def escape(name: str):
-    return name.replace(":", "_")
-
-
-def is_local_opid(opd_str: str, local_id_start: int):
-    """
-    %326
-    %10#1
-    """
-
-    try:
-        return int(opd_str[1:]) >= local_id_start
-    except:
-        return False
+    return escape_pattern.sub("_", name).strip('"()_')
 
 
 label_template = """
 <<table border="0" cellborder="1" cellspacing="0">
-    <tr><td align="center">{opd_ids} = {op_type} -&gt; {shape}</td></tr>
+    <tr><td align="center">{res_ids} = {op_type}({opd_ids}) -&gt; {shape}</td></tr>
     <tr><td align="center">{name}</td></tr>
 </table>>
 """.strip()
 
 
-def first_valid_op(func: Func):
-    for op in func.ops:
-        if not op.op_type.isa("top.None"):
-            return op
-    raise ValueError("No Valid Operation")
+def parse_attribute(attr: Attribute) -> dict:
+    if isinstance(attr, OpAttributeMap):
+        dic = {}
+        [dic.update(parse_attribute(i)) for i in list(attr)]
+        return dic
+    if isinstance(attr, NamedAttribute):
+        return {attr.name: parse_attribute(attr.attr)}
+    if isinstance(attr, (ArrayAttr)):
+        return [parse_attribute(i) for i in attr]
+    elif isinstance(attr, (StringAttr, BoolAttr, IntegerAttr, FloatAttr)):
+        return attr.value
+    else:
+        return str(attr)
 
 
-def make_label(op: Operation, **kwargs):
-    opd_ids = ", ".join(op.opd_ids)
-    op_type = op.op_type.dump()
-    shape = ", ".join(["x".join(map(str, i.shape)) for i in op.output_types])
+def make_group_label(op: OpView, **kwargs):
+    res_ids = ", ".join([i.get_name() for i in op.results])
+    opd_ids = ", ".join([i.get_name() for i in op.operands])
+    op_type = get_opname(op)
 
     html = label_template.format(
-        opd_ids=opd_ids, op_type=op_type, shape=shape, name=op.name
+        res_ids=res_ids,
+        opd_ids=opd_ids,
+        op_type=op_type,
+        shape="",
+        name=get_op_loc(op),
     )
-    # print(html)
+    logger.debug(html)
+    return html
+
+
+def make_label(op: OpView, **kwargs):
+    res_ids = ", ".join([i.get_name() for i in op.results])
+    opd_ids = ", ".join([i.get_name() for i in op.operands])
+    op_type = get_opname(op)
+    shape = ", ".join([str(opr.type) for opr in op.results])
+
+    shape = shape.replace("tensor", "").replace("<", "").replace(">", "")
+    name = get_op_loc(op)
+    if kwargs.setdefault("failed", False):
+        name = f"{name} (failed)"
+
+    html = label_template.format(
+        res_ids=res_ids,
+        opd_ids=opd_ids,
+        op_type=op_type,
+        shape=shape,
+        name=name,
+    )
+    logger.debug(html)
     return html
 
 
 def make_tooltips(op: Operation):
-    print(json.dumps(op.attrs, ensure_ascii=False, indent=2))
-    res = json.dumps(op.attrs, ensure_ascii=False, indent=2)
-    res = f"<{res}>"
+    attr_str = json.dumps(parse_attribute(op.attributes), ensure_ascii=False, indent=2)
+    logger.debug(attr_str)
+    res = f"<{attr_str}>"
     return res
+
+
+def iter_operations(op):
+    if isinstance(op, Module):
+        for oop in op.body.operations:
+            yield from iter_operations(oop)
+    elif isinstance(op, OpView):
+        if op.operation.name == "builtin.module":
+            for region in op.regions:
+                yield from iter_operations(region)
+        elif isinstance(op, FuncOp):
+            for region in op.regions:
+                yield from iter_operations(region)
+        else:
+            raise NotImplementedError(op)
+    elif isinstance(op, Region):
+        for block in op.blocks:
+            yield from iter_operations(block)
+    elif isinstance(op, Block):
+        for operation in op.operations:
+            if isinstance(operation, FuncOp):
+                yield from iter_operations(operation)
+            else:
+                yield operation.operation
+    else:
+        raise NotImplementedError(op)
+
+
+def get_opname(op):
+    if isinstance(op, OpView):
+        return op.operation.name
+    elif isinstance(op, Operation):
+        return op.name
+    elif isinstance(op, Value):
+        return get_opname(op.owner)
+    raise NotImplementedError(op)
+
+
+match_fused_loc = re.compile(r"""fused\["([^"]*)"(, "([^"]*)")+\]""")
+
+
+# 'fused["252_LayerNormalization", "263_LayerNormalization"]'
+def get_op_loc(op):
+    if isinstance(op, (OpView, Operation)):
+        res = str(op.location).replace("loc(", "").strip(")")
+
+        if "fused" in res:
+            res = match_fused_loc.search(res).group(1)
+        return escape(res)
+    elif isinstance(op, Value):
+        return get_op_loc(op.owner)
+    raise NotImplementedError()
+
+
+def is_opname(op, *names: str):
+    return any(get_opname(op) == name for name in names)
+
+
+def create_node(op, op_loc, node_attrs: dict):
+    failed = node_attrs.get("failed", False)
+
+    logger.debug("node: ", op_loc)
+    node = pydot.Node(
+        op_loc,
+        id=op_loc,
+        **node_attrs,
+        label=make_label(op, failed=failed),
+        shape="plain",
+    )
+    node.set_tooltip(make_tooltips(op))
+    return node
+
+
+def create_edge(pre_op_loc, op_loc, label, ltail=None, href=None):
+    edge_attr = {
+        "ltail": ltail,
+        "href": href,
+    }
+
+    logger.debug("edge: ", pre_op_loc, op_loc)
+    edge_attr = {k: v for k, v in edge_attr.items() if v is not None}
+    edge = pydot.Edge(pre_op_loc, op_loc, xlabel=label, **edge_attr)
+    return edge
 
 
 if __name__ == "__main__":
@@ -81,6 +202,12 @@ if __name__ == "__main__":
         help="for final.mlir, a bmodel_checker_data will render red for failed operation",
     )
     parser.add_argument(
+        "--failed_keys",
+        type=str,
+        default=None,
+        help="split by quote",
+    )
+    parser.add_argument(
         "--isbig",
         type=bool,
         default=False,
@@ -90,192 +217,195 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # dot = graphviz.Digraph(comment="The Round Table", node_attr={"shape": "box"})
-    dot = pydot.Dot("my_graph", graph_type="digraph", compound=True)
+    dot = pydot.Dot("my_graph", graph_type="digraph", compound=True, splines="polyline")
 
     failed_keys = set()
     if args.bmodel_checker_data is not None:
         report = np.load(args.bmodel_checker_data, allow_pickle=True)
-        failed_keys = [k.split("_asm_")[0] for k in list(report.files) if "actual" in k]
+        failed_keys.update(
+            {k.split("_asm_")[0] for k in list(report.files) if "actual" in k}
+        )
+    if args.failed_keys is not None:
+        failed_keys.update({i.strip() for i in args.failed_keys.split(",")})
 
-    ast_parser = MlirASTParser(args.mlir)
-    ast = ast_parser.parse()
+    with open(args.mlir, "r") as r:
+        context = r.read()
 
-    is_final = len(ast.module.funcs) > 1
+    ctx = mlir.ir.Context()
+    ctx.allow_unregistered_dialects = True
+    module = mlir.ir.Module.parse(context, ctx)
 
     func_inputs = set()
+    func_inputs_names = defaultdict(list)
+    func_output_names = defaultdict(list)
 
-    for i, func in enumerate(ast.module.funcs):
-        func_graph = pydot.Subgraph(
-            f"cluster_{func.name}", labeljust="l", label=func.name
+    multiple_subnet = False
+
+    def iter_block(block: Block):
+        for operation in block.operations:
+            yield operation
+
+    def iter_function_op(func: FuncOp) -> List[OpView]:
+        for region in func.regions:  # type: Region
+            for block in region.blocks:
+                yield from iter_block(block)
+
+    def draw_group_op(group):
+        op_loc = get_op_loc(group)
+        group_graph = pydot.Subgraph(
+            "cluster_" + op_loc,
+            id="cluster_" + op_loc,
+            label=make_group_label(group),
+            shape="plain",
+            labeljust="l",
+            bgcolor=GROUP_COLOR,
         )
 
-        func_ns = func.name + "::"
-        for op in func.ops:
-            if op.op_type.isa("top.None", "func.return"):
+        for op in group.regions[0].blocks[0].operations:
+            if is_opname(op, "tpu.Yield", "tpu.Store"):
                 continue
 
-            if op.op_type.isa("top.Input"):
+            oop_loc = get_op_loc(op)
+            node_attrs = {}
+            # node_attrs["shape"] = "box"
+            node = create_node(op, oop_loc, node_attrs)
+            node.set_tooltip(make_tooltips(op))
+            group_graph.add_node(node)
+
+            for iop in op.operands:
+                if "arg" in iop.get_name():
+                    continue
+                pre_op = iop.owner
+
+                if is_opname(pre_op, "top.None", "tpu.Yield"):
+                    continue
+
+                pre_op_loc = get_op_loc(pre_op)
+                if pre_op_loc == oop_loc:
+                    continue
+
+                if is_opname(pre_op, "tpu.Group"):
+                    edge = create_edge(
+                        pre_op_loc,
+                        oop_loc,
+                        label=iop.get_name(),
+                        ltail="cluster_" + pre_op_loc,
+                        href=f"#cluster_{pre_op_loc}",
+                    )
+                else:
+                    edge = create_edge(
+                        pre_op_loc,
+                        oop_loc,
+                        label=iop.get_name(),
+                        href=f"#{pre_op_loc}",
+                    )
+
+                dot.add_edge(edge)
+
+            if op_loc in failed_keys:
+                node_attrs["color"] = FAILED_COLOR
+        return group_graph
+
+    def draw_func_op(func: FuncOp):
+        func_name = func.name.value
+        func_graph = pydot.Subgraph(
+            f"cluster_{func_name}",
+            labeljust="l",
+            label=func_name,
+            bgcolor=SUBNET_COLOR,
+        )
+        in_main_func = func_name == "main"
+        if in_main_func:
+            for arg in func.arguments:
+                arg_name = f"main_{escape(arg.get_name())}"
                 node = pydot.Node(
-                    escape(op.name),
-                    id=escape(op.name),
-                    label=make_label(op),
+                    arg_name,
+                    id=arg_name,
                     shape="plain",
                 )
-                node.set_tooltip(make_tooltips(op))
+        logger.info(f"parse func {func_name}")
+        for op in tqdm(list(iter_function_op(func))):
+            if is_opname(op, "top.None"):
                 continue
-
-            if isinstance(op, CallFunc):
-                for iop in op.op_type.opds:
-                    if "arg" in iop:
-                        continue
-
-                    pre_op = ast.opid2op[func_ns + iop]
-                    pre_op_name = pre_op.name
-                    op_func = ast.name2func[op.op_type.op_type_name]
-                    lhead = f"cluster_{op.op_type.op_type_name}"
-
-                    if isinstance(pre_op, CallFunc):
-                        ltail = f"cluster_{pre_op.op_type.op_type_name}"
-                        pre_func = ast.name2func[pre_op.op_type.op_type_name]
-
-                        edge = pydot.Edge(
-                            escape(first_valid_op(pre_func).name),
-                            escape(first_valid_op(op_func).name),
-                            label=iop,
-                            ltail=ltail,
-                            lhead=lhead,
-                            href=f"#{escape(pre_op_name)}",
-                        )
-                    else:
-                        edge = pydot.Edge(
-                            escape(pre_op_name),
-                            escape(first_valid_op(op_func).name),
-                            label=iop,
-                            lhead=lhead,
-                            href=f"#{escape(pre_op_name)}",
-                        )
-
-                    dot.add_edge(edge)
-                continue
-
-            if isinstance(op, GroupOp):
-                local_id_start = int(op.ops[0].opd_ids[0][1:])
-
-                group_graph = pydot.Subgraph(
-                    "cluster_" + escape(op.name),
-                    id="cluster_" + escape(op.name),
-                    label=make_label(op),
-                    shape="plain",
-                    labeljust="l",
-                )
-                ns = op.name
-                for oop in op.ops:
-                    if oop.op_type.isa("tpu.Yield", "tpu.Store"):
-                        continue
-
-                    op_name = oop.name
-                    node_attrs = {}
-                    # node_attrs["shape"] = "box"
-
-                    for iop in oop.op_type.opds:
-                        if "arg" in iop:
-                            continue
-
-                        if is_local_opid(iop, local_id_start):
-                            pre_op = ast.opid2op[func_ns + ns + iop]
+            op_loc = get_op_loc(op)
+            if is_opname(op, "func.call"):
+                subfunc_name = op.callee.value
+                # get input name from pre subfunc outputs
+                for opd in op.operands:
+                    if is_opname(opd, "top.Input"):
+                        func_inputs_names[subfunc_name].append(get_op_loc(opd))
+                    elif is_opname(opd, "func.call"):
+                        opd_name = opd.owner.opview.callee.value
+                        opd_ref = opd.get_name().split("#")
+                        if len(opd_ref) == 1:
+                            index = 0
                         else:
-                            pre_op = ast.opid2op[func_ns + iop]
+                            index = int(opd_ref[1])
+                        func_inputs_names[subfunc_name].append([opd_name, index])
 
-                        if pre_op.op_type.isa("top.None", "tpu.Yield"):
-                            continue
-                        pre_op_name = pre_op.name
-                        if pre_op_name == oop.name:
-                            continue
+            elif is_opname(op, "tpu.Group"):
+                group_graph = draw_group_op(op)
+                func_graph.add_subgraph(group_graph)
+            else:
+                node_attrs = {}
 
-                        if isinstance(pre_op, GroupOp):
-                            edge = pydot.Edge(
-                                escape(pre_op.ops[0].name),
-                                escape(oop.name),
-                                label=iop,
-                                ltail="cluster_" + escape(pre_op.name),
-                                href=f"#cluster_{escape(pre_op_name)}",
-                            )
+                # node_attrs["shape"] = "box"
+                node_attrs["failed"] = op_loc in failed_keys
+                if op_loc in failed_keys:
+                    node_attrs["color"] = FAILED_COLOR
+                if is_opname(op, "top.Input", "top.Weight"):
+                    node_attrs["fillcolor"] = INPUT_COLOR
+                    node_attrs["style"] = "filled"
+
+                if not is_opname(op, "func.return"):
+                    node = create_node(op, op_loc, node_attrs)
+                    func_graph.add_node(node)
+
+                    for opd_index, iopd in enumerate(op.operands):
+                        if "arg" in iopd.get_name():
+                            if in_main_func:
+                                pre_op_loc = f"main_{iopd.get_name()}"
+                            else:
+                                pre_op_loc = func_inputs_names[func_name][opd_index]
+                                if isinstance(pre_op_loc, list):
+                                    pre_subnet_name, pre_subnet_opd_index = pre_op_loc
+                                    pre_op_loc = func_output_names[pre_subnet_name][
+                                        pre_subnet_opd_index
+                                    ]
+                        elif is_opname(iopd, "top.None", "tpu.Yield"):
+                            continue
                         else:
-                            edge = pydot.Edge(
-                                escape(pre_op_name),
-                                escape(oop.name),
-                                label=iop,
-                                href=f"#{escape(pre_op_name)}",
-                            )
+                            pre_op_loc = get_op_loc(iopd)
+                            if pre_op_loc == op_loc:
+                                continue
+
+                        edge = create_edge(
+                            pre_op_loc,
+                            op_loc,
+                            label=iopd.get_name(),
+                            href=f"#{pre_op_loc}",
+                        )
 
                         dot.add_edge(edge)
 
-                    if op_name in failed_keys:
-                        node_attrs["color"] = "red"
-                    node = pydot.Node(
-                        escape(oop.name),
-                        id=escape(oop.name),
-                        **node_attrs,
-                        label=make_label(oop),
-                        shape="plain",
-                    )
-                    node.set_tooltip(make_tooltips(oop))
-                    group_graph.add_node(node)
-                func_graph.add_subgraph(group_graph)
-            else:
-                op_name = op.name
-                if escape(op_name) == "onnx__Transpose_266_Reshape":
-                    import pdb
-
-                    pdb.set_trace()
-                node_attrs = {}
-                # node_attrs["shape"] = "box"
-
-                for iop in op.op_type.opds:
-                    if "arg" in iop:
-                        continue
-
-                    pre_op = ast.opid2op[func_ns + iop]
-
-                    if pre_op.op_type.isa("top.None", "tpu.Yield"):
-                        "skip generate edge for None and Yield"
-                        continue
-
-                    pre_op_name = pre_op.name
-                    if pre_op_name == op.name:
-                        continue
-
-                    if isinstance(pre_op, GroupOp):
-                        edge = pydot.Edge(
-                            escape(pre_op.ops[-1].name),
-                            escape(op.name),
-                            label=iop,
-                            ltail="cluster_" + escape(pre_op.name),
-                            href=f"#cluster_{escape(pre_op_name)}",
-                        )
+                if multiple_subnet and is_opname(op, "func.return"):
+                    if in_main_func:
+                        pass
                     else:
-                        edge = pydot.Edge(
-                            escape(pre_op_name),
-                            escape(op.name),
-                            label=iop,
-                            href=f"#{escape(pre_op_name)}",
-                        )
-
-                    dot.add_edge(edge)
-
-                if op_name in failed_keys:
-                    node_attrs["color"] = "red"
-                node = pydot.Node(
-                    escape(op.name),
-                    id=escape(op.name),
-                    **node_attrs,
-                    label=make_label(op),
-                    shape="plain",
-                )
-                node.set_tooltip(make_tooltips(op))
-                func_graph.add_node(node)
-
+                        for opd in op.operands:
+                            func_output_names[func_name].append(get_op_loc(opd))
         dot.add_subgraph(func_graph)
+
+    for func in module.body.operations:
+
+        if isinstance(func, FuncOp):
+            draw_func_op(func)
+        elif getattr(func.operation, "name") == "builtin.module":
+            multiple_subnet = True
+            for subfunc in list(func.regions[0].blocks[0].operations):
+                draw_func_op(subfunc)
+        else:
+            raise NotImplementedError(func)
 
     with open(f"{args.mlir}.dot", "w") as w:
         w.write(str(dot.to_string()))

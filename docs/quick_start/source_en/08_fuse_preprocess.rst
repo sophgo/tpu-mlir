@@ -92,7 +92,7 @@ The command to generate the preprocess-fused symmetric INT8 quantized bmodel mod
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
@@ -111,7 +111,7 @@ The command to generate the preprocess-fused symmetric INT8 quantized cvimodel m
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
@@ -129,7 +129,7 @@ When the input data comes from the video post-processing module VPSS provided by
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \

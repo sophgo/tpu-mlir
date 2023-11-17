@@ -39,6 +39,11 @@ void CastLowering::LoweringF16(PatternRewriter &rewriter,
                                op.getOutput().getType());
 }
 
+void CastLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::CastOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void CastLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::CastOp op) const {
   if (module::isUniformQuantized(op.getInput(), op.getOutput()) == false) {
