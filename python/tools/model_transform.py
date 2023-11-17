@@ -208,7 +208,7 @@ class TorchTransformer(ModelTransformer):
         from tools.model_runner import torch_inference
         return torch_inference(inputs, self.model_def)
 
-#添加paddle的转换
+
 class PaddleTransformer(ModelTransformer):
     def __init__(self,
                  model_name,
