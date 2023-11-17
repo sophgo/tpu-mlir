@@ -14,9 +14,9 @@ using namespace llvm;
 namespace tpu_mlir {
 namespace top {
 
-class ChipAssignPass : public ChipAssignBase<ChipAssignPass> {
+class ProcessorAssignPass : public ProcessorAssignBase<ProcessorAssignPass> {
 public:
-  ChipAssignPass() {}
+  ProcessorAssignPass() {}
   void runOnOperation() override {
     auto mOp = getOperation();
     auto chip_ = StringRef(chip).lower();
@@ -48,8 +48,8 @@ private:
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createChipAssignPass() {
-  return std::make_unique<ChipAssignPass>();
+std::unique_ptr<OperationPass<ModuleOp>> createProcessorAssignPass() {
+  return std::make_unique<ProcessorAssignPass>();
 }
 } // namespace top
 } // namespace tpu_mlir

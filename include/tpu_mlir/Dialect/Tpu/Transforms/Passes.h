@@ -26,7 +26,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass();
 std::unique_ptr<OperationPass<ModuleOp>> createStripIOQuant();
 std::unique_ptr<OperationPass<ModuleOp>> createLayerGroupPass();
 std::unique_ptr<OperationPass<ModuleOp>> createDynCodegenPass();
-std::unique_ptr<OperationPass<ModuleOp>> createChipOptimizePass();
+std::unique_ptr<OperationPass<ModuleOp>> createProcessorOptimizePass();
 std::unique_ptr<OperationPass<ModuleOp>> createOpDividePass();
 std::unique_ptr<OperationPass<ModuleOp>> createDistributePass();
 std::unique_ptr<OperationPass<ModuleOp>> createParallelPass();

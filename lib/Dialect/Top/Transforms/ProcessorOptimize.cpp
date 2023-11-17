@@ -19,9 +19,9 @@ extern void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns);
 extern void populateOptimizeBM1684Patterns(RewritePatternSet *patterns);
 extern void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns);
 
-class ChipOptimizePass : public ChipOptimizeBase<ChipOptimizePass> {
+class ProcessorOptimizePass : public ProcessorOptimizeBase<ProcessorOptimizePass> {
 public:
-  ChipOptimizePass() {}
+  ProcessorOptimizePass() {}
   void runOnOperation() override {
     auto mOp = getOperation();
     RewritePatternSet patterns(mOp.getContext());
@@ -37,8 +37,8 @@ public:
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createChipOptimizePass() {
-  return std::make_unique<ChipOptimizePass>();
+std::unique_ptr<OperationPass<ModuleOp>> createProcessorOptimizePass() {
+  return std::make_unique<ProcessorOptimizePass>();
 }
 } // namespace top
 } // namespace tpu_mlir

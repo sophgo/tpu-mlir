@@ -3,7 +3,7 @@ file(GLOB _sources
           Interfaces/*.cpp
           Canonicalize/*.cpp
           Transforms/*.cpp
-          Transforms/ChipOptimize/*.cpp
+          Transforms/ProcessorOptimize/*.cpp
     )
 
 add_mlir_library(TPUMLIRTop
