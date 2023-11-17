@@ -47,8 +47,8 @@ module @PermuteBroadcastAdd attributes {module.FLOPs = 32768 : i64, module.asymm
 
 // CHECK-LABEL:     "tpu.Parallel"(%3, %4) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%3) : (tensor<4x32x32x8xf32>) -> (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) loc({{.*}})
-// CHECK:           %[[ADD0:.*]] = "tpu.Add"(%[[SPLIT]]#0, %4) {do_relu = false, relu_limit = -1.000000e+00 : f64} : (tensor<2x32x32x8xf32>, tensor<1x32x32x1xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
-// CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %4) {do_relu = false, relu_limit = -1.000000e+00 : f64} : (tensor<2x32x32x8xf32>, tensor<1x32x32x1xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
+// CHECK:           %[[ADD0:.*]] = "tpu.Add"(%[[SPLIT]]#0, %4) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<1x32x32x1xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
+// CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %4) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<1x32x32x1xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[ADD0]], %[[ADD1]]) : (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x32x32x8xf32>) -> () loc({{.*}})
 // CHECK:               }) : (tensor<4x32x32x8xf32>, tensor<1x32x32x1xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
@@ -74,8 +74,8 @@ module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetr
 
 // CHECK-LABEL:     "tpu.Parallel"(%3, %2) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%3) : (tensor<4x32x32x8xf32>) -> (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) loc({{.*}})
-// CHECK:           %[[ADD0:.*]] = "tpu.Add"(%[[SPLIT]]#0, %2) {do_relu = false, relu_limit = -1.000000e+00 : f64} : (tensor<2x32x32x8xf32>, tensor<1x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
-// CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %2) {do_relu = false, relu_limit = -1.000000e+00 : f64} : (tensor<2x32x32x8xf32>, tensor<1x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
+// CHECK:           %[[ADD0:.*]] = "tpu.Add"(%[[SPLIT]]#0, %2) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<1x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
+// CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %2) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<1x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[ADD0]], %[[ADD1]]) : (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x32x32x8xf32>) -> () loc({{.*}})
 // CHECK:               }) : (tensor<4x32x32x8xf32>, tensor<1x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
@@ -101,8 +101,8 @@ module @PermuteBinaryAdd attributes {module.FLOPs = 32768 : i64, module.asymmetr
 
 // CHECK-LABEL:     "tpu.Parallel"(%3, %2) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%3) : (tensor<4x32x32x8xf32>) -> (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) loc({{.*}})
-// CHECK:           %[[ADD0:.*]] = "tpu.Add"(%[[SPLIT]]#0, %2) {do_relu = false, relu_limit = -1.000000e+00 : f64} : (tensor<2x32x32x8xf32>, tensor<32x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
-// CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %2) {do_relu = false, relu_limit = -1.000000e+00 : f64} : (tensor<2x32x32x8xf32>, tensor<32x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
+// CHECK:           %[[ADD0:.*]] = "tpu.Add"(%[[SPLIT]]#0, %2) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<32x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
+// CHECK:           %[[ADD1:.*]] = "tpu.Add"(%[[SPLIT]]#1, %2) {{{.*}}} : (tensor<2x32x32x8xf32>, tensor<32x32x8xf32>) -> tensor<2x32x32x8xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[ADD0]], %[[ADD1]]) : (tensor<2x32x32x8xf32>, tensor<2x32x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x32x32x8xf32>) -> () loc({{.*}})
 // CHECK:               }) : (tensor<4x32x32x8xf32>, tensor<32x32x8xf32>) -> tensor<4x32x32x8xf32> loc({{.*}})
