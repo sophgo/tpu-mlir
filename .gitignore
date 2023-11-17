@@ -24,3 +24,4 @@ torch_test_cv183x/
 third_party/llvm/bin/clang
 third_party/llvm/bin/clang++
 third_party/llvm/bin/clang-17
+*.xlsx

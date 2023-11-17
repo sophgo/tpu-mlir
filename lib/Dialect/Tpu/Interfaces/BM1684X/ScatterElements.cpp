@@ -17,14 +17,21 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::ScatterElementsOp::codegen_global_bm1684x() {
-  // auto op = getOperation();
-  // auto input_spec = BM168x::get_input_spec(op);
-  // auto output_spec = BM168x::get_output_spec(op);
-  // scatter_elements_global_spec_t param = {0};
-  // param.common.axis = getAxis();
-  // BM168x::call_global_func("backend_api_scatter_elements_global", &param,
-  //                          sizeof(param), input_spec->data(),
-  //                          output_spec->data());
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  scatter_elements_global_spec_t param = {0};
+  auto data_shape = module::getShape(getInput());
+  auto indices_shape = module::getShape(getIndices());
+  auto updates_shape = module::getShape(getUpdates());
+  param.data_dims = data_shape.size();
+  param.indices_dims = indices_shape.size();
+  param.updates_dims = updates_shape.size();
+  param.intermediate_buffer_global_addr = module::getAddress(getBuffer());
+  param.axis = getAxis();
+  BM168x::call_global_func("backend_api_scatter_elements_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
 
 // ======================================

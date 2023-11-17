@@ -27,6 +27,10 @@ supported_customization_format = [
     'YUV_NV21',
     'YUV_NV12',
     'RGBA_PLANAR',
+    'GBRG_RAW',
+    'GRBG_RAW',
+    'BGGR_RAW',
+    'RGGB_RAW',
     ''
 ]
 
@@ -39,7 +43,11 @@ customization_format_attributes = {
     'YUV420_PLANAR': ('bgr', 'nchw'),
     'YUV_NV12':      ('bgr', 'nchw'),
     'YUV_NV21':      ('bgr', 'nchw'),
-    'RGBA_PLANAR':   ('rgba', 'nchw')
+    'RGBA_PLANAR':   ('rgba', 'nchw'),
+    'GBRG_RAW':      ('gbrg', 'nchw'),
+    'GRBG_RAW':      ('grbg', 'nchw'),
+    'BGGR_RAW':      ('bggr', 'nchw'),
+    'RGGB_RAW':      ('rggb', 'nchw')
 }
 
 # fix bool bug of argparse
@@ -122,7 +130,7 @@ def add_preprocess_parser(parser):
                         help="Per Channel image mean values")
     parser.add_argument("--scale", default='1,1,1',
                         help="Per Channel image scale values")
-    parser.add_argument("--pixel_format", choices=['rgb', 'bgr', 'gray', 'rgba'], default='bgr',
+    parser.add_argument("--pixel_format", choices=['rgb', 'bgr', 'gray', 'rgba', 'gbrg', 'grbg', 'bggr', 'rggb' ], default='bgr',
                         help='fixel format of output data that sent into model')
     parser.add_argument("--channel_format", choices=['nhwc', 'nchw', 'none'], default='nchw',
                         help='channel first or channel last, or not image')
@@ -130,6 +138,10 @@ def add_preprocess_parser(parser):
                         help="pad value when resize ")
     parser.add_argument("--pad_type", type=str, choices=[
                         'normal', 'center'], default='center', help="type of pad when resize ")
+    parser.add_argument("--white_level", type=float, default='4095', help="preprocess param for raw image")
+    parser.add_argument("--black_level", type=float, default='112', help="preprocess param for raw image")
+    parser.add_argument("--preprocess_list", type=str2list, default=list(),
+                        help = "choose which input need preprocess, like:'1,3' means input 1&3 need preprocess, default all inputs")
     parser.add_argument("--debug_cmd", type=str, default='', help="debug cmd")
     avoid_opts = parser.add_argument_group('avoid options')
     avoid_opts.add_argument('unknown_params', nargs='?', default=[], help='not parameters but starting with "-"')
@@ -157,9 +169,13 @@ class preprocess(object):
     def config(self, resize_dims=None, keep_aspect_ratio=False, keep_ratio_mode = "letterbox",
                customization_format = None, fuse_pre = False, aligned = False,
                mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0, chip = "",
-               channel_format='nchw', debug_cmd='', input_shapes=None, unknown_params=[], **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
+               channel_format='nchw', white_level='4095', black_level='112', preprocess_list: list = [], debug_cmd='', input_shapes=None, unknown_params=[], **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
         if self.debug_cmd == '':
             self.debug_cmd = debug_cmd
+        if preprocess_list is not None and preprocess_list != []:
+            self.preprocess_list = [ int(i) for i in preprocess_list ]
+        else:
+            self.preprocess_list = None
         if input_shapes is not None and input_shapes != [] and channel_format != 'none':
             if isinstance(input_shapes, str):
                 input_shapes = str2shape(input_shapes)
@@ -188,6 +204,8 @@ class preprocess(object):
         self.pad_type = pad_type
         self.pixel_format = pixel_format
         self.channel_format = channel_format
+        self.white_level = white_level
+        self.black_level = black_level
 
         self.input_name = 'input'
         self.channel_num = 3
@@ -273,7 +291,7 @@ class preprocess(object):
         else:
             return
         attrs = input_op.attributes
-        if len(attrs) == 0:
+        if len(attrs) <= 1:
             return
         self.pixel_format = Operation.str(attrs['pixel_format'])
         self.channel_num = 3
@@ -326,6 +344,7 @@ class preprocess(object):
         if not self.has_pre:
             return {}
         return {
+            'preprocess_list':self.preprocess_list,
             'resize_dims': self.resize_dims,
             'keep_aspect_ratio': self.keep_aspect_ratio,
             'keep_ratio_mode': self.keep_ratio_mode,
@@ -334,7 +353,9 @@ class preprocess(object):
             'mean': list(self.mean.flatten()),
             'scale': list(self.scale.flatten()),
             'pixel_format': self.pixel_format,
-            'channel_format': self.channel_format
+            'channel_format': self.channel_format,
+            'white_level': self.white_level,
+            'black_level': self.black_level
         }
 
     def __right_crop(self, img, crop_dim):

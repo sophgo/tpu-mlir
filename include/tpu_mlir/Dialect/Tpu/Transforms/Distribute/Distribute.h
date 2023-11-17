@@ -71,8 +71,7 @@ template <typename MatMulTy>
 void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter, tpu::DistributionBeginOp op,
                     int64_t num_devices);
 
-template <typename MatMulTy>
-void sliceMerge2Split(MatMulTy mm_left, PatternRewriter &rewriter, tpu::DistributionBeginOp op,
+void sliceMerge2Split(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
                     int64_t num_devices);
 
 template <typename MatMulTy>

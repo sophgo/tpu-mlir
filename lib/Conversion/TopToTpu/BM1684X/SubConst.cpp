@@ -71,6 +71,11 @@ void SubConstLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::SubConstOp>(rewriter, op);
 }
 
+void SubConstLowering::LoweringF8(PatternRewriter &rewriter,
+                                   top::SubConstOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void SubConstLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::SubConstOp op) const {
   llvm_unreachable("Not Implemented");

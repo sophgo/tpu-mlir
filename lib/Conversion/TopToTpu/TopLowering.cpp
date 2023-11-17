@@ -269,6 +269,20 @@ Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,
   return top::WeightOp::create(op, "_dequant", *input_dequant, new_type);
 }
 
+Value do_f8_relu(Value input, Type to_type, double relu_limit) {
+  auto ctx = input.getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPointAfterValue(input);
+  std::vector<NamedAttribute> attrs = {};
+  std::string new_name =
+      module::getName(input.getDefiningOp()).str() + "_relu";
+  attrs.push_back(builder.getNamedAttr("relu_limit", builder.getF64FloatAttr(relu_limit)));
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto newOp = builder.create<tpu::ReluOp>(name_loc, to_type,
+                                              ValueRange{input}, attrs);
+  return newOp.getOutput();
+}
+
 Type getQuantInt8Type(Value v, bool asymmetric) {
   if (module::isNone(v)) {
     return v.getType();
@@ -355,6 +369,14 @@ Type getQuantBoolType(Value v) {
                                                 cali_type.getExpressedType(),
                                                 1.0, 0, qmin, qmax);
   return RankedTensorType::get(type.getShape(), qtype);
+}
+
+Type getQuantF8E4M3Type(Value v) {
+  return getQuantFloatType<Float8E4M3FNType>(v);
+}
+
+Type getQuantF8E5M2Type(Value v) {
+  return getQuantFloatType<Float8E5M2Type>(v);
 }
 
 Value do_transpose(Location name_loc, Value input,

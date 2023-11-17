@@ -154,11 +154,10 @@ class fx2mlir(object):
             print(f'{op_type} not in op_factory')
             return None,None
         in_args_txt_list = []
-        input_nodes = []
         in_ref_data = {}
         for i, arg in enumerate(node.args):
             if isinstance(arg, torch.fx.Node):
-                input_nodes.append(arg)
+                self.input_nodes.append([i, arg])
                 shape = list(arg.meta['val'].size())
                 shape = [1] if shape == [] else shape
                 if 'val' in arg.meta and arg.meta['val'].dtype == torch.int64:
@@ -186,9 +185,7 @@ class fx2mlir(object):
         #     shape = list(node.meta['val'].size())
         #     output_txt = f'{self.get_tensor_type(shape, self.get_output_dtypes(node)).__str__()}'
 
-        self.createMlirModuleAndInput2(', '.join(in_args_txt_list), output_str)
-        for inp, arg in zip(input_nodes, self.entry_block.arguments):
-            self.create_input_op(inp, arg)
+        self.createMlirModuleAndInput(', '.join(in_args_txt_list), output_str)
         self.op_factory.get(op_type, lambda x: NoneAndRaise(x))(node)
         operands = []
         if isinstance(self.operands[node], list):
@@ -352,10 +349,18 @@ class fx2mlir(object):
         return output_txt
 
     def createMlirModuleAndInput(self, in_args_txt, output_args_txt):
+        num_output = len(output_args_txt.split(','))
+        result_var_name = "%1"
+        result_types = output_args_txt
+        if num_output > 1:
+            result_var_name = ",".join([f"%1#{var_id}" for var_id in range(num_output)])
+            result_types = output_args_txt[1:-1]
         main_func = """
             module attributes {{sym_name = \"{name}\", module.weight_file= \"{weight_file}\", module.platform=\"TORCH\", module.state=\"{state}\", module.chip=\"{chip}\", module.train=\"{train}\"}} {{
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none loc(unknown)
+                    %1:{last_output_num} = \"Placeholder.Op\"() : () -> {output}
+                    return {result_var} : {result_types}
                 }} loc(unknown)
             }} loc(unknown)
         """.format(name=self.model_name,
@@ -364,6 +369,9 @@ class fx2mlir(object):
                     chip="ALL",
                     train='true',
                     args=in_args_txt,
+                    last_output_num=num_output,
+                    result_var=result_var_name,
+                    result_types=result_types,
                     output=output_args_txt)
         print(f'main_func:\n{main_func}\nmain_func end')
         self.mlir_module = Module.parse(main_func, self.ctx)
@@ -371,29 +379,10 @@ class fx2mlir(object):
         entry_block = func.regions[0].blocks[0]
         self.insert_point = InsertionPoint(entry_block)
         self.none_op = entry_block.operations[0].operation.results[0]
+        entry_block.operations[2].operation.erase()
+        entry_block.operations[1].operation.erase()
         for node, arg in zip(self.input_nodes, entry_block.arguments):
             self.create_input_op(node[1], arg)
-
-    def createMlirModuleAndInput2(self, in_args_txt, output_args_txt):
-        main_func = """
-            module attributes {{sym_name = \"{name}\", module.weight_file= \"{weight_file}\", module.platform=\"TORCH\", module.state=\"{state}\", module.chip=\"{chip}\", module.train=\"{train}\"}} {{
-                func.func @main({args}) -> {output} {{
-                    %0 = \"top.None\"() : () -> none loc(unknown)
-                }} loc(unknown)
-            }} loc(unknown)
-        """.format(name=self.model_name,
-                    weight_file=self.weight_file,
-                    state=State.TOP_F32,
-                    chip="ALL",
-                    train='true',
-                    args=in_args_txt,
-                    output=output_args_txt)
-        print(f'main_func:\n{main_func}\nmain_func end')
-        self.mlir_module = Module.parse(main_func, self.ctx)
-        func = self.mlir_module.body.operations[0]
-        self.entry_block = func.regions[0].blocks[0]
-        self.insert_point = InsertionPoint(self.entry_block)
-        self.none_op = self.entry_block.operations[0].operation.results[0]
 
     def get_loc(self, names):
         if isinstance(names, str):

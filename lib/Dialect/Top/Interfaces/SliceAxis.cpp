@@ -91,6 +91,8 @@ void top::SliceAxisOp::shape_inference() {
     axis += dims;
   }
   if (start < 0) {
+    if(end - start == 1 && step == 1)
+      end = start + in_shape[axis] + 1;
     start += in_shape[axis];
   }
   if (end < 0) {

@@ -12,3 +12,9 @@
 #include "mlir/IR/OpDefinition.h"
 /// Include the ODS generated interface header files.
 #include "tpu_mlir/Interfaces/IndexingMapsInterface.h.inc"
+
+namespace tpu_mlir {
+
+mlir::ArrayAttr getBinaryIndexingMaps(mlir::Operation *op);
+
+} // namespace tpu_mlir

@@ -4,7 +4,7 @@
 # third-party components.
 #
 # ==============================================================================
-
+import shutil
 import os
 import subprocess
 import logging
@@ -71,8 +71,8 @@ def mlir_lowering(top_mlir: str,
                   fuse_preprocess: bool = False,
                   aligned_input: bool = False,
                   ignore_f16_overflow: bool = False,
-                  linear_quant_mode: str = None,
-                  do_winograd:bool = False):
+                  do_winograd: bool = False,
+                  q_group_size: int = 0):
     cmd = ["tpuc-opt", top_mlir, "--chip-assign=\"chip={}\"".format(chip.lower())]
     mode = mode.upper()
     asymmetric = False # TODO: always using symmetric, as asymmetric not good
@@ -91,11 +91,12 @@ def mlir_lowering(top_mlir: str,
         assert (tpu_mlir.endswith(".mlir"))
         weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"
         qtable = "qtable={} weightFileName={}".format(quantize_table, weight_name)
-    lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={} linear_quant_mode={} doWinograd={} ignore_f16_overflow={}\"".format(
-        mode, qtable, asymmetric, linear_quant_mode, do_winograd, ignore_f16_overflow)
+    lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={} doWinograd={} ignore_f16_overflow={} q_group_size={}\"".format(
+        mode, qtable, asymmetric, do_winograd, ignore_f16_overflow, q_group_size)
     cmd.extend([
         lower_param,
         "--canonicalize",
+        "--weight-fold",
         "-o",
         tpu_mlir,
     ])
@@ -108,7 +109,10 @@ def mlir_to_model(tpu_mlir: str,
                   dynamic: bool = False,
                   quant_input: bool = False,
                   quant_output: bool = False,
+                  quant_input_list: str = "",
+                  quant_output_list: str = "",
                   disable_layer_group: bool = False,
+                  opt: int = 2,
                   merge_weight: bool = False,
                   op_divide: bool = False,
                   num_device: int = 1,
@@ -116,11 +120,11 @@ def mlir_to_model(tpu_mlir: str,
                   embed_debug_info: bool = False,
                   model_version: str = ""):
     # generate final mlir
-    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
-        quant_input, quant_output)
+    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
+        quant_input, quant_output, quant_input_list, quant_output_list)
     lg_param = ''
     if not disable_layer_group:
-        lg_param = '--layer-group="opt=2"'
+        lg_param = '--layer-group="opt={}"'.format(opt)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     address_assign_param = '--address-assign'
     #address_assign_param = '--address-assign="reuse_addr=false"'
@@ -164,6 +168,9 @@ def mlir_to_model(tpu_mlir: str,
     ]
     _os_system(cmd)
 
+    out_dir = model.rsplit(".", maxsplit=1)[0]
+    os.makedirs(out_dir, exist_ok=True)
+    shutil.copy(final_mlir, os.path.join(out_dir, 'final.mlir'))
     try:
         if model.endswith(".bmodel"):
             # The suffix of the profile file is not consistent.

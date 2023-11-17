@@ -130,7 +130,11 @@ string(FIND ${GIT_SHORT_HASH} "-" iLength)
 string(SUBSTRING ${GIT_SHORT_HASH} 0 ${iLength} MAIN_VERSION)
 math(EXPR iLength "${iLength} + 1")
 string(SUBSTRING ${GIT_SHORT_HASH} ${iLength} -1 PATCH_VERSION)
-set(GIT_SHORT_HASH "${MAIN_VERSION}.${PATCH_VERSION}")
+if ("${MAIN_VERSION}" STREQUAL "${PATCH_VERSION}")
+  set(GIT_SHORT_HASH "${MAIN_VERSION}")
+else()
+  set(GIT_SHORT_HASH "${MAIN_VERSION}.${PATCH_VERSION}")
+endif()
 
 string(TIMESTAMP BUILD_TIME "%Y%m%d")
 set(MLIR_VERSION "${GIT_SHORT_HASH}-${BUILD_TIME}" CACHE STRING "tpu-mlir version" FORCE)
@@ -146,6 +150,9 @@ add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(bindings)
 add_subdirectory(python)
+
+#-------------------------------------------------------------------------------
+add_subdirectory(experimental)
 
 #-------------------------------------------------------------------------------
 option(TPUMLIR_INCLUDE_TESTS "Generate build targets for the TPU-MLIR unit tests.")

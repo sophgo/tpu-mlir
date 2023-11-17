@@ -100,3 +100,10 @@ void tpu::LeakyReluOp::assign_fw_param(void *param) {
   }
   memcpy(param, &prelu_param, sizeof(fw_prelu_layer_param_t));
 }
+
+ArrayAttr tpu::LeakyReluOp::getIndexingMaps() {
+  auto shape = module::getShape(getInput());
+  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+};

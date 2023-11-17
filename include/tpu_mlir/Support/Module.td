@@ -38,7 +38,7 @@ def Module_Chip: I32EnumAttr<"Chip", "module chip",[
       I32EnumAttrCase<"ALL", 0>,
       I32EnumAttrCase<"BM1684",  1000, "bm1684">,
       I32EnumAttrCase<"BM1684X", 1001, "bm1684x">,
-      I32EnumAttrCase<"BM1686",  1002, "bm1686">,
+      I32EnumAttrCase<"BM1688",  1002, "bm1688">,
       I32EnumAttrCase<"CV186X",  1003, "cv186x">,
       I32EnumAttrCase<"SG2260",  1004, "sg2260">,
       I32EnumAttrCase<"MARS3",  1005, "mars3">,
@@ -57,7 +57,16 @@ def Module_Mode: I32EnumAttr<"Mode", "module mode",[
       I32EnumAttrCase<"INT4",  2>,
       I32EnumAttrCase<"BF16",  3>,
       I32EnumAttrCase<"F16",   4>,
-      I32EnumAttrCase<"F32",   5>
+      I32EnumAttrCase<"F32",   5>,
+      I32EnumAttrCase<"W8F16", 6>,
+      I32EnumAttrCase<"W8BF16",7>,
+      I32EnumAttrCase<"W4F16", 8>,
+      I32EnumAttrCase<"W4BF16",9>,
+      I32EnumAttrCase<"F8",10>,
+      I32EnumAttrCase<"F8E4M3",11>,
+      I32EnumAttrCase<"F8E5M2",12>,
+      I32EnumAttrCase<"W4F8E4M3",13>,
+      I32EnumAttrCase<"W4F8E5M2",14>,
     ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::module";

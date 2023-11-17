@@ -256,11 +256,13 @@ typedef struct cpu_topk_param {
         axis   = -1;
         sorted = true;
         descending = true;
+        values_used_only = false;
     }
     int  k;
     int  axis;
     bool sorted;
     bool descending;
+    bool values_used_only;
 } cpu_topk_param_t;
 
 #define MX_TOPK_RET_INDICES 0

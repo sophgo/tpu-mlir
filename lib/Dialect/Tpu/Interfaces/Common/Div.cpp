@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 
 LogicalResult tpu::DivOp::init(InferenceParameter &p) {
   auto binary = new Binary();
@@ -105,3 +106,7 @@ void tpu::DivOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
   sec_info.out_w_idx = gi.w_idx;
   sec_info.out_w_slice = gi.w_slice;
 }
+
+ArrayAttr tpu::DivOp::getIndexingMaps() {
+  return getBinaryIndexingMaps(getOperation());
+};

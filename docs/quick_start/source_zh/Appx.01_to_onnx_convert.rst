@@ -119,8 +119,18 @@ PaddlePaddle模型转ONNX
 ------------------------
 
 本节以PaddlePaddle官方仓库中提供的SqueezeNet1_1模型作为转换样例。
+本节需要额外安装openssl-1.1.1o（ubuntu 22.04默认提供openssl-3.0.2）。
 
-步骤0：创建工作目录
+步骤0：安装openssl-1.1.1o
+~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: shell
+   :linenos:
+   wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
+   sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
+
+如果上述链接失效，请参考 http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/?C=M;O=D 更换有效链接.
+
+步骤1：创建工作目录
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 在命令行中创建并进入pp_model目录。
@@ -131,7 +141,7 @@ PaddlePaddle模型转ONNX
    $ mkdir pp_model
    $ cd pp_model
 
-步骤1：准备模型
+步骤2：准备模型
 ~~~~~~~~~~~~~~~~~~~~~~
 
 在命令行中通过以下命令下载模型：
@@ -157,7 +167,7 @@ PaddlePaddle模型转ONNX
 
 运行完以上所有命令后我们将处于SqueezeNet1_1_infer目录下，并在该目录下有一个new_model的目录。
 
-步骤2：转换模型
+步骤3：转换模型
 ~~~~~~~~~~~~~~~~~~~~~
 
 在命令行中通过以下命令安装paddle2onnx工具，并利用该工具将PaddlePaddle模型转为ONNX模型：

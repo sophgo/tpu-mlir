@@ -151,7 +151,8 @@ struct TopPermuteToReorg : public OpRewritePattern<PermuteOp> {
   }
 };
 
-template <typename T> static int remove_value(std::vector<T> &v, T value) {
+template <typename T>
+static int remove_value(std::vector<T> &v, T value) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
     if (*iter == value) {
@@ -422,15 +423,25 @@ struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
                                 PatternRewriter &rewriter) const override {
     const auto &input = op.getInput();
     // check topo
-    if (!input.hasOneUse()) {
-      return failure();
-    }
+
     auto in_op = input.getDefiningOp();
     if (!isa<NonZeroOp>(in_op)) {
       return failure();
     }
     auto nonzero_op = dyn_cast<NonZeroOp>(in_op);
+
     // check param
+    std::vector<PermuteOp> remove_op;
+    auto users = nonzero_op->getUsers();
+    for (auto i = users.begin(); i != users.end(); ++i) {
+      auto user = *i;
+      if (!isa<PermuteOp>(user)) {
+        return failure();
+      }
+      auto output_permute = dyn_cast<PermuteOp>(user);
+      remove_op.push_back(output_permute);
+    }
+
     const auto permute_order = module::getI64Array(op.getOrder());
     if (permute_order->size() != 2) {
       return failure();
@@ -438,16 +449,26 @@ struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
     if (permute_order->at(0) != 1 || permute_order->at(1) != 0) {
       return failure();
     }
+
     // rewrite now !
     const auto old_nz_order = nonzero_op.getOrder().str();
     const auto new_nz_order =
         old_nz_order == "ColMajor" ? "RowMajor" : "ColMajor";
-    Value from = nonzero_op.getInput();
+
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getStringAttr(new_nz_order)));
-    rewriter.replaceOpWithNewOp<NonZeroOp>(op, op.getResult().getType(),
-                                           ValueRange{from}, attrs);
+    Value from = nonzero_op.getInput();
+
+    // remove NonZeroOp
+    nonzero_op.getOutput().replaceAllUsesWith(nonzero_op.getInput());
+    rewriter.eraseOp(nonzero_op);
+
+    // premute -> Nonzero
+    for (auto &rm_op : remove_op) {
+      rewriter.replaceOpWithNewOp<NonZeroOp>(rm_op, rm_op.getResult().getType(),
+                                             ValueRange{from}, attrs);
+    }
     return success();
   }
 };

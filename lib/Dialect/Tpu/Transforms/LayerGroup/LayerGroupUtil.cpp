@@ -57,9 +57,9 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
       }
 
       // split d now only supports BM1684X and not int4, not dynamic
-      if ((module::isBM1684XFamily() || module::isSG2260Family())
-           && (!stype.isInteger(4)) &&
-          lg_info.type == GROUP_3D && mode != RunMode::TPU_DYNAMIC &&
+      if ((module::isBM1684XFamily() || module::isSG2260Family()) &&
+          (!stype.isInteger(4)) && lg_info.type == GROUP_3D &&
+          mode != RunMode::TPU_DYNAMIC &&
           succeeded(lgOp.AllowDataSplit(2, lg_info.type))) {
         max_dsecs = std::min(max_dsecs, d);
       } else {
@@ -72,9 +72,8 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
         max_hsecs = 1;
       }
       // split w now only supports BM1684X and not int4, not dynamic
-      if ((module::isBM1684XFamily() || module::isSG2260Family())
-          && (!stype.isInteger(4)) &&
-          mode != RunMode::TPU_DYNAMIC &&
+      if ((module::isBM1684XFamily() || module::isSG2260Family()) &&
+          (!stype.isInteger(4)) && mode != RunMode::TPU_DYNAMIC &&
           succeeded(lgOp.AllowDataSplit(3 + (lg_info.type == GROUP_3D ? 1 : 0),
                                         lg_info.type))) {
         max_wsecs = std::min(max_wsecs, w);
@@ -210,7 +209,7 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos) {
     for (auto in : ins) {
       if (auto src_op = dyn_cast_or_null<top::WeightOp>(in.getDefiningOp())) {
         bool allow_split = false;
-        if(src_op.getAllowSplitAttr() != nullptr){
+        if (src_op.getAllowSplitAttr() != nullptr) {
           allow_split = true;
         }
         if (allow_split == false) {
@@ -292,7 +291,7 @@ void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
     }
   } else {
     // split depth and height
-    if (module::isBM1686()) {
+    if (module::isBM1688()) {
       float d_len = 0.f, h_len = 0.f;
       for (auto out : group_out_tensors) {
         int64_t n, c, d, h, w;
@@ -313,7 +312,8 @@ void assign_dhwsecs(const LgInfo &lg_info, shape_secs_t &shape_secs,
         }
       }
     } else {
-      /// if split h or w, gdma band width may be lowered due to ddr 4k channel interleave
+      /// if split h or w, gdma band width may be lowered due to ddr 4k channel
+      /// interleave
       shape_secs.dsecs = std::min(max_shape_secs.dsecs, dhw_secs);
       shape_secs.hsecs = ceiling_func(dhw_secs, shape_secs.dsecs);
     }
@@ -349,7 +349,8 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
     int64_t total_secs = get_split_max_secs(time_step);
     shape_secs.nsecs =
         std::max(shape_secs.nsecs, std::min(max_shape_secs.nsecs, total_secs));
-    if (shape_secs.nsecs > nsec) continue;
+    if (shape_secs.nsecs > nsec)
+      continue;
     // update csecs
     int64_t cdhw_secs = ceiling_func(total_secs, shape_secs.nsecs);
     shape_secs.csecs =
@@ -705,13 +706,10 @@ bool check_hsecs(Value value, slice_info_t &si, group_type_t group_type) {
   return true;
 }
 
-static bool backward_update_slice(const LgInfo &lg_info,
-                                  const shape_secs_t &shape_secs,
-                                  const Value &out,
-                                  std::list<Value> &tensor_branchs,
-                                  TensorInfo &tensor_infos,
-                                  std::multiset<Operation *> &op_set,
-                                  const ValueSet &out_tensor_set) {
+static bool backward_update_slice(
+    const LgInfo &lg_info, const shape_secs_t &shape_secs, const Value &out,
+    std::list<Value> &tensor_branchs, TensorInfo &tensor_infos,
+    std::multiset<Operation *> &op_set, const ValueSet &out_tensor_set) {
 
   // Don't backward when this out tensor is the input of the group
   if (std::find(lg_info.group_ins.begin(), lg_info.group_ins.end(), out) !=
@@ -720,6 +718,12 @@ static bool backward_update_slice(const LgInfo &lg_info,
     return true;
   }
   auto op = out.getDefiningOp();
+  if (isa<tpu::Conv2DOp>(op)) {
+    auto conv_attr = dyn_cast<tpu::Conv2DOp>(op).parseParam();
+    if (conv_attr.use_3ic_optimize) {
+      return false;
+    }
+  }
   op_set.insert(op);
   auto mode = getRunMode(op);
 
@@ -732,11 +736,11 @@ static bool backward_update_slice(const LgInfo &lg_info,
       continue;
     }
     if (auto weight_op = dyn_cast_or_null<top::WeightOp>(pre_op)) {
-      if(weight_op.getAllowSplit() == std::nullopt){
+      if (weight_op.getAllowSplit() == std::nullopt) {
         continue;
       }
       bool allow_split = true;
-      auto weight_op_allow_split_attr =weight_op.getAllowSplitAttr();
+      auto weight_op_allow_split_attr = weight_op.getAllowSplitAttr();
       auto num_dims = weight_op_allow_split_attr.size();
       auto allow_split_array = module::getI64Array(weight_op_allow_split_attr);
       for (int i = 0; i < num_dims; ++i) {
@@ -753,24 +757,24 @@ static bool backward_update_slice(const LgInfo &lg_info,
         std::find(group_ins.begin(), group_ins.end(), in) != group_ins.end();
     auto ret = get_backward_slice_info(si, out_si, op, in, shape_secs,
                                        lg_info.type, hold_in_lmem, is_group_in);
-    if(pre_op && module::isDynWeight(in)){
-        auto shape = module::getShape(in);
-        si.n.clear();
-        si.n.emplace_back(std::pair(0, shape[0]));
-        si.c.clear();
-        si.c.emplace_back(std::pair(0, shape[1]));
-        si.h.clear();
-        si.h.emplace_back(std::pair(0, shape[2]));
-        si.w.clear();
-        si.w.emplace_back(std::pair(0, shape[3]));
+    if (pre_op && module::isDynWeight(in)) {
+      auto shape = module::getShape(in);
+      si.n.clear();
+      si.n.emplace_back(std::pair(0, shape[0]));
+      si.c.clear();
+      si.c.emplace_back(std::pair(0, shape[1]));
+      si.h.clear();
+      si.h.emplace_back(std::pair(0, shape[2]));
+      si.w.clear();
+      si.w.emplace_back(std::pair(0, shape[3]));
 
-        tensor_infos[in] = tensor_info_t(si);
-        tensor_infos[in].hold_in_lmem = true;
+      tensor_infos[in] = tensor_info_t(si);
+      tensor_infos[in].hold_in_lmem = true;
 
-        if (strip_back_judge(in, lg_info, op_set, out_tensor_set)) {
-          tensor_branchs.push_back(in);
-        }
-        continue;
+      if (strip_back_judge(in, lg_info, op_set, out_tensor_set)) {
+        tensor_branchs.push_back(in);
+      }
+      continue;
     }
     if (ret == false) {
       return false;
@@ -785,8 +789,8 @@ static bool backward_update_slice(const LgInfo &lg_info,
           for (auto user : pre_op->getUsers()) {
             if (!(std::find(lg_info.group_ops.begin(), lg_info.group_ops.end(),
                             user) != lg_info.group_ops.end() &&
-                  isa<tpu::Conv2DOp>(user) &&
-                  module::isUniformQuantized(in))) {
+                  isa<tpu::Conv2DOp>(user) && module::isUniformQuantized(in))||
+                   lg_info.group_outs.size() != 1 ) {
               return false;
             }
           }
@@ -795,9 +799,9 @@ static bool backward_update_slice(const LgInfo &lg_info,
         for (int i = 0; i < shape_secs.hsecs; i++) {
           is_hw_overlap *=
               std::max(si.h[i].first, iter->second.slice_info.h[i].first) <
-                  std::min(si.h[i].first + si.h[i].second,
-                           iter->second.slice_info.h[i].first +
-                               iter->second.slice_info.h[i].second);
+              std::min(si.h[i].first + si.h[i].second,
+                       iter->second.slice_info.h[i].first +
+                           iter->second.slice_info.h[i].second);
         }
         for (int i = 0; i < shape_secs.wsecs; i++) {
           is_hw_overlap *=
@@ -822,7 +826,8 @@ static bool backward_update_slice(const LgInfo &lg_info,
                 std::pair<int64_t, int64_t>(h_lowest, h_highest - h_lowest));
           }
           for (int i = 0; i < shape_secs.wsecs; i++) {
-            int64_t w_lowest = std::min(si.w[i].first, iter->second.slice_info.w[i].first);
+            int64_t w_lowest =
+                std::min(si.w[i].first, iter->second.slice_info.w[i].first);
             int64_t w_highest =
                 std::max(si.w[i].first + si.w[i].second,
                          iter->second.slice_info.w[i].first +
@@ -976,6 +981,65 @@ void get_max_slice_nchdw(const slice_info_t &slice_info, int64_t &max_nslice,
   }
 }
 
+std::vector<slice_pair_t>
+get_max_slice_nchdw_and_idx(const slice_info_t &slice_info, int64_t &max_nslice,
+                            int64_t &max_cslice, int64_t &max_hslice,
+                            int64_t &max_dslice, int64_t &max_wslice) {
+
+  std::vector<slice_pair_t> slice_idx;
+  max_nslice = 0;
+  max_cslice = 0;
+  max_hslice = 0;
+  max_dslice = 0;
+  max_wslice = 0;
+  int n_idx = 0;
+  int c_idx = 0;
+  int h_idx = 0;
+  int d_idx = 0;
+  int w_idx = 0;
+  for (int i = 0; i < slice_info.n.size(); i++) {
+    if (slice_info.n[i].second > max_nslice) {
+      max_nslice = slice_info.n[i].second;
+      n_idx = slice_info.n[i].first;
+    }
+  }
+  slice_idx.push_back({n_idx, max_nslice});
+
+  for (int i = 0; i < slice_info.c.size(); i++) {
+    if (slice_info.c[i].second > max_cslice) {
+      max_cslice = slice_info.c[i].second;
+      c_idx = slice_info.c[i].first;
+    }
+  }
+  slice_idx.push_back({c_idx, max_cslice});
+
+  for (int i = 0; i < slice_info.h.size(); i++) {
+    if (slice_info.h[i].second > max_hslice) {
+      max_hslice = slice_info.h[i].second;
+      h_idx = slice_info.h[i].first;
+    }
+  }
+  slice_idx.push_back({h_idx, max_hslice});
+
+  for (int i = 0; i < slice_info.d.size(); i++) {
+    if (slice_info.d[i].second > max_dslice) {
+      max_dslice = slice_info.d[i].second;
+      d_idx = slice_info.d[i].first;
+    }
+  }
+  slice_idx.push_back({d_idx, max_dslice});
+
+  for (int i = 0; i < slice_info.w.size(); i++) {
+    if (slice_info.w[i].second > max_wslice) {
+      max_wslice = slice_info.w[i].second;
+      w_idx = slice_info.w[i].first;
+    }
+  }
+  slice_idx.push_back({w_idx, max_wslice});
+
+  return slice_idx;
+}
+
 int64_t get_buffer_size(Value v, const tensor_info_t &ti,
                         group_type_t group_type) {
   int64_t buf_size = 0;
@@ -984,7 +1048,7 @@ int64_t get_buffer_size(Value v, const tensor_info_t &ti,
   bool allow_split = false;
   if (module::isWeight(v)) {
     auto weight_op = dyn_cast<top::WeightOp>(v.getDefiningOp());
-    if (weight_op.getAllowSplit() != std::nullopt){
+    if (weight_op.getAllowSplit() != std::nullopt) {
       allow_split = true;
     }
   }
@@ -994,7 +1058,7 @@ int64_t get_buffer_size(Value v, const tensor_info_t &ti,
     } else {
       buf_size = Arch::get_weight_lmem_bytes(v, group_type, ti.eu_align);
     }
-  } else if(module::isDynWeight(v)) { // TODO: need check
+  } else if (module::isDynWeight(v)) { // TODO: need check
     buf_size = Arch::get_weight_lmem_bytes(v, group_type, ti.eu_align);
   } else {
     int64_t nslice, cslice, hslice, dslice, wslice;
@@ -1162,7 +1226,7 @@ bool is_eu_align_bm168x(Value opd) {
       }
     } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
       return false;
-    } else if (module::isBM1686()) {
+    } else if (module::isBM1688()) {
       if (isa<tpu::RequantIntAxisOp>(op)) {
         if ((opd == op->getOperand(1))) {
           return false;

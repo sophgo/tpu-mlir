@@ -8,6 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "Common.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace llvm;
 
@@ -244,6 +248,76 @@ public:
   }
 };
 
+class Use3icPadConvPattern : public OpRewritePattern<tpu::Conv2DOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::Conv2DOp op,
+                                PatternRewriter &rewriter) const override {
+    auto prevOp = op->getOperand(0).getDefiningOp();
+    if (isa<top::InputOp>(prevOp)) {
+      if(op->use_empty()) return failure();
+      auto in_type = module::getStorageType(op.getInput());
+      if (!(module::isBM1684Family()) || in_type.isF32())
+        return failure();
+
+      auto pads_v = module::getI64Array(op.getPads());
+      auto pad_top = pads_v->at(0);
+      auto pad_left = pads_v->at(1);
+      auto pad_bottom = pads_v->at(2);
+      auto pad_right = pads_v->at(3);
+      bool flag =
+          pad_top == 0 && pad_left == 0 && pad_bottom == 0 && pad_right == 0;
+      int use_3ic_optimize = 0;
+      int use_winograd = 0;
+      auto dhdw = module::getI64Array(op.getDilations(), 2, 1);
+      auto dh = dhdw->at(0);
+      auto i_s = op.getInput().getType().cast<RankedTensorType>().getShape();
+      auto ic = i_s[1];
+      auto kernel = module::getI64Array(op.getKernelShape());
+      auto kh = kernel->at(0);
+      auto groups = op.getGroup();
+      if (ic == 3 && groups == 1 && dh == 1 && kh > 1 && use_winograd == 0) {
+        use_3ic_optimize = 1;
+      }
+      op->setAttr("use_3ic_optimize",
+                  rewriter.getI64IntegerAttr(use_3ic_optimize));
+      if (!op.getUse_3icOptimize() || flag) {
+        return failure();
+      }
+      Value input_value = op->getOperand(0);
+      std::string output_name = module::getName(op->getResult(0)).str();
+      auto input_ele_type = module::getElementType(input_value);
+      std::string name_pad = output_name + "_pad";
+      auto loc_pad = NameLoc::get(rewriter.getStringAttr(name_pad));
+      std::vector<Value> operands_pad;
+      operands_pad.push_back(input_value);
+      operands_pad.push_back(module::getNoneOp(op));
+      operands_pad.push_back(module::getNoneOp(op));
+      operands_pad.push_back(module::getNoneOp(op));
+      llvm::SmallVector<int64_t> pad_paddings(8, 0);
+      pad_paddings[2] = pad_top;
+      pad_paddings[6] = pad_bottom;
+      std::vector<NamedAttribute> attrs_pad;
+      attrs_pad.push_back(rewriter.getNamedAttr(
+          "paddings", rewriter.getI64ArrayAttr(pad_paddings)));
+      attrs_pad.push_back(rewriter.getNamedAttr(
+          "mode",
+          tpu::PaddingModeAttr::get(getContext(), tpu::PaddingMode::constant)));
+      auto input_shape = module::getShape(input_value);
+      auto output_shape_pad = llvm::SmallVector<int64_t>(input_shape);
+      output_shape_pad[2] += (pad_paddings[2] + pad_paddings[6]);
+      auto op_pad = rewriter.create<tpu::PadOp>(
+          loc_pad, RankedTensorType::get(output_shape_pad, input_ele_type),
+          operands_pad, attrs_pad);
+      input_value = op_pad.getResult();
+      op.setOperand(0, input_value);
+      llvm::SmallVector<int64_t> conv_paddings = {0, pad_left, 0, pad_right};
+      op.setPadsAttr(rewriter.getI64ArrayAttr(conv_paddings));
+      return success();
+    }
+    return failure();
+  }
+};
 } // namespace bm1684
 
 namespace tpu {
@@ -252,7 +326,8 @@ void populateOptimizeBM1684Patterns(RewritePatternSet *patterns) {
   auto ctx = patterns->getContext();
   patterns->add<LargePadConvPattern>(ctx, 9);
   patterns->add<CastWithoutScalePattern, LargeDilationConvPattern,
-                PermuteReorderPattern, PermutePadSwap>(ctx, 8);
+                PermuteReorderPattern, PermutePadSwap, Use3icPadConvPattern>(
+      ctx, 8);
 };
 } // namespace tpu
 

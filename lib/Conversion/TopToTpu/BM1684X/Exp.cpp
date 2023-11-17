@@ -45,6 +45,10 @@ void ExpLowering::LoweringF16(PatternRewriter &rewriter, top::ExpOp op) const {
   lowering_common_f16<tpu::ActiveOp>(rewriter, op);
 }
 
+void ExpLowering::LoweringF8(PatternRewriter &rewriter, top::ExpOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void ExpLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::ExpOp op) const {
   llvm_unreachable("Not Implemented");

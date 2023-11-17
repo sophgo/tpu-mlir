@@ -124,6 +124,13 @@ class OnnxConverter(BaseConverter):
                 self.opset = ver_info.version
                 break
         self.preprocess_args = {}
+        if 'preprocess_list' in preprocess_args:
+            if preprocess_args['preprocess_list'] is not None:
+                for input_index in preprocess_args['preprocess_list']:
+                    assert( 0 < input_index <= self.num_input
+                        and "Please check --preprocess_list is right input")
+            else:
+                preprocess_args['preprocess_list'] = [ i + 1 for i in range(self.num_input) ]
         if 'channel_format' in preprocess_args:
             if preprocess_args['channel_format'] != "none":
                 self.preprocess_args = preprocess_args
@@ -216,6 +223,7 @@ class OnnxConverter(BaseConverter):
             "ScatterND": lambda node: self.convert_scatternd_op(node),
             "Shape": lambda node: self.convert_shape_op(node),
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
+            "Sign": lambda node: self.convert_sign_op(node),
             "Sin": lambda node: self.convert_sin_op(node),
             "Slice": lambda node: self.convert_slice_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
@@ -638,6 +646,8 @@ class OnnxConverter(BaseConverter):
         for x in onnx_node.inputs:
             if self.isWeight(x):
                 data = self.getWeight(x)
+                if len(data.shape) == 1 and data.shape[0] == 0:
+                    continue
                 if weight_data is not None:
                     weight_data = np.concatenate((weight_data, data), axis=axis)
                 else:
@@ -1031,21 +1041,26 @@ class OnnxConverter(BaseConverter):
                 scale_factor = scale_factor.reshape(dims)
             if len(scale_factor) == 0:
                 sizes = self.getWeight(onnx_node.inputs[3])
+                assert(len(sizes) >= 2)
                 scale_factor = sizes
                 use_size = True
         else:
             # opset 10
             scale_factor = self.getWeight(onnx_node.inputs[1])
-        # Todo support 3dim data resize which appears in transformer net
-        scale_h, scale_w = scale_factor[-2:]
-        if scale_h == 1.0 and scale_w == 1.0:
-            self.addOperand(onnx_node.name, op)
-            return
+
         if (use_size):
-            scale_h, scale_w = -1, -1
+            scale_d, scale_h, scale_w = -1, -1, -1
             self.addWeight(onnx_node.name + "_target_shape",
-                           np.array(scale_factor[-2:], dtype=np.int64))
+                           np.array(scale_factor[2:], dtype=np.int64))
             target_shape = self.getWeightOp(onnx_node.name + "_target_shape")
+        else:
+            scale_d = -1 if len(scale_factor) <= 4 else scale_factor[-3]
+            scale_h = -1 if len(scale_factor) <= 3 else scale_factor[-2]
+            scale_w = scale_factor[-1]
+            if scale_h == 1.0 and scale_w == 1.0:
+                self.addOperand(onnx_node.name, op)
+                return
+ 
         coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
         self.resize_to_interp(onnx_node,
                               op,
@@ -1054,7 +1069,6 @@ class OnnxConverter(BaseConverter):
                               mode,
                               coord_mode,
                               target_shape=target_shape)
-        return
 
     def convert_shape_op(self, onnx_node):
         assert (onnx_node.op_type == "Shape")
@@ -1095,6 +1109,15 @@ class OnnxConverter(BaseConverter):
                                bias=bias,
                                loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                                ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_sign_op(self, onnx_node):
+        assert (onnx_node.op_type == "Sign")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.SignOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_sin_op(self, onnx_node):
@@ -1686,7 +1709,7 @@ class OnnxConverter(BaseConverter):
         if self.isScalar(onnx_node.inputs[1]):
             extra_attr.update({"keepdims": True})
             idx = self.find_named_tensor(onnx_node.inputs[1])
-            if idx != None and len(idx.shape) == 0:
+            if idx is not None and len(idx.shape) == 0:
                 extra_attr["keepdims"] = False
         indices = self.getOp(onnx_node.inputs[1])
         new_op = top.GatherOp(self.unranked_type,
@@ -1862,15 +1885,14 @@ class OnnxConverter(BaseConverter):
                     max_output_size = data.astype(np.int64)
             else:
                 operands.append(self.getOperand(x))
-        p = {'name': name, 'center_point_box': 0}
-        if len(onnx_node.inputs) < 3:
-            p['max_output_size'] = 0
-        else:
-            p['max_output_size'] = self.getWeight(onnx_node.inputs[2]).astype(np.int64)
+        max_output_size = 0
+        if (len(onnx_node.inputs) > 3):
+            if self.isWeight(onnx_node.inputs[2]):
+                max_output_size = self.getWeight(onnx_node.inputs[2]).astype(np.int64)
         nms_op = top.NmsOp(self.unranked_type,
                            operands,
                            center_point_box=0,
-                           max_output_size=self.getWeight(onnx_node.inputs[2]).astype(np.int64),
+                           max_output_size=max_output_size,
                            loc=self.get_loc(name),
                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, nms_op)
@@ -2307,6 +2329,10 @@ class OnnxConverter(BaseConverter):
         batch_indices = self.getOp(onnx_node.inputs[2])
         output_name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         mode = onnx_node.attrs.get("mode", "Avg")
+        if  isinstance(mode, bytes):
+            mode_str = str(mode,'utf-8')
+            if  mode_str == "avg" or mode_str == "max":
+                mode = mode_str.capitalize()
         output_height = onnx_node.attrs.get("output_height", 1)
         output_width = onnx_node.attrs.get("output_width", 1)
         sampling_ratio = onnx_node.attrs.get("sampling_ratio", 0)

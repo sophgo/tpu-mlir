@@ -47,6 +47,11 @@ void DetectionOutputLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringF32(rewriter, op);
 }
 
+void DetectionOutputLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::DetectionOutputOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void DetectionOutputLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::DetectionOutputOp op) const {
   llvm_unreachable("Not Implemented");

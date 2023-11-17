@@ -56,10 +56,10 @@ class MAIN_ENTRY(object):
         # yapf: disable
         self.op_test_types = {
             # op_source: (tester, test_all_func, chips)
-            "onnx_int4": (test_onnx.ONNX_IR_TESTER,  test_onnx.test_int4,  ["bm1686"]),
-            "onnx":     (test_onnx.ONNX_IR_TESTER,       test_onnx.test_all,   ["bm1684", "bm1684x", "bm1686", "cv183x"]),
-            "tflite":   (test_tflite.TFLITE_IR_TESTER,   test_tflite.test_all, ["bm1684x", "bm1686"]),
-            "torch":    (test_torch.TORCH_IR_TESTER,     test_torch.test_all,  ["bm1684", "bm1684x", "bm1686", "cv183x"]),
+            "onnx_int4": (test_onnx.ONNX_IR_TESTER,  test_onnx.test_int4,  ["bm1688"]),
+            "onnx":     (test_onnx.ONNX_IR_TESTER,       test_onnx.test_all,   ["bm1684", "bm1684x", "bm1688", "cv183x"]),
+            "tflite":   (test_tflite.TFLITE_IR_TESTER,   test_tflite.test_all, ["bm1684x", "bm1688"]),
+            "torch":    (test_torch.TORCH_IR_TESTER,     test_torch.test_all,  ["bm1684", "bm1684x", "bm1688", "cv183x"]),
             "tpulang":  (test_tpulang.TPULANG_IR_TESTER, test_tpulang.test_all, ["bm1684x"]),
         }
         # yapf: enable

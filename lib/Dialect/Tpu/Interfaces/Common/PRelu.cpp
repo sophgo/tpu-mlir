@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-
+#include "tpu_mlir/Interfaces/IndexingMapsInterface.h"
 
 LogicalResult tpu::PReluOp::init(InferenceParameter &p) {
   auto w_shape = module::getShape(getSlope());
@@ -99,3 +99,7 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+ArrayAttr tpu::PReluOp::getIndexingMaps() {
+  return getBinaryIndexingMaps(getOperation());
+};

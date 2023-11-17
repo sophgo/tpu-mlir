@@ -63,6 +63,11 @@ void HardSigmoidLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
+void HardSigmoidLowering::LoweringF8(PatternRewriter &rewriter,
+                                      top::HardSigmoidOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void HardSigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
                                             top::HardSigmoidOp op) const {
   llvm_unreachable("Not Implemented");

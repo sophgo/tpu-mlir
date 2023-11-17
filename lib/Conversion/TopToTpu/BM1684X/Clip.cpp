@@ -33,6 +33,10 @@ void ClipLowering::LoweringF16(PatternRewriter &rewriter, top::ClipOp op) const 
   lowering_common_f16<tpu::ClipOp>(rewriter, op);
 }
 
+void ClipLowering::LoweringF8(PatternRewriter &rewriter, top::ClipOp op) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void ClipLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::ClipOp op) const {
   LoweringF16(rewriter, op);

@@ -82,6 +82,13 @@ void SliceLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::SliceOp>(rewriter, op, 5);
 }
 
+void SliceLowering::LoweringF8(PatternRewriter &rewriter,
+                                top::SliceOp op) const {
+  _try_insert_device2host(op);
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  lowering_common_f8<tpu::SliceOp>(rewriter, op, isE4, 5);
+}
+
 void SliceLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::SliceOp op) const {
   _try_insert_device2host(op);

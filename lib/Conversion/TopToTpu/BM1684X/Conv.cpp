@@ -7,7 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
+
 
 namespace tpu_mlir {
 namespace bm1684x {
@@ -58,7 +60,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     LoweringF32(rewriter, op);
     return;
   }
-  
+
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
@@ -198,7 +200,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     auto output_type = getQuantInt8Type(op.getOutput(), asymmetric);
     std::vector<int32_t> quant;
     int64_t quant_w_size = 0;
-    if (module::isBM1686()) {
+    if (module::isBM1688()) {
       quant_w_size = 2;
       quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
@@ -418,7 +420,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     auto output_type = getQuantInt4Type(op.getOutput(), asymmetric);
     std::vector<int32_t> quant;
     int64_t quant_w_size = 0;
-    if (module::isBM1686()) {
+    if (module::isBM1688()) {
       quant_w_size = 2;
       quant.resize(p.oc * quant_w_size, 0);
       for (size_t i = 0; i < p.oc; ++i) {
@@ -505,7 +507,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
       // requant
       std::vector<int32_t> quant;
       int64_t quant_w_size = 0;
-      if (module::isBM1686()) {
+      if (module::isBM1688()) {
         quant_w_size = 2;
         quant.resize(p.oc * quant_w_size, 0);
         for (size_t i = 0; i < p.oc; ++i) {
@@ -632,6 +634,94 @@ void ConvLowering::LoweringF16(PatternRewriter &rewriter,
   auto newValue =
       CreateConvOp(rewriter, p.dims, op->getLoc(), newType, operands, attrs);
   rewriter.replaceOp(op, {newValue});
+}
+
+void ConvLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::ConvOp op) const {
+  auto p = op.parseParam();
+  double in_scale=1.0, out_scale=1.0;
+  auto in = op.getInput();
+  auto out = op.getOutput();
+  auto qtype_in = module::getCalibratedType(in);
+  auto qtype_out = module::getCalibratedType(out);
+
+  if (module::getMode() == module::Mode::F8E4M3) {
+    in_scale = qtype_in.getMax() / get_f8e4m3_max();
+    out_scale = qtype_out.getMax() / get_f8e4m3_max();
+  } else if (module::getMode() == module::Mode::F8E5M2) {
+    in_scale = 1.0;
+    out_scale = 1.0;
+  }
+
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  Value newWeight;
+  for (int i = 0; i < 2; i++) {
+    // 0: input; 1: filter, both have possibility to be WeightOp
+    auto opd = op.getOperand(i);
+    if (auto weightOp = dyn_cast<top::WeightOp>(opd.getDefiningOp())) {
+      if (module::getMode() == module::Mode::F8E4M3) {
+        newWeight = weightOp.clone_f8e4m3(op, true);
+        operands.push_back(newWeight);
+      } else if (module::getMode() == module::Mode::F8E5M2) {
+        newWeight = weightOp.clone_f8e5m2(op);
+        operands.push_back(newWeight);
+      }
+    } else {
+      operands.push_back(opd);
+    }
+  }
+  f64_array_t weight_scale_v;
+  f64_array_t quant_scale_v;
+  auto w_op = dyn_cast<top::WeightOp>(newWeight.getDefiningOp());
+  if (module::getMode() == module::Mode::F8E4M3) {
+    if (!w_op.getScale().has_value())
+      llvm_unreachable("weight should has scale now");
+    weight_scale_v = module::getF64Array(w_op.getScale().value());
+    quant_scale_v = std::make_shared<std::vector<double>>(weight_scale_v.get()->size());
+    for (int i=0; i<weight_scale_v.get()->size(); i++) {
+      quant_scale_v.get()->at(i) = in_scale * weight_scale_v.get()->at(i);
+    }
+  } else {
+    quant_scale_v = std::make_shared<std::vector<double>>(1, 1.0);
+    weight_scale_v = std::make_shared<std::vector<double>>(1, 1.0);
+  }
+
+
+  operands.push_back(op.getBias());
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  bool with_bias = !module::isNone(op.getBias());
+
+  if (with_bias && module::getMode() == module::Mode::F8E4M3) {
+    auto b_op = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
+    auto b_value = b_op.read<float>();
+    for (int i=0;i<b_value->size();i++)
+      b_value->at(i) = b_value->at(i)/(in_scale*weight_scale_v.get()->at(i));
+    b_op.update(*b_value, b_value.get()->size());
+    for (int i=0; i<weight_scale_v.get()->size(); i++) {
+      quant_scale_v.get()->at(i) = quant_scale_v.get()->at(i)/out_scale;
+    }
+  }
+
+  attrs.push_back(
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+  if (module::getMode() == module::Mode::F8E4M3) {
+    attrs.push_back(
+        rewriter.getNamedAttr("out_f8_scale", rewriter.getF64ArrayAttr(ArrayRef<double>{*quant_scale_v})));
+    auto newType = getQuantF8E4M3Type(op.getOutput());
+    auto newValue =
+        CreateConvOp(rewriter, p.dims, op->getLoc(), newType, operands, attrs);
+    rewriter.replaceOp(op, {newValue});
+  } else {
+    auto newType = getQuantF8E5M2Type(op.getOutput());
+    auto newValue =
+        CreateConvOp(rewriter, p.dims, op->getLoc(), newType, operands, attrs);
+
+    rewriter.replaceOp(op, {newValue});
+  }
 }
 
 void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
@@ -763,7 +853,7 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
     std::vector<int64_t> quant_shape(module::getShape(op.getInput()).size(),
                                      1l);
     quant_shape[1] = quant_size;
-    if (module::isBM1686()) {
+    if (module::isBM1688()) {
       quant.resize(quant_size * 2, 0);
       for (int i = 0; i < quant_size; ++i) {
         quant[i * 2] = multiplier[i];

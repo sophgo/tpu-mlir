@@ -53,6 +53,12 @@ void SqueezeLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::SqueezeOp>(rewriter, op);
 }
 
+void SqueezeLowering::LoweringF8(PatternRewriter &rewriter,
+                                   top::SqueezeOp op) const {
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  lowering_common_f8<tpu::SqueezeOp>(rewriter, op, isE4);
+}
+
 void SqueezeLowering::LoweringQuantized(PatternRewriter &rewriter,
                                          top::SqueezeOp op) const {
   lowering_common<tpu::SqueezeOp>(rewriter, op, op.getOutput().getType());

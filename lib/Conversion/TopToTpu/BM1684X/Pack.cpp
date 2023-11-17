@@ -35,6 +35,11 @@ void PackLowering::LoweringF16(PatternRewriter &rewriter,
   llvm_unreachable("Not Implemented");
 }
 
+void PackLowering::LoweringF8(PatternRewriter &rewriter,
+                               top::PackOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void PackLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::PackOp op) const {
   if (module::isUniformQuantized(op.getInputs()[0], op.getOutput()) == false) {

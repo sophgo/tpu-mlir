@@ -35,6 +35,11 @@ static void LoweringGatherElements(PatternRewriter &rewriter,
   } else {
     operands.push_back(op.getIndices());
   }
+
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp); // indices_coeff
+  operands.push_back(noneOp); // buffer
+
   rewriter.replaceOpWithNewOp<tpu::GatherElementsOp>(op, type, operands,
                                                      op->getAttrs());
   return;
@@ -70,6 +75,10 @@ void GatherElementsLowering::LoweringF16(PatternRewriter &rewriter,
   LoweringGatherElements(rewriter, op, new_type);
 }
 
+void GatherElementsLowering::LoweringF8(PatternRewriter &rewriter,
+                                         top::GatherElementsOp op) const {
+  llvm_unreachable("Not Implemented");
+}
 void GatherElementsLowering::LoweringQuantized(PatternRewriter &rewriter,
                                                top::GatherElementsOp op) const {
   auto new_type = op.getOutput().getType();

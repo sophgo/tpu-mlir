@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 
 namespace tpu_mlir {
@@ -93,6 +93,50 @@ void MulLowering::LoweringBF16(PatternRewriter &rewriter, top::MulOp op) const {
 
 void MulLowering::LoweringF16(PatternRewriter &rewriter, top::MulOp op) const {
   lowering_common_f16<tpu::MulOp>(rewriter, op);
+}
+
+void MulLowering::LoweringF8(PatternRewriter &rewriter, top::MulOp op) const {
+  // llvm_unreachable("Not Implemented");
+  const int nInputs = op->getNumOperands();
+  std::vector<Value> operands;
+  double scale = 1.0;
+  double out_scale = 1.0;
+  auto out = op.getOutput();
+  auto qtype_out = module::getCalibratedType(out);
+
+  if (module::getMode() == module::Mode::F8E5M2) {
+    lowering_common_f8<tpu::MulOp>(rewriter, op, false);
+    return ;
+  }
+  out_scale = qtype_out.getMax() / get_f8e4m3_max();
+
+  double in_scale=1.0;
+  Value newWeight;
+  for (int i = 0; i < nInputs; i++) {
+    auto input = op->getOperand(i);
+    if (auto weightOp = dyn_cast<top::WeightOp>(input.getDefiningOp())) {
+      newWeight = weightOp.clone_f8e4m3(op, false);
+      auto w_op = dyn_cast<top::WeightOp>(newWeight.getDefiningOp());
+      f64_array_t weight_scale_v;
+      weight_scale_v = module::getF64Array(w_op.getScale().value());
+      in_scale = weight_scale_v.get()->at(0);
+      operands.push_back(newWeight);
+    } else {
+      auto qtype_in = module::getCalibratedType(input);
+      in_scale = qtype_in.getMax() / get_f8e4m3_max();
+      operands.push_back(input);
+    }
+    scale *= in_scale;
+  }
+  scale /= out_scale;
+
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+  if (module::getMode() == module::Mode::F8E4M3) {
+    attrs.push_back(rewriter.getNamedAttr("out_f8_scales", rewriter.getF64ArrayAttr(scale)));
+    auto newType = getQuantF8E4M3Type(op.getOutput());
+    rewriter.replaceOpWithNewOp<tpu::MulOp>(op, newType, operands, attrs);
+  }
 }
 
 void MulLowering::LoweringQuantized(PatternRewriter &rewriter,

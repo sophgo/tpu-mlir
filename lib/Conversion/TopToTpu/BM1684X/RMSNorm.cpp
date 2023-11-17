@@ -23,9 +23,9 @@ static void LoweringRMSNorm(PatternRewriter &rewriter, top::RMSNormOp op,
       auto weightOp = opd.getDefiningOp<top::WeightOp>();
       if (type.isBF16()) {
         opds.push_back(weightOp.clone_bf16(op));
-      } else if (type.isF16()) {
-        opds.push_back(weightOp.clone_f16(op));
       } else {
+        // F16 RMSNorm still does F32 computation in backend
+        // so weight doesnt need to be quantized
         opds.push_back(opd);
       }
     } else {
@@ -68,7 +68,7 @@ void RMSNormLowering::LoweringINT4(PatternRewriter &rewriter,
 }
 void RMSNormLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::RMSNormOp op) const {
-  if (module::isBM1686()) {
+  if (module::isBM1688()) {
     LoweringRMSNorm(rewriter, op, rewriter.getF32Type());
   } else {
     LoweringRMSNorm(rewriter, op, rewriter.getBF16Type());
@@ -78,6 +78,11 @@ void RMSNormLowering::LoweringBF16(PatternRewriter &rewriter,
 void RMSNormLowering::LoweringF16(PatternRewriter &rewriter,
                                     top::RMSNormOp op) const {
   LoweringRMSNorm(rewriter, op, rewriter.getF16Type());
+}
+
+void RMSNormLowering::LoweringF8(PatternRewriter &rewriter,
+                                    top::RMSNormOp op) const {
+  llvm_unreachable("Not Implemented");
 }
 
 void RMSNormLowering::LoweringQuantized(PatternRewriter &rewriter,

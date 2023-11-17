@@ -21,7 +21,7 @@ class TpuLang:
         self,
         device: str,
     ):
-        device_list = ['cpu', 'bm1684x', 'bm1686', 'cv183x']
+        device_list = ['cpu', 'bm1684x', 'bm1688', 'cv183x']
         if device.lower in device_list:
             self.chip = device
         else:

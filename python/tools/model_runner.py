@@ -33,7 +33,8 @@ def pack_bmodel_context_generator(model_file, net):
     out_dir = model_file.rsplit(".", maxsplit=1)[0]
     tensor_loc = model_file + ".json"
     if not os.path.isfile(tensor_loc):
-        return iter([None])
+        yield None
+        return
     os.makedirs(out_dir, exist_ok=True)
     shutil.copy(model_file, os.path.join(out_dir, "compilation.bmodel"))
     shutil.copy(tensor_loc, os.path.join(out_dir, "tensor_location.json"))
@@ -54,8 +55,8 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
         chip = get_chip_from_model(model_file)
         # trick for runtime link chip cmodel
         lib_so = 'libcmodel_1684x.so'
-        if chip == 'BM1686' or chip == 'CV186X':
-            lib_so = 'libcmodel_1686.so'
+        if chip == 'BM1688' or chip == 'CV186X':
+            lib_so = 'libcmodel_1688.so'
         elif chip == 'BM1684':
             lib_so = 'libcmodel_1684.so'
         elif chip == "SG2260":
@@ -103,6 +104,7 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
     size = os.path.getsize(model_file)
     pack_bmodel_context = (iter([None]) if is_cv18xx else pack_bmodel_context_generator(
         model_file, net))
+
     next(pack_bmodel_context) # save input_data
 
     if size > 0x10000000:

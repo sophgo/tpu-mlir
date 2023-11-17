@@ -16,7 +16,11 @@ void top::NmsOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::NmsOp::inference(InferenceParameter &p) {
   NmsParam param;
-  param.max_output_boxes_per_class = getMaxOutputSize();
+  if(module::isWeight(getInputs()[2])){
+    param.max_output_boxes_per_class = getMaxOutputSize() ;
+  } else{
+    param.max_output_boxes_per_class = (int64_t)p.inputs[2][0];
+  }
   param.center_point_box = 0;
   int input_size = getInputs().size();
   std::vector<tensor_list_t> input_list(input_size);
@@ -47,7 +51,14 @@ std::vector<float> output_tensor_data(output_size, 0);
 
 void top::NmsOp::shape_inference() {
   int class_num = module::getShape(getInputs()[1])[1];
-  int max_output_size_per_class = getMaxOutputSize();
+  int max_output_size_per_class = 0;
+  if (module::isShape(getInputs()[2])) {
+    auto vec = module::getShapeTensorValue(getInputs()[2]);
+    assert(vec.size() == 1);
+    max_output_size_per_class = vec[0];
+  } else {
+    max_output_size_per_class = getMaxOutputSize();
+  }
   std::vector<int64_t> output_shape{0,3};
   output_shape[0] = class_num * max_output_size_per_class;
   module::setShapeOrVerify(getOutput(), output_shape);

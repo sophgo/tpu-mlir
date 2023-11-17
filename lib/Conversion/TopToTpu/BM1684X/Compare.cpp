@@ -72,6 +72,11 @@ void CompareLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::CompareOp>(rewriter, compareOp.getOperation());
 }
 
+void CompareLowering::LoweringF8(PatternRewriter &rewriter,
+                                  top::CompareOp compareOp) const {
+  llvm_unreachable("FIXME: not implement");
+}
+
 void CompareLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::CompareOp compareOp) const {
   llvm_unreachable("Not Implemented");

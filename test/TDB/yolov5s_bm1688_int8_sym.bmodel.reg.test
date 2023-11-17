@@ -1,0 +1,60 @@
+RUN: bmodel_dis.py --format reg-set %p/bmodel/yolov5s_bm1688_int8_sym.bmodel | FileCheck %s
+
+CHECK:  {
+CHECK-NEXT:    "core(0).subnet(-1).group(0)": {
+CHECK-NEXT:      "tiu": [
+CHECK-NEXT:        {
+CHECK-NEXT:          "name": "SYS_TR_ACC",
+CHECK-NEXT:          "cmd": {
+CHECK-NEXT:            "imm0": 0,
+CHECK-NEXT:            "reg_idx0": 5,
+CHECK:            "tsk_typ": 12,
+CHECK:        },
+CHECK:            "opt_opd4_const": 1,
+CHECK:            "op_code": 0,
+CHECK:            "pad_mode": 0,
+CHECK:            "opt_res0_prec": 0,
+CHECK:            "opd0_lf_pad": 2,
+CHECK:            "intr_en": 0,
+CHECK:            "res0_n": 1,
+CHECK:            "opd0_w": 640,
+CHECK:            "res1_addr": 0,
+CHECK:        {
+CHECK:            "tsk_typ": 5,
+CHECK:            "res0_c": 32,
+CHECK:            "res0_addr": 120672,
+CHECK:          "cmd": {
+CHECK:            "intr_en": 0,
+CHECK:            "res0_c": 32,
+CHECK:            "opd1_w": 20480,
+CHECK:            "opd2_addr": 0,
+CHECK:          "name": "sAR",
+CHECK:            "tsk_eu_typ": 20,
+CHECK:            "pwr_step": 0,
+CHECK:            "opt_opd0_sign": 1,
+CHECK:            "rsvd1": 0,
+CHECK:            "opd1_addr": 67,
+CHECK:            "opd1_n_str": 0,
+CHECK:            "rsvd2": 0,
+CHECK:        {
+CHECK:            "opt_opd5_const": 0,
+CHECK:            "tsk_eu_typ": 4,
+CHECK:            "pwr_step": 0,
+CHECK:            "opd0_x_ins0": 0,
+CHECK:            "opd0_lf_pad": 2,
+CHECK:            "intr_en": 0,
+CHECK:            "opd0_w": 20,
+CHECK:            "opd2_addr": 4294967295,
+CHECK:          "name": "SYS",
+CHECK:            "tsk_eu_typ": 31,
+CHECK:          }
+CHECK:            "intr_en": 0,
+CHECK:            "Reserved": 0,
+CHECK:            "constant_value": 0,
+CHECK:            "dst_hstride": 640,
+CHECK:            "dst_nsize": 0,
+CHECK:            "dst_start_addr_l32": 0,
+CHECK:          "name": "sDMA_sys",
+CHECK:            "reserved": 0,
+CHECK:            "cmd_id_dep": 0,
+CHECK:  }

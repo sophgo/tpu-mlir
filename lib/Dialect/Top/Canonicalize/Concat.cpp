@@ -460,9 +460,57 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
   }
 };
 
+struct RemoveInvaidShapeConcatInput : public OpRewritePattern<ConcatOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ConcatOp concat_op,
+                                PatternRewriter &rewriter) const override {
+    if (concat_op.getDoRelu()) {
+      return failure();
+    }
+
+    auto inputs = concat_op.getInputs();
+    int num_inputs = inputs.size();
+
+    if (num_inputs > 2 || num_inputs == 0) {
+      return failure();
+    }
+
+    auto none_op = module::getNoneOp(concat_op);
+    bool hasNoneorInvaidShape = false;
+    for (int i = 0; i < num_inputs; i++) {
+      auto in_op = inputs[i].getDefiningOp();
+      auto slice_op = dyn_cast<SliceOp>(in_op);
+      if (slice_op) {
+        auto oslice_shape = module::getShape(slice_op.getOutput());
+        for (auto &shape : oslice_shape) {
+          if (shape != 0) {
+            continue;
+          }
+          concat_op.setOperand(i, none_op);
+          rewriter.eraseOp(slice_op);
+          hasNoneorInvaidShape = true;
+        }
+      }
+    }
+
+    if (hasNoneorInvaidShape) {
+      for (auto input_op : inputs) {
+        if (!module::isNone(input_op)) {
+          concat_op.getOutput().replaceAllUsesWith(input_op);
+        }
+      }
+      rewriter.eraseOp(concat_op);
+    }
+
+    return success();
+  }
+};
+
 void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
                  ConcatToDepth2SpacePattern, ConcatToDepth2SpacePattern2,
-                 MergeSliceConcatPattern, ConcatToSwapDimInner>(context);
+                 MergeSliceConcatPattern, ConcatToSwapDimInner,
+                 RemoveInvaidShapeConcatInput>(context);
 }

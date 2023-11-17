@@ -3,14 +3,15 @@ Compile the Caffe model
 
 This chapter takes ``mobilenet_v2_deploy.prototxt`` and ``mobilenet_v2.caffemodel`` as examples to introduce how to compile and transfer a caffe model to run on the BM1684X TPU platform.
 
-This chapter requires the following files (where xxxx corresponds to the actual version information):
+This chapter requires the tpu_mlir python package.
 
-**tpu-mlir_xxxx.tar.gz (The release package of tpu-mlir)**
 
-Load tpu-mlir
+Install tpu_mlir
 ------------------
 
-.. include:: env_var.rst
+.. code-block:: shell
+
+   $ pip install tpu_mlir[caffe]
 
 
 Prepare working directory
@@ -27,13 +28,33 @@ The operation is as follows:
    $ mkdir mobilenet_v2 && cd mobilenet_v2
    $ wget https://raw.githubusercontent.com/shicai/MobileNet-Caffe/master/mobilenet_v2_deploy.prototxt
    $ wget https://github.com/shicai/MobileNet-Caffe/raw/master/mobilenet_v2.caffemodel
-   $ cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
-   $ cp -rf $TPUC_ROOT/regression/image .
+   $ tpu_mlir_get_resource regression/dataset/ILSVRC2012 .
+   $ tpu_mlir_get_resource regression/image .
    $ mkdir workspace && cd workspace
 
 
-``$TPUC_ROOT`` is an environment variable, corresponding to the tpu-mlir_xxxx directory.
+The ``tpu_mlir_get_resource`` command here is used to copy files from the root dir of the tpu_mlir package to other dirs.
 
+.. code-block:: shell
+
+  $ tpu_mlir_get_resource [source_dir/source_file] [dst_dir]
+
+source_dir/source_file are the relative path to the package path of tpu_mlir,
+and the dir structure of tpu_mlir are as follows:
+
+.. code ::
+tpu_mlir
+    ├── bin
+    ├── customlayer
+    ├── docs
+    ├── lib
+    ├── python
+    ├── regression
+    ├── src
+    ├── entry.py
+    ├── entryconfig.py
+    ├── __init__.py
+    └── __version__
 
 Caffe to MLIR
 ------------------
@@ -45,7 +66,7 @@ The model conversion command:
 
 .. code-block:: shell
 
-   $ model_transform.py \
+   $ model_transform \
        --model_name mobilenet_v2 \
        --model_def ../mobilenet_v2_deploy.prototxt \
        --model_data ../mobilenet_v2.caffemodel \
@@ -68,7 +89,7 @@ Convert the mlir file to the bmodel of f32, the operation method is as follows:
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize F32 \
        --chip bm1684x \
@@ -96,7 +117,7 @@ Here is an example of the existing 100 images from ILSVRC2012 to perform calibra
 
 .. code-block:: shell
 
-   $ run_calibration.py mobilenet_v2.mlir \
+   $ run_calibration mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
        -o mobilenet_v2_cali_table
@@ -111,7 +132,7 @@ Execute the following command to convert to the INT8 symmetric quantized model:
 
 .. code-block:: shell
 
-   $ model_deploy.py \
+   $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \

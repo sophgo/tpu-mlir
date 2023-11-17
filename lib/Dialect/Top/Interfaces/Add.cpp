@@ -79,7 +79,10 @@ void top::AddOp::shape_inference() {
   // shape value inference can only support shape and weight
   bool need_shape_val_infer =
       std::all_of(inputs.begin(), inputs.end(), [](auto in_op) {
-        return module::isShape(in_op) || module::isWeight(in_op);
+        return module::isWeight(in_op) || module::isShape(in_op);
+      }) &&
+      std::any_of(inputs.begin(), inputs.end(), [](auto in_op) {
+        return module::isShape(in_op);
       });
   if (need_shape_val_infer) {
     std::vector<std::vector<int64_t>> input_shapes_v;
