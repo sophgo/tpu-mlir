@@ -123,4 +123,12 @@ void top::ReduceOp::shape_inference() {
   if (!out_shape.size())
     out_shape.push_back(1);
   module::setShapeOrVerify(getOutput(), out_shape);
+  if (module::isShape(getInput())) {
+    std::vector<std::vector<int64_t>> input_shapes_v;
+    auto input_shape_v = module::getShapeTensorValue(getInput());
+    input_shapes_v.push_back(input_shape_v);
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), input_shapes_v, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }

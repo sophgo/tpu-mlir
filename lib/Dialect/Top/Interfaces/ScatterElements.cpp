@@ -63,4 +63,15 @@ LogicalResult top::ScatterElementsOp::inference(InferenceParameter &p) {
 void top::ScatterElementsOp::shape_inference() {
   auto in_shape = module::getShape(getInput());
   module::setShapeOrVerify(getOutput(), in_shape);
+  if (module::isShape(getInput())) {
+    std::vector<std::vector<int64_t>> input_shapes_v;
+    for (const auto &input : getOperands()) {
+      if (module::isShape(input)) {
+        input_shapes_v.push_back(module::getShapeTensorValue(getInput()));
+      }
+    }
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), input_shapes_v, in_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }
