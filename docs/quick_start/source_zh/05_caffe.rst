@@ -92,7 +92,7 @@ MLIR转F32模型
    $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize F32 \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input mobilenet_v2_in_f32.npz \
        --test_reference mobilenet_v2_top_outputs.npz \
        --model mobilenet_v2_1684x_f32.bmodel
@@ -136,7 +136,7 @@ MLIR转INT8模型
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input mobilenet_v2_in_f32.npz \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \

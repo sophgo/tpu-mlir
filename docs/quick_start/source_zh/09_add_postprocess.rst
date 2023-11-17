@@ -112,7 +112,7 @@ MLIR转换成BModel
    $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
-       --chip bm1684x \
+       --processor bm1684x \
        --fuse_preprocess \
        --test_input ../image/dog.jpg \
        --test_reference yolov5s_top_outputs.npz \
@@ -130,7 +130,7 @@ MLIR转换成BModel
     :linenos:
 
     bmodel version: B.2.2
-    chip: BM1684X
+    processor: BM1684X
     create time: Fri May 26 16:30:20 2023
 
     kernel_module name: libbm1684x_kernel_module.so

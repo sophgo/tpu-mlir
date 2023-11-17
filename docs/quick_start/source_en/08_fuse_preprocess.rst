@@ -96,7 +96,7 @@ The command to generate the preprocess-fused symmetric INT8 quantized bmodel mod
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \
@@ -115,7 +115,7 @@ The command to generate the preprocess-fused symmetric INT8 quantized cvimodel m
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \
@@ -133,7 +133,7 @@ When the input data comes from the video post-processing module VPSS provided by
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \

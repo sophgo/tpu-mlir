@@ -23,7 +23,7 @@
     $ model_deploy.py \
        --mlir resnet.mlir \
        --quantize F32 \ # F16/BF16
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input resnet_in_f32.npz \
        --test_reference resnet_top_outputs.npz \
        --model resnet50_f32.bmodel
@@ -80,7 +80,7 @@
        --mlir resnet.mlir \
        --quantize INT8 \
        --calibration_table somenet_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input somenet_in_f32.npz \
        --test_reference somenet_top_outputs.npz \
        --tolerance 0.9,0.7 \
@@ -96,7 +96,7 @@
    $ run_qtable.py somenet.mlir \
        --dataset dataset \
        --calibration_table somenet_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        -o somenet_qtable
 
 然后将量化表传入生成模型, 如下:
@@ -108,7 +108,7 @@
        --quantize INT8 \
        --calibration_table somenet_cali_table \
        --quantize_table somenet_qtable \
-       --chip bm1684x \
+       --processor bm1684x \
        --model somenet_mix.bmodel
 
 
@@ -134,7 +134,7 @@
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \
        --quantize INT8 \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input resnet50_tf_in_f32.npz \
        --test_reference resnet50_tf_top_outputs.npz \
        --tolerance 0.95,0.85 \
@@ -316,7 +316,7 @@ run_qtable.py
    * - calibration_table
      - 是
      - 输入校准表
-   * - chip
+   * - processor
      - 是
      - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - input_num
@@ -388,7 +388,7 @@ model_deploy.py
    * - mlir
      - 是
      - 指定mlir文件
-   * - chip
+   * - processor
      - 是
      - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - quantize

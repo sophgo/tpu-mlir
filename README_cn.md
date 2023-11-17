@@ -148,7 +148,7 @@ model_transform.py \
 model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize F16 \
-  --chip bm1684x \
+  --processor bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --model yolov5s_1684x_f16.bmodel
@@ -160,7 +160,7 @@ model_deploy.py的相关参数说明如下：
 | ------------------- | ----- | ----------------------------- |
 | mlir                | 是    | 指定mlir文件                                              |
 | quantize            | 是    | 指定默认量化类型，支持F32/BF16/F16/INT8                     |
-| chip                | 是    | 指定模型将要用到的平台，支持bm1684x（后续会支持多款TPU平台）     |
+| processor           | 是    | 指定模型将要用到的平台，支持bm1684x（后续会支持多款TPU平台）     |
 | calibration_table   | 否    | 指定量化表路径，当存在INT8量化的时候需要量化表                 |
 | tolerance           | 否    | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
 | correctnetss        | 否    | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
@@ -192,7 +192,7 @@ model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize INT8 \
   --calibration_table yolov5s_cali_table \
-  --chip bm1684x \
+  --processor bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --tolerance 0.85,0.45 \

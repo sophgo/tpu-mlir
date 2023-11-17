@@ -98,7 +98,7 @@ BM1684X部署
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \
@@ -117,7 +117,7 @@ CV18xx部署
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \
@@ -136,7 +136,7 @@ VPSS作为输入
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \

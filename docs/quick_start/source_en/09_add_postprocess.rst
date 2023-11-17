@@ -104,7 +104,7 @@ To convert the MLIR file to an F16 bmodel, proceed as follows:
    $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
-       --chip bm1684x \
+       --processor bm1684x \
        --fuse_preprocess \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \

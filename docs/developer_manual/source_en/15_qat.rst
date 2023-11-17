@@ -135,7 +135,7 @@ Run example/imagenet_example/main.py to qat train resent18 as follows:
         --batch-size=192
         --epochs=1
         --lr=1e-4
-        --gpu=0
+        --cuda=0
         --pretrained
         --backend=sophgo_tpu
         --optim=sgd

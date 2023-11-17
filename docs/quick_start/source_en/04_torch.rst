@@ -93,7 +93,7 @@ Convert the mlir file to the bmodel of f16, the operation method is as follows:
    $ model_deploy \
        --mlir yolov5s_pt.mlir \
        --quantize F16 \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_pt_in_f32.npz \
        --test_reference yolov5s_pt_top_outputs.npz \
        --tolerance 0.99,0.99 \
@@ -133,7 +133,7 @@ Execute the following command to convert to the INT8 symmetric quantized model:
        --mlir yolov5s_pt.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_pt_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_pt_in_f32.npz \
        --test_reference yolov5s_pt_top_outputs.npz \
        --tolerance 0.85,0.45 \
