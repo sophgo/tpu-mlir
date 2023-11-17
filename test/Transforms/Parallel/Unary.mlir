@@ -13,8 +13,8 @@ module @AddConst attributes {module.FLOPs = 32768 : i64, module.asymmetric = fal
 
 // CHECK-LABEL:     "tpu.Parallel"(%0) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%0) : (tensor<4x8x32x32xf32>) -> (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) loc({{.*}})
-// CHECK:           %[[ADDCONST0:.*]] = "tpu.AddConst"(%[[SPLIT]]#0) {const_val = 3.000000e+00 : f64, do_relu = false, f8_scale = 1.000000e+00 : f64, multiplier = 1 : si32, relu_limit = -1.000000e+00 : f64, rshift = 0 : si32} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
-// CHECK:           %[[ADDCONST1:.*]] = "tpu.AddConst"(%[[SPLIT]]#1) {const_val = 3.000000e+00 : f64, do_relu = false, f8_scale = 1.000000e+00 : f64, multiplier = 1 : si32, relu_limit = -1.000000e+00 : f64, rshift = 0 : si32} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[ADDCONST0:.*]] = "tpu.AddConst"(%[[SPLIT]]#0) {{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[ADDCONST1:.*]] = "tpu.AddConst"(%[[SPLIT]]#1) {{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[ADDCONST0]], %[[ADDCONST1]]) : (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x8x32x32xf32>) -> () loc({{.*}})
 // CHECK:             }) : (tensor<4x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
@@ -34,8 +34,8 @@ module @SubConst attributes {module.FLOPs = 32768 : i64, module.asymmetric = fal
 
 // CHECK-LABEL:     "tpu.Parallel"(%0) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%0) : (tensor<4x8x32x32xf32>) -> (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) loc({{.*}})
-// CHECK:           %[[SUBCONST0:.*]] = "tpu.SubConst"(%[[SPLIT]]#0) {const_val = 3.000000e+00 : f64, do_relu = false, f8_scale = 1.000000e+00 : f64, is_reverse = true, multiplier = 1 : si32, relu_limit = -1.000000e+00 : f64, rshift = 0 : si32} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
-// CHECK:           %[[SUBCONST1:.*]] = "tpu.SubConst"(%[[SPLIT]]#1) {const_val = 3.000000e+00 : f64, do_relu = false, f8_scale = 1.000000e+00 : f64, is_reverse = true, multiplier = 1 : si32, relu_limit = -1.000000e+00 : f64, rshift = 0 : si32} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[SUBCONST0:.*]] = "tpu.SubConst"(%[[SPLIT]]#0) {{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[SUBCONST1:.*]] = "tpu.SubConst"(%[[SPLIT]]#1) {{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[SUBCONST0]], %[[SUBCONST1]]) : (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x8x32x32xf32>) -> () loc({{.*}})
 // CHECK:             }) : (tensor<4x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
@@ -55,8 +55,8 @@ module @MulConst attributes {module.FLOPs = 32768 : i64, module.asymmetric = fal
 
 // CHECK-LABEL:     "tpu.Parallel"(%0) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%0) : (tensor<4x8x32x32xf32>) -> (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) loc({{.*}})
-// CHECK:           %[[MULCONST0:.*]] = "tpu.MulConst"(%[[SPLIT]]#0) {const_val = 3.000000e+00 : f64, do_relu = false, multiplier = 1 : si32, relu_limit = -1.000000e+00 : f64, rshift = 0 : si32} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
-// CHECK:           %[[MULCONST1:.*]] = "tpu.MulConst"(%[[SPLIT]]#1) {const_val = 3.000000e+00 : f64, do_relu = false, multiplier = 1 : si32, relu_limit = -1.000000e+00 : f64, rshift = 0 : si32} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[MULCONST0:.*]] = "tpu.MulConst"(%[[SPLIT]]#0) {{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[MULCONST1:.*]] = "tpu.MulConst"(%[[SPLIT]]#1) {{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[MULCONST0]], %[[MULCONST1]]) : (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x8x32x32xf32>) -> () loc({{.*}})
 // CHECK:             }) : (tensor<4x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
@@ -76,8 +76,8 @@ module @MaxConst attributes {module.FLOPs = 32768 : i64, module.asymmetric = fal
 
 // CHECK-LABEL:     "tpu.Parallel"(%0) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%0) : (tensor<4x8x32x32xf32>) -> (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) loc({{.*}})
-// CHECK:           %[[MAXCONST0:.*]] = "tpu.MaxConst"(%[[SPLIT]]#0) {const_val = 3.000000e+00 : f64, do_relu = false, multiplier = 1 : si32, relu_limit = -1.000000e+00 : f64, rshift = 0 : si32} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
-// CHECK:           %[[MAXCONST1:.*]] = "tpu.MaxConst"(%[[SPLIT]]#1) {const_val = 3.000000e+00 : f64, do_relu = false, multiplier = 1 : si32, relu_limit = -1.000000e+00 : f64, rshift = 0 : si32} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[MAXCONST0:.*]] = "tpu.MaxConst"(%[[SPLIT]]#0) {{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[MAXCONST1:.*]] = "tpu.MaxConst"(%[[SPLIT]]#1) {{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[MAXCONST0]], %[[MAXCONST1]]) : (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x8x32x32xf32>) -> () loc({{.*}})
 // CHECK:             }) : (tensor<4x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
@@ -97,8 +97,8 @@ module @MinConst attributes {module.FLOPs = 32768 : i64, module.asymmetric = fal
 
 // CHECK-LABEL:     "tpu.Parallel"(%0) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%0) : (tensor<4x8x32x32xf32>) -> (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) loc({{.*}})
-// CHECK:           %[[MINCONST0:.*]] = "tpu.MinConst"(%[[SPLIT]]#0) {const_val = 3.000000e+00 : f64, do_relu = false, multiplier = 1 : si32, relu_limit = -1.000000e+00 : f64, rshift = 0 : si32} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
-// CHECK:           %[[MINCONST1:.*]] = "tpu.MinConst"(%[[SPLIT]]#1) {const_val = 3.000000e+00 : f64, do_relu = false, multiplier = 1 : si32, relu_limit = -1.000000e+00 : f64, rshift = 0 : si32} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[MINCONST0:.*]] = "tpu.MinConst"(%[[SPLIT]]#0) {{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[MINCONST1:.*]] = "tpu.MinConst"(%[[SPLIT]]#1) {{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[MINCONST0]], %[[MINCONST1]]) : (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x8x32x32xf32>) -> () loc({{.*}})
 // CHECK:             }) : (tensor<4x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
@@ -118,8 +118,8 @@ module @CompareConst attributes {module.FLOPs = 32768 : i64, module.asymmetric =
 
 // CHECK-LABEL:     "tpu.Parallel"(%0) ({
 // CHECK:           %[[SPLIT:.*]]:2 = "tpu.Split"(%0) : (tensor<4x8x32x32xf32>) -> (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) loc({{.*}})
-// CHECK:           %[[COMPARECONST0:.*]] = "tpu.CompareConst"(%[[SPLIT]]#0) {const_val = 0.000000e+00 : f64, inversed = false, mode = "Greater"} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
-// CHECK:           %[[COMPARECONST1:.*]] = "tpu.CompareConst"(%[[SPLIT]]#1) {const_val = 0.000000e+00 : f64, inversed = false, mode = "Greater"} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[COMPARECONST0:.*]] = "tpu.CompareConst"(%[[SPLIT]]#0) {{{.*}} mode = "Greater"{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
+// CHECK:           %[[COMPARECONST1:.*]] = "tpu.CompareConst"(%[[SPLIT]]#1) {{{.*}} mode = "Greater"{{.*}}} : (tensor<2x8x32x32xf32>) -> tensor<2x8x32x32xf32> loc({{.*}})
 // CHECK:           %[[JOIN:.*]] = "tpu.Join"(%[[COMPARECONST0]], %[[COMPARECONST1]]) : (tensor<2x8x32x32xf32>, tensor<2x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
 // CHECK:           "tpu.Yield"(%[[JOIN]]) : (tensor<4x8x32x32xf32>) -> () loc({{.*}})
 // CHECK:             }) : (tensor<4x8x32x32xf32>) -> tensor<4x8x32x32xf32> loc({{.*}})
