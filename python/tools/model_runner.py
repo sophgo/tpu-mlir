@@ -267,9 +267,11 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
 def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -> dict:
     import paddle
     paddle.enable_static()
+    if paddle_file.endswith('.pdmodel'):
+        paddle_file = paddle_file[:-len('.pdmodel')]
     exe = paddle.static.Executor(paddle.CPUPlace())
     [inference_program, feed_target_names, fetch_targets] = (
-        paddle.static.load_inference_model('model', exe))
+        paddle.static.load_inference_model(paddle_file, exe))
     out_name = list()
     for o in fetch_targets:
         out_name.append(o.name)
@@ -285,7 +287,7 @@ def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -
     for i in range(len(out_name)):
         outputs[out_name[i]] = out_data[i]
 
-    #返回的是一个字典：
+
     return outputs
 
 

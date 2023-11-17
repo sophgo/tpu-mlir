@@ -77,10 +77,7 @@ class ModelTransformer(object):
             ppa = preprocess()
             for i in range(self.input_num):
                 pic_path = file_list[i] if i < len(file_list) else file_list[-1]
-                print("pic_path",pic_path)
                 file = os.path.expanduser(pic_path)
-                print("file",file)
-                print(self.module_parsered.get_input_op_by_idx(i))
                 ppa.load_config(self.module_parsered.get_input_op_by_idx(i))
                 inputs[ppa.input_name] = ppa.run(file)
         else:

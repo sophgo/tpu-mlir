@@ -27,11 +27,11 @@ from utils.auto_remove import file_mark, file_clean
 class BaseNode():
 
     def __init__(self, info):
-        #创建一些基本的属性
+        #base_attrs
         self.name = str(info["name"])
         self.op_type = str(info["op_type"])
-        self.attrs = dict(info["attrs"])                                                                        #这里面有很多个attr，所以是用一个字典来对应
-        self.inputs = list(info["inputs"])                                                                      #输入主要对应的是具体的节点，所以是一个list
+        self.attrs = dict(info["attrs"])
+        self.inputs = list(info["inputs"])
         self.outputs = list(info["outputs"])
 
 class PaddleNode(BaseNode):
@@ -50,7 +50,6 @@ class PaddleNode(BaseNode):
 
 class PaddleConverter(BaseConverter):
 
-    #定义初始化参数以及所需要传进去的参数：
     def __init__(self,
                  model_name:str,
                  paddle_file,
@@ -74,7 +73,7 @@ class PaddleConverter(BaseConverter):
                 self.preprocess_args = preprocess_args
         self.converted_nodes = list()
         self.paddleop_factory = {
-            #注意：请按照字母顺序添加算子！！！
+            #add_ops alpha
             "cast" : lambda node:self.convert_cast_op(node),
             "concat" : lambda node: self.convert_concat_op(node),
             "conv2d" : lambda node: self.convert_conv_op(node),
@@ -104,7 +103,6 @@ class PaddleConverter(BaseConverter):
 
     def get_inputs(self,all_valid_inputs):
         return [x for x in all_valid_inputs]
-    #获取输入的类型
     def get_input_types(self):
         input_types = []
         for input in self.get_inputs(self.all_valid_inputs):
@@ -115,7 +113,7 @@ class PaddleConverter(BaseConverter):
           else:
               input_types.append('F32')
         return input_types
-      #这个是干嘛用的？
+
     def get_loc(self, names):
         if isinstance(names, str):
             return Location.fused([Location.name(names)], context=self.mlir.ctx)
@@ -124,7 +122,6 @@ class PaddleConverter(BaseConverter):
         else:
             raise RuntimeError("Unknown names:{}".format(names))
 
-    #获取输出的类型
     def get_output_types(self,output_names):
         output_types = []
         for output in self.get_outputs(output_names):
@@ -138,7 +135,6 @@ class PaddleConverter(BaseConverter):
 
 
     def select_unuse(self, names):
-        # print("names:",names)
         for name in names:
             if name in self.all_weights:
                 self.all_weights.pop(name)
@@ -157,29 +153,23 @@ class PaddleConverter(BaseConverter):
         self.all_outputs = []
         self.all_inputs = {}
 
-        #获取模型的输入
+
         for x in self.feed_target_names:
-            self.all_inputs[x] = self.block_op.var(x)               #输入的部分是要得到各种参数，而不仅仅是name
-        #self.all_valid_inputs = self.all_inputs
-        #获取模型的输出
+            self.all_inputs[x] = self.block_op.var(x)
+
         for x in self.fetch_targets:
-            #先判别x是否在预定的输出参数中：feed_target是一个list,而里面每个参数是一个paddle.fluid.framework.Variable类
-            #预定的输出参数是一个索引值，所以我想的是根据op的索引值来得到对应的值：根据打印出来的结果是：对应的索引值是663、311、457、587，而663的是不用到的
-            #同时这里注意，只需要获取对应输出的name，而不需要其他信息
-
+            #paddle_yolov5s_output_names:311、457、587
             if str(x.op.idx) in output_names:
-                # print("################")
 
-                self.all_outputs.append(x.op.output_arg_names[0])    #得到已经预设的输出参数名字
-                # print(self.all_outputs)
-                output_names.remove(str(x.op.idx))                                               #将已经得到名字的预定输出给移除
+                self.all_outputs.append(x.op.output_arg_names[0])
+                output_names.remove(str(x.op.idx))
                 if len(output_names) == 0:
                     break
-        #获取模型的value》》》对应于onnx的value_info
+
         self.all_values = {}
         for var_name in self.block_op.vars:
             self.all_values[var_name] = self.block_op.var(var_name)
-        #获取模型节点的输入和输出信息
+
         self.all_nodes = {}
         for op in self.block_op.ops:
           if 'Out' in op.output_names:
@@ -194,14 +184,15 @@ class PaddleConverter(BaseConverter):
         if len(output_names) != 0:
             raise RuntimeError("Error, can't find {} in model".format(output_names))
 
-        #获取模型的权重参数
+        #get_weights
         self.all_weights = {}
         for w in range(0,len(self.model.parameters())):
             self.all_weights[self.model.parameters()[w].name ] = self.model.parameters()[w].value()
 
         # remove unused node
         self.select_unuse(self.all_outputs)
-        #下面是写关于将有效的主干网络对应的节点保留起来的值
+
+        #valid_info
         self.all_valid_values = {}
         self.all_valid_nodes = {}
         self.all_valid_weights = {}
@@ -209,17 +200,15 @@ class PaddleConverter(BaseConverter):
         for x in self.feed_target_names:
             if x not in self.all_inputs:
                 self.all_valid_inputs[x] = self.block_op.var(x)
-        #将主干的values值进行保存
+
         for var_name in self.block_op.vars:
             if var_name not in self.all_values:
-                # print("keep_values!:",var_name)
                 self.all_valid_values[var_name] = self.block_op.var(var_name)
-        #将主干的weight进行保存
+
         for w in range(0,len(self.model.parameters())):
             if self.model.parameters()[w].name not in self.all_weights:
                 self.all_valid_weights[self.model.parameters()[w].name ] = self.model.parameters()[w].value()
 
-        #将主干的node进行保存
         for op in self.block_op.ops:
             if 'Out' in op.output_names:
                 output_vars = op.output('Out')
@@ -239,17 +228,19 @@ class PaddleConverter(BaseConverter):
     def load_paddle_model(self,paddle_file,input_shapes,output_names):
 
         if isinstance(paddle_file,str):
+            if paddle_file.endswith('.pdmodel'):
+                paddle_file = paddle_file[:-len('.pdmodel')]
             print("start loading paddle_file!!!\n")
             paddle.enable_static()
             exe = paddle.static.Executor(paddle.CPUPlace())
-            #下面是得到模型文件里面的输入、输出、program
+            #get_program of the model
             self.feed_target_names = list()
             self.fetch_targets = list()
             [self.inference_program,self.feed_target_names,self.fetch_targets] = (paddle.static.load_inference_model(paddle_file, exe))
             paddle.disable_static()
-            print(paddle_file,":",type(paddle_file))
 
             self.model = paddle.jit.load(paddle_file)
+            #the data_graph is kept in block
             self.block_op = self.inference_program.block(0)
             print("loading has finished!!!\n")
             print("----------------------------------")
@@ -258,19 +249,16 @@ class PaddleConverter(BaseConverter):
             self.model = paddle_file
         if output_names:
             self.select_output(output_names)
-        self.input_names = self.feed_target_names                       #获取输入
-        print("input_names:",self.input_names)
-        self.num_input = len(self.input_names)                          #获取输入的长度
-        self.input_shapes = [list(self.block_op.var(self.feed_target_names[0]).shape)]    #得到输入的shape,这里的输出的部分是【【-1，3，-1，-1】】，不知道是否需要调整？
-        #获取输入的类型
+        self.input_names = self.feed_target_names
+        self.num_input = len(self.input_names)
+        self.input_shapes = [list(self.block_op.var(self.feed_target_names[0]).shape)]
         self.input_types = self.get_input_types()
 
-        #获取输出的类型
+
         self.output_types = self.get_output_types(output_names)
-        print("After assigning input_shape:")
-        #print(self.model.parameters())
         for tensor in self.model.parameters():
-        #    if tensor.name in self.all_valid_weights:
+
+        #drop unused tensor_data
             if tensor.name == 'x2paddle_0':
                 name = 'x2paddle_773'
             elif tensor.name == 'x2paddle_1':
@@ -310,7 +298,6 @@ class PaddleConverter(BaseConverter):
             else:
                 self.addShape(val,shape)
             nodes_with_shape.append(val)
-        # print("nodes_with_shape:",nodes_with_shape)
         for output in self.all_outputs:
             if not self.isWeight(output):
                 for op in self.block_op.ops:
@@ -325,13 +312,7 @@ class PaddleConverter(BaseConverter):
                     self.addShape(output,shape)
                 nodes_with_shape.append(output)
         full_nodes = []
-        no_list = ["cast","fill_constant","TopK"]            #这个no_list我不知道是用来干啥
-                                                      #但是发现paddle里面有一些算子是onnx里面没有的
-                                                      #fill_any_like、nearest_interp_v2、pool2d
-                                                      #根据参考的onnx，需要特殊处理里面loop算子，
-                                                      #但是我发现里面没有这个算子。所以我把那个处理给剔除了
-                                                      #同时我不知道那个TOPK算子在这里是要用来干嘛
-                                                      #只是由于自己理解觉得他可能有用，所以我就写上去了
+        no_list = ["cast","fill_constant","TopK"]
         for n in self.all_valid_nodes:
             if self.all_valid_nodes[n]['op_type'] in no_list:
                 continue
@@ -345,10 +326,8 @@ class PaddleConverter(BaseConverter):
             unk_shape = self.get_unk_shape(unk_op,input_shapes)
             for n,s in unk_shape:
                 self.addShape(n,list(s))
-    #看了一下 发现好像这个函数可以不用写的，这个是用来判别NonMaxSuppression
-    #>>>>破案，这个是自己后续需要写的，因为这个是调整动态shape的函数
+
     def get_unk_shape(self,unk_op,input_shape):
-    #这个函数是为了获取shape不知道的输出
         paddle.enable_static()
         exe = paddle.static.Executor(paddle.CPUPlace())
         for i in self.all_valid_inputs:
@@ -361,7 +340,7 @@ class PaddleConverter(BaseConverter):
         return zip(unk_op,outs_shape)
 
 
-    #这里应该是shape的分配函数
+
     def input_shape_assign(self,input_shapes):
         inputs = self.get_inputs(self.all_valid_inputs)
         outputs = self.get_outputs(output_names)
@@ -415,7 +394,7 @@ class PaddleConverter(BaseConverter):
         for idx, _name in enumerate(self.input_names):
             input_ = self.mlir.create_input_op(self.get_loc(_name),idx,self.preprocess_args)
             self.addOperand(_name,input_)
-        #用于提示不支持的算子
+
         def NoneAndRaise(node):
             raise RuntimeError("{} Op not support now".format(node.op_type))
 
@@ -424,7 +403,7 @@ class PaddleConverter(BaseConverter):
             node = PaddleNode(self.all_valid_nodes[n])
             if node.op_type != 'feed':
                 self.converted_nodes.append(node)
-        #检测支持的算子类型
+
         unsupported = set()
         for n in self.converted_nodes:
             if n.op_type not in self.paddleop_factory:
@@ -439,8 +418,8 @@ class PaddleConverter(BaseConverter):
             self.paddleop_factory.get(n.op_type,lambda x: NoneAndRaise(x))(n)
         return_op = list()
         for idx,_name in enumerate(self.output_names):
-            op = self.getOperand(_name)             #将名字传进去，得到算子
-            return_op.append(op)                   #将返回的算子添加进去
+            op = self.getOperand(_name)
+            return_op.append(op)
 
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
@@ -455,9 +434,6 @@ class PaddleConverter(BaseConverter):
 
         lhs = paddle_node.inputs[0]
         rhs = paddle_node.inputs[1]
-        #print("nodes:",paddle_node.name)
-        #print("l:",lhs)
-        #print("r:",rhs)
         if self.isWeight(lhs) and not self.isWeight(rhs):
             paddle_node.inputs[0],paddle_node.inputs[1] = paddle_node.inputs[1],paddle_node.inputs[0]
             self.convert_add_op(paddle_node)
@@ -514,8 +490,6 @@ class PaddleConverter(BaseConverter):
                                loc = self.get_loc(name),
                                ip = self.mlir.insert_point).output
         self.addOperand(paddle_node.name,new_op)
-        #print("nodes:",paddle_node.name)
-        #print("self.operands:",self.operands)
 
     def convert_cast_op(self,paddle_node):
         assert (paddle_node.op_type == "cast")
@@ -620,7 +594,7 @@ class PaddleConverter(BaseConverter):
 
     def convert_conv_op(self,paddle_node):
         assert (paddle_node.op_type == "conv2d")
-        op = self.getOperand(paddle_node.inputs[1])    #卷积算子对应俩个输入，一个是权重，一个是上一层的mul结果
+        op = self.getOperand(paddle_node.inputs[1])
         kernel_shape = paddle_node.attrs['kernel_shape']
         dim = len(kernel_shape)
         dilations = paddle_node.attrs.get("dilations", dim * [1])
@@ -707,9 +681,6 @@ class PaddleConverter(BaseConverter):
 
     def convert_range_op(self,paddle_node):
         assert (paddle_node.op_type == "range")
-        print(self.getShape(paddle_node.inputs[0]))
-        print(self.getShape(paddle_node.inputs[1]))
-        print(self.getShape(paddle_node.inputs[2]))
         start_op = self.getOp(paddle_node.inputs[0])
         limit_op = self.getOp(paddle_node.inputs[1])
         delta_op = self.getOp(paddle_node.inputs[2])
@@ -729,10 +700,10 @@ class PaddleConverter(BaseConverter):
                                *operands,
                                loc=self.get_loc("{}_{}".format(paddle_node.name, paddle_node.op_type)),
                                ip=self.mlir.insert_point).output
-        #op = self.getOperand(paddle_node.inputs[0])
+
         else:
             output_shape = self.getShape(paddle_node.name)
-            #op = paddle_node.inputs[0]
+
             op = self.getOperand(paddle_node.inputs[0])
             new_op = top.ReshapeOp(self.mlir.get_tensor_type(output_shape),
                                op,
@@ -742,16 +713,10 @@ class PaddleConverter(BaseConverter):
 
     def convert_matmul_op(self,paddle_node):
         assert (paddle_node.op_type == "matmul_v2" )
-        #处理俩个或多个张量的乘积
 
-        #这俩个参数，我在paddle的attr里面没有看到，所以就注释了
-        #去看了onnx的手册，发现这俩个是缩放因子，默认是0
-        # alpha = onnx_node.attrs.get('alpha', 1)
-        # beta = onnx_node.attrs.get('beta', 1)
-        #下面的参数是用来判别是否需要对对应的输入做转置
         trans_x = paddle_node.attrs.get('trans_x',0)
         trans_y = paddle_node.attrs.get('trans_y',0)
-        #用于支持更多情况
+
         assert (trans_x == False)
         operands = list()
         x = paddle_node.inputs[0]
@@ -775,7 +740,7 @@ class PaddleConverter(BaseConverter):
             operands.append(self.getWeightOp(y))
         else:
             operands.append(self.getOperand(y))
-          #如果输入超过俩个
+
         if len(paddle_node.inputs) > 2:
             z = paddle_node.inputs[2]
             if self.isWeight(z):
@@ -785,7 +750,6 @@ class PaddleConverter(BaseConverter):
         else:
             operands.append(self.mlir.none_op)
 
-        print(paddle_node.name)
         output_shape = self.getShape(paddle_node.name)
         new_op = top.MatMulOp(self.mlir.get_tensor_type(output_shape),
                               *operands,
@@ -795,9 +759,6 @@ class PaddleConverter(BaseConverter):
 
         self.addOperand(paddle_node.name,new_op)
 
-        print(paddle_node.name)
-        print("*operand:",*operands)
-        print("self.operand:",self.operands[paddle_node.name])
 
     def convert_mul_op(self,paddle_node):
         assert (paddle_node.op_type == "elementwise_mul")
@@ -858,7 +819,7 @@ class PaddleConverter(BaseConverter):
         op = self.getOperand(paddle_node.inputs[0])
         ceil_mode = paddle_node.attrs.get("ceil_mode", False)
         kernel_shape = paddle_node.attrs['ksize']
-        #下面这个参数我没找到对应的attrs
+
         count_include_pad = paddle_node.attrs.get('count_include_pad', False)
         dim = len(kernel_shape)
         strides = paddle_node.attrs.get("strides", kernel_shape)
@@ -959,7 +920,7 @@ class PaddleConverter(BaseConverter):
     def convert_sigmoid_op(self,paddle_node):
         assert (paddle_node.op_type == "sigmoid")
         op = self.getOperand(paddle_node.inputs[0])
-        scale = paddle_node.attrs.get('scale', 1) #若没有这个参数 则返回1
+        scale = paddle_node.attrs.get('scale', 1)
         bias = paddle_node.attrs.get('bias', 0)
         output_shape = self.getShape(paddle_node.name)
         new_op = top.SigmoidOp(self.mlir.get_tensor_type(output_shape),
@@ -1129,25 +1090,23 @@ class PaddleConverter(BaseConverter):
         if (type(scale_factor) == np.ndarray and len(scale_factor.shape) == 2
             and scale_factor.shape[1] == 1):
             scale_factor = scale_factor.reshape(-1)
-        sizes = input_shape[2:3] * scale_factor         #最近临只是对高度和宽度这俩个维度进行处理
-                                                        #所以这里取NCHW的后俩个
+        sizes = input_shape[2:3] * scale_factor         #get the H + W
         output_shape = []
         sizes_int = [int(i) for i in sizes]
-        #output_shape[0] = input_shape[0]
+
         output_shape = input_shape[0:2] + sizes_int
-        #output_shape.append(int(i) for i in sizes)
-        scale_h = scale_factor[0]                       #这俩个不知道有什么作用，得到的都是-1
+
+        scale_h = scale_factor[0]
         scale_w = scale_factor[1]
         coord_mode = paddle_node.attrs.get("coordinate_transformation_mode", "half_pixel")
-        #这里的mode，onnx那边的类型是byte string，而paddle这边的type是string
-        if mode == 'nearest' and scale_h == int(scale_h) and scale_w == int(scale_w):
+
+        if mode == b'nearest' and scale_h == int(scale_h) and scale_w == int(scale_w):
             self.resize_to_upsample(paddle_node, op, input_shape, output_shape, scale_h, scale_w)
             return
         else:
             self.resize_to_interp(paddle_node,op, input_shape, output_shape, scale_h, scale_w, mode,
                                   coord_mode)
             return
-            #print("this op is not supported!!!!")
     # when resize by linear or nearst, with float scale_h or float scale_w
     def resize_to_interp(self, paddle_node, op, input_shape, output_shape, scale_h, scale_w, mode,
                          coordinate_transformation_mode):
@@ -1171,12 +1130,6 @@ class PaddleConverter(BaseConverter):
                                 loc=self.get_loc("{}_{}".format(paddle_node.name, paddle_node.op_type)),
                                 ip=self.mlir.insert_point).output
         self.addOperand(paddle_node.name, new_op)
-        # else:
-        #     self.resize_to_interp(paddle_node, op, input_shape, output_shape, scale_h, scale_w, mode,
-        #                           coord_mode)
-        #     return
-
-
 
 
     def convert_where_op(self, paddle_node):

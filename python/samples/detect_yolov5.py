@@ -88,7 +88,6 @@ def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
         y1 = int(box[3])
         color = (_COLORS[cls_id] * 255).astype(np.uint8).tolist()
         text = '{}:{:.1f}%'.format(class_names[cls_id], score * 100)
-        print("score:",text)
         txt_color = (0, 0, 0) if np.mean(_COLORS[cls_id]) > 0.5 else (255, 255, 255)
         font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -227,7 +226,7 @@ def preproc(img, input_size, pixel_format, channel_format, fuse_pre, swap=(2, 0,
         padded_img = np.ones(input_size, dtype=np.uint8) * 114  # 114
 
     r = min(input_size[0] / img.shape[0], input_size[1] / img.shape[1])
-    print("ratio:",r)
+
     resized_img = cv2.resize(
         img,
         (int(img.shape[1] * r), int(img.shape[0] * r)),
@@ -329,7 +328,6 @@ def main():
     img = np.expand_dims(img, axis=0)
     if (not args.fuse_preprocess):
         img /= 255.  # 0 - 255 to 0.0 - 1.0
-    # data = {"data": img}  # input name from model
     data = {"data": img}  # input name from model
     output = dict()
     if args.model.endswith('.onnx'):
@@ -347,8 +345,6 @@ def main():
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     if not args.fuse_postprocess:
-        print(args.fuse_postprocess)
-        print("comes into fuse_postprocess!!！")
         scores, boxes_xyxy = postproc(output, input_shape, top, left)
         dets = multiclass_nms(boxes_xyxy,
                               scores,
@@ -368,7 +364,6 @@ def main():
                       class_names=COCO_CLASSES)
         cv2.imwrite(args.output, fix_img)
     else:
-        print("comes into yolo_post!!！")
         dets = output['yolo_post']
         fix_img = vis2(origin_img, dets, input_shape, class_names=COCO_CLASSES)
         cv2.imwrite(args.output, fix_img)
