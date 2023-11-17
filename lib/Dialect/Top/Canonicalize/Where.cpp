@@ -74,7 +74,7 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
 };
 
 // Idea from Repeat.cpp. Same as
-// lib/Dialect/Top/Transforms/ChipOptimize/OptimizeBM1684X.cpp:expand_dim_and_tile
+// lib/Dialect/Top/Transforms/ProcessorOptimize/OptimizeBM1684X.cpp:expand_dim_and_tile
 mlir::Value expand_dim_and_tile(mlir::Value tensor,
                                 llvm::ArrayRef<int64_t> out_shape,
                                 PatternRewriter &rewriter,

@@ -678,7 +678,7 @@ public:
 
 // reorder op when reshapeOp is before matmul/mulconst/cast/softmax op to
 // eliminate reshapeOp
-// copied from lib/Dialect/Top/Transforms/ChipOptimize/OptimizeBM1684X.cpp
+// copied from lib/Dialect/Top/Transforms/ProcessorOptimize/OptimizeBM1684X.cpp
 class TpuReshapeReorderPattern : public OpRewritePattern<tpu::ReshapeOp> {
 public:
   using OpRewritePattern::OpRewritePattern;

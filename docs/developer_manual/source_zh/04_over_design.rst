@@ -35,11 +35,11 @@ canonicalize
    与具体op有关的图优化, 比如relu合并到conv、shape合并等等。
 extra-optimize
    额外的pattern实现, 比如求FLOPs、去除无效输出等等。
-chip-assign
+processor-assign
    配置处理器, 如bm1684x或者cv183x等等; 并根据处理器对top层进行调整, 比如cv18xx将输入全部调整为F32。
 import-calibration-table
    按照calibration table, 给每个op插入min和max, 用于后续量化; 对应对称量化则插入threshold
-chip-top-optimize
+processor-top-optimize
    与处理器相关的top层算子优化, 这是一个妥协, 有些top算子与处理器具有相关性
 convert-top-to-tpu
    将top层下层到tpu层; 如果是浮点类型(F32/F16/BF16), top层op基本上直接转换成相应的tpu层op即可; 如果是INT8类型, 则需要量化转换
@@ -53,7 +53,7 @@ canonicalize
    与tpu层具体op有关的图优化, 比如连续Requant的合并等等
 strip-io-quant
    决定输入或输出是否是量化类型, 否则就是默认F32类型
-chip-tpu-optimize
+processor-tpu-optimize
    与处理器相关的tpu层算子优化
 weight-reorder
    根据硬件特征对个别op的权重进行重新排列, 比如卷积的filter和bias

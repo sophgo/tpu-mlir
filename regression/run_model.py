@@ -224,16 +224,16 @@ class MODEL_RUN(object):
                 self.ini_content["use_quantize_table"]):
             qtable=self.cali_table.replace("_cali_table","_qtable")
             cmd = [
-                "tpuc-opt", f"{self.model_name}.mlir", "--chip-assign=\"chip=bm1688\"",
-                "--chip-top-optimize",
+                "tpuc-opt", f"{self.model_name}.mlir", "--processor-assign=\"chip=bm1688\"",
+                "--processor-top-optimize",
                 f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
                 f"--convert-top-to-tpu=\"mode=INT4 qtable={qtable} asymmetric=false\"", "--canonicalize",
                 f"-o {tpu_mlir}"
             ]
         else:
             cmd = [
-                "tpuc-opt", f"{self.model_name}.mlir", "--chip-assign=\"chip=bm1688\"",
-                "--chip-top-optimize",
+                "tpuc-opt", f"{self.model_name}.mlir", "--processor-assign=\"chip=bm1688\"",
+                "--processor-top-optimize",
                 f"--import-calibration-table=\"file={self.cali_table} asymmetric=false\"",
                 "--convert-top-to-tpu=\"mode=INT4 asymmetric=false\"", "--canonicalize",
                 f"-o {tpu_mlir}"

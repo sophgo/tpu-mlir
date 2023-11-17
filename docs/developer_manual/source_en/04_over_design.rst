@@ -34,11 +34,11 @@ canonicalize
    Graph optimization related to specific OP, such as merging relu into conv, shape merge, etc.
 extra-optimize
    Do extra patterns, such as get FLOPs, remove unuse output, etc.
-chip-assign
+processor-assign
    Assign processor, such as bm1684x, cv183x, etc; and adjust top mlir by processor, for example, make all cv18xx input types as F32.
 import-calibration-table
    Import calibration table, assign min and max for all ops, for quantization later.
-chip-top-optimize
+processor-top-optimize
    Do top ops optimization by processor.
 convert-top-to-tpu
    Lower top ops to tpu ops; if for mode F32/F16/BF16, top op normally convert to tpu op directly; if INT8, quantization is needed.
@@ -52,7 +52,7 @@ canonicalize
    Graph optimization related to specific OP, such as merging of consecutive Requants, etc.
 strip-io-quant
    Input and output types will be quantized if true; or be F32
-chip-tpu-optimize
+processor-tpu-optimize
    Do tpu ops optimization by processor.
 weight-reorder
    Reorder the weights of individual OP based on processor characteristics, such as filter and bias for convolution.
