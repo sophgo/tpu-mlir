@@ -152,7 +152,7 @@ Convert the mlir file to the F16 bmodel by the following command:
 model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize F16 \
-  --chip bm1684x \
+  --processor bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --model yolov5s_1684x_f16.bmodel
@@ -164,7 +164,7 @@ The arguments of `model_deploy.py`:
 | ------------------- | :-: | ----------------------------- |
 | mlir                | Yes    | Mlir file                                             |
 | quantize            | Yes    | Quantization type (F32/F16/BF16/INT8)                     |
-| chip                | Yes    | The platform that the model will use. Currently only bm1684x is supported. More TPU platforms will be supported in the future     |
+| processor           | Yes    | The platform that the model will use. Currently only bm1684x is supported. More TPU platforms will be supported in the future     |
 | calibration_table   | No    | The quantization table path. Required when it is INT8 quantization                 |
 | tolerance           | No    | Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results |
 | correctnetss        | No    | Tolerance for the minimum similarity between simulator and MLIR quantized inference results. 0.99,0.90 by default |
@@ -197,7 +197,7 @@ model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize INT8 \
   --calibration_table yolov5s_cali_table \
-  --chip bm1684x \
+  --processor bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --tolerance 0.85,0.45 \

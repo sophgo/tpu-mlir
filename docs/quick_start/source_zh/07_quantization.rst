@@ -134,7 +134,7 @@ tpu_mlir
        --mlir yolov3_tiny.mlir \
        --quantize INT8 \
        --calibration_table yolov3_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --model yolov3_int8.bmodel
 
 第四步: 验证模型
@@ -195,7 +195,7 @@ tpu_mlir
    * - calibration_table
      - 是
      - 输入校准表
-   * - chip
+   * - processor
      - 是
      - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - fp_type
@@ -226,14 +226,14 @@ tpu_mlir
      - 否
      - 指定保存所有被量化成浮点类型的层的损失值的文件名，默认为full_loss_table.txt
 
-本例中采用默认10张图片校准, 执行命令如下（对于CV18xx系列的处理器，将chip设置为对应的名称即可）:
+本例中采用默认10张图片校准, 执行命令如下（对于CV18xx系列的处理器，将processor设置为对应的名称即可）:
 
 .. code-block:: shell
 
    $ run_qtable yolov3_tiny.mlir \
        --dataset ../COCO2017 \
        --calibration_table yolov3_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --min_layer_cos 0.999 \ #若这里使用默认的0.99时，程序会检测到原始int8模型已满足0.99的cos，从而直接不再搜索
        --expected_cos 0.9999 \
        -o yolov3_qtable
@@ -298,7 +298,7 @@ tpu_mlir
        --quantize INT8 \
        --quantize_table yolov3_qtable \
        --calibration_table yolov3_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --model yolov3_mix.bmodel
 
 第三步: 验证混精度模型
@@ -424,7 +424,7 @@ tpu_mlir
    $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize F32 \
-       --chip bm1684 \
+       --processor bm1684 \
        --model mobilenet_v2_bm1684_f32.bmodel
 
 第四步: 转对称量化模型
@@ -435,7 +435,7 @@ tpu_mlir
    $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
-       --chip bm1684 \
+       --processor bm1684 \
        --calibration_table mobilenet_v2_cali_table \
        --model mobilenet_v2_bm1684_int8_sym.bmodel
 
@@ -513,7 +513,7 @@ INT8对称量化模型：
    * - calibration_table
      - 是
      - 输入校准表
-   * - chip
+   * - processor
      - 是
      - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - fp_type
@@ -556,7 +556,7 @@ INT8对称量化模型：
      - 否
      - 指定混合精度的浮点类型
 
-本例中采用100张图片做量化, 30张图片做推理，执行命令如下（对于CV18xx系列的处理器，将chip设置为对应的名称即可）:
+本例中采用100张图片做量化, 30张图片做推理，执行命令如下（对于CV18xx系列的处理器，将processor设置为对应的名称即可）:
 
 .. code-block:: shell
 
@@ -565,7 +565,7 @@ INT8对称量化模型：
        --input_num 100 \
        --inference_num 30 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684 \
+       --processor bm1684 \
        --post_process post_process_func.py \
        -o mobilenet_v2_qtable
 
@@ -646,7 +646,7 @@ INT8对称量化模型：
    $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
-       --chip bm1684 \
+       --processor bm1684 \
        --calibration_table new_cali_table.txt \
        --quantize_table mobilenet_v2_qtable \
        --model mobilenet_v2_bm1684_mix.bmodel
@@ -692,9 +692,8 @@ INT8对称量化模型：
    $ fp_forward \
        yolov5s.mlir \
        --quantize INT8 \
-       --chip bm1684x \
+       --processor bm1684x \
        --fpfwd_outputs 474_Conv,326_Conv,622_Conv\
-       --chip bm1684x \
        -o yolov5s_qtable
 
 点开yolov5s_qtable可以看见相关层都被加入到qtable中。
@@ -708,7 +707,7 @@ INT8对称量化模型：
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
        --quantize_table yolov5s_qtable\
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -774,7 +773,7 @@ INT8模型mAP为： 34.70%
    * - fpfwd_blocks
      - 否
      - 指定起点和终点之间的层不执行量化，起点和终点之间用:间隔，多个block之间用空格间隔
-   * - chip
+   * - processor
      - 是
      - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - fp_type

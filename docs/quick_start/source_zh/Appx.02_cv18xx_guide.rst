@@ -101,7 +101,7 @@ MLIR转BF16模型
    $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize BF16 \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_cv183x_bf16.cvimodel
@@ -132,7 +132,7 @@ MLIR转INT8模型
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -237,7 +237,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --mlir yolov5s_bs1.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -271,7 +271,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --mlir yolov5s_bs2.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \

@@ -105,7 +105,7 @@ mobilenet_v2
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input mobilenet_v2_in_f32.npz \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.95,0.69 \

@@ -92,7 +92,7 @@ Convert the mlir file to the bmodel of f32, the operation method is as follows:
    $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize F32 \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input mobilenet_v2_in_f32.npz \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.99,0.99 \
@@ -136,7 +136,7 @@ Execute the following command to convert to the INT8 symmetric quantized model:
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input mobilenet_v2_in_f32.npz \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \

@@ -178,7 +178,7 @@ To convert the mlir file to the f16 bmodel, we need to run:
    $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.99,0.99 \
@@ -202,7 +202,7 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
    * - quantize
      - Y
      - Quantization type (F32/F16/BF16/INT8)
-   * - chip
+   * - processor
      - Y
      - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
@@ -275,7 +275,7 @@ Execute the following command to convert to the INT8 symmetric quantized model:
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
