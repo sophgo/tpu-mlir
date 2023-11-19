@@ -124,7 +124,7 @@ def mlir_to_model(tpu_mlir: str,
         quant_input, quant_output, quant_input_list, quant_output_list)
     lg_param = ''
     if not disable_layer_group:
-        lg_param = '--layer-group="opt={}"'.format(opt)
+        lg_param = '--layer-group="opt={} num_core={}"'.format(opt, num_core)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     address_assign_param = '--address-assign'
     #address_assign_param = '--address-assign="reuse_addr=false"'

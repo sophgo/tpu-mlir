@@ -90,6 +90,31 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
                       .csecs = max_csecs};
 }
 
+static void update_multi_core_secs(const shape_secs_t max_shape_secs, shape_secs_t &shape_secs) {
+  auto core_num = module::getCoreNum();
+  int64_t secs = shape_secs.nsecs * shape_secs.csecs *
+                 shape_secs.hsecs;
+  int64_t max_secs = max_shape_secs.nsecs * max_shape_secs.csecs *
+                     max_shape_secs.hsecs;
+  if (max_secs < core_num || secs >= core_num)
+    return;
+
+  shape_secs.nsecs = max_shape_secs.nsecs;
+  secs = core_num / shape_secs.nsecs;
+  if (shape_secs.csecs < secs && max_shape_secs.csecs >= secs) {
+    shape_secs.csecs = secs;
+  } else if (shape_secs.csecs < secs && max_shape_secs.csecs >= secs/2) {
+      shape_secs.csecs = secs/2;
+  }
+
+  secs /= shape_secs.csecs;
+  if (shape_secs.hsecs < secs && max_shape_secs.hsecs >= secs) {
+    shape_secs.hsecs = secs;
+  } else if (shape_secs.hsecs < secs && max_shape_secs.hsecs >= secs/2) {
+    shape_secs.hsecs = secs/2;
+  }
+}
+
 bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs) {
   shape_secs = {1, 1, 1, 1, 1};
   if (lg_info.group_ops.size() == 1) {
@@ -370,6 +395,10 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
       status = true;
       break;
     }
+  }
+
+  if (status) {
+    update_multi_core_secs(max_shape_secs, shape_secs);
   }
 
   update_tensor_infos(lg_info, tensor_infos);

@@ -20,6 +20,7 @@ class LayerGroupPass : public LayerGroupBase<LayerGroupPass> {
 public:
   LayerGroupPass() {}
   void runOnOperation() override {
+    module::setCoreNum(num_core);
     auto modules = module::getAllModules();
     for (auto s : *modules) {
       for (auto f : s.getOps<FuncOp>()) {
