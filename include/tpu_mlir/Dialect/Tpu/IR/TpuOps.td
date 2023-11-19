@@ -898,6 +898,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
+    OptionalAttr<F64ArrayAttr>:$out_f8_scales,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
