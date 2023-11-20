@@ -227,7 +227,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
                 model.graph.output.append(intermediate_layer_value_info)
                 output_keys.append(intermediate_layer_value_info.name + '_' + x.op_type)
         dump_all_tensors_onnx = onnx_file.replace('.onnx', '_all.onnx', 1)
-        onnx.save(model, dump_all_tensors_onnx)
+        onnx.save(model, dump_all_tensors_onnx, save_as_external_data=True)
         return output_keys, dump_all_tensors_onnx
 
     output_keys = []

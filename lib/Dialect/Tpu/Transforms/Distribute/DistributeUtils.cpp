@@ -215,10 +215,6 @@ static bool isAttentionInput(Operation *op,
   }
 
   if (!isa<tpu::LayerNormOp, tpu::RMSNormOp>(top_op)) {
-    if (isa<tpu::CastOp>(top_op)) {
-      top_op = top_op->getOperand(0).getDefiningOp();
-    }
-  } else {
     LLVM_DEBUG(llvm::dbgs() << "The top_op is not NormOp: " << *top_op << "\n");
     return false;
   }

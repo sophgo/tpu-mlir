@@ -156,6 +156,7 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
                                    residual->user_end());
   auto ffn_ln = use_ops[1];
   auto attn_ln = use_ops[2];
+  bool decode_phase = (users.size() > 5);
 
   std::vector<Value> end_operands;
   std::vector<Value> operands;
@@ -193,38 +194,37 @@ void sliceMerge3Split(PatternRewriter &rewriter, tpu::DistributionBeginOp op,
     // clone attn_mask input branch
     next_op = users[3];
     cur_out = next_op->getOperand(0);
-    next_op = cloneCommonOp(rewriter, next_op, cur_out, suffix);
-    auto new_op = rewriter.clone(*next_op);
-    module::setLocSuffix(new_op, suffix);
-    new_op->setOperand(0, cur_out);
-    auto attn_mask_out = new_op->getResult(0);
+    // (Cast) -> Reshape
+    while (isa<tpu::CastOp, tpu::ReshapeOp>(next_op)) {
+      next_op = cloneCommonOp(rewriter, next_op, cur_out, -1, num_devices,
+                              cur_device)[0];
+    }
+    auto attn_mask_out = cur_out;
 
     Value past_k_out, past_v_out;
-    if (users.size() > 5) {
-      // clone past_k
-      next_op = users[4];
-      cur_out = next_op->getOperand(0);
-      next_op =
-          createSliceOp(rewriter, next_op, cur_out, 2, num_devices, cur_device);
-      if (isa<tpu::CastOp>(next_op)) {
-        next_op = cloneCommonOp(rewriter, next_op, cur_out, suffix);
+    if (decode_phase) {
+      // clone past_k, past_v
+      for (int j = users.size() - 2; j < users.size(); j++) {
+        next_op = users[j];
+        cur_out = next_op->getOperand(0);
+        next_op = createSliceOp(rewriter, next_op, cur_out, 2, num_devices,
+                                cur_device);
+        if (isa<tpu::CastOp>(next_op)) {
+          next_op = cloneCommonOp(rewriter, next_op, cur_out, 2, num_devices,
+                                  cur_device)[0];
+        }
+        if (j == users.size() - 2) {
+          past_k_out = cur_out;
+        } else {
+          past_v_out = cur_out;
+        }
       }
-      past_k_out = cur_out;
-      // clone past_v
-      next_op = users[5];
-      cur_out = next_op->getOperand(0);
-      next_op =
-          createSliceOp(rewriter, next_op, cur_out, 2, num_devices, cur_device);
-      if (isa<tpu::CastOp>(next_op)) {
-        next_op = cloneCommonOp(rewriter, next_op, cur_out, suffix);
-      }
-      past_v_out = cur_out;
     }
 
     // FFN
     next_op = ffn_ln;
     cur_out = ln_input;
-    next_op = cloneCommonOp(rewriter, next_op, cur_out, suffix);
+    next_op = cloneOpWithWeight(rewriter, next_op, cur_out, suffix)[0];
     next_op = cloneColParallelMatMul(rewriter, next_op, cur_out, num_devices,
                                      cur_device);
     next_op = cloneCommonOp(rewriter, next_op, cur_out, suffix);

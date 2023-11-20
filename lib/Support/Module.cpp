@@ -247,7 +247,12 @@ static void updateModuleTypes(ModuleOp s) {
   for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
     returns.push_back(returnOp->getOperand(i).getType());
   }
-  auto fnType = builder.getFunctionType(mainFunc.getArgumentTypes(),
+  std::vector<Type> inputs;
+  auto args = mainFunc.getArguments();
+  for (auto arg : args) {
+    inputs.push_back(arg.getType());
+  }
+  auto fnType = builder.getFunctionType(llvm::ArrayRef<Type>{inputs},
                                         llvm::ArrayRef<Type>{returns});
   mainFunc.setType(fnType);
 }

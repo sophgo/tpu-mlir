@@ -294,7 +294,7 @@ public:
     } else {
       op.setLeftReuse(1);
     }
-    return success();
+    return failure();
   }
 };
 
@@ -1216,6 +1216,72 @@ struct PermuteReshapeFuse : public OpRewritePattern<tpu::PermuteOp> {
 };
 } // namespace bm1684x
 
+/**
+ * A ---------------------------------\
+ *                                     => MatMulHidmBatch => ...
+ * B -- Reshape2 -- Tile -- Reshape1  /
+ *
+ * NOTE: This is typical for Group-Query-Attention(GQA) and B is Key or Value
+ *
+ */
+class TileMatMulHdimBatchPattern : public OpRewritePattern<tpu::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto left = op.getInput();
+    auto right = op.getRight();
+
+    auto stype = module::getStorageType(left);
+    if (stype.isF32() || stype.isInteger(8)) {
+      return failure();
+    }
+    auto l_is_weight = module::isWeight(left);
+    auto r_is_weight = module::isWeight(right);
+    if (l_is_weight && r_is_weight) {
+      return failure();
+    }
+
+    if (!l_is_weight && !r_is_weight) {
+      auto r_reshape1_op = dyn_cast<tpu::ReshapeOp>(right.getDefiningOp());
+      if (!(r_reshape1_op && r_reshape1_op->hasOneUse())) {
+        return failure();
+      }
+      auto r_reshape1_input = r_reshape1_op.getInput();
+
+      auto tile_op = dyn_cast<tpu::TileOp>(r_reshape1_input.getDefiningOp());
+      if (!(tile_op && tile_op->hasOneUse())) {
+        return failure();
+      }
+      auto tile_input = tile_op.getInput();
+
+      auto r_reshape2_op = dyn_cast<tpu::ReshapeOp>(tile_input.getDefiningOp());
+      if (!(r_reshape2_op && r_reshape2_op->hasOneUse())) {
+        return failure();
+      }
+      auto r_reshape2_input = r_reshape2_op.getInput();
+      auto shape = module::getShape(r_reshape2_input);
+      // num_head of Key/Value must be 1 to do broadcast
+      if (shape[2] != 1) {
+        return failure();
+      }
+      auto hdim_is_batch = op.getHdimIsBatch();
+      if (hdim_is_batch == false) {
+        return failure();
+      }
+
+      r_reshape1_op.replaceAllUsesWith(r_reshape1_input);
+      tile_op.replaceAllUsesWith(tile_input);
+      r_reshape2_op.replaceAllUsesWith(r_reshape2_input);
+
+      // op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
+      return success();
+    }
+    return failure();
+  }
+};
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
@@ -1228,6 +1294,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             MaskedFillPermuteMove, PermuteFuse, PermuteFuseAddSoftmax,
             patterns::FuseRepeatPattern<tpu::ReshapeOp>, GatherElementsPattern,
             ScatterElementsPattern, PermuteReshapeFuse>(ctx, 8);
+  patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
 }
 } // namespace tpu
 

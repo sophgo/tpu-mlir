@@ -102,11 +102,11 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
       if (op_.getAxis() != shape.size() - 1) {
         return false;
       }
-    } else if (isa<AddOp, MulOp>(op)) {
-      auto shapeB = module::getShape(op->getOperand(1));
-      if (shape != shapeB) {
-        return false;
-      }
+//    } else if (isa<AddOp, MulOp>(op)) {
+//      auto shapeB = module::getShape(op->getOperand(1));
+//      if (shape != shapeB) {
+//        return false;
+//      }
     } else if (auto op_ = dyn_cast<ReshapeOp>(op)) {
       auto ishape = module::getShape(op_.getInput());
       auto oshape = module::getShape(op_.getOutput());
