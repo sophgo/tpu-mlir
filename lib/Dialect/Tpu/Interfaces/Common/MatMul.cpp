@@ -425,6 +425,11 @@ ArrayAttr tpu::MatMulOp::getIndexingMaps() {
   int rightParalleDims =
       std::min(std::max((int)rightShape.size() - 2, 0), maxParallelDims);
 
+  // batch broadcast case: (B, M, K) x (1, K, N), 1 can not be sliced
+  if (rightParalleDims == 1 && rightShape[0] == 1) {
+    rightParalleDims =0;
+  }
+
   AffineMap inputMap =
       AffineMap::get(maxParallelDims, 0,
                      outMap.getResults().slice(0, inputParalleDims), context);
