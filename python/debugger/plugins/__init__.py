@@ -10,4 +10,4 @@
 from .breakpoints import BreakpointStop, Breakpoints
 
 # import for initialize register
-from . import common, data_checker, function
+from . import common, data_checker, function, edit

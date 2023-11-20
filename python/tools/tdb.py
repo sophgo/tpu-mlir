@@ -225,6 +225,11 @@ def parse_args(args=None):
         help="The extra plugins to be added.",
     )
     parser.add_argument(
+        "--edit",
+        action="store_true",
+        help="to keep all intermediate files for debug",
+    )
+    parser.add_argument(
         "--ddr_size",
         type=int,
         nargs="?",
@@ -267,6 +272,9 @@ def get_tdb(args=None):
 
     if args.verbose:
         extra_plugins.append("progress")
+
+    if args.edit:
+        extra_plugins.append("edit-bmodel")
 
     tdb = TdbInterface(
         bmodel_file=bmodel_file,

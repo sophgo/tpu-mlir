@@ -170,7 +170,8 @@ class Value:
 
 
 class CMD:
-    def __init__(self, dic) -> None:
+    def __init__(self, dic: dict, index: int) -> None:
+        self.loc_index = index
         self.file_line: int = dic["file-line"]
         self.subnet_id: int = dic["subnet_id"]
         self.opcode: str = dic["opcode"]
@@ -216,7 +217,9 @@ class CMD:
 class TensorLoc:
     def __init__(self, tensor_loc_file) -> None:
         with open(tensor_loc_file) as r:
-            self.tensor_loc: List[CMD] = [CMD(i) for i in json.load(r)]
+            self.tensor_loc: List[CMD] = [
+                CMD(dic, index) for index, dic in enumerate(json.load(r))
+            ]
 
         print("load loc len", len(self.tensor_loc))
 

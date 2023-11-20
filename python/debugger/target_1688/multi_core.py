@@ -33,6 +33,11 @@ and the process of message synchronization is completed so far
 """
 from enum import Enum
 from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys
+from .opdef import BaseTpuOp, TiuCmdOp
+from typing import List
+import warnings
+
+MAX_HIT_COUNT = 128
 
 
 class SYS_TYPE(Enum):
@@ -50,7 +55,7 @@ class Status(Enum):
 
 
 class CmdStateMachine:
-    def __init__(self, cmds, msg_queue):
+    def __init__(self, cmds: List[BaseTpuOp], msg_queue):
         self.cmds = cmds
         self.idx = 0
         self.msg_queue = msg_queue
@@ -60,7 +65,7 @@ class CmdStateMachine:
             return None, Status.MACHINE_DONE
         cmd = self.cmds[self.idx]
         sys = (tiu_sys, dma_sys)
-        if isinstance(cmd, sys):
+        if isinstance(cmd.cmd, sys):
             return self.consume_sys(cmd)
         else:
             self.idx += 1
@@ -114,10 +119,10 @@ class MsgQueue:
 
     def consume_sys(self, cmd):
         sys = (tiu_sys, dma_sys)
-        assert isinstance(cmd, sys)
-        if self.get_cmd_type(cmd) == SYS_TYPE.SEND:
+        assert isinstance(cmd.cmd, sys)
+        if self.get_cmd_type(cmd.cmd) == SYS_TYPE.SEND:
             return self.consume_send(cmd)
-        elif self.get_cmd_type(cmd) == SYS_TYPE.WAIT:
+        elif self.get_cmd_type(cmd.cmd) == SYS_TYPE.WAIT:
             return self.consume_wait(cmd)
 
     def consume_send(self, cmd):
@@ -138,7 +143,7 @@ class MsgQueue:
 
 
 class MultiCoreCmd:
-    def __init__(self, core_cmds):
+    def __init__(self, core_cmds: List[List[BaseTpuOp]]):
         self.core_cmds = core_cmds
         self.core_num = len(core_cmds)
         self.cur_core_id = 0
@@ -148,6 +153,8 @@ class MultiCoreCmd:
         ]
         self.current_machine = self.cmd_state_machines[self.cur_core_id]
         self.cmds = []
+
+        self.retry = MAX_HIT_COUNT
 
     def switch_machine(self):
         self.cur_core_id = (self.cur_core_id + 1) % self.core_num
@@ -162,6 +169,33 @@ class MultiCoreCmd:
     def consume_cmd(self):
         while not self.all_consume_done():
             cmd, ret = self.current_machine.consume_cmd()
+
+            if cmd is None:
+                self.retry -= 1
+            else:
+                self.retry = MAX_HIT_COUNT
+
+            if self.retry <= 0:
+                warnings.warn(
+                    """cmd_group is broken, three `nop` cmds are inserted after the break position. like:
+    %B0C10 = "system.nop"(%D0C10) {}
+    %B0C10 = "system.nop"(%D0C10) {}
+    %B0C10 = "system.nop"(%D0C10) {}
+
+Remain commands will be added without sync, you can report this bug later.
+"""
+                )
+                hint_cmd = tiu_sys()
+                hint_cmd.tsk_eu_typ = 30
+                hint_cmd.cmd_id = 0
+                hint_cmd.core_id = 10
+                self.cmds.append(TiuCmdOp(hint_cmd))
+                self.cmds.append(TiuCmdOp(hint_cmd))
+                self.cmds.append(TiuCmdOp(hint_cmd))
+                for machine in self.cmd_state_machines:
+                    self.cmds.extend(machine.cmds[machine.idx :])
+                return self.cmds
+
             self.switch_machine()
             if ret not in (Status.MACHINE_DONE, Status.WAITING):
                 self.cmds.append(cmd)

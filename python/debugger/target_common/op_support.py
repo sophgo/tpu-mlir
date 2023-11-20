@@ -471,11 +471,14 @@ class BaseCmdOp:
 class BaseTpuOp(BaseCmdOp):
     cmd: cmd_base_reg
     opparam_converter: Dict[str, ParamConvertFnType] = {}
+    core_id = 0
 
-    def __init__(self, cmd: cmd_base_reg) -> None:
+    def __init__(self, cmd: cmd_base_reg, param_fn=None) -> None:
         self.cmd = cmd
 
-        param_fn = self.opparam_converter.get(cmd.OP_NAME, None)
+        if param_fn is None and self.opparam_converter is not None:
+            param_fn = self.opparam_converter.get(cmd.OP_NAME, None)
+
         if param_fn is None:
             self.results, self.attribute, self.operands = [], [], []
         else:
@@ -483,6 +486,9 @@ class BaseTpuOp(BaseCmdOp):
 
     def __repr__(self) -> str:
         return "abc.none"
+
+    def __getitem__(self, k):
+        return self.attribute[k]
 
     @property
     def buf(self):
@@ -518,6 +524,7 @@ class CpuOp(BaseCmdOp):
     output_memref: List[MemRefBase]
     cmd_id: int = 0  # assigned in python interface
     subnet_id: int = 0
+    core_id = 0
 
     @property
     def buf(self):
@@ -564,6 +571,7 @@ class DynIrOp(BaseCmdOp):
 
     ctx_addr: int = 0
     ctx_size: int = 0
+    core_id = 0
 
     @property
     def cmd(self):

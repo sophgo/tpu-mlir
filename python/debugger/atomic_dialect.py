@@ -55,8 +55,8 @@ def decode_cmdgroup(
     context = context
     decoder = context.decoder
 
-    tiu = decoder.decode_tiu_cmds(cmd_group.tiu_cmd, core_id=core_id)
-    dma = decoder.decode_dma_cmds(cmd_group.dma_cmd, core_id=core_id)
+    tiu = decoder.decode_tiu_cmds(cmd_group.tiu_cmd.bytes, core_id=core_id)
+    dma = decoder.decode_dma_cmds(cmd_group.dma_cmd.bytes, core_id=core_id)
     if isinstance(context, SG2260Context):
         cmdgroup = StaticCmdGroup(
             tiu, dma, context.merge_instruction(tiu, dma, transfer_dep_id)
@@ -71,9 +71,9 @@ def decode_cmdgroup(
 
 
 class _AtomicContext:
-    def __call__(self, bmodel_net: BModel, cmodel_context: BModelContext) -> Any:
+    def __call__(self, bmodel_net: BModel, bmodel_context: BModelContext) -> Any:
         self.bmodel_net = bmodel_net
-        self.cmodel_context = cmodel_context
+        self.bmodel_context = bmodel_context
         return self
 
     def __enter__(self):
@@ -81,7 +81,7 @@ class _AtomicContext:
 
     def __exit__(self, *exc_info):
         self.bmodel_net = None
-        self.cmodel_context = None
+        self.bmodel_context = None
 
 
 atomic_context = _AtomicContext()
@@ -126,7 +126,7 @@ class Block(Node):
         self.operations: List[BaseTpuOp] = []
 
         bmodel_net = atomic_context.bmodel_net
-        context = bmodel_net.context
+        context = atomic_context.bmodel_context
 
         decoder = context.decoder
         decode_cmd_params = decoder.decode_cmd_params
@@ -327,6 +327,15 @@ class Function(Node):
 
 
 class MlirModule(Node):
+    """
+    with atomic_context(bmodel_net, context):
+        atomic_mlir = MlirModule(bmodel_net)
+
+    or
+
+    atomic_mlir = MlirModule.from_context(bmodel_net, context)
+    """
+
     def __init__(self, bmodel: BModel):
         super().__init__()
         self.bmodel = bmodel
@@ -357,3 +366,8 @@ class MlirModule(Node):
         func_str = "\n".join((f"{x}" for x in self.functions))
         func_str = textwrap.indent(func_str, INDENT_SPACE)
         return f"{head}\n{func_str}\n{tail}"
+
+    @staticmethod
+    def from_context(bmodel_net: BModel, context):
+        with atomic_context(bmodel_net, context):
+            return MlirModule(bmodel_net)

@@ -165,8 +165,10 @@ class Decoder(DecoderBase):
             op_clazz, cmd_buf, offset=offset, core_id=core_id, cmd_id=cmd_id
         )
 
-    def decode_dma_cmds(self, cmd_buf: bytes, core_id=0) -> List[cmd_base_reg]:
-        cmd_buf = memoryview(bytearray(cmd_buf))
+    def decode_dma_cmds(self, cmd_buf: memoryview, core_id=0) -> List[cmd_base_reg]:
+        """
+        cmd_buf: editable memoryview directly passed from bmodel binary buffer
+        """
         offset = 0
         res = []
         cmd_id = 1
@@ -180,12 +182,22 @@ class Decoder(DecoderBase):
             cmd_id += 1
             offset += cmd.length // 8
             res.append(cmd)
+            if (
+                isinstance(cmd, dma_sys)
+                and cmd.cmd_special_function == 0
+                and cmd.reserved0 == 1
+            ):
+                # reserved0 = 1 to label manully modified cmd
+                break
+
             if self.buf_is_end(cmd_buf[offset:], cmd, dma_sys):
                 break
         return res
 
-    def decode_tiu_cmds(self, cmd_buf: bytes, core_id=0) -> List[cmd_base_reg]:
-        cmd_buf = memoryview(bytearray(cmd_buf))
+    def decode_tiu_cmds(self, cmd_buf: memoryview, core_id=0) -> List[cmd_base_reg]:
+        """
+        cmd_buf: editable memoryview directly passed from bmodel binary buffer
+        """
         offset = 0
         res = []
         cmd_id = 1
@@ -199,6 +211,10 @@ class Decoder(DecoderBase):
             cmd_id += 1
             offset += cmd.length // 8
             res.append(cmd)
+            if isinstance(cmd, tiu_sys) and cmd.tsk_eu_typ == 31 and cmd.rsvd1 == 1:
+                # rsvd0 = 1 to label manully modified cmd
+                break
+
             if self.buf_is_end(cmd_buf[offset:], cmd, tiu_sys):
                 break
 

@@ -6,7 +6,7 @@
 # third-party components.
 #
 # ==============================================================================
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
 from typing import List, Dict
 
@@ -143,11 +143,12 @@ class FinalMlirIndexPlugin(TdbPlugin):
             )
             tiu_offset = min(tiu_offset, tiu)
             dma_offset = min(dma_offset, dma)
-            subnet_offsets[subnet_id] = (tiu_offset, dma_offset)
+            subnet_offsets[(subnet_id)] = (tiu_offset, dma_offset)
 
         self.index2loc_range: Dict[int, int] = {}
+        self.loc2indexs: Dict[int, list] = {}
 
-        last_af_index = -1
+        last_af_index = defaultdict(lambda: -1)
 
         self.cmdkey2loc: Dict[int, List[ValueView]] = OrderedDict()
 
@@ -171,7 +172,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
             if dma - dma_offset > 0:
                 y_index = tdb.cmd2index[(subnet_id, None, dma - dma_offset, core_id)]
 
-            bf_index = max_with_none(x_index, y_index, last_af_index + 1)
+            bf_index = max_with_none(x_index, y_index, last_af_index[core_id] + 1)
 
             self.cmdkey2loc.setdefault(bf_index, []).extend(
                 Operand(opd, opd_index, loc_index, loc.loc_name, bf_index)
@@ -192,39 +193,55 @@ class FinalMlirIndexPlugin(TdbPlugin):
             if dma - dma_offset > 0:
                 y_index = tdb.cmd2index[(subnet_id, None, dma - dma_offset, core_id)]
 
-            last_af_index = af_index = max_with_none(x_index, y_index)
+            last_af_index[core_id] = af_index = max_with_none(x_index, y_index)
 
             self.cmdkey2loc.setdefault(af_index, []).extend(
                 Result(opd, opd_index, loc_index, loc.loc_name, af_index)
                 for opd_index, opd in enumerate(loc.results)
             )
-
             for index in range(bf_index, af_index + 1):
-                assert index not in self.index2loc_range, index
-
+                if (
+                    index < len(tdb.cmditer)
+                    and tdb.cmditer[index].cmd.core_id != core_id
+                ):
+                    continue
                 self.index2loc_range[index] = loc_index
+                self.loc2indexs.setdefault(loc_index, list()).append(index)
 
-    def get_mlir_by_atomic(self, op: BaseTpuOp):
-        loc = self.get_loc_by_atomic(op)
+        # make sure all cmd except sync have built mlir index
+        for i in range(index):
+            if i not in self.index2loc_range:
+                assert isinstance(
+                    tdb.cmditer[i].cmd, (tdb.context.tiu_sys, tdb.context.dma_sys)
+                )
+
+    def get_mlir_by_point(self, point=None):
+        """NOTE: file-line in tensor_location.json starts from 1"""
+        loc = self.get_loc_by_point(point)
         file_line = self.final_mlir.get_fileline_by_locname(loc.loc_name)
-        return self.final_mlir.lines[file_line]
+        return self.final_mlir.lines[file_line - 1]
 
-    def get_mlir_context_by_atomic(self, op: BaseTpuOp, pre=2, next=2) -> List[str]:
-        loc = self.get_loc_by_atomic(op)
+    def get_mlir_context_by_point(self, point=None, pre=2, next=2) -> List[str]:
+        loc = self.get_loc_by_point(point)
         file_line = self.final_mlir.get_fileline_by_locname(loc.loc_name)
         return self.final_mlir.lines[max(0, file_line - 1 - pre) : file_line - 1 + next]
 
-    def get_locindex_by_atomic(self, op: BaseTpuOp) -> int:
-        index = self.cmd2index[op.tuple_key]
-        loc_index = self.index2loc_range[index]
+    def get_locindex_by_atomic(self, point=None) -> int:
+        """
+        N cmds have N+1 positions,
+        use tdb.cmd_point other than cmd2index to get current point
+        """
+        if point is None:
+            point = self.tdb.cmd_point
+        loc_index = self.index2loc_range[point]
         return loc_index
 
-    def get_loc_by_atomic(self, op: BaseTpuOp) -> CMD:
-        loc_index = self.get_locindex_by_atomic(op)
+    def get_loc_by_point(self, point=None) -> CMD:
+        loc_index = self.get_locindex_by_atomic(point)
         return self.final_mlir.loc[loc_index]
 
-    def get_loc_context_by_atomic(self, op: BaseTpuOp, pre=2, next=2) -> List[CMD]:
-        loc_index = self.get_locindex_by_atomic(op)
+    def get_loc_context_by_point(self, point=None, pre=2, next=2) -> List[CMD]:
+        loc_index = self.get_locindex_by_atomic(point)
         return self.final_mlir.loc[max(0, loc_index - pre) : loc_index + next]
 
 
@@ -249,8 +266,8 @@ class DisplayPlugin(TdbPlugin, TdbPluginCmd):
         try:
             eval(arg)
         except Exception as e:
-            self.error(f"Can not add display {arg}")
-            self.error(e)
+            self.tdb.error(f"Can not add display {arg}")
+            self.tdb.error(e)
             return
         item_id = self.displays.add_display(arg)
         self.message(f"{item_id} {eval(arg)}")

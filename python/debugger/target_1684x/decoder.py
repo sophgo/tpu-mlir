@@ -94,8 +94,10 @@ class Decoder(DecoderBase):
         op_clazz = op_class_dic[op_info.op_name]
         return self.decode_cmd(op_clazz, cmd_buf, offset=offset, core_id=core_id)
 
-    def decode_dma_cmds(self, cmd_buf: bytes, core_id=0) -> List[cmd_base_reg]:
-        cmd_buf = memoryview(bytearray(cmd_buf))
+    def decode_dma_cmds(self, cmd_buf: memoryview, core_id=0) -> List[cmd_base_reg]:
+        """
+        cmd_buf: editable memoryview directly passed from bmodel binary buffer
+        """
         offset = 0
         res = []
         while offset < len(cmd_buf):
@@ -106,8 +108,10 @@ class Decoder(DecoderBase):
                 break
         return res
 
-    def decode_tiu_cmds(self, cmd_buf: bytes, core_id=0) -> List[cmd_base_reg]:
-        cmd_buf = memoryview(bytearray(cmd_buf))
+    def decode_tiu_cmds(self, cmd_buf: memoryview, core_id=0) -> List[cmd_base_reg]:
+        """
+        cmd_buf: editable memoryview directly passed from bmodel binary buffer
+        """
         offset = 0
         res = []
         while offset < len(cmd_buf):

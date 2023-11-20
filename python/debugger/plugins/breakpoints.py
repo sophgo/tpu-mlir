@@ -106,13 +106,11 @@ class ValueIdBreakpoint(Breakpoint):
     pattern = re.compile("^%[0-9]+")
 
     def should_stop(self, tdb: TdbCmdBackend) -> bool:
-        op = tdb.get_op()
-
         index = tdb.get_plugin(FinalMlirIndexPlugin)  # type: FinalMlirIndexPlugin
         if not index.enabled:
             return False
 
-        mlir = index.get_mlir_by_atomic(op)
+        mlir = index.get_mlir_by_point(tdb.cmd_point)
         if mlir.find(self.text) >= 0:
             return True
         return False
@@ -123,12 +121,11 @@ class DialectOpBreakpoint(Breakpoint):
     pattern = re.compile(r"^(tpu|top)\.\w+")
 
     def should_stop(self, tdb: TdbCmdBackend) -> bool:
-        op = tdb.get_op()
         index = tdb.get_plugin(FinalMlirIndexPlugin)  # type: FinalMlirIndexPlugin
         if not index.enabled:
             return False
 
-        mlir = index.get_mlir_by_atomic(op)
+        mlir = index.get_mlir_by_point(tdb.cmd_point)
         if mlir.find(self.text) >= 0:
             return True
         return False
