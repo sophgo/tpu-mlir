@@ -270,7 +270,7 @@ LogicalResult tpu::MatMulOp::canonicalize(tpu::MatMulOp op,
   auto o_shape = module::getShape(out);
   auto a_shape = module::getShape(another);
   auto num_elem = module::getNumElements(another);
-  if (a_shape.back() != num_elem || o_shape.back() != num_elem) {
+  if (a_shape.back() != num_elem || o_shape.back() != num_elem || o_shape.size() == 1) {
     return failure();
   }
   op->setOperand(2, another);
