@@ -4050,7 +4050,7 @@ class sDMA_sys_reg(cmd_base_reg):
         ("stride_enable", ctypes.c_uint64, 1),
         ("nchw_copy", ctypes.c_uint64, 1),
         ("cmd_short", ctypes.c_uint64, 1),
-        ("reserved", ctypes.c_uint64, 1),
+        ("reserved0", ctypes.c_uint64, 1), # for special use
         ("reserved", ctypes.c_uint64, 4),
         ("reserved", ctypes.c_uint64, 20),
         ("Reserved", ctypes.c_uint64, 3),
@@ -4068,7 +4068,7 @@ class sDMA_sys_reg(cmd_base_reg):
     stride_enable: int
     nchw_copy: int
     cmd_short: int
-    reserved: int
+    reserved0: int
     reserved: int
     reserved: int
     Reserved: int

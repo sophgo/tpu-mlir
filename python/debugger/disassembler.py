@@ -113,7 +113,7 @@ class CpuConst(FBSOptional):
 
 
 class CpuParam(FBSOptional):
-    def init(self, fbs: bmodel_fbs.CpuParam, buffer: bytes):
+    def init(self, fbs: bmodel_fbs.CpuParam, buffer: memoryview):
         self.op_type = CpuLayerType(fbs.OpType())
         binary = fbs.BinaryParam()
         start, size = binary.Start(), binary.Size()
@@ -138,7 +138,7 @@ class CpuParam(FBSOptional):
 
 class StageIr(FBSOptional):
     def init(
-        self, fbs: bmodel_fbs.StageIR, binary_ir: bmodel_fbs.Binary, buffer: bytes
+        self, fbs: bmodel_fbs.StageIR, binary_ir: bmodel_fbs.Binary, buffer: memoryview
     ):
         self.ir_len = fbs.IrInfoLen()
         self.ir_bytelen = self.ir_len * 4  # sizeof(u32)
@@ -155,35 +155,35 @@ class StageIr(FBSOptional):
 
 
 class Binary(FBSOptional):
-    def init(self, fbs: bmodel_fbs.Binary, buffer: bytes):
+    def init(self, fbs: bmodel_fbs.Binary, buffer: memoryview):
         binary = (fbs.Start(), fbs.Size())
-        self.__data = buffer[binary[0] : sum(binary)]
+        self.bytes = buffer[binary[0] : sum(binary)]
 
     def __bytes__(self):
-        return bytes(self.__data)
+        return bytes(self.bytes)
 
     def __getitem__(self, key):
         if isinstance(key, slice):
-            return self.__data[key]
-        return self.__data[key]
+            return self.bytes[key]
+        return self.bytes[key]
 
     def __len__(self):
-        return len(self.__data)
+        return len(self.bytes)
 
     def _serialize(self, builder, save_binary_fun):
-        data_range = save_binary_fun(self.__data)
+        data_range = save_binary_fun(self.bytes)
         return bmodel_fbs.Binary.CreateBinary(builder, *data_range)
 
     def __array__(self, dtype=np.uint8):
         # Convert to numpy array
-        return np.frombuffer(self.__data, dtype=dtype)
+        return np.frombuffer(self.bytes, dtype=dtype)
 
     def __repr__(self):
-        return f"bin:{len(self.__data)}"
+        return f"bin:{len(self.bytes)}"
 
 
 class CmdGroup(FBSOptional):
-    def init(self, fbs: bmodel_fbs.CmdGroup, buffer: bytes):
+    def init(self, fbs: bmodel_fbs.CmdGroup, buffer: memoryview):
         self.tiu_num = fbs.BdcNum()
         self.dma_num = fbs.GdmaNum()
         self.tiu_cmd = Binary(fbs.BinaryBdc(), buffer)
@@ -198,6 +198,7 @@ class CmdGroup(FBSOptional):
         module.AddBinaryGdma(builder, self.dma_cmd.serialize(builder, save_binary_fun))
         module.AddBdcCmdByte(builder, len(self.tiu_cmd))  # 4
         module.AddGdmaCmdByte(builder, len(self.dma_cmd))  # 5
+
         return module.End(builder)
 
     def __repr__(self):
@@ -206,7 +207,7 @@ class CmdGroup(FBSOptional):
 
 
 class CoreCmdGroup(FBSOptional):
-    def init(self, fbs: bmodel_fbs.CoreCommands, buffer: bytes):
+    def init(self, fbs: bmodel_fbs.CoreCommands, buffer: memoryview):
         self.gdma_tiu_commands = FBSArray(fbs, ("GdmaTiuCommands", CmdGroup), buffer)
         self.sdma_commands = FBSArray(fbs, ("SdmaCommands", Binary), buffer)
         self.hau_commands = FBSArray(fbs, ("HauCommands", Binary), buffer)
@@ -405,7 +406,7 @@ class RunMode(Enum):
 
 
 class SubNet(FBSOptional):
-    def init(self, fbs: bmodel_fbs.SubNet, buffer, binary_ir: bytes):
+    def init(self, fbs: bmodel_fbs.SubNet, buffer, binary_ir: memoryview):
         # tpu-static, tpu-dynamic, cpu
         self.subnet_mode = fbs.SubnetMode()  # tpu:0 cpu:1
         self.is_dynamic = fbs.IsDynamic() == 1
@@ -495,7 +496,7 @@ class NetDynamic(FBSOptional):
 
 
 class Parameter(FBSOptional):
-    def init(self, fbs: bmodel_fbs.NetParameter, buffer):
+    def init(self, fbs: bmodel_fbs.NetParameter, buffer: memoryview):
         self.input_tensor: List[Tensor] = FBSArray(fbs, ("InputTensor", Tensor), buffer)
         self.output_tensor: List[Tensor] = FBSArray(
             fbs, ("OutputTensor", Tensor), buffer
@@ -561,7 +562,7 @@ class Parameter(FBSOptional):
 
 
 class Net:
-    def __init__(self, fbs: bmodel_fbs.Net, buffer: bytes):
+    def __init__(self, fbs: bmodel_fbs.Net, buffer: memoryview):
         self.name = fbs.Name().decode()
         self.parameter: List[Parameter] = FBSArray(
             fbs, ("Parameter", Parameter), buffer
@@ -583,8 +584,6 @@ class Net:
 
         module.Start(builder)
         module.AddName(builder, name)  # 0
-
-        # breakpoint()
         # if net_static:
         #     module.AddNetStatic(builder, net_static)  # 1
         # if net_dynamic:
@@ -624,7 +623,9 @@ class BModel:
                     file_obj.read(bmodel_header_type.itemsize), dtype=bmodel_header_type
                 )
                 binary_desc = file_obj.read(self.head["flatbuffers_size"][0])
-                binary = file_obj.read(self.head["binary_size"][0])
+                binary = memoryview(
+                    bytearray(file_obj.read(self.head["binary_size"][0]))
+                )
             bmodel: bmodel_fbs.Model = bmodel_fbs.Model.GetRootAsModel(binary_desc, 0)
 
             self.chip = bmodel.Chip().decode()

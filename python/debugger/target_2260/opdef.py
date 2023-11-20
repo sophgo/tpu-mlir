@@ -34,6 +34,7 @@ class TiuCmdOp(BaseTpuOp, Tiu):
     def __init__(self, cmd: cmd_base_reg) -> None:
         super().__init__(cmd)
         self.eu_name = tiu_cls[cmd.OP_NAME]["tsk_eu_typ"][cmd.tsk_eu_typ]
+        self.core_id = cmd.core_id
 
     def ops(self, *_):
         return 0
@@ -98,6 +99,10 @@ class DmaCmdOp(BaseTpuOp, Dma):
     fun_bits = (37, 40)
     sp_fun = ()
     short_cmd = False
+
+    def __init__(self, cmd: cmd_base_reg) -> None:
+        super().__init__(cmd)
+        self.core_id = cmd.core_id
 
     def __init_subclass__(cls) -> None:
         dma_cls[cls.name] = {

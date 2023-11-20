@@ -34,6 +34,7 @@ class TiuCmdOp(BaseTpuOp, Tiu):
     def __init__(self, cmd: cmd_base_reg) -> None:
         super().__init__(cmd)
         self.eu_name = tiu_cls[cmd.OP_NAME]["tsk_eu_typ"][cmd.tsk_eu_typ]
+        self.core_id = cmd.core_id
 
     def ops(self, *_):
         return 0
@@ -61,16 +62,16 @@ class TiuCmdOp(BaseTpuOp, Tiu):
     def __repr__(self) -> str:
         ci = self.cmd.core_id
         if self.operands == []:
-            if self.attribute:
-                attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
-                return (
-                    # f"core_id: {self.core_id} " +
-                    f'%B{self.cmd.cmd_id}C{ci} = "{self.name}"'
-                    + f"(%D{self.cmd.cmd_id_dep}C{ci})"
-                    + attribute
-                )
-            else:
-                return self.description
+            attr = self.attribute
+            if attr is None:
+                attr = {}
+            attr_str = f" {self.attribute}".replace(":", " =").replace("'", "")
+            return (
+                # f"core_id: {self.core_id} " +
+                f'%B{self.cmd.cmd_id}C{ci} = "{self.name}"'
+                + f"(%D{self.cmd.cmd_id_dep}C{ci})"
+                + attr_str
+            )
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
 
@@ -99,6 +100,10 @@ class DmaCmdOp(BaseTpuOp, Dma):
     sp_fun = ()
     short_cmd = False  # long_code by default
 
+    def __init__(self, cmd: cmd_base_reg) -> None:
+        super().__init__(cmd)
+        self.core_id = cmd.core_id
+
     def __init_subclass__(cls) -> None:
         dma_cls[cls.name] = {
             "description": cls.description,
@@ -111,15 +116,16 @@ class DmaCmdOp(BaseTpuOp, Dma):
     def __repr__(self):
         ci = self.cmd.core_id
         if self.operands == []:
-            if self.attribute:
-                attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
-                return (
-                    f'%D{self.cmd.cmd_id}C{ci} = "{self.name}"'
-                    + f"(%B{self.cmd.cmd_id_dep}C{ci})"
-                    + attribute
-                )
-            else:
-                return self.description
+            attr = self.attribute
+            if attr is None:
+                attr = {}
+            attr_str = f" {self.attribute}".replace(":", " =").replace("'", "")
+            return (
+                f'%D{self.cmd.cmd_id}C{ci} = "{self.name}"'
+                + f"(%B{self.cmd.cmd_id_dep}C{ci})"
+                + attr_str
+            )
+
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
 

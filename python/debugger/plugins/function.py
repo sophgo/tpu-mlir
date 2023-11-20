@@ -39,12 +39,20 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
             return "final.mlir is not assigned, use index <final.mlir> <tensor_location.json> to rebuild index"
 
         index, multi_context, pre, next = self.parse_comon(arg)
-        op = self.tdb.get_op()
-        res = (
-            index_plugin.get_loc_context_by_atomic(op, pre, next)
-            if multi_context
-            else [index_plugin.get_loc_by_atomic(op)]
-        )
+        point = self.tdb.cmd_point
+        try:
+            res = (
+                index_plugin.get_loc_context_by_point(point, pre, next)
+                if multi_context
+                else [index_plugin.get_loc_by_point(point)]
+            )
+        except (KeyError, IndexError) as e:
+            self.tdb.error(e)
+            self.tdb.error(
+                f"{type(self.tdb.get_op()).__name__} cmd has no mlir context."
+            )
+            return
+
         message = codelike_format(res, index)
         return message
 
@@ -60,12 +68,21 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
             return "final.mlir is not assigned, use index <final.mlir> <tensor_location.json> to rebuild index"
 
         index, multi_context, pre, next = self.parse_comon(arg)
-        op = self.tdb.get_op()
-        res = (
-            index_plugin.get_mlir_context_by_atomic(op, pre, next)
-            if multi_context
-            else [index_plugin.get_mlir_by_atomic(op)]
-        )
+        point = self.tdb.cmd_point
+
+        try:
+            res = (
+                index_plugin.get_mlir_context_by_point(point, pre, next)
+                if multi_context
+                else [index_plugin.get_mlir_by_point(point)]
+            )
+        except (KeyError, IndexError) as e:
+            self.tdb.error(e)
+            self.tdb.error(
+                f"{type(self.tdb.get_op()).__name__} cmd has no mlir context."
+            )
+            return
+
         message = codelike_format(res, index)
         return message
 
@@ -137,5 +154,11 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
             FinalMlirIndexPlugin
         )  # type: FinalMlirIndexPlugin
         if index_plugin:
-            index = index_plugin.get_locindex_by_atomic(self.tdb.get_op())
-            self.tdb.message(f"mlir: {index} / {len(index_plugin.final_mlir.loc)}")
+            try:
+                index = index_plugin.get_locindex_by_atomic()
+                self.tdb.message(f"mlir: {index} / {len(index_plugin.final_mlir.loc)}")
+            except (IndexError,KeyError) as e:
+                self.tdb.error(e)
+                self.tdb.error(
+                    f"{type(self.tdb.get_op()).__name__} cmd has no mlir context."
+                )

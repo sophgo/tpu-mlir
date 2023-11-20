@@ -271,8 +271,6 @@ class TdbCmdBackend(cmd.Cmd):
             inputs = np.load(file)
             self.set_inputs_dict(inputs)
 
-
-
     def _build_index(self):
         """ """
         self.cmd2index = {}

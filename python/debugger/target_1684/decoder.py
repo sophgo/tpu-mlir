@@ -86,10 +86,8 @@ class Decoder(DecoderBase):
         res.buf = cmd_buf[offset : offset + op_clazz.length // 8]
         return res
 
-    def decode_dma_cmds(self, cmd_buf: bytes, *, core_id=0) -> List[cmd_base_reg]:
+    def decode_dma_cmds(self, cmd_buf: memoryview, *, core_id=0) -> List[cmd_base_reg]:
         raw_size = len(cmd_buf)
-        cmd_buf = bytearray(cmd_buf)
-        cmd_buf = memoryview(cmd_buf)
         offset = 0
         res = []
         while len(cmd_buf) - offset > 0:
@@ -100,10 +98,8 @@ class Decoder(DecoderBase):
                 break
         return res
 
-    def decode_tiu_cmds(self, cmd_buf: bytes, core_id=0) -> List[cmd_base_reg]:
+    def decode_tiu_cmds(self, cmd_buf: memoryview, core_id=0) -> List[cmd_base_reg]:
         raw_size = len(cmd_buf)
-        cmd_buf = bytearray(cmd_buf)
-        cmd_buf = memoryview(cmd_buf)
         offset = 0
         res = []
         while offset < len(cmd_buf):

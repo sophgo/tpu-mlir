@@ -946,16 +946,31 @@ def SYS_TR_ACC_converter(context: "BM1688Context", reg):
 
 @opparam_converter_regitstry("SYS")
 def SYS_converter(context: "BM1688Context", reg):
+    """
+    0: intr barrier
+    1: spb -- software power boot
+    2: swr
+    3: swr_from_lmem
+    4: swr_collect_from_lmem
+    5: data barrier
+    8: send_msg +
+    9: wait_msg +
+    30: nop
+    31: end +
+    """
     des_imm = reg.imm
     msg_id = des_imm & 0x7F
     cnt = des_imm >> 16 & 0x7
+    attrs = {}
     if reg.tsk_eu_typ in (8, 9):
         attrs = dict(
             msg_id=msg_id,
             cnt=cnt,
         )
-    else:
-        raise KeyError("Should not be here.")
+    elif reg.tsk_eu_typ == 31:
+        attrs = dict()
+    elif reg.tsk_eu_typ not in {0, 1, 2, 3, 4, 5, 8, 9, 30, 31}:
+        raise KeyError(f"sys cmd with tsk_eu_typ {reg.tsk_eu_typ} Should not be here.")
     return ([], attrs, [])
 
 
@@ -1300,11 +1315,19 @@ def DMA_decompress_converter(context: "BM1688Context", reg: DMA_decompress__reg)
 
 @opparam_converter_regitstry("sDMA_sys")
 def sDMA_sys_converter(context: "BM1688Context", reg: sDMA_sys_reg):
+    """
+    000: chain end +
+    001: nop
+    010: sys_tr_wr
+    011: sys_send 3 +
+    100: sys_wait 4 +
+    """
     des_imm = reg.constant_value
     msg_id = des_imm & 0x7F
     cnt = (des_imm >> 8) & 0x7F
+    attr = {}
     if reg.cmd_special_function in (3, 4):
         attr = dict(msg_id=msg_id, cnt=cnt)
-    else:
+    elif reg.cmd_special_function > 4:
         raise KeyError(f"cmd_special_function {reg.cmd_special_function} not supported")
     return ([], attr, [])
