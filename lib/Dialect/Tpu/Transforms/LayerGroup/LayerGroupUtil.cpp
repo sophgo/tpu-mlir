@@ -654,7 +654,7 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
     for (int i = 0; i < out_si.h.size(); i++) {
       auto &s = out_si.h[i];
       auto ret = lg_op.BackwardH(idx, slice, s.first, s.second);
-      if (is_broadcast_tensor && h == 1) {
+      if ((is_right_matrix || is_broadcast_tensor) && h == 1) {
         idx = 0;
         slice = 1;
       } else {
