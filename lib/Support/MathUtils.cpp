@@ -533,6 +533,8 @@ int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
     }
     return MultiplyByQuantizedMultiplier((int32_t)v, (int32_t)multiplier,
                                          (int32_t)rshift, rmode);
+  case tpu::RequantMode::OnlyScale:
+    llvm_unreachable("FIXME: should use other implementation for this mode.");
   }
   llvm_unreachable("unsupport quant multiplier mode.");
   return 0;

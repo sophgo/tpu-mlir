@@ -87,8 +87,22 @@ static mlir::Type verifyCompatibleType(mlir::Value in, mlir::Type to,
     return to_stype;
   }
 
-  // case: other
-  mode = TypeCastMode::DO_CAST;
+  // case to f8
+  if (from_stype.isF32() || from_stype.isF16()) {
+    if (to_stype.isFloat8E4M3FN() || to_stype.isFloat8E5M2())
+      mode = TypeCastMode::DO_QUANTIZE;
+    else
+      mode = TypeCastMode::DO_CAST;
+  }
+  else if (from_stype.isFloat8E4M3FN() || from_stype.isFloat8E5M2()) {
+    if (to_stype.isF32() || to_stype.isF16())
+      mode = TypeCastMode::DO_DEQUANTIZE;
+    else
+      llvm_unreachable("unknown type");
+  } else {
+    // case: other
+    mode = TypeCastMode::DO_CAST;
+  }
   return to_stype;
 }
 

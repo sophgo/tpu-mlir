@@ -118,7 +118,8 @@ def Tpu_RequantMode: I32EnumAttr<"RequantMode",
       I32EnumAttrCase<"TFLite", 1>,  // * Multi >> 31 >> shift, == QDM
       I32EnumAttrCase<"MultiplierShift", 2>, // * Multi >> shift
       I32EnumAttrCase<"OnlyShift", 3>, // >> shift
-      I32EnumAttrCase<"QDM", 4>       // similar to TFLite
+      I32EnumAttrCase<"QDM", 4>,       // similar to TFLite
+      I32EnumAttrCase<"OnlyScale", 5>       // requant to fp8 by scale and dtype convert
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
@@ -384,7 +385,7 @@ def Tpu_Conv2DOp: Tpu_Op<"Conv2D", [SupportFuseRelu,
     OptionalAttr<SI32Attr>:$multiplier_neg,
     OptionalAttr<SI32Attr>:$rshift_pos,
     OptionalAttr<SI32Attr>:$rshift_neg,
-    OptionalAttr<F64ArrayAttr>:$out_f8_scale
+    OptionalAttr<F64ArrayAttr>:$out_f8_scales
   );
 
   let results = (outs AnyRankedTensor:$output);
@@ -1327,7 +1328,7 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "requant float operation";
   let description = [{
-    Requant 32/16/8 bit data to int8 or uint8 data, by float scale and float offset
+    Requant 32/16/8 bit data to int8 or uint8 or fp8 data, by float scale and float offset, when to fp8 data, offset is not used
   }];
   let arguments = (ins
     AnyRankedTensor:$input,

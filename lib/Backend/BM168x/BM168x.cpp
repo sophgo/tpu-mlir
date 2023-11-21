@@ -133,6 +133,8 @@ double BM168x::getFmtBytes(DATA_TYPE_T data_type) {
     break;
   case DTYPE_INT8:
   case DTYPE_UINT8:
+  case DTYPE_F8E4M3:
+  case DTYPE_F8E5M2:
     data_byte_size = 1;
     break;
   case DTYPE_INT4:

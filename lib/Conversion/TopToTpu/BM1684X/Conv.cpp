@@ -690,6 +690,8 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
 
   operands.push_back(op.getBias());
   std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(op->getContext(),
+                              tpu::RequantMode::OnlyScale)));
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
