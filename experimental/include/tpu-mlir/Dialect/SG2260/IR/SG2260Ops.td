@@ -161,6 +161,48 @@ def SG2260_CLOOp: SG2260_UnaryOp<"clo"> {
   let description = [{Count leading ones Operation. Get first one}];
 }
 
+def SG2260_TaylorOp : SG2260_Op<"sfu.taylor",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "Taylor";
+  let description = [{taylor exponent}];
+  let arguments = (ins
+    AnyMemRef:$input,
+    AnyMemRef:$table,
+    DefaultValuedAttr<I64Attr, "10">:$length,
+    SG2260_DMAIdType:$dependency,
+    ShortSFURegDefProperties:$reg
+    );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_NormalOp : SG2260_Op<"sfu.normal",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "Normal";
+  let description = [{generate float exponent part}];
+  let arguments = (ins
+    AnyMemRef:$input,
+    SG2260_DMAIdType:$dependency,
+    ShortSFURegDefProperties:$reg
+    );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
+def SG2260_RsqrtOp : SG2260_Op<"sfu.rsqrt",
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "Rsqrt";
+  let description = [{Fast Inverse Square Root. wiki: https://en.wikipedia.org/wiki/Fast_inverse_square_root }];
+  let arguments = (ins
+    AnyMemRef:$input,
+    DefaultValuedAttr<I64Attr, "3">:$num_iter,
+    SG2260_DMAIdType:$dependency,
+    ShortSFURegDefProperties:$reg
+    );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+
 class SG2260_MaxMinPoolOp<string mnemonic> : SG2260_Op<"maxminpool." # mnemonic,
   [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
   let summary = "";
