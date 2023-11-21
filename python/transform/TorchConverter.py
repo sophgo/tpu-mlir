@@ -1667,15 +1667,23 @@ class TorchConverter(BaseConverter):
 
     def convert_clamp_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
-        min_val = self.const_val[torch_node.inputs[1]]
-        max_val = self.const_val[torch_node.inputs[2]]
-        new_op = top.ClipOp(self.unranked_type,
-                            op,
-                            loc=self.get_loc(torch_node.name),
-                            min=min_val,
-                            max=max_val,
-                            ip=self.mlir.insert_point).output
-        self.addOperand(torch_node.name, new_op)
+        min_val = self.getOp(torch_node.inputs[1])
+        max_val = self.getOp(torch_node.inputs[2])
+        if self.mlir.none_op == min_val:
+            new_op_max = op
+        else:
+            new_op_max = top.MaxOp(self.unranked_type,
+                                [op, min_val],
+                                loc=self.get_loc("{}_{}_{}".format(torch_node.name, torch_node.op_type, "max")),
+                                ip=self.mlir.insert_point).output
+        if self.mlir.none_op == max_val:
+            new_op_min = new_op_max
+        else:
+            new_op_min = top.MinOp(self.unranked_type,
+                                [new_op_max, max_val],
+                                loc=self.get_loc("{}_{}_{}".format(torch_node.name, torch_node.op_type, "min")),
+                                ip=self.mlir.insert_point).output
+        self.addOperand(torch_node.name, new_op_min)
 
     def convert_relu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
