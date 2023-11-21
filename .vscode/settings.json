@@ -79,7 +79,13 @@
         "numbers": "cpp",
         "semaphore": "cpp",
         "span": "cpp",
-        "stop_token": "cpp"
+        "stop_token": "cpp",
+        "__nullptr": "cpp",
+        "__bit_reference": "cpp",
+        "__hash_table": "cpp",
+        "__split_buffer": "cpp",
+        "__tree": "cpp",
+        "ios": "cpp"
     },
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,
