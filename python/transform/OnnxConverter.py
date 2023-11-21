@@ -1040,19 +1040,26 @@ class OnnxConverter(BaseConverter):
                 dims = scale_factor.shape[0]
                 scale_factor = scale_factor.reshape(dims)
             if len(scale_factor) == 0:
-                sizes = self.getWeight(onnx_node.inputs[3])
-                assert(len(sizes) >= 2)
-                scale_factor = sizes
-                use_size = True
+                try:
+                    sizes = self.getWeight(onnx_node.inputs[3])
+                    assert(len(sizes) >= 2)
+                    scale_factor = sizes
+                    use_size = True
+                except KeyError:
+                    sizes = self.getOp(onnx_node.inputs[3])
+                    use_size = True
         else:
             # opset 10
             scale_factor = self.getWeight(onnx_node.inputs[1])
 
         if (use_size):
             scale_d, scale_h, scale_w = -1, -1, -1
-            self.addWeight(onnx_node.name + "_target_shape",
-                           np.array(scale_factor[2:], dtype=np.int64))
-            target_shape = self.getWeightOp(onnx_node.name + "_target_shape")
+            if len(scale_factor) == 0:
+                target_shape = sizes
+            else:
+                self.addWeight(onnx_node.name + "_target_shape",
+                            np.array(scale_factor[2:], dtype=np.int64))
+                target_shape = self.getWeightOp(onnx_node.name + "_target_shape")
         else:
             scale_d = -1 if len(scale_factor) <= 4 else scale_factor[-3]
             scale_h = -1 if len(scale_factor) <= 3 else scale_factor[-2]
@@ -1060,7 +1067,7 @@ class OnnxConverter(BaseConverter):
             if scale_h == 1.0 and scale_w == 1.0:
                 self.addOperand(onnx_node.name, op)
                 return
- 
+
         coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
         self.resize_to_interp(onnx_node,
                               op,
