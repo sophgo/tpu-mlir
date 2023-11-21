@@ -86,18 +86,16 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   } else if (in_type.isF32() && out_type.isBF16()) {
     BF16(p.inputs[0], p.outputs[0], num_elem, false);
   } else if ((in_type.isF32() || in_type.isF16()) && out_type.isFloat8E4M3FN()) {
-    auto qtype_in = module::getCalibratedType(getInput());
-    float in_scale = qtype_in.getMax() / get_f8e4m3_max();
-    F8E4M3(p.inputs[0], p.outputs[0], num_elem, in_scale);
+    F8E4M3(p.inputs[0], p.outputs[0], num_elem, 1.0);
   } else if ((in_type.isF32() || in_type.isF16()) && out_type.isFloat8E5M2()) {
     F8E5M2(p.inputs[0], p.outputs[0], num_elem, 1.0);
   } else if (in_type.isFloat8E4M3FN() && (out_type.isF32() || out_type.isF16())) {
-    auto qtype_in = module::getCalibratedType(getInput());
-    float in_scale = qtype_in.getMax()/get_f8e4m3_max();
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i=0;i<num_elem;i++) {
-      p.outputs[0][i] = p.inputs[0][i]*in_scale;
+      p.outputs[0][i] = p.inputs[0][i];
     }
   } else if (in_type.isFloat8E5M2() && (out_type.isF32() || out_type.isF16())) {
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i=0;i<num_elem;i++) {
       p.outputs[0][i] = p.inputs[0][i];
     }

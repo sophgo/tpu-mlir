@@ -35,9 +35,13 @@ void tpu::RequantFpOp::codegen_global_bm1684x() {
   param.c = (int)c;
   param.h = (int)h;
   param.w = (int)w;
-  auto oqtype = module::getUniformQuantizedType(getOutput());
   param.scale_value = getScale().convertToDouble();
-  param.offset_value = oqtype.getZeroPoint();
+  if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    param.offset_value = 0.0;
+  } else {
+    auto oqtype = module::getUniformQuantizedType(getOutput());
+    param.offset_value = oqtype.getZeroPoint();
+  }
   if (getQuantMode() == RequantMode::MultiplierShift) {
     param.mode = 1;
   }
@@ -95,9 +99,13 @@ void tpu::RequantFpOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.h = isINT4 ? h : sec_info.out_h_slice; // to do for int4  split
   param.w = sec_info.out_w_slice;
 
-  auto oqtype = module::getUniformQuantizedType(getOutput());
   param.scale_value = getScale().convertToDouble();
-  param.offset_value = oqtype.getZeroPoint();
+  if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    param.offset_value = 0.0f;
+  } else {
+    auto oqtype = module::getUniformQuantizedType(getOutput());
+    param.offset_value = oqtype.getZeroPoint();
+  }
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
   if (getQuantMode() == RequantMode::MultiplierShift) {
@@ -118,9 +126,13 @@ int64_t tpu::RequantFpOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.input_addr = (uint32_t)in_gi.out_addr;
   param.output_addr = (uint32_t)gi.out_addr;
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;
-  auto oqtype = module::getUniformQuantizedType(getOutput());
   param.scale_value = getScale().convertToDouble();
-  param.offset_value = oqtype.getZeroPoint();
+  if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    param.offset_value = 0.0f;
+  } else {
+    auto oqtype = module::getUniformQuantizedType(getOutput());
+    param.offset_value = oqtype.getZeroPoint();
+  }
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
   if (getQuantMode() == RequantMode::MultiplierShift) {
@@ -139,9 +151,13 @@ int64_t tpu::RequantFpOp::dyn_codegen_global_bm1684x(void *buffer) {
   requant_fp_param_t param = {0};
   param.input_addr = module::getAddress(getInput());
   param.output_addr = module::getAddress(getOutput());
-  auto oqtype = module::getUniformQuantizedType(getOutput());
   param.scale_value = getScale().convertToDouble();
-  param.offset_value = oqtype.getZeroPoint();
+  if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    param.offset_value = 0.0f;
+  } else {
+    auto oqtype = module::getUniformQuantizedType(getOutput());
+    param.offset_value = oqtype.getZeroPoint();
+  }
   if (getQuantMode() == RequantMode::MultiplierShift) {
     param.mode = 1;
   }

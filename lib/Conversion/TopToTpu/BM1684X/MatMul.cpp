@@ -573,10 +573,16 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
     }
   }
   bool with_bias = !module::isNone(op.getBias());
-  attrs.push_back(rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   attrs.push_back(rewriter.getNamedAttr("out_f8_scales", rewriter.getF64ArrayAttr(scale_f)));
   for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
+    if (attr.getName() == "quant_mode") {
+      attrs.push_back(rewriter.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(op->getContext(),
+                                  tpu::RequantMode::OnlyScale)));
+    } else if (attr.getName() == "with_bias") {
+      attrs.push_back(rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+    } else {
+      attrs.push_back(attr);
+    }
   }
   auto newType = getQuantF8E4M3Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);

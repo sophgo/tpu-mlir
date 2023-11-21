@@ -267,9 +267,9 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isFloat8E4M3FN()) {
-      if (!getOutF8Scale().has_value())
+      if (!getOutF8Scales().has_value())
         llvm_unreachable("should have out scale for conv2d in f8 mode");
-      f64_array_t quant_scale_v = module::getF64Array(getOutF8Scale().value());
+      f64_array_t quant_scale_v = module::getF64Array(getOutF8Scales().value());
 
       for (int i=0;i<quant_scale_v.get()->size();i++) {
         size_t out_c_num = num_elem/quant_scale_v.get()->size();

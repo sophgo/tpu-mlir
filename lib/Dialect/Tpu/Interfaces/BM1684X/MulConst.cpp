@@ -30,6 +30,7 @@ void tpu::MulConstOp::codegen_global_bm1684x() {
   param.common.inversed = 0;
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
+  param.common.f8_scale_A = 1.0;
   if (module::isUniformQuantized(getInput())) {
     param.common.B_const_val = 1; // coeff has been merge in multiplier&&rshift
     param.common.B_dtype = DTYPE_INT8;
@@ -63,6 +64,8 @@ int64_t tpu::MulConstOp::getBufferSize_bm1684x(
   auto dtype_A = BM168x::getDataType(getInput());
   if (dtype_A == DTYPE_INT8 || dtype_A == DTYPE_UINT8) {
     buffer_size = in_lmem_bytes * 2;
+  } else if (dtype_A == DTYPE_F8E4M3 || dtype_A == DTYPE_F8E5M2) {
+    buffer_size = in_lmem_bytes * 2;
   }
   return buffer_size;
 }
@@ -85,6 +88,7 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.common.inversed = 0;
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
+  param.common.f8_scale_A = 1.0;
   param.buffer_addr = gi.buffer_addr;
   if (module::isUniformQuantized(getInput())) {
     param.common.B_const_val = 1; // coeff has been merge in multiplier&&rshift
@@ -116,6 +120,7 @@ int64_t tpu::MulConstOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.spec.common.inversed = 0;
   param.spec.common.scale_A = 1;
   param.spec.common.rshift_A = 0;
+  param.spec.common.f8_scale_A = 1.0;
   if (module::isUniformQuantized(getInput())) {
     param.spec.common.B_const_val =
         1; // coeff has been merge in multiplier&&rshift
@@ -145,6 +150,7 @@ int64_t tpu::MulConstOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.inversed = 0;
   param.scale_A = 1;
   param.rshift_A = 0;
+  param.f8_scale_A = 1.0;
   if (module::isUniformQuantized(getInput())) {
     param.B_const_val = 1; // coeff has been merge in multiplier&&rshift
     param.B_dtype = DTYPE_INT8;

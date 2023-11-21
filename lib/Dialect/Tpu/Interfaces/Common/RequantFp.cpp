@@ -9,6 +9,7 @@
 
 
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Float8.h"
 
 
 
@@ -18,8 +19,14 @@ LogicalResult tpu::RequantFpOp::init(InferenceParameter &p) {
 void tpu::RequantFpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
+  int64_t zero_point = 0;
   auto o_sType = module::getStorageType(getOutput());
-  auto o_qtype = module::getUniformQuantizedType(getOutput());
+  if (o_sType.isFloat8E4M3FN() || o_sType.isFloat8E5M2()) {
+
+  } else {
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
+    zero_point = o_qtype.getZeroPoint();
+  }
   auto mode = getQuantMode();
   auto shape = module::getShape(getOutput());
   int64_t length = 1;
@@ -29,7 +36,7 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
 
   float scale_v = getScale().convertToDouble();
   float offset_v = getOffset().convertToDouble();
-  int64_t zero_point = o_qtype.getZeroPoint();
+
 
   switch (mode) {
   case RequantMode::TFLite:
@@ -48,6 +55,14 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
       p.outputs[0][i] = saturate(v, o_sType);
     }
   } break;
+  case RequantMode::OnlyScale:
+    if (o_sType.isFloat8E4M3FN())
+      F8E4M3(p.inputs[0], p.outputs[0], length, 1/scale_v);
+    else if (o_sType.isFloat8E5M2())
+      F8E5M2(p.inputs[0], p.outputs[0], length, 1.0);
+    else
+      llvm_unreachable("Unknown requant mode");
+    break;
   default:
     llvm_unreachable("Unknown requant mode");
     break;

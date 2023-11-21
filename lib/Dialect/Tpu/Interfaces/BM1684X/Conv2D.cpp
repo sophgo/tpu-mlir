@@ -97,6 +97,9 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
     }
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    spec.merge_coeff = 2;
+    common.ipad_value = 0;
   }
   BM168x::call_global_func("backend_api_conv_global", &spec, sizeof(spec),
                            input_spec->data(), output_spec->data());
@@ -169,7 +172,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   auto Filter_type = BM168x::getDataType(getFilter());
   auto Filter_type_len = BM168x::getFmtBytes(Filter_type);
   if ((module::isWeight(getFilter()) == false)) {
-    if (Filter_type == DTYPE_FP16 || Filter_type == DTYPE_BFP16 || Filter_type == DTYPE_INT8 || Filter_type == DTYPE_UINT8){
+    if (Filter_type == DTYPE_FP16 || Filter_type == DTYPE_BFP16 || Filter_type == DTYPE_INT8 || Filter_type == DTYPE_UINT8 || Filter_type == DTYPE_F8E4M3 || Filter_type == DTYPE_F8E5M2){
       sz += p.kh * p.kw * p.oc * align_up(p.ic / p.groups, eu_num) * Filter_type_len;
     }
   }
@@ -264,6 +267,10 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       p.spec.merge_coeff = 2;
       p.spec.with_requant = 1;
     }
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    p.spec.merge_coeff = 2;
+    common.ipad_value = 0;
+    p.spec.with_requant = 1;
   }
   BM168x::call_local_func("backend_api_conv_local", &p, sizeof(p), &sec_info,
                           input_spec->data(), output_spec->data());
@@ -323,6 +330,10 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
       param.spec.merge_coeff = 2;
       param.spec.with_requant = 1;
     }
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    param.spec.merge_coeff = 2;
+    common.ipad_value = 0;
+    param.spec.with_requant = 1;
   }
   param.spec.reference_id = get_tensor_id(op->getResult(0));
   param.spec.concat_c = attr.oc;
@@ -373,6 +384,9 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
     } else {
       spec.merge_coeff = 2;
     }
+  } else if (module::getStorageType(getOutput()).isFloat8E4M3FN() || module::getStorageType(getOutput()).isFloat8E5M2()) {
+    spec.merge_coeff = 2;
+    common.ipad_value = 0;
   }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }

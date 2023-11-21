@@ -22,6 +22,9 @@ void tpu::MulOp::codegen_global_bm1684x() {
   param.rshift_B = 0;
   param.scale_A = getMultiplier();
   param.scale_B = 1;
+  auto scales = module::getF64Array(getOutF8Scales(), 1, 1.0);
+  param.f8_scale_A = scales->at(0);
+  param.f8_scale_B = 1.0;
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -51,6 +54,8 @@ int64_t tpu::MulOp::getBufferSize_bm1684x(
     if (getMultiplier() != 1 || getRshift() != 0) {
       buffer_size = out_lmem_bytes * 2;
     }
+  } else if (dtype_A == DTYPE_F8E4M3 ) {
+    buffer_size = out_lmem_bytes * 2;
   } else if ((BM168x::getFmtBytes(dtype_A) > BM168x::getFmtBytes(dtype_O)) &&
              (is_sign(dtype_A) || is_sign(dtype_B)) && (!is_sign(dtype_O))) {
     buffer_size = out_lmem_bytes;
@@ -75,6 +80,10 @@ void tpu::MulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.spec.common.rshift_B = 0;
   param.spec.common.scale_A = getMultiplier();
   param.spec.common.scale_B = 1;
+  auto scales = module::getF64Array(getOutF8Scales(), 1, 1.0);
+  param.spec.common.f8_scale_A = scales->at(0);
+  param.spec.common.f8_scale_B = 1.0;
+
   param.spec.buffer_addr = gi.buffer_addr;
   param.A_is_coeff = false;
   param.B_is_coeff = false;
@@ -96,6 +105,9 @@ int64_t tpu::MulOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.spec.common.rshift_B = 0;
   param.spec.common.scale_A = getMultiplier();
   param.spec.common.scale_B = 1;
+  auto scales = module::getF64Array(getOutF8Scales(), 1, 1.0);
+  param.spec.common.f8_scale_A = scales->at(0);
+  param.spec.common.f8_scale_B = 1.0;
   param.spec.buffer_addr = gi.buffer_addr;
   param.A_is_coeff = false;
   param.B_is_coeff = false;
@@ -116,6 +128,9 @@ int64_t tpu::MulOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.rshift_B = 0;
   param.scale_A = getMultiplier();
   param.scale_B = 1;
+  auto scales = module::getF64Array(getOutF8Scales(), 1, 1.0);
+  param.f8_scale_A = scales->at(0);
+  param.f8_scale_B = 1.0;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
