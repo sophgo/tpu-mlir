@@ -85,6 +85,7 @@ class RegProperty<string name> : Property<name> {
 def ShortMMRegDefProperties : RegProperty<"ShortMMRegDef">;
 def ShortConvRegDefProperties : RegProperty<"ShortCONVRegDef">;
 def ShortARRegDefProperties : RegProperty<"ShortARRegDef">;
+def ShortSFURegDefProperties : RegProperty<"ShortSFURegDef">;
 def ShortPorDRegDefProperties : RegProperty<"ShortPorDRegDef">;
 def ShortVCRegDefProperties : RegProperty<"ShortVCRegDef">;
 def ShortCWBCRegDefProperties : RegProperty<"ShortCWBCRegDef">;

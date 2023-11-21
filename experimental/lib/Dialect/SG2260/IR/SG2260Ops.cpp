@@ -131,6 +131,21 @@ void CLOOp::getAsmResultNames(
   ::getAsmResultNames(setNameFn, getResults());
 }
 
+void TaylorOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void NormalOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void RsqrtOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
 void MaxPoolOp::getAsmResultNames(
     function_ref<void(Value, StringRef)> setNameFn) {
   ::getAsmResultNames(setNameFn, getResults());
@@ -1004,6 +1019,58 @@ LogicalResult CLZOp::verify() {
   return ar_count_verify(reg, getOperation());
 }
 
+LogicalResult sfu_op_verify(ShortSFURegDef &reg, Operation *op) {
+
+  auto inInfo = getValueInfo(op->getOperand(0));
+  auto outInfo = getValueInfo(op->getOpResult(0));
+  reg.cmd_short = true;
+  reg.tsk_typ = tiuType::SFU();
+  reg.cmd_id_dep = cast<TIUIdType>(op->getOperandTypes()[1]).getId();
+
+  if (inInfo.getLayout() != Layout::N_BYTE_ALIGN ||
+      outInfo.getLayout() == Layout::N_BYTE_ALIGN) {
+    return failure();
+  }
+  // in
+  reg.opt_opd0_prec = inInfo.getPrec();
+  reg.opd0_addr = inInfo.getAddr();
+  // out
+  reg.opt_res0_prec = outInfo.getPrec();
+  reg.res0_addr = outInfo.getAddr();
+  auto shape = outInfo.getShape();
+  reg.res0_n = shape[0];
+  reg.res0_c = shape[1];
+  reg.res0_h = shape[2];
+  reg.res0_w = shape[3];
+  return success();
+}
+
+LogicalResult TaylorOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::SFU::TAYLOR_4X;
+  auto ret = sfu_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+  auto tableInfo = getValueInfo(getTable());
+  reg.opd1_addr = tableInfo.getAddr();
+  reg.opd1_n = getLength();
+  return success();
+}
+
+LogicalResult NormalOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::SFU::NORM;
+  return sfu_op_verify(reg, getOperation());
+}
+
+LogicalResult RsqrtOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::SFU::RSQ;
+  if (getNumIter() > 4 || getNumIter() < 1)
+    return failure();
+  reg.opd2_n_str = getNumIter() - 1;
+  return sfu_op_verify(reg, getOperation());
+}
 
 LogicalResult MaxPoolOp::verify() {
   auto &reg = getProperties().reg;
