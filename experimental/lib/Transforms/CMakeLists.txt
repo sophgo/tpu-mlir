@@ -1,0 +1,23 @@
+add_mlir_dialect_library(TPUMLIRCodegenPass
+  Passes.cpp
+  DecomposeLinalgGeneric.cpp
+  TileAndFuse.cpp
+
+  DEPENDS
+  TPUMLIRSG2260Gen
+  TPUMLIRCodegenPassIncGen
+  LINK_LIBS
+  PUBLIC
+  MLIRIR
+  MLIRAffineDialect
+  MLIRArithDialect
+  MLIRFuncDialect
+  MLIRLinalgDialect
+  MLIRLinalgTransforms
+  MLIRMemRefDialect
+  MLIRSCFDialect
+  MLIRSCFTransforms
+  MLIRSCFUtils
+  MLIRTensorDialect
+  MLIRTensorTilingInterfaceImpl
+)

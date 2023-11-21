@@ -13,10 +13,12 @@
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/MLProgram/IR/MLProgram.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Transforms/Passes.h"
+#include "tpu-mlir/Transforms/Passes.h"
 
 namespace tpu_mlir {
 namespace test {
@@ -26,15 +28,15 @@ void registerTestTilingInterface();
 
 int main(int argc, char **argv) {
   mlir::registerTransformsPasses();
+
   tpu_mlir::test::registerTestTilingInterface();
+  mlir::tpu_mlir::registerTPUMLIRPasses();
   mlir::DialectRegistry registry;
   using namespace mlir;
   // clang-format off
-  registry.insert<linalg::LinalgDialect,
-                  func::FuncDialect,
-                  scf::SCFDialect,
-                  tensor::TensorDialect,
-                  arith::ArithDialect>();
+  registry.insert<ml_program::MLProgramDialect>();
+  mlir::tpu_mlir::registerDepencyDialect(registry);
+  mlir::tpu_mlir::registerCodegenInterfaces(registry);
   // clang-format on
 
   return asMainReturnCode(
