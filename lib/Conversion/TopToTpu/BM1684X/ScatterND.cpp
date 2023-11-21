@@ -45,24 +45,104 @@ void ScatterNDLowering::LoweringF32(PatternRewriter &rewriter,
                                                 operands, op->getAttrs());
 }
 
+static void RequantizeInt8(PatternRewriter &rewriter,
+                                   top::ScatterNDOp op, Type type, bool asymmetric) {
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  auto data = op.getInputData();
+  auto updates = op.getUpdates();
+  auto output = op.getOutput();
+  auto new_data = do_transfer(data, output, asymmetric);
+  operands.push_back(new_data);
+  operands.push_back(op.getIndices());
+  auto new_updates = do_transfer(updates, output, asymmetric);
+  operands.push_back(new_updates);
+
+  auto noneOp = module::getNoneOp(op);
+  // operands.push_back(noneOp); // indices_coeff
+  operands.push_back(noneOp); // buffer
+
+  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, type, operands,
+                                                     op->getAttrs());
+  return;
+}
+
 void ScatterNDLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::ScatterNDOp op,
                                      bool asymmetric) const {
-  LoweringF32(rewriter, op);
+  // LoweringF32(rewriter, op);
+  auto new_type = getQuantFloatType(op.getOutput());
+  RequantizeInt8(rewriter, op, new_type, asymmetric);
 }
+
+static void LoweringScatterND(PatternRewriter &rewriter,
+                                   top::ScatterNDOp op, Type type) {
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  if (module::isWeight(op.getInputData())) {
+    auto wOp = op.getInputData().getDefiningOp<top::WeightOp>();
+    auto stype = module::getStorageType(type);
+    if (stype.isF16()) {
+      operands.push_back(wOp.clone_f16(op));
+    } else if (stype.isBF16()) {
+      operands.push_back(wOp.clone_bf16(op));
+    } else {
+      operands.push_back(op.getInputData());
+    }
+  } else {
+    operands.push_back(op.getInputData());
+  }
+
+  if (module::isWeight(op.getIndices())) {
+    auto wOp = op.getIndices().getDefiningOp<top::WeightOp>();
+    operands.push_back(wOp.clone_int(op));
+  } else {
+    operands.push_back(op.getIndices());
+  }
+
+ if (module::isWeight(op.getUpdates())) {
+    auto wOp = op.getUpdates().getDefiningOp<top::WeightOp>();
+    auto stype = module::getStorageType(type);
+    if (stype.isF16()) {
+      operands.push_back(wOp.clone_f16(op));
+    } else if (stype.isBF16()) {
+      operands.push_back(wOp.clone_bf16(op));
+    } else {
+      operands.push_back(op.getUpdates());
+    }
+  } else {
+    operands.push_back(op.getUpdates());
+  }
+
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp); // buffer
+
+  rewriter.replaceOpWithNewOp<tpu::ScatterNDOp>(op, type, operands,
+                                                     op->getAttrs());
+  return;
+}
+
+
 void ScatterNDLowering::LoweringINT4(PatternRewriter &rewriter,
                                      top::ScatterNDOp op,
                                      bool asymmetric) const {
+  // auto new_type = getQuantFloatType(op.getOutput());
+  // LoweringScatterND(rewriter, op, new_type);
   LoweringF32(rewriter, op);
 }
+
 void ScatterNDLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::ScatterNDOp op) const {
-  LoweringF32(rewriter, op);
+  // LoweringF32(rewriter, op);
+  auto new_type = getQuantFloatType<mlir::BFloat16Type>(op.getOutput());
+  LoweringScatterND(rewriter, op, new_type);
 }
 
 void ScatterNDLowering::LoweringF16(PatternRewriter &rewriter,
                                     top::ScatterNDOp op) const {
-  LoweringF32(rewriter, op);
+  // LoweringF32(rewriter, op);
+  auto new_type = getQuantFloatType<mlir::Float16Type>(op.getOutput());
+  LoweringScatterND(rewriter, op, new_type);
 }
 
 void ScatterNDLowering::LoweringF8(PatternRewriter &rewriter,
@@ -73,6 +153,8 @@ void ScatterNDLowering::LoweringF8(PatternRewriter &rewriter,
 void ScatterNDLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           top::ScatterNDOp op) const {
   LoweringF32(rewriter, op);
+  // auto new_type = op.getOutput().getType();
+  // LoweringScatterND(rewriter, op, new_type);
 }
 
 } // namespace bm1684x

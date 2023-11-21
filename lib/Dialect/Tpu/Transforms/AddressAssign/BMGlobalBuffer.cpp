@@ -805,7 +805,8 @@ public:
       return failure();
     }
     auto buffer_type =
-        ScatterNDOp.getInputData().getType().cast<RankedTensorType>();
+    // ScatterNDOp.getInputData().getType().cast<RankedTensorType>();
+    RankedTensorType::get(module::getShape(ScatterNDOp.getInputData()), rewriter.getI32Type());
     auto buffer = tpu::BufferOp::create(ScatterNDOp, buffer_type);
     ScatterNDOp.setOperand(3, buffer);
     return success();

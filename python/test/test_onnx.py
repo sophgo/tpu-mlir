@@ -5619,15 +5619,23 @@ class ONNX_IR_TESTER(object):
 
     def test_ScatterND(self, case_name):
         if self.chip in ['bm1684x', 'bm1688', 'cv186']:
-            x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2,3,20,40], [1, 13294, 256]]
-            idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 2, 5], [2,3,20,4], [1, 13294, 256, 3]]
-            update_shapes = [[160, 160], [1, 3, 128, 128, 2],  [2,3,20], [1, 13294, 256]]
+            x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2,3,20,40],
+                        [1, 13294, 256], [1, 900, 256],
+                        [320, 320], [1, 3, 128, 20, 20], [1, 13294, 256], [8, 900, 2], [4,4,4]]
+            idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 150, 5], [2,3,20,4],
+                          [1, 13294, 256, 3], [1, 900, 256, 3],
+                        [160,1], [1, 3, 64, 3], [1, 13294, 2], [8, 1], [4,4,4,3]]
+            update_shapes = [[160, 160], [1, 3, 128, 128, 150],  [2,3,20],
+                             [1, 13294, 256], [1, 900, 256],
+                            [160,320], [1, 3, 64, 20, 20], [1, 13294, 256], [8, 900, 2], [4,4,4]]
         else:
             x_shapes = [[320, 320], [1, 5, 256]]
             idx_shapes = [[160, 160, 2], [1, 1, 2]]
             update_shapes = [[160, 160], [1, 1, 256]]
 
         for i in range(0, len(x_shapes)):
+            # if i != 4:
+            #     continue
             x_shape, idx_shape, update_shape = x_shapes[i], idx_shapes[i], update_shapes[i]
             # indices should not have duplicate entries: that is, if idx1 != idx2, then indices[idx1] != indices[idx2].
             # This ensures that the output value does not depend on the iteration order.
@@ -5648,12 +5656,11 @@ class ONNX_IR_TESTER(object):
                 offset = offset // x_shape[k-i-1]
 
             input_data = {
-                # "raw_data": np.random.rand(*input_shape['raw_data']).astype(np.float32),
                 "x_data": np.random.rand(*x_shape).astype(np.float32),
-                # "indices": np.random.randint(0, index_limit, tuple(idx_shape)),
                 "indices": indices,
-                "updates": np.random.rand(*update_shape).astype(np.float32)
+                "updates": np.random.rand(*update_shape).astype(np.float32),
             }
+
             raw_data = helper.make_tensor_value_info("x_data", TensorProto.FLOAT, x_shape)
             indices = helper.make_tensor_value_info("indices", TensorProto.INT64, idx_shape)
             updates = helper.make_tensor_value_info("updates", TensorProto.FLOAT, update_shape)
@@ -5667,8 +5674,17 @@ class ONNX_IR_TESTER(object):
                                             inputs=["scatter_output", "add_tensor"],
                                             outputs=["output"])
             graph_def = helper.make_graph([scatternd_def, add_def],
-                                          case_name, [raw_data, indices, updates], [output],
+                                          case_name,
+                                          [raw_data, indices, updates],
+                                          [output],
                                           initializer=[add_data])
+            # scatternd_def = helper.make_node("ScatterND",
+            #                                  inputs=list(input_data.keys()),
+            #                                  outputs=["output"])
+            # graph_def = helper.make_graph([scatternd_def],
+            #                               case_name,
+            #                               [raw_data, indices, updates],
+                                        #   [output])
             self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_SliceToReverse(self, case_name):
