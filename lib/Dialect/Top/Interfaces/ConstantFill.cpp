@@ -40,4 +40,8 @@ void top::ConstantFillOp::shape_inference() {
     auto out_shape = module::getShapeTensorValue(getInput());
     module::setShapeOrVerify(getOutput(), out_shape);
   }
+  if (module::isShape(getInput())) {
+    auto out_shape = module::getShape(getOutput());
+    module::bindShapeTensorValue(getOutput(), out_shape);
+  }
 }
