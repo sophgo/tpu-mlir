@@ -1043,9 +1043,11 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
 
   int64_t wbits = 16;
   bool w_trans = false;
+  int q_group_size = 0;
   if (auto mm0 = dyn_cast<tpu::A16MatMulOp>(next_op)) {
     wbits = mm0.getWeightBits();
     w_trans = mm0.getWTranspose();
+    q_group_size = mm0.getQGroupSize();
   }
 
   auto N = w_trans ? filterShape[num_dims - 2] : filterShape[num_dims - 1];
@@ -1055,7 +1057,7 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
 
   auto out = next_op->getResult(0);
   std::vector<int64_t> new_shape = module::getShape(out);
-  new_shape[new_shape.size() - 1] = (wbits == 4 ? 2 : 1) * length;
+  new_shape[new_shape.size() - 1] = length;
   auto new_type = module::getTypeLike(out, new_shape);
   auto new_loc = module::getLocLike(out, suffix);
 
@@ -1083,6 +1085,12 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     new_op = new_mm0.getOperation();
   } else if (auto mm0 = dyn_cast<tpu::A16MatMulOp>(next_op)) {
     // clone the scale
+    if (q_group_size) {
+      assert(
+          module::getShape(mm0.getScale()).size() == 2 &&
+          "scale and zp weight reorder should not happen before distribute");
+    }
+
     if (isa<top::WeightOp>(mm0.getScale().getDefiningOp())) {
       auto new_scale = module::opSliceAxis(mm0.getScale(), 0, offset, length);
       operands.push_back(new_scale);
@@ -1091,7 +1099,8 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     }
     // clone the zp
     if (isa<top::WeightOp>(mm0.getZp().getDefiningOp())) {
-      llvm_unreachable("Still not support clone Zp of A16MatMul");
+      auto new_zp = module::opSliceAxis(mm0.getZp(), 0, offset, length);
+      operands.push_back(new_zp);
     } else {
       operands.push_back(module::getNoneOp(next_op));
     }
@@ -1120,9 +1129,11 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
 
   int64_t wbits = 16;
   bool w_trans = false;
+  int q_group_size = 0;
   if (auto mm0 = dyn_cast<tpu::A16MatMulOp>(next_op)) {
     wbits = mm0.getWeightBits();
     w_trans = mm0.getWTranspose();
+    q_group_size = mm0.getQGroupSize();
   }
 
   auto K = filterShape[num_dims - 2 + w_trans];
@@ -1135,7 +1146,8 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
   auto new_type = out.getType();
 
   // slice and clone the weight
-  auto new_filter = module::opSliceAxis(filterOp, num_dims - 2 + w_trans, offset, length);
+  auto new_filter =
+      module::opSliceAxis(filterOp, num_dims - 2 + w_trans, offset, length);
   std::vector<Value> operands{cur_out, new_filter};
 
   // clone the bias
@@ -1161,13 +1173,32 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     new_op = new_mm0.getOperation();
   } else if (auto mm0 = dyn_cast<tpu::A16MatMulOp>(next_op)) {
     // clone the scale
+    int scale_length = 0;
+    int scale_offset = 0;
+    if (q_group_size) {
+      assert(
+          module::getShape(mm0.getScale()).size() == 2 &&
+          "scale and zp weight reorder shoulde not happen before distribute");
+      assert(length % q_group_size == 0);
+      scale_length = ceiling_func(2 * length, q_group_size);
+      scale_offset = cur_device * scale_length;
+    }
+
     if (isa<top::WeightOp>(mm0.getScale().getDefiningOp())) {
-      auto scaleOp = cast<top::WeightOp>(mm0.getScale().getDefiningOp());
-      operands.push_back(scaleOp.clone(suffix));
+      auto new_scale = q_group_size
+                           ? module::opSliceAxis(mm0.getScale(), 1,
+                                                 scale_offset, scale_length)
+                           : cast<top::WeightOp>(mm0.getScale().getDefiningOp())
+                                 .clone(suffix);
+      operands.push_back(new_scale);
     }
     // clone the zp
     if (isa<top::WeightOp>(mm0.getZp().getDefiningOp())) {
-      llvm_unreachable("Still not support clone Zp of A16MatMul");
+      auto new_zp =
+          q_group_size
+              ? module::opSliceAxis(mm0.getZp(), 1, scale_offset, scale_length)
+              : cast<top::WeightOp>(mm0.getScale().getDefiningOp());
+      operands.push_back(new_zp);
     } else {
       operands.push_back(module::getNoneOp(next_op));
     }
