@@ -566,7 +566,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
-    OptionalAttr<F64ArrayAttr>:$out_f8_scales, // for fp8 quant
+    OptionalAttr<F64ArrayAttr>:$f8_scales, // for fp8 quant
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -688,7 +688,7 @@ def Tpu_SubOp: Tpu_Op<"Sub",
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
-    OptionalAttr<F64ArrayAttr>:$out_f8_scales, // for fp8 quant
+    OptionalAttr<F64ArrayAttr>:$f8_scales, // for fp8 quant
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 

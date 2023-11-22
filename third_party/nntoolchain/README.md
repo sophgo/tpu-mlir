@@ -1,7 +1,7 @@
 **注意：所有提交到代码库的第三方依赖库都必须是release版本的**
 
-## TPU1684 2023-11-20
-sha256: c776c59dbede5986950da12c9c294ae0da06057b
+## TPU1684 2023-11-24
+sha256: c8b990be7fa980e995b3d5c43a4cf41b5ca74047
 
 ``` bash
 cd  nntoolchain/net_compiler/
@@ -12,8 +12,8 @@ cp out/install/lib/libcmodel_1684.so /workspace/tpu-mlir/third_party/nntoolchain
 cp bmcompiler/libbackend/libbackend_1684.so /workspace/tpu-mlir/third_party/nntoolchain/lib/
 ```
 
-## TPU1686 2023-11-20
-sha256: 93d5aea2aaf94d3efad69649a6ed0be348be1c9f
+## TPU1686 2023-11-24
+sha256: f5223915d1bf1def70968b2d04f9fea5a80cc6ca
 
 ``` bash
 #bm1684x

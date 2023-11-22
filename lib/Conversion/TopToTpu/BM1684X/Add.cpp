@@ -145,7 +145,7 @@ void AddLowering::LoweringF8(PatternRewriter &rewriter,
     std::vector<NamedAttribute> attrs;
     for (auto &attr : op->getAttrs())
       attrs.push_back(attr);
-    attrs.push_back(rewriter.getNamedAttr("out_f8_scales",
+    attrs.push_back(rewriter.getNamedAttr("f8_scales",
                                           rewriter.getF64ArrayAttr(scale_v)));
     auto newType = getQuantF8E4M3Type(addOp.getOutput());
     rewriter.replaceOpWithNewOp<tpu::AddOp>(op, newType, operands, attrs);
