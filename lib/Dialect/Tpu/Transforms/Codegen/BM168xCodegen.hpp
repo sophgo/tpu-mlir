@@ -29,7 +29,7 @@ private:
   Offset<Vector<Offset<bmodel::Shape>>>
   CreateShapeVector(const ArrayRef<int64_t> &shape);
   Offset<Vector<Offset<bmodel::Tensor>>>
-  CreateTensorVector(const std::vector<Value> &values, bool hidden_all = false);
+  CreateTensorVector(const std::vector<Value> &values, int devid = 0);
   Offset<bmodel::SubNet> CreateSubNet(ModuleOp s, func::CallOp call);
   Offset<bmodel::SubNet> CreateSubNet(ModuleOp s, func::CallOp call,
                                       std::unique_ptr<SubnetIr> subnet_ir_,

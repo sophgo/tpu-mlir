@@ -325,6 +325,7 @@ static int64_t buildEndToSum(tpu::DistributionEndOp end, ModuleOp m,
   builder.setInsertionPointAfterValue(end.getOutputs()[cur_out_idx]);
   auto new_loc = module::getLoc(end.getOutputs()[cur_out_idx]);
   auto new_type = end.getOutputs()[cur_out_idx].getType();
+  // tmp op, to help the following ops find their real input values
   auto all_reduce_op =
       builder.create<tpu::IdentityOp>(new_loc, new_type, operands);
   end.getOutputs()[cur_out_idx].replaceAllUsesWith(
@@ -507,6 +508,89 @@ static void distributeToOneModule(ModuleOp m) {
   func->moveBefore(sub_m.getBody(), sub_m.getBody()->begin());
 }
 
+static void updateFuncIONames(ModuleOp m) {
+  auto ctx = m.getContext();
+  OpBuilder builder(ctx);
+  auto main = module::getMainFuncOp(m);
+  std::vector<Type> input_types_v;
+  std::vector<Type> output_types_v;
+  main.walk([&](Operation *op) {
+    if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, func::ReturnOp>(
+            op)) {
+      // do nothing
+    } else if (auto call_op = dyn_cast<func::CallOp>(op)) {
+      auto sf = module::getFuncOp(m, call_op.getCallee());
+      auto device_id = getDeviceId(sf);
+      std::string suffix = std::to_string(device_id);
+      std::vector<Value> inputs, outputs;
+      module::getInputsOutputs(call_op, inputs, outputs);
+      // For input tensor splited in different deivces, add suffix to its
+      // corresopnding tensor name in the ModuleOp
+      for (int i = 0; i < inputs.size(); ++i) {
+        auto op_ = inputs[i].getDefiningOp();
+        if (isa<tpu::SliceOp>(op_)) {
+          Value in0 = op_->getOperand(0);
+          if (auto input_op = dyn_cast<top::InputOp>(in0.getDefiningOp())) {
+            auto loc = module::getLocLike(input_op.getOperation(), suffix);
+            module::setLoc(inputs[i], loc);
+          }
+        }
+      }
+      for (auto it :
+           llvm::zip(call_op.getOperands(), sf.front().getArguments())) {
+        auto loc = module::getLoc(std::get<0>(it));
+        std::get<1>(it).setLoc(loc);
+        for (auto user : std::get<1>(it).getUsers()) {
+          if (isa<top::InputOp>(user)) {
+            user->setLoc(loc);
+          }
+        }
+      }
+
+      // For output tensor splited in different deivces, add suffix to its
+      // corresopnding tensor name in the ModuleOp
+      std::vector<Value> results(call_op->result_begin(),
+                                 call_op->result_end());
+      for (int i = 0; i < results.size(); ++i) {
+        std::vector<Operation *> users(results[i].user_begin(),
+                                       results[i].user_end());
+        for (auto user : users) {
+          if (auto end = dyn_cast<tpu::DistributionEndOp>(user)) {
+            auto end_methods = module::getI64Array(end.getEndMethods());
+            std::vector<Value> operands(user->operand_begin(),
+                                        user->operand_end());
+            int idx = std::find(operands.begin(), operands.end(), results[i]) -
+                      operands.begin();
+            int num_result = end->getNumResults();
+            idx = idx - device_id * num_result;
+            if (end_methods->at(idx) ==
+                (int)DistributionEndMethod::EndToConcat) {
+              auto next_result = user->getResult(idx);
+              auto loc = module::getLocLike(next_result, suffix);
+              outputs[i].setLoc(loc);
+            }
+          } else if (auto identity = dyn_cast<tpu::IdentityOp>(user)) {
+            if (isa<ReturnOp>(*identity->user_begin())) {
+              auto next_result = user->getResult(0);
+              auto loc = module::getLocLike(next_result, suffix);
+              outputs[i].setLoc(loc);
+            }
+          }
+        }
+      }
+      std::vector<Location> retLoc;
+      for (auto o :outputs) {
+        retLoc.push_back(module::getLoc(o));
+      }
+      Location call_loc = retLoc[0];
+      if (retLoc.size() > 1) {
+        call_loc = FusedLoc::get(ctx, retLoc);
+      }
+      call_op->setLoc(call_loc);
+    }
+  });
+}
+
 void distributeModules(ModuleOp m, int64_t num_device) {
   auto main = module::getMainFuncOp(m);
   std::vector<StringRef> input_names;
@@ -526,6 +610,7 @@ void distributeModules(ModuleOp m, int64_t num_device) {
     return;
   }
 
+  // sort Opeartions
   auto ctx = m.getContext();
   for (auto func : m.getOps<FuncOp>()) {
     RewritePatternSet patterns(ctx);
@@ -568,6 +653,8 @@ void distributeModules(ModuleOp m, int64_t num_device) {
     buildSubFunction(subf, m);
     subf = nullptr;
   }
+
+  updateFuncIONames(m);
 
   // each function create one module
   applyPatternOnce<Function2Module>(m);
