@@ -104,8 +104,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
 
   auto &builder = model_gen->Builder();
   // if tensor not in device 0, will be hidden
-  auto input_tensor = CreateTensorVector(inputs, cascade.device_id != 0);
-  auto output_tensor = CreateTensorVector(outputs, cascade.device_id != 0);
+  auto input_tensor = CreateTensorVector(inputs, cascade.device_id);
+  auto output_tensor = CreateTensorVector(outputs, cascade.device_id);
   auto coeff_mem = CreateCoeffMem(weights, coeff_addr, coeff_size);
   std::vector<uint64_t> neuron_sizes = {(uint64_t)neuron_size};
   auto neuron_sizes_fb = builder.CreateVector(neuron_sizes);
@@ -266,7 +266,7 @@ BMCodegen::CreateShapeVector(const ArrayRef<int64_t> &shape) {
 
 Offset<Vector<Offset<bmodel::Tensor>>>
 BMCodegen::CreateTensorVector(const std::vector<Value> &values,
-                              bool hidden_all) {
+                              int devid) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   int index = 0;
@@ -289,8 +289,18 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values,
       tb.add_hidden(0);
     } else if (isSpecialInputTensor(s_name)) {
       tb.add_hidden(3);
+      std::string suffix = "_" + std::to_string(devid);
+      auto ss_name = s_name.substr(0, s_name.size()-suffix.size());
+      auto in_iter =
+          std::find(input_names->begin(), input_names->end(), ss_name);
+      tb.add_index(std::distance(input_names->begin(), in_iter));
     } else if (isSpecialOutputTensor(s_name)) {
       tb.add_hidden(4);
+      std::string suffix = "_" + std::to_string(devid);
+      auto ss_name = s_name.substr(0, s_name.size()-suffix.size());
+      auto out_iter =
+          std::find(output_names->begin(), output_names->end(), ss_name);
+      tb.add_index(std::distance(output_names->begin(), out_iter));
     } else {
       auto in_iter =
           std::find(input_names->begin(), input_names->end(), s_name);
