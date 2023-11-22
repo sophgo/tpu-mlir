@@ -86,6 +86,7 @@ def ShortMMRegDefProperties : RegProperty<"ShortMMRegDef">;
 def ShortConvRegDefProperties : RegProperty<"ShortCONVRegDef">;
 def ShortARRegDefProperties : RegProperty<"ShortARRegDef">;
 def ShortSFURegDefProperties : RegProperty<"ShortSFURegDef">;
+def ShortRQDQRegDefProperties : RegProperty<"ShortRQDQRegDef">;
 def ShortPorDRegDefProperties : RegProperty<"ShortPorDRegDef">;
 def ShortVCRegDefProperties : RegProperty<"ShortVCRegDef">;
 def ShortCWBCRegDefProperties : RegProperty<"ShortCWBCRegDef">;
