@@ -28,6 +28,7 @@ void tpu::SubConstOp::codegen_global_bm1684x() {
   param.common.inversed = getIsReverse();
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
+  param.common.f8_scale_A = getF8Scale().convertToDouble();
   if (module::isUniformQuantized(getInput())) {
     param.common.B_dtype = DTYPE_INT32;
     param.common.scale_A = getMultiplier();
@@ -59,6 +60,8 @@ int64_t tpu::SubConstOp::getBufferSize_bm1684x(
   auto dtype_A = BM168x::getDataType(getInput());
   if (dtype_A == DTYPE_INT8 || dtype_A == DTYPE_UINT8) {
     buffer_size = in_lmem_bytes * 2;
+  } else if (dtype_A == DTYPE_F8E4M3 ) {
+    buffer_size = in_lmem_bytes * 2;
   }
   return buffer_size;
 }
@@ -82,6 +85,7 @@ void tpu::SubConstOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.common.inversed = getIsReverse();
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
+  param.common.f8_scale_A = getF8Scale().convertToDouble();
   param.buffer_addr = gi.buffer_addr;
   if (module::isUniformQuantized(getInput())) {
     param.common.B_dtype = DTYPE_INT32;
@@ -110,6 +114,7 @@ int64_t tpu::SubConstOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.common.inversed = getIsReverse();
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
+  param.common.f8_scale_A = getF8Scale().convertToDouble();
   if (module::isUniformQuantized(getInput())) {
     param.common.B_dtype = DTYPE_INT32;
     param.common.scale_A = getMultiplier();
@@ -136,6 +141,7 @@ int64_t tpu::SubConstOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.common.inversed = getIsReverse();
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
+  param.common.f8_scale_A = getF8Scale().convertToDouble();
   if (module::isUniformQuantized(getInput())) {
     param.common.B_dtype = DTYPE_INT32;
     param.common.scale_A = getMultiplier();

@@ -314,6 +314,7 @@ typedef struct constbinary_common_spec {
   float relu_upper_limit;
   int scale_A;
   int rshift_A;
+  float f8_scale_A;
 } constbinary_common_spec_t;
 
 typedef struct constbinary_global_spec {
@@ -616,6 +617,8 @@ typedef struct bcbinary_common_spec {
   int32_t scale_B;
   int32_t rshift_A;
   int32_t rshift_B;
+  float f8_scale_A;
+  float f8_scale_B;
 } bcbinary_common_spec_t;
 
 typedef struct bcbinary_local_spec {

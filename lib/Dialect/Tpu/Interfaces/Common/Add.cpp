@@ -58,7 +58,7 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   auto asym = module::isAsymmetric();
   if (out_type.isa<FloatType>()) {
     if (out_type.isa<Float8E4M3FNType>()) {
-      auto scales = module::getF64Array(getOutF8Scales(), 2, 1.);
+      auto scales = module::getF64Array(getF8Scales(), 2, 1.);
       auto lhs_num_elem = module::getNumElements(getInputs()[0]);
       auto rhs_num_elem = module::getNumElements(getInputs()[1]);
       std::vector<float> lhs_tmp(lhs_num_elem);
