@@ -203,6 +203,60 @@ def SG2260_RsqrtOp : SG2260_Op<"sfu.rsqrt",
   let hasVerifier = 1;
 }
 
+class SG2260_RQDQOp<string mnemonic> : SG2260_Op<"rqdq." # mnemonic,
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{RQ/DQ.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger]>:$input,
+    AnyTypeOf<[AnyMemRef, AnyFloat]>:$scale,
+    OptionalAttr<AnyAttrOf<[I16Attr, F32Attr]>>:$offset,
+    SG2260_DMAIdType:$dependency,
+
+    DefaultValuedAttr<BoolAttr, "false">:$is_saturation,
+    DefaultValuedAttr<SG2260_RoundModeAttr, "sg2260::RoundMode::HalfAwayFromZero">:$round_mode0,
+    DefaultValuedAttr<SG2260_RoundModeAttr, "sg2260::RoundMode::HalfAwayFromZero">:$round_mode1,
+    ShortRQDQRegDefProperties:$reg
+    );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+def SG2260_RequantFpOp : SG2260_RQDQOp<"requant_fp"> {
+  let summary = "RequantFp";
+  let description = [{float requant. output = int(float(input) * scale + offset)}];
+}
+def SG2260_DequantFpOp : SG2260_RQDQOp<"dequant_fp"> {
+  let summary = "DequantFp";
+  let description = [{float dequant. output = float(input - offset) * scale}];
+}
+
+class SG2260_RQDQIntOp<string mnemonic> : SG2260_Op<"rqdq." # mnemonic,
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let summary = "";
+  let description = [{RQ/DQ.}];
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger]>:$input,
+    AnyTypeOf<[AnyMemRef, AnyInteger]>:$multiplier,
+    OptionalAttr<I8Attr>:$shift,
+    OptionalAttr<I16Attr>:$zero_point,
+    SG2260_DMAIdType:$dependency,
+
+    DefaultValuedAttr<BoolAttr, "false">:$is_saturation,
+    DefaultValuedAttr<SG2260_RoundModeAttr, "sg2260::RoundMode::HalfAwayFromZero">:$round_mode,
+    ShortRQDQRegDefProperties:$reg
+    );
+  let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
+  let hasVerifier = 1;
+}
+def SG2260_RequantIntOp : SG2260_RQDQIntOp<"requant_int"> {
+  let summary = "RequantInt";
+  let description = [{Int requant. output = input * multiplier >> shift + zero_point}];
+}
+def SG2260_DequantIntOp : SG2260_RQDQIntOp<"dequant_int"> {
+  let summary = "DequantInt";
+  let description = [{Int dequant. output = (input - zero_point) * multiplier >> shift)}];
+}
+
 class SG2260_MaxMinPoolOp<string mnemonic> : SG2260_Op<"maxminpool." # mnemonic,
   [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
   let summary = "";

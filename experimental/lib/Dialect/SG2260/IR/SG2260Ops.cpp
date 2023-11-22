@@ -146,6 +146,26 @@ void RsqrtOp::getAsmResultNames(
   ::getAsmResultNames(setNameFn, getResults());
 }
 
+void RequantFpOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void DequantFpOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void RequantIntOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void DequantIntOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
 void MaxPoolOp::getAsmResultNames(
     function_ref<void(Value, StringRef)> setNameFn) {
   ::getAsmResultNames(setNameFn, getResults());
@@ -1070,6 +1090,160 @@ LogicalResult RsqrtOp::verify() {
     return failure();
   reg.opd2_n_str = getNumIter() - 1;
   return sfu_op_verify(reg, getOperation());
+}
+
+LogicalResult rqdq_op_verify(ShortRQDQRegDef &reg, Operation *op) {
+
+  auto inInfo = getValueInfo(op->getOperand(0));
+  auto outInfo = getValueInfo(op->getOpResult(0));
+  reg.cmd_short = true;
+  reg.tsk_typ = tiuType::RQDQ();
+  reg.cmd_id_dep = cast<TIUIdType>(op->getOperandTypes()[1]).getId();
+
+  // in0
+  reg.opt_opd0_prec = inInfo.getPrec();
+  reg.opt_opd0_sign = inInfo.getSign();
+  reg.opd0_addr = inInfo.getAddr();
+  // out
+  reg.opt_res0_prec = outInfo.getPrec();
+  reg.opt_opd2_sign = outInfo.getSign();
+  reg.res0_addr = outInfo.getAddr();
+  auto shape = outInfo.getShape();
+  reg.res0_n = shape[0];
+  reg.res0_c = shape[1];
+  reg.res0_h = shape[2];
+  reg.res0_w = shape[3];
+  // in1
+  auto in1Info = getValueInfo(op->getOperand(1));
+  reg.opd1_addr = in1Info.getAddr();
+  if (in1Info.isConst()) {
+    reg.opt_opd1_const = true;
+  } else {
+    reg.opt_opd1_const = false;
+    if (inInfo.getLayout() != Layout::CONTINUOUS) {
+      return failure();
+    }
+  }
+  // check
+  if (inInfo.getLayout() != Layout::N_BYTE_ALIGN ||
+      outInfo.getLayout() == Layout::N_BYTE_ALIGN) {
+    return failure();
+  }
+  // TODO: addr align && start lane
+  return success();
+}
+
+LogicalResult RequantFpOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::RQDQ::RQ_0;
+  reg.sym_range = getIsSaturation();
+  reg.opd2_n_str = (int)(getRoundMode0()) + ((int)(getRoundMode1()) << 3);
+  auto ret = rqdq_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+  // ckeck
+  if (reg.opt_opd1_const) {
+    auto in2Info = getValueInfo(getOperand(2));
+    if (!in2Info.getDtype().isF32())
+      return failure();
+    reg.opd2_addr = in2Info.getAddr();
+  }
+  auto inInfo = getValueInfo(getOperand(0));
+  auto in1Info = getValueInfo(getOperand(1));
+  auto outInfo = getValueInfo(getResult());
+  if (!inInfo.getDtype().isInteger(8) && !inInfo.getDtype().isInteger(16) && !inInfo.getDtype().isInteger(32))
+    return failure();
+  if (!outInfo.getDtype().isInteger(4) && !outInfo.getDtype().isInteger(8) && !outInfo.getDtype().isInteger(16))
+    return failure();
+  if (!in1Info.getDtype().isF32())
+      return failure();
+  if ((int)(getRoundMode0()) < 0 || (int)(getRoundMode0()) > 4)
+    return failure();
+  if ((int)(getRoundMode1()) < 0 || (int)(getRoundMode1()) > 4)
+    return failure();
+  return success();
+}
+LogicalResult DequantFpOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::RQDQ::DQ_0;
+  reg.sym_range = getIsSaturation();
+  reg.opd2_n_str = (int)(getRoundMode0());
+  auto ret = rqdq_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+  // ckeck
+  if (reg.opt_opd1_const) {
+    auto in2Info = getValueInfo(getOperand(2));
+    if (!in2Info.getDtype().isSignedInteger(16))
+      return failure();
+    reg.opd2_addr = in2Info.getAddr();
+  }
+  auto inInfo = getValueInfo(getOperand(0));
+  auto in1Info = getValueInfo(getOperand(1));
+  auto outInfo = getValueInfo(getResult());
+  if (!inInfo.getDtype().isInteger(4) && !inInfo.getDtype().isInteger(8) && !inInfo.getDtype().isInteger(16))
+    return failure();
+  if (!outInfo.getDtype().isF32())
+    return failure();
+  if (!in1Info.getDtype().isF32())
+      return failure();
+  if ((int)(getRoundMode0()) < 0 || (int)(getRoundMode0()) > 2)
+    return failure();
+  return success();
+}
+LogicalResult RequantIntOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::RQDQ::RQ_1;
+  reg.sym_range = getIsSaturation();
+  reg.opd2_n_str = (int)(getRoundMode());
+  auto ret = rqdq_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+  // ckeck
+  if (reg.opt_opd1_const) {
+    auto in2Info = getValueInfo(getOperand(2));
+    auto in3Info = getValueInfo(getOperand(3));
+    if (!in2Info.getDtype().isSignedInteger(8) || !in3Info.getDtype().isSignedInteger(16))
+      return failure();
+    reg.opd2_addr = in2Info.getAddr() + (in3Info.getAddr() << 16);
+  }
+  auto inInfo = getValueInfo(getOperand(0));
+  auto in1Info = getValueInfo(getOperand(1));
+  auto outInfo = getValueInfo(getResult());
+  if (!inInfo.getDtype().isInteger(8) && !inInfo.getDtype().isInteger(16) && !inInfo.getDtype().isInteger(32))
+    return failure();
+  if (!outInfo.getDtype().isInteger(4) && !outInfo.getDtype().isInteger(8) && !outInfo.getDtype().isInteger(16))
+    return failure();
+  if (!in1Info.getDtype().isSignedInteger(32))
+      return failure();
+  return success();
+}
+LogicalResult DequantIntOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::RQDQ::DQ_1;
+  reg.sym_range = getIsSaturation();
+  reg.opd2_n_str = (int)(getRoundMode());
+  auto ret = rqdq_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+  // ckeck
+  if (reg.opt_opd1_const) {
+    auto in2Info = getValueInfo(getOperand(2));
+    auto in3Info = getValueInfo(getOperand(3));
+    if (!in2Info.getDtype().isSignedInteger(8) || !in3Info.getDtype().isSignedInteger(16))
+      return failure();
+    reg.opd2_addr = in2Info.getAddr() + (in3Info.getAddr() << 16);
+  }
+  auto inInfo = getValueInfo(getOperand(0));
+  auto in1Info = getValueInfo(getOperand(1));
+  auto outInfo = getValueInfo(getResult());
+  if (!outInfo.getDtype().isInteger(8) && !outInfo.getDtype().isInteger(16) && !outInfo.getDtype().isInteger(32))
+    return failure();
+  if (!inInfo.getDtype().isInteger(4) && !inInfo.getDtype().isInteger(8) && !inInfo.getDtype().isInteger(16))
+    return failure();
+  if (!in1Info.getDtype().isSignedInteger(32))
+      return failure();
+  return success();
 }
 
 LogicalResult MaxPoolOp::verify() {
