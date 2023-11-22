@@ -315,8 +315,6 @@ if __name__ == '__main__':
 
     # yapf: enable
     args = parser.parse_args()
-    if args.quantize in ['W4F16', 'W4BF16']:
-        assert(args.num_device == 1 and "W4A16 not support multi device for now")
     if args.q_group_size:
         assert(args.quantize in ['W4F16', 'W4BF16'] and "only W4A16 mode needs q_group_size")
 
