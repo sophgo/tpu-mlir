@@ -256,6 +256,21 @@ void GDMAScatterAddOp::getAsmResultNames(
   ::getAsmResultNames(setNameFn, getResults());
 }
 
+void MacOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void AddSqrOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
+void SubSqrOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ::getAsmResultNames(setNameFn, getResults());
+}
+
 template <typename T>
 Attribute dummyPropertiesAsAttribute(::mlir::MLIRContext *ctx, T &property) {
   Builder b{ctx};
@@ -1801,6 +1816,91 @@ LogicalResult GDMAScatterAddOp::verify() {
 
   reg.constant_value = getConstVal();
   reg.localmem_mask = -1;
+  return success();
+}
+
+LogicalResult lin_op_verify(ShortLINRegDef &reg, Operation *op) {
+  reg.cmd_short = true;
+  reg.tsk_typ = tiuType::LIN();
+
+  auto leftInfo = getValueInfo(op->getOperand(0));
+  auto midInfo = getValueInfo(op->getOperand(1));
+  auto rightInfo = getValueInfo(op->getOperand(2));
+  auto outInfo = getValueInfo(op->getOpResult(0));
+
+  // left
+  reg.opd0_sign = leftInfo.getSign();
+  reg.opd0_addr = leftInfo.getAddr();
+  auto shape_op0 = leftInfo.getShape();
+  auto opd0_c = shape_op0[1];
+
+  // mid
+  reg.opd1_sign = midInfo.getSign();
+  reg.opd1_addr = midInfo.getAddr();
+  auto shape_op1 = leftInfo.getShape();
+  auto opd1_c = shape_op1[1];
+  if (midInfo.isConst()) {
+    reg.opt_opd1_const = true;
+  } else {
+    reg.opt_opd1_const = false;
+  }
+
+  // right
+  reg.opd2_sign = rightInfo.getSign();
+  reg.opd2_addr = rightInfo.getAddr();
+  auto shape_op2 = rightInfo.getShape();
+  auto opd2_c = shape_op2[1];
+  if (rightInfo.isConst()) {
+    reg.opt_opd2_const = true;
+  } else {
+    reg.opt_opd2_const = false;
+  }
+
+  // out
+  reg.res0_sign = outInfo.getSign();
+  reg.opt_res0_prec = outInfo.getPrec();
+  reg.res0_addr = outInfo.getAddr();
+  auto shape = outInfo.getShape();
+  reg.res0_n = shape[0];
+  reg.res0_c = shape[1];
+  reg.res0_h = shape[2];
+  reg.res0_w = shape[3];
+  if (opd0_c != opd1_c || opd0_c != opd2_c || opd1_c != opd2_c) {
+    return failure();
+  }
+  return success();
+}
+
+LogicalResult MacOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::LIN::MAC;
+  reg.cmd_id_dep = getDependency().getType().getId();
+  auto ret = lin_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+
+  return success();
+}
+
+LogicalResult SubSqrOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::LIN::SUB_SQR;
+  reg.cmd_id_dep = getDependency().getType().getId();
+  auto ret = lin_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+
+  return success();
+}
+
+LogicalResult AddSqrOp::verify() {
+  auto &reg = getProperties().reg;
+  reg.tsk_eu_typ = tiuType::LIN::ADD_SQR;
+  reg.cmd_id_dep = getDependency().getType().getId();
+  auto ret = lin_op_verify(reg, getOperation());
+  if (ret.failed())
+    return failure();
+
   return success();
 }
 

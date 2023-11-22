@@ -548,4 +548,28 @@ def SG2260_GDMAScatterAddOp : SG2260_Op<"GDMAScatterAdd",
   let hasVerifier = 1;
 }
 
+class SG2260_LinOp<string mnemonic> : SG2260_Op<"lin." # mnemonic,
+  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  let arguments = (ins
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$lhs,
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$mhs,
+    AnyTypeOf<[AnyMemRef, AnyInteger, AnyFloat]>:$rhs,
+    SG2260_DMAIdType: $dependency,
+    ShortLINRegDefProperties:$reg
+    );
+    let results = (outs AnyMemRef : $target, SG2260_TIUIdType : $id);
+    let hasVerifier = 1;
+  }
+
+def SG2260_MacOp: SG2260_LinOp<"mac"> {
+  let description = [{LIN: Mac }];
+}
+def SG2260_AddSqrOp: SG2260_LinOp<"add_sqr"> {
+  let description = [{LIN: ADD_SQR}];
+}
+def SG2260_SubSqrOp: SG2260_LinOp<"sub_sqr"> {
+  let description = [{LIN: SUB_SQR}];
+}
+
+
 #endif // SG2260

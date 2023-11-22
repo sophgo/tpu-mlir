@@ -82,6 +82,7 @@ class RegProperty<string name> : Property<name> {
     return ::mlir::success();
   }];
 }
+
 def ShortMMRegDefProperties : RegProperty<"ShortMMRegDef">;
 def ShortConvRegDefProperties : RegProperty<"ShortCONVRegDef">;
 def ShortARRegDefProperties : RegProperty<"ShortARRegDef">;
@@ -96,5 +97,6 @@ def GDMAMatrixRegDefProperties : RegProperty<"GDMAMatrixRegDef">;
 def GDMAGeneralRegDefProperties : RegProperty<"GDMAGeneralRegDef">;
 def GDMAGatherRegDefProperties : RegProperty<"GDMAGatherRegDef">;
 def GDMAScatterRegDefProperties : RegProperty<"GDMAScatterRegDef">;
+def ShortLINRegDefProperties : RegProperty<"ShortLINRegDef">;
 
 #endif
