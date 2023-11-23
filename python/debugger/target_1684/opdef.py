@@ -9,29 +9,29 @@
 
 from typing import Dict, Tuple
 
-from ..target_common import OpInfo, BaseTpuOp, cmd_base_reg, Tiu, Dma
+from ..target_common import OpInfo, BaseTpuCmd, atomic_reg, Tiu, Dma
 from .opparam import opparam_converter, default_converter
 
 tiu_cls = dict()
 
 
-class DmaCmdOp(BaseTpuOp, Dma):
+class DmaCmd(BaseTpuCmd, Dma):
     opparam_converter = opparam_converter
     default_converter = default_converter
 
     length = 1024
     description = "DMA tensor"
-    opcode_bits = (0, 1)
-    fun_bits = (32, 35)
     sp_fun = ()
 
-    def __init__(self, cmd: cmd_base_reg) -> None:
-        super().__init__(cmd)
+    def __init__(self, reg: atomic_reg, *, buf: memoryview, subnet_id=0) -> None:
+        super().__init__(reg, buf=buf, subnet_id=subnet_id)
+        self.name = "dma"
+
 
     def __repr__(self):
         if self.operands == []:
             op_name = dma_tensor.description
-            return f"%D{self.cmd.cmd_id} = {op_name}(%B{self.cmd.cmd_id_dep})"
+            return f"%D{self.cmd_id} = {op_name}(%B{self.cmd_id_dep})"
 
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
@@ -39,26 +39,36 @@ class DmaCmdOp(BaseTpuOp, Dma):
         if self.attribute:
             attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
 
-        op_name = self.sp_fun[self.cmd["cmd_special_function"]]
+        op_name = self.sp_fun[self.reg["cmd_special_function"]]
 
         return (
-            f"{', '.join(res_name)}, %D{self.cmd.cmd_id} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %B{self.cmd.cmd_id_dep})"
+            f"{', '.join(res_name)}, %D{self.cmd_id} = \"{op_name}\""
+            + f"({', '.join(opd_name)}, %B{self.cmd_id_dep})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
         )
 
+    @property
+    def cmd_id_dep(self):
+        return self.reg.cmd_id_dep
 
-class TiuCmdOp(BaseTpuOp, Tiu):
+    @property
+    def cmd_id(self):
+        return self.reg.cmd_id
+
+
+class TiuCmd(BaseTpuCmd, Tiu):
     opparam_converter = opparam_converter
     default_converter = default_converter
 
     description = "TIU Operation."
     length = 1024
-    opcode_bits = (37, 41)
     # extension
     eu_type = {}
-    eu_bits = (41, 46)
+
+    def __init__(self, reg: atomic_reg, *, buf: memoryview, subnet_id=0) -> None:
+        super().__init__(reg, buf=buf, subnet_id=subnet_id)
+        self.name = reg.OP_NAME
 
     def __init_subclass__(cls) -> None:
         tiu_cls[cls.__name__] = {
@@ -70,8 +80,8 @@ class TiuCmdOp(BaseTpuOp, Tiu):
 
     def __repr__(self) -> str:
         if self.operands == []:
-            op_name = tiu_cls[self.cmd.OP_NAME]["description"]
-            return f"%B{self.cmd.cmd_id} = {op_name}(%D{self.cmd.cmd_id_dep})"
+            op_name = tiu_cls[self.reg.OP_NAME]["description"]
+            return f"%B{self.cmd_id} = {op_name}(%D{self.cmd_id_dep})"
 
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
@@ -79,28 +89,36 @@ class TiuCmdOp(BaseTpuOp, Tiu):
         if self.attribute:
             attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
 
-        op_info = tiu_cls[self.cmd.OP_NAME]
-        eu_type_id = self.cmd["tsk_eu_typ"]
+        op_info = tiu_cls[self.reg.OP_NAME]
+        eu_type_id = self.reg["tsk_eu_typ"]
         if len(op_info["tsk_eu_typ"]) == 0:
-            op_name = self.cmd.OP_NAME
+            op_name = self.reg.OP_NAME
         else:
             op_name = op_info["tsk_eu_typ"][eu_type_id]
 
         return (
-            f"{', '.join(res_name)}, %B{self.cmd.cmd_id} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %D{self.cmd.cmd_id_dep})"
+            f"{', '.join(res_name)}, %B{self.cmd_id} = \"{op_name}\""
+            + f"({', '.join(opd_name)}, %D{self.cmd_id_dep})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
         )
 
+    @property
+    def cmd_id_dep(self):
+        return self.reg.cmd_id_dep
 
-class conv_op(TiuCmdOp):
+    @property
+    def cmd_id(self):
+        return self.reg.cmd_id
+
+
+class conv_op(TiuCmd):
     description = "convolution neuron"
     opcode = 0
     eu_type = {0: "conv", 1: "conv"}
 
 
-class pord_op(TiuCmdOp):
+class pord_op(TiuCmd):
     description = "depthwise or pooling"
     opcode = 1
     eu_type = {1: "pord", 4: "pord.maxpooling"}
@@ -114,13 +132,13 @@ class pord_op(TiuCmdOp):
                 self.op_name = "pord.avgpooling"
 
 
-class mm_op(TiuCmdOp):
+class mm_op(TiuCmd):
     description = "matrix multiply"
     opcode = 2
     eu_type = {0: "mm.mul", 1: "mm.mac"}
 
 
-class ar_op(TiuCmdOp):
+class ar_op(TiuCmd):
     description = "tensor arithmetic"
     opcode = 3
     eu_type = {
@@ -152,13 +170,13 @@ class ar_op(TiuCmdOp):
     }
 
 
-class mm2_op(TiuCmdOp):
+class mm2_op(TiuCmd):
     description = "matrix multiply2"
     opcode = 4
     eu_type = {18: "mm2"}
 
 
-class cc_op(TiuCmdOp):
+class cc_op(TiuCmd):
     opcode = 5
     eu_type = {
         0: "mul",
@@ -190,19 +208,19 @@ class cc_op(TiuCmdOp):
     description = "convolution correlation"
 
 
-class lut_op(TiuCmdOp):
+class lut_op(TiuCmd):
     description = "table lookup"
     opcode = 6
     eu_type = {0: "lut", 19: "lut"}
 
 
-class md_sum_op(TiuCmdOp):
+class md_sum_op(TiuCmd):
     description = "md sum"
     opcode = 7
     eu_type = {18: "mdsum"}
 
 
-class md_scalar_op(TiuCmdOp):
+class md_scalar_op(TiuCmd):
     description = "md scalar"
     opcode = 8
     eu_type = {
@@ -230,7 +248,7 @@ class md_scalar_op(TiuCmdOp):
     }
 
 
-class md_sfu_op(TiuCmdOp):
+class md_sfu_op(TiuCmd):
     description = "md sfu"
     opcode = 9
     eu_type = {
@@ -262,7 +280,7 @@ class md_sfu_op(TiuCmdOp):
     }
 
 
-class md_linear_op(TiuCmdOp):
+class md_linear_op(TiuCmd):
     description = "md linear"
     opcode = 10
     eu_type = {
@@ -272,25 +290,25 @@ class md_linear_op(TiuCmdOp):
     }
 
 
-class lma_op(TiuCmdOp):
+class lma_op(TiuCmd):
     description = "local memory arrangement"
     opcode = 11
     eu_type = {19: "lmem_arrangement"}
 
 
-class decompress_op(TiuCmdOp):
+class decompress_op(TiuCmd):
     description = "decompress"
     opcode = 12
     eu_type = {19: "decompress"}
 
 
-class md_cmp_op(TiuCmdOp):
+class md_cmp_op(TiuCmd):
     description = "md cmp"
     opcode = 13
     eu_type = {22: "mdcmp.cmp", 23: "mdcmp.select", 24: "mdcmp.cmp_select"}
 
 
-class vc_op(TiuCmdOp):
+class vc_op(TiuCmd):
     description = "vector correlation"
     opcode = 14
     eu_type = {
@@ -318,7 +336,7 @@ class vc_op(TiuCmdOp):
     }
 
 
-class dma_tensor(DmaCmdOp):
+class dma_tensor(DmaCmd):
     description = "DMA tensor"
     opcode = 1
     sp_fun = {

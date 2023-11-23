@@ -18,28 +18,16 @@ import ctypes
 from .regdef import op_class_dic
 from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys
 from ..target_common import (
-    cmd_base_reg,
+    atomic_reg,
     CMDType,
     DecoderBase,
-    BaseTpuOp,
-    OpInfo,
+    BaseTpuCmd,
+    HeadDef,
 )
-from .opdef import tiu_cls, dma_cls, TiuCmdOp, DmaCmdOp, tiu_index, dma_index
+from .opdef import tiu_cls, dma_cls, TiuCmd, DmaCmd, tiu_index, dma_index
 
 if TYPE_CHECKING:
     from .context import BM1688Context
-
-
-class HeadDef(ctypes.Structure):
-    def __repr__(self):
-        return str(dict(self))
-
-    def __iter__(self):
-        for field in self._fields_:
-            yield (field[0], getattr(self, field[0]))
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
 
 
 class TiuHead(HeadDef):
@@ -96,56 +84,83 @@ class Decoder(DecoderBase):
         self.context = context
 
     def decode_tiu_cmd(
-        self, cmd_buf: memoryview, *, offset=0, core_id=0, cmd_id=None
-    ) -> cmd_base_reg:
+        self, reg_buf: memoryview, *, cmd_id, offset, subnet_id, core_id
+    ) -> TiuCmd:
         assert cmd_id is not None, "1688 must assign cmd_id manully"
         for head_cls in TiuHeads:  # type: cmd_base_t
-            head = head_cls.from_buffer(cmd_buf, offset)  # type: TiuHead
+            head = head_cls.from_buffer(reg_buf, offset)  # type: TiuHead
             op_info = tiu_index.get(head, None)
             if op_info is not None:
                 break
         assert op_info is not None, (
-            f"Unable to decode TIU code at offset {offset} out of {len(cmd_buf)} total."
+            f"Unable to decode TIU code at offset {offset} out of {len(reg_buf)} total."
             f" Potential head identified as {head}"
         )
         # get op struct
         op_clazz = op_class_dic[op_info.name]
-        return self.decode_cmd(
-            op_clazz, cmd_buf, offset=offset, core_id=core_id, cmd_id=cmd_id
+        reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
+        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
+        cmd = TiuCmd(
+            reg,
+            buf=buf,
+            cmd_id=cmd_id,
+            subnet_id=subnet_id,
+            core_id=core_id,
+            param_fn=param_fn,
         )
+        return cmd
 
     def decode_dma_cmd(
-        self, cmd_buf: memoryview, *, offset=0, core_id=0, cmd_id=None
-    ) -> cmd_base_reg:
+        self, reg_buf: memoryview, *, cmd_id, offset, subnet_id, core_id
+    ) -> DmaCmd:
         assert cmd_id is not None, "1688 must assign cmd_id manully"
-        head = DmaHead.from_buffer(cmd_buf, offset)  # type: DmaHead
-        op_info = dma_index.get(head, None)
+        head = DmaHead.from_buffer(reg_buf, offset)  # type: DmaHead
+        op_info = dma_index.get((head.cmd_short, head.cmd_type, head.cmd_sp_func), None)
         assert op_info is not None, (
-            f"Unable to decode DMA code at offset {offset} out of {len(cmd_buf)} total."
+            f"Unable to decode DMA code at offset {offset} out of {len(reg_buf)} total."
             f" Potential head identified as {head}"
         )
         # get op struct
         op_clazz = op_class_dic[op_info.name]
-        return self.decode_cmd(
-            op_clazz, cmd_buf, offset=offset, core_id=core_id, cmd_id=cmd_id
-        )
 
-    def decode_dma_cmds(self, cmd_buf: memoryview, core_id=0) -> List[cmd_base_reg]:
+        reg = self.decode_reg(op_clazz, reg_buf, offset=offset)
+        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
+        cmd = DmaCmd(
+            reg,
+            buf=buf,
+            cmd_id=cmd_id,
+            subnet_id=subnet_id,
+            core_id=core_id,
+            param_fn=param_fn,
+        )
+        return cmd
+
+    def decode_dma_cmds(
+        self,
+        reg_buf: memoryview,
+        *,
+        core_id=0,
+        subnet_id=0,
+        **_,
+    ) -> List[atomic_reg]:
         """
-        cmd_buf: editable memoryview directly passed from bmodel binary buffer
+        reg_buf: editable memoryview directly passed from bmodel binary buffer
         """
         offset = 0
         res = []
         cmd_id = 1
-        while offset < len(cmd_buf):
+        while offset < len(reg_buf):
             cmd = self.decode_dma_cmd(
-                cmd_buf,
+                reg_buf,
                 offset=offset,
                 core_id=core_id,
                 cmd_id=cmd_id,
+                subnet_id=subnet_id,
             )
             cmd_id += 1
-            offset += cmd.length // 8
+            offset += cmd.reg.length // 8
             res.append(cmd)
             if (
                 isinstance(cmd, dma_sys)
@@ -155,63 +170,52 @@ class Decoder(DecoderBase):
                 # reserved0 = 1 to label manully modified cmd
                 break
 
-            if self.buf_is_end(cmd_buf[offset:], cmd, dma_sys):
+            if self.buf_is_end(reg_buf[offset:], cmd, dma_sys):
                 break
         return res
 
-    def decode_tiu_cmds(self, cmd_buf: memoryview, core_id=0) -> List[cmd_base_reg]:
+    def decode_tiu_cmds(
+        self,
+        reg_buf: memoryview,
+        *,
+        core_id=0,
+        subnet_id=0,
+        **_,
+    ) -> List[atomic_reg]:
         """
-        cmd_buf: editable memoryview directly passed from bmodel binary buffer
+        reg_buf: editable memoryview directly passed from bmodel binary buffer
         """
         offset = 0
         res = []
         cmd_id = 1
-        while offset < len(cmd_buf):
+        while offset < len(reg_buf):
             cmd = self.decode_tiu_cmd(
-                cmd_buf,
+                reg_buf,
                 offset=offset,
                 core_id=core_id,
+                subnet_id=subnet_id,
                 cmd_id=cmd_id,
             )
             cmd_id += 1
-            offset += cmd.length // 8
+            offset += cmd.reg.length // 8
             res.append(cmd)
-            if isinstance(cmd, tiu_sys) and cmd.tsk_eu_typ == 31 and cmd.rsvd1 == 1:
+            if (
+                isinstance(cmd.reg, tiu_sys)
+                and cmd.reg.tsk_eu_typ == 31
+                and cmd.reg.rsvd1 == 1
+            ):
                 # rsvd0 = 1 to label manully modified cmd
                 break
 
-            if self.buf_is_end(cmd_buf[offset:], cmd, tiu_sys):
+            if self.buf_is_end(reg_buf[offset:], cmd, tiu_sys):
                 break
 
         return res
 
-    def decode_cmd_params(self, cmd: cmd_base_reg) -> BaseTpuOp:
-        cmd_type = self.get_cmd_type(cmd)
-        if cmd_type == CMDType.tiu:
-            TiuCmdOp.opparam_converter = self.context.opparam_converter
-            return TiuCmdOp(cmd)
-        elif cmd_type == CMDType.dma:
-            DmaCmdOp.opparam_converter = self.context.opparam_converter
-            return DmaCmdOp(cmd)
-        raise NotImplementedError()
-
-    def get_cmd_type(self, cmd: cmd_base_reg) -> CMDType:
-        if cmd.OP_NAME in tiu_cls:
-            return CMDType.tiu
-        elif cmd.OP_NAME in dma_cls:
-            return CMDType.dma
-        else:
-            return CMDType.unknown
-
-    def is_end(self, cmd: cmd_base_reg):
-        return isinstance(cmd, (dma_sys, tiu_sys))
-
-    def buf_is_end(self, cmd_buf, operation: cmd_base_reg, end_op):
-        is_sys = operation.__class__ == end_op
-        is_less_1024 = len(cmd_buf) * 8 < 1025
-        if is_sys and is_less_1024 and not np.any(np.frombuffer(cmd_buf, np.uint8)):
+    @staticmethod
+    def buf_is_end(reg_buf, operation: BaseTpuCmd, end_op):
+        is_sys = isinstance(operation.reg, end_op)
+        is_less_1024 = len(reg_buf) * 8 < 1025
+        if is_sys and is_less_1024 and not np.any(np.frombuffer(reg_buf, np.uint8)):
             return True
         return False
-
-
-# decoder_instance = Decoder()

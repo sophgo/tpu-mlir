@@ -27,17 +27,14 @@ class BM1684Context(BModelContext):
     get_memory_type = get_memory_type
     local_layout_to_stride = local_layout_to_stride
 
-    @staticmethod
+    @classmethod
     def merge_instruction(
-        tiu: List[cmd_base_reg], dma: List[cmd_base_reg]
-    ) -> List[cmd_base_reg]:
+        cls, tiu: List[BaseTpuCmd], dma: List[BaseTpuCmd]
+    ) -> List[BaseTpuCmd]:
         main_cmd, inserted_cmd = dma, tiu
 
         # remove the system command
         def get_end(cmd):
-            if len(cmd) == 0:
-                return 0
-
             return len(cmd)
 
         # remove system instruction
@@ -54,3 +51,7 @@ class BM1684Context(BModelContext):
         if self._cmodel_runner is None:
             self._cmodel_runner = BM1684Runner(memory_size)
         return self._cmodel_runner
+
+    @classmethod
+    def is_sys(cls, _: BaseTpuCmd):
+        return False

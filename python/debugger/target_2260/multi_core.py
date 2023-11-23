@@ -35,12 +35,15 @@ The final wait cmd where reamin_wait_cnt was reduced to 0, will have a status as
 The other wait cmd except the last one will have a status as Status.RECIEVING
 """
 
+import collections
 from enum import Enum
 import textwrap
+from typing import List
 from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys
 from .opparam import SYS_converter, sDMA_sys_converter
 from .context import SG2260Context
 from ..atomic_dialect import INDENT_SPACE, Node
+from ..target_common import BaseTpuCmd
 
 
 class CMD_TYPE(Enum):
@@ -70,18 +73,28 @@ class Msg:
 
 
 class MsgCore(Node):
-    def __init__(self, msgcore_id, core_nums, mlir_cmds, mlir_rets, indent=0):
+    def __init__(
+        self,
+        msgcore_id,
+        msgcore_num,
+        core_nums,
+        mlir_cmds,
+        mlir_rets,
+        nearing_before_cmds,
+        indent=0,
+    ):
         self.msgcore_id = msgcore_id
-        self.core_id = mlir_cmds[0].cmd.core_id
+        self.msgcore_num = msgcore_num
+        self.core_id = mlir_cmds[0].core_id
         self.core_nums = core_nums
         self.mlir_cmds = mlir_cmds
         self.mlir_rets = mlir_rets
+        self.nearing_before_cmds = nearing_before_cmds
         self.indent = indent
-
         self.in_msg_id = mlir_cmds[0].attribute["msg_id"]
         self.out_msg_id = mlir_cmds[-1].attribute.get("msg_id", None)
-        self.in_msg = mlir_cmds[0].cmd
-        self.out_msg = mlir_cmds[-1].cmd
+        self.in_msg = mlir_cmds[0]
+        self.out_msg = mlir_cmds[-1]
         self.msg_operand = []
         self.msg_result = []
 
@@ -89,21 +102,43 @@ class MsgCore(Node):
         self.get_DAG()
 
     def get_DAG(self):
-        assert isinstance(self.in_msg, (tiu_sys, dma_sys))
-        if isinstance(self.in_msg, tiu_sys):
+        assert isinstance(self.in_msg.reg, (tiu_sys, dma_sys))
+        if isinstance(self.in_msg.reg, tiu_sys):
             self.msg_operand = f"%D{self.in_msg.cmd_id_dep}C{self.in_msg.core_id}"
-        elif isinstance(self.in_msg, dma_sys):
+        elif isinstance(self.in_msg.reg, dma_sys):
             self.msg_operand = f"%B{self.in_msg.cmd_id_dep}C{self.in_msg.core_id}"
 
-        if isinstance(self.out_msg, (tiu_sys, dma_sys)):
-            if isinstance(self.out_msg, tiu_sys):
+        if isinstance(self.out_msg.reg, (tiu_sys, dma_sys)):
+            if isinstance(self.out_msg.reg, tiu_sys):
                 self.msg_result = f"%B{self.out_msg.cmd_id}C{self.out_msg.core_id}"
-            elif isinstance(self.out_msg, dma_sys):
+            elif isinstance(self.out_msg.reg, dma_sys):
                 self.msg_result = f"%D{self.out_msg.cmd_id}C{self.out_msg.core_id}"
 
     def __str__(self):
-        repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{'
+        if (
+            self.mlir_cmds[1] == self.mlir_cmds[-1]
+            and MultiCore.get_cmd_type(self.mlir_cmds[1]) == SYS_TYPE.SEND
+        ):
+            repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}) {{'
+        elif (
+            self.msgcore_id == self.msgcore_num - 1
+            and MultiCore.get_cmd_type(self.mlir_cmds[1]) == SYS_TYPE.WAIT
+        ):
+            repr_head = f'{self.msg_result} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{'
+        else:
+            repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{'
         repr_tail = "}"
+
+        not_sys_cmds_str = ""
+        if self.nearing_before_cmds:
+            not_sys_cmds_str_list = []
+            for idx, x in enumerate(self.nearing_before_cmds):
+                if x.operands == []:
+                    str_x = str(x)[:-1] + f", status = {None}"
+                else:
+                    str_x = str(x)
+                not_sys_cmds_str_list.append(str_x)
+            not_sys_cmds_str = "\n".join(not_sys_cmds_str_list) + "\n"
 
         ops_str_list = []
         for idx, x in enumerate(self.mlir_cmds):
@@ -115,26 +150,29 @@ class MsgCore(Node):
 
         ops_str = "\n".join(ops_str_list)
         ops_str = textwrap.indent(ops_str, INDENT_SPACE)
-        return f"{repr_head}\n{ops_str}\n{repr_tail}"
+        return f"{not_sys_cmds_str}{repr_head}\n{ops_str}\n{repr_tail}"
 
 
 class MultiCore(Node):
-    def __init__(self, core_id, core_nums, mlir_cmds, indent=0):
+    def __init__(self, core_id, core_nums, mlir_cmds: List[BaseTpuCmd], indent=0):
         self.core_id = core_id
         self.core_nums = core_nums
         self.mlir_cmds = mlir_cmds
         self.indent = indent
         self.core_split_cmds = []
         self.core_split_rets = []
-        self.msges = [Msg()] * 512  # SG2260 has 512 * 14 bits msg que
+        self.msges: List[Msg] = [Msg()] * 512  # SG2260 has 512 * 14 bits msg que
 
         last_ret = None
         tmp_cmds = []
         tmp_rets = []
 
+        self.not_sys_cmds = collections.defaultdict(list)
+        in_sys = False
         for cmd_id, mlir_cmd in enumerate(mlir_cmds):
-            cmd = mlir_cmd.cmd
-            if isinstance(cmd, (tiu_sys, dma_sys)):
+            cmd = mlir_cmd
+            if isinstance(cmd.reg, (tiu_sys, dma_sys)):
+                in_sys = True
                 ret = self.consume_sys(cmd)
                 if last_ret == Status.PRODUCING and ret == Status.RECIEVING:
                     self.core_split_cmds.append(tmp_cmds)
@@ -145,14 +183,22 @@ class MultiCore(Node):
                 tmp_rets.append(ret)
                 last_ret = ret
             else:
-                if (
-                    last_ret == Status.RECIEVING
-                    or last_ret == Status.CONSUMED
-                    or last_ret == Status.OP
-                ):
-                    tmp_cmds.append(mlir_cmds[cmd_id])
-                    tmp_rets.append(None)
-                    last_ret = Status.OP
+                if in_sys:
+                    if (
+                        last_ret == Status.RECIEVING
+                        or last_ret == Status.CONSUMED
+                        or last_ret == Status.OP
+                    ):
+                        tmp_cmds.append(mlir_cmds[cmd_id])
+                        tmp_rets.append(None)
+                        last_ret = Status.OP
+
+                    if last_ret == Status.CONSUMED:
+                        in_sys = False
+                else:
+                    self.not_sys_cmds[len(self.core_split_cmds)].append(
+                        mlir_cmds[cmd_id]
+                    )
 
             if cmd_id == len(mlir_cmds) - 1:
                 assert len(tmp_cmds) > 0
@@ -164,27 +210,29 @@ class MultiCore(Node):
         self.msgcores = [
             MsgCore(
                 msgcore_id,
+                len(self.core_split_cmds),
                 core_nums,
                 msgcore_cmds,
                 self.core_split_rets[msgcore_id],
+                self.not_sys_cmds[msgcore_id],
                 indent,
             )
             for msgcore_id, msgcore_cmds in enumerate(self.core_split_cmds)
         ]
 
     @staticmethod
-    def get_cmd_type(cmd):
-        if isinstance(cmd, tiu_sys):
-            if cmd.tsk_eu_typ == 8:
+    def get_cmd_type(cmd: BaseTpuCmd):
+        if isinstance(cmd.reg, tiu_sys):
+            if cmd.reg.tsk_eu_typ == 8:
                 return SYS_TYPE.SEND
-            elif cmd.tsk_eu_typ == 9:
+            elif cmd.reg.tsk_eu_typ == 9:
                 return SYS_TYPE.WAIT
             else:
                 raise ValueError(f"cmd type error: {cmd}")
-        elif isinstance(cmd, dma_sys):
-            if cmd.cmd_special_function == 3:
+        elif isinstance(cmd.reg, dma_sys):
+            if cmd.reg.cmd_special_function == 3:
                 return SYS_TYPE.SEND
-            elif cmd.cmd_special_function == 4:
+            elif cmd.reg.cmd_special_function == 4:
                 return SYS_TYPE.WAIT
             else:
                 raise ValueError(f"cmd type error: {cmd}")
@@ -192,30 +240,26 @@ class MultiCore(Node):
             raise ValueError(f"cmd type error: {cmd}")
 
     @staticmethod
-    def get_msg_id(cmd):
-        if isinstance(cmd, tiu_sys):
-            _, attrs, _ = SYS_converter(SG2260Context, cmd)
-        elif isinstance(cmd, dma_sys):
-            _, attrs, _ = sDMA_sys_converter(SG2260Context, cmd)
-        return attrs["msg_id"]
+    def get_msg_id(cmd: BaseTpuCmd):
+        if isinstance(cmd.reg, (tiu_sys, dma_sys)):
+            return cmd["msg_id"]
+        raise ValueError("not sys cmd")
 
     @staticmethod
-    def get_msg_cnt(cmd):
-        if isinstance(cmd, tiu_sys):
-            _, attrs, _ = SYS_converter(SG2260Context, cmd)
-        elif isinstance(cmd, dma_sys):
-            _, attrs, _ = sDMA_sys_converter(SG2260Context, cmd)
-        return attrs["cnt"]
+    def get_msg_cnt(cmd: BaseTpuCmd):
+        if isinstance(cmd.reg, (tiu_sys, dma_sys)):
+            return cmd["cnt"]
+        raise ValueError("not sys cmd")
 
-    def consume_sys(self, cmd):
+    def consume_sys(self, cmd: BaseTpuCmd):
         sys = (tiu_sys, dma_sys)
-        assert isinstance(cmd, sys)
+        assert isinstance(cmd.reg, sys)
         if MultiCore.get_cmd_type(cmd) == SYS_TYPE.SEND:
             return self.consume_send(cmd)
         elif MultiCore.get_cmd_type(cmd) == SYS_TYPE.WAIT:
             return self.consume_wait(cmd)
 
-    def consume_send(self, cmd):
+    def consume_send(self, cmd: BaseTpuCmd):
         msg_id = MultiCore.get_msg_id(cmd)
         self.msges[msg_id].sent_cnt += 1
         if self.msges[msg_id].remain_wait_cnt == 0:
@@ -226,9 +270,10 @@ class MultiCore(Node):
             assert self.msges[msg_id].remain_wait_cnt == int(
                 MultiCore.get_msg_cnt(cmd) / self.core_nums
             )
+
         return Status.PRODUCING
 
-    def consume_wait(self, cmd):
+    def consume_wait(self, cmd: BaseTpuCmd):
         msg_id = MultiCore.get_msg_id(cmd)
         if (
             int(MultiCore.get_msg_cnt(cmd) / self.core_nums)

@@ -12,18 +12,18 @@ import numpy as np
 import ctypes
 from .regdef import op_class_dic
 from .regdef import sDMA_sys_reg as dma_sys, SYSID_reg as tiu_sys
-from ..target_common import cmd_base_reg, DecoderBase, BaseTpuOp, CMDType
+from ..target_common import atomic_reg, DecoderBase, BaseTpuCmd, CMDType, HeadDef
 from .opdef import (
     tiu_cls,
     dma_cls,
     tiu_index,
     dma_index,
-    TiuCmdOp,
-    DmaCmdOp,
+    TiuCmd,
+    DmaCmd,
 )
 
 
-class TiuHead(ctypes.Structure):
+class TiuHead(HeadDef):
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
         ("cmd_id", ctypes.c_uint64, 20),
@@ -46,7 +46,7 @@ class TiuHead(ctypes.Structure):
         return self.tsk_eu_typ
 
 
-class DmaHead(ctypes.Structure):
+class DmaHead(HeadDef):
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
         ("stride_enable", ctypes.c_uint64, 1),
@@ -75,77 +75,76 @@ class Decoder(DecoderBase):
     tiu_head_length = 50
     dma_head_length = 39
 
-    def decode_tiu_cmd(
-        self, cmd_buf: memoryview, *, offset=0, core_id=0
-    ) -> cmd_base_reg:
-        head = TiuHead.from_buffer(cmd_buf, offset)  # type: TiuHead
-        op_info = tiu_index.get((head.cmd_short, head.tsk_typ, head.tsk_eu_typ), None)
+    def decode_tiu_cmd(self, reg_buf: memoryview, *, offset, subnet_id) -> BaseTpuCmd:
+        head = TiuHead.from_buffer(reg_buf, offset)  # type: TiuHead
+        op_info = tiu_index.get(
+            (bool(head.cmd_short), head.tsk_typ, head.tsk_eu_typ), None
+        )
+        assert op_info is not None, (
+            f"Unable to decode TIU code at offset {offset} out of {len(reg_buf)} total."
+            f" Potential head identified as {head}"
+        )
 
         # get op struct
-        op_clazz = op_class_dic[op_info.op_name]
-        return self.decode_cmd(op_clazz, cmd_buf, offset=offset, core_id=core_id)
+        op_clazz = op_class_dic[op_info.name]
+        reg = self.decode_reg(op_clazz, reg_buf, offset=offset)
+        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        cmd = TiuCmd(reg, buf=buf, subnet_id=subnet_id)
+        return cmd
 
-    def decode_dma_cmd(
-        self, cmd_buf: memoryview, *, offset=0, core_id=0
-    ) -> cmd_base_reg:
-        head = DmaHead.from_buffer(cmd_buf, offset)  # type: DmaHead
-        op_info = dma_index.get((head.cmd_short, head.cmd_type, head.cmd_sp_func), None)
+    def decode_dma_cmd(self, reg_buf: memoryview, *, offset, subnet_id) -> BaseTpuCmd:
+        head = DmaHead.from_buffer(reg_buf, offset)  # type: DmaHead
+        op_info = dma_index.get(
+            (bool(head.cmd_short), head.cmd_type, head.cmd_sp_func), None
+    )
         # get op struct
-        op_clazz = op_class_dic[op_info.op_name]
-        return self.decode_cmd(op_clazz, cmd_buf, offset=offset, core_id=core_id)
+        assert op_info is not None, (
+            f"Unable to decode DMA code at offset {offset} out of {len(reg_buf)} total."
+            f" Potential head identified as {head}"
+        )
+        op_clazz = op_class_dic[op_info.name]
+        reg = self.decode_reg(op_clazz, reg_buf, offset=offset)
+        buf = reg_buf[offset : offset + op_clazz.length // 8]
+        cmd = DmaCmd(reg, buf=buf, subnet_id=subnet_id)
+        return cmd
 
-    def decode_dma_cmds(self, cmd_buf: memoryview, core_id=0) -> List[cmd_base_reg]:
+    def decode_dma_cmds(
+        self, reg_buf: memoryview, subnet_id=0, **_
+    ) -> List[BaseTpuCmd]:
         """
-        cmd_buf: editable memoryview directly passed from bmodel binary buffer
+        reg_buf: editable memoryview directly passed from bmodel binary buffer
         """
         offset = 0
         res = []
-        while offset < len(cmd_buf):
-            cmd = self.decode_dma_cmd(cmd_buf, offset=offset, core_id=core_id)
-            offset += cmd.length // 8
+        while offset < len(reg_buf):
+            cmd = self.decode_dma_cmd(reg_buf, offset=offset, subnet_id=subnet_id)
+            offset += cmd.reg.length // 8
             res.append(cmd)
-            if self.buf_is_end(cmd_buf[offset:], cmd, dma_sys):
+            if self.buf_is_end(reg_buf[offset:], cmd, dma_sys):
                 break
         return res
 
-    def decode_tiu_cmds(self, cmd_buf: memoryview, core_id=0) -> List[cmd_base_reg]:
+    def decode_tiu_cmds(
+        self, reg_buf: memoryview, subnet_id=0, **_
+    ) -> List[BaseTpuCmd]:
         """
-        cmd_buf: editable memoryview directly passed from bmodel binary buffer
+        reg_buf: editable memoryview directly passed from bmodel binary buffer
         """
         offset = 0
         res = []
-        while offset < len(cmd_buf):
-            cmd = self.decode_tiu_cmd(cmd_buf, offset=offset, core_id=core_id)
-            offset += cmd.length // 8
+        while offset < len(reg_buf):
+            cmd = self.decode_tiu_cmd(reg_buf, offset=offset, subnet_id=subnet_id)
+            offset += cmd.reg.length // 8
             res.append(cmd)
-            if self.buf_is_end(cmd_buf[offset:], cmd, tiu_sys):
+            if self.buf_is_end(reg_buf[offset:], cmd, tiu_sys):
                 break
 
         return res
 
-    def decode_cmd_params(self, cmd: cmd_base_reg) -> BaseTpuOp:
-        cmd_type = self.get_cmd_type(cmd)
-        if cmd_type == CMDType.tiu:
-            return TiuCmdOp(cmd)
-        elif cmd_type == CMDType.dma:
-            return DmaCmdOp(cmd)
-        raise NotImplementedError()
-
-    def get_cmd_type(self, cmd: cmd_base_reg) -> CMDType:
-        if cmd.OP_NAME in tiu_cls:
-            return CMDType.tiu
-        elif cmd.OP_NAME in dma_cls:
-            return CMDType.dma
-        else:
-            return CMDType.unknown
-
-    def is_end(self, cmd: cmd_base_reg):
-        return isinstance(cmd, (dma_sys, tiu_sys))
-
-    def buf_is_end(self, cmd_buf, operation: cmd_base_reg, end_op):
-        is_sys = operation.__class__ == end_op
-        is_less_1024 = len(cmd_buf) * 8 < 1025
-        if is_sys and is_less_1024 and not np.any(np.frombuffer(cmd_buf, np.uint8)):
+    def buf_is_end(self, reg_buf, operation: BaseTpuCmd, end_op):
+        is_sys = isinstance(operation.reg, end_op)
+        is_less_1024 = len(reg_buf) * 8 < 1025
+        if is_sys and is_less_1024 and not np.any(np.frombuffer(reg_buf, np.uint8)):
             return True
         return False
 

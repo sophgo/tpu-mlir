@@ -14,7 +14,7 @@ import ctypes
 from functools import lru_cache
 from ctypes import Structure, POINTER
 from numpy import ndarray
-from .op_support import MemRefBase, Value, CpuOp, get_type_str
+from .op_support import MemRefBase, Value, CpuCmd, get_type_str
 from typing import List
 import tempfile
 
@@ -198,7 +198,7 @@ class Runner:
         cpu_processer = pyruntime_bm.CpuLayer()
         return cpu_processer
 
-    def cpu_compute(self, command: CpuOp, core_id=0):
+    def cpu_compute(self, command: CpuCmd, core_id=0):
         assert all(
             [command.input_memref, command.output_memref]
         ), "currently only support single cpuop for each subnet."
@@ -219,8 +219,8 @@ class Runner:
         # TODO add python type check
         args = (
             command.op_type.value,  # int
-            command.param,  # bytes param
-            len(command.param),  # int param_size
+            command.buf,  # bytes param
+            len(command.buf),  # int param_size
             input_tensors,  # List[List[float]]
             input_shapes,  # List[List[int]]
             output_tensors,  # List[numpy.ndarray[numpy.float32]]
@@ -295,10 +295,10 @@ class DeviceRunner(Runner):
     def SMEM(self):
         return self.memory.SMEM
 
-    def tiu_compute(self, command, core_id=0):
+    def tiu_compute(self, command):
         raise NotImplementedError()
 
-    def dma_compute(self, command, core_id=0):
+    def dma_compute(self, command):
         raise NotImplementedError()
 
 

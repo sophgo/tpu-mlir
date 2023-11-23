@@ -40,18 +40,17 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
 
         index, multi_context, pre, next = self.parse_comon(arg)
         point = self.tdb.cmd_point
-        try:
-            res = (
-                index_plugin.get_loc_context_by_point(point, pre, next)
-                if multi_context
-                else [index_plugin.get_loc_by_point(point)]
-            )
-        except (KeyError, IndexError) as e:
-            self.tdb.error(e)
+
+        res = (
+            index_plugin.get_loc_context_by_point(point, pre, next)
+            if multi_context
+            else [index_plugin.get_loc_by_point(point)]
+        )
+        if res is None:
             self.tdb.error(
-                f"{type(self.tdb.get_op()).__name__} cmd has no mlir context."
+                f"{type(self.tdb.get_cmd()).__name__} cmd has no mlir context."
             )
-            return
+            return ""
 
         message = codelike_format(res, index)
         return message
@@ -70,18 +69,16 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
         index, multi_context, pre, next = self.parse_comon(arg)
         point = self.tdb.cmd_point
 
-        try:
-            res = (
-                index_plugin.get_mlir_context_by_point(point, pre, next)
-                if multi_context
-                else [index_plugin.get_mlir_by_point(point)]
-            )
-        except (KeyError, IndexError) as e:
-            self.tdb.error(e)
+        res = (
+            index_plugin.get_mlir_context_by_point(point, pre, next)
+            if multi_context
+            else [index_plugin.get_mlir_by_point(point)]
+        )
+        if res is None:
             self.tdb.error(
-                f"{type(self.tdb.get_op()).__name__} cmd has no mlir context."
+                f"{type(self.tdb.get_cmd()).__name__} cmd has no mlir context."
             )
-            return
+            return ""
 
         message = codelike_format(res, index)
         return message
@@ -92,7 +89,9 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
             return message
         index, multi_context, pre, next = self.parse_comon(arg)
         res = (
-            self.tdb.get_op_context(pre, next) if multi_context else [self.tdb.get_op()]
+            self.tdb.get_op_context(pre, next)
+            if multi_context
+            else [self.tdb.get_cmd()]
         )
         message = codelike_format(res, index)
         return message
@@ -103,9 +102,11 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
             return message
         index, multi_context, pre, next = self.parse_comon(arg)
         res = (
-            self.tdb.get_op_context(pre, next) if multi_context else [self.tdb.get_op()]
+            self.tdb.get_op_context(pre, next)
+            if multi_context
+            else [self.tdb.get_cmd()]
         )
-        res = [i.cmd for i in res]
+        res = [i.reg for i in res]
         message = codelike_format(res, index)
         return message
 
@@ -115,7 +116,9 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
             return message
         index, multi_context, pre, next = self.parse_comon(arg)
         res = (
-            self.tdb.get_op_context(pre, next) if multi_context else [self.tdb.get_op()]
+            self.tdb.get_op_context(pre, next)
+            if multi_context
+            else [self.tdb.get_cmd()]
         )
         res = [i.buf for i in res if i.cmd_type == i.cmd_type]
         message = codelike_format(res, index)
@@ -157,8 +160,8 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
             try:
                 index = index_plugin.get_locindex_by_atomic()
                 self.tdb.message(f"mlir: {index} / {len(index_plugin.final_mlir.loc)}")
-            except (IndexError,KeyError) as e:
+            except (IndexError, KeyError) as e:
                 self.tdb.error(e)
                 self.tdb.error(
-                    f"{type(self.tdb.get_op()).__name__} cmd has no mlir context."
+                    f"{type(self.tdb.get_cmd()).__name__} cmd has no mlir context."
                 )

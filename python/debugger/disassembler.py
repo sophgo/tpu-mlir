@@ -13,9 +13,10 @@ from .target_common import (
     DType,
     Layout,
     MemRefBase,
-    cmd_base_reg,
+    atomic_reg,
     get_target_context,
     CpuLayerType,
+    BaseTpuCmd,
 )
 from . import bmodel_fbs
 from typing import List, NamedTuple
@@ -23,9 +24,9 @@ from functools import lru_cache
 
 
 class StaticCmdGroup(NamedTuple):
-    tiu: List[cmd_base_reg]
-    dma: List[cmd_base_reg]
-    all: List[cmd_base_reg]
+    tiu: List[BaseTpuCmd]
+    dma: List[BaseTpuCmd]
+    all: List[BaseTpuCmd]
 
 
 class _BModelContext:

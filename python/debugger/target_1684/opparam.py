@@ -9,7 +9,7 @@
 # 1684
 
 from typing import Callable, Dict, Union, Tuple, List, Any
-from ..target_common import Scalar, cmd_base_reg
+from ..target_common import Scalar, atomic_reg
 from .cmodel import MemRef
 
 __all__ = ["opparam_converter"]
@@ -22,7 +22,7 @@ __all__ = ["opparam_converter"]
 ValueType = Union[MemRef, Scalar]
 
 opparam_converter: Dict[
-    str, Callable[[cmd_base_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]]
+    str, Callable[[atomic_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]]
 ] = {}
 
 

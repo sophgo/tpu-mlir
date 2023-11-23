@@ -23,4 +23,5 @@ install(FILES nntoolchain/lib/libbackend_1684.so
               CV18xx/lib/libcviruntime.so
               CV18xx/lib/libcvicmodel.so
               CV18xx/lib/libunwind.so.8
+              atomic_exec/libbm1684x_atomic_kernel.so
         DESTINATION lib)

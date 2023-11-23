@@ -25,7 +25,7 @@ import pandas as pd
 
 from ..final_mlir import CMD, FinalMlirIndex, Value
 from .common import FinalMlirIndexPlugin
-from ..target_common.op_support import BaseTpuOp
+from ..target_common.op_support import BaseTpuCmd
 from ..target_common import Target, CMDType
 from ..tdb_support import (
     TdbCmdBackend,
@@ -72,16 +72,16 @@ class BmodelEditor(TdbPlugin, TdbPluginCmd):
         sys_end = self.tdb.context.decoder.decode_tiu_cmd(
             buf, cmd_id=cmd_id, core_id=core_id
         )
-        sys_end.rsvd1 = 1
-        return self.tdb.context.decoder.decode_cmd_params(sys_end)
+        sys_end.reg.rsvd1 = 1
+        return sys_end
 
     def create_dma_end(self, cmd_id=0, core_id=0):
         buf = bytearray(bm1688["dma_end"])
         sys_end = self.tdb.context.decoder.decode_dma_cmd(
             buf, cmd_id=cmd_id, core_id=core_id
         )
-        sys_end.reserved0 = 1
-        return self.tdb.context.decoder.decode_cmd_params(sys_end)
+        sys_end.reg.reserved0 = 1
+        return sys_end
 
     def do_cut(self, args):
         """insert command"""
@@ -92,7 +92,8 @@ class BmodelEditor(TdbPlugin, TdbPluginCmd):
         index: FinalMlirIndexPlugin = self.tdb.get_plugin(FinalMlirIndexPlugin)
         loc = index.get_loc_by_point()
         self.tdb.message(f"cut bmodel after {loc}")
-        cmd_indexs = index.loc2indexs[loc.loc_index]
+
+        cmd_indexs = self.tdb.index_df[self.tdb.index_df.loc_index == loc.loc_index]
 
         index = max(cmd_indexs) + 1
 
@@ -103,19 +104,19 @@ class BmodelEditor(TdbPlugin, TdbPluginCmd):
             if (cmd.cmd_type, cmd.core_id) not in hit_dic:
                 if cmd.cmd_type == CMDType.tiu:
                     self.tdb.message(cmd)
-                    op = self.create_tiu_end(cmd_id=cmd.cmd.cmd_id)
-                    old_buf = bytes(cmd.cmd.buf[: len(op.cmd.buf)])
-                    cmd.cmd.buf[: len(op.cmd.buf)] = bytes(op.cmd)
+                    cmd = self.create_tiu_end(cmd_id=cmd.cmd_id)
+                    old_buf = bytes(cmd.cmd.buf[: len(cmd.reg.buf)])
+                    cmd.cmd.buf[: len(cmd.reg.buf)] = bytes(cmd.reg)
                 elif cmd.cmd_type == CMDType.dma:
                     self.tdb.message(cmd)
-                    op = self.create_dma_end(cmd_id=cmd.cmd.cmd_id)
-                    old_buf = bytes(cmd.cmd.buf[: len(op.cmd.buf)])
-                    cmd.cmd.buf[: len(op.cmd.buf)] = bytes(op.cmd)
+                    cmd = self.create_dma_end(cmd_id=cmd.cmd_id)
+                    old_buf = bytes(cmd.cmd.buf[: len(cmd.reg.buf)])
+                    cmd.cmd.buf[: len(cmd.reg.buf)] = bytes(cmd.reg)
                 else:
                     index += 1
                     continue
                 hit_dic[(cmd.cmd_type, cmd.core_id)] = (
-                    bytes(cmd.cmd.buf[: len(op.cmd.buf)]),
+                    bytes(cmd.cmd.buf[: len(cmd.reg.buf)]),
                     old_buf,
                 )
             index += 1

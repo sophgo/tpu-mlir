@@ -50,19 +50,19 @@ class AddrBreakpoint(Breakpoint):
             self.mode = "rw"
 
     def should_stop(self, tdb: TdbCmdBackend) -> bool:
-        op = tdb.get_op()
+        cmd = tdb.get_cmd()
         checked_values = []
         if "r" in self.mode:
-            checked_values.extend(op.operands)
+            checked_values.extend(cmd.operands)
         elif "w" in self.mode:
-            checked_values.extend(op.results)
+            checked_values.extend(cmd.results)
 
-        for op in checked_values:
-            if op.is_scalar:
+        for cmd in checked_values:
+            if cmd.is_scalar:
                 continue
-            if op.mtype.name != self.mtype:
+            if cmd.mtype.name != self.mtype:
                 continue
-            if self.address == op.r_addr:
+            if self.address == cmd.r_addr:
                 return True
 
         return False
@@ -78,12 +78,12 @@ class CmdIdBreakpoint(Breakpoint):
         self.match_index = int(text[1:])
 
     def should_stop(self, tdb: "TdbCmdBackend") -> bool:
-        op = tdb.get_op()
+        cmd = tdb.get_cmd()
 
-        if self.match_type != op.cmd_type:
+        if self.match_type != cmd.cmd_type:
             return False
 
-        if op.cmd.cmd_id != self.match_index:
+        if cmd.reg.cmd_id != self.match_index:
             return False
 
         return True
@@ -96,9 +96,34 @@ class LocBreakpoint(Breakpoint):
     pattern = re.compile(r"^#loc\([\w]+\)")
 
 
-class FileLineBreakpoint(Breakpoint):
-    type = "file-line"
+class MlirFileLineBreakpoint(Breakpoint):
+    type = "file-line(op)"
     pattern = re.compile("^:[0-9]+")
+
+    def __init__(self, text, cond=None, index=-1) -> None:
+        super().__init__(text, cond, index)
+        self.file_line = int(text[1:])
+
+    def should_stop(self, tdb: TdbCmdBackend) -> bool:
+        index: FinalMlirIndexPlugin = tdb.get_plugin(FinalMlirIndexPlugin)
+        loc = index.get_loc_by_point(tdb.cmd_point)
+
+        if loc is None:
+            return False
+
+        return loc.file_line == self.file_line
+
+
+class CmdFileLineBreakpoint(Breakpoint):
+    """
+    set breakpoint for bmodel_dis.py
+    """
+    type = "file-line(cmd)"
+    pattern = re.compile("^::[0-9]+")
+
+    def __init__(self, text, cond=None, index=-1) -> None:
+        super().__init__(text, cond, index)
+        self.file_line = int(text[2:])
 
 
 class ValueIdBreakpoint(Breakpoint):
@@ -111,6 +136,8 @@ class ValueIdBreakpoint(Breakpoint):
             return False
 
         mlir = index.get_mlir_by_point(tdb.cmd_point)
+        if mlir is None:
+            return False
         if mlir.find(self.text) >= 0:
             return True
         return False
@@ -126,6 +153,8 @@ class DialectOpBreakpoint(Breakpoint):
             return False
 
         mlir = index.get_mlir_by_point(tdb.cmd_point)
+        if mlir is None:
+            return False
         if mlir.find(self.text) >= 0:
             return True
         return False
@@ -315,8 +344,8 @@ class BreakpointPlugin(TdbPlugin, TdbPluginCmd):
         self,
         tdb: "TdbCmdBackend",
     ):
-        op = tdb.get_op()
-        if op == self.stoped_op:
+        cmd = tdb.get_cmd()
+        if cmd == self.stoped_op:
             self.stoped_op = None
             return
         break_hit = self.breakpoints.should_break(tdb)

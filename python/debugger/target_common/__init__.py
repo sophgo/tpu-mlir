@@ -7,7 +7,7 @@
 #
 # ==============================================================================
 
-from .decoder import DecoderBase
+from .decoder import DecoderBase, HeadDef
 from .runner import (
     c_array_to_ndarray,
     MemoryBase,
@@ -32,8 +32,8 @@ from .op_support import (
     Scalar,
     MemRefBase,
     OpInfo,
-    cmd_base_reg,
-    BaseTpuOp,
+    atomic_reg,
+    BaseTpuCmd,
     get_dtype,
     bf16_to_fp32,
     Target,
@@ -41,9 +41,11 @@ from .op_support import (
     ALIGN,
     DIV_UP,
     CpuLayerType,
-    CpuOp,
+    CpuCmd,
     Tiu,
     Dma,
     CMDType,
-    DynIrOp,
+    DynIrCmd,
+    RegIndex,
+    BaseCmd,
 )

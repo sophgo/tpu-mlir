@@ -20,7 +20,7 @@ from ..target_common import (
     ExtEnum,
     Layout,
     get_dtype,
-    cmd_base_reg,
+    atomic_reg,
 )
 
 from .regdef import *
@@ -36,7 +36,7 @@ ValueType = Union[MemRef, Scalar]
 
 opparam_converter: Dict[
     str,
-    Callable[[cmd_base_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]],
+    Callable[[atomic_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]],
 ] = {}
 
 

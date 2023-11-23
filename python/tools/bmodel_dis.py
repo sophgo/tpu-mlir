@@ -177,14 +177,14 @@ def __main():
             outs = {
                 _id: {
                     "tiu": [
-                        {"name": x.OP_NAME, "cmd": dict(x)}
+                        {"name": x.name, "cmd": dict(x.reg)}
                         for x in ops.tiu
-                        if not_visited(x.OP_NAME)
+                        if not_visited(x.name)
                     ],
                     "dma": [
-                        {"name": x.OP_NAME, "cmd": dict(x)}
+                        {"name": x.name, "cmd": dict(x.reg)}
                         for x in ops.dma
-                        if not_visited(x.OP_NAME)
+                        if not_visited(x.name)
                     ],
                 }
                 for _id, ops in module
