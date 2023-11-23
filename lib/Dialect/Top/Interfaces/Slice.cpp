@@ -74,19 +74,19 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
   if (!(module::isNone(getOffsetT()) && module::isNone(getEndsT()) &&
         module::isNone(getStepsT()))) {
     // slice in only one aixs in such case
-    int axis = module::getI64Array(getAxes())->at(0);
-    auto ends_v = module::getI64Array(getEnds());
-    auto in_ends_v = std::valarray<int64_t>(ends_v->data(), ends_v->size());
-    auto in_steps_v = std::valarray<int64_t>(steps_v->data(), steps_v->size());
-    if (!module::isNone(getOffsetT()))
-      offset_v->at(axis) = *p.inputs[1];
-    if (!module::isNone(getEndsT()))
-      ends_v->at(axis) = *p.inputs[2];
-    if (!module::isNone(getStepsT()))
-      steps_v->at(axis) = *p.inputs[3];
     for (int i = 0; i < out_dims; i++) {
       out_shape[i] = std::min(out_shape[i], in_shape[i]);
     }
+    int axis = module::getI64Array(getAxes())->at(0);
+    auto ends_v = module::getI64Array(getEnds());
+
+    if (!module::isNone(getOffsetT()))
+      offset_v->at(axis) = std::max((int64_t)(*p.inputs[1]), (int64_t)out_shape[axis]);
+    if (!module::isNone(getEndsT()))
+      ends_v->at(axis) = std::min((int64_t)(*p.inputs[2]), (int64_t)out_shape[axis]);
+    if (!module::isNone(getStepsT()))
+      steps_v->at(axis) = *p.inputs[3];
+
     out_shape[axis] =
         (ends_v->at(axis) - offset_v->at(axis)) / steps_v->at(axis);
     module::setShape(getOutput(), out_shape);
