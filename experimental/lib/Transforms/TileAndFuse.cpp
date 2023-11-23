@@ -19,8 +19,8 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu-mlir/Transforms/Passes.h"
 
-namespace mlir {
 namespace tpu_mlir {
+using namespace mlir;
 
 const StringLiteral kLinalgTilingMarker = "__linalg_tiling__";
 
@@ -37,10 +37,9 @@ struct TileConsumerAndFuseProducersGreedilyUsingSCFForOp
 
     if (!attr) {
       if (op->hasAttr(kLinalgTilingMarker)) {
-        op->dump();
-        llvm::errs()
-            << kLinalgTilingMarker
-            << " needs array<i64: .+> type. But got unknown parameter\n";
+        return op->emitOpError(
+            kLinalgTilingMarker +
+            " needs array<i64: .+> type. But got unknown parameter");
       }
       return failure();
     }
@@ -97,4 +96,3 @@ std::unique_ptr<Pass> createTileAndFuseGreedilyPass() {
 }
 
 } // namespace tpu_mlir
-} // namespace mlir

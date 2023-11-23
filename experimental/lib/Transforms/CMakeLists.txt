@@ -2,9 +2,12 @@ add_mlir_dialect_library(TPUMLIRCodegenPass
   Passes.cpp
   DecomposeLinalgGeneric.cpp
   TileAndFuse.cpp
+  StructuredTransform.cpp
+  InstrctionSelction.cpp
 
   DEPENDS
   TPUMLIRSG2260Gen
+  TPUMLIRSG2260Dialect
   TPUMLIRCodegenPassIncGen
   LINK_LIBS
   PUBLIC

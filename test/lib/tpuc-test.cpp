@@ -30,13 +30,13 @@ int main(int argc, char **argv) {
   mlir::registerTransformsPasses();
 
   tpu_mlir::test::registerTestTilingInterface();
-  mlir::tpu_mlir::registerTPUMLIRPasses();
+  tpu_mlir::registerTPUMLIRPasses();
   mlir::DialectRegistry registry;
   using namespace mlir;
   // clang-format off
   registry.insert<ml_program::MLProgramDialect>();
-  mlir::tpu_mlir::registerDepencyDialect(registry);
-  mlir::tpu_mlir::registerCodegenInterfaces(registry);
+  tpu_mlir::registerDepencyDialect(registry);
+  tpu_mlir::registerCodegenInterfaces(registry);
   // clang-format on
 
   return asMainReturnCode(

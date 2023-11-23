@@ -15,8 +15,9 @@
 #include "tpu-mlir/Dialect/SG2260/IR/SG2260.h"
 #include "llvm/ADT/SmallString.h"
 
+namespace tpu_mlir {
+namespace sg2260 {
 using namespace mlir;
-using namespace tpu_mlir::sg2260;
 
 void getAsmResultNames(function_ref<void(Value, StringRef)> setNameFn,
                        Operation::result_range restults) {
@@ -39,236 +40,6 @@ void getAsmResultNames(function_ref<void(Value, StringRef)> setNameFn,
     }
   };
   llvm::for_each(restults, setFun);
-}
-
-void MatMulOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void ConvOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void DMATensorOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void DMATensorTransOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void DMATensorBroadcastOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void AddOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void SubOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void MulOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void MaxOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void MinOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void AndOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void XorOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void OrOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void CopyOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void AbsOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void NotOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void CLZOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void CLOOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void TaylorOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void NormalOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void RsqrtOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void RequantFpOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void DequantFpOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void RequantIntOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void DequantIntOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void MaxPoolOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void MinPoolOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void AvgPoolOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void DepthwiseOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void VectorCorrOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void CWTransOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void LaneBroadOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void LaneCopyOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void StaticBroadOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void StaticDistOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void TIUSendMsgOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void TIUWaitMsgOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void GDMAMatrixMoveOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void GDMAGeneralMoveOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void GDMAGeneralBroadcastOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void GDMAGatherOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void GDMAScatterOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void GDMAScatterAddOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void MacOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void AddSqrOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
-}
-
-void SubSqrOp::getAsmResultNames(
-    function_ref<void(Value, StringRef)> setNameFn) {
-  ::getAsmResultNames(setNameFn, getResults());
 }
 
 template <typename T>
@@ -337,9 +108,7 @@ struct getValueInfo {
   }
 
   // TODO:
-  Layout getLayout() {
-    return {};
-  }
+  Layout getLayout() { return {}; }
 
   bool getSign() { return !getDtype().isUnsignedInteger(); }
 
@@ -366,23 +135,23 @@ struct getValueInfo {
 
   GDMA_FORMAT getGDMAFormat() {
     switch (getPrec()) {
-      case HW_FP32:
-        return GDMA_FP32;
-      case HW_FP16:
-        return GDMA_FP16;
-      case HW_BFP16:
-        return GDMA_BF16;
-      case HW_INT32:
-        return GDMA_INT32;
-      case HW_INT16:
-        return GDMA_INT16;
-      case HW_INT8:
-        return GDMA_INT8;
-      case HW_FP20:
-        return GDMA_FP20;
-      default:
-        llvm::errs() << "invalid precision";
-        return GDMA_UNKNOWN;
+    case HW_FP32:
+      return GDMA_FP32;
+    case HW_FP16:
+      return GDMA_FP16;
+    case HW_BFP16:
+      return GDMA_BF16;
+    case HW_INT32:
+      return GDMA_INT32;
+    case HW_INT16:
+      return GDMA_INT16;
+    case HW_INT8:
+      return GDMA_INT8;
+    case HW_FP20:
+      return GDMA_FP20;
+    default:
+      llvm::errs() << "invalid precision";
+      return GDMA_UNKNOWN;
     }
   }
 
@@ -392,32 +161,32 @@ private:
 
 static inline int get_gdma_format_type_len(GDMA_FORMAT format) {
   switch (format) {
-    case GDMA_INT8:
-      return 1;
-    case GDMA_FP16:
-    case GDMA_BF16:
-    case GDMA_INT16:
-      return 2;
-    case GDMA_FP32:
-    case GDMA_INT32:
-    case GDMA_FP20:
-      return 4;
-    default:
-      return 0;
+  case GDMA_INT8:
+    return 1;
+  case GDMA_FP16:
+  case GDMA_BF16:
+  case GDMA_INT16:
+    return 2;
+  case GDMA_FP32:
+  case GDMA_INT32:
+  case GDMA_FP20:
+    return 4;
+  default:
+    return 0;
   }
 }
 
-static inline int get_constant_value(const void* p_val, GDMA_FORMAT format) {
+static inline int get_constant_value(const void *p_val, GDMA_FORMAT format) {
   int constant = 0;
   int type_len = get_gdma_format_type_len(format);
   if (format == GDMA_FP20) {
-      type_len = 4;
+    type_len = 4;
   }
   memcpy(&constant, p_val, type_len);
   return constant;
 }
 
-LogicalResult MatMulOp::verify() {
+LogicalResult MatMulOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.cmd_short = true;
   reg.tsk_typ = tiuType::MM();
@@ -622,7 +391,8 @@ LogicalResult DMATensorBroadcastOp::verify() {
   return success();
 }
 
-LogicalResult binary_op_verify(ShortARRegDef &reg, Operation *op, bool input_exchange = false) {
+LogicalResult binary_op_verify(ShortARRegDef &reg, Operation *op,
+                               bool input_exchange = false) {
   reg.cmd_short = true;
   reg.tsk_typ = tiuType::AR();
   reg.cmd_id_dep = cast<TIUIdType>(op->getOperandTypes()[1]).getId();
@@ -697,8 +467,10 @@ LogicalResult logical_binary_op_verify(ShortARRegDef &reg, Operation *op) {
   auto leftInfo = getValueInfo(op->getOperand(0));
   auto rightInfo = getValueInfo(op->getOperand(1));
   auto outInfo = getValueInfo(op->getOpResult(0));
-  if (leftInfo.getPrec() != rightInfo.getPrec() || leftInfo.getPrec() != outInfo.getPrec() ||
-      leftInfo.getSign() != rightInfo.getSign() || leftInfo.getSign() != outInfo.getSign())
+  if (leftInfo.getPrec() != rightInfo.getPrec() ||
+      leftInfo.getPrec() != outInfo.getPrec() ||
+      leftInfo.getSign() != rightInfo.getSign() ||
+      leftInfo.getSign() != outInfo.getSign())
     return failure();
 
   auto ret = binary_op_verify(reg, op);
@@ -708,7 +480,8 @@ LogicalResult logical_binary_op_verify(ShortARRegDef &reg, Operation *op) {
     reg.opt_opd0_prec = HWType::HW_INT32;
     reg.opt_opd1_prec = HWType::HW_INT32;
     reg.opt_res0_prec = HWType::HW_INT32;
-  } else if (reg.opt_opd0_prec == HWType::HW_FP16 || reg.opt_opd0_prec == HWType::HW_BFP16) {
+  } else if (reg.opt_opd0_prec == HWType::HW_FP16 ||
+             reg.opt_opd0_prec == HWType::HW_BFP16) {
     reg.opt_opd0_prec = HWType::HW_INT16;
     reg.opt_opd1_prec = HWType::HW_INT16;
     reg.opt_res0_prec = HWType::HW_INT16;
@@ -720,19 +493,19 @@ LogicalResult logical_binary_op_verify(ShortARRegDef &reg, Operation *op) {
   return success();
 }
 
-LogicalResult AndOp::verify() {
+LogicalResult AndOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.tsk_eu_typ = tiuType::AR::AND;
   return logical_binary_op_verify(reg, getOperation());
 }
 
-LogicalResult OrOp::verify() {
+LogicalResult OrOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.tsk_eu_typ = tiuType::AR::OR;
   return logical_binary_op_verify(reg, getOperation());
 }
 
-LogicalResult XorOp::verify() {
+LogicalResult XorOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.tsk_eu_typ = tiuType::AR::XOR;
   return logical_binary_op_verify(reg, getOperation());
@@ -753,13 +526,13 @@ LogicalResult compare_binary_op_verify(ShortARRegDef &reg, Operation *op) {
   return binary_op_verify(reg, op);
 }
 
-LogicalResult MaxOp::verify() {
+LogicalResult MaxOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.tsk_eu_typ = tiuType::AR::MAX;
   return compare_binary_op_verify(reg, getOperation());
 }
 
-LogicalResult MinOp::verify() {
+LogicalResult MinOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.tsk_eu_typ = tiuType::AR::MIN;
   return compare_binary_op_verify(reg, getOperation());
@@ -801,7 +574,8 @@ LogicalResult binary_op_check(ShortARRegDef &reg, Operation *op) {
   return success();
 }
 
-LogicalResult compute_binary_op_verify(ShortARRegDef &reg, Operation *op, bool input_exchange) {
+LogicalResult compute_binary_op_verify(ShortARRegDef &reg, Operation *op,
+                                       bool input_exchange) {
 
   auto ret = binary_op_verify(reg, op, input_exchange);
   if (ret.failed())
@@ -826,9 +600,11 @@ LogicalResult compute_binary_op_verify(ShortARRegDef &reg, Operation *op, bool i
   return binary_op_verify(reg, op);
 }
 
-LogicalResult AddOp::verify() {
+LogicalResult AddOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
-  reg.tsk_eu_typ = getIsSaturation() && getLhs().getType().isIntOrIndex() ? tiuType::AR::ADD_SATU : tiuType::AR::ADD;
+  reg.tsk_eu_typ = getIsSaturation() && getLhs().getType().isIntOrIndex()
+                       ? tiuType::AR::ADD_SATU
+                       : tiuType::AR::ADD;
   reg.sym_range = getIsSaturation();
 
   auto leftInfo = getValueInfo(getLhs());
@@ -844,7 +620,8 @@ LogicalResult AddOp::verify() {
 
   // sign_check
   if (leftInfo.getDtype().isIntOrIndex()) {
-    if (leftInfo.getDtype().isSignedInteger() || rightInfo.getDtype().isSignedInteger()) {
+    if (leftInfo.getDtype().isSignedInteger() ||
+        rightInfo.getDtype().isSignedInteger()) {
       if (!outInfo.getDtype().isSignedInteger())
         return failure();
     } else {
@@ -855,9 +632,11 @@ LogicalResult AddOp::verify() {
   return success();
 }
 
-LogicalResult MulOp::verify() {
+LogicalResult MulOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
-  reg.tsk_eu_typ = getIsSaturation() && getLhs().getType().isIntOrIndex() ? tiuType::AR::MUL_SATU : tiuType::AR::MUL;
+  reg.tsk_eu_typ = getIsSaturation() && getLhs().getType().isIntOrIndex()
+                       ? tiuType::AR::MUL_SATU
+                       : tiuType::AR::MUL;
   reg.sym_range = getIsSaturation();
 
   auto leftInfo = getValueInfo(getLhs());
@@ -873,7 +652,8 @@ LogicalResult MulOp::verify() {
 
   // sign_check
   if (leftInfo.getDtype().isIntOrIndex()) {
-    if (leftInfo.getDtype().isSignedInteger() || rightInfo.getDtype().isSignedInteger()) {
+    if (leftInfo.getDtype().isSignedInteger() ||
+        rightInfo.getDtype().isSignedInteger()) {
       if (!outInfo.getDtype().isSignedInteger())
         return failure();
     } else {
@@ -884,9 +664,11 @@ LogicalResult MulOp::verify() {
   return success();
 }
 
-LogicalResult SubOp::verify() {
+LogicalResult SubOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
-  reg.tsk_eu_typ = getIsSaturation() && getLhs().getType().isIntOrIndex() ? tiuType::AR::SUB_SATU : tiuType::AR::SUB;
+  reg.tsk_eu_typ = getIsSaturation() && getLhs().getType().isIntOrIndex()
+                       ? tiuType::AR::SUB_SATU
+                       : tiuType::AR::SUB;
   reg.sym_range = getIsSaturation();
 
   auto leftInfo = getValueInfo(getLhs());
@@ -958,7 +740,7 @@ LogicalResult ar_unary_op_verify(ShortARRegDef &reg, Operation *op) {
   return success();
 }
 
-LogicalResult CopyOp::verify() {
+LogicalResult CopyOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.tsk_eu_typ = tiuType::AR::COPY;
 
@@ -975,7 +757,7 @@ LogicalResult CopyOp::verify() {
   return success();
 }
 
-LogicalResult AbsOp::verify() {
+LogicalResult AbsOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.tsk_eu_typ = tiuType::AR::ABS;
 
@@ -992,7 +774,7 @@ LogicalResult AbsOp::verify() {
   return success();
 }
 
-LogicalResult NotOp::verify() {
+LogicalResult NotOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.tsk_eu_typ = tiuType::AR::NOT;
 
@@ -1005,7 +787,8 @@ LogicalResult NotOp::verify() {
   if (reg.opt_opd0_prec == HWType::HW_FP32) {
     reg.opt_opd0_prec = HWType::HW_INT32;
     reg.opt_res0_prec = HWType::HW_INT32;
-  } else if (reg.opt_opd0_prec == HWType::HW_FP16 || reg.opt_opd0_prec == HWType::HW_BFP16) {
+  } else if (reg.opt_opd0_prec == HWType::HW_FP16 ||
+             reg.opt_opd0_prec == HWType::HW_BFP16) {
     reg.opt_opd0_prec = HWType::HW_INT16;
     reg.opt_res0_prec = HWType::HW_INT16;
   } else if (reg.opt_opd0_prec == HWType::HW_FP8) {
@@ -1028,27 +811,29 @@ LogicalResult ar_count_verify(ShortARRegDef &reg, Operation *op) {
     return failure();
   if (reg.opt_opd0_prec == HWType::HW_FP32) {
     reg.opt_opd0_prec = HWType::HW_INT32;
-  } else if (reg.opt_opd0_prec == HWType::HW_FP16 || reg.opt_opd0_prec == HWType::HW_BFP16) {
+  } else if (reg.opt_opd0_prec == HWType::HW_FP16 ||
+             reg.opt_opd0_prec == HWType::HW_BFP16) {
     reg.opt_opd0_prec = HWType::HW_INT16;
     if (reg.opt_res0_prec == HWType::HW_INT32) {
       return failure();
     }
   } else if (reg.opt_opd0_prec == HWType::HW_FP8) {
     reg.opt_opd0_prec = HWType::HW_INT8;
-    if (reg.opt_res0_prec == HWType::HW_INT32 || reg.opt_res0_prec == HWType::HW_INT16) {
+    if (reg.opt_res0_prec == HWType::HW_INT32 ||
+        reg.opt_res0_prec == HWType::HW_INT16) {
       return failure();
     }
   }
   return success();
 }
 
-LogicalResult CLOOp::verify() {
+LogicalResult CLOOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.tsk_eu_typ = tiuType::AR::GET_FIRST_ONE;
   return ar_count_verify(reg, getOperation());
 }
 
-LogicalResult CLZOp::verify() {
+LogicalResult CLZOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.tsk_eu_typ = tiuType::AR::GET_FIRST_ZERO;
   return ar_count_verify(reg, getOperation());
@@ -1166,12 +951,14 @@ LogicalResult RequantFpOp::verify() {
   auto inInfo = getValueInfo(getOperand(0));
   auto in1Info = getValueInfo(getOperand(1));
   auto outInfo = getValueInfo(getResult());
-  if (!inInfo.getDtype().isInteger(8) && !inInfo.getDtype().isInteger(16) && !inInfo.getDtype().isInteger(32))
+  if (!inInfo.getDtype().isInteger(8) && !inInfo.getDtype().isInteger(16) &&
+      !inInfo.getDtype().isInteger(32))
     return failure();
-  if (!outInfo.getDtype().isInteger(4) && !outInfo.getDtype().isInteger(8) && !outInfo.getDtype().isInteger(16))
+  if (!outInfo.getDtype().isInteger(4) && !outInfo.getDtype().isInteger(8) &&
+      !outInfo.getDtype().isInteger(16))
     return failure();
   if (!in1Info.getDtype().isF32())
-      return failure();
+    return failure();
   if ((int)(getRoundMode0()) < 0 || (int)(getRoundMode0()) > 4)
     return failure();
   if ((int)(getRoundMode1()) < 0 || (int)(getRoundMode1()) > 4)
@@ -1196,12 +983,13 @@ LogicalResult DequantFpOp::verify() {
   auto inInfo = getValueInfo(getOperand(0));
   auto in1Info = getValueInfo(getOperand(1));
   auto outInfo = getValueInfo(getResult());
-  if (!inInfo.getDtype().isInteger(4) && !inInfo.getDtype().isInteger(8) && !inInfo.getDtype().isInteger(16))
+  if (!inInfo.getDtype().isInteger(4) && !inInfo.getDtype().isInteger(8) &&
+      !inInfo.getDtype().isInteger(16))
     return failure();
   if (!outInfo.getDtype().isF32())
     return failure();
   if (!in1Info.getDtype().isF32())
-      return failure();
+    return failure();
   if ((int)(getRoundMode0()) < 0 || (int)(getRoundMode0()) > 2)
     return failure();
   return success();
@@ -1218,19 +1006,22 @@ LogicalResult RequantIntOp::verify() {
   if (reg.opt_opd1_const) {
     auto in2Info = getValueInfo(getOperand(2));
     auto in3Info = getValueInfo(getOperand(3));
-    if (!in2Info.getDtype().isSignedInteger(8) || !in3Info.getDtype().isSignedInteger(16))
+    if (!in2Info.getDtype().isSignedInteger(8) ||
+        !in3Info.getDtype().isSignedInteger(16))
       return failure();
     reg.opd2_addr = in2Info.getAddr() + (in3Info.getAddr() << 16);
   }
   auto inInfo = getValueInfo(getOperand(0));
   auto in1Info = getValueInfo(getOperand(1));
   auto outInfo = getValueInfo(getResult());
-  if (!inInfo.getDtype().isInteger(8) && !inInfo.getDtype().isInteger(16) && !inInfo.getDtype().isInteger(32))
+  if (!inInfo.getDtype().isInteger(8) && !inInfo.getDtype().isInteger(16) &&
+      !inInfo.getDtype().isInteger(32))
     return failure();
-  if (!outInfo.getDtype().isInteger(4) && !outInfo.getDtype().isInteger(8) && !outInfo.getDtype().isInteger(16))
+  if (!outInfo.getDtype().isInteger(4) && !outInfo.getDtype().isInteger(8) &&
+      !outInfo.getDtype().isInteger(16))
     return failure();
   if (!in1Info.getDtype().isSignedInteger(32))
-      return failure();
+    return failure();
   return success();
 }
 LogicalResult DequantIntOp::verify() {
@@ -1245,23 +1036,26 @@ LogicalResult DequantIntOp::verify() {
   if (reg.opt_opd1_const) {
     auto in2Info = getValueInfo(getOperand(2));
     auto in3Info = getValueInfo(getOperand(3));
-    if (!in2Info.getDtype().isSignedInteger(8) || !in3Info.getDtype().isSignedInteger(16))
+    if (!in2Info.getDtype().isSignedInteger(8) ||
+        !in3Info.getDtype().isSignedInteger(16))
       return failure();
     reg.opd2_addr = in2Info.getAddr() + (in3Info.getAddr() << 16);
   }
   auto inInfo = getValueInfo(getOperand(0));
   auto in1Info = getValueInfo(getOperand(1));
   auto outInfo = getValueInfo(getResult());
-  if (!outInfo.getDtype().isInteger(8) && !outInfo.getDtype().isInteger(16) && !outInfo.getDtype().isInteger(32))
+  if (!outInfo.getDtype().isInteger(8) && !outInfo.getDtype().isInteger(16) &&
+      !outInfo.getDtype().isInteger(32))
     return failure();
-  if (!inInfo.getDtype().isInteger(4) && !inInfo.getDtype().isInteger(8) && !inInfo.getDtype().isInteger(16))
+  if (!inInfo.getDtype().isInteger(4) && !inInfo.getDtype().isInteger(8) &&
+      !inInfo.getDtype().isInteger(16))
     return failure();
   if (!in1Info.getDtype().isSignedInteger(32))
-      return failure();
+    return failure();
   return success();
 }
 
-LogicalResult MaxPoolOp::verify() {
+LogicalResult MaxPoolOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.cmd_short = true;
   reg.tsk_typ = tiuType::PD();
@@ -1308,7 +1102,7 @@ LogicalResult MaxPoolOp::verify() {
   return success();
 }
 
-LogicalResult MinPoolOp::verify() {
+LogicalResult MinPoolOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.cmd_short = true;
   reg.tsk_typ = tiuType::PD();
@@ -1355,7 +1149,7 @@ LogicalResult MinPoolOp::verify() {
   return success();
 }
 
-LogicalResult AvgPoolOp::verify() {
+LogicalResult AvgPoolOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.cmd_short = true;
   reg.tsk_typ = tiuType::PD();
@@ -1385,7 +1179,7 @@ LogicalResult AvgPoolOp::verify() {
   }
 
   float _scale = getScale().convertToFloat();
-  unsigned int opd1_addr = *(unsigned int*)&_scale;
+  unsigned int opd1_addr = *(unsigned int *)&_scale;
   reg.opd1_addr = opd1_addr;
 
   reg.pad_mode = (int)getPadMode();
@@ -1406,7 +1200,7 @@ LogicalResult AvgPoolOp::verify() {
   return success();
 }
 
-LogicalResult DepthwiseOp::verify() {
+LogicalResult DepthwiseOp::verifyAndCodeGen() {
   auto &reg = getProperties().reg;
   reg.cmd_short = true;
   reg.tsk_typ = tiuType::PD();
@@ -1480,35 +1274,35 @@ LogicalResult VectorCorrOp::verify() {
   reg.cmd_short = true;
   reg.tsk_typ = tiuType::VC();
   auto op_type = getOpType().str();
-  if(op_type == "VC_ADD")
+  if (op_type == "VC_ADD")
     reg.tsk_eu_typ = tiuType::VC::ADD;
-  else if(op_type == "VC_SUB")
+  else if (op_type == "VC_SUB")
     reg.tsk_eu_typ = tiuType::VC::SUB;
-  else if(op_type == "VC_MUL")
+  else if (op_type == "VC_MUL")
     reg.tsk_eu_typ = tiuType::VC::MUL;
-  else if(op_type == "VC_DIV")
+  else if (op_type == "VC_DIV")
     reg.tsk_eu_typ = tiuType::VC::DIV;
-  else if(op_type == "VC_MAX")
+  else if (op_type == "VC_MAX")
     reg.tsk_eu_typ = tiuType::VC::MAX;
-  else if(op_type == "VC_MIN")
+  else if (op_type == "VC_MIN")
     reg.tsk_eu_typ = tiuType::VC::MIN;
-  else if(op_type == "VC_AND")
+  else if (op_type == "VC_AND")
     reg.tsk_eu_typ = tiuType::VC::AND;
-  else if(op_type == "VC_OR")
+  else if (op_type == "VC_OR")
     reg.tsk_eu_typ = tiuType::VC::OR;
-  else if(op_type == "VC_XOR")
+  else if (op_type == "VC_XOR")
     reg.tsk_eu_typ = tiuType::VC::XOR;
-  else if(op_type == "VC_SG")
+  else if (op_type == "VC_SG")
     reg.tsk_eu_typ = tiuType::VC::SG;
-  else if(op_type == "VC_SE")
+  else if (op_type == "VC_SE")
     reg.tsk_eu_typ = tiuType::VC::SE;
-  else if(op_type == "VC_SL")
+  else if (op_type == "VC_SL")
     reg.tsk_eu_typ = tiuType::VC::SL;
-  else if(op_type == "VC_ADD_SATU")
+  else if (op_type == "VC_ADD_SATU")
     reg.tsk_eu_typ = tiuType::VC::ADD_SATU;
-  else if(op_type == "VC_SUB_SATU")
+  else if (op_type == "VC_SUB_SATU")
     reg.tsk_eu_typ = tiuType::VC::SUB_SATU;
-  else if(op_type == "VC_MUL_SATU")
+  else if (op_type == "VC_MUL_SATU")
     reg.tsk_eu_typ = tiuType::VC::MUL_SATU;
   reg.cmd_id_dep = getDependency().getType().getId();
   reg.opd2_n_str = 2;
@@ -1543,7 +1337,7 @@ LogicalResult CWTransOp::verify() {
   auto &reg = getProperties().reg;
   reg.cmd_short = true;
   reg.tsk_typ = tiuType::TRANS_BC();
-  reg.tsk_eu_typ = getIsCwTrans() ? tiuType::TRANS_BC::TRAN_C_W_TRANSPOSE \
+  reg.tsk_eu_typ = getIsCwTrans() ? tiuType::TRANS_BC::TRAN_C_W_TRANSPOSE
                                   : tiuType::TRANS_BC::TRAN_W_C_TRANSPOSE;
   reg.cmd_id_dep = getDependency().getType().getId();
 
@@ -1667,7 +1461,8 @@ LogicalResult TIUSendMsgOp::verify() {
   reg.tsk_typ = tiuType::SYS();
   reg.tsk_eu_typ = tiuType::SYS::SEND_MSG;
   reg.cmd_id_dep = getDependency().getType().getId();
-  reg.imm = ((long long)(getMsgId() & 0x1ff)) | ((long long)(getWaitCnt() & 0xff) << 16);
+  reg.imm = ((long long)(getMsgId() & 0x1ff)) |
+            ((long long)(getWaitCnt() & 0xff) << 16);
   return success();
 }
 
@@ -1676,14 +1471,16 @@ LogicalResult TIUWaitMsgOp::verify() {
   reg.tsk_typ = tiuType::SYS();
   reg.tsk_eu_typ = tiuType::SYS::WAIT_MSG;
   reg.cmd_id_dep = getDependency().getType().getId();
-  reg.imm = ((long long)(getMsgId() & 0x1ff)) | ((long long)(getSendCnt() & 0xff) << 16);
+  reg.imm = ((long long)(getMsgId() & 0x1ff)) |
+            ((long long)(getSendCnt() & 0xff) << 16);
   return success();
 }
 
 LogicalResult GDMAMatrixMoveOp::verify() {
   auto &reg = getProperties().reg;
   reg.cmd_type = dmaType::MATRIX();
-  reg.cmd_special_function = getTranspose() ? dmaType::MATRIX::TRANS : dmaType::MATRIX::NONE;
+  reg.cmd_special_function =
+      getTranspose() ? dmaType::MATRIX::TRANS : dmaType::MATRIX::NONE;
   reg.cmd_id_dep = getDependency().getType().getId();
   reg.data_format = getValueInfo(getInput()).getGDMAFormat();
   reg.src_start_addr = getValueInfo(getInput()).getAddr();
@@ -1904,5 +1701,7 @@ LogicalResult AddSqrOp::verify() {
   return success();
 }
 
+} // namespace sg2260
+} // namespace tpu_mlir
 #define GET_OP_CLASSES
 #include "tpu-mlir/Dialect/SG2260/IR/SG2260Ops.cpp.inc"

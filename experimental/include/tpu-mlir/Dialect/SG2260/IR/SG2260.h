@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "mlir/Dialect/Utils/StructuredOpsUtils.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -18,14 +19,15 @@
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/Types.h"
 #include "tpu-mlir/Dialect/SG2260/IR/SG2260Dialect.h.inc"
+#include "tpu-mlir/Dialect/SG2260/IR/StructuredOpsInterfaces.h"
 
 #define GET_TYPEDEF_CLASSES
 #include "tpu-mlir/Dialect/SG2260/IR/SG2260Types.h.inc"
 
-#include "tpu-mlir/Dialect/SG2260/IR/SG2260Enum.h.inc"
-
 #define GET_ATTRDEF_CLASSES
 #include "tpu-mlir/Dialect/SG2260/IR/SG2260AttrDefs.h.inc"
+
+#include "tpu-mlir/Dialect/SG2260/IR/StructuredOpsInterfaces.h.inc"
 
 #include "SG2260RegDef.h"
 #define GET_OP_CLASSES

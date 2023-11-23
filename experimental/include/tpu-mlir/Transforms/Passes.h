@@ -13,8 +13,8 @@
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Pass/Pass.h"
 
-namespace mlir {
 namespace tpu_mlir {
+using namespace mlir;
 
 void registerDepencyDialect(DialectRegistry &registry);
 
@@ -24,10 +24,15 @@ std::unique_ptr<Pass> createDecomposeLinalgGenericPass();
 std::unique_ptr<Pass> createPrintAffineDimsPass();
 std::unique_ptr<Pass> createTileAndFuseGreedilyPass();
 std::unique_ptr<Pass> createBufferizePass();
+std::unique_ptr<Pass> createInstrctionSelctionPass();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
 #include "tpu-mlir/Transforms/Passes.h.inc"
 
 } // namespace tpu_mlir
-} // namespace mlir
+
+// enumerate the affine type
+// match the longest or the best benefit
+// How to represent benefit dimensional
+//

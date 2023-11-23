@@ -16,9 +16,10 @@
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Tensor/IR/TensorTilingInterfaceImpl.h"
 #include "mlir/Pass/Pass.h"
+#include "tpu-mlir/Dialect/SG2260/IR/SG2260.h"
 
-namespace mlir {
 namespace tpu_mlir {
+using namespace mlir;
 
 void registerDepencyDialect(DialectRegistry &registry) {
   // clang-format off
@@ -28,7 +29,9 @@ void registerDepencyDialect(DialectRegistry &registry) {
                   memref::MemRefDialect,
                   scf::SCFDialect,
                   tensor::TensorDialect,
-                  arith::ArithDialect>();
+                  arith::ArithDialect,
+                  sg2260::SG2260Dialect
+                  >();
   // clang-format on
 }
 
@@ -38,4 +41,3 @@ void registerCodegenInterfaces(DialectRegistry &registry) {
 }
 
 } // namespace tpu_mlir
-} // namespace mlir

@@ -14,8 +14,8 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu-mlir/Transforms/Passes.h"
 
-namespace mlir {
 namespace tpu_mlir {
+using namespace mlir;
 
 class DecomposeLinalgGenericPass
     : public DecomposeLinalgGenericBase<DecomposeLinalgGenericPass> {
@@ -38,13 +38,8 @@ std::unique_ptr<Pass> createDecomposeLinalgGenericPass() {
   return std::make_unique<DecomposeLinalgGenericPass>();
 }
 
-std::unique_ptr<Pass> createPrintAffineDimsPass() {
-  return std::make_unique<DecomposeLinalgGenericPass>();
-}
-
 std::unique_ptr<Pass> createBufferizePass() {
   return std::make_unique<DecomposeLinalgGenericPass>();
 }
 
 } // namespace tpu_mlir
-} // namespace mlir

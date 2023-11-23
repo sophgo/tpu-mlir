@@ -20,7 +20,6 @@ add_mlir_library(TPUDialect
 
   LINK_LIBS PUBLIC
   MLIRDialect
-  MLIRDialectUtils
   MLIRIR
 )
 
