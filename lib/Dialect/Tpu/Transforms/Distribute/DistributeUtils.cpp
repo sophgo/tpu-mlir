@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/DistributeUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/Distribute.h"
+#include "tpu_mlir/Backend/Arch.h"
 
 #define DEBUG_TYPE "distribute_ops"
 
@@ -879,7 +880,7 @@ std::vector<Operation *> cloneCommonOp(PatternRewriter &rewriter,
   rewriter.setInsertionPointAfter(next_op);
   std::vector<int64_t> new_shape = module::getShape(next_op->getResult(0));
   if (axis > 0) {
-    new_shape[axis] = new_shape[axis] / num_devices;
+    new_shape[axis] = cur_out.getType().cast<RankedTensorType>().getShape()[axis];
   }
 
   auto new_op = cloneOp(rewriter, next_op, new_shape, suffix);
@@ -946,7 +947,7 @@ Operation *cloneMultiInsOp(PatternRewriter &rewriter, Operation *next_op,
   auto new_loc = module::getLocLike(org_out, suffix);
   std::vector<int64_t> new_shape = module::getShape(org_out);
   if (axis >= 0) {
-    new_shape[axis] = new_shape[axis] / num_devices;
+    new_shape[axis] = cur_out.getType().cast<RankedTensorType>().getShape()[axis];
   }
   auto new_type = module::getTypeLike(org_out, new_shape);
   std::vector<NamedAttribute> attrs(next_op->getAttrs().begin(),
@@ -1052,6 +1053,10 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
 
   auto N = w_trans ? filterShape[num_dims - 2] : filterShape[num_dims - 1];
   auto length = ceiling_func(N, num_devices);
+  if (q_group_size) {
+    auto scale_c = ceiling_func(N, num_devices * backend::Arch::NPU_NUM);
+    length = q_group_size * scale_c;
+  }
   auto offset = cur_device * length;
   length = std::min(length, N - offset);
 
@@ -1138,6 +1143,10 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
 
   auto K = filterShape[num_dims - 2 + w_trans];
   auto length = ceiling_func(K, num_devices);
+  if (q_group_size) {
+    auto scale_w = ceiling_func(2 * K, num_devices * q_group_size);
+    length = scale_w * q_group_size / 2;
+  }
   auto offset = cur_device * length;
   length = std::min(length, K - offset);
 
@@ -1178,8 +1187,9 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
     if (q_group_size) {
       assert(
           module::getShape(mm0.getScale()).size() == 2 &&
-          "scale and zp weight reorder shoulde not happen before distribute");
-      assert(length % q_group_size == 0);
+          "scale and zp weight reorder should not happen before distribute");
+      assert(2 * length % q_group_size == 0);
+
       scale_length = ceiling_func(2 * length, q_group_size);
       scale_offset = cur_device * scale_length;
     }
@@ -1197,7 +1207,7 @@ Operation *cloneRowParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
       auto new_zp =
           q_group_size
               ? module::opSliceAxis(mm0.getZp(), 1, scale_offset, scale_length)
-              : cast<top::WeightOp>(mm0.getScale().getDefiningOp());
+              : cast<top::WeightOp>(mm0.getZp().getDefiningOp());
       operands.push_back(new_zp);
     } else {
       operands.push_back(module::getNoneOp(next_op));
