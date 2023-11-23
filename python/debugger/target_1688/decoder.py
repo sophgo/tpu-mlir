@@ -30,51 +30,46 @@ if TYPE_CHECKING:
     from .context import BM1688Context
 
 
-class TiuHead(ctypes.Structure):
+class HeadDef(ctypes.Structure):
+    def __repr__(self):
+        return str(dict(self))
+
+    def __iter__(self):
+        for field in self._fields_:
+            yield (field[0], getattr(self, field[0]))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+
+class TiuHead(HeadDef):
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
         ("reserved", ctypes.c_uint64, 40),
         ("tsk_typ", ctypes.c_uint64, 4),
         ("tsk_eu_typ", ctypes.c_uint64, 5),
     ]
-    cmd_short: int
-    tsk_typ: int
-    tsk_eu_typ: int
 
-    @property
-    def op_type(self):
-        return self.tsk_typ
-
-    @property
-    def eu_type(self):
-        return self.tsk_eu_typ
+    def __hash__(self):
+        return hash((bool(self.cmd_short), self.tsk_typ, self.tsk_eu_typ))
 
 
-class SYS_TR_ACC_HEAD(ctypes.Structure):
+class SYS_TR_ACC_HEAD(HeadDef):
     """
     SYS_TR_ACC has different tsk_eu_typ bits with other tiu cmds
     """
 
     _fields_ = [
-        ("cmd_short", ctypes.c_uint64, 1),
-        ("reserved", ctypes.c_uint64, 40),
+        ("reserved", ctypes.c_uint64, 41),
         ("tsk_typ", ctypes.c_uint64, 4),
         ("tsk_eu_typ", ctypes.c_uint64, 3),
     ]
-    cmd_short: int
-    tsk_typ: int
-    tsk_eu_typ: int
 
-    @property
-    def op_type(self):
-        return self.tsk_typ
-
-    @property
-    def eu_type(self):
-        return self.tsk_eu_typ
+    def __hash__(self):
+        return hash((None, self.tsk_typ, self.tsk_eu_typ))
 
 
-class DmaHead(ctypes.Structure):
+class DmaHead(HeadDef):
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
         ("stride_enable", ctypes.c_uint64, 1),
@@ -84,13 +79,9 @@ class DmaHead(ctypes.Structure):
         ("cmd_type", ctypes.c_uint64, 4),
         ("cmd_sp_func", ctypes.c_uint64, 3),
     ]
-    intr_en: int
-    stride_enable: int
-    nchw_copy: int
-    cmd_short: int
-    reserved: int
-    cmd_type: int
-    cmd_sp_func: int
+
+    def __hash__(self):
+        return hash((bool(self.cmd_short), self.cmd_type, self.cmd_sp_func))
 
 
 TiuHeads: List[ctypes.Structure] = [TiuHead, SYS_TR_ACC_HEAD]
@@ -110,14 +101,15 @@ class Decoder(DecoderBase):
         assert cmd_id is not None, "1688 must assign cmd_id manully"
         for head_cls in TiuHeads:  # type: cmd_base_t
             head = head_cls.from_buffer(cmd_buf, offset)  # type: TiuHead
-            op_info = tiu_index.get(
-                (head.cmd_short, head.tsk_typ, head.tsk_eu_typ), None
-            )
+            op_info = tiu_index.get(head, None)
             if op_info is not None:
                 break
-
+        assert op_info is not None, (
+            f"Unable to decode TIU code at offset {offset} out of {len(cmd_buf)} total."
+            f" Potential head identified as {head}"
+        )
         # get op struct
-        op_clazz = op_class_dic[op_info.op_name]
+        op_clazz = op_class_dic[op_info.name]
         return self.decode_cmd(
             op_clazz, cmd_buf, offset=offset, core_id=core_id, cmd_id=cmd_id
         )
@@ -127,9 +119,13 @@ class Decoder(DecoderBase):
     ) -> cmd_base_reg:
         assert cmd_id is not None, "1688 must assign cmd_id manully"
         head = DmaHead.from_buffer(cmd_buf, offset)  # type: DmaHead
-        op_info = dma_index.get((head.cmd_short, head.cmd_type, head.cmd_sp_func), None)
+        op_info = dma_index.get(head, None)
+        assert op_info is not None, (
+            f"Unable to decode DMA code at offset {offset} out of {len(cmd_buf)} total."
+            f" Potential head identified as {head}"
+        )
         # get op struct
-        op_clazz = op_class_dic[op_info.op_name]
+        op_clazz = op_class_dic[op_info.name]
         return self.decode_cmd(
             op_clazz, cmd_buf, offset=offset, core_id=core_id, cmd_id=cmd_id
         )
