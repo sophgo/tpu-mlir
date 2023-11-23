@@ -11,13 +11,21 @@
 #define TPUMLIR_DIALECT_SG2260_IR_SG2260TYPES
 
 include "mlir/IR/AttrTypeBase.td"
+include "mlir/Dialect/Utils/StructuredOpsUtils.td"
 include "SG2260.td"
-include "mlir/IR/EnumAttr.td"
+include "SG2260Enums.td"
+
 
 class SG2260_Type<string name, string typeMnemonic, list<Trait> traits = []>
     : TypeDef<SG2260_Dialect, name, traits> {
   let mnemonic = typeMnemonic;
 }
+
+def IteratorTypeEnum : EnumAttr<SG2260_Dialect, IteratorType, "iterator_type"> {
+  let assemblyFormat = "`<` $value `>`";
+}
+def IteratorTypeArrayAttr : TypedArrayAttrBase<IteratorTypeEnum,
+  "Iterator type should be an enum.">;
 
 def SG2260_IntArrayAttr2 : ConfinedAttr<DenseI64ArrayAttr, [DenseArrayCount<2>]>;
 def SG2260_IntArrayAttr3 : ConfinedAttr<DenseI64ArrayAttr, [DenseArrayCount<3>]>;
@@ -43,33 +51,7 @@ def SG2260_DMAIdType : InsID<"DMAId", "dma.id"> {
   }];
 }
 
-def SG2260_PaddingMode: I32EnumAttr<"PaddingMode",
-    "requant mode supported by PadOp",
-    [
-      I32EnumAttrCase<"constant", 0>,
-      I32EnumAttrCase<"reflect", 1>,
-      I32EnumAttrCase<"replication", 2>,
-      I32EnumAttrCase<"circular", 3>
-    ]>{
-  let genSpecializedAttr = 0;
-  let cppNamespace = "::tpu_mlir::sg2260";
-}
 def SG2260_PaddingModeAttr : EnumAttr<SG2260_Dialect, SG2260_PaddingMode, "Pad_Mode">;
-
-def SG2260_RoundMode: I32EnumAttr<"RoundMode",
-    "round mode supported by Round",
-    [
-      I32EnumAttrCase<"HalfToEven", 0>,
-      I32EnumAttrCase<"HalfAwayFromZero", 1>,
-      I32EnumAttrCase<"TowardsZero", 2>,
-      I32EnumAttrCase<"Down", 3>,
-      I32EnumAttrCase<"Up", 4>,
-      I32EnumAttrCase<"HalfUp", 5>,
-      I32EnumAttrCase<"HalfDown", 6>
-    ]>{
-  let genSpecializedAttr = 0;
-  let cppNamespace = "::tpu_mlir::sg2260";
-}
 def SG2260_RoundModeAttr : EnumAttr<SG2260_Dialect, SG2260_RoundMode, "round_mode">;
 
 class RegProperty<string name> : Property<name> {

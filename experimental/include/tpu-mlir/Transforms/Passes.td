@@ -29,10 +29,14 @@ def TileAndFuseGreedily : Pass<"codegen-tile-and-fuse-greedily", "func::FuncOp">
   ];
 }
 
-def Bufferize :
-  Pass<"codegen-bufferize", "ModuleOp"> {
+def Bufferize : Pass<"codegen-bufferize", "ModuleOp"> {
   let summary = "Convert Tensor to Memref.";
   let constructor = "tpu_mlir::createBufferizePass()";
+}
+
+def InstrctionSelction  : Pass<"ISel", "ModuleOp"> {
+  let summary = "lowering to Atomic dialect.";
+  let constructor = "tpu_mlir::createInstrctionSelctionPass()";
 }
 
 

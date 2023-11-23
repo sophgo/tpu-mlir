@@ -17,6 +17,7 @@ include "mlir/IR/AttrTypeBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "SG2260.td"
 include "SG2260Types.td"
+include "StructuredOpsInterfaces.td"
 
 class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
   CPred<!foldl(
@@ -31,12 +32,20 @@ def VCOpTypeAttr: AnyStrAttrOf<["VC_ADD","VC_SUB","VC_MUL","VC_DIV","VC_MAX","VC
   "VC_OR","VC_XOR","VC_SG","VC_SE","VC_SL","VC_ADD_SATU","VC_SUB_SATU","VC_MUL_SATU"]>;
 
 class SG2260_Op<string mnemonic, list<Trait> traits = []>
-    : Op<SG2260_Dialect, mnemonic, traits>;
+    : Op<SG2260_Dialect, mnemonic,
+      traits # [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+      // instance of getAsmResultNames
+  let extraClassDefinition = [{
+     void $cppClass::getAsmResultNames(function_ref<void(Value, StringRef)> setNameFn) {
+       ::tpu_mlir::sg2260::getAsmResultNames(setNameFn, getResults());
+     }
+  }];
+}
 
 // TIU operartions  ------------------------------------------------------------
 
 def SG2260_MatMulOp : SG2260_Op<"matmul",
-  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+  [DeclareOpInterfaceMethods<StructuredInterface>]> {
   let summary = "";
   let description = [{Matrix Multiplication.}];
   let arguments = (ins
@@ -50,11 +59,10 @@ def SG2260_MatMulOp : SG2260_Op<"matmul",
     ShortMMRegDefProperties:$reg
     );
   let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
-  let hasVerifier = 1;
+  let extraClassDeclaration = [{ static TPUISATraits getStuctutedTraits(::mlir::MLIRContext*); }];
 }
 
-def SG2260_ConvOp : SG2260_Op<"conv",
-  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+def SG2260_ConvOp : SG2260_Op<"conv"> {
   let summary = "";
   let description = [{Convolution.}];
   let arguments = (ins
@@ -76,8 +84,8 @@ def SG2260_ConvOp : SG2260_Op<"conv",
   let hasVerifier = 1;
 }
 
-class SG2260_ArithmeticOp<string mnemonic> : SG2260_Op<"arithmetic." # mnemonic,
-  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+class SG2260_ArithmeticOp<string mnemonic>
+  : SG2260_Op<"arithmetic." # mnemonic, [DeclareOpInterfaceMethods<StructuredInterface>]> {
   let summary = "";
   let description = [{Arithmetic.}];
   let arguments = (ins
@@ -91,7 +99,6 @@ class SG2260_ArithmeticOp<string mnemonic> : SG2260_Op<"arithmetic." # mnemonic,
     ShortARRegDefProperties:$reg
     );
   let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
-  let hasVerifier = 1;
 }
 
 class SG2260_BinaryOp<string mnemonic> : SG2260_ArithmeticOp<mnemonic> {
@@ -101,6 +108,7 @@ class SG2260_BinaryOp<string mnemonic> : SG2260_ArithmeticOp<mnemonic> {
     SG2260_DMAIdType:$dependency,
     ShortARRegDefProperties:$reg
     );
+  let extraClassDeclaration = [{ static TPUISATraits getStuctutedTraits(::mlir::MLIRContext*); }];
 }
 def SG2260_MaxOp: SG2260_BinaryOp<"max"> {
   let description = [{Max Operation.}];
@@ -119,12 +127,15 @@ def SG2260_XorOp: SG2260_BinaryOp<"xor"> {
 }
 def SG2260_AddOp: SG2260_ArithmeticOp<"add"> {
   let description = [{Add Operation.}];
+  let extraClassDeclaration = [{ static TPUISATraits getStuctutedTraits(::mlir::MLIRContext*); }];
 }
 def SG2260_SubOp: SG2260_ArithmeticOp<"sub"> {
   let description = [{Sub Operation.}];
+  let extraClassDeclaration = [{ static TPUISATraits getStuctutedTraits(::mlir::MLIRContext*); }];
 }
 def SG2260_MulOp: SG2260_ArithmeticOp<"mul"> {
   let description = [{Mul Operation.}];
+  let extraClassDeclaration = [{ static TPUISATraits getStuctutedTraits(::mlir::MLIRContext*); }];
 }
 
 // def SG2260_MacOp: SG2260_ArithmeticOp<"mac"> {
@@ -150,9 +161,11 @@ def SG2260_CopyOp: SG2260_UnaryOp<"copy"> {
 }
 def SG2260_AbsOp: SG2260_UnaryOp<"abs"> {
   let description = [{Abs Operation.}];
+  let extraClassDeclaration = [{ static TPUISATraits getStuctutedTraits(::mlir::MLIRContext*); }];
 }
 def SG2260_NotOp: SG2260_UnaryOp<"not"> {
   let description = [{Not Operation.}];
+  let extraClassDeclaration = [{ static TPUISATraits getStuctutedTraits(::mlir::MLIRContext*); }];
 }
 def SG2260_CLZOp: SG2260_UnaryOp<"clz"> {
   let description = [{Count leading zero Operation. Get first zero}];
@@ -257,8 +270,8 @@ def SG2260_DequantIntOp : SG2260_RQDQIntOp<"dequant_int"> {
   let description = [{Int dequant. output = (input - zero_point) * multiplier >> shift)}];
 }
 
-class SG2260_MaxMinPoolOp<string mnemonic> : SG2260_Op<"maxminpool." # mnemonic,
-  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+class SG2260_MaxMinPoolOp<string mnemonic, list<Trait> traits = [DeclareOpInterfaceMethods<StructuredInterface>]>
+  : SG2260_Op<"pooling." # mnemonic, traits> {
   let summary = "";
   let description = [{MaxMin Pool.}];
   let arguments = (ins
@@ -274,19 +287,19 @@ class SG2260_MaxMinPoolOp<string mnemonic> : SG2260_Op<"maxminpool." # mnemonic,
     ShortPorDRegDefProperties:$reg
     );
   let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
-  let hasVerifier = 1;
+  let extraClassDeclaration = [{ static TPUISATraits getStuctutedTraits(::mlir::MLIRContext*); }];
 }
 
-def SG2260_MaxPoolOp : SG2260_MaxMinPoolOp<"max_pool"> {
+def SG2260_MaxPoolOp : SG2260_MaxMinPoolOp<"max"> {
   let description = [{Max Pool.}];
 }
 
-def SG2260_MinPoolOp : SG2260_MaxMinPoolOp<"min_pool"> {
+def SG2260_MinPoolOp : SG2260_MaxMinPoolOp<"min"> {
   let description = [{Min Pool.}];
 }
 
-def SG2260_AvgPoolOp : SG2260_Op<"avg_pool",
-  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+def SG2260_AvgPoolOp : SG2260_Op<"pooling.avg",
+  [DeclareOpInterfaceMethods<StructuredInterface>]> {
   let summary = "";
   let description = [{Avg Pooling.}];
   let arguments = (ins
@@ -303,11 +316,10 @@ def SG2260_AvgPoolOp : SG2260_Op<"avg_pool",
     ShortPorDRegDefProperties:$reg
   );
   let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
-  let hasVerifier = 1;
+  let extraClassDeclaration = [{ static TPUISATraits getStuctutedTraits(::mlir::MLIRContext*); }];
 }
 
-def SG2260_DepthwiseOp : SG2260_Op<"depthwise",
-  [DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>]> {
+def SG2260_DepthwiseOp : SG2260_Op<"depthwise", [DeclareOpInterfaceMethods<StructuredInterface>]> {
   let summary = "";
   let description = [{Depthwise Conv.}];
   let arguments = (ins
@@ -325,7 +337,7 @@ def SG2260_DepthwiseOp : SG2260_Op<"depthwise",
     ShortPorDRegDefProperties:$reg
   );
   let results = (outs AnyMemRef : $result, SG2260_TIUIdType : $id);
-  let hasVerifier = 1;
+  let extraClassDeclaration = [{ static TPUISATraits getStuctutedTraits(::mlir::MLIRContext*); }];
 }
 
 def SG2260_VectorCorrOp : SG2260_Op<"VectorCorrelation",

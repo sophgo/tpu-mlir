@@ -65,7 +65,7 @@ TEST(SG2260IR, MatMulOp) {
   EXPECT_EQ(reg.opd0_w, 0);
   EXPECT_EQ(reg.cmd_id_dep, 0);
 
-  mat0.verify(); // set the register
+  mat0.verifyAndCodeGen(); // set the register
 
   EXPECT_EQ(reg.opd0_n, 2);
   EXPECT_EQ(reg.opd0_c, 512);

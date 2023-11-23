@@ -90,7 +90,7 @@ module attributes {torch.debug_module_name = "Model"} {
     %collapsed_5 = tensor.collapse_shape %12 [[0, 1], [2], [3]] : tensor<1x12x64x384xf32> into tensor<12x64x384xf32> loc(#loc21)
     %13 = tensor.empty() : tensor<12x384x384xf32> loc(#loc21)
     %14 = linalg.fill ins(%cst_3 : f32) outs(%13 : tensor<12x384x384xf32>) -> tensor<12x384x384xf32> loc(#loc21)
-    %15 = linalg.batch_matmul {__linalg_tiling__ = array<i64: 4, 64, 32>} ins(%collapsed, %collapsed_5 : tensor<12x384x64xf32>, tensor<12x64x384xf32>) outs(%14 : tensor<12x384x384xf32>) -> tensor<12x384x384xf32> loc(#loc21)
+    %15 = linalg.batch_matmul {__linalg_tiling__ = array<i64: 4, 64, 32, 32>} ins(%collapsed, %collapsed_5 : tensor<12x384x64xf32>, tensor<12x64x384xf32>) outs(%14 : tensor<12x384x384xf32>) -> tensor<12x384x384xf32> loc(#loc21)
     %expanded_6 = tensor.expand_shape %15 [[0, 1], [2], [3]] : tensor<12x384x384xf32> into tensor<1x12x384x384xf32> loc(#loc21)
     %16 = tensor.empty() : tensor<1x12x384x384xf32> loc(#loc22)
     %17 = linalg.generic {indexing_maps = [#map8, #map4], iterator_types = ["parallel", "parallel", "parallel", "parallel"]} ins(%cst_2 : tensor<f64>) outs(%16 : tensor<1x12x384x384xf32>) {
