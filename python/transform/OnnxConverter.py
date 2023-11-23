@@ -77,7 +77,7 @@ class BaseNode():
         self.attrs = dict(info["attrs"])
         self.inputs = list(info["inputs"])
         self.outputs = list(info["outputs"])
-
+        self.shape_info = dict()
 
 class OnnxNode(BaseNode):
 
@@ -135,6 +135,7 @@ class OnnxConverter(BaseConverter):
             if preprocess_args['channel_format'] != "none":
                 self.preprocess_args = preprocess_args
         self.converted_nodes = list()
+        self.subgraph_initializer = None
 
         self.onnxop_factory = {
             # NOTICE: Please add the Op alphabetically !!!
@@ -408,6 +409,10 @@ class OnnxConverter(BaseConverter):
         for tensor in self.model.graph.initializer:
             if name == tensor.name:
                 return numpy_helper.to_array(tensor).astype(np.float32)
+        if self.subgraph_initializer is not None:
+            for tensor in self.subgraph_initializer:
+                if name == tensor.name:
+                    return numpy_helper.to_array(tensor).astype(np.float32)
         for node in self.converted_nodes:
             if node.op_type != "Constant":
                 continue
@@ -510,6 +515,17 @@ class OnnxConverter(BaseConverter):
                                  self.input_types)
         self.weight_file = self.mlir.weight_file
 
+    def get_shape_for_node(self, input, output, value_info, name):
+        for i in value_info:
+            if i.name == name:
+                return i.type.tensor_type.shape.dim
+        for i in input:
+            if i.name == name:
+                return i.type.tensor_type.shape.dim
+        for i in output:
+            if i.name == name:
+                return i.type.tensor_type.shape.dim
+
     def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
         # add input op
@@ -523,6 +539,15 @@ class OnnxConverter(BaseConverter):
         self.converted_nodes.clear()
         for n in self.model.graph.node:
             node = OnnxNode(n)
+            if n.op_type in ["Gather"]:
+                input_shape = dict()
+                for input in n.input:
+                    input_shape[input] = self.get_shape_for_node(self.model.graph.input, self.model.graph.output, self.model.graph.value_info, input)
+                output_shape = dict()
+                for output in n.output:
+                    output_shape[output] = self.get_shape_for_node(self.model.graph.input, self.model.graph.output, self.model.graph.value_info, output)
+                node.shape_info["input"] = input_shape
+                node.shape_info["output"] = output_shape
             self.converted_nodes.append(node)
         # checkout all type is supported
         unsupported = set()
@@ -1719,6 +1744,9 @@ class OnnxConverter(BaseConverter):
             idx = self.find_named_tensor(onnx_node.inputs[1])
             if idx is not None and len(idx.shape) == 0:
                 extra_attr["keepdims"] = False
+        elif onnx_node.shape_info['input'][onnx_node.inputs[1]] is not None \
+            and not onnx_node.shape_info['input'][onnx_node.inputs[1]]:
+            extra_attr.update({"keepdims": False})
         indices = self.getOp(onnx_node.inputs[1])
         new_op = top.GatherOp(self.unranked_type,
                               in0,
@@ -2458,6 +2486,15 @@ class OnnxConverter(BaseConverter):
         converted_nodes = list()
         for n in graph_node.node:
             node = OnnxNode(n)
+            if n.op_type in ["Gather"]:
+                input_shape = dict()
+                for input in n.input:
+                    input_shape[input] = self.get_shape_for_node(graph_node.input, graph_node.output, graph_node.value_info, input)
+                output_shape = dict()
+                for output in n.output:
+                    output_shape[output] = self.get_shape_for_node(graph_node.input, graph_node.output, graph_node.value_info, output)
+                node.shape_info["input"] = input_shape
+                node.shape_info["output"] = output_shape
             converted_nodes.append(node)
 
         unsupported = set()
@@ -2500,6 +2537,7 @@ class OnnxConverter(BaseConverter):
                                                               entry_block_args[idx], **{})
                 self.addOperand(input.name, input_op)
         # add all weight
+        self.subgraph_initializer = graph_node.initializer
         for tensor in graph_node.initializer:
             name = tensor.name
             data = numpy_helper.to_array(tensor).astype(np.float32)
@@ -2510,6 +2548,7 @@ class OnnxConverter(BaseConverter):
 
         for n in converted_nodes:
             self.onnxop_factory.get(n.op_type, lambda x: NoneAndRaise(x))(n)
+        self.subgraph_initializer = None
 
         yield_op = list()
         #remove the input tensor from self.input_names
