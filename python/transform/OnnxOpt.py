@@ -59,7 +59,8 @@ def get_node_attrs(node) -> dict:
 
 
 class ConstantFolding(object):
-    def __init__(self, model):
+    def __init__(self, model, test_input):
+        self.test_input = test_input
         self.model = copy.deepcopy(model)
         if self.model.graph.value_info:
             n = len(self.model.graph.value_info)
@@ -201,7 +202,7 @@ class ConstantFolding(object):
                 self.const_tensors.extend(node.output)
         return copy.deepcopy(const_nodes)
 
-    def forward(self, model):
+    def forward(self, model, test_input):
         input_shapes = {}
         sess_options = rt.SessionOptions()
         sess_options.graph_optimization_level = rt.GraphOptimizationLevel(0)
@@ -224,7 +225,14 @@ class ConstantFolding(object):
         for name in input_names:
             shape = self.get_shape(name)
             input_shapes.update({name: shape})
-        inputs.update(self.generate_specific_rand_input(input_shapes))
+        
+        if len(test_input) == 1 and test_input[0].endswith('.npz'):
+            inputs_npz = np.load(test_input[0])
+            for name in inputs_npz.files:
+                inputs[name] = inputs_npz[name]    
+        else:
+            inputs.update(self.generate_specific_rand_input(input_shapes))
+
         outputs = [x.name for x in sess.get_outputs()]
         run_options = rt.RunOptions()
         run_options.log_severity_level = 3
@@ -232,10 +240,11 @@ class ConstantFolding(object):
 
     def forward_for_node_outputs(self, const_nodes):
         model = copy.deepcopy(self.model)
+        test_input = self.test_input
         for node in const_nodes:
             for output in node.output:
                 model.graph.output.extend([onnx.ValueInfoProto(name=output)])
-        return self.forward(model)
+        return self.forward(model, test_input)
 
     def eliminate_const_nodes(self, const_node, res):
         do_eliminate = False

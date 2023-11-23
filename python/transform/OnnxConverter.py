@@ -100,11 +100,13 @@ class OnnxConverter(BaseConverter):
                  onnx_file,
                  input_shapes: list,
                  output_names: list,
+                 test_input,
                  preprocess_args: dict = {},
                  static_shape=True,
                  onnx_sim=""):
         super().__init__()
 
+        self.test_input = test_input
         self.model_name = model_name
         self.weight_file = "{}_top_origin_weight.npz".format(model_name)
         self.model = None
@@ -383,7 +385,7 @@ class OnnxConverter(BaseConverter):
     def model_simplify(self):
         # Do constantFolding before onnxsim to avoid onnxsim bug (such as run yolox)
         try:
-            self.model = ConstantFolding(self.model).run()
+            self.model = ConstantFolding(self.model, self.test_input).run()
         except:
             print("WARNING: ConstantFolding failed.")
         print("ConstantFolding finished")
@@ -400,7 +402,7 @@ class OnnxConverter(BaseConverter):
         print("Onnxsim opt finished")
         # Do constantFolding after onnxsim to avoid onnxsim bug (such as run ppyolo_tiny)
         try:
-            self.model = ConstantFolding(self.model).run()
+            self.model = ConstantFolding(self.model, self.test_input).run()
         except:
             print("WARNING: ConstantFolding failed.")
         print("ConstantFolding finished")
@@ -419,7 +421,7 @@ class OnnxConverter(BaseConverter):
             onnx_tensor = node.attrs['value']
             return numpy_helper.to_array(onnx_tensor)
 
-    def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list, static_shape=True):
+    def load_onnx_model(self,onnx_file, input_shapes: list, output_names: list, static_shape=True):
         if isinstance(onnx_file, str):
             self.model = onnx.load(onnx_file)
         else:
