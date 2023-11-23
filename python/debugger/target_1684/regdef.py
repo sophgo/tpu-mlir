@@ -11,11 +11,11 @@ regdef for 1684 is special, should be maintained manully.
 """
 import ctypes
 from typing import Dict, Type
-from ..target_common import cmd_base_reg
+from ..target_common import atomic_reg
 from itertools import accumulate
 
 
-class dma_cmd_reg(cmd_base_reg):
+class dma_cmd_reg(atomic_reg):
     _fields_ = [
         ("pio_gdma_enable", ctypes.c_uint64, 1),
         ("des_type", ctypes.c_uint64, 1),
@@ -132,7 +132,7 @@ class dma_cmd_reg(cmd_base_reg):
         return self.eng0_sync_id
 
 
-class tiu_cmd_reg(cmd_base_reg):
+class tiu_cmd_reg(atomic_reg):
     _fields_ = [
         ("cmd_en", ctypes.c_uint64, 1),
         ("cmd_end", ctypes.c_uint64, 1),
@@ -390,7 +390,7 @@ class dma_tensor_reg(dma_cmd_reg):
     OP_NAME = "dma_tensor"
 
 
-op_class_dic: Dict[str, Type[cmd_base_reg]] = {
+op_class_dic: Dict[str, Type[atomic_reg]] = {
     "conv_op": conv_op_reg,
     "pord_op": pord_op_reg,
     "mm_op": mm_op_reg,

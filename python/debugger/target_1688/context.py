@@ -55,27 +55,28 @@ class BM1688Context(BModelContext):
             fixed_addr = (address + self.base_addr[base_addr_idx - 1]) & ((1 << 35) - 1)
         return fixed_addr
 
-    @staticmethod
-    def merge_instruction(tiu: List[cmd_base_reg], dma: List[cmd_base_reg]):
+    @classmethod
+    def merge_instruction(cls, tiu: List[BaseTpuCmd], dma: List[BaseTpuCmd]):
         main_cmd, inserted_cmd = dma, tiu
         # remove the system command
 
-        def get_end(cmd: List[cmd_base_reg]):
+        def get_end(cmd: List[BaseTpuCmd]):
             if len(cmd) == 0:
                 return 0
-            if isinstance(cmd[-1], (tiu_sys, dma_sys)):
+
+            if cls.is_sys(cmd[-1]):
                 return -1
             else:
                 return len(cmd)
 
-        def fix_tgcr_cmd_id_dp(tiu_cmd: List[cmd_base_reg]):
-            for i, v in enumerate(tiu_cmd):
-                if isinstance(v, SYS_TR_ACC_reg):
+        def fix_tgcr_cmd_id_dp(tiu_cmds: List[BaseTpuCmd]):
+            for i, v in enumerate(tiu_cmds):
+                if isinstance(v.reg, SYS_TR_ACC_reg):
                     # same as v.op_code == 12, changed because short cmd do not have op_code
                     v.cmd_id_dep = (
-                        tiu_cmd[i + 1].cmd_id_dep
-                        if tiu_cmd[i + 1].cmd_id_dep != 0
-                        else tiu_cmd[i + 2].cmd_id_dep
+                        tiu_cmds[i + 1].cmd_id_dep
+                        if tiu_cmds[i + 1].cmd_id_dep != 0
+                        else tiu_cmds[i + 2].cmd_id_dep
                     )
 
         fix_tgcr_cmd_id_dp(inserted_cmd[: get_end(inserted_cmd)])
@@ -84,10 +85,15 @@ class BM1688Context(BModelContext):
         inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
         # "sorted" is stable, which keeps the inserted commands
         # after the main instructions.
+        
         cmd = main_id + inserted_id
         cmd_sorted = sorted(cmd, key=lambda x: x[0])
 
         return [x[1] for x in cmd_sorted]
+
+    @classmethod
+    def is_sys(cls, cmd: BaseTpuCmd):
+        return isinstance(cmd.reg, (dma_sys, tiu_sys))
 
     def get_runner(self, memory_size: int) -> CModelRunner:
         assert self.using_cmodel, "1688 currently only support cmodel mode"

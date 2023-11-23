@@ -18,7 +18,7 @@ from typing import Union
 import numpy as np
 from copy import copy
 from ..target_common import *
-
+from .opdef import TiuCmd, DmaCmd
 from .memmap import *
 
 
@@ -30,7 +30,9 @@ class BM1684XRunner(DeviceRunner):
         lib = lib_wrapper(open_lib(self.lib_name))
 
         self.lib = lib
-        kernel_fn = os.path.join(os.environ["TPUC_ROOT"], "lib/libbm1684x_atomic_kernel.so")
+        kernel_fn = os.path.join(
+            os.environ["TPUC_ROOT"], "lib/libbm1684x_atomic_kernel.so"
+        )
         lib.init_handle.restype = ctypes.c_void_p
         lib.init_handle_b.restype = ctypes.c_void_p
 
@@ -48,18 +50,18 @@ class BM1684XRunner(DeviceRunner):
     def __del__(self):
         self.lib.deinit(self.runner)
 
-    def _compute(self, cmd: cmd_base_reg, engine_type):
+    def _compute(self, cmd: BaseTpuCmd, engine_type):
         assert engine_type in {0, 1}
-        cmd = copy(cmd)
-        cmd.cmd_id = 1
-        cmd.cmd_id_dep = 0
+        reg = copy(cmd.reg)
+        reg.cmd_id = 1
+        reg.cmd_id_dep = 0
 
         if engine_type == 1:  # dma
-            u32_cmd = (ctypes.c_uint32 * (len(cmd.buf) // 4)).from_buffer_copy(cmd)
-            self.lib.convert_addr(u32_cmd, self.reserved_offset)
-            buf = bytes(u32_cmd)
+            u32_buf = (ctypes.c_uint32 * (len(cmd.buf) // 4)).from_buffer_copy(reg)
+            self.lib.convert_addr(u32_buf, self.reserved_offset)
+            buf = bytes(u32_buf)
         else:
-            buf = bytes(cmd)
+            buf = bytes(reg)
 
         return self.lib.launch_single_cmd(
             self.runner,
@@ -71,10 +73,10 @@ class BM1684XRunner(DeviceRunner):
     def init_memory(self, memory_size: int, _=None):
         self.memory = Memory(self.lib, self.runner)
 
-    def tiu_compute(self, command: cmd_base_reg, core_id=0):
+    def tiu_compute(self, command: TiuCmd):
         return self._compute(command, 0)
 
-    def dma_compute(self, command: cmd_base_reg, core_id=0):
+    def dma_compute(self, command: DmaCmd):
         return self._compute(command, 1)
 
 

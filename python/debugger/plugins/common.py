@@ -6,9 +6,9 @@
 # third-party components.
 #
 # ==============================================================================
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 
 from rich.progress import (
@@ -22,10 +22,11 @@ from rich.progress import (
 )
 
 import pandas as pd
+import numpy as np
 
 from ..final_mlir import CMD, FinalMlirIndex, Value
 
-from ..target_common.op_support import BaseTpuOp
+from ..target_common.op_support import BaseTpuCmd
 from ..target_common import CMDType
 from ..tdb_support import (
     TdbCmdBackend,
@@ -97,6 +98,13 @@ class ReloadPlugin(TdbPlugin, TdbPluginCmd):
 
 
 class FinalMlirIndexPlugin(TdbPlugin):
+    """
+    append final-mlir indexs by extending tdb.index_df columns.
+
+    executed_id, loc_indexs
+
+    """
+
     name = "final-mlir"
 
     def __init__(self, tdb: TdbCmdBackend) -> None:
@@ -112,8 +120,8 @@ class FinalMlirIndexPlugin(TdbPlugin):
         return tdb.final_mlir_fn is not None and tdb.tensor_loc_file is not None
 
     @property
-    def cmd2index(self):
-        return self.tdb.cmd2index
+    def index_df(self):
+        return self.tdb.index_df
 
     @property
     def final_mlir_fn(self):
@@ -130,118 +138,144 @@ class FinalMlirIndexPlugin(TdbPlugin):
     def _build_index(self, tdb: TdbCmdBackend):
         # create subnet tiu, dma id offset
         self.final_mlir = FinalMlirIndex(self.final_mlir_fn, self.tensor_loc_file)
-        subnet_offsets = {}
-        for loc_index, loc in enumerate(self.final_mlir.loc.tensor_loc):
-            (
-                subnet_id,
-                tiu,
-                dma,
-                core_id,
-            ) = (loc.subnet_id, *loc.tiu_dma_id_before, loc.core_id)
-            tiu_offset, dma_offset = subnet_offsets.get(
-                subnet_id, (float("inf"), float("inf"))
-            )
-            tiu_offset = min(tiu_offset, tiu)
-            dma_offset = min(dma_offset, dma)
-            subnet_offsets[(subnet_id)] = (tiu_offset, dma_offset)
+        self.point2loc: Dict[int, List[ValueView]] = OrderedDict()
+        last_af_point = -1
 
-        self.index2loc_range: Dict[int, int] = {}
-        self.loc2indexs: Dict[int, list] = {}
+        indexs = tdb.index_df.index
 
-        last_af_index = defaultdict(lambda: -1)
+        def find_point(key):
+            ret = tdb.index_df["executed_id"][indexs == key]
 
-        self.cmdkey2loc: Dict[int, List[ValueView]] = OrderedDict()
+            if len(ret) == 0:
+                raise KeyError(f"cannot find command of key {key}")
+            elif len(ret) > 1:
+                raise ValueError(
+                    f"find multiple command have key {key}, please report this bug."
+                )
 
+            return ret[0]
+
+        loc_indexs = []
+        visited = set()
+
+        # when cmd_point reach point+1
+        # it means the cmd in cmditer[point] has been executed
+        # data-checker need to compare loc operands before execute bf_point
+        # and after execute af_point
         for loc_index, loc in enumerate(self.final_mlir.loc.tensor_loc):
             if loc.tiu_dma_id_before == loc.tiu_dma_id_after:
                 # no cmd operation, like reshape
                 continue
 
-            # before execution
+            # the tiu/dma cmd-id state before execution this loc
+            # we need to find the pointer
+
             (
                 subnet_id,
-                tiu,
-                dma,
+                tiu_before,
+                dma_before,
                 core_id,
             ) = loc.tuple_key_before
-            x_index = y_index = None
-            tiu_offset, dma_offset = subnet_offsets[subnet_id]
+            tiu_point = dma_point = None
+            if tiu_before > 0:
+                tiu_point = find_point((subnet_id, tiu_before, None, core_id))
+            if dma_before > 0:
+                dma_point = find_point((subnet_id, None, dma_before, core_id))
 
-            if tiu - tiu_offset > 0:
-                x_index = tdb.cmd2index[(subnet_id, tiu - tiu_offset, None, core_id)]
-            if dma - dma_offset > 0:
-                y_index = tdb.cmd2index[(subnet_id, None, dma - dma_offset, core_id)]
+            bf_point = max_with_none(tiu_point, dma_point, last_af_point + 1)
 
-            bf_index = max_with_none(x_index, y_index, last_af_index[core_id] + 1)
-
-            self.cmdkey2loc.setdefault(bf_index, []).extend(
-                Operand(opd, opd_index, loc_index, loc.loc_name, bf_index)
+            self.point2loc.setdefault(bf_point, []).extend(
+                Operand(opd, opd_index, loc_index, loc.loc_name, bf_point)
                 for opd_index, opd in enumerate(loc.operands)
             )
 
-            # after execution
+            # the tiu/dma cmd-id state after executing this loc
             (
                 subnet_id,
-                tiu,
-                dma,
+                tiu_after,
+                dma_after,
                 core_id,
             ) = loc.tuple_key_after
-            x_index = y_index = None
+            tiu_point = dma_point = None
 
-            if tiu - tiu_offset > 0:
-                x_index = tdb.cmd2index[(subnet_id, tiu - tiu_offset, None, core_id)]
-            if dma - dma_offset > 0:
-                y_index = tdb.cmd2index[(subnet_id, None, dma - dma_offset, core_id)]
+            if tiu_after > 0:
+                tiu_point = find_point((subnet_id, tiu_after, None, core_id))
+            if dma_after > 0:
+                dma_point = find_point((subnet_id, None, dma_after, core_id))
 
-            last_af_index[core_id] = af_index = max_with_none(x_index, y_index)
-
-            self.cmdkey2loc.setdefault(af_index, []).extend(
-                Result(opd, opd_index, loc_index, loc.loc_name, af_index)
+            last_af_point = af_point = max_with_none(tiu_point, dma_point)
+            self.point2loc.setdefault(af_point, []).extend(
+                Result(opd, opd_index, loc_index, loc.loc_name, af_point)
                 for opd_index, opd in enumerate(loc.results)
             )
-            for index in range(bf_index, af_index + 1):
-                if (
-                    index < len(tdb.cmditer)
-                    and tdb.cmditer[index].cmd.core_id != core_id
-                ):
-                    continue
-                self.index2loc_range[index] = loc_index
-                self.loc2indexs.setdefault(loc_index, list()).append(index)
 
-        # make sure all cmd except sync have built mlir index
-        for i in range(index):
-            if i not in self.index2loc_range:
-                assert isinstance(
-                    tdb.cmditer[i].cmd, (tdb.context.tiu_sys, tdb.context.dma_sys)
-                )
+            for index in range(bf_point, af_point + 1):  # +1 to indicate `after`
+                assert index not in visited, index
+                visited.add(index)
+                loc_indexs.append({"executed_id": index + 1, "loc_index": loc_index})
 
-    def get_mlir_by_point(self, point=None):
+        mlir_index_df = pd.DataFrame.from_records(loc_indexs)
+        new_index_df = tdb.index_df.merge(mlir_index_df, on="executed_id", how="outer")
+        # drop last loc_index which have no meaning
+        new_index_df = new_index_df[new_index_df.cmd_index.isna() == False]
+        tdb.index_df = new_index_df.set_index("cmd_index", drop=False)
+        tdb.index_df["loc_index"] = tdb.index_df["loc_index"]
+        # make sure all cmd except sys have built mlir index
+        no_loc_mask = tdb.index_df.loc_index.isna()
+        no_static_mask = tdb.index_df.cmd_type.apply(
+            lambda x: False if x is None else x.is_static()
+        )
+
+        if tdb.context.device == tdb.context.device.BM1688:
+            # temporarily hack for BM1688, which use arith_copy cmd to workaround sync bug
+            no_arith_copy = tdb.index_df.op_name != 'arith.copy'
+            assert tdb.index_df[no_loc_mask & no_static_mask & no_arith_copy].is_sys.all()
+        else:
+            assert tdb.index_df[no_loc_mask & no_static_mask].is_sys.all()
+
+    def get_mlir_by_point(self, point=None) -> Optional[str]:
         """NOTE: file-line in tensor_location.json starts from 1"""
         loc = self.get_loc_by_point(point)
+        if loc is None:
+            return None
         file_line = self.final_mlir.get_fileline_by_locname(loc.loc_name)
         return self.final_mlir.lines[file_line - 1]
 
-    def get_mlir_context_by_point(self, point=None, pre=2, next=2) -> List[str]:
+    def get_mlir_context_by_point(
+        self, point=None, pre=2, next=2
+    ) -> Optional[List[str]]:
         loc = self.get_loc_by_point(point)
+        if loc is None:
+            return None
         file_line = self.final_mlir.get_fileline_by_locname(loc.loc_name)
         return self.final_mlir.lines[max(0, file_line - 1 - pre) : file_line - 1 + next]
 
-    def get_locindex_by_atomic(self, point=None) -> int:
+    def get_locindex_by_atomic(self, point=None) -> Optional[int]:
         """
         N cmds have N+1 positions,
         use tdb.cmd_point other than cmd2index to get current point
         """
         if point is None:
             point = self.tdb.cmd_point
-        loc_index = self.index2loc_range[point]
-        return loc_index
 
-    def get_loc_by_point(self, point=None) -> CMD:
+        loc_index = self.index_df.iloc[point]["loc_index"].item()
+
+        if np.isnan(loc_index):
+            return None
+        return int(loc_index)
+
+    def get_loc_by_point(self, point=None) -> Optional[CMD]:
         loc_index = self.get_locindex_by_atomic(point)
+        if loc_index is None:
+            return None
         return self.final_mlir.loc[loc_index]
 
-    def get_loc_context_by_point(self, point=None, pre=2, next=2) -> List[CMD]:
+    def get_loc_context_by_point(
+        self, point=None, pre=2, next=2
+    ) -> Optional[List[CMD]]:
         loc_index = self.get_locindex_by_atomic(point)
+        if loc_index is None:
+            return None
         return self.final_mlir.loc[max(0, loc_index - pre) : loc_index + next]
 
 
@@ -266,8 +300,8 @@ class DisplayPlugin(TdbPlugin, TdbPluginCmd):
         try:
             eval(arg)
         except Exception as e:
-            self.tdb.error(f"Can not add display {arg}")
-            self.tdb.error(e)
+            self.error(f"Can not add display {arg}")
+            self.error(e)
             return
         item_id = self.displays.add_display(arg)
         self.message(f"{item_id} {eval(arg)}")
@@ -292,26 +326,26 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
 
     def do_in(self, arg):
         try:
-            op = self.tdb.get_op()
+            cmd = self.tdb.get_cmd()
         except StopIteration:
             self.tdb.message("no cmd next.")
             return
         if arg == "":
-            self.tdb.message(op.operands)
+            self.tdb.message(cmd.operands)
             return
 
         try:
             index = int(arg)
-            if op.cmd_type == CMDType.cpu:
-                if op.cmd_id == 0:
-                    data = self.tdb.memory.get_data(op.operands[index])
+            if cmd.cmd_type == CMDType.cpu:
+                if cmd.cmd_id == 0:
+                    data = self.tdb.memory.get_data(cmd.operands[index])
                 else:
-                    data = self.tdb.memory.get_cpu_data(op.cmd_id)[op.operands[index]]
-            elif op.cmd_type.is_tpu():
-                if op.operands[index].is_scalar:
-                    data = op.operands[index].data
+                    data = self.tdb.memory.get_cpu_data(cmd.cmd_id)[cmd.operands[index]]
+            elif cmd.cmd_type.is_static():
+                if cmd.operands[index].is_scalar:
+                    data = cmd.operands[index].data
                 else:
-                    data = self.tdb.memory.get_data(op.operands[index])
+                    data = self.tdb.memory.get_data(cmd.operands[index])
             else:
                 self.tdb.error("")
                 return
@@ -321,8 +355,8 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
 
     def do_next(self, arg):
         try:
-            op = self.tdb.get_op()
-            self.tdb.message(op)
+            cmd = self.tdb.get_cmd()
+            self.tdb.message(cmd)
         except StopIteration:
             self.tdb.error("no cmd next.")
 
@@ -330,7 +364,7 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
 
     def do_pre(self, arg):
         try:
-            op = self.tdb.get_preop()
+            op = self.tdb.get_precmd()
             self.tdb.message(op)
         except StopIteration:
             self.tdb.message("no cmd pre.")
@@ -338,24 +372,24 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
 
     def do_out(self, arg):
         try:
-            op = self.tdb.get_preop()
+            cmd = self.tdb.get_precmd()
         except StopIteration:
             self.tdb.message("no cmd pre.")
             return
 
         if arg == "":
-            self.tdb.message(op.results)
+            self.tdb.message(cmd.results)
             return
 
         try:
             index = int(arg)
-            if op.cmd_type == CMDType.cpu:
-                data = self.tdb.memory.get_cpu_data(op.cmd_id)[index]
-            elif op.cmd_type.is_tpu():
-                if op.results[index].is_scalar:
-                    data = op.results[index].data
+            if cmd.cmd_type == CMDType.cpu:
+                data = self.tdb.memory.get_cpu_data(cmd.cmd_id)[index]
+            elif cmd.cmd_type.is_static():
+                if cmd.results[index].is_scalar:
+                    data = cmd.results[index].data
                 else:
-                    data = self.tdb.memory.get_data(op.results[index])
+                    data = self.tdb.memory.get_data(cmd.results[index])
             else:
                 self.tdb.error("")
                 return
@@ -365,13 +399,13 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
 
     def after_start(self, tdb: TdbCmdBackend):
         try:
-            tdb.message(tdb.get_op())
+            tdb.message(tdb.get_cmd())
         except StopIteration:
             pass
 
     def after_stop(self, tdb: TdbCmdBackend):
         try:
-            tdb.message(tdb.get_op())
+            tdb.message(tdb.get_cmd())
         except StopIteration:
             pass
 
@@ -416,7 +450,7 @@ class ProgressPlugin(TdbPlugin):
             return
 
         self.progress.start()
-        (subnet_id, tiu_id, dma_id, core_id) = tdb.get_op().tuple_key
+        (subnet_id, tiu_id, dma_id, core_id) = tdb.get_cmd().tuple_key
         if subnet_id not in self.visited_subnet:
             self.progress.print(f"run subnet {subnet_id}")
             self.visited_subnet.add(subnet_id)

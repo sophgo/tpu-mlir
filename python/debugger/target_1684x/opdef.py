@@ -9,32 +9,40 @@
 
 from typing import Dict, Tuple
 
-from ..target_common import OpInfo, cmd_base_reg, BaseTpuOp, Tiu, Dma, ALIGN
+from ..target_common import OpInfo, atomic_reg, BaseTpuCmd, Tiu, Dma, ALIGN, RegIndex
 from .memmap import NPU_NUM, EU_NUM
 from .regdef import *
 from .opparam import opparam_converter, default_converter
 
 tiu_cls = dict()
 dma_cls = dict()
+tiu_index = RegIndex()
+dma_index = RegIndex()
 
 
-class TiuCmdOp(BaseTpuOp, Tiu):
+class TiuCmd(BaseTpuCmd, Tiu):
     opparam_converter = opparam_converter
     default_converter = default_converter
 
     name: str = None
     description = "TIU Operation."
-    opcode_bits = (41, 45)
     # extension
     eu_type = {}
-    eu_bits = (45, 50)
     short_cmd = False  # long_code by default
 
-    def __init__(self, cmd: cmd_base_reg) -> None:
-        super().__init__(cmd)
-        self.eu_name = tiu_cls[cmd.OP_NAME]["tsk_eu_typ"][cmd.tsk_eu_typ]
+    def __init__(self, reg: atomic_reg, *, buf: memoryview, subnet_id=0) -> None:
+        super().__init__(reg, buf=buf, subnet_id=subnet_id)
+        self.eu_name = tiu_cls[reg.OP_NAME]["tsk_eu_typ"][reg.tsk_eu_typ]
 
     def __init_subclass__(cls) -> None:
+        if len(cls.eu_type) == 0:
+            cls.eu_type = {0: "none"}
+        if cls.short_cmd is None:
+            tiu_index[(0, cls.opcode, cls.eu_type)] = cls
+            tiu_index[(1, cls.opcode, cls.eu_type)] = cls
+        else:
+            tiu_index[(cls.short_cmd, cls.opcode, cls.eu_type)] = cls
+
         tiu_cls[cls.name] = {
             "description": cls.description,
             "tsk_eu_typ": cls.eu_type,
@@ -45,7 +53,7 @@ class TiuCmdOp(BaseTpuOp, Tiu):
 
     def __repr__(self) -> str:
         if self.operands == []:
-            return tiu_cls[self.cmd.OP_NAME]["description"]
+            return tiu_cls[self.reg.OP_NAME]["description"]
 
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
@@ -54,38 +62,54 @@ class TiuCmdOp(BaseTpuOp, Tiu):
         if self.attribute:
             attribute_dic.update(self.attribute)
 
-        op_info = tiu_cls[self.cmd.OP_NAME]
-        eu_type_id = self.cmd["tsk_eu_typ"]
-        op_name = self.cmd.OP_NAME
-        if len(op_info["tsk_eu_typ"]) != 0:
-            # attribute_dic["tsk_typ"] = f'"{op_name}"'
-            op_name = op_info["tsk_eu_typ"][eu_type_id]
+        op_name = self.name
 
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
         return (
-            f"{', '.join(res_name)}, %B{self.cmd.cmd_id} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %D{self.cmd.cmd_id_dep})"
+            f"{', '.join(res_name)}, %B{self.cmd_id} = \"{op_name}\""
+            + f"({', '.join(opd_name)}, %D{self.cmd_id_dep})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
         )
 
+    @property
+    def name(self):
+        op_info = tiu_cls[self.reg.OP_NAME]
+        eu_type_id = self.reg["tsk_eu_typ"]
+        op_name = self.reg.OP_NAME
+        if len(op_info["tsk_eu_typ"]) != 0:
+            op_name = op_info["tsk_eu_typ"][eu_type_id]
+        return op_name
+
     def ops(self, reg, is_arch):
         raise NotImplementedError()
 
+    @property
+    def cmd_id_dep(self):
+        return self.reg.cmd_id_dep
 
-class DmaCmdOp(BaseTpuOp, Dma):
+    @property
+    def cmd_id(self):
+        return self.reg.cmd_id
+
+
+class DmaCmd(BaseTpuCmd, Dma):
     opparam_converter = opparam_converter
     default_converter = default_converter
 
     name: str = None
     description = "GDMA Operation."
-    opcode_bits = (32, 36)
-    fun_bits = (36, 39)
     sp_fun = {}
     short_cmd = False  # long_code by default
 
+    def __init__(self, reg: atomic_reg, *, buf: memoryview, subnet_id=0) -> None:
+        super().__init__(reg, buf=buf, subnet_id=subnet_id)
+
     def __init_subclass__(cls) -> None:
+        if len(cls.sp_fun) == 0:
+            cls.sp_fun = {0: "none"}
+        dma_index[(cls.short_cmd, cls.opcode, cls.sp_fun)] = cls
         dma_cls[cls.name] = {
             "description": cls.description,
             "tsk_typ": cls.opcode,
@@ -96,7 +120,7 @@ class DmaCmdOp(BaseTpuOp, Dma):
 
     def __repr__(self):
         if self.operands == []:
-            return dma_cls[self.cmd.OP_NAME]["description"]
+            return dma_cls[self.reg.OP_NAME]["description"]
 
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
@@ -105,27 +129,38 @@ class DmaCmdOp(BaseTpuOp, Dma):
         if self.attribute:
             attribute_dic.update(self.attribute)
 
-        op_info = dma_cls[self.cmd.OP_NAME]
-        sp_func_id = self.cmd["cmd_special_function"]
-        op_name = self.cmd.OP_NAME
-        if len(op_info["sp_fun"]) != 0:
-            # attribute_dic["tsk_typ"] = f'"{op_name}"'
-            op_name = op_info["sp_fun"][sp_func_id]
-
+        op_name = self.name
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
         return (
-            f"{', '.join(res_name)}, %D{self.cmd.cmd_id} = \"{op_name}\""
-            + f"({', '.join(opd_name)}, %B{self.cmd.cmd_id_dep})"
+            f"{', '.join(res_name)}, %D{self.cmd_id} = \"{op_name}\""
+            + f"({', '.join(opd_name)}, %B{self.cmd_id_dep})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
         )
 
+    @property
+    def name(self):
+        op_info = dma_cls[self.reg.OP_NAME]
+        sp_func_id = self.reg["cmd_special_function"]
+        op_name = self.reg.OP_NAME
+        if len(op_info["sp_fun"]) != 0:
+            op_name = op_info["sp_fun"][sp_func_id]
+        return op_name
+
     def ops(self, reg, is_arch):
         return 0
 
+    @property
+    def cmd_id_dep(self):
+        return self.reg.cmd_id_dep
 
-class conv_op(TiuCmdOp):
+    @property
+    def cmd_id(self):
+        return self.reg.cmd_id
+
+
+class conv_op(TiuCmd):
     name = "CONV"
     opcode = 0
     eu_type = {0: "conv.normal", 1: "conv.wrq", 2: "conv.wrqrelu"}
@@ -158,7 +193,7 @@ class sconv_op(conv_op):
     description = "short convolution"
 
 
-class mm_op(TiuCmdOp):
+class mm_op(TiuCmd):
     name = "MM"
     opcode = 2
     eu_type = {1: "mm.normal", 2: "mm.wrq", 3: "mm.wrqrelu"}
@@ -186,7 +221,7 @@ class smm_op(mm_op):
     description = "short matrix multiply"
 
 
-class mm2_op(TiuCmdOp):
+class mm2_op(TiuCmd):
     name = "MM2"
     opcode = 2
     eu_type = {4: "mm2.nn", 5: "mm2.nt", 6: "mm2.tt"}
@@ -219,7 +254,7 @@ class smm2_op(mm2_op):
     description = "short matrix multiply2"
 
 
-class cmp_op(TiuCmdOp):
+class cmp_op(TiuCmd):
     name = "CMP"
     opcode = 13
     eu_type = {
@@ -249,7 +284,7 @@ class scmp_op(cmp_op):
     description = "short fused_cmpare"
 
 
-class sfu_op(TiuCmdOp):
+class sfu_op(TiuCmd):
     name = "SFU"
     opcode = 9
     eu_type = {
@@ -286,7 +321,7 @@ class ssfu_op(sfu_op):
     description = "short special_function"
 
 
-class vc_op(TiuCmdOp):
+class vc_op(TiuCmd):
     name = "VC"
     opcode = 14
     eu_type = {
@@ -324,7 +359,7 @@ class svc_op(vc_op):
     description = "short vector correlation"
 
 
-class lin_op(TiuCmdOp):
+class lin_op(TiuCmd):
     name = "LIN"
     opcode = 10
     eu_type = {1: "lin.mac", 20: "lin.square_sum", 21: "lin.square_diff"}
@@ -346,7 +381,7 @@ class slin_op(lin_op):
     description = "short fused_linear"
 
 
-class ar_op(TiuCmdOp):
+class ar_op(TiuCmd):
     name = "AR"
     opcode = 3
     eu_type = {
@@ -402,7 +437,7 @@ class sar_op(ar_op):
     description = "short arithmetic"
 
 
-class pord_op(TiuCmdOp):
+class pord_op(TiuCmd):
     name = "PorD"
     opcode = 1
     eu_type = {
@@ -445,7 +480,7 @@ class spord_op(pord_op):
     description = "short depthwise or pooling"
 
 
-class rqdq_op(TiuCmdOp):
+class rqdq_op(TiuCmd):
     name = "RQ&DQ"
     opcode = 4
     eu_type = {
@@ -475,7 +510,7 @@ class srqdq_op(rqdq_op):
     description = "short RQ && DQ"
 
 
-class sg_op(TiuCmdOp):
+class sg_op(TiuCmd):
     name = "SG"
     opcode = 6
     eu_type = {
@@ -515,7 +550,7 @@ class ssg_op(sg_op):
     description = "short scatter_gather"
 
 
-class sgl_op(TiuCmdOp):
+class sgl_op(TiuCmd):
     name = "SGL"
     opcode = 6
     eu_type = {17: "sgl.pe_s_gather_line", 18: "sgl.pe_s_scatter_line"}
@@ -537,7 +572,7 @@ class ssgl_op(sgl_op):
     description = "short scatter_gather_line"
 
 
-class transbc_op(TiuCmdOp):
+class transbc_op(TiuCmd):
     name = "TRANS&BC"
     opcode = 5
     eu_type = {
@@ -575,7 +610,7 @@ class stransbc_op(transbc_op):
     description = "short TRANS && BC"
 
 
-class lar_op(TiuCmdOp):
+class lar_op(TiuCmd):
     name = "LAR"
     opcode = 7
     short_cmd = None
@@ -592,7 +627,7 @@ class lar_op(TiuCmdOp):
         return n * c * h * w * factor
 
 
-class tiu_sys(TiuCmdOp):
+class tiu_sys(TiuCmd):
     name = "SYSID"
     opcode = 15
     short_cmd = None
@@ -620,7 +655,7 @@ class tiu_sys(TiuCmdOp):
 # ------------------------------------------------------------
 
 
-class dma_tensor(DmaCmdOp):
+class dma_tensor(DmaCmd):
     name = "DMA_tensor（0x000）"
     opcode = 0
     sp_fun = {
@@ -635,7 +670,7 @@ class dma_tensor(DmaCmdOp):
     description = "DMA tensor"
 
 
-class dma_matrix(DmaCmdOp):
+class dma_matrix(DmaCmd):
     name = "DMA_matrix"
     opcode = 1
     sp_fun = {
@@ -652,7 +687,7 @@ class sdma_matrix(dma_matrix):
     description = "short DMA matrix"
 
 
-class dma_masked_select(DmaCmdOp):
+class dma_masked_select(DmaCmd):
     name = "DMA_masked_select"
     opcode = 2
     op_name = "dma.masked_select"
@@ -665,7 +700,7 @@ class sdma_masked_select(dma_masked_select):
     description = "short DMA masked select"
 
 
-class dma_general(DmaCmdOp):
+class dma_general(DmaCmd):
     name = "DMA_general"
     opcode = 3
     sp_fun = {
@@ -681,14 +716,14 @@ class sdma_general(dma_general):
     description = "short DMA general"
 
 
-class dma_cw_transpose(DmaCmdOp):
+class dma_cw_transpose(DmaCmd):
     name = "DMA_cw_transpose"
     opcode = 4
     op_name = "dma.cw_transpose"
     description = "DMA CW Transpose"
 
 
-class dma_nonzero(DmaCmdOp):
+class dma_nonzero(DmaCmd):
     name = "DMA_nonzero"
     opcode = 5
     op_name = "dma.nonzero"
@@ -701,7 +736,7 @@ class sdma_nonzero(dma_nonzero):
     description = "short DMA nonzero"
 
 
-class dma_sys(DmaCmdOp):
+class dma_sys(DmaCmd):
     name = "sDMA_sys"
     opcode = 6
     short_cmd = True
@@ -718,46 +753,15 @@ class dma_sys(DmaCmdOp):
         return self.op_name
 
 
-class dma_gather(DmaCmdOp):
+class dma_gather(DmaCmd):
     name = "DMA_gather"
     opcode = 7
     op_name = "gdma.gather"
     description = "DMA gather"
 
 
-class dma_scatter(DmaCmdOp):
+class dma_scatter(DmaCmd):
     name = "DMA_scatter"
     opcode = 8
     op_name = "gdma.scatter"
     description = "DMA scatter"
-
-
-# build tiu and dma search tree
-# search by cmd_short, tsk_typ, tsk_eu_type
-tiu_index: Dict[Tuple[int, int, int], OpInfo] = {}
-
-for k, v in tiu_cls.items():
-    if len(v["tsk_eu_typ"]) == 0:
-        tsk_eu_typ = {0: "none"}
-    else:
-        tsk_eu_typ = v["tsk_eu_typ"]
-
-    if isinstance(tsk_eu_typ, range):
-        tsk_eu_typ = {i: f"ana_{i}" for i in tsk_eu_typ}
-
-    for eu_type, eu_name in tsk_eu_typ.items():
-        if v["short_cmd"] is None:
-            v["short_cmd"] = 0
-        tiu_index[(int(v["short_cmd"]), v["tsk_typ"], eu_type)] = OpInfo(k, eu_name)
-
-
-# search by cmd_short, tsk_typ, sp_fun(special function)
-dma_index: Dict[Tuple[int, int, int], OpInfo] = {}
-for k, v in dma_cls.items():
-    if len(v["sp_fun"]) == 0:
-        sp_fun = {0: "none"}
-    else:
-        sp_fun = v["sp_fun"]
-
-    for sp_typ, sp_name in sp_fun.items():
-        dma_index[(int(v["short_cmd"]), v["tsk_typ"], sp_typ)] = OpInfo(k, sp_name)

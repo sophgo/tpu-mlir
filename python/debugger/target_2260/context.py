@@ -18,6 +18,12 @@ from ..target_common import *
 from .opparam import get_opparam_converter_with_context, opparam_converter
 
 
+def GET_LMEM_START_ADDR(core_id):
+    # currently, sg2260 backend set all lmem addr start as 0x6900000000
+    # instead of 0x6900000000 + core_id * 2**28
+    return 0x6900000000
+
+
 class SG2260Context(BModelContext):
     device = Target.SG2260
 
@@ -27,76 +33,67 @@ class SG2260Context(BModelContext):
     tiu_sys = tiu_sys
 
     local_layout_to_stride = local_layout_to_stride
+    valid_tag = {1: 0, 2: 1}  # {tag : corresponding index in self.base_addr}
+    base_addr = [0, 0x5F11000, GET_LMEM_START_ADDR]
 
     def __init__(self) -> None:
         super().__init__()
-        self.base_addr = [memmap[MType.G][0] for _ in range(2)]
         self.decoder = Decoder(self)
+        self._runner = None
 
     @property
     @lru_cache()
     def opparam_converter(self):
         return get_opparam_converter_with_context(self, opparam_converter)
 
-    # @property
-    def MemRef(self, address, shape, dtype, stride, layout, cmd_type="tiu"):
-        return MemRef(address, shape, dtype, stride, layout, SG2260Context, cmd_type)
+    @property
+    def MemRef(self) -> Type[MemRef]:
+        return partial(MemRef, context=self)
 
-    def get_tiu_memory_type(self, address) -> MType:
-        # tiu addr is 32 bits
-        if address >> 26:
-            if np.binary_repr(address)[-27]:
-                return MType.S
-            else:
-                return MType.R
-        return MType.R
-
-    def get_dma_memory_type(self, address) -> MType:
-        tag = (address >> 40) & 0x1F  # tag
-        if 0 <= tag <= 30:
+    def get_memory_type(self, reg_address):
+        # tag,
+        # for dma ops, tags always in {1, 2, 31}, {1, 2} are GMEM, {31} is LMEM
+        # for tiu ops, tags always equal to 0, which represents LMEM
+        tag = (reg_address >> 40) & 0x1F
+        if tag in (1, 2):
             return MType.G
+        elif tag == 0:
+            return MType.R
         elif tag == 31:
-            if np.binary_repr(address)[-27]:
+            if np.binary_repr(reg_address)[-27] == "1":
                 return MType.S
             else:
                 return MType.R
         return MType.UNKNOWN
 
-    @staticmethod
-    def cmd_base_reg2dma_base_reg(cmdBaseRegList):
-        for cmdBaseReg in cmdBaseRegList:
-            origin_fields = cmdBaseReg._fields_
-            for field in origin_fields:
-                value = getattr(cmdBaseReg, field[0])
-                if field[0] == "cmd_id_dep":
-                    if value > 2**16:
-                        value = value & 0x0FFFF
-                    else:
-                        value = 0
-                    setattr(cmdBaseReg, "cmd_id_dep", value)
+    def fix_addr(self, reg_address: int) -> int:
+        # asser reg_address has 45 bits
+        assert 0 <= reg_address < 2**45
+        tag = (reg_address >> 40) & 0x1F
+        if tag == 31:  # when tag==31, return the 26bits of reg_address as local offset
+            return reg_address & 0x3FFFFFF
+        fixed_addr = self.base_addr[self.valid_tag[tag]] + (reg_address & 0xFFFFFFFFFF)
+        return fixed_addr
 
-    @staticmethod
+    @classmethod
     def merge_instruction(
-        tiu: List[cmd_base_reg], dma: List[cmd_base_reg], transfer_dep_id: bool
-    ):
+        cls, tiu: List[BaseTpuCmd], dma: List[BaseTpuCmd]
+    ) -> List[BaseTpuCmd]:
         main_cmd, inserted_cmd = dma, tiu
-        if transfer_dep_id:
-            SG2260Context.cmd_base_reg2dma_base_reg(main_cmd)
-            SG2260Context.cmd_base_reg2dma_base_reg(inserted_cmd)
 
         # remove the system command
-
-        def get_end(cmd: List[cmd_base_reg]):
-            if len(cmd) == 0:
+        def get_end(cmds: List[BaseTpuCmd]):
+            if len(cmds) == 0:
                 return 0
-            if isinstance(cmd[-1], (tiu_sys, dma_sys)):
+
+            if cls.is_sys(cmds[-1]):
                 return -1
             else:
-                return len(cmd)
+                return len(cmds)
 
-        def fix_tgcr_cmd_id_dp(tiu_cmd: List[cmd_base_reg]):
+        def fix_tgcr_cmd_id_dp(tiu_cmd: List[BaseTpuCmd]):
             for i, v in enumerate(tiu_cmd):
-                if isinstance(v, SYS_TR_ACC_reg):
+                if isinstance(v.reg, SYS_TR_ACC_reg):
                     # same as v.op_code == 12, changed because short cmd do not have op_code
                     v.cmd_id_dep = (
                         tiu_cmd[i + 1].cmd_id_dep
@@ -115,7 +112,12 @@ class SG2260Context(BModelContext):
 
         return [x[1] for x in cmd_sorted]
 
+    @classmethod
+    def is_sys(cls, cmd: BaseTpuCmd):
+        return isinstance(cmd.reg, (dma_sys, tiu_sys))
+
     def get_runner(self, memory_size: int) -> CModelRunner:
-        if self._runner is None:
-            self._runner = SG2260Runner(memory_size)
-        return self._runner
+        assert self.using_cmodel, "2260 currently only support cmodel mode"
+        if self._cmodel_runner is None:
+            self._cmodel_runner = SG2260Runner(memory_size, self.base_addr)
+        return self._cmodel_runner

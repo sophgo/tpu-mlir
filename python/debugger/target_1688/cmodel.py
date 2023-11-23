@@ -93,21 +93,21 @@ class BM1688Runner(CModelRunner):
         SMEM = c_array_to_ndarray(self.lib.get_static_memaddr_by_node(0), (16 * 1024,))
         self.memory = Memory(LMEM, DDR, SMEM)
 
-    def _compute(self, command: cmd_base_reg, engine_type, core_id=0):
-        command = np.frombuffer(command, dtype=np.uint8)
-        assert isinstance(command, np.ndarray)
-        assert command.dtype == np.uint8
+    def _compute(self, command: BaseTpuCmd, engine_type):
+        atomic = np.frombuffer(command.buf, dtype=np.uint8)
+        assert isinstance(atomic, np.ndarray)
+        assert atomic.dtype == np.uint8
         return self.lib.execute_command(
-            core_id,
-            command.ctypes.data_as(ctypes.c_void_p),
+            command.core_id,
+            atomic.ctypes.data_as(ctypes.c_void_p),
             engine_type,
         )
 
-    def tiu_compute(self, command: cmd_base_reg, core_id=0):
-        return self._compute(command, 0, core_id)
+    def tiu_compute(self, command: BaseTpuCmd):
+        return self._compute(command, 0)
 
-    def dma_compute(self, command: cmd_base_reg, core_id=0):
-        return self._compute(command, 1, core_id)
+    def dma_compute(self, command: BaseTpuCmd):
+        return self._compute(command, 1)
 
     @staticmethod
     def gen_lookup_table():

@@ -91,49 +91,19 @@ class BM1684Runner(CModelRunner):
     def __del__(self):
         self.lib.cmodel_deinit(0)
 
-    def _compute(self, command: cmd_base_reg, engine_type):
+    def _compute(self, command: BaseTpuCmd, engine_type):
         command = np.frombuffer(command.buf, dtype=np.uint8)
         cmd_p = command.ctypes.data_as(ctypes.c_void_p)
 
         return self.lib.get_atomic_function(cmd_p, engine_type)(0, cmd_p)
 
-    def tiu_compute(self, command: cmd_base_reg, _=0):
+    def tiu_compute(self, command: BaseTpuCmd):
         return self._compute(command, 0)
 
-    def dma_compute(self, command: cmd_base_reg, _=0):
+    def dma_compute(self, command: BaseTpuCmd):
         return self._compute(command, 1)
 
-    def copy_message_from_sharemem(self, dst_msg_buf):
-        cur_rp = read_share_reg(0)  # Assuming address 0 is the share register address
-        rp = [0]  # Using a list to mimic passing by reference
-        size = [0]  # Using a list to mimic passing by reference
-        api_id = [0]  # Using a list to mimic passing by reference
-
-        rp[0] = cur_rp
-        src_msg_word = get_share_mem_addr(cur_rp & SHAREMEM_MASK)
-        api_id[0] = src_msg_word[0]
-
-        src_msg_word = get_share_mem_addr(
-            pointer_wrap_around(cur_rp, 1, SHAREMEM_SIZE_BIT) & SHAREMEM_MASK
-        )
-        size[0] = src_msg_word[0]
-
-        if api_id[0] == BM_API_QUIT:
-            return BM_FW_SUCCESS
-
-        if not (size[0] + 2) < MAX_MSG_WORD:
-            print(f"bmfw: api size = 0x{size[0] + 2} is too large than max size!")
-            return BM_FW_ERR_DATA
-
-        for idx in range(size[0]):
-            src_msg_word = get_share_mem_addr(
-                pointer_wrap_around(cur_rp, 2 + idx, SHAREMEM_SIZE_BIT) & SHAREMEM_MASK
-            )
-            dst_msg_buf.append(src_msg_word[0])
-
-        return BM_FW_SUCCESS
-
-    def dynamic_compute(self, command: DynIrOp, core_id=0):
+    def dynamic_compute(self, command: DynIrCmd, core_id=0):
         # ir_buf = np.frombuffer(command.ir_buffer, dtype=np.uint8)
         # buf_p = ir_buf.ctypes.data_as(ctypes.c_char_p)
         # breakpoint()

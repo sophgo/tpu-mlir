@@ -17,9 +17,11 @@ import sys
 import cmd
 from enum import Enum
 from .atomic_dialect import BModel2MLIR
-from .target_common import MType, BaseTpuOp, CpuOp, CMDType, DynIrOp
+from .target_common import MType, BaseTpuCmd, CpuCmd, CMDType, DynIrCmd
 from .disassembler import BModel
 from .target_1688.context import BM1688Context
+from .target_2260.context import SG2260Context
+import pandas as pd
 
 
 class TdbStatus(Enum):
@@ -175,7 +177,7 @@ class TdbCmdBackend(cmd.Cmd):
 
         self.static_mode = False
         self.enable_message = True
-        self.cmditer: List[Union[BaseTpuOp, CpuOp, DynIrOp]]
+        self.cmditer: List[Union[BaseTpuCmd, CpuCmd, DynIrCmd]]
 
         self.plugins = PluginCompact(self)
         # default plugins
@@ -217,6 +219,8 @@ class TdbCmdBackend(cmd.Cmd):
         self.message(f"Load {context.device.name} backend")
         self.atomic_mlir = BModel2MLIR(bmodel)
         self.cmditer = self.atomic_mlir.create_cmdlist()
+        # cmd_point point at the cmd that to be executed (but not)
+        # executed_id
         self.cmd_point = 0
 
         self.message(f"Build {self.final_mlir_fn} index")
@@ -236,12 +240,17 @@ class TdbCmdBackend(cmd.Cmd):
             address = coeff.address
             if isinstance(self.context, BM1688Context):
                 address = self.context.fix_tag(address)
-            addr = address - self.context.memmap[MType.G][0]
+            elif isinstance(self.context, SG2260Context):
+                address = self.context.fix_addr(address)
+            addr_offset_ddr = address - self.context.memmap[MType.G][0]
             # load constant data
             if self.runner.using_cmodel:
                 self.LMEM = self.runner.LMEM
+                self.SMEM = self.runner.SMEM
                 self.DDR = self.runner.DDR
-                self.DDR[addr : addr + len(coeff.data)] = memoryview(coeff.data)
+                self.DDR[
+                    addr_offset_ddr : addr_offset_ddr + len(coeff.data)
+                ] = memoryview(coeff.data)
             else:
                 self.memory.set_data_to_address(
                     coeff.address, np.frombuffer(coeff.data, dtype=np.uint8)
@@ -264,7 +273,7 @@ class TdbCmdBackend(cmd.Cmd):
                 size = int(np.prod(mem.shape) * mem.itemsize)
                 self.memory.set_data(
                     mem, inputs[_offset : _offset + size].view(mem.np_dtype)
-                )
+                )  #  load input tensor
 
                 _offset += size
         elif file.endswith(".npz"):
@@ -272,21 +281,54 @@ class TdbCmdBackend(cmd.Cmd):
             self.set_inputs_dict(inputs)
 
     def _build_index(self):
-        """ """
-        self.cmd2index = {}
+        """
+        build a pandas DataFrame with following columns:
+            executed-id, subnet-id, core-id, cmd-id, cmd-id-dep, cmd-type, cmd-index
+                                                                  dyn
+                                                                  static
+                                                                  cpu
+                                                     maybe None
+
+        cmd-index == op.tuple_key
+        TODO
+        """
+        cmd_records = [
+            {
+                "executed_id": 0,
+                "subnet_id": None,
+                "core_id": None,
+                "cmd_id": None,
+                "cmd_id_dep": None,
+                "cmd_type": None,
+                "cmd_index": (None, None, None, None),
+                "op_name": None,
+                "is_sys": None,
+            }
+        ]
+
         for executed_id, op in enumerate(self.cmditer, start=1):
+            record = {
+                "executed_id": executed_id,
+                "subnet_id": op.subnet_id,
+                "core_id": op.core_id,
+                "cmd_id": op.cmd_id,
+                "cmd_id_dep": None,
+                "cmd_type": op.cmd_type,
+                "cmd_index": op.tuple_key,
+                "op_name": op.name,
+                "is_sys": False,
+            }
+
             # executed_id indicate the index after op execution, start is 1
-            # cmd_point = 0 means no cmd is executed
-            key = op.tuple_key
-            if isinstance(op, BaseTpuOp):
-                self.cmd2index[key] = executed_id
-            elif isinstance(op, DynIrOp):
-                self.cmd2index[key] = executed_id
-            elif isinstance(op, CpuOp):
-                self.cmd2index[key] = executed_id
-            else:
-                # breakpoint()
-                pass
+            # executed_id = 0 means no cmd is executed
+
+            if isinstance(op, BaseTpuCmd):
+                record["cmd_id_dep"] = op.cmd_id_dep
+                record["is_sys"] = self.context.is_sys(op)
+            cmd_records.append(record)
+        index_df = pd.DataFrame.from_records(cmd_records)
+        index_df["executed_id"] = index_df["executed_id"].astype(int)
+        self.index_df = index_df.set_index("cmd_index", drop=False)
 
     def add_plugin(self, plugin_name: str):
         plugin = self.plugins.add_plugin(plugin_name)
@@ -335,7 +377,7 @@ class TdbCmdBackend(cmd.Cmd):
         pre = max(0, cmd_point - pre)
         return self.cmditer[pre : cmd_point + next + 1]
 
-    def get_op(self):
+    def get_cmd(self):
         if self.status == TdbStatus.UNINIT:
             raise StopIteration()
 
@@ -343,13 +385,13 @@ class TdbCmdBackend(cmd.Cmd):
             raise StopIteration()
         return self.cmditer[self.cmd_point]
 
-    def get_preop(self):
+    def get_precmd(self):
         if self.cmd_point == 0:
             raise StopIteration()
         return self.cmditer[self.cmd_point - 1]
 
     def get_nextop(self):
-        op = self.get_op()
+        op = self.get_cmd()
         self.cmd_point += 1
         return op
 
@@ -359,22 +401,23 @@ class TdbCmdBackend(cmd.Cmd):
         every do_<func> used next() should catch BreakpointStop Exception
         and stop to wait user interaction
         """
-        op = self.get_op()
+        cmd = self.get_cmd()
 
         try:
             if not self.static_mode:
-                cmd, cmd_type = op.cmd, op.cmd_type
-                if not self.decoder.is_end(cmd):
-                    if cmd_type == CMDType.tiu:
-                        self.runner.tiu_compute(cmd)
-                    elif cmd_type == CMDType.dma:
-                        self.runner.dma_compute(cmd)
-                    elif cmd_type == CMDType.cpu:
-                        self.runner.cpu_compute(cmd)
-                    elif cmd_type == CMDType.dyn_ir:
-                        self.runner.dynamic_compute(cmd)
-                    else:
-                        self.error("skip unknown CMDType")
+                cmd_type = cmd.cmd_type
+                if cmd_type.is_static():
+                    if not self.context.is_sys(cmd):
+                        if cmd_type == CMDType.tiu:
+                            self.runner.tiu_compute(cmd)
+                        elif cmd_type == CMDType.dma:
+                            self.runner.dma_compute(cmd)
+                elif cmd_type == CMDType.cpu:
+                    self.runner.cpu_compute(cmd)
+                elif cmd_type == CMDType.dyn_ir:
+                    self.runner.dynamic_compute(cmd)
+                else:
+                    self.error("skip unknown CMDType")
         except ValueError as e:
             self.error(e)
             raise BreakpointStop()

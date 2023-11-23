@@ -255,7 +255,9 @@ def get_tdb(args=None):
         final_mlir_fn = os.path.join(context_dir, "final.mlir")
         tensor_loc_file = os.path.join(context_dir, "tensor_location.json")
 
-    if not os.path.exists(final_mlir_fn) or not os.path.exists(tensor_loc_file):
+    if final_mlir_fn is not None and (
+        not os.path.exists(final_mlir_fn) or not os.path.exists(tensor_loc_file)
+    ):
         final_mlir_fn = tensor_loc_file = None
 
     input_data_fn = args.inputs

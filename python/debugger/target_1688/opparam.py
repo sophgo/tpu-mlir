@@ -21,7 +21,7 @@ from ..target_common import (
     Layout,
     get_dtype,
     ValueType,
-    cmd_base_reg,
+    atomic_reg,
 )
 
 from .regdef import *
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 opparam_converter: Dict[
     str,
-    Callable[[cmd_base_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]],
+    Callable[[atomic_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]],
 ] = {}
 
 

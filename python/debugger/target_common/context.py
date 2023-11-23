@@ -12,7 +12,7 @@ from contextlib import contextmanager
 import numpy as np
 from typing import Dict, Tuple, List, Type
 from .decoder import DecoderBase
-from .op_support import cmd_base_reg, MType, Target
+from .op_support import atomic_reg, MType, Target, BaseTpuCmd
 
 
 class BModelContext:
@@ -22,8 +22,8 @@ class BModelContext:
     decoder: DecoderBase
 
     memmap: Dict[MType, Tuple[int, int]]
-    dma_sys: cmd_base_reg = None
-    tiu_sys: cmd_base_reg = None
+    dma_sys: atomic_reg = None
+    tiu_sys: atomic_reg = None
 
     def __init__(self) -> None:
         self.using_cmodel = eval(os.environ.get("USING_CMODEL", "True"))
@@ -57,8 +57,12 @@ class BModelContext:
     def local_layout_to_stride(memref: MemRefBase) -> Tuple[int, int, int, int]:
         raise NotImplementedError()
 
-    @staticmethod
-    def merge_instruction(tiu: List[cmd_base_reg], dma: List[cmd_base_reg]):
+    @classmethod
+    def merge_instruction(cls, tiu: List[BaseTpuCmd], dma: List[BaseTpuCmd]):
+        raise NotImplementedError()
+
+    @classmethod
+    def is_sys(cls, _: BaseTpuCmd):
         raise NotImplementedError()
 
     def get_runner(self, memory_size: int) -> Runner:

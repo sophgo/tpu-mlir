@@ -6,7 +6,6 @@
 # third-party components.
 #
 # ==============================================================================
-
 """
 decode final.mlir and tensor_loc.json
 """
@@ -22,7 +21,7 @@ from mlir.dialects.func import FuncOp
 from mlir.dialects import quant
 from mlir.ir import *
 from .target_common import DType, CMDType, Layout, BModelContext, MType
-
+import pandas as pd
 
 to_dtype: Dict[str, DType] = {
     "f32": DType.f32,
@@ -166,7 +165,7 @@ class Value:
         return 1
 
     def __repr__(self) -> str:
-        return f"@{self.address}({{name={self.name}, layout={self.layout}, slice={self.slice}, mlir_type={self.type}}})"
+        return f"@{self.address}({{name={self.name}, layout={self.layout}, slice={self.slice}, mlir_type={self.type}, memory_type={self.memory_type}}})"
 
 
 class CMD:

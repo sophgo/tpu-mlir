@@ -397,6 +397,7 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                     box=box.HORIZONTALS,
                 )
                 table.add_row("opcode", loc.opcode)
+                table.add_row("core_id", str(loc.core_id))
                 table.add_row("value", JSON(json.dumps(vv.value_view.value._dic)))
                 table.add_row("tiu_dma_id (before codegen)", str(loc.tiu_dma_id_before))
                 table.add_row("tiu_dma_id (after codegen)", str(loc.tiu_dma_id_after))
@@ -479,7 +480,6 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
 
         context = self.tdb.context
         memref = value.get_memref(context)
-
         if memref.mtype != MType.G and not context.memory.using_cmodel:
             value_res = ComparedResult(value_view, None, msg="ignore")
             return value_res
@@ -511,15 +511,12 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
                 self.failed_tensor[f"{name}_actual"] = actual
                 self.failed_tensor[f"{name}_desired"] = desired
 
-            # if cmd_failed:
-            #     breakpoint()
-
         return value_res
 
     def compare(self, tdb: TdbCmdBackend, is_operand):
         index_plugin = self.index
         point_index = tdb.cmd_point
-        values = index_plugin.cmdkey2loc.get(point_index, None)
+        values = index_plugin.point2loc.get(point_index, None)
 
         if values is None:
             return CmpState.Middle

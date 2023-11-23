@@ -15,10 +15,10 @@
 
 from typing import Dict, Type
 import ctypes
-from ..target_common import cmd_base_reg
+from ..target_common import atomic_reg
 
 
-class CONV_reg(cmd_base_reg):
+class CONV_reg(atomic_reg):
     OP_NAME = "CONV"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -201,7 +201,7 @@ class CONV_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sCONV_reg(cmd_base_reg):
+class sCONV_reg(atomic_reg):
     OP_NAME = "sCONV"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -324,7 +324,7 @@ class sCONV_reg(cmd_base_reg):
     length: int = 512
 
 
-class MM_reg(cmd_base_reg):
+class MM_reg(atomic_reg):
     OP_NAME = "MM"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -507,7 +507,7 @@ class MM_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sMM_reg(cmd_base_reg):
+class sMM_reg(atomic_reg):
     OP_NAME = "sMM"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -596,7 +596,7 @@ class sMM_reg(cmd_base_reg):
     length: int = 384
 
 
-class MM2_reg(cmd_base_reg):
+class MM2_reg(atomic_reg):
     OP_NAME = "MM2"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -779,7 +779,7 @@ class MM2_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sMM2_reg(cmd_base_reg):
+class sMM2_reg(atomic_reg):
     OP_NAME = "sMM2"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -856,7 +856,7 @@ class sMM2_reg(cmd_base_reg):
     length: int = 256
 
 
-class CMP_reg(cmd_base_reg):
+class CMP_reg(atomic_reg):
     OP_NAME = "CMP"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -1039,7 +1039,7 @@ class CMP_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sCMP_reg(cmd_base_reg):
+class sCMP_reg(atomic_reg):
     OP_NAME = "sCMP"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -1106,7 +1106,7 @@ class sCMP_reg(cmd_base_reg):
     length: int = 384
 
 
-class SFU_reg(cmd_base_reg):
+class SFU_reg(atomic_reg):
     OP_NAME = "SFU"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -1289,7 +1289,7 @@ class SFU_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sSFU_reg(cmd_base_reg):
+class sSFU_reg(atomic_reg):
     OP_NAME = "sSFU"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -1340,7 +1340,7 @@ class sSFU_reg(cmd_base_reg):
     length: int = 256
 
 
-class VC_reg(cmd_base_reg):
+class VC_reg(atomic_reg):
     OP_NAME = "VC"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -1523,7 +1523,7 @@ class VC_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sVC_reg(cmd_base_reg):
+class sVC_reg(atomic_reg):
     OP_NAME = "sVC"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -1584,7 +1584,7 @@ class sVC_reg(cmd_base_reg):
     length: int = 384
 
 
-class LIN_reg(cmd_base_reg):
+class LIN_reg(atomic_reg):
     OP_NAME = "LIN"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -1767,7 +1767,7 @@ class LIN_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sLIN_reg(cmd_base_reg):
+class sLIN_reg(atomic_reg):
     OP_NAME = "sLIN"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -1814,7 +1814,7 @@ class sLIN_reg(cmd_base_reg):
     length: int = 256
 
 
-class AR_reg(cmd_base_reg):
+class AR_reg(atomic_reg):
     OP_NAME = "AR"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -1997,7 +1997,7 @@ class AR_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sAR_reg(cmd_base_reg):
+class sAR_reg(atomic_reg):
     OP_NAME = "sAR"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -2100,7 +2100,7 @@ class sAR_reg(cmd_base_reg):
     length: int = 512
 
 
-class PorD_reg(cmd_base_reg):
+class PorD_reg(atomic_reg):
     OP_NAME = "PorD"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -2283,7 +2283,7 @@ class PorD_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sPorD_reg(cmd_base_reg):
+class sPorD_reg(atomic_reg):
     OP_NAME = "sPorD"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -2394,7 +2394,7 @@ class sPorD_reg(cmd_base_reg):
     length: int = 512
 
 
-class RQ_DQ_reg(cmd_base_reg):
+class RQ_DQ_reg(atomic_reg):
     OP_NAME = "RQ&DQ"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -2577,7 +2577,7 @@ class RQ_DQ_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sRQ_sDQ_reg(cmd_base_reg):
+class sRQ_sDQ_reg(atomic_reg):
     OP_NAME = "sRQ&sDQ"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -2634,7 +2634,7 @@ class sRQ_sDQ_reg(cmd_base_reg):
     length: int = 256
 
 
-class SG_reg(cmd_base_reg):
+class SG_reg(atomic_reg):
     OP_NAME = "SG"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -2817,7 +2817,7 @@ class SG_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sSG_reg(cmd_base_reg):
+class sSG_reg(atomic_reg):
     OP_NAME = "sSG"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -2882,7 +2882,7 @@ class sSG_reg(cmd_base_reg):
     length: int = 384
 
 
-class SGL_reg(cmd_base_reg):
+class SGL_reg(atomic_reg):
     OP_NAME = "SGL"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -3065,7 +3065,7 @@ class SGL_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sSGL_reg(cmd_base_reg):
+class sSGL_reg(atomic_reg):
     OP_NAME = "sSGL"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -3126,7 +3126,7 @@ class sSGL_reg(cmd_base_reg):
     length: int = 384
 
 
-class CW_BC_reg(cmd_base_reg):
+class CW_BC_reg(atomic_reg):
     OP_NAME = "CW&BC"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -3309,7 +3309,7 @@ class CW_BC_reg(cmd_base_reg):
     length: int = 1024
 
 
-class sCW_sBC_reg(cmd_base_reg):
+class sCW_sBC_reg(atomic_reg):
     OP_NAME = "sCW&sBC"
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
@@ -3354,7 +3354,7 @@ class sCW_sBC_reg(cmd_base_reg):
     length: int = 256
 
 
-class LAR_reg(cmd_base_reg):
+class LAR_reg(atomic_reg):
     OP_NAME = "LAR"
     _fields_ = [
         ("opd0_w_str", ctypes.c_uint64, 1),
@@ -3411,7 +3411,7 @@ class LAR_reg(cmd_base_reg):
     length: int = 128
 
 
-class SYS_reg(cmd_base_reg):
+class SYS_reg(atomic_reg):
     OP_NAME = "SYS"
     _fields_ = [
         ("rsvd0", ctypes.c_uint64, 1),
@@ -3440,7 +3440,7 @@ class SYS_reg(cmd_base_reg):
     length: int = 128
 
 
-class SYS_TR_ACC_reg(cmd_base_reg):
+class SYS_TR_ACC_reg(atomic_reg):
     OP_NAME = "SYS_TR_ACC"
     _fields_ = [
         ("imm0", ctypes.c_uint64, 32),
@@ -3465,7 +3465,7 @@ class SYS_TR_ACC_reg(cmd_base_reg):
     length: int = 128
 
 
-class DMA_tensor_0x000__reg(cmd_base_reg):
+class DMA_tensor_0x000__reg(atomic_reg):
     OP_NAME = "DMA_tensor（0x000）"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -3558,7 +3558,7 @@ class DMA_tensor_0x000__reg(cmd_base_reg):
     length: int = 768
 
 
-class DMA_matrix_reg(cmd_base_reg):
+class DMA_matrix_reg(atomic_reg):
     OP_NAME = "DMA_matrix"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -3651,7 +3651,7 @@ class DMA_matrix_reg(cmd_base_reg):
     length: int = 768
 
 
-class DMA_masked_select_reg(cmd_base_reg):
+class DMA_masked_select_reg(atomic_reg):
     OP_NAME = "DMA_masked_select"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -3754,7 +3754,7 @@ class DMA_masked_select_reg(cmd_base_reg):
         return self["dst_hsize/dst_wsize_high"]
 
 
-class DMA_general_reg(cmd_base_reg):
+class DMA_general_reg(atomic_reg):
     OP_NAME = "DMA_general"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -3851,7 +3851,7 @@ class DMA_general_reg(cmd_base_reg):
         return self["src_cstride(move length)"]
 
 
-class DMA_cw_transpose_reg(cmd_base_reg):
+class DMA_cw_transpose_reg(atomic_reg):
     OP_NAME = "DMA_cw_transpose"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -3944,7 +3944,7 @@ class DMA_cw_transpose_reg(cmd_base_reg):
     length: int = 768
 
 
-class DMA_nonzero_reg(cmd_base_reg):
+class DMA_nonzero_reg(atomic_reg):
     OP_NAME = "DMA_nonzero"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -4043,7 +4043,7 @@ class DMA_nonzero_reg(cmd_base_reg):
         return self["dst_nstride（base_i）"]
 
 
-class sDMA_sys_reg(cmd_base_reg):
+class sDMA_sys_reg(atomic_reg):
     OP_NAME = "sDMA_sys"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -4084,7 +4084,7 @@ class sDMA_sys_reg(cmd_base_reg):
     length: int = 128
 
 
-class DMA_gather_reg(cmd_base_reg):
+class DMA_gather_reg(atomic_reg):
     OP_NAME = "DMA_gather"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -4177,7 +4177,7 @@ class DMA_gather_reg(cmd_base_reg):
     length: int = 768
 
 
-class DMA_scatter_reg(cmd_base_reg):
+class DMA_scatter_reg(atomic_reg):
     OP_NAME = "DMA_scatter"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -4270,7 +4270,7 @@ class DMA_scatter_reg(cmd_base_reg):
     length: int = 768
 
 
-class DMA_reverse_reg(cmd_base_reg):
+class DMA_reverse_reg(atomic_reg):
     OP_NAME = "DMA_reverse"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -4363,7 +4363,7 @@ class DMA_reverse_reg(cmd_base_reg):
     length: int = 768
 
 
-class DMA_compress_reg(cmd_base_reg):
+class DMA_compress_reg(atomic_reg):
     OP_NAME = "DMA_compress"
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -4462,7 +4462,7 @@ class DMA_compress_reg(cmd_base_reg):
     length: int = 768
 
 
-class DMA_decompress__reg(cmd_base_reg):
+class DMA_decompress__reg(atomic_reg):
     OP_NAME = "DMA_decompress "
     _fields_ = [
         ("intr_en", ctypes.c_uint64, 1),
@@ -4561,7 +4561,7 @@ class DMA_decompress__reg(cmd_base_reg):
     length: int = 768
 
 
-op_class_dic: Dict[str, Type[cmd_base_reg]] = {
+op_class_dic: Dict[str, Type[atomic_reg]] = {
     "CONV": CONV_reg,
     "sCONV": sCONV_reg,
     "MM": MM_reg,

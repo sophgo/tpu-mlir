@@ -6,17 +6,30 @@
 # third-party components.
 #
 # ==============================================================================
-
+import ctypes
 from typing import List, Type
 from .op_support import (
-    cmd_base_reg,
-    BaseTpuOp,
-    CpuOp,
+    atomic_reg,
+    BaseTpuCmd,
+    CpuCmd,
     CpuLayerType,
     MemRefBase,
     CMDType,
-    DynIrOp,
+    DynIrCmd,
 )
+
+
+class HeadDef(ctypes.Structure):
+    def __repr__(self):
+        return str(dict(self))
+
+    def __iter__(self):
+        for field in self._fields_:
+            yield (field[0], getattr(self, field[0]))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
 
 
 class DecoderBase:
@@ -24,64 +37,62 @@ class DecoderBase:
     dma_head_length = None
 
     @staticmethod
-    def decode_cmd(
-        clazz: Type[cmd_base_reg], buf: memoryview, *, offset=0, core_id=0, cmd_id=None
-    ) -> cmd_base_reg:
-        res = clazz.from_buffer(buf, offset)  # type: cmd_base_reg
-
-        # hack for 1688
-        if cmd_id is not None:
-            res.cmd_id = cmd_id
-        # bind buf for bug checking
-        res.core_id = core_id
-        res.buf = buf[offset : offset + clazz.length // 8]
+    def decode_reg(clazz: Type[atomic_reg], buf: memoryview, *, offset=0) -> atomic_reg:
+        res = clazz.from_buffer(buf, offset)  # type: atomic_reg
         return res
 
     def decode_tiu_cmd(
-        self, cmd_buf: memoryview, *, offset=0, core_id=0, cmd_id=None
-    ) -> cmd_base_reg:
+        self,
+        reg_buf: memoryview,
+        *,
+        offset,
+        subnet_id,
+        **kwargs,
+    ) -> BaseTpuCmd:
         """
         The optional offset parameter specifies an offset into the source buffer in bytes. (for ctypes.Structure.from_buffer)
         """
         raise NotImplementedError()
 
     def decode_dma_cmd(
-        self, cmd_buf: memoryview, *, offset=0, core_id=0, cmd_id=None
-    ) -> cmd_base_reg:
+        self,
+        reg_buf: memoryview,
+        *,
+        offset,
+        subnet_id,
+        **kwargs,
+    ) -> BaseTpuCmd:
         """
         The optional offset parameter specifies an offset into the source buffer in bytes. (for ctypes.Structure.from_buffer)
         """
         raise NotImplementedError()
 
-    def decode_dma_cmds(self, cmd_buf: bytes, *, core_id=0) -> List[cmd_base_reg]:
+    def decode_dma_cmds(self, reg_buf: bytes, *, subnet_id, **kw) -> List[BaseTpuCmd]:
         raise NotImplementedError()
 
-    def decode_tiu_cmds(self, cmd_buf: bytes, *, core_id=0) -> List[cmd_base_reg]:
+    def decode_tiu_cmds(self, reg_buf: bytes, *, subnet_id, **kw) -> List[BaseTpuCmd]:
         raise NotImplementedError()
 
-    def decode_cmd_params(self, cmd: cmd_base_reg) -> BaseTpuOp:
-        raise NotImplementedError()
-
-    def decode_cpu_params(
+    def decode_cpu_cmd(
         self,
         op_type: CpuLayerType,
-        param: bytes,
+        buf: bytes,
         input_memref: List[MemRefBase] = None,
         output_memref: List[MemRefBase] = None,
         subnet_id: int = 0,
         cmd_id: int = 0,
-    ) -> CpuOp:
-        return CpuOp(
+    ) -> CpuCmd:
+        return CpuCmd(
             op_type,
-            param,
-            param_size=len(param),
+            buf,
+            buf_size=len(buf),
             input_memref=input_memref,
             output_memref=output_memref,
             subnet_id=subnet_id,
             cmd_id=cmd_id,
         )
 
-    def decode_ir_param(
+    def decode_ir_cmd(
         self,
         ir_buf: bytes,
         ir_size: int,
@@ -91,8 +102,8 @@ class DecoderBase:
         cmd_id: int = 0,
         ctx_addr: int = 0,
         ctx_size: int = 0,
-    ) -> DynIrOp:
-        return DynIrOp(
+    ) -> DynIrCmd:
+        return DynIrCmd(
             ir_buf,
             ir_size,
             input_memref,
@@ -103,8 +114,6 @@ class DecoderBase:
             ctx_size=ctx_size,
         )
 
-    def get_cmd_type(self, cmd: cmd_base_reg) -> CMDType:
-        return CMDType.unknown
-
-    def is_end(self, cmd: cmd_base_reg):
+    @staticmethod
+    def buf_is_end(*args, **kwargs):
         raise NotImplementedError()

@@ -18,7 +18,7 @@ from ..target_common import (
     Layout,
     get_dtype,
     ValueType,
-    cmd_base_reg,
+    atomic_reg,
 )
 
 from .regdef import *
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 opparam_converter: Dict[
     str,
-    Callable[[cmd_base_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]],
+    Callable[[atomic_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]],
 ] = {}
 
 
@@ -77,7 +77,7 @@ def get_value(
         _layout = layout
         if not isinstance(layout, ExtEnum):
             _layout = Layout(layout)
-        return context.MemRef(address, shape, _dtype, stride, _layout, cmd_type)
+        return context.MemRef(address, shape, _dtype, stride, _layout)
 
 
 class TGCR:
@@ -949,13 +949,16 @@ def SYS_converter(context: "SG2260Context", reg):
     des_imm = reg.imm
     msg_id = des_imm & 0x1FF
     cnt = (des_imm >> 16) & 0x7F
+    attrs = {}
     if reg.tsk_eu_typ in (8, 9):
         attrs = dict(
             msg_id=msg_id,
             cnt=cnt,
         )
-    else:
-        raise KeyError("Should not be here.")
+    elif reg.tsk_eu_typ == 31:
+        attrs = dict()
+    elif reg.tsk_eu_typ not in {0, 1, 2, 3, 4, 5, 8, 9, 30, 31}:
+        raise KeyError(f"sys cmd with tsk_eu_typ {reg.tsk_eu_typ} Should not be here.")
     return ([], attrs, [])
 
 
@@ -1010,9 +1013,9 @@ def dma_reg_fmt_base(reg: Union[DMA_tensor_0x000__reg, DMA_matrix_reg]):
 def DMA_tensor_0x000__converter(context: "SG2260Context", reg: DMA_tensor_0x000__reg):
     NONE = 0
     TRANS = 1  # NC Transpose or Matrix Transpose
-    COLLECT = 2  # CW Transpose from lmem to gmem
+    # COLLECT = 2  # CW Transpose from lmem to gmem
     BROADCAST = 3
-    DISTRIBUTE = 4  # CW Transpose from gmem to lmem
+    # DISTRIBUTE = 4  # CW Transpose from gmem to lmem
     res0, attr, opd0 = dma_reg_fmt_base(reg)
     if reg.nchw_copy:
         res0["shape"] = opd0["shape"]
@@ -1023,21 +1026,21 @@ def DMA_tensor_0x000__converter(context: "SG2260Context", reg: DMA_tensor_0x000_
     elif reg.cmd_special_function == TRANS:  # transpose
         n, c, h, w = opd0["shape"]
         res0["shape"] = (c, n, h, w)
-    elif reg.cmd_special_function in (COLLECT, DISTRIBUTE):  # cw transpose
-        n, c, h, w = opd0["shape"]
-        res0["shape"] = (n, w, h, c)
+    # elif reg.cmd_special_function in (COLLECT, DISTRIBUTE):  # cw transpose
+    #     n, c, h, w = opd0["shape"]
+    #     res0["shape"] = (n, w, h, c)
 
     if reg.cmd_special_function != NONE:
         opd0["stride"] = (*opd0["stride"][:-1], 1)
         res0["stride"] = (*res0["stride"][:-1], 1)
 
-    if reg.cmd_special_function in (BROADCAST, DISTRIBUTE):
+    if reg.cmd_special_function == BROADCAST:
         # disable lane mask
         opd0["layout"] = Layout.stride
         res0["layout"] = Layout.stride
 
-    operands = [get_value(context, cmd_type="dma", **opd0)]
-    results = [get_value(context, cmd_type="dma", **res0)]
+    operands = [get_value(context, **opd0)]
+    results = [get_value(context, **res0)]
 
     return (results, attr, operands)
 
@@ -1104,8 +1107,8 @@ def DMA_masked_select_converter(context: "SG2260Context", reg: DMA_masked_select
         layout=Layout.alignEU,
     )
 
-    operands = [get_value(context, cmd_type="dma", **x) for x in (opd0, opd1)]
-    results = [get_value(context, cmd_type="dma", **res0)]
+    operands = [get_value(context, **x) for x in (opd0, opd1)]
+    results = [get_value(context, **res0)]
 
     return (results, {}, operands)
 
@@ -1141,8 +1144,8 @@ def DMA_general_converter(context: "SG2260Context", reg: DMA_general_reg):
         res0["shape"] = (bc_size, copy_len)
         res0["stride"] = (LANE_SIZE, 1)
 
-    operands = [get_value(context, cmd_type="dma", **opd0)]
-    results = [get_value(context, cmd_type="dma", **res0)]
+    operands = [get_value(context, **opd0)]
+    results = [get_value(context, **res0)]
 
     return (results, attr, operands)
 
@@ -1175,8 +1178,8 @@ def DMA_cw_transpose_converter(context: "SG2260Context", reg: DMA_cw_transpose_r
             address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
         )
 
-    operands = [get_value(context, cmd_type="dma", **opd0)]
-    results = [get_value(context, cmd_type="dma", **res0)]
+    operands = [get_value(context, **opd0)]
+    results = [get_value(context, **res0)]
 
     return (results, attr, operands)
 
@@ -1202,8 +1205,8 @@ def DMA_nonzero_converter(context: "SG2260Context", reg: DMA_nonzero_reg):
 
     attr = dict(base=reg.dst_nstride)
 
-    operands = [get_value(context, cmd_type="dma", **opd0)]
-    results = [get_value(context, cmd_type="dma", **res0)]
+    operands = [get_value(context, **opd0)]
+    results = [get_value(context, **res0)]
 
     return (results, attr, operands)
 
@@ -1244,8 +1247,8 @@ def dma_gather_base(context, reg: DMA_gather_reg):
     ).data
     attr = dict(const=const)
 
-    operands = [get_value(context, cmd_type="dma", **x) for x in (opd0, opd1)]
-    results = [get_value(context, cmd_type="dma", **res0)]
+    operands = [get_value(context, **x) for x in (opd0, opd1)]
+    results = [get_value(context, **res0)]
 
     return (results, attr, operands)
 
@@ -1282,8 +1285,8 @@ def DMA_reverse_converter(context: "SG2260Context", reg: DMA_reverse_reg):
     )
     attr = dict(base=reg.dst_nstride)
 
-    operands = [get_value(context, cmd_type="dma", **opd0)]
-    results = [get_value(context, cmd_type="dma", **res0)]
+    operands = [get_value(context, **opd0)]
+    results = [get_value(context, **res0)]
 
     return (results, attr, operands)
 
@@ -1303,8 +1306,9 @@ def sDMA_sys_converter(context: "SG2260Context", reg: sDMA_sys_reg):
     des_imm = reg.constant_value
     msg_id = des_imm & 0x1FF
     cnt = (des_imm >> 9) & 0x7F
+    attr = {}
     if reg.cmd_special_function in (3, 4):
         attr = dict(msg_id=msg_id, cnt=cnt)
-    else:
+    elif reg.cmd_special_function > 4:
         raise KeyError(f"cmd_special_function {reg.cmd_special_function} not supported")
     return ([], attr, [])

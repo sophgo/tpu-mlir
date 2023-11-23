@@ -8,7 +8,7 @@
 # ==============================================================================
 # 1684
 import ctypes
-from .opdef import tiu_cls, tiu_index, DmaCmdOp, TiuCmdOp, BaseTpuOp
+from .opdef import tiu_cls, tiu_index, DmaCmd, TiuCmd, BaseTpuCmd
 import numpy as np
 from typing import List
 from .regdef import (
@@ -17,11 +17,8 @@ from .regdef import (
     dma_high_bits,
 )
 from ..target_common import (
-    cmd_base_reg,
+    atomic_reg,
     DecoderBase,
-    CMDType,
-    DynIrOp,
-    MemRefBase,
 )
 
 
@@ -60,79 +57,86 @@ def buffer_to_bits(buffer):
 
 
 class Decoder(DecoderBase):
-    def decode_tiu_cmd(self, cmd_buf: memoryview, core_id=0, offset=0) -> cmd_base_reg:
-        head = TiuHead.from_buffer(cmd_buf, offset)  # type: TiuHead
+    def decode_tiu_cmd(self, reg_buf: memoryview, offset, subnet_id) -> TiuCmd:
+        head = TiuHead.from_buffer(reg_buf, offset)  # type: TiuHead
         op_info = tiu_index.get((head.tsk_typ, head.tsk_eu_typ), None)
 
         # get op struct
         op_clazz = op_class_dic[op_info.op_name]
-        buffer = buffer_to_bits(cmd_buf[offset : offset + op_clazz.length // 8])
+        buffer = buffer_to_bits(reg_buf[offset : offset + op_clazz.length // 8])
         bits_sec = np.split(buffer, tiu_high_bits)  # slow
         values = [packbits(x) for x in bits_sec]  # slow
-        res = op_clazz.from_values(values)  # type: cmd_base_reg
-        res.buf = cmd_buf[offset : offset + op_clazz.length // 8]
-        return res
+        reg = op_clazz.from_values(values)  # type: atomic_reg
+        cmd = TiuCmd(
+            reg,
+            buf=reg_buf[offset : offset + op_clazz.length // 8],
+            subnet_id=subnet_id,
+        )
+        return cmd
 
-    def decode_dma_cmd(
-        self, cmd_buf: memoryview, *, core_id=0, offset=0
-    ) -> cmd_base_reg:
+    def decode_dma_cmd(self, reg_buf: memoryview, *, offset, subnet_id) -> atomic_reg:
         # get op struct
         op_clazz = op_class_dic["dma_tensor"]
 
-        buffer = buffer_to_bits(cmd_buf[offset : offset + op_clazz.length // 8])
+        buffer = buffer_to_bits(reg_buf[offset : offset + op_clazz.length // 8])
         bits_sec = np.split(buffer, dma_high_bits)  # slow
         values = [packbits(x) for x in bits_sec]  # slow
-        res = op_clazz.from_values(values)  # type: cmd_base_reg
-        res.buf = cmd_buf[offset : offset + op_clazz.length // 8]
-        return res
+        reg = op_clazz.from_values(values)  # type: atomic_reg
 
-    def decode_dma_cmds(self, cmd_buf: memoryview, *, core_id=0) -> List[cmd_base_reg]:
-        raw_size = len(cmd_buf)
+        cmd = DmaCmd(
+            reg,
+            buf=reg_buf[offset : offset + op_clazz.length // 8],
+            subnet_id=subnet_id,
+        )
+        return cmd
+
+    def decode_dma_cmds(
+        self,
+        reg_buf: memoryview,
+        *,
+        subnet_id=0,
+        **_,
+    ) -> List[BaseTpuCmd]:
+        raw_size = len(reg_buf)
         offset = 0
         res = []
-        while len(cmd_buf) - offset > 0:
-            cmd = self.decode_dma_cmd(cmd_buf, offset=offset, core_id=core_id)
-            offset += cmd.length // 8
+        while len(reg_buf) - offset > 0:
+            cmd = self.decode_dma_cmd(reg_buf, offset=offset, subnet_id=subnet_id)
+            offset += cmd.reg.length // 8
             res.append(cmd)
-            if self.buf_is_end(cmd_buf[offset:raw_size]):
+            if self.buf_is_end(reg_buf[offset:raw_size]):
                 break
         return res
 
-    def decode_tiu_cmds(self, cmd_buf: memoryview, core_id=0) -> List[cmd_base_reg]:
-        raw_size = len(cmd_buf)
+    def decode_tiu_cmds(
+        self,
+        reg_buf: memoryview,
+        *,
+        subnet_id=0,
+        **_,
+    ) -> List[BaseTpuCmd]:
+        raw_size = len(reg_buf)
         offset = 0
         res = []
-        while offset < len(cmd_buf):
-            cmd = self.decode_tiu_cmd(cmd_buf, offset=offset, core_id=core_id)
-            offset += cmd.length // 8
+        while offset < len(reg_buf):
+            cmd = self.decode_tiu_cmd(reg_buf, offset=offset, subnet_id=subnet_id)
+            offset += cmd.reg.length // 8
             res.append(cmd)
 
-            if self.buf_is_end(cmd_buf[offset:raw_size]):
+            if self.buf_is_end(reg_buf[offset:raw_size]):
                 break
 
         return res
 
-    def decode_cmd_params(self, cmd: cmd_base_reg) -> BaseTpuOp:
-        cmd_type = self.get_cmd_type(cmd)
-        if cmd_type == CMDType.tiu:
-            return TiuCmdOp(cmd)
-        elif cmd_type == CMDType.dma:
-            return DmaCmdOp(cmd)
-        raise NotImplementedError()
-
-    def get_cmd_type(self, cmd: cmd_base_reg) -> CMDType:
-        if cmd.OP_NAME in tiu_cls:
-            return CMDType.tiu
-        else:
-            return CMDType.dma
-
-    def is_end(self, cmd: cmd_base_reg):
+    @staticmethod
+    def is_sys(reg: atomic_reg):
         return False
 
-    def buf_is_end(self, cmd_buf):
-        is_less_1024 = len(cmd_buf) * 8 < 1025
+    @staticmethod
+    def buf_is_end(buf: memoryview):
+        is_less_1024 = len(buf) * 8 < 1025
         if is_less_1024:
-            if not np.any(np.unpackbits(cmd_buf, bitorder="little")):
+            if not np.any(np.unpackbits(buf, bitorder="little")):
                 return True
         return False
 

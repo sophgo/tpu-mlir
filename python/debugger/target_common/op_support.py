@@ -130,6 +130,7 @@ class DType(IntEnum):
     i32 = 4
     bf16 = 5
     i4 = 6
+    f8 = 7
     # unsign integer
     ui8 = i8 + 8  # type: ignore
     ui16 = i16 + 8  # type: ignore
@@ -223,9 +224,20 @@ def bf16_to_fp32(d_bf16):
     return d_fp32.reshape(s)
 
 
+def fp8_to_fp32(d_fp8):
+    assert d_fp8.dtype == np.uint8
+    s = d_fp8.shape
+    d_fp8 = d_fp8.ravel()
+    d_fp32 = np.empty_like(d_fp8, dtype=np.float32)
+    v_ui8 = d_fp32.view(np.uint8)
+    v_ui8[3::4] = d_fp8
+    return d_fp32.reshape(s)
+
+
 to_np_dtype = {
     DType.si8: np.int8,
     DType.ui8: np.uint8,
+    DType.f8: np.uint8,
     DType.f16: np.float16,
     DType.f32: np.float32,
     DType.si16: np.int16,
@@ -395,16 +407,9 @@ class OpInfo(NamedTuple):
     eu_name: str
 
 
-class cmd_base_reg(ctypes.Structure):
+class atomic_reg(ctypes.Structure):
     OP_NAME: str
     length: int
-
-    cmd_id: int
-    cmd_id_dep: int
-    buf: memoryview
-    # extra params
-    subnet_id: int  # injected in decode_cmdgroup
-    core_id: int
 
     def __repr__(self):
         return str(dict(self))
@@ -420,7 +425,7 @@ class cmd_base_reg(ctypes.Structure):
         setattr(self, key, value)
 
     @classmethod
-    def from_values(cls, values: List[int]) -> "cmd_base_reg":
+    def from_values(cls, values: List[int]) -> "atomic_reg":
         res = cls()
         assert len(values) == len(cls._fields_), f"{len(values)} != {len(cls._fields_)}"
         for (key, *_), val in zip(cls._fields_, values):
@@ -429,7 +434,7 @@ class cmd_base_reg(ctypes.Structure):
 
 
 ParamConvertFnType = Callable[
-    [cmd_base_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]
+    [atomic_reg], Tuple[List[ValueType], Dict[str, Any], List[ValueType]]
 ]
 
 
@@ -440,15 +445,29 @@ class CMDType(Enum):
     dyn_ir = 8
     unknown = 9
 
-    def is_tpu(self):
+    def is_static(self):
         return self == CMDType.tiu or self == CMDType.dma
 
 
-class BaseCmdOp:
+class FileLineMixin:
+    def pre_ln(self):
+        raise NotImplementedError()
+
+    def post_ln(self):
+        raise NotImplementedError()
+
+    def mid_ln(self):
+        raise NotImplementedError()
+
+
+class BaseCmd(FileLineMixin):
     buf: bytes
+    name: str
     attribute: Dict
     operands: List[ValueType]
     results: List[ValueType]
+    subnet_id: int
+    cmd_id: int
 
     def __new__(cls, *args, **kwargs):
         self = object.__new__(cls)
@@ -460,29 +479,51 @@ class BaseCmdOp:
             return CMDType.tiu
         elif isinstance(self, Dma):
             return CMDType.dma
-        elif isinstance(self, CpuOp):
+        elif isinstance(self, CpuCmd):
             return CMDType.cpu
-        elif isinstance(self, DynIrOp):
+        elif isinstance(self, DynIrCmd):
             return CMDType.dyn_ir
         else:
             return CMDType.unknown
 
+    def pre_ln(self):
+        return 0
 
-class BaseTpuOp(BaseCmdOp):
-    cmd: cmd_base_reg
+    def post_ln(self):
+        return 0
+
+    def mid_ln(self):
+        return 1
+
+
+class BaseTpuCmd(BaseCmd):
+    reg: atomic_reg
+    cmd_id: int
+    cmd_id_dep: int
     opparam_converter: Dict[str, ParamConvertFnType] = {}
-    core_id = 0
 
-    def __init__(self, cmd: cmd_base_reg, param_fn=None) -> None:
-        self.cmd = cmd
+    def __init__(
+        self,
+        reg: atomic_reg,
+        *,
+        buf: memoryview,
+        subnet_id=0,
+        core_id=0,
+        param_fn=None,
+    ) -> None:
+        self.reg = reg
+        self.buf = buf
+        assert len(buf) <= 128
+        self.subnet_id = subnet_id
+        self.core_id = core_id
 
         if param_fn is None and self.opparam_converter is not None:
-            param_fn = self.opparam_converter.get(cmd.OP_NAME, None)
+            param_fn = self.opparam_converter.get(reg.OP_NAME, None)
 
         if param_fn is None:
-            self.results, self.attribute, self.operands = [], [], []
+            self.results, self.attribute, self.operands = [], {}, []
         else:
-            self.results, self.attribute, self.operands = param_fn(cmd)
+            self.results, self.attribute, self.operands = param_fn(reg)
 
     def __repr__(self) -> str:
         return "abc.none"
@@ -491,15 +532,11 @@ class BaseTpuOp(BaseCmdOp):
         return self.attribute[k]
 
     @property
-    def buf(self):
-        return bytes(self.cmd.buf)
-
-    @property
     def tuple_key(self):
         if isinstance(self, Tiu):
-            key = (self.cmd.subnet_id, self.cmd.cmd_id, None, self.cmd.core_id)
+            key = (self.subnet_id, self.cmd_id, None, self.core_id)
         elif isinstance(self, Dma):
-            key = (self.cmd.subnet_id, None, self.cmd.cmd_id, self.cmd.core_id)
+            key = (self.subnet_id, None, self.cmd_id, self.core_id)
         else:
             raise NotImplementedError()
         return key
@@ -515,11 +552,39 @@ class Dma:
     pass
 
 
+class RegIndex:
+    def __init__(self):
+        self.storage = {}
+
+    def __setitem__(self, keys, value):
+        # flatten eu_types
+        from collections.abc import Iterable
+        from itertools import product
+
+        _tuple = lambda x: x if isinstance(x, Iterable) else (x,)
+        keys_itr = (_tuple(x) for x in keys)
+        for key in product(*keys_itr):
+            self.storage[key] = value
+
+    def __getitem__(self, key):
+        if key in self.storage:
+            return self.storage[key]
+        raise KeyError(f"can not find {key}, This object only has {self}")
+
+    def __repr__(self):
+        return str(self.storage)
+
+    def get(self, key, default) -> BaseTpuCmd:
+        if key in self.storage:
+            return self.storage[key]
+        return default
+
+
 @dataclass
-class CpuOp(BaseCmdOp):
+class CpuCmd(BaseCmd):
     op_type: CpuLayerType
-    param: bytes
-    param_size: int
+    buf: bytes
+    buf_size: int
     input_memref: List[MemRefBase]
     output_memref: List[MemRefBase]
     cmd_id: int = 0  # assigned in python interface
@@ -527,16 +592,12 @@ class CpuOp(BaseCmdOp):
     core_id = 0
 
     @property
-    def buf(self):
-        return self.param
-
-    @property
     def cmd(self):
         return self
 
     @property
     @property
-    def OP_NAME(self):
+    def name(self):
         return self.op_type.name
 
     def __repr__(self) -> str:
@@ -560,7 +621,7 @@ class CpuOp(BaseCmdOp):
 
 
 @dataclass
-class DynIrOp(BaseCmdOp):
+class DynIrCmd(BaseCmd):
     ir_buffer: bytes
     ir_size: int
 
@@ -582,11 +643,11 @@ class DynIrOp(BaseCmdOp):
         return self.ir_buffer
 
     @property
-    def OP_NAME(self):
+    def name(self):
         return f"DYN{self.subnet_id}_FULLNET"
 
     def __repr__(self) -> str:
-        return f"{self.OP_NAME}() ({self.input_memref}) -> {self.output_memref}"
+        return f"{self.name}() ({self.input_memref}) -> {self.output_memref}"
 
     @property
     def operands(self):

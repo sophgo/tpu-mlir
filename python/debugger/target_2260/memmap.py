@@ -23,9 +23,9 @@ BANK_SIZE = LANE_SIZE // BANK_NUM
 LMEM_SIZE = LANE_SIZE * NPU_NUM
 # CORE_OFFSET=1<<28
 # MAX_CORE_NUM=8
-ALIGN_EU_BASE = 16
+ALIGN_EU_BASE = 64
 
-BASE_EU_NUM = 32
+BASE_EU_NUM = 16
 TYPED_EU_NUM = {
     DType.f32: BASE_EU_NUM,
     DType.i32: BASE_EU_NUM,
@@ -53,9 +53,6 @@ memmap = {
     MType.L: (0x6980000000, 0x6980000000 + 0x8000000),  # L2 SRAM 128M
     MType.G: (0x0, 0x100000000),  # global memory 4G
 }
-# this BASE_ADDR should be only used for SG2260
-# BASE_ADDR should be the form of "[base_addr_regine_{n},base_addr_regine_{m}, ...]"", it can contain 32 base_addr at most, since there are 32 base_addr_regine for sg2260
-BASE_ADDR = [memmap[MType.G][0] for _ in range(2)]
 
 
 @staticmethod
@@ -144,12 +141,9 @@ class MemRef(MemRefBase):
         stride=None,
         layout=None,
         context: "SG2260Context" = None,
-        cmd_type: ["tiu", "dma"] = "tiu",
     ):
         assert context is not None
         self.context = context
-        assert cmd_type is not None
-        self.cmd_type = cmd_type
 
         super().__init__(address, shape, dtype, stride, layout)
         if self.mtype == MType.R and layout != Layout.stride:
@@ -173,21 +167,40 @@ class MemRef(MemRefBase):
         return addr_len % BANK_SIZE
 
     def get_mtype(self, address) -> MType:
-        if self.cmd_type == "tiu":
-            fun = self.context.get_tiu_memory_type
-        elif self.cmd_type == "dma":
-            fun = self.context.get_dma_memory_type
-        return fun(self, address=address)
+        return self.context.get_memory_type(address)
 
     @property
     @functools.lru_cache()
     def r_addr(self):
-        self.address = self.address & 0xFFFFFFFF  # remain 40 bits as offset
-        if self.mtype in [MType.UNKNOWN, MType.L, MType.G]:
-            return self.address
+        if self.mtype in [MType.UNKNOWN, MType.G]:
+            return self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0]
 
-        r_addr = self.address & 0x3FFFF  # remain 26 bit as local offset
+        r_addr = self.address & 0x3FFFFFF  # remain 26 bit as local offset
         return r_addr
+
+    @property
+    @functools.lru_cache()
+    def name(self):
+        """
+        use relative address
+        """
+        k = self.mtype
+        if k == MType.UNKNOWN:
+            return f"%?.{self.address}"
+        if k == MType.R:
+            # R{bank_index}.{bank_offset}.L{NPU_OFFSET}
+            # R0.123.L0
+            mem_str = f"%{k.name}{self.bank_index}"
+            if self.bank_offset:
+                mem_str += f".{self.bank_offset}"
+            if self.npu_offset:
+                mem_str += f".L{self.npu_offset}"
+            return mem_str
+        if k == MType.G:
+            tag = (self.address >> 40) & 0x1F
+            offset = (self.address & 0xFFFFFFFFFF)
+            return f"%{k.name}{tag}.{offset}"
+        return f"%{k.name}{self.r_addr}"
 
     @property
     @functools.lru_cache()
