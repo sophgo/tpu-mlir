@@ -33,7 +33,8 @@ public:
     auto right = op.getRight();
 
     auto stype = module::getStorageType(left);
-    if (stype.isF32()) {
+    auto hdim_is_batch = op.getHdimIsBatch();
+    if (stype.isF32() || hdim_is_batch) {
       return failure();
     }
 
@@ -90,7 +91,6 @@ public:
           // mm2 not support l_trans && !r_trans
           return failure();
         }
-        auto hdim_is_batch = op.getHdimIsBatch();
         op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
         op->setAttr("left_transpose", rewriter.getBoolAttr(l_trans));
         op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
@@ -125,7 +125,6 @@ public:
         }
 
         // Define Param
-        auto hdim_is_batch = op.getHdimIsBatch();
         op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
         op->setAttr("left_transpose", rewriter.getBoolAttr(false));
         op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
@@ -173,7 +172,6 @@ public:
         }
 
         // Define Param
-        auto hdim_is_batch = op.getHdimIsBatch();
         op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
         op->setAttr("left_transpose", rewriter.getBoolAttr(false));
         op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
@@ -181,7 +179,7 @@ public:
         op->setOperand(1, r_trans_op.getInput());
         rewriter.eraseOp(r_trans_op);
       }
-    } else {
+    } else if (l_is_weight || r_is_weight) {
       // When Left or Right is weight
       auto trans_op = r_is_weight
                           ? dyn_cast<tpu::PermuteOp>(left.getDefiningOp())
@@ -248,13 +246,14 @@ public:
         llvm_unreachable("Weight type error!");
       }
 
-      auto hdim_is_batch = op.getHdimIsBatch();
       op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
       op->setAttr("left_transpose", rewriter.getBoolAttr(l_trans));
       op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
 
       rewriter.eraseOp(trans_op);
       rewriter.eraseOp(weight_op);
+    } else {
+      return failure();
     }
 
     // 4. Modify matmul out shape and name
