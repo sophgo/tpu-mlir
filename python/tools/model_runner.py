@@ -33,8 +33,7 @@ def pack_bmodel_context_generator(model_file, net):
     out_dir = model_file.rsplit(".", maxsplit=1)[0]
     tensor_loc = model_file + ".json"
     if not os.path.isfile(tensor_loc):
-        yield None
-        return
+        return iter([None])
     os.makedirs(out_dir, exist_ok=True)
     shutil.copy(model_file, os.path.join(out_dir, "compilation.bmodel"))
     shutil.copy(tensor_loc, os.path.join(out_dir, "tensor_location.json"))
@@ -55,8 +54,8 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
         chip = get_chip_from_model(model_file)
         # trick for runtime link chip cmodel
         lib_so = 'libcmodel_1684x.so'
-        if chip == 'BM1688' or chip == 'CV186X':
-            lib_so = 'libcmodel_1688.so'
+        if chip == 'BM1686' or chip == 'CV186X':
+            lib_so = 'libcmodel_1686.so'
         elif chip == 'BM1684':
             lib_so = 'libcmodel_1684.so'
         elif chip == "SG2260":
@@ -104,7 +103,6 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
     size = os.path.getsize(model_file)
     pack_bmodel_context = (iter([None]) if is_cv18xx else pack_bmodel_context_generator(
         model_file, net))
-
     next(pack_bmodel_context) # save input_data
 
     if size > 0x10000000:
@@ -266,9 +264,11 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         os.remove(onnx_file)
         return dict(filter(lambda x: isinstance(x[1], np.ndarray), zip(output_keys, outs)))
 
+
 def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -> dict:
     import paddle
     paddle.enable_static()
+    all_valid_nodes = dict()
     if paddle_file.endswith('.pdmodel'):
         paddle_file = paddle_file[:-len('.pdmodel')]
     exe = paddle.static.Executor(paddle.CPUPlace())
@@ -277,6 +277,15 @@ def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -
     out_name = list()
     for o in fetch_targets:
         out_name.append(o.name)
+    for op in inference_program.block(0).ops:
+        if 'Out' in op.output_names:
+                    output_vars = op.output('Out')
+        elif 'Output' in op.output_names:
+            output_vars = op.output('Output')
+        all_valid_nodes[output_vars[0]] = op.type
+    for name in all_valid_nodes:
+        if name not in feed_target_names and name != 'fetch':
+            out_name.append(name)
     feed_dict = dict()
     for i in inputs:
         feed_dict[feed_target_names[0]] = inputs[i].astype(np.float32)
@@ -287,12 +296,9 @@ def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -
     )
     outputs = dict()
     for i in range(len(out_name)):
-        outputs[out_name[i]] = out_data[i]
-
-
+        new_name = out_name[i] + f'_{all_valid_nodes[out_name[i]]}'
+        outputs[new_name] = out_data[i]
     return outputs
-
-
 
 def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool = True) -> dict:
     import caffe
@@ -447,6 +453,9 @@ if __name__ == '__main__':
         output = onnx_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".tflite"):
         output = tflite_inference(data, args.model, args.dump_all_tensors)
+    elif args.model.endswith(".pdmodel"):
+        print("pdmodel!\n")
+        output = paddle_inference(data,args.model)
     elif args.model.endswith(".prototxt") and args.weight.endswith(".caffemodel"):
         output = caffe_inference(data, args.model, args.weight, args.dump_all_tensors)
     elif args.model.endswith(".pt") or args.model.endswith(".pth"):
