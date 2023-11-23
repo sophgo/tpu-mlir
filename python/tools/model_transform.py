@@ -124,6 +124,7 @@ class OnnxTransformer(ModelTransformer):
                  model_def,
                  input_shapes: list = [],
                  output_names: list = [],
+                 test_input='',
                  preprocessor: dict = {},
                  static_shape=True,
                  onnx_sim=''):
@@ -133,6 +134,7 @@ class OnnxTransformer(ModelTransformer):
                                        self.model_def,
                                        input_shapes,
                                        output_names,
+                                       test_input,
                                        preprocessor,
                                        static_shape,
                                        onnx_sim=onnx_sim)
@@ -220,6 +222,7 @@ def get_model_transform(args):
                                args.model_def,
                                args.input_shapes,
                                args.output_names,
+                               args.test_input,
                                preprocessor.to_dict(),
                                onnx_sim=args.onnx_sim)
     elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
