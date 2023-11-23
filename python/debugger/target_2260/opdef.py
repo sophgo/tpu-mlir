@@ -740,8 +740,12 @@ for k, v in tiu_cls.items():
 
     for eu_type, eu_name in tsk_eu_typ.items():
         if v["short_cmd"] is None:
-            v["short_cmd"] = 0
-        tiu_index[(int(v["short_cmd"]), v["tsk_typ"], eu_type)] = OpInfo(k, eu_name)
+            # sys command do not depend on short_cmd field,
+            # it can be 1 or 0 but have no meaning.
+            tiu_index[(0, v["tsk_typ"], eu_type)] = OpInfo(k, eu_name)
+            tiu_index[(0, v["tsk_typ"], eu_type)] = OpInfo(k, eu_name)
+        else:
+            tiu_index[(int(v["short_cmd"]), v["tsk_typ"], eu_type)] = OpInfo(k, eu_name)
 
 
 # search by cmd_short, tsk_typ, sp_fun(special function)

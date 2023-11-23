@@ -24,41 +24,10 @@ from ..target_common import (
     BaseTpuOp,
     OpInfo,
 )
-from .opdef import tiu_cls, dma_cls, TiuCmdOp, DmaCmdOp
+from .opdef import tiu_cls, dma_cls, TiuCmdOp, DmaCmdOp, tiu_index, dma_index
 
 if TYPE_CHECKING:
     from .context import BM1688Context
-
-
-# build tiu and dma search tree
-# search by cmd_short, tsk_typ, tsk_eu_type
-tiu_index: Dict[Tuple[int, int, int], OpInfo] = {}
-
-for k, v in tiu_cls.items():
-    if len(v["tsk_eu_typ"]) == 0:
-        tsk_eu_typ = {0: "none"}
-    else:
-        tsk_eu_typ = v["tsk_eu_typ"]
-
-    if isinstance(tsk_eu_typ, range):
-        tsk_eu_typ = {i: f"ana_{i}" for i in tsk_eu_typ}
-
-    for eu_type, eu_name in tsk_eu_typ.items():
-        if v["short_cmd"] is None:
-            v["short_cmd"] = 0
-        tiu_index[(int(v["short_cmd"]), v["tsk_typ"], eu_type)] = OpInfo(k, eu_name)
-
-
-# search by cmd_short, tsk_typ, sp_fun(special function)
-dma_index: Dict[Tuple[int, int, int], OpInfo] = {}
-for k, v in dma_cls.items():
-    if len(v["sp_fun"]) == 0:
-        sp_fun = {0: "none"}
-    else:
-        sp_fun = v["sp_fun"]
-
-    for sp_typ, sp_name in sp_fun.items():
-        dma_index[(int(v["short_cmd"]), v["tsk_typ"], sp_typ)] = OpInfo(k, sp_name)
 
 
 class TiuHead(ctypes.Structure):
