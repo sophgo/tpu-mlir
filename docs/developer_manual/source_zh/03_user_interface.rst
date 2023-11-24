@@ -191,9 +191,6 @@ model_transform.py
    * - input_types
      - 否
      - 指定输入的类型, 例如int32; 多输入用,隔开; 不指定情况下默认处理为float32
-   * - resize_dims
-     - 否
-     - 原始图片需要resize之后的尺寸; 如果不指定, 则resize成模型的输入尺寸
    * - keep_aspect_ratio
      - 否
      - 在Resize时是否保持长宽比, 默认为false; 设置时会对不足部分补0
@@ -230,6 +227,18 @@ model_transform.py
    * - mlir
      - 是
      - 指定输出的mlir文件名称和路径
+   * - debug
+     - 否
+     - 保存可用于debug的模型
+   * - tolerance
+     - 否
+     - 模型转换相似度的误差容忍度
+   * - disable_layer_group
+     - 否
+     - 是否进行layer group操作
+   * - opt
+     - 否
+     - 优化级别，默认2
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是后续模型的输入文件。
 
@@ -263,6 +272,9 @@ run_calibration.py
    * - tune_num
      - 否
      - 指定微调样本数量, 默认为10
+   * - tune_list
+     - 否
+     - 指定微调样本文件
    * - histogram_bin_num
      - 否
      - 直方图bin数量, 默认2048
@@ -322,6 +334,18 @@ run_qtable.py
    * - input_num
      - 否
      - 指定输入样本数量, 默认用10个
+   * - expected_cos
+     - 否
+     - 指定网络输出的期望cos值, 默认0.99
+   * - global_compare_layers
+     - 否
+     - 指定全局对比层，例如 layer1,layer2 或 layer1:0.3,layer2:0.7
+   * - fp_type
+     - 否
+     - 指定精度类型，默认auto
+   * - base_quantize_table
+     - 否
+     - 指定量化表
    * - loss_table
      - 否
      - 输出Loss表, 默认为full_loss_table.txt
@@ -400,6 +424,9 @@ model_deploy.py
    * - quant_output
      - 否
      - 指定输出数据类型是否与量化类型一致，例如int8模型指定quant_input，那么输出入数据类型也为int8，若不指定则为F32
+   * - quant_input_list
+     - 否
+     - 选择要转换的索引，例如 1,3 表示第一个和第三个输入的强制转换
    * - quantize_table
      - 否
      - 指定混精度量化表路径, 如果没有指定则按quantize类型量化; 否则优先按量化表量化
@@ -436,11 +463,44 @@ model_deploy.py
    * - core
      - 否
      - 当target选择为bm1688或cv186x时,用于选择并行计算的tpu核心数量,默认设置为1个tpu核心
+    * - asymmetric
+     - 否
+     - 指定做int8非对称量化
+   * - dynamic
+     - 否
+     - 动态编译
+   * - includeWeight
+     - 否
+     - tosa.mlir 的 includeWeight
+   * - customization_format
+     - 否
+     - 指定模型输入帧的像素格式
+   * - compare_all
+     - 否
+     - 指定对比模型所有的张量
+   * - num_device
+     - 否
+     - 用于并行计算的设备数量，默认1
+   * - num_core
+     - 否
+     - 用于并行计算的TPU核心数量，默认1
+   * - skip_validation
+     - 否
+     - 跳过检查 bmodel 的正确性
+   * - merge_weight
+     - 否
+     - 将权重与之前生成的 cvimodel 合并为一个权重二进制文件，默认否
+   * - model_version
+     - 否
+     - 如果需要旧版本的cvimodel，请设置版本，例如1.2，默认latest
+   * - q_group_size
+     - 否
+     - 每组定量的组大小，仅用于 W4A16 定量模式，默认0
 
 model_runner.py
 ~~~~~~~~~~~~~~~~~~
 
-对模型进行推理, 支持bmodel/mlir/onnx/tflite。
+对模型进行推理, 支持mlir/pytorch/onnx/tflie/bmodel/prototxt。
 
 执行参考如下:
 
@@ -465,7 +525,7 @@ model_runner.py
      - 指定模型输入, npz文件
    * - model
      - 是
-     - 指定模型文件, 支持bmodel/mlir/onnx/tflite
+     - 指定模型文件, 支持mlir/pytorch/onnx/tflie/bmodel/prototxt
    * - dump_all_tensors
      - 否
      - 开启后对导出所有的结果, 包括中间tensor的结果
@@ -529,6 +589,8 @@ visual.py
      - 测试输入数据, 可以是图像文件或者npz文件
    * - port
      - 使用的TCP端口, 默认10000, 需要在启动docker时映射至系统端口
+   * - host
+     - 使用的host ip地址, 默认0.0.0.0
    * - manual_run
      - 启动后是否自动进行网络推理比较, 默认False, 会自动推理比较
 

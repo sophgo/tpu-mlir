@@ -99,9 +99,6 @@ Used to convert various neural network models into MLIR files, the supported par
    * - input_types
      - N
      - Type of the inputs, such int32; separate by ',' for multi inputs; float32 as default
-   * - resize_dims
-     - N
-     - The size of the original image to be adjusted to. If not specified, it will be resized to the input size of the model
    * - keep_aspect_ratio
      - N
      - Whether to maintain the aspect ratio when resize. False by default. It will pad 0 to the insufficient part when setting
@@ -138,6 +135,12 @@ Used to convert various neural network models into MLIR files, the supported par
    * - mlir
      - Y
      - The output mlir file name (including path)
+   * - debug
+     - N
+     - If open debug, immediate model file will keep; or will remove after conversion done
+   * - tolerance
+     - N
+     - Minimum similarity tolerance to model transform
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
 
@@ -173,12 +176,138 @@ Supported parameters:
    * - tune_num
      - N
      - The number of fine-tuning samples. 10 by default
+   * - tune_list
+     - N
+     - Tune list file contain all input for tune
    * - histogram_bin_num
      - N
      - The number of histogram bins. 2048 by default
    * - o
      - Y
      - Name of output calibration table file
+   * - debug_cmd
+     - N
+     - debug cmd
+
+A sample calibration table is as follows:
+
+.. code-block:: shell
+
+    # genetated time: 2022-08-11 10:00:59.743675
+    # histogram number: 2048
+    # sample number: 100
+    # tune number: 5
+    ###
+    # op_name    threshold    min    max
+    images 1.0000080 0.0000000 1.0000080
+    122_Conv 56.4281803 -102.5830231 97.6811752
+    124_Mul 38.1586478 -0.2784646 97.6811752
+    125_Conv 56.1447888 -143.7053833 122.0844193
+    127_Mul 116.7435987 -0.2784646 122.0844193
+    128_Conv 16.4931355 -87.9204330 7.2770605
+    130_Mul 7.2720342 -0.2784646 7.2720342
+    ......
+
+It is divided into 4 columns: the first column is the name of the Tensor; the second column is the threshold (for symmetric quantization);
+The third and fourth columns are min/max, used for asymmetric quantization.
+
+
+.. _run_qtable:
+
+run_qtable.py
+--------------------
+
+Use ``run_qtable.py`` to generate a mixed precision quantization table. The relevant parameters are described as follows:
+
+Supported parameters:
+
+.. list-table:: Function of run_qtable.py parameters
+   :widths: 20 12 50
+   :header-rows: 1
+
+   * - Name
+     - Required?
+     - Explanation
+   * - (None)
+     - Y
+     - Mlir file
+   * - dataset
+     - N
+     - Directory of input samples. Images, npz or npy files are placed in this directory
+   * - data_list
+     - N
+     - The sample list (cannot be used together with "dataset")
+   * - calibration_table
+     - N
+     - The quantization table path
+   * - chip
+     - Y
+     - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
+   * - input_num
+     - N
+     - The number of input for calibration. Use all samples if it is 10
+   * - expected_cos
+     - N
+     - Expected net output cos
+   * - global_compare_layers
+     - N
+     - Global compare layers, for example: layer1,layer2 or layer1:0.3,layer2:0.7
+   * - fp_type
+     - N
+     - The precision type, default auto
+   * - base_quantize_table
+     - N
+     - Base quantize table
+   * - loss_table
+     - N
+     - The output loss table, default full_loss_table.txt
+   * - o
+     - N
+     - Output mixed precision quantization table
+
+A sample mixed precision quantization table is as follows:
+
+.. code-block:: shell
+
+    # genetated time: 2022-11-09 21:35:47.981562
+    # sample number: 3
+    # all int8 loss: -39.03119206428528
+    # chip: bm1684x  mix_mode: F32
+    ###
+    # op_name   quantize_mode
+    conv2_1/linear/bn F32
+    conv2_2/dwise/bn  F32
+    conv6_1/linear/bn F32
+
+It is divided into 2 columns: the first column corresponds to the name of the layer, and the second column corresponds to the quantization mode.
+
+At the same time, a loss table will be generated, the default is ``full_loss_table.txt``, the sample is as follows:
+
+.. code-block:: shell
+
+    # genetated time: 2022-11-09 22:30:31.912270
+    # sample number: 3
+    # all int8 loss: -39.03119206428528
+    # chip: bm1684x  mix_mode: F32
+    ###
+    No.0 : Layer: conv2_1/linear/bn Loss: -36.14866065979004
+    No.1 : Layer: conv2_2/dwise/bn  Loss: -37.15774385134379
+    No.2 : Layer: conv6_1/linear/bn Loss: -38.44639046986898
+    No.3 : Layer: conv6_2/expand/bn Loss: -39.7430411974589
+    No.4 : Layer: conv1/bn          Loss: -40.067259073257446
+    No.5 : Layer: conv4_4/dwise/bn  Loss: -40.183939139048256
+    No.6 : Layer: conv3_1/expand/bn Loss: -40.1949667930603
+    No.7 : Layer: conv6_3/expand/bn Loss: -40.61786969502767
+    No.8 : Layer: conv3_1/linear/bn Loss: -40.9286363919576
+    No.9 : Layer: conv6_3/linear/bn Loss: -40.97952524820963
+    No.10: Layer: block_6_1         Loss: -40.987406969070435
+    No.11: Layer: conv4_3/dwise/bn  Loss: -41.18325670560201
+    No.12: Layer: conv6_3/dwise/bn  Loss: -41.193763415018715
+    No.13: Layer: conv4_2/dwise/bn  Loss: -41.2243926525116
+    ......
+
+It represents the loss of the output obtained after the corresponding Layer is changed to floating point calculation.
+
 
 .. _model_deploy:
 
@@ -201,7 +330,19 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - quantize
      - Y
      - Quantization type (F32/F16/BF16/INT8)
-   * - processor
+   * - quant_input
+     - N
+     - Strip input type cast in bmodel, need outside type conversion
+   * - quant_input_list
+     - N
+     - choose index to strip cast, such as 1,3 means first & third input`s cast
+   * - quant_output
+     - N
+     - Strip output type cast in bmodel, need outside type conversion
+   * - quant_output_list
+     - N
+     - Choose index to strip cast, such as 1,3 means first & third output`s cast
+   * - chip
      - Y
      - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
@@ -234,6 +375,39 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - core
      - N
      - When the target is selected as bm1688 or cv186x, it is used to select the number of tpu cores for parallel computing, and the default setting is 1 tpu core
+    * - asymmetric
+     - N
+     - Do INT8 asymmetric quantization
+   * - dynamic
+     - N
+     - Do compile dynamic
+   * - includeWeight
+     - N
+     - Include weight in tosa.mlir
+   * - customization_format
+     - N
+     - Pixel format of input frame to the model
+   * - compare_all
+     - N
+     - Decide if compare all tensors when lowering
+   * - num_device
+     - N
+     - The number of devices to run for distributed computation
+   * - num_core
+     - N
+     - The number of TPU cores used for parallel computation
+   * - skip_validation
+     - N
+     - Skip checking the correctness of bmodel
+   * - merge_weight
+     - N
+     - Merge weights into one weight binary with previous generated cvimodel
+   * - model_version
+     - N
+     - If need old version cvimodel, set the verion, such as 1.2
+   * - q_group_size
+     - N
+     - Group size for per-group quant, only used in W4A16 quant mode
 
 .. _tools:
 
@@ -243,7 +417,7 @@ Other Tools
 model_runner.py
 ~~~~~~~~~~~~~~~~
 
-Model inference. bmodel/mlir/onnx/tflite supported.
+Model inference. mlir/pytorch/onnx/tflie/bmodel/prototxt supported.
 
 Example:
 
@@ -268,7 +442,7 @@ Supported parameters:
      - Input npz file
    * - model
      - Y
-     - Model file (bmodel/mlir/onnx/tflite)
+     - Model file (mlir/pytorch/onnx/tflie/bmodel/prototxt)
    * - dump_all_tensors
      - N
      - Export all the results, including intermediate ones, when specified
@@ -334,6 +508,8 @@ Supported functions:
      - test input data for networks, can be in jpeg or npz format.
    * - port
      - TCP port used for UI, default port is 10000，the port should be mapped when starting docker
+   * - host
+     - Host ip, default:0.0.0.0
    * - manual_run
      - if net will be automaticall inferenced when UI is opened, default is false for auto inference
 
