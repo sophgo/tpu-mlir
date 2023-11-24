@@ -17,6 +17,8 @@ void populateWeightReorderBM1684XPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
     WeightReorder<tpu::Conv2DOp, int8_t>,
+    WeightReorder<tpu::Conv2DOp, Float8E4M3FNType>,
+    WeightReorder<tpu::Conv2DOp, Float8E5M2Type>,
     WeightReorder<tpu::Conv2DOp, BFloat16Type>,
     WeightReorder<tpu::Conv2DOp, Float16Type>,
     WeightReorder<tpu::Conv2DOp, Float32Type>,

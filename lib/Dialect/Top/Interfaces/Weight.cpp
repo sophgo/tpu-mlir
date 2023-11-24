@@ -90,6 +90,7 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
   return nullptr;
 }
 
+
 std::shared_ptr<std::vector<int32_t>> WeightOp::read_as_int32() {
   auto dtype = module::getStorageType(getOutput());
   if (dtype.isInteger(32)) {
@@ -154,6 +155,32 @@ std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
   dump();
   llvm_unreachable("weight data not support read now");
   return nullptr;
+}
+
+std::shared_ptr<std::vector<int8_t>> WeightOp::read_as_f8e4m3() {
+  auto dtype = module::getStorageType(getOutput());
+  if (!dtype.isFloat8E4M3FN())
+    llvm_unreachable("dtype not align");
+
+  auto data_f8 = read<uint8_t>();
+  auto data_i8 = std::make_shared<std::vector<int8_t>>();
+  for (int i=0;i<data_f8->size();i++)
+    data_i8->push_back(*((int8_t*)(data_f8->data()+i)));
+  return data_i8;
+}
+
+std::shared_ptr<std::vector<int8_t>> WeightOp::read_as_f8e5m2() {
+  auto dtype = module::getStorageType(getOutput());
+  if (!dtype.isFloat8E5M2())
+    llvm_unreachable("dtype not align");
+
+  auto data_f8 = read<uint8_t>();
+
+  auto data_i8 = std::make_shared<std::vector<int8_t>>();
+
+  for (int i=0;i<data_f8->size();i++)
+    data_i8->push_back(*((int8_t*)(data_f8->data() + i)));
+  return data_i8;
 }
 
 template <typename T>

@@ -703,6 +703,8 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
     for (int i=0;i<b_value->size();i++)
       b_value->at(i) = b_value->at(i)/(in_scale*weight_scale_v.get()->at(i));
     b_op.update(*b_value, b_value.get()->size());
+  }
+  if (module::getMode() == module::Mode::F8E4M3) {
     for (int i=0; i<weight_scale_v.get()->size(); i++) {
       quant_scale_v.get()->at(i) = quant_scale_v.get()->at(i)/out_scale;
     }
