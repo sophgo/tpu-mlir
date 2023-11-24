@@ -11,6 +11,7 @@
 import os
 import sys
 import gc
+import re
 import time
 import copy
 import numpy as np
@@ -108,6 +109,23 @@ def is_npz(image):
 def is_npy(image):
     return True if image.split('.')[-1] == 'npy' else False
 
+def is_fuseop(op_name):
+    return re.match(r'^fused\[".*?"\]$', op_name)
+
+def split_fuseop(op_name):
+    if is_fuseop(op_name):
+        new_ops = re.findall(r'"([^"]+)"', op_name)
+        return new_ops[0]
+    else:
+        return op_name
+
+def fuseop_list_append(op_name,fuseop_list):
+    if is_fuseop(op_name):
+        new_ops = re.findall(r'"([^"]+)"', op_name)
+        if op_name not in fuseop_list:
+            fuseop_list[op_name] = new_ops
+            fuseop_list[new_ops[0]] = op_name
+    return
 
 def import_quant_bias(value, threshold):
     scale = 127 / threshold
@@ -144,6 +162,7 @@ class SimpleTuner:
         self.data_list = ds.data_list  # [:self.args.tune_num]
         self.ppa_list = ppa_list
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
+        self.fuseop_list = {}
         if self.debug_cmd:
             print('debug_cmd:', self.debug_cmd)
         if 'input_calibration_table' in self.debug_cmd:
@@ -154,6 +173,8 @@ class SimpleTuner:
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
         self.parser = MlirParser(args.mlir_file)
+        for op_name in self.parser.get_op_name_list():
+            fuseop_list_append(op_name,self.fuseop_list)
         self.batch_size = self.parser.get_batch_size()
         self.input_num = self.parser.get_input_num()
         self.ds = ds
@@ -318,6 +339,7 @@ class SimpleTuner:
     def clear_ref_tensor(self, i, evaled_op, node_label):
         if i == 0:
             node_label[0] += '\nclear_ref_tensor {}\'s input'.format(evaled_op)
+        # evaled_op = split_fuseop(evaled_op
         if self.ref_activations[i][evaled_op][1] == 0:  #清除残留的网络输出
             self.ref_activations[i].pop(evaled_op)
         input_ops = self.parser.get_pre_op_by_op_name(evaled_op)
@@ -386,6 +408,10 @@ class SimpleTuner:
                 node_label[0] += '\n{}'.format(tmp)
             return
         input_ops = self.parser.get_pre_op_by_op_name(op_name)
+        if op_name in self.fuseop_list and input_ops == []:
+            fused_op_name = self.fuseop_list[op_name]
+            input_ops = self.parser.get_pre_op_by_op_name(fused_op_name)
+        # print(op_name, input_ops)
         for input_op in input_ops:
             data = self.ref_activations[i][input_op][0]
             refcount = self.ref_activations[i][input_op][1]
@@ -396,6 +422,9 @@ class SimpleTuner:
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
             outputs = self.parser.get_outputs_by_op_name(op_name)
+            if outputs is None and op_name in self.fuseop_list:
+                fused_op_name = self.fuseop_list[op_name]
+                outputs = self.parser.get_outputs_by_op_name(fused_op_name)
             count = 0
             for o_ in outputs:
                 count += self.parser.get_use_count_by_op_name(o_)
@@ -551,9 +580,11 @@ class SimpleTuner:
             pre_ops = self.parser.get_pre_op_by_op_name(evaled_op)
             if self.dot is not None:
                 for pre_op in pre_ops:
+                    evaled_op = split_fuseop(evaled_op)
                     self.dot.edge(pre_op, evaled_op, label=pre_op)
 
             for idx in range(self.args.tune_num):
+                evaled_op = split_fuseop(evaled_op)
                 self.gen_ref_tensor(idx, evaled_op, node_label)
 
             #若op的多个输入都已调节过，那任挑其中1个来调节，暂定第1个
@@ -621,6 +652,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
         self.start_time = time.time()
         self.tuned_op_list = []
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
+        self.fuseop_list = {}
         if 'fp8' in self.debug_cmd:
             if 'int4' in self.debug_cmd:
                 print('can not calibration both for int4 and fp8')
@@ -661,6 +693,8 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 print('Observer_type in debug_cmd is error')
                 exit(1)
         self.parser = MlirParser(args.mlir_file)
+        for op_name in self.parser.get_op_name_list():
+            fuseop_list_append(op_name,self.fuseop_list)
         self.batch_size = self.parser.get_batch_size()
         self.input_num = self.parser.get_input_num()
         self.ppa_list = []
@@ -815,6 +849,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
         return None
 
     def gen_ref_tensor(self, i, op_name):
+        op_name = split_fuseop(op_name)
         if op_name in self.ref_activations[i]:
             return
         def set_func(layer_name):
@@ -836,10 +871,19 @@ class ActivationCalibrator2(BaseKldCalibrator):
                         count = self.parser.get_use_count_by_op_name(output)
                         if count > 0:
                             self.ref_activations[i][output] = [self.module.get_tensor(output).copy(), count]
+                elif outputs is None and op_name in self.fuseop_list:
+                    fused_op_name = self.fuseop_list[op_name]
+                    outputs = self.parser.get_outputs_by_op_name(fused_op_name)
+                    for output in outputs:
+                        if output == op_name:
+                            continue
+                        count = self.parser.get_use_count_by_op_name(output)
+                        if count > 0:
+                            self.ref_activations[i][output] = [self.module.get_tensor(output).copy(), count]
         self.module.before_invoke(set_func)
         self.module.after_invoke(get_func)
-        if len(self.parser.get_pre_op_by_op_name(op_name)) > 0:
-            value = self.module.invoke_at(op_name)
+        if len(self.parser.get_pre_op_by_op_name(op_name)) > 0 or op_name in self.fuseop_list:
+            self.module.invoke_at(op_name)
         self.module.clear_hooks()
     def find_threshold(self, histogram_data_map, histogram_width_map):
         thresholds = {}
@@ -874,7 +918,6 @@ class ActivationCalibrator2(BaseKldCalibrator):
             pbar.update(1)
             for idx in range(self.args.input_num):
                 self.gen_ref_tensor(idx, evaled_op)
-
             min_value = inf
             max_value = -inf
             abs_value = None
@@ -1006,6 +1049,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 os.system('cp -f {name} {name}.1'.format(name=input_calibration_table))
                 threshold_table = CalibrationTable(input_calibration_table)
                 for op_name in op_layers:
+                    op_name = split_fuseop(op_name)
                     thresholds_map_list.append(threshold_table.thresholds_map[op_name][0])
             else:
                 print('input_calibration_table error')
@@ -1109,6 +1153,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
             f.write("# tune number: {}\n###\n".format(self.args.tune_num))
             f.write("# op_name    threshold    min    max\n")
             for i, op_name in enumerate(op_layers):
+                op_name = split_fuseop(op_name)
                 threshold = thresholds[op_name]
                 layer_name_list.append('{}_{}'.format(i, op_name))
                 tuned_threshold_list.append(threshold)
