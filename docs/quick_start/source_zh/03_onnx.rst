@@ -14,7 +14,7 @@
    * - 平台
      - 文件名
      - 说明
-   * - cv183x/cv182x/cv181x/cv180x
+   * - cv183x/cv182x/cv181x/cv180x/cv186x
      - xxx.cvimodel
      - 请参考: :ref:`CV18xx使用指南 <onnx to cvimodel>`
    * - 其它

@@ -534,7 +534,7 @@ Use ``run_sensitive_layer`` and bad cases to search sensitive layers, parameters
      - N
      - float type of mix precision
 
-In this example, 100 images are used for calibration and 30 images are used for inference, and the command is as follows (for the processor of CV18xx series, set the processor to the corresponding processor name):
+In this example, 100 images are used for calibration and 30 images are used for inference, and the command is as follows:
 
 The operation is as follows:
 

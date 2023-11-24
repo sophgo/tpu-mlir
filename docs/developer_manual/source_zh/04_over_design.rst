@@ -42,7 +42,7 @@ import-calibration-table
 processor-top-optimize
    与处理器相关的top层算子优化, 这是一个妥协, 有些top算子与处理器具有相关性
 convert-top-to-tpu
-   将top层下层到tpu层; 如果是浮点类型(F32/F16/BF16), top层op基本上直接转换成相应的tpu层op即可; 如果是INT8类型, 则需要量化转换
+   将top层下沉到tpu层; 如果是浮点类型(F32/F16/BF16), top层op基本上直接转换成相应的tpu层op即可; 如果是INT8类型, 则需要量化转换
 
 .. _tpu pass:
 
