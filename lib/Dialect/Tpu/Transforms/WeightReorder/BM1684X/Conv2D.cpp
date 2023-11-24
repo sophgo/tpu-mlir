@@ -62,13 +62,7 @@ LogicalResult dynamic_weight_reorder_bm1684x(tpu::Conv2DOp op,
   return success();
 }
 
-template <>
-LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
-    tpu::Conv2DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.getFilter()).isInteger(8) ||
-      op.getCoeffMerged())
-    return failure();
-
+static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, Type filter_stype) {
   auto attr = op.parseParam();
   int input_c = attr.ic;
   int output_c = attr.oc;
@@ -120,7 +114,15 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
 
   // filter
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
-  auto filter_i8 = filterOp.read<int8_t>();
+  std::shared_ptr<std::vector<int8_t>> filter_i8;
+  if (filter_stype.isFloat8E4M3FN()) {
+    filter_i8 = filterOp.read_as_f8e4m3();
+  } else if (filter_stype.isFloat8E5M2()) {
+    filter_i8 = filterOp.read_as_f8e5m2();
+  } else {
+    filter_i8 = filterOp.read<int8_t>();
+  }
+
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
   int use_3ic_optimize = 0;
@@ -150,7 +152,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   }
   if (groups != 1 && !attr.is_dw) {
     use_3ic_optimize = 0;
-  } else if (module::isBM1688() /*&& isINT4Conv*/) {
+  } else if (module::isBM1688() /*&& isINT4Conv*/ || module::isSG2260Family()) {
     use_3ic_optimize = 0;
   }
 
@@ -211,9 +213,10 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
 
   // bias
   i32_array_t bias_new;
+  std::shared_ptr<std::vector<float>> bias_new_fp8;
   std::vector<int64_t> bias_shape = {1, attr.oc, 1, 1};
   int64_t bias_w_bytes = 0;
-  if (attr.has_bias) {
+  if (attr.has_bias && !(filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     bias_new = biasOp.read<int32_t>();
     tpu::reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false,
@@ -221,12 +224,21 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     assert(new_oc == bias_shape[1]);
     bias_w_bytes = bias_shape[3] * sizeof(int32_t);
   }
+  if (attr.has_bias && (filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    bias_new_fp8 = biasOp.read<float>();
+    tpu::reshape_coeff_for_broadcast_channel(bias_new_fp8, bias_shape, false,
+                                             isINT4Conv);
+    assert(new_oc == bias_shape[1]);
+    bias_w_bytes = bias_shape[3] * sizeof(float);
+  }
 
   // requant
   int64_t quant_w_bytes = 0;
   std::vector<int64_t> quant_shape;
   std::shared_ptr<std::vector<int32_t>> quant_data = nullptr;
-  if (merge_with_requant) {
+  std::shared_ptr<std::vector<float>> quant_data_fp8 = nullptr;
+  if (merge_with_requant && !(filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2())) {
     auto qtype = module::getUniformQuantizedType(op.getOutput());
     int32_t out_zp = qtype.getZeroPoint();
     quant_data = std::make_shared<std::vector<int32_t>>(attr.oc * 3, 0);
@@ -256,6 +268,43 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
                                              isINT4Conv);
     assert(new_oc == quant_shape[1]);
     quant_w_bytes = quant_shape[3] * sizeof(int32_t);
+  } else if (merge_with_requant && filter_stype.isFloat8E4M3FN()) {
+    quant_data_fp8 = std::make_shared<std::vector<float>>(attr.oc, 0);
+    auto scales = module::getF64Array(op.getOutF8Scales(), attr.oc, 1.0);
+    int64_t quant_w_size = 0;
+    bool align = true;
+    if (module::isSG2260Family()) {
+      align = false;
+      quant_w_size = 1;
+      for (int i = 0; i < attr.oc; i++) {
+        quant_data_fp8->at(i) = scales->at(i);
+      }
+    } else {
+      llvm_unreachable("fp8 for sg2260 only");
+    }
+    quant_shape = {1, attr.oc, 1, quant_w_size};
+    tpu::reshape_coeff_for_broadcast_channel(quant_data_fp8, quant_shape, align,
+                                             isINT4Conv);
+    assert(new_oc == quant_shape[1]);
+    quant_w_bytes = quant_shape[3] * sizeof(float);
+  } else if (merge_with_requant && filter_stype.isFloat8E5M2()) {
+    quant_data_fp8 = std::make_shared<std::vector<float>>(attr.oc, 0);
+    int64_t quant_w_size = 0;
+    bool align = true;
+    if (module::isSG2260Family()) {
+      align = false;
+      quant_w_size = 1;
+      for (int i = 0; i < attr.oc; i++) {
+        quant_data_fp8->at(i) = 1.0;
+      }
+    } else {
+      llvm_unreachable("fp8 for sg2260 only");
+    }
+    quant_shape = {1, attr.oc, 1, quant_w_size};
+    tpu::reshape_coeff_for_broadcast_channel(quant_data_fp8, quant_shape, align,
+                                             isINT4Conv);
+    assert(new_oc == quant_shape[1]);
+    quant_w_bytes = quant_shape[3] * sizeof(float);
   }
 
   // merge
@@ -268,6 +317,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   }
 
   if (attr.has_bias) {
+    // for fp8 bias is fp32, same size with float
     bias_offset =
         align_up(quant_offset + quant_w_bytes, (int64_t)sizeof(int32_t));
     filter_offset = align_up(bias_offset + bias_w_bytes, filter_align);
@@ -288,19 +338,35 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   if (isINT4Conv)
     coeff_shape[3] <<= 1;
   for (int i = 0; i < new_oc; i++) {
-    auto coeff_ptr = new_coeff->data() + i * merge_w;
-    auto bias_ptr =
-        attr.has_bias ? (bias_new->data() + i * bias_shape[3]) : nullptr;
-    auto filter_ptr = filter_data->data() + i * filter_shape[3];
-    // copy quant
-    if (merge_with_requant) {
-      auto quant_ptr = quant_data->data() + i * quant_shape[3];
-      memcpy(coeff_ptr + quant_offset, quant_ptr, quant_w_bytes);
+    if (filter_stype.isFloat8E4M3FN() || filter_stype.isFloat8E5M2()) {
+      auto coeff_ptr = new_coeff->data() + i * merge_w;
+      auto bias_ptr =
+          attr.has_bias ? (bias_new_fp8->data() + i * bias_shape[3]) : nullptr;
+      auto filter_ptr = filter_data->data() + i * filter_shape[3];
+      // copy quant
+      if (merge_with_requant) {
+        auto quant_ptr = quant_data_fp8->data() + i * quant_shape[3];
+        memcpy(coeff_ptr + quant_offset, quant_ptr, quant_w_bytes);
+      }
+      if (attr.has_bias) {
+        memcpy(coeff_ptr + bias_offset, bias_ptr, bias_w_bytes);
+      }
+      memcpy(coeff_ptr + filter_offset, filter_ptr, filter_w_bytes);
+    } else {
+      auto coeff_ptr = new_coeff->data() + i * merge_w;
+      auto bias_ptr =
+          attr.has_bias ? (bias_new->data() + i * bias_shape[3]) : nullptr;
+      auto filter_ptr = filter_data->data() + i * filter_shape[3];
+      // copy quant
+      if (merge_with_requant) {
+        auto quant_ptr = quant_data->data() + i * quant_shape[3];
+        memcpy(coeff_ptr + quant_offset, quant_ptr, quant_w_bytes);
+      }
+      if (attr.has_bias) {
+        memcpy(coeff_ptr + bias_offset, bias_ptr, bias_w_bytes);
+      }
+      memcpy(coeff_ptr + filter_offset, filter_ptr, filter_w_bytes);
     }
-    if (attr.has_bias) {
-      memcpy(coeff_ptr + bias_offset, bias_ptr, bias_w_bytes);
-    }
-    memcpy(coeff_ptr + filter_offset, filter_ptr, filter_w_bytes);
   }
   if (merge_w > MAX_TPU_DIM || coeff_shape[3] > MAX_TPU_DIM) {
     if (attr.is_dw) {
@@ -318,11 +384,34 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     coeff_type =
         RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
   }
-  auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
   op->removeAttr("rshift");
   op->removeAttr("multiplier");
+  op->removeAttr("out_f8_scales");
   op->setAttr("coeff_merged", rewriter.getBoolAttr(merge));
-  op->setOperand(1, coeff_op);
+  if (filter_stype.isFloat8E4M3FN()) {
+    std::string new_name = module::getName(op.getOperation()).str() + "_merge";
+    auto new_type = RankedTensorType::get(coeff_shape,rewriter.getFloat8E4M3FNType());
+    auto ret =
+        module::weightFile().addTensor(new_name, (uint8_t*)new_coeff->data(), new_type);
+    assert(succeeded(ret));
+    auto nameAttr = rewriter.getStringAttr(new_name);
+    auto coeff_op = rewriter.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
+                                              ValueRange{});
+    op->setOperand(1, coeff_op);
+  } else if (filter_stype.isFloat8E5M2()) {
+    std::string new_name = module::getName(op.getOperation()).str() + "_merge";
+    auto new_type = RankedTensorType::get(coeff_shape,rewriter.getFloat8E5M2Type());
+    auto ret =
+        module::weightFile().addTensor(new_name, (uint8_t*)new_coeff->data(), new_type);
+    assert(succeeded(ret));
+    auto nameAttr = rewriter.getStringAttr(new_name);
+    auto coeff_op = rewriter.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
+                                              ValueRange{});
+    op->setOperand(1, coeff_op);
+  } else {
+    auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
+    op->setOperand(1, coeff_op);
+  }
   auto none = module::getNoneOp(op);
   op->setOperand(2, none.getResult());
 
@@ -330,6 +419,33 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     op.getFilter().setType(coeff_type);
   }
   return success();
+}
+
+template <>
+LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
+    tpu::Conv2DOp op, PatternRewriter &rewriter) const {
+  if (!module::getStorageType(op.getFilter()).isInteger(8) ||
+      op.getCoeffMerged())
+    return failure();
+  return reorder_8bit(op, rewriter, module::getStorageType(op.getFilter()));
+}
+
+template <>
+LogicalResult WeightReorder<tpu::Conv2DOp, Float8E4M3FNType>::matchAndRewrite(
+    tpu::Conv2DOp op, PatternRewriter &rewriter) const {
+  if (!module::getStorageType(op.getFilter()).isFloat8E4M3FN() ||
+      op.getCoeffMerged())
+    return failure();
+  return reorder_8bit(op, rewriter, module::getStorageType(op.getFilter()));
+}
+
+template <>
+LogicalResult WeightReorder<tpu::Conv2DOp, Float8E5M2Type>::matchAndRewrite(
+    tpu::Conv2DOp op, PatternRewriter &rewriter) const {
+  if (!module::getStorageType(op.getFilter()).isFloat8E5M2() ||
+      op.getCoeffMerged())
+    return failure();
+  return reorder_8bit(op, rewriter, module::getStorageType(op.getFilter()));
 }
 
 LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,

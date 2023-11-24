@@ -19,6 +19,7 @@
 include "mlir/IR/AttrTypeBase.td"
 include "mlir/IR/EnumAttr.td"
 include "mlir/IR/OpBase.td"
+//include "mlir/IR/BuiltinTypes.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/FlopsInterface.td"
@@ -122,6 +123,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   std::shared_ptr<std::vector<float>> read_as_float();
   std::shared_ptr<std::vector<int32_t>> read_as_int32();
   std::shared_ptr<std::vector<uint8_t>> read_as_byte();
+  std::shared_ptr<std::vector<int8_t>> read_as_f8e4m3();
+  std::shared_ptr<std::vector<int8_t>> read_as_f8e5m2();
   template<typename T>
   static mlir::Value create(mlir::Operation * OwnerOp,
                             llvm::StringRef suffix,
