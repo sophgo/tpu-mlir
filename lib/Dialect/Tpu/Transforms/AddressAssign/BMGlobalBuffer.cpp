@@ -410,7 +410,7 @@ public:
 
   LogicalResult matchAndRewrite(tpu::InterpOp interpOp,
                                 PatternRewriter &rewriter) const override {
-    if (!module::isBM1688())
+    if (!module::isBM1684XFamily())
       return failure();
 
     if (!module::isNone(interpOp.getBuffer())) {
@@ -430,7 +430,7 @@ public:
       auto type = ::mlir::Builder(getContext()).getIntegerType(8);
       auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
       auto buffer = tpu::BufferOp::create(interpOp, buffer_type);
-      interpOp.setOperand(1, buffer);
+      interpOp.setOperand(2, buffer);
       return success();
     }
 

@@ -2229,6 +2229,7 @@ def Tpu_InterpOp: Tpu_Op<"Interp"> {
   }];
   let arguments = (ins
     AnyRankedTensor:$input,
+    AnyTensorOrNone:$shapeT,
     AnyTensorOrNone:$buffer,
     F64Attr:$scale_h,
     F64Attr:$scale_w,

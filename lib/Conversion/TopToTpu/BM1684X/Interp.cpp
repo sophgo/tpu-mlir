@@ -28,6 +28,8 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op, Type typ
       operands.push_back(opd);
     }
   }
+  // buffer
+  operands.push_back(module::getNoneOp(op));
 
   if(auto a = tpu::symbolizeResizeMode(op->getAttr("mode").cast<StringAttr>()))
   {
