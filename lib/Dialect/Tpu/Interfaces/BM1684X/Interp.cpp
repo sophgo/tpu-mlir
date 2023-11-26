@@ -133,7 +133,7 @@ int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer) return sizeof(interp_global_param_t);
   interp_global_param_t param = {0};
   param.if_getting_buffer_size = false;
-  if(module::isBM1688()){
+  if(module::isBM1684XFamily()){
     param.spec.buffer_addr = module::getAddress(getBuffer());
   } else {
     param.spec.buffer_addr = BM168x::L2_SRAM_START_ADDR;
@@ -157,7 +157,7 @@ int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
     common.align_corners = (coord == 2) ? 1 : 0;
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
-  param.spec.shape_is_fixed = true;
+  param.spec.shape_is_fixed = false;
   auto out_shape = module::getShape(getOutput());
   param.spec.dims = out_shape.size();
   for (int i=0; i < param.spec.dims; i++)
