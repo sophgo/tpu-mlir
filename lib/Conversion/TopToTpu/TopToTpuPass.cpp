@@ -1472,16 +1472,14 @@ Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
             builder.create<tpu::ShapeCastOp>(loc, newType, ValueRange{v});
         return castOp.getOutput();
       } else {
-        if (module::getStorageType(v).isFloat8E4M3FN() || module::getStorageType(v).isFloat8E5M2()) {
-          auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
-          builder.setInsertionPointAfterValue(castOp.getOutput());
+        if (module::getStorageType(v).isFloat8E4M3FN()) {
           name += std::string("_dequant");
           auto loc = NameLoc::get(builder.getStringAttr(name));
-          double const_v = module::getStorageType(v).isFloat8E4M3FN()? module::getCalibratedType(v).getMax()/get_f8e4m3_max() : 1.0;
+          double const_v = module::getCalibratedType(v).getMax() / get_f8e4m3_max();
           std::vector<NamedAttribute> attrs;
           attrs.push_back(builder.getNamedAttr("const_val", builder.getF64FloatAttr(const_v)));
-          auto mulOp = builder.create<tpu::MulConstOp>(loc, newType, ValueRange{castOp}, attrs);
-          v.replaceAllUsesExcept(mulOp.getOutput(), castOp);
+          auto mulOp = builder.create<tpu::MulConstOp>(loc, newType, ValueRange{v}, attrs);
+          v.replaceAllUsesExcept(mulOp.getOutput(), mulOp);
           return mulOp.getOutput();
         } else {
           auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
@@ -1494,20 +1492,17 @@ Value ConvertTopToTpu::do_cast(Value v, Type to, TypeCastMode mode,
         v.dump();
         llvm_unreachable("Only calibrated type can do quantize");
       }
-      if (to.isFloat8E4M3FN() || to.isFloat8E5M2()) {
+      if (to.isFloat8E4M3FN()) {
         //auto newType = RankedTensorType::get(module::getShape(v), module::getCalibratedType(v));
         builder.setInsertionPointAfterValue(v);
         name += std::string("_requant");
-        float scale = to.isFloat8E4M3FN()? get_f8e4m3_max()/ module::getCalibratedType(v).getMax(): 1.0;
-        if (to.isFloat8E4M3FN()) {
-          auto value = do_requantFp(v, scale, 0.0, getQuantF8E4M3Type(v), name, tpu::RequantMode::OnlyScale);
-          return value;
-        } else {
-          auto value = do_requantFp(v, scale, 0.0, getQuantF8E5M2Type(v), name, tpu::RequantMode::OnlyScale);
-          return value;
-        }
-      }
-      else {
+        float scale = get_f8e4m3_max() / module::getCalibratedType(v).getMax();
+        auto value = do_requantFp(v, scale, 0.0, getQuantF8E4M3Type(v), name, tpu::RequantMode::OnlyScale);
+        return value;
+      } else if (to.isFloat8E5M2()) {
+        auto value = do_cast(v, getQuantF8E5M2Type(v), TypeCastMode::DO_CAST);
+        return value;
+      } else {
         auto newType = getQuantInt8Type(v, module::isAsymmetric());
         if (all_next_layer_is_int4) {
           newType = getQuantInt4Type(v, module::isAsymmetric());

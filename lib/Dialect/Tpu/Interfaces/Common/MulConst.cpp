@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
@@ -70,7 +69,82 @@ void tpu::MulConstOp::assign_fw_param(void *param) {
 
 ArrayAttr tpu::MulConstOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
+
+// case1: Fuse multiple mulconst ops into one
+// only when in_dtype == out_dtype or in_dtype == fp8
+struct FuseMultiMulConst : public OpRewritePattern<tpu::MulConstOp> {
+  FuseMultiMulConst(mlir::MLIRContext *context)
+      : OpRewritePattern<tpu::MulConstOp>(context) {}
+  LogicalResult
+  matchAndRewrite(tpu::MulConstOp op,
+                  mlir::PatternRewriter &rewriter) const override {
+    // starts from the last mulconst op
+    if (!op->hasOneUse() ||
+        dyn_cast<tpu::MulConstOp>(module::getNextOp(op, 0))) {
+      return failure();
+    }
+
+    auto input = op.getInput();
+    auto in_dtype = BM168x::getDataType(input);
+    auto out_dtype = BM168x::getDataType(op.getOutput());
+    auto final_const_val = op.getConstVal().convertToDouble();
+    auto prev_op = dyn_cast<tpu::MulConstOp>(input.getDefiningOp());
+    if (!prev_op) {
+      return failure();
+    }
+
+    while (in_dtype == out_dtype || in_dtype == DTYPE_F8E4M3 ||
+           in_dtype == DTYPE_F8E5M2) {
+      final_const_val *= prev_op.getConstVal().convertToDouble();
+      input = prev_op.getInput();
+      prev_op = dyn_cast<tpu::MulConstOp>(input.getDefiningOp());
+      if (!prev_op) {
+        break;
+      }
+      out_dtype = in_dtype;
+      in_dtype = BM168x::getDataType(prev_op.getInput());
+    }
+    op.setConstValAttr(rewriter.getF64FloatAttr(final_const_val));
+    op.setOperand(input);
+
+    return success();
+  }
+};
+
+// case2: Fuse cast to FP8 MulConst
+struct FuseCastToF8MulConst : public OpRewritePattern<tpu::MulConstOp> {
+  FuseCastToF8MulConst(mlir::MLIRContext *context)
+      : OpRewritePattern<tpu::MulConstOp>(context) {}
+  LogicalResult
+  matchAndRewrite(tpu::MulConstOp op,
+                  mlir::PatternRewriter &rewriter) const override {
+    auto input = op.getInput();
+    auto in_dtype = BM168x::getDataType(input);
+    if (!(in_dtype == DTYPE_F8E4M3 || in_dtype == DTYPE_F8E5M2)) {
+      return failure();
+    }
+
+    if (!op->hasOneUse()) {
+      return failure();
+    }
+
+    auto castOp = dyn_cast<tpu::CastOp>(module::getNextOp(op, 0));
+    if (!castOp) {
+      return failure();
+    }
+
+    rewriter.replaceOpWithNewOp<tpu::MulConstOp>(
+        castOp, castOp.getType(), ValueRange{input}, op->getAttrs());
+    return success();
+  }
+};
+
+void tpu::MulConstOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                                  MLIRContext *context) {
+  results.insert<FuseMultiMulConst, FuseCastToF8MulConst>(context);
+}
