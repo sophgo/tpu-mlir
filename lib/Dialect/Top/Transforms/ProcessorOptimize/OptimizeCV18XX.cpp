@@ -1650,22 +1650,76 @@ public:
   }
 };
 
+class SplitReduceOp : public OpRewritePattern<top::ReduceOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto axes_val = module::getI64Array(op.getAxes());
+    int num_axes = axes_val->size();
+    if (num_axes == 0)
+      return failure();
+    std::vector<std::vector<int64_t>> axes_slice;
+    std::vector<int64_t> _axes = {axes_val->at(0)};
+    for (int i = 1; i < num_axes; i++) {
+      auto pre_axis = axes_val->at(i - 1);
+      auto cur_axis = axes_val->at(i);
+      if (cur_axis != pre_axis + 1) {
+        axes_slice.push_back(_axes);
+        _axes.clear();
+      }
+      _axes.push_back(cur_axis);
+    }
+    axes_slice.push_back(_axes);
+    if (axes_slice.size() <= 1)
+      return failure();
+
+    auto input = op.getInput();
+    auto input_shape = module::getShape(op.getInput()).vec();
+    auto keep_dims = op.getKeepdims();
+    std::string name = module::getName(op.getResult()).str();
+    auto elt_type = module::getElementType(op.getOutput());
+    for (int i = axes_slice.size() - 1; i >= 0; i--) {
+      auto _axes = axes_slice[i];
+      auto out_shape = input_shape;
+      for (int j = _axes.size() - 1; j >= 0; j--) {
+        auto idx = _axes[j];
+        if (keep_dims)
+          out_shape[idx] = 1;
+        else
+          out_shape.erase(out_shape.begin() + idx);
+      }
+      // creat ReduceOp
+      auto loc = NameLoc::get(rewriter.getStringAttr(
+          name + (i != 0 ? "_" + std::to_string(i) : "")));
+      auto type = RankedTensorType::get(out_shape, elt_type);
+      auto reduce_op = rewriter.create<top::ReduceOp>(
+          loc, type, ValueRange{input}, op->getAttrs());
+      reduce_op->setAttr("axes", rewriter.getI64ArrayAttr(_axes));
+      input = reduce_op.getResult();
+      input_shape = out_shape;
+    }
+    rewriter.replaceAllUsesWith(op.getResult(), input);
+    return success();
+  }
+};
+
 } // namespace cv18xx
 
 namespace top {
 using namespace cv18xx;
 void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
-  patterns->add<ConvertArgmaxOp, ConvertConvPading, ConvertConvDilation,
-                ConvertConv2dToMatMul, ConvertAddConstOp, ConvertDivOp,
-                ConvertGatherOp, ConvertMaskedFillOp, ConvertMaxPoolWithMaskOp,
-                ConvertMaxUnpoolOp, ConvertScaleOp, ConvertSubOp,
-                ConvertInterpOp, ConvertUpsampleOp, ConvertWhereOp,
-                ConvertMatMulWithRightTranspose, ConvertPixelNormOp,
-                convertMaxPool3D, ConvertSqrtOp, ConvertAvgPoolOp,
-                patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
-                patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
-                ConvertClipOp>(patterns->getContext(), 8);
+  patterns->add<
+      ConvertArgmaxOp, ConvertConvPading, ConvertConvDilation,
+      ConvertConv2dToMatMul, ConvertAddConstOp, ConvertDivOp, ConvertGatherOp,
+      ConvertMaskedFillOp, ConvertMaxPoolWithMaskOp, ConvertMaxUnpoolOp,
+      ConvertScaleOp, ConvertSubOp, ConvertInterpOp, ConvertUpsampleOp,
+      ConvertWhereOp, ConvertMatMulWithRightTranspose, ConvertPixelNormOp,
+      convertMaxPool3D, ConvertSqrtOp, ConvertAvgPoolOp, SplitReduceOp,
+      patterns::ConvertPattern<top::SqueezeOp, top::ReshapeOp>,
+      patterns::ConvertPattern<top::UnsqueezeOp, top::ReshapeOp>,
+      ConvertClipOp>(patterns->getContext(), 8);
 }
 } // namespace top
 } // namespace tpu_mlir

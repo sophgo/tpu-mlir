@@ -14,76 +14,111 @@ LogicalResult top::ReduceOp::inference(InferenceParameter &p) {
   auto axes_val = module::getI64Array(getAxes());
   auto input_shape = module::getShape(getInput());
   // calc dims
-  int num_dims = input_shape.size();
   int num_axes = axes_val->size();
+  std::vector<std::vector<int64_t>> axes_slice;
+  std::vector<int64_t> _axes = {axes_val->at(0)};
   for (int i = 1; i < num_axes; i++) {
-    assert(axes_val->at(i) == axes_val->at(i - 1) + 1);
-    assert(axes_val->at(i) < num_dims);
+    if (axes_val->at(i) != axes_val->at(i - 1) + 1) {
+      axes_slice.push_back(_axes);
+      _axes.clear();
+    }
+    _axes.push_back(axes_val->at(i));
   }
-  int start_axis = axes_val->at(0);
-  int end_axis = axes_val->at(num_axes - 1) + 1;
-  int outer_dims =
-      std::accumulate(input_shape.begin(), input_shape.begin() + start_axis, 1,
-                      std::multiplies<int64_t>());
-  int axis_dims = std::accumulate(input_shape.begin() + start_axis,
-                                  input_shape.begin() + end_axis, 1,
+  axes_slice.push_back(_axes);
+
+  auto tmp_ishape = input_shape.vec();
+  int nof_ielmt = std::accumulate(input_shape.begin(), input_shape.end(), 1,
                                   std::multiplies<int64_t>());
-  int inner_dims =
-      std::accumulate(input_shape.begin() + end_axis, input_shape.end(), 1,
-                      std::multiplies<int64_t>());
-  for (int o = 0; o < outer_dims; o++) {
-    for (int i = 0; i < inner_dims; i++) {
-      if (type_val == "ReduceMean" || type_val == "ReduceSum") {
-        float sum = 0.0f;
-        if (inner_dims == 1) {
-          sum = std::accumulate(input_v + o * axis_dims,
-                                input_v + (o + 1) * axis_dims, 0.0f);
-        } else {
+  std::vector<float> in(nof_ielmt);
+  std::vector<float> out;
+  memcpy(in.data(), input_v, in.size() * sizeof(float));
+  auto tmp_oshape = tmp_ishape;
+  for (int i = axes_slice.size() - 1; i >= 0; i--) {
+    auto _axes = axes_slice[i];
+    int start_axis = _axes.at(0);
+    int end_axis = _axes.back() + 1;
+    int outer_dims =
+        std::accumulate(tmp_ishape.begin(), tmp_ishape.begin() + start_axis, 1,
+                        std::multiplies<int64_t>());
+    int axis_dims = std::accumulate(tmp_ishape.begin() + start_axis,
+                                    tmp_ishape.begin() + end_axis, 1,
+                                    std::multiplies<int64_t>());
+    int inner_dims =
+        std::accumulate(tmp_ishape.begin() + end_axis, tmp_ishape.end(), 1,
+                        std::multiplies<int64_t>());
+
+    for (auto idx : _axes) {
+      tmp_oshape[idx] = 1;
+    }
+    int nof_oelmt = std::accumulate(tmp_oshape.begin(), tmp_oshape.end(), 1,
+                                    std::multiplies<int64_t>());
+    out.resize(nof_oelmt);
+    auto in_data = in.data();
+    auto out_data = out.data();
+
+    for (int o = 0; o < outer_dims; o++) {
+      for (int i = 0; i < inner_dims; i++) {
+        if (type_val == "ReduceMean" || type_val == "ReduceSum") {
+          float sum = 0.0f;
+          if (inner_dims == 1) {
+            sum = std::accumulate(in_data + o * axis_dims,
+                                  in_data + (o + 1) * axis_dims, 0.0f);
+          } else {
+            for (int a = 0; a < axis_dims; a++) {
+              sum += in_data[o * axis_dims * inner_dims + a * inner_dims + i];
+            }
+          }
+          if (type_val == "ReduceSum") {
+            out_data[o * inner_dims + i] = sum;
+          } else {
+            sum = sum / axis_dims;
+            out_data[o * inner_dims + i] = sum;
+          }
+        } else if (type_val == "ReduceMax" || type_val == "ReduceMin") {
+          float target = in_data[o * axis_dims * inner_dims + i];
+          for (int a = 1; a < axis_dims; a++) {
+            auto v = in_data[o * axis_dims * inner_dims + a * inner_dims + i];
+            if (type_val == "ReduceMax" && v > target) {
+              target = v;
+            } else if (type_val == "ReduceMin" && v < target) {
+              target = v;
+            }
+          }
+          out_data[o * inner_dims + i] = target;
+        } else if (type_val == "ReduceL2") {
+          float sum = 0.0f;
           for (int a = 0; a < axis_dims; a++) {
-            sum += input_v[o * axis_dims * inner_dims + a * inner_dims + i];
+            sum += std::pow(
+                in_data[o * axis_dims * inner_dims + a * inner_dims + i], 2);
           }
-        }
-        if (type_val == "ReduceSum") {
-          output_v[o * inner_dims + i] = sum;
+          out_data[o * inner_dims + i] = std::pow(sum, 0.5);
+        } else if (type_val == "ReduceL1") {
+          float sum = 0.0f;
+          for (int a = 0; a < axis_dims; a++) {
+            sum +=
+                fabs(in_data[o * axis_dims * inner_dims + a * inner_dims + i]);
+          }
+          out_data[o * inner_dims + i] = sum;
+        } else if (type_val == "ReduceProd") {
+          float target = in_data[o * axis_dims * inner_dims + i];
+          for (int a = 1; a < axis_dims; a++) {
+            target *= in_data[o * axis_dims * inner_dims + a * inner_dims + i];
+          }
+          out_data[o * inner_dims + i] = target;
         } else {
-          sum = sum / axis_dims;
-          output_v[o * inner_dims + i] = sum;
+          llvm_unreachable("not support now.");
         }
-      } else if (type_val == "ReduceMax" || type_val == "ReduceMin") {
-        float target = input_v[o * axis_dims * inner_dims + i];
-        for (int a = 1; a < axis_dims; a++) {
-          auto v = input_v[o * axis_dims * inner_dims + a * inner_dims + i];
-          if (type_val == "ReduceMax" && v > target) {
-            target = v;
-          } else if (type_val == "ReduceMin" && v < target) {
-            target = v;
-          }
-        }
-        output_v[o * inner_dims + i] = target;
-      } else if (type_val == "ReduceL2") {
-        float sum = 0.0f;
-        for (int a = 0; a < axis_dims; a++) {
-          sum += std::pow(
-              input_v[o * axis_dims * inner_dims + a * inner_dims + i], 2);
-        }
-        output_v[o * inner_dims + i] = std::pow(sum, 0.5);
-      } else if (type_val == "ReduceL1") {
-        float sum = 0.0f;
-        for (int a = 0; a < axis_dims; a++) {
-          sum += fabs(input_v[o * axis_dims * inner_dims + a * inner_dims + i]);
-        }
-        output_v[o * inner_dims + i] = sum;
-      } else if (type_val == "ReduceProd") {
-        float target = input_v[o * axis_dims * inner_dims + i];
-        for (int a = 1; a < axis_dims; a++) {
-          target *= input_v[o * axis_dims * inner_dims + a * inner_dims + i];
-        }
-        output_v[o * inner_dims + i] = target;
-      } else {
-        llvm_unreachable("not support now.");
       }
     }
+    if (i == 0) {
+      memcpy(output_v, out_data, out.size() * sizeof(float));
+    } else {
+      in.resize(nof_oelmt);
+      in = out;
+      tmp_ishape = tmp_oshape;
+    }
   }
+
   return success();
 }
 
