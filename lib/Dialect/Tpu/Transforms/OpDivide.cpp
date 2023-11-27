@@ -47,6 +47,9 @@ public:
   }
 
   static bool support(Operation *op) {
+    if (op->getNumResults() == 0) {
+      return false;
+    }
     if (module::isUniformQuantized(op->getResult(0))) {
       if (isa<tpu::Conv2DOp>(op)) {
         return true;
