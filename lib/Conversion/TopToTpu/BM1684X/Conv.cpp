@@ -712,7 +712,7 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   if (module::getMode() == module::Mode::F8E4M3) {
     attrs.push_back(
-        rewriter.getNamedAttr("out_f8_scale", rewriter.getF64ArrayAttr(ArrayRef<double>{*quant_scale_v})));
+        rewriter.getNamedAttr("out_f8_scales", rewriter.getF64ArrayAttr(ArrayRef<double>{*quant_scale_v})));
     auto newType = getQuantF8E4M3Type(op.getOutput());
     auto newValue =
         CreateConvOp(rewriter, p.dims, op->getLoc(), newType, operands, attrs);
