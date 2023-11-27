@@ -930,6 +930,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
+  let hasCanonicalizer = 1;
 
   let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{

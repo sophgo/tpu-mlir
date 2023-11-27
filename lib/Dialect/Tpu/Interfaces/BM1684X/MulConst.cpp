@@ -64,7 +64,8 @@ int64_t tpu::MulConstOp::getBufferSize_bm1684x(
   auto dtype_A = BM168x::getDataType(getInput());
   if (dtype_A == DTYPE_INT8 || dtype_A == DTYPE_UINT8) {
     buffer_size = in_lmem_bytes * 2;
-  } else if (dtype_A == DTYPE_F8E4M3 || dtype_A == DTYPE_F8E5M2) {
+  } else if ((dtype_A == DTYPE_F8E4M3 || dtype_A == DTYPE_F8E5M2) &&
+             dtype_A == BM168x::getDataType(getOutput())) {
     buffer_size = in_lmem_bytes * 2;
   }
   return buffer_size;
