@@ -99,8 +99,7 @@ public:
     auto castOp0 = dyn_cast_or_null<tpu::CastOp>(currentOut.getDefiningOp());
     double qscale = 0;
     // INT8 quant mode
-    if (!castOp0)
-    {
+    if (!castOp0) {
       auto uniform_type = module::getUniformQuantizedType(op.getResult());
       qscale = uniform_type.getScale();
     }
@@ -108,7 +107,8 @@ public:
     else {
       currentOut = castOp0.getInput();
       auto castOut = castOp0.getOutput();
-      castOut.setType(RankedTensorType::get({n, c, h, w}, module::getStorageType(castOut)));
+      castOut.setType(
+          RankedTensorType::get({n, c, h, w}, module::getStorageType(castOut)));
     }
     rewriter.setInsertionPointAfterValue(currentOut);
 
@@ -124,12 +124,12 @@ public:
     }
 
     std::map<std::string, std::pair<std::string, std::string>> attributes_map =
-        {{"RGB_PLANAR", {"rgb", "nchw"}},  {"RGB_PACKED", {"rgb", "nhwc"}},
-         {"BGR_PLANAR", {"bgr", "nchw"}},  {"BGR_PACKED", {"bgr", "nhwc"}},
+        {{"RGB_PLANAR", {"rgb", "nchw"}},   {"RGB_PACKED", {"rgb", "nhwc"}},
+         {"BGR_PLANAR", {"bgr", "nchw"}},   {"BGR_PACKED", {"bgr", "nhwc"}},
          {"GRAYSCALE", {"gray", "nchw"}},   {"YUV420_PLANAR", {"bgr", "nchw"}},
-         {"YUV_NV21", {"bgr", "nchw"}},    {"YUV_NV12", {"bgr", "nchw"}},
+         {"YUV_NV21", {"bgr", "nchw"}},     {"YUV_NV12", {"bgr", "nchw"}},
          {"RGBA_PLANAR", {"rgba", "nchw"}}, {"GBRG_RAW", {"gbrg", "nchw"}},
-         {"GRBG_RAW", {"grbg", "nchw"}}, {"BGGR_RAW", {"bggr", "nchw"}},
+         {"GRBG_RAW", {"grbg", "nchw"}},    {"BGGR_RAW", {"bggr", "nchw"}},
          {"RGGB_RAW", {"rggb", "nchw"}}};
     if (attributes_map.find(pixel_format) == attributes_map.end())
       llvm_unreachable("customization format is not supported yet.");
@@ -142,27 +142,39 @@ public:
                    << layout << ", swap_channel:" << swap_channel << "\n";);
 
     // insert PackRawOp, no need other preprocessOp & castOp
-    if (color == "gbrg" || color == "grbg" || color == "rggb" || color == "bggr") {
-      assert ( c == 4 && "processed raw image should include 4 channel");
+    if (color == "gbrg" || color == "grbg" || color == "rggb" ||
+        color == "bggr") {
+      assert(c == 4 && "processed raw image should include 4 channel");
       // GBRG->(2, 3, 1, 0)->RGBG
       // GRBG->(1, 0, 2, 3)->RGBG
       // RGGB->(0, 1, 3, 2)->RGBG
       // BGGR->(3, 2, 0, 1)->RGBG
-      if ( color == "gbrg" ) this->channel_order = {2, 3, 1, 0};
-      else if ( color == "grbg" ) this->channel_order = {1, 0, 2, 3};
-      else if ( color == "rggb" ) this->channel_order = {0, 1, 3, 2};
-      else if ( color == "bggr" ) this->channel_order = {3, 2, 0, 1};
-      else llvm_unreachable ("raw format not support current type");
+      if (color == "gbrg")
+        this->channel_order = {2, 3, 1, 0};
+      else if (color == "grbg")
+        this->channel_order = {1, 0, 2, 3};
+      else if (color == "rggb")
+        this->channel_order = {0, 1, 3, 2};
+      else if (color == "bggr")
+        this->channel_order = {3, 2, 0, 1};
+      else
+        llvm_unreachable("raw format not support current type");
 
       int64_t zeropoint = 0;
       auto finaltype = module::getStorageType(op.getResult());
-      if (castOp1) finaltype = module::getStorageType(castOp1.getResult());
-      if (castOp0) module::getScaleAndZeroPoint(op.getOutput(), qscale, zeropoint, this->sign, module::isAsymmetric());
-      currentOut = this->insertPackRawOp(rewriter, name, currentOut, qscale, finaltype);
+      if (castOp1)
+        finaltype = module::getStorageType(castOp1.getResult());
+      if (castOp0)
+        module::getScaleAndZeroPoint(op.getOutput(), qscale, zeropoint,
+                                     this->sign, module::isAsymmetric());
+      currentOut =
+          this->insertPackRawOp(rewriter, name, currentOut, qscale, finaltype);
       rewriter.setInsertionPointAfterValue(currentOut);
-      if (castOp0) rewriter.replaceOp(castOp0, {currentOut});
+      if (castOp0)
+        rewriter.replaceOp(castOp0, {currentOut});
       rewriter.replaceOp(op, {currentOut});
-      if (castOp1) rewriter.replaceOp(castOp1, {currentOut});
+      if (castOp1)
+        rewriter.replaceOp(castOp1, {currentOut});
       return;
     }
 
@@ -191,7 +203,7 @@ public:
       if (castOp0) { // FP --> INT8 mix precision case
         int64_t zeropoint = 0;
         module::getScaleAndZeroPoint(op.getOutput(), qscale, zeropoint,
-                                    this->sign, module::isAsymmetric());
+                                     this->sign, module::isAsymmetric());
         int64_t qmin = this->sign ? -128 : 0, qmax = this->sign ? 127 : 255;
         auto ctx = op.getOutput().getContext();
         qtype = quant::UniformQuantizedType::get(
@@ -200,11 +212,11 @@ public:
       } else { // pure INT8 quant mode
         qtype = module::getUniformQuantizedType(op.getResult());
       }
-      currentOut = this->insertScaleLutOp(rewriter, name, currentOut, op,
-                                          qscale, qtype, swap_channel);
+      currentOut = this->insertScaleLutOpOrLutOp(rewriter, name, currentOut, op,
+                                                 qscale, qtype, swap_channel);
     } else if (eleType.isF32()) {
       currentOut = this->insertDWConv<float>(rewriter, name, currentOut,
-                                            eleType, swap_channel);
+                                             eleType, swap_channel);
     } else {
       currentOut = this->insertDWConv<uint16_t>(rewriter, name, currentOut,
                                                 eleType, swap_channel);
@@ -288,8 +300,8 @@ private:
     std::vector<int64_t> slice_ends{-1, -1, -1, -1};
     std::vector<NamedAttribute> attrs;
     auto none = module::getNoneOp(opd.getDefiningOp());
-    attrs.emplace_back(
-      rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(slice_offset)));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "offset", rewriter.getI64ArrayAttr(slice_offset)));
     attrs.emplace_back(
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(slice_step)));
     attrs.emplace_back(
@@ -302,46 +314,57 @@ private:
     return newOp.getOutput();
   }
 
-  Value insertScaleLutOp(PatternRewriter &rewriter, std::string &name,
-                         Value opd, tpu::PreprocessOp op, double qscale,
-                         quant::UniformQuantizedType qtype, bool swap_channel) {
-    llvm::errs() << "Inserting ScalelutOp.\n";
-    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_scale_lut"));
-    std::vector<double> scales;
-    std::vector<double> bias;
-    for (int i = 0; i < c; i++) {
-      scales.push_back(this->scale[i]);
-      bias.push_back(-1 * this->scale[i] * this->mean[i]);
-    }
-    if (swap_channel) {
-      // keep order bgr
-      std::swap(scales[0], scales[2]);
-      std::swap(bias[0], bias[2]);
-    }
-    // quant
-    bool in_out_equal = true;
-    for (int i = 0; i < c; i++) {
-      scales[i] /= qscale;
-      bias[i] /= qscale;
-      if (scales[i] >= 0.99 && scales[i] <= 1.01 && bias[i] == 0.0) {
-        // in out will be same, no need do ScaleLut
-      } else {
-        in_out_equal = false;
+  Value insertLutOp(PatternRewriter &rewriter, double scales, double bias,
+                    quant::UniformQuantizedType qtype, std::string &name,
+                    Value opd) {
+    llvm::errs() << "Inserting LutOp.\n";
+    int table_h = 16;
+    int table_w = 16;
+    int table_hw = table_h * table_w;
+    int table_size = table_hw;
+    auto table_shape = std::vector<int64_t>{1, 1, table_h, table_w};
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_lut"));
+    auto type = RankedTensorType::get({n, c, h, w}, qtype);
+
+    auto none = module::getNoneOp(opd.getDefiningOp());
+    auto newOp =
+        rewriter.create<tpu::LutOp>(loc, type, ArrayRef<Value>{opd, none});
+
+    if (!this->sign && !module::isCV18xx()) {
+      std::vector<uint8_t> table(table_size, 0);
+      auto table_type =
+          RankedTensorType::get(table_shape, rewriter.getIntegerType(8, false));
+      for (int idx = 0; idx < table_hw; ++idx) {
+        table[idx] = to_uint8(idx * scales + bias, ROUNDING_HALF_UP);
       }
+      auto table_op =
+          top::WeightOp::create(newOp, name + "_table", table, table_type);
+      newOp->setOperand(1, table_op);
+    } else {
+      std::vector<int8_t> table(table_size, 0);
+      auto table_type =
+          RankedTensorType::get(table_shape, rewriter.getI8Type());
+      for (int idx = 0; idx < table_hw; ++idx) {
+        table[idx] = to_int8(idx * scales + bias, ROUNDING_HALF_UP);
+      }
+      auto table_op =
+          top::WeightOp::create(newOp, name + "_table", table, table_type);
+      newOp->setOperand(1, table_op);
     }
+    return newOp.getOutput();
+  }
 
-    // no need to insert scalelut when scale = 1 and bias = 0
-    if (in_out_equal && !this->sign) {
-      // set qtype to previous op in case next op is cast
-      opd.setType(RankedTensorType::get({n, c, h, w}, qtype));
-      return opd;
-    }
-
+  Value insertScaleLutOp(PatternRewriter &rewriter, std::vector<double> scales,
+                         std::vector<double> bias,
+                         quant::UniformQuantizedType qtype, std::string &name,
+                         Value opd) {
+    llvm::errs() << "Inserting ScalelutOp.\n";
     int table_h = 16;
     int table_w = 16;
     int table_hw = table_h * table_w;
     int table_size = c * table_hw;
     auto table_shape = std::vector<int64_t>{1, c, table_h, table_w};
+    auto loc = NameLoc::get(rewriter.getStringAttr(name + "_scale_lut"));
 
     std::vector<NamedAttribute> attrs;
     attrs.emplace_back(
@@ -385,6 +408,50 @@ private:
       newOp->setOperand(1, table_op);
     }
     return newOp.getOutput();
+  }
+
+  Value insertScaleLutOpOrLutOp(PatternRewriter &rewriter, std::string &name,
+                                Value opd, tpu::PreprocessOp op, double qscale,
+                                quant::UniformQuantizedType qtype,
+                                bool swap_channel) {
+    std::vector<double> scales;
+    std::vector<double> bias;
+    for (int i = 0; i < c; i++) {
+      scales.push_back(this->scale[i]);
+      bias.push_back(-1 * this->scale[i] * this->mean[i]);
+    }
+    if (swap_channel) {
+      // keep order bgr
+      std::swap(scales[0], scales[2]);
+      std::swap(bias[0], bias[2]);
+    }
+    // quant
+    bool in_out_equal = true;
+    bool s_m_equal = true;
+    for (int i = 0; i < c; i++) {
+      scales[i] /= qscale;
+      bias[i] /= qscale;
+      if (scales[i] != scales[0] || bias[i] != bias[0]) {
+        s_m_equal = false;
+      }
+      if (scales[i] >= 0.99 && scales[i] <= 1.01 && bias[i] == 0.0) {
+        // in out will be same, no need do ScaleLut
+      } else {
+        in_out_equal = false;
+      }
+    }
+    // no need to insert scalelut when scale = 1 and bias = 0
+    if (in_out_equal && !this->sign) {
+      // set qtype to previous op in case next op is cast
+      opd.setType(RankedTensorType::get({n, c, h, w}, qtype));
+      return opd;
+    } else if (s_m_equal) {
+      // scale and bias are the same, insert lutop
+      return this->insertLutOp(rewriter, scales[0], bias[0], qtype, name, opd);
+    } else {
+      // scale and bias are not same, insert scalelutop
+      return this->insertScaleLutOp(rewriter, scales, bias, qtype, name, opd);
+    }
   }
 
   template <typename T>
@@ -448,21 +515,25 @@ private:
     return newOp.getOutput();
   }
 
-  Value insertPackRawOp(PatternRewriter &rewriter, std::string &name,
-                          Value opd, double threshold, Type qtype) {
+  Value insertPackRawOp(PatternRewriter &rewriter, std::string &name, Value opd,
+                        double threshold, Type qtype) {
     llvm::errs() << "Inserting PackRawOp.\n";
     std::vector<NamedAttribute> attrs;
-    attrs.emplace_back(rewriter.getNamedAttr("white_level", rewriter.getF64FloatAttr(white_level)));
-    attrs.emplace_back(rewriter.getNamedAttr("black_level", rewriter.getF64FloatAttr(black_level)));
-    attrs.emplace_back(rewriter.getNamedAttr("threshold", rewriter.getF64FloatAttr(threshold)));
-    attrs.emplace_back(rewriter.getNamedAttr("channel_order", rewriter.getI64ArrayAttr(channel_order)));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "white_level", rewriter.getF64FloatAttr(white_level)));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "black_level", rewriter.getF64FloatAttr(black_level)));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "threshold", rewriter.getF64FloatAttr(threshold)));
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "channel_order", rewriter.getI64ArrayAttr(channel_order)));
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_pack_raw"));
     auto type = RankedTensorType::get({n, c, h, w}, qtype);
-    auto newOp = rewriter.create<tpu::PackRawOp>(loc, type, ArrayRef<Value>{opd}, attrs);
+    auto newOp =
+        rewriter.create<tpu::PackRawOp>(loc, type, ArrayRef<Value>{opd}, attrs);
     return newOp.getOutput();
   };
 };
-
 
 LogicalResult tpu::PreprocessOp::canonicalize(PreprocessOp op,
                                               PatternRewriter &rewriter) {
