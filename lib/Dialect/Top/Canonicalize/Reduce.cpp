@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include <algorithm>
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
@@ -210,8 +211,53 @@ struct ReduceToRPoolPattern : public OpRewritePattern<ReduceOp> {
   }
 };
 
+struct ReduceDiscontinuousPattern : public OpRewritePattern<ReduceOp> {
+  using OpRewritePattern::OpRewritePattern;
+  ReduceDiscontinuousPattern(MLIRContext *context, PatternBenefit benefit = 7)
+      : OpRewritePattern<ReduceOp>(context, benefit) {}
+  LogicalResult matchAndRewrite(ReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto axes_val = module::getI64Array(op.getAxes());
+    auto ishape = module::getShape(op.getInput());
+    auto max_idx = *std::max_element(axes_val->begin(), axes_val->end());
+    auto min_idx = *std::min_element(axes_val->begin(), axes_val->end());
+    std::vector<int64_t> axes;
+    for (int i = min_idx; i <= max_idx; i++) {
+      axes.push_back(i);
+
+      if (!std::count(axes_val->begin(), axes_val->end(), i) &&
+          ishape[i] != 1) {
+        return failure();
+      }
+    }
+    if (axes_val->size() == axes.size()) {
+      return failure();
+    }
+    if (op.getKeepdims()) {
+      op->setAttr("axes", rewriter.getI64ArrayAttr(axes));
+    } else {
+      std::string name = module::getName(op.getResult()).str();
+      auto loc = NameLoc::get(rewriter.getStringAttr(name + "_0"));
+      auto oshape = ishape.vec();
+      for (int j = axes.size() - 1; j >= 0; j--) {
+        oshape.erase(oshape.begin() + axes[j]);
+      }
+      auto type =
+          RankedTensorType::get(oshape, module::getElementType(op.getOutput()));
+      auto reduce_op = rewriter.create<top::ReduceOp>(
+          loc, type, ValueRange{op.getInput()}, op->getAttrs());
+      reduce_op->setAttr("axes", rewriter.getI64ArrayAttr(axes));
+      rewriter.replaceOpWithNewOp<ReshapeOp>(op, op.getType(),
+                                             reduce_op.getResult(),
+                                             std::vector<NamedAttribute>());
+    }
+    return success();
+  }
+};
+
 void ReduceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<ReduceToReshapePattern, ReduceToRPoolPattern,
-                 TopReduceTranspose, ReduceFusePattern>(context);
+  results
+      .insert<ReduceToReshapePattern, ReduceToRPoolPattern, TopReduceTranspose,
+              ReduceFusePattern, ReduceDiscontinuousPattern>(context);
 }
