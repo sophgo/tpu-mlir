@@ -16,7 +16,7 @@ void tpu::SwapDimInnerOp::codegen_global_bm1684() {
   auto in_addr = module::getAddress(getInput());
   auto out_addr = module::getAddress(getOutput());
   auto in_dims = module::getShape(getInput()).size();
-  assert(in_dims == 4);
+  assert(in_dims <= 4);
   auto offset = module::getI64Array(getOffset());
   int in_shape[MAX_SHAPE_DIMS];
   int axis_list[MAX_SHAPE_DIMS];
