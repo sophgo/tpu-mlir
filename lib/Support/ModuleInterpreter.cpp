@@ -110,6 +110,8 @@ void ModuleInterpreter::allocate_tensor_in_reused_mem() {
         all_weight_names.push_back(name);
       } else {
         for (auto v : op->getResults()) {
+          if (module::getNumElements(v) == 0)
+            continue;
           auto name = module::getName(v).str();
           all_tensor_names.push_back(name);
           value_map[name] = v;

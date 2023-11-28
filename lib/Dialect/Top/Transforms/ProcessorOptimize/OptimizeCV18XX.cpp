@@ -1704,6 +1704,25 @@ public:
   }
 };
 
+class ReshapeArgOp : public OpRewritePattern<top::ArgOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ArgOp op,
+                                PatternRewriter &rewriter) const override {
+    auto succ = false;
+    for (auto out : op->getResults()) {
+      if (!module::isNone(out) && out.hasOneUse()) {
+        auto nextOp = module::getNextOp(op);
+        if (isa<top::ReshapeOp, top::UnsqueezeOp, top::SqueezeOp>(nextOp)) {
+          out.setType(nextOp->getResult(0).getType());
+          rewriter.replaceAllUsesWith(nextOp->getResult(0), out);
+          succ = true;
+        }
+      }
+    }
+    return succ ? success() : failure();
+  }
+};
 } // namespace cv18xx
 
 namespace top {
@@ -1711,7 +1730,7 @@ using namespace cv18xx;
 void populateOptimizeCV18XXPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns->add<
-      ConvertArgmaxOp, ConvertConvPading, ConvertConvDilation,
+      ConvertArgmaxOp, ReshapeArgOp, ConvertConvPading, ConvertConvDilation,
       ConvertConv2dToMatMul, ConvertAddConstOp, ConvertDivOp, ConvertGatherOp,
       ConvertMaskedFillOp, ConvertMaxPoolWithMaskOp, ConvertMaxUnpoolOp,
       ConvertScaleOp, ConvertSubOp, ConvertInterpOp, ConvertUpsampleOp,
