@@ -32,7 +32,7 @@ struct TopArgReducefull : public OpRewritePattern<ArgOp> {
                           .Default(-1);
     auto arg_axis = op.getAxis();
     bool match = false;
-    auto reduce_method_exp = (arg_method == arg_max) ? reduce_max:reduce_min;
+    auto reduce_method_exp = (arg_method == arg_max) ? reduce_max : reduce_min;
     for (auto &use : formerOp->getUses()) {
       if (use.getOwner() == op)
         continue;
@@ -51,10 +51,21 @@ struct TopArgReducefull : public OpRewritePattern<ArgOp> {
       if (reduce_axes->at(0) != arg_axis)
         continue;
       match = true;
+      auto no_values = op.getValues().getType().isa<NoneType>();
       auto reop_out_shape = module::getShape(reop.getOutput());
       auto reop_out_type = module::getStorageType(reop.getOutput());
       auto new_type = RankedTensorType::get(reop_out_shape, reop_out_type);
       op.getValues().setType(new_type);
+      if (no_values) {
+        std::vector<Location> locs_v = {op.getIndices().getLoc()};
+        std::string out_values_name =
+            module::getName(op.getIndices()).str() + "_values";
+        auto values_loc = NameLoc::get(rewriter.getStringAttr(out_values_name));
+        locs_v.push_back(values_loc);
+        module::setLoc(op.getValues(), values_loc);
+        auto fused_loc = FusedLoc::get(getContext(), locs_v);
+        op->setLoc(fused_loc);
+      }
       reop.replaceAllUsesWith(op.getValues());
       if (reop.getOutput().getUsers().empty()) {
         rewriter.eraseOp(reop);

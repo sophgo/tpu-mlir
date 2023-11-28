@@ -1587,12 +1587,12 @@ class OnnxConverter(BaseConverter):
         axis = onnx_node.attrs.get('axis', 0)
         keepdims = onnx_node.attrs.get('keepdims', 1) != 0
         select_last_index = onnx_node.attrs.get('select_last_index', 0) != 0
-        loc_names = [onnx_node.name + '_indices', onnx_node.name + '_values']
+        loc_names = []
         out_shapes = [None, None]
         out_needs = [False, False]
         for idx, out in enumerate(onnx_node.outputs):
             if len(out) > 0 and self.check_need(out):
-                loc_names[idx] = "{}_{}".format(out, onnx_node.op_type)
+                loc_names.append("{}_{}".format(out, onnx_node.op_type))
                 out_needs[idx] = True
                 out_shapes[idx] = []
         out_op = top.ArgOp(*self.mlir.get_tensor_type(out_shapes),
