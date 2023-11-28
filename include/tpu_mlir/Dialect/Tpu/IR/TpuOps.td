@@ -2464,7 +2464,10 @@ def Tpu_GridSamplerOp : Tpu_Op<"GridSampler"> {
     AnyTensor:$grid,
     I64Attr:$mode,
     I64Attr:$padding_mode,
-    BoolAttr:$align_corners
+    BoolAttr:$align_corners,
+    DefaultValuedAttr<F64Attr, "-1">:$scale_min,
+    DefaultValuedAttr<F64Attr, "1">:$scale_max,
+    AnyTensorOrNone:$buffer
   );
 
   let results = (outs AnyTensor:$output);

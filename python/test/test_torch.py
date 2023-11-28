@@ -2909,7 +2909,7 @@ class TORCH_IR_TESTER(object):
                     return output_tensor
 
             self.trace_and_test([in_shape, grid_shape], Model(), [
-                                self.Desc('float32', -10, 10), self.Desc('float32', -1, 1)])
+                                self.Desc('float32', -10, 10), self.Desc('float32', -1.02, 1.02)])
 
         mode_list = [0, 1]
         padding_mode_list = [0, 1]
@@ -2924,6 +2924,12 @@ class TORCH_IR_TESTER(object):
                                        padding_mode, align_corners)
                     _test_grid_sampler((1, 3, 50, 50), (1, 1, 1, 2), mode,
                                        padding_mode, align_corners)
+        # max shape in Grouding Dino
+        _test_grid_sampler((8, 32, 100, 100), (8, 13294, 4, 2), 0,
+                            0, False)
+        # max shape for tpu grid_sample f16 (3 banks)
+        _test_grid_sampler((8, 32, 254, 94), (8, 13294, 4, 2), 0,
+                            0, False)
 
     #######################################################################
     # GridSampler3D

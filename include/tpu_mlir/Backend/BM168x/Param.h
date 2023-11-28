@@ -914,8 +914,8 @@ typedef struct group_norm_global_param {
 } group_norm_global_param_t;
 
 typedef enum {
-  GridSampleNearest = 0,
-  GridSampleBilinear = 1,
+  GridSampleBilinear = 0,
+  GridSampleNearest = 1,
 } GridSampleInterpMode;
 
 typedef enum {
@@ -925,9 +925,10 @@ typedef enum {
 } GridSamplePaddingMode;
 
 typedef struct {
-  unsigned long long input_addr;
-  unsigned long long grid_addr;
-  unsigned long long output_addr;
+  uint64_t input_addr;
+  uint64_t grid_addr;
+  uint64_t output_addr;
+  uint64_t buffer_addr;
   int input_n;
   int input_c;
   int input_h;
@@ -935,6 +936,8 @@ typedef struct {
   int output_h;
   int output_w;
   int align_corners;
+  float scale_min;
+  float scale_max;
   GridSampleInterpMode interp_mode;
   GridSamplePaddingMode padding_mode;
   int dtype;

@@ -20,9 +20,23 @@ void tpu::GridSamplerOp::codegen_global_bm1684x() {
   param.input_addr = module::getAddress(getInput());
   param.grid_addr = module::getAddress(getGrid());
   param.output_addr = module::getAddress(getOutput());
+  param.buffer_addr = module::getAddress(getBuffer());
 
   param.align_corners = getAlignCorners();
-  param.interp_mode = GridSampleNearest;
+  // param.interp_mode = GridSampleNearest;
+  int interp_mode_int = getMode();
+  GridSampleInterpMode interp_mode;
+  switch (interp_mode_int) {
+  case 0:
+    interp_mode = GridSampleBilinear;
+    break;
+  case 1:
+    interp_mode = GridSampleNearest;
+    break;
+  default:
+    llvm_unreachable("not implemented.");
+    break;
+  }
   int padding_mode_int = getPaddingMode();
   GridSamplePaddingMode padding_mode;
   switch (padding_mode_int) {
@@ -39,8 +53,10 @@ void tpu::GridSamplerOp::codegen_global_bm1684x() {
     llvm_unreachable("not implemented.");
     break;
   }
-
+  param.interp_mode = interp_mode;
   param.padding_mode = padding_mode;
+  param.scale_min = getScaleMin().convertToDouble();
+  param.scale_max = getScaleMax().convertToDouble();
 
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
