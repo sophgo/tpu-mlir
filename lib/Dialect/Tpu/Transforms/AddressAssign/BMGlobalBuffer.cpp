@@ -438,6 +438,27 @@ public:
   }
 };
 
+class GridSamplerBuffer : public OpRewritePattern<tpu::GridSamplerOp> {
+public:
+  using OpRewritePattern<tpu::GridSamplerOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::GridSamplerOp gridSamplerOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isBM1684XFamily()) {
+      return failure();
+    }
+    if (!module::isNone(gridSamplerOp.getBuffer())) {
+      return failure();
+    }
+    auto type = ::mlir::Builder(getContext()).getIntegerType(8);
+    int64_t buffer_size = 4 * 16 * 1024 * 64; // 4 banks
+    auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
+    auto buffer = tpu::BufferOp::create(gridSamplerOp, buffer_type);
+    gridSamplerOp.setOperand(gridSamplerOp.getNumOperands() - 1, buffer);
+    return success();
+  }
+};
+
 class DeformGatherGlobalBuffer : public OpRewritePattern<tpu::DeformGatherOp> {
 public:
   using OpRewritePattern<tpu::DeformGatherOp>::OpRewritePattern;
@@ -905,6 +926,7 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       SoftmaxGlobalBuffer,
       PermuteGlobalBuffer,
       InterpGlobalBuffer,
+      GridSamplerBuffer,
       Pool3DGlobalBuffer,
       NonZeroGlobalBuffer,
       DeformGatherGlobalBuffer,

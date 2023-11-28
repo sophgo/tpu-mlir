@@ -367,8 +367,8 @@ typedef enum {
 } PLATFORM_SUPPORT;
 
 typedef enum {
-    GridSampleNearest = 0,
-    GridSampleBilinear = 1,
+    GridSampleBilinear = 0,
+    GridSampleNearest = 1,
 } GridSampleInterpMode;
 
 typedef enum {

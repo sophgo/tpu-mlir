@@ -12,6 +12,19 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+static void LoweringGridSampler(PatternRewriter &rewriter,
+                                top::GridSamplerOp op, Type type) {
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  operands.push_back(op.getInput());
+  operands.push_back(op.getGrid());
+  auto noneOp = module::getNoneOp(op);
+  operands.push_back(noneOp); // buffer
+
+  rewriter.replaceOpWithNewOp<tpu::GridSamplerOp>(op, type, operands,
+                                                  op->getAttrs());
+}
+
 void GridSamplerLowering::LoweringF32(PatternRewriter &rewriter,
                                       top::GridSamplerOp op) const {
   int mode = op.getMode();
@@ -31,8 +44,7 @@ void GridSamplerLowering::LoweringF32(PatternRewriter &rewriter,
     rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, op.getOutput().getType(),
                                                    op->getOperands(), attrs);
   } else {
-    rewriter.replaceOpWithNewOp<tpu::GridSamplerOp>(op, op.getOutput().getType(),
-                                                  op->getOperands(), op->getAttrs());
+    LoweringGridSampler(rewriter, op, op.getOutput().getType());
   }
 }
 
@@ -55,6 +67,23 @@ void GridSamplerLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void GridSamplerLowering::LoweringF16(PatternRewriter &rewriter,
                                       top::GridSamplerOp op) const {
+  auto new_type = getQuantFloatType<mlir::Float16Type>(op.getOutput());
+  auto eu_num = 32;
+  auto type_len = 2;
+  auto in_shape = module::getShape(op.getInput());
+  auto dims = in_shape.size();
+  auto mode = op.getMode();
+  auto paddign_mode = op.getPaddingMode();
+  auto align_corners = op.getAlignCorners();
+  // grid_sample f16 for tpu only support (input_h + 2) * ALIGN(input_w + 2, tpu_eu_num(dtype)) <= 3 * 16KB (3 banks)
+  if ((in_shape[2] + 2) * align_up(in_shape[3] + 2, eu_num) * type_len <=  3 * 16 * 1024
+        && mode == 0
+        && paddign_mode == 0
+        && align_corners == 0
+        && dims == 4) {
+    LoweringGridSampler(rewriter, op, new_type);
+    return;
+  }
   LoweringF32(rewriter, op);
 }
 
