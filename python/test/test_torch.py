@@ -143,6 +143,7 @@ class TORCH_IR_TESTER(object):
             "To":               (self.test_To,                N, Y, Y, Y),
             "Type_as":          (self.test_Type_as,           N, Y, Y, Y),
             "Transpose":        (self.test_Transpose,         N, Y, Y, Y),
+            "Unbind":           (self.test_Unbind,            N, Y, Y, Y),
             "Upsample":         (self.test_Upsample,          N, Y, Y, Y),
             "Unary":            (self.test_Unary,             N, Y, Y, Y),
             "Unsqueeze":        (self.test_Unsqueeze,         N, Y, Y, Y),
@@ -3102,6 +3103,26 @@ class TORCH_IR_TESTER(object):
                 return y
 
         self.trace_and_test([(N, C, H, W)], Model())
+
+    #######################################################################
+    # Unbind
+    # ------------
+    def test_Unbind(self):
+        def _test_unbind(shape, dim):
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = torch.unbind(x, dim=dim)                
+                    return y
+            self.trace_and_test(shape, Model())
+
+        _test_unbind([(10, 10, 10, 10)], dim=0)
+        _test_unbind([(10, 10, 10, 10)], dim=1)
+        _test_unbind([(10, 10, 10, 10)], dim=2)
+        _test_unbind([(10, 10, 10, 10)], dim=3)
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     try:
