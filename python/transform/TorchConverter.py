@@ -216,6 +216,7 @@ class TorchConverter(BaseConverter):
             "aten::where": lambda node: self.convert_where_op(node),
             "aten::zeros": lambda node: self.convert_constant_fill_op(node, 0),
             "aten::zeros_like": lambda node: self.convert_constant_like_op(node, 0),
+            "aten::unbind": lambda node: self.convert_unbind_unpack(node),
             ###### prim #####
             "prim::Constant": lambda node: self.convert_constant(node),
             "prim::DictConstruct": lambda node: self.convert_dict_construct(node),
@@ -2269,3 +2270,22 @@ class TorchConverter(BaseConverter):
         indices = new_op.indices
         self.addOperand(torch_node.outputs[0], values)
         self.addOperand(torch_node.outputs[1], indices)
+        
+
+    def convert_unbind_unpack(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        axis = self.const_val[torch_node.inputs[1]]
+        split_size = 1
+        output_names = self.list_map[torch_node.outputs[0]]
+        num = len(output_names)
+        split_size = [split_size] * num
+        new_op = top.SplitOp([self.unranked_type] * num,
+                             op0,
+                             axis,
+                             num,
+                             split_size=split_size,
+                             loc=self.get_loc(output_names),
+                             ip=self.mlir.insert_point).outputs
+        for i in range(num):
+            self.addOperand(output_names[i], new_op[i])
+        self.tensor_list[torch_node.outputs[0]] = output_names
