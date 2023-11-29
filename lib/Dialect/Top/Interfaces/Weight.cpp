@@ -148,7 +148,7 @@ std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
     auto data_f8 = read<uint8_t>();
     auto bytes = data_f8->size();
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
-    memcpy(data_u8->data(), data_u8->data(), bytes);
+    memcpy(data_u8->data(), data_f8->data(), bytes);
     return std::move(data_u8);
   }
   dump();
