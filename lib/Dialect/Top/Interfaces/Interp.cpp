@@ -226,6 +226,18 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
     int64_t n, c, ih, iw, oh, ow;
     module::getNCHW(getInput(), n, c, ih, iw, false);
     module::getNCHW(getOutput(), n, c, oh, ow, false);
+    
+    // dynamic 
+    if(p.inputs[1]){
+        float* target_shape_ = p.inputs[1];
+        std::vector<int64_t> out_shape;
+        out_shape= {(int)target_shape_[0], (int)target_shape_[1], (int)target_shape_[2], (int)target_shape_[3]};
+        setScaleH(APFloat((double)out_shape[2] / ih));
+        setScaleW(APFloat((double)out_shape[3] / iw));
+        module::setShape(getOutput(), out_shape);
+        oh = out_shape[2];
+        ow = out_shape[3];
+    }
     PLATFORM_SUPPORT platform_sp;
     int coord = 0;
     bool align_corners = (getCoordMode() == "align_corners");
@@ -308,20 +320,31 @@ void top::InterpOp::shape_inference() {
     std::vector<int64_t> out_shape(in_shape);
     if (getMode() == "nearest" || getMode() == "linear") {
         if (!module::isNone(target_shape_)) {
-            auto target_shape = target_shape_.getDefiningOp<top::WeightOp>().read<float>();
-            if (nof_dims == 5) {
-                assert(target_shape->at(0) == in_shape[nof_dims - 3]); // upsample_nearest_3d only support scale_d = 1
-            }
-            out_shape[widx] = (int)target_shape->at(nof_dims - 2 - 1);
-            if (nof_dims >= 4) {
-                out_shape[hidx] =
-                    nof_dims >= 4 ? (int)target_shape->at(nof_dims - 2 - 2) : 1;
+            if (dyn_cast<top::WeightOp>(getTargetShape().getDefiningOp())){
+                auto target_shape = target_shape_.getDefiningOp<top::WeightOp>().read<float>();
+                if (nof_dims == 5) {
+                    assert(target_shape->at(0) == in_shape[nof_dims - 3]); // upsample_nearest_3d only support scale_d = 1
+                }
+                out_shape[widx] = (int)target_shape->at(nof_dims - 2 - 1);
+                if (nof_dims >= 4) {
+                    out_shape[hidx] =
+                        nof_dims >= 4 ? (int)target_shape->at(nof_dims - 2 - 2) : 1;
+                    setScaleH(APFloat((double)out_shape[hidx] / in_shape[hidx]));
+                } else {
+                    setScaleH(APFloat(1.0));
+                }
+                setScaleW(APFloat((double)out_shape[widx] / in_shape[widx]));
+                setOperand(1, module::getNoneOp(getOperation()));
+            } else if(in_shape.size() == 4){
+                // TODO
+                // Temporarily modify to use fixed shape for SAM
+                out_shape = {in_shape[0], in_shape[1], 2000, 2000};
                 setScaleH(APFloat((double)out_shape[hidx] / in_shape[hidx]));
-            } else {
-                setScaleH(APFloat(1.0));
+                setScaleW(APFloat((double)out_shape[widx] / in_shape[widx]));
+            } else{
+                llvm_unreachable("Not Implemented");
             }
-            setScaleW(APFloat((double)out_shape[widx] / in_shape[widx]));
-            setOperand(1, module::getNoneOp(getOperation()));
+
         } else if (nof_dims >= 4 && scale_h_ > 0 && scale_w_ > 0) {
             out_shape[hidx] = floor(out_shape[hidx] * scale_h_);
             out_shape[widx] = floor(out_shape[widx] * scale_w_);
