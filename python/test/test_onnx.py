@@ -305,11 +305,15 @@ class ONNX_IR_TESTER(object):
             self.support_quant_modes = ["f32", "int8"]
             self.support_asym = [False]
         elif self.chip == "sg2260":
+            ## current supported fp8 ops are limited, so use test_fp8 instead
             self.support_quant_modes.append("f8e4m3")
             self.support_quant_modes.append("f8e5m2")
         self.mode = mode.lower()
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
+        elif self.mode == "f8":
+            assert self.chip == "sg2260" and "only sg2260 support fp8"
+            self.quant_modes = ["f8e4m3", "f8e5m2"]
         else:
             if self.chip == "bm1688" or self.chip == "cv186x":
                 self.support_quant_modes.append("int4")
@@ -6453,6 +6457,76 @@ def test_int4(tester: ONNX_IR_TESTER):
     return error_cases
 
 
+def test_fp8(tester: ONNX_IR_TESTER):
+    tester.chip = "sg2260"
+    tester.mode = "f8"
+    tester.dynamic = False
+    tester.simple = False
+    tester.quant_modes = ["f8e4m3", "f8e5m2"]
+    tester.support_asym = [False]
+    Y, N = True, False
+    tester.test_cases = {
+        # case: [test,     sg2260_support]
+        "Add":  [tester.test_Add, N],
+        "AddBcast":  [tester.test_AddBcast, N],
+        "AddWeight": [tester.test_AddWeight, N],
+        "AvgPool1d": [tester.test_AvgPool1d, N],
+        "AvgPool2d": [tester.test_AvgPool2d, N],
+        "AvgPool3d": [tester.test_AvgPool3d, N],
+        "Conv2d": [tester.test_Conv2d, N],
+        "Gather": [tester.test_Gather, N],
+        "GlobalAveragePool": [tester.test_GlobalAveragePool, N],
+        "MatMul": [tester.test_MatMul, N],
+        "MatMul2": [tester.test_MatMul2, N],
+        "MaxPool1d": [tester.test_MaxPool1d, Y],
+        "MaxPool2d": [tester.test_MaxPool2d, Y],
+        "MaxPool3d": [tester.test_MaxPool3d, Y],
+        "Mul": [tester.test_Mul, N],
+        "MulConst": [tester.test_MulConst, Y],
+        "Transpose": [tester.test_Transpose, N],
+        "Reshape": [tester.test_Reshape, Y],
+        "Scale": [tester.test_Scale, N],
+        "Squeeze": [tester.test_Squeeze, N],
+        "Sub": [tester.test_Sub, N],
+        "SubConst": [tester.test_SubConst, N],
+        "Unsqueeze": [tester.test_Unsqueeze, Y],
+    }
+    for name in tester.test_cases.keys():
+        tester.test_cases[name] = tester.test_cases[name][:1] + [N] * 4 + tester.test_cases[name][1:]
+    if tester.multithread:
+        import multiprocessing
+        from utils.misc import collect_process
+        process_number = multiprocessing.cpu_count() // 2 + 1
+        processes = []
+        error_cases = multiprocessing.Manager().list()
+        success_cases = multiprocessing.Manager().list()
+        for case in tester.test_cases:
+            if tester.check_support(case):
+                p = multiprocessing.Process(target=test_one_case_in_all,
+                                            name=case,
+                                            args=(tester, case, error_cases, success_cases))
+                processes.append(p)
+            if len(processes) == process_number:
+                collect_process(processes, error_cases)
+                processes = []
+        if processes:
+            collect_process(processes, error_cases)
+            processes = []
+    else:
+        error_cases = []
+        success_cases = []
+        for case in test_cases:
+            if tester.check_support(case):
+                test_one_case_in_all(tester, case, error_cases, success_cases)
+    print("Success: {}".format(success_cases))
+    print("Failure: {}".format(error_cases))
+    if error_cases:
+        print("====== test_onnx.py --chip {} FP8 TEST Failed ======".format(tester.chip))
+    else:
+        print("====== test_onnx.py --chip {} FP8 TEST Success ======".format(tester.chip))
+    return error_cases
+
+
 def test_all(tester: ONNX_IR_TESTER):
     if tester.multithread:
         import multiprocessing
@@ -6498,8 +6572,8 @@ if __name__ == "__main__":
                         choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'sg2260'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
-    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8e4m3', 'f8e5m2'],
-                        help="chip platform name")
+    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8', 'f8e4m3', 'f8e5m2'],
+                        help="quantize modes")
     parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
@@ -6519,6 +6593,8 @@ if __name__ == "__main__":
     os.chdir(dir)
     if args.mode == 'int4':
         test_int4(tester)
+    elif args.mode == 'f8':
+        test_fp8(tester)
     elif args.case == "" or args.case.lower() == "all":
         test_all(tester)
     else:
