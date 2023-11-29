@@ -115,5 +115,5 @@ ArrayAttr tpu::PermuteOp::getIndexingMaps() {
     SmallVector<AffineMap> indexingMaps{identityMap, emptyMap, identityMap};
     return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
   }
-  return {};
+  return Builder(getContext()).getAffineMapArrayAttr({});
 };

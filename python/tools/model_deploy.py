@@ -256,7 +256,7 @@ if __name__ == '__main__':
                         help="do INT8 asymmetric quantization")
     parser.add_argument("--ignore_f16_overflow", action='store_true',
                         help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm, RMSNorm, AvgPool")
-    parser.add_argument("--chip", required=True, type=str.lower,
+    parser.add_argument("--chip", "--processor", required=True, type=str.lower,
                         choices=['bm1688', 'bm1684x', 'bm1684', 'sg2260', 'mars3',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'cpu'],
                         help="chip platform name")
@@ -315,8 +315,8 @@ if __name__ == '__main__':
 
     # yapf: enable
     args = parser.parse_args()
-    if args.quantize in ['W8F16', 'W4F16', 'W8BF16', 'W4BF16']:
-        assert(args.num_device == 1 and "W8A16 and W4A16 not support multi device for now")
+    if args.quantize in ['W4F16', 'W4BF16']:
+        assert(args.num_device == 1 and "W4A16 not support multi device for now")
     if args.q_group_size:
         assert(args.quantize in ['W4F16', 'W4BF16'] and "only W4A16 mode needs q_group_size")
 

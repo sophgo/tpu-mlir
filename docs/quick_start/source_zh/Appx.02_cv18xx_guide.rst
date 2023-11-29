@@ -1,10 +1,10 @@
 .. _onnx to cvimodel:
 
-附录02: CV18xx芯片使用指南
+附录02: CV18xx使用指南
 ===============================
 
 CV18xx支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数据类型方面,CV18xx支持BF16格式的量化
-和INT8格式的对称量化。本章节以CV183X芯片为例,介绍CV18xx系列芯片编译模型和运行runtime sample。
+和INT8格式的对称量化。本章节以CV183X为例,介绍CV18xx系列编译模型和运行runtime sample。
 
 编译yolov5模型
 ------------------
@@ -101,7 +101,7 @@ MLIR转BF16模型
    $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize BF16 \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_cv183x_bf16.cvimodel
@@ -132,7 +132,7 @@ MLIR转INT8模型
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -189,7 +189,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 四张图片对比如 :numref:`yolov5s_result1` ,由于运行环境不同, 最终的效果和精度与 :numref:`yolov5s_result1` 会有些差异。
 
-上述教程介绍了TPU-MLIR编译CV18xx系列芯片的ONNX模型的过程,caffe模型的转换过程可参考“编译Caffe模型”章节,只需要将对应的芯片名称换成实际的CV18xx芯片名称即可。
+上述教程介绍了TPU-MLIR编译CV18xx系列的ONNX模型的过程,caffe模型的转换过程可参考“编译Caffe模型”章节,只需要将对应的处理器名称换成实际的CV18xx名称即可。
 
 .. _merge weight:
 
@@ -237,7 +237,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --mlir yolov5s_bs1.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -271,7 +271,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --mlir yolov5s_bs2.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -359,7 +359,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 * cvitek_tpu_sdk_[cv186x|cv183x|cv182x|cv182x_uclibc|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv|cv181x_glibc_riscv64].tar.gz
 * cvimodel_samples_[cv186x|cv183x|cv182x|cv181x|cv180x].tar.gz
 
-将根据chip类型选择所需文件加载至EVB的文件系统,于evb上的linux console执行,以cv183x为例:
+将根据处理器类型选择所需文件加载至EVB的文件系统,于evb上的linux console执行,以cv183x为例:
 
 解压samples使用的model文件(以cvimodel格式交付),并解压TPU_SDK,并进入samples目录,执行测试,过程如下:
 

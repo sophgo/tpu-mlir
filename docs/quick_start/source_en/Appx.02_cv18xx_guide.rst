@@ -3,7 +3,7 @@
 Appendix.02: CV18xx Guidance
 =============================
 
-CV18xx series chip currently supports ONNX and Caffe models but not TFLite models. In terms of quantization, CV18xx supports BF16 and symmetric INT8 format. This chapter takes the CV183X as an example to introduce the compilation and runtime sample of the CV18xx series chip.
+CV18xx series processor currently supports ONNX and Caffe models but not TFLite models. In terms of quantization, CV18xx supports BF16 and symmetric INT8 format. This chapter takes the CV183X as an example to introduce the compilation and runtime sample of the CV18xx series processor.
 
 Compile yolov5 model
 --------------------
@@ -98,7 +98,7 @@ Convert the mlir file to the cvimodel of bf16, the operation is as follows:
    $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize BF16 \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_cv183x_bf16.cvimodel
@@ -128,7 +128,7 @@ To convert to symmetric INT8 cvimodel model, execute the following command:
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -188,7 +188,7 @@ The comparison of the four images is shown in :numref:`yolov5s_result1`, due to 
 
 
 
-The above tutorial introduces the process of TPU-MLIR deploying the ONNX model to the CV18xx series chip. For the conversion process of the Caffe model, please refer to the chapter "Compiling the Caffe Model". You only need to replace the chip name with the specific CV18xx chip.
+The above tutorial introduces the process of TPU-MLIR deploying the ONNX model to the CV18xx series processors. For the conversion process of the Caffe model, please refer to the chapter "Compiling the Caffe Model". You only need to replace the processors name with the specific CV18xx processors.
 
 .. _merge weight:
 
@@ -233,7 +233,7 @@ Use the yolov5s_cali_table generated in preceding sections, or generate calibrat
        --mlir yolov5s_bs1.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -267,7 +267,7 @@ Generate mlir fp32 file in the same workspace:
        --mlir yolov5s_bs2.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -356,7 +356,7 @@ The following files are required:
 * cvitek_tpu_sdk_[cv186x|cv183x|cv182x|cv182x_uclibc|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv|cv181x_glibc_riscv64].tar.gz
 * cvimodel_samples_[cv186x|cv183x|cv182x|cv181x|cv180x].tar.gz
 
-Select the required files according to the chip type and load them into the EVB file system.
+Select the required files according to the processor type and load them into the EVB file system.
 Execute them on the Linux console of EVB. Here, we take CV183x as an example.
 
 Unzip the model file (delivered in cvimodel format) and the TPU_SDK used by samples. Enter into the samples directory to execute the test.

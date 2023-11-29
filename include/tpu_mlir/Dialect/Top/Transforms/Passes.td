@@ -32,9 +32,9 @@ def Deinit : Pass<"deinit", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
 }
 
-def ChipAssign : Pass<"chip-assign", "ModuleOp"> {
+def ProcessorAssign : Pass<"processor-assign", "ModuleOp"> {
   let summary = "Assign chip type";
-  let constructor = "createChipAssignPass()";
+  let constructor = "createProcessorAssignPass()";
   let dependentDialects = ["TopDialect"];
   let options = [
     Option<"chip", "chip", "std::string", /*default=*/"",
@@ -42,9 +42,9 @@ def ChipAssign : Pass<"chip-assign", "ModuleOp"> {
   ];
 }
 
-def ChipOptimize : Pass<"chip-top-optimize", "ModuleOp"> {
+def ProcessorOptimize : Pass<"processor-top-optimize", "ModuleOp"> {
   let summary = "Before lowering, do some extra Op conversions for different chips";
-  let constructor = "createChipOptimizePass()";
+  let constructor = "createProcessorOptimizePass()";
   let dependentDialects = ["TopDialect"];
 }
 

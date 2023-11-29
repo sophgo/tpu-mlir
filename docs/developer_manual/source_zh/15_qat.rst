@@ -135,7 +135,7 @@ tpu-mlir QAT实现方案及特点
         --batch-size=192
         --epochs=1
         --lr=1e-4
-        --gpu=0
+        --cuda=0
         --pretrained
         --backend=sophgo_tpu
         --optim=sgd

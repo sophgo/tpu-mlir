@@ -57,10 +57,6 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
     if (op.getInputs().size() != 2) {
       return failure();
     }
-    if (module::isUniformQuantized(op.getOutput())) {
-      return failure();
-    }
-
     auto storage_type = module::getStorageType(op.getOutput());
     if (!storage_type.isF32()) {
       return failure();
@@ -109,6 +105,71 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
     attrs.push_back(rewriter.getNamedAttr(
         "relu_limit", op->getAttr("relu_limit").cast<FloatAttr>()));
     rewriter.replaceOpWithNewOp<MulConstOp>(op, output, new_input, attrs);
+    return success();
+  }
+};
+
+/**
+ * ConstantFill \
+ *            Mul =>  Any -> MulConst(const=WeightData)
+ * Any       /
+ *
+ */
+struct MulToMulConst2 : public OpRewritePattern<MulOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MulOp op,
+                                PatternRewriter &rewriter) const override {
+
+    if (op.getInputs().size() != 2) {
+      return failure();
+    }
+    auto stype = module::getStorageType(op.getOutput());
+    if (!stype.isF32()) {
+      return failure();
+    }
+    auto op0 = op.getInputs()[0].getDefiningOp();
+    auto op1 = op.getInputs()[1].getDefiningOp();
+    Operation *const_op = nullptr;
+    Operation *input_op = nullptr;
+    if (isa<top::ConstantFillOp>(op0)) {
+      const_op = op0;
+      input_op = op1;
+    } else if (isa<top::ConstantFillOp>(op1)) {
+      const_op = op1;
+      input_op = op0;
+    } else {
+      return failure();
+    }
+    auto new_input = input_op->getResult(0);
+    auto constOp = cast<top::ConstantFillOp>(const_op);
+    auto in_shape = module::getShape(new_input);
+    auto c_shape = module::getShape(constOp.getOutput());
+    if (module::getNumElements(constOp.getOutput()) == 1) {
+    } else if (in_shape.size() == c_shape.size()) {
+      for (auto it : llvm::zip(in_shape, c_shape)) {
+        if (std::get<0>(it) < std::get<1>(it)) {
+          // shape broadcast
+          return failure();
+        }
+      }
+    } else {
+      return failure();
+    }
+    auto const_val = constOp.getValue().convertToDouble();
+    if (const_val == 1.0) {
+      rewriter.replaceOp(op, {new_input});
+      return success();
+    }
+    Type otype = op.getOutput().getType();
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(rewriter.getNamedAttr("const_val",
+                                          rewriter.getF64FloatAttr(const_val)));
+    attrs.push_back(rewriter.getNamedAttr(
+        "do_relu", op->getAttr("do_relu").cast<BoolAttr>()));
+    attrs.push_back(rewriter.getNamedAttr(
+        "relu_limit", op->getAttr("relu_limit").cast<FloatAttr>()));
+    rewriter.replaceOpWithNewOp<MulConstOp>(op, otype, new_input, attrs);
     return success();
   }
 };
@@ -289,6 +350,6 @@ struct MergeGelu : public OpRewritePattern<MulOp> {
 
 void MulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<MulToSiLU, MulToMulConst, MulToScale, MulMerge, MergeGelu>(
-      context);
+  results.insert<MulToSiLU, MulToMulConst, MulToMulConst2, MulToScale, MulMerge,
+                 MergeGelu>(context);
 }

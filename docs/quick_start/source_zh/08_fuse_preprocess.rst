@@ -2,7 +2,7 @@
 
 使用TPU做前处理
 ==================
-目前TPU-MLIR支持的两个主要系列芯片BM168x与CV18xx均支持将图像常见的预处理加入到模型中进行计算。开发者可以在模型编译阶段,通过编译选项传递相应预处理参数,由编译器直接在模型运算前插⼊相应前处理算⼦,⽣成的bmodel或cvimodel即可以直接以预处理前的图像作为输⼊,随模型推理过程使⽤TPU处理前处理运算。
+目前TPU-MLIR支持的两个主要系列BM168x与CV18xx均支持将图像常见的预处理加入到模型中进行计算。开发者可以在模型编译阶段,通过编译选项传递相应预处理参数,由编译器直接在模型运算前插⼊相应前处理算⼦,⽣成的bmodel或cvimodel即可以直接以预处理前的图像作为输⼊,随模型推理过程使⽤TPU处理前处理运算。
 
 .. list-table:: 预处理类型支持情况
    :align: center
@@ -80,7 +80,7 @@
      - False
      - True
 
-其中“YUV*”类格式为CV18xx系列芯片特有的输入格式。当customization_format中颜色通道的顺序与模型输入不同时, 将会进行通道转换操作。若指令中未设置customization_format参数,则根据使用model_transform工具时定义的pixel_format和channel_format参数自动获取对应的customization_format。
+其中“YUV*”类格式为CV18xx系列特有的输入格式。当customization_format中颜色通道的顺序与模型输入不同时, 将会进行通道转换操作。若指令中未设置customization_format参数,则根据使用model_transform工具时定义的pixel_format和channel_format参数自动获取对应的customization_format。
 
 模型部署样例
 ------------
@@ -98,7 +98,7 @@ BM1684X部署
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \
@@ -117,7 +117,7 @@ CV18xx部署
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \
@@ -136,7 +136,7 @@ VPSS作为输入
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \

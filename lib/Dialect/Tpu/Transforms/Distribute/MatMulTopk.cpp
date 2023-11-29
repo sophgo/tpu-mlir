@@ -127,6 +127,7 @@ void topKSplit(MatMulTy mm, PatternRewriter &rewriter,
   }
   end_op->setOperands(t_operands);
   eraseForward(rewriter, mm);
+  module::removeUnusedOp();
 }
 
 template void topKSplit(tpu::MatMulOp mm, PatternRewriter &rewriter,

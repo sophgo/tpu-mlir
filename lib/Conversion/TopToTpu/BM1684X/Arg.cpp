@@ -52,7 +52,12 @@ void ArgLowering::LoweringINT4(PatternRewriter &rewriter, top::ArgOp op,
 }
 
 void ArgLowering::LoweringF8(PatternRewriter &rewriter, top::ArgOp op) const {
-  llvm_unreachable("FIXME: not implement");
+  // llvm_unreachable("FIXME: not implement");
+  if (module::getMode() == module::Mode::F8E4M3) {
+    LoweringArg(rewriter, op, getQuantF8E4M3Type(op.getValues()));
+  } else if (module::getMode() == module::Mode::F8E5M2) {
+    LoweringArg(rewriter, op, getQuantF8E5M2Type(op.getValues()));
+  }
 }
 
 void ArgLowering::LoweringQuantized(PatternRewriter &rewriter,

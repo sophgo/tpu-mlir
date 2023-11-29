@@ -20,8 +20,8 @@ namespace top {
 
 std::unique_ptr<OperationPass<ModuleOp>> createInitPass();
 std::unique_ptr<OperationPass<ModuleOp>> createDeinitPass();
-std::unique_ptr<OperationPass<ModuleOp>> createChipAssignPass();
-std::unique_ptr<OperationPass<ModuleOp>> createChipOptimizePass();
+std::unique_ptr<OperationPass<ModuleOp>> createProcessorAssignPass();
+std::unique_ptr<OperationPass<ModuleOp>> createProcessorOptimizePass();
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
 std::unique_ptr<OperationPass<ModuleOp>> createQDQConvertPass();
 std::unique_ptr<OperationPass<ModuleOp>> createExtraOptimizePass();

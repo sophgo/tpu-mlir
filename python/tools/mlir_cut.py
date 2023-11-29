@@ -164,7 +164,7 @@ def cut_mlir(
                     f"tpuc-opt {basename}",
                     "--mlir-disable-threading",
                     '''--strip-io-quant="quant_input=False quant_output=False"''',
-                    "--chip-tpu-optimize",
+                    "--processor-tpu-optimize",
                     "--distribute='num_device=1'",
                     "--weight-reorder",
                     '''--subnet-divide="dynamic=False"''',

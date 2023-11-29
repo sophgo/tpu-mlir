@@ -10,6 +10,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::MulConstOp::init(InferenceParameter &p) { return success(); }
@@ -29,6 +30,10 @@ LogicalResult tpu::MulConstOp::inference(InferenceParameter &p) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
+    } else if (out_type.isFloat8E4M3FN()) {
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0);
+    } else if (out_type.isFloat8E5M2()) {
+      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
     }
   } else if (module::isUniformQuantized(getOutput())) {
     if (asym == false) {

@@ -188,7 +188,7 @@ void ProfileCtx::log_local_layer(Operation *op, int64_t n_step,
   }
 }
 
-void ProfileCtx::set_profile_start() {
+void ProfileCtx::set_profile_start(int subnet_id) {
   if (!get_enable_profile()) {
     return;
   }
@@ -207,14 +207,14 @@ void ProfileCtx::set_profile_start() {
 
   fprintf(get_fp_profile(), "[bmprofile] is_mlir=1\n");
   fprintf(get_fp_profile(), "...Start Profile Log...\n");
-  log_str("[bmprofile] start to run subnet_id=%d\n", get_cur_net_idx());
+  log_str("[bmprofile] start to run subnet_id=%d\n", subnet_id);
 }
 
-void ProfileCtx::set_profile_end() {
+void ProfileCtx::set_profile_end(int subnet_id) {
   if (!get_enable_profile()) {
     return;
   }
-  log_str("[bmprofile] end to run subnet_id=%d\n", get_cur_net_idx());
+  log_str("[bmprofile] end to run subnet_id=%d\n", subnet_id);
   if (fp_profile[cur_net_idx]) {
     fclose(fp_profile[cur_net_idx]);
     // disable profile to mitigate leaking, set "b_enable_profile" to false.

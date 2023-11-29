@@ -188,6 +188,35 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     roip_param.output.shape = module::getShape(getOutputs()[0]);
     ROIPoolingFunc roip_func(roip_param);
     roip_func.invoke();
+  } else if (func_name == "roi_align") {
+    RoiAlignParam roia_param;
+    mlir::DictionaryAttr param = this->getParam().value();
+    roia_param.pooled_h = param.get("output_height").cast<IntegerAttr>().getInt();
+    roia_param.pooled_w = param.get("output_width").cast<IntegerAttr>().getInt();
+    roia_param.sampling_ratio = param.get("sampling_ratio").cast<IntegerAttr>().getInt();
+    roia_param.spatial_scale = param.get("spatial_scale").cast<FloatAttr>().getValueAsDouble();
+    roia_param.aligned = param.get("align_corners").cast<BoolAttr>().getValue();
+    std::string str_roia_type =
+            param.get("mode").cast<StringAttr>().getValue().str();
+    if (str_roia_type == "Avg") {
+      roia_param.mode = RoiAlignAvgMode;
+    } else {
+      llvm_unreachable("code type wrong");
+    }
+    tensor_list_t input_list, roi_list;
+    input_list.ptr = p.inputs[0];
+    input_list.size = module::getNumElements(getInputs()[0]);
+    input_list.shape = module::getShape(getInputs()[0]);
+    roia_param.inputs.emplace_back(std::move(input_list));
+    roi_list.ptr = p.inputs[0];
+    roi_list.size = module::getNumElements(getInputs()[1]);
+    roi_list.shape = module::getShape(getInputs()[1]);
+    roia_param.inputs.emplace_back(std::move(roi_list));
+    roia_param.output.ptr = p.outputs[0];
+    roia_param.output.size = module::getNumElements(getOutputs()[0]);
+    roia_param.output.shape = module::getShape(getOutputs()[0]);
+    RoiAlignFunc roia_func(roia_param);
+    roia_func.invoke();
   } else if (func_name == "frcn_detection") {
     FrcnDetParam frcn_param;
     mlir::DictionaryAttr param = this->getParam().value();

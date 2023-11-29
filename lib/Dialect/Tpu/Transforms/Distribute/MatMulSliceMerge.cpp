@@ -234,7 +234,7 @@ void sliceMergeSplit(MatMulTy mm0, PatternRewriter &rewriter,
   end_op->setOperands(end_operands);
   if (biasAdd) {
     auto dis_op = cast<tpu::DistributionEndOp>(end_op);
-    auto dis_out = dis_op.getOutput();
+    auto dis_out = dis_op.getOutputs()[0];
     rewriter.setInsertionPointAfter(end_op);
     auto new_loc = module::getLocLike(dis_out, "add");
     auto add_op = rewriter.create<tpu::AddOp>(new_loc, dis_out.getType(),

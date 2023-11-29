@@ -16,7 +16,7 @@
      - 说明
    * - cv183x/cv182x/cv181x/cv180x
      - xxx.cvimodel
-     - 请参考: :ref:`CV18xx芯片使用指南 <onnx to cvimodel>`
+     - 请参考: :ref:`CV18xx使用指南 <onnx to cvimodel>`
    * - 其它
      - xxx.bmodel
      - :ref:`继续本章节 <onnx to bmodel>`
@@ -177,7 +177,7 @@ MLIR转F16模型
    $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --model yolov5s_1684x_f16.bmodel
@@ -200,7 +200,7 @@ MLIR转F16模型
    * - quantize
      - 是
      - 指定默认量化类型, 支持F32/F16/BF16/INT8
-   * - chip
+   * - processor
      - 是
      - 指定模型将要用到的平台, 支持bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x
    * - calibration_table
@@ -274,7 +274,7 @@ MLIR转INT8模型
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -382,7 +382,7 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
    [BMRT][print_array:702] INFO:  --> output ref_data: < 0 0 0 0 0 0 0 0 0 0 0 0 0 0...
    [BMRT][bmrt_test:982] INFO:reading output #2, bytesize=408000
    [BMRT][print_array:702] INFO:  --> output ref_data: < 0 0 0 0 0 0 0 0 0 0 0 0 0 0...
-   [BMRT][bmrt_test:1014] INFO:net[yolov5s] stage[0], launch total time is 4122 us (npu 4009 us, cpu 113 us)
+   [BMRT][bmrt_test:1014] INFO:net[yolov5s] stage[0], launch total time is 4122 us (npu 4009 normal 113 us)
    [BMRT][bmrt_test:1017] INFO:+++ The network[yolov5s] stage[0] output_data +++
    [BMRT][print_array:702] INFO:output data #0 shape: [1 3 80 80 85 ] < 0.301003    ...
    [BMRT][print_array:702] INFO:output data #1 shape: [1 3 40 40 85 ] < 0 0.228689  ...
@@ -396,7 +396,7 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 从上面输出可以看到以下信息:
 
 1. 05-08行是bmodel的网络输入输出信息
-2. 19行是在TPU上运行的时间, 其中TPU用时4009us, CPU用时113us。这里CPU用时主要是指在HOST端调用等待时间
+2. 19行是在TPU上运行的时间, 其中TPU用时4009us, 非加速用时113us。这里非加速用时主要是指在HOST端调用等待时间
 3. 24行是加载数据到NPU的DDR的时间
 4. 25行相当于19行的总时间
 5. 26行是输出数据取回时间

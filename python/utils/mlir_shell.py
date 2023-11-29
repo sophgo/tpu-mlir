@@ -73,7 +73,7 @@ def mlir_lowering(top_mlir: str,
                   ignore_f16_overflow: bool = False,
                   do_winograd: bool = False,
                   q_group_size: int = 0):
-    cmd = ["tpuc-opt", top_mlir, "--chip-assign=\"chip={}\"".format(chip.lower())]
+    cmd = ["tpuc-opt", top_mlir, "--processor-assign=\"chip={}\"".format(chip.lower())]
     mode = mode.upper()
     asymmetric = False # TODO: always using symmetric, as asymmetric not good
     if cali_table != None:
@@ -81,7 +81,7 @@ def mlir_lowering(top_mlir: str,
             cali_table, asymmetric)
         cmd.extend([cali_param])
     #do extra conversion for differnet chips
-    cmd.extend(["--chip-top-optimize"])
+    cmd.extend(["--processor-top-optimize"])
     if fuse_preprocess:
         fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={} align={}\"".format(
             mode, customization_format, aligned_input)
@@ -141,7 +141,7 @@ def mlir_to_model(tpu_mlir: str,
         tpu_mlir,
         "--mlir-disable-threading",
         strip_io_quant_param,
-        "--chip-tpu-optimize",
+        "--processor-tpu-optimize",
         distribute_param,
         "--weight-reorder",
         op_divide_param,

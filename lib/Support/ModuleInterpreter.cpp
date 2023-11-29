@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Support/ModuleInterpreter.h"
 #include "progressbar.hpp"
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/GmemAllocator.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <algorithm>
@@ -992,6 +993,11 @@ void ModuleInterpreter::invoke_all_in_mem(bool express_type) {
         for (auto &data : *mem) {
           data = (data - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
         }
+      } else if (module::isCalibratedType(value) &&
+                 module::getStorageType(value).isFloat8E4M3FN()) {
+        auto qtype = module::getCalibratedType(value);
+        for (auto &data : *mem)
+          data = (data * qtype.getMax() / get_f8e4m3_max());
       }
     }
   }
@@ -1182,6 +1188,11 @@ void ModuleInterpreter::invoke_part_in_mem(bool express_type) {
         for (auto &data : *mem) {
           data = (data - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
         }
+      } else if (module::isCalibratedType(value) &&
+                 module::getStorageType(value).isFloat8E4M3FN()) {
+        auto qtype = module::getCalibratedType(value);
+        for (auto &data : *mem)
+          data = (data * (float)qtype.getMax() / get_f8e4m3_max());
       }
     }
   }
@@ -1327,6 +1338,15 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
       *(&(act->at(i)) + offset) = qtype.isSigned() ? to_int8(d) : to_uint8(d);
     }
     // std::cout << "is interger" << std::endl;
+  } else if (is_integer == false && module::isCalibratedType(value) &&
+             module::getStorageType(value).isFloat8E4M3FN()) {
+    double scale = module::getCalibratedType(value).getMax() / get_f8e4m3_max();
+    F8E4M3((const float *)data, act->data() + offset, tensor_size, 1 / scale);
+
+  } else if (is_integer == false && module::isCalibratedType(value) &&
+             module::getStorageType(value).isFloat8E4M3FN()) {
+    F8E5M2((const float *)data, act->data() + offset, tensor_size, 1.);
+
   } else {
     memcpy(act->data() + offset, data, size);
   }
@@ -1375,6 +1395,18 @@ ModuleInterpreter::getTensor(const std::string &name, bool express_type) {
         data_fp32->data()[i] =
             (*(mem->data() + offset + i) - (float)qtype.getZeroPoint()) *
             (float)qtype.getScale();
+      }
+      return std::move(data_fp32);
+    } else if (module::isCalibratedType(value) &&
+               module::getStorageType(value).isFloat8E4M3FN()) {
+      int i = 0;
+      auto mem = mem_map.at(name);
+      auto data_fp32 = std::make_shared<std::vector<float>>(tensor_size);
+      auto qtype = module::getCalibratedType(value);
+      double scale = qtype.getMax();
+      for (i = 0; i < tensor_size; i++) {
+        data_fp32->data()[i] =
+            (*(mem->data() + offset + i) * (float)scale / get_f8e4m3_max());
       }
       return std::move(data_fp32);
     }
@@ -1432,6 +1464,19 @@ bool ModuleInterpreter::getTensorQuantInfo(const std::string name,
     } else if (stype.isF32()) {
       dtype = std::string("F32");
       scale = 1.0;
+      zp = 0;
+    } else if (stype.isFloat8E4M3FN()) {
+      dtype = std::string("F8E4");
+      scale = 1.0;
+      zp = 0;
+    } else if (stype.isFloat8E5M2()) {
+      dtype = std::string("F8E5");
+      scale = 1.0;
+      // if (module::isCalibratedType(value) &&
+      //     module::getStorageType(value).isFloat8E4M3FN()) {
+      //   auto qtype = module::getCalibratedType(value);
+      //   scale = qtype.getMax() / get_f8e4m3_max();
+      // }
       zp = 0;
     } else {
       dtype = std::string("NA");

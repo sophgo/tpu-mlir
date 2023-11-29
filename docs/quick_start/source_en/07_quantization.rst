@@ -131,7 +131,7 @@ Step 3: To model
        --mlir yolov3_tiny.mlir \
        --quantize INT8 \
        --calibration_table yolov3_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --model yolov3_int8.bmodel
 
 Step 4: Run model
@@ -190,7 +190,7 @@ Use ``run_qtable`` to gen qtable, parameters as below:
    * - calibration_table
      - Y
      - Name of calibration table file
-   * - chip
+   * - processor
      - Y
      - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - fp_type
@@ -230,7 +230,7 @@ The operation is as follows:
        --calibration_table yolov3_cali_table \
        --min_layer_cos 0.999 \ #If the default 0.99 is used here, the program detects that the original int8 model already meets the cos of 0.99 and simply stops searching
        --expected_cos 0.9999 \
-       --chip bm1684x \
+       --processor bm1684x \
        -o yolov3_qtable
 
 The final output after execution is printed as follows:
@@ -265,7 +265,7 @@ Also ``full_loss_table.txt`` is generated, context as blow:
 .. code-block:: shell
     :linenos:
 
-    # chip: bm1684x  mix_mode: F16
+    # platform: bm1684x  mix_mode: F16
     ###
     No.0   : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu                Cos: 0.994063
     No.1   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu                Cos: 0.997447
@@ -299,7 +299,7 @@ Step 2: Gen mix precision model
        --quantize INT8 \
        --quantize_table yolov3_qtable \
        --calibration_table yolov3_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --model yolov3_mix.bmodel
 
 Step 3: run mix precision model
@@ -400,7 +400,7 @@ Step 3: To F32 bmodel
    $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize F32 \
-       --chip bm1684 \
+       --processor bm1684 \
        --model mobilenet_v2_1684_f32.bmodel
 
 Step 4: To INT8 model
@@ -411,7 +411,7 @@ Step 4: To INT8 model
    $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
-       --chip bm1684 \
+       --processor bm1684 \
        --calibration_table mobilenet_v2_cali_table \
        --model mobilenet_v2_bm1684_int8_sym.bmodel
 
@@ -491,7 +491,7 @@ Use ``run_sensitive_layer`` and bad cases to search sensitive layers, parameters
    * - calibration_table
      - Y
      - Name of calibration table file
-   * - chip
+   * - processor
      - Y
      - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - fp_type
@@ -534,7 +534,7 @@ Use ``run_sensitive_layer`` and bad cases to search sensitive layers, parameters
      - N
      - float type of mix precision
 
-In this example, 100 images are used for calibration and 30 images are used for inference, and the command is as follows (for the chip of CV18xx series, set the chip to the corresponding chip name) :
+In this example, 100 images are used for calibration and 30 images are used for inference, and the command is as follows (for the processor of CV18xx series, set the processor to the corresponding processor name):
 
 The operation is as follows:
 
@@ -545,7 +545,7 @@ The operation is as follows:
        --input_num 100 \
        --inference_num 30 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684 \
+       --processor bm1684 \
        --post_process post_process_func.py \
        -o mobilenet_v2_qtable
 
@@ -624,7 +624,7 @@ Step 2: Gen mix precision model
    $ model_deploy \
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
-       --chip bm1684 \
+       --processor bm1684 \
        --calibration_table new_cali_table \
        --quantize_table mobilenet_v2_qtable \
        --model mobilenet_v2_bm1684_int8_mix.bmodel
@@ -669,9 +669,8 @@ For YOLO series models, the last three convolutional layers often have significa
    $ fp_forward \
        yolov5s.mlir \
        --quantize INT8 \
-       --chip bm1684x \
+       --processor bm1684x \
        --fpfwd_outputs 474_Conv,326_Conv,622_Conv\
-       --chip bm1684x \
        -o yolov5s_qtable
 
 Opening the file "yolov5s_qtable" will reveal that the relevant layers have been added to the qtable.
@@ -685,7 +684,7 @@ Generating the Mixed-Precision Model
       --quantize INT8 \
       --calibration_table yolov5s_cali_table \
       --quantize_table yolov5s_qtable \
-      --chip bm1684x \
+      --processor bm1684x \
       --test_input yolov5s_in_f32.npz \
       --test_reference yolov5s_top_outputs.npz \
       --tolerance 0.85,0.45 \
@@ -739,7 +738,7 @@ Parameter Description
    * - (None)
      - Y
      - mlir file
-   * - chip
+   * - processor
      - Y
      - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - fpfwd_inputs

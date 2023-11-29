@@ -2,7 +2,7 @@
 
 Use TPU for Preprocessing
 ==============================
-At present, the two main series of chips supported by TPU-MLIR are BM168x and CV18xx. Both of them support common image preprocessing fusion. The developer can pass the preprocessing arguments during the compilation process, and the compiler will directly insert the corresponding preprocessing operators into the generated model. The generated bmodel or cvimodel can directly use the unpreprocessed image as input and use TPU to do the preprocessing.
+At present, the two main series of processors supported by TPU-MLIR are BM168x and CV18xx. Both of them support common image preprocessing fusion. The developer can pass the preprocessing arguments during the compilation process, and the compiler will directly insert the corresponding preprocessing operators into the generated model. The generated bmodel or cvimodel can directly use the unpreprocessed image as input and use TPU to do the preprocessing.
 
 .. list-table:: Supported Preprocessing Type
    :align: center
@@ -78,7 +78,7 @@ To integrate preprocessing into the model, you need to speficy the "--fuse_prepr
      - False
      - True
 
-The "YUV*" type format is the special input format of CV18xx series chips. When the order of the color channels in the customization_format is different from the model input, a channel conversion operation will be performed. If the customization_format argument is not specified, the corresponding customization_format will be automatically set according to the pixel_format and channel_format arguments defined when using the model_transform tool.
+The "YUV*" type format is the special input format of CV18xx series processors. When the order of the color channels in the customization_format is different from the model input, a channel conversion operation will be performed. If the customization_format argument is not specified, the corresponding customization_format will be automatically set according to the pixel_format and channel_format arguments defined when using the model_transform tool.
 
 Model Deployment Example
 -------------------------
@@ -96,7 +96,7 @@ The command to generate the preprocess-fused symmetric INT8 quantized bmodel mod
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \
@@ -115,7 +115,7 @@ The command to generate the preprocess-fused symmetric INT8 quantized cvimodel m
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \
@@ -133,7 +133,7 @@ When the input data comes from the video post-processing module VPSS provided by
        --mlir mobilenet_v2.mlir \
        --quantize INT8 \
        --calibration_table mobilenet_v2_cali_table \
-       --chip cv183x \
+       --processor cv183x \
        --test_input ../image/cat.jpg \
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \

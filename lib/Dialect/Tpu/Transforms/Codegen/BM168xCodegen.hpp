@@ -60,8 +60,11 @@ private:
   void codegen_ir(Operation *op, SubnetIr *subnet_ir_);
   SmallString<128> gen_op_id(Operation *op);
   bool isHiddenTensor(StringRef name);
+  bool isSpecialInputTensor(StringRef name);
+  bool isSpecialOutputTensor(StringRef name);
   void checkAndUpdateHidden(const std::vector<Value> &inputs,
                             const std::vector<Value> &outputs);
+  void updateAllHidden();
 
 private:
   StringRef state;
@@ -72,6 +75,8 @@ private:
   std::shared_ptr<std::vector<StringRef>> input_names;
   std::shared_ptr<std::vector<StringRef>> output_names;
   std::vector<StringRef> hidden_names;
+  std::vector<StringRef> special_in_names;
+  std::vector<StringRef> special_out_names;
   uint32_t current_step = 0;
   uint32_t current_device = 0;
   std::shared_ptr<bmodel::ModelGen> model_gen;

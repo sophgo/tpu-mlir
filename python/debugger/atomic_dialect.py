@@ -7,6 +7,7 @@
 #
 # ==============================================================================
 
+from enum import Enum
 from typing import Any, List, Tuple
 from collections import namedtuple
 from .disassembler import (
@@ -25,6 +26,7 @@ from .target_common import (
     use_backend,
 )
 from .target_1688.context import BM1688Context
+from .target_2260.context import SG2260Context
 import functools
 import textwrap
 
@@ -44,15 +46,24 @@ def BModel2MLIR(bmodel_net: BModel):
 
 
 def decode_cmdgroup(
-    context: BModelContext, cmd_group: CmdGroup, subnet_id: int, core_id=0
+    context: BModelContext,
+    cmd_group: CmdGroup,
+    subnet_id: int,
+    core_id=0,
+    transfer_dep_id=False,
 ) -> StaticCmdGroup:
     context = context
     decoder = context.decoder
 
     tiu = decoder.decode_tiu_cmds(cmd_group.tiu_cmd, core_id=core_id)
     dma = decoder.decode_dma_cmds(cmd_group.dma_cmd, core_id=core_id)
+    if isinstance(context, SG2260Context):
+        cmdgroup = StaticCmdGroup(
+            tiu, dma, context.merge_instruction(tiu, dma, transfer_dep_id)
+        )
+    else:
+        cmdgroup = StaticCmdGroup(tiu, dma, context.merge_instruction(tiu, dma))
 
-    cmdgroup = StaticCmdGroup(tiu, dma, context.merge_instruction(tiu, dma))
     # hack injection subnet_id
     for cmd in cmdgroup.all:
         cmd.subnet_id = subnet_id
@@ -126,69 +137,100 @@ class Block(Node):
         self.cpu_cmds = []
         self.ir_cmds = []
 
+        input_memref = [i.memref for i in subnet.input_tensor]
+        output_memref = [i.memref for i in subnet.output_tensor]
+        self.args = subnet.input_tensor
+        self.terminator = subnet.output_tensor
+        self.successor = subnet.next_subnet_ids
+
         if subnet.run_mode == subnet.run_mode.CPU:
             self.cpu_cmds.extend(
                 [bmodel_net.decode_cpu_op(i) for i in subnet.cpu_param]
             )
-        elif subnet.run_mode == subnet.run_mode.TPU_DYNAMIC:
+            for cpu_cmd_id, cpu_x in enumerate(self.cpu_cmds):
+                # per cpuop, per subnet
+                self.operations.append(
+                    decode_cpu_params(
+                        op_type=cpu_x.op_type,
+                        param=cpu_x.cpu_cmd,
+                        input_memref=input_memref,
+                        output_memref=output_memref,
+                        subnet_id=subnet.id,
+                        cmd_id=cpu_cmd_id,
+                    )
+                )
+            return
+
+        if subnet.run_mode == subnet.run_mode.TPU_DYNAMIC:
             self.ir_cmds.extend(bmodel_net.decode_dynamic_ir(subnet.ir_buffer))
-        elif bmodel_net.core_num > 1:
+            for ir_cmd_id, x in enumerate(self.ir_cmds):
+                self.operations.append(
+                    decoder.decode_ir_param(
+                        subnet.ir_buffer,
+                        subnet.ir_len,
+                        input_memref=input_memref,
+                        output_memref=output_memref,
+                        subnet_id=subnet.id,
+                        cmd_id=ir_cmd_id,
+                    )
+                )
+            return
+
+        if subnet.run_mode == subnet.run_mode.TPU_STATIC:
+            if bmodel_net.core_num > 1:
+                self.cmds = [
+                    decode_cmdgroup(
+                        context, cmd, self.subnet_id, core_id, transfer_dep_id=True
+                    )
+                    for core_id, x in enumerate(subnet.core_commands)
+                    for cmd in x.gdma_tiu_commands
+                ]
+
+                if isinstance(context, SG2260Context):
+                    from .target_2260.multi_core import MultiCore
+
+                    core_nums = len(self.cmds)
+                    self.cores_cmds = [
+                        MultiCore(
+                            core_id,
+                            core_nums,
+                            [decode_cmd_params(cmd) for cmd in core_cmds.all],
+                            indent,
+                        )
+                        for core_id, core_cmds in enumerate(self.cmds)
+                    ]
+
+                    # resort print order
+                    msgcore_nums = len(self.cores_cmds[0].msgcores)
+                    msgcore_id = 0
+                    while msgcore_id < msgcore_nums:
+                        for core_id, core_cmds in enumerate(self.cores_cmds):
+                            assert msgcore_nums == len(core_cmds.msgcores)
+                            self.operations.append(core_cmds.msgcores[msgcore_id])
+                        msgcore_id += 1
+                    return
+
+                if isinstance(context, BM1688Context):
+                    from .target_1688.multi_core import MultiCoreCmd
+
+                    sorter = MultiCoreCmd(
+                        [
+                            [decode_cmd_params(cmd) for cmd in group.all]
+                            for group in self.cmds
+                        ]
+                    )
+                    self.cmds = sorter.consume_cmd()
+                    self.operations.extend(self.cmds)
+                    return
+                assert "not supported chip."
+
             self.cmds = [
-                decode_cmdgroup(context, cmd, self.subnet_id, core_id)
-                for core_id, x in enumerate(subnet.core_commands)
-                for cmd in x.gdma_tiu_commands
+                decode_cmdgroup(context, x, self.subnet_id, transfer_dep_id=True)
+                for x in subnet.cmd_group
             ]
-        else:
-            self.cmds = [
-                decode_cmdgroup(context, x, self.subnet_id) for x in subnet.cmd_group
-            ]
-
-        if bmodel_net.core_num > 1:
-            from .target_1688.multi_core import MultiCoreCmd
-
-            sorter = MultiCoreCmd(
-                [[decode_cmd_params(cmd) for cmd in group.all] for group in self.cmds]
-            )
-            self.cmds = sorter.consume_cmd()
-            self.operations.extend(self.cmds)
-
-        else:
             for x in self.cmds:
                 for op in x.all:
                     self.operations.append(decode_cmd_params(op))
-
-        input_memref = [i.memref for i in subnet.input_tensor]
-        output_memref = [i.memref for i in subnet.output_tensor]
-        for cpu_cmd_id, cpu_x in enumerate(self.cpu_cmds):
-            # per cpuop, per subnet
-            self.operations.append(
-                decode_cpu_params(
-                    op_type=cpu_x.op_type,
-                    param=cpu_x.cpu_cmd,
-                    input_memref=input_memref,
-                    output_memref=output_memref,
-                    subnet_id=subnet.id,
-                    cmd_id=cpu_cmd_id,
-                )
-            )
-
-        for ir_cmd_id, x in enumerate(self.ir_cmds):
-            self.operations.append(
-                decoder.decode_ir_param(
-                    subnet.ir_buffer,
-                    subnet.ir_len,
-                    input_memref=input_memref,
-                    output_memref=output_memref,
-                    subnet_id=subnet.id,
-                    cmd_id=ir_cmd_id,
-                    ctx_addr=ctx_addr,
-                    ctx_size=ctx_size,
-                )
-            )
-
-        self.args = subnet.input_tensor
-        self.terminator = subnet.output_tensor
-        self.successor = subnet.next_subnet_ids
 
     @functools.lru_cache()
     def __str__(self):

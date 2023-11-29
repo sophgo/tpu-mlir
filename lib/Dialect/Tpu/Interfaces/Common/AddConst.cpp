@@ -10,6 +10,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::AddConstOp::init(InferenceParameter &p) { return success(); }
@@ -18,6 +19,7 @@ void tpu::AddConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
   auto num_elem = module::getNumElements(getOutput());
+  auto in_type = module::getStorageType(getInput());
   auto out_type = module::getStorageType(getOutput());
   auto asym = module::isAsymmetric();
   if (module::isUniformQuantized(getOutput())) {
@@ -43,19 +45,36 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
       p.outputs[0][i] = saturate(sum, out_type);
     }
   } else {
+    if (in_type.isFloat8E4M3FN()) {
+      double scale = getF8Scale().convertToDouble();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int64_t i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = p.inputs[0][i] + getConstVal().convertToDouble();
-    }
-    if (getDoRelu()) {
-      auto limit = getReluLimit().convertToDouble();
-      function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
+      for (int64_t i = 0; i < num_elem; i++) {
+        p.outputs[0][i] = p.inputs[0][i] * scale + getConstVal().convertToDouble();
+      }
+      if (getDoRelu()) {
+        auto limit = getReluLimit().convertToDouble();
+        function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
+      }
+    } else {
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+      for (int64_t i = 0; i < num_elem; i++) {
+        p.outputs[0][i] = p.inputs[0][i] + getConstVal().convertToDouble();
+      }
+      if (getDoRelu()) {
+        auto limit = getReluLimit().convertToDouble();
+        function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
+      }
     }
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
+    } else if (out_type.isFloat8E4M3FN()) {
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0);
+    } else if (out_type.isFloat8E5M2()) {
+      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
     }
+
   }
   return success();
 }

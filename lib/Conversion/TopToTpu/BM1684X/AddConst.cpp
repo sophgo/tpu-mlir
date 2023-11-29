@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
+#include "tpu_mlir/Support/Float8.h"
 
 namespace tpu_mlir {
 namespace bm1684x {
@@ -73,7 +74,38 @@ void AddConstLowering::LoweringF16(PatternRewriter &rewriter,
 
 void AddConstLowering::LoweringF8(PatternRewriter &rewriter,
                                    top::AddConstOp op) const {
-  llvm_unreachable("FIXME: not implement");
+  std::vector<NamedAttribute> attrs;
+  double const_v = op.getConstVal().convertToDouble();
+  auto qtype_in = module::getCalibratedType(op.getInput());
+  auto qtype_out = module::getCalibratedType(op.getOutput());
+
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  double scale = 1.0;
+  if (isE4) {
+    double in_scale = qtype_in.getMax() / get_f8e4m3_max();
+    double out_scale = qtype_out.getMax() / get_f8e4m3_max();
+    const_v = const_v / out_scale;
+    scale = in_scale / out_scale;
+  }
+  for (auto &attr : op->getAttrs()) {
+    if (attr.getName() == "const_val") {
+      attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_v)));
+    } else {
+      attrs.push_back(attr);
+    }
+  }
+
+  attrs.push_back(rewriter.getNamedAttr("f8_scale", rewriter.getF64FloatAttr(scale)));
+
+  if (isE4) {
+    auto newType = getQuantF8E4M3Type(op.getOutput());
+    rewriter.replaceOpWithNewOp<tpu::AddConstOp>(op, newType,
+                                               op.getInput(), attrs);
+  } else {
+    auto newType = getQuantF8E5M2Type(op.getOutput());
+    rewriter.replaceOpWithNewOp<tpu::AddConstOp>(op, newType,
+                                               op.getInput(), attrs);
+  }
 }
 
 void AddConstLowering::LoweringQuantized(PatternRewriter &rewriter,

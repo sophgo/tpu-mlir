@@ -12,7 +12,7 @@ file(GLOB _sources
           Transforms/Codegen/*.cpp
           Transforms/Codegen/Dynamic/*.cpp
           Transforms/AddressAssign/*.cpp
-          Transforms/ChipOptimize/*.cpp
+          Transforms/ProcessorOptimize/*.cpp
           Transforms/WeightReorder/*.cpp
           Transforms/WeightReorder/BM1684/*.cpp
           Transforms/WeightReorder/BM1684X/*.cpp

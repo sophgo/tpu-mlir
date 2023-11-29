@@ -74,7 +74,7 @@ struct FilterWhereWeightPattern : public OpRewritePattern<WhereOp> {
 };
 
 // Idea from Repeat.cpp. Same as
-// lib/Dialect/Top/Transforms/ChipOptimize/OptimizeBM1684X.cpp:expand_dim_and_tile
+// lib/Dialect/Top/Transforms/ProcessorOptimize/OptimizeBM1684X.cpp:expand_dim_and_tile
 mlir::Value expand_dim_and_tile(mlir::Value tensor,
                                 llvm::ArrayRef<int64_t> out_shape,
                                 PatternRewriter &rewriter,
@@ -189,8 +189,55 @@ struct WhereTooLarge : public OpRewritePattern<WhereOp> {
   }
 };
 
+/*
+  special case in VITS:
+  remove invalid where
+
+  shape -> Equal(-1) -> where -> nextOP   ==>  shape -> nextOP
+        \            /
+         ———————————>
+*/
+struct RemoveInvalidWhere : public OpRewritePattern<WhereOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(WhereOp op,
+                                PatternRewriter &rewriter) const override {
+    auto cond = op.getCond();
+    auto fbrn = op.getFbrn();
+
+    auto condOp = dyn_cast<CompareConstOp>(cond.getDefiningOp());
+    auto fbrnOp = dyn_cast<ShapeOp>(fbrn.getDefiningOp());
+
+    if (!(condOp && fbrnOp)) {
+      return failure();
+    }
+
+    auto mode = condOp.getMode();
+    auto const_val = condOp.getConstVal().convertToDouble();
+    if (mode != "Equal" || const_val >= 0) {
+      return failure();
+    }
+
+    if (!condOp.getResult().hasOneUse()) {
+      return failure();
+    }
+
+    if (!(op.getOperand(2) == condOp.getOperand())) {
+      return failure();
+    }
+
+    condOp.getOutput().replaceAllUsesWith(condOp.getInput());
+    op.getOutput().replaceAllUsesWith(fbrnOp.getOutput());
+
+    rewriter.eraseOp(condOp);
+    rewriter.eraseOp(op);
+
+    return success();
+  }
+};
+
 void WhereOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<FilterWhereWeightPattern, WhereBroadcastToTile, WhereTooLarge>(
-      context);
+  results.insert<FilterWhereWeightPattern, WhereBroadcastToTile, WhereTooLarge,
+                 RemoveInvalidWhere>(context);
 }

@@ -4,7 +4,7 @@ LayerGroup
 Basic Concepts
 --------------
 
-TPU chip memory can be divided into off-chip memory (i.e., Global Memory or GMEM) and on-chip memory (i.e., Local Memory or LMEM).
+TPU memory can be divided into global memory (GMEM) and local memory (LMEM).
 
 Usually the global memory is very large (e.g., 4GB) while the local memory is quite limited (e.g., 16MB).
 

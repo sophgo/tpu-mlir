@@ -77,6 +77,7 @@ void BMCodegen::init(ModuleOp m, const std::string &filename) {
   hidden_names.clear();
   current_step = 0;
   current_device = 0;
+  updateAllHidden();
 }
 
 void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
@@ -91,10 +92,10 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
   module::getInputsOutputs(s, inputs, outputs);
   SetNetIO(inputs, outputs);
   bmodel::ModelGen::CASCADE_INFO_T cascade = {0, 0, ""};
-  if (module::getNumSubModule() > 1) {
+  if (module::getDeviceNum() > 1) {
     module::getSubModuleId(s, cascade.device_id, cascade.step);
   }
-  checkAndUpdateHidden(inputs, outputs);
+  // checkAndUpdateHidden(inputs, outputs);
 
   auto coeff_addr = module::getCoeffAddr(s);
   auto coeff_size = module::getCoeffSize(s);
@@ -129,10 +130,10 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
 
       switch (mode) {
       case RunMode::TPU_STATIC: {
-        profile_ctx.set_profile_start();
+        profile_ctx.set_profile_start(subnet_id);
         auto subnet = CreateSubNet(s, call);
         subnet_v.push_back(subnet);
-        profile_ctx.set_profile_end();
+        profile_ctx.set_profile_end(subnet_id);
       } break;
       case RunMode::TPU_DYNAMIC: {
         auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
@@ -217,8 +218,9 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
       return true;
     };
     using namespace std::placeholders;
+    int cur_net_idx = profile_ctx.get_cur_net_idx();
     save_profile_info(
-        "net_0.profile",
+        "net_" + std::to_string(cur_net_idx) + ".profile",
         std::bind(&bmodel::NetParameterBuilder::add_net_profile, &npb, _1));
     if (!save_profile_info(
             "compiler_profile_0.txt",
@@ -228,7 +230,7 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
           std::bind(&bmodel::NetParameterBuilder::add_net_stat, &npb, _1));
     };
   }
-  if (module::getNumSubModule() > 1) {
+  if (module::getDeviceNum() > 1) {
     // make sure the order is by step and device id
     if (cascade.step == current_step) {
       assert(cascade.device_id >= current_device);
@@ -283,8 +285,12 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values,
     tb.add_data_type(data_type);
     tb.add_gmem_stmode(gmem_stmode);
     tb.add_shape(stage_shape);
-    if (hidden_all || isHiddenTensor(s_name)) {
+    if (isHiddenTensor(s_name)) {
       tb.add_hidden(0);
+    } else if (isSpecialInputTensor(s_name)) {
+      tb.add_hidden(3);
+    } else if (isSpecialOutputTensor(s_name)) {
+      tb.add_hidden(4);
     } else {
       auto in_iter =
           std::find(input_names->begin(), input_names->end(), s_name);
@@ -297,7 +303,8 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values,
         tb.add_hidden(2); // output
         tb.add_index(std::distance(output_names->begin(), out_iter));
       } else {
-        tb.add_hidden(0);
+        tb.add_hidden(5); // others
+        // llvm_unreachable("tensor should be input/output here");
       }
     }
 
@@ -1272,6 +1279,16 @@ bool BMCodegen::isHiddenTensor(StringRef name) {
          hidden_names.end();
 }
 
+bool BMCodegen::isSpecialInputTensor(StringRef name) {
+  return std::find(special_in_names.begin(), special_in_names.end(), name) !=
+         special_in_names.end();
+}
+
+bool BMCodegen::isSpecialOutputTensor(StringRef name) {
+  return std::find(special_out_names.begin(), special_out_names.end(), name) !=
+         special_out_names.end();
+}
+
 void BMCodegen::checkAndUpdateHidden(const std::vector<Value> &inputs,
                                      const std::vector<Value> &outputs) {
   for (auto in : inputs) {
@@ -1280,8 +1297,9 @@ void BMCodegen::checkAndUpdateHidden(const std::vector<Value> &inputs,
         input_names->end()) {
       continue;
     }
-    assert(std::find(hidden_names.begin(), hidden_names.end(), name) !=
-           hidden_names.end());
+    if (std::find(outputs.begin(), outputs.end(), in) == outputs.end()) {
+      special_out_names.push_back(name);
+    }
   }
   for (auto out : outputs) {
     auto name = module::getName(out);
@@ -1289,8 +1307,57 @@ void BMCodegen::checkAndUpdateHidden(const std::vector<Value> &inputs,
         output_names->end()) {
       continue;
     }
-    hidden_names.push_back(name);
+    if (std::find(inputs.begin(), inputs.end(), out) != inputs.end()) {
+      hidden_names.push_back(name);
+    } else {
+      special_in_names.push_back(name);
+    }
   }
+}
+
+void BMCodegen::updateAllHidden() {
+  auto modules = module::getAllModules();
+  std::vector<Value> inputs, outputs;
+  for (auto s : *modules) {
+    module::getInputsOutputs(s, inputs, outputs);
+  }
+
+  std::set<StringRef> s_in_names, s_out_names;
+  for (auto in : inputs) {
+    auto name = module::getName(in);
+    s_in_names.insert(name);
+  }
+  for (auto out : outputs) {
+    auto name = module::getName(out);
+    s_out_names.insert(name);
+  }
+
+  for (auto name : s_out_names) {
+    if (std::find(output_names->begin(), output_names->end(), name) !=
+        output_names->end()) {
+      continue;
+    }
+    if (s_in_names.find(name) != s_in_names.end()) {
+      hidden_names.push_back(name);
+    } else {
+      special_out_names.push_back(name);
+    }
+  }
+
+  for (auto name : s_in_names) {
+    if (std::find(input_names->begin(), input_names->end(), name) !=
+        input_names->end()) {
+      continue;
+    }
+    if (std::find(hidden_names.begin(), hidden_names.end(), name) !=
+        hidden_names.end()) {
+      continue;
+    }
+    if (s_out_names.find(name) == s_out_names.end()) {
+      special_in_names.push_back(name);
+    }
+  }
+
 }
 
 } // namespace tpu

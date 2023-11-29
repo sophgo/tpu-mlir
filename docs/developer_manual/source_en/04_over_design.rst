@@ -9,9 +9,9 @@ Layered
 TPU-MLIR treats the compilation process of the network model in two layers.
 
 Top Dialect
-   Chip-independent layer, including graph optimization, quantization and inference, etc.
+   Hardware-independent layer, including graph optimization, quantization and inference, etc.
 Tpu Dialect
-   Chip-related layer, including weight reordering, operator slicing, address assignment, inference, etc.
+   Hardware-related layer, including weight reordering, operator slicing, address assignment, inference, etc.
 
 The overall flow is shown in the (:ref:`main_flow`) diagram, where the model is gradually converted into final instructions by Passes. Here is a detailed description of what functions each Pass does in the Top layer and the Tpu layer. The following chapters will explain the key points of each Pass in detail.
 
@@ -34,12 +34,12 @@ canonicalize
    Graph optimization related to specific OP, such as merging relu into conv, shape merge, etc.
 extra-optimize
    Do extra patterns, such as get FLOPs, remove unuse output, etc.
-chip-assign
-   Assign chip, such as bm1684x, cv183x, etc; and adjust top mlir by chip, for example, make all cv18xx input types as F32.
+processor-assign
+   Assign processor, such as bm1684x, cv183x, etc; and adjust top mlir by processor, for example, make all cv18xx input types as F32.
 import-calibration-table
    Import calibration table, assign min and max for all ops, for quantization later.
-chip-top-optimize
-   Do top ops optimization by chip.
+processor-top-optimize
+   Do top ops optimization by processor.
 convert-top-to-tpu
    Lower top ops to tpu ops; if for mode F32/F16/BF16, top op normally convert to tpu op directly; if INT8, quantization is needed.
 
@@ -52,12 +52,12 @@ canonicalize
    Graph optimization related to specific OP, such as merging of consecutive Requants, etc.
 strip-io-quant
    Input and output types will be quantized if true; or be F32
-chip-tpu-optimize
-   Do tpu ops optimization by chip.
+processor-tpu-optimize
+   Do tpu ops optimization by processor.
 weight-reorder
-   Reorder the weights of individual OP based on chip characteristics, such as filter and bias for convolution.
+   Reorder the weights of individual OP based on processor characteristics, such as filter and bias for convolution.
 subnet-divide
-   Split the network into different subnets according to TPU/CPU, if all operators are TPU, there is only one subnet.
+   Split the network into different subnets according to the type of processor, if all operators are TPU, there is only one subnet.
 op-reorder
    Reorder op to make sure ops are close to their users.
 layer-group

@@ -49,8 +49,12 @@ class Operation:
         loc = op.location
         if loc == "loc(unknown)":
             return None
-
-        return re.findall(r"\"(.+?)\"", str(loc))[0]
+        num_results = len(op.results.types)
+        if num_results > 1:
+            names = re.findall(r'(fused\[.+?\])', str(loc))
+            if (len(names) > 0):
+                return names[0]
+        return re.findall(r'\"(.+?)\"', str(loc))[0]
 
     @staticmethod
     def outputs(op):
@@ -321,9 +325,10 @@ class MlirParser:
                 continue
             for opd in self.return_op.operands:
                 if opd in op.results:
+                    idx = list(op.results).index(opd)
                     shape_type = mlir.ir.ShapedType(opd.type)
                     shape = [shape_type.get_dim_size(i) for i in range(shape_type.rank)]
-                    name = Operation.name(op)
+                    name = Operation.outputs(op)[idx]
                     outputs[name] = shape
         return outputs
 
