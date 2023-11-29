@@ -33,7 +33,8 @@ def pack_bmodel_context_generator(model_file, net):
     out_dir = model_file.rsplit(".", maxsplit=1)[0]
     tensor_loc = model_file + ".json"
     if not os.path.isfile(tensor_loc):
-        return iter([None])
+        yield None
+        return
     os.makedirs(out_dir, exist_ok=True)
     shutil.copy(model_file, os.path.join(out_dir, "compilation.bmodel"))
     shutil.copy(tensor_loc, os.path.join(out_dir, "tensor_location.json"))
@@ -54,8 +55,8 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
         chip = get_chip_from_model(model_file)
         # trick for runtime link chip cmodel
         lib_so = 'libcmodel_1684x.so'
-        if chip == 'BM1686' or chip == 'CV186X':
-            lib_so = 'libcmodel_1686.so'
+        if chip == 'BM1688' or chip == 'CV186X':
+            lib_so = 'libcmodel_1688.so'
         elif chip == 'BM1684':
             lib_so = 'libcmodel_1684.so'
         elif chip == "SG2260":
@@ -225,7 +226,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
                 model.graph.output.append(intermediate_layer_value_info)
                 output_keys.append(intermediate_layer_value_info.name + '_' + x.op_type)
         dump_all_tensors_onnx = onnx_file.replace('.onnx', '_all.onnx', 1)
-        onnx.save(model, dump_all_tensors_onnx)
+        onnx.save(model, dump_all_tensors_onnx, save_as_external_data=True)
         return output_keys, dump_all_tensors_onnx
 
     output_keys = []
@@ -297,7 +298,7 @@ def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -
     outputs = dict()
     for i in range(len(out_name)):
         new_name = out_name[i] + f'_{all_valid_nodes[out_name[i]]}'
-        outputs[new_name] = out_data[i]
+        outputs[new_name] = np.array(out_data[i])
     return outputs
 
 def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool = True) -> dict:
