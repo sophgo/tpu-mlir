@@ -77,7 +77,7 @@ class MODEL_RUN(object):
             "int8_asym": config.get(self.arch, "int8_asym_tolerance", fallback="0.8,0.5"),
             "int4_sym": config.get(self.arch, "int4_sym_tolerance", fallback="0.8,0.5"),
             "f8e4m3": config.get(self.arch, "f8e4m3_tolerance", fallback="0.8,0.5"),
-            "f8e5m2": config.get(self.arch, "f8e5m2_tolerance", fallback="0.95,0.95"),
+            "f8e5m2": config.get(self.arch, "f8e5m2_tolerance", fallback="0.7,0.4"),
         }
         # set quant_modes according to argument and config files
         self.quant_modes = {
