@@ -1,6 +1,6 @@
 使用TPU做后处理
 ==================
-目前TPU-MLIR支持将yolo系列和ssd网络模型的后处理集成到模型中, 目前支持该功能的芯片有BM1684X、BM1688、CV186X芯片。
+目前TPU-MLIR支持将yolo系列和ssd网络模型的后处理集成到模型中, 目前支持该功能的处理器有BM1684X、BM1688、CV186X。
 
 本章将yolov5s转成为F16模型为例, 介绍该功能如何被使用。
 
@@ -112,7 +112,7 @@ MLIR转换成BModel
    $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
-       --chip bm1684x \
+       --processor bm1684x \
        --fuse_preprocess \
        --test_input ../image/dog.jpg \
        --test_reference yolov5s_top_outputs.npz \
@@ -130,7 +130,7 @@ MLIR转换成BModel
     :linenos:
 
     bmodel version: B.2.2
-    chip: BM1684X
+    processor: BM1684X
     create time: Fri May 26 16:30:20 2023
 
     kernel_module name: libbm1684x_kernel_module.so

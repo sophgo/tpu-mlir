@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-
+#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 
 // clang-format off
@@ -168,6 +168,15 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
+    } else if (out_type.isFloat8E4M3FN()) {
+      if (!getOutF8Scales().has_value())
+        llvm_unreachable("should have out scale for MatMul in f8 mode");
+      f64_array_t scales = module::getF64Array(getOutF8Scales().value());
+      [[maybe_unused]] auto scale_f = scales->at(0);
+      [[maybe_unused]] auto scale_f_reciprocal = 1 / scales->at(0);
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, scale_f_reciprocal);
+    } else if (out_type.isFloat8E5M2()) {
+      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
@@ -399,28 +408,43 @@ ArrayAttr tpu::MatMulOp::getIndexingMaps() {
       module::getStorageType(getInput()).isInteger(4))
     return Builder(getContext()).getAffineMapArrayAttr({});
 
-  auto dims = module::getShape(getInput()).size();
-  bool has_ts = getLeftTranspose() || getOutputTranspose();
-  int dims_parallel = dims - 1 - has_ts;
-  if (dims_parallel == 0)
+  auto outShape = module::getShape(getOutput());
+  auto inputShape = module::getShape(getInput());
+  auto rightShape = module::getShape(getRight());
+  // compute the parallel dimensions
+  bool hasTS = getLeftTranspose() || getOutputTranspose();
+  int maxParallelDims = outShape.size() - 1 - hasTS - getHdimIsBatch();
+
+  if (maxParallelDims < 1)
     return Builder(getContext()).getAffineMapArrayAttr({});
 
-  AffineMap identityMap =
-      AffineMap::getMultiDimIdentityMap(dims_parallel, context);
+  AffineMap outMap =
+      AffineMap::getMultiDimIdentityMap(maxParallelDims, context);
+  int inputParalleDims =
+      std::min(std::max((int)inputShape.size() - 1, 0), maxParallelDims);
+  int rightParalleDims =
+      std::min(std::max((int)rightShape.size() - 2, 0), maxParallelDims);
 
-  AffineMap emptyMap = AffineMap::get(dims_parallel, 0, context);
-  AffineMap rightMatrixMap = AffineMap::get(
-      dims_parallel, 0, identityMap.getResults().slice(0, dims_parallel - 1),
-      context);
+  // batch broadcast case: (B, M, K) x (1, K, N), 1 can not be sliced
+  if (rightParalleDims == 1 && rightShape[0] == 1) {
+    rightParalleDims =0;
+  }
 
-  SmallVector<AffineMap> indexingMaps{identityMap, rightMatrixMap};
+  AffineMap inputMap =
+      AffineMap::get(maxParallelDims, 0,
+                     outMap.getResults().slice(0, inputParalleDims), context);
+
+  AffineMap rightMap =
+      AffineMap::get(maxParallelDims, 0,
+                     outMap.getResults().slice(0, rightParalleDims), context);
+  AffineMap emptyMap = AffineMap::get(maxParallelDims, 0, context);
+
+  SmallVector<AffineMap> indexingMaps{inputMap, rightMap};
 
   for (int i = 2, n = getNumOperands(); i < n; ++i) {
-    if (module::isNone(getOperand(i)))
-      indexingMaps.push_back(emptyMap);
-    else
-      indexingMaps.push_back(rightMatrixMap);
+    indexingMaps.push_back(emptyMap);
   }
-  indexingMaps.push_back(identityMap);
+
+  indexingMaps.push_back(outMap);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }

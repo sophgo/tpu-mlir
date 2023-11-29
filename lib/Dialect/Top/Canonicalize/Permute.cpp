@@ -475,7 +475,7 @@ struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
 
 // decomposed relative position embeddings
 // this should be after MatMul.cpp:MatmulWithPermuteAndSplit
-// wonder whether it should be in ChipOptimize
+// wonder whether it should be in ProcessorOptimize
 // clang-format off
 // topo
 //                                           ...-MatMul-Reshape

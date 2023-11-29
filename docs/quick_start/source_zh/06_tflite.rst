@@ -85,7 +85,7 @@ MLIR转模型
     $ model_deploy \
         --mlir mobilebert_tf.mlir \
         --quantize INT8 \
-        --chip bm1684x \
+        --processor bm1684x \
         --test_input mobilebert_tf_in_f32.npz \
         --test_reference mobilebert_tf_top_outputs.npz \
         --model mobilebert_tf_bm1684x_int8.bmodel

@@ -858,11 +858,14 @@ class TorchConverter(BaseConverter):
                 data.append(input)
                 ops.append(self.getOp(input))
         self.tensor_list[name] = data
-        new_op = top.ListOp(self.unranked_type,
-                            ops,
-                            loc=self.get_loc(name),
-                            ip=self.mlir.insert_point).output
-        self.addOperand(name, new_op)
+        if len(ops) == 1:
+            self.addOperand(name, ops[0])
+        else:
+            new_op = top.ListOp(self.unranked_type,
+                                ops,
+                                loc=self.get_loc(name),
+                                ip=self.mlir.insert_point).output
+            self.addOperand(name, new_op)
 
     # def convert_if(self, torch_node: TorchNode):
     # def convert_is_type_op(self, torch_node: TorchNode, type):
@@ -1314,12 +1317,15 @@ class TorchConverter(BaseConverter):
                                      loc=self.get_loc(torch_node.name + "_expand_" + str(idx)),
                                      ip=self.mlir.insert_point).output
             inputs_new.append(new_op)
-        new_op = top.ConcatOp(self.unranked_type,
-                              inputs_new,
-                              axis=axis,
-                              loc=self.get_loc(torch_node.name),
-                              ip=self.mlir.insert_point).output
-        self.addOperand(torch_node.name, new_op)
+        if len(inputs_new) == 1:
+            self.addOperand(torch_node.name, inputs_new[0])
+        else:
+            new_op = top.ConcatOp(self.unranked_type,
+                                inputs_new,
+                                axis=axis,
+                                loc=self.get_loc(torch_node.name),
+                                ip=self.mlir.insert_point).output
+            self.addOperand(torch_node.name, new_op)
 
     def convert_flatten_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])

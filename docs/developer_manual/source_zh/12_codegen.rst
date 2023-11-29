@@ -10,7 +10,7 @@ CodeGen的目的在于将mlir文件转换成最终的bmodel文件输出，这个
 ----------------
 CodeGen的大致工作流程可分为3个部分：指令生成、指令存储和指令取出以生成Bmodel。具体来说：
 
-  指令生成：将不同芯片的后端函数封装到类，执行不同op的CodeGen接口，生成相应指令（二进制码；
+  指令生成：将不同硬件的后端函数封装到类，执行不同op的CodeGen接口，生成相应指令（二进制码；
 
   指令存储：通过store_cmd将指令（二进制码）存储在指定数据结构中；
 
@@ -30,7 +30,7 @@ CodeGen的大致工作流程可分为3个部分：指令生成、指令存储和
 
 下面对CodeGen过程中所需的数据结构进行介绍:
 
-指令依据芯片的engine不同而有所差别，比如1684有GDMA和TIU，而新架构的芯片sg2260会存在sdma、cdma等engine。这里拿最通用的两种engine即BDC(后更名为TIU)和GDMA为例：
+指令依据硬件的engine不同而有所差别，比如1684有GDMA和TIU，而新架构的硬件sg2260会存在sdma、cdma等engine。这里拿最通用的两种engine即BDC(后更名为TIU)和GDMA为例：
 
 .. code-block:: shell
 
@@ -62,7 +62,7 @@ bdc_bytes：bdc指令字节数
 
 TPU-MLIR中BM168X及其相关类
 ----------------
-TPU-MLIR中BM168X及其相关类定义在include/tpu_mlir/Backend文件夹下，目的是将不同的芯片后端封装，以实现后端与Codegen过程的隔离。其继承关系如下：
+TPU-MLIR中BM168X及其相关类定义在include/tpu_mlir/Backend文件夹下，目的是将不同的硬件后端封装，以实现后端与Codegen过程的隔离。其继承关系如下：
 
 .. raw:: latex
 
@@ -75,7 +75,7 @@ TPU-MLIR中BM168X及其相关类定义在include/tpu_mlir/Backend文件夹下，
    TPU-MLIR中BM168X及其相关类继承关系
 
 
-在一次运行中只存储一个类实例（设计模式中单例），该类初始化时候会经过：读取后端动态链接库、加载函数（设置后端的函数指针）、指令数据结构的初始化、设置一些芯片相关的参数例如NPU_NUM、L2_SRAM起始地址等。
+在一次运行中只存储一个类实例（设计模式中单例），该类初始化时候会经过：读取后端动态链接库、加载函数（设置后端的函数指针）、指令数据结构的初始化、设置一些硬件相关的参数例如NPU_NUM、L2_SRAM起始地址等。
 
 
 后端函数的加载

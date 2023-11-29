@@ -1,7 +1,7 @@
-附录03: BM168x芯片使用指南
+附录03: BM168x使用指南
 ===============================
 
-BM168x支持ONNX系列、pytorch模型、Caffe模型和TFLite模型。本章节以BM1684x芯片为例,介绍BM168x系列芯片bmodel文件的合并方法。
+BM168x支持ONNX系列、pytorch模型、Caffe模型和TFLite模型。本章节以BM1684x为例,介绍BM168x系列bmodel文件的合并方法。
 
 
 .. _merge weight:
@@ -50,7 +50,7 @@ BM168x支持ONNX系列、pytorch模型、Caffe模型和TFLite模型。本章节�
        --mlir yolov5s_bs1.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -84,7 +84,7 @@ BM168x支持ONNX系列、pytorch模型、Caffe模型和TFLite模型。本章节�
        --mlir yolov5s_bs2.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \

@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
+#include "tpu_mlir/Support/Float8.h"
 
 namespace tpu_mlir {
 namespace bm1684x {
@@ -51,7 +51,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
         get_scale_and_shift_positive(scale, scalei, shifti, 8);
         auto constI8 = std::make_shared<std::vector<int8_t>>(constF32->size());
         std::transform(constF32->begin(), constF32->end(), constI8->begin(),
-                       [&](const float cf32) { return to_int8(cf32 *127.0/absMax); });
+            [&](const float cf32) { return to_int8(cf32 *127.0/absMax); });
         auto new_filter =
             top::WeightOp::create(constOp, "i8", *constI8, new_type);
         operands.push_back(new_filter);
@@ -128,8 +128,8 @@ void AddLowering::LoweringF8(PatternRewriter &rewriter,
         auto data = weightOp.read<float>();
         auto cnt = data->size();
 #pragma omp parallel for schedule(static, omp_schedule(cnt))
-        for (int i = 0; i < cnt; i++)
-          data->at(i) = data->at(i) * get_f8e4m3_max() / out_scale;
+        for (int j = 0; j < cnt; j++)
+          data->at(j) = data->at(j) * get_f8e4m3_max() / out_scale;
         (void)weightOp.update(*data, cnt);
         cur_weight = weightOp.clone_f16(op);
         cur_scale = 1.;

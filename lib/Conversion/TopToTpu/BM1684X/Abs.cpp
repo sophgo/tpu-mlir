@@ -50,7 +50,16 @@ void AbsLowering::LoweringF16(PatternRewriter &rewriter,
 
 void AbsLowering::LoweringF8(PatternRewriter &rewriter,
                               top::AbsOp absOp) const {
-  llvm_unreachable("FIXME: not implement");
+  // llvm_unreachable("FIXME: not implement");
+  auto op = absOp.getOperation();
+  op->setAttr("mode", tpu::ActiveModeAttr::get(op->getContext(),
+                                               tpu::ActiveMode::ABSVAL));
+  bool isE4 = module::getMode() == module::Mode::F8E4M3;
+  if (module::getMode() == module::Mode::F8E4M3) {
+    lowering_common_f8<tpu::ActiveOp>(rewriter, op, isE4);
+  } else if (module::getMode() == module::Mode::F8E5M2) {
+    lowering_common_f8<tpu::ActiveOp>(rewriter, op, isE4);
+  }
 }
 void AbsLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::AbsOp absOp) const {

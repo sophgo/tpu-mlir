@@ -308,6 +308,10 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
     for (int i=0;i<count;i++)
       absmax = absmax>std::abs(data->at(i)) ? absmax : std::abs(data->at(i));
     weight_scale_v = std::make_shared<std::vector<double>>(1, absmax / get_f8e4m3_max());
+#pragma omp parallel for schedule(static, omp_schedule(count))
+    for (uint32_t i = 0; i < count; i++) {
+      data->at(i) = data->at(i)/weight_scale_v.get()->at(0);
+    }
   }
 #pragma omp parallel for schedule(static, omp_schedule(count))
   for (uint32_t i = 0; i < count; i++) {

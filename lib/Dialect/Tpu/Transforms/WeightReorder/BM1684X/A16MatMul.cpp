@@ -18,8 +18,10 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewrite(
   if (op.getWeightBits() != 4 || op.getQGroupSize() <= 0) {
     return failure();
   }
+  auto scale_stype = module::getStorageType(op.getScale());
   auto scaleOp = op.getScale().getDefiningOp<top::WeightOp>();
   auto zpOp = op.getZp().getDefiningOp<top::WeightOp>();
+  auto zp_stype = module::getStorageType(op.getZp());
   auto scale_shape = scaleOp.getType().getShape();
   auto ori_scale_data = scaleOp.read<uint16_t>();
   auto ori_zp_data = zpOp.read<uint8_t>();
@@ -46,10 +48,8 @@ LogicalResult WeightReorder<tpu::A16MatMulOp, Float16Type>::matchAndRewrite(
     }
   }
 
-  auto new_scale_type =
-      RankedTensorType::get({npu_num, h, w}, rewriter.getF16Type());
-  auto new_zp_type =
-      RankedTensorType::get({npu_num, h, w}, rewriter.getIntegerType(8, false));
+  auto new_scale_type = RankedTensorType::get({npu_num, h, w}, scale_stype);
+  auto new_zp_type = RankedTensorType::get({npu_num, h, w}, zp_stype);
   auto new_scaleOp =
       top::WeightOp::create(op, "reordered", *new_scale_data, new_scale_type);
   auto new_zpOp =

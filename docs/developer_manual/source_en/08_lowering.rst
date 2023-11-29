@@ -3,9 +3,9 @@ Lowering
 
 Lowering lowers the Top layer OP to the Tpu layer OP, it supports types of F32/F16/BF16/INT8 symmetric/INT8 asymmetric.
 
-When converting to INT8, it involves the quantization algorithm. For different chips, the quantization algorithm is different. For example, some support per-channel and some do not. Some support 32-bit Multiplier and some only support 8-bit, etc.
+When converting to INT8, it involves the quantization algorithm. For different processors, the quantization algorithm is different. For example, some support per-channel and some do not. Some support 32-bit Multiplier and some only support 8-bit, etc.
 
-Therefore, lowering converts op from the chip-independent layer (TOP), to the chip-related layer (TPU).
+Therefore, lowering converts op from the hardware-independent layer (TOP), to the hardware-related layer (TPU).
 
 Basic Process
 -------------

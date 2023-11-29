@@ -2139,6 +2139,7 @@ int BMCpuOp::getCpuOpType() {
       .Case("tensor_scatter", CPU_TENSOR_SCATTER_OP)
       .Case("grid_sampler", CPU_GRID_SAMPLER)
       .Case("deform_gather", CPU_DEFORM_GATHER)
+      .Case("roi_align", CPU_PYTORCH_ROI_ALIGN)
       .Default(CPU_LAYER_UNKNOW);
 }
 
@@ -2234,6 +2235,19 @@ void BMCpuOp::get_deform_gather_param() {
   memcpy(this->param, &cpu_param, this->param_size);
 }
 
+void BMCpuOp::get_roi_align_param() {
+  cpu_pytorch_roi_align_param_t cpu_param{};
+  mlir::DictionaryAttr paramDic = op_.getParam().value();
+  cpu_param.pooled_height = paramDic.get("output_height").cast<IntegerAttr>().getInt();
+  cpu_param.pooled_width = paramDic.get("output_width").cast<IntegerAttr>().getInt();
+  cpu_param.spatial_scale = paramDic.get("spatial_scale").cast<FloatAttr>().getValueAsDouble();
+  cpu_param.sampling_ratio = paramDic.get("sampling_ratio").cast<IntegerAttr>().getInt();
+  cpu_param.align = paramDic.get("align_corners").cast<BoolAttr>().getValue();
+  this->param_size = sizeof(cpu_pytorch_roi_align_param_t);
+  this->param = (void *)malloc(this->param_size);
+  memcpy(this->param, &cpu_param, this->param_size);
+}
+
 void BMCpuOp::getCpuParam() {
   switch (this->op_type) {
   case CPU_TOPK:
@@ -2256,6 +2270,9 @@ void BMCpuOp::getCpuParam() {
     break;
   case CPU_DEFORM_GATHER:
     get_deform_gather_param();
+    break;
+  case CPU_PYTORCH_ROI_ALIGN:
+    get_roi_align_param();
     break;
   case CPU_LAYER_UNKNOW:
     llvm_unreachable("Unknow CPU Op");
@@ -3253,74 +3270,175 @@ void GridSamplerFunc::invoke() {
          (grid_shape.size() == 5 && grid_shape[4] == 3));
   const int N = input_shapes[0];
   const int C = input_shapes[1];
-  const int IH = input_shapes[2];
-  const int IW = input_shapes[3];
-  const int OH = grid_shape[1];
-  const int OW = grid_shape[2];
+  if (grid_shape.size() == 4) {
+    const int IH = input_shapes[2];
+    const int IW = input_shapes[3];
+    const int OH = grid_shape[1];
+    const int OW = grid_shape[2];
 
 #pragma omp parallel for schedule(static, omp_schedule(N *C))
-  for (int n = 0; n < N; ++n) {
-    const float *input = input_tensor.ptr + n * C * IH * IW;
-    const float *grid = grid_tensor.ptr + n * OH * OW * 2;
-    float *output = output_tensor.ptr + n * C * OH * OW;
-    for (int h = 0; h < OH; ++h) {
-      for (int w = 0; w < OW; ++w) {
-        auto fx = computeIndex(*grid, IW, padding_mode, align_corners);
-        ++grid;
-        auto fy = computeIndex(*grid, IH, padding_mode, align_corners);
-        ++grid;
-        switch (mode) {
-        case GridSamplerBilinear: {
-          int x = INT(std::floor(fx));
-          int y = INT(std::floor(fy));
-          float dx = fx - x;
-          float dy = fy - y;
-          float tx = 1.f - dx;
-          float ty = 1.f - dy;
-          float txty = tx * ty, dxty = dx * ty, txdy = tx * dy, dxdy = dx * dy;
-          bool yBound_0 = y >= 0 && y < IH;
-          bool yBound_1 = y + 1 >= 0 && y + 1 < IH;
-          bool xBound_0 = x >= 0 && x < IW;
-          bool xBound_1 = x + 1 >= 0 && x + 1 < IW;
-          const float *iiter = input + y * IW + x;
-          float *oiter = output;
-          for (int c = 0; c < C; ++c) {
-            *oiter = 0.f;
-            if (yBound_0) {
-              if (xBound_0)
-                *oiter += iiter[0] * txty;
-              if (xBound_1)
-                *oiter += iiter[1] * dxty;
+    for (int n = 0; n < N; ++n) {
+      const float *input = input_tensor.ptr + n * C * IH * IW;
+      const float *grid = grid_tensor.ptr + n * OH * OW * 2;
+      float *output = output_tensor.ptr + n * C * OH * OW;
+      for (int h = 0; h < OH; ++h) {
+        for (int w = 0; w < OW; ++w) {
+          auto fx = computeIndex(*grid, IW, padding_mode, align_corners);
+          ++grid;
+          auto fy = computeIndex(*grid, IH, padding_mode, align_corners);
+          ++grid;
+          switch (mode) {
+          case GridSamplerBilinear: {
+            int x = INT(std::floor(fx));
+            int y = INT(std::floor(fy));
+            float dx = fx - x;
+            float dy = fy - y;
+            float tx = 1.f - dx;
+            float ty = 1.f - dy;
+            float txty = tx * ty, dxty = dx * ty, txdy = tx * dy, dxdy = dx * dy;
+            bool yBound_0 = y >= 0 && y < IH;
+            bool yBound_1 = y + 1 >= 0 && y + 1 < IH;
+            bool xBound_0 = x >= 0 && x < IW;
+            bool xBound_1 = x + 1 >= 0 && x + 1 < IW;
+            const float *iiter = input + y * IW + x;
+            float *oiter = output;
+            for (int c = 0; c < C; ++c) {
+              *oiter = 0.f;
+              if (yBound_0) {
+                if (xBound_0)
+                  *oiter += iiter[0] * txty;
+                if (xBound_1)
+                  *oiter += iiter[1] * dxty;
+              }
+              if (yBound_1) {
+                if (xBound_0)
+                  *oiter += iiter[IW] * txdy;
+                if (xBound_1)
+                  *oiter += iiter[IW + 1] * dxdy;
+              }
+              iiter += IH * IW;
+              oiter += OH * OW;
             }
-            if (yBound_1) {
-              if (xBound_0)
-                *oiter += iiter[IW] * txdy;
-              if (xBound_1)
-                *oiter += iiter[IW + 1] * dxdy;
+          } break;
+          case GridSamplerNearest: {
+            int x = INT(std::round(fx));
+            int y = INT(std::round(fy));
+            const float *iiter = input + y * IW + x;
+            float *oiter = output;
+            for (int c = 0; c < C; ++c) {
+              *oiter = y >= 0 && y < IH && x >= 0 && x < IW ? *iiter : 0.f;
+              iiter += IH * IW;
+              oiter += OH * OW;
             }
-            iiter += IH * IW;
-            oiter += OH * OW;
+          } break;
+          default:
+            assert(0);
           }
-        } break;
-        case GridSamplerNearest: {
-          int x = INT(std::round(fx));
-          int y = INT(std::round(fy));
-          const float *iiter = input + y * IW + x;
-          float *oiter = output;
-          for (int c = 0; c < C; ++c) {
-            *oiter = y >= 0 && y < IH && x >= 0 && x < IW ? *iiter : 0.f;
-            iiter += IH * IW;
-            oiter += OH * OW;
-          }
-        } break;
-        default:
-          assert(0);
+          ++output;
         }
-        ++output;
       }
     }
+    output_tensor.shape = {N, C, OH, OW};
+
+  } else {
+    const int ID = input_shapes[2];
+    const int IH = input_shapes[3];
+    const int IW = input_shapes[4];
+    const int OD = grid_shape[1];
+    const int OH = grid_shape[2];
+    const int OW = grid_shape[3];
+
+#pragma omp parallel for schedule(static, omp_schedule(N *C))
+    for (int n = 0; n < N; ++n) {
+      const float *input = input_tensor.ptr + n * C * ID * IH * IW;
+      const float *grid = grid_tensor.ptr + n * OD * OH * OW * 3;
+      float *output = output_tensor.ptr + n * C * OD * OH * OW;
+      for (int d = 0; d < OD; ++d) {
+        for (int h = 0; h < OH; ++h) {
+          for (int w = 0; w < OW; ++w) {
+            auto fx = computeIndex(*grid, IW, padding_mode, align_corners);
+            ++grid;
+            auto fy = computeIndex(*grid, IH, padding_mode, align_corners);
+            ++grid;
+            auto fz = computeIndex(*grid, ID, padding_mode, align_corners);
+            ++grid;
+            switch (mode) {
+            case GridSamplerBilinear: {
+              int x = INT(std::floor(fx));
+              int y = INT(std::floor(fy));
+              int z = INT(std::floor(fz));
+              float dx = fx - x;
+              float dy = fy - y;
+              float dz = fz - z;
+              float tx = 1.f - dx;
+              float ty = 1.f - dy;
+              float tz = 1.f - dz;
+              float txtytz = tx * ty * tz, txtydz = tx * ty * dz, dxtytz = dx * ty * tz, dxtydz = dx * ty * dz;
+              float txdytz = tx * dy * tz, txdydz = tx * dy * dz, dxdytz = dx * dy * tz, dxdydz = dx * dy * dz;
+              bool zBound_0 = z >= 0 && z < ID;
+              bool zBound_1 = z + 1 >= 0 && z + 1 < ID;
+              bool yBound_0 = y >= 0 && y < IH;
+              bool yBound_1 = y + 1 >= 0 && y + 1 < IH;
+              bool xBound_0 = x >= 0 && x < IW;
+              bool xBound_1 = x + 1 >= 0 && x + 1 < IW;
+              const float *iiter = input + z * IH * IW + y * IW + x;
+              float *oiter = output;
+              for (int c = 0; c < C; ++c) {
+                *oiter = 0.f;
+                if (zBound_0) {
+                  if (yBound_0) {
+                    if (xBound_0)
+                      *oiter += iiter[0] * txtytz;
+                    if (xBound_1)
+                      *oiter += iiter[1] * dxtytz;
+                  }
+                  if (yBound_1) {
+                    if (xBound_0)
+                      *oiter += iiter[IW] * txdytz;
+                    if (xBound_1)
+                      *oiter += iiter[IW + 1] * dxdytz;
+                  }
+                }
+                if (zBound_1) {
+                  if (yBound_0) {
+                    if (xBound_0)
+                      *oiter += iiter[IH * IW + 0] * txtydz;
+                    if (xBound_1)
+                      *oiter += iiter[IH * IW + 1] * dxtydz;
+                  }
+                  if (yBound_1) {
+                    if (xBound_0)
+                      *oiter += iiter[IH * IW + IW] * txdydz;
+                    if (xBound_1)
+                      *oiter += iiter[IH * IW + IW + 1] * dxdydz;
+                  }
+                }
+                iiter += ID * IH * IW;
+                oiter += OD * OH * OW;
+              }
+            } break;
+            case GridSamplerNearest: {
+              int x = INT(std::round(fx));
+              int y = INT(std::round(fy));
+              int z = INT(std::round(fz));
+              const float *iiter = input + z * IH * IW + y * IW + x;
+              float *oiter = output;
+              for (int c = 0; c < C; ++c) {
+                *oiter = z >= 0 && z < ID && y >= 0 && y < IH && x >= 0 && x < IW ? *iiter : 0.f;
+                iiter += ID * IH * IW;
+                oiter += OD * OH * OW;
+              }
+            } break;
+            default:
+              assert(0);
+            }
+            ++output;
+          }
+        }
+      }
+    }
+    output_tensor.shape = {N, C, OD, OH, OW};
   }
-  output_tensor.shape = {N, C, OH, OW};
   return;
 }
 

@@ -58,9 +58,6 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   auto asym = module::isAsymmetric();
   if (out_type.isa<FloatType>()) {
     if (out_type.isa<Float8E4M3FNType>()) {
-      auto out_qtype = module::getCalibratedType(getOutput());
-      [[maybe_unused]] double out_scale_reciprocal =
-          get_f8e4m3_max() / out_qtype.getMax();
       auto scales = module::getF64Array(getOutF8Scales(), 2, 1.);
       auto lhs_num_elem = module::getNumElements(getInputs()[0]);
       auto rhs_num_elem = module::getNumElements(getInputs()[1]);

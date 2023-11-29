@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
-
+#include "tpu_mlir/Support/Float8.h"
 namespace tpu_mlir {
 namespace bm1684x {
 
@@ -499,7 +499,87 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
 
 void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
-  LoweringF32(rewriter, op);
+  // Y = W*x + B => ScaleY * Yf8 =ScaleW * Wf8 * ScaleX * Xf8 + Bf32
+  // Yf8 = scaleW * scaleX / scaleY * Wf8 * Xf8 + 1/ScaleY * Bf32
+  // Bf32 / (scaleX * scaleW) * ((scaleX * scaleW) / scaleY)
+
+  std::vector<Value> operands;
+  std::vector<NamedAttribute> attrs;
+  auto p = op.parseParam();
+  auto in = op.getInput();
+  auto out = op.getOutput();
+  auto qtype_in = module::getCalibratedType(in);
+  auto qtype_out = module::getCalibratedType(out);
+  double in_scale = 1.0, out_scale = 1.0;
+
+  if (module::getMode() == module::Mode::F8E5M2) {
+    lowering_common_f8<tpu::MatMulOp>(rewriter, op, false);
+    return;
+  }
+  in_scale = qtype_in.getMax() / get_f8e4m3_max();
+  out_scale = qtype_out.getMax() / get_f8e4m3_max();
+
+  if (p.batch > 1 && p.with_bias != 0) {
+    auto bias_size = module::getNumElements(op.getBias());
+    if (bias_size > p.N)
+      llvm_unreachable("BatchMatMul does not support batch-bias yet.");
+  }
+  int64_t left_num_dims = module::getShape(op.getInput()).size();
+  Value newWeight;
+  double w_scale;
+  double scale_f;
+  if (auto weightOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
+    newWeight = weightOp.clone_f8e4m3(op, false);
+    auto w_op = dyn_cast<top::WeightOp>(newWeight.getDefiningOp());
+    f64_array_t weight_scale_v = module::getF64Array(w_op.getScale().value());
+    w_scale = weight_scale_v.get()->at(0);
+    operands.push_back(in);
+    operands.push_back(newWeight);
+    scale_f = in_scale * w_scale / out_scale;
+    if (p.with_bias) {
+      auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
+      auto b_value = biasOp.read<float>();
+      for (int j = 0; j < p.N; j++)
+        b_value->at(j) = b_value->at(j) / (in_scale * w_scale);
+      auto new_bias = op.getBias();
+      std::vector<int64_t> shape(left_num_dims, 1);
+      shape[left_num_dims - 1] = p.N;
+      auto new_type = RankedTensorType::get(shape, rewriter.getF32Type());
+      new_bias = top::WeightOp::create(op, "bias_f32", *b_value, new_type);
+      operands.push_back(new_bias);
+    } else {
+      auto none = module::getNoneOp(op);
+      operands.push_back(none);
+    }
+  } else {
+    auto right = op.getRight();
+    auto qtype_right = module::getCalibratedType(right);
+    w_scale = qtype_right.getMax() / get_f8e4m3_max();
+    scale_f = in_scale * w_scale / out_scale;
+    for (auto operand : op.getOperands())
+      operands.push_back(operand);
+    if (p.with_bias) {
+      auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
+      auto b_value = biasOp.read<float>();
+      int bias_n = b_value->size();
+      for (int j = 0; j < bias_n; j++)
+        b_value->at(j) = b_value->at(j) / (in_scale * w_scale);
+      auto new_bias = op.getBias();
+      std::vector<int64_t> shape(left_num_dims, 1);
+      shape[left_num_dims - 1] = p.N;
+      auto new_type = RankedTensorType::get(shape, rewriter.getF32Type());
+      new_bias = top::WeightOp::create(op, "bias_f32", *b_value, new_type);
+      operands[2] = new_bias;
+    }
+  }
+  bool with_bias = !module::isNone(op.getBias());
+  attrs.push_back(rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+  attrs.push_back(rewriter.getNamedAttr("out_f8_scales", rewriter.getF64ArrayAttr(scale_f)));
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newType = getQuantF8E4M3Type(op.getOutput());
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
 
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,

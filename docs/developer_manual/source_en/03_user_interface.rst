@@ -30,7 +30,7 @@ TFLite model conversion is also supported, with the following command:
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \
        --quantize INT8 \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input resnet50_tf_in_f32.npz \
        --test_reference resnet50_tf_top_outputs.npz \
        --tolerance 0.95,0.85 \
@@ -201,7 +201,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - quantize
      - Y
      - Quantization type (F32/F16/BF16/INT8)
-   * - chip
+   * - processor
      - Y
      - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table

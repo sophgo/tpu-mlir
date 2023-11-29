@@ -102,11 +102,11 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
       if (op_.getAxis() != shape.size() - 1) {
         return false;
       }
-    } else if (isa<AddOp, MulOp>(op)) {
-      auto shapeB = module::getShape(op->getOperand(1));
-      if (shape != shapeB) {
-        return false;
-      }
+//    } else if (isa<AddOp, MulOp>(op)) {
+//      auto shapeB = module::getShape(op->getOperand(1));
+//      if (shape != shapeB) {
+//        return false;
+//      }
     } else if (auto op_ = dyn_cast<ReshapeOp>(op)) {
       auto ishape = module::getShape(op_.getInput());
       auto oshape = module::getShape(op_.getOutput());
@@ -222,13 +222,54 @@ bool GroupMethod::isLgSupport(Operation *op) {
   return res;
 }
 
+bool is_binary_shape_value(Operation *op) {
+  if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp,
+          tpu::MaxOp>(op)) {
+    auto l_shape = module::getShape(op->getOperand(0));
+    auto r_shape = module::getShape(op->getOperand(1));
+    if (l_shape.size() == 5 && l_shape[2] != r_shape[2])
+      return true;
+    else
+      return false;
+  } else {
+    return false;
+  }
+}
+
+void tmp_group_into_base(std::vector<std::vector<Operation *>> &base_groups,
+                         std::vector<Operation *> &group, Operation *op,
+                         bool &is_binary) {
+  if (isa<Conv3DOp, Pool3DOp>(op) && is_binary) {
+    std::vector<Operation *> tmp_group;
+    for (auto tmp_op : group) {
+      if (!is_binary_shape_value(tmp_op)) {
+        tmp_group.push_back(tmp_op);
+      } else {
+        if (!tmp_group.empty()) {
+          base_groups.push_back(tmp_group);
+          tmp_group.clear();
+        }
+        tmp_group.push_back(tmp_op);
+        base_groups.push_back(tmp_group);
+        tmp_group.clear();
+      }
+    }
+    group = tmp_group;
+    is_binary = false;
+  }
+}
+
 void GroupMethod::get_base_groups(
     std::vector<std::vector<Operation *>> &base_groups,
     const SetVector<Operation *> &subnet_ops) {
   std::vector<Operation *> group;
+  bool is_binary = false;
   for (auto op : subnet_ops) {
     if (isLgSupport(op)) {
+      if (!is_binary)
+        is_binary = is_binary_shape_value(op);
       group.push_back(op);
+      tmp_group_into_base(base_groups, group, op, is_binary);
     } else {
       if (!group.empty()) {
         base_groups.push_back(group);
@@ -237,6 +278,7 @@ void GroupMethod::get_base_groups(
       group.push_back(op);
       base_groups.push_back(group);
       group.clear();
+      is_binary = false;
     }
   }
 
@@ -266,7 +308,7 @@ static bool group_type_check(const LgInfo &lg_info) {
 }
 
 static bool group_cslice_check(const LgInfo &lg_info) {
-  if (module::isBM1684Family()){
+  if (module::isBM1684Family()) {
     for (auto op : lg_info.group_ops) {
       if (isa<ActiveOp>(op)) {
         auto shape = module::getShape(op->getOperand(0));
@@ -283,12 +325,13 @@ bool GroupMethod::dynamic_group_valid_check(const LgInfo &lg_info) {
   auto res = true;
   if (runmode_ == RunMode::TPU_DYNAMIC && lg_info.group_ops.size() > 1) {
     // Condition 1
-    // Dynamic Backend will choose the first op's batch as the whole group's batch
-    // Need make sure dynamic group's ops have the same batch
+    // Dynamic Backend will choose the first op's batch as the whole group's
+    // batch Need make sure dynamic group's ops have the same batch
     int64_t group_n =
         module::getShape(get_output_values(lg_info.group_ops[0])[0])[0];
     for (auto op : lg_info.group_ops) {
-      if (!res) break;
+      if (!res)
+        break;
       auto outs = get_output_values(op);
       for (auto out : outs) {
         if (group_n != module::getShape(out)[0]) {
@@ -334,7 +377,7 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   }
 
   shape_secs_t shape_secs;
-  if(!init_group_data_secs(lg_info, shape_secs)) {
+  if (!init_group_data_secs(lg_info, shape_secs)) {
     return false;
   }
 
@@ -484,6 +527,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
         int64_t start_idx = clusters[j].first;
         int64_t end_idx = start_idx + clusters[j].second - 1;
         get_layer_group(sub_group, base_groups[i], start_idx, end_idx);
+
         assert(is_layer_group_valid(sub_group, true, &cost_table[j][j]));
         cut_points[j][j] = j;
       }

@@ -1,13 +1,13 @@
-![](./docs/assets/sophgo_chip.png)
+![](./docs/assets/sophgo_cover.png)
 
 # TPU-MLIR
 
-本项目是算能智能AI芯片的TPU编译器工程。该工程提供了一套完整的工具链，其可以将不
+本项目是算能深度学处理器的TPU编译器工程。该工程提供了一套完整的工具链，其可以将不
 同框架下预训练的神经网络，转化为可以在算能TPU上高效运算的二进制文件`bmodel`。
 
-算能致力于成为全球领先的通用算力提供商。算能专注于AI、RISC-V CPU等算力产品的研发和推广应用，以自研产品为核心打造了覆盖“云、边、端”的全场景应用矩阵 ，为城市大脑、智算中心、智慧安防、智慧交通、安全生产、工业质检、智能终端等应用提供算力产品及整体解决方案 。公司在北京、上海、深圳、青岛、厦门等国内 10 多个城市及美国、新加坡等国家设有研发中心。
+算能致力于成为全球领先的通用算力提供商。算能专注于深度学习、RISC-V 处理器等算力产品的研发和推广应用，以自研产品为核心打造了覆盖“云、边、端”的全场景应用矩阵 ，为城市大脑、智算中心、智慧安防、智慧交通、安全生产、工业质检、智能终端等应用提供算力产品及整体解决方案 。公司在北京、上海、深圳、青岛、厦门等国内 10 多个城市及美国、新加坡等国家设有研发中心。
 
-目前该工程直接支持的AI框架包括PyTorch、ONNX、TFLite和Caffe，其他框架模型需要转成ONNX。
+目前该工程直接支持的深度学习框架包括PyTorch、ONNX、TFLite和Caffe，其他框架模型需要转成ONNX。
 
 # 资源
 
@@ -26,7 +26,7 @@
 
 | 序列 | 主题 | 视频链接 |
 | :---: | --- | --- |
-| 01 | 什么是AI编译器？ | [AI编译器简介](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
+| 01 | 什么是深度学习编译器？ | [深度学习编译器简介](https://www.bilibili.com/video/BV1yP4y1d7gz/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
 | 02 | MLIR 简介 | [基本语法(一)](https://www.bilibili.com/video/BV1CP411n7fj/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [基本语法(二)](https://www.bilibili.com/video/BV1Gt4y1F7mt/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [基本语法(三)](https://www.bilibili.com/video/BV1UN4y1w72r/?share_source=copy_web&vd_source=90fd7c624ed0c40dbaf08684), [Dialect Conversion](https://www.bilibili.com/video/BV1UG411c7nm/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Pattern Rewriting](https://www.bilibili.com/video/BV1R44y1d7xv/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 | 03 | TPU-MLIR 介绍 | [概述](https://www.bilibili.com/video/BV19d4y1B7eR/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [前端转换](https://www.bilibili.com/video/BV1yv4y1S7WT/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [Lowering](https://www.bilibili.com/video/BV1gg411z7mC/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8) |
 | 04 | 量化 | [概述](https://www.bilibili.com/video/BV1d8411j7t4/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [公式推导](https://www.bilibili.com/video/BV1SW4y1H7Uu/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [校准](https://www.bilibili.com/video/BV1qK411R75k/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8), [QAT](https://www.bilibili.com/video/BV12g411J7WQ/?share_source=copy_web&vd_source=90fd7c624ed0c40af96748bd0b8dd3e8)|
@@ -148,7 +148,7 @@ model_transform.py \
 model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize F16 \
-  --chip bm1684x \
+  --processor bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --model yolov5s_1684x_f16.bmodel
@@ -160,7 +160,7 @@ model_deploy.py的相关参数说明如下：
 | ------------------- | ----- | ----------------------------- |
 | mlir                | 是    | 指定mlir文件                                              |
 | quantize            | 是    | 指定默认量化类型，支持F32/BF16/F16/INT8                     |
-| chip                | 是    | 指定模型将要用到的平台，支持bm1684x（后续会支持多款TPU平台）     |
+| processor           | 是    | 指定模型将要用到的平台，支持bm1684x（后续会支持多款TPU平台）     |
 | calibration_table   | 否    | 指定量化表路径，当存在INT8量化的时候需要量化表                 |
 | tolerance           | 否    | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
 | correctnetss        | 否    | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
@@ -192,7 +192,7 @@ model_deploy.py \
   --mlir yolov5s.mlir \
   --quantize INT8 \
   --calibration_table yolov5s_cali_table \
-  --chip bm1684x \
+  --processor bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --tolerance 0.85,0.45 \

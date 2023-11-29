@@ -122,7 +122,7 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
 
 bool forAll(IndexingMapsInterface op, int num_core = 1) {
   auto indexMap = op.getIndexingMaps();
-  if (indexMap.size() == 0)
+  if (!indexMap || indexMap.size() == 0)
     return false;
 
   // for each dim slice, we should create many operations for each of them.

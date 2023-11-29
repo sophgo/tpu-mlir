@@ -106,7 +106,7 @@ To convert to an INT8 symmetric quantized model, execute the following command.
           ---mlir yolov5s.mlir \
           --quantize INT8 \
           --calibration_table yolov5s_cali_table \
-          --chip bm1684 \
+          --processor bm1684 \
           ---test_input yolov5s_in_f32.npz \
           --test_reference yolov5s_top_outputs.npz \
           --tolerance 0.85,0.45 \

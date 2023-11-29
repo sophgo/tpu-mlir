@@ -123,6 +123,11 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
   auto steps_v = module::getI64Array(getSteps());
   std::vector<int64_t> out_shape = module::getShape(getOutput());
   std::vector<int64_t> in_shape = module::getShape(getInput());
+  for (int i = 0; i < offset_v->size(); ++i) {
+    if (offset_v->at(i) < 0) {
+      offset_v->at(i) += in_shape[i];
+    }
+  }
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
   // just support the dims of input & input is equal.

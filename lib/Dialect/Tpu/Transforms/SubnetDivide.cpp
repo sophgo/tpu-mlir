@@ -441,6 +441,21 @@ public:
     return hdOp.getOutput();
   }
 
+  Value insert_device2host(Value v, Type to, Operation* user) {
+  auto ctx = v.getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPointAfterValue(v);
+  auto name = module::getName(v).str();
+  if (user && !isa<ReturnOp>(user)) {
+      name += "_" + module::getName(user).str();
+  }
+  name += "_device2host";
+  auto newType = RankedTensorType::get(module::getShape(v), module::getStorageType(v));
+  auto loc = NameLoc::get(builder.getStringAttr(name));
+  auto hdOp = builder.create<tpu::Device2HostOp>(loc, newType, ValueRange{v});
+  return hdOp.getOutput();
+}
+
   InfoVec base_subnet_split(ModuleOp sub) {
     subnet_basic_info::reset_id();
     InfoVec subnet_infos;
@@ -561,15 +576,16 @@ public:
     dfs();
 
     /*  1. move the WeightOp and NoneOp's position between subnets
-           and get the input and output of subnet 
+           and get the input and output of subnet
 
-        2. if subnet's output in host -> host2device */
-       
+        2. if subnet's output in host -> host2device  and  device2host (in next subnet)*/
+
     std::vector<Operation *> to_move_ops;
     for (int i = 0; i < subnet_infos.size(); i++) {
       bool add_h2d_flag = false;
-      Value h2dval;
+      Value h2dval, d2hval;
       std::vector<Operation *> h2dvec;
+      std::vector<std::pair<Operation *, int>> d2hvec;
       for (auto it = subnet_infos[i]->ops.begin();
            it != subnet_infos[i]->ops.end();) {
         if (!isa<top::WeightOp, top::NoneOp>(*it)) {
@@ -578,30 +594,37 @@ public:
               if (std::find(subnet_infos[i]->ops.begin(),
                             subnet_infos[i]->ops.end(),
                             user) == subnet_infos[i]->ops.end()) {
-
                 // if subnet's output in host -> host2device
                 auto output_op_p = (*it);
                 if ((output_op_p)->hasTrait<trait::ShapeProducer>()) {
                   // if Op hasTrait<trait::ShapeProducer>()), Op is in host !
-
                   for (auto user : output_op_p->getResult(k).getUsers()) {
                     // note: user is in another subnet
-
                     for (auto idx = 0; idx < user->getNumOperands(); idx++) {
                       // insert host2device
-                    
                       if (user->getOperand(idx) == output_op_p->getResult(k)) {
-                        h2dval = insert_host2device(user->getOperand(idx),
-                                                    user->getOperand(idx).getType());
-                        user->setOperand(idx, h2dval);
+
+                        d2hval = insert_device2host(user->getOperand(idx),
+                                                    user->getOperand(idx).getType(),user);
+                        user->setOperand(idx, d2hval);
+                        auto d2hop = d2hval.getDefiningOp();
+
+                        h2dval = insert_host2device(d2hop->getOperand(0),
+                                                    d2hop->getOperand(0).getType());
+                        d2hop->setOperand(0, h2dval);
+                        // find which subnet_info that d2hval add in
+                        for(int l = 0; l < subnet_infos.size(); l++){
+                          if(std::find(subnet_infos[l]->ops.begin(),subnet_infos[l]->ops.end(),user) != subnet_infos[l]->ops.end()){
+                            d2hvec.push_back({d2hval.getDefiningOp(), l});
+                          }
+                        }
                         break;
                       }
                     }
                   }
-
                   add_h2d_flag = true; // subnet_infos[i] can't updata now!
                   h2dvec.emplace_back(h2dval.getDefiningOp());
-
+                  // h2dvec.emplace_back(d2hval.getDefiningOp());
                   subnet_infos[i]->outs.emplace_back(h2dval); // h2dval is subnet output now
                   break;
                 } else {
@@ -651,12 +674,18 @@ public:
         }
       }
 
-      // if need to add host2device Op, updata subnet_infos[i] now !
+      // if need to add host2device Op and device2host Op, updata now !
       if (add_h2d_flag) {
+        // add host2device Op
         for (auto h2dOp : h2dvec) {
           subnet_infos[i]->ops.emplace_back(h2dOp);
         }
+        // add device2host Op
+        for(auto d2hOp : d2hvec) {
+          subnet_infos[d2hOp.second]->ops.emplace_back(d2hOp.first);
+        }
       }
+
     }
 
     // eliminate empty subnet

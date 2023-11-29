@@ -90,7 +90,7 @@ Scale转换
    &=> y = x \times \frac{2119995857}{1 \ll 34} \\
    &=> y = (x \times 2119995857) \gg 34
 
-Multiplier支持的位数越高, 就越接近Scale, 但是性能会越差。一般芯片会用32位或8位的Multiplier。
+Multiplier支持的位数越高, 就越接近Scale, 但是性能会越差。一般硬件会用32位或8位的Multiplier。
 
 量化推导
 ------------

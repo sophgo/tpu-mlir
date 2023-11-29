@@ -57,13 +57,13 @@ public:
       // 3 for fp8 th block from tpu-mlir
       // 4 for fp8 th block from mqbench
       if (std::regex_match(line, pattern)) {
-        if (std::string::npos != line.find("#weight_scale"))
+        if (std::string::npos != line.find("#weight_scale") || std::string::npos != line.find("#weight_scale_fp8"))
           return 1;
         if (std::string::npos != line.find("#int4_th"))
           return 2;
         if (std::string::npos != line.find("#tpu-mlir-fp8"))
           return 3;
-        if (std::string::npos != line.find("#mqbench-fp8"))
+        if (std::string::npos != line.find("mqbench-fp8"))
           return 4;
         return 0;
       } else
@@ -260,6 +260,9 @@ public:
         min = info.min < 0 ? (-info.threshold) : 0;
         max = info.threshold;
       }
+    } else if (isa<top::SubOp>(op)) {
+      min = info.min < 0 ? (-info.threshold) : -1e-5;
+      max = info.threshold;
     } else if (isAsymmetric == false) {
       min = info.min < 0 ? (-info.threshold) : 0;
       max = info.threshold;
@@ -267,7 +270,8 @@ public:
       min = info.min;
       max = info.max;
     }
-    if (op->hasAttr("do_relu") &&
+    if (!isa<top::SubOp>(op) &&
+        op->hasAttr("do_relu") &&
         op->getAttr("do_relu").cast<BoolAttr>().getValue()) {
       min = 0;
     }

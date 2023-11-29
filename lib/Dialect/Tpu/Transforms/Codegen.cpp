@@ -34,9 +34,24 @@ public:
     }
     BMCodegen bm_codegen;
     bm_codegen.init(mOp, filename);
-    for (auto s : *modules) {
-      bm_codegen.run(s, embed_debug_info);
+    int num_device = module::getDeviceNum();
+    int num_submodule = module::getNumSubModule();
+    if (num_device > num_submodule) {
+      assert(num_submodule == 1);
+      auto sub_m = modules->at(0);
+      auto name = module::getName(sub_m).str();
+      for (int i = 0; i < num_device; ++i) {
+        auto new_name = name + "_" + std::to_string(i);
+        sub_m.setName(new_name);
+        module::setSubModuleId(sub_m, i, 0);
+        bm_codegen.run(sub_m, embed_debug_info);
+      }
+    } else {
+      for (auto s : *modules) {
+        bm_codegen.run(s, embed_debug_info);
+      }
     }
+
     bm_codegen.store();
   }
 };

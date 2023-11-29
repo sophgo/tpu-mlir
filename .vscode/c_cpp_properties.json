@@ -5,10 +5,10 @@
             "includePath": [
                 "${workspaceFolder}/include",
                 "${workspaceFolder}/build/include",
-                "${workspaceFolder}/third_party/llvm/include",
-                "${workspaceFolder}/third_party/oneDNN/include",
+                "${workspaceFolder}/../third-party/llvm-project/mlir/include",
+                "${workspaceFolder}/../third-party/llvm-project/llvm/include",
+                "${workspaceFolder}/../third-party/oneDNN/include",
                 "${workspaceFolder}/third_party/cnpy",
-                "${workspaceFolder}/third_party/flatbuffers/include",
                 "${workspaceFolder}/third_party/nntoolchain/include",
                 "${workspaceFolder}/third_party/progressbar/include",
                 "${workspaceFolder}/third_party/customlayer/include",

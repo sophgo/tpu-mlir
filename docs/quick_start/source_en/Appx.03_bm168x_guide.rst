@@ -1,8 +1,8 @@
 Appendix.03: BM168x Guidance
 =============================
 
-BM168x series chip currently supports ONNX, pytorch, Caffe and TFLite models.
-This chapter takes the BM1684x chip as an example to introduce merging bmodel files of the BM168x series chips.
+BM168x series processor currently supports ONNX, pytorch, Caffe and TFLite models.
+This chapter takes the BM1684x processor as an example to introduce merging bmodel files of the BM168x series processors.
 
 .. _merge weight:
 
@@ -47,7 +47,7 @@ Use the yolov5s_cali_table generated in preceding sections, or generate calibrat
        --mlir yolov5s_bs1.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -81,7 +81,7 @@ Generate mlir fp32 file in the same workspace:
        --mlir yolov5s_bs2.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \

@@ -116,8 +116,8 @@ mlir::Type tpu::GatherElementsOp::type_verify(uint64_t opd_idx,
       return do_nothing(mode);
     }
     mode = TypeCastMode::DO_CAST;
-    auto bitwidth = stype.getIntOrFloatBitWidth();
-    return Builder(op).getIntegerType(bitwidth);
+    // auto bitwidth = stype.getIntOrFloatBitWidth();
+    return Builder(op).getIntegerType(32);
   }
   return type_verify_case_same(op, opd_idx, mode);
 }

@@ -20,9 +20,9 @@ if __name__ == '__main__':
                         help='pre-processing layer')
     parser.add_argument('--fpfwd_outputs', type=str, default='',
                         help='post-processing layer')
-    parser.add_argument('--fpfwd_blocks', nargs='+', type=str, 
+    parser.add_argument('--fpfwd_blocks', nargs='+', type=str,
                         help='layers in blocks')
-    parser.add_argument('--chip', required=True, type=str,
+    parser.add_argument('--chip', '--processor', required=True, type=str,
                         choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x'],
                         help='chip platform name')
     parser.add_argument('--fp_type', default='auto', type=str,

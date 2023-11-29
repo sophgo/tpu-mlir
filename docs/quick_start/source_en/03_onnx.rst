@@ -178,7 +178,7 @@ To convert the mlir file to the f16 bmodel, we need to run:
    $ model_deploy \
        --mlir yolov5s.mlir \
        --quantize F16 \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.99,0.99 \
@@ -202,7 +202,7 @@ The main parameters of ``model_deploy`` are as follows (for a complete introduct
    * - quantize
      - Y
      - Quantization type (F32/F16/BF16/INT8)
-   * - chip
+   * - processor
      - Y
      - The platform that the model will use. Support bm1688/bm1684x/bm1684/cv186x/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
@@ -275,7 +275,7 @@ Execute the following command to convert to the INT8 symmetric quantized model:
        --mlir yolov5s.mlir \
        --quantize INT8 \
        --calibration_table yolov5s_cali_table \
-       --chip bm1684x \
+       --processor bm1684x \
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
@@ -385,7 +385,7 @@ Take the output of the last command as an example (the log is partially truncate
    [BMRT][print_array:702] INFO:  --> output ref_data: < 0 0 0 0 0 0 0 0 0 0 0 0 0 0...
    [BMRT][bmrt_test:982] INFO:reading output #2, bytesize=408000
    [BMRT][print_array:702] INFO:  --> output ref_data: < 0 0 0 0 0 0 0 0 0 0 0 0 0 0...
-   [BMRT][bmrt_test:1014] INFO:net[yolov5s] stage[0], launch total time is 4122 us (npu 4009 us, cpu 113 us)
+   [BMRT][bmrt_test:1014] INFO:net[yolov5s] stage[0], launch total time is 4122 us (npu 4009 us, normal 113 us)
    [BMRT][bmrt_test:1017] INFO:+++ The network[yolov5s] stage[0] output_data +++
    [BMRT][print_array:702] INFO:output data #0 shape: [1 3 80 80 85 ] < 0.301003    ...
    [BMRT][print_array:702] INFO:output data #1 shape: [1 3 40 40 85 ] < 0 0.228689  ...
@@ -399,7 +399,7 @@ Take the output of the last command as an example (the log is partially truncate
 The following information can be learned from the output above:
 
 1. Lines 05-08: the input and output information of bmodel
-2. Line 19: running time on the TPU, of which the TPU takes 4009us and the CPU takes 113us. The CPU time here mainly refers to the waiting time of calling at HOST
+2. Line 19: running time on the TPU, of which the TPU takes 4009us and the non-accelerated part takes 113us. The time of the latter mainly refers to the waiting time of calling at HOST
 3. Line 24: the time to load data into the NPU's DDR
 4. Line 25: the total time of Line 19
 5. Line 26: the output data retrieval time

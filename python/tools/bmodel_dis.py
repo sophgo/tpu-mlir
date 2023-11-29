@@ -39,32 +39,53 @@ def BModelCMDIter(bmodel: dis.BModel) -> Iterator[Tuple[Tuple, dis.CmdGroup]]:
     for net in bmodel.net:
         for param in net.parameter:
             for subnet in param.sub_net:
-                _id = subnet.id
-                for gid, _net in enumerate(subnet.cmd_group):
-                    yield (0, _id, gid), _net
-                for core_id, cmds in enumerate(subnet.core_commands):
-                    for gid, _net in enumerate(cmds.gdma_tiu_commands):
-                        yield (core_id, _id, gid), _net
+                yield subnet
 
 
 def BModel2Reg(bmodel_file):
     bmodel = dis.BModel(bmodel_file)
-
-    for identifier, net in BModelCMDIter(bmodel):
-        core_id, _id, gid = identifier
-        formated_id = f"core({core_id}).subnet({_id}).group({gid})"
-        yield formated_id, decode_cmdgroup(bmodel.context, net, _id, core_id)
+    for subnet in BModelCMDIter(bmodel):
+        subnet_id = subnet.id
+        for gid, cmds in enumerate(subnet.cmd_group):
+            formated_id = f"core(0).subnet({subnet_id}).group({gid})"
+            yield formated_id, decode_cmdgroup(bmodel.context, cmds, subnet_id, 0)
+        for core_id, _cmds in enumerate(subnet.core_commands):
+            for gid, cmds in enumerate(_cmds.gdma_tiu_commands):
+                formated_id = f"core({core_id}).subnet({subnet_id}).group({gid})"
+                yield formated_id, decode_cmdgroup(
+                    bmodel.context, cmds, subnet_id, core_id
+                )
 
 
 def BModel2Bin(bmodel_file):
     bmodel = dis.BModel(bmodel_file)
-    for identifier, net in BModelCMDIter(bmodel):
-        core_id, _id, gid = identifier
-        formated_id = f".core({core_id}).subnet({_id}).group({gid})."
-        with open(bmodel_file + formated_id + "tiu.bin", "wb") as f:
-            f.write(net.tiu_cmd)
-        with open(bmodel_file + formated_id + "dma.bin", "wb") as f:
-            f.write(net.dma_cmd)
+    for subnet in BModelCMDIter(bmodel):
+        subnet_id = subnet.id
+        for gid, cmds in enumerate(subnet.cmd_group):
+            formated_id = f".core(0).subnet({subnet_id}).group({gid})"
+            with open(bmodel_file + formated_id + "tiu.bin", "wb") as f:
+                f.write(bytes(cmds.tiu_cmd))
+            with open(bmodel_file + formated_id + "dma.bin", "wb") as f:
+                f.write(bytes(cmds.dma_cmd))
+        for core_id, _cmds in enumerate(subnet.core_commands):
+            for gid, cmds in enumerate(_cmds.gdma_tiu_commands):
+                formated_id = f".core({core_id}).subnet({subnet_id}).group({gid})"
+                with open(bmodel_file + formated_id + ".tiu.bin", "wb") as f:
+                    f.write(bytes(cmds.tiu_cmd))
+                with open(bmodel_file + formated_id + ".dma.bin", "wb") as f:
+                    f.write(bytes(cmds.dma_cmd))
+            for gid, cmds in enumerate(_cmds.sdma_commands):
+                formated_id = f".core({core_id}).subnet({subnet_id}).group({gid})"
+                with open(bmodel_file + formated_id + ".sdma.bin", "wb") as f:
+                    f.write(bytes(cmds))
+            for gid, cmds in enumerate(_cmds.hau_commands):
+                formated_id = f".core({core_id}).subnet({subnet_id}).group({gid})"
+                with open(bmodel_file + formated_id + ".hau.bin", "wb") as f:
+                    f.write(bytes(cmds))
+            for gid, cmds in enumerate(_cmds.cdma_commands):
+                formated_id = f".core({core_id}).subnet({subnet_id}).group({gid})"
+                with open(bmodel_file + formated_id + ".cmda.bin", "wb") as f:
+                    f.write(bytes(cmds))
 
 
 def unified_diff(a, b, fromfile="", tofile="", n=3, format="mlir"):
