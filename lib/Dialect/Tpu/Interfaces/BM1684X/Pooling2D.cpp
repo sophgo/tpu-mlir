@@ -62,8 +62,12 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
       bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       spec.avg_pooling_quant_mode =
           module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
-
-      if (spec.avg_pooling_quant_mode == 0) {
+      auto out_type = module::getStorageType(getOutput());
+      if (out_type.isa<Float8E4M3FNType>() || out_type.isa<Float8E5M2Type>()) {
+        spec.rq_scale = getFp8OutScale().has_value()
+                              ? (getFp8OutScale().value().convertToDouble())
+                              : 1.;
+      } else if (spec.avg_pooling_quant_mode == 0) {
         spec.multiplier =
             getMultiplier().has_value() ? getMultiplier().value() : 1;
         spec.rshiftbits = getRshift().has_value() ? getRshift().value() : 0;
@@ -148,8 +152,12 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
     common.is_avg_pooling = true;
     common.avg_pooling_quant_mode =
         module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
-
-    if (common.avg_pooling_quant_mode == 0) {
+    auto out_type = module::getStorageType(getOutput());
+    if (out_type.isa<Float8E4M3FNType>() || out_type.isa<Float8E5M2Type>()) {
+      common.rq_scale = getFp8OutScale().has_value()
+                            ? (getFp8OutScale().value().convertToDouble())
+                            : 1.;
+    } else if (common.avg_pooling_quant_mode == 0) {
       common.multiplier =
           getMultiplier().has_value() ? getMultiplier().value() : -1;
       common.rshiftbits = getRshift().has_value() ? getRshift().value() : -1;
