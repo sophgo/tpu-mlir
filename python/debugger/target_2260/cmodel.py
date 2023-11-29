@@ -15,6 +15,7 @@ import numpy as np
 
 from ..target_common.runner import CModelRunner
 from ..target_common import *
+from ..target_common.op_support import fp8e4m3_to_fp16, fp8e5m2_to_fp16
 from .memmap import *
 
 from numpy import ndarray
@@ -96,6 +97,7 @@ class SG2260Runner(CModelRunner):
         )  # config 2 register, the first one is TAG_WEIGHT, use the base_addr_regine{TAG_WEIGHT}. (base_addr_regine0~31)
         LMEM = []
         SMEM = []
+
         for i in range(self.core_num):
             base_addr = [
                 self.base_addr[0],
@@ -107,11 +109,10 @@ class SG2260Runner(CModelRunner):
             self.lib.cmodel_init(i, memory_size)
             self.lib.set_cur_nodechip_idx(i)
             self.lib.atomic_set_base_ddr(base_idx, base_addr, 3, self.ENGINE_GDMA)
-
-            if i == 0:  # init DDR only once
-                DDR = c_array_to_ndarray(self.lib.get_global_memaddr(i), memory_size)
-                LMEM.append(c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (64, 16, 1024 * 16)))
-                SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (64 * 1024,)))
+                
+            LMEM.append(c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (64, 16, 1024 * 16)))
+            SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (64 * 1024,)))
+        DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
         self.memory = Memory(LMEM, DDR, SMEM)
 
     def _compute(self, command: BaseTpuCmd, engine_type):
@@ -119,7 +120,7 @@ class SG2260Runner(CModelRunner):
         assert isinstance(atomic, np.ndarray)
         assert atomic.dtype == np.uint8
         return self.lib.execute_command(
-            0,
+            command.core_id,
             atomic.ctypes.data_as(ctypes.c_void_p),
             engine_type,
         )
@@ -498,8 +499,10 @@ class Memory(CModelMemory):
         data = get_data[memref.layout]()
         if memref.dtype == DType.bf16:
             return bf16_to_fp32(data)
-        elif memref.dtype == DType.f8:
-            return fp8_to_fp32(data)
+        elif memref.dtype == DType.f8e5m2:
+            return fp8e5m2_to_fp16(data)
+        elif memref.dtype == DType.f8e4m3:
+            return fp8e4m3_to_fp16(data)
         return data
 
     def _ddr_to_numpy(self, memref: MemRef):
@@ -536,8 +539,10 @@ class Memory(CModelMemory):
         )
         if memref.dtype == DType.bf16:
             return bf16_to_fp32(data)
-        elif memref.dtype == DType.f8:
-            return fp8_to_fp32(data)
+        elif memref.dtype == DType.f8e5m2:
+            return fp8e5m2_to_fp16(data)
+        elif memref.dtype == DType.f8e4m3:
+            return fp8e4m3_to_fp16(data)
         return data
 
     def clear_memory(self):

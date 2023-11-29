@@ -13,17 +13,24 @@ from itertools import chain
 from typing import Tuple
 import numpy as np
 
-from debugger.target_common import CModelRunner
+from ..target_common.runner import CModelRunner
 from ..target_common import *
 from .memmap import *
+
+from numpy import ndarray
+from typing import List
 
 
 class BM1688Runner(CModelRunner):
     lib_name = "libcmodel_1688.so"
+    # tag, range from 0 to 31, set as defined in /nntoolchain/TPU1686/bm1686/firmware_base/src/fullnet/nodechip_multi_fullnet.c
+    TAG_WEIGHT = 1  # coeff
+    TAG_ACTIVATION = 2  # neuron
+    TAG_LMEM = 3  # lmem
+
+    # ENGINE code, must same as defined in /nntoolchain/TPU1686/sg2260/spec/include/engine_type.h
     ENGINE_GDMA = 1
-    TAG_WEIGHT = 1
     ENGINE_HAU = 2
-    TAG_ACTIVATION = 2
 
     def __init__(self, memory_size, base_addr: Tuple[int, int]):
         # always init with 2 cores
@@ -34,6 +41,7 @@ class BM1688Runner(CModelRunner):
         lib.cmodel_init.argtypes = [ctypes.c_int32, ctypes.c_int64]
         lib.cmodel_init.restype = ctypes.c_int32
         lib.cmodel_deinit.argtypes = [ctypes.c_int32]
+        lib.cmodel_deinit.restype = ctypes.c_void_p
 
         # local_mem
         lib.get_local_mem.argtypes = [ctypes.c_int32]
@@ -72,25 +80,36 @@ class BM1688Runner(CModelRunner):
         self.init_memory(memory_size)
 
     def __del__(self):
-        base_idx = (ctypes.c_int32 * 2)(1, 2)
-        base_addr = (ctypes.c_int64 * 2)(0, 0)
+        base_idx = (ctypes.c_int32 * 3)(1, 2, 31)
+        base_addr = (ctypes.c_int64 * 3)(0, 0, 0)
         for i in range(self.core_num):
             self.lib.set_cur_nodechip_idx(i)
-            self.lib.atomic_set_base_ddr(base_idx, base_addr, 2, self.ENGINE_GDMA)
+            self.lib.atomic_set_base_ddr(base_idx, base_addr, 3, self.ENGINE_GDMA)
             self.lib.cmodel_deinit(i)
 
     def init_memory(self, memory_size: int):
-        base_idx = (ctypes.c_int32 * 2)(self.TAG_WEIGHT, self.TAG_ACTIVATION)
-        base_addr = (ctypes.c_uint64 * 2)(self.base_addr[0], self.base_addr[1])
+        self.memory_list = []
+        base_idx = (ctypes.c_int32 * 3)(
+            self.TAG_WEIGHT, self.TAG_ACTIVATION, self.TAG_LMEM
+        )  # config 2 register, the first one is TAG_WEIGHT, use the base_addr_regine{TAG_WEIGHT}. (base_addr_regine0~31)
+        LMEM = []
+        SMEM = []
+
         for i in range(self.core_num):
+            base_addr = [
+                self.base_addr[0],
+                self.base_addr[1],
+                self.base_addr[2](i),
+            ]
+            print("using base_addr:", base_addr)
+            base_addr = (ctypes.c_uint64 * 3)(*base_addr)
             self.lib.cmodel_init(i, memory_size)
             self.lib.set_cur_nodechip_idx(i)
-            self.lib.atomic_set_base_ddr(base_idx, base_addr, 2, self.ENGINE_GDMA)
-        DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)
-        LMEM = c_array_to_ndarray(
-            self.lib.get_local_mem(0).contents.raw_ptr, (32, 16, 1024 * 8)
-        )
-        SMEM = c_array_to_ndarray(self.lib.get_static_memaddr_by_node(0), (16 * 1024,))
+            self.lib.atomic_set_base_ddr(base_idx, base_addr, 3, self.ENGINE_GDMA)
+               
+            LMEM.append(c_array_to_ndarray(self.lib.get_local_mem(i).contents.raw_ptr, (32, 16, 1024 * 8)))
+            SMEM.append(c_array_to_ndarray(self.lib.get_static_memaddr_by_node(i), (64 * 1024,)))
+        DDR = c_array_to_ndarray(self.lib.get_global_memaddr(0), memory_size)        
         self.memory = Memory(LMEM, DDR, SMEM)
 
     def _compute(self, command: BaseTpuCmd, engine_type):
@@ -136,7 +155,7 @@ class BM1688Runner(CModelRunner):
         ERF_COEFF = [
             0xBFA1FC4E, 0x3F8000C7, 0x3EBF88FB, 0x3DC636C9, 0xBE3EC24C, 0x3E8EC7CC,
             0xBF914E5D, 0x3FBE87B0, 0xBF527892, 0x3E2EF945
-        ] + [0] * 6
+        ]
         SEQ_COEFF = [
             0x0, 0x1, 0x2, 0x3, 0x4, 0x5,
             0x6, 0x7, 0x8, 0x9, 0xA, 0xB,
@@ -166,6 +185,47 @@ class BM1688Runner(CModelRunner):
             0x19A008EB, 0x96A50A23, 0x139D3CA3, 0x908ACFA9, 0xD63BDFE, 0x8A2E0D71,
             0x6F87455, 0x83A5FBC7
         ]
+        # numpy use little-endian to store bytes
+        SIN_FP16_COEFF=[
+            (0b0100011001001000)|(0b1101000100101011<<16),
+            (0b0101010100011010)|(0b1101010011001011<<16),
+            (0b0101000101000010)|(0b1100101110001100<<16),
+            (0b0100001110100100)|(0b1011100110111111<<16),
+            (0b0010111010101100)|(0b1010001000101001<<16),
+            (0b0001010010100010)|(0b1000010111001000<<16),
+            (0b0000000001100001)|(0b1000000000000101<<16),
+            (0b0000000000000000)|(0b1000000000000000<<16)
+        ]
+        COS_FP16_COEFF=[
+            (0b0011110000000000)|(0b1100110011101111<<16),
+            (0b0101010000001111)|(0b1101010101010111<<16),
+            (0b0101001110001000)|(0b1100111010011011<<16),
+            (0b0100011111100111)|(0b1011111011011100<<16),
+            (0b0011010010000011)|(0b1010100010101000<<16),
+            (0b0001101110111110)|(0b1000110101001011<<16),
+            (0b0000000110000100)|(0b1000000000011000<<16),
+            (0b0000000000000001)|(0b1000000000000000<<16)
+        ]
+        SIN_BFP16_COEFF=[
+            (0b0100000011001001)|(0b1100001000100101<<16),
+            (0b0100001010100011)|(0b1100001010011001<<16),
+            (0b0100001000101000)|(0b1100000101110010<<16),
+            (0b0100000001110100)|(0b1011111100111000<<16),
+            (0b0011110111010101)|(0b1011110001000101<<16),
+            (0b0011101010010100)|(0b1011100010111001<<16),
+            (0b0011011011000011)|(0b1011010010101111<<16),
+            (0b0011001010001000)|(0b1011000000111001<<16)
+        ]
+        COS_BFP16_COEFF=[
+            (0b0011111110000000)|(0b1100000110011110<<16),
+            (0b0100001010000010)|(0b1100001010101011<<16),
+            (0b0100001001110001)|(0b1100000111010011<<16),
+            (0b0100000011111101)|(0b1011111111011011<<16),
+            (0b0011111010010000)|(0b1011110100010101<<16),
+            (0b0011101101111000)|(0b1011100110101001<<16),
+            (0b0011011111000010)|(0b1011010110111100<<16),
+            (0b0011001110011101)|(0b1011000101100100<<16)
+        ]
         ARCSIN_COEFF = [
             0x3F800000, 0x3E2AAAAB, 0x3D99999A, 0x3D36DB6E, 0x3CF8E38E, 0x3CB745D1,
             0x3C8E2762, 0x3C64CCCD, 0x3C3D43C4, 0x3C1FEF28, 0x3C09779E, 0x3BEF9DEA,
@@ -188,51 +248,56 @@ class BM1688Runner(CModelRunner):
             0x5E22F983, 0x5F22F983
         ]
         EXP_FP16_COEFF = [
-            0x3C00, 0x3C00, 0x3800, 0x3155, 0x2955, 0x2044,
-            0x15B0, 0xA80, 0x1A0, 0x2E, 0x5, 0x0, 0x0, 0x0, 0x0, 0x0]
+            (0x3C00)|(0x3C00<<16), (0x3800)|(0x3155<<16), (0x2955)|(0x2044<<16),
+            (0x15B0)|(0xA80<<16), (0x1A0)|(0x2E<<16), (0x5)|(0x0<<16), (0x0)|(0x0<<16), (0x0)|(0x0<<16)]
         EXP_BF16_COEFF = [
-            0x3F80, 0x3F80, 0x3F00, 0x3E2B, 0x3D2B, 0x3C09, 0x3AB6, 0x3950,
-            0x37D0, 0x3639, 0x3494, 0x32D7, 0x310F, 0x2F31, 0x2D4A, 0x2B57]
+            (0x3F80)|(0x3F80<<16), (0x3F00)|(0x3E2B<<16), (0x3D2B)|(0x3C09<<16), (0x3AB6)|(0x3950<<16),
+            (0x37D0)|(0x3639<<16), (0x3494)|(0x32D7<<16), (0x310F)|(0x2F31<<16), (0x2D4A)|(0x2B57<<16)]
         ERF_FP16_COEFF = [
-            0xBD10, 0x3C00, 0x35FC, 0x2E32, 0xB1F6, 0x3476, 0xBC8A, 0x3DF4,
-            0xBA94, 0x3178, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            (0xBD10)|(0x3C00<<16), (0x35FC)|(0x2E32<<16), (0xB1F6)|(0x3476<<16), (0xBC8A)|(0x3DF4<<16),
+            (0xBA94)|(0x3178<<16), (0x00)|(0x00<<16), (0x00)|(0x00<<16), (0x00)|(0x00<<16)
         ]
         ERF_BF16_COEFF = [
-            0xBFA2, 0x3F80, 0x3EC0, 0x3DC6, 0xBE3F, 0x3E8F, 0xBF91, 0x3FBF,
-            0xBF52, 0x3E2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            (0xBFA2)|(0x3F80<<16), (0x3EC0)|(0x3DC6<<16), (0xBE3F)|(0x3E8F<<16), (0xBF91)|(0x3FBF<<16),
+            (0xBF52)|(0x3E2F<<16), (0x00)|(0x00<<16), (0x00)|(0x00<<16), (0x00)|(0x00<<16),
         ]
         LOG_FP16_COEFF = [
-            0x0, 0x3c00, 0xb800, 0x3555, 0xb400, 0x3266, 0xb155, 0x3092, 0xb000,
-            0x2f1c, 0xae66, 0x2dd1, 0xad55, 0x2cec, 0xac92, 0x2c44
+            (0x0)|(0x3c00<<16), (0xb800)|(0x3555<<16), (0xb400)|(0x3266<<16), (0xb155)|(0x3092<<16), 
+            (0xb000)|(0x2f1c<<16), (0xae66)|(0x2dd1<<16), (0xad55)|(0x2cec<<16), (0xac92)|(0x2c44<<16)
         ]
         LOG_BF16_COEFF = [
-            0x0, 0x3f80, 0xbf00, 0x3eab, 0xbe80, 0x3e4d, 0xbe2b, 0x3e12, 0xbe00,
-            0x3de4, 0xbdcd, 0x3dba, 0xbdab, 0x3d9e, 0xbd92, 0x3d89,
+            (0x0)|(0x3f80<<16), (0xbf00)|(0x3eab<<16), (0xbe80)|(0x3e4d<<16), (0xbe2b)|(0x3e12<<16), 
+            (0xbe00)|(0x3de4<<16), (0xbdcd)|(0x3dba<<16), (0xbdab)|(0x3d9e<<16), (0xbd92)|(0x3d89<<16),
         ]
+        
         table = (
-            (EXP_COEFF, 32),
-            (LOG_COEFF, 64),
-            (ERF_COEFF, 16),
-            (SEQ_COEFF, 64),
-            (SIN_COEFF, 32),
-            (COS_COEFF, 32),
-            (ARCSIN_COEFF, 64),
-            (TAN_COEFF, 32),
-            (EXP_FP16_COEFF, 16),
-            (EXP_BF16_COEFF, 16),
-            (ERF_FP16_COEFF, 16),
-            (ERF_BF16_COEFF, 16),
-            (LOG_FP16_COEFF, 16),
-            (LOG_BF16_COEFF, 16)
+                (EXP_COEFF, 32),
+                (LOG_COEFF, 64),
+                (ERF_COEFF, 16),
+                (SEQ_COEFF, 64),
+                (SIN_COEFF, 32),
+                (COS_COEFF, 32),
+                (ARCSIN_COEFF, 64),
+                (TAN_COEFF, 32),
+                (EXP_FP16_COEFF, 8),
+                (EXP_BF16_COEFF, 8),
+                (ERF_FP16_COEFF, 8),
+                (ERF_BF16_COEFF, 8),
+                (LOG_FP16_COEFF, 8),
+                (LOG_BF16_COEFF, 16),
+                (SIN_FP16_COEFF,16),
+                (SIN_BFP16_COEFF,16),
+                (COS_FP16_COEFF,16),
+                (COS_BFP16_COEFF,16)
         )
 
-        def align_to_64bytes(x):
+        def align_to_bytes(x):
             x_len = len(x[0])
             space = x[1]
             padding = int(np.ceil(space / 16) * 16) - x_len
             return x[0] + [0] * padding
 
-        return list(chain.from_iterable((align_to_64bytes(x) for x in table)))
+        return list(chain.from_iterable((align_to_bytes(x) for x in table)))
 
 
 class Memory(CModelMemory):
@@ -241,7 +306,16 @@ class Memory(CModelMemory):
     This class should handle all the tenors type in all kinds of storage.
     """
 
-    def _local_mem_to_numpy(self, memref: MemRef):
+    def __init__(self, LMEM: List[ndarray], DDR: ndarray, SMEM: List[ndarray]) -> None:
+        self.DDR = DDR.ravel()
+        self.LMEM = []
+        self.SMEM = []
+        for lmem in LMEM:
+            self.LMEM.append(lmem.ravel())
+        for smem in SMEM:
+            self.SMEM.append(smem.ravel())
+
+    def _local_mem_to_numpy(self, memref: MemRef, core_id):
         NPU_OFFSET = memref.npu_offset
         itemsize = memref.itemsize
 
@@ -256,7 +330,9 @@ class Memory(CModelMemory):
                 n_offset = nidx * stride[0]
                 for cidx in range(0, shape[1]):
                     npu_idx = (start_npu_idx + cidx) % NPU_NUM
-                    LMEM = self.LMEM[npu_idx * LANE_SIZE : (npu_idx + 1) * LANE_SIZE]
+                    LMEM = self.LMEM[self.core_id][
+                        npu_idx * LANE_SIZE : (npu_idx + 1) * LANE_SIZE
+                    ]
                     c_offset = ((start_npu_idx + cidx) >> NPU_SHIFT) * stride[1]
                     h_offset = np.arange(0, shape[2]) * stride[2]
                     w_offset = np.arange(0, shape[3]) * stride[3]
@@ -277,7 +353,7 @@ class Memory(CModelMemory):
         def data_view(shape, stride):
             offset = memref.r_addr - NPU_OFFSET * LANE_SIZE
             return np.lib.stride_tricks.as_strided(
-                self.LMEM[offset : offset + 4].view(memref.np_dtype),
+                self.LMEM[self.core_id][offset : offset + 4].view(memref.np_dtype),
                 shape,
                 np.array(stride) * itemsize,
                 writeable=False,
@@ -416,6 +492,7 @@ class Memory(CModelMemory):
             Layout.DMAmatrix: get_dma_matrix_data,
             Layout.DMAlinear: get_dma_linear_data,
         }
+        self.core_id = core_id
         data = get_data[memref.layout]()
         if memref.dtype == DType.bf16:
             return bf16_to_fp32(data)
@@ -459,18 +536,52 @@ class Memory(CModelMemory):
 
     def clear_memory(self):
         self.DDR.fill(0)
-        self.LMEM.fill(0)
-        lut = np.array(BM1688Runner.gen_lookup_table(), np.uint32).view(np.uint8)
-        self.SMEM[: len(lut)] = lut[...]
+        for lmem in self.LMEM:
+            lmem.fill(0)
 
-    def get_data(self, value):
+        lut = np.array(BM1688Runner.gen_lookup_table(), np.uint32).view(np.uint8)
+        for smem in self.SMEM:
+            smem[: len(lut)] = lut[...]
+
+    def get_data(self, value: MemRef, core_id=0):
+        # currently core_id won't be used in "get_data" func in ../debugger/plugins/common.py
+        # because the cmds in different cores are executed core by core, take tiu_cmds for example:
+        #         core0                          core1                            core2                     execute sequence
+        # tiu_core(0)_cmdid(1)                                                                                      ▼
+        # tiu_core(0)_cmdid(2)                                                                                      |
+        #         ...                                                                                               |
+        # tiu_core(0)_cmdid(10)                                                                                     |
+        # tiu_core(0)_cmdid(11)                                                                                     |
+        #                                 tiu_core(1)_cmdid(1)                                                      |
+        #                                 tiu_core(1)_cmdid(2)                                                      |
+        #                                         ...                                                               |
+        #                                 tiu_core(1)_cmdid(7)                                                      |
+        #                                 tiu_core(1)_cmdid(8)                                                      |
+        #                                                                 tiu_core(2)_cmdid(1)                      |
+        #                                                                 tiu_core(2)_cmdid(2)                      ▼
+        #                                                                         ...                               |
+        #                                                                 tiu_core(2)_cmdid(6)                      |
+        #                                                                 tiu_core(2)_cmdid(7)                      |
+        # tiu_core(0)_cmdid(12)                                                                                     |
+        #         ...                                                                                               |
+        # tiu_core(0)_cmdid(20)                                                                                     |
+        #                                 tiu_core(1)_cmdid(9)                                                      |
+        #                                         ...                                                               |
+        #                                 tiu_core(1)_cmdid(15)                                                     |
+        #                                                                 tiu_core(2)_cmdid(8)                      |
+        #                                                                         ...                               |
+        #                                                                 tiu_core(2)_cmdid(10)                     ▼
+        # so the sg2260 backend config the same absolute address for LMEM on different cores, since a dma cmd would transfer
+        # the result data of tiu_core(0)_cmdid(11) to gmem before tiu_core(1)_cmdid(1) is executed.
+        #
+        # this `core_id` is set in case the absolute address are set different.
         if isinstance(value, Scalar):
             return value.data
         assert isinstance(value, MemRef)
         if value.mtype == MType.G:
             return self._ddr_to_numpy(value)
         if value.mtype == MType.R:
-            return self._local_mem_to_numpy(value)
+            return self._local_mem_to_numpy(value, core_id)
         raise ValueError(f"unsupported memory view: {value}")
 
     def set_data(self, value, data: np.ndarray):

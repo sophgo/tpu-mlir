@@ -19,9 +19,7 @@ from .opparam import get_opparam_converter_with_context, opparam_converter
 
 
 def GET_LMEM_START_ADDR(core_id):
-    # currently, sg2260 backend set all lmem addr start as 0x6900000000
-    # instead of 0x6900000000 + core_id * 2**28
-    return 0x6900000000
+    return 0x6900000000 + core_id * 2**28
 
 
 class SG2260Context(BModelContext):

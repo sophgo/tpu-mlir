@@ -238,9 +238,7 @@ class TdbCmdBackend(cmd.Cmd):
         coeff = self.atomic_mlir.functions[0].regions[0].data
         if coeff:
             address = coeff.address
-            if isinstance(self.context, BM1688Context):
-                address = self.context.fix_tag(address)
-            elif isinstance(self.context, SG2260Context):
+            if isinstance(self.context, BM1688Context) or isinstance(self.context, SG2260Context):
                 address = self.context.fix_addr(address)
             addr_offset_ddr = address - self.context.memmap[MType.G][0]
             # load constant data
