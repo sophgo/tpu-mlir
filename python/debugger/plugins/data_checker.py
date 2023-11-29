@@ -35,6 +35,8 @@ from ..tdb_support import (
 from dataclasses import dataclass
 from .common import FinalMlirIndexPlugin, ValueView
 from enum import Enum
+from ..target_1688.context import BM1688Context
+from ..target_2260.context import SG2260Context
 
 
 class IncNpzFile:
@@ -484,7 +486,11 @@ class DataCheck(TdbPlugin, TdbPluginCmd):
             value_res = ComparedResult(value_view, None, msg="ignore")
             return value_res
 
-        raw_data = context.memory.get_data(memref)
+        cmd = self.tdb.get_cmd()
+        if isinstance(context, SG2260Context) or isinstance(context, BM1688Context):
+            raw_data = context.memory.get_data(memref, core_id=cmd.core_id)
+        else:
+            raw_data = context.memory.get_data(memref)
         actual = (raw_data.astype(np.float32) - value.zero_point) * value.scale
 
         desired = self.get_ref_data(value)

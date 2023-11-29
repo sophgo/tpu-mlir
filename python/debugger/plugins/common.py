@@ -36,6 +36,8 @@ from ..tdb_support import (
     TdbPluginCmd,
     complete_file,
 )
+from ..target_1688.context import BM1688Context
+from ..target_2260.context import SG2260Context
 
 
 def max_with_none(*args):
@@ -345,7 +347,10 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
                 if cmd.operands[index].is_scalar:
                     data = cmd.operands[index].data
                 else:
-                    data = self.tdb.memory.get_data(cmd.operands[index])
+                    if isinstance(self.tdb.context, SG2260Context) or isinstance(self.tdb.context, BM1688Context):
+                        data = self.tdb.memory.get_data(cmd.operands[index], core_id=cmd.core_id)
+                    else:
+                        data = self.tdb.memory.get_data(cmd.operands[index])
             else:
                 self.tdb.error("")
                 return
@@ -389,7 +394,10 @@ class PrintPlugin(TdbPlugin, TdbPluginCmd):
                 if cmd.results[index].is_scalar:
                     data = cmd.results[index].data
                 else:
-                    data = self.tdb.memory.get_data(cmd.results[index])
+                    if isinstance(self.tdb.context, SG2260Context) or isinstance(self.tdb.context, BM1688Context):
+                        data = self.tdb.memory.get_data(cmd.operands[index], core_id=cmd.core_id)
+                    else:
+                        data = self.tdb.memory.get_data(cmd.operands[index])
             else:
                 self.tdb.error("")
                 return

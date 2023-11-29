@@ -79,7 +79,9 @@ class SYS_TR_ACC_HEAD(HeadDef):
         return self.tsk_eu_typ
 
     def __hash__(self):
-        return hash((None, self.tsk_typ, self.tsk_eu_typ))
+        # (0, self.tsk_typ, self.tsk_eu_typ) and (1, self.tsk_typ, self.tsk_eu_typ) are both OK,
+        # because short_cmd is None for SYS_TR_ACC_HEAD, and 0/1 are treated the same.
+        return hash((0, self.tsk_typ, self.tsk_eu_typ))
 
 
 class DmaHead(HeadDef):
@@ -130,7 +132,7 @@ class Decoder(DecoderBase):
             f" Potential head identified as {head}"
         )
         # get op struct
-        op_clazz = op_class_dic[op_info.op_name]
+        op_clazz = op_class_dic[op_info.name]
         reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
         buf = reg_buf[offset : offset + op_clazz.length // 8]
         param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
@@ -156,7 +158,7 @@ class Decoder(DecoderBase):
             f" Potential head identified as {head}"
         )
         # get op struct
-        op_clazz = op_class_dic[op_info.op_name]
+        op_clazz = op_class_dic[op_info.name]
 
         reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
         buf = reg_buf[offset : offset + op_clazz.length // 8]

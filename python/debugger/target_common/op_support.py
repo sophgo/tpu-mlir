@@ -6,6 +6,7 @@
 # third-party components.
 #
 # ==============================================================================
+import struct
 from typing import Union, List, Dict, NamedTuple, Callable, Any, Tuple
 from enum import Enum, IntEnum
 import functools
@@ -136,11 +137,13 @@ class DType(IntEnum):
     ui16 = i16 + 8  # type: ignore
     ui32 = i32 + 8  # type: ignore
     ui4 = i4 + 8  # type: ignore
+    f8e5m2 = f8 + 8  # type: ignore
     # sign integer
     si8 = i8 + 16  # type: ignore
     si16 = i16 + 16  # type: ignore
     si32 = i32 + 16  # type: ignore
     si4 = i4 + 16  # type: ignore
+    f8e4m3 = f8 + 16  # type: ignore
 
     def is_float(self):
         return self in (DType.f32, DType.f16, DType.bf16)
@@ -209,7 +212,7 @@ class MType(Enum):
 
 
 def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
-    if prec in (DType.f32, DType.bf16, DType.f16, DType.f8):
+    if prec in (DType.f32, DType.bf16, DType.f16):
         return DType(prec)
     return DType(prec + 8 + (sign == 1) * 8)
 
@@ -218,26 +221,59 @@ def bf16_to_fp32(d_bf16):
     assert d_bf16.dtype == np.uint16
     s = d_bf16.shape
     d_bf16 = d_bf16.ravel()
-    d_fp32 = np.empty_like(d_bf16, dtype=np.float32)
+    d_fp32 = np.zeros_like(d_bf16, dtype=np.float32)
     v_ui16 = d_fp32.view(np.uint16)
     v_ui16[1::2] = d_bf16
     return d_fp32.reshape(s)
 
 
-def fp8_to_fp32(d_fp8):
+def fp8e5m2_to_fp16(d_fp8):
     assert d_fp8.dtype == np.uint8
     s = d_fp8.shape
     d_fp8 = d_fp8.ravel()
-    d_fp32 = np.empty_like(d_fp8, dtype=np.float32)
-    v_ui8 = d_fp32.view(np.uint8)
-    v_ui8[3::4] = d_fp8
-    return d_fp32.reshape(s)
+    d_fp16 = np.zeros_like(d_fp8, dtype=np.float16)
+    v_ui8 = d_fp16.view(np.uint8)
+    v_ui8[1::2] = d_fp8
+    return d_fp16.reshape(s)
+
+
+def fp8e4m3_to_fp16(d_fp8):
+    assert d_fp8.dtype == np.uint8
+    s = d_fp8.shape
+    d_fp8 = d_fp8.ravel().astype(np.uint16)
+    d_fp16 = np.zeros_like(d_fp8, dtype=np.float16)
+
+    # refer to fp8_to_fp16() in /nntoolchain/TPU1686/common/include/cast.h
+    ur = d_fp8 << 8
+    sign = ur & 0x8000
+    exponent = ((ur & 0x7800) >> 1) + 0x2000
+    mantissa = (ur & 0x0700) >> 1
+    absx = 0x7F & d_fp8
+
+    nan_mask = absx == 0x7F
+    ur[nan_mask] = 0x7FFF | sign[nan_mask]
+
+    exp_mask = ~nan_mask & (exponent == 0x2000)
+    mantissa_mask = exp_mask & (mantissa != 0)
+    mantissa[exp_mask] = np.where(mantissa[exp_mask] != 0, mantissa[exp_mask] << 1, mantissa[exp_mask])
+    exponent[exp_mask] = np.where(mantissa[exp_mask] != 0, exponent[exp_mask], 0)
+
+    while np.any((mantissa[mantissa_mask] & 0x0400) == 0):
+        mantissa[mantissa_mask] = np.where((mantissa[mantissa_mask] & 0x0400) == 0,mantissa[mantissa_mask] << 1,mantissa[mantissa_mask])
+        exponent[mantissa_mask] = np.where((mantissa[mantissa_mask] & 0x0400) == 0,exponent[mantissa_mask] - 0x0400,exponent[mantissa_mask])
+    mantissa[mantissa_mask] &= 0x03FF
+
+    ur[~nan_mask] = (sign[~nan_mask] | exponent[~nan_mask]) | mantissa[~nan_mask]
+    d_fp16 = np.frombuffer(ur.astype(np.uint16).tobytes(), dtype=np.float16)
+    return d_fp16.reshape(s)
 
 
 to_np_dtype = {
     DType.si8: np.int8,
     DType.ui8: np.uint8,
     DType.f8: np.uint8,
+    DType.f8e5m2: np.uint8,
+    DType.f8e4m3: np.uint8,
     DType.f16: np.float16,
     DType.f32: np.float32,
     DType.si16: np.int16,

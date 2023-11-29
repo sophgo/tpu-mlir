@@ -31,6 +31,9 @@ to_dtype: Dict[str, DType] = {
     "si8": DType.si8,
     "ui8": DType.ui8,
     "u8": DType.ui8,
+    "f8": DType.f8,
+    "f8e5m2": DType.f8e5m2,
+    "f8e4m3": DType.f8e4m3,
     "i16": DType.i16,
     "si16": DType.si16,
     "ui16": DType.ui16,
@@ -42,8 +45,6 @@ to_dtype: Dict[str, DType] = {
     "i4": DType.i4,
     "si4": DType.si4,
     "ui4": DType.ui4,
-    "f8e4m3": DType.ui8,
-    "f8e5m2": DType.ui8,
 }
 
 
@@ -160,6 +161,8 @@ class Value:
 
     @property
     def scale(self):
+        if isinstance(self.type, quant.CalibratedQuantizedType) and "f8E4M3" in self._type:
+            return self.type.max / 448
         if "uniform" not in self._type:
             return 1
         if isinstance(self.type, quant.UniformQuantizedType):

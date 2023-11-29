@@ -7,6 +7,8 @@
 #
 # ==============================================================================
 from functools import partial, lru_cache
+
+import numpy as np
 from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys, SYS_TR_ACC_reg
 from .memmap import *
 from .cmodel import MemRef
@@ -15,6 +17,10 @@ from typing import List, Type
 from .cmodel import BM1688Runner
 from ..target_common import *
 from .opparam import get_opparam_converter_with_context, opparam_converter
+
+
+def GET_LMEM_START_ADDR(core_id):
+    return 0x25000000 + core_id * 2**23
 
 
 class BM1688Context(BModelContext):
@@ -26,10 +32,11 @@ class BM1688Context(BModelContext):
     tiu_sys = tiu_sys
 
     local_layout_to_stride = local_layout_to_stride
+    valid_tag = {1: 0, 2: 1, 3:2}  # {tag : corresponding index in self.base_addr}
+    base_addr = [2**32, 0x5F11000 + 2**32, GET_LMEM_START_ADDR]
 
     def __init__(self) -> None:
         super().__init__()
-        self.base_addr = [memmap[MType.G][0] for _ in range(2)]
         self.decoder = Decoder(self)
 
     @property
@@ -41,42 +48,50 @@ class BM1688Context(BModelContext):
     def MemRef(self) -> Type[MemRef]:
         return partial(MemRef, context=self)
 
-    def get_memory_type(self, address: int) -> MType:
-        address = self.fix_tag(address)
-        for k, v in memmap.items():
-            if address >= v[0] and address < v[1]:
-                return k
-        return MType.UNKNOWN
+    def get_memory_type(self, reg_address: int) -> MType:
+        assert 0 <= reg_address < 2**40
+        if reg_address >> 39:
+            return MType.G
+        else:
+            if (reg_address >> 23) & 0x1:
+                return MType.S
+            else:
+                return MType.R
 
-    def fix_tag(self, address: int) -> int:
-        fixed_addr = address
-        if address & (1 << 39):
-            base_addr_idx = (address >> 36) & 0x7
-            fixed_addr = (address + self.base_addr[base_addr_idx - 1]) & ((1 << 35) - 1)
+    def fix_addr(self, reg_address: int) -> int:
+        # asser reg_address has 40 bits
+        assert 0 <= reg_address < 2**40
+        if reg_address & (1 << 39):  # GMEM
+            tag = (reg_address >> 36) & 0x7
+            fixed_addr = self.base_addr[self.valid_tag[tag]] + (
+                reg_address & 0x7FFFFFFFF
+            )
+        else:
+            fixed_addr = reg_address & (0xFFFFFF)
         return fixed_addr
 
     @classmethod
     def merge_instruction(cls, tiu: List[BaseTpuCmd], dma: List[BaseTpuCmd]):
         main_cmd, inserted_cmd = dma, tiu
-        # remove the system command
 
-        def get_end(cmd: List[BaseTpuCmd]):
-            if len(cmd) == 0:
+        # remove the system command
+        def get_end(cmds: List[BaseTpuCmd]):
+            if len(cmds) == 0:
                 return 0
 
-            if cls.is_sys(cmd[-1]):
+            if cls.is_sys(cmds[-1]):
                 return -1
             else:
-                return len(cmd)
+                return len(cmds)
 
-        def fix_tgcr_cmd_id_dp(tiu_cmds: List[BaseTpuCmd]):
-            for i, v in enumerate(tiu_cmds):
+        def fix_tgcr_cmd_id_dp(tiu_cmd: List[BaseTpuCmd]):
+            for i, v in enumerate(tiu_cmd):
                 if isinstance(v.reg, SYS_TR_ACC_reg):
                     # same as v.op_code == 12, changed because short cmd do not have op_code
                     v.cmd_id_dep = (
-                        tiu_cmds[i + 1].cmd_id_dep
-                        if tiu_cmds[i + 1].cmd_id_dep != 0
-                        else tiu_cmds[i + 2].cmd_id_dep
+                        tiu_cmd[i + 1].cmd_id_dep
+                        if tiu_cmd[i + 1].cmd_id_dep != 0
+                        else tiu_cmd[i + 2].cmd_id_dep
                     )
 
         fix_tgcr_cmd_id_dp(inserted_cmd[: get_end(inserted_cmd)])
@@ -85,7 +100,7 @@ class BM1688Context(BModelContext):
         inserted_id = [(i.cmd_id_dep, i) for i in inserted_cmd[: get_end(inserted_cmd)]]
         # "sorted" is stable, which keeps the inserted commands
         # after the main instructions.
-        
+
         cmd = main_id + inserted_id
         cmd_sorted = sorted(cmd, key=lambda x: x[0])
 

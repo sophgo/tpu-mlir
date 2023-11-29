@@ -38,6 +38,9 @@ TYPED_EU_NUM = {
     DType.i8: BASE_EU_NUM * 4,
     DType.ui8: BASE_EU_NUM * 4,
     DType.si8: BASE_EU_NUM * 4,
+    DType.i4: BASE_EU_NUM * 8,
+    DType.ui4: BASE_EU_NUM * 8,
+    DType.si4: BASE_EU_NUM * 8,
 }
 
 
@@ -47,13 +50,10 @@ def EU_NUM(dtype):
 
 # TPU1688/bm1688/spec/include/memmap.h
 memmap = {
-    MType.R: (int("0x0", 16), int("0x400000", 16)),  # lmen_base 8M
-    # static memory 16KB
-    MType.S: (int("0x25800000", 16), int("0x25804000", 16)),
-    MType.G: (int("0x100000000", 16), int("0x200000000", 16)),  # global memory
+    MType.R: (0, 4096000),  # lmen_base 4MB
+    MType.S: (0, 65536),  # static memory 64KB
+    MType.G: (2**32, 2**33),  # global memory 4GB
 }
-# base_addr currently only used for BM16846
-BASE_ADDR = [memmap[MType.G][0] for _ in range(2)]
 
 
 @staticmethod
@@ -144,7 +144,7 @@ class MemRef(MemRefBase):
     ):
         assert context is not None
         self.context = context
-        address = self.context.fix_tag(address)
+
         super().__init__(address, shape, dtype, stride, layout)
         if self.mtype == MType.R and layout != Layout.stride:
             self.stride = local_layout_to_stride(self)
@@ -172,11 +172,37 @@ class MemRef(MemRefBase):
     @property
     @functools.lru_cache()
     def r_addr(self):
-        if self.mtype == MType.UNKNOWN:
-            return self.address
+        if self.mtype in [MType.UNKNOWN, MType.G]:
+            return (
+                self.context.fix_addr(self.address) - self.context.memmap[self.mtype][0]
+            )
 
-        r_addr = self.address - memmap[self.mtype][0]
+        r_addr = self.address & 0x7FFFFF  # remain 23 bit as local offset
         return r_addr
+
+    @property
+    @functools.lru_cache()
+    def name(self):
+        """
+        use relative address
+        """
+        k = self.mtype
+        if k == MType.UNKNOWN:
+            return f"%?.{self.address}"
+        if k == MType.R:
+            # R{bank_index}.{bank_offset}.L{NPU_OFFSET}
+            # R0.123.L0
+            mem_str = f"%{k.name}{self.bank_index}"
+            if self.bank_offset:
+                mem_str += f".{self.bank_offset}"
+            if self.npu_offset:
+                mem_str += f".L{self.npu_offset}"
+            return mem_str
+        if k == MType.G:
+            tag = (self.address >> 36) & 0x7
+            offset = self.address & 0x7FFFFFFFF
+            return f"%{k.name}{tag}.{offset}"
+        return f"%{k.name}{self.r_addr}"
 
     @property
     @functools.lru_cache()
