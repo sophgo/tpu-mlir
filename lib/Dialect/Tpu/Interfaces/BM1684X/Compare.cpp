@@ -16,15 +16,18 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::CompareOp::codegen_global_bm1684x() {
-  bcbinary_common_spec_t spec = {0};
+  bcbinary_global_param_t param{0};
+  auto &spec = param.spec;
   spec.binary_type = BM168x::compare_mode(getMode());
   spec.if_relu = 0;
   spec.scale_A = 1;
   spec.scale_B = 1;
+  spec.f8_scale_A = 1.0;
+  spec.f8_scale_B = 1.0;
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  BM168x::call_global_func("backend_api_bcbinary_global", &spec, sizeof(spec),
+  BM168x::call_global_func("backend_api_bcbinary_global", &param, sizeof(param),
                            input_spec->data(), output_spec->data());
 }
 
@@ -49,12 +52,14 @@ void tpu::CompareOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
 
-  bcbinary_local_spec_t spec = {0};
+  bcbinary_local_param_t param = {0};
+  auto &spec = param.spec;
   spec.common.binary_type = BM168x::compare_mode(getMode());
   spec.common.if_relu = 0;
   spec.common.scale_A = 1;
   spec.common.scale_B = 1;
-
+  spec.common.f8_scale_A = 1.0;
+  spec.common.f8_scale_B = 1.0;
   BM168x::call_local_func("backend_api_bcbinary_local", &spec, sizeof(spec),
                           &sec_info, input_spec->data(), output_spec->data());
 }
@@ -68,6 +73,8 @@ int64_t tpu::CompareOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.spec.common.if_relu = 0;
   param.spec.common.scale_A = 1;
   param.spec.common.scale_B = 1;
+  param.spec.common.f8_scale_A = 1.0;
+  param.spec.common.f8_scale_B = 1.0;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
@@ -76,13 +83,16 @@ int64_t tpu::CompareOp::dyn_codegen_local_bm1684x(void *buffer) {
 // ======================================
 int64_t tpu::CompareOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer)
-    return sizeof(bcbinary_common_spec_t);
-  bcbinary_common_spec_t spec = {0};
+    return sizeof(bcbinary_global_param_t);
+  bcbinary_global_param_t param{0};
+  auto &spec = param.spec;
   spec.binary_type = BM168x::compare_mode(getMode());
   spec.if_relu = 0;
   spec.scale_A = 1;
   spec.scale_B = 1;
-  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+  spec.f8_scale_A = 1.0;
+  spec.f8_scale_B = 1.0;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 int64_t tpu::CompareOp::get_fw_type_bm1684x() {

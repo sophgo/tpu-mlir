@@ -14,14 +14,17 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::MinOp::codegen_global_bm1684x() {
-  bcbinary_common_spec_t param{0};
-  param.binary_type = BINARY_MIN;
-  param.if_relu = 0;
-  param.relu_upper_limit = -1.0f;
-  param.rshift_A = 0;
-  param.rshift_B = 0;
-  param.scale_A = 1;
-  param.scale_B = 1;
+  bcbinary_global_param_t param{0};
+  auto &spec = param.spec;
+  spec.binary_type = BINARY_MIN;
+  spec.if_relu = 0;
+  spec.relu_upper_limit = -1.0f;
+  spec.rshift_A = 0;
+  spec.rshift_B = 0;
+  spec.scale_A = 1;
+  spec.scale_B = 1;
+  spec.f8_scale_A = 1.0;
+  spec.f8_scale_B = 1.0;
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -62,6 +65,8 @@ void tpu::MinOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   param.spec.buffer_addr = gi.buffer_addr;
   param.A_is_coeff = false;
   param.B_is_coeff = false;
+  param.spec.common.f8_scale_A = 1.0;
+  param.spec.common.f8_scale_B = 1.0;
 
   BM168x::call_local_func("backend_api_bcbinary_local", &param, sizeof(param),
                           &sec_info, input_spec->data(), output_spec->data());
@@ -81,6 +86,8 @@ int64_t tpu::MinOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.spec.common.scale_A = 1;
   param.spec.common.scale_B = 1;
   param.spec.buffer_addr = gi.buffer_addr;
+  param.spec.common.f8_scale_A = 1.0;
+  param.spec.common.f8_scale_B = 1.0;
   param.A_is_coeff = false;
   param.B_is_coeff = false;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
@@ -91,15 +98,18 @@ int64_t tpu::MinOp::dyn_codegen_local_bm1684x(void *buffer) {
 // ======================================
 int64_t tpu::MinOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer)
-    return sizeof(bcbinary_common_spec_t);
-  bcbinary_common_spec_t param{0};
-  param.binary_type = BINARY_MIN;
-  param.if_relu = 0;
-  param.relu_upper_limit = -1.0f;
-  param.rshift_A = 0;
-  param.rshift_B = 0;
-  param.scale_A = 1;
-  param.scale_B = 1;
+    return sizeof(bcbinary_global_param_t);
+  bcbinary_global_param_t param{0};
+  auto &spec = param.spec;
+  spec.binary_type = BINARY_MIN;
+  spec.if_relu = 0;
+  spec.relu_upper_limit = -1.0f;
+  spec.rshift_A = 0;
+  spec.rshift_B = 0;
+  spec.scale_A = 1;
+  spec.scale_B = 1;
+  spec.f8_scale_A = 1.0;
+  spec.f8_scale_B = 1.0;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
