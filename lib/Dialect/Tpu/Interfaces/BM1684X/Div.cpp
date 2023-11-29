@@ -19,8 +19,8 @@ void tpu::DivOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  bcbinary_common_spec_t spec;
-  memset(&spec, 0, sizeof(bcbinary_common_spec_t));
+  bcbinary_global_param_t param{0};
+  auto &spec = param.spec;
   spec.binary_type = BINARY_DIV;
   spec.if_relu = (int)getDoRelu();
   spec.relu_upper_limit = getReluLimit().convertToDouble();
@@ -28,7 +28,9 @@ void tpu::DivOp::codegen_global_bm1684x() {
   spec.scale_B = 1;
   spec.rshift_A = 0;
   spec.rshift_B = 0;
-  BM168x::call_global_func("backend_api_eltbinary_global", &spec, sizeof(spec),
+  spec.f8_scale_A = 1.0;
+  spec.f8_scale_B = 1.0;
+  BM168x::call_global_func("backend_api_eltbinary_global", &param, sizeof(param),
                            input_spec->data(), output_spec->data());
 }
 // =========================================
@@ -74,8 +76,9 @@ void tpu::DivOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
 // ======================================
 int64_t tpu::DivOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer)
-    return sizeof(bcbinary_common_spec_t);
-  bcbinary_common_spec_t spec = {0};
+    return sizeof(bcbinary_global_param_t);
+  bcbinary_global_param_t param{0};
+  auto &spec = param.spec;
   spec.binary_type = BINARY_DIV;
   spec.if_relu = (int)getDoRelu();
   spec.relu_upper_limit = getReluLimit().convertToDouble();
@@ -83,7 +86,9 @@ int64_t tpu::DivOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.scale_B = 1;
   spec.rshift_A = 0;
   spec.rshift_B = 0;
-  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+  spec.f8_scale_A = 1.0;
+  spec.f8_scale_B = 1.0;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 int64_t tpu::DivOp::get_fw_type_bm1684x() { return FW_BMNET_ELTWISE_BINARY; }

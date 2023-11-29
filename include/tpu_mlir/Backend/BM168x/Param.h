@@ -632,6 +632,12 @@ typedef struct bcbinary_local_param {
   int32_t B_is_coeff;
 } bcbinary_local_param_t;
 
+typedef struct bcbinary_global_param {
+  bcbinary_common_spec_t spec;
+  int32_t A_is_coeff;
+  int32_t B_is_coeff;
+} bcbinary_global_param_t;
+
 typedef struct {
   uint64_t input_A_global_addr;
   uint64_t input_B_global_addr;
