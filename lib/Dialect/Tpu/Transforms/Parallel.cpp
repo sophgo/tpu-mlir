@@ -226,8 +226,8 @@ bool forAll(IndexingMapsInterface op, int num_core = 1) {
       resultsType.push_back(types[getValidIndex(dims, ArrayRef(resultStride))]);
 
     auto suffix =
-        llvm::formatv("{0:$[_]}", make_range(dims.begin(), dims.end()));
-    auto name = module::getName(op, 0) + "_" + suffix;
+        llvm::formatv("_{0:$[_]}", make_range(dims.begin(), dims.end()));
+    auto name = module::getName(op, 0) + suffix.str().c_str();
     auto nameLoc = NameLoc::get(rewriter.getStringAttr(name));
 
     computeOps.push_back(rewriter.create(nameLoc, op->getName().getIdentifier(),
