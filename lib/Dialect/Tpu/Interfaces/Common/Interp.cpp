@@ -205,6 +205,19 @@ LogicalResult tpu::InterpOp::inference(InferenceParameter &p) {
       int64_t n, c, ih, iw, oh, ow;
     module::getNCHW(getInput(), n, c, ih, iw, false);
     module::getNCHW(getOutput(), n, c, oh, ow, false);
+
+    // dynamic 
+    if(p.inputs[1]){
+        float* target_shape_ = p.inputs[1];
+        std::vector<int64_t> out_shape;
+        out_shape= {(int)target_shape_[0], (int)target_shape_[1], (int)target_shape_[2], (int)target_shape_[3]};
+        setScaleH(APFloat((double)out_shape[2] / ih));
+        setScaleW(APFloat((double)out_shape[3] / iw));
+        module::setShape(getOutput(), out_shape);
+        oh = out_shape[2];
+        ow = out_shape[3];
+    }
+
     PLATFORM_SUPPORT platform_sp;
     int coord = 0;
     bool align_corners = (getCoordMode() == tpu::ResizeCoordMode::align_corners);
