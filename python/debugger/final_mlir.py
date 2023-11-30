@@ -42,6 +42,8 @@ to_dtype: Dict[str, DType] = {
     "i4": DType.i4,
     "si4": DType.si4,
     "ui4": DType.ui4,
+    "f8e4m3": DType.ui8,
+    "f8e5m2": DType.ui8,
 }
 
 
