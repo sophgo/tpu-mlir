@@ -54,6 +54,7 @@ class ONNX_IR_TESTER(object):
             "AvgPoolOdd":   (self.test_AvgPoolOdd,    Y, Y, Y, Y, Y),
             "PadAvgPool2d": (self.test_PadAvgPool2d,  Y, Y, Y, Y, Y),
             "BatchMatMul":  (self.test_BatchMatMul,   Y, Y, Y, Y, Y),
+            "BatchNormalization":(self.test_BatchNormalization,   Y, Y, Y, Y, Y),
             "BCastAdd":     (self.test_BCastAdd,      Y, Y, Y, Y, Y),
             "BCastMul":     (self.test_BCastMul,      Y, Y, Y, Y, Y),
             "BCastMulCst":  (self.test_BCastMulCst,   Y, Y, Y, Y, Y),
@@ -767,6 +768,40 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([pad_def, avgpool_def],
                                       case_name, [input], [output],
                                       initializer=[pad_val])
+        self.onnx_and_test(graph_def)
+
+    def test_BatchNormalization(self, case_name):
+        mean_data = np.random.randn(1).astype(np.float32)
+        variance_data = np.random.randn(1).astype(np.float32)
+        gamma_data = np.random.randn(1).astype(np.float32)
+        beta_data = np.random.randn(1).astype(np.float32)
+        input1_shape = [1, 3, 10, 10]
+        mean_shape = [1, 1, 1, 1]
+        variance_shape = [1, 1, 1, 1]
+        gamma_shape = [1, 1, 1, 1]
+        beta_shape = [1, 1, 1, 1]
+        output_shape = [1, 3, 10, 10]
+
+        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input1_shape)
+        mean = helper.make_tensor('mean', TensorProto.FLOAT, mean_shape, mean_data)
+        variance = helper.make_tensor('variance', TensorProto.FLOAT, variance_shape, variance_data)
+        gamma = helper.make_tensor('gamma', TensorProto.FLOAT, gamma_shape, gamma_data)
+        beta = helper.make_tensor('beta', TensorProto.FLOAT, beta_shape, beta_data)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        bn_node = helper.make_node(
+            'BatchNormalization',  # node name
+            ['input1', 'mean', 'variance', 'gamma', "beta"],  # inputs
+            ['output' ] # outputs
+        )
+
+        graph_def = helper.make_graph(
+            [bn_node],
+            case_name,
+            [input1],
+            [output],
+            initializer=[mean, variance, gamma, beta]
+        )
         self.onnx_and_test(graph_def)
 
     def test_BatchMatMul(self, case_name):
