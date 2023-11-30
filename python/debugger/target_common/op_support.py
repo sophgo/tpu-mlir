@@ -209,7 +209,7 @@ class MType(Enum):
 
 
 def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
-    if prec in (DType.f32, DType.bf16, DType.f16):
+    if prec in (DType.f32, DType.bf16, DType.f16, DType.f8):
         return DType(prec)
     return DType(prec + 8 + (sign == 1) * 8)
 
