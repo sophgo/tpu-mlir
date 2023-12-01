@@ -77,10 +77,19 @@ struct SliceAxisToStridedSlice : public OpRewritePattern<SliceAxisOp> {
         rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(steps)));
     attrs.push_back(
         rewriter.getNamedAttr("ends", rewriter.getI64ArrayAttr(ends)));
-    if (!module::isNone(op.getStart()) || !module::isNone(op.getEnd()) ||
-        !module::isNone(op.getStep())) {
+    if ((!module::isNone(op.getStart()) && !module::isWeight(op.getStart())) || 
+        (!module::isNone(op.getEnd()) && !module::isWeight(op.getEnd())) ||
+        (!module::isNone(op.getStep()) && !module::isWeight(op.getStep()))) {
       attrs.push_back(
           rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(axis)));
+    }
+    else{
+      std::vector<int64_t> axes(dims, 0);
+      for (int i = 0; i < dims; i++) {
+        axes[i] = i;
+      }
+      attrs.push_back(
+          rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(axes)));
     }
     rewriter.replaceOpWithNewOp<SliceOp>(op, op.getResult().getType(), operands,
                                          attrs);
