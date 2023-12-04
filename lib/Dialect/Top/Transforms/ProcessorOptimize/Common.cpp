@@ -137,5 +137,56 @@ LogicalResult ConvertScaleOp::matchAndRewrite(top::ScaleOp op,
   return success();
 }
 
+LogicalResult ConvertScaleToMAOp::matchAndRewrite(top::ScaleOp op,
+                                              PatternRewriter &rewriter) const {
+  auto input_shape = module::getShape(op.getInput());
+  if (input_shape.size() > 4) {
+    return failure();
+  }
+  auto cur_scale = dyn_cast<top::WeightOp>(op.getScale().getDefiningOp());
+  auto cur_bias = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
+  if (!(cur_scale && cur_bias) || input_shape.size() < 3) {
+    return failure();
+  }
+  int channel = cur_scale.getType().cast<RankedTensorType>().getNumElements();
+  auto cur_scale_f32 = cur_scale.read<float>();
+  auto cur_bias_f32 = cur_bias.read<float>();
+
+  std::vector<float> new_scale_v(channel);
+  std::vector<float> new_bias_v(channel);
+  std::copy(cur_scale_f32->begin(), cur_scale_f32->end(), new_scale_v.begin());
+  std::copy(cur_bias_f32->begin(), cur_bias_f32->end(), new_bias_v.begin());
+
+  // scale to mul and add, for temp
+  NamedAttrList attrs;
+  attrs.set("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
+  auto relu_limit = op.getReluLimit().convertToDouble();
+  attrs.set("relu_limit", rewriter.getF64FloatAttr(relu_limit));
+
+
+  auto new_shape = std::vector <int64_t>(input_shape.size(), 1);
+  new_shape[1] = channel;
+  auto filter_type =
+      RankedTensorType::get(new_shape, rewriter.getF32Type());
+  auto new_scale =
+      top::WeightOp::create(op, "to_weight", new_scale_v, filter_type);
+  auto new_m = rewriter.replaceOpWithNewOp<top::MulOp>(
+      op, op.getResult().getType(),
+      ValueRange{op.getInput(), new_scale}, attrs);
+  new_m.getOperation()->setAttr("do_relu", rewriter.getBoolAttr(false));
+  new_m.getOperation()->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.0));
+
+  auto bias_type = RankedTensorType::get(new_shape, rewriter.getF32Type());
+  auto new_bias = top::WeightOp::create(new_m, "to_bias", new_bias_v, bias_type);
+  std::string new_name = module::getName(new_m.getOperation()).str() + "_bias";
+  auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+
+  rewriter.setInsertionPointAfterValue(new_m);
+  auto new_b = rewriter.create<top::AddOp>(name_loc, new_m.getOutput().getType(), ValueRange{new_m.getOutput(), new_bias}, attrs);
+  new_m.getOutput().replaceAllUsesExcept(new_b.getOutput(), new_b.getOperation());
+  return success();
+}
+
+
 } // namespace top
 } // namespace tpu_mlir

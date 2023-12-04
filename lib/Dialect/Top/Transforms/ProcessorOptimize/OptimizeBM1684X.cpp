@@ -719,9 +719,14 @@ using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns->add<ConvertGLMTilePermute, ConvertMatMulWithRightTranspose,
-                ConvertMatMul2Attention, ReshapeReorderPattern, ConvertScaleOp,
+                ConvertMatMul2Attention, ReshapeReorderPattern,
                 ConvertMultiInputAdd, WhereBroadcastToTile>(
       patterns->getContext(), 8);
+  if (module::getChip() == module::Chip::SG2260) {
+    patterns->add<ConvertScaleToMAOp>(patterns->getContext(), /*PatternBenefit*/ 8);
+  } else {
+    patterns->add<ConvertScaleOp>(patterns->getContext(), /*PatternBenefit*/ 8);
+  }
 }
 } // namespace top
 } // namespace tpu_mlir
