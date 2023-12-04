@@ -28,7 +28,8 @@ class Graph():
                     if opd in b_:
                         in_ = True
                         break
-                if not in_:
+                ids = bottom_of_layer[op.name]
+                if not in_ or len(ids) == 0:
                     fake_id = self.fake_node[-1]
                     self.fake_node.append(fake_id)
                     self.graph.add_node(fake_id)
@@ -36,7 +37,6 @@ class Graph():
                     self.graph.add_edge(idx, fake_id)
                     self.fake_node.append(fake_id + 1)
                     continue
-                ids = bottom_of_layer[op.name]
                 for x in ids:
                     self.edge_name[(idx, x)] = opd
                     self.graph.add_edge(idx, x)
