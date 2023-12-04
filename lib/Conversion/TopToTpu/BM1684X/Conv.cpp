@@ -642,10 +642,10 @@ void ConvLowering::LoweringF8(PatternRewriter &rewriter,
   double in_scale=1.0, out_scale=1.0;
   auto in = op.getInput();
   auto out = op.getOutput();
-  auto qtype_in = module::getCalibratedType(in);
-  auto qtype_out = module::getCalibratedType(out);
 
   if (module::getMode() == module::Mode::F8E4M3) {
+    auto qtype_in = module::getCalibratedType(in);
+    auto qtype_out = module::getCalibratedType(out);
     in_scale = qtype_in.getMax() / get_f8e4m3_max();
     out_scale = qtype_out.getMax() / get_f8e4m3_max();
   } else if (module::getMode() == module::Mode::F8E5M2) {

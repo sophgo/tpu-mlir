@@ -96,18 +96,17 @@ void MulLowering::LoweringF16(PatternRewriter &rewriter, top::MulOp op) const {
 }
 
 void MulLowering::LoweringF8(PatternRewriter &rewriter, top::MulOp op) const {
-  // llvm_unreachable("Not Implemented");
   const int nInputs = op->getNumOperands();
   std::vector<Value> operands;
   double scale = 1.0;
   double out_scale = 1.0;
   auto out = op.getOutput();
-  auto qtype_out = module::getCalibratedType(out);
 
   if (module::getMode() == module::Mode::F8E5M2) {
     lowering_common_f8<tpu::MulOp>(rewriter, op, false);
     return ;
   }
+  auto qtype_out = module::getCalibratedType(out);
   out_scale = qtype_out.getMax() / get_f8e4m3_max();
 
   double in_scale=1.0;
@@ -132,6 +131,7 @@ void MulLowering::LoweringF8(PatternRewriter &rewriter, top::MulOp op) const {
 
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+  attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
   if (module::getMode() == module::Mode::F8E4M3) {
     attrs.push_back(rewriter.getNamedAttr("out_f8_scales", rewriter.getF64ArrayAttr(scale)));
     auto newType = getQuantF8E4M3Type(op.getOutput());
