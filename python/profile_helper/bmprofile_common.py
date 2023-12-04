@@ -19,7 +19,7 @@ class Arch(Enum):
     UNKNOWN = -1
     bm1684 = 1
     bm1684x = 3
-
+    bm1688 = 4
 class BlockType(Enum):
     UNKNOWN = -1
     SUMMARY = 1

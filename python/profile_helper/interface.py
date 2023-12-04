@@ -10,7 +10,7 @@
 
 from bmprofile_parser import BMProfileParser
 from bmprofile_generator import BMProfileGenerator
-
+from bmprofile_perfAI import BMProfileParserPerfAI
 def bmprofile_analyze(input_dir:str, output_dir:str, out_format:str = "html", options = {}):
     parser  = BMProfileParser()
     parsed_data = parser.parse(input_dir)
@@ -30,3 +30,9 @@ def bmprofile_parse_command(input_dir:str, output_dir:str, mark_str, arch="bm168
 def bmprofile_check_command(input_dir:str, output_dir:str, mark_str, arch="bm1684"):
     parser  = BMProfileParser()
     parser.check_static_command(input_dir, output_dir, mark_str, arch)
+
+def bmprofile_parse_perfAI(input_dir:str, output_dir:str, mark_str, arch="A2"):
+    bmProfile = BMProfileParserPerfAI()
+    bmProfile.parse(input_dir)
+    bmProfile.to_txt(output_dir)
+

@@ -17,12 +17,12 @@ from profile_helper.interface import *
 def profileArgParser():
     parser = arg.ArgumentParser()
     # yapf: disable
-    parser.add_argument("--mode", type=str, choices=["time", "command", "check", "sim"],
+    parser.add_argument("--mode", type=str, choices=["time", "command", "check", "sim", "perfAI"],
                         help="time: parse profile data to visualize. "
                         "sim: parse net_stat.sim in profile to visualize. "
                         "command: parse static commands in profile to analyse the command params. ",
                         default="time")
-    parser.add_argument("--arch", type=str, choices=["BM1684", "BM1684X"], help="chip arch", default="BM1684")
+    parser.add_argument("--arch", type=str, choices=["BM1684", "BM1684X", "A2"], help="chip arch", default="BM1684")
     parser.add_argument("--format", type=str, choices=["html", "csv", "console", "layer"], help="output format", default="html")
     parser.add_argument("--test", type=str, help="only for mode=command, check some condition for command", default="")
     parser.add_argument("--option", type=str, help="profile extra options, format is 'key1=value1,key2=value2,...'",
@@ -44,5 +44,8 @@ if __name__ == "__main__":
         bmprofile_parse_command(args.input_dir, args.output_dir, args.test, arch=args.arch)
     elif args.mode == "check":
         bmprofile_check_command(args.input_dir, args.output_dir, args.test, arch=args.arch)
+    elif args.mode == "perfAI":
+        assert args.arch == "A2", "Only support a2, not support arch={}".format(args.arch)
+        bmprofile_parse_perfAI(args.input_dir, args.output_dir, args.test, arch=args.arch)
     else:
         assert 0, "Not support mode={}".format(args.mode)
