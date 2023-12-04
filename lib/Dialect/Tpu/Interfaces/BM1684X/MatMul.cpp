@@ -14,14 +14,16 @@ using namespace tpu_mlir::backend;
 #define DYN_BMM_CONDITION(param, spec)                                         \
   (((param.hdim_is_batch)) || ((param.batch != 1)) ||                          \
    (param.batch == 1 && spec->at(0).shape[0] == 1 &&                           \
-    spec->at(1).shape[0] == 1))
+    spec->at(1).shape[0] == 1) || \
+    spec->at(0).dtype == DTYPE_F8E4M3 || spec->at(0).dtype == DTYPE_F8E5M2)
 
 void tpu::MatMulOp::codegen_global_bm1684x() {
   auto p = parseParam();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  if (p.hdim_is_batch || p.batch != 1) {
+  auto odtype = module::getStorageType(getOutput());
+  if (p.hdim_is_batch || p.batch != 1 || odtype.isFloat8E4M3FN() || odtype.isFloat8E5M2()) {
     if (!p.hdim_is_batch) {
       BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
       if (p.right_transpose == false) {
