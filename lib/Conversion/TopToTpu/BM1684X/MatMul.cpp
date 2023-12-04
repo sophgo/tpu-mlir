@@ -508,14 +508,27 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
   auto p = op.parseParam();
   auto in = op.getInput();
   auto out = op.getOutput();
-  auto qtype_in = module::getCalibratedType(in);
-  auto qtype_out = module::getCalibratedType(out);
   double in_scale = 1.0, out_scale = 1.0;
 
   if (module::getMode() == module::Mode::F8E5M2) {
-    lowering_common_f8<tpu::MatMulOp>(rewriter, op, false);
+    operands.push_back(op.getInput());
+    if (auto weight=dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
+      auto new_w = weight.clone_f8e5m2(op);
+      operands.push_back(new_w);
+    } else {
+      operands.push_back(op.getRight());
+    }
+    if (p.with_bias) {
+      operands.push_back(op.getBias());
+    } else {
+      operands.push_back(module::getNoneOp(op));
+    }
+    auto newType = getQuantF8E5M2Type(op.getOutput());
+    rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
     return;
   }
+  auto qtype_in = module::getCalibratedType(in);
+  auto qtype_out = module::getCalibratedType(out);
   in_scale = qtype_in.getMax() / get_f8e4m3_max();
   out_scale = qtype_out.getMax() / get_f8e4m3_max();
 
