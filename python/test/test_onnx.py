@@ -45,7 +45,7 @@ class ONNX_IR_TESTER(object):
             "And":          (self.test_And,           N, Y, Y, N, Y),
             "AddBcast":     (self.test_AddBcast,      Y, Y, N, N, Y),
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N, Y),
-            "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N),  # failed cases
+            "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N), # failed cases
             "Acos":         (self.test_Arccos,        Y, Y, Y, N, Y),
             "Atan":         (self.test_Arctan,        N, Y, Y, N, Y),
             "Atanh":        (self.test_Arctanh,       Y, Y, Y, N, Y),
@@ -78,7 +78,7 @@ class ONNX_IR_TESTER(object):
             "ConvStride":   (self.test_ConvStride,    Y, Y, Y, Y, Y),
             "ConvDw":       (self.test_ConvDw,        Y, Y, Y, Y, Y),
             "ConvTrans":    (self.test_ConvTrans,     N, Y, Y, Y, Y),
-            "ConvTrans2":   (self.test_ConvTrans2,    N, Y, Y, Y, Y),  #no pad
+            "ConvTrans2":   (self.test_ConvTrans2,    N, Y, Y, Y, Y),  # no pad
             "Clip":         (self.test_Clip,          Y, Y, Y, Y, Y),
             "CumSum":       (self.test_CumSum,        N, Y, N, N, Y),
             "DepthToSpace": (self.test_DepthToSpace,  Y, Y, Y, Y, Y),
@@ -102,26 +102,26 @@ class ONNX_IR_TESTER(object):
             "ExpandDyn":    (self.test_ExpandDyn,     N, Y, Y, N, Y),
             "Flatten":      (self.test_Flatten,       Y, Y, Y, Y, Y),
             "Flip":         (self.test_Flip,          Y, Y, Y, N, Y),
-            "Floor":        (self.test_floor,         Y, Y, Y, N, Y),
+            "Floor":        (self.test_Floor,         Y, Y, Y, N, Y),
             "Gather":       (self.test_Gather,        Y, Y, Y, Y, Y),
             "GatherElements": (self.test_GatherElements,      Y, Y, N, N, Y),
             "GatherND":     (self.test_GatherND,      Y, Y, Y, Y, Y),
             "Gather2":      (self.test_Gather2,       N, Y, Y, N, Y),
             "Gather3":      (self.test_Gather3,       Y, Y, Y, N, Y),
             "Gemm":         (self.test_Gemm,          Y, Y, Y, Y, Y),
-            "GlobalAveragePool":(self.test_GlobalAveragePool, Y, Y, Y, Y, Y),
-            "GlobalMaxPool":(self.test_GlobalMaxPool, Y, Y, Y, Y, Y),
-            "GroupFC":      (self.test_GroupFC,       Y, Y, Y, Y, Y),
-            "GRU":          (self.test_GRU,           N, Y, Y, Y, Y),  # test gru output Y
-            "GRU2":         (self.test_GRU2,          N, Y, Y, Y, Y),  # test gru output Yh
-            "GRU3":         (self.test_GRU3,          N, Y, Y, Y, Y),  # test gru output Y and Yh
+            "GlobalAveragePool": (self.test_GlobalAveragePool, Y, Y, Y, Y, Y),
+            "GlobalMaxPool": (self.test_GlobalMaxPool, Y, Y, Y, Y, Y),
+            "GroupFC":      (self.test_GroupFC,       Y, Y, Y, Y, Y), # test gru output Y
+            "GRU":          (self.test_GRU,           N, Y, Y, Y, Y), # test gru output Yh
+            "GRU2":         (self.test_GRU2,          N, Y, Y, Y, Y), # test gru output Y and Yh
+            "GRU3":         (self.test_GRU3,          N, Y, Y, Y, Y),
             "LeakyRelu":    (self.test_LeakyRelu,     Y, Y, Y, Y, Y),
             "Log":          (self.test_Log,           Y, Y, Y, Y, Y),
             "LogSoftmax":   (self.test_LogSoftmax,    Y, Y, Y, Y, Y),
-            "LRN":          (self.test_LRN,           Y, Y, Y, Y, Y),
-            "LSTM":         (self.test_LSTM,          N, Y, Y, Y, Y),  # output_y
-            "LSTM2":        (self.test_LSTM2,         N, Y, Y, Y, Y),  # output all
-            "LSTM3":        (self.test_LSTM3,         Y, Y, Y, Y, Y),  # output_yh and output_yc
+            "LRN":          (self.test_LRN,           Y, Y, Y, Y, Y), # output_y
+            "LSTM":         (self.test_LSTM,          N, Y, Y, Y, Y), # output all
+            "LSTM2":        (self.test_LSTM2,         N, Y, Y, Y, Y), # output_yh and output_yc
+            "LSTM3":        (self.test_LSTM3,         Y, Y, Y, Y, Y),
             "MaxPool1d":    (self.test_MaxPool1d,     Y, Y, Y, Y, Y),
             "MaxPool2d":    (self.test_MaxPool2d,     Y, Y, Y, Y, Y),
             "MaxPool3d":    (self.test_MaxPool3d,     N, Y, Y, Y, Y),
@@ -137,13 +137,13 @@ class ONNX_IR_TESTER(object):
             "Min":          (self.test_Min,           Y, Y, Y, Y, Y),
             "MinBcast":     (self.test_MinBcast,      Y, Y, Y, N, Y),
             "MulConst":     (self.test_MulConst,      Y, Y, Y, Y, Y),
-            "Neg":          (self.test_Neg,           Y, Y, Y, Y, Y),
-            "Pad":          (self.test_Pad,           Y, Y, Y, Y, Y),  # zero pad
-            "Pad1":         (self.test_Pad1,          Y, Y, Y, Y, Y),  # pad val
+            "Neg":          (self.test_Neg,           Y, Y, Y, Y, Y), # zero pad
+            "Pad":          (self.test_Pad,           Y, Y, Y, Y, Y), # pad val
+            "Pad1":         (self.test_Pad1,          Y, Y, Y, Y, Y),
             "PadEdge":      (self.test_PadEdge,       N, Y, Y, Y, Y),
-            "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y, Y),
-            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y, Y),  # y = x ^ n
-            "Pow2":         (self.test_Pow2,          Y, Y, Y, N, Y),  # y = n ^ x
+            "PadReflect":   (self.test_PadReflect,    Y, Y, Y, Y, Y), # y = x ^ n
+            "Pow1":         (self.test_Pow1,          Y, Y, Y, Y, Y), # y = n ^ x
+            "Pow2":         (self.test_Pow2,          Y, Y, Y, N, Y),
             "PRelu":        (self.test_PRelu,         Y, Y, Y, Y, Y),
             "Range":        (self.test_Range,         N, Y, Y, N, Y),
             "Resize":       (self.test_Resize,        Y, Y, Y, Y, Y),
@@ -174,7 +174,7 @@ class ONNX_IR_TESTER(object):
             "Slice":        (self.test_Slice,         Y, Y, Y, Y, Y),
             "Slice2":       (self.test_Slice2,        Y, Y, Y, Y, Y),
             "Slice3":       (self.test_Slice3,        Y, Y, Y, Y, Y),
-            "Dynamic_Slice":(self.test_Dynamic_Slice, N, Y, Y, N, Y),
+            "Dynamic_Slice": (self.test_Dynamic_Slice, N, Y, Y, N, Y),
             "Split":        (self.test_Split,         Y, Y, Y, Y, Y),
             "Split2":        (self.test_Split2,       Y, Y, Y, Y, Y),
             "Scale":        (self.test_Scale,         Y, Y, Y, Y, Y),
@@ -267,7 +267,7 @@ class ONNX_IR_TESTER(object):
             "PermutePad":       (self.test_PermutePad,      N, Y, Y, N, Y),
             "PermuteToReorg":   (self.test_PermuteToReorg,  N, Y, Y, Y, Y),
             "PermuteToReorg2":  (self.test_PermuteToReorg2, N, Y, Y, Y, Y),
-            "PermuteToReshape": (self.test_PermuteToReshape,Y, Y, Y, N, Y),
+            "PermuteToReshape": (self.test_PermuteToReshape, Y, Y, Y, N, Y),
             "Permute5dSplit":   (self.test_Permute5dSplit,  Y, Y, Y, Y, Y),
             "Permute7d":        (self.test_Permute7d,       Y, Y, Y, N, Y),
             "PoolAfterRelu":    (self.test_PoolAfterRelu,   N, Y, Y, Y, Y),
@@ -281,13 +281,13 @@ class ONNX_IR_TESTER(object):
             "StaticDynMixed":   (self.test_StaticDynMixed,  N, Y, Y, N, Y),
             "TransposeArg":     (self.test_TransposeArg,    Y, Y, Y, Y, Y),
             "If":               (self.test_If,              N, Y, Y, N, Y),
-            "Loop" :            (self.test_Loop,            N, Y, Y, N, Y)
+            "Loop":            (self.test_Loop,            N, Y, Y, N, Y)
         }
         # yapf: enable
 
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
-        #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
+        # self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
         self.support_asym = [False]
         self.model_file = ".bmodel"
         self.is_cv18xx = False
@@ -308,7 +308,7 @@ class ONNX_IR_TESTER(object):
             self.support_quant_modes = ["f32", "int8"]
             self.support_asym = [False]
         elif self.chip == "sg2260":
-            ## current supported fp8 ops are limited, so use test_fp8 instead
+            # current supported fp8 ops are limited, so use test_fp8 instead
             self.support_quant_modes.append("f8e4m3")
             self.support_quant_modes.append("f8e5m2")
         self.mode = mode.lower()
@@ -338,7 +338,8 @@ class ONNX_IR_TESTER(object):
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, sg2260_support = self.test_cases[case]
+        _, bm1684_support, bm1684x_support, bm1688_support, cv183x_support, sg2260_support = self.test_cases[
+            case]
         if self.is_cv18xx and cv183x_support:
             return True
         if self.chip == "bm1684" and bm1684_support:
@@ -363,7 +364,13 @@ class ONNX_IR_TESTER(object):
                 inputs[name] = np.random.randint(0, 2, shape).astype(np.bool_)
         return inputs
 
-    def onnx_convert(self, input_data: dict, graph_def, model_name: str, quant_modes: list, static_shape=True, version=13):
+    def onnx_convert(self,
+                     input_data: dict,
+                     graph_def,
+                     model_name: str,
+                     quant_modes: list,
+                     static_shape=True,
+                     version=13):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
@@ -406,7 +413,7 @@ class ONNX_IR_TESTER(object):
             tpu_mlir += "_asym" if isAsym else "_sym"
             table = self.table_name
         elif quant_mode == "f8e4m3" or quant_mode == "f8e5m2":
-            table = self.table_name+"_"+quant_mode
+            table = self.table_name + "_" + quant_mode
 
         # lowering
         mlir_lowering(top_mlir,
@@ -426,8 +433,13 @@ class ONNX_IR_TESTER(object):
         else:
             quant_input = False
             quant_output = False
-        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, self.dynamic, quant_input,
-                      quant_output, num_core=self.num_core)
+        mlir_to_model(tpu_mlir + ".mlir",
+                      bmodel,
+                      tpu_final,
+                      self.dynamic,
+                      quant_input,
+                      quant_output,
+                      num_core=self.num_core)
         return (tpu_mlir + ".mlir", bmodel)
 
     def inference_and_compare(self,
@@ -469,13 +481,13 @@ class ONNX_IR_TESTER(object):
         print("[Success] test {} {}".format(model_name, msg))
 
     def inference_and_compare_bmodel(self,
-                              bmodel: str,
-                              input_npz: str,
-                              onnx_outs,
-                              quant_mode: str,
-                              model_name: str,
-                              isAsym: bool = False,
-                              node_name_mapping = None):
+                                     bmodel: str,
+                                     input_npz: str,
+                                     onnx_outs,
+                                     quant_mode: str,
+                                     model_name: str,
+                                     isAsym: bool = False,
+                                     node_name_mapping=None):
         ref_bmodel_tolerance = "0.9,0.9"
         input_data = np.load(input_npz)
         if quant_mode == "int8":
@@ -509,7 +521,8 @@ class ONNX_IR_TESTER(object):
             if found:
                 if model_outs[mapped_name].shape != onnx_outs[name].shape:
                     raise RuntimeError(
-                        f"onnx and bmodel output shape not equal, {model_outs[mapped_name].shape} vs {onnx_outs[name].shape}")
+                        f"onnx and bmodel output shape not equal, {model_outs[mapped_name].shape} vs {onnx_outs[name].shape}"
+                    )
                 onnx_transformed_model[mapped_name] = onnx_outs[name]
                 counter += 1
         if counter == 0:
@@ -525,7 +538,7 @@ class ONNX_IR_TESTER(object):
 
         print("[Success] test {} {}".format(model_name, msg))
 
-    def make_test_calibration_table(self, tensors, table_name, qmode = None):
+    def make_test_calibration_table(self, tensors, table_name, qmode=None):
         # simple calibration table
         if qmode == 'f8e4m3' or qmode == 'f8e5m2':
             table_name = table_name + "_" + qmode
@@ -619,7 +632,12 @@ class ONNX_IR_TESTER(object):
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
-            input_data, graph_def, model_name, quant_modes, static_shape=static_shape, version=version)
+            input_data,
+            graph_def,
+            model_name,
+            quant_modes,
+            static_shape=static_shape,
+            version=version)
         # this assumes that outputs are in order, i.e. the last one is the output
         if check_last:
             top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
@@ -654,21 +672,26 @@ class ONNX_IR_TESTER(object):
                 self.inference_and_compare(tpu_mlir, bmodel, input_npz, quant_mode, model_name)
 
     def onnx_and_test_bmodel(self,
-                      graph_def,
-                      name: str = "",
-                      input_data: dict = None,
-                      static_shape=True,
-                      check_last: bool = False,
-                      quant_modes=None,
-                      only_cmp_with_bmodel=False,
-                      version=13):
+                             graph_def,
+                             name: str = "",
+                             input_data: dict = None,
+                             static_shape=True,
+                             check_last: bool = False,
+                             quant_modes=None,
+                             only_cmp_with_bmodel=False,
+                             version=13):
         if quant_modes is None:
             quant_modes = self.quant_modes
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
-            input_data, graph_def, model_name, quant_modes, static_shape=static_shape, version=version)
+            input_data,
+            graph_def,
+            model_name,
+            quant_modes,
+            static_shape=static_shape,
+            version=version)
         # this assumes that outputs are in order, i.e. the last one is the output
         if check_last:
             top_mlir_outs[list(onnx_outs.keys())[-1]] = list(top_mlir_outs.values())[-1]
@@ -676,30 +699,28 @@ class ONNX_IR_TESTER(object):
             if quant_mode == "int8" or quant_mode == "int4":
                 for isAsym in self.support_asym:
                     _, bmodel = self.bmodel_generate(model_name, quant_mode, isAsym)
-                    self.inference_and_compare_bmodel(bmodel, input_npz, onnx_outs,
-                                                                quant_mode, model_name, isAsym,
-                                                                node_name_mapping)
+                    self.inference_and_compare_bmodel(bmodel, input_npz, onnx_outs, quant_mode,
+                                                      model_name, isAsym, node_name_mapping)
             else:
                 _, bmodel = self.bmodel_generate(model_name, quant_mode)
-                self.inference_and_compare_bmodel(bmodel, input_npz, onnx_outs,
-                                                            quant_mode, model_name,
-                                                            node_name_mapping=node_name_mapping)
+                self.inference_and_compare_bmodel(bmodel,
+                                                  input_npz,
+                                                  onnx_outs,
+                                                  quant_mode,
+                                                  model_name,
+                                                  node_name_mapping=node_name_mapping)
 
     ##################################
     # adding operators from here
     ##################################
     def AvgPoolBase(self, case_name, input_shape, output_shape, kernel, strides):
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        pool_def = helper.make_node(
-            'AveragePool',
-            inputs=['input'],
-            outputs=['output'],
-            kernel_shape=kernel,
-            strides=strides,
-        )
-        graph_def = helper.make_graph([pool_def], case_name, [input], [output])
+        graph_txt = """
+            AvgPool (float%s input) => (float%s output)
+            {
+                output = AveragePool<kernel_shape=%s, strides=%s>(input)
+            }
+            """ % (input_shape, output_shape, kernel, strides)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Unsqueeze(self, case_name):
@@ -719,26 +740,22 @@ class ONNX_IR_TESTER(object):
     def test_AvgPool1d(self, case_name):
         input_shape = [1, 32, 128]
         output_shape = [1, 32, 64]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        pool_def = helper.make_node(
-            'AveragePool',
-            inputs=['input'],
-            outputs=['pool_output'],
-            kernel_shape=[2],
-            strides=[2],
-        )
 
         mul_const = helper.make_tensor(name='const_mul',
                                        data_type=TensorProto.FLOAT,
                                        dims=[],
                                        vals=[2.0])
-        mul_def = helper.make_node('Mul', ['pool_output', 'const_mul'], ['output'])
 
-        graph_def = helper.make_graph([pool_def, mul_def],
-                                      case_name, [input], [output],
-                                      initializer=[mul_const])
+        graph_txt = """
+            AvgPool1d (float%s input) => (float%s output)
+            <float const_mul>
+            {
+                pool_output = AveragePool<kernel_shape=[2], strides=[2]>(input)
+                output = Mul(pool_output, const_mul)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([mul_const])
         self.onnx_and_test(graph_def)
 
     def test_AvgPool2d(self, case_name):
@@ -757,25 +774,16 @@ class ONNX_IR_TESTER(object):
         strides = [1, 1]
         pads = np.array([0, 0, 1, 1, 0, 0, 1, 1]).astype(np.int64)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        pad_val = helper.make_tensor(name='pads',
-                                     data_type=onnx.TensorProto.INT64,
-                                     dims=pads.shape,
-                                     vals=pads.flatten())
-        pad_def = helper.make_node("Pad", ['input', 'pads'],
-                                   outputs=['pad_output'],
-                                   mode='constant')
-        avgpool_def = helper.make_node(
-            "AveragePool",
-            inputs=['pad_output'],
-            outputs=['output'],
-            kernel_shape=kernel_shape,
-            strides=strides,
-        )
-        graph_def = helper.make_graph([pad_def, avgpool_def],
-                                      case_name, [input], [output],
-                                      initializer=[pad_val])
+        graph_txt = """
+            PadAvgPool2d (float%s input) => (float%s output)
+            <int64[%s] pads = %s>
+            {
+                pad_output = Pad<mode="constant">(input, pads)
+                output = AveragePool<kernel_shape=%s, strides=%s>(pad_output)
+            }
+            """ % (input_shape, output_shape, pads.shape[0], str(list(pads)).replace(
+            '[', '{').replace(']', '}'), kernel_shape, strides)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_BatchMatMul(self, case_name):
@@ -784,60 +792,47 @@ class ONNX_IR_TESTER(object):
         input2_shape = [4, 16, 64, 40]
         output_shape = [4, 16, 40, 40]
 
-        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input1_shape)
-        input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, input2_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        matmul_node = helper.make_node(
-            'MatMul',  # node name
-            ['input1', 'input2'],  # inputs
-            ['output'],  # outputs
-        )
-
-        graph_def = helper.make_graph(
-            [matmul_node],
-            case_name,
-            [input1, input2],
-            [output],
-        )
+        graph_txt = """
+            BatchMatMul (float%s input1, float%s input2) => (float%s output)
+            {
+                output = MatMul(input1, input2)
+            }
+            """ % (input1_shape, input2_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def MaxPoolBase(self, case_name, input_shape, output_shape, kernel, strides):
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        pool_def = helper.make_node(
-            'MaxPool',
-            inputs=['input'],
-            outputs=['output'],
-            kernel_shape=kernel,
-            strides=strides,
-        )
-        graph_def = helper.make_graph([pool_def], case_name, [input], [output])
+        graph_txt = """
+            MaxPool (float%s input) => (float%s output)
+            {
+                output = MaxPool<kernel_shape=%s, strides=%s>(input)
+            }
+            """ % (input_shape, output_shape, kernel, strides)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_GlobalAveragePool(self, case_name):
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, [1, 3, 64, 64])
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, [1, 3, 1, 1])
-
-        pool_def = helper.make_node(
-            'GlobalAveragePool',
-            inputs=['input'],
-            outputs=['output'],
-        )
-        graph_def = helper.make_graph([pool_def], case_name, [input], [output])
+        input_shape = [1, 3, 64, 64]
+        output_shape = [1, 3, 1, 1]
+        graph_txt = """
+            GlobalAveragePool (float%s input) => (float%s output)
+            {
+                output = GlobalAveragePool(input)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_GlobalMaxPool(self, case_name):
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, [1, 3, 64, 64])
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, [1, 3, 1, 1])
-
-        pool_def = helper.make_node(
-            'GlobalMaxPool',
-            inputs=['input'],
-            outputs=['output'],
-        )
-        graph_def = helper.make_graph([pool_def], case_name, [input], [output])
+        input_shape = [1, 3, 64, 64]
+        output_shape = [1, 3, 1, 1]
+        graph_txt = """
+            GlobalMaxPool (float%s input) => (float%s output)
+            {
+                output = GlobalMaxPool(input)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_GroupFC(self, case_name):
@@ -846,49 +841,20 @@ class ONNX_IR_TESTER(object):
         bias_shape = [16, 1, 48]
         output_shape = [16, 40, 48]
 
-        input_data = np.random.rand(*input_shape).astype(np.float32)
-        filter_data = np.random.rand(*filter_shape).astype(np.float32)
-        bias_data = np.random.rand(*bias_shape).astype(np.float32)
-
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        filter_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['filter'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.FLOAT,
-                dims=filter_data.shape,
-                vals=filter_data.flatten(),
-            ),
-        )
-        bias_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['bias'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.FLOAT,
-                dims=bias_data.shape,
-                vals=bias_data.flatten(),
-            ),
-        )
-
-        fc_node = helper.make_node(
-            'MatMul',  # node name
-            ['input', 'filter'],  # inputs
-            ['fc'],  # outputs
-        )
-        add_node = helper.make_node(
-            'Add',
-            ['fc', 'bias'],
-            ['output'],
-        )
-
-        graph_def = helper.make_graph([filter_def, bias_def, fc_node, add_node], case_name, [input],
-                                      [output])
+        filter_data = np.random.rand(*filter_shape).astype(np.float32).flatten()
+        bias_data = np.random.rand(*bias_shape).astype(np.float32).flatten()
+        filter = helper.make_tensor('filter', TensorProto.FLOAT, filter_shape, filter_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
+        graph_txt = """
+            GroupFC (float%s input) => (float%s output)
+            <float%s filter, float%s bias>
+            {
+                fc = MatMul(input, filter)
+                output = Add(fc, bias)
+            }
+            """ % (input_shape, output_shape, filter_shape, bias_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([filter, bias])
         self.onnx_and_test(graph_def)
 
     def test_GRU(self, case_name):
@@ -897,18 +863,23 @@ class ONNX_IR_TESTER(object):
         num_dir = 2
         input_size = 64
         hidden_size = 32
+        input_shape = [seq_length, batch_size, input_size]
+        Y_shape = [seq_length, num_dir, batch_size, hidden_size]
         direction = 'forward' if num_dir == 1 else 'bidirectional'
         h_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
         w_data = np.random.rand(num_dir, 3 * hidden_size, input_size).astype(np.float32)
         r_data = np.random.rand(num_dir, 3 * hidden_size, hidden_size).astype(np.float32)
         b_data = np.random.rand(num_dir, 6 * hidden_size).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT,
-                                              [seq_length, batch_size, input_size])
-
-        Y = helper.make_tensor_value_info('Y', TensorProto.FLOAT,
-                                          [seq_length, num_dir, batch_size, hidden_size])
-
+        graph_txt = """
+            GRU (float%s input) => (float%s Y)
+            <float%s w, float%s r, float%s b, float%s h>
+            {
+                Y, = GRU<direction="%s",hidden_size=%d,linear_before_reset=1>(input, w, r, b, ,h)
+            }
+            """ % (input_shape, Y_shape, list(w_data.shape), list(r_data.shape), list(
+            b_data.shape), list(h_data.shape), direction, hidden_size)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         w_value = helper.make_tensor(
             name='w',
             data_type=onnx.TensorProto.FLOAT,
@@ -933,17 +904,7 @@ class ONNX_IR_TESTER(object):
             dims=h_data.shape,
             vals=h_data.flatten(),
         )
-        gru_def = helper.make_node(
-            "GRU",
-            inputs=['input', 'w', 'r', 'b', '', 'h'],
-            outputs=['Y', ''],
-            direction=direction,
-            hidden_size=hidden_size,
-            linear_before_reset=1,
-        )
-        graph_def = helper.make_graph([gru_def],
-                                      case_name, [input], [Y],
-                                      initializer=[w_value, r_value, b_value, h_value])
+        graph_def.initializer.extend([w_value, r_value, b_value, h_value])
         if self.is_cv18xx:
             input_data = {}
             input_data["input"] = np.random.rand(seq_length, batch_size,
@@ -959,16 +920,23 @@ class ONNX_IR_TESTER(object):
         input_size = 128
         hidden_size = 64
         direction = 'forward' if num_dir == 1 else 'bidirectional'
+        input_shape = [seq_length, batch_size, input_size]
+        Y_shape = [seq_length, num_dir, batch_size, hidden_size]
+        Y_h_shape = [num_dir, batch_size, hidden_size]
         h_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
         w_data = np.random.rand(num_dir, 3 * hidden_size, input_size).astype(np.float32)
         r_data = np.random.rand(num_dir, 3 * hidden_size, hidden_size).astype(np.float32)
         b_data = np.random.rand(num_dir, 6 * hidden_size).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT,
-                                              [seq_length, batch_size, input_size])
-
-        Y_h = helper.make_tensor_value_info('Y_h', TensorProto.FLOAT,
-                                            [num_dir, batch_size, hidden_size])
+        graph_txt = """
+            GRU2 (float%s input) => (float%s Y_h)
+            <float%s w, float%s r, float%s b, float%s h, float%s Y>
+            {
+                Y, Y_h = GRU<direction="%s",hidden_size=%d,linear_before_reset=1>(input, w, r, b, ,h)
+            }
+            """ % (input_shape, Y_h_shape, list(w_data.shape), list(r_data.shape), list(
+            b_data.shape), list(h_data.shape), Y_shape, direction, hidden_size)
+        graph_def = onnx.parser.parse_graph(graph_txt)
 
         w_value = helper.make_tensor(
             name='w',
@@ -994,17 +962,7 @@ class ONNX_IR_TESTER(object):
             dims=h_data.shape,
             vals=h_data.flatten(),
         )
-        gru_def = helper.make_node(
-            "GRU",
-            inputs=['input', 'w', 'r', 'b', '', 'h'],
-            outputs=['', 'Y_h'],
-            direction=direction,
-            hidden_size=hidden_size,
-            linear_before_reset=1,
-        )
-        graph_def = helper.make_graph([gru_def],
-                                      case_name, [input], [Y_h],
-                                      initializer=[w_value, r_value, b_value, h_value])
+        graph_def.initializer.extend([w_value, r_value, b_value, h_value])
         if self.is_cv18xx:
             input_data = {}
             input_data["input"] = np.random.rand(seq_length, batch_size,
@@ -1020,18 +978,24 @@ class ONNX_IR_TESTER(object):
         input_size = 64
         hidden_size = 32
         direction = 'forward' if num_dir == 1 else 'bidirectional'
+        input_shape = [seq_length, batch_size, input_size]
+        Y_shape = [seq_length, num_dir, batch_size, hidden_size]
+        Y_h_shape = [num_dir, batch_size, hidden_size]
+
         h_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
         w_data = np.random.rand(num_dir, 3 * hidden_size, input_size).astype(np.float32)
         r_data = np.random.rand(num_dir, 3 * hidden_size, hidden_size).astype(np.float32)
         b_data = np.random.rand(num_dir, 6 * hidden_size).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT,
-                                              [seq_length, batch_size, input_size])
-
-        Y = helper.make_tensor_value_info('Y', TensorProto.FLOAT,
-                                          [seq_length, num_dir, batch_size, hidden_size])
-        Y_h = helper.make_tensor_value_info('Y_h', TensorProto.FLOAT,
-                                            [num_dir, batch_size, hidden_size])
+        graph_txt = """
+            GRU3 (float%s input) => (float%s Y, float%s Y_h)
+            <float%s w, float%s r, float%s b, float%s h>
+            {
+                Y, Y_h = GRU<direction="%s",hidden_size=%d,linear_before_reset=1>(input, w, r, b, ,h)
+            }
+            """ % (input_shape, Y_shape, Y_h_shape, list(w_data.shape), list(
+            r_data.shape), list(b_data.shape), list(h_data.shape), direction, hidden_size)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         w_value = helper.make_tensor(
             name='w',
             data_type=onnx.TensorProto.FLOAT,
@@ -1056,17 +1020,7 @@ class ONNX_IR_TESTER(object):
             dims=h_data.shape,
             vals=h_data.flatten(),
         )
-        gru_def = helper.make_node(
-            "GRU",
-            inputs=['input', 'w', 'r', 'b', '', 'h'],
-            outputs=['Y', 'Y_h'],
-            direction=direction,
-            hidden_size=hidden_size,
-            linear_before_reset=1,
-        )
-        graph_def = helper.make_graph([gru_def],
-                                      case_name, [input], [Y, Y_h],
-                                      initializer=[w_value, r_value, b_value, h_value])
+        graph_def.initializer.extend([w_value, r_value, b_value, h_value])
         if self.is_cv18xx:
             input_data = {}
             input_data["input"] = np.random.rand(seq_length, batch_size,
@@ -1089,25 +1043,19 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(output_shape[1]).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            Conv (float%s input) => (float%s output)
+            <float%s weight, float%s bias>
+            {
+                output = Conv<kernel_shape=%s,pads=%s,strides=%s,dilations=%s,group=%d>(input, weight, bias)
+            }
+            """ % (input_shape, output_shape, filter_shape, list(
+            bias_data.shape), kernel, padding, stride, dilation, groups)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-
-        conv_def = helper.make_node(
-            "Conv",
-            inputs=['input', 'weight', 'bias'],
-            outputs=['output'],
-            kernel_shape=kernel,
-            pads=padding,
-            strides=stride,
-            dilations=dilation,
-            group=groups,
-        )
-
-        graph_def = helper.make_graph([conv_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias])
+        graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_Conv1d(self, case_name):
@@ -1121,14 +1069,14 @@ class ONNX_IR_TESTER(object):
         filter_shape = [1024, 1024, 3]
         output_shape = [1, 1024, 1]
         self.ConvBase(case_name,
-                        input_shape,
-                        filter_shape,
-                        output_shape,
-                        kernel=[3],
-                        padding=[0, 0],
-                        stride=[1],
-                        dilation=[81],
-                        groups=1)
+                      input_shape,
+                      filter_shape,
+                      output_shape,
+                      kernel=[3],
+                      padding=[0, 0],
+                      stride=[1],
+                      dilation=[81],
+                      groups=1)
 
     def test_Conv2d(self, case_name):
         batchs = [1, 2, 4]
@@ -1184,44 +1132,22 @@ class ONNX_IR_TESTER(object):
 
         f_data0 = np.random.randn(*f_shape0).astype(np.float32)
         f_data1 = np.random.randn(*f_shape1).astype(np.float32)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, in_shape0)
+
+        graph_txt = """
+            ConvStride (float%s input) => (float%s output)
+            <float%s filter0, float%s filter1>
+            {
+                x1 = Conv<kernel_shape=[3, 3],pads=[1, 1, 1, 1],strides=[2, 2],dilations=[1, 1],group=1>(input, filter0)
+                x2 = Sigmoid(x1)
+                x3 = Mul(x1, x2)
+                output = Conv<kernel_shape=[1, 1], pads=[0, 0, 0, 0], strides=[1, 1], dilations=[1, 1], group=1>(x3, filter1)
+            }
+            """ % (in_shape0, out_shape, f_shape0, f_shape1)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         filter0 = helper.make_tensor('filter0', TensorProto.FLOAT, f_shape0, f_data0)
         filter1 = helper.make_tensor('filter1', TensorProto.FLOAT, f_shape1, f_data1)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, out_shape)
-
-        conv0_def = helper.make_node(
-            "Conv",
-            inputs=['input', 'filter0'],
-            outputs=['x1'],
-            kernel_shape=[3, 3],
-            pads=[1, 1, 1, 1],
-            strides=[2, 2],
-            dilations=[1, 1],
-            group=1,
-        )
-        sigmoid_def = helper.make_node(
-            "Sigmoid",
-            inputs=['x1'],
-            outputs=['x2'],
-        )
-        mul_def = helper.make_node(
-            "Mul",
-            inputs=['x1', 'x2'],
-            outputs=['x3'],
-        )
-        conv1_def = helper.make_node(
-            "Conv",
-            inputs=['x3', 'filter1'],
-            outputs=['output'],
-            kernel_shape=[1, 1],
-            pads=[0, 0, 0, 0],
-            strides=[1, 1],
-            dilations=[1, 1],
-            group=1,
-        )
-        graph_def = helper.make_graph([conv0_def, sigmoid_def, mul_def, conv1_def],
-                                      case_name, [input], [output],
-                                      initializer=[filter0, filter1])
+        graph_def.initializer.extend([filter0, filter1])
         self.onnx_and_test(graph_def)
 
     def test_Conv3d(self, case_name):
@@ -1247,79 +1173,63 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(output_shape[1]).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            ConvPool3d (float%s input) => (float%s output)
+            <float%s weight, float%s bias>
+            {
+                conv_output = Conv<kernel_shape=[3, 3, 3],pads=[1, 1, 1, 1, 1, 1],strides=[1, 1, 1],dilations=[1, 1, 1],group=1>(input, weight, bias)
+                relu_output = Relu(conv_output)
+                output = MaxPool<kernel_shape=[1,2,2], pads=[0,0,0,0,0,0], strides=[1,2,2]>(relu_output)
+            }
+            """ % (input_shape, output_shape, filter_shape, list(bias_data.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
 
-        conv_def = helper.make_node(
-            "Conv",
-            inputs=['input', 'weight', 'bias'],
-            outputs=['conv_output'],
-            kernel_shape=[3, 3, 3],
-            pads=[1, 1, 1, 1, 1, 1],
-            strides=[1, 1, 1],
-            dilations=[1, 1, 1],
-            group=1,
-        )
-
-        relu_def = helper.make_node("Relu", inputs=['conv_output'], outputs=['relu_output'])
-        pool_def = helper.make_node(
-            'MaxPool',
-            inputs=['relu_output'],
-            outputs=['output'],
-            kernel_shape=[1,2,2],
-            pads=[0,0,0,0,0,0],
-            strides=[1,2,2],
-        )
-
-        graph_def = helper.make_graph([conv_def, relu_def, pool_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias])
+        graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_SiLU(self, case_name):
         input_shape = [1, 16, 64, 64]
         output_shape = [1, 16, 64, 64]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        sigmoid_def = helper.make_node(
-            "Sigmoid",
-            inputs=['input'],
-            outputs=['x1'],
-        )
-        mul_def = helper.make_node(
-            "Mul",
-            inputs=['input', 'x1'],
-            outputs=['output'],
-        )
-        graph_def = helper.make_graph([sigmoid_def, mul_def], case_name, [input], [output])
+        graph_txt = """
+            SiLU (float%s input) => (float%s output)
+            {
+                x1 = Sigmoid(input)
+                output = Mul(input, x1)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Concat(self, case_name):
         input_shape = {"input1": [1, 2, 64], "input2": [1, 3, 64], "input3": [1, 4, 64]}
         output_shape = [1, 2 + 3 + 4, 64]
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        concat_def = helper.make_node("Concat",
-                                      inputs=list(input_shape.keys()),
-                                      outputs=["output"],
-                                      axis=1)
-
-        graph_def = helper.make_graph([concat_def], case_name, inputs, [output])
+        graph_txt = """
+            Concat (float[1, 2, 64] input1, float[1, 3, 64] input2, float[1, 4, 64] input3) => (float%s output)
+            {
+                output = Concat<axis=1>(input1, input2, input3)
+            }
+            """ % (output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Concat2(self, case_name):
         input_shape = [1, 192, 256]
         x_shape = [1, 192, 16]
         output_shape = [1, 192, 288]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        graph_txt = """
+            Concat2 (float%s input) => (float%s output)
+            <float%s X1, float%s X2>
+            {
+                output = Concat<axis=-1>(input, X1, X2)
+            }
+            """ % (input_shape, output_shape, x_shape, x_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         x1_data = np.random.randn(*x_shape).astype(np.float32)
         x1_node_def = onnx.helper.make_tensor(
             name='X1',
@@ -1334,49 +1244,39 @@ class ONNX_IR_TESTER(object):
             dims=x_shape,
             vals=x2_data.flatten(),
         )
-        concat_node = helper.make_node(
-            'Concat',
-            ['input', 'X1', 'X2'],
-            ['output'],
-            axis=-1,
-        )
-        graph_def = helper.make_graph([concat_node],
-                                      case_name, [input], [output],
-                                      initializer=[x1_node_def, x2_node_def])
+        graph_def.initializer.extend([x1_node_def, x2_node_def])
         self.onnx_and_test(graph_def)
 
     def test_Transpose(self, case_name):
         input_shapes = [[1, 16, 32, 32], [4, 3, 85, 20, 20], [1, 4, 2, 16, 20, 40]]
         transpose_orders = {4: [0, 2, 1, 3], 5: [0, 1, 3, 4, 2], 6: [0, 1, 2, 5, 3, 4]}
         for i, input_shape in enumerate(input_shapes):
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
             order = transpose_orders[len(input_shape)]
             output_shape = [input_shape[order[i]] for i in range(len(order))]
-            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-            transpose_def = helper.make_node("Transpose",
-                                             inputs=['input'],
-                                             outputs=['output'],
-                                             perm=order)
-            graph_def = helper.make_graph([transpose_def], "{}_{}".format(case_name, i), [input],
-                                          [output])
+            graph_txt = """
+                Transpose (float%s input) => (float%s output)
+                {
+                    output = Transpose<perm=%s>(input)
+                }
+                """ % (input_shape, output_shape, order)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     def test_Transpose2(self, case_name):
         cases = [
-            #case 0, input shape,output shape, order
+            # case 0, input shape,output shape, order
             [[529, 49, 3, 3, 32], [3, 529, 3, 49, 32], [2, 0, 3, 1, 4]],
-            #case 1, input shape,output shape, order
+            # case 1, input shape,output shape, order
             [[1, 1, 1, 23, 7, 23, 7, 96], [1, 1, 23, 23, 1, 7, 7, 96], [0, 1, 3, 5, 2, 4, 6, 7]]
         ]
         for idx, shapes in enumerate(cases):
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, shapes[0])
-            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, shapes[1])
-            transpose_def = helper.make_node("Transpose",
-                                             inputs=['input'],
-                                             outputs=['output'],
-                                             perm=shapes[2])
-            graph_def = helper.make_graph([transpose_def], "{}_{}".format(case_name, idx), [input],
-                                          [output])
+            graph_txt = """
+                Transpose2 (float%s input) => (float%s output)
+                {
+                    output = Transpose<perm=%s>(input)
+                }
+                """ % (shapes[0], shapes[1], shapes[2])
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     def test_Where(self, case_name):
@@ -1394,22 +1294,20 @@ class ONNX_IR_TESTER(object):
         for idx in range(len(cond_shape)):
             tbrn_data = np.random.randn(*tbrn_shape[idx]).astype(np.float32)
             fbrn_data = np.random.randn(*fbrn_shape[idx]).astype(np.float32)
-            cond = helper.make_tensor_value_info('cond', TensorProto.BOOL, cond_shape[idx])
-            tbrn = helper.make_tensor_value_info('tbrn', TensorProto.FLOAT, tbrn_shape[idx])
-            fbrn = helper.make_tensor_value_info('fbrn', TensorProto.FLOAT, fbrn_shape[idx])
-            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, out_shape[idx])
-            where_node = helper.make_node(
-                'Where',
-                ['cond', 'tbrn', 'fbrn'],
-                ['output'],
-            )
-            graph_def = helper.make_graph([where_node], "{}_{}".format(case_name, idx), [cond, tbrn, fbrn], [output])
+            graph_txt = """
+                Where (bool%s cond, float%s tbrn, float%s fbrn) => (float%s output)
+                <float const_mul = {2.0}>
+                {
+                    output = Where(cond, tbrn, fbrn)
+                }
+                """ % (cond_shape[idx], tbrn_shape[idx], fbrn_shape[idx], out_shape[idx])
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def,
-                            input_data={
-                                "cond": cond_data[idx],
-                                "tbrn": tbrn_data,
-                                "fbrn": fbrn_data
-                            })
+                               input_data={
+                                   "cond": cond_data[idx],
+                                   "tbrn": tbrn_data,
+                                   "fbrn": fbrn_data
+                               })
 
     def test_Relu(self, case_name):
         oc = 64
@@ -1419,41 +1317,37 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(oc).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            Relu (float%s input) => (float%s output)
+            <float%s weight, float%s bias>
+            {
+                conv_output = Conv<kernel_shape=[3, 3],pads=[1, 1, 1, 1],strides=[1, 1],dilations=[1, 1],group=1>(input, weight, bias)
+                output = Relu(conv_output)
+            }
+            """ % (input_shape, output_shape, filter_shape, list(bias_data.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-
-        conv_def = helper.make_node(
-            "Conv",
-            inputs=['input', 'weight', 'bias'],
-            outputs=['conv_output'],
-            kernel_shape=[3, 3],
-            pads=[1, 1, 1, 1],
-            strides=[1, 1],
-            dilations=[1, 1],
-            group=1,
-        )
-
-        relu_def = helper.make_node("Relu", inputs=['conv_output'], outputs=['output'])
-
-        graph_def = helper.make_graph([conv_def, relu_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias])
+        graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_PermuteMove(self, case_name):
         input_shape = [1, 16, 28, 28]
-        input2_shape = [1, 1, 28, 28]
         output_shape = [16, 1, 28, 28]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, input2_shape)
-        transpose_node = helper.make_node("Transpose",
-                                          inputs=['input'],
-                                          outputs=['e'],
-                                          perm=[1, 0, 2, 3])
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        for i in ['Relu', 'Sigmoid']:
+            graph_txt = """
+            PermuteMove_%s (float%s input) => (float%s output)
+            {
+                e = Transpose<perm=[1, 0, 2, 3]>(input)
+                output = %s(e)
+            }
+            """ % (i, input_shape, output_shape, i)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def, check_last=True)
+
+        # addconst
         w_data = np.random.rand(1).astype(np.float32)
         w_value = helper.make_tensor(
             name='w',
@@ -1461,26 +1355,16 @@ class ONNX_IR_TESTER(object):
             dims=w_data.shape,
             vals=w_data.flatten(),
         )
-
-        for i in ['Relu', 'Sigmoid']:
-            add_node = helper.make_node(
-                i,  # node name
-                ['e'],  # inputs
-                ['output'],  # outputs
-            )
-            graph_def = helper.make_graph([transpose_node, add_node], case_name + '_' + i, [input],
-                                          [output])
-            self.onnx_and_test(graph_def, check_last=True)
-
-        # addconst
-        add_node = helper.make_node(
-            'Add',  # node name
-            ['e', 'w'],  # inputs
-            ['output'],  # outputs
-        )
-        graph_def = helper.make_graph([transpose_node, add_node],
-                                      case_name + '_' + 'AddConst', [input], [output],
-                                      initializer=[w_value])
+        graph_txt = """
+            PermuteMove_AddConst (float%s input) => (float%s output)
+            <float%s w>
+            {
+                e = Transpose<perm=[1, 0, 2, 3]>(input)
+                output = Add(e, w)
+            }
+            """ % (input_shape, output_shape, list(w_data.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([w_value])
         self.onnx_and_test(graph_def, check_last=True)
 
     def test_ReluOnly(self, case_name):
@@ -1491,26 +1375,18 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(oc).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            ReluOnly (float%s input) => (float%s output)
+            <float%s weight, float%s bias>
+            {
+                relu_output = Relu(input)
+                output = Conv<kernel_shape=[3, 3],pads=[1, 1, 1, 1],strides=[1, 1],dilations=[1, 1],group=1>(relu_output, weight, bias)
+            }
+            """ % (input_shape, output_shape, filter_shape, list(bias_data.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-
-        relu_def = helper.make_node("Relu", inputs=['input'], outputs=['relu_output'])
-        conv_def = helper.make_node(
-            "Conv",
-            inputs=['relu_output', 'weight', 'bias'],
-            outputs=['output'],
-            kernel_shape=[3, 3],
-            pads=[1, 1, 1, 1],
-            strides=[1, 1],
-            dilations=[1, 1],
-            group=1,
-        )
-
-        graph_def = helper.make_graph([relu_def, conv_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias])
+        graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_LeakyRelu(self, case_name):
@@ -1522,43 +1398,30 @@ class ONNX_IR_TESTER(object):
         bias_data = np.random.randn(oc).astype(np.float32)
         alpha_cases = [0.67, 0.2]
         for i, a in enumerate(alpha_cases):
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+            graph_txt = """
+            LeakyRelu (float%s input) => (float%s output)
+            <float%s weight, float%s bias>
+            {
+                conv_output = Conv<kernel_shape=[3, 3],pads=[1, 1, 1, 1],strides=[1, 1],dilations=[1, 1],group=1>(input, weight, bias)
+                output = LeakyRelu<alpha=%f>(conv_output)
+            }
+            """ % (input_shape, output_shape, filter_shape, list(bias_data.shape), a)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
             bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-
-            conv_def = helper.make_node(
-                "Conv",
-                inputs=['input', 'weight', 'bias'],
-                outputs=['conv_output'],
-                kernel_shape=[3, 3],
-                pads=[1, 1, 1, 1],
-                strides=[1, 1],
-                dilations=[1, 1],
-                group=1,
-            )
-
-            leakyrelu_def = helper.make_node("LeakyRelu",
-                                             inputs=['conv_output'],
-                                             outputs=['output'],
-                                             alpha=a)
-
-            graph_def = helper.make_graph([conv_def, leakyrelu_def],
-                                          "{}_{}".format(case_name, i), [input], [output],
-                                          initializer=[weight, bias])
+            graph_def.initializer.extend([weight, bias])
             self.onnx_and_test(graph_def)
 
     def test_Mul(self, case_name):
         input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
         output_shape = [1, 3, 27, 27]
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        mul_def = helper.make_node("Mul", inputs=list(input_shape.keys()), outputs=["output"])
-
-        graph_def = helper.make_graph([mul_def], case_name, inputs, [output])
+        graph_txt = """
+            Mul (float[1, 3, 27, 27] input1, float[1, 3, 27, 27] input2) => (float%s output)
+            {
+                output = Mul(input1, input2)
+            }
+            """ % (output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_MulBcast(self, case_name):
@@ -1569,16 +1432,14 @@ class ONNX_IR_TESTER(object):
                 bcast_s = s[::]
                 for dim in dims:
                     bcast_s[dim] = 1
-                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
-                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
-                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
-                Mul_def = helper.make_node("Mul", inputs=["a", "b"], outputs=["x"])
-                Mul_def_2 = helper.make_node("Mul", inputs=["x", "c"], outputs=["output"])
-                graph_def = helper.make_graph([Mul_def, Mul_def_2],
-                                              "{}_{}_{}".format(case_name, i,
-                                                                "".join(map(str, dims))), [a, b, c],
-                                              [output])
+                graph_txt = """
+                MulBcast_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                {
+                    x = Mul(a, b)
+                    output = Mul(x, c)
+                }
+                """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
     def test_MulBcast2(self, case_name):
@@ -1586,70 +1447,52 @@ class ONNX_IR_TESTER(object):
         bcast_shapes = ([1, 7, 13, 15], )
         out_shapes = ([4, 7, 13, 15], )
         for i, s in enumerate(shapes):
-            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_shapes[i])
-            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-            c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_shapes[i])
-            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, out_shapes[i])
-            Mul_def = helper.make_node("Mul", inputs=["a", "b"], outputs=["x"])
-            Mul_def_2 = helper.make_node("Mul", inputs=["x", "c"], outputs=["output"])
-            graph_def = helper.make_graph([Mul_def, Mul_def_2], "{}_{}".format(
-                case_name,
-                i,
-            ), [a, b, c], [output])
+            graph_txt = """
+                MulBcast2_%s (float%s a, float%s b, float%s c) => (float%s output)
+                {
+                    x = Mul(a, b)
+                    output = Mul(x, c)
+                }
+                """ % (i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     def test_MulConst(self, case_name):
         input_shape = [1, 3, 27, 27]
         output_shape = [1, 3, 27, 27]
 
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
-
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        mul_const = helper.make_tensor(name='const_mul',
-                                       data_type=TensorProto.FLOAT,
-                                       dims=[],
-                                       vals=[-2.0])
-
-        const_mul_def = helper.make_node("Mul", inputs=["input", "const_mul"], outputs=["output"])
-
-        graph_def = helper.make_graph([const_mul_def],
-                                      case_name, [input], [output],
-                                      initializer=[mul_const])
+        graph_txt = """
+                MulConst (float%s input) => (float%s output)
+                <float const_mul = {-2.0}>
+                {
+                    output = Mul(input, const_mul)
+                }
+                """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_MulMerge(self, case_name):
         input_shape = [1, 3, 24, 24]
         output_shape = [1, 3, 24, 24]
-
-        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input_shape)
-        output1 = helper.make_tensor_value_info('output1', TensorProto.FLOAT, output_shape)
-        output2 = helper.make_tensor_value_info('output2', TensorProto.FLOAT, output_shape)
         w_data = np.random.rand(*input_shape).astype(np.float32)
+
+        graph_txt = """
+                MulMerge (float%s input1) => (float%s output2)
+                <float%s w>
+                {
+                    output1 = Mul(input1, w)
+                    output2 = Mul(output1, w)
+                }
+                """ % (input_shape, output_shape, list(w_data.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         w_value = helper.make_tensor(
             name='w',
             data_type=onnx.TensorProto.FLOAT,
             dims=w_data.shape,
             vals=w_data.flatten(),
         )
-
-        mul_node1 = helper.make_node(
-            'Mul',  # node name
-            ['input1', 'w'],  # inputs
-            ['output1'],  # outputs
-        )
-        mul_node2 = helper.make_node(
-            'Mul',  # node name
-            ['output1', 'w'],  # inputs
-            ['output2'],  # outputs
-        )
-
-        graph_def = helper.make_graph([mul_node1, mul_node2],
-                                      case_name, [input1], [output2],
-                                      initializer=[w_value])
-        #model_def = helper.make_model(graph_def, producer_name="onnx-example")
-        #onnx.checker.check_model(model_def)
-        #onnx.save(model_def, 'mulmerge.onnx')
+        graph_def.initializer.extend([w_value])
         self.onnx_and_test(graph_def)
 
     def test_Gemm(self, case_name):
@@ -1662,14 +1505,18 @@ class ONNX_IR_TESTER(object):
         output_shape = [M, N]
         weight_data = np.random.randn(*weight_shape).astype(np.float32)
         bias_data = np.random.randn(*bias_shape).astype(np.float32)
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        graph_txt = """
+                Gemm (float%s input) => (float%s output)
+                <float%s weight, float%s bias>
+                {
+                    output = Gemm(input, weight, bias)
+                }
+                """ % (input_shape, output_shape, weight_shape, bias_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
-        gemm_def = helper.make_node("Gemm", inputs=["input", "weight", "bias"], outputs=["output"])
-        graph_def = helper.make_graph([gemm_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias])
+        graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_MatMul(self, case_name):
@@ -1680,13 +1527,16 @@ class ONNX_IR_TESTER(object):
         weight_shape = [K, N]
         output_shape = [4, 10, M, N]
         weight_data = np.random.randn(*weight_shape).astype(np.float32)
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        graph_txt = """
+                MatMul (float%s input) => (float%s output)
+                <float%s weight>
+                {
+                    output = MatMul(input, weight)
+                }
+                """ % (input_shape, output_shape, weight_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
-        gemm_def = helper.make_node("MatMul", inputs=["input", "weight"], outputs=["output"])
-        graph_def = helper.make_graph([gemm_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight])
+        graph_def.initializer.extend([weight])
         self.onnx_and_test(graph_def)
 
     def test_MatMul2(self, case_name):
@@ -1699,15 +1549,19 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 10, M, N]
         weight_data = np.random.randn(*weight_shape).astype(np.float32)
         bias_data = np.random.randn(*bias_shape).astype(np.float32)
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        graph_txt = """
+                MatMul2 (float%s input) => (float%s output)
+                <float%s weight, float%s bias>
+                {
+                    x1 = MatMul(input, weight)
+                    output = Add(x1, bias)
+                }
+                """ % (input_shape, output_shape, weight_shape, bias_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
-        gemm_def = helper.make_node("MatMul", inputs=["input", "weight"], outputs=["x1"])
-        add_def = helper.make_node("Add", inputs=["x1", "bias"], outputs=["output"])
-        graph_def = helper.make_graph([gemm_def, add_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias])
+        graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
     # def test_MatMul3(self, case_name):
@@ -1739,189 +1593,99 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*weight_shape).astype(np.float32)
         offset_data = np.random.randn(*offset_shape).astype(np.float32)
 
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        graph_txt = """
+                Scale (float%s input) => (float%s output)
+                <float%s weight, float%s offset>
+                {
+                    mul_output = Mul(input, weight)
+                    output = Add(mul_output, offset)
+                }
+                """ % (input_shape, output_shape, weight_shape, offset_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
         offset = helper.make_tensor('offset', TensorProto.FLOAT, offset_shape, offset_data)
-
-        mul_weight_def = helper.make_node("Mul", inputs=["input", "weight"], outputs=["mul_output"])
-        add_offset_def = helper.make_node("Add",
-                                          inputs=["mul_output", "offset"],
-                                          outputs=["output"])
-
-        graph_def = helper.make_graph([mul_weight_def, add_offset_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, offset])
-
+        graph_def.initializer.extend([weight, offset])
         self.onnx_and_test(graph_def)
 
     def test_Resize(self, case_name):
         case0 = [[1, 16, 32, 32], [1, 16, 64, 64], [1, 1, 2, 2], [4], 'nearest', 'asymmetric']
         case1 = [[2, 3, 224], [2, 3, 448], [1, 1, 2], [3], 'linear', 'half_pixel']
-        cases = (case0, case1) if self.chip in ['bm1684x', 'bm1688'] else (case0,)
+        cases = (case0, case1) if self.chip in ['bm1684x', 'bm1688'] else (case0, )
         for idx, case in enumerate(cases):
             input_shape, output_shape, scales, dim, mode, coor_mode = case
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+            graph_txt = """
+                Resize (float%s input) => (float%s output)
+                <float[0] roi, float%s scales>
+                {
+                    output = Resize<mode="%s",nearest_mode="floor", coordinate_transformation_mode="%s">(input, roi, scales)
+                }
+                """ % (input_shape, output_shape, dim, mode, coor_mode)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+
             roi_data = np.array([], dtype=np.float32)
             scales_data = np.array(scales, dtype=np.float32)
             roi = helper.make_tensor('roi', TensorProto.FLOAT, [0], roi_data)
             scales = helper.make_tensor('scales', TensorProto.FLOAT, dim, scales_data)
-            resize_def = helper.make_node('Resize',
-                                        inputs=['input', 'roi', 'scales'],
-                                        outputs=['output'],
-                                        mode=mode,
-                                        nearest_mode='floor',
-                                        coordinate_transformation_mode=coor_mode)
-            graph_def = helper.make_graph([resize_def],
-                                        case_name, [input], [output],
-                                        initializer=[roi, scales])
+            graph_def.initializer.extend([roi, scales])
             self.onnx_and_test(graph_def)
 
     def test_Resize2(self, case_name):
         input_shape = [1, 32, 208, 30]
-        #linear
+        # linear
         output_shape1 = [1, 32, 416, 48]  # by cpu, scale is not integer
         output_shape2 = [1, 32, 416, 90]  # by npu, scale is integer
         output_shape3 = [1, 32, 104, 15]  # by npu, scale is 0.5
-        #nearest
+        # nearest
         output_shape4 = [1, 32, 416, 60]  # by npu, scale is integer
         output_shape5 = [1, 32, 416, 20]  # by cpu
-
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output1 = helper.make_tensor_value_info('output1', TensorProto.FLOAT, output_shape1)
-        output2 = helper.make_tensor_value_info('output2', TensorProto.FLOAT, output_shape2)
-        output3 = helper.make_tensor_value_info('output3', TensorProto.FLOAT, output_shape3)
-        output4 = helper.make_tensor_value_info('output4', TensorProto.FLOAT, output_shape4)
-        output5 = helper.make_tensor_value_info('output5', TensorProto.FLOAT, output_shape5)
         roi = np.array([], dtype=np.float32)
         scales = np.array([], dtype=np.float32)
-        roi_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['roi'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.FLOAT,
-                dims=roi.shape,
-                vals=roi.flatten(),
-            ),
-        )
-        scales_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['scales'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.FLOAT,
-                dims=scales.shape,
-                vals=scales.flatten(),
-            ),
-        )
-        sizes1_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['sizes1'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.INT64,
-                dims=[4],
-                vals=np.array(output_shape1, dtype=np.int64),
-            ),
-        )
-        x1_node = helper.make_node(
-            'Neg',
-            ['input'],
-            ['X1'],
-        )
-        resize1_node = helper.make_node('Resize',
-                                        inputs=['X1', 'roi', 'scales', 'sizes1'],
-                                        outputs=['output1'],
-                                        mode='linear',
-                                        coordinate_transformation_mode='half_pixel')
-        sizes2_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['sizes2'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.INT64,
-                dims=[4],
-                vals=np.array(output_shape2, dtype=np.int64),
-            ),
-        )
-        resize2_node = helper.make_node('Resize',
-                                        inputs=['input', 'roi', 'scales', 'sizes2'],
-                                        outputs=['output2'],
-                                        mode='linear',
-                                        coordinate_transformation_mode='pytorch_half_pixel')
-        sizes3_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['sizes3'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.INT64,
-                dims=[4],
-                vals=np.array(output_shape3, dtype=np.int64),
-            ),
-        )
-        resize3_node = helper.make_node('Resize',
-                                        inputs=['input', 'roi', 'scales', 'sizes3'],
-                                        outputs=['output3'],
-                                        mode='linear',
-                                        coordinate_transformation_mode='half_pixel')
-        sizes4_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['sizes4'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.INT64,
-                dims=[4],
-                vals=np.array(output_shape4, dtype=np.int64),
-            ),
-        )
-        resize4_node = helper.make_node(
-            'Resize',
-            inputs=['input', 'roi', 'scales', 'sizes4'],
-            outputs=['output4'],
-            mode='nearest',
-        )
-        sizes5_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['sizes5'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.INT64,
-                dims=[4],
-                vals=np.array(output_shape5, dtype=np.int64),
-            ),
-        )
-        resize5_node = helper.make_node(
-            'Resize',
-            inputs=['input', 'roi', 'scales', 'sizes5'],
-            outputs=['output5'],
-            mode='nearest',
-        )
-        graph_def = helper.make_graph([
-            x1_node, roi_def, scales_def, sizes1_def, resize1_node, sizes2_def, resize2_node,
-            sizes3_def, resize3_node, sizes4_def, resize4_node, sizes5_def, resize5_node
-        ], case_name, [input], [output1, output2, output3, output4, output5])
+
+        graph_txt = """
+            Resize2 (float%s input) => (float%s output1, float%s output2, float%s output3, float%s output4, float%s output5)
+            <float%s roi, float%s scales, int64[4] sizes1=%s, int64[4] sizes2=%s, int64[4] sizes3=%s, int64[4] sizes4=%s, int64[4] sizes5=%s>
+            {
+                X1 = Neg(input)
+                output1 = Resize<mode="linear",coordinate_transformation_mode="half_pixel">(X1, roi, scales, sizes1)
+                output2 = Resize<mode="linear",coordinate_transformation_mode="pytorch_half_pixel">(input, roi, scales, sizes2)
+                output3 = Resize<mode="linear",coordinate_transformation_mode="half_pixel">(input, roi, scales, sizes3)
+                output4 = Resize<mode="nearest">(input, roi, scales, sizes4)
+                output5 = Resize<mode="nearest">(input, roi, scales, sizes5)
+            }
+            """ % (input_shape, output_shape1, output_shape2, output_shape3, output_shape4,
+                   output_shape5, list(roi.shape), list(scales.shape), str(output_shape1).replace(
+                       '[', '{').replace(']', '}'), str(output_shape2).replace('[', '{').replace(
+                           ']', '}'), str(output_shape3).replace('[', '{').replace(
+                               ']', '}'), str(output_shape4).replace('[', '{').replace(']', '}'),
+                   str(output_shape5).replace('[', '{').replace(']', '}'))
+        roi_def = onnx.helper.make_tensor(name='roi',
+                                          data_type=onnx.TensorProto.FLOAT,
+                                          dims=roi.shape,
+                                          vals=roi.flatten())
+        scales_def = onnx.helper.make_tensor(name='scales',
+                                             data_type=onnx.TensorProto.FLOAT,
+                                             dims=scales.shape,
+                                             vals=scales.flatten())
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([roi_def, scales_def])
         self.onnx_and_test(graph_def)
 
     def test_Flatten(self, case_name):
-        input_shape =  (2, 3, 4, 5)
+        input_shape = [2, 3, 4, 5]
         output_shape = [6, 20]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        flatten_def = helper.make_node(case_name, inputs=['input'], outputs=['x'], axis=2,)
-        softmax_def = helper.make_node('Softmax', inputs=['x'], outputs=['output'], axis=-1)
-        graph_def = helper.make_graph([flatten_def, softmax_def], case_name, [input], [output])
+        graph_txt = """
+            Flatten (float%s input) => (float%s output)
+            {
+                x = Flatten<axis=2>(input)
+                output = Softmax<axis=-1>(x)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Flip(self, case_name):
+
         class Model(nn.Module):
 
             def __init__(self):
@@ -1935,24 +1699,27 @@ class ONNX_IR_TESTER(object):
                 # reversed_indices = [i for i in range(x.size(axes) - 1, -1, -1)]
                 # y = x.index_select(axes, torch.tensor(reversed_indices))
 
-
                 return y1
+
         x = torch.randn([1, 4, 3, 32, 2, 6])
         self.torch_and_test((x), Model(), case_name)
-
 
     def test_Reshape(self, case_name):
         input_shape = [1, 16, 32, 32]
         right_shape = [3]
         output_shape = [1, 16, 1024]
         right_data = np.array([1, 16, 1024], dtype=np.int64)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        graph_txt = """
+            Reshape (float%s input) => (float%s output)
+            <int64%s right>
+            {
+                output = %s(input, right)
+            }
+            """ % (input_shape, output_shape, right_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         right = helper.make_tensor('right', TensorProto.INT64, right_shape, right_data)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        reshape_def = helper.make_node(case_name, inputs=['input', 'right'], outputs=['output'])
-        graph_def = helper.make_graph([reshape_def],
-                                      case_name, [input], [output],
-                                      initializer=[right])
+        graph_def.initializer.extend([right])
         self.onnx_and_test(graph_def)
 
     def test_Reshape2(self, case_name):
@@ -1961,35 +1728,41 @@ class ONNX_IR_TESTER(object):
         # Tpu vs model compare failed due to dynamic shape not support in Tpu
         # onnx vs model compare success
         input_shape = [3, 6]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.INT64, [])
-        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [], vals=[0])
+        graph_txt = """
+            Reshape2 (float%s input) => (int64 output)
+            <int64 indices0 = {0}, int64 indices = {0}, int64 dim1 = {-1}>
+            {
+                gather0 = Gather<axis=0>(input,indices0)
+                nonzero = NonZero(gather0)
+                transpose = Transpose<perm=[1, 0]>(nonzero)
+                shape = Shape(transpose)
+                dim0 = Gather<axis=0>(shape, indices)
+                new_shape = Concat<axis=0>(dim0, dim1)
+                output_tmp = Reshape(input, new_shape)
+                output = Shape(output_tmp)
+            }
+            """ % (input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
 
+        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [], vals=[0])
         indices = helper.make_tensor('indices', TensorProto.INT64, [1], vals=[0])
         dim1 = helper.make_tensor('dim1', TensorProto.INT64, [1], vals=[-1])
-
-        gather0_def = helper.make_node('Gather', inputs=['input', 'indices0'], axis=0, outputs=['gather0'])
-        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
-        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
-        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
-        gather_def = helper.make_node('Gather', inputs=['shape', 'indices'], axis=0, outputs=['dim0'])
-        concat_def = helper.make_node('Concat', inputs=['dim0', 'dim1'], axis=0, outputs=['new_shape'])
-        reshape_def = helper.make_node('Reshape', inputs=['input', 'new_shape'], outputs=['output_tmp'])
-        final_shape_def = helper.make_node('Shape', inputs=['output_tmp'], outputs=['output'])
-        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def, shape_def, gather_def,
-                                      concat_def, reshape_def, final_shape_def],
-                                      case_name, [input], [output],
-                                      initializer=[indices, dim1, indices0])
-        input_data={'input' : np.array([[1, 0, 3, 0, 0, 0], [4, 5, 6, 3, 2, 1], [7, 8, 9, 2, 1, 1]],
-                                       dtype=np.float32)}
+        graph_def.initializer.extend([indices, dim1, indices0])
+        input_data = {
+            'input':
+            np.array([[1, 0, 3, 0, 0, 0], [4, 5, 6, 3, 2, 1], [7, 8, 9, 2, 1, 1]], dtype=np.float32)
+        }
         self.onnx_and_test(graph_def, static_shape=False, input_data=input_data)
 
-    def test_floor(self, case_name):
+    def test_Floor(self, case_name):
         input_shape = [1, 128, 32, 32]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        floor_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
-        graph_def = helper.make_graph([floor_def], case_name, [input], [output])
+        graph_txt = """
+            Floor (float%s input) => (float%s output)
+            {
+                output = %s(input)
+            }
+            """ % (input_shape, input_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Softmax(self, case_name):
@@ -1997,152 +1770,153 @@ class ONNX_IR_TESTER(object):
         axiss = [1, 2]
         for input_shape in input_shapes:
             for axis in axiss:
-                input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-                output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-                softmax_def = helper.make_node(case_name,
-                                               inputs=['input'],
-                                               outputs=['output'],
-                                               axis=axis)
-                graph_def = helper.make_graph([softmax_def], case_name, [input], [output])
+                graph_txt = """
+                    Softmax (float%s input) => (float%s output)
+                    {
+                        output = %s<axis=%d>(input)
+                    }
+                    """ % (input_shape, input_shape, case_name, axis)
+                graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
     def test_LogSoftmax(self, case_name):
         input_shape = [3, 100, 32]
         axis = 2
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        softmax_def = helper.make_node(case_name, inputs=['input'], outputs=['output'], axis=axis)
-        graph_def = helper.make_graph([softmax_def], case_name, [input], [output])
+        graph_txt = """
+            LogSoftmax (float%s input) => (float%s output)
+            {
+                output = %s<axis=%d>(input)
+            }
+            """ % (input_shape, input_shape, case_name, axis)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Softplus(self, case_name):
         input_shape = [200]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        softplus_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
-        graph_def = helper.make_graph([softplus_def], case_name, [input], [output])
+        graph_txt = """
+            Softplus (float%s input) => (float%s output)
+            {
+                output = %s(input)
+            }
+            """ % (input_shape, input_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Exp(self, case_name):
         input_shape = [1, 3, 32, 32]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        exp_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
-        graph_def = helper.make_graph([exp_def], case_name, [input], [output])
+        graph_txt = """
+            Exp (float%s input) => (float%s output)
+            {
+                output = %s(input)
+            }
+            """ % (input_shape, input_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Tanh(self, case_name):
         input_shape = [1, 3, 32, 32]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        tanh_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
-        graph_def = helper.make_graph([tanh_def], case_name, [input], [output])
+        graph_txt = """
+            Tanh (float%s input) => (float%s output)
+            {
+                output = Tanh(input)
+            }
+            """ % (input_shape, input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Arctan(self, case_name):
         input_shape = [1, 3, 32, 32]
-        input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -10.00, 10.00)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        arctan_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
-        graph_def = helper.make_graph([arctan_def], case_name, [input], [output])
-        self.onnx_and_test(graph_def, input_data={'input': input_data})
+        graph_txt = """
+            Arctan (float%s input) => (float%s output)
+            {
+                output = %s(input)
+            }
+            """ % (input_shape, input_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
 
     def test_Arctanh(self, case_name):
         input_shape = [1, 3, 32, 32]
         # The value range of arctanh is (-1,1)
         input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -0.99, 0.99)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        arctanh_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
-        graph_def = helper.make_graph([arctanh_def], case_name, [input], [output])
+        graph_txt = """
+            Arctanh (float%s input) => (float%s output)
+            {
+                output = %s(input)
+            }
+            """ % (input_shape, input_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, input_data={'input': input_data})
 
     def test_Arccos(self, case_name):
         input_shape = [1, 3, 32, 32]
         # The value range of arccos is (-1,1)
         input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -0.99, 0.99)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        arccos_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
-        graph_def = helper.make_graph([arccos_def], case_name, [input], [output])
+        graph_txt = """
+            Arccos (float%s input) => (float%s output)
+            {
+                output = %s(input)
+            }
+            """ % (input_shape, input_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, input_data={'input': input_data})
 
     def test_Log(self, case_name):
         input_shape = [1, 3, 32, 32]
         input_data = np.clip(np.random.randn(*input_shape).astype(np.float32) * 10.0, 0.5, 8)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        log_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
-        graph_def = helper.make_graph([log_def], case_name, [input], [output])
+        graph_txt = """
+            Log (float%s input) => (float%s output)
+            {
+                output = %s(input)
+            }
+            """ % (input_shape, input_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, input_data={'input': input_data})
 
     def test_Neg(self, case_name):
         input_shape = [4, 16, 27, 27]
         output_shape = [4, 16, 27, 27]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        neg_def = helper.make_node(
-            'Neg',  # node name
-            ['input'],  # inputs
-            ['output'],  # outputs
-        )
-        graph_def = helper.make_graph(
-            [neg_def],
-            case_name,
-            [input],
-            [output],
-        )
+        graph_txt = """
+            Neg (float%s input) => (float%s output)
+            {
+                output = Neg(input)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Nms2(self, case_name):
         # params for Nms
         num_batches = 1
         num_classes = 80
-        spatial_dimension = 50 #15200
+        spatial_dimension = 50  # 15200
         in_shape = [num_batches, spatial_dimension, 4]
         score_shape = [num_batches, num_classes, spatial_dimension]
-
-        nonzero_input_shape = [2,6]
-        nonzero_input = helper.make_tensor_value_info('nonzero_input', TensorProto.FLOAT, nonzero_input_shape)
-        boxes = helper.make_tensor_value_info('boxes', TensorProto.FLOAT, in_shape)
-        scores = helper.make_tensor_value_info('scores', TensorProto.FLOAT, score_shape)
-        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.INT64, [])
-
-        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [1], vals=[0])
-        indices1 = helper.make_tensor('indices1', TensorProto.INT64, [1], vals=[0])
-
-        iou_threshold = helper.make_tensor(name='iou_threshold',
-                                           data_type=TensorProto.FLOAT,
-                                           dims=[1],
-                                           vals=0.5 * np.ones(1))
-        score_threshold = helper.make_tensor(name='score_threshold',
-                                             data_type=TensorProto.FLOAT,
-                                             dims=[1],
-                                             vals=0.05 * np.ones(1))
-
-        gather0_def = helper.make_node('Gather', inputs=['nonzero_input', 'indices0'], axis=0, outputs=['gather0'])
-        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
-        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
-        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
-        gather_def = helper.make_node('Gather', inputs=['shape', 'indices1'], axis=0, outputs=['max_output_boxes_per_class'])
-        nms_def = helper.make_node(
-            'NonMaxSuppression',
-            inputs=['boxes', 'scores', 'max_output_boxes_per_class', 'iou_threshold', 'score_threshold'],
-            outputs=['Y_Value'],
-        )
-        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def, shape_def, gather_def, nms_def],
-                                case_name, [nonzero_input, boxes, scores], [Y_Value],
-                                initializer=[indices0, indices1, iou_threshold, score_threshold])
-
-        input_data={
-            'nonzero_input' : np.array([[1, 0, 3, 0, 4, 0], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
-            'boxes' : np.random.rand(*in_shape).astype(np.float32),
-            'scores' : np.random.rand(*score_shape).astype(np.float32)
-                    }
-        self.onnx_and_test_bmodel(graph_def, static_shape=False, input_data=input_data, only_cmp_with_bmodel=True)
+        nonzero_input_shape = [2, 6]
+        graph_txt = """
+            Nms2 (float%s nonzero_input, float%s boxes, float%s scores) => (int64 Y_Value)
+            <float[1] iou_threshold = {0.5}, float[1] score_threshold = {0.05}, int64 indices0 = {0}, int64 indices1 = {0}>
+            {
+                gather0 = Gather<axis=0>(nonzero_input, indices0)
+                nonzero = NonZero(gather0)
+                transpose = Transpose<perm=[1, 0]>(nonzero)
+                shape = Shape(transpose)
+                max_output_boxes_per_class = Gather<axis=0>(shape,indices1)
+                Y_Value = NonMaxSuppression(boxes, scores, max_output_boxes_per_class, iou_threshold, score_threshold)
+            }
+            """ % (nonzero_input_shape, in_shape, score_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        input_data = {
+            'nonzero_input': np.array([[1, 0, 3, 0, 4, 0], [2.1, 2.5, 0, 0, 2.6, 0]],
+                                      dtype=np.float32),
+            'boxes': np.random.rand(*in_shape).astype(np.float32),
+            'scores': np.random.rand(*score_shape).astype(np.float32)
+        }
+        self.onnx_and_test_bmodel(graph_def,
+                                  static_shape=False,
+                                  input_data=input_data,
+                                  only_cmp_with_bmodel=True)
 
     def test_Nms(self, case_name):
         num_batches = 1
@@ -2151,33 +1925,16 @@ class ONNX_IR_TESTER(object):
         max_out = 200
         in_shape = [num_batches, spatial_dimension, 4]
         score_shape = [num_batches, num_classes, spatial_dimension]
-        boxes = helper.make_tensor_value_info('boxes', TensorProto.FLOAT, in_shape)
-        scores = helper.make_tensor_value_info('scores', TensorProto.FLOAT, score_shape)
-        max_output = helper.make_tensor(name='max_output_boxes_per_class',
-                                        data_type=onnx.TensorProto.INT64,
-                                        dims=[1],
-                                        vals=200 * np.ones(1).astype(np.int64))
-        iou_threshold = helper.make_tensor(name='iou_threshold',
-                                           data_type=TensorProto.FLOAT,
-                                           dims=[1],
-                                           vals=0.5 * np.ones(1))
-        score_threshold = helper.make_tensor(name='score_threshold',
-                                             data_type=TensorProto.FLOAT,
-                                             dims=[1],
-                                             vals=0.05 * np.ones(1))
         y_shape = [max_out * num_classes, 3]
-        selected_indices = helper.make_tensor_value_info('selected_indices', TensorProto.INT64,
-                                                         y_shape)
-        nms_def = helper.make_node(
-            'NonMaxSuppression',
-            inputs=[
-                'boxes', 'scores', 'max_output_boxes_per_class', 'iou_threshold', 'score_threshold'
-            ],
-            outputs=['selected_indices'],
-        )
-        graph_def = helper.make_graph([nms_def],
-                                      "{}".format(case_name), [boxes, scores], [selected_indices],
-                                      initializer=[max_output, iou_threshold, score_threshold])
+
+        graph_txt = """
+            Nms (float%s boxes, float%s scores) => (int64 selected_indices)
+            <int64 max_output_boxes_per_class = {200}, float iou_threshold = {0.5}, float score_threshold = {0.05}>
+            {
+                selected_indices = NonMaxSuppression(boxes, scores, max_output_boxes_per_class, iou_threshold, score_threshold)
+            }
+            """ % (in_shape, score_shape, y_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Pad(self, case_name):
@@ -2187,26 +1944,34 @@ class ONNX_IR_TESTER(object):
         cases = (case0, case1, case2)
         for idx, case in enumerate(cases):
             pads = np.array(case[2]).astype(np.int64)
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, case[0])
-            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, case[1])
+            graph_txt = """
+                Pad_%s (float%s input) => (float%s output)
+                <int64%s pads>
+                {
+                    output = Pad(input, pads)
+                }
+                """ % (idx, case[0], case[1], list(pads.shape))
+            graph_def = onnx.parser.parse_graph(graph_txt)
             pad_val = helper.make_tensor(name='pads',
                                          data_type=onnx.TensorProto.INT64,
                                          dims=pads.shape,
                                          vals=pads.flatten())
-            pad_def = helper.make_node("Pad", ['input', 'pads'],
-                                       outputs=['output'],
-                                       mode='constant')
-            graph_def = helper.make_graph([pad_def],
-                                          "{}_{}".format(case_name, idx), [input], [output],
-                                          initializer=[pad_val])
+            graph_def.initializer.extend([pad_val])
             self.onnx_and_test(graph_def)
 
     def test_Pad1(self, case_name):
         input_shape = [3, 8, 32, 32]
         output_shape = [3, 8, 44, 46]
         pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+                Pad1 (float%s input) => (float%s output)
+                <int64%s pads, float pad_val>
+                {
+                    output = Pad(input, pads, pad_val)
+                }
+                """ % (input_shape, output_shape, list(pads.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         pad_shape = helper.make_tensor(name='pads',
                                        data_type=onnx.TensorProto.INT64,
                                        dims=pads.shape,
@@ -2215,28 +1980,27 @@ class ONNX_IR_TESTER(object):
                                      data_type=onnx.TensorProto.FLOAT,
                                      dims=[],
                                      vals=[0.6])
-        pad_def = helper.make_node("Pad", ['input', 'pads', 'pad_val'],
-                                   outputs=['output'],
-                                   mode='constant')
-        graph_def = helper.make_graph([pad_def],
-                                      case_name, [input], [output],
-                                      initializer=[pad_shape, pad_val])
+        graph_def.initializer.extend([pad_shape, pad_val])
         self.onnx_and_test(graph_def)
 
     def test_PadEdge(self, case_name):
         input_shape = [3, 8, 32, 32]
         output_shape = [3, 8, 44, 46]
         pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+                PadEdge (float%s input) => (float%s output)
+                <int64%s pads>
+                {
+                    output = Pad<mode="edge">(input, pads)
+                }
+                """ % (input_shape, output_shape, list(pads.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         pad_val = helper.make_tensor(name='pads',
                                      data_type=onnx.TensorProto.INT64,
                                      dims=pads.shape,
                                      vals=pads.flatten())
-        pad_def = helper.make_node("Pad", ['input', 'pads'], outputs=['output'], mode='edge')
-        graph_def = helper.make_graph([pad_def],
-                                      case_name, [input], [output],
-                                      initializer=[pad_val])
+        graph_def.initializer.extend([pad_val])
         self.onnx_and_test(graph_def)
 
     def test_PadReflect(self, case_name):
@@ -2244,16 +2008,20 @@ class ONNX_IR_TESTER(object):
         output_shape = [3, 8, 44, 46]
         pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+                PadReflect (float%s input) => (float%s output)
+                <int64%s pads>
+                {
+                    output = Pad<mode="reflect">(input, pads)
+                }
+                """ % (input_shape, output_shape, list(pads.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         pad_val = helper.make_tensor(name='pads',
                                      data_type=onnx.TensorProto.INT64,
                                      dims=pads.shape,
                                      vals=pads.flatten())
-        pad_def = helper.make_node("Pad", ['input', 'pads'], outputs=['output'], mode='reflect')
-        graph_def = helper.make_graph([pad_def],
-                                      case_name, [input], [output],
-                                      initializer=[pad_val])
+        graph_def.initializer.extend([pad_val])
         self.onnx_and_test(graph_def)
 
     def test_DepthToSpace(self, case_name):
@@ -2263,21 +2031,13 @@ class ONNX_IR_TESTER(object):
         # mode='CRD'
         mode = 'DCR'  # default
         out_shape = [n, c // (blocksize * blocksize), h * blocksize, w * blocksize]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, in_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, out_shape)
-        node_def = helper.make_node(
-            "DepthToSpace",
-            mode=mode,
-            blocksize=blocksize,
-            inputs=['input'],
-            outputs=['output'],
-        )
-        graph_def = helper.make_graph(
-            [node_def],
-            case_name,
-            [input],
-            [output],
-        )
+        graph_txt = """
+                DepthToSpace (float%s input) => (float%s output)
+                {
+                    output = DepthToSpace<mode="%s", blocksize=%d>(input)
+                }
+                """ % (in_shape, out_shape, mode, blocksize)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Div(self, case_name):
@@ -2286,14 +2046,13 @@ class ONNX_IR_TESTER(object):
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
         input_data["input2"] = np.clip(input_data["input2"], 0.01, 10)
 
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        div_def = helper.make_node("Div", inputs=list(input_shape.keys()), outputs=["output"])
-
-        graph_def = helper.make_graph([div_def], case_name, inputs, [output])
+        graph_txt = """
+                Div (float[1, 3, 27, 27] input1,float[1, 3, 27, 27] input2) => (float%s output)
+                {
+                    output = Div(input1, input2)
+                }
+                """ % (output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_DivBcast(self, case_name):
@@ -2307,16 +2066,14 @@ class ONNX_IR_TESTER(object):
                 a_data = np.random.randn(*bcast_s).astype(np.float32)
                 b_data = np.clip(np.random.randn(*s).astype(np.float32), 0.01, 10)
                 c_data = np.clip(np.random.randn(*bcast_s).astype(np.float32), 0.01, 10)
-                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
-                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
-                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
-                Div_def = helper.make_node("Div", inputs=["a", "b"], outputs=["x"])
-                Div_def_2 = helper.make_node("Div", inputs=["x", "c"], outputs=["output"])
-                graph_def = helper.make_graph([Div_def, Div_def_2],
-                                              "{}_{}_{}".format(case_name, i,
-                                                                "".join(map(str, dims))), [a, b, c],
-                                              [output])
+                graph_txt = """
+                    DivBcast_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                    {
+                        x = Div(a, b)
+                        output = Div(x, c)
+                    }
+                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
 
     def test_DivBcast2(self, case_name):
@@ -2327,16 +2084,14 @@ class ONNX_IR_TESTER(object):
             a_data = np.random.randn(*bcast_shapes[i]).astype(np.float32)
             b_data = np.clip(np.random.randn(*s).astype(np.float32), 0.01, 10)
             c_data = np.clip(np.random.randn(*bcast_shapes[i]).astype(np.float32), 0.01, 10)
-            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_shapes[i])
-            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-            c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_shapes[i])
-            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, out_shapes[i])
-            Div_def = helper.make_node("Div", inputs=["a", "b"], outputs=["x"])
-            Div_def_2 = helper.make_node("Div", inputs=["x", "c"], outputs=["output"])
-            graph_def = helper.make_graph([Div_def, Div_def_2], "{}_{}".format(
-                case_name,
-                i,
-            ), [a, b, c], [output])
+            graph_txt = """
+                DivBcast2_%s (float%s a, float%s b, float%s c) => (float%s output)
+                {
+                    x = Div(a, b)
+                    output = Div(x, c)
+                }
+                """ % (i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
 
     def test_ConvTrans(self, case_name):
@@ -2358,22 +2113,20 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(oc).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            ConvTrans (float%s input) => (float%s output)
+            <float%s weight, float%s bias>
+            {
+                output = ConvTranspose<kernel_shape=%s, pads=%s, output_padding=%s,
+                strides=%s, dilations=%s, group=1>(input, weight, bias)
+            }
+            """ % (input_shape, output_shape, filter_shape, list(
+            bias_data.shape), kernel_shape, pads, output_padding, strides, dilations)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-        ConvTrans_def = helper.make_node("ConvTranspose",
-                                         inputs=['input', 'weight', 'bias'],
-                                         outputs=['output'],
-                                         kernel_shape=kernel_shape,
-                                         pads=pads,
-                                         output_padding=output_padding,
-                                         strides=strides,
-                                         dilations=dilations,
-                                         group=1)
-        graph_def = helper.make_graph([ConvTrans_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias])
+        graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_ConvTrans2(self, case_name):
@@ -2384,132 +2137,126 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(*bias_shape).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            ConvTrans2 (float%s input) => (float%s output)
+            <float%s weight, float%s bias>
+            {
+                output = ConvTranspose<kernel_shape=[2, 2], pads=[0, 0, 0, 0], output_padding=[1, 1],
+                strides=[2, 2], dilations=[1, 1], group=1>(input, weight, bias)
+            }
+            """ % (input_shape, output_shape, filter_shape, bias_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
-        ConvTrans_def = helper.make_node("ConvTranspose",
-                                         inputs=['input', 'weight', 'bias'],
-                                         outputs=['output'],
-                                         kernel_shape=[2, 2],
-                                         pads=[0, 0, 0, 0],
-                                         output_padding=[1, 1],
-                                         strides=[2, 2],
-                                         dilations=[1, 1],
-                                         group=1)
-        graph_def = helper.make_graph([ConvTrans_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias])
+        graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_Squeeze(self, case_name):
         axis = [1, 3]
         input_shape = [3, 1, 32, 1]
         output_shape = [input_shape[i] for i in range(len(input_shape)) if i not in axis]
-        input0 = helper.make_tensor_value_info('input0', TensorProto.FLOAT, input_shape)
-        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input_shape)
+
+        graph_txt = """
+            Squeeze (float%s input0, float%s input1) => (float%s output_1, float%s output_2)
+            <int64%s axes>
+            {
+                x = Add(input0, input1)
+                output_1 = Squeeze(x, axes)
+                output_2 = Squeeze(x)
+            }
+            """ % (input_shape, input_shape, output_shape, output_shape, [len(axis)])
+        graph_def = onnx.parser.parse_graph(graph_txt)
         axes = helper.make_tensor('axes', TensorProto.INT64, [len(axis)],
                                   axis * np.ones(1).astype(int))
-        output_1 = helper.make_tensor_value_info('output_1', TensorProto.FLOAT, output_shape)
-        output_2 = helper.make_tensor_value_info('output_2', TensorProto.FLOAT, output_shape)
-        add_def = helper.make_node("Add", inputs=['input0', 'input1'], outputs=['x'])
-        squeeze_def1 = helper.make_node("Squeeze", inputs=['x', 'axes'], outputs=['output_1'])
-        squeeze_def2 = helper.make_node("Squeeze", inputs=['x'], outputs=['output_2'])
-        graph_def = helper.make_graph([add_def, squeeze_def1, squeeze_def2],
-                                      case_name, [input0, input1], [output_1, output_2],
-                                      initializer=[axes])
+        graph_def.initializer.extend([axes])
         self.onnx_and_test(graph_def)
 
     def test_Clip(self, case_name):
         input_shape = [1, 3, 32, 32]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        min = helper.make_tensor('min', TensorProto.FLOAT, [], -1.0 * np.ones(1))
-        max = helper.make_tensor('max', TensorProto.FLOAT, [], 6.0 * np.ones(1))
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        node_def = helper.make_node(case_name, inputs=['input', 'min', 'max'], outputs=['output'])
-        graph_def = helper.make_graph([node_def], case_name, [input], [output], [min, max])
+        graph_txt = """
+            Clip (float%s input) => (float%s output)
+            <float min = {-1.0}, float max = {6.0}>
+            {
+                output = %s(input, min, max)
+            }
+            """ % (input_shape, input_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_ReduceL2(self, case_name):
         input_shape = [4, 4, 4, 16, 16, 64]
         output_shape = [4, 4, 4, 64]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('o_l2', TensorProto.FLOAT, output_shape)
-
-        reduce_l2 = helper.make_node(
-            'ReduceL2',
-            ['input'],
-            ['o_l2'],
-            keepdims=0,
-            axes=[3, 4],
-        )
-
-        graph_def = helper.make_graph([reduce_l2], case_name, [input], [output])
+        graph_txt = """
+            ReduceL2 (float%s input) => (float%s o_l2)
+            {
+                o_l2 = ReduceL2<keepdims=0, axes=[3, 4]>(input)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_ReduceSum(self, case_name):
         input_shape = [4, 4, 4, 16, 16, 64]
         output_shape = [4, 4, 4, 16, 64]
-        axes = helper.make_tensor(name='axes', data_type=onnx.TensorProto.INT64, dims=[1], vals=[4])
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('o_sum', TensorProto.FLOAT, output_shape)
-        reduce_sum = helper.make_node('ReduceSum',
-                                      inputs=['input', 'axes'],
-                                      outputs=['o_sum'],
-                                      keepdims=0)
-        graph_def = helper.make_graph([reduce_sum],
-                                      case_name, [input], [output],
-                                      initializer=[axes])
+
+        graph_txt = """
+            ReduceSum (float%s input) => (float%s o_sum)
+            <int64[1] axes = {4}>
+            {
+                o_sum = ReduceSum<keepdims=0>(input, axes)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_ReduceProd(self, case_name):
         input_shape = [1, 3, 128, 128]
         output_shape = [1, 3, 128]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('o_prod', TensorProto.FLOAT, output_shape)
-        reduce_prod = helper.make_node("ReduceProd",
-                                       inputs=['input'],
-                                       outputs=['o_prod'],
-                                       keepdims=0,
-                                       axes=[2])
-        graph_def = helper.make_graph([reduce_prod], case_name, [input], [output])
+
+        graph_txt = """
+            ReduceProd (float%s input) => (float%s o_prod)
+            {
+                o_prod = ReduceProd<keepdims=0, axes=[2]>(input)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Sigmoid(self, case_name):
         input_shape = [1, 16, 64, 64]
         output_shape = [1, 16, 64, 64]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        sigmoid_def = helper.make_node(
-            case_name,
-            inputs=['input'],
-            outputs=['output'],
-        )
-        graph_def = helper.make_graph([sigmoid_def], case_name, [input], [output])
+        graph_txt = """
+            Sigmoid (float%s input) => (float%s output)
+            {
+                output = %s(input)
+            }
+            """ % (input_shape, output_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         if 0:  # this code to test local layer, but when model use local layer, compare will not pass.
-            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, input_shape)
-            add_out = helper.make_tensor_value_info("add_out", TensorProto.FLOAT, input_shape)
-            add_def = helper.make_node("Add", inputs=["a", "output"], outputs=["add_out"])
-            graph_def = helper.make_graph([sigmoid_def, add_def], case_name, [input, a], [add_out])
-
+            graph_txt = """
+                Sigmoid (float%s input, float%s a) => (float%s add_out)
+                {
+                    output = %s(input)
+                    add_out = Add(a, output)
+                }
+                """ % (input_shape, input_shape, input_shape, case_name)
+            graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Sign(self, case_name):
         input_shape = [4, 2, 200, 100]
         output_shape = [4, 2, 200, 100]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        sign_def = helper.make_node(
-            case_name,
-            inputs=['input'],
-            outputs=['output'],
-        )
-        graph_def = helper.make_graph([sign_def], case_name, [input], [output])
+        graph_txt = """
+            Sign (float%s input) => (float%s output)
+            {
+                output = %s(input)
+            }
+            """ % (input_shape, output_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Slice(self, case_name):
@@ -2520,22 +2267,20 @@ class ONNX_IR_TESTER(object):
         axes_data = np.array([0, 1, 2, 3], dtype=np.int64)
         steps_data = np.array([1, 3, 2, 3], dtype=np.int64)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            Slice (float%s input) => (float%s output)
+            <int64[4] starts, int64[4] ends, int64[4] axes, int64[4] steps>
+            {
+                output = Slice(input, starts, ends, axes, steps)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
 
         starts = helper.make_tensor('starts', TensorProto.INT64, [4], starts_data)
         ends = helper.make_tensor('ends', TensorProto.INT64, [4], ends_data)
         axes = helper.make_tensor('axes', TensorProto.INT64, [4], axes_data)
         steps = helper.make_tensor('steps', TensorProto.INT64, [4], steps_data)
-        slice_def = helper.make_node(
-            "Slice",
-            inputs=['input', 'starts', 'ends', 'axes', 'steps'],
-            outputs=['output'],
-        )
-
-        graph_def = helper.make_graph([slice_def],
-                                      case_name, [input], [output],
-                                      initializer=[starts, ends, axes, steps])
+        graph_def.initializer.extend([starts, ends, axes, steps])
         self.onnx_and_test(graph_def)
 
     def test_Slice2(self, case_name):
@@ -2557,6 +2302,7 @@ class ONNX_IR_TESTER(object):
         if not self.dynamic:
             pass
         else:
+
             class Model(nn.Module):
 
                 def __init__(self):
@@ -2657,15 +2403,14 @@ class ONNX_IR_TESTER(object):
                     self.deconv.padding,
                     self.deconv.kernel_size,  # type: ignore[arg-type]
                     2,
-                    self.deconv.dilation
-                )  # type: ignore[arg-type]
+                    self.deconv.dilation)  # type: ignore[arg-type]
 
                 out = F.conv_transpose2d(x, y, None, [2, 2], 0, output_padding, 1, 1)
                 return out
 
         x = torch.randn(3, 8, 16, 32).float()
         y = torch.randn(8, 8, 2, 2).float()
-        self.torch_and_test((x,y), Model(), case_name)
+        self.torch_and_test((x, y), Model(), case_name)
 
     def test_Deconv2(self, case_name):
         groups, kernel = 4, 4
@@ -2734,20 +2479,17 @@ class ONNX_IR_TESTER(object):
         output2_shape = [3, 116, 64, 64]
         split_data = np.array([3, 3], dtype=np.int64)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        split = helper.make_tensor('split', TensorProto.INT64, [2], split_data)
-        output_1 = helper.make_tensor_value_info('output_1', TensorProto.FLOAT, output1_shape)
-        output_2 = helper.make_tensor_value_info('output_2', TensorProto.FLOAT, output2_shape)
-        split_def = helper.make_node(
-            "Split",
-            inputs=['input', 'split'],
-            outputs=['output_1', 'output_2'],
-            axis=0,
-        )
+        graph_txt = """
+            Split (float%s input) => (float%s output_1, float%s output_2)
+            <int64[2] split>
+            {
+                output_1, output_2 = Split<axis=0>(input, split)
+            }
+            """ % (input_shape, output1_shape, output2_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
 
-        graph_def = helper.make_graph([split_def],
-                                      case_name, [input], [output_1, output_2],
-                                      initializer=[split])
+        split = helper.make_tensor('split', TensorProto.INT64, [2], split_data)
+        graph_def.initializer.extend([split])
         self.onnx_and_test(graph_def)
 
     def test_Split2(self, case_name):
@@ -2756,45 +2498,39 @@ class ONNX_IR_TESTER(object):
         output2_shape = [3, 116, 64, 64]
         split_data = np.array([3, 3], dtype=np.int64)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output_1 = helper.make_tensor_value_info('output_1', TensorProto.FLOAT, output1_shape)
-        output_2 = helper.make_tensor_value_info('output_2', TensorProto.FLOAT, output2_shape)
-        split_def = helper.make_node(
-            "Split",
-            inputs=['input'],
-            outputs=['output_1', 'output_2'],
-            axis=0,
-        )
-
-        graph_def = helper.make_graph([split_def],
-                                      case_name, [input], [output_1, output_2])
+        graph_txt = """
+            Split2 (float%s input) => (float%s output_1, float%s output_2)
+            {
+                output_1, output_2 = Split<axis=0>(input)
+            }
+            """ % (input_shape, output1_shape, output2_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Arg(self, case_name):
         for keep in [True, False]:
             input_shape = [20, 40, 60]
             output_shape = [20, 1, 60] if keep else [20, 60]
-
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-            output1 = helper.make_tensor_value_info('o_max', TensorProto.INT64, output_shape)
-            arg_max = helper.make_node('ArgMax', ['input'], ['o_max'],
-                                       keepdims=keep,
-                                       axis=1,
-                                       select_last_index=1)
             if self.is_cv18xx:
-                graph_def = helper.make_graph([arg_max], "{}_{}".format(case_name, keep), [input],
-                                              [output1])
+                graph_txt = """
+                Arg_%s (float%s input) => (int64%s o_max)
+                {
+                    o_max = ArgMax<keepdims=%s, axis=1, select_last_index=1>(input)
+                }
+                """ % (keep, input_shape, output_shape, 1 if keep else 0)
+                graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
                 continue
 
-            output2 = helper.make_tensor_value_info('o_min', TensorProto.INT64, output_shape)
-            arg_min = helper.make_node('ArgMin', ['input'], ['o_min'],
-                                       keepdims=keep,
-                                       axis=1,
-                                       select_last_index=1)
-
-            graph_def = helper.make_graph([arg_max, arg_min], "{}_{}".format(case_name, keep),
-                                          [input], [output1, output2])
+            graph_txt = """
+                Arg_%s (float%s input) => (int64%s o_max, int64%s o_min)
+                {
+                    o_max = ArgMax<keepdims=%s, axis=1, select_last_index=1>(input)
+                    o_min = ArgMin<keepdims=%s, axis=1, select_last_index=1>(input)
+                }
+                """ % (keep, input_shape, output_shape, output_shape, 1 if keep else 0,
+                       1 if keep else 0)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     def test_Reduce(self, case_name):
@@ -2802,35 +2538,16 @@ class ONNX_IR_TESTER(object):
             input_shape = [4, 4, 4, 16, 64]
             output_shape = [4, 4, 4, 16, 1] if keep else [4, 4, 4, 16]
 
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-            output0 = helper.make_tensor_value_info('o_mean', TensorProto.FLOAT, output_shape)
-            output1 = helper.make_tensor_value_info('o_max', TensorProto.FLOAT, output_shape)
-            output2 = helper.make_tensor_value_info('o_min', TensorProto.FLOAT, output_shape)
-            reduce_mean = helper.make_node(
-                'ReduceMean',
-                ['input'],
-                ['o_mean'],
-                keepdims=keep,
-                axes=[4],
-            )
-            reduce_max = helper.make_node(
-                'ReduceMax',
-                ['input'],
-                ['o_max'],
-                keepdims=keep,
-                axes=[4],
-            )
-            reduce_min = helper.make_node(
-                'ReduceMin',
-                ['input'],
-                ['o_min'],
-                keepdims=keep,
-                axes=[4],
-            )
-
-            graph_def = helper.make_graph([reduce_mean, reduce_max, reduce_min],
-                                          "{}_{}".format(case_name, keep), [input],
-                                          [output0, output1, output2])
+            graph_txt = """
+                Reduce_%s (float%s input) => (float%s o_mean, float%s o_max, float%s o_min)
+                {
+                    o_mean = ReduceMean<keepdims=%d, axes=[4]>(input)
+                    o_max = ReduceMax<keepdims=%d, axes=[4]>(input)
+                    o_min = ReduceMin<keepdims=%d, axes=[4]>(input)
+                }
+                """ % (keep, input_shape, output_shape, output_shape, output_shape, keep, keep,
+                       keep)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     def test_Reduce2(self, case_name):
@@ -2838,41 +2555,29 @@ class ONNX_IR_TESTER(object):
             input_shape = [4, 4, 4, 16, 64]
             output_shape = [4, 4, 1, 1, 64] if keep else [4, 4, 64]
 
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-            output0 = helper.make_tensor_value_info('o_mean', TensorProto.FLOAT, output_shape)
-            output1 = helper.make_tensor_value_info('o_max', TensorProto.FLOAT, output_shape)
-            output2 = helper.make_tensor_value_info('o_min', TensorProto.FLOAT, output_shape)
-            reduce_mean = helper.make_node('ReduceMean', ['input'], ['o_mean'],
-                                           keepdims=keep,
-                                           axes=[2, 3])
-            reduce_max = helper.make_node('ReduceMax', ['input'], ['o_max'],
-                                          keepdims=keep,
-                                          axes=[2, 3])
-            reduce_min = helper.make_node('ReduceMin', ['input'], ['o_min'],
-                                          keepdims=keep,
-                                          axes=[2, 3])
-
-            graph_def = helper.make_graph([reduce_mean, reduce_max, reduce_min],
-                                          "{}_{}".format(case_name, keep), [input],
-                                          [output0, output1, output2])
+            graph_txt = """
+                Reduce2_%s (float%s input) => (float%s o_mean, float%s o_max, float%s o_min)
+                {
+                    o_mean = ReduceMean<keepdims=%d, axes=[2, 3]>(input)
+                    o_max = ReduceMax<keepdims=%d, axes=[2, 3]>(input)
+                    o_min = ReduceMin<keepdims=%d, axes=[2, 3]>(input)
+                }
+                """ % (keep, input_shape, output_shape, output_shape, output_shape, keep, keep,
+                       keep)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     def test_ReduceMean(self, case_name):
         input_shape = [2, 200, 7, 7]
         output_shape = [2, 1, 1, 7]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        reducemean_def = helper.make_node(
-            "ReduceMean",
-            inputs=['input'],
-            outputs=['output'],
-            axes=[1, 2],
-            keepdims=1,
-        )
-
-        graph_def = helper.make_graph([reducemean_def], case_name, [input], [output])
+        graph_txt = """
+            ReduceMean (float%s input) => (float%s output)
+            {
+                output = ReduceMean<keepdims=1, axes=[1, 2]>(input)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_TorchHardSigmoid(self, case_name):
@@ -3194,7 +2899,9 @@ class ONNX_IR_TESTER(object):
     def test_TorchRMSNorm(self, case_name):
         normalize_shape = [4096]
         eps = 1e-5
+
         class Model(torch.nn.Module):
+
             def __init__(self):
                 super(Model, self).__init__()
                 self.weight = torch.nn.Parameter(torch.randn(normalize_shape))
@@ -3404,34 +3111,23 @@ class ONNX_IR_TESTER(object):
         transpose_order = [0, 3, 1, 2]
         block_size = 2
         mode = 'DCR'
-
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         permute_output_shape = [
             input_shape[transpose_order[j]] for j in range(len(transpose_order))
         ]
-        permute_output = helper.make_tensor_value_info('permute_output', TensorProto.FLOAT,
-                                                       permute_output_shape)
-        transpose_def = helper.make_node("Transpose",
-                                         inputs=['input'],
-                                         outputs=['permute_output'],
-                                         perm=transpose_order)
-
         depth2space_input_shape = permute_output_shape
         depth2space_output_shape = [
             depth2space_input_shape[0], depth2space_input_shape[1] // (block_size * block_size),
             depth2space_input_shape[2] * block_size, depth2space_input_shape[3] * block_size
         ]
 
-        depth2space_output = helper.make_tensor_value_info('depth2space_output', TensorProto.FLOAT,
-                                                           depth2space_output_shape)
-        depth2space_def = helper.make_node("DepthToSpace",
-                                           inputs=['permute_output'],
-                                           outputs=['depth2space_output'],
-                                           blocksize=block_size,
-                                           mode=mode)
-
-        graph_def = helper.make_graph([transpose_def, depth2space_def],
-                                      "{}_{}".format(case_name, 0), [input], [depth2space_output])
+        graph_txt = """
+            Depth2SpaceWithPermute (float%s input) => (float%s depth2space_output)
+            {
+                permute_output = Transpose<perm=%s>(input)
+                depth2space_output = DepthToSpace<blocksize=%d, mode="%s">(permute_output)
+            }
+            """ % (input_shape, depth2space_output_shape, transpose_order, block_size, mode)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Gather2Slice(self, case_name):
@@ -3463,7 +3159,7 @@ class ONNX_IR_TESTER(object):
                 s = x[1]
                 return s.unsqueeze(0)
 
-        for i, s in enumerate([3, [2,3,2,4]]):
+        for i, s in enumerate([3, [2, 3, 2, 4]]):
             x = torch.randn(s).float()
             self.torch_and_test(x, Model(), case_name + str(i), static_shape=False)
 
@@ -3491,13 +3187,13 @@ class ONNX_IR_TESTER(object):
                 super(Model, self).__init__()
 
             def forward(self, x, y):
-                y = y.unsqueeze(3).repeat(1,1,1,2,1)
-                y = y.reshape(13,4,8).transpose(1,0)
+                y = y.unsqueeze(3).repeat(1, 1, 1, 2, 1)
+                y = y.reshape(13, 4, 8).transpose(1, 0)
                 res = torch.matmul(x, y)
                 return res
 
-        x = 0.1*torch.randn(4, 1, 13).float()
-        y = 0.1*torch.randn(13, 1, 2, 8)
+        x = 0.1 * torch.randn(4, 1, 13).float()
+        y = 0.1 * torch.randn(13, 1, 2, 8)
         self.torch_and_test((x, y), Model(), case_name)
 
     def test_PermuteFuse(self, case_name):
@@ -3699,42 +3395,42 @@ class ONNX_IR_TESTER(object):
                 self.Softmax_2d = nn.Softmax2d()
 
             def forward(self, input):
-                #tanh
+                # tanh
                 x = self.linear(input)
                 y0 = torch.tanh(x)
-                ##relu
+                # relu
                 x = self.linear(input)
                 y2 = torch.relu(x)
-                ##sigmoid
+                # sigmoid
                 x = self.linear(input)
                 y1 = torch.sigmoid(x)
-                ##leaky_relu
+                # leaky_relu
                 # x = self.linear(input)
                 # y3 = F.leaky_relu(x)
-                ##elu
+                # elu
                 x = self.linear(input)
                 y4 = F.elu(x)
-                ##softplus
+                # softplus
                 x = self.linear(input)
                 y5 = self.prelu(x)
-                ##hardsigmoid
+                # hardsigmoid
                 x = self.linear(input)
                 y6 = self.hardsigmoid(x)
-                ##prelu
+                # prelu
                 x = self.linear(input)
                 y7 = self.softplus(x)
-                ##relu6
+                # relu6
                 x = self.linear(input)
                 y8 = self.ReLU6(x)
-                ##mish
+                # mish
                 x = self.linear(input)
                 y9 = self.mish(x)
-                ##Softmax
+                # Softmax
                 x = self.linear(input)
                 y10 = self.Softmax(x)
-                ##concat
+                # concat
                 y = torch.cat((y0, y1, y2, y4, y5, y6, y7, y8, y9, y10), 0)
-                ##Softmax_2d
+                # Softmax_2d
                 x = self.linear(input)
                 x = x.unsqueeze(dim=1)
                 y2 = self.Softmax_2d(x)
@@ -3766,12 +3462,12 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Model, self).__init__()
-                ## left:3 right:4 up:4 down:6 postion pad zero
+                # left:3 right:4 up:4 down:6 postion pad zero
                 self.ZeroPad2d = nn.ZeroPad2d(padding=(3, 4, 5, 6))
 
             def forward(self, x):
-                ##input shape = (3, 100, 100)
-                x = self.ZeroPad2d(x)  ##output shape = (3, 111, 107)
+                # input shape = (3, 100, 100)
+                x = self.ZeroPad2d(x)  # output shape = (3, 111, 107)
                 return x
 
         x = torch.randn(4, 3, 100, 100).float()
@@ -3848,11 +3544,13 @@ class ONNX_IR_TESTER(object):
     def test_Add(self, case_name):
         shapes = ([1, 3, 27, 27], [2, 6, 56, 56], [4, 9, 56, 56])
         for i, s in enumerate(shapes):
-            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, s)
-            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
-            add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["output"])
-            graph_def = helper.make_graph([add_def], "{}_{}".format(case_name, i), [a, b], [output])
+            graph_txt = """
+                Add (float%s a, float%s b) => (float%s output)
+                {
+                    output = Add(a, b)
+                }
+                """ % (s, s, s)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             if 0:  # the follow code used to test local layer, but local layer compare faild. so I just closed it, and commit it.
                 c = helper.make_tensor_value_info("c", TensorProto.FLOAT, s)
                 add2_out = helper.make_tensor_value_info("add2_out", TensorProto.FLOAT, s)
@@ -3869,16 +3567,14 @@ class ONNX_IR_TESTER(object):
                 bcast_s = s[::]
                 for dim in dims:
                     bcast_s[dim] = 1
-                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
-                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
-                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
-                add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["x"])
-                add_def_2 = helper.make_node("Add", inputs=["x", "c"], outputs=["output"])
-                graph_def = helper.make_graph([add_def, add_def_2],
-                                              "{}_{}_{}".format(case_name, i,
-                                                                "".join(map(str, dims))), [a, b, c],
-                                              [output])
+                graph_txt = """
+                    tmp_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                    {
+                        x = Add(a, b)
+                        output = Add(x, c)
+                    }
+                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
     def test_AddBcast(self, case_name):
@@ -3905,16 +3601,14 @@ class ONNX_IR_TESTER(object):
                 bcast_s = s[::]
                 for dim in dims:
                     bcast_s[dim] = 1
-                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
-                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
-                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
-                add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["x"])
-                add_def_2 = helper.make_node("Add", inputs=["x", "c"], outputs=["output"])
-                graph_def = helper.make_graph([add_def, add_def_2],
-                                              "{}_{}_{}".format(case_name, i,
-                                                                "".join(map(str, dims))), [a, b, c],
-                                              [output])
+                graph_txt = """
+                    AddBcast_%s_%s (float%s a, float%s b, float%s c) => (float output)
+                    {
+                        x = Add(a, b)
+                        output = Add(x, c)
+                    }
+                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s)
+                graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
     def test_AddBcast2(self, case_name):
@@ -3931,16 +3625,14 @@ class ONNX_IR_TESTER(object):
             [3, 6, 21, 12],
         )
         for i, s in enumerate(shapes):
-            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_shapes[i])
-            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-            c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_shapes[i])
-            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, out_shapes[i])
-            add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["x"])
-            add_def_2 = helper.make_node("Add", inputs=["x", "c"], outputs=["output"])
-            graph_def = helper.make_graph([add_def, add_def_2], "{}_{}".format(
-                case_name,
-                i,
-            ), [a, b, c], [output])
+            graph_txt = """
+                AddBcast2_%s (float%s a, float%s b, float%s c) => (float%s output)
+                {
+                    x = Add(a, b)
+                    output = Add(x, c)
+                }
+                """ % (i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     # Known issue: failed cases.
@@ -3956,52 +3648,53 @@ class ONNX_IR_TESTER(object):
         bcast_shapes = ([4, 1, 10, 1, 12, 7], )
         out_shapes = ([4, 9, 10, 11, 12, 7], )
         for i, s in enumerate(shapes):
-            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_shapes[i])
-            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-            c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_shapes[i])
-            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, out_shapes[i])
-            add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["x"])
-            add_def_2 = helper.make_node("Add", inputs=["c", "x"], outputs=["output"])
-            graph_def = helper.make_graph([add_def, add_def_2], "{}_{}".format(
-                case_name,
-                i,
-            ), [a, b, c], [output])
+            graph_txt = """
+                AddBcast3_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                {
+                    x = Add(a, b)
+                    output = Add(x, c)
+                }
+                """ % (i, "".join(map(str,
+                                      dims)), bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
-
 
     def test_AddWeight2(self, case_name):
         input_shape = [1, 16, 8, 8]
         wshape = [16, 1, 1]
         output_shape = [1, 16, 8, 8]
+        w_data = np.random.randn(*wshape).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        w_data = np.random.rand(*wshape).astype(np.float32)
+        graph_txt = """
+            AddWeight2 (float%s input) => (float%s output)
+            <float%s w>
+            {
+                output = Add(input, w)
+            }
+            """ % (input_shape, list(w_data.shape), output_shape)
         w_value = helper.make_tensor(
             name='w',
             data_type=onnx.TensorProto.FLOAT,
             dims=w_data.shape,
             vals=w_data.flatten(),
         )
-
-        add_node = helper.make_node(
-            'Add',  # node name
-            ['w', 'input', ],  # inputs
-            ['output'],  # outputs
-        )
-        graph_def = helper.make_graph([add_node],
-                                      case_name, [input], [output],
-                                      initializer=[w_value])
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([w_value])
         self.onnx_and_test(graph_def)
 
     def test_AddWeight(self, case_name):
         input_shape = [1, 16, 28, 28]
         wshape = [28, 28]
         output_shape = [1, 16, 28, 28]
+        w_data = np.random.randn(*wshape).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        w_data = np.random.rand(*wshape).astype(np.float32)
+        graph_txt = """
+            AddWeight (float%s input) => (float%s output)
+            <float%s w>
+            {
+                output = Add(input, w)
+            }
+            """ % (input_shape, output_shape, list(w_data.shape))
         w_value = helper.make_tensor(
             name='w',
             data_type=onnx.TensorProto.FLOAT,
@@ -4009,14 +3702,8 @@ class ONNX_IR_TESTER(object):
             vals=w_data.flatten(),
         )
 
-        add_node = helper.make_node(
-            'Add',  # node name
-            ['input', 'w'],  # inputs
-            ['output'],  # outputs
-        )
-        graph_def = helper.make_graph([add_node],
-                                      case_name, [input], [output],
-                                      initializer=[w_value])
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([w_value])
         self.onnx_and_test(graph_def)
 
     def test_BCastAdd(self, case_name):
@@ -4026,33 +3713,27 @@ class ONNX_IR_TESTER(object):
         else:
             input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-        add_def = helper.make_node("Add", inputs=list(input_shape.keys()), outputs=["output"])
-        graph_def = helper.make_graph([add_def], case_name, inputs, [output])
+
+        graph_txt = """
+            BCastAdd (float%s input1, float%s input2) => (float%s output)
+            {
+                output = Add(input1, input2)
+            }
+            """ % (input_shape['input1'], input_shape['input2'], output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_LRN(self, case_name):
         input_shape = [4, 10, 27, 27]
         output_shape = [4, 10, 27, 27]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        lrn_def = helper.make_node(
-            'LRN',  # node name
-            ['input'],  # inputs
-            ['output'],  # outputs
-            size=5,
-        )
-        graph_def = helper.make_graph(
-            [lrn_def],
-            case_name,
-            [input],
-            [output],
-        )
+        graph_txt = """
+            LRN (float%s input) => (float%s output)
+            {
+                output = LRN<size=5>(input)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_LSTM(self, case_name):
@@ -4062,34 +3743,32 @@ class ONNX_IR_TESTER(object):
         input_size = 128
         hidden_size = 64
         direction = 'forward' if num_dir == 1 else 'bidirectional'
-        #layout = 0
+        input_shape = [seq_length, batch_size, input_size]
+        output_shape = [seq_length, num_dir, batch_size, hidden_size]
+        # layout = 0
         w_data = np.random.randn(num_dir, 4 * hidden_size, input_size).astype(np.float32)
         r_data = np.random.randn(num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
         b_data = np.random.randn(num_dir, 8 * hidden_size).astype(np.float32)
         h0_data = np.random.randn(num_dir, batch_size, hidden_size).astype(np.float32)
         c0_data = np.random.randn(num_dir, batch_size, hidden_size).astype(np.float32)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT,
-                                              [seq_length, batch_size, input_size])
 
-        Y = helper.make_tensor_value_info('Y', TensorProto.FLOAT,
-                                          [seq_length, num_dir, batch_size, hidden_size])
+        graph_txt = """
+            LSTM (float%s input) => (float%s Y)
+            <float%s w, float%s r, float%s b, float%s h0, float%s c0>
+            {
+                Y = LSTM<direction="%s", hidden_size=%d>(input, w, r, b, , h0, c0)
+            }
+            """ % (input_shape, output_shape, list(w_data.shape), list(
+            r_data.shape), list(b_data.shape), list(h0_data.shape), list(
+                c0_data.shape), direction, hidden_size)
+        graph_def = onnx.parser.parse_graph(graph_txt)
 
         w = helper.make_tensor('w', TensorProto.FLOAT, w_data.shape, w_data)
         r = helper.make_tensor('r', TensorProto.FLOAT, r_data.shape, r_data)
         b = helper.make_tensor('b', TensorProto.FLOAT, b_data.shape, b_data)
         h0 = helper.make_tensor('h0', TensorProto.FLOAT, h0_data.shape, h0_data)
         c0 = helper.make_tensor('c0', TensorProto.FLOAT, c0_data.shape, c0_data)
-
-        node_def = helper.make_node(
-            "LSTM",
-            inputs=['input', 'w', 'r', 'b', '', 'h0', 'c0'],
-            outputs=['Y'],
-            direction=direction,
-            hidden_size=hidden_size,
-        )
-        graph_def = helper.make_graph([node_def],
-                                      case_name, [input], [Y],
-                                      initializer=[w, r, b, h0, c0])
+        graph_def.initializer.extend([w, r, b, h0, c0])
         self.onnx_and_test(graph_def)
 
     def test_LSTM2(self, case_name):
@@ -4103,18 +3782,23 @@ class ONNX_IR_TESTER(object):
         r_data = np.random.rand(num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
         b_data = np.random.rand(num_dir, 8 * hidden_size).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT,
-                                              [seq_length, batch_size, input_size])
-        h0 = helper.make_tensor_value_info('h0', TensorProto.FLOAT,
-                                           [num_dir, batch_size, hidden_size])
-        c0 = helper.make_tensor_value_info('c0', TensorProto.FLOAT,
-                                           [num_dir, batch_size, hidden_size])
-        Y = helper.make_tensor_value_info('Y', TensorProto.FLOAT,
-                                          [seq_length, num_dir, batch_size, hidden_size])
-        Y_h = helper.make_tensor_value_info('Y_h', TensorProto.FLOAT,
-                                            [num_dir, batch_size, hidden_size])
-        Y_c = helper.make_tensor_value_info('Y_c', TensorProto.FLOAT,
-                                            [num_dir, batch_size, hidden_size])
+        input_s = [seq_length, batch_size, input_size]
+        h0_s = [num_dir, batch_size, hidden_size]
+        c0_s = [num_dir, batch_size, hidden_size]
+        Y_s = [seq_length, num_dir, batch_size, hidden_size]
+        Y_h_s = [num_dir, batch_size, hidden_size]
+        Y_c_s = [num_dir, batch_size, hidden_size]
+
+        graph_txt = """
+            LSTM2 (float%s input, float%s h0, float%s c0) => (float%s Y, float%s Y_h, float%s Y_c)
+            <float%s w, float%s r, float%s b>
+            {
+                Y, Y_h, Y_c= LSTM<direction="%s", hidden_size=%d>(input, w, r, b, , h0, c0)
+            }
+            """ % (input_s, h0_s, c0_s, Y_s, Y_h_s, Y_c_s, list(w_data.shape), list(
+            r_data.shape), list(b_data.shape), direction, hidden_size)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         w_value = helper.make_tensor(
             name='w',
             data_type=onnx.TensorProto.FLOAT,
@@ -4133,16 +3817,8 @@ class ONNX_IR_TESTER(object):
             dims=b_data.shape,
             vals=b_data.flatten(),
         )
-        lstm_def = helper.make_node(
-            "LSTM",
-            inputs=['input', 'w', 'r', 'b', '', 'h0', 'c0'],
-            outputs=['Y', 'Y_h', 'Y_c'],
-            direction=direction,
-            hidden_size=hidden_size,
-        )
-        graph_def = helper.make_graph([lstm_def],
-                                      case_name, [input, h0, c0], [Y, Y_h, Y_c],
-                                      initializer=[w_value, r_value, b_value])
+
+        graph_def.initializer.extend([w_value, r_value, b_value])
         self.onnx_and_test(graph_def)
 
     def test_LSTM3(self, case_name):
@@ -4156,16 +3832,21 @@ class ONNX_IR_TESTER(object):
         r_data = np.random.rand(num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
         b_data = np.random.rand(num_dir, 8 * hidden_size).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT,
-                                              [seq_length, batch_size, input_size])
-        h0 = helper.make_tensor_value_info('h0', TensorProto.FLOAT,
-                                           [num_dir, batch_size, hidden_size])
-        c0 = helper.make_tensor_value_info('c0', TensorProto.FLOAT,
-                                           [num_dir, batch_size, hidden_size])
-        Y_h = helper.make_tensor_value_info('Y_h', TensorProto.FLOAT,
-                                            [num_dir, batch_size, hidden_size])
-        Y_c = helper.make_tensor_value_info('Y_c', TensorProto.FLOAT,
-                                            [num_dir, batch_size, hidden_size])
+        input_s = [seq_length, batch_size, input_size]
+        h0_s = [num_dir, batch_size, hidden_size]
+        c0_s = [num_dir, batch_size, hidden_size]
+        Y_h_s = [num_dir, batch_size, hidden_size]
+        Y_c_s = [num_dir, batch_size, hidden_size]
+        graph_txt = """
+            LSTM3 (float%s input, float%s h0, float%s c0) => (float%s Y_h, float%s Y_c)
+            <float%s w, float%s r, float%s b, float Y>
+            {
+                Y, Y_h, Y_c= LSTM<direction="%s", hidden_size=%d>(input, w, r, b, , h0, c0)
+            }
+            """ % (input_s, h0_s, c0_s, Y_h_s, Y_c_s, list(w_data.shape), list(
+            r_data.shape), list(b_data.shape), direction, hidden_size)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         w_value = helper.make_tensor(
             name='w',
             data_type=onnx.TensorProto.FLOAT,
@@ -4191,24 +3872,23 @@ class ONNX_IR_TESTER(object):
             direction=direction,
             hidden_size=hidden_size,
         )
-        graph_def = helper.make_graph([lstm_def],
-                                      case_name, [input, h0, c0], [Y_h, Y_c],
-                                      initializer=[w_value, r_value, b_value])
+        graph_def.initializer.extend([w_value, r_value, b_value])
         self.onnx_and_test(graph_def)
 
     def test_BCastMul(self, case_name):
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
         if self.is_cv18xx:
-            ## 18xx: only broadcast right opd and broadcast continuous axis is supported
+            # 18xx: only broadcast right opd and broadcast continuous axis is supported
             input_shape = {"input1": [2, 3, 4, 27], "input2": [2, 3, 1, 1]}
             output_shape = [2, 3, 4, 27]
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-        mul_def = helper.make_node("Mul", inputs=list(input_shape.keys()), outputs=["output"])
-        graph_def = helper.make_graph([mul_def], case_name, inputs, [output])
+        graph_txt = """
+            BCastMul (float%s input1, float%s input2) => (float%s output)
+            {
+                output = Mul(input1, input2)
+            }
+            """ % (input_shape['input1'], input_shape['input2'], output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_BCastMulCst(self, case_name):
@@ -4216,23 +3896,25 @@ class ONNX_IR_TESTER(object):
         constant_shape = [2, 1, 1, 28]
         output_shape = [2, 127, 270, 28]
         if self.is_cv18xx:
-            #18xx: only broadcast right opd and broadcast continuous axis is supported
+            # 18xx: only broadcast right opd and broadcast continuous axis is supported
             input_shape = [2, 127, 270, 28]
             constant_shape = [1, 1, 1, 28]
             output_shape = [2, 127, 270, 28]
-        inputs = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
         constant = helper.make_tensor(
             "constant",
             TensorProto.FLOAT,
             constant_shape,
             np.random.rand(*constant_shape).astype(np.float32),
         )
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-        mul_def = helper.make_node("Mul", inputs=["input", "constant"], outputs=["output"])
-
-        graph_def = helper.make_graph([mul_def],
-                                      case_name, [inputs], [output],
-                                      initializer=[constant])
+        graph_txt = """
+            BCastMulCst (float%s input) => (float%s output)
+            <float%s constant>
+            {
+                output = Mul(input, constant)
+            }
+            """ % (input_shape, output_shape, constant_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([constant])
         self.onnx_and_test(graph_def)
 
     def test_Gather(self, case_name):
@@ -4245,9 +3927,15 @@ class ONNX_IR_TESTER(object):
             "input2": np.random.rand(*output_shape).astype(np.float32)
         }
 
-        input1 = helper.make_tensor_value_info('input1', TensorProto.INT64, input_shape)
-        input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, output_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            Gather (int64%s input1, float%s input2) => (float%s output)
+            <float%s tokens>
+            {
+                x1 = Gather(tokens, input1)
+                output = Add(x1, input2)
+            }
+            """ % (input_shape, output_shape, output_shape, token_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
 
         token_data = helper.make_tensor(
             name='tokens',
@@ -4255,53 +3943,45 @@ class ONNX_IR_TESTER(object):
             dims=token_shape,
             vals=np.random.randn(*token_shape).astype(np.float32).flatten(),
         )
-
-        gather_node = helper.make_node(
-            'Gather',  # node name
-            ['tokens', 'input1'],  # inputs
-            ['x1'],  # outputs
-        )
-
-        add_node = helper.make_node(
-            'Add',
-            ['x1', 'input2'],
-            ['output'],
-        )
-
-        graph_def = helper.make_graph([gather_node, add_node],
-                                      case_name, [input1, input2], [output],
-                                      initializer=[token_data])
+        graph_def.initializer.extend([token_data])
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_GatherElements(self, case_name):
         if self.chip in ['bm1684x']:
             # samples too large for regression is commented
             # but all samples following should be passed
-            input_data = [{
-                "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
-            }, {
-                "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
-            }, {
-                "data": np.random.randn(1, 13294, 4).astype(np.float32)
-            }, {
-                "data": np.arange(256).reshape(4, 4, 4, 4).astype(np.float32)
-            }, {
-                "data": np.random.randn(16, 17, 18, 19).astype(np.float32)
-                # "data": np.arange(16 * 17 * 18 * 19).reshape(16, 17, 18, 19).astype(np.float32) # for f32 debug
-            }, {
-                "data": np.random.randn(16, 17, 18, 19, 20).astype(np.float32)
-            # }, {
-            #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
-            # }, {
-            #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
-            # }, {
-            #     "data": np.random.randn(5, 8, 8, 512, 512).astype(np.float32)
-            # }, {
-            #     "data": np.random.randn(655340, 2).astype(np.float32)
-            }]
+            input_data = [
+                {
+                    "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+                },
+                {
+                    "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
+                },
+                {
+                    "data": np.random.randn(1, 13294, 4).astype(np.float32)
+                },
+                {
+                    "data": np.arange(256).reshape(4, 4, 4, 4).astype(np.float32)
+                },
+                {
+                    "data": np.random.randn(16, 17, 18, 19).astype(np.float32)
+                    # "data": np.arange(16 * 17 * 18 * 19).reshape(16, 17, 18, 19).astype(np.float32) # for f32 debug
+                },
+                {
+                    "data": np.random.randn(16, 17, 18, 19, 20).astype(np.float32)
+                    # }, {
+                    #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
+                    # }, {
+                    #     "data": np.random.randn(5, 8, 512, 512).astype(np.float32)
+                    # }, {
+                    #     "data": np.random.randn(5, 8, 8, 512, 512).astype(np.float32)
+                    # }, {
+                    #     "data": np.random.randn(655340, 2).astype(np.float32)
+                }
+            ]
             indices_data = [
                 np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.int64),
-                np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.int64),
+                np.array([[2, 1, 0], [1, 2, 0], [0, 2, 1], [0, 1, 2]], dtype=np.int64),
                 np.random.randint(0, 13294, [1, 900, 4]),
                 np.random.randint(0, 4, [2, 3, 9, 4]),
                 np.random.randint(0, 18, [15, 12, 39, 15]),
@@ -4325,7 +4005,6 @@ class ONNX_IR_TESTER(object):
             input_ = input_data[i]
             indices_ = indices_data[i]
             axis_ = axis_data[i]
-            input = helper.make_tensor_value_info('data', TensorProto.FLOAT, input_["data"].shape)
             indices = helper.make_tensor(
                 "indices",
                 TensorProto.INT64,
@@ -4333,28 +4012,35 @@ class ONNX_IR_TESTER(object):
                 indices_,
             )
 
-            gather_node = onnx.helper.make_node("GatherElements",
-                                                inputs=["data", "indices"],
-                                                outputs=["gather_output"],
-                                                axis=axis_)
             if self.chip in ['bm1684x']:
-                output_gather = helper.make_tensor_value_info('gather_output', TensorProto.FLOAT, indices_data[i].shape)
-                graph_def = helper.make_graph([gather_node],
-                                            case_name, [input], [output_gather],
-                                            initializer=[indices])
+                graph_txt = """
+                    GatherElements (float%s data) => (float%s gather_output)
+                    <int64%s indices>
+                    {
+                        gather_output = GatherElements<axis=%d>(data, indices)
+                    }
+                    """ % (list(input_["data"].shape), list(
+                    indices_data[i].shape), list(indices_.shape), axis_)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+                graph_def.initializer.extend([indices])
             elif self.chip in ['bm1684']:
-                output = helper.make_tensor_value_info('output', TensorProto.FLOAT, indices_data[i].shape)
+                graph_txt = """
+                    GatherElements (float%s data) => (float%s output)
+                    <int64%s indices, float const_add>
+                    {
+                        gather_output = GatherElements<axis=%d>(data, indices)
+                        output = Add(gather_output, const_add)
+                    }
+                    """ % (list(input_["data"].shape), list(
+                    indices_data[i].shape), list(indices_.shape), axis_)
+                graph_def = onnx.parser.parse_graph(graph_txt)
+
                 add_const = helper.make_tensor(name='const_add',
-                                        data_type=TensorProto.FLOAT,
-                                        dims=[],
-                                        vals=[2.0])
-                add_node = onnx.helper.make_node("Add",
-                                            inputs=["gather_output", "const_add"],
-                                            outputs=["output"])
-                graph_def = helper.make_graph([gather_node,add_node],
-                                            case_name, [input], [output],
-                                            initializer=[indices,add_const])
-            self.onnx_and_test(graph_def,input_data=input_)
+                                               data_type=TensorProto.FLOAT,
+                                               dims=[],
+                                               vals=[2.0])
+                graph_def.initializer.extend([indices, add_const])
+            self.onnx_and_test(graph_def, input_data=input_)
 
     def test_GatherND(self, case_name):
         input_datas = [{
@@ -4382,8 +4068,17 @@ class ONNX_IR_TESTER(object):
             output_shape = output_shapes[i]
             indices_data = indices_datas[i]
             input_data = input_datas[i]
-            input = helper.make_tensor_value_info('data', TensorProto.FLOAT, input_shape)
-            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+            graph_txt = """
+                GatherND (float%s data) => (float%s output)
+                <int64%s indices, float const_add>
+                {
+                    gather_output = GatherND<batch_dims=%d>(data, indices)
+                    output = Add(gather_output, const_add)
+                }
+                """ % (list(input_shape), output_shape, list(indices_data.shape), batch_dims[i])
+            graph_def = onnx.parser.parse_graph(graph_txt)
+
             add_const = helper.make_tensor(name='const_add',
                                            data_type=TensorProto.FLOAT,
                                            dims=[],
@@ -4394,63 +4089,34 @@ class ONNX_IR_TESTER(object):
                 indices_data.shape,
                 indices_data,
             )
-            gatehr_node = onnx.helper.make_node("GatherND",
-                                                inputs=["data", "indices"],
-                                                outputs=["gather_output"],
-                                                batch_dims=batch_dims[i])
-            add_node = onnx.helper.make_node("Add",
-                                             inputs=["gather_output", "const_add"],
-                                             outputs=["output"])
-            graph_def = helper.make_graph([gatehr_node, add_node],
-                                          case_name, [input], [output],
-                                          initializer=[indices, add_const])
+            graph_def.initializer.extend([indices, add_const])
             self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_Sum(self, case_name):
         input_shape = [1, 3, 27, 27]
         output_shape = [1, 3, 27, 27]
 
-        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input_shape)
-        input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, input_shape)
-        input3 = helper.make_tensor_value_info('input3', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        #test three input
-        sum_def = helper.make_node(
-            'Sum',  # node name
-            ['input1', 'input2', 'input3'],  # inputs
-            ['output'],  # outputs
-        )
-
-        graph_def = helper.make_graph(
-            [sum_def],
-            case_name,
-            [input1, input2, input3],
-            [output],
-        )
+        graph_txt = """
+            Sum (float%s input1, float%s input2, float%s input3) => (float%s output)
+            {
+                output = Sum(input1, input2, input3)
+            }
+            """ % (input_shape, input_shape, input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Tile(self, case_name):
         input_shape = [1, 4, 6, 8]
         output_shape = [3, 24, 24, 16]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        tiles = helper.make_tensor(
-            name='tiles',
-            data_type=onnx.TensorProto.INT64,
-            dims=[4],
-            vals=np.array([1, 6, 4, 2]),
-        )
-        tile_node = helper.make_node(
-            'Tile',
-            ['input', 'tiles'],
-            ['output'],
-        )
-        graph_def = helper.make_graph([tile_node],
-                                      case_name, [input], [output],
-                                      initializer=[tiles])
+        graph_txt = """
+            Tile (float%s input) => (float%s output)
+            <int64[4] tiles = {1, 6, 4, 2}>
+            {
+                output = Tile(input, tiles)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Tile2(self, case_name):
@@ -4459,80 +4125,56 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 4, 6, 8]
         output_shape = [3, 24, 24, 16]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        right = helper.make_tensor_value_info("right", TensorProto.FLOAT, output_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        tiles = helper.make_tensor(
-            name='tiles',
-            data_type=onnx.TensorProto.INT64,
-            dims=[4],
-            vals=np.array([1, 6, 4, 2]),
-        )
-        tile_def = helper.make_node(
-            'Tile',
-            ['input', 'tiles'],
-            ['left'],
-        )
-        add_def = helper.make_node(
-            'Add',
-            ['left', 'right'],
-            ['output']
-        )
-
-        graph_def = helper.make_graph([tile_def, add_def],
-                                      case_name, [input, right], [output],
-                                      initializer=[tiles])
+        graph_txt = """
+            Tile2 (float%s input,float%s right) => (float%s output)
+            <int64[4] tiles = {1, 6, 4, 2}>
+            {
+                left = Tile(input, tiles)
+                output = Add(left, right)
+            }
+            """ % (input_shape, output_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_TileDyn(self, case_name):
-        nonzero_input_shape = [2,6]
-        nonzero_input = helper.make_tensor_value_info('nonzero_input', TensorProto.FLOAT, nonzero_input_shape)
-        tile_input_shape = [3,5]
-        tile_input = helper.make_tensor_value_info('tile_input', TensorProto.FLOAT, tile_input_shape)
-
-        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, [])
-        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [], vals=[0])
-        indices = helper.make_tensor('indices', TensorProto.INT64, [1], vals=[0])
-        dim0 = helper.make_tensor('dim0', TensorProto.INT64, [1], vals=[3])
-
-
-        gather0_def = helper.make_node('Gather', inputs=['nonzero_input', 'indices0'], axis=0, outputs=['gather0'])
-        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
-        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
-        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
-        gather_def = helper.make_node('Gather', inputs=['shape', 'indices'], axis=0, outputs=['dim1'])
-        concat_def = helper.make_node('Concat', inputs=['dim0', 'dim1'], axis=0, outputs=['times'])
-        tile_def = helper.make_node('Tile', inputs=['tile_input', 'times'], outputs=['Y_Value'])
-        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def,shape_def, gather_def, concat_def, tile_def],
-                                      case_name, [nonzero_input, tile_input], [Y_Value],
-                                      initializer=[indices0,indices,dim0])
-        input_data={
-            'nonzero_input' : np.array([[1, 0, 3, 0, 4, 5], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
-            'tile_input': np.array([[1.5, 1.2, 0, 0, 1.6], [2.1, 2.5, 0, 0, 2.6], [3.5, 3.2, 0, 0, 3.6]], dtype=np.float32)
-                    }
-        self.onnx_and_test_bmodel(graph_def, static_shape=False, input_data=input_data, only_cmp_with_bmodel=True)
+        nonzero_input_shape = [2, 6]
+        tile_input_shape = [3, 5]
+        graph_txt = """
+            TileDyn (float%s nonzero_input, float%s tile_input) => (float Y_Value)
+            <int64 indices0 = {0}, int64[1] indices = {0}, int64[1] dim0 = {3}>
+            {
+                gather0 = Gather<axis=0>(nonzero_input, indices0)
+                nonzero = NonZero(gather0)
+                transpose = Transpose<perm=[1, 0]>(nonzero)
+                shape = Shape(transpose)
+                dim1 = Gather<axis=0>(shape,indices)
+                times = Concat<axis=0>(dim0, dim1)
+                Y_Value = Tile(tile_input, times)
+            }
+            """ % (nonzero_input_shape, tile_input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        input_data = {
+            'nonzero_input':
+            np.array([[1, 0, 3, 0, 4, 5], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
+            'tile_input':
+            np.array([[1.5, 1.2, 0, 0, 1.6], [2.1, 2.5, 0, 0, 2.6], [3.5, 3.2, 0, 0, 3.6]],
+                     dtype=np.float32)
+        }
+        self.onnx_and_test_bmodel(graph_def,
+                                  static_shape=False,
+                                  input_data=input_data,
+                                  only_cmp_with_bmodel=True)
 
     def test_Sub(self, case_name):
         input_shape = [4, 3, 27, 27]
         output_shape = [4, 3, 27, 27]
-
-        input0 = helper.make_tensor_value_info('input0', TensorProto.FLOAT, input_shape)
-        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        sub_def = helper.make_node(
-            'Sub',  # node name
-            ['input0', 'input1'],  # inputs
-            ['output'],  # outputs
-        )
-
-        graph_def = helper.make_graph(
-            [sub_def],
-            case_name,
-            [input0, input1],
-            [output],
-        )
+        graph_txt = """
+            Sub (float%s input0,float%s input1) => (float%s output)
+            {
+                output = Sub(input0, input1)
+            }
+            """ % (input_shape, input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Sub2(self, case_name):
@@ -4540,22 +4182,13 @@ class ONNX_IR_TESTER(object):
         input2_shape = [4, 3, 1, 27]
         output_shape = [4, 3, 27, 27]
 
-        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input1_shape)
-        input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, input2_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        sub_def = helper.make_node(
-            'Sub',  # node name
-            ['input1', 'input2'],  # inputs
-            ['output'],  # outputs
-        )
-
-        graph_def = helper.make_graph(
-            [sub_def],
-            case_name,
-            [input1, input2],
-            [output],
-        )
+        graph_txt = """
+            Sub2 (float%s input1,float%s input2) => (float%s output)
+            {
+                output = Sub(input1, input2)
+            }
+            """ % (input1_shape, input2_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_SubBcast(self, case_name):
@@ -4566,16 +4199,14 @@ class ONNX_IR_TESTER(object):
                 bcast_s = s[::]
                 for dim in dims:
                     bcast_s[dim] = 1
-                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
-                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
-                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
-                sub_def = helper.make_node("Sub", inputs=["a", "b"], outputs=["x"])
-                sub_def_2 = helper.make_node("Sub", inputs=["x", "c"], outputs=["output"])
-                graph_def = helper.make_graph([sub_def, sub_def_2],
-                                              "{}_{}_{}".format(case_name, i,
-                                                                "".join(map(str, dims))), [a, b, c],
-                                              [output])
+                graph_txt = """
+                    SubBcast_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                    {
+                        x = Sub(a, b)
+                        output = Sub(x, c)
+                    }
+                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
     def test_SubBcast2(self, case_name):
@@ -4583,28 +4214,20 @@ class ONNX_IR_TESTER(object):
         bcast_shapes = ([1, 7, 13, 11], )
         out_shapes = ([6, 7, 13, 11], )
         for i, s in enumerate(shapes):
-            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_shapes[i])
-            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-            c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_shapes[i])
-            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, out_shapes[i])
-            sub_def = helper.make_node("Sub", inputs=["a", "b"], outputs=["x"])
-            sub_def_2 = helper.make_node("Sub", inputs=["x", "c"], outputs=["output"])
-            graph_def = helper.make_graph([sub_def, sub_def_2], "{}_{}".format(
-                case_name,
-                i,
-            ), [a, b, c], [output])
+            graph_txt = """
+                SubBcast2_%s (float%s a, float%s b, float%s c) => (float%s output)
+                {
+                    x = Sub(a, b)
+                    output = Sub(x, c)
+                }
+                """ % (i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     def test_SubConst(self, case_name):
         input_shape = [4, 3, 27, 27]
         output_shape = [4, 3, 27, 27]
 
-        input0 = helper.make_tensor_value_info('input0', TensorProto.FLOAT, input_shape)
-        output0 = helper.make_tensor_value_info('output0', TensorProto.FLOAT, output_shape)
-        output1 = helper.make_tensor_value_info(
-            'output1', TensorProto.FLOAT, output_shape)
-        output2 = helper.make_tensor_value_info(
-            'output2', TensorProto.FLOAT, output_shape)
         w_data = np.random.rand(*input_shape).astype(np.float32)
         w_value = helper.make_tensor(
             name='w',
@@ -4612,29 +4235,18 @@ class ONNX_IR_TESTER(object):
             dims=w_data.shape,
             vals=w_data.flatten(),
         )
-        const = helper.make_tensor(name='const',
-                                   data_type=TensorProto.FLOAT,
-                                   dims=[],
-                                   vals=[1.0])
-        sub_def = helper.make_node(
-            'Sub',  # node name
-            ['input0', 'w'],  # inputs
-            ['output0'],  # outputs
-        )
-        sub_def1 = helper.make_node(
-            'Sub',  # node name
-            ['input0', 'const'],  # inputs
-            ['output1'],  # outputs
-        )
-        sub_def2 = helper.make_node(
-            'Sub',  # node name
-            ['const', 'input0'],  # inputs
-            ['output2'],  # outputs
-        )
-
-        graph_def = helper.make_graph([sub_def, sub_def1, sub_def2],
-                                      case_name, [input0], [output0, output1, output2],
-                                      initializer=[w_value, const])
+        const = helper.make_tensor(name='const', data_type=TensorProto.FLOAT, dims=[], vals=[1.0])
+        graph_txt = """
+            SubConst (float%s input0) => (float%s output0, float%s output1, float%s output2)
+            <float%s w, float const>
+            {
+                output0 = Sub(input0, w)
+                output1 = Sub(input0, const)
+                output2 = Sub(const, input0)
+            }
+            """ % (input_shape, output_shape, output_shape, output_shape, list(w_data.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([w_value, const])
         self.onnx_and_test(graph_def)
 
     def test_SubConst2(self, case_name):
@@ -4642,8 +4254,6 @@ class ONNX_IR_TESTER(object):
         w_shape = [4, 3, 1, 27]
         output_shape = [4, 3, 27, 27]
 
-        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input1_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         w_data = np.random.rand(*w_shape).astype(np.float32)
         w_value = helper.make_tensor(
             name='w',
@@ -4651,99 +4261,102 @@ class ONNX_IR_TESTER(object):
             dims=w_data.shape,
             vals=w_data.flatten(),
         )
-
-        sub_def = helper.make_node(
-            'Sub',  # node name
-            ['input1', 'w'],  # inputs
-            ['output'],  # outputs
-        )
-
-        graph_def = helper.make_graph([sub_def],
-                                      case_name, [input1], [output],
-                                      initializer=[w_value])
+        graph_txt = """
+            SubConst2 (float%s input1) => (float%s output)
+            <float%s w>
+            {
+                output = Sub(input1, w)
+            }
+            """ % (input1_shape, output_shape, list(w_data.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([w_value])
         self.onnx_and_test(graph_def)
 
     def test_Expand(self, case_name):
         input_shape = [1, 3, 1, 16]
         output_shape = [1, 3, 16, 16]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            Expand (float%s input) => (float%s output)
+            <int64%s new_shape>
+            {
+                output = Expand(input, new_shape)
+            }
+            """ % (input_shape, output_shape, [len(output_shape)])
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         shape_def = helper.make_tensor(
             name='new_shape',
             data_type=onnx.TensorProto.INT64,
             dims=[len(output_shape)],
             vals=np.array(output_shape, dtype=np.int64),
         )
-        expand_node = helper.make_node(
-            'Expand',  # node name
-            ['input', 'new_shape'],  # inputs
-            ['output'],  # outputs
-        )
-        graph_def = helper.make_graph([expand_node],
-                                      case_name, [input], [output],
-                                      initializer=[shape_def])
+        graph_def.initializer.extend([shape_def])
         self.onnx_and_test(graph_def)
 
     def test_Expand2(self, case_name):
         input_shape = [1, 16]
         output_shape = [4, 16, 16]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            Expand2 (float%s input) => (float%s output)
+            <int64%s new_shape>
+            {
+                output = Expand(input, new_shape)
+            }
+            """ % (input_shape, output_shape, [len(output_shape)])
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         shape_def = helper.make_tensor(
             name='new_shape',
             data_type=onnx.TensorProto.INT64,
             dims=[len(output_shape)],
             vals=np.array([4, 16, 1], dtype=np.int64),
         )
-        expand_node = helper.make_node(
-            'Expand',  # node name
-            ['input', 'new_shape'],  # inputs
-            ['output'],  # outputs
-        )
-        graph_def = helper.make_graph([expand_node],
-                                      case_name, [input], [output],
-                                      initializer=[shape_def])
+        graph_def.initializer.extend([shape_def])
         self.onnx_and_test(graph_def)
 
     def test_ExpandDyn(self, case_name):
-        nonzero_input_shape = [2,6]
-        nonzero_input = helper.make_tensor_value_info('nonzero_input', TensorProto.FLOAT, nonzero_input_shape)
-        expand_input_shape = [3,1]
-        expand_input = helper.make_tensor_value_info('expand_input', TensorProto.FLOAT, expand_input_shape)
-
-        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, [])
+        nonzero_input_shape = [2, 6]
+        expand_input_shape = [3, 1]
         indices0 = helper.make_tensor('indices0', TensorProto.INT64, [], vals=[0])
         indices = helper.make_tensor('indices', TensorProto.INT64, [1], vals=[0])
         dim0 = helper.make_tensor('dim0', TensorProto.INT64, [1], vals=[3])
 
-        gather0_def = helper.make_node('Gather', inputs=['nonzero_input', 'indices0'], axis=0, outputs=['gather0'])
-        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
-        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
-        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
-        gather_def = helper.make_node('Gather', inputs=['shape', 'indices'], axis=0, outputs=['dim1'])
-        concat_def = helper.make_node('Concat', inputs=['dim0', 'dim1'], axis=0, outputs=['times'])
-        expand_def = helper.make_node('Expand', inputs=['expand_input', 'times'], outputs=['Y_Value'])
-        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def,shape_def,gather_def, concat_def, expand_def],
-                                      case_name, [nonzero_input, expand_input], [Y_Value],
-                                      initializer=[indices0,indices,dim0])
-        input_data={
-            'nonzero_input' : np.array([[1, 0, 3, 0, 4, 0], [2.1, 2.5, 0, 0, 2.6, 0]], dtype=np.float32),
+        graph_txt = """
+            ExpandDyn (float%s nonzero_input, float%s expand_input) => (float Y_Value)
+            <int64 indices0, int64[1] indices, int64[1] dim0>
+            {
+                gather0 = Gather<axis=0>(nonzero_input, indices0)
+                nonzero = NonZero(gather0)
+                transpose = Transpose<perm=[1, 0]>(nonzero)
+                shape = Shape(transpose)
+                dim1 = Gather<axis=0>(shape, indices)
+                times = Concat<axis=0>(dim0, dim1)
+                Y_Value = Expand(expand_input, times)
+            }
+            """ % (nonzero_input_shape, expand_input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([indices0, indices, dim0])
+        input_data = {
+            'nonzero_input': np.array([[1, 0, 3, 0, 4, 0], [2.1, 2.5, 0, 0, 2.6, 0]],
+                                      dtype=np.float32),
             'expand_input': np.array([[1.5], [2.1], [3.5]], dtype=np.float32)
-                    }
-        self.onnx_and_test_bmodel(graph_def, static_shape=False, input_data=input_data, only_cmp_with_bmodel=True)
+        }
+        self.onnx_and_test_bmodel(graph_def,
+                                  static_shape=False,
+                                  input_data=input_data,
+                                  only_cmp_with_bmodel=True)
 
     def test_Max(self, case_name):
         input_shape = {"input1": [1, 85, 32, 8], "input2": [1, 85, 32, 8]}
         output_shape = [1, 85, 32, 8]
 
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        max_def = helper.make_node(case_name, inputs=list(input_shape.keys()), outputs=["output"])
-
-        graph_def = helper.make_graph([max_def], case_name, inputs, [output])
+        graph_txt = """
+            Max (float%s input1, float%s input2) => (float%s output)
+            {
+                output = %s(input1, input2)
+            }
+            """ % (input_shape['input1'], input_shape["input2"], output_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_MaxBcast(self, case_name):
@@ -4754,29 +4367,26 @@ class ONNX_IR_TESTER(object):
                 bcast_s = s[::]
                 for dim in dims:
                     bcast_s[dim] = 1
-                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
-                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
-                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
-                Max_def = helper.make_node("Max", inputs=["a", "b"], outputs=["x"])
-                Max_def_2 = helper.make_node("Max", inputs=["x", "c"], outputs=["output"])
-                graph_def = helper.make_graph([Max_def, Max_def_2],
-                                              "{}_{}_{}".format(case_name, i,
-                                                                "".join(map(str, dims))), [a, b, c],
-                                              [output])
+                graph_txt = """
+                    MaxBcast_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                    {
+                        x = Max(a, b)
+                        output = Max(x, c)
+                    }
+                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
     def test_Min(self, case_name):
         input_shape = {"input1": [1, 85, 32, 8], "input2": [1, 85, 32, 8]}
         output_shape = [1, 85, 32, 8]
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        min_def = helper.make_node(case_name, inputs=list(input_shape.keys()), outputs=["output"])
-
-        graph_def = helper.make_graph([min_def], case_name, inputs, [output])
+        graph_txt = """
+            Min (float%s input1, float%s input2) => (float%s output)
+            {
+                output = %s(input1, input2)
+            }
+            """ % (input_shape['input1'], input_shape["input2"], output_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_MinBcast(self, case_name):
@@ -4787,49 +4397,35 @@ class ONNX_IR_TESTER(object):
                 bcast_s = s[::]
                 for dim in dims:
                     bcast_s[dim] = 1
-                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
-                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
-                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
-                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
-                Min_def = helper.make_node("Min", inputs=["a", "b"], outputs=["x"])
-                Min_def_2 = helper.make_node("Min", inputs=["x", "c"], outputs=["output"])
-                graph_def = helper.make_graph([Min_def, Min_def_2],
-                                              "{}_{}_{}".format(case_name, i,
-                                                                "".join(map(str, dims))), [a, b, c],
-                                              [output])
+                graph_txt = """
+                    MinBcast_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                    {
+                        x = Min(a, b)
+                        output = Min(x, c)
+                    }
+                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
     def test_Abs(self, case_name):
-        input_shape = [1, 16, 64, 64]
-        output_shape = [1, 16, 64, 64]
-
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        abs_def = helper.make_node(
-            "Abs",
-            inputs=['input'],
-            outputs=['output'],
-        )
-        graph_def = helper.make_graph([abs_def], case_name, [input], [output])
+        graph_txt = """
+            Abs (float[1, 16, 64, 64] input) => (float[1, 16, 64, 64] output)
+            {
+                output = Abs(input)
+            }
+            """
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Reciprocal(self, case_name):
         input_shape = [4, 3, 224, 224]
-        node_def = helper.make_node(
-            "Reciprocal",  # node name
-            ['input'],  # inputs
-            ['output'],  # outputs
-        )
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        # Create the graph (GraphProto)
-        graph_def = helper.make_graph(
-            [node_def],
-            case_name,
-            [input],
-            [output],
-        )
+        graph_txt = """
+            Reciprocal (float%s input) => (float%s output)
+            {
+                output = Reciprocal(input)
+            }
+            """ % (input_shape, input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         input_data = np.random.rand(*input_shape).astype(np.float32) + 0.5
         # avoid divide 0
         input_data[input_data == 0] = 1
@@ -4849,57 +4445,69 @@ class ONNX_IR_TESTER(object):
                 dims=slope_shape,
                 vals=s,
             )
-            inputs = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
-            inputs1 = helper.make_tensor_value_info("input1", TensorProto.FLOAT, input_shape)
-            outputs = [helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)]
-            prelu_def = helper.make_node("PRelu", ["input", "slope"], ["output0"])
-            add_def = helper.make_node('Add', ['output0', 'input1'], ['output'])
-            graph_def = helper.make_graph([prelu_def, add_def],
-                                          "{}_{}".format(case_name, i), [inputs, inputs1],
-                                          outputs,
-                                          initializer=[slope])
+            graph_txt = """
+            PRelu (float%s input, float%s input1) => (float%s output)
+                {
+                    output0 = PRelu(input, slope)
+                    output = Add(output0, input1)
+                }
+                """ % (input_shape, input_shape, output_shape)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            graph_def.initializer.extend([slope])
             self.onnx_and_test(graph_def)
 
     def test_Sqrt(self, case_name):
         shape = [3, 5, 100, 100]
-        inputs = [helper.make_tensor_value_info("input", TensorProto.FLOAT, shape)]
-        outputs = [helper.make_tensor_value_info('output', TensorProto.FLOAT, shape)]
-        sqrt_def = helper.make_node("Sqrt", ["input"], ["output"])
-        graph_def = helper.make_graph([sqrt_def], case_name, inputs, outputs)
+        graph_txt = """
+            Sqrt (float%s input) => (float%s output)
+                {
+                    output = Sqrt(input)
+                }
+                """ % (shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         input_data = np.abs(np.random.randn(*shape).astype(np.float32))
         self.onnx_and_test(graph_def, input_data={"input": input_data})
 
     def test_Pow1(self, case_name):
         shape = [1, 3, 27, 27]
         input_data = np.abs(np.random.randn(*shape).astype(np.float32)) + 1e-6
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, 27, 27])
         constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
                                       np.array([1.2]).astype(np.float32))
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, shape)
-        pow_def = helper.make_node("Pow", inputs=["input", "constant"], outputs=["output"])
-        graph_def = helper.make_graph([pow_def],
-                                      case_name, [input], [output],
-                                      initializer=[constant])
+        graph_txt = """
+            Pow1 (float%s input) => (float%s output)
+            <float[1] constant>
+            {
+                output = Pow(input, constant)
+            }
+            """ % (shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([constant])
         self.onnx_and_test(graph_def, input_data={"input": input_data})
 
     def test_Pow2(self, case_name):
         shape = [1, 3, 27, 27]
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, 27, 27])
         constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
                                       np.array([1.2]).astype(np.float32))
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, shape)
-        pow_def = helper.make_node("Pow", inputs=["constant", "input"], outputs=["output"])
-        graph_def = helper.make_graph([pow_def],
-                                      case_name, [input], [output],
-                                      initializer=[constant])
+        graph_txt = """
+            Pow2 (float%s input) => (float%s output)
+            <float[1] constant>
+            {
+                output = Pow(constant, input)
+            }
+            """ % (shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([constant])
         self.onnx_and_test(graph_def)
 
     def test_Not(self, case_name):
         shape = [1, 3, 27, 27]
-        input = helper.make_tensor_value_info("input", TensorProto.BOOL, shape)
-        output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
-        cmp_def = helper.make_node("Not", inputs=["input"], outputs=["output"])
-        graph_def = helper.make_graph([cmp_def], case_name, [input], [output])
+        graph_txt = """
+            Not (bool%s input) => (bool%s output)
+            {
+                output = Not(input)
+            }
+            """ % (shape, shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Cast(self, case_name):
@@ -4909,33 +4517,27 @@ class ONNX_IR_TESTER(object):
         shape1_data = np.array(output1_shape, dtype=np.int64)
         shape2_data = np.array(output2_shape, dtype=np.int64)
         input_data = {"input": np.random.randint(0, 255, input_shape).astype(np.float32)}
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
-        output1 = helper.make_tensor_value_info("output1", TensorProto.FLOAT, output1_shape)
-        output2 = helper.make_tensor_value_info("output2", TensorProto.INT64, output2_shape)
+        graph_txt = """
+            Cast (float%s input) => (float%s output1, int64%s output2)
+            <int64%s shape1, int64%s shape2, float const_mul>
+            {
+                shape1_out = Reshape(input, shape1)
+                cast1_out = Cast<to=%d>(shape1_out)
+                output2 = Reshape(cast1_out, shape2)
+                cast2_out = Cast<to=%d>(cast1_out)
+                output1 = Mul(cast2_out, const_mul)
+            }
+            """ % (input_shape, output1_shape, output2_shape, dim4_shape, dim4_shape,
+                   TensorProto.INT64, TensorProto.FLOAT)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         shape1 = helper.make_tensor('shape1', TensorProto.INT64, dim4_shape, shape1_data)
         shape2 = helper.make_tensor('shape2', TensorProto.INT64, dim4_shape, shape2_data)
         mul_const = helper.make_tensor(name='const_mul',
                                        data_type=TensorProto.FLOAT,
                                        dims=[],
                                        vals=[2.0])
-        reshape1_def = helper.make_node("Reshape",
-                                        inputs=['input', 'shape1'],
-                                        outputs=['shape1_out'])
-        cast1_def = helper.make_node("Cast",
-                                     inputs=["shape1_out"],
-                                     outputs=["cast1_out"],
-                                     to=TensorProto.INT64)
-        reshape2_def = helper.make_node("Reshape",
-                                        inputs=['cast1_out', 'shape2'],
-                                        outputs=['output2'])
-        cast2_def = helper.make_node("Cast",
-                                     inputs=["cast1_out"],
-                                     outputs=["cast2_out"],
-                                     to=TensorProto.FLOAT)
-        mul_def = helper.make_node("Mul", inputs=["cast2_out", "const_mul"], outputs=["output1"])
-        graph_def = helper.make_graph([reshape1_def, cast1_def, reshape2_def, cast2_def, mul_def],
-                                      case_name, [input], [output1, output2],
-                                      initializer=[shape1, shape2, mul_const])
+        graph_def.initializer.extend([shape1, shape2, mul_const])
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_CompareCst(self, case_name):
@@ -4946,41 +4548,44 @@ class ONNX_IR_TESTER(object):
         if self.is_cv18xx:
             cases = ("Equal", )
             const_value = 0.0
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, shape)
         constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
                                       np.array([const_value]).astype(np.float32))
-        output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
         for cmp_type in cases:
-            cmp_def = helper.make_node(cmp_type, inputs=["input", "constant"], outputs=["output"])
-            graph_def = helper.make_graph([cmp_def],
-                                          case_name, [input], [output],
-                                          initializer=[constant])
+            graph_txt = """
+                CompareCst (float%s input) => (bool%s output)
+                <float[1] constant>
+                {
+                    output = %s(input, constant)
+                }
+                """ % (shape, shape, cmp_type)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            graph_def.initializer.extend([constant])
             self.onnx_and_test(graph_def)
             print("====== TEST {} Success ======".format(cmp_type))
 
     def test_And(self, case_name):
         shape = [1, 3, 27, 27]
-        input = helper.make_tensor_value_info("input", TensorProto.BOOL, shape)
-        constant = helper.make_tensor("constant", TensorProto.BOOL, [1],
-                                      np.array([1]).astype(np.bool_))
-        output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
-        cmp_def = helper.make_node("And", inputs=["input", "constant"], outputs=["output"])
-        graph_def = helper.make_graph([cmp_def],
-                                      case_name, [input], [output],
-                                      initializer=[constant])
+        graph_txt = """
+            And (bool[1, 3, 27, 27] input, bool[1] constant = {1}) => (bool[1, 3, 27, 27] output)
+            {
+                output = And(input, constant)
+            }
+            """
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Compare(self, case_name):
         shape = [1, 3, 27, 27]
         input_shape = {"input1": shape, "input2": shape}
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
         # "Equal" need not to be tested since equal op between floating number may be invalid
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
-            cmp_def = helper.make_node(cmp_type, inputs=["input1", "input2"], outputs=["output"])
-            graph_def = helper.make_graph([cmp_def], case_name, inputs, [output])
+            graph_txt = """
+                Compare (float%s input1, float%s input2) => (bool%s output)
+                {
+                    output = %s(input1, input2)
+                }
+                """ % (shape, shape, shape, cmp_type)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
             print("====== TEST {} Success ======".format(cmp_type))
 
@@ -4991,36 +4596,28 @@ class ONNX_IR_TESTER(object):
             "input1": np.random.randn(*input_shape["input1"]).astype(np.float32),
             "input2": np.random.randn(*input_shape["input2"]).astype(np.float32)
         }
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.BOOL, output_shape)
         # "Equal" need not to be tested since equal op between floating number may be invalid
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
-            cmp_def = helper.make_node(cmp_type,
-                                       inputs=list(input_shape.keys()),
-                                       outputs=["output"])
-            graph_def = helper.make_graph([cmp_def], case_name, inputs, [output])
+            graph_txt = """
+                Compare2 (float%s input1, float%s input2) => (bool%s output)
+                {
+                    output = %s(input1, input2)
+                }
+                """ % (input_shape["input1"], input_shape["input2"], output_shape, cmp_type)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def, input_data=input_data)
             print("====== TEST {} Success ======".format(cmp_type))
 
     def test_Einsum(self, case_name):
         input_shape = {"input1": [1, 26, 12, 26], "input2": [12, 26, 312]}
         output_shape = [1, 26, 312]
-
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        einsum_def = helper.make_node(
-            "Einsum",
-            inputs=['input1', 'input2'],
-            outputs=['output'],
-            equation='bfnd,ndh->bfh',
-        )
-
-        graph_def = helper.make_graph([einsum_def], case_name, inputs, [output])
+        graph_txt = """
+            Einsum (float%s input1, float%s input2) => (float%s output)
+            {
+                output = Einsum<equation="bfnd,ndh->bfh">(input1, input2)
+            }
+            """ % (input_shape["input1"], input_shape["input2"], output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Einsum2(self, case_name):
@@ -5029,62 +4626,47 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, 26, 312]
 
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        einsum_def = helper.make_node(
-            "Einsum",
-            inputs=['input', 'weight'],
-            outputs=['output'],
-            equation='bfnd,ndh->bfh ',
-        )
-
-        graph_def = helper.make_graph([einsum_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight])
+        graph_txt = """
+            Einsum2 (float%s input) => (float%s output)
+            <float%s weight>
+            {
+                output = Einsum<equation="bfnd,ndh->bfh">(input, weight)
+            }
+            """ % (input_shape, output_shape, filter_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([weight])
         self.onnx_and_test(graph_def)
 
     def test_Einsum3(self, case_name):
         input_shape = {"input1": [4], "input2": [32]}
         output_shape = [4, 32]
-
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        einsum_def = helper.make_node(
-            "Einsum",
-            inputs=['input1', 'input2'],
-            outputs=['output'],
-            equation='i,j->ij',
-        )
-
-        graph_def = helper.make_graph([einsum_def], case_name, inputs, [output])
+        graph_txt = """
+            Einsum3 (float%s input1, float%s input2) => (float%s output)
+            {
+                output = Einsum<equation="i,j->ij">(input1, input2)
+            }
+            """ % (input_shape["input1"], input_shape["input2"], output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Einsum4(self, case_name):
         for i, equation in enumerate(['bhwc,hkc->bhwk', 'bhwc,wkc->bhwk']):
             input_shape = [5, 16, 15, 64]
-            filter_shape = [16, 14, 64]  if equation == 'bhwc,hkc->bhwk' else [15, 14, 64]
+            filter_shape = [16, 14, 64] if equation == 'bhwc,hkc->bhwk' else [15, 14, 64]
             output_shape = [5, 16, 15, 14]
 
             weight_data = np.random.randn(*filter_shape).astype(np.float32)
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
             weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
-            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-            einsum_def = helper.make_node(
-                "Einsum",
-                inputs=['input', 'weight'],
-                outputs=['output'],
-                equation=equation,
-            )
-
-            graph_def = helper.make_graph([einsum_def],
-                                        "{}_{}".format(case_name, i), [input], [output],
-                                        initializer=[weight])
+            graph_txt = """
+                Einsum4 (float%s input) => (float%s output)
+                <float%s weight>
+                {
+                    output = Einsum<equation="%s">(input, weight)
+                }
+                """ % (input_shape, output_shape, filter_shape, equation)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            graph_def.initializer.extend([weight])
             self.onnx_and_test(graph_def)
 
     def test_Einsum5(self, case_name):
@@ -5093,20 +4675,13 @@ class ONNX_IR_TESTER(object):
             if equation == 'bhwc,wkc->bhwk':
                 input_shape["input2"][0] = input_shape["input1"][2]
             output_shape = [5, 15, 15, 14]
-
-            inputs = [
-                helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-            ]
-            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-            einsum_def = helper.make_node(
-                "Einsum",
-                inputs=['input1', 'input2'],
-                outputs=['output'],
-                equation=equation,
-            )
-
-            graph_def = helper.make_graph([einsum_def], "{}_{}".format(case_name, i), inputs, [output])
+            graph_txt = """
+                Einsum5 (float%s input1, float%s input2) => (float%s output)
+                {
+                    output = Einsum<equation="%s">(input1, input2)
+                }
+                """ % (input_shape["input1"], input_shape["input2"], output_shape, equation)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     def test_Elu(self, case_name):
@@ -5117,78 +4692,70 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(oc).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
 
-        conv_def = helper.make_node(
-            "Conv",
-            inputs=['input', 'weight', 'bias'],
-            outputs=['conv_output'],
-            kernel_shape=[3, 3],
-            pads=[1, 1, 1, 1],
-            strides=[1, 1],
-            dilations=[1, 1],
-            group=1,
-        )
-
-        elu_def = helper.make_node("Elu", inputs=['conv_output'], outputs=['output'], alpha=0.67)
-
-        graph_def = helper.make_graph([conv_def, elu_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias])
-
+        graph_txt = """
+            Elu (float%s input) => (float%s output)
+            <float%s weight, float%s bias>
+            {
+                conv_output = Conv<kernel_shape=[3, 3], pads=[1, 1, 1, 1], strides=[1, 1], dilations=[1, 1], group=1>(input, weight, bias)
+                output = Elu<alpha=0.67>(conv_output)
+            }
+            """ % (input_shape, output_shape, filter_shape, list(bias_data.shape))
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_Erf(self, case_name):
         input_shape = [10, 3, 32, 32]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        exp_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
-        graph_def = helper.make_graph([exp_def], case_name, [input], [output])
+        graph_txt = """
+            Erf (float%s input) => (float%s output)
+            {
+                output = %s(input)
+            }
+            """ % (input_shape, input_shape, case_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_TopK(self, case_name):
         shape = [10, 1000]
         const = 500
-        X = helper.make_tensor_value_info('X', TensorProto.FLOAT, shape)
-        K = helper.make_tensor("K", TensorProto.INT64, [1], np.array([const]).astype(np.int64))
         o_shape = list(shape)
         o_shape[-1] = const
-        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, o_shape)
-        Y_Index = helper.make_tensor_value_info('Y_Index', TensorProto.INT64, o_shape)
-        topk_node = helper.make_node('TopK', ['X', 'K'], ['Y_Value', 'Y_Index'],
-                                     axis=-1,
-                                     largest=True)
-        graph_def = helper.make_graph([topk_node],
-                                      case_name, [X], [Y_Value, Y_Index],
-                                      initializer=[K])
+        graph_txt = """
+            TopK (float%s X) => (float%s Y_Value, int64%s Y_Index)
+            <int64[1] K = {%d}>
+            {
+                Y_Value, Y_Index = TopK<axis=-1, largest=1>(X, K)
+            }
+            """ % (shape, o_shape, o_shape, const)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_TopK2(self, case_name):
         input_shape = [3, 6]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, [])
-        Y_Index = helper.make_tensor_value_info('Y_Index', TensorProto.INT64, [])
-        indices0 = helper.make_tensor('indices0', TensorProto.INT64, [], vals=[0])
-        indices = helper.make_tensor('indices', TensorProto.INT64, [1], vals=[0])
-
-        gather0_def = helper.make_node('Gather', inputs=['input', 'indices0'], axis=0, outputs=['gather0'])
-        nonzero_def = helper.make_node('NonZero', inputs=['gather0'], outputs=['nonzero'])
-        transpose_def = helper.make_node('Transpose', inputs=['nonzero'], outputs=['transpose'], perm=[1, 0])
-        shape_def = helper.make_node('Shape', inputs=['transpose'], outputs=['shape'])
-        gather_def = helper.make_node('Gather', inputs=['shape', 'indices'], axis=0, outputs=['k'])
-        topk_def = helper.make_node('TopK', ['input', 'k'], ['Y_Value', 'Y_Index'],
-                                     axis=-1,
-                                     largest=True)
-        graph_def = helper.make_graph([gather0_def, nonzero_def, transpose_def, shape_def, gather_def,
-                                      topk_def],
-                                      case_name, [input], [Y_Value, Y_Index],
-                                      initializer=[indices, indices0])
-        input_data={'input' : np.array([[1, 0, 3, 0, 0, 0], [4, 5, 6, 3, 2, 1], [7, 8, 9, 2, 1, 1]],
-                                       dtype=np.float32)}
-        self.onnx_and_test_bmodel(graph_def, static_shape=False, input_data=input_data, only_cmp_with_bmodel=True)
+        graph_txt = """
+            TopK2 (float%s input) => (float Y_Value, int64 Y_Index)
+            <int64 indices0 = {0}, int64[1] indices = {0}>
+            {
+                gather0 = Gather(input, indices0)
+                nonzero = NonZero(gather0)
+                transpose = Transpose<perm=[1, 0]>(nonzero)
+                shape = Shape(transpose)
+                K = Gather<axis=0>(shape,indices)
+                Y_Value, Y_Index = TopK<axis=-1, largest=1>(input, K)
+            }
+            """ % (input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        input_data = {
+            'input':
+            np.array([[1, 0, 3, 0, 0, 0], [4, 5, 6, 3, 2, 1], [7, 8, 9, 2, 1, 1]], dtype=np.float32)
+        }
+        self.onnx_and_test_bmodel(graph_def,
+                                  static_shape=False,
+                                  input_data=input_data,
+                                  only_cmp_with_bmodel=True)
 
     def test_QDQConv(self, case_name):
         oc = 32
@@ -5218,8 +4785,22 @@ class ONNX_IR_TESTER(object):
         output_x_scale_data = deepcopy(output_y_scale_data)
         output_x_zero_point_data = deepcopy(output_y_zero_point_data)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        graph_txt = """
+            QDQConv (float%s input) => (float%s output)
+            <int8%s weight, float%s bias, float y_scale, int8 y_zero_point, float x_scale, int8 x_zero_point,
+            float weight_x_scale, int8 weight_x_zero_point, float output_y_scale, int8 output_y_zero_point, float output_x_scale, int8 output_x_zero_point>
+            {
+                a = QuantizeLinear<axis=0>(input, y_scale, y_zero_point)
+                b = DequantizeLinear<axis=0>(a, x_scale, x_zero_point)
+                weight_output = DequantizeLinear<axis=0>(weight, weight_x_scale, weight_x_zero_point)
+                conv_output = Conv<kernel_shape=%s, pads=%s, strides=%s, dilations=%s, group=%d>(b, weight_output, bias)
+                c = QuantizeLinear<axis=0>(conv_output, output_y_scale, output_y_zero_point)
+                output = DequantizeLinear<axis=0>(c, output_x_scale, output_x_zero_point)
+            }
+            """ % (input_shape, output_shape, filter_shape, list(
+            bias_data.shape), kernel, padding, stride, dilation, groups)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         weight = helper.make_tensor('weight', TensorProto.INT8, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
 
@@ -5234,28 +4815,6 @@ class ONNX_IR_TESTER(object):
                                             weight_x_scale_data)
         weight_x_zero_point = helper.make_tensor("weight_x_zero_point", TensorProto.INT8, [oc],
                                                  weight_x_zero_point_data)
-
-        quant_node = helper.make_node("QuantizeLinear", ['input', 'y_scale', 'y_zero_point'], ['a'],
-                                      axis=0)
-        dequant_node = helper.make_node("DequantizeLinear", ['a', 'x_scale', 'x_zero_point'], ['b'],
-                                        axis=0)
-
-        weight_dequant_node = helper.make_node("DequantizeLinear",
-                                               ['weight', 'weight_x_scale', 'weight_x_zero_point'],
-                                               ['weight_output'],
-                                               axis=0)
-
-        conv_def = helper.make_node(
-            "Conv",
-            inputs=['b', 'weight_output', 'bias'],
-            outputs=['conv_output'],
-            kernel_shape=kernel,
-            pads=padding,
-            strides=stride,
-            dilations=dilation,
-            group=groups,
-        )
-
         output_y_scale = helper.make_tensor("output_y_scale", TensorProto.FLOAT, [1],
                                             [output_y_scale_data])
         output_y_zero_point = helper.make_tensor("output_y_zero_point", TensorProto.INT8, [1],
@@ -5265,26 +4824,10 @@ class ONNX_IR_TESTER(object):
         output_x_zero_point = helper.make_tensor("output_x_zero_point", TensorProto.INT8, [1],
                                                  [output_x_zero_point_data])
 
-        output_quant_node = helper.make_node(
-            "QuantizeLinear", ['conv_output', 'output_y_scale', 'output_y_zero_point'], ['c'],
-            axis=0)
-        output_dequant_node = helper.make_node("DequantizeLinear",
-                                               ['c', 'output_x_scale', 'output_x_zero_point'],
-                                               ['output'],
-                                               axis=0)
-
-        graph_def = helper.make_graph([
-            quant_node, dequant_node, weight_dequant_node, conv_def, output_quant_node,
-            output_dequant_node
-        ],
-                                      case_name, [input], [output],
-                                      initializer=[
-                                          y_scale, y_zero_point, x_scale, x_zero_point,
-                                          weight_x_scale, weight_x_zero_point, weight, bias,
-                                          output_x_scale, output_x_zero_point, output_y_scale,
-                                          output_y_zero_point
-                                      ])
-
+        graph_def.initializer.extend([
+            y_scale, y_zero_point, x_scale, x_zero_point, weight_x_scale, weight_x_zero_point,
+            weight, bias, output_x_scale, output_x_zero_point, output_y_scale, output_y_zero_point
+        ])
         self.onnx_and_test(graph_def)
 
     def test_QDQ(self, case_name):
@@ -5293,39 +4836,32 @@ class ONNX_IR_TESTER(object):
         y_zero_point_data = np.random.randint(0, 255)
         x_scale_data = deepcopy(y_scale_data)
         x_zero_point_data = deepcopy(y_zero_point_data)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+
         y_scale = helper.make_tensor("y_scale", TensorProto.FLOAT, [1], [y_scale_data])
         y_zero_point = helper.make_tensor("y_zero_point", TensorProto.INT8, [1],
                                           [y_zero_point_data])
         x_scale = helper.make_tensor("x_scale", TensorProto.FLOAT, [1], [x_scale_data])
         x_zero_point = helper.make_tensor("x_zero_point", TensorProto.INT8, [1],
                                           [x_zero_point_data])
-        quant_node = helper.make_node("QuantizeLinear", ['input', 'y_scale', 'y_zero_point'], ['a'])
-        dequant_node = helper.make_node("DequantizeLinear", ['a', 'x_scale', 'x_zero_point'],
-                                        ['a_output'])
-
-        log_node = helper.make_node("Log", inputs=['a_output'], outputs=['output'])
-
-        graph_def = helper.make_graph([quant_node, dequant_node, log_node],
-                                      case_name, [input], [output],
-                                      initializer=[y_scale, y_zero_point, x_scale, x_zero_point])
-
+        graph_txt = """
+            QDQ (float%s input) => (float%s output)
+            <float y_scale, int8 y_zero_point, float x_scale, int8 x_zero_point>
+            {
+                a = QuantizeLinear(input, y_scale, y_zero_point)
+                a_output = DequantizeLinear(a, x_scale, x_zero_point)
+                output = Log(a_output)
+            }
+            """ % (input_shape, input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([y_scale, y_zero_point, x_scale, x_zero_point])
         self.onnx_and_test(graph_def)
 
     def test_ReduceTranspose(self, case_name):
         input_shape = [8, 16, 32, 64]
         transpose_order = [1, 0, 2, 3]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         transpose_output_shape = [
             input_shape[transpose_order[i]] for i in range(len(transpose_order))
         ]
-        transpose_output = helper.make_tensor_value_info('transpose_output', TensorProto.FLOAT,
-                                                         transpose_output_shape)
-        transpose_def = helper.make_node("Transpose",
-                                         inputs=['input'],
-                                         outputs=['transpose_output'],
-                                         perm=transpose_order)
         reduce_keepdims = False
         reduce_axes = [1]
         reduce_output_shape = []
@@ -5340,82 +4876,60 @@ class ONNX_IR_TESTER(object):
                         break
                 if keep_sign:
                     reduce_output_shape.append(transpose_output_shape[i])
-        reduce_output = helper.make_tensor_value_info('output', TensorProto.FLOAT,
-                                                      reduce_output_shape)
-        reduce_mean_def = helper.make_node(
-            'ReduceMean',
-            ['transpose_output'],
-            ['output'],
-            keepdims=reduce_keepdims,
-            axes=reduce_axes,
-        )
-        graph_def = helper.make_graph([transpose_def, reduce_mean_def], case_name, [input],
-                                      [reduce_output])
+        graph_txt = """
+            ReduceTranspose (float%s input) => (float%s output)
+            {
+                transpose_output = Transpose<perm=%s>(input)
+                output = ReduceMean<keepdims=%d, axes=%s>(transpose_output)
+            }
+            """ % (input_shape, reduce_output_shape, transpose_order, reduce_keepdims, reduce_axes)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_TransposeArg(self, case_name):
         input_shape = [8, 16, 32, 64]
         transpose_order = [0, 2, 1, 3]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        transpose_def = helper.make_node("Transpose",
-                                         inputs=['input'],
-                                         outputs=['transpose_output'],
-                                         perm=transpose_order)
         arg_keepdims = False
         arg_axis = 1
         reduce_output_shape = [8, 16, 64]
-        arg_output = helper.make_tensor_value_info('output', TensorProto.INT64, reduce_output_shape)
-        arg_max_def = helper.make_node('ArgMax', ['transpose_output'], ['output'],
-                                       keepdims=arg_keepdims,
-                                       axis=arg_axis,
-                                       select_last_index=1)
-        graph_def = helper.make_graph([transpose_def, arg_max_def], case_name, [input],
-                                      [arg_output])
+        graph_txt = """
+            TransposeArg (float%s input) => (int64%s output)
+            {
+                transpose_output = Transpose<perm=%s>(input)
+                output = ArgMax<keepdims=%d, axis=%s, select_last_index=1>(transpose_output)
+            }
+            """ % (input_shape, reduce_output_shape, transpose_order, arg_keepdims, arg_axis)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_ArgError(self, case_name):
         input_shape = [1, 1000, 1, 1]
         output_shape = [1, 1, 1, 1]
-
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output1 = helper.make_tensor_value_info('o_max', TensorProto.INT64, output_shape)
-        x2 = helper.make_tensor_value_info('x2', TensorProto.FLOAT, input_shape)
-        relu_def = helper.make_node("Relu", inputs=['input'], outputs=['x2'])
-        arg_max = helper.make_node('ArgMax', ['x2'], ['o_max'],
-                                   keepdims=1,
-                                   axis=1,
-                                   select_last_index=1)
-        graph_def = helper.make_graph([relu_def, arg_max], "{}".format(case_name), [input],
-                                      [output1, x2])
+        graph_txt = """
+            ArgError (float%s input) => (int64%s o_max, float%s x2)
+            {
+                x2 = Relu(input)
+                o_max = ArgMax<keepdims=1, axis=1, select_last_index=1>(x2)
+            }
+            """ % (input_shape, output_shape, input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_ArgReducefull(self, case_name):
         input_shape = [2, 3, 4]
         arg_axis = 0
         reduce_axes = [0]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output_shape = [1, 3, 4]
-        arg_output = helper.make_tensor_value_info('arg_output', TensorProto.INT64, output_shape)
-        arg_def = helper.make_node("ArgMax",
-                                   inputs=['input'],
-                                   outputs=['arg_output'],
-                                   axis=arg_axis,
-                                   select_last_index=1)
-        reduce_output_1 = helper.make_tensor_value_info('reduce_output_1', TensorProto.FLOAT,
-                                                        output_shape)
-        reduce_def_1 = helper.make_node("ReduceMax",
-                                        inputs=['input'],
-                                        outputs=['reduce_output_1'],
-                                        axes=reduce_axes)
-        reduce_output_2 = helper.make_tensor_value_info('reduce_output_2', TensorProto.FLOAT,
-                                                        output_shape)
-        reduce_def_2 = helper.make_node("ReduceMax",
-                                        inputs=['input'],
-                                        outputs=['reduce_output_2'],
-                                        axes=reduce_axes)
-
-        graph_def = helper.make_graph([arg_def, reduce_def_1, reduce_def_2], case_name, [input],
-                                      [arg_output, reduce_output_1, reduce_output_2])
+        graph_txt = """
+            ArgReducefull (float%s input) => (int64%s arg_output, float%s reduce_output_1, float%s reduce_output_2)
+            {
+                arg_output = ArgMax<axis=%d, select_last_index=1>(input)
+                reduce_output_1 = ReduceMax<axes=%s>(input)
+                reduce_output_2 = ReduceMax<axes=%s>(input)
+            }
+            """ % (input_shape, output_shape, output_shape, output_shape, arg_axis, reduce_axes,
+                   reduce_axes)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     # def test_LayerNorm(self, case_name):
@@ -5447,7 +4961,6 @@ class ONNX_IR_TESTER(object):
     #     self.onnx_and_test(graph_def)
 
     def BinaryWeightBase(self, case_name, input_shape, weight_shape, binary_name, reverse=False):
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         if binary_name == "Div":
             weight_data_ = np.random.uniform(0.5, 2, tuple(weight_shape)).astype(np.float32)
             weight_data = np.multiply(weight_data_, np.random.choice(np.array([-1, 1]),
@@ -5455,15 +4968,20 @@ class ONNX_IR_TESTER(object):
         else:
             weight_data = np.random.randn(*weight_shape).astype(np.float32)
         if binary_name in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
-            output_dtype = TensorProto.BOOL
+            output_dtype = 'bool'
         else:
-            output_dtype = TensorProto.FLOAT
+            output_dtype = 'float'
+        graph_txt = """
+            BinaryWeight (float%s input) => (%s%s output)
+            <float%s weight1>
+            {
+                output = %s(input, weight1)
+            }
+            """ % (input_shape, output_dtype, input_shape, weight_shape, binary_name)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         weight = helper.make_tensor('weight1', TensorProto.FLOAT, weight_shape, weight_data)
-        output = helper.make_tensor_value_info("output", output_dtype, input_shape)
-        binary_def = helper.make_node(binary_name, inputs=['input', 'weight1'], outputs=["output"])
-        graph_def = helper.make_graph([binary_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight])
+
+        graph_def.initializer.extend([weight])
         self.onnx_and_test(graph_def)
 
     def test_Div2Mul(self, case_name):
@@ -5472,118 +4990,97 @@ class ONNX_IR_TESTER(object):
     def test_Mul2Scale(self, case_name):
         self.BinaryWeightBase(case_name, [1, 32, 32, 32], [1, 32, 1, 1], "Mul")
 
-    #conv_param: [out_shape, filter_shape, conv_pads]
+    # conv_param: [out_shape, filter_shape, conv_pads]
     def PadConvBase(self, case_name, input_shape, pad_param, conv_param_list):
         add_in_shape = {"input1": input_shape, "input2": input_shape}
         pad_val = np.array(pad_param).astype(np.int64)
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in add_in_shape.items()
-        ]
         paddings = helper.make_tensor(name='paddings',
                                       data_type=onnx.TensorProto.INT64,
                                       dims=pad_val.shape,
                                       vals=pad_val.flatten())
-        add1 = helper.make_tensor_value_info("add1", TensorProto.FLOAT, input_shape)
+        graph_txt = """
+            PadConv (float%s input1, float%s input2) => (float%s add1, float%s output1, float%s output2)
+            <float filter1, float filter2, int64 paddings>
+            {
+                add1 = Add(input1, input2)
+                pad2 = Pad<mode="constant">(add1, paddings)
+                output1 = Conv<kernel_shape=%s, pads=%s>(pad2, filter1)
+                output2 = Conv<kernel_shape=%s, pads=%s>(pad2, filter2)
+            }
+            """ % (add_in_shape["input1"], add_in_shape["input2"], input_shape,
+                   conv_param_list[0][0], conv_param_list[1][0], conv_param_list[0][1][2:],
+                   conv_param_list[0][2], conv_param_list[1][1][2:], conv_param_list[1][2])
+        graph_def = onnx.parser.parse_graph(graph_txt)
+
         f_data1 = np.random.randn(*conv_param_list[0][1]).astype(np.float32)
         f_data2 = np.random.randn(*conv_param_list[1][1]).astype(np.float32)
         filter1 = helper.make_tensor('filter1', TensorProto.FLOAT, conv_param_list[0][1], f_data1)
         filter2 = helper.make_tensor('filter2', TensorProto.FLOAT, conv_param_list[1][1], f_data2)
-        output1 = helper.make_tensor_value_info("output1", TensorProto.FLOAT, conv_param_list[0][0])
-        output2 = helper.make_tensor_value_info("output2", TensorProto.FLOAT, conv_param_list[1][0])
 
-        add_def = helper.make_node("Add", inputs=list(add_in_shape.keys()), outputs=["add1"])
-        pad_def = helper.make_node(
-            "Pad",
-            inputs=['add1', 'paddings'],
-            outputs=['pad2'],
-            mode='constant',
-        )
-        conv1_def = helper.make_node("Conv",
-                                     inputs=['pad2', 'filter1'],
-                                     outputs=['output1'],
-                                     kernel_shape=conv_param_list[0][1][2:],
-                                     pads=conv_param_list[0][2])
-        conv2_def = helper.make_node("Conv",
-                                     inputs=['pad2', 'filter2'],
-                                     outputs=['output2'],
-                                     kernel_shape=conv_param_list[1][1][2:],
-                                     pads=conv_param_list[1][2])
-        graph_def = helper.make_graph([add_def, pad_def, conv1_def, conv2_def],
-                                      case_name,
-                                      inputs, [add1, output1, output2],
-                                      initializer=[paddings, filter1, filter2])
+        graph_def.initializer.extend([paddings, filter1, filter2])
         self.onnx_and_test(graph_def)
 
     def test_PadConv1d(self, case_name):
-        self.PadConvBase(case_name, [1, 2, 8], [0, 0, 1, 0, 0, 1], \
-                        [[[1, 2, 10], [2, 2, 3], [1, 1]], [[1, 2, 8], [2, 2, 3], [0, 0]]])
+        self.PadConvBase(case_name, [1, 2, 8], [0, 0, 1, 0, 0, 1],
+                         [[[1, 2, 10], [2, 2, 3], [1, 1]], [[1, 2, 8], [2, 2, 3], [0, 0]]])
 
     def test_PadConv2d(self, case_name):
-        self.PadConvBase(case_name, [1, 3, 8, 8], [0, 0, 1, 1, 0, 0, 3, 1], \
-                        [[[1, 16, 14, 10], [16, 3, 3, 3], [2, 1, 2, 1]], [[1, 16, 10, 8], [16, 3, 3, 3], [0, 0, 0 ,0]]])
+        self.PadConvBase(case_name, [1, 3, 8, 8], [0, 0, 1, 1, 0, 0, 3, 1],
+                         [[[1, 16, 14, 10], [16, 3, 3, 3], [2, 1, 2, 1]],
+                          [[1, 16, 10, 8], [16, 3, 3, 3], [0, 0, 0, 0]]])
 
     def test_PadConv3d(self, case_name):
-        self.PadConvBase(case_name, [1, 3, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 3, 1, 2], \
-                        [[[1, 16, 36, 35, 35], [16, 3, 3, 3, 3], [1, 2, 1, 2, 1, 0]], [[1, 16, 33, 32, 34], [16, 3, 3, 3, 3], [0, 0, 0, 0, 0 ,0]]])
+        self.PadConvBase(case_name, [1, 3, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 3, 1, 2],
+                         [[[1, 16, 36, 35, 35], [16, 3, 3, 3, 3], [1, 2, 1, 2, 1, 0]],
+                          [[1, 16, 33, 32, 34], [16, 3, 3, 3, 3], [0, 0, 0, 0, 0, 0]]])
 
-    #pool_param: [out_shape, kernel_shape, pool_pads]
+    # pool_param: [out_shape, kernel_shape, pool_pads]
     def PadPoolBase(self, case_name, input_shape, pad_param, pool_param_list):
         add_in_shape = {"input1": input_shape, "input2": input_shape}
         pad_val = np.array(pad_param).astype(np.int64)
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in add_in_shape.items()
-        ]
         paddings = helper.make_tensor(name='paddings',
                                       data_type=onnx.TensorProto.INT64,
                                       dims=pad_val.shape,
                                       vals=pad_val.flatten())
-        add1 = helper.make_tensor_value_info("add1", TensorProto.FLOAT, input_shape)
-        output1 = helper.make_tensor_value_info("output1", TensorProto.FLOAT, pool_param_list[0][0])
-        output2 = helper.make_tensor_value_info("output2", TensorProto.FLOAT, pool_param_list[1][0])
 
-        add_def = helper.make_node("Add", inputs=list(add_in_shape.keys()), outputs=["add1"])
-        pad_def = helper.make_node("Pad",
-                                   inputs=['add1', 'paddings'],
-                                   outputs=['pad2'],
-                                   mode='constant')
-        pool1_def = helper.make_node('AveragePool',
-                                     inputs=['pad2'],
-                                     outputs=['output1'],
-                                     kernel_shape=pool_param_list[0][1],
-                                     pads=pool_param_list[0][2],
-                                     strides=pool_param_list[0][3],
-                                     count_include_pad=1)
-        pool2_def = helper.make_node('AveragePool',
-                                     inputs=['pad2'],
-                                     outputs=['output2'],
-                                     kernel_shape=pool_param_list[1][1],
-                                     pads=pool_param_list[1][2],
-                                     strides=pool_param_list[1][3],
-                                     count_include_pad=1)
-        graph_def = helper.make_graph([add_def, pad_def, pool1_def, pool2_def],
-                                      case_name,
-                                      inputs, [add1, output1, output2],
-                                      initializer=[paddings])
+        graph_txt = """
+            PadPool (float%s input1, float%s input2) => (float%s add1, float%s output1, float%s output2)
+            <int64 paddings>
+            {
+                add1 = Add(input1, input2)
+                pad2 = Pad<mode="constant">(add1, paddings)
+                output1 = AveragePool<kernel_shape=%s, pads=%s, strides=%s, count_include_pad=1>(pad2)
+                output2 = AveragePool<kernel_shape=%s, pads=%s, strides=%s, count_include_pad=1>(pad2)
+            }
+            """ % (add_in_shape["input1"], add_in_shape["input2"], input_shape,
+                   pool_param_list[0][0], pool_param_list[1][0], pool_param_list[0][1],
+                   pool_param_list[0][2], pool_param_list[0][3], pool_param_list[1][1],
+                   pool_param_list[1][2], pool_param_list[1][3])
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([paddings])
         self.onnx_and_test(graph_def)
 
     def test_PadPool1d(self, case_name):
-        self.PadPoolBase(case_name, [1, 3, 256], [0, 0, 2, 0, 0, 2], \
-                [[[1, 3, 65], [4], [0, 0], [4]], [[1, 3, 34], [8], [6, 6], [8]]])
+        self.PadPoolBase(case_name, [1, 3, 256], [0, 0, 2, 0, 0, 2],
+                         [[[1, 3, 65], [4], [0, 0], [4]], [[1, 3, 34], [8], [6, 6], [8]]])
 
     def test_PadPool2d(self, case_name):
-        self.PadPoolBase(case_name, [1, 32, 12, 12], [0, 0, 1, 2, 0, 0, 1, 2], \
-                [[[1, 32, 6, 7], [4, 4], [0, 0, 0, 0], [2, 2]], [[1, 32, 4, 4], [4, 4], [1, 0, 1, 0], [4, 4]]])
+        self.PadPoolBase(case_name, [1, 32, 12, 12], [0, 0, 1, 2, 0, 0, 1, 2],
+                         [[[1, 32, 6, 7], [4, 4], [0, 0, 0, 0], [2, 2]],
+                          [[1, 32, 4, 4], [4, 4], [1, 0, 1, 0], [4, 4]]])
 
     def test_PadPool3d(self, case_name):
-        self.PadPoolBase(case_name, [1, 16, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 0, 1, 2], \
-                [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
+        self.PadPoolBase(case_name, [1, 16, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 0, 1, 2],
+                         [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]],
+                          [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
 
     def test_ScatterElements(self, case_name):
 
         input_data = [{
             "data": np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.float32)
         }, {
-            "data": np.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]], dtype=np.float32)
+            "data":
+            np.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]], dtype=np.float32)
         }, {
             "data": np.random.randn(1, 13294, 4).astype(np.float32)
         }, {
@@ -5604,19 +5101,20 @@ class ONNX_IR_TESTER(object):
 
         indices_data = [
             np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.int32),
-            np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.int32),
+            np.array([[2, 1, 0], [1, 2, 0], [0, 2, 1], [0, 1, 2]], dtype=np.int32),
             np.random.randint(0, 13294, [1, 900, 4]),
             np.random.randint(0, 4, [4, 4, 9, 4]),
             np.random.randint(0, 18, [16, 17, 25, 19]),
             np.random.randint(0, 20, [16, 17, 18, 19, 21]),
             np.random.randint(0, 20, [15, 16, 17, 18, 19, 21]),
             np.random.randint(0, 2, [2, 2, 2, 2, 2, 2, 8]),
-            np.random.randint(0, 2,  [2, 2, 2, 2, 10, 2, 2, 2]),
-            np.random.randint(0, 2, [2, 65536, 2])]
+            np.random.randint(0, 2, [2, 2, 2, 2, 10, 2, 2, 2]),
+            np.random.randint(0, 2, [2, 65536, 2])
+        ]
 
         updates_data = [
             np.array([[2, 1, 0, 2], [1, 2, 0, 1], [0, 2, 1, 0]], dtype=np.float32),
-            np.array([[2, 1, 0], [1, 2, 0],[0, 2, 1], [0, 1, 2]], dtype=np.float32),
+            np.array([[2, 1, 0], [1, 2, 0], [0, 2, 1], [0, 1, 2]], dtype=np.float32),
             np.random.randn(1, 900, 4).astype(np.float32),
             np.random.randn(4, 4, 9, 4).astype(np.float32),
             np.random.randn(16, 17, 25, 19).astype(np.float32),
@@ -5624,46 +5122,38 @@ class ONNX_IR_TESTER(object):
             np.random.randn(15, 16, 17, 18, 19, 21).astype(np.float32),
             np.random.randn(2, 2, 2, 2, 2, 2, 8).astype(np.float32),
             np.random.randn(2, 2, 2, 2, 10, 2, 2, 2).astype(np.float32),
-            np.random.randn(2,65536, 2).astype(np.float32)]
+            np.random.randn(2, 65536, 2).astype(np.float32)
+        ]
 
         axis_data = [1, 0, 1, 2, 2, 4, 5, 6, 4, 2]
 
         for i in range(len(input_data)):
             # if i != 9:
             #     continue
-            data_, indices_, updates_, axis_ = input_data[i]["data"], indices_data[i], updates_data[i], axis_data[i]
-            data = helper.make_tensor_value_info('data', TensorProto.FLOAT, data_.shape)
-            indices = helper.make_tensor_value_info("indices", TensorProto.INT64, indices_.shape)
-            updates = helper.make_tensor_value_info("updates", TensorProto.FLOAT, updates_.shape)
-            input_ = {
-                "data": data_,
-                "indices": indices_,
-                "updates": updates_
-            }
-
-            scatter_node = helper.make_node("ScatterElements",
-                                             inputs=["data", "indices", "updates"],
-                                             outputs=["scatter_output"],
-                                             axis=axis_)
-            output_ = helper.make_tensor_value_info("scatter_output", TensorProto.FLOAT, data_.shape)
-            graph_def = helper.make_graph([scatter_node],
-                                            case_name,
-                                            [data, indices, updates],
-                                            [output_])
-            self.onnx_and_test(graph_def, input_data = input_)
-
+            data_, indices_, updates_, axis_ = input_data[i]["data"], indices_data[i], updates_data[
+                i], axis_data[i]
+            input_ = {"data": data_, "indices": indices_, "updates": updates_}
+            graph_txt = """
+            ScatterElements (float%s data, int64%s indices, float%s updates) => (float%s scatter_output)
+                {
+                    scatter_output = ScatterElements<axis=%d>(data, indices, updates)
+                }
+                """ % (list(data_.shape), list(indices_.shape), list(
+                updates_.shape), list(data_.shape), axis_)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def, input_data=input_)
 
     def test_ScatterND(self, case_name):
         if self.chip in ['bm1684x', 'bm1688', 'cv186']:
-            x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2,3,20,40],
-                        [1, 13294, 256], [1, 900, 256],
-                        [320, 320], [1, 3, 128, 20, 20], [1, 13294, 256], [8, 900, 2], [4,4,4]]
-            idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 150, 5], [2,3,20,4],
-                          [1, 13294, 256, 3], [1, 900, 256, 3],
-                        [160,1], [1, 3, 64, 3], [1, 13294, 2], [8, 1], [4,4,4,3]]
-            update_shapes = [[160, 160], [1, 3, 128, 128, 150],  [2,3,20],
-                             [1, 13294, 256], [1, 900, 256],
-                            [160,320], [1, 3, 64, 20, 20], [1, 13294, 256], [8, 900, 2], [4,4,4]]
+            x_shapes = [[320, 320], [1, 3, 128, 128, 186], [2, 3, 20, 40], [1, 13294, 256],
+                        [1, 900, 256], [320, 320], [1, 3, 128, 20, 20], [1, 13294, 256],
+                        [8, 900, 2], [4, 4, 4]]
+            idx_shapes = [[160, 160, 2], [1, 3, 128, 128, 150, 5], [2, 3, 20, 4],
+                          [1, 13294, 256, 3], [1, 900, 256, 3], [160, 1], [1, 3, 64, 3],
+                          [1, 13294, 2], [8, 1], [4, 4, 4, 3]]
+            update_shapes = [[160, 160], [1, 3, 128, 128, 150], [2, 3, 20], [1, 13294, 256],
+                             [1, 900, 256], [160, 320], [1, 3, 64, 20, 20], [1, 13294, 256],
+                             [8, 900, 2], [4, 4, 4]]
         else:
             x_shapes = [[320, 320], [1, 5, 256]]
             idx_shapes = [[160, 160, 2], [1, 1, 2]]
@@ -5688,39 +5178,28 @@ class ONNX_IR_TESTER(object):
             offset = np.random.choice(offset_max, size=index_num, replace=False)
             indices = np.zeros(idx_shape, dtype=np.int32)
             for i in range(k):
-                indices[...,k-i-1] = (offset % x_shape[k-i-1]).reshape(indices[...,k-i-1].shape)
-                offset = offset // x_shape[k-i-1]
+                indices[...,
+                        k - i - 1] = (offset % x_shape[k - i - 1]).reshape(indices[...,
+                                                                                   k - i - 1].shape)
+                offset = offset // x_shape[k - i - 1]
 
             input_data = {
                 "x_data": np.random.rand(*x_shape).astype(np.float32),
                 "indices": indices,
                 "updates": np.random.rand(*update_shape).astype(np.float32),
             }
-
-            raw_data = helper.make_tensor_value_info("x_data", TensorProto.FLOAT, x_shape)
-            indices = helper.make_tensor_value_info("indices", TensorProto.INT64, idx_shape)
-            updates = helper.make_tensor_value_info("updates", TensorProto.FLOAT, update_shape)
-            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, x_shape)
             add_data = helper.make_tensor('add_tensor', TensorProto.FLOAT, x_shape,
                                           np.random.rand(*x_shape).astype(np.float32))
-            scatternd_def = helper.make_node("ScatterND",
-                                             inputs=list(input_data.keys()),
-                                             outputs=["scatter_output"])
-            add_def = onnx.helper.make_node("Add",
-                                            inputs=["scatter_output", "add_tensor"],
-                                            outputs=["output"])
-            graph_def = helper.make_graph([scatternd_def, add_def],
-                                          case_name,
-                                          [raw_data, indices, updates],
-                                          [output],
-                                          initializer=[add_data])
-            # scatternd_def = helper.make_node("ScatterND",
-            #                                  inputs=list(input_data.keys()),
-            #                                  outputs=["output"])
-            # graph_def = helper.make_graph([scatternd_def],
-            #                               case_name,
-            #                               [raw_data, indices, updates],
-                                        #   [output])
+            graph_txt = """
+                ScatterND (float%s x_data, int64%s indices, float%s updates) => (float%s output)
+                <float add_tensor>
+                {
+                    scatter_output = ScatterND(x_data, indices, updates)
+                    output = Add(scatter_output, add_tensor)
+                }
+                """ % (x_shape, idx_shape, update_shape, x_shape)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            graph_def.initializer.extend([add_data])
             self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_SliceToReverse(self, case_name):
@@ -5730,20 +5209,21 @@ class ONNX_IR_TESTER(object):
         ends_data = np.array([-4], dtype=np.int64)
         axes_data = np.array([2], dtype=np.int64)
         steps_data = np.array([-1], dtype=np.int64)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
         starts = helper.make_tensor('starts', TensorProto.INT64, [1], starts_data)
         ends = helper.make_tensor('ends', TensorProto.INT64, [1], ends_data)
         axes = helper.make_tensor('axes', TensorProto.INT64, [1], axes_data)
         steps = helper.make_tensor('steps', TensorProto.INT64, [1], steps_data)
-        slice_def = helper.make_node(
-            'Slice',
-            inputs=['input', 'starts', 'ends', 'axes', 'steps'],
-            outputs=['output'],
-        )
-        graph_def = helper.make_graph([slice_def],
-                                      case_name, [input], [output],
-                                      initializer=[starts, ends, axes, steps])
+
+        graph_txt = """
+            SliceToReverse (float%s input) => (float%s output)
+            <int64 starts, int64 ends, int64 axes, int64 steps>
+            {
+                output = Slice(input, starts, ends, axes, steps)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([starts, ends, axes, steps])
         self.onnx_and_test(graph_def)
 
     def test_ReduceFuse(self, case_name):
@@ -5765,54 +5245,51 @@ class ONNX_IR_TESTER(object):
         input_shapes = [[4, 3, 28, 1], [4, 1, 3, 20]]
         transpose_orders = [[0, 1, 3, 2], [0, 2, 1, 3]]
         for i, input_shape in enumerate(input_shapes):
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
             order = transpose_orders[i]
             output_shape = [input_shape[order[i]] for i in range(len(order))]
-            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-            transpose_def = helper.make_node("Transpose",
-                                             inputs=['input'],
-                                             outputs=['output'],
-                                             perm=order)
-            graph_def = helper.make_graph([transpose_def], "{}_{}".format(case_name, i), [input],
-                                          [output])
+            graph_txt = """
+                PermuteToReshape (float%s input) => (float%s output)
+                {
+                    output = Transpose<perm=%s>(input)
+                }
+                """ % (input_shape, output_shape, order)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     def test_PermuteToReorg(self, case_name):
         input_shape = [1, 4, 6, 6]
         output_shape = [1, 16, 3, 3]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         rshape1 = [6]
         rshape1_data = np.array([1, 4, 3, 2, 3, 2], dtype=np.int64)
         r1 = helper.make_tensor('shape1', TensorProto.INT64, rshape1, rshape1_data)
-        reshape1_def = helper.make_node("Reshape", inputs=['input', 'shape1'], outputs=['out1'])
         order = [0, 1, 3, 5, 2, 4]
-        permute_def = helper.make_node("Transpose", inputs=['out1'], outputs=['out2'], perm=order)
         rshape2 = [4]
         rshape2_data = np.array(output_shape, dtype=np.int64)
         r2 = helper.make_tensor('shape2', TensorProto.INT64, rshape2, rshape2_data)
-        reshape2_def = helper.make_node("Reshape", inputs=['out2', 'shape2'], outputs=['output'])
-        graph_def = helper.make_graph([reshape1_def, permute_def, reshape2_def],
-                                      case_name, [input], [output],
-                                      initializer=[r1, r2])
+        graph_txt = """
+            PermuteToReorg (float%s input) => (float%s output)
+            <int64 shape1, int64 shape2>
+            {
+                out1 = Reshape(input, shape1)
+                out2 = Transpose<perm=%s>(out1)
+                output = Reshape(out2, shape2)
+            }
+            """ % (input_shape, output_shape, order)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([r1, r2])
         self.onnx_and_test(graph_def)
 
     def test_PermuteToReorg2(self, case_name):
         input_shape = [1, 16, 200, 200]
         output_shape = [1, 64, 100, 100]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         rshape1 = [6]
         rshape1_data = np.array([1, 16, 100, 2, 100, 2], dtype=np.int64)
         r1 = helper.make_tensor('shape1', TensorProto.INT64, rshape1, rshape1_data)
-        reshape1_def = helper.make_node("Reshape", inputs=['input', 'shape1'], outputs=['out1'])
         order = [0, 1, 3, 5, 2, 4]
-        permute_def = helper.make_node("Transpose", inputs=['out1'], outputs=['out2'], perm=order)
         rshape2 = [4]
         rshape2_data = np.array(output_shape, dtype=np.int64)
         r2 = helper.make_tensor('shape2', TensorProto.INT64, rshape2, rshape2_data)
-        reshape2_def = helper.make_node("Reshape", inputs=['out2', 'shape2'], outputs=['out3'])
-        #add conv define
+        # add conv define
         filter_shape = [64, 64, 3, 3]
         kernel = [3, 3]
         padding = [1, 1, 1, 1]
@@ -5822,17 +5299,18 @@ class ONNX_IR_TESTER(object):
         bias_data = np.random.randn(output_shape[1]).astype(np.float32)
         weight = helper.make_tensor("weight", TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor("bias", TensorProto.FLOAT, list(bias_data.shape), bias_data)
-        conv_def = helper.make_node("Conv",
-                                    inputs=['out3', 'weight', 'bias'],
-                                    outputs=['output'],
-                                    kernel_shape=kernel,
-                                    pads=padding,
-                                    strides=stride,
-                                    dilations=dilation,
-                                    group=1)
-        graph_def = helper.make_graph([reshape1_def, permute_def, reshape2_def, conv_def],
-                                      case_name, [input], [output],
-                                      initializer=[r1, r2, weight, bias])
+        graph_txt = """
+            PermuteToReorg2 (float%s input) => (float%s output)
+            <int64 shape1, int64 shape2, float weight, float bias>
+            {
+                out1 = Reshape(input, shape1)
+                out2 = Transpose<perm=%s>(out1)
+                out3 = Reshape(out2, shape2)
+                output = Conv<kernel_shape=%s, pads=%s, strides=%s, dilations=%s, group=1>(out3, weight, bias)
+            }
+            """ % (input_shape, output_shape, order, kernel, padding, stride, dilation)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([r1, r2, weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_Permute5dSplit(self, case_name):
@@ -5842,18 +5320,17 @@ class ONNX_IR_TESTER(object):
         for i in range(0, len(orders)):
             order = orders[i]
             if i >= 3 and self.chip.startswith("cv18"):
-                #because cv183x backend don't support all permute4d
+                # because cv183x backend don't support all permute4d
                 continue
             print("order:", order)
             output_shape = [input_shape[order[i]] for i in range(0, len(order))]
-            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-            permute_def = helper.make_node("Transpose",
-                                           inputs=['input'],
-                                           outputs=['output'],
-                                           perm=order)
-            graph_def = helper.make_graph([permute_def], "{}_{}".format(case_name, i), [input],
-                                          [output])
+            graph_txt = """
+                Permute5dSplit_%s (float%s input) => (float%s output)
+                {
+                    output = Transpose<perm=%s>(input)
+                }
+                """ % (i, input_shape, output_shape, order)
+            graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
     def test_Permute7d(self, case_name):
@@ -5910,14 +5387,13 @@ class ONNX_IR_TESTER(object):
 
     def test_If(self, case_name):
         from onnx.numpy_helper import from_array
-        from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
         import copy
         # initializers
         value = np.array([0], dtype=np.float32)
         zero = from_array(value, name='zero')
-        value2 = np.array([0,1,2,3], dtype=np.int64)
+        value2 = np.array([0, 1, 2, 3], dtype=np.int64)
         axes = from_array(value2, name='axes')
-        input_shape = [1,3,100,10]
+        input_shape = [1, 3, 100, 10]
         out_shape = copy.deepcopy(input_shape)
         shape = copy.deepcopy(input_shape)
         '''
@@ -5928,307 +5404,129 @@ class ONNX_IR_TESTER(object):
         kkk = 4
         out_shape[-1] = kk
         shape[-1] = kkk
-        X = make_tensor_value_info('X', onnx.TensorProto.FLOAT, [1])
-        Y = make_tensor_value_info('Y', onnx.TensorProto.FLOAT, input_shape)
-        Z = make_tensor_value_info('Z', onnx.TensorProto.FLOAT, input_shape)
-        M = make_tensor_value_info('M', onnx.TensorProto.FLOAT, input_shape)
-        N = make_tensor_value_info('N', onnx.TensorProto.FLOAT, out_shape)
-        O = make_tensor_value_info('O', onnx.TensorProto.FLOAT, out_shape)
-        J = make_tensor_value_info('J', onnx.TensorProto.FLOAT, shape)
-        # The second compares the result to 0.
-        cond = make_node('Greater', ['X', 'zero'], ['cond'])
-        then_out = make_tensor_value_info('then_out', onnx.TensorProto.FLOAT, input_shape)
-        add_node = helper.make_node(
-            "Add",  # node name
-            ["Y", "Z"],  # inputs
-            ["then_out"]  # outputs
-        )
-        K = helper.make_tensor("K", TensorProto.INT64, [1], np.array([kk]).astype(np.int64))
-        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, out_shape)
-        Y_Index = helper.make_tensor_value_info('Y_Index', TensorProto.INT64, out_shape)
-        topk_node = helper.make_node('TopK', ['then_out', 'K'], ['Y_Value', 'Y_Index'],
-                                        axis=-1,
-                                        largest=False)
-        then2_out = make_tensor_value_info('then2_out', onnx.TensorProto.FLOAT, out_shape)
-        mul_node = helper.make_node(
-            "Mul",
-            ["Y_Value", "N"],
-            ["then2_out"])
-        then_body = make_graph([add_node, topk_node, mul_node], 'then_body', [],
-                                [then2_out], initializer=[K])
-
-        # Same process for the else branch.
-        else_out = make_tensor_value_info('else_out', onnx.TensorProto.FLOAT, input_shape)
-        else_sub_node = helper.make_node(
-            'Sub',
-            ["Z", "M"],
-            ['else_out'])
-        else_k = helper.make_tensor("else_k", TensorProto.INT64, [1], np.array([kk]).astype(np.int64))
-        else_y_value = helper.make_tensor_value_info('else_y_value', TensorProto.FLOAT, out_shape)
-        else_y_index = helper.make_tensor_value_info('else_y_index', TensorProto.INT64, out_shape)
-        else_topk_node = helper.make_node('TopK', ['else_out', 'else_k'], ['else_y_value', 'else_y_index'],
-                                        axis=-1,
-                                        largest=False)
-        else2_out = make_tensor_value_info('else2_out', onnx.TensorProto.FLOAT, out_shape)
-        else_add_node = helper.make_node(
-            "Add",
-            ["else_y_value", "N"],
-            ["else2_out"])
-        else_body = make_graph([else_sub_node,else_topk_node,
-                                else_add_node], 'else_body', [],
-                                [else2_out], initializer=[else_k])
-        if_node = onnx.helper.make_node("If", ["cond"], ["O"],
-                                        then_branch=then_body,
-                                        else_branch=else_body)
-        out1 = make_tensor_value_info('out1', onnx.TensorProto.FLOAT, out_shape)
-        sub2_node = helper.make_node(
-            'Sub',
-            ["O", "N"],
-            ['out1'])
-
-        k = helper.make_tensor("k", TensorProto.INT64, [1], np.array([kkk]).astype(np.int64))
-        y_value = helper.make_tensor_value_info('y_value', TensorProto.FLOAT, shape)
-        y_index = helper.make_tensor_value_info('y_index', TensorProto.INT64, shape)
-        topk2_node = helper.make_node('TopK', ['out1','k'], ['y_value', 'y_index'],
-                                        axis=-1,
-                                        largest=False)
-        out = make_tensor_value_info('out', onnx.TensorProto.FLOAT, shape)
-        add2_node = helper.make_node(
-            "Add",
-            ["y_value", "J"],
-            ["out"])
-        # The final graph.
-        graph_def = make_graph([cond, if_node, sub2_node, topk2_node, add2_node], "if", [X, Y, Z, M, N, J], [out], [zero, axes, k])
+        graph_txt = """
+            If (float[1] X, float%s Y, float%s Z, float%s M, float%s N, float%s J) => (float%s out)
+            <float zero = {0}, int64[1] K = {4}>
+            {
+                cond = Greater(X, zero)
+                O = If (cond)<
+                    then_branch = then_body() => (float%s then2_out)
+                    <int64[1] then_K = {6}>
+                    {
+                        then_out = Add(Y, Z)
+                        Y_Value, Y_Index = TopK<axis=-1, largest=0>(then_out, then_K)
+                        then2_out = Mul(Y_Value, N)
+                    },
+                    else_branch = else_body() => (float%s else2_out)
+                    <int64[1] else_k = {6}>
+                    {
+                        else_out = Sub(Z, M)
+                        else_y_value, else_y_index = TopK<axis=-1, largest=0>(else_out, else_k)
+                        else2_out = Add(else_y_value, N)
+                    }
+                >
+                out1 = Sub(O, N)
+                y_value, y_index = TopK<axis=-1, largest=0>(out1, K)
+                out = Add(y_value, J)
+            }
+            """ % (input_shape, input_shape, input_shape, out_shape, shape, shape, out_shape,
+                   out_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, static_shape=False)
 
     def test_Loop(self, case_name):
-        from onnx import numpy_helper
-        from onnx.helper import (make_node, make_graph, make_model, make_tensor_value_info)
         x = np.array(10000).astype(np.int64)
-        graph_def=helper.make_graph(
-            name="loop",
-            inputs=[
-                helper.make_tensor_value_info(
-                    "input_0", TensorProto.FLOAT, shape=[1]
-                ),
-            ],
-            outputs=[
-                helper.make_tensor_value_info(
-                    "up_bound", TensorProto.INT32, shape=[1]),
-                helper.make_tensor_value_info(
-                    "new_start_v2", TensorProto.INT32, shape=[1]),
-            ],
-            initializer=[
-                numpy_helper.from_array(
-                    np.array([10.0], dtype=np.float32), name="const_fold_opt__17"
-                ),
-                numpy_helper.from_array(
-                    np.array([0], dtype=np.int64), name="reshape"
-                ),
-                numpy_helper.from_array(
-                    np.array([1], dtype=np.int32), name="init_v"
-                ),
-                numpy_helper.from_array(
-                    np.array(101, dtype=np.int32), name="up_value"
-                ),
-
-                numpy_helper.from_array(
-                    np.array(10, dtype=np.int32), name="start_value"
-                ),
-            ],
-            nodes=[
-                onnx.helper.make_node(
-                    "Constant",
-                    inputs=[],
-                    outputs=["while_maximum_iterations_0"],
-                    value=onnx.helper.make_tensor(
-                        name="const_tensor_x",
-                        data_type=onnx.TensorProto.INT64,
-                        dims=(),
-                        vals=x.flatten().astype(np.int64))
-                ),
-                helper.make_node(
-                    "Less",
-                    inputs=[
-                        "input_0",
-                        "const_fold_opt__17",
-                    ],
-                    outputs=["while_cond_158_while_Less_0"],
-                    name="while_cond_158_while_Less",
-                    domain="",
-                ),
-                helper.make_node(
-                    "Squeeze",
-                    inputs=["while_cond_158_while_Less_0", "reshape"],
-                    outputs=["while_cond_158_while_Squeeze_0"],
-                    name="while_cond_158_while_Squeeze",
-                    domain="",
-                ),
-                helper.make_node(
-                    "Loop",
-                    inputs=[
-                        "while_maximum_iterations_0",
-                        "while_cond_158_while_Squeeze_0",
-                        "up_value",
-                        "start_value",
-                    ],
-                    outputs=["up", "new_cout"],
-                    name="while_loop",
-                    body=helper.make_graph(
-                        name="while_body",
-                        inputs=[
-                            helper.make_tensor_value_info(
-                                "while_while_loop_counter_0",
-                                TensorProto.INT64,
-                                shape=[],
-                            ),
-                            helper.make_tensor_value_info(
-                                "cond__15_0", TensorProto.BOOL, shape=[]
-                            ),
-                            helper.make_tensor_value_info(
-                                "while_placeholder_0", TensorProto.INT32, shape=[1]
-                            ),
-                            helper.make_tensor_value_info(
-                                "while_add_const_0_0", TensorProto.INT32, shape=[1]
-                            ),
-                        ],
-                        outputs=[
-                            helper.make_tensor_value_info(
-                                "cond___while_Less_0",
-                                TensorProto.BOOL,
-                                shape=[1],
-                            ),
-                            helper.make_tensor_value_info(
-                                "while_placeholder_0", TensorProto.INT32, shape=[1]
-                            ),
-                            helper.make_tensor_value_info(
-                                "while_Identity_2_0", TensorProto.INT32, shape=[1]
-                            ),
-                        ],
-                        initializer=[
-                            numpy_helper.from_array(
-                                np.array(2, dtype=np.int32),
-                                name="step_value",
-                            ),
-                        ],
-                        nodes=[
-                            helper.make_node(
-                                "Add",
-                                inputs=[
-                                    "while_add_const_0_0",
-                                    "step_value",
-                                ],
-                                outputs=["while_Identity_2_0"],
-                                name="while_Add",
-                            ),
-
-                            helper.make_node(
-                                "Less",
-                                inputs=[
-                                    "while_Identity_2_0",
-                                    "while_placeholder_0",
-                                ],
-                                outputs=["cond___while_Less_0"],
-                                name="cond___while_Less",
-                                domain="",
-                            )
-                        ],
-                    ),
-                ),
-                helper.make_node(
-                    "Add",
-                    inputs=["up", "init_v"],
-                    outputs=["up_bound"],
-                    name="upsqueeze",
-                ),
-                helper.make_node(
-                    "Sub",
-                    inputs=["new_cout", "init_v"],
-                    outputs=["new_start_v2"],
-                    name="upsqueeze2",
-                ),
-            ]
-        )
+        graph_txt = """
+            Loop (float[1] input_0) => (int32[1] up_bound, int32[1] new_start_v2)
+            <float[1] const_fold_opt__17 = {10}, int64[1] reshape = {0}, int32[1] init_v = {1}, int32[1] up_value = {101}, int32[1] start_value = {10}, int64[1] while_maximum_iterations_0 = {10000}>
+            {
+                while_cond_158_while_Less_0 = Less(input_0, const_fold_opt__17)
+                while_cond_158_while_Squeeze_0 = Squeeze(while_cond_158_while_Less_0, reshape)
+                up, new_cout = Loop(while_maximum_iterations_0, while_cond_158_while_Squeeze_0, up_value, start_value)<
+                body = while_body(int64 while_while_loop_counter_0, bool cond__15_0, int32[1] while_placeholder_0, int32[1] while_add_const_0_0) => (bool[1] cond___while_Less_0, int32[1] while_placeholder_0, int32[1] while_Identity_2_0)
+                <int32[1] step_value = {2}>
+                {
+                    while_Identity_2_0 = Add(while_add_const_0_0, step_value)
+                    cond___while_Less_0 = Less(while_Identity_2_0, while_placeholder_0)
+                }
+                >
+                up_bound = Add(up, init_v)
+                new_start_v2 = Sub(new_cout, init_v)
+            }
+            """
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, quant_modes=["f32", "f16", "bf16"])
 
     def test_Shape(self, case_name):
         input_shape = [2, 3, 4]
         output_shape = [1]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.INT64, output_shape)
-        shape_node = helper.make_node(
-            'Shape',  # node name
-            ['input'],  # inputs
-            ['shapeinfo'],  # outputs
-            start=0,
-            end=2,
-        )
+        graph_txt = """
+            Shape (float%s input) => (int64%s output)
+            <int64 starts, int64 ends, int64 axes, int64 steps>
+            {
+                shapeinfo = Shape<start=0, end=2>(input)
+                output = Slice(shapeinfo, starts, ends, axes, steps)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         starts = helper.make_tensor('starts', TensorProto.INT64, [1], np.array([0], np.int64))
-        ends = helper.make_tensor('ends', TensorProto.INT64,[1], np.array([1], np.int64))
-        axes = helper.make_tensor( 'axes',TensorProto.INT64,[1], np.array([0], np.int64))
-        steps = helper.make_tensor('steps', TensorProto.INT64,[1], np.array([1], np.int64))
-        slice_node = helper.make_node("Slice",   inputs=['shapeinfo','starts', 'ends', 'axes', 'steps'], outputs=['output'])
-
-
-        graph_def = helper.make_graph([shape_node, slice_node], case_name, [input], [output],
-                                      initializer=[starts, ends, axes, steps])
+        ends = helper.make_tensor('ends', TensorProto.INT64, [1], np.array([1], np.int64))
+        axes = helper.make_tensor('axes', TensorProto.INT64, [1], np.array([0], np.int64))
+        steps = helper.make_tensor('steps', TensorProto.INT64, [1], np.array([1], np.int64))
+        graph_def.initializer.extend([starts, ends, axes, steps])
         self.onnx_and_test(graph_def, case_name, static_shape=False, version=15)
 
     def test_ShapeSlice(self, case_name):
-        shape = [10,1000]
-        X = helper.make_tensor_value_info('X', TensorProto.FLOAT, shape)
-        X_Shape = helper.make_tensor_value_info('X_Shape', TensorProto.INT64,[2])
-        K = helper.make_tensor_value_info('K',TensorProto.INT64,[1])
+        shape = [10, 1000]
         o_shape = list(shape)
         o_shape[-1] = shape[0]
         starts = helper.make_tensor('starts', TensorProto.INT64, [1], np.array([0], np.int64))
-        ends = helper.make_tensor('ends', TensorProto.INT64,[1], np.array([1], np.int64))
-        axes = helper.make_tensor( 'axes',TensorProto.INT64,[1], np.array([0], np.int64))
-        steps = helper.make_tensor('steps', TensorProto.INT64,[1], np.array([1], np.int64))
-        shape_node = helper.make_node('Shape', inputs=['X'], outputs=['X_Shape'])
-        slice_node = helper.make_node("Slice",   inputs=['X_Shape','starts', 'ends', 'axes', 'steps'], outputs=['K'])
-        graph_def = helper.make_graph([shape_node, slice_node],case_name, [X],[K], initializer=[starts, ends, axes, steps])
+        ends = helper.make_tensor('ends', TensorProto.INT64, [1], np.array([1], np.int64))
+        axes = helper.make_tensor('axes', TensorProto.INT64, [1], np.array([0], np.int64))
+        steps = helper.make_tensor('steps', TensorProto.INT64, [1], np.array([1], np.int64))
+        graph_txt = """
+            ShapeSlice (float%s X) => (int64[1] K)
+            <int64 starts, int64 ends, int64 axes, int64 steps>
+            {
+                X_Shape = Shape(X)
+                K = Slice(X_Shape, starts, ends, axes, steps)
+            }
+            """ % (shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([starts, ends, axes, steps])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_ShapeCast(self, case_name):
-        shape = [10,1000]
-        X = helper.make_tensor_value_info('X', TensorProto.FLOAT, shape)
-        X_Shape = helper.make_tensor_value_info('X_Shape', TensorProto.INT64,[2])
-        K = helper.make_tensor_value_info('K',TensorProto.INT64,[1])
+        shape = [10, 1000]
         o_shape = list(shape)
         o_shape[-1] = shape[0]
-        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, o_shape)
-        Y_Index = helper.make_tensor_value_info('Y_Index',TensorProto.INT64,o_shape)
         starts = helper.make_tensor('starts', TensorProto.INT64, [1], np.array([0], np.int64))
-        ends = helper.make_tensor('ends', TensorProto.INT64,[1], np.array([1], np.int64))
-        axes = helper.make_tensor( 'axes',TensorProto.INT64,[1], np.array([0], np.int64))
-        steps = helper.make_tensor('steps', TensorProto.INT64,[1], np.array([1], np.int64))
-        shape_node = helper.make_node('Shape', inputs=['X'], outputs=['X_Shape'])
-        slice_node = helper.make_node("Slice",   inputs=['X_Shape','starts', 'ends', 'axes', 'steps'], outputs=['K'])
-        topk_node = helper.make_node('TopK', inputs= ['X','K'],outputs=['Y_Value','Y_Index'], axis=-1, largest=True)
-        graph_def = helper.make_graph([shape_node, slice_node, topk_node],case_name, [X],[Y_Value, Y_Index], initializer=[starts, ends, axes, steps])
+        ends = helper.make_tensor('ends', TensorProto.INT64, [1], np.array([1], np.int64))
+        axes = helper.make_tensor('axes', TensorProto.INT64, [1], np.array([0], np.int64))
+        steps = helper.make_tensor('steps', TensorProto.INT64, [1], np.array([1], np.int64))
+        graph_txt = """
+            ShapeCast (float%s X) => (float%s Y_Value, int64%s Y_Index)
+            <int64 starts, int64 ends, int64 axes, int64 steps>
+            {
+                X_Shape = Shape(X)
+                K = Slice(X_Shape, starts, ends, axes, steps)
+                Y_Value, Y_Index = TopK<axis=-1, largest=1>(X, K)
+            }
+            """ % (shape, o_shape, o_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([starts, ends, axes, steps])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_ConstOfShape(self, case_name):
         input_shape = [4, 10, 27, 27]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        shape_node = helper.make_node(
-            'Shape',  # node name
-            ['input'],  # inputs
-            ['soutput'],  # outputs
-        )
-        cos_node = helper.make_node(
-            'ConstantOfShape',  # node name
-            ['soutput'],  # inputs
-            ['output'],  # outputs
-        )
-        graph_def = helper.make_graph(
-            [shape_node, cos_node],
-            case_name,
-            [input],
-            [output],
-        )
+        graph_txt = """
+            ConstOfShape (float%s input) => (float%s output)
+            {
+                soutput = Shape(input)
+                output = ConstantOfShape(soutput)
+            }
+            """ % (input_shape, input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_ShapeUnsqueeze(self, case_name):
@@ -6239,28 +5537,16 @@ class ONNX_IR_TESTER(object):
         axes = [0, 2]
         axes_tensor = numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes")
         unsqueeze_shape = [1, output_shape[0], 1]
-
-        graph_def = helper.make_graph(
-            name=case_name,
-            inputs=[
-                helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape),
-            ],
-            outputs=[
-                helper.make_tensor_value_info('unsqueezeinfo', TensorProto.INT64, unsqueeze_shape)
-            ],
-            initializer=[numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes")],
-            nodes=[
-                helper.make_node(
-                    'Shape',  # node name
-                    inputs=['input'],  # inputs
-                    outputs=['shapeinfo'],  # outputs
-                ),
-                helper.make_node(
-                    "Unsqueeze",  # node name
-                    inputs=['shapeinfo', "axes"],  # inputs
-                    outputs=['unsqueezeinfo'],  # outputs
-                )
-            ])
+        graph_txt = """
+            ShapeUnsqueeze (float%s input) => (int64%s unsqueezeinfo)
+            <int64 axes>
+            {
+                shapeinfo = Shape(input)
+                unsqueezeinfo = Unsqueeze(shapeinfo, axes)
+            }
+            """ % (input_shape, unsqueeze_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([axes_tensor])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_ShapeSqueeze(self, case_name):
@@ -6271,59 +5557,40 @@ class ONNX_IR_TESTER(object):
         axes = [0, 1]
         unsqueeze_shape = [1, 1, output_shape[0]]
         squeeze_shape = [len(input_shape)]
-        graph_def = helper.make_graph(
-            name=case_name,
-            inputs=[
-                helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape),
-            ],
-            outputs=[
-                helper.make_tensor_value_info('squeezeinfo', TensorProto.INT64, squeeze_shape)
-            ],
-            initializer=[
-                numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes_unsqueeze"),
-                numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes_squeeze")
-            ],
-            nodes=[
-                helper.make_node(
-                    'Shape',  # node name
-                    inputs=['input'],  # inputs
-                    outputs=['shapeinfo'],  # outputs
-                ),
-                helper.make_node(
-                    "Unsqueeze",  # node name
-                    inputs=['shapeinfo', "axes_unsqueeze"],  # inputs
-                    outputs=['unsqueezeinfo'],  # outputs
-                ),
-                helper.make_node(
-                    "Squeeze",  # node name
-                    inputs=['unsqueezeinfo', "axes_squeeze"],  # inputs
-                    outputs=['squeezeinfo'],  # outputs
-                )
-            ])
+        axes_unsqueeze_tensor = numpy_helper.from_array(np.array(axes, dtype=np.int64),
+                                                        name="axes_unsqueeze")
+        axes_squeeze_tensor = numpy_helper.from_array(np.array(axes, dtype=np.int64),
+                                                      name="axes_squeeze")
+        graph_txt = """
+            ShapeSqueeze (float%s input) => (int64%s squeezeinfo)
+            <int64 axes_unsqueeze, int64 axes_squeeze>
+            {
+                shapeinfo = Shape(input)
+                unsqueezeinfo = Unsqueeze(shapeinfo, axes_unsqueeze)
+                squeezeinfo = Squeeze(unsqueezeinfo, axes_squeeze)
+            }
+            """ % (input_shape, squeeze_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([axes_squeeze_tensor, axes_unsqueeze_tensor])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_Gather2(self, case_name):
         indices_data = [1]
         input_shape = [2, 3]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.INT64, [])
         indices = helper.make_tensor(name='indices',
                                      data_type=TensorProto.INT64,
                                      dims=[1],
                                      vals=indices_data)
-        shape_node = helper.make_node(
-            'Shape',  # node name
-            ['input'],  # inputs
-            ['shapeinfo'],  # outputs
-        )
-        gather_node = helper.make_node(
-            'Gather',  # node name
-            ['shapeinfo', 'indices'],  # inputs
-            ['output'],  # outputs
-        )
-        graph_def = helper.make_graph([shape_node, gather_node],
-                                      case_name, [input], [output],
-                                      initializer=[indices])
+        graph_txt = """
+            Gather2 (float%s input) => (int64 output)
+            <int64 indices>
+            {
+                shapeinfo = Shape(input)
+                output = Gather(shapeinfo, indices)
+            }
+            """ % (input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([indices])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_Gather3(self, case_name):
@@ -6344,25 +5611,20 @@ class ONNX_IR_TESTER(object):
 
     def test_Concat3(self, case_name):
         input_shape = [2, 3]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.INT64, [])
         input2 = helper.make_tensor(name='input2',
                                     data_type=TensorProto.INT64,
                                     dims=[2],
                                     vals=[1, 2])
-        shape_node = helper.make_node(
-            'Shape',  # node name
-            ['input'],  # inputs
-            ['shapeinfo'],  # outputs
-        )
-        concat_node = helper.make_node(
-            'Concat',  # node name
-            ['shapeinfo', 'input2'],  # inputs
-            ['output'],  # outputs
-            axis=0)
-        graph_def = helper.make_graph([shape_node, concat_node],
-                                      case_name, [input], [output],
-                                      initializer=[input2])
+        graph_txt = """
+            Concat3 (float%s input) => (int64 output)
+            <int64 input2>
+            {
+                shapeinfo = Shape(input)
+                output = Concat<axis=0>(shapeinfo, input2)
+            }
+            """ % (input_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        graph_def.initializer.extend([input2])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
 
     def test_Range(self, case_name):
@@ -6402,17 +5664,21 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test((x1, x2), Model(torch.mul), case_name + "Mul")
 
     def test_CumSum(self, case_name):
-        input_shape = [2,3,4,5]
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+        input_shape = [2, 3, 4, 5]
         for d in range(len(input_shape)):
             dim_input = helper.make_tensor(name="dim",
-                                    data_type=onnx.TensorProto.INT64,
-                                    dims=[1],
-                                    vals=np.array([d], dtype=np.int64))
-            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, input_shape)
-            cumsum_def = helper.make_node("CumSum", inputs=["input", "dim"], outputs=["output"])
-            graph_def = helper.make_graph([cumsum_def],
-                                        case_name, [input], [output], initializer=[dim_input])
+                                           data_type=onnx.TensorProto.INT64,
+                                           dims=[1],
+                                           vals=np.array([d], dtype=np.int64))
+            graph_txt = """
+                CumSum (float%s input) => (float%s output)
+                <int64 dim>
+                {
+                    output = CumSum(input, dim)
+                }
+                """ % (input_shape, input_shape)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            graph_def.initializer.extend([dim_input])
             input_data = {
                 "input": np.random.uniform(-100, 100, size=input_shape).astype(np.float32)
             }
@@ -6421,17 +5687,15 @@ class ONNX_IR_TESTER(object):
     def test_Round(self, case_name):
         input_shape = [1, 16, 64, 64]
         output_shape = [1, 16, 64, 64]
-
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        abs_def = helper.make_node(
-            "Round",
-            inputs=['input'],
-            outputs=['output'],
-        )
-        graph_def = helper.make_graph([abs_def], case_name, [input], [output])
+        graph_txt = """
+            Round (float%s input) => (float%s output)
+            {
+                output = Round(input)
+            }
+            """ % (input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
+
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:
@@ -6499,8 +5763,8 @@ def test_fp8(tester: ONNX_IR_TESTER):
     Y, N = True, False
     tester.test_cases = {
         # case: [test,     sg2260_support]
-        "Add":  [tester.test_Add, N],
-        "AddBcast":  [tester.test_AddBcast, N],
+        "Add": [tester.test_Add, N],
+        "AddBcast": [tester.test_AddBcast, N],
         "AddWeight": [tester.test_AddWeight, N],
         "AvgPool1d": [tester.test_AvgPool1d, N],
         "AvgPool2d": [tester.test_AvgPool2d, N],
@@ -6524,7 +5788,8 @@ def test_fp8(tester: ONNX_IR_TESTER):
         "Unsqueeze": [tester.test_Unsqueeze, Y],
     }
     for name in tester.test_cases.keys():
-        tester.test_cases[name] = tester.test_cases[name][:1] + [N] * 4 + tester.test_cases[name][1:]
+        tester.test_cases[name] = tester.test_cases[name][:1] + \
+            [N] * 4 + tester.test_cases[name][1:]
     if tester.multithread:
         import multiprocessing
         from utils.misc import collect_process
@@ -6614,7 +5879,8 @@ if __name__ == "__main__":
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     # yapf: enable
     args = parser.parse_args()
-    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread, args.num_core)
+    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple, args.disable_thread,
+                            args.num_core)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
