@@ -8,9 +8,9 @@
 # ==============================================================================
 
 from typing import Dict, Tuple
-from ..target_common import BaseTpuCmd, atomic_reg, OpInfo, Tiu, Dma, RegIndex
+from ..target_common import BaseTpuCmd, atomic_reg, OpInfo, Tiu, Dma, RegIndex, ALIGN
 from .regdef import SYS_TR_ACC_reg
-
+from .memmap import NPU_NUM, EU_NUM
 # global data and type
 # ------------------------------------------------------------
 
@@ -199,7 +199,24 @@ class conv_op(TiuCmd):
     description = "convolution"
 
     def ops(self, is_arch=False):
-        return 0
+        n, ic, ih, iw = self.operands[0].shape
+        n, oc, oh, ow = self.results[0].shape
+        # remains_hw = 0
+
+        has_bias = len(self.operands) > 2
+        if is_arch:
+            dtype = self.operands[0].dtype
+            ic = ALIGN(ic, NPU_NUM)
+            ow = ALIGN(oh * ow, EU_NUM(dtype))
+            oh = 1
+            oc = ALIGN(oc, NPU_NUM)
+            # iw = ALIGN(ih * iw, EU_NUM(dtype))
+            # ih = 1
+            # kw = ALIGN(kw, 64)
+            # remain_hw = ALIGN(ih*iw, EU_NUM) - ih*iw
+        out_size = n * oc * oh * ow
+        kh, kw = self.attribute["kernel"]
+        return out_size * (2 * ic * kh * kw - 1 + has_bias)
 
 
 class sconv_op(conv_op):
@@ -215,7 +232,19 @@ class mm_op(TiuCmd):
     description = "matrix multiply"
 
     def ops(self, is_arch=False):
-        return 0
+        m, lk = self.operands[0].shape
+        rk, n = self.operands[1].shape
+        if self.attribute["l_trans"]:
+            lk, m = m, lk
+        assert lk == rk
+        k = lk
+        res_add = self.reg.res_add
+        has_bias = len(self.operands) > 2
+        if is_arch:
+            dtype = self.operands[0].dtype
+            # align the column of B
+            n = ALIGN(self.reg.res0_c, NPU_NUM) * ALIGN(self.reg.res0_w, EU_NUM(dtype))
+        return m * n * (2 * k - 1 + has_bias + res_add)
 
 
 class smm_op(mm_op):
@@ -231,7 +260,24 @@ class mm2_op(TiuCmd):
     description = "matrix multiply2"
 
     def ops(self, is_arch=False):
-        return 0
+        m, lk = self.operands[0].shape
+        rk, n = self.operands[1].shape
+        if self.eu_name == "mm2.nt":
+            rk, n = n, rk
+        elif self.eu_name == "mm2.tt":
+            rk, n = n, rk
+            lk, m = m, lk
+
+        assert lk == rk
+        k = lk
+        has_bias = len(self.operands) > 2
+
+        if is_arch:
+            dtype = self.operands[0].dtype
+            k = ALIGN(k, EU_NUM(dtype))
+            m = ALIGN(m, NPU_NUM)
+
+        return m * n * (2 * k - 1 + has_bias)
 
 
 class smm2_op(mm2_op):
@@ -253,7 +299,15 @@ class cmp_op(TiuCmd):
     description = "fused_cmpare"
 
     def ops(self, is_arch=False):
-        return 0
+        n, c, h, w = self.results[0].shape
+        # res_num = len(self.results)
+
+        hw = h * w
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            hw = ALIGN(h * w, EU_NUM(dtype))
+        return n * c * hw * 2
 
 
 class scmp_op(cmp_op):
@@ -274,8 +328,23 @@ class sfu_op(TiuCmd):
     description = "special_function"
 
     def ops(self, is_arch=False):
-        return 0
+        n, c, h, w = self.operands[0].shape
+        factor = 1
+        res_num = len(self.results)
+        if self.eu_name == "sfu.taylor_4x" or self.eu_name == "sfu.taylor":
+            factor = 2 * self.reg.opd1_n - 1  # 2* table_len -1
+        elif self.eu_name == "sfu.normalize":
+            factor = 1
+        elif self.eu_name == "sfu.rsqrt":
+            factor = self.reg.opd2_n_str + 1  # iteration times
 
+        hw = h * w
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            hw = ALIGN(w * h, EU_NUM(dtype))
+
+        return res_num * n * c * hw * factor
 
 class ssfu_op(sfu_op):
     name = "sSFU"
@@ -290,7 +359,13 @@ class lin_op(TiuCmd):
     description = "fused_linear"
 
     def ops(self, is_arch):
-        return 0
+        n, c, h, w = self.results[0].shape
+        factor = 2
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(w, EU_NUM(dtype))
+        return n * c * h * w * factor
 
 
 class slin_op(lin_op):
@@ -323,8 +398,12 @@ class vc_op(TiuCmd):
     description = "vector correlation"
 
     def ops(self, is_arch):
-        return 0
-
+        n, c, h, w = self.results[0].shape
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(w, EU_NUM(dtype))
+        return n * c * h * w
 
 class svc_op(vc_op):
     name = "sVC"
@@ -366,7 +445,16 @@ class ar_op(TiuCmd):
     description = "arithmetic"
 
     def ops(self, is_arch):
-        return 0
+        n, c, h, w = self.results[0].shape
+        factor = 1
+        hw = h * w
+        if self.eu_name == "arith.div":
+            factor = 5  # TODO: fix the factor
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            hw = ALIGN(w * h, EU_NUM(dtype))
+        return n * c * hw * factor
 
 
 class sar_op(ar_op):
@@ -391,7 +479,26 @@ class pord_op(TiuCmd):
     description = "depthwise or pooling"
 
     def ops(self, is_arch):
-        return 0
+        n, c, h, w = self.results[0].shape
+        kh, kw = self.reg.opd1_h, self.reg.opd1_w
+        factor = 1
+        if self.eu_name == "pord.avgpooling" or self.eu_name == "pord.maxpooling":
+            factor = len(self.results)  # TODO: fix the factor
+        elif self.eu_name == "pord.depthwise":
+            factor = 2
+        elif self.eu_name == "pord.depthwiserelu":
+            factor = 3
+        else:
+            # roi_pooling
+            kh = 1
+            kw = 1
+            factor = 2 * 4 - 1  # bilinar, ignore coords generate
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(h * w, EU_NUM(dtype))
+            h = 1
+        return n * c * h * w * (factor * kh * kw - 1)
 
 
 class spord_op(pord_op):
@@ -415,7 +522,14 @@ class rqdq_op(TiuCmd):
         return ([],) * 3
 
     def ops(self, is_arch):
-        return 0
+        n, c, h, w = self.results[0].shape
+        factor = 3  # mul, add, shift
+        hw = h * w
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            hw = ALIGN(h * w, EU_NUM(dtype))
+        return n * c * hw * factor
 
 
 class srqdq_op(rqdq_op):
@@ -445,7 +559,13 @@ class sg_op(TiuCmd):
     description = "scatter_gather"
 
     def ops(self, is_arch):
-        return 0
+        n, c, h, w = self.results[0].shape
+        factor = 1
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(w, EU_NUM(dtype))
+        return n * c * h * w * factor
 
 
 class ssg_op(sg_op):
@@ -461,7 +581,13 @@ class sgl_op(TiuCmd):
     description = "scatter_gather_line"
 
     def ops(self, is_arch):
-        return 0
+        n, c, h, w = self.results[0].shape
+        factor = 1
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            w = ALIGN(w, EU_NUM(dtype))
+        return n * c * h * w * factor
 
 
 class ssgl_op(sgl_op):
@@ -484,7 +610,22 @@ class transbc_op(TiuCmd):
     description = "TRANS && BC"
 
     def ops(self, is_arch):
-        return 0
+        n, c, h, w = self.results[0].shape
+        factor = 1
+        hw = h * w
+        if is_arch:
+            dtype = self.operands[0].dtype
+            c = ALIGN(c, NPU_NUM)
+            if self.eu_name in (
+                "tsbc.l_copy",
+                "tsbc.l_bc",
+                "tsbc.s_bc",
+                "tsbc.s_distribute",
+            ):
+                hw = ALIGN(h * w, EU_NUM(dtype))
+            else:
+                hw = h * ALIGN(w, EU_NUM(dtype))
+        return n * c * hw * factor
 
 
 class stransbc_op(transbc_op):
