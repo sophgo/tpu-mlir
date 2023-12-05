@@ -225,13 +225,16 @@ class ConstantFolding(object):
         for name in input_names:
             shape = self.get_shape(name)
             input_shapes.update({name: shape})
-        
+
         if len(test_input) == 1 and test_input[0].endswith('.npz'):
             inputs_npz = np.load(test_input[0])
             for name in inputs_npz.files:
-                inputs[name] = inputs_npz[name]    
+                elem_type = self.get_elem_type(name)
+                elem_type = self.get_np_type_from_elem_type(elem_type)
+                inputs[name] = inputs_npz[name].astype(elem_type)    
         else:
             inputs.update(self.generate_specific_rand_input(input_shapes))
+
 
         outputs = [x.name for x in sess.get_outputs()]
         run_options = rt.RunOptions()
