@@ -111,6 +111,7 @@ public:
 
         auto r_order = module::getI64Array(r_trans_op.getOrder());
         auto r_shape = module::getShape(r_trans_op.getOutput());
+        auto r_in_shape = module::getShape(r_trans_op.getInput());
         auto l_in_shape = module::getShape(l_trans_op.getInput());
         auto l_out_shape = module::getShape(l_trans_op.getOutput());
         if (false == (r_order->size() == 4 && r_order->at(0) == 0 &&
@@ -122,6 +123,23 @@ public:
         auto r_trans = op.getRightTranspose();
         if (r_order->at(2) == 3 && r_order->at(3) == 1) {
           r_trans = !r_trans;
+        }
+
+        // Check Shape (left.shape[-1] == right.shape[-2])
+        if (!(l_in_shape.size() >= 2 && r_in_shape.size() >= 2))
+          return failure();
+        if (!(l_in_shape[l_in_shape.size() - 1] ==
+              r_in_shape[r_in_shape.size() - 2]))
+          return failure();
+        if (l_in_shape.size() > 2 && r_in_shape.size() > 2) {
+          int min_len = std::min(l_in_shape.size(), r_in_shape.size());
+          for (int i = 0; i < min_len - 2; i++) {
+            int ls = l_in_shape[l_in_shape.size() - 3 - i];
+            int rs = r_in_shape[r_in_shape.size() - 3 - i];
+            if (!(ls == rs || ls == 1 || rs == 1)) {
+              return failure();
+            }
+          }
         }
 
         // Define Param
