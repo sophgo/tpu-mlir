@@ -41,20 +41,25 @@ public:
     if (outer_dim != 1) {
       return failure();
     }
+    int multi_use_times = 0;
     for (auto in : op.getInputs()) {
       if (module::isWeight(in)) {
         return failure();
       }
+      int same_op_times = 0;
       if (in.hasOneUse() == false) {
-        int times = 0;
+        multi_use_times++;
         for (auto v : op.getInputs()) {
           if (in == v) {
-            times++;
+            same_op_times++;
           }
         }
-        if (times > 1) {
+        if (same_op_times > 1) {
           return failure();
         }
+      }
+      if (multi_use_times > 2){
+        return failure();
       }
       auto in_op = in.getDefiningOp();
       if (in_op == nullptr) {
