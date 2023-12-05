@@ -648,6 +648,57 @@ public:
 };
 
 /**
+ * permute \
+ *          => Add => Add -> permute
+ * permute /
+ */
+class MovePermuteAfterAdd : public OpRewritePattern<tpu::AddOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::AddOp op,
+                                PatternRewriter &rewriter) const override {
+    auto l_permute_op = op.getOperand(0).getDefiningOp<tpu::PermuteOp>();
+    auto r_permute_op = op.getOperand(1).getDefiningOp<tpu::PermuteOp>();
+    if (!l_permute_op || !r_permute_op)
+      return failure();
+    auto l_in_shape = module::getShape(l_permute_op.getInput()).vec();
+    auto r_in_shape = module::getShape(r_permute_op.getInput()).vec();
+    if (l_in_shape.size() != r_in_shape.size())
+      return failure();
+    auto l_permute_order = *module::getI64Array(l_permute_op.getOrder());
+    auto r_permute_order = *module::getI64Array(r_permute_op.getOrder());
+    if (l_permute_order != r_permute_order)
+      return failure();
+    auto loc = op.getLoc();
+    op.setOperand(0, l_permute_op.getInput());
+    op.setOperand(1, r_permute_op.getInput());
+    auto output = op.getOutput();
+    auto output_type = output.getType();
+    std::vector<int64_t> new_shape;
+    for (int i = 0; i < l_in_shape.size(); ++i) {
+      new_shape.push_back(std::max(l_in_shape[i], r_in_shape[i]));
+    }
+    module::setShape(output, new_shape);
+    module::setLocSuffix(op, "before_permute");
+
+    if (l_permute_op.getOutput().getUsers().empty()) {
+      rewriter.eraseOp(l_permute_op);
+    }
+    if (r_permute_op.getOutput().getUsers().empty()) {
+      rewriter.eraseOp(r_permute_op);
+    }
+
+    rewriter.setInsertionPointAfterValue(output);
+    std::vector<NamedAttribute> attrs;
+    attrs.emplace_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(l_permute_order)));
+    auto new_permute_op =
+        rewriter.create<tpu::PermuteOp>(loc, output_type, ValueRange{output, module::getNoneOp(op)}, attrs);
+    output.replaceAllUsesExcept(new_permute_op.getOutput(), new_permute_op);
+    return success();
+  }
+};
+
+/**
  * reshape \
  *          => Add => Add -> reshape
  * reshape /
@@ -1306,11 +1357,13 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<LargePadConvPattern>(ctx, 9);
   patterns
       ->add<MatMulHdimBatchPattern, MatMulRemoveReshapePattern,
-            MatMulLeftReusePattern, MoveReshapeAfterAdd, GroupConv2NormalConv,
+            MatMulLeftReusePattern, GroupConv2NormalConv,
+            MovePermuteAfterAdd, MoveReshapeAfterAdd,
             TpuReshapeReorderPattern, PermuteAddWeightReorderPattern,
             MaskedFillPermuteMove, PermuteFuse, PermuteFuseAddSoftmax,
-            patterns::FuseRepeatPattern<tpu::ReshapeOp>, GatherElementsPattern,
-            ScatterElementsPattern, PermuteReshapeFuse>(ctx, 8);
+            patterns::FuseRepeatPattern<tpu::ReshapeOp>, PermuteReshapeFuse,
+            GatherElementsPattern, ScatterElementsPattern,
+            PermuteReorderPattern, PermutePadSwap>(ctx, 8);
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
 }
 } // namespace tpu
