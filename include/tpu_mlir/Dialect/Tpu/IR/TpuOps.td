@@ -1748,6 +1748,9 @@ def Tpu_DivOp: Tpu_Op<"Div", [
   );
 
   let results = (outs AnyRankedTensor:$output);
+  let extraClassDeclaration = [{
+    void assign_fw_param(void *param);
+  }];
 }
 
 def Tpu_SliceOp: Tpu_Op<"Slice", [
