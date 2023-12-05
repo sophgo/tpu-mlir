@@ -46,9 +46,10 @@ class ONNX_IR_TESTER(object):
             "AddBcast":     (self.test_AddBcast,      Y, Y, N, N, Y),
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N, Y),
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N),  # failed cases
+            "Atanh":        (self.test_Arctanh,       Y, Y, Y, N, Y),
             "Arg":          (self.test_Arg,           Y, Y, Y, Y, Y),
-            "AddWeight":     (self.test_AddWeight,    Y, Y, Y, Y, Y),
-            "AddWeight2":     (self.test_AddWeight2,  Y, Y, Y, Y, Y),
+            "AddWeight":    (self.test_AddWeight,     Y, Y, Y, Y, Y),
+            "AddWeight2":   (self.test_AddWeight2,    Y, Y, Y, Y, Y),
             "AvgPool1d":    (self.test_AvgPool1d,     Y, Y, Y, Y, Y),
             "AvgPool2d":    (self.test_AvgPool2d,     Y, Y, Y, Y, Y),
             "AvgPool3d":    (self.test_AvgPool3d,     N, Y, Y, Y, Y),
@@ -2035,6 +2036,16 @@ class ONNX_IR_TESTER(object):
         tanh_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
         graph_def = helper.make_graph([tanh_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
+
+    def test_Arctanh(self, case_name):
+        input_shape = [1, 3, 32, 32]
+        # The value range of arctanh is (-1,1)
+        input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -0.99, 0.99)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        arctanh_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
+        graph_def = helper.make_graph([arctanh_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def, input_data={'input': input_data})
 
     def test_Log(self, case_name):
         input_shape = [1, 3, 32, 32]

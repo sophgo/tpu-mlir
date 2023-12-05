@@ -30,6 +30,7 @@ void tpu::ActiveOp::codegen_global_bm1684() {
 
     int activate_type = (int)getMode();
     switch(getMode()){
+       case ActiveMode::ARCTANH:
        case ActiveMode::ELU:
        case ActiveMode::EXP:
        case ActiveMode::ABSVAL:
@@ -77,6 +78,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684(
             case ActiveMode::ABSVAL:
             case ActiveMode::LN:
             case ActiveMode::TANH:
+            case ActiveMode::ARCTANH:
             case ActiveMode::SQRT:
             case ActiveMode::SIGMOID: buffer_size = tensor_size; break;
             case ActiveMode::ELU:
@@ -132,6 +134,7 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
         case ActiveMode::ABSVAL:
         case ActiveMode::FLOOR:
         case ActiveMode::TANH:
+        case ActiveMode::ARCTANH:
         case ActiveMode::LN:
         case ActiveMode::GELU:
         case ActiveMode::SQRT:
@@ -181,6 +184,7 @@ int32_t tpu::ActiveOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
     case ActiveMode::EXP:
     case ActiveMode::LN:
     case ActiveMode::TANH:
+    case ActiveMode::ARCTANH:
     case ActiveMode::SIGMOID: need_buffer = true; break;
     case ActiveMode::FLOOR:
     case ActiveMode::GELU:

@@ -50,6 +50,7 @@ class TORCH_IR_TESTER(object):
             "Add5d":            (self.test_Add5d,             N, Y, Y, Y),
             "Addmm":            (self.test_Addmm,             N, Y, Y, Y),
             "Arange":           (self.test_Arange,            N, Y, Y, Y),
+            "Arctanh":          (self.test_Arctanh,           Y, Y, Y, N),
             "Attention":        (self.test_Attention,         N, Y, Y, Y),
             "AttentionNew":     (self.test_AttentionNew,      N, Y, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,         Y, Y, Y, Y),
@@ -1765,6 +1766,29 @@ class TORCH_IR_TESTER(object):
             _test_math(f)
 
     #######################################################################
+    # arctanh
+    # ------------
+    def test_Arctanh(self):
+        """Arctanh"""
+
+        def _test_arctanh(func, min=-1, max=1):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y = func(x)
+                    return y
+
+            self.trace_and_test([(4, 3, 16, 16)], Model(), [self.Desc('float32', min, max)])
+
+        for f in [torch.arctanh]:
+            # The value range of arctanh is (-1,1)
+            _test_arctanh(f)
+
+    #######################################################################
     # Tile
     # ------------
     def test_Tile(self):
@@ -3121,7 +3145,7 @@ class TORCH_IR_TESTER(object):
                     super(Model, self).__init__()
 
                 def forward(self, x):
-                    y = torch.unbind(x, dim=dim)                
+                    y = torch.unbind(x, dim=dim)
                     return y
             self.trace_and_test(shape, Model())
 
