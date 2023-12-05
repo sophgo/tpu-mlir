@@ -169,6 +169,40 @@ uint32_t tpu::MulOp::dyn_codegen_global_bm1684(void *ir_layer_info) {
 int64_t tpu::MulOp::get_fw_type_bm1684() { return FW_BMNET_BROADCAST_BINARY; }
 
 int32_t tpu::MulOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
-  llvm_unreachable("Not Implemented");
-  return 0;
+  int fw_ir_length = 0;
+  ir_layer_info_t *add_layer_info = (ir_layer_info_t *)ir_layer_info;
+  fw_broadcast_binary_layer_param_t fw_broadcast_binary_layer_param = {0};
+
+  dynamic_common_ir_layer_info(add_layer_info, getInputs()[0], getOutput());
+
+  assign_fw_param((void *)&fw_broadcast_binary_layer_param);
+  add_layer_info->fw_layer_param_u.fw_broadcast_binary_layer_param =
+      fw_broadcast_binary_layer_param;
+  fw_ir_length += sizeof(fw_broadcast_binary_layer_param_t);
+
+  // get layer input and output
+  add_layer_info->ir_tensor_info_v.clear();
+  // input tensor
+  for (int i = 0; i < getInputs().size(); ++i) {
+    dynamic_push_back_local_tensor(add_layer_info->ir_tensor_info_v,
+                                   getInputs()[i]);
+  }
+  // output tensor
+  dynamic_push_back_local_tensor(add_layer_info->ir_tensor_info_v, getOutput());
+
+  if (add_layer_info->data_size != DSIZE_FP32) {
+    dynamic_push_back_local_buffer(add_layer_info->ir_tensor_info_v,
+                                   get_tensor_id(getInputs()[0]), getOutput());
+  }
+
+  // compute fw ir info length for input and output
+  fw_ir_length += (uint32_t)(getInputs().size() + 1) * (2 * sizeof(uint32_t));
+
+  if (add_layer_info->data_size != DSIZE_FP32)
+    fw_ir_length += sizeof(uint32_t);
+
+  // add fw ir length for output consumer number
+  fw_ir_length += sizeof(uint32_t);
+
+  return fw_ir_length;
 }
