@@ -155,6 +155,8 @@ class TORCH_IR_TESTER(object):
             "InfError":         (self.test_InfError,          N, Y, Y, N),
             "SplitReshape":     (self.test_SplitReshape,      N, Y, Y, Y),
             "WeightMultiUse":   (self.test_WeightMultiUse,    Y, Y, Y, Y),
+            ## Canonicalization
+            "MovePermuteAfterAdd": (self.test_MovePermuteAfterAdd, N, Y, Y, N)
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -3153,6 +3155,33 @@ class TORCH_IR_TESTER(object):
         _test_unbind([(10, 10, 10, 10)], dim=1)
         _test_unbind([(10, 10, 10, 10)], dim=2)
         _test_unbind([(10, 10, 10, 10)], dim=3)
+    
+    #######################################################################
+    # MovePermuteAfterAdd
+    # ------------
+    def test_MovePermuteAfterAdd(self):
+        class Model0(torch.nn.Module):
+
+            def __init__(self):
+                super(Model0, self).__init__()
+
+            def forward(self, qk, mask, v):
+                v1 = v.permute(0, 2, 1, 3)
+                qk1 = qk.permute(0, 2, 1, 3)
+                qk2 = qk1 + mask.permute(0, 2, 1, 3)
+                w = torch.nn.functional.softmax(qk2, dim=-1)
+                wv1 = (w @ v1).permute(0, 2, 1, 3)
+                v1 = v.permute(0, 2, 1, 3)
+                qk1 = qk.permute(0, 2, 1, 3)
+                qk2 = qk1 + mask.permute(0, 2, 1, 3)
+                w = torch.nn.functional.softmax(qk2, dim=-1)
+                wv2 = (w @ v1).permute(0, 2, 1, 3)
+                return wv1, wv2
+
+        self.trace_and_test([[5,16,8,16],[5,16,8,16],[5,16,8,64]], Model0())
+        # Permute will be converted to Reshape when there is 1 in shape
+        # MovePermuteAfterAdd will be affected by PermuteToReshape Pattern
+        # self.trace_and_test([[5,1,8,16],[5,1,8,16],[5,16,8,64]], Model0())
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     try:
