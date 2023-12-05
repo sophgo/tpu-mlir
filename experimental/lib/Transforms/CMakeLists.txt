@@ -4,6 +4,7 @@ add_mlir_dialect_library(TPUMLIRCodegenPass
   TileAndFuse.cpp
   StructuredTransform.cpp
   InstrctionSelction.cpp
+  Benefit.cpp
 
   DEPENDS
   TPUMLIRSG2260Gen

@@ -10,6 +10,7 @@
 #pragma once
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Operation.h"
 #include "tpu-mlir/Dialect/SG2260/IR/SG2260Enum.h.inc"
 
 namespace tpu_mlir {
