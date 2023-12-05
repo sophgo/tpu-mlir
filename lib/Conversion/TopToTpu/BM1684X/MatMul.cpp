@@ -523,14 +523,18 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
     } else {
       operands.push_back(module::getNoneOp(op));
     }
-    auto newType = getQuantF8E5M2Type(op.getOutput());
-    rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+    auto newType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(), -1.0, 1.0);
+    auto newTType = RankedTensorType::get(module::getShape(out), newType);
+    auto new_m = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newTType, operands, attrs);
+    mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
+    new_m.getOperation()->setAttr("quant_to_fp8e5", tmp);
     return;
   }
   auto qtype_in = module::getCalibratedType(in);
   auto qtype_out = module::getCalibratedType(out);
+  auto out_max = qtype_out.getMax();
   in_scale = qtype_in.getMax() / get_f8e4m3_max();
-  out_scale = qtype_out.getMax() / get_f8e4m3_max();
+  out_scale = out_max / get_f8e4m3_max();
 
   if (p.batch > 1 && p.with_bias != 0) {
     auto bias_size = module::getNumElements(op.getBias());
@@ -587,18 +591,26 @@ void MatMulLowering::LoweringF8(PatternRewriter &rewriter,
   }
   bool with_bias = !module::isNone(op.getBias());
   attrs.push_back(rewriter.getNamedAttr("out_f8_scales", rewriter.getF64ArrayAttr(scale_f)));
+  attrs.push_back(rewriter.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(op->getContext(),
+                              tpu::RequantMode::OnlyScale)));
+  attrs.push_back(rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+
   for (auto &attr : op->getAttrs()) {
-    if (attr.getName() == "quant_mode") {
-      attrs.push_back(rewriter.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(op->getContext(),
-                                  tpu::RequantMode::OnlyScale)));
-    } else if (attr.getName() == "with_bias") {
-      attrs.push_back(rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-    } else {
-      attrs.push_back(attr);
-    }
+    attrs.push_back(attr);
   }
-  auto newType = getQuantF8E4M3Type(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+
+  auto newType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(), -scale_f, scale_f);
+  auto newOut = RankedTensorType::get(module::getShape(out), newType);
+  auto new_m = rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newOut, operands, attrs);
+  mlir::Attribute tmp = mlir::BoolAttr::get(op->getContext(), true);
+  new_m.getOperation()->setAttr("quant_to_fp8e4", tmp);
+
+  auto new_name = module::getName(new_m.getOperation()).str()+"_requant";
+  auto new_o = quant::CalibratedQuantizedType::get(rewriter.getFloat8E4M3FNType(), -out_max, out_max);
+  auto new_qtype = RankedTensorType::get(module::getShape(new_m.getOutput()), new_o);
+  auto new_q = do_requantFp(new_m.getOutput(), scale_f, 0, new_qtype, new_name, tpu::RequantMode::OnlyScale);
+  new_m.getOutput().replaceAllUsesExcept(new_q, new_q.getDefiningOp());
+  new_q.getDefiningOp()->setAttr("quant_inner_requant", tmp);
 }
 
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
