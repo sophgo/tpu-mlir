@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
 
@@ -63,16 +63,17 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
     // |    work1    |    work0    | exp coeff  |
     // | tensor_size | tensor_size |     32     |
     buffer_size = 2 * align_up(tensor_size, Arch::EU_BYTES);
-    buffer_size +=
-        align_up(32 * dtype_len, Arch::EU_BYTES);
+    buffer_size += align_up(32 * dtype_len, Arch::EU_BYTES);
     break;
   case ActiveMode::SOFT_PLUS:
     // |    work1    |    work0    | exp coeff  | log coeff |
     // | tensor_size | tensor_size |     32     | FP32?16:8 |
     buffer_size = 2 * align_up(tensor_size, Arch::EU_BYTES);
     buffer_size += align_up(32 * dtype_len, Arch::EU_BYTES);
-    if(stype.isF32()) buffer_size += align_up(16 * dtype_len, Arch::EU_BYTES);
-    else buffer_size += align_up(8 * dtype_len, Arch::EU_BYTES);
+    if (stype.isF32())
+      buffer_size += align_up(16 * dtype_len, Arch::EU_BYTES);
+    else
+      buffer_size += align_up(8 * dtype_len, Arch::EU_BYTES);
     break;
   case ActiveMode::GELU:
     buffer_size = 4 * tensor_size;
@@ -95,7 +96,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
     buffer_size = in_lmem_bytes;
     break;
   default:
-  break;
+    break;
   }
   return buffer_size;
 }

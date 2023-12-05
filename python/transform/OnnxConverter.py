@@ -143,6 +143,7 @@ class OnnxConverter(BaseConverter):
             # NOTICE: Please add the Op alphabetically !!!
             "Abs": lambda node: self.convert_abs_op(node),
             "Add": lambda node: self.convert_add_op(node),
+            "Atanh": lambda node: self.convert_arctanh_op(node),
             "ArgMax": lambda node: self.convert_arg_op(node),
             "ArgMin": lambda node: self.convert_arg_op(node),
             "And": lambda node: self.convert_cmp_op(node),
@@ -1985,6 +1986,15 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Tanh")
         op = self.getOperand(onnx_node.inputs[0])
         new_op = top.TanhOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_arctanh_op(self, onnx_node):
+        assert (onnx_node.op_type == "Atanh")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.ArctanhOp(self.unranked_type,
                             op,
                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                             ip=self.mlir.insert_point).output

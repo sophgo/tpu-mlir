@@ -1348,7 +1348,7 @@ def Top_CoshOp: Top_Op<"Cosh"> {
   let summary = "Cosh operator";
 
   let description = [{
-    Calculates the Cosh of the giventanh input tensor, element-wise.
+    Calculates the Cosh of the given input tensor, element-wise.
   }];
 
   let arguments = (ins
@@ -1377,6 +1377,20 @@ def Top_SinhOp: Top_Op<"Sinh"> {
 
   let description = [{
     Calculates the Sinh of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_ArctanhOp: Top_Op<"Arctanh">{
+  let summary = "Arctanh operator";
+
+  let description = [{
+    Calculates the Arctanh of the given input tensor.
   }];
 
   let arguments = (ins

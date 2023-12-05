@@ -79,6 +79,7 @@ class TorchConverter(BaseConverter):
             "aten::add": lambda node: self.convert_add_op(node),
             "aten::addmm": lambda node: self.convert_addmm_op(node),
             "aten::arange": lambda node: self.convert_arange_op(node),
+            "aten::atanh": lambda node: self.convert_math_op(node, "arctanh"),
             "aten::avg_pool1d": lambda node: self.convert_avgpool_op(node),
             "aten::avg_pool2d": lambda node: self.convert_avgpool_op(node),
             "aten::avg_pool3d": lambda node: self.convert_avgpool_op(node),
@@ -1038,7 +1039,7 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.name, new_op)
 
     def convert_math_op(self, torch_node: TorchNode, mode: str):
-        assert mode in ["cos", "cosh", "sin", "sinh", "tan", "tanh", "exp", "sign"]
+        assert mode in ["cos", "cosh", "sin", "sinh", "tan", "tanh", "exp", "sign", "arctanh"]
         op0 = self.getOp(torch_node.inputs[0])
         cmd = "top.%sOp(self.unranked_type, op0, loc=self.get_loc(torch_node.name), ip=self.mlir.insert_point).output" % mode.capitalize(
         )
@@ -2270,7 +2271,7 @@ class TorchConverter(BaseConverter):
         indices = new_op.indices
         self.addOperand(torch_node.outputs[0], values)
         self.addOperand(torch_node.outputs[1], indices)
-        
+
 
     def convert_unbind_unpack(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])

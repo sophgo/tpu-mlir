@@ -106,6 +106,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::HSWISH:
     active_func(p, num_element, [](double val) { return hswish(val); });
     break;
+  case ActiveMode::ARCTANH:
+    active_func(p, num_element, [](double val) { return std::atanh(val); });
+    break;
   case ActiveMode::TAN:
     active_func(p, num_element, [](double val) { return std::tan(val); });
     break;
@@ -116,8 +119,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
     active_func(p, num_element, [](double val) { return gelu(val); });
     break;
   case ActiveMode::SOFT_PLUS:
-    active_func(p, num_element,
-              [](double val) { return val > 20 ? val : std::log(std::exp(val) + 1); });
+    active_func(p, num_element, [](double val) {
+      return val > 20 ? val : std::log(std::exp(val) + 1);
+    });
     break;
   case ActiveMode::FLOOR:
     active_func(p, num_element, [](double val) { return std::floor(val); });
@@ -194,7 +198,8 @@ void tpu::ActiveOp::assign_fw_param(void *param) {
 
 ArrayAttr tpu::ActiveOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
-  AffineMap identity_map = AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
+  AffineMap identity_map =
+      AffineMap::getMultiDimIdentityMap(shape.size(), getContext());
   SmallVector<AffineMap> indexingMaps{identity_map, identity_map};
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 };
