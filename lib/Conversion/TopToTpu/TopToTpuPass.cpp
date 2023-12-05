@@ -1062,6 +1062,9 @@ void ConvertTopToTpu::cast_process() {
           if (module::isWeight(opd) || module::isNone(opd)) {
             continue;
           }
+          auto inner_requant = op->getAttr("quant_inner_requant");
+          if (inner_requant)
+            continue;
           auto mode = TypeCastMode::DO_NOTHING;
           mlir::Type target_type;
           if (auto typeIf = dyn_cast<TypeInterface>(op)) {
@@ -1069,7 +1072,7 @@ void ConvertTopToTpu::cast_process() {
           } else if (isa<ReturnOp>(op)) {
             auto stype = module::getStorageType(opd);
             if (module::isUniformQuantized(opd) || stype.isBF16() ||
-                stype.isF16() || stype.isFloat8E4M3FN() || stype.isFloat8E5M2()) {
+                stype.isF16() || stype.isFloat8E4M3FN() || stype.isFloat8E5M2() || (stype.isF32() && module::isCalibratedType(opd))) {
               target_type = type_verify_case_type(op, idx, retTypes[idx], mode);
             }
           } else {
