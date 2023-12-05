@@ -361,13 +361,16 @@ TEST(AffineTranform, Solver) {
   Builder builder(&context);
 
   std::string affineMapAsm1 = R"mlir([
-             affine_map<(d0, d1, d2, d3)[s0, s1] -> (d0, d1+s0*d2, d3)>,
-             affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>]
-                               )mlir";
+             affine_map<(d0, d1, d2, d3)[s0] -> (d0, d1+s0*d2, d3)>,
+             affine_map<(d0, d1, d2, d3) -> (d0, d1, d3, d2)>,
+             affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>
+                              ])mlir";
 
   std::string affineMapAsm2 = R"mlir([
              affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>,
-             affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>])mlir";
+             affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>,
+             affine_map<(d0, d1, d2, d3) -> (d0, d1, d2, d3)>
+                              ])mlir";
 
   auto affineMaps1 = getIndexingMapsVector(affineMapAsm1, &context);
   auto affineMaps2 = getIndexingMapsVector(affineMapAsm2, &context);
@@ -389,7 +392,7 @@ TEST(AffineTranform, Solver) {
 
   auto s = Solver(target, 4);
   auto out = s.solve(source);
-  // out.dump();
+  out.dump();
   EXPECT_TRUE(out.size() > 0);
-  // llvm::errs() << out.size() << "/" << s.getAllPath() << "\n";
+  llvm::errs() << out.size() << "/" << s.getAllPath() << "\n";
 }

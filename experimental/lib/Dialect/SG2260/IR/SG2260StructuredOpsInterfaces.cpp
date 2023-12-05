@@ -71,7 +71,7 @@ struct ArithBinaryOpTraits {
 
   AffineMap getAccelerateMap() {
     const StringLiteral accelerateMap =
-        R"mlir(affine_map<(d0, d1, d2, d3) -> (0, 64, 1, 32)>)mlir";
+        R"mlir(affine_map<(d0, d1, d2, d3) -> (1, 64, 1, 32)>)mlir";
     return cast<AffineMapAttr>(mlir::parseAttribute(accelerateMap, context))
         .getValue();
   };

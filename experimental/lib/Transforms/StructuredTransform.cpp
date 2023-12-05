@@ -13,27 +13,11 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 #include "llvm/ADT/STLExtras.h"
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/Support/raw_ostream.h>
 
 namespace tpu_mlir {
 using namespace mlir;
-
-bool operator==(const ComputePattern &lhs, const ComputePattern &rhs) {
-  if (lhs.indexingMaps.size() != rhs.indexingMaps.size())
-    return false;
-  for (auto [a, b] : llvm::zip(lhs.indexingMaps, rhs.indexingMaps)) {
-    if (a != b)
-      return false;
-  }
-  for (auto [a, b] : llvm::zip(lhs.iteratorTypes, rhs.iteratorTypes)) {
-    if (a != b)
-      return false;
-  }
-  return true;
-}
-
-bool operator!=(const ComputePattern &lhs, const ComputePattern &rhs) {
-  return !(lhs == rhs);
-}
 
 std::optional<ComputePattern> Unroll::run(const ComputePattern &source) {
   auto c0 = getAffineConstantExpr(0, source.indexingMaps[0].getContext());
@@ -206,12 +190,47 @@ std::optional<ComputePattern> DecomposeExpr::run(const ComputePattern &source) {
   return ComputePattern{outMaps, source.iteratorTypes};
 }
 
-SmallVector<bool> itov(uint64_t num, int width) {
+inline SmallVector<bool> itov(uint64_t num, int width) {
   SmallVector<bool> boolVector;
   for (int i = width - 1; i >= 0; --i) {
     boolVector.push_back((num & (1 << i)) != 0);
   }
   return boolVector;
+}
+
+inline auto getParallelDims(ArrayRef<utils::IteratorType> iteratorTypes) {
+  return llvm::count_if(
+      iteratorTypes, [](auto x) { return x == utils::IteratorType::parallel; });
+}
+
+inline auto getReductionDims(ArrayRef<utils::IteratorType> iteratorTypes) {
+  return iteratorTypes.size() - getParallelDims(iteratorTypes);
+}
+
+inline bool isPermuted(ArrayRef<AffineExpr> exprs) {
+  int64_t last = -1;
+  for (auto expr : exprs) {
+    if (auto dim = dyn_cast<AffineDimExpr>(expr)) {
+      if (dim.getPosition() < last)
+        return true;
+      last = dim.getPosition();
+    }
+  }
+  return false;
+}
+
+inline std::optional<SmallVector<bool>>
+getPermutedVector(ArrayRef<AffineMap> mapsA, ArrayRef<AffineMap> mapsB) {
+  SmallVector<bool> outs;
+  outs.reserve(mapsA.size());
+  bool all = false;
+  for (auto [a, b] : llvm::zip(mapsA, mapsB)) {
+    outs.push_back(isPermuted(a.getResults()) || isPermuted(b.getResults()));
+    all |= outs.back();
+  }
+  if (all)
+    return outs;
+  return std::nullopt;
 }
 
 void Solver::driver(const ComputePattern &source, Transforms &transforms,
@@ -220,20 +239,21 @@ void Solver::driver(const ComputePattern &source, Transforms &transforms,
     return transforms.erase();
   }
   auto const &iterSpace = source.indexingMaps[0];
-  auto const sourceDimSize = iterSpace.getNumDims();
+  auto const sourceDims = iterSpace.getNumDims();
   auto const symbSize = iterSpace.getNumSymbols();
   auto const targetDimSize = target.indexingMaps[0].getNumDims();
-
+  auto const mapSize = source.indexingMaps.size();
   // try different configuration
-  if (sourceDimSize > targetDimSize) {
-    // try Unroll
-    for (int i = 0, n = sourceDimSize; i < n; i++) {
+
+  auto dropDim = [&](int64_t start, int64_t end) {
+    // try unroll
+    for (int i = start, n = end; i < n; i++) {
       auto dim = cast<AffineDimExpr>(getAffineDimExpr(i, context));
       auto transform = Unroll(dim);
       driver(transform, source, transforms, depth);
     }
     // try mergeDim
-    for (int i = 0, n = sourceDimSize; i < n; i++) {
+    for (int i = start, n = end; i < n; i++) {
       for (int j = i + 1; j < n; j++) {
         auto dim1 = cast<AffineDimExpr>(getAffineDimExpr(i, context));
         auto dim2 = cast<AffineDimExpr>(getAffineDimExpr(j, context));
@@ -241,36 +261,47 @@ void Solver::driver(const ComputePattern &source, Transforms &transforms,
         driver(transform, source, transforms, depth);
       }
     }
-  }
+  };
 
+  auto expandDim = [&](utils::IteratorType iterTyep) {
+    for (int k = (1 << mapSize) - 1; k > 0; k--) {
+      auto mask = itov(k, mapSize);
+      auto transform = ExpandDims(iterTyep, mask);
+      driver(transform, source, transforms, depth);
+    }
+  };
+  // ------- dimension alignment
+  // parallel dimension
+  dropDim(0, sourceDims);
+  auto sourceParralelDims = getParallelDims(source.iteratorTypes);
+  auto targetParralelDims = getParallelDims(target.iteratorTypes);
+  if (sourceParralelDims < targetParralelDims) {
+    expandDim(utils::IteratorType::parallel);
+  }
+  // reduction dimension
+  auto sourceReductionDims = sourceDims - sourceParralelDims;
+  auto targetReductionDims = targetDimSize - targetParralelDims;
+  if (sourceReductionDims < targetReductionDims) {
+    expandDim(utils::IteratorType::reduction);
+  }
+  // ------- symbol alignment
   for (int i = 0, n = symbSize; i < n; i++) {
     auto symb = cast<AffineSymbolExpr>(getAffineSymbolExpr(i, context));
     auto transform = DropSymbol(symb);
     driver(transform, source, transforms, depth);
   }
-
-  auto mapSize = source.indexingMaps.size();
-  for (int i = 0, n = sourceDimSize; i < n; i++) {
-    for (int j = i + 1; j < n; j++) {
-      for (int k = (1 << mapSize) - 1; k > 0; k--) {
-        auto mask = itov(k, mapSize);
-        auto transform = Permutation({i, j}, mask);
+  // ------- indexing alignment
+  // permutation
+  if (auto needPermute =
+          getPermutedVector(source.indexingMaps, target.indexingMaps)) {
+    for (int i = 0, n = sourceDims; i < n; i++) {
+      for (int j = i + 1; j < n; j++) {
+        auto transform = Permutation({i, j}, needPermute.value());
         driver(transform, source, transforms, depth);
       }
     }
   }
-
-  if (targetDimSize > sourceDimSize) {
-    for (auto iType :
-         {utils::IteratorType::parallel, utils::IteratorType::reduction}) {
-      for (int k = (1 << mapSize) - 1; k > 0; k--) {
-        auto mask = itov(k, mapSize);
-        auto transform = ExpandDims(iType, mask);
-        driver(transform, source, transforms, depth);
-      }
-    }
-  }
-
+  // decompose expression
   for (auto [index, expr] :
        llvm::enumerate(source.indexingMaps[0].getResults())) {
     if (expr.getKind() == AffineExprKind::Add) {
@@ -279,11 +310,12 @@ void Solver::driver(const ComputePattern &source, Transforms &transforms,
     }
   }
   // clean up failed branch.
-  if (transforms.getChildren().empty())
+  if (transforms.empty())
     transforms.erase();
 }
 
 Transforms Solver::solve(const ComputePattern source) {
+  allPath = 0;
   if (source == target) {
     return Transforms();
   }
