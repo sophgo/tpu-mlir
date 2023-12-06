@@ -18,6 +18,7 @@ typedef void (*set_gdma_bw_s2l)(float GBps);
 typedef void (*set_gdma_bw_l2s)(float GBps);
 typedef void (*set_gdma_bw_l2l)(float GBps);
 typedef void (*tpu_sync_all)();
+typedef void (*set_cur_nodechip_idx)(int nodechip_idx);
 typedef void (*tpu_core_context_setup)(int, int, int);
 
 namespace tpu_mlir {
@@ -43,6 +44,7 @@ public:
   set_gdma_bw_l2s dl_set_gdma_bw_l2s;
   set_gdma_bw_l2l dl_set_gdma_bw_l2l;
   tpu_sync_all dl_tpu_sync_all;
+  set_cur_nodechip_idx dl_set_cur_nodechip_idx;
   tpu_core_context_setup dl_tpu_core_context_setup;
 
   void setCoreNum(int core = 1) final;
