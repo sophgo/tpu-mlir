@@ -21,6 +21,8 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
+  auto odtype = module::getStorageType(getOutput());
+
   if (p.hdim_is_batch || p.batch != 1 || module::getMode() == module::Mode::F8E4M3 || module::getMode() == module::Mode::F8E5M2) {
     if (!p.hdim_is_batch) {
       BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
@@ -55,6 +57,11 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
         auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
       }
+    } else if (odtype.isFloat8E4M3FN()) {
+      //spec.requant_mode = 0;
+      f64_array_t scales = module::getF64Array(getOutF8Scales().value());
+      float scale = scales->at(0);
+      spec.mul_val = *(int*)&scale;
     }
 
     BM168x::call_global_func("backend_api_batch_matmul_global", &spec,
@@ -108,6 +115,7 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
   module::getNCHW(getInput(), n0, c0, h0, w0, group_type);
   int64_t n1, c1, h1, w1;
   module::getNCHW(getRight(), n1, c1, h1, w1, group_type);
+  auto odtype = module::getStorageType(getOutput());
   // batch dim is 1
   int64_t oshape[4] = {1, 1, 1, 1};
   if (!p.left_transpose && !p.right_transpose) {
@@ -171,25 +179,35 @@ int64_t tpu::MatMulOp::getBufferSize_bm1684x(
     } else if (oshape[1] > BM168x::NPU_NUM ||
                (((oshape[3] * out_type_len) % Arch::EU_BYTES) != 0)) {
       // store output
-      buffer_size += out_type_len * ceiling_func(oshape[1], BM168x::NPU_NUM) *
+      if (!odtype.isFloat8E4M3FN()) {
+        buffer_size += out_type_len * ceiling_func(oshape[1], BM168x::NPU_NUM) *
                      align_up(oshape[3], BM168x::eu_num(out_type_len));
-    }
-  } else if (in_type_len == 1 && out_type_len != 4) {
-    if (!p.left_transpose && !p.hdim_is_batch) {
-      if (n0 != n1) {
-        // need broadcast, if n1 = 1, move n0 to c0; else n0 = 1, keep oshape[1]
-        oshape[1] *= n0;
+      } else {
+        buffer_size += sizeof(int32_t) * ceiling_func(oshape[1], BM168x::NPU_NUM) *
+                     align_up(oshape[3], BM168x::eu_num(sizeof(int32_t)));
       }
     }
-    bool buffer_optimize =
-        (ceiling_func(p.left_transpose ? oshape[1] : h0 * w0,
-                      BM168x::eu_num(in_type_len)) *
-         ceiling_func(oshape[2] * oshape[3], (int64_t)4)) > 200;
-    oshape[1] =
-        buffer_optimize ? std::min(oshape[1], BM168x::NPU_NUM) : oshape[1];
-    // store mm2 output as int32
-    buffer_size += sizeof(int32_t) * ceiling_func(oshape[1], BM168x::NPU_NUM) *
-                   align_up(oshape[3], BM168x::eu_num(sizeof(int32_t)));
+  } else if (in_type_len == 1 && out_type_len != 4) {
+    if (!odtype.isFloat8E4M3FN()) {
+      if (!p.left_transpose && !p.hdim_is_batch) {
+        if (n0 != n1) {
+          // need broadcast, if n1 = 1, move n0 to c0; else n0 = 1, keep oshape[1]
+          oshape[1] *= n0;
+        }
+      }
+      bool buffer_optimize =
+          (ceiling_func(p.left_transpose ? oshape[1] : h0 * w0,
+                        BM168x::eu_num(in_type_len)) *
+          ceiling_func(oshape[2] * oshape[3], (int64_t)4)) > 200;
+      oshape[1] =
+          buffer_optimize ? std::min(oshape[1], BM168x::NPU_NUM) : oshape[1];
+      // store mm2 output as int32
+      buffer_size += sizeof(int32_t) * ceiling_func(oshape[1], BM168x::NPU_NUM) *
+                    align_up(oshape[3], BM168x::eu_num(sizeof(int32_t)));
+    } else {
+      buffer_size += sizeof(int32_t) * n0 * ceiling_func(oshape[1], BM168x::NPU_NUM) *
+                    align_up(oshape[3], BM168x::eu_num(sizeof(int32_t)));
+    }
   }
 
   if (p.input_zp != 0) {
@@ -227,6 +245,7 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.requant_mode = -1;
   common.do_relu = p.do_relu;
   common.upper_limit = p.relu_limit;
+  auto odtype = module::getStorageType(getOutput());
   if (module::isUniformQuantized(getInput())) {
     common.R_zp_is_const = true;
     common.R_zp_const_val = p.right_zp;
@@ -242,6 +261,11 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       auto output_type = module::getUniformQuantizedType(getOutput());
       common.offset_val = output_type.getZeroPoint();
     }
+  } else if (odtype.isFloat8E4M3FN()) {
+    //common.requant_mode = 0;
+    f64_array_t scales = module::getF64Array(getOutF8Scales().value());
+    float scale = scales->at(0);
+    common.mul_val = *(int*)&scale;
   }
 
   BM168x::call_local_func("backend_api_batch_matmul_local", &param,
@@ -271,6 +295,7 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
     spec.requant_mode = -1;
     spec.do_relu = p.do_relu;
     spec.upper_limit = p.relu_limit;
+    auto odtype = module::getStorageType(getOutput());
     if (module::isUniformQuantized(getInput())) {
       spec.R_zp_is_const = true;
       spec.R_zp_const_val = p.right_zp;
@@ -286,6 +311,11 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
         auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
       }
+    } else if (odtype.isFloat8E4M3FN()) {
+      //spec.requant_mode = 0;
+      f64_array_t scales = module::getF64Array(getOutF8Scales().value());
+      float scale = scales->at(0);
+      spec.mul_val = *(int*)&scale;
     }
     return BM168x::dynamic_spec_to_buffer(buffer, spec);
   }
