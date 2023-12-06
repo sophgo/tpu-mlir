@@ -37,8 +37,11 @@ The other wait cmd except the last one will have a status as Status.RECIEVING
 
 import collections
 from enum import Enum
+import re
 import textwrap
 from typing import List
+
+from .opdef import tiu_sys_tr_acc
 from .regdef import sDMA_sys_reg as dma_sys, SYS_reg as tiu_sys
 from .opparam import SYS_converter, sDMA_sys_converter
 from .context import BM1688Context
@@ -115,16 +118,15 @@ class MsgCore(Node):
                 self.msg_result = f"%D{self.out_msg.cmd_id}C{self.out_msg.core_id}"
 
     def __str__(self):
-        if (
-            self.mlir_cmds[1] == self.mlir_cmds[-1]
-            and MultiCore.get_cmd_type(self.mlir_cmds[1]) == SYS_TYPE.SEND
-        ):
+        if self.msgcore_id == 0:
             repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}) {{'
-        elif (
-            self.msgcore_id == self.msgcore_num - 1
-            and MultiCore.get_cmd_type(self.mlir_cmds[1]) == SYS_TYPE.WAIT
-        ):
-            repr_head = f'{self.msg_result} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{'
+        elif self.msgcore_id == self.msgcore_num - 1:
+            msg_result = []
+            if isinstance(self.mlir_cmds[1].reg, tiu_sys):
+                msg_result = f"%B{self.mlir_cmds[1].cmd_id}C{self.mlir_cmds[1].core_id}"
+            elif isinstance(self.mlir_cmds[1].reg, dma_sys):
+                msg_result = f"%D{self.mlir_cmds[1].cmd_id}C{self.mlir_cmds[1].core_id}"
+            repr_head = f'{msg_result} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{'
         else:
             repr_head = f'{self.msg_result}, %msg{self.out_msg_id} = "@core_{self.core_id}"({self.msg_operand}, %msg{self.in_msg_id}) {{'
         repr_tail = "}"
@@ -142,8 +144,21 @@ class MsgCore(Node):
 
         ops_str_list = []
         for idx, x in enumerate(self.mlir_cmds):
-            if x.operands == []:
-                str_x = str(x)[:-1] + f", status = {self.mlir_rets[idx]}}}"
+            if x.operands == [] and not isinstance(x, tiu_sys_tr_acc):
+                if MultiCore.get_cmd_type(x) == SYS_TYPE.SEND:
+                    match1 = re.search(r"=", str(x))
+                    match2 = re.search(r",", str(x))
+                    match3 = re.search(r"{", str(x))
+                    str_x = (
+                        str(x)[: match1.start() - 1]
+                        + f", %msg{self.out_msg_id} "
+                        + str(x)[match1.start() : match2.start()]
+                        + ") "
+                        + str(x)[match3.start() : -1]
+                        + f", status = {self.mlir_rets[idx]}}}"
+                    )
+                else:
+                    str_x = str(x)[:-1] + f", status = {self.mlir_rets[idx]}}}"
             else:
                 str_x = str(x)
             ops_str_list.append(str_x)

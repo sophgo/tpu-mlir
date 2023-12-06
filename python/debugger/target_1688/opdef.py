@@ -51,7 +51,7 @@ class TiuCmd(BaseTpuCmd, Tiu):
         return 0
 
     @property
-    def name(self):
+    def detail_name(self):
         op_name = self.reg.OP_NAME
         op_info = tiu_cls[self.reg.OP_NAME]
         eu_type_id = self.reg["tsk_eu_typ"]
@@ -73,16 +73,23 @@ class TiuCmd(BaseTpuCmd, Tiu):
     def __repr__(self) -> str:
         ci = self.core_id
         if self.operands == []:
-            attr = self.attribute
-            if attr is None:
-                attr = {}
-            attr_str = f" {self.attribute}".replace(":", " =").replace("'", "")
-            return (
-                # f"core_id: {self.core_id} " +
-                f'%B{self.cmd_id}C{ci} = "{self.name}"'
-                + f"(%D{self.cmd_id_dep}C{ci})"
-                + attr_str
-            )
+            if self.attribute:
+                tmp_attr = self.attribute.copy()
+                attribute = f" {tmp_attr}".replace(":", " =").replace("'", "")
+                if "msg_id" in tmp_attr:
+                    msg_id = tmp_attr.pop("msg_id")
+                    return (
+                        f'%B{self.cmd_id}C{ci} = "{self.detail_name}"'
+                        + f"(%D{self.cmd_id_dep}C{ci}, %msg{msg_id})"
+                        + attribute
+                    )
+                return (
+                    f'%B{self.cmd_id}C{ci} = "{self.detail_name}"'
+                    + f"(%D{self.cmd_id_dep}C{ci})"
+                    + attribute
+                )
+            else:
+                return self.description
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
 
@@ -90,7 +97,7 @@ class TiuCmd(BaseTpuCmd, Tiu):
         if self.attribute:
             attribute_dic.update(self.attribute)
 
-        op_name = self.name
+        op_name = self.detail_name
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
 
@@ -140,16 +147,17 @@ class DmaCmd(BaseTpuCmd, Dma):
     def __repr__(self):
         ci = self.core_id
         if self.operands == []:
-            attr = self.attribute
-            if attr is None:
-                attr = {}
-            attr_str = f" {self.attribute}".replace(":", " =").replace("'", "")
-            return (
-                f'%D{self.cmd_id}C{ci} = "{self.name}"'
-                + f"(%B{self.cmd_id_dep}C{ci})"
-                + attr_str
-            )
-
+            if self.attribute:
+                tmp_attr = self.attribute.copy()
+                msg_id = tmp_attr.pop("msg_id")
+                attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
+                return (
+                    f'%D{self.cmd_id}C{ci} = "{self.detail_name}"'
+                    + f"(%B{self.cmd_id_dep}C{ci}, %msg{msg_id})"
+                    + attribute
+                )
+            else:
+                return self.description
         opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
         res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
 
@@ -157,7 +165,7 @@ class DmaCmd(BaseTpuCmd, Dma):
         if self.attribute:
             attribute_dic.update(self.attribute)
 
-        op_name = self.name
+        op_name = self.detail_name
 
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
@@ -170,7 +178,7 @@ class DmaCmd(BaseTpuCmd, Dma):
         )
 
     @property
-    def name(self):
+    def detail_name(self):
         op_name = self.reg.OP_NAME
         op_info = dma_cls[self.reg.OP_NAME]
         sp_func_id = self.reg["cmd_special_function"]

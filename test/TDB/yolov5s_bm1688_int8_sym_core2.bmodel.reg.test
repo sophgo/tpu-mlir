@@ -1,60 +1,48 @@
 RUN: bmodel_dis.py --format reg-set %p/bmodel/yolov5s_bm1688_int8_sym_core2.bmodel | FileCheck %s
 
 CHECK:  {
-CHECK-NEXT:    "core(0).subnet(-1).group(0)": {
-CHECK-NEXT:      "tiu": [
-CHECK-NEXT:        {
-CHECK-NEXT:          "name": "system.send_msg",
-CHECK-NEXT:          "cmd": {
-CHECK-NEXT:            "rsvd0": 0,
-CHECK-NEXT:            "rsvd1": 0,
-CHECK:            "tsk_typ": 15,
-CHECK:          "name": "system.wait_msg",
-CHECK:            "imm": 262174
-CHECK:            "tsk_eu_typ": 0,
-CHECK:            "opt_opd4_const": 1,
-CHECK:            "opt_opd1_sign": 1,
-CHECK:            "opt_opd1_const": 0,
-CHECK:            "intr_en": 0,
-CHECK:            "opd0_c": 3,
-CHECK:            "opd0_h_str": 0,
-CHECK:            "tsk_eu_typ": 3,
-CHECK:            "opd0_w": 256,
-CHECK:            "cmd_id_dep": 5,
-CHECK:            "res0_c": 32,
-CHECK:            "opt_opd1_prec": 0,
-CHECK:            "op_code": 0,
-CHECK:            "res0_n": 1,
-CHECK:            "opd0_addr": 120416,
-CHECK:            "cmd_short": 1,
-CHECK:            "rsvd0": 0,
-CHECK:            "short_opd1_str": 0,
-CHECK:            "opd2_addr": 248,
-CHECK:            "rsvd2": 0,
-CHECK:            "op_code": 0,
-CHECK:            "pwr_step": 0,
-CHECK:            "opd2_n_str": 0,
-CHECK:            "res0_n_str": 0,
-CHECK:            "opd0_w_str": 0,
-CHECK:            "cmd_id_dep": 33,
-CHECK:            "intr_en": 0,
-CHECK:            "rsvd1": 0,
-CHECK:            "res0_c_str": 12800,
-CHECK:            "opd1_h_str": 0,
-CHECK:            "opt_opd5_const": 0,
-CHECK:            "pad_mode": 0,
-CHECK:            "opd1_x_ins0": 0,
-CHECK:            "intr_en": 0,
-CHECK:            "opd0_addr": 29376,
-CHECK:            "rsvd0": 0,
+CHECK:    "core(0).subnet(-1).group(0)": {
+CHECK:      "tiu": [
+CHECK:        {
+CHECK-NEXT:         "name": "system.send_msg",
+CHECK-NEXT:         "cmd": {
+CHECK-NEXT:           "rsvd0": 0,
+CHECK-NEXT:           "rsvd1": 0,
+CHECK-NEXT:           "cmd_id_dep": 0,
+CHECK-NEXT:           "tsk_typ": 15,
+CHECK-NEXT:           "tsk_eu_typ": 8,
+CHECK-NEXT:           "reg_vld": 0,
+CHECK-NEXT:           "reg_idx": 0,
+CHECK-NEXT:           "pwr_step": 0,
+CHECK-NEXT:           "intr_en": 0,
+CHECK-NEXT:           "imm": 262174
 CHECK:          }
-CHECK:            "reserved0": 0,
 CHECK:        },
-CHECK:            "Reserved": 0,
-CHECK:          "name": "dma.tensor",
-CHECK:            "cmd_special_function": 0,
-CHECK:            "dst_hstride": 640,
-CHECK:            "src_start_addr_h8": 160,
-CHECK:            "intr_en": 0,
-CHECK:            "cmd_id_dep": 0,
-CHECK:  }
+CHECK:        {
+CHECK-NEXT:         "name": "system.wait_msg",
+CHECK-NEXT:         "cmd": {
+CHECK-NEXT:           "rsvd0": 0,
+CHECK-NEXT:           "rsvd1": 0,
+CHECK-NEXT:           "cmd_id_dep": 1,
+CHECK-NEXT:           "tsk_typ": 15,
+CHECK-NEXT:           "tsk_eu_typ": 9,
+CHECK-NEXT:           "reg_vld": 0,
+CHECK-NEXT:           "reg_idx": 0,
+CHECK-NEXT:           "pwr_step": 0,
+CHECK-NEXT:           "intr_en": 0,
+CHECK-NEXT:           "imm": 262174
+CHECK:          }
+CHECK:        },
+CHECK:        {
+CHECK-NEXT:         "name": "system_tr_wr.wr_imm",
+CHECK-NEXT:         "cmd": {
+CHECK-NEXT:           "imm0": 0,
+CHECK-NEXT:           "reg_idx0": 5,
+CHECK-NEXT:           "intr_en": 0,
+CHECK-NEXT:           "tsk_typ": 12,
+CHECK-NEXT:           "tsk_eu_typ": 0,
+CHECK-NEXT:           "reg_idx1": 6,
+CHECK-NEXT:           "reg_idx2": 127,
+CHECK-NEXT:           "imm1": 122880
+CHECK:          }
+CHECK:        },

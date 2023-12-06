@@ -118,8 +118,7 @@ class Decoder(DecoderBase):
         self.context = context
 
     def decode_tiu_cmd(
-        self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id
-    ) -> atomic_reg:
+        self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
         assert cmd_id is not None, "1688 must assign cmd_id manully"
         for head_cls in TiuHeads:  # type: cmd_base_t
             head = head_cls.from_buffer(reg_buf, offset)  # type: TiuHead
@@ -136,7 +135,7 @@ class Decoder(DecoderBase):
         reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
         buf = reg_buf[offset : offset + op_clazz.length // 8]
         param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
-        cmd = TiuCmd(
+        cmd = op_info(
             reg,
             buf=buf,
             cmd_id=cmd_id,
@@ -147,8 +146,7 @@ class Decoder(DecoderBase):
         return cmd
 
     def decode_dma_cmd(
-        self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id
-    ) -> atomic_reg:
+        self, reg_buf: memoryview, *, offset, core_id, cmd_id, subnet_id):
         assert cmd_id is not None, "1688 must assign cmd_id manully"
         head = DmaHead.from_buffer(reg_buf, offset)  # type: DmaHead
         op_info = dma_index.get(head, None)
@@ -163,7 +161,7 @@ class Decoder(DecoderBase):
         reg = self.decode_reg(op_clazz, buf=reg_buf, offset=offset)
         buf = reg_buf[offset : offset + op_clazz.length // 8]
         param_fn = self.context.opparam_converter.get(reg.OP_NAME, None)
-        cmd = DmaCmd(
+        cmd = op_info(
             reg,
             buf=buf,
             cmd_id=cmd_id,
