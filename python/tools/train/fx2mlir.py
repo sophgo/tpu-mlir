@@ -133,7 +133,7 @@ class fx2mlir(object):
             "nll_loss_forward":lambda node:self.convert_nllloss_op(node),
             ####################################################
             "constant":lambda node:self.convert_constant(node),
-            "broadcast_in_dim":lambda node:self.convert_broadcast_op(node),
+            "broadcast_in_dim":lambda node:self.convert_broadcast_op(node), #op4
             'threshold_backward':lambda node:self.convert_threshold_backward_op(node),
             '_softmax_backward_data':lambda node:self.convert_softmax_backward_data_op(node),
             'embedding_dense_backward':lambda node:self.convert_embedding_dense_backward_op(node),
@@ -1090,8 +1090,13 @@ class fx2mlir(object):
     def convert_rsqrt_op(self,node):
         dtype = self.get_output_dtypes(node)
         op0 = self.operands[node.args[0]]
+        shape = self.get_output_shapes(node)
+        length = 1
+        for n in shape[0]:
+            length*=n
         new_op = top.RsqrtOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
                             op0,
+                            length,
                             loc=self.get_loc(node.name),
                             ip=self.insert_point).output
         self.operands[node] = new_op
@@ -1201,6 +1206,30 @@ class fx2mlir(object):
                         ip=self.insert_point).output
         self.operands[node] = new_exp
 
+    def convert_broadcast_op(self,node):
+        dtype = self.get_output_dtypes(node)
+        op = self.operands[node.args[0]]
+        # shape = list(node.args[0].meta['val'].size())
+        repeat_shape = node.args[1]
+        axis = node.args[2]
+        unsqueeze_shape = [1]*len(repeat_shape)
+        unsqueeze_axis = list(range(len(repeat_shape)))
+        for idx in range(len(repeat_shape)):
+            if idx in axis:
+                unsqueeze_axis.remove(idx)
+                unsqueeze_shape[idx] = repeat_shape[idx]
+        unsqueeze_op = top.UnsqueezeOp(*self.get_tensor_type([unsqueeze_shape], dtype),
+                                     op,
+                                     unsqueeze_axis,
+                                     loc=self.get_loc(node.name+'_unsqueeze'),
+                                    ip=self.insert_point).output
+        new_op = top.ExpandOp(*self.get_tensor_type(self.get_output_shapes(node),dtype),
+                              unsqueeze_op,
+                              shape = repeat_shape,
+                              loc = self.get_loc(node.name),
+                              ip = self.insert_point).output
+        self.operands[node] = new_op
+
     def convert_amax_op(self, node,index):
         dtype = self.get_output_dtypes(node)
         op0 = self.operands[node.args[0]]
@@ -1212,7 +1241,8 @@ class fx2mlir(object):
             #f len(out) > 0 and self.check_need(out):
                 #out_needs[idx] = True
         new_op = top.ArgOp(*self.get_tensor_type(self.get_output_shapes(node), dtype),
-                           op0,
+                           *self.get_tensor_type(self.get_output_shapes(node), dtype),
+                           input = op0,
                            axis=dim,
                            keepdims=keepdims,
                            mode=StringAttr.get("ArgMax"),
@@ -1415,11 +1445,13 @@ class fx2mlir(object):
     def convert_var_op(self,node):
         op0 = self.operands[node.args[0]]
         dtype = self.get_output_dtypes(node)
-        shape = list(node.meta['val'].size())
-        dim = node.args[1][0]
-        new_op = top.VarianceOp(*self.get_tensor_type([shape], dtype),
+        reduce_list = node.args[1]
+        correction = node.kwargs['correction']
+        new_op = top.VarianceOp(
+                            *self.get_tensor_type(self.get_output_shapes(node), dtype),
                             op0,
-                            dim,
+                            reduce_list,
+                            correction,
                             loc=self.get_loc(node.name),
                             ip=self.insert_point).output
         self.operands[node] = new_op

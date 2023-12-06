@@ -17,10 +17,11 @@ from tools.train.TpuMlirModule import TpuMlirModule
 from tools.train.fx2mlir import fx2mlir
 from tools.train.fx_pass import fx_pass_for_bmm_expand
 
-PLUGIN_PATH = "/workspace/code/tpu12/tpu-train/libtorch_plugin/build/liblibtorch_plugin.so"
+PLUGIN_PATH = "/workspace/code/tpu20/tpu-train/libtorch_plugin/build/liblibtorch_plugin.so"
 torch.ops.load_library(PLUGIN_PATH)
 
 args = None
+graph_idx = 0
 
 COSINE_THRESHOLD = 0.99
 def cosine_similarity(gt_tensors, pred_tensors):
@@ -108,7 +109,12 @@ def save_fxgraph_dot(name, module):
             f.write(g.get_dot_graph().create_svg())
 
 def tpu_mlir_compiler(fx_g, example_inputs):
-    time_str = time.strftime("time%Y%m%d%H%M%S", time.localtime())
+    if 'const_name' not in args.debug:
+        time_str = time.strftime("time%Y%m%d%H%M%S", time.localtime())
+    else:
+        global graph_idx
+        time_str = f'{graph_idx}'
+        graph_idx += 1
     os.system(f'rm -rf fx_graph_dumped*;mkdir -p {time_str}')
     print('run tpu_mlir_compiler, original graph:')
     fx_g.graph.print_tabular()
@@ -185,4 +191,4 @@ def tpu_mlir_compiler(fx_g, example_inputs):
 tpu_dev = "privateuseone:0"
 device = torch.device(tpu_dev)
 #from functorch.compile import min_cut_rematerialization_partition
-aot_backend = aot_autograd(fw_compiler=tpu_mlir_compiler) #, decompositions=_get_disc_decomp()
+aot_backend = aot_autograd(fw_compiler=tpu_mlir_compiler, decompositions=_get_disc_decomp()) #

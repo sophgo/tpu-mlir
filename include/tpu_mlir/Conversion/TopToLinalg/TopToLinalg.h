@@ -7,11 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef TPU_MLIR_CONVERSION_H
-#define TPU_MLIR_CONVERSION_H
+#ifndef TPU_MLIR_CONVERSION_TOPTOLINALG_H
+#define TPU_MLIR_CONVERSION_TOPTOLINALG_H
 
-#include "tpu_mlir/Conversion/TopToTpu/TopLowering.h"
-#include "tpu_mlir/Conversion/TopToTosa/TopLowering.h"
 #include "tpu_mlir/Conversion/TopToLinalg/TopLowering.h"
 
 namespace mlir {
@@ -21,10 +19,8 @@ namespace mlir {
 
 namespace tpu_mlir {
 
-std::unique_ptr<Pass> createConvertTopToTpu();
-std::unique_ptr<Pass> createConvertTopToTosa();
 std::unique_ptr<Pass> createConvertTopToLinalg();
 
 } // namespace tpu_mlir
 
-#endif // TPU_MLIR_CONVERSION_H
+#endif // TPU_MLIR_CONVERSION_TOPTOLINALG_H
