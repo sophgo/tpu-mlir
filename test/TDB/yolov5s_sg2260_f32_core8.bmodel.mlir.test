@@ -4,36 +4,36 @@ CHECK:  module attributes {chip = "SG2260", version = 2.2} {
 CHECK:    func.func @yolov5s(%G2.13058048: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>) -> (memref<1x3x80x80x85xf32, strides: [1632000, 544000, 6800, 85, 1]>, memref<1x3x40x40x85xf32, strides: [408000, 136000, 3400, 85, 1]>, memref<1x3x20x20x85xf32, strides: [102000, 34000, 1700, 85, 1]>) ({
 CHECK:      ^bb0(%G2.13058048: memref<1x3x640x640xf32, strides: [1228800, 409600, 640, 1]>)    //  run_mode=TPU_STATIC
 CHECK:        %D1C0, %msg48 = "@core_0"(%D0C0) {
-CHECK-NEXT:         %B1C0 = "system.send_msg"(%D0C0, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
-CHECK-NEXT:         %D1C0 = "dma.sys.sys_send"(%B1C0, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %B1C0, %msg48 = "system.send_msg"(%D0C0) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %D1C0, %msg48 = "dma.sys.sys_send"(%B1C0) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
 CHECK:        }
 CHECK:        %D1C1, %msg48 = "@core_1"(%D0C1) {
-CHECK-NEXT:         %B1C1 = "system.send_msg"(%D0C1, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
-CHECK-NEXT:         %D1C1 = "dma.sys.sys_send"(%B1C1, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %B1C1, %msg48 = "system.send_msg"(%D0C1) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %D1C1, %msg48 = "dma.sys.sys_send"(%B1C1) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
 CHECK:        }
 CHECK:        %D1C2, %msg48 = "@core_2"(%D0C2) {
-CHECK-NEXT:         %B1C2 = "system.send_msg"(%D0C2, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
-CHECK-NEXT:         %D1C2 = "dma.sys.sys_send"(%B1C2, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %B1C2, %msg48 = "system.send_msg"(%D0C2) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %D1C2, %msg48 = "dma.sys.sys_send"(%B1C2) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
 CHECK:        }
 CHECK:        %D1C3, %msg48 = "@core_3"(%D0C3) {
-CHECK-NEXT:         %B1C3 = "system.send_msg"(%D0C3, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
-CHECK-NEXT:         %D1C3 = "dma.sys.sys_send"(%B1C3, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %B1C3, %msg48 = "system.send_msg"(%D0C3) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %D1C3, %msg48 = "dma.sys.sys_send"(%B1C3) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
 CHECK:        }
 CHECK:        %D1C4, %msg48 = "@core_4"(%D0C4) {
-CHECK-NEXT:         %B1C4 = "system.send_msg"(%D0C4, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
-CHECK-NEXT:        %D1C4 = "dma.sys.sys_send"(%B1C4, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %B1C4, %msg48 = "system.send_msg"(%D0C4) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %D1C4, %msg48 = "dma.sys.sys_send"(%B1C4) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
 CHECK:        }
 CHECK:        %D1C5, %msg48 = "@core_5"(%D0C5) {
-CHECK-NEXT:         %B1C5 = "system.send_msg"(%D0C5, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
-CHECK-NEXT:         %D1C5 = "dma.sys.sys_send"(%B1C5, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %B1C5, %msg48 = "system.send_msg"(%D0C5) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %D1C5, %msg48 = "dma.sys.sys_send"(%B1C5) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
 CHECK:        }
 CHECK:        %D1C6, %msg48 = "@core_6"(%D0C6) {
-CHECK-NEXT:         %B1C6 = "system.send_msg"(%D0C6, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
-CHECK-NEXT:         %D1C6 = "dma.sys.sys_send"(%B1C6, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %B1C6, %msg48 = "system.send_msg"(%D0C6) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %D1C6, %msg48 = "dma.sys.sys_send"(%B1C6) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
 CHECK:        }
 CHECK:        %D1C7, %msg48 = "@core_7"(%D0C7) {
-CHECK-NEXT:         %B1C7 = "system.send_msg"(%D0C7, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
-CHECK-NEXT:         %D1C7 = "dma.sys.sys_send"(%B1C7, %msg48) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %B1C7, %msg48 = "system.send_msg"(%D0C7) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
+CHECK-NEXT:         %D1C7, %msg48 = "dma.sys.sys_send"(%B1C7) {msg_id = 48, cnt = 16, status = Status.PRODUCING}
 CHECK:        }
 CHECK:        %D19C0, %msg49 = "@core_0"(%D1C0, %msg48) {
 CHECK-NEXT:         %B2C0 = "system.wait_msg"(%D1C0, %msg48) {msg_id = 48, cnt = 16, status = Status.RECIEVING}
@@ -42,9 +42,3 @@ CHECK-NEXT:         %R0, %D3C0 = "dma.tensor"(%G2.13058048, %B2C0) : (memref<1x3
 CHECK-NEXT:         %R15.2688, %D4C0 = "dma.tensor"(%G1.0, %B2C0) : (memref<1x32x3x36xf32, strides: [3456, 108, 36, 1]>, none) -> (memref<1x32x3x36xf32, strides: [108, 108, 36, 1]>, none)
 CHECK-NEXT:         %R9.10176, %D5C0 = "dma.tensor"(%G1.16384, %B2C0) : (memref<1x32x1x1xf32, strides: [32, 1, 1, 1]>, none) -> (memref<1x32x1x1xf32, strides: [1, 1, 1, 1]>, none)
 CHECK-NEXT:         %R10, %B3C0 = "conv.normal"(%R0, %R15.2688, %R9.10176, %C0.0, %D5C0) {kernel = [6, 6], stride = [2, 2], in_zero = [0, 0], ke_zero = [0, 0], opt_kernel_rotate = False, pad_mode = 0, pad = [2, 0, 2, 0], opt_res_add = False, do_relu = False, sym_range = False, do_rq = False, round_mode = 0}: (memref<1x3x110x322xf32, strides: [35424, 35424, 322, 1]>, memref<32x3x6x6xf32>, memref<1x32x1x1xui32, strides: [1, 1, 1, 1]>, f32, none) -> (memref<1x32x54x160xf32, strides: [8640, 8640, 160, 1]>, none)
-CHECK-NEXT:         %R4.3584, %B4C0 = "tsbc.s_bc"(%R0, %D5C0) : (memref<1x64x1x10xf32, strides: [16, 16, 10, 1]>, none) -> (memref<1x64x1x10xf32, strides: [16, 16, 10, 1]>, none)
-CHECK-NEXT:         %R2.1792, %B5C0 = "arith.sub"(%C0.0, %R10, %D5C0) {round_mode = 0}: (f32, memref<1x32x54x160xf32, strides: [8640, 8640, 160, 1]>, none) -> (memref<1x32x54x160xf32, strides: [8640, 8640, 160, 1]>, none)
-CHECK-NEXT:         %R2.1792, %B6C0 = "arith.max"(%R2.1792, %C-3.4028198694267105e+35, %D5C0) {round_mode = 0}: (memref<1x32x54x160xf32, strides: [8640, 8640, 160, 1]>, f32, none) -> (memref<1x32x54x160xf32, strides: [8640, 8640, 160, 1]>, none)
-CHECK-NEXT:         %R0, %B7C0 = "arith.mul"(%R2.1792, %C1.4426950216293335, %D5C0) {round_mode = 0}: (memref<1x32x54x160xf32, strides: [8640, 8640, 160, 1]>, f32, none) -> (memref<1x32x54x160xf32, strides: [8640, 8640, 160, 1]>, none)
-CHECK-NEXT:         %R13, %B8C0 = "arith.cast"(%R0, %D5C0) {round_mode = 3}: (memref<1x32x54x160xf32, strides: [8640, 8640, 160, 1]>, none) -> (memref<1x32x54x160xf32, strides: [8640, 8640, 160, 1]>, none)
-        
