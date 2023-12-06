@@ -2939,7 +2939,7 @@ def Top_RoundOp : Top_Op<"Round"> {
     AnyTensor:$output);
 }
 
-def Top_BatchNormTrainOp: Top_Op<"BatchNormTrain"> {
+def Top_BatchNormTrainOp: Top_Op<"BatchNormTrain", [SupportFuseRelu]> {
   let summary = "BatchNormalization train operation";
   let description = [{
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
@@ -2962,7 +2962,9 @@ def Top_BatchNormTrainOp: Top_Op<"BatchNormTrain"> {
     AnyTensorOrNone:$gamma,
     AnyTensorOrNone:$beta,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
-    DefaultValuedAttr<F64Attr, "0.1">:$momentum
+    DefaultValuedAttr<F64Attr, "0.1">:$momentum,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );
   let results = (outs
     AnyTensor:$output,
@@ -3111,4 +3113,27 @@ def Top_ConvBwdWeightOp:Top_Op<"ConvBwd_Weight">{
     convbwd_weight_attr_t parseParam();
   }];
 }
+def Top_VarianceOp:Top_Op<"Variance">{
+  let summary = "Compute Variance operator";
+  let description = [{variance}];
+  let arguments = (ins
+  AnyTensor:$input,
+  I64ArrayAttr:$reduce_list,
+  F64Attr:$correction,
+  DefaultValuedAttr<BoolAttr, "false">:$keep_dims
+  );
+  let results = (outs
+  AnyTensor:$output
+  );
+}
+
+def Top_RsqrtOp:Top_Op<"Rsqrt">{
+  let summary = "Rsqrt Operator";
+  let description = [{Reverse square root}];
+  let arguments = (ins
+  AnyTensor:$input,
+  I64Attr:$length);
+  let results = (outs
+  AnyTensor:$output);
+  }
 #endif // Top_OPS

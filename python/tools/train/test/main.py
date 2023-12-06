@@ -29,9 +29,9 @@ if __name__ == '__main__':
     tpu_mlir_jit.args = args
     # enable_dynamo_debug_info()
     if True:
-        input = torch.randn((1, 3, 224, 224))
-        import torchvision.models as models
-        mod = models.resnet18()
+        # input = torch.randn((1, 3, 224, 224))
+        # import torchvision.models as models
+        # mod = models.resnet18()
 
         # input = torch.randn((1, 3, 224, 224))
         # from resnet50 import resnet50
@@ -40,11 +40,12 @@ if __name__ == '__main__':
         # from tools.train.test_model import test_model
         # mod = test_model() #.train()
         # input = torch.randn((1, 3, 16, 16))
+        # # # input = torch.randn((20, 1024))
 
-        # d_model=10 #768  #test ok at 0918
-        # from tools.train.gpt2 import TransformerBlocks #backward can not use this
-        # mod = TransformerBlocks(d_model=d_model, nlayers=3) #.train()
-        # input = torch.randn((1,4,d_model))
+        d_model=10 #768  #test ok at 0918
+        from tools.train.gpt2 import TransformerBlocks #backward can not use this
+        mod = TransformerBlocks(d_model=d_model, nlayers=1) #.train()
+        input = torch.randn((1,4,d_model))
 
         # from tools.train.gpt2 import GPT2
         # mod = GPT2()

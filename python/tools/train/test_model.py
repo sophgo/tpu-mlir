@@ -38,23 +38,30 @@ class test_model(nn.Module):
         super(test_model, self).__init__()
         self.name = 'test_model'
         self.conv1 = nn.Conv2d(3, 64, 7, 2, 3, bias=False)
-        # self.norm = nn.BatchNorm2d(64, eps=0, momentum=0.5, affine=True, track_running_stats=True)
+        self.norm = nn.BatchNorm2d(64, eps=0, momentum=0.5, affine=True, track_running_stats=True)
         # self.norm = nn.LayerNorm([64,8,8], elementwise_affine=True)
-        # self.pool1 = nn.MaxPool2d(3, 2, 1)
+        self.pool1 = nn.MaxPool2d(3, 2, 1)
         # self.relu = nn.ReLU()
-        self.linear = nn.Linear(1024,10, bias=False)
+        # self.linear = nn.Linear(1024,10, bias=False)
 
     # def forward(self, x, y):
     #     x = torch.bmm(x, y)
     def forward(self, x):
-        x = self.conv1(x)
+        # x = x + x
+        # x = x.permute(0,2,1,3)
+        # x = x.permute(3,2,1,0)
+        # x = x.transpose(1,2)
+        # x = x.reshape([3,16,16])
+        x = torch.mean(x,1, False)
+        # x = self.conv1(x)
         # x = 2*x
         # x = self.norm(x)
+        # x = torch.split(x, 32, dim=1)
         # x = self.relu(x)
         # x = self.pool1(x)
         # x = x.view(-1)
         # x = self.linear(x)
         # x = x[0,0,0,0] #aten.select Op not support
         # x = x.view(-1)[0] #aten.select Op not support
-        x = x.sum()
+        # x = x.sum()
         return x

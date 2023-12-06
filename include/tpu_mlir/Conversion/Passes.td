@@ -52,4 +52,17 @@ def ConvertTopToTosa : Pass<"convert-top-to-tosa", "ModuleOp"> {
   ];
 }
 
+//===----------------------------------------------------------------------===//
+// TopToLinalg
+//===----------------------------------------------------------------------===//
+def ConvertTopToLinalg : Pass<"convert-top-to-linalg", "ModuleOp"> {
+  let summary = "Convert top-level Top Ops to Linalg Ops";
+  let constructor = "tpu_mlir::createConvertTopToLinalg()";
+  let dependentDialects = ["tpu_mlir::top::TopDialect", "mlir::linalg::LinalgDialect"];
+  let options = [
+    Option<"includeWeight", "includeWeight", "bool", /*default=*/"false",
+           "true for including weight datas in linalg.mlir, or false for not">,
+  ];
+}
+
 #endif // TPU_MLIR_CONVERSION_PASSES

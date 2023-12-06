@@ -125,7 +125,8 @@ class GPT2(nn.Module):
         for i in range(self.nlayers): inp = self.h[i](inp)
         inp     = self.ln_f(inp)
         # inp  = self.out(inp)
-        return inp.sum()
+        # return inp.sum()
+        return inp
 
 
 class TransformerBlocks(nn.Module):
