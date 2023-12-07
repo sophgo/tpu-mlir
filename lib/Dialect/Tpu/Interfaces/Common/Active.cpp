@@ -106,6 +106,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::HSWISH:
     active_func(p, num_element, [](double val) { return hswish(val); });
     break;
+  case ActiveMode::ARCCOS:
+    active_func(p, num_element, [](double val) { return std::acos(val); });
+    break;
   case ActiveMode::ARCTANH:
     active_func(p, num_element, [](double val) { return std::atanh(val); });
     break;

@@ -1400,6 +1400,34 @@ def Top_ArctanhOp: Top_Op<"Arctanh">{
   let results = (outs AnyTensor:$output);
 }
 
+// def Top_ArctanOp: Top_Op<"Arctan">{
+//   let summary = "Arctan operator";
+
+//   let description = [{
+//     Calculates the Arctan of the given input tensor.
+//   }];
+
+//   let arguments = (ins
+//     AnyTensor:$input
+//   );
+
+//   let results = (outs AnyTensor:$output);
+// }
+
+def Top_ArccosOp: Top_Op<"Arccos">{
+  let summary = "Arccos operator";
+
+  let description = [{
+    Calculates the Arccos of the given input tensor.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_TanOp: Top_Op<"Tan"> {
   let summary = "Tan operator";
 
