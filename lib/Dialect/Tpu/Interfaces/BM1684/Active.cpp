@@ -30,6 +30,7 @@ void tpu::ActiveOp::codegen_global_bm1684() {
 
     int activate_type = (int)getMode();
     switch(getMode()){
+       case ActiveMode::ARCCOS:
        case ActiveMode::ARCTANH:
        case ActiveMode::ELU:
        case ActiveMode::EXP:
@@ -42,6 +43,7 @@ void tpu::ActiveOp::codegen_global_bm1684() {
        case ActiveMode::SIN:
        case ActiveMode::SQRT:
        case ActiveMode::MISH:
+       case ActiveMode::SIGN:
        case ActiveMode::SQUARE:
        case ActiveMode::SOFT_PLUS:
        case ActiveMode::SOFT_SIGN:
@@ -78,6 +80,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684(
             case ActiveMode::ABSVAL:
             case ActiveMode::LN:
             case ActiveMode::TANH:
+            case ActiveMode::ARCCOS:
             case ActiveMode::ARCTANH:
             case ActiveMode::SQRT:
             case ActiveMode::SIGMOID: buffer_size = tensor_size; break;
@@ -85,6 +88,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684(
             case ActiveMode::FLOOR:
             case ActiveMode::GELU:
             case ActiveMode::SILU:
+            case ActiveMode::SIGN:
             case ActiveMode::SOFT_PLUS:
                 buffer_size = 2 * tensor_size;
                 break;
@@ -134,12 +138,14 @@ void tpu::ActiveOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_s
         case ActiveMode::ABSVAL:
         case ActiveMode::FLOOR:
         case ActiveMode::TANH:
+        case ActiveMode::ARCCOS:
         case ActiveMode::ARCTANH:
         case ActiveMode::LN:
         case ActiveMode::GELU:
         case ActiveMode::SQRT:
         case ActiveMode::SQUARE:
         case ActiveMode::SOFT_PLUS:
+        case ActiveMode::SIGN:
         case ActiveMode::SIGMOID: break;
         case ActiveMode::SILU: activate_type = (int)ActiveMode::SWISH; prelu_slope = 1.0; break;
         default:
@@ -185,6 +191,7 @@ int32_t tpu::ActiveOp::dyn_codegen_local_bm1684(void *ir_layer_info) {
     case ActiveMode::LN:
     case ActiveMode::TANH:
     case ActiveMode::ARCTANH:
+    case ActiveMode::SIGN:
     case ActiveMode::SIGMOID: need_buffer = true; break;
     case ActiveMode::FLOOR:
     case ActiveMode::GELU:

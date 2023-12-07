@@ -46,6 +46,8 @@ class ONNX_IR_TESTER(object):
             "AddBcast":     (self.test_AddBcast,      Y, Y, N, N, Y),
             "AddBcast2":    (self.test_AddBcast2,     Y, Y, Y, N, Y),
             "AddBcast3":    (self.test_AddBcast3,     N, N, N, N, N),  # failed cases
+            "Acos":         (self.test_Arccos,        Y, Y, Y, N, Y),
+            "Atan":         (self.test_Arctan,        N, Y, Y, N, Y),
             "Atanh":        (self.test_Arctanh,       Y, Y, Y, N, Y),
             "Arg":          (self.test_Arg,           Y, Y, Y, Y, Y),
             "AddWeight":    (self.test_AddWeight,     Y, Y, Y, Y, Y),
@@ -2037,6 +2039,15 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([tanh_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
+    def test_Arctan(self, case_name):
+        input_shape = [1, 3, 32, 32]
+        input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -10.00, 10.00)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        arctan_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
+        graph_def = helper.make_graph([arctan_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def, input_data={'input': input_data})
+
     def test_Arctanh(self, case_name):
         input_shape = [1, 3, 32, 32]
         # The value range of arctanh is (-1,1)
@@ -2045,6 +2056,16 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         arctanh_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
         graph_def = helper.make_graph([arctanh_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def, input_data={'input': input_data})
+
+    def test_Arccos(self, case_name):
+        input_shape = [1, 3, 32, 32]
+        # The value range of arccos is (-1,1)
+        input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -0.99, 0.99)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        arccos_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
+        graph_def = helper.make_graph([arccos_def], case_name, [input], [output])
         self.onnx_and_test(graph_def, input_data={'input': input_data})
 
     def test_Log(self, case_name):

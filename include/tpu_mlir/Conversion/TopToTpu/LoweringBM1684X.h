@@ -60,6 +60,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
 LOWERING_BM1684X(Abs)
 LOWERING_BM1684X(Add)
+LOWERING_BM1684X(Arccos)
 LOWERING_BM1684X(Arctanh)
 LOWERING_BM1684X(Arg)
 LOWERING_BM1684X(AddConst)

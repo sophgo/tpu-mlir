@@ -143,6 +143,8 @@ class OnnxConverter(BaseConverter):
             # NOTICE: Please add the Op alphabetically !!!
             "Abs": lambda node: self.convert_abs_op(node),
             "Add": lambda node: self.convert_add_op(node),
+            "Acos": lambda node: self.convert_arccos_op(node),
+            "Atan": lambda node: self.convert_arctan_op(node),
             "Atanh": lambda node: self.convert_arctanh_op(node),
             "ArgMax": lambda node: self.convert_arg_op(node),
             "ArgMin": lambda node: self.convert_arg_op(node),
@@ -1991,10 +1993,70 @@ class OnnxConverter(BaseConverter):
                             ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
+    def convert_arctan_op(self, onnx_node):
+        assert (onnx_node.op_type == "Atan")
+        # arctan(x) = aign(x) * acos(1 / (sqrt(1 + mul(abs(x), abs(x)))))
+        op0 = self.getOperand(onnx_node.inputs[0])
+        op_name = onnx_node.name + "_sign"
+        sign_op = top.SignOp(self.unranked_type,
+                                op0,
+                                loc=self.get_loc(op_name),
+                                ip=self.mlir.insert_point).output
+        op_name = onnx_node.name + "_abs"
+        abs_op = top.AbsOp(self.unranked_type,
+                                op0,
+                                loc=self.get_loc(op_name),
+                                ip=self.mlir.insert_point).output
+        op_name = onnx_node.name + "_mul"
+        mul_op = top.MulOp(self.unranked_type, [abs_op, abs_op],
+                           do_relu=False,
+                           loc=self.get_loc(op_name),
+                           ip=self.mlir.insert_point).output
+
+        op_name = onnx_node.name + "_ml_mulscale"
+        add_op = top.AddConstOp(self.unranked_type,
+                                mul_op,
+                                const_val=1,
+                                loc=self.get_loc(op_name),
+                                ip=self.mlir.insert_point).output
+
+        op_name = onnx_node.name + "_sqrt"
+        sqrt_op = top.SqrtOp(self.unranked_type,
+                             add_op,
+                             loc=self.get_loc(op_name),
+                             ip=self.mlir.insert_point).output
+
+        op_name = onnx_node.name + "_reciprocal"
+        reciprocal_op = top.ReciprocalOp(self.unranked_type,
+                                         sqrt_op,
+                                         loc=self.get_loc(op_name),
+                                         ip=self.mlir.insert_point).output
+
+        op_name = onnx_node.name + "_arccos"
+        arccos_op = top.ArccosOp(self.unranked_type,
+                                 reciprocal_op,
+                                 loc=self.get_loc(op_name),
+                                 ip=self.mlir.insert_point).output
+        arctan_op = top.MulOp(self.unranked_type, [sign_op, arccos_op],
+                           do_relu=False,
+                           loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                           ip=self.mlir.insert_point).output
+
+        self.addOperand(onnx_node.name, arctan_op)
+
     def convert_arctanh_op(self, onnx_node):
         assert (onnx_node.op_type == "Atanh")
         op = self.getOperand(onnx_node.inputs[0])
         new_op = top.ArctanhOp(self.unranked_type,
+                            op,
+                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_arccos_op(self, onnx_node):
+        assert (onnx_node.op_type == "Acos")
+        op = self.getOperand(onnx_node.inputs[0])
+        new_op = top.ArccosOp(self.unranked_type,
                             op,
                             loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                             ip=self.mlir.insert_point).output

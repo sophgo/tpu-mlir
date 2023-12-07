@@ -75,6 +75,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       // clang-format off
       AbsLowering,
       AddLowering,
+      ArccosLowering,
       ArctanhLowering,
       ArgLowering,
       AddConstLowering,
