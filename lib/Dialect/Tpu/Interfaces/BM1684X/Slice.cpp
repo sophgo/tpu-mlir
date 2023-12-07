@@ -166,12 +166,12 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
   /* for dynamic input shape, it need the begin_mask/end_mask
     to deduction the actual output shape */
   for (int i = 0; i < num_dims; i++) {
-    if (!param.begin_as_tensor && offset->at(i) == 0 ||
+    if (!param.begin_as_tensor && input_shape[i] == output_shape[i] ||
         param.begin_as_tensor && axis != i) {
       param.common.begin_mask |= (1 << i);
     }
     if (!param.end_as_tensor &&
-            (ends->at(i) == output_shape[i] || ends->at(i) == -1) ||
+            input_shape[i] == output_shape[i] ||
         param.end_as_tensor && axis != i) {
       param.common.end_mask |= (1 << i);
     }

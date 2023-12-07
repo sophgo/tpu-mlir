@@ -67,6 +67,25 @@ void tpu::MulConstOp::assign_fw_param(void *param) {
   IR_PARAM_CONST_BINARY(BINARY_MUL);
 }
 
+mlir::Type tpu::MulConstOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  // int32-mul-float is not support. C is float point currently.
+  // input/C/output must be all integer or all float point
+  auto op = getOperation();
+  if (op && opd_idx == 0) {
+    auto opd = op->getOperand(0);
+    auto in_op = opd.getDefiningOp();
+    if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)) {
+      return do_nothing(mode);
+    }
+    auto stype = module::getStorageType(opd);
+    if (stype.isInteger(32)) {
+      mode = TypeCastMode::DO_CAST;
+      return Builder(op).getF32Type();
+    }
+  }
+  return type_verify_case_same(op, opd_idx, mode);
+}
+
 ArrayAttr tpu::MulConstOp::getIndexingMaps() {
   auto shape = module::getShape(getInput());
   AffineMap identity_map =

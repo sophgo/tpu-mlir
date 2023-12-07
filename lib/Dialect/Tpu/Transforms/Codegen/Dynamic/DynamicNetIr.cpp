@@ -606,7 +606,7 @@ void SubnetIr::gdma_tensor_ir_generate(
 
 void SubnetIr::generate_group_time_step_ir(Operation *op) {
   auto in_shape = module::getShape(op->getOperand(0));
-  int batch_num = in_shape[0];
+  int batch_num = in_shape.empty() ? 0 : in_shape[0];
   if (auto castOp = dyn_cast<tpu::GroupOp>(op)) {
     // local layer
     LgInfo sub_group;
@@ -1419,7 +1419,9 @@ void SubnetIr::write_binary_ir_to_buffer(std::unique_ptr<Context> &context) {
   binary_ir_v.resize(size +
                      (subnet_ir_len + sizeof(uint32_t) - 1) / sizeof(uint32_t));
   uint32_t cur_net_ir_len = context->get_cur_net_ir_len();
-  context->set_cur_net_ir_len(cur_net_ir_len + subnet_ir_len);
+  // context->set_cur_net_ir_len(cur_net_ir_len + subnet_ir_len);
+  uint32_t aligned_net_ir_length = (subnet_ir_len + sizeof(uint32_t) - 1) / sizeof(uint32_t) * sizeof(uint32_t);
+  context->set_cur_net_ir_len(cur_net_ir_len + aligned_net_ir_length);
   return;
 }
 

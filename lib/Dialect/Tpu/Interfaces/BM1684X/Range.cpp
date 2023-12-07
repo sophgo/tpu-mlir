@@ -26,5 +26,5 @@ int64_t tpu::RangeOp::dyn_codegen_global_bm1684x(void *buffer) {
 }
 
 int64_t tpu::RangeOp::get_fw_type_bm1684x() {
-  return FW_BMNET_SHAPE_RANGE;
+  return FW_BMNET_RANGE;
 }

@@ -11,6 +11,30 @@
 
 using namespace tpu_mlir::top;
 
+// remove: reshape + unsqueeze && in == out
+struct TopRemoveReshapeAndUnsqueezeWhenScalar : public OpRewritePattern<UnsqueezeOp>
+{
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(UnsqueezeOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in_op = op.getInput().getDefiningOp();
+
+    if (in_op->hasOneUse() && isa<ReshapeOp>(in_op)) {
+      auto former_op = dyn_cast<ReshapeOp>(in_op);
+      auto out_shape = module::getShape(op.getOutput());
+      auto in_shape = module::getShape(former_op.getInput());
+      if (in_shape != out_shape) {
+        return failure();
+      }
+      op.getOutput().replaceAllUsesWith(former_op.getInput());
+      rewriter.eraseOp(op);
+      rewriter.eraseOp(former_op);
+      return success();
+    }
+    return failure();
+  }
+};
+
 // squeeze + unsqueeze && in == out
 struct TopFuseUnsqueeze : public OpRewritePattern<UnsqueezeOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -121,5 +145,5 @@ struct TopGatherToSliceByUnsqueeze : public OpRewritePattern<GatherOp> {
 };
 void UnsqueezeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {
-  results.insert<TopFuseUnsqueeze, TopGatherToSliceByUnsqueeze>(context);
+  results.insert<TopRemoveReshapeAndUnsqueezeWhenScalar, TopFuseUnsqueeze, TopGatherToSliceByUnsqueeze>(context);
 }

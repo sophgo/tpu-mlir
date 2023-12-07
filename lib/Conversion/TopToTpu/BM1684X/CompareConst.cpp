@@ -12,6 +12,56 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+static std::string mode_convert(llvm::StringRef mode) {
+  if (mode.compare("Equal") == 0) {
+    return "Equal";
+  } else if (mode.compare("Greater") == 0) {
+    return "Greater";
+  } else if (mode.compare("GreaterOrEqual") == 0) {
+    return "GreaterOrEqual";
+  } else if (mode.compare("Less") == 0) {
+    return "Less";
+  } else if (mode.compare("LessOrEqual") == 0) {
+    return "LessOrEqual";
+  } else if (mode.compare("NotEqual") == 0) {
+    return "NotEqual";
+  } else if (mode.compare("And") == 0) {
+    return "And";
+  } else if (mode.compare("Not") == 0) {
+    return "Not";
+  }
+  return "";
+}
+
+void CompareConstTryLowering::Lowering(PatternRewriter &rewriter,
+                                 top::CompareConstOp op) const {
+  auto prev_op = op.getInput().getDefiningOp();
+  if (!prev_op->hasTrait<trait::ShapeProducer>()) {
+    return;
+  }
+  if (op.getInversed()) {
+    llvm_unreachable("not implement");
+  }
+  auto compare_mode = op.getMode();
+  auto converted_mode = mode_convert(compare_mode);
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr("type", rewriter.getStringAttr(converted_mode)));
+  auto constI32 = i32_array_t(new std::vector<int32_t>(1, 0));
+  constI32->data()[0] =
+      static_cast<int64_t>(op.getConstVal().convertToDouble());
+  auto weight_type =
+      RankedTensorType::get({1}, rewriter.getIntegerType(32, true));
+  auto weight_op = top::WeightOp::create(op, "i64", *constI32, weight_type);
+  std::vector<Value> operands;
+  operands.push_back(op.getInput());
+  auto d2h_op = insert_device2host(weight_op, weight_op.getType(), op);
+  operands.push_back(d2h_op);
+  Type new_type =
+      RankedTensorType::get(module::getShape(op.getOutput()),
+                            IntegerType::get(op.getOutput().getContext(), 32));
+  rewriter.replaceOpWithNewOp<tpu::ShapeArithOp>(op, new_type, operands, attrs);
+}
+
 void CompareConstLowering::LoweringF32(PatternRewriter &rewriter,
                                        top::CompareConstOp op) const {
   lowering_common_f32<tpu::CompareConstOp>(rewriter, op);

@@ -84,6 +84,9 @@ void top::AddOp::shape_inference() {
       std::any_of(inputs.begin(), inputs.end(), [](auto in_op) {
         return module::isShape(in_op);
       });
+  need_shape_val_infer &=
+      std::any_of(inputs.begin(), inputs.end(),
+                  [](auto in_op) { return module::isShape(in_op); });
   if (need_shape_val_infer) {
     std::vector<std::vector<int64_t>> input_shapes_v;
     for (auto in_op : inputs) {
