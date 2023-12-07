@@ -22,3 +22,18 @@ LogicalResult tpu::RangeOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+mlir::Type tpu::RangeOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  auto op = getOperation();
+  auto opd = op->getOperand(opd_idx);
+  auto in_op = opd.getDefiningOp();
+  if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)) {
+    return do_nothing(mode);
+  }
+  auto stype = module::getStorageType(opd);
+  if (stype.isIntOrIndex()) {
+    return do_nothing(mode);
+  }
+  mode = TypeCastMode::DO_CAST;
+  return Builder(op).getIntegerType(32);
+}

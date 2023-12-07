@@ -912,6 +912,7 @@ def Tpu_ClipOp: Tpu_Op<"Clip",
 
 def Tpu_MulConstOp: Tpu_Op<"MulConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
+  DeclareOpInterfaceMethods<TypeInterface>,
   DeclareOpInterfaceMethods<IndexingMapsInterface>,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
@@ -1143,7 +1144,8 @@ def Tpu_AttentionOp: Tpu_Op<"Attention", [
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_RangeOp: Tpu_Op<"Range"> {
+def Tpu_RangeOp: Tpu_Op<"Range", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Range operator";
   let description = [{
     range op
@@ -1194,7 +1196,8 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape", [
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_ShapeAssignOp: Tpu_Op<"ShapeAssign"> {
+def Tpu_ShapeAssignOp: Tpu_Op<"ShapeAssign", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "ShapeAssign operator";
   let description = [{
     reshape for dynamic shape

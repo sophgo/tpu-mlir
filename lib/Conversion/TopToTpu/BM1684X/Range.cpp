@@ -14,6 +14,9 @@ namespace bm1684x {
 
 void RangeTryLowering::Lowering(PatternRewriter &rewriter,
                                 top::RangeOp op) const {
+  // current only support dyn limit
+  // intput will be convert to INT32, output is FP32
+  // fixme: output int32 may introduce other problems
   auto prev_op = op.getLimit().getDefiningOp();
   if (!prev_op->hasTrait<trait::ShapeProducer>()) {
     return;
@@ -27,7 +30,8 @@ void RangeTryLowering::Lowering(PatternRewriter &rewriter,
     auto start_val = top::WeightOp::create(op, "i32", start_v, i32_t_type);
     auto hdOp = insert_device2host(start_val, start_val.getType());
     operands.push_back(hdOp);
-  } else if (auto start_w = dyn_cast<top::WeightOp>(op.getStart().getDefiningOp())) {
+  } else if (auto start_w =
+                 dyn_cast<top::WeightOp>(op.getStart().getDefiningOp())) {
     auto intOp = start_w.clone_int(op);
     auto hdOp = insert_device2host(intOp, intOp.getType());
     operands.push_back(hdOp);
@@ -35,12 +39,13 @@ void RangeTryLowering::Lowering(PatternRewriter &rewriter,
     operands.push_back(op.getStart());
   }
   operands.push_back(op.getLimit());
-  if (module::isNone(op.getStart())) {
+  if (module::isNone(op.getDelta())) {
     std::vector<int32_t> delta_v{0};
     auto delta_val = top::WeightOp::create(op, "i32", delta_v, i32_t_type);
     auto hdOp = insert_device2host(delta_val, delta_val.getType());
     operands.push_back(hdOp);
-  } else if (auto delta_w = dyn_cast<top::WeightOp>(op.getDelta().getDefiningOp())) {
+  } else if (auto delta_w =
+                 dyn_cast<top::WeightOp>(op.getDelta().getDefiningOp())) {
     auto intOp = delta_w.clone_int(op);
     auto hdOp = insert_device2host(intOp, intOp.getType());
     operands.push_back(hdOp);
@@ -78,7 +83,7 @@ void RangeLowering::LoweringF16(PatternRewriter &rewriter,
 }
 
 void RangeLowering::LoweringF8(PatternRewriter &rewriter,
-                                top::RangeOp op) const {
+                               top::RangeOp op) const {
   llvm_unreachable("Not implemented");
 }
 

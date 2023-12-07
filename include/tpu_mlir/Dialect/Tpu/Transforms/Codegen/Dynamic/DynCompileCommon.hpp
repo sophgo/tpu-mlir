@@ -195,6 +195,7 @@ typedef enum fw_layer_type {
   FW_BMNET_ONNX_NMS = 147,
   FW_BMNET_YOLOV8_DETECT_OUT = 148,
   FW_BMNET_SHAPE_ARITH = 149,
+  FW_BMNET_RANGE = 150,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;

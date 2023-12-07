@@ -190,6 +190,39 @@ struct WhereTooLarge : public OpRewritePattern<WhereOp> {
 };
 
 /*
+  special case in maskrcnn
+  where(x!=-1, x, 1)
+  x is shape, x == -1 when x < 1
+  so, this case can convert to max(x, 1)
+*/
+struct WhereToMax : public OpRewritePattern<WhereOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(WhereOp op,
+                                PatternRewriter &rewriter) const override {
+    auto cond = op.getOperand(0);
+    // auto x = op.getOperand(1);
+    auto y = op.getOperand(2);
+    if (module::isShape(y) && op.getXIsConst()) {
+      if (auto comp_op = dyn_cast<CompareConstOp>(cond.getDefiningOp())) {
+        if (comp_op.getMode().compare("Equal") == 0 &&
+            comp_op.getConstVal().convertToDouble() == -1.f &&
+            op.getXConstVal().convertToDouble() == 1.f && comp_op->getOperand(0) == y) {
+
+          std::vector<NamedAttribute> attrs;
+          attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(1.f)));
+          auto new_op = rewriter.replaceOpWithNewOp<MaxConstOp>(
+              op, op.getOutput().getType(),
+              ValueRange{y}, attrs);
+          new_op.shape_inference();
+        }
+      }
+    }
+    return success();
+  }
+};
+
+/*
   special case in VITS:
   remove invalid where
 
@@ -238,6 +271,6 @@ struct RemoveInvalidWhere : public OpRewritePattern<WhereOp> {
 
 void WhereOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<FilterWhereWeightPattern, WhereBroadcastToTile, WhereTooLarge,
+  results.insert<FilterWhereWeightPattern, WhereBroadcastToTile, WhereTooLarge, WhereToMax,
                  RemoveInvalidWhere>(context);
 }

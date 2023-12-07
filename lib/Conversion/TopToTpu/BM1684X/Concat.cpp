@@ -22,7 +22,10 @@ void ConcatTryLowering::Lowering(PatternRewriter &rewriter,
     return;
   assert(!op.getDoRelu());
   for (int idx = 0; idx < op.getNumOperands(); ++idx) {
-    try_insert_device2host(op.getOperation(), idx);
+    auto opname = op.getOperand(idx).getDefiningOp()->getName().getStringRef();
+    if (opname.compare("top.Weight") == 0 || !opname.starts_with("top.")){
+      try_insert_device2host(op.getOperation(), idx);
+    }
   }
   std::vector<NamedAttribute> attrs;
   attrs.push_back(

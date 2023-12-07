@@ -12,6 +12,22 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+void MulTryLowering::Lowering(PatternRewriter &rewriter, top::MulOp op) const {
+  auto opds = op->getOperands();
+  auto with_shape = std::any_of(opds.begin(), opds.end(), [](Value opd) {
+    return opd.getDefiningOp()->hasTrait<trait::ShapeProducer>();
+  });
+  auto all_shape_wight = std::all_of(opds.begin(), opds.end(), [](Value opd) {
+    return opd.getDefiningOp()->hasTrait<trait::ShapeProducer>() ||
+           module::isWeight(opd);
+  });
+  if (with_shape && !all_shape_wight) {
+    for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+      try_insert_host2device(op, idx);
+    }
+  }
+}
+
 void MulLowering::LoweringF32(PatternRewriter &rewriter, top::MulOp op) const {
   lowering_common_f32<tpu::MulOp>(rewriter, op);
 }
@@ -189,8 +205,10 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
             input_sub_zp->at(i) = input_quant->at(i) - zeropoint;
           }
         }
-        auto new_type = RankedTensorType::get(module::getShape(input), rewriter.getI16Type());
-        auto new_input = top::WeightOp::create(op, "_int16", *input_sub_zp, new_type);
+        auto new_type = RankedTensorType::get(module::getShape(input),
+                                              rewriter.getI16Type());
+        auto new_input =
+            top::WeightOp::create(op, "_int16", *input_sub_zp, new_type);
         operands.push_back(new_input);
       }
     } else {
