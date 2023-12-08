@@ -1773,6 +1773,7 @@ def Tpu_SliceOp: Tpu_Op<"Slice", [
     DefaultValuedAttr<I64ArrayAttr, "{1}">:$axes
   );
   let results = (outs AnyRankedTensor:$output);
+  let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     slice_attr_t parseParam();
     void assign_fw_param(void *param);

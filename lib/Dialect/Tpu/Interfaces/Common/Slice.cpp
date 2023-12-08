@@ -151,7 +151,7 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
       ends_v->at(axis) = std::min((int64_t)(*p.inputs[2]), (int64_t)out_shape[axis]);
     if (!module::isNone(getStepsT()))
       steps_v->at(axis) = *p.inputs[3];
-    
+
     out_shape[axis] =
         (ends_v->at(axis) - offset_v->at(axis)) / steps_v->at(axis);
     module::setShape(getOutput(), out_shape);
@@ -333,4 +333,55 @@ void tpu::SliceOp::assign_fw_param(void *param) {
   }
   slice_param.is_dynamic = false;
   memcpy(param, &slice_param, sizeof(fw_stride_slice_layer_param_t));
+}
+
+struct SliceCastSwapPattern : public OpRewritePattern<tpu::SliceOp> {
+  SliceCastSwapPattern(mlir::MLIRContext *context):
+    OpRewritePattern<tpu::SliceOp>(context) {}
+  LogicalResult matchAndRewrite(tpu::SliceOp op,
+                                mlir::PatternRewriter &rewriter) const override {
+
+    auto input_op = dyn_cast_or_null<tpu::CastOp>(op.getInput().getDefiningOp());
+    if (!op.getResult().hasOneUse()){
+      return failure();
+    }
+    auto output_op = dyn_cast_or_null<tpu::CastOp>(*op.getResult().getUsers().begin());
+    if (!input_op || !output_op){
+      return failure();
+    }
+    auto in_input = input_op.getInput();
+    auto out_output = output_op.getOutput();
+    auto in_stype = module::getStorageType(in_input);
+    auto out_stype = module::getStorageType(out_output);
+    if (!in_stype.isInteger(32) ||!out_stype.isInteger(32)){
+      return failure();
+    }
+
+    auto slice_out_shape = module::getShape(output_op.getInput());
+    auto cast_shape = module::getShape(input_op.getInput());
+    module::setShape(output_op.getOutput(), cast_shape);
+
+    op.getOutput().replaceAllUsesWith(input_op.getOutput());
+
+
+    auto after_cast = output_op.getOutput();
+    rewriter.setInsertionPointAfterValue(after_cast);
+    auto slice_type = module::getTypeLike(after_cast, cast_shape);
+    auto loc = output_op.getLoc();
+    module::setLocSuffix(output_op, "_new");
+    auto new_slice_op = rewriter.create<tpu::SliceOp>(loc, slice_type,
+        ValueRange{after_cast, op->getOperand(1), op->getOperand(2), op->getOperand(3), op->getOperand(4)},
+        op->getAttrs());
+
+    module::setShape(new_slice_op.getOutput(), slice_out_shape);
+    after_cast.replaceAllUsesExcept(new_slice_op.getOutput(), new_slice_op);
+
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+void tpu::SliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                              MLIRContext *context) {
+  results.insert<SliceCastSwapPattern>(context);
 }
