@@ -311,7 +311,7 @@ static LogicalResult reorder_8bit(tpu::Conv2DOp op, PatternRewriter &rewriter, T
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
   int64_t filter_align = BM168x::EU_BYTES;
   if (attr.is_dw) {
-    if (!module::isBM1688()) {
+    if (!module::isBM1688() && !module::isSG2260Family()) {
       filter_align = 1;
     }
   }
