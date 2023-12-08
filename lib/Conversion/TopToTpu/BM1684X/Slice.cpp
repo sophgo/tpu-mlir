@@ -45,6 +45,25 @@ void SliceTryLowering::Lowering(PatternRewriter &rewriter,
 void SliceLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
   _try_insert_device2host(op);
+  auto input = op.getOperand(0);
+  auto stype = module::getStorageType(input);
+
+  if (stype.isInteger(32)){
+    std::vector<NamedAttribute> attrs;
+    for (auto &attr : op->getAttrs())  {
+      attrs.push_back(attr);
+      }
+    std::vector<Value> operands;
+    for (auto opd : op->getOperands()){
+      operands.push_back(opd);
+    }
+    auto noneOp = module::getNoneOp(op);
+    operands.push_back(noneOp); //buffer
+    rewriter.replaceOpWithNewOp<tpu::SliceOp>(op, stype, operands, attrs);
+    return;
+  }
+
+
   lowering_common_f32<tpu::SliceOp>(rewriter, op, 5);
 }
 void SliceLowering::LoweringINT4(PatternRewriter &rewriter, top::SliceOp op,
