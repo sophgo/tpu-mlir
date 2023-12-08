@@ -299,7 +299,7 @@ class ONNX_IR_TESTER(object):
         if self.simple:
             self.support_quant_modes = ["f16", "int8"]
             self.support_asym = [False]
-        if self.chip.startswith("cv18"):
+        if self.chip.startswith("cv18") and self.chip != "cv186x":
             self.support_quant_modes = ["bf16", "int8"]
             self.support_asym = [False]
             self.model_file = ".cvimodel"
@@ -6601,7 +6601,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'sg2260'],
+                        choices=['bm1684', 'bm1684x', 'bm1688', 'cv183x', 'cv182x', 'cv181x', 'cv180x', 'cv186x', 'sg2260'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4', 'f8', 'f8e4m3', 'f8e5m2'],
