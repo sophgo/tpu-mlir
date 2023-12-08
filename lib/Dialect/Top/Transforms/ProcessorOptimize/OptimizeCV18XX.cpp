@@ -1288,13 +1288,14 @@ public:
 
 class ConvertDivOp : public OpRewritePattern<top::DivOp> {
 public:
+  static std::map<std::string, Operation *> reciprocal_name_ops;
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(top::DivOp op,
                                 PatternRewriter &rewriter) const override {
     std::vector<Value> operands;
     auto input_shape2 = module::getShape(op.getInputs()[1]);
-
-    auto weight_op = dyn_cast<top::WeightOp>(op.getInputs()[1].getDefiningOp());
+    auto input1Op = op.getInputs()[1].getDefiningOp();
+    auto weight_op = dyn_cast<top::WeightOp>(input1Op);
     std::vector<NamedAttribute> attrs;
     attrs.emplace_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
     attrs.emplace_back(
@@ -1317,16 +1318,22 @@ public:
       rewriter.setInsertionPointAfterValue(op.getInputs()[1]);
       std::string name =
           module::getName(op.getInputs()[1]).str() + "_reciprocal";
-      auto loc = NameLoc::get(rewriter.getStringAttr(name));
-      std::vector<NamedAttribute> reci_attrs;
-      reci_attrs.emplace_back(
-          rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(1.0)));
-      auto reciprocal_type =
-          RankedTensorType::get(input_shape2, rewriter.getF32Type());
-      auto reciprocal_op = rewriter.create<top::ReciprocalOp>(
-          loc, reciprocal_type, ValueRange{op.getInputs()[1]}, reci_attrs);
-
-      operands.emplace_back(reciprocal_op.getOutput());
+      if (reciprocal_name_ops.find(name) == reciprocal_name_ops.end()) {
+        auto loc = NameLoc::get(rewriter.getStringAttr(name));
+        std::vector<NamedAttribute> reci_attrs;
+        reci_attrs.emplace_back(
+            rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(1.0)));
+        auto reciprocal_type =
+            RankedTensorType::get(input_shape2, rewriter.getF32Type());
+        auto reciprocal_op = rewriter.create<top::ReciprocalOp>(
+            loc, reciprocal_type, ValueRange{op.getInputs()[1]}, reci_attrs);
+        reciprocal_name_ops[name] = reciprocal_op.getOperation();
+        operands.emplace_back(reciprocal_op.getOutput());
+      } else {
+        auto reciprocal_op = dyn_cast_or_null<top::ReciprocalOp>(reciprocal_name_ops[name]);
+        assert(reciprocal_op);
+        operands.emplace_back(reciprocal_op.getOutput());
+      }
       rewriter.setInsertionPoint(op);
       rewriter.replaceOpWithNewOp<top::MulOp>(
           op.getOperation(), op.getOutput().getType().cast<RankedTensorType>(),
@@ -1335,6 +1342,7 @@ public:
     return success();
   }
 };
+std::map<std::string, Operation *> ConvertDivOp::reciprocal_name_ops;
 
 class ConvertSqrtOp : public OpRewritePattern<top::SqrtOp> {
 public:
