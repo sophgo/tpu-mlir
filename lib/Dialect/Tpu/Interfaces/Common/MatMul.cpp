@@ -332,6 +332,9 @@ mlir::Type tpu::MatMulOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
       return type_verify_case_f32(getOperation(), opd_idx, mode, false);
     } else if (quant_to_f8e4) {
       return type_verify_case_f32(getOperation(), opd_idx, mode, true);
+    } else {
+      // if output is i32, then input be quantized
+      return type_verify_case_i32(getOperation(), opd_idx, mode);
     }
   }
   return type_verify_case_same(getOperation(), opd_idx, mode);

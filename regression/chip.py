@@ -23,7 +23,7 @@ chip_support = {
     "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv183x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv186x":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
-    "sg2260":    (Y,   Y,   Y,    N,        N,         Y,        Y,      Y,      N,       "bmodel"),
+    "sg2260":    (Y,   Y,   Y,    N,        N,         Y,        N,      N,      N,       "bmodel"),
 }
 
 '''
@@ -101,7 +101,7 @@ full_model_list = {
     "bert_large_pt":              (N,      N,       N,      N,      N,      N,      N,      N,     N),
     "resnet50_pt":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "sd_encoder_pt":              (N,      Y,       Y,      N,      N,      N,      N,      Y,     N),
-    "sd_decoder_pt":              (N,      Y,       Y,      N,      N,      N,      N,      Y,     N),
+    "sd_decoder_pt":              (N,      N,       N,      N,      N,      N,      N,      N,     N), # timeout
     "yolov5s_pt":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     ######## caffe #########      #####
     "mobilenet_v2_cf":            (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     Y),
