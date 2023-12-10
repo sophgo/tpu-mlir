@@ -51,7 +51,7 @@ void top::SliceOp::paramConvert() {
   setOffsetAttr(builder.getI64ArrayAttr(*offset_v));
   setStepsAttr(builder.getI64ArrayAttr(*steps_v));
   setEndsAttr(builder.getI64ArrayAttr(*ends_v));
-  setAxesAttr(builder.getI64ArrayAttr(*axes_ori));
+  setAxesAttr(builder.getI64ArrayAttr(std::nullopt));
 }
 
 LogicalResult top::SliceOp::inference(InferenceParameter &p) {
@@ -127,7 +127,6 @@ void top::SliceOp::shape_inference() {
   const auto offset_v = module::getI64Array(getOffset());
   const auto steps_v = module::getI64Array(getSteps());
   const auto ends_v = module::getI64Array(getEnds());
-  const auto axis = module::getI64Array(getEnds());
   const size_t slice_dims = offset_v->size();
   std::vector<int64_t> output_shape(input_shape.size());
   for (size_t i = 0; i < dims; ++i) {

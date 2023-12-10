@@ -66,7 +66,7 @@ full_model_list = {
     "mnist-12":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "mobilenet_v2":               (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "resnet18_v1":                (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     Y),
-    "resnet18_v2":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
+    "resnet18_v2":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "resnet50_v1":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "resnet50_v2":                (Y,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "res2net50":                  (N,      Y,       N,      N,      N,      N,      Y,      N,     N),
@@ -97,7 +97,7 @@ full_model_list = {
     "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,      N,     N),
     ######## Pytorch #######      ######
     "bert_pt":                    (N,      Y,       Y,      N,      N,      N,      N,      Y,     Y),
-    "bert_base_pt":               (N,      N,       N,      N,      N,      N,      N,      N,     Y),
+    "bert_base_pt":               (N,      N,       N,      N,      N,      N,      N,      N,     N),
     "bert_large_pt":              (N,      N,       N,      N,      N,      N,      N,      N,     N),
     "resnet50_pt":                (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "sd_encoder_pt":              (N,      Y,       Y,      N,      N,      N,      N,      Y,     N),
