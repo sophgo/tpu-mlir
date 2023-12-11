@@ -65,7 +65,7 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
           .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
           .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
           .run();
-      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0);
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     } else {
       auto binary = (Binary *)p.handle;
       binary->run();
@@ -74,7 +74,7 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
       } else if (out_type.isF16()) {
         F16(p.outputs[0], p.outputs[0], num_elem);
       } else if (out_type.isFloat8E5M2()) {
-        F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
+        F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
       }
     }
   } else if (out_type.isInteger(32)) {

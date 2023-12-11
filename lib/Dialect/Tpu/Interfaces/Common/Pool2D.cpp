@@ -124,10 +124,10 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isFloat8E5M2()) {
-      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.);
+      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1., true);
     } else if (out_type.isFloat8E4M3FN()) {
       auto scale = getFp8OutScale()->convertToDouble();
-      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1 / scale);
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1 / scale, true);
     }
   }
 

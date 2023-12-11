@@ -174,9 +174,9 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       f64_array_t scales = module::getF64Array(getOutF8Scales().value());
       [[maybe_unused]] auto scale_f = scales->at(0);
       [[maybe_unused]] auto scale_f_reciprocal = 1 / scales->at(0);
-      F8E4M3(p.outputs[0], p.outputs[0], num_elem, scale_f_reciprocal);
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, scale_f_reciprocal, true);
     } else if (out_type.isFloat8E5M2()) {
-      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
+      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }

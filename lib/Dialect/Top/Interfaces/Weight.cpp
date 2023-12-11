@@ -342,7 +342,7 @@ Value WeightOp::clone_f8e4m3(Operation *OwnerOp, bool per_channel_scale) {
   }
 #pragma omp parallel for schedule(static, omp_schedule(count))
   for (uint32_t i = 0; i < count; i++) {
-    data_f8->at(i) = f32_to_f8e4m3(data->at(i));
+    data_f8->at(i) = f32_to_f8e4m3(data->at(i), true);
   }
   // FIXME: should calculate the scale and set the scale attr
   auto ctx = OwnerOp->getContext();
@@ -375,7 +375,7 @@ Value WeightOp::clone_f8e5m2(Operation *OwnerOp) {
 
 #pragma omp parallel for schedule(static, omp_schedule(count))
   for (uint32_t i = 0; i < count; i++) {
-    data_f8->at(i) = f32_to_f8e5m2(data->at(i));
+    data_f8->at(i) = f32_to_f8e5m2(data->at(i), true);
   }
   // FIXME: scale set to 1.0
   auto ctx = OwnerOp->getContext();

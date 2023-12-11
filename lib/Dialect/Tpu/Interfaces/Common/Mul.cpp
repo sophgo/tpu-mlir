@@ -40,6 +40,7 @@ void tpu::MulOp::deinit(InferenceParameter &p) {
 LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   auto num_elem = module::getNumElements(getOutput());
   auto out_type = module::getStorageType(getOutput());
+
   auto asym = module::isAsymmetric();
   auto binary = (Binary *)p.handle;
   binary->run();
@@ -52,9 +53,13 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
       f64_array_t scales = module::getF64Array(getOutF8Scales().value());
       [[maybe_unused]] auto out_scale = scales->at(0);
       [[maybe_unused]] auto out_scale_reciprocal = 1 / scales->at(0);
-      F8E4M3(p.outputs[0], p.outputs[0], num_elem, out_scale_reciprocal);
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, out_scale_reciprocal, true);
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+      for (int i = 0; i < num_elem; i++)
+        p.outputs[0][i] = F16(p.outputs[0][i], false);
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     } else if (out_type.isFloat8E5M2()) {
-      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
+      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }

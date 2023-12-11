@@ -59,6 +59,8 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   if (out_type.isa<FloatType>()) {
     if (out_type.isa<Float8E4M3FNType>()) {
       auto scales = module::getF64Array(getF8Scales(), 2, 1.);
+      scales->at(0) = F16(scales->at(0), false); // should be true ? align to kernel
+      scales->at(1) = F16(scales->at(1), false);
       auto lhs_num_elem = module::getNumElements(getInputs()[0]);
       auto rhs_num_elem = module::getNumElements(getInputs()[1]);
       std::vector<float> lhs_tmp(lhs_num_elem);
@@ -69,12 +71,24 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
       for (int i = 0; i < rhs_num_elem; i++)
         rhs_tmp[i] = p.inputs[1][i] * scales->at(1);
+
+#pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
+      for (int i = 0; i < lhs_num_elem; i++)
+        lhs_tmp[i] = F16(lhs_tmp[i], false);
+#pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
+      for (int i = 0; i < rhs_num_elem; i++)
+        rhs_tmp[i] = F16(rhs_tmp[i], false);
+
       auto binary = (Binary *)p.handle;
       (*binary)
           .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
           .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
           .run();
-      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0);
+
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+      for (int i = 0; i < num_elem; i++)
+        p.outputs[0][i] = F16(p.outputs[0][i], false);
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     } else {
       auto binary = (Binary *)p.handle;
       binary->run();
@@ -83,7 +97,7 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
       } else if (out_type.isF16()) {
         F16(p.outputs[0], p.outputs[0], num_elem);
       } else if (out_type.isFloat8E5M2()) {
-        F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
+        F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
       }
     }
   } else if (out_type.isInteger(32)) {
