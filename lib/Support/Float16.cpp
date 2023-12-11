@@ -810,6 +810,17 @@ float F16(float src) {
   return f16_to_f32(tmp);
 }
 
+float F16(float src, bool half_away_from_zero) {
+  fp32 tmp = {.fval = src};
+  if (half_away_from_zero) {
+    fp16 tmp16 = fp32_to_fp16_all(tmp, tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO);
+    return f16_to_f32(tmp16.bits);
+  } else {
+    fp16 tmp16 = fp32_to_fp16_all(tmp, tpu_mlir::ROUNDING_HALF_TO_EVEN);
+    return f16_to_f32(tmp16.bits);
+  }
+}
+
 float BF16(float src, bool is_tpu) {
   auto u16_val = f32_to_bf16(src, is_tpu);
   return bf16_to_f32(u16_val);

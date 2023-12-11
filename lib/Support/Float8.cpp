@@ -49,18 +49,21 @@ static uint8_t fp32_to_fp8(const fp32 single, bool is_e5m2, bool saturate, Round
   uint32_t FP8_SIGNIFICAND_BITS = 0;
   uint32_t FP8_MAXNORM = 0;
   uint32_t FP8_MANTISSA_MASK = 0;
+  uint32_t FP8_INVALID_MASK = 0;
   if (is_e5m2) {
     FP8_EXP_BIAS = 15;
     FP8_EXP_MASK = 0x1f;
     FP8_SIGNIFICAND_BITS = 3;
     FP8_MAXNORM = 0x7b;
     FP8_MANTISSA_MASK = 0x3;
+    FP8_INVALID_MASK = 0x1fffff;
   } else {
     FP8_EXP_BIAS = 7;
     FP8_EXP_MASK = 0xf;
     FP8_SIGNIFICAND_BITS = 4;
     FP8_MAXNORM = 0x7e;
     FP8_MANTISSA_MASK = 0x7;
+    FP8_INVALID_MASK = 0xfffff;
   }
 
   if (single.format.exp > (127 - FP8_EXP_BIAS) && single.format.exp < 0xff) {
@@ -68,9 +71,9 @@ static uint8_t fp32_to_fp8(const fp32 single, bool is_e5m2, bool saturate, Round
     const int32_t shift_num = 24 - FP8_SIGNIFICAND_BITS;
     uint32_t tmp = Right_Shift_Round(single.bits, shift_num, rd_mode);
     if (rd_mode == ROUNDING_DOWN && single.format.sign == 1) {
-      tmp += (mantissa != 0);
+      tmp += ((mantissa & FP8_INVALID_MASK) != 0);
     } else if (rd_mode == ROUNDING_UP && single.format.sign == 1) {
-      tmp -= (mantissa != 0);
+      tmp -= ((mantissa & FP8_INVALID_MASK) != 0);
     }
     tmp <<= shift_num;
     const uint32_t exp = ((tmp >> 23) & 0xff) - 127 + FP8_EXP_BIAS;
@@ -90,9 +93,11 @@ static uint8_t fp32_to_fp8(const fp32 single, bool is_e5m2, bool saturate, Round
   } else if (single.format.exp > 0 &&
              single.format.exp <= (127 - FP8_EXP_BIAS)) {
     int32_t mantissa = (single.format.frac) + (1 << 23);
+    mantissa = single.format.sign ? -mantissa : mantissa;
     const int shift_num = (127 - FP8_EXP_BIAS + 1) - single.format.exp +
                           (24 - FP8_SIGNIFICAND_BITS);
     mantissa = Right_Shift_Round(mantissa, shift_num, rd_mode);
+    mantissa = single.format.sign ? -mantissa : mantissa;
     res = mantissa & 0x7f;
   } else if (single.format.exp == 0xff && single.format.frac != 0) {
     // Canonical NaN
@@ -116,14 +121,15 @@ static uint8_t fp32_to_fp8(const fp32 single, bool is_e5m2, bool saturate, Round
   return res;
 }
 
-uint8_t f32_to_f8e4m3(float src) {
+uint8_t f32_to_f8e4m3(float src, bool satu) {
   fp32 tmp = {.fval = src};
-  return fp32_to_fp8(tmp, false, true, ROUNDING_HALF_TO_EVEN);
+  return fp32_to_fp8(tmp, false, satu, ROUNDING_HALF_TO_EVEN);
 }
 
-uint8_t f32_to_f8e5m2(float src) {
+uint8_t f32_to_f8e5m2(float src, bool satu) {
   fp32 tmp = {.fval = src};
-  return fp32_to_fp8(tmp, true, true, ROUNDING_HALF_TO_EVEN);
+  //return fp32_to_fp8(tmp, true, satu, ROUNDING_HALF_TO_EVEN);
+  return fp32_to_fp8(tmp, true, false, ROUNDING_HALF_TO_EVEN);
 }
 
 static fp32 fp8_to_fp32(uint8_t src, bool is_e5m2) {
@@ -253,17 +259,25 @@ float get_f8e5m2_min() {
   return float(1.5258789E-05);
 }
 
-void F8E4M3(const float *p_src, float *p_dst, int num, float step) {
+float F8E4M3(float src, float step, bool satu) {
+  return f8e4m3_to_f32(f32_to_f8e4m3(src/step, satu));
+}
+
+float F8E5M2(float src, float step, bool satu) {
+  return f8e5m2_to_f32(f32_to_f8e5m2(src/step, satu));
+}
+
+void F8E4M3(const float *p_src, float *p_dst, int num, float step, bool satu) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i=0;i<num;i++) {
-    p_dst[i] = f8e4m3_to_f32(f32_to_f8e4m3(p_src[i]/step));
+    p_dst[i] = F8E4M3(p_src[i], step, satu);
   }
 }
 
-void F8E5M2(const float *p_src, float *p_dst, int num, float step) {
+void F8E5M2(const float *p_src, float *p_dst, int num, float step, bool satu) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i=0;i<num;i++) {
-    p_dst[i] = f8e5m2_to_f32(f32_to_f8e5m2(p_src[i]/step));
+    p_dst[i] = F8E5M2(p_src[i], step, satu);
   }
 }
 

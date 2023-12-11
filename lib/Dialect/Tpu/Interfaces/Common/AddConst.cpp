@@ -70,9 +70,9 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isFloat8E4M3FN()) {
-      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0);
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     } else if (out_type.isFloat8E5M2()) {
-      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
+      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     }
 
   }

@@ -22,7 +22,7 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
   int64_t zero_point = 0;
   auto o_sType = module::getStorageType(getOutput());
   if (o_sType.isFloat8E4M3FN() || o_sType.isFloat8E5M2()) {
-
+    ;
   } else {
     auto o_qtype = module::getUniformQuantizedType(getOutput());
     zero_point = o_qtype.getZeroPoint();
@@ -57,9 +57,9 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
   } break;
   case RequantMode::OnlyScale:
     if (o_sType.isFloat8E4M3FN())
-      F8E4M3(p.inputs[0], p.outputs[0], length, 1/scale_v);
+      F8E4M3(p.inputs[0], p.outputs[0], length, 1/scale_v, true);
     else if (o_sType.isFloat8E5M2())
-      F8E5M2(p.inputs[0], p.outputs[0], length, 1.0);
+      F8E5M2(p.inputs[0], p.outputs[0], length, 1.0, true);
     else
       llvm_unreachable("Unknown requant mode");
     break;

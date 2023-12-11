@@ -274,12 +274,11 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
       for (int i=0;i<quant_scale_v.get()->size();i++) {
         size_t out_c_num = num_elem/quant_scale_v.get()->size();
         for (int j=0;j<out_c_num;j++) {
-          p.outputs[0][i*out_c_num+j] = p.outputs[0][i*out_c_num+j] * quant_scale_v.get()->at(i);
-          p.outputs[0][i*out_c_num+j] = f8e4m3_to_f32(f32_to_f8e4m3(p.outputs[0][i*out_c_num+j]));
+          p.outputs[0][i*out_c_num+j] = F8E4M3(p.outputs[0][i*out_c_num+j], 1.0/quant_scale_v.get()->at(i), true);
         }
       }
     } else if (out_type.isFloat8E5M2()) {
-      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
+      F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0, true);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
