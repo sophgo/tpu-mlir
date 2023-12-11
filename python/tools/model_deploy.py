@@ -23,6 +23,7 @@ from utils.log_setting import setup_logger
 
 logger = setup_logger("deploy")
 
+
 def str2list(v):
     files = v.split(',')
     files = [s.strip() for s in files]
@@ -96,6 +97,7 @@ class DeployTool:
         self.compare_all = args.compare_all
         self.skip_validation = args.skip_validation
         self.model_version = args.model_version
+        self.io_alone = args.io_alone
         self.q_group_size = args.q_group_size if self.quantize in ["w4f16", "w4bf16"] else 0
         if self.quantize == "int8" or self.quantize == "int4":
             if self.asymmetric:
@@ -124,11 +126,12 @@ class DeployTool:
             self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
             file_mark(self.tpu_mlir)
             self.final_mlir = "{}_final.mlir".format(self.prefix)
-            mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.num_device, self. num_core, self.cali_table,
-                          self.asymmetric, self.quantize_table, self.customization_format,
-                          self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow,
-                          self.do_winograd, self.q_group_size)
-            if self.do_validate and self.cache_tool.do_tpu_validate(self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info):
+            mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.num_device,
+                          self.num_core, self.cali_table, self.asymmetric, self.quantize_table,
+                          self.customization_format, self.fuse_preprocess, self.aligned_input,
+                          self.ignore_f16_overflow, self.do_winograd, self.q_group_size)
+            if self.do_validate and self.cache_tool.do_tpu_validate(
+                    self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info):
                 tool.validate_tpu_mlir()
 
     def _prepare_input_npz(self):
@@ -232,9 +235,10 @@ class DeployTool:
             mlir_to_model(self.tpu_mlir, self.model, self.final_mlir, self.dynamic,
                           self.quant_input, self.quant_output, self.quant_input_list,
                           self.quant_output_list, self.disable_layer_group, self.opt,
-                          self.merge_weight, self.op_divide,
-                          self.embed_debug_info, self.model_version)
-            if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(self.model, self.model_npz):
+                          self.merge_weight, self.op_divide, self.embed_debug_info, self.io_alone,
+                          self.model_version)
+            if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(
+                    self.model, self.model_npz):
                 tool.validate_model()
 
     def validate_model(self):
@@ -248,6 +252,7 @@ class DeployTool:
             f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts, True)
 
         self.cache_tool.mark_model_success()
+
 
 if __name__ == '__main__':
     logger.info("SOPHGO Toolchain {}".format(pymlir.module().version))
@@ -263,6 +268,8 @@ if __name__ == '__main__':
                         help="set default qauntization type: F32/BF16/F16/INT8/F8")
     parser.add_argument("--asymmetric", action='store_true',
                         help="do INT8 asymmetric quantization")
+    parser.add_argument("--q_group_size", default=64, type=int,
+                        help="group size for per-group quant, only used in W4A16 quant mode")
     parser.add_argument("--ignore_f16_overflow", action='store_true',
                         help="some ops convert from f16 to f32, to avoid f16 overflow. These Ops are: LayerNorm, RMSNorm, AvgPool")
     parser.add_argument("--chip", "--processor", required=True, type=str.lower,
@@ -318,10 +325,10 @@ if __name__ == '__main__':
                         help="merge weights into one weight binary with previous generated cvimodel")
     parser.add_argument("--do_winograd", action="store_true", default=False,
                         help="do_winograd")
+    parser.add_argument("--io_alone", action="store_true", default=False,
+                        help="io alone physical address, not in neuron space")
     parser.add_argument("--model_version", default="latest",
                         help="if need old version cvimodel, set the verion, such as 1.2")
-    parser.add_argument("--q_group_size", default=64, type=int,
-                        help="group size for per-group quant, only used in W4A16 quant mode")
 
     # yapf: enable
     args = parser.parse_args()

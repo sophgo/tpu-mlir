@@ -75,7 +75,8 @@ void ModelGen::AddNet(const flatbuffers::Offset<bmodel::Net> &net) {
 
 void ModelGen::AddNet(const std::string &net_name,
                       const CASCADE_INFO_T &cascade,
-                      const flatbuffers::Offset<NetParameter> &parameter) {
+                      const flatbuffers::Offset<NetParameter> &parameter,
+                      bool io_alone) {
   auto net_new = reinterpret_cast<const NetParameter *>(
       builder_.GetCurrentBufferPointer() + builder_.GetSize() - parameter.o);
   if (net_new->ctx_size() > max_neuron_size_) {
@@ -85,12 +86,14 @@ void ModelGen::AddNet(const std::string &net_name,
   net_info.name = net_name;
   net_info.cascade = cascade;
   net_info.parameters.push_back(parameter);
+  net_info.io_alone = io_alone;
   net_vector_.push_back(net_info);
 }
 
 void ModelGen::AddNet(const string &net_name,
                       const Offset<NetParameter> &parameter, uint32_t *net_idx,
-                      uint32_t *stage_idx, const bmodel::Cascade *cascade) {
+                      uint32_t *stage_idx, const bmodel::Cascade *cascade,
+                      bool io_alone) {
   ASSERT(net_name.empty() == false);
   auto net_new = reinterpret_cast<const NetParameter *>(
       builder_.GetCurrentBufferPointer() + builder_.GetSize() - parameter.o);
@@ -118,6 +121,7 @@ void ModelGen::AddNet(const string &net_name,
       net_info.cascade.main_name = cascade->main_name()->str();
       net_info.cascade.device_id = cascade->device_id();
       net_info.cascade.step = cascade->step();
+      net_info.io_alone = io_alone;
     }
     net_vector_.push_back(net_info);
     if (stage_idx != NULL) {
@@ -277,6 +281,7 @@ size_t ModelGen::Finish() {
     nb.add_name(net_name);
     nb.add_cascade(cascade);
     nb.add_parameter(parameter);
+    nb.add_io_alone(net_info.io_alone);
     nets_.push_back(nb.Finish());
   }
   if (nets_.empty()) {

@@ -75,9 +75,12 @@ def mlir_lowering(top_mlir: str,
                   ignore_f16_overflow: bool = False,
                   do_winograd: bool = False,
                   q_group_size: int = 0):
-    cmd = ["tpuc-opt", top_mlir, "--processor-assign=\"chip={} num_device={} num_core={}\"".format(chip.lower(), num_device, num_core)]
+    cmd = [
+        "tpuc-opt", top_mlir, "--processor-assign=\"chip={} num_device={} num_core={}\"".format(
+            chip.lower(), num_device, num_core)
+    ]
     mode = mode.upper()
-    asymmetric = False # TODO: always using symmetric, as asymmetric not good
+    asymmetric = False  # TODO: always using symmetric, as asymmetric not good
     if cali_table != None:
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)
@@ -118,6 +121,7 @@ def mlir_to_model(tpu_mlir: str,
                   merge_weight: bool = False,
                   op_divide: bool = False,
                   embed_debug_info: bool = False,
+                  io_alone: bool = False,
                   model_version: str = ""):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={} quant_input_list={} quant_output_list={}"'.format(
@@ -126,8 +130,7 @@ def mlir_to_model(tpu_mlir: str,
     if not disable_layer_group:
         lg_param = '--layer-group="opt={}"'.format(opt)
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
-    address_assign_param = '--address-assign'
-    #address_assign_param = '--address-assign="reuse_addr=false"'
+    address_assign_param = '--address-assign="io_alone={}"'.format(io_alone)
     if merge_weight:
         address_assign_param = '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
     distribute_param = f"--dev-parallel"
@@ -191,49 +194,39 @@ def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show
 
 
 # TOPTOTOSA
-def top_to_tosa(top_mlir: str,
-                tosa_mlir: str,
-                includeWeight: bool = False):
+def top_to_tosa(top_mlir: str, tosa_mlir: str, includeWeight: bool = False):
     cmd = ["tpuc-opt", top_mlir]
     lower_param = "--convert-top-to-tosa=\"includeWeight="
     if includeWeight:
         lower_param += "True\""
     else:
         lower_param += "False\""
-    cmd.extend([
-        lower_param,
-        "--canonicalize",
-        "-o",
-        tosa_mlir
-    ])
+    cmd.extend([lower_param, "--canonicalize", "-o", tosa_mlir])
     _os_system(cmd)
+
 
 # TOSATOObj
-def tosa_to_llvm(tosa_mlir: str,
-                 objfile: str):
+def tosa_to_llvm(tosa_mlir: str, objfile: str):
     cmd = ["mlir-opt", tosa_mlir]
-    lower_param = ("--pass-pipeline=\"builtin.module("
-                   "func.func(tosa-to-linalg-named, tosa-to-linalg, tosa-to-arith, tosa-to-tensor, tosa-to-scf), "
-                   "convert-tensor-to-linalg, "
-                   "func.func(canonicalize, linalg-bufferize, convert-linalg-to-affine-loops, affine-loop-fusion, affine-simplify-structures, lower-affine), "
-                   "func-bufferize, "
-                   "func.func(tensor-bufferize, llvm-request-c-wrappers), "
-                   "arith-expand, arith-bufferize, normalize-memrefs, convert-scf-to-cf, "
-                   "convert-math-to-llvm, convert-arith-to-llvm, convert-func-to-llvm, convert-cf-to-llvm, "
-                   "convert-bufferization-to-memref, memref-expand, expand-strided-metadata, finalize-memref-to-llvm, "
-                   "canonicalize, llvm-legalize-for-export, reconcile-unrealized-casts)\""
-                   "| mlir-translate --mlir-to-llvmir "
-                   "| llc -mtriple=x86_64-unknown-linux-gnu --filetype=obj")
-    cmd.extend([
-        lower_param,
-        "-o",
-        objfile
-    ])
+    lower_param = (
+        "--pass-pipeline=\"builtin.module("
+        "func.func(tosa-to-linalg-named, tosa-to-linalg, tosa-to-arith, tosa-to-tensor, tosa-to-scf), "
+        "convert-tensor-to-linalg, "
+        "func.func(canonicalize, linalg-bufferize, convert-linalg-to-affine-loops, affine-loop-fusion, affine-simplify-structures, lower-affine), "
+        "func-bufferize, "
+        "func.func(tensor-bufferize, llvm-request-c-wrappers), "
+        "arith-expand, arith-bufferize, normalize-memrefs, convert-scf-to-cf, "
+        "convert-math-to-llvm, convert-arith-to-llvm, convert-func-to-llvm, convert-cf-to-llvm, "
+        "convert-bufferization-to-memref, memref-expand, expand-strided-metadata, finalize-memref-to-llvm, "
+        "canonicalize, llvm-legalize-for-export, reconcile-unrealized-casts)\""
+        "| mlir-translate --mlir-to-llvmir "
+        "| llc -mtriple=x86_64-unknown-linux-gnu --filetype=obj")
+    cmd.extend([lower_param, "-o", objfile])
     _os_system(cmd)
 
+
 # Model inference on CPU
-def model_inference_cpu(objfile: str,
-                        output_size: str):
+def model_inference_cpu(objfile: str, output_size: str):
     # generate executable file: a.out
     print("Generating executable file a.out ...")
     ccompiler = "clang"
@@ -252,6 +245,7 @@ def model_inference_cpu(objfile: str,
     cmd1 = ["./a.out", output_size]
     _os_system(cmd1)
     print("Inference ends successfully! Results are saved in inference_result.txt.")
+
 
 # Extra tool: delete file in current directory
 def delete_file(file: str):

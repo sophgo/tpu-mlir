@@ -58,7 +58,7 @@ public:
           return failure();
         }
       }
-      if (multi_use_times > 2){
+      if (multi_use_times > 2) {
         return failure();
       }
       auto in_op = in.getDefiningOp();
@@ -90,6 +90,7 @@ public:
     if (!module::isState(module::State::TPU_DIVIDED)) {
       llvm_unreachable("module should be divided");
     }
+    module::setIoAlone(io_alone);
     module::removeUnusedOp();
     auto modules = module::getAllModules();
     for (auto s : *modules) {

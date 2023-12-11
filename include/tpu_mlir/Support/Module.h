@@ -73,6 +73,8 @@ void setMode(Mode mode);
 State getState();
 void setState(State state);
 bool isState(State state);
+void setIoAlone(bool alone);
+bool isIoAlone();
 bool isTrain();
 void setTrain(bool is_train);
 void setInputs(ArrayRef<StringRef> inputs);

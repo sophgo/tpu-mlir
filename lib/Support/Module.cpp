@@ -34,6 +34,7 @@ struct Attr {
   static constexpr llvm::StringRef INPUTS = "module.inputs";
   static constexpr llvm::StringRef OUTPUTS = "module.outputs";
   static constexpr llvm::StringRef TRAIN = "module.train";
+  static constexpr llvm::StringRef IO_ALONE = "module.io_alone";
   static constexpr llvm::StringRef QUANT_GROUP_SIZE = "module.q_group_size";
 };
 
@@ -1013,7 +1014,9 @@ void setAsymmetric(bool is_asymmetric) {
 
 int getQuantGroupSize() {
   if (m->hasAttrOfType<IntegerAttr>(Attr::QUANT_GROUP_SIZE)) {
-    return m->getAttrOfType<IntegerAttr>(Attr::QUANT_GROUP_SIZE).getValue().getSExtValue();
+    return m->getAttrOfType<IntegerAttr>(Attr::QUANT_GROUP_SIZE)
+        .getValue()
+        .getSExtValue();
   }
   return 0;
 }
@@ -1033,19 +1036,31 @@ bool isTrain() {
 void setTrain(bool is_train) {
   m->setAttr(Attr::TRAIN, BoolAttr::get(ctx, is_train));
 }
+
+void setIoAlone(bool alone) {
+  m->setAttr(Attr::IO_ALONE, BoolAttr::get(ctx, alone));
+}
+
+bool isIoAlone() {
+  if (m->hasAttrOfType<BoolAttr>(Attr::IO_ALONE)) {
+    return m->getAttrOfType<BoolAttr>(Attr::IO_ALONE).getValue();
+  }
+  return false;
+}
+
 State getState() {
   auto s = m->getAttrOfType<StringAttr>(Attr::STATE);
   return symbolizeState(s).value_or(State::TOP_F32);
 }
 
-Platform getPlatform() { return platform; }
-
-bool isPlatform(Platform plt) { return platform == plt; }
-
 void setState(State state) {
   auto s = stringifyState(state);
   m->setAttr(Attr::STATE, StringAttr::get(ctx, s));
 }
+
+Platform getPlatform() { return platform; }
+
+bool isPlatform(Platform plt) { return platform == plt; }
 
 void setInputs(ArrayRef<StringRef> inputs) {
   m->setAttr(Attr::INPUTS, Builder(ctx).getStrArrayAttr(inputs));

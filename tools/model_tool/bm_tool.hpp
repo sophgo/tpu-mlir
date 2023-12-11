@@ -177,6 +177,9 @@ void bm_show(const string &filename, bool all) {
     cout << "==========================================" << endl;
     cout << "net " << idx << ": [" << net->name()->c_str() << "]  " << net_type
          << endl;
+    if (net->io_alone()) {
+      cout << "io alone: true" << endl;
+    }
     for (uint32_t i = 0; i < parameter->size(); i++) {
       auto net_param = parameter->Get(i);
       auto subnet = net_param->sub_net();
