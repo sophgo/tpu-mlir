@@ -168,6 +168,13 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
+    } else if (out_type.isFloat8E4M3FN()) {
+      if (!getOutF8Scales().has_value())
+        llvm_unreachable("should have out scale for MatMul in f8 mode");
+      f64_array_t scales = module::getF64Array(getOutF8Scales().value());
+      [[maybe_unused]] auto scale_f = scales->at(0);
+      [[maybe_unused]] auto scale_f_reciprocal = 1 / scales->at(0);
+      F8E4M3(p.outputs[0], p.outputs[0], num_elem, scale_f_reciprocal);
     } else if (out_type.isFloat8E5M2()) {
       F8E5M2(p.outputs[0], p.outputs[0], num_elem, 1.0);
     } else if (out_type.isF16()) {
@@ -326,16 +333,7 @@ LogicalResult tpu::MatMulOp::AllowDataSplit(int64_t axis,
 
 mlir::Type tpu::MatMulOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   if (opd_idx == 0 || opd_idx == 1) {
-    auto quant_to_f8e5 = getOperation()->getAttr("quant_to_fp8e5");
-    auto quant_to_f8e4 = getOperation()->getAttr("quant_to_fp8e4");
-    if (quant_to_f8e5) {
-      return type_verify_case_f32(getOperation(), opd_idx, mode, false);
-    } else if (quant_to_f8e4) {
-      return type_verify_case_f32(getOperation(), opd_idx, mode, true);
-    } else {
-      // if output is i32, then input be quantized
-      return type_verify_case_i32(getOperation(), opd_idx, mode);
-    }
+    return type_verify_case_i32(getOperation(), opd_idx, mode);
   }
   return type_verify_case_same(getOperation(), opd_idx, mode);
 }

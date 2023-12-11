@@ -58,7 +58,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
         spec.offset_val = output_type.getZeroPoint();
       }
     } else if (odtype.isFloat8E4M3FN()) {
-      //spec.requant_mode = 0;
+      spec.requant_mode = 0;
       f64_array_t scales = module::getF64Array(getOutF8Scales().value());
       float scale = scales->at(0);
       spec.mul_val = *(int*)&scale;
@@ -262,7 +262,7 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
       common.offset_val = output_type.getZeroPoint();
     }
   } else if (odtype.isFloat8E4M3FN()) {
-    //common.requant_mode = 0;
+    common.requant_mode = 0;
     f64_array_t scales = module::getF64Array(getOutF8Scales().value());
     float scale = scales->at(0);
     common.mul_val = *(int*)&scale;
@@ -312,7 +312,7 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
         spec.offset_val = output_type.getZeroPoint();
       }
     } else if (odtype.isFloat8E4M3FN()) {
-      //spec.requant_mode = 0;
+      spec.requant_mode = 0;
       f64_array_t scales = module::getF64Array(getOutF8Scales().value());
       float scale = scales->at(0);
       spec.mul_val = *(int*)&scale;
