@@ -257,7 +257,8 @@ void BMCodegen::run(ModuleOp s, bool embed_debug_info) {
     }
     cascade.main_name = module::getName(module::getModuleOp());
   }
-  model_gen->AddNet(module::getName(s).str(), cascade, npb.Finish());
+  model_gen->AddNet(module::getName(s).str(), cascade, npb.Finish(),
+                    module::isIoAlone());
 }
 
 void BMCodegen::store() {
@@ -280,8 +281,7 @@ BMCodegen::CreateShapeVector(const ArrayRef<int64_t> &shape) {
 }
 
 Offset<Vector<Offset<bmodel::Tensor>>>
-BMCodegen::CreateTensorVector(const std::vector<Value> &values,
-                              int devid) {
+BMCodegen::CreateTensorVector(const std::vector<Value> &values, int devid) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   int index = 0;
@@ -305,14 +305,14 @@ BMCodegen::CreateTensorVector(const std::vector<Value> &values,
     } else if (isSpecialInputTensor(s_name)) {
       tb.add_hidden(3);
       std::string suffix = "_" + std::to_string(devid);
-      auto ss_name = s_name.substr(0, s_name.size()-suffix.size());
+      auto ss_name = s_name.substr(0, s_name.size() - suffix.size());
       auto in_iter =
           std::find(input_names->begin(), input_names->end(), ss_name);
       tb.add_index(std::distance(input_names->begin(), in_iter));
     } else if (isSpecialOutputTensor(s_name)) {
       tb.add_hidden(4);
       std::string suffix = "_" + std::to_string(devid);
-      auto ss_name = s_name.substr(0, s_name.size()-suffix.size());
+      auto ss_name = s_name.substr(0, s_name.size() - suffix.size());
       auto out_iter =
           std::find(output_names->begin(), output_names->end(), ss_name);
       tb.add_index(std::distance(output_names->begin(), out_iter));
@@ -825,10 +825,9 @@ void codegenCoreParallelOp(
   multi_core->useCore(0); // reset the command buffer to 0
 }
 
-void codegenMultiCoreOp(
-    GlobalGenInterfaceDecorator parallelOp, BM168x *bm168x,
-    const std::function<void(GlobalGenInterfaceDecorator)>
-        &codegenGlobalLayer) {
+void codegenMultiCoreOp(GlobalGenInterfaceDecorator parallelOp, BM168x *bm168x,
+                        const std::function<void(GlobalGenInterfaceDecorator)>
+                            &codegenGlobalLayer) {
   auto multi_core = cast<MultiCoreInterface>(bm168x);
   auto core_num = module::getCoreNum();
   for (int i = 0; i < core_num; ++i) {
@@ -915,10 +914,12 @@ void BMCodegen::codegen(FuncOp funcOp) {
 
     if (auto Conv2dOp = dyn_cast<tpu::Conv2DOp>(op)) {
       auto &attr = getConv2DParam(Conv2dOp);
-      bool is_depthwise = attr.ic == attr.oc && attr.ic == attr.groups && attr.groups > 1;
+      bool is_depthwise =
+          attr.ic == attr.oc && attr.ic == attr.groups && attr.groups > 1;
       auto in_etype = module::getStorageType(Conv2dOp.getInput());
       auto core_num = module::getCoreNum();
-      if (is_depthwise == false && in_etype.isIntOrIndex() == false && core_num != 1) {
+      if (is_depthwise == false && in_etype.isIntOrIndex() == false &&
+          core_num != 1) {
         codegenMultiCoreOp(op, bm168x, codegenGlobalLayer);
         return WalkResult::skip();
       }

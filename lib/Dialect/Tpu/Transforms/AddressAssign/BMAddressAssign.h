@@ -22,6 +22,7 @@ public:
   void assign(ModuleOp &module, bool reuse_addr);
 
   static bool isInPlaceOp(Operation *op);
+
 protected:
   void updateLiveRangeofBMOps(Operation *op, int index,
                               std::map<Operation *, uint32_t> &ops_loc,
