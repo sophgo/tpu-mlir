@@ -167,6 +167,78 @@ struct ConvertEinsum : public OpRewritePattern<EinsumOp> {
       auto tranBackOp = rewriter.create<PermuteOp>(op.getLoc(), op.getType(), ValueRange{matmulOp}, attrs);
       op.replaceAllUsesWith(tranBackOp.getOperation());
       rewriter.eraseOp(op);
+    } else if (mode == "abcd,abed->abce") {
+      /*
+      1. a,b,c,d --reshape--> (ab, c, d)
+      2. a,b,e,d --reshape--> (ab, e, d) --transpose(0, 2, 1)--> (ab, d, e)
+      3. (ab, c, d) batch matmul (ab, d, e) --> (ab, c, e)
+      4. (ab, c, e) --reshape--> (a, b, c, e)
+      */
+      // 1. reshape lhs
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto newType = RankedTensorType::get({lshape[0] * lshape[1], lshape[2], lshape[3]}, module::getElementType(lhs));
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to3dim"));
+      auto lrsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
+      operands.push_back(lrsOp);
+
+      // 2. reshape rhs
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      newType = RankedTensorType::get({lshape[0] * lshape[1], rshape[2], rshape[3]}, module::getElementType(rhs));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
+      auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+      operands.push_back(rrsop);
+
+      operands.push_back(none);
+
+      rewriter.setInsertionPoint(op);
+
+      // 3. (ab, c, d) batch matmul (ab, d, e)^T  --> (ab, c, e)
+      newType = RankedTensorType::get({lshape[0] * lshape[1], lshape[2], rshape[2]}, module::getElementType(op));
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+      attrs.push_back(rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
+
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+
+      // 4. (ab, c, e) --reshape--> (a, b, c, e)
+      auto orsOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(orsOp.getOperation());
+      rewriter.eraseOp(op);
+
+    } else if (mode == "abcd,abde->abce") {
+      /*
+      1. a,b,c,d --reshape--> (ab, c, d)
+      2. a,b,d,e --reshape--> (ab, d, e)
+      3. (ab, c, d) batch matmul (ab, d, e) --> (ab, c, e)
+      4. (ab, c, e) --reshape--> (a, b, c, e)
+      */
+      // 1. reshape lhs
+      rewriter.setInsertionPointAfter(lhs.getDefiningOp());
+      auto newType = RankedTensorType::get({lshape[0] * lshape[1], lshape[2], lshape[3]}, module::getElementType(lhs));
+      auto loc = NameLoc::get(rewriter.getStringAttr(lname + "_to3dim"));
+      auto lrsOp = rewriter.create<ReshapeOp>(loc, newType, ValueRange{lhs});
+      operands.push_back(lrsOp);
+
+      // 2. reshape rhs
+      rewriter.setInsertionPointAfter(rhs.getDefiningOp());
+      newType = RankedTensorType::get({lshape[0] * lshape[1], rshape[2], rshape[3]}, module::getElementType(rhs));
+      loc = NameLoc::get(rewriter.getStringAttr(rname + "_to3dim"));
+      auto rrsop = rewriter.create<ReshapeOp>(loc, newType, ValueRange{rhs});
+      operands.push_back(rrsop);
+
+      operands.push_back(none);
+
+      rewriter.setInsertionPoint(op);
+
+      // 3. (ab, c, d) batch matmul (ab, d, e)  --> (ab, c, e)
+      newType = RankedTensorType::get({lshape[0] * lshape[1], lshape[2], rshape[3]}, module::getElementType(op));
+      loc = NameLoc::get(rewriter.getStringAttr(name + "_matmul"));
+
+      auto matmulOp = rewriter.create<MatMulOp>(loc, newType, operands, attrs);
+
+      // 4. (ab, c, e) --reshape--> (a, b, c, e)
+      auto orsOp = rewriter.create<ReshapeOp>(op.getLoc(), op.getType(), ValueRange{matmulOp});
+      op.replaceAllUsesWith(orsOp.getOperation());
+      rewriter.eraseOp(op);
     } else {
       llvm_unreachable("Einsum not support this mode now");
     }

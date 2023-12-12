@@ -94,6 +94,7 @@ class ONNX_IR_TESTER(object):
             "Einsum3":      (self.test_Einsum3,       Y, Y, Y, Y, Y),
             "Einsum4":      (self.test_Einsum4,       N, Y, Y, N, Y),
             "Einsum5":      (self.test_Einsum5,       N, Y, Y, N, Y),
+            "Einsum6":      (self.test_Einsum6,       N, Y, Y, N, Y),
             "Elu":          (self.test_Elu,           Y, Y, Y, N, Y),
             "Erf":          (self.test_Erf,           N, Y, Y, N, Y),
             "Exp":          (self.test_Exp,           Y, Y, Y, Y, Y),
@@ -4681,6 +4682,22 @@ class ONNX_IR_TESTER(object):
                     output = Einsum<equation="%s">(input1, input2)
                 }
                 """ % (input_shape["input1"], input_shape["input2"], output_shape, equation)
+            graph_def = onnx.parser.parse_graph(graph_txt)
+            self.onnx_and_test(graph_def)
+
+    def test_Einsum6(self, case_name):
+        for i, equation in enumerate(['bhwc,bhkc->bhwk', 'bhwc,bhck->bhwk']):
+            input_shape = {"input1": [5, 16, 15, 64], "input2": [5, 16, 14, 64]}
+            if equation == 'bhwc,bhck->bhwk':
+                input_shape["input2"][3] = input_shape["input2"][2]
+                input_shape["input2"][2] = input_shape["input1"][3]
+            output_shape = [5, 16, 15, 14]
+            graph_txt = """
+                Einsum6_%s (float%s input1, float%s input2) => (float%s output)
+                {
+                    output = Einsum<equation="%s">(input1, input2)
+                }
+                """ % (i, input_shape["input1"], input_shape["input2"], output_shape, equation)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
