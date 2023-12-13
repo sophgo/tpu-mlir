@@ -58,33 +58,53 @@ def BModel2Reg(bmodel_file):
 
 
 def BModel2Bin(bmodel_file):
+    import math
+
+    class FName:
+        core_id = 0
+        subnet_id = 0
+        gid = 0
+        length = 0
+        suffix = ""
+
+        def __str__(self):
+            return (
+                bmodel_file
+                + f".core({self.core_id}).subnet({self.subnet_id}).group({self.gid}).len({self.length}){self.suffix}"
+            )
+
+    fname = FName()
     bmodel = dis.BModel(bmodel_file)
     for subnet in BModelCMDIter(bmodel):
-        subnet_id = subnet.id
-        for gid, cmds in enumerate(subnet.cmd_group):
-            formated_id = f".core(0).subnet({subnet_id}).group({gid})"
-            with open(bmodel_file + formated_id + "tiu.bin", "wb") as f:
+        fname.core_id = 0
+        fname.subnet_id = subnet.id
+        for fname.gid, cmds in enumerate(subnet.cmd_group):
+            fname.length, fname.suffix = cmds.tiu_num, ".tiu.bin"
+            with open(str(fname), "wb") as f:
                 f.write(bytes(cmds.tiu_cmd))
-            with open(bmodel_file + formated_id + "dma.bin", "wb") as f:
+            fname.length, fname.suffix = cmds.dma_num, ".dma.bin"
+            with open(str(fname), "wb") as f:
                 f.write(bytes(cmds.dma_cmd))
-        for core_id, _cmds in enumerate(subnet.core_commands):
-            for gid, cmds in enumerate(_cmds.gdma_tiu_commands):
-                formated_id = f".core({core_id}).subnet({subnet_id}).group({gid})"
-                with open(bmodel_file + formated_id + ".tiu.bin", "wb") as f:
+        for fname.core_id, _cmds in enumerate(subnet.core_commands):
+            for fname.gid, cmds in enumerate(_cmds.gdma_tiu_commands):
+                fname.length, fname.suffix = cmds.tiu_num, ".tiu.bin"
+                with open(str(fname), "wb") as f:
                     f.write(bytes(cmds.tiu_cmd))
-                with open(bmodel_file + formated_id + ".dma.bin", "wb") as f:
+                fname.length, fname.suffix = cmds.dma_num, ".dma.bin"
+                with open(str(fname), "wb") as f:
                     f.write(bytes(cmds.dma_cmd))
-            for gid, cmds in enumerate(_cmds.sdma_commands):
-                formated_id = f".core({core_id}).subnet({subnet_id}).group({gid})"
-                with open(bmodel_file + formated_id + ".sdma.bin", "wb") as f:
+            for fname.gid, cmds in enumerate(_cmds.sdma_commands):
+                # cmds contains system-end.
+                fname.length, fname.suffix = math.ceil(len(cmds) / 96), ".sdma.bin"
+                with open(str(fname), "wb") as f:
                     f.write(bytes(cmds))
-            for gid, cmds in enumerate(_cmds.hau_commands):
-                formated_id = f".core({core_id}).subnet({subnet_id}).group({gid})"
-                with open(bmodel_file + formated_id + ".hau.bin", "wb") as f:
+            for fname.gid, cmds in enumerate(_cmds.hau_commands):
+                fname.length, fname.suffix = math.ceil(len(cmds) / 80), ".hau.bin"
+                with open(str(fname), "wb") as f:
                     f.write(bytes(cmds))
-            for gid, cmds in enumerate(_cmds.cdma_commands):
-                formated_id = f".core({core_id}).subnet({subnet_id}).group({gid})"
-                with open(bmodel_file + formated_id + ".cmda.bin", "wb") as f:
+            for fname.gid, cmds in enumerate(_cmds.cdma_commands):
+                fname.length, fname.suffix = math.ceil(len(cmds) / 120), ".hau.bin"
+                with open(str(fname), "wb") as f:
                     f.write(bytes(cmds))
 
 
@@ -177,14 +197,14 @@ def __main():
             outs = {
                 _id: {
                     "tiu": [
-                        {"name": getattr(x, 'detail_name', x.name), "cmd": dict(x.reg)}
+                        {"name": getattr(x, "detail_name", x.name), "cmd": dict(x.reg)}
                         for x in ops.tiu
-                        if not_visited(getattr(x, 'detail_name', x.name))
+                        if not_visited(getattr(x, "detail_name", x.name))
                     ],
                     "dma": [
-                        {"name": getattr(x, 'detail_name', x.name), "cmd": dict(x.reg)}
+                        {"name": getattr(x, "detail_name", x.name), "cmd": dict(x.reg)}
                         for x in ops.dma
-                        if not_visited(getattr(x, 'detail_name', x.name))
+                        if not_visited(getattr(x, "detail_name", x.name))
                     ],
                 }
                 for _id, ops in module
