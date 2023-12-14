@@ -94,6 +94,9 @@ typedef struct {
   int64_t input_zp;
   int64_t right_zp;
   int64_t left_reuse;
+  std::vector<int64_t> L_shape;
+  std::vector<int64_t> R_shape;
+  int dims_merge_2_M;
 } matmul_attr_t;
 
 typedef struct {

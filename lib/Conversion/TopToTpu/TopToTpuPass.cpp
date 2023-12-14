@@ -734,8 +734,8 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     return false;
   }
 
-  void try_insert_tile(TyOp &op, PatternRewriter &rewriter, int idx, int axis,
-                       int tile) const {
+  static void try_insert_tile(TyOp &op, PatternRewriter &rewriter, int idx,
+                              int axis, int tile) {
     Value opd = op.getOperand(idx);
     auto def_op = opd.getDefiningOp();
     auto input_shape = module::getShape(opd);
@@ -752,8 +752,8 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
     weight_tile[axis] = tile;
     attrs.emplace_back(
         rewriter.getNamedAttr("tile", rewriter.getI64ArrayAttr(weight_tile)));
-    auto tileOp = rewriter.create<tpu::TileOp>(
-        loc, newType, ValueRange{opd, module::getNoneOp(op)}, attrs);
+    auto tileOp =
+        rewriter.create<top::TileOp>(loc, newType, ValueRange{opd}, attrs);
     op->setOperand(idx, tileOp);
     std::vector<int64_t> output_shape = input_shape;
     output_shape[axis] = tile;
@@ -793,6 +793,44 @@ struct TryInsertTileBinaryPattern : public OpRewritePattern<TyOp> {
   }
 };
 
+struct TryInsertTileMatMulPattern : public OpRewritePattern<top::MatMulOp> {
+  using OpRewritePattern<top::MatMulOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    Value opd1 = op.getOperand(0);
+    Value opd2 = op.getOperand(1);
+    const std::vector<int64_t> shape1 = module::getShape(opd1);
+    const std::vector<int64_t> shape2 = module::getShape(opd2);
+    if (shape1.size() <= 2 || shape2.size() <= 2)
+      return failure();
+
+    if (shape1.size() != shape2.size()) {
+      return failure();
+    }
+    int shape_dim = shape1.size();
+    int dims_merge_2_M = 0;
+    for (int i = shape_dim - 3; i >= 0; i--) {
+      if (shape2[i] == 1) {
+        dims_merge_2_M++;
+      } else {
+        break;
+      }
+    }
+    for (int i = shape_dim - 3 - dims_merge_2_M; i >= 0; --i) {
+      if (shape1[i] == shape2[i])
+        continue;
+      else if (shape1[i] == 1) {
+        TryInsertTileBinaryPattern<top::MatMulOp>::try_insert_tile(
+            op, rewriter, 0, i, shape2[i]);
+      } else if (shape2[i] == 1) {
+        TryInsertTileBinaryPattern<top::MatMulOp>::try_insert_tile(
+            op, rewriter, 1, i, shape1[i]);
+      }
+    }
+    return failure();
+  }
+};
+
 void ConvertTopToTpu::runOnOperation() {
     module_ = getOperation();
     ctx_ = &getContext();
@@ -807,6 +845,18 @@ void ConvertTopToTpu::runOnOperation() {
       module::setWeightFileName(weightFileName);
     }
 
+    RewritePatternSet patterns(ctx_);
+    patterns.clear();
+    patterns.add<TryInsertTileBinaryPattern<top::AddOp>,
+                 TryInsertTileBinaryPattern<top::SubOp>,
+                 TryInsertTileBinaryPattern<top::MulOp>,
+                 TryInsertTileBinaryPattern<top::MaxOp>,
+                 TryInsertTileBinaryPattern<top::MinOp>,
+                 TryInsertTileBinaryPattern<top::CompareOp>,
+                 TryInsertTileMatMulPattern>(ctx_);
+
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    patterns.clear();
     LoweringConfig::doWinograd =
         doWinograd.hasValue() ? doWinograd.getValue() : false;
     init_qtable();
@@ -828,8 +878,6 @@ void ConvertTopToTpu::runOnOperation() {
       module::updateModuleTypes();
     }
 
-    RewritePatternSet patterns(ctx_);
-
     // process shape related ops
     if (module::isBM1684XFamily() || module::isSG2260Family()) {
       bm1684x::populateTopShapeToTpuConversionPatterns(&patterns);
@@ -837,15 +885,6 @@ void ConvertTopToTpu::runOnOperation() {
       bm1684::populateTopShapeToTpuConversionPatterns(&patterns);
     }
 
-    applyPatternsAndFoldGreedily(module_, std::move(patterns));
-
-    patterns.clear();
-    patterns.add<TryInsertTileBinaryPattern<top::AddOp>,
-                 TryInsertTileBinaryPattern<top::SubOp>,
-                 TryInsertTileBinaryPattern<top::MulOp>,
-                 TryInsertTileBinaryPattern<top::MaxOp>,
-                 TryInsertTileBinaryPattern<top::MinOp>,
-                 TryInsertTileBinaryPattern<top::CompareOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
 
     patterns.clear();

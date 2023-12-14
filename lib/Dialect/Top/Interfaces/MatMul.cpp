@@ -36,6 +36,12 @@ matmul_attr_t top::MatMulOp::parseParam() {
     b_dims += 1;
     o_dims += 1;
   }
+  for (int i = 0; i < a_dims; i++) {
+    p.L_shape.push_back(a_s[i]);
+  }
+  for (int i = 0; i < b_dims; i++) {
+    p.R_shape.push_back(b_s[i]);
+  }
   if (a_dims == 1) {
     assert(p.left_transpose == false);
     a_s.insert(a_s.begin(), 1);
@@ -47,17 +53,26 @@ matmul_attr_t top::MatMulOp::parseParam() {
   assert(p.N == o_s[o_dims - 1]);
   p.K = p.right_transpose ? b_s[b_dims - 1] : b_s[b_dims - 2];
   p.batch = 1;
-  int b_temp = 1;
   for (int i = 0; i < b_dims - 2; i++) {
-    p.batch *= b_s[i];
+    if (a_s[i] == b_s[i])
+      p.batch *= b_s[i];
+    else if (a_s[i] == 1 || b_s[i] == 1)
+      p.batch *= std::max(a_s[i], b_s[i]);
+    else
+      assert(a_s[i] == b_s[i] || a_s[i] == 1 || b_s[i] == 1);
   }
-  for (int i = 1; i < b_dims - 2; i++) {
-    b_temp *= b_s[i];
+  p.dims_merge_2_M = 0;
+  for (int i = b_dims - 3; i > 0; i--) {
+    if (b_s[i] == 1) {
+      p.dims_merge_2_M++;
+    } else {
+      break;
+    }
   }
-  if (a_s[0] == b_s[0] && b_temp == 1 && b_dims > 2){
+  if (a_s[0] == b_s[0] && b_dims > 2 && p.dims_merge_2_M) {
     p.batch = b_s[0];
     int a_temp = 1;
-    for(int i = 1; i < a_dims - 2; i++){
+    for(int i = a_dims - 3; i > a_dims - 3 - p.dims_merge_2_M; i--) {
       a_temp *= a_s[i];
     }
     p.M = a_s[o_dims - 2] * a_temp;
@@ -67,6 +82,7 @@ matmul_attr_t top::MatMulOp::parseParam() {
     } else {
       p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
                             std::multiplies<int64_t>());
+      p.dims_merge_2_M = o_dims - b_dims;
     }
   }
   return p;
@@ -83,7 +99,7 @@ LogicalResult top::MatMulOp::init(InferenceParameter &p) {
   auto a = parseParam();
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch, 1,
                 a.M, a.K, a.N, a.do_relu, a.relu_limit, 0, 0, a.right_transpose,
-                0, 0, 0);
+                0, 0, 0, a.L_shape, a.R_shape, a.dims_merge_2_M);
   p.handle = (void *)matmul;
   return success();
 }
@@ -163,6 +179,11 @@ void top::MatMulOp::shape_inference() {
     out_shape.resize(2);
     out_shape[0] = batch_size;
     out_shape[1] = n;
+  }
+  if (keep_dims_ && in0_shape.size() == in1_shape.size()) {
+    for (int i = out_shape.size() - 3; i >= 0 ; --i) {
+      out_shape[i] = std::max(in0_shape[i], in1_shape[i]);
+    }
   }
   module::setShapeOrVerify(getOutput(), out_shape);
 }
