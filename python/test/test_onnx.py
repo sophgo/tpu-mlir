@@ -716,11 +716,11 @@ class ONNX_IR_TESTER(object):
     ##################################
     def AvgPoolBase(self, case_name, input_shape, output_shape, kernel, strides):
         graph_txt = """
-            AvgPool (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = AveragePool<kernel_shape=%s, strides=%s>(input)
             }
-            """ % (input_shape, output_shape, kernel, strides)
+            """ % (case_name, input_shape, output_shape, kernel, strides)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -748,13 +748,13 @@ class ONNX_IR_TESTER(object):
                                        vals=[2.0])
 
         graph_txt = """
-            AvgPool1d (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float const_mul>
             {
                 pool_output = AveragePool<kernel_shape=[2], strides=[2]>(input)
                 output = Mul(pool_output, const_mul)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([mul_const])
         self.onnx_and_test(graph_def)
@@ -776,13 +776,13 @@ class ONNX_IR_TESTER(object):
         pads = np.array([0, 0, 1, 1, 0, 0, 1, 1]).astype(np.int64)
 
         graph_txt = """
-            PadAvgPool2d (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <int64[%s] pads = %s>
             {
                 pad_output = Pad<mode="constant">(input, pads)
                 output = AveragePool<kernel_shape=%s, strides=%s>(pad_output)
             }
-            """ % (input_shape, output_shape, pads.shape[0], str(list(pads)).replace(
+            """ % (case_name, input_shape, output_shape, pads.shape[0], str(list(pads)).replace(
             '[', '{').replace(']', '}'), kernel_shape, strides)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
@@ -794,21 +794,21 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 16, 40, 40]
 
         graph_txt = """
-            BatchMatMul (float%s input1, float%s input2) => (float%s output)
+            %s (float%s input1, float%s input2) => (float%s output)
             {
                 output = MatMul(input1, input2)
             }
-            """ % (input1_shape, input2_shape, output_shape)
+            """ % (case_name, input1_shape, input2_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def MaxPoolBase(self, case_name, input_shape, output_shape, kernel, strides):
         graph_txt = """
-            MaxPool (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = MaxPool<kernel_shape=%s, strides=%s>(input)
             }
-            """ % (input_shape, output_shape, kernel, strides)
+            """ % (case_name, input_shape, output_shape, kernel, strides)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -816,11 +816,11 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 3, 64, 64]
         output_shape = [1, 3, 1, 1]
         graph_txt = """
-            GlobalAveragePool (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = GlobalAveragePool(input)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -828,11 +828,11 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 3, 64, 64]
         output_shape = [1, 3, 1, 1]
         graph_txt = """
-            GlobalMaxPool (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = GlobalMaxPool(input)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -847,13 +847,13 @@ class ONNX_IR_TESTER(object):
         filter = helper.make_tensor('filter', TensorProto.FLOAT, filter_shape, filter_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
         graph_txt = """
-            GroupFC (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s filter, float%s bias>
             {
                 fc = MatMul(input, filter)
                 output = Add(fc, bias)
             }
-            """ % (input_shape, output_shape, filter_shape, bias_shape)
+            """ % (case_name, input_shape, output_shape, filter_shape, bias_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([filter, bias])
         self.onnx_and_test(graph_def)
@@ -873,12 +873,12 @@ class ONNX_IR_TESTER(object):
         b_data = np.random.rand(num_dir, 6 * hidden_size).astype(np.float32)
 
         graph_txt = """
-            GRU (float%s input) => (float%s Y)
+            %s (float%s input) => (float%s Y)
             <float%s w, float%s r, float%s b, float%s h>
             {
                 Y, = GRU<direction="%s",hidden_size=%d,linear_before_reset=1>(input, w, r, b, ,h)
             }
-            """ % (input_shape, Y_shape, list(w_data.shape), list(r_data.shape), list(
+            """ % (case_name, input_shape, Y_shape, list(w_data.shape), list(r_data.shape), list(
             b_data.shape), list(h_data.shape), direction, hidden_size)
         graph_def = onnx.parser.parse_graph(graph_txt)
         w_value = helper.make_tensor(
@@ -930,12 +930,12 @@ class ONNX_IR_TESTER(object):
         b_data = np.random.rand(num_dir, 6 * hidden_size).astype(np.float32)
 
         graph_txt = """
-            GRU2 (float%s input) => (float%s Y_h)
+            %s (float%s input) => (float%s Y_h)
             <float%s w, float%s r, float%s b, float%s h, float%s Y>
             {
                 Y, Y_h = GRU<direction="%s",hidden_size=%d,linear_before_reset=1>(input, w, r, b, ,h)
             }
-            """ % (input_shape, Y_h_shape, list(w_data.shape), list(r_data.shape), list(
+            """ % (case_name, input_shape, Y_h_shape, list(w_data.shape), list(r_data.shape), list(
             b_data.shape), list(h_data.shape), Y_shape, direction, hidden_size)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
@@ -989,12 +989,12 @@ class ONNX_IR_TESTER(object):
         b_data = np.random.rand(num_dir, 6 * hidden_size).astype(np.float32)
 
         graph_txt = """
-            GRU3 (float%s input) => (float%s Y, float%s Y_h)
+            %s (float%s input) => (float%s Y, float%s Y_h)
             <float%s w, float%s r, float%s b, float%s h>
             {
                 Y, Y_h = GRU<direction="%s",hidden_size=%d,linear_before_reset=1>(input, w, r, b, ,h)
             }
-            """ % (input_shape, Y_shape, Y_h_shape, list(w_data.shape), list(
+            """ % (case_name, input_shape, Y_shape, Y_h_shape, list(w_data.shape), list(
             r_data.shape), list(b_data.shape), list(h_data.shape), direction, hidden_size)
         graph_def = onnx.parser.parse_graph(graph_txt)
         w_value = helper.make_tensor(
@@ -1045,12 +1045,12 @@ class ONNX_IR_TESTER(object):
         bias_data = np.random.randn(output_shape[1]).astype(np.float32)
 
         graph_txt = """
-            Conv (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s weight, float%s bias>
             {
                 output = Conv<kernel_shape=%s,pads=%s,strides=%s,dilations=%s,group=%d>(input, weight, bias)
             }
-            """ % (input_shape, output_shape, filter_shape, list(
+            """ % (case_name, input_shape, output_shape, filter_shape, list(
             bias_data.shape), kernel, padding, stride, dilation, groups)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
@@ -1135,7 +1135,7 @@ class ONNX_IR_TESTER(object):
         f_data1 = np.random.randn(*f_shape1).astype(np.float32)
 
         graph_txt = """
-            ConvStride (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s filter0, float%s filter1>
             {
                 x1 = Conv<kernel_shape=[3, 3],pads=[1, 1, 1, 1],strides=[2, 2],dilations=[1, 1],group=1>(input, filter0)
@@ -1143,7 +1143,7 @@ class ONNX_IR_TESTER(object):
                 x3 = Mul(x1, x2)
                 output = Conv<kernel_shape=[1, 1], pads=[0, 0, 0, 0], strides=[1, 1], dilations=[1, 1], group=1>(x3, filter1)
             }
-            """ % (in_shape0, out_shape, f_shape0, f_shape1)
+            """ % (case_name, in_shape0, out_shape, f_shape0, f_shape1)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         filter0 = helper.make_tensor('filter0', TensorProto.FLOAT, f_shape0, f_data0)
@@ -1175,14 +1175,14 @@ class ONNX_IR_TESTER(object):
         bias_data = np.random.randn(output_shape[1]).astype(np.float32)
 
         graph_txt = """
-            ConvPool3d (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s weight, float%s bias>
             {
                 conv_output = Conv<kernel_shape=[3, 3, 3],pads=[1, 1, 1, 1, 1, 1],strides=[1, 1, 1],dilations=[1, 1, 1],group=1>(input, weight, bias)
                 relu_output = Relu(conv_output)
                 output = MaxPool<kernel_shape=[1,2,2], pads=[0,0,0,0,0,0], strides=[1,2,2]>(relu_output)
             }
-            """ % (input_shape, output_shape, filter_shape, list(bias_data.shape))
+            """ % (case_name, input_shape, output_shape, filter_shape, list(bias_data.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
@@ -1196,12 +1196,12 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, 16, 64, 64]
 
         graph_txt = """
-            SiLU (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 x1 = Sigmoid(input)
                 output = Mul(input, x1)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -1209,11 +1209,11 @@ class ONNX_IR_TESTER(object):
         input_shape = {"input1": [1, 2, 64], "input2": [1, 3, 64], "input3": [1, 4, 64]}
         output_shape = [1, 2 + 3 + 4, 64]
         graph_txt = """
-            Concat (float[1, 2, 64] input1, float[1, 3, 64] input2, float[1, 4, 64] input3) => (float%s output)
+            %s (float[1, 2, 64] input1, float[1, 3, 64] input2, float[1, 4, 64] input3) => (float%s output)
             {
                 output = Concat<axis=1>(input1, input2, input3)
             }
-            """ % (output_shape)
+            """ % (case_name, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -1223,12 +1223,12 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, 192, 288]
 
         graph_txt = """
-            Concat2 (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s X1, float%s X2>
             {
                 output = Concat<axis=-1>(input, X1, X2)
             }
-            """ % (input_shape, output_shape, x_shape, x_shape)
+            """ % (case_name, input_shape, output_shape, x_shape, x_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         x1_data = np.random.randn(*x_shape).astype(np.float32)
@@ -1255,11 +1255,11 @@ class ONNX_IR_TESTER(object):
             order = transpose_orders[len(input_shape)]
             output_shape = [input_shape[order[i]] for i in range(len(order))]
             graph_txt = """
-                Transpose (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 {
                     output = Transpose<perm=%s>(input)
                 }
-                """ % (input_shape, output_shape, order)
+                """ % (case_name, input_shape, output_shape, order)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
@@ -1272,11 +1272,11 @@ class ONNX_IR_TESTER(object):
         ]
         for idx, shapes in enumerate(cases):
             graph_txt = """
-                Transpose2 (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 {
                     output = Transpose<perm=%s>(input)
                 }
-                """ % (shapes[0], shapes[1], shapes[2])
+                """ % (case_name, shapes[0], shapes[1], shapes[2])
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
@@ -1296,12 +1296,12 @@ class ONNX_IR_TESTER(object):
             tbrn_data = np.random.randn(*tbrn_shape[idx]).astype(np.float32)
             fbrn_data = np.random.randn(*fbrn_shape[idx]).astype(np.float32)
             graph_txt = """
-                Where (bool%s cond, float%s tbrn, float%s fbrn) => (float%s output)
+                %s (bool%s cond, float%s tbrn, float%s fbrn) => (float%s output)
                 <float const_mul = {2.0}>
                 {
                     output = Where(cond, tbrn, fbrn)
                 }
-                """ % (cond_shape[idx], tbrn_shape[idx], fbrn_shape[idx], out_shape[idx])
+                """ % (case_name, cond_shape[idx], tbrn_shape[idx], fbrn_shape[idx], out_shape[idx])
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def,
                                input_data={
@@ -1319,13 +1319,13 @@ class ONNX_IR_TESTER(object):
         bias_data = np.random.randn(oc).astype(np.float32)
 
         graph_txt = """
-            Relu (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s weight, float%s bias>
             {
                 conv_output = Conv<kernel_shape=[3, 3],pads=[1, 1, 1, 1],strides=[1, 1],dilations=[1, 1],group=1>(input, weight, bias)
                 output = Relu(conv_output)
             }
-            """ % (input_shape, output_shape, filter_shape, list(bias_data.shape))
+            """ % (case_name, input_shape, output_shape, filter_shape, list(bias_data.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
@@ -1339,12 +1339,12 @@ class ONNX_IR_TESTER(object):
 
         for i in ['Relu', 'Sigmoid']:
             graph_txt = """
-            PermuteMove_%s (float%s input) => (float%s output)
+            %s_%s (float%s input) => (float%s output)
             {
                 e = Transpose<perm=[1, 0, 2, 3]>(input)
                 output = %s(e)
             }
-            """ % (i, input_shape, output_shape, i)
+            """ % (case_name, i, input_shape, output_shape, i)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def, check_last=True)
 
@@ -1357,13 +1357,13 @@ class ONNX_IR_TESTER(object):
             vals=w_data.flatten(),
         )
         graph_txt = """
-            PermuteMove_AddConst (float%s input) => (float%s output)
+            %s_AddConst (float%s input) => (float%s output)
             <float%s w>
             {
                 e = Transpose<perm=[1, 0, 2, 3]>(input)
                 output = Add(e, w)
             }
-            """ % (input_shape, output_shape, list(w_data.shape))
+            """ % (case_name, input_shape, output_shape, list(w_data.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([w_value])
         self.onnx_and_test(graph_def, check_last=True)
@@ -1377,13 +1377,13 @@ class ONNX_IR_TESTER(object):
         bias_data = np.random.randn(oc).astype(np.float32)
 
         graph_txt = """
-            ReluOnly (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s weight, float%s bias>
             {
                 relu_output = Relu(input)
                 output = Conv<kernel_shape=[3, 3],pads=[1, 1, 1, 1],strides=[1, 1],dilations=[1, 1],group=1>(relu_output, weight, bias)
             }
-            """ % (input_shape, output_shape, filter_shape, list(bias_data.shape))
+            """ % (case_name, input_shape, output_shape, filter_shape, list(bias_data.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
@@ -1400,13 +1400,13 @@ class ONNX_IR_TESTER(object):
         alpha_cases = [0.67, 0.2]
         for i, a in enumerate(alpha_cases):
             graph_txt = """
-            LeakyRelu (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s weight, float%s bias>
             {
                 conv_output = Conv<kernel_shape=[3, 3],pads=[1, 1, 1, 1],strides=[1, 1],dilations=[1, 1],group=1>(input, weight, bias)
                 output = LeakyRelu<alpha=%f>(conv_output)
             }
-            """ % (input_shape, output_shape, filter_shape, list(bias_data.shape), a)
+            """ % (case_name, input_shape, output_shape, filter_shape, list(bias_data.shape), a)
             graph_def = onnx.parser.parse_graph(graph_txt)
             weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
             bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
@@ -1417,11 +1417,11 @@ class ONNX_IR_TESTER(object):
         input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
         output_shape = [1, 3, 27, 27]
         graph_txt = """
-            Mul (float[1, 3, 27, 27] input1, float[1, 3, 27, 27] input2) => (float%s output)
+            %s (float[1, 3, 27, 27] input1, float[1, 3, 27, 27] input2) => (float%s output)
             {
                 output = Mul(input1, input2)
             }
-            """ % (output_shape)
+            """ % (case_name, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -1434,12 +1434,12 @@ class ONNX_IR_TESTER(object):
                 for dim in dims:
                     bcast_s[dim] = 1
                 graph_txt = """
-                MulBcast_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                %s_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
                 {
                     x = Mul(a, b)
                     output = Mul(x, c)
                 }
-                """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                """ % (case_name, i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
@@ -1449,12 +1449,12 @@ class ONNX_IR_TESTER(object):
         out_shapes = ([4, 7, 13, 15], )
         for i, s in enumerate(shapes):
             graph_txt = """
-                MulBcast2_%s (float%s a, float%s b, float%s c) => (float%s output)
+                %s_%s (float%s a, float%s b, float%s c) => (float%s output)
                 {
                     x = Mul(a, b)
                     output = Mul(x, c)
                 }
-                """ % (i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+                """ % (case_name, i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
@@ -1463,12 +1463,12 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, 3, 27, 27]
 
         graph_txt = """
-                MulConst (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <float const_mul = {-2.0}>
                 {
                     output = Mul(input, const_mul)
                 }
-                """ % (input_shape, output_shape)
+                """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -1478,13 +1478,13 @@ class ONNX_IR_TESTER(object):
         w_data = np.random.rand(*input_shape).astype(np.float32)
 
         graph_txt = """
-                MulMerge (float%s input1) => (float%s output2)
+                %s (float%s input1) => (float%s output2)
                 <float%s w>
                 {
                     output1 = Mul(input1, w)
                     output2 = Mul(output1, w)
                 }
-                """ % (input_shape, output_shape, list(w_data.shape))
+                """ % (case_name, input_shape, output_shape, list(w_data.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         w_value = helper.make_tensor(
@@ -1507,12 +1507,12 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*weight_shape).astype(np.float32)
         bias_data = np.random.randn(*bias_shape).astype(np.float32)
         graph_txt = """
-                Gemm (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <float%s weight, float%s bias>
                 {
                     output = Gemm(input, weight, bias)
                 }
-                """ % (input_shape, output_shape, weight_shape, bias_shape)
+                """ % (case_name, input_shape, output_shape, weight_shape, bias_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
@@ -1529,12 +1529,12 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 10, M, N]
         weight_data = np.random.randn(*weight_shape).astype(np.float32)
         graph_txt = """
-                MatMul (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <float%s weight>
                 {
                     output = MatMul(input, weight)
                 }
-                """ % (input_shape, output_shape, weight_shape)
+                """ % (case_name, input_shape, output_shape, weight_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
         graph_def.initializer.extend([weight])
@@ -1551,13 +1551,13 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*weight_shape).astype(np.float32)
         bias_data = np.random.randn(*bias_shape).astype(np.float32)
         graph_txt = """
-                MatMul2 (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <float%s weight, float%s bias>
                 {
                     x1 = MatMul(input, weight)
                     output = Add(x1, bias)
                 }
-                """ % (input_shape, output_shape, weight_shape, bias_shape)
+                """ % (case_name, input_shape, output_shape, weight_shape, bias_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
@@ -1595,13 +1595,13 @@ class ONNX_IR_TESTER(object):
         offset_data = np.random.randn(*offset_shape).astype(np.float32)
 
         graph_txt = """
-                Scale (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <float%s weight, float%s offset>
                 {
                     mul_output = Mul(input, weight)
                     output = Add(mul_output, offset)
                 }
-                """ % (input_shape, output_shape, weight_shape, offset_shape)
+                """ % (case_name, input_shape, output_shape, weight_shape, offset_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
@@ -1616,12 +1616,12 @@ class ONNX_IR_TESTER(object):
         for idx, case in enumerate(cases):
             input_shape, output_shape, scales, dim, mode, coor_mode = case
             graph_txt = """
-                Resize (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <float[0] roi, float%s scales>
                 {
                     output = Resize<mode="%s",nearest_mode="floor", coordinate_transformation_mode="%s">(input, roi, scales)
                 }
-                """ % (input_shape, output_shape, dim, mode, coor_mode)
+                """ % (case_name, input_shape, output_shape, dim, mode, coor_mode)
             graph_def = onnx.parser.parse_graph(graph_txt)
 
             roi_data = np.array([], dtype=np.float32)
@@ -1644,7 +1644,7 @@ class ONNX_IR_TESTER(object):
         scales = np.array([], dtype=np.float32)
 
         graph_txt = """
-            Resize2 (float%s input) => (float%s output1, float%s output2, float%s output3, float%s output4, float%s output5)
+            %s (float%s input) => (float%s output1, float%s output2, float%s output3, float%s output4, float%s output5)
             <float%s roi, float%s scales, int64[4] sizes1=%s, int64[4] sizes2=%s, int64[4] sizes3=%s, int64[4] sizes4=%s, int64[4] sizes5=%s>
             {
                 X1 = Neg(input)
@@ -1654,7 +1654,7 @@ class ONNX_IR_TESTER(object):
                 output4 = Resize<mode="nearest">(input, roi, scales, sizes4)
                 output5 = Resize<mode="nearest">(input, roi, scales, sizes5)
             }
-            """ % (input_shape, output_shape1, output_shape2, output_shape3, output_shape4,
+            """ % (case_name, input_shape, output_shape1, output_shape2, output_shape3, output_shape4,
                    output_shape5, list(roi.shape), list(scales.shape), str(output_shape1).replace(
                        '[', '{').replace(']', '}'), str(output_shape2).replace('[', '{').replace(
                            ']', '}'), str(output_shape3).replace('[', '{').replace(
@@ -1676,12 +1676,12 @@ class ONNX_IR_TESTER(object):
         input_shape = [2, 3, 4, 5]
         output_shape = [6, 20]
         graph_txt = """
-            Flatten (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 x = Flatten<axis=2>(input)
                 output = Softmax<axis=-1>(x)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -1711,12 +1711,12 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, 16, 1024]
         right_data = np.array([1, 16, 1024], dtype=np.int64)
         graph_txt = """
-            Reshape (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <int64%s right>
             {
                 output = %s(input, right)
             }
-            """ % (input_shape, output_shape, right_shape, case_name)
+            """ % (case_name, input_shape, output_shape, right_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         right = helper.make_tensor('right', TensorProto.INT64, right_shape, right_data)
@@ -1730,7 +1730,7 @@ class ONNX_IR_TESTER(object):
         # onnx vs model compare success
         input_shape = [3, 6]
         graph_txt = """
-            Reshape2 (float%s input) => (int64 output)
+            %s (float%s input) => (int64 output)
             <int64 indices0 = {0}, int64 indices = {0}, int64 dim1 = {-1}>
             {
                 gather0 = Gather<axis=0>(input,indices0)
@@ -1742,7 +1742,7 @@ class ONNX_IR_TESTER(object):
                 output_tmp = Reshape(input, new_shape)
                 output = Shape(output_tmp)
             }
-            """ % (input_shape)
+            """ % (case_name, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         indices0 = helper.make_tensor('indices0', TensorProto.INT64, [], vals=[0])
@@ -1758,11 +1758,11 @@ class ONNX_IR_TESTER(object):
     def test_Floor(self, case_name):
         input_shape = [1, 128, 32, 32]
         graph_txt = """
-            Floor (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s(input)
             }
-            """ % (input_shape, input_shape, case_name)
+            """ % (case_name, input_shape, input_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -1772,11 +1772,11 @@ class ONNX_IR_TESTER(object):
         for input_shape in input_shapes:
             for axis in axiss:
                 graph_txt = """
-                    Softmax (float%s input) => (float%s output)
+                    %s (float%s input) => (float%s output)
                     {
                         output = %s<axis=%d>(input)
                     }
-                    """ % (input_shape, input_shape, case_name, axis)
+                    """ % (case_name, input_shape, input_shape, case_name, axis)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
@@ -1784,55 +1784,55 @@ class ONNX_IR_TESTER(object):
         input_shape = [3, 100, 32]
         axis = 2
         graph_txt = """
-            LogSoftmax (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s<axis=%d>(input)
             }
-            """ % (input_shape, input_shape, case_name, axis)
+            """ % (case_name, input_shape, input_shape, case_name, axis)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Softplus(self, case_name):
         input_shape = [200]
         graph_txt = """
-            Softplus (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s(input)
             }
-            """ % (input_shape, input_shape, case_name)
+            """ % (case_name, input_shape, input_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Exp(self, case_name):
         input_shape = [1, 3, 32, 32]
         graph_txt = """
-            Exp (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s(input)
             }
-            """ % (input_shape, input_shape, case_name)
+            """ % (case_name, input_shape, input_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Tanh(self, case_name):
         input_shape = [1, 3, 32, 32]
         graph_txt = """
-            Tanh (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = Tanh(input)
             }
-            """ % (input_shape, input_shape)
+            """ % (case_name, input_shape, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Arctan(self, case_name):
         input_shape = [1, 3, 32, 32]
         graph_txt = """
-            Arctan (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s(input)
             }
-            """ % (input_shape, input_shape, case_name)
+            """ % (case_name, input_shape, input_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -1841,11 +1841,11 @@ class ONNX_IR_TESTER(object):
         # The value range of arctanh is (-1,1)
         input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -0.99, 0.99)
         graph_txt = """
-            Arctanh (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s(input)
             }
-            """ % (input_shape, input_shape, case_name)
+            """ % (case_name, input_shape, input_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, input_data={'input': input_data})
 
@@ -1854,11 +1854,11 @@ class ONNX_IR_TESTER(object):
         # The value range of arccos is (-1,1)
         input_data = np.clip(np.random.randn(*input_shape).astype(np.float32), -0.99, 0.99)
         graph_txt = """
-            Arccos (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s(input)
             }
-            """ % (input_shape, input_shape, case_name)
+            """ % (case_name, input_shape, input_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, input_data={'input': input_data})
 
@@ -1866,11 +1866,11 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 3, 32, 32]
         input_data = np.clip(np.random.randn(*input_shape).astype(np.float32) * 10.0, 0.5, 8)
         graph_txt = """
-            Log (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s(input)
             }
-            """ % (input_shape, input_shape, case_name)
+            """ % (case_name, input_shape, input_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, input_data={'input': input_data})
 
@@ -1879,11 +1879,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 16, 27, 27]
 
         graph_txt = """
-            Neg (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = Neg(input)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -1896,7 +1896,7 @@ class ONNX_IR_TESTER(object):
         score_shape = [num_batches, num_classes, spatial_dimension]
         nonzero_input_shape = [2, 6]
         graph_txt = """
-            Nms2 (float%s nonzero_input, float%s boxes, float%s scores) => (int64 Y_Value)
+            %s (float%s nonzero_input, float%s boxes, float%s scores) => (int64 Y_Value)
             <float[1] iou_threshold = {0.5}, float[1] score_threshold = {0.05}, int64 indices0 = {0}, int64 indices1 = {0}>
             {
                 gather0 = Gather<axis=0>(nonzero_input, indices0)
@@ -1906,7 +1906,7 @@ class ONNX_IR_TESTER(object):
                 max_output_boxes_per_class = Gather<axis=0>(shape,indices1)
                 Y_Value = NonMaxSuppression(boxes, scores, max_output_boxes_per_class, iou_threshold, score_threshold)
             }
-            """ % (nonzero_input_shape, in_shape, score_shape)
+            """ % (case_name, nonzero_input_shape, in_shape, score_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         input_data = {
             'nonzero_input': np.array([[1, 0, 3, 0, 4, 0], [2.1, 2.5, 0, 0, 2.6, 0]],
@@ -1929,12 +1929,12 @@ class ONNX_IR_TESTER(object):
         y_shape = [max_out * num_classes, 3]
 
         graph_txt = """
-            Nms (float%s boxes, float%s scores) => (int64 selected_indices)
+            %s (float%s boxes, float%s scores) => (int64 selected_indices)
             <int64 max_output_boxes_per_class = {200}, float iou_threshold = {0.5}, float score_threshold = {0.05}>
             {
                 selected_indices = NonMaxSuppression(boxes, scores, max_output_boxes_per_class, iou_threshold, score_threshold)
             }
-            """ % (in_shape, score_shape, y_shape)
+            """ % (case_name, in_shape, score_shape, y_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -1946,12 +1946,12 @@ class ONNX_IR_TESTER(object):
         for idx, case in enumerate(cases):
             pads = np.array(case[2]).astype(np.int64)
             graph_txt = """
-                Pad_%s (float%s input) => (float%s output)
+                %s_%s (float%s input) => (float%s output)
                 <int64%s pads>
                 {
                     output = Pad(input, pads)
                 }
-                """ % (idx, case[0], case[1], list(pads.shape))
+                """ % (case_name, idx, case[0], case[1], list(pads.shape))
             graph_def = onnx.parser.parse_graph(graph_txt)
             pad_val = helper.make_tensor(name='pads',
                                          data_type=onnx.TensorProto.INT64,
@@ -1965,12 +1965,12 @@ class ONNX_IR_TESTER(object):
         output_shape = [3, 8, 44, 46]
         pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
         graph_txt = """
-                Pad1 (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <int64%s pads, float pad_val>
                 {
                     output = Pad(input, pads, pad_val)
                 }
-                """ % (input_shape, output_shape, list(pads.shape))
+                """ % (case_name, input_shape, output_shape, list(pads.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         pad_shape = helper.make_tensor(name='pads',
@@ -1989,12 +1989,12 @@ class ONNX_IR_TESTER(object):
         output_shape = [3, 8, 44, 46]
         pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
         graph_txt = """
-                PadEdge (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <int64%s pads>
                 {
                     output = Pad<mode="edge">(input, pads)
                 }
-                """ % (input_shape, output_shape, list(pads.shape))
+                """ % (case_name, input_shape, output_shape, list(pads.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         pad_val = helper.make_tensor(name='pads',
@@ -2010,12 +2010,12 @@ class ONNX_IR_TESTER(object):
         pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
 
         graph_txt = """
-                PadReflect (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <int64%s pads>
                 {
                     output = Pad<mode="reflect">(input, pads)
                 }
-                """ % (input_shape, output_shape, list(pads.shape))
+                """ % (case_name, input_shape, output_shape, list(pads.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         pad_val = helper.make_tensor(name='pads',
@@ -2033,11 +2033,11 @@ class ONNX_IR_TESTER(object):
         mode = 'DCR'  # default
         out_shape = [n, c // (blocksize * blocksize), h * blocksize, w * blocksize]
         graph_txt = """
-                DepthToSpace (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 {
                     output = DepthToSpace<mode="%s", blocksize=%d>(input)
                 }
-                """ % (in_shape, out_shape, mode, blocksize)
+                """ % (case_name, in_shape, out_shape, mode, blocksize)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -2048,11 +2048,11 @@ class ONNX_IR_TESTER(object):
         input_data["input2"] = np.clip(input_data["input2"], 0.01, 10)
 
         graph_txt = """
-                Div (float[1, 3, 27, 27] input1,float[1, 3, 27, 27] input2) => (float%s output)
+                %s (float[1, 3, 27, 27] input1,float[1, 3, 27, 27] input2) => (float%s output)
                 {
                     output = Div(input1, input2)
                 }
-                """ % (output_shape)
+                """ % (case_name, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, input_data=input_data)
 
@@ -2068,12 +2068,12 @@ class ONNX_IR_TESTER(object):
                 b_data = np.clip(np.random.randn(*s).astype(np.float32), 0.01, 10)
                 c_data = np.clip(np.random.randn(*bcast_s).astype(np.float32), 0.01, 10)
                 graph_txt = """
-                    DivBcast_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                    %s_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
                     {
                         x = Div(a, b)
                         output = Div(x, c)
                     }
-                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                    """ % (case_name, i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
 
@@ -2086,12 +2086,12 @@ class ONNX_IR_TESTER(object):
             b_data = np.clip(np.random.randn(*s).astype(np.float32), 0.01, 10)
             c_data = np.clip(np.random.randn(*bcast_shapes[i]).astype(np.float32), 0.01, 10)
             graph_txt = """
-                DivBcast2_%s (float%s a, float%s b, float%s c) => (float%s output)
+                %s_%s (float%s a, float%s b, float%s c) => (float%s output)
                 {
                     x = Div(a, b)
                     output = Div(x, c)
                 }
-                """ % (i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+                """ % (case_name, i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
 
@@ -2115,13 +2115,13 @@ class ONNX_IR_TESTER(object):
         bias_data = np.random.randn(oc).astype(np.float32)
 
         graph_txt = """
-            ConvTrans (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s weight, float%s bias>
             {
                 output = ConvTranspose<kernel_shape=%s, pads=%s, output_padding=%s,
                 strides=%s, dilations=%s, group=1>(input, weight, bias)
             }
-            """ % (input_shape, output_shape, filter_shape, list(
+            """ % (case_name, input_shape, output_shape, filter_shape, list(
             bias_data.shape), kernel_shape, pads, output_padding, strides, dilations)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
@@ -2139,13 +2139,13 @@ class ONNX_IR_TESTER(object):
         bias_data = np.random.randn(*bias_shape).astype(np.float32)
 
         graph_txt = """
-            ConvTrans2 (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s weight, float%s bias>
             {
                 output = ConvTranspose<kernel_shape=[2, 2], pads=[0, 0, 0, 0], output_padding=[1, 1],
                 strides=[2, 2], dilations=[1, 1], group=1>(input, weight, bias)
             }
-            """ % (input_shape, output_shape, filter_shape, bias_shape)
+            """ % (case_name, input_shape, output_shape, filter_shape, bias_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
@@ -2159,14 +2159,14 @@ class ONNX_IR_TESTER(object):
         output_shape = [input_shape[i] for i in range(len(input_shape)) if i not in axis]
 
         graph_txt = """
-            Squeeze (float%s input0, float%s input1) => (float%s output_1, float%s output_2)
+            %s (float%s input0, float%s input1) => (float%s output_1, float%s output_2)
             <int64%s axes>
             {
                 x = Add(input0, input1)
                 output_1 = Squeeze(x, axes)
                 output_2 = Squeeze(x)
             }
-            """ % (input_shape, input_shape, output_shape, output_shape, [len(axis)])
+            """ % (case_name, input_shape, input_shape, output_shape, output_shape, [len(axis)])
         graph_def = onnx.parser.parse_graph(graph_txt)
         axes = helper.make_tensor('axes', TensorProto.INT64, [len(axis)],
                                   axis * np.ones(1).astype(int))
@@ -2176,12 +2176,12 @@ class ONNX_IR_TESTER(object):
     def test_Clip(self, case_name):
         input_shape = [1, 3, 32, 32]
         graph_txt = """
-            Clip (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float min = {-1.0}, float max = {6.0}>
             {
                 output = %s(input, min, max)
             }
-            """ % (input_shape, input_shape, case_name)
+            """ % (case_name, input_shape, input_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -2190,11 +2190,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 4, 4, 64]
 
         graph_txt = """
-            ReduceL2 (float%s input) => (float%s o_l2)
+            %s (float%s input) => (float%s o_l2)
             {
                 o_l2 = ReduceL2<keepdims=0, axes=[3, 4]>(input)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -2203,12 +2203,12 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 4, 4, 16, 64]
 
         graph_txt = """
-            ReduceSum (float%s input) => (float%s o_sum)
+            %s (float%s input) => (float%s o_sum)
             <int64[1] axes = {4}>
             {
                 o_sum = ReduceSum<keepdims=0>(input, axes)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -2217,11 +2217,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, 3, 128]
 
         graph_txt = """
-            ReduceProd (float%s input) => (float%s o_prod)
+            %s (float%s input) => (float%s o_prod)
             {
                 o_prod = ReduceProd<keepdims=0, axes=[2]>(input)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -2230,20 +2230,20 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, 16, 64, 64]
 
         graph_txt = """
-            Sigmoid (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s(input)
             }
-            """ % (input_shape, output_shape, case_name)
+            """ % (case_name, input_shape, output_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         if 0:  # this code to test local layer, but when model use local layer, compare will not pass.
             graph_txt = """
-                Sigmoid (float%s input, float%s a) => (float%s add_out)
+                %s (float%s input, float%s a) => (float%s add_out)
                 {
                     output = %s(input)
                     add_out = Add(a, output)
                 }
-                """ % (input_shape, input_shape, input_shape, case_name)
+                """ % (case_name, input_shape, input_shape, input_shape, case_name)
             graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -2252,11 +2252,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 2, 200, 100]
 
         graph_txt = """
-            Sign (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s(input)
             }
-            """ % (input_shape, output_shape, case_name)
+            """ % (case_name, input_shape, output_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -2269,12 +2269,12 @@ class ONNX_IR_TESTER(object):
         steps_data = np.array([1, 3, 2, 3], dtype=np.int64)
 
         graph_txt = """
-            Slice (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <int64[4] starts, int64[4] ends, int64[4] axes, int64[4] steps>
             {
                 output = Slice(input, starts, ends, axes, steps)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         starts = helper.make_tensor('starts', TensorProto.INT64, [4], starts_data)
@@ -2481,12 +2481,12 @@ class ONNX_IR_TESTER(object):
         split_data = np.array([3, 3], dtype=np.int64)
 
         graph_txt = """
-            Split (float%s input) => (float%s output_1, float%s output_2)
+            %s (float%s input) => (float%s output_1, float%s output_2)
             <int64[2] split>
             {
                 output_1, output_2 = Split<axis=0>(input, split)
             }
-            """ % (input_shape, output1_shape, output2_shape)
+            """ % (case_name, input_shape, output1_shape, output2_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         split = helper.make_tensor('split', TensorProto.INT64, [2], split_data)
@@ -2500,11 +2500,11 @@ class ONNX_IR_TESTER(object):
         split_data = np.array([3, 3], dtype=np.int64)
 
         graph_txt = """
-            Split2 (float%s input) => (float%s output_1, float%s output_2)
+            %s (float%s input) => (float%s output_1, float%s output_2)
             {
                 output_1, output_2 = Split<axis=0>(input)
             }
-            """ % (input_shape, output1_shape, output2_shape)
+            """ % (case_name, input_shape, output1_shape, output2_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -2514,22 +2514,22 @@ class ONNX_IR_TESTER(object):
             output_shape = [20, 1, 60] if keep else [20, 60]
             if self.is_cv18xx:
                 graph_txt = """
-                Arg_%s (float%s input) => (int64%s o_max)
+                %s_%s (float%s input) => (int64%s o_max)
                 {
                     o_max = ArgMax<keepdims=%s, axis=1, select_last_index=1>(input)
                 }
-                """ % (keep, input_shape, output_shape, 1 if keep else 0)
+                """ % (case_name, keep, input_shape, output_shape, 1 if keep else 0)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
                 continue
 
             graph_txt = """
-                Arg_%s (float%s input) => (int64%s o_max, int64%s o_min)
+                %s_%s (float%s input) => (int64%s o_max, int64%s o_min)
                 {
                     o_max = ArgMax<keepdims=%s, axis=1, select_last_index=1>(input)
                     o_min = ArgMin<keepdims=%s, axis=1, select_last_index=1>(input)
                 }
-                """ % (keep, input_shape, output_shape, output_shape, 1 if keep else 0,
+                """ % (case_name, keep, input_shape, output_shape, output_shape, 1 if keep else 0,
                        1 if keep else 0)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
@@ -2540,13 +2540,13 @@ class ONNX_IR_TESTER(object):
             output_shape = [4, 4, 4, 16, 1] if keep else [4, 4, 4, 16]
 
             graph_txt = """
-                Reduce_%s (float%s input) => (float%s o_mean, float%s o_max, float%s o_min)
+                %s_%s (float%s input) => (float%s o_mean, float%s o_max, float%s o_min)
                 {
                     o_mean = ReduceMean<keepdims=%d, axes=[4]>(input)
                     o_max = ReduceMax<keepdims=%d, axes=[4]>(input)
                     o_min = ReduceMin<keepdims=%d, axes=[4]>(input)
                 }
-                """ % (keep, input_shape, output_shape, output_shape, output_shape, keep, keep,
+                """ % (case_name, keep, input_shape, output_shape, output_shape, output_shape, keep, keep,
                        keep)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
@@ -2557,13 +2557,13 @@ class ONNX_IR_TESTER(object):
             output_shape = [4, 4, 1, 1, 64] if keep else [4, 4, 64]
 
             graph_txt = """
-                Reduce2_%s (float%s input) => (float%s o_mean, float%s o_max, float%s o_min)
+                %s_%s (float%s input) => (float%s o_mean, float%s o_max, float%s o_min)
                 {
                     o_mean = ReduceMean<keepdims=%d, axes=[2, 3]>(input)
                     o_max = ReduceMax<keepdims=%d, axes=[2, 3]>(input)
                     o_min = ReduceMin<keepdims=%d, axes=[2, 3]>(input)
                 }
-                """ % (keep, input_shape, output_shape, output_shape, output_shape, keep, keep,
+                """ % (case_name, keep, input_shape, output_shape, output_shape, output_shape, keep, keep,
                        keep)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
@@ -2573,11 +2573,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [2, 1, 1, 7]
 
         graph_txt = """
-            ReduceMean (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = ReduceMean<keepdims=1, axes=[1, 2]>(input)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -3122,12 +3122,12 @@ class ONNX_IR_TESTER(object):
         ]
 
         graph_txt = """
-            Depth2SpaceWithPermute (float%s input) => (float%s depth2space_output)
+            %s (float%s input) => (float%s depth2space_output)
             {
                 permute_output = Transpose<perm=%s>(input)
                 depth2space_output = DepthToSpace<blocksize=%d, mode="%s">(permute_output)
             }
-            """ % (input_shape, depth2space_output_shape, transpose_order, block_size, mode)
+            """ % (case_name, input_shape, depth2space_output_shape, transpose_order, block_size, mode)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -3546,11 +3546,11 @@ class ONNX_IR_TESTER(object):
         shapes = ([1, 3, 27, 27], [2, 6, 56, 56], [4, 9, 56, 56])
         for i, s in enumerate(shapes):
             graph_txt = """
-                Add (float%s a, float%s b) => (float%s output)
+                %s (float%s a, float%s b) => (float%s output)
                 {
                     output = Add(a, b)
                 }
-                """ % (s, s, s)
+                """ % (case_name, s, s, s)
             graph_def = onnx.parser.parse_graph(graph_txt)
             if 0:  # the follow code used to test local layer, but local layer compare faild. so I just closed it, and commit it.
                 c = helper.make_tensor_value_info("c", TensorProto.FLOAT, s)
@@ -3569,12 +3569,12 @@ class ONNX_IR_TESTER(object):
                 for dim in dims:
                     bcast_s[dim] = 1
                 graph_txt = """
-                    tmp_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                    %s_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
                     {
                         x = Add(a, b)
                         output = Add(x, c)
                     }
-                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                    """ % (case_name, i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
@@ -3603,12 +3603,12 @@ class ONNX_IR_TESTER(object):
                 for dim in dims:
                     bcast_s[dim] = 1
                 graph_txt = """
-                    AddBcast_%s_%s (float%s a, float%s b, float%s c) => (float output)
+                    %s_%s_%s (float%s a, float%s b, float%s c) => (float output)
                     {
                         x = Add(a, b)
                         output = Add(x, c)
                     }
-                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s)
+                    """ % (case_name, i, "".join(map(str, dims)), bcast_s, s, bcast_s)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
@@ -3627,12 +3627,12 @@ class ONNX_IR_TESTER(object):
         )
         for i, s in enumerate(shapes):
             graph_txt = """
-                AddBcast2_%s (float%s a, float%s b, float%s c) => (float%s output)
+                %s_%s (float%s a, float%s b, float%s c) => (float%s output)
                 {
                     x = Add(a, b)
                     output = Add(x, c)
                 }
-                """ % (i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+                """ % (case_name, i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
@@ -3650,12 +3650,12 @@ class ONNX_IR_TESTER(object):
         out_shapes = ([4, 9, 10, 11, 12, 7], )
         for i, s in enumerate(shapes):
             graph_txt = """
-                AddBcast3_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                %s_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
                 {
                     x = Add(a, b)
                     output = Add(x, c)
                 }
-                """ % (i, "".join(map(str,
+                """ % (case_name, i, "".join(map(str,
                                       dims)), bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
@@ -3667,12 +3667,12 @@ class ONNX_IR_TESTER(object):
         w_data = np.random.randn(*wshape).astype(np.float32)
 
         graph_txt = """
-            AddWeight2 (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s w>
             {
                 output = Add(input, w)
             }
-            """ % (input_shape, list(w_data.shape), output_shape)
+            """ % (case_name, input_shape, list(w_data.shape), output_shape)
         w_value = helper.make_tensor(
             name='w',
             data_type=onnx.TensorProto.FLOAT,
@@ -3690,12 +3690,12 @@ class ONNX_IR_TESTER(object):
         w_data = np.random.randn(*wshape).astype(np.float32)
 
         graph_txt = """
-            AddWeight (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s w>
             {
                 output = Add(input, w)
             }
-            """ % (input_shape, output_shape, list(w_data.shape))
+            """ % (case_name, input_shape, output_shape, list(w_data.shape))
         w_value = helper.make_tensor(
             name='w',
             data_type=onnx.TensorProto.FLOAT,
@@ -3716,11 +3716,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [2, 3, 27, 27]
 
         graph_txt = """
-            BCastAdd (float%s input1, float%s input2) => (float%s output)
+            %s (float%s input1, float%s input2) => (float%s output)
             {
                 output = Add(input1, input2)
             }
-            """ % (input_shape['input1'], input_shape['input2'], output_shape)
+            """ % (case_name, input_shape['input1'], input_shape['input2'], output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -3729,11 +3729,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 10, 27, 27]
 
         graph_txt = """
-            LRN (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = LRN<size=5>(input)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -3754,12 +3754,12 @@ class ONNX_IR_TESTER(object):
         c0_data = np.random.randn(num_dir, batch_size, hidden_size).astype(np.float32)
 
         graph_txt = """
-            LSTM (float%s input) => (float%s Y)
+            %s (float%s input) => (float%s Y)
             <float%s w, float%s r, float%s b, float%s h0, float%s c0>
             {
                 Y = LSTM<direction="%s", hidden_size=%d>(input, w, r, b, , h0, c0)
             }
-            """ % (input_shape, output_shape, list(w_data.shape), list(
+            """ % (case_name, input_shape, output_shape, list(w_data.shape), list(
             r_data.shape), list(b_data.shape), list(h0_data.shape), list(
                 c0_data.shape), direction, hidden_size)
         graph_def = onnx.parser.parse_graph(graph_txt)
@@ -3791,12 +3791,12 @@ class ONNX_IR_TESTER(object):
         Y_c_s = [num_dir, batch_size, hidden_size]
 
         graph_txt = """
-            LSTM2 (float%s input, float%s h0, float%s c0) => (float%s Y, float%s Y_h, float%s Y_c)
+            %s (float%s input, float%s h0, float%s c0) => (float%s Y, float%s Y_h, float%s Y_c)
             <float%s w, float%s r, float%s b>
             {
                 Y, Y_h, Y_c= LSTM<direction="%s", hidden_size=%d>(input, w, r, b, , h0, c0)
             }
-            """ % (input_s, h0_s, c0_s, Y_s, Y_h_s, Y_c_s, list(w_data.shape), list(
+            """ % (case_name, input_s, h0_s, c0_s, Y_s, Y_h_s, Y_c_s, list(w_data.shape), list(
             r_data.shape), list(b_data.shape), direction, hidden_size)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
@@ -3839,12 +3839,12 @@ class ONNX_IR_TESTER(object):
         Y_h_s = [num_dir, batch_size, hidden_size]
         Y_c_s = [num_dir, batch_size, hidden_size]
         graph_txt = """
-            LSTM3 (float%s input, float%s h0, float%s c0) => (float%s Y_h, float%s Y_c)
+            %s (float%s input, float%s h0, float%s c0) => (float%s Y_h, float%s Y_c)
             <float%s w, float%s r, float%s b, float Y>
             {
                 Y, Y_h, Y_c= LSTM<direction="%s", hidden_size=%d>(input, w, r, b, , h0, c0)
             }
-            """ % (input_s, h0_s, c0_s, Y_h_s, Y_c_s, list(w_data.shape), list(
+            """ % (case_name, input_s, h0_s, c0_s, Y_h_s, Y_c_s, list(w_data.shape), list(
             r_data.shape), list(b_data.shape), direction, hidden_size)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
@@ -3884,11 +3884,11 @@ class ONNX_IR_TESTER(object):
             input_shape = {"input1": [2, 3, 4, 27], "input2": [2, 3, 1, 1]}
             output_shape = [2, 3, 4, 27]
         graph_txt = """
-            BCastMul (float%s input1, float%s input2) => (float%s output)
+            %s (float%s input1, float%s input2) => (float%s output)
             {
                 output = Mul(input1, input2)
             }
-            """ % (input_shape['input1'], input_shape['input2'], output_shape)
+            """ % (case_name, input_shape['input1'], input_shape['input2'], output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -3908,12 +3908,12 @@ class ONNX_IR_TESTER(object):
             np.random.rand(*constant_shape).astype(np.float32),
         )
         graph_txt = """
-            BCastMulCst (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s constant>
             {
                 output = Mul(input, constant)
             }
-            """ % (input_shape, output_shape, constant_shape)
+            """ % (case_name, input_shape, output_shape, constant_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([constant])
         self.onnx_and_test(graph_def)
@@ -3929,13 +3929,13 @@ class ONNX_IR_TESTER(object):
         }
 
         graph_txt = """
-            Gather (int64%s input1, float%s input2) => (float%s output)
+            %s (int64%s input1, float%s input2) => (float%s output)
             <float%s tokens>
             {
                 x1 = Gather(tokens, input1)
                 output = Add(x1, input2)
             }
-            """ % (input_shape, output_shape, output_shape, token_shape)
+            """ % (case_name, input_shape, output_shape, output_shape, token_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         token_data = helper.make_tensor(
@@ -4015,24 +4015,24 @@ class ONNX_IR_TESTER(object):
 
             if self.chip in ['bm1684x']:
                 graph_txt = """
-                    GatherElements (float%s data) => (float%s gather_output)
+                    %s (float%s data) => (float%s gather_output)
                     <int64%s indices>
                     {
                         gather_output = GatherElements<axis=%d>(data, indices)
                     }
-                    """ % (list(input_["data"].shape), list(
+                    """ % (case_name, list(input_["data"].shape), list(
                     indices_data[i].shape), list(indices_.shape), axis_)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 graph_def.initializer.extend([indices])
             elif self.chip in ['bm1684']:
                 graph_txt = """
-                    GatherElements (float%s data) => (float%s output)
+                    %s (float%s data) => (float%s output)
                     <int64%s indices, float const_add>
                     {
                         gather_output = GatherElements<axis=%d>(data, indices)
                         output = Add(gather_output, const_add)
                     }
-                    """ % (list(input_["data"].shape), list(
+                    """ % (case_name, list(input_["data"].shape), list(
                     indices_data[i].shape), list(indices_.shape), axis_)
                 graph_def = onnx.parser.parse_graph(graph_txt)
 
@@ -4071,13 +4071,13 @@ class ONNX_IR_TESTER(object):
             input_data = input_datas[i]
 
             graph_txt = """
-                GatherND (float%s data) => (float%s output)
+                %s_%s (float%s data) => (float%s output)
                 <int64%s indices, float const_add>
                 {
                     gather_output = GatherND<batch_dims=%d>(data, indices)
                     output = Add(gather_output, const_add)
                 }
-                """ % (list(input_shape), output_shape, list(indices_data.shape), batch_dims[i])
+                """ % (case_name, i, list(input_shape), output_shape, list(indices_data.shape), batch_dims[i])
             graph_def = onnx.parser.parse_graph(graph_txt)
 
             add_const = helper.make_tensor(name='const_add',
@@ -4098,11 +4098,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, 3, 27, 27]
 
         graph_txt = """
-            Sum (float%s input1, float%s input2, float%s input3) => (float%s output)
+            %s (float%s input1, float%s input2, float%s input3) => (float%s output)
             {
                 output = Sum(input1, input2, input3)
             }
-            """ % (input_shape, input_shape, input_shape, output_shape)
+            """ % (case_name, input_shape, input_shape, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4111,12 +4111,12 @@ class ONNX_IR_TESTER(object):
         output_shape = [3, 24, 24, 16]
 
         graph_txt = """
-            Tile (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <int64[4] tiles = {1, 6, 4, 2}>
             {
                 output = Tile(input, tiles)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4127,13 +4127,13 @@ class ONNX_IR_TESTER(object):
         output_shape = [3, 24, 24, 16]
 
         graph_txt = """
-            Tile2 (float%s input,float%s right) => (float%s output)
+            %s (float%s input,float%s right) => (float%s output)
             <int64[4] tiles = {1, 6, 4, 2}>
             {
                 left = Tile(input, tiles)
                 output = Add(left, right)
             }
-            """ % (input_shape, output_shape, output_shape)
+            """ % (case_name, input_shape, output_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4141,7 +4141,7 @@ class ONNX_IR_TESTER(object):
         nonzero_input_shape = [2, 6]
         tile_input_shape = [3, 5]
         graph_txt = """
-            TileDyn (float%s nonzero_input, float%s tile_input) => (float Y_Value)
+            %s (float%s nonzero_input, float%s tile_input) => (float Y_Value)
             <int64 indices0 = {0}, int64[1] indices = {0}, int64[1] dim0 = {3}>
             {
                 gather0 = Gather<axis=0>(nonzero_input, indices0)
@@ -4152,7 +4152,7 @@ class ONNX_IR_TESTER(object):
                 times = Concat<axis=0>(dim0, dim1)
                 Y_Value = Tile(tile_input, times)
             }
-            """ % (nonzero_input_shape, tile_input_shape)
+            """ % (case_name, nonzero_input_shape, tile_input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         input_data = {
             'nonzero_input':
@@ -4170,11 +4170,11 @@ class ONNX_IR_TESTER(object):
         input_shape = [4, 3, 27, 27]
         output_shape = [4, 3, 27, 27]
         graph_txt = """
-            Sub (float%s input0,float%s input1) => (float%s output)
+            %s (float%s input0,float%s input1) => (float%s output)
             {
                 output = Sub(input0, input1)
             }
-            """ % (input_shape, input_shape, output_shape)
+            """ % (case_name, input_shape, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4184,11 +4184,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [4, 3, 27, 27]
 
         graph_txt = """
-            Sub2 (float%s input1,float%s input2) => (float%s output)
+            %s (float%s input1,float%s input2) => (float%s output)
             {
                 output = Sub(input1, input2)
             }
-            """ % (input1_shape, input2_shape, output_shape)
+            """ % (case_name, input1_shape, input2_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4201,12 +4201,12 @@ class ONNX_IR_TESTER(object):
                 for dim in dims:
                     bcast_s[dim] = 1
                 graph_txt = """
-                    SubBcast_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                    %s_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
                     {
                         x = Sub(a, b)
                         output = Sub(x, c)
                     }
-                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                    """ % (case_name, i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
@@ -4216,12 +4216,12 @@ class ONNX_IR_TESTER(object):
         out_shapes = ([6, 7, 13, 11], )
         for i, s in enumerate(shapes):
             graph_txt = """
-                SubBcast2_%s (float%s a, float%s b, float%s c) => (float%s output)
+                %s_%s (float%s a, float%s b, float%s c) => (float%s output)
                 {
                     x = Sub(a, b)
                     output = Sub(x, c)
                 }
-                """ % (i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
+                """ % (case_name, i, bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
@@ -4238,14 +4238,14 @@ class ONNX_IR_TESTER(object):
         )
         const = helper.make_tensor(name='const', data_type=TensorProto.FLOAT, dims=[], vals=[1.0])
         graph_txt = """
-            SubConst (float%s input0) => (float%s output0, float%s output1, float%s output2)
+            %s (float%s input0) => (float%s output0, float%s output1, float%s output2)
             <float%s w, float const>
             {
                 output0 = Sub(input0, w)
                 output1 = Sub(input0, const)
                 output2 = Sub(const, input0)
             }
-            """ % (input_shape, output_shape, output_shape, output_shape, list(w_data.shape))
+            """ % (case_name, input_shape, output_shape, output_shape, output_shape, list(w_data.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([w_value, const])
         self.onnx_and_test(graph_def)
@@ -4263,12 +4263,12 @@ class ONNX_IR_TESTER(object):
             vals=w_data.flatten(),
         )
         graph_txt = """
-            SubConst2 (float%s input1) => (float%s output)
+            %s (float%s input1) => (float%s output)
             <float%s w>
             {
                 output = Sub(input1, w)
             }
-            """ % (input1_shape, output_shape, list(w_data.shape))
+            """ % (case_name, input1_shape, output_shape, list(w_data.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([w_value])
         self.onnx_and_test(graph_def)
@@ -4277,12 +4277,12 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 3, 1, 16]
         output_shape = [1, 3, 16, 16]
         graph_txt = """
-            Expand (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <int64%s new_shape>
             {
                 output = Expand(input, new_shape)
             }
-            """ % (input_shape, output_shape, [len(output_shape)])
+            """ % (case_name, input_shape, output_shape, [len(output_shape)])
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         shape_def = helper.make_tensor(
@@ -4298,12 +4298,12 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 16]
         output_shape = [4, 16, 16]
         graph_txt = """
-            Expand2 (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <int64%s new_shape>
             {
                 output = Expand(input, new_shape)
             }
-            """ % (input_shape, output_shape, [len(output_shape)])
+            """ % (case_name, input_shape, output_shape, [len(output_shape)])
         graph_def = onnx.parser.parse_graph(graph_txt)
 
         shape_def = helper.make_tensor(
@@ -4323,7 +4323,7 @@ class ONNX_IR_TESTER(object):
         dim0 = helper.make_tensor('dim0', TensorProto.INT64, [1], vals=[3])
 
         graph_txt = """
-            ExpandDyn (float%s nonzero_input, float%s expand_input) => (float Y_Value)
+            %s (float%s nonzero_input, float%s expand_input) => (float Y_Value)
             <int64 indices0, int64[1] indices, int64[1] dim0>
             {
                 gather0 = Gather<axis=0>(nonzero_input, indices0)
@@ -4334,7 +4334,7 @@ class ONNX_IR_TESTER(object):
                 times = Concat<axis=0>(dim0, dim1)
                 Y_Value = Expand(expand_input, times)
             }
-            """ % (nonzero_input_shape, expand_input_shape)
+            """ % (case_name, nonzero_input_shape, expand_input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([indices0, indices, dim0])
         input_data = {
@@ -4352,11 +4352,11 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, 85, 32, 8]
 
         graph_txt = """
-            Max (float%s input1, float%s input2) => (float%s output)
+            %s (float%s input1, float%s input2) => (float%s output)
             {
                 output = %s(input1, input2)
             }
-            """ % (input_shape['input1'], input_shape["input2"], output_shape, case_name)
+            """ % (case_name, input_shape['input1'], input_shape["input2"], output_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4369,12 +4369,12 @@ class ONNX_IR_TESTER(object):
                 for dim in dims:
                     bcast_s[dim] = 1
                 graph_txt = """
-                    MaxBcast_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                    %s_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
                     {
                         x = Max(a, b)
                         output = Max(x, c)
                     }
-                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                    """ % (case_name, i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
@@ -4382,11 +4382,11 @@ class ONNX_IR_TESTER(object):
         input_shape = {"input1": [1, 85, 32, 8], "input2": [1, 85, 32, 8]}
         output_shape = [1, 85, 32, 8]
         graph_txt = """
-            Min (float%s input1, float%s input2) => (float%s output)
+            %s (float%s input1, float%s input2) => (float%s output)
             {
                 output = %s(input1, input2)
             }
-            """ % (input_shape['input1'], input_shape["input2"], output_shape, case_name)
+            """ % (case_name, input_shape['input1'], input_shape["input2"], output_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4399,33 +4399,34 @@ class ONNX_IR_TESTER(object):
                 for dim in dims:
                     bcast_s[dim] = 1
                 graph_txt = """
-                    MinBcast_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
+                    %s_%s_%s (float%s a, float%s b, float%s c) => (float%s output)
                     {
                         x = Min(a, b)
                         output = Min(x, c)
                     }
-                    """ % (i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
+                    """ % (case_name, i, "".join(map(str, dims)), bcast_s, s, bcast_s, s)
                 graph_def = onnx.parser.parse_graph(graph_txt)
                 self.onnx_and_test(graph_def)
 
     def test_Abs(self, case_name):
+        input_shape = [1, 16, 64, 64]
         graph_txt = """
-            Abs (float[1, 16, 64, 64] input) => (float[1, 16, 64, 64] output)
+            %s (float%s input) => (float%s output)
             {
                 output = Abs(input)
             }
-            """
+            """ % (case_name, input_shape, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_Reciprocal(self, case_name):
         input_shape = [4, 3, 224, 224]
         graph_txt = """
-            Reciprocal (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = Reciprocal(input)
             }
-            """ % (input_shape, input_shape)
+            """ % (case_name, input_shape, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         input_data = np.random.rand(*input_shape).astype(np.float32) + 0.5
         # avoid divide 0
@@ -4447,12 +4448,12 @@ class ONNX_IR_TESTER(object):
                 vals=s,
             )
             graph_txt = """
-            PRelu (float%s input, float%s input1) => (float%s output)
+            %s (float%s input, float%s input1) => (float%s output)
                 {
                     output0 = PRelu(input, slope)
                     output = Add(output0, input1)
                 }
-                """ % (input_shape, input_shape, output_shape)
+                """ % (case_name, input_shape, input_shape, output_shape)
             graph_def = onnx.parser.parse_graph(graph_txt)
             graph_def.initializer.extend([slope])
             self.onnx_and_test(graph_def)
@@ -4460,11 +4461,11 @@ class ONNX_IR_TESTER(object):
     def test_Sqrt(self, case_name):
         shape = [3, 5, 100, 100]
         graph_txt = """
-            Sqrt (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
                 {
                     output = Sqrt(input)
                 }
-                """ % (shape, shape)
+                """ % (case_name, shape, shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         input_data = np.abs(np.random.randn(*shape).astype(np.float32))
         self.onnx_and_test(graph_def, input_data={"input": input_data})
@@ -4475,12 +4476,12 @@ class ONNX_IR_TESTER(object):
         constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
                                       np.array([1.2]).astype(np.float32))
         graph_txt = """
-            Pow1 (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float[1] constant>
             {
                 output = Pow(input, constant)
             }
-            """ % (shape, shape)
+            """ % (case_name, shape, shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([constant])
         self.onnx_and_test(graph_def, input_data={"input": input_data})
@@ -4490,12 +4491,12 @@ class ONNX_IR_TESTER(object):
         constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
                                       np.array([1.2]).astype(np.float32))
         graph_txt = """
-            Pow2 (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float[1] constant>
             {
                 output = Pow(constant, input)
             }
-            """ % (shape, shape)
+            """ % (case_name, shape, shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([constant])
         self.onnx_and_test(graph_def)
@@ -4503,11 +4504,11 @@ class ONNX_IR_TESTER(object):
     def test_Not(self, case_name):
         shape = [1, 3, 27, 27]
         graph_txt = """
-            Not (bool%s input) => (bool%s output)
+            %s (bool%s input) => (bool%s output)
             {
                 output = Not(input)
             }
-            """ % (shape, shape)
+            """ % (case_name, shape, shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4519,7 +4520,7 @@ class ONNX_IR_TESTER(object):
         shape2_data = np.array(output2_shape, dtype=np.int64)
         input_data = {"input": np.random.randint(0, 255, input_shape).astype(np.float32)}
         graph_txt = """
-            Cast (float%s input) => (float%s output1, int64%s output2)
+            %s (float%s input) => (float%s output1, int64%s output2)
             <int64%s shape1, int64%s shape2, float const_mul>
             {
                 shape1_out = Reshape(input, shape1)
@@ -4528,7 +4529,7 @@ class ONNX_IR_TESTER(object):
                 cast2_out = Cast<to=%d>(cast1_out)
                 output1 = Mul(cast2_out, const_mul)
             }
-            """ % (input_shape, output1_shape, output2_shape, dim4_shape, dim4_shape,
+            """ % (case_name, input_shape, output1_shape, output2_shape, dim4_shape, dim4_shape,
                    TensorProto.INT64, TensorProto.FLOAT)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
@@ -4553,12 +4554,12 @@ class ONNX_IR_TESTER(object):
                                       np.array([const_value]).astype(np.float32))
         for cmp_type in cases:
             graph_txt = """
-                CompareCst (float%s input) => (bool%s output)
+                %s (float%s input) => (bool%s output)
                 <float[1] constant>
                 {
                     output = %s(input, constant)
                 }
-                """ % (shape, shape, cmp_type)
+                """ % (case_name, shape, shape, cmp_type)
             graph_def = onnx.parser.parse_graph(graph_txt)
             graph_def.initializer.extend([constant])
             self.onnx_and_test(graph_def)
@@ -4567,11 +4568,11 @@ class ONNX_IR_TESTER(object):
     def test_And(self, case_name):
         shape = [1, 3, 27, 27]
         graph_txt = """
-            And (bool[1, 3, 27, 27] input, bool[1] constant = {1}) => (bool[1, 3, 27, 27] output)
+            %s (bool[1, 3, 27, 27] input, bool[1] constant = {1}) => (bool[1, 3, 27, 27] output)
             {
                 output = And(input, constant)
             }
-            """
+            """ % (case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4581,11 +4582,11 @@ class ONNX_IR_TESTER(object):
         # "Equal" need not to be tested since equal op between floating number may be invalid
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
             graph_txt = """
-                Compare (float%s input1, float%s input2) => (bool%s output)
+                %s (float%s input1, float%s input2) => (bool%s output)
                 {
                     output = %s(input1, input2)
                 }
-                """ % (shape, shape, shape, cmp_type)
+                """ % (case_name, shape, shape, shape, cmp_type)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
             print("====== TEST {} Success ======".format(cmp_type))
@@ -4600,11 +4601,11 @@ class ONNX_IR_TESTER(object):
         # "Equal" need not to be tested since equal op between floating number may be invalid
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
             graph_txt = """
-                Compare2 (float%s input1, float%s input2) => (bool%s output)
+                %s (float%s input1, float%s input2) => (bool%s output)
                 {
                     output = %s(input1, input2)
                 }
-                """ % (input_shape["input1"], input_shape["input2"], output_shape, cmp_type)
+                """ % (case_name, input_shape["input1"], input_shape["input2"], output_shape, cmp_type)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def, input_data=input_data)
             print("====== TEST {} Success ======".format(cmp_type))
@@ -4613,11 +4614,11 @@ class ONNX_IR_TESTER(object):
         input_shape = {"input1": [1, 26, 12, 26], "input2": [12, 26, 312]}
         output_shape = [1, 26, 312]
         graph_txt = """
-            Einsum (float%s input1, float%s input2) => (float%s output)
+            %s (float%s input1, float%s input2) => (float%s output)
             {
                 output = Einsum<equation="bfnd,ndh->bfh">(input1, input2)
             }
-            """ % (input_shape["input1"], input_shape["input2"], output_shape)
+            """ % (case_name, input_shape["input1"], input_shape["input2"], output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4629,12 +4630,12 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         graph_txt = """
-            Einsum2 (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s weight>
             {
                 output = Einsum<equation="bfnd,ndh->bfh">(input, weight)
             }
-            """ % (input_shape, output_shape, filter_shape)
+            """ % (case_name, input_shape, output_shape, filter_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([weight])
         self.onnx_and_test(graph_def)
@@ -4643,11 +4644,11 @@ class ONNX_IR_TESTER(object):
         input_shape = {"input1": [4], "input2": [32]}
         output_shape = [4, 32]
         graph_txt = """
-            Einsum3 (float%s input1, float%s input2) => (float%s output)
+            %s (float%s input1, float%s input2) => (float%s output)
             {
                 output = Einsum<equation="i,j->ij">(input1, input2)
             }
-            """ % (input_shape["input1"], input_shape["input2"], output_shape)
+            """ % (case_name, input_shape["input1"], input_shape["input2"], output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4660,12 +4661,12 @@ class ONNX_IR_TESTER(object):
             weight_data = np.random.randn(*filter_shape).astype(np.float32)
             weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
             graph_txt = """
-                Einsum4 (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <float%s weight>
                 {
                     output = Einsum<equation="%s">(input, weight)
                 }
-                """ % (input_shape, output_shape, filter_shape, equation)
+                """ % (case_name, input_shape, output_shape, filter_shape, equation)
             graph_def = onnx.parser.parse_graph(graph_txt)
             graph_def.initializer.extend([weight])
             self.onnx_and_test(graph_def)
@@ -4677,11 +4678,11 @@ class ONNX_IR_TESTER(object):
                 input_shape["input2"][0] = input_shape["input1"][2]
             output_shape = [5, 15, 15, 14]
             graph_txt = """
-                Einsum5 (float%s input1, float%s input2) => (float%s output)
+                %s (float%s input1, float%s input2) => (float%s output)
                 {
                     output = Einsum<equation="%s">(input1, input2)
                 }
-                """ % (input_shape["input1"], input_shape["input2"], output_shape, equation)
+                """ % (case_name, input_shape["input1"], input_shape["input2"], output_shape, equation)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
@@ -4713,13 +4714,13 @@ class ONNX_IR_TESTER(object):
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
 
         graph_txt = """
-            Elu (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float%s weight, float%s bias>
             {
                 conv_output = Conv<kernel_shape=[3, 3], pads=[1, 1, 1, 1], strides=[1, 1], dilations=[1, 1], group=1>(input, weight, bias)
                 output = Elu<alpha=0.67>(conv_output)
             }
-            """ % (input_shape, output_shape, filter_shape, list(bias_data.shape))
+            """ % (case_name, input_shape, output_shape, filter_shape, list(bias_data.shape))
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([weight, bias])
         self.onnx_and_test(graph_def)
@@ -4727,11 +4728,11 @@ class ONNX_IR_TESTER(object):
     def test_Erf(self, case_name):
         input_shape = [10, 3, 32, 32]
         graph_txt = """
-            Erf (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = %s(input)
             }
-            """ % (input_shape, input_shape, case_name)
+            """ % (case_name, input_shape, input_shape, case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4741,19 +4742,19 @@ class ONNX_IR_TESTER(object):
         o_shape = list(shape)
         o_shape[-1] = const
         graph_txt = """
-            TopK (float%s X) => (float%s Y_Value, int64%s Y_Index)
+            %s (float%s X) => (float%s Y_Value, int64%s Y_Index)
             <int64[1] K = {%d}>
             {
                 Y_Value, Y_Index = TopK<axis=-1, largest=1>(X, K)
             }
-            """ % (shape, o_shape, o_shape, const)
+            """ % (case_name, shape, o_shape, o_shape, const)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
     def test_TopK2(self, case_name):
         input_shape = [3, 6]
         graph_txt = """
-            TopK2 (float%s input) => (float Y_Value, int64 Y_Index)
+            %s (float%s input) => (float Y_Value, int64 Y_Index)
             <int64 indices0 = {0}, int64[1] indices = {0}>
             {
                 gather0 = Gather(input, indices0)
@@ -4763,7 +4764,7 @@ class ONNX_IR_TESTER(object):
                 K = Gather<axis=0>(shape,indices)
                 Y_Value, Y_Index = TopK<axis=-1, largest=1>(input, K)
             }
-            """ % (input_shape)
+            """ % (case_name, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         input_data = {
             'input':
@@ -4803,7 +4804,7 @@ class ONNX_IR_TESTER(object):
         output_x_zero_point_data = deepcopy(output_y_zero_point_data)
 
         graph_txt = """
-            QDQConv (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <int8%s weight, float%s bias, float y_scale, int8 y_zero_point, float x_scale, int8 x_zero_point,
             float weight_x_scale, int8 weight_x_zero_point, float output_y_scale, int8 output_y_zero_point, float output_x_scale, int8 output_x_zero_point>
             {
@@ -4814,7 +4815,7 @@ class ONNX_IR_TESTER(object):
                 c = QuantizeLinear<axis=0>(conv_output, output_y_scale, output_y_zero_point)
                 output = DequantizeLinear<axis=0>(c, output_x_scale, output_x_zero_point)
             }
-            """ % (input_shape, output_shape, filter_shape, list(
+            """ % (case_name, input_shape, output_shape, filter_shape, list(
             bias_data.shape), kernel, padding, stride, dilation, groups)
         graph_def = onnx.parser.parse_graph(graph_txt)
 
@@ -4861,14 +4862,14 @@ class ONNX_IR_TESTER(object):
         x_zero_point = helper.make_tensor("x_zero_point", TensorProto.INT8, [1],
                                           [x_zero_point_data])
         graph_txt = """
-            QDQ (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <float y_scale, int8 y_zero_point, float x_scale, int8 x_zero_point>
             {
                 a = QuantizeLinear(input, y_scale, y_zero_point)
                 a_output = DequantizeLinear(a, x_scale, x_zero_point)
                 output = Log(a_output)
             }
-            """ % (input_shape, input_shape)
+            """ % (case_name, input_shape, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([y_scale, y_zero_point, x_scale, x_zero_point])
         self.onnx_and_test(graph_def)
@@ -4894,12 +4895,12 @@ class ONNX_IR_TESTER(object):
                 if keep_sign:
                     reduce_output_shape.append(transpose_output_shape[i])
         graph_txt = """
-            ReduceTranspose (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 transpose_output = Transpose<perm=%s>(input)
                 output = ReduceMean<keepdims=%d, axes=%s>(transpose_output)
             }
-            """ % (input_shape, reduce_output_shape, transpose_order, reduce_keepdims, reduce_axes)
+            """ % (case_name, input_shape, reduce_output_shape, transpose_order, reduce_keepdims, reduce_axes)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4910,12 +4911,12 @@ class ONNX_IR_TESTER(object):
         arg_axis = 1
         reduce_output_shape = [8, 16, 64]
         graph_txt = """
-            TransposeArg (float%s input) => (int64%s output)
+            %s (float%s input) => (int64%s output)
             {
                 transpose_output = Transpose<perm=%s>(input)
                 output = ArgMax<keepdims=%d, axis=%s, select_last_index=1>(transpose_output)
             }
-            """ % (input_shape, reduce_output_shape, transpose_order, arg_keepdims, arg_axis)
+            """ % (case_name, input_shape, reduce_output_shape, transpose_order, arg_keepdims, arg_axis)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4923,12 +4924,12 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 1000, 1, 1]
         output_shape = [1, 1, 1, 1]
         graph_txt = """
-            ArgError (float%s input) => (int64%s o_max, float%s x2)
+            %s (float%s input) => (int64%s o_max, float%s x2)
             {
                 x2 = Relu(input)
                 o_max = ArgMax<keepdims=1, axis=1, select_last_index=1>(x2)
             }
-            """ % (input_shape, output_shape, input_shape)
+            """ % (case_name, input_shape, output_shape, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
@@ -4938,13 +4939,13 @@ class ONNX_IR_TESTER(object):
         reduce_axes = [0]
         output_shape = [1, 3, 4]
         graph_txt = """
-            ArgReducefull (float%s input) => (int64%s arg_output, float%s reduce_output_1, float%s reduce_output_2)
+            %s (float%s input) => (int64%s arg_output, float%s reduce_output_1, float%s reduce_output_2)
             {
                 arg_output = ArgMax<axis=%d, select_last_index=1>(input)
                 reduce_output_1 = ReduceMax<axes=%s>(input)
                 reduce_output_2 = ReduceMax<axes=%s>(input)
             }
-            """ % (input_shape, output_shape, output_shape, output_shape, arg_axis, reduce_axes,
+            """ % (case_name, input_shape, output_shape, output_shape, output_shape, arg_axis, reduce_axes,
                    reduce_axes)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
@@ -4989,12 +4990,12 @@ class ONNX_IR_TESTER(object):
         else:
             output_dtype = 'float'
         graph_txt = """
-            BinaryWeight (float%s input) => (%s%s output)
+            %s (float%s input) => (%s%s output)
             <float%s weight1>
             {
                 output = %s(input, weight1)
             }
-            """ % (input_shape, output_dtype, input_shape, weight_shape, binary_name)
+            """ % (case_name, input_shape, output_dtype, input_shape, weight_shape, binary_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         weight = helper.make_tensor('weight1', TensorProto.FLOAT, weight_shape, weight_data)
 
@@ -5016,7 +5017,7 @@ class ONNX_IR_TESTER(object):
                                       dims=pad_val.shape,
                                       vals=pad_val.flatten())
         graph_txt = """
-            PadConv (float%s input1, float%s input2) => (float%s add1, float%s output1, float%s output2)
+            %s (float%s input1, float%s input2) => (float%s add1, float%s output1, float%s output2)
             <float filter1, float filter2, int64 paddings>
             {
                 add1 = Add(input1, input2)
@@ -5024,7 +5025,7 @@ class ONNX_IR_TESTER(object):
                 output1 = Conv<kernel_shape=%s, pads=%s>(pad2, filter1)
                 output2 = Conv<kernel_shape=%s, pads=%s>(pad2, filter2)
             }
-            """ % (add_in_shape["input1"], add_in_shape["input2"], input_shape,
+            """ % (case_name, add_in_shape["input1"], add_in_shape["input2"], input_shape,
                    conv_param_list[0][0], conv_param_list[1][0], conv_param_list[0][1][2:],
                    conv_param_list[0][2], conv_param_list[1][1][2:], conv_param_list[1][2])
         graph_def = onnx.parser.parse_graph(graph_txt)
@@ -5061,7 +5062,7 @@ class ONNX_IR_TESTER(object):
                                       vals=pad_val.flatten())
 
         graph_txt = """
-            PadPool (float%s input1, float%s input2) => (float%s add1, float%s output1, float%s output2)
+            %s (float%s input1, float%s input2) => (float%s add1, float%s output1, float%s output2)
             <int64 paddings>
             {
                 add1 = Add(input1, input2)
@@ -5069,7 +5070,7 @@ class ONNX_IR_TESTER(object):
                 output1 = AveragePool<kernel_shape=%s, pads=%s, strides=%s, count_include_pad=1>(pad2)
                 output2 = AveragePool<kernel_shape=%s, pads=%s, strides=%s, count_include_pad=1>(pad2)
             }
-            """ % (add_in_shape["input1"], add_in_shape["input2"], input_shape,
+            """ % (case_name, add_in_shape["input1"], add_in_shape["input2"], input_shape,
                    pool_param_list[0][0], pool_param_list[1][0], pool_param_list[0][1],
                    pool_param_list[0][2], pool_param_list[0][3], pool_param_list[1][1],
                    pool_param_list[1][2], pool_param_list[1][3])
@@ -5151,11 +5152,11 @@ class ONNX_IR_TESTER(object):
                 i], axis_data[i]
             input_ = {"data": data_, "indices": indices_, "updates": updates_}
             graph_txt = """
-            ScatterElements (float%s data, int64%s indices, float%s updates) => (float%s scatter_output)
+            %s (float%s data, int64%s indices, float%s updates) => (float%s scatter_output)
                 {
                     scatter_output = ScatterElements<axis=%d>(data, indices, updates)
                 }
-                """ % (list(data_.shape), list(indices_.shape), list(
+                """ % (case_name, list(data_.shape), list(indices_.shape), list(
                 updates_.shape), list(data_.shape), axis_)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def, input_data=input_)
@@ -5208,13 +5209,13 @@ class ONNX_IR_TESTER(object):
             add_data = helper.make_tensor('add_tensor', TensorProto.FLOAT, x_shape,
                                           np.random.rand(*x_shape).astype(np.float32))
             graph_txt = """
-                ScatterND (float%s x_data, int64%s indices, float%s updates) => (float%s output)
+                %s (float%s x_data, int64%s indices, float%s updates) => (float%s output)
                 <float add_tensor>
                 {
                     scatter_output = ScatterND(x_data, indices, updates)
                     output = Add(scatter_output, add_tensor)
                 }
-                """ % (x_shape, idx_shape, update_shape, x_shape)
+                """ % (case_name, x_shape, idx_shape, update_shape, x_shape)
             graph_def = onnx.parser.parse_graph(graph_txt)
             graph_def.initializer.extend([add_data])
             self.onnx_and_test(graph_def, input_data=input_data)
@@ -5233,12 +5234,12 @@ class ONNX_IR_TESTER(object):
         steps = helper.make_tensor('steps', TensorProto.INT64, [1], steps_data)
 
         graph_txt = """
-            SliceToReverse (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <int64 starts, int64 ends, int64 axes, int64 steps>
             {
                 output = Slice(input, starts, ends, axes, steps)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([starts, ends, axes, steps])
         self.onnx_and_test(graph_def)
@@ -5265,11 +5266,11 @@ class ONNX_IR_TESTER(object):
             order = transpose_orders[i]
             output_shape = [input_shape[order[i]] for i in range(len(order))]
             graph_txt = """
-                PermuteToReshape (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 {
                     output = Transpose<perm=%s>(input)
                 }
-                """ % (input_shape, output_shape, order)
+                """ % (case_name, input_shape, output_shape, order)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
@@ -5284,14 +5285,14 @@ class ONNX_IR_TESTER(object):
         rshape2_data = np.array(output_shape, dtype=np.int64)
         r2 = helper.make_tensor('shape2', TensorProto.INT64, rshape2, rshape2_data)
         graph_txt = """
-            PermuteToReorg (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <int64 shape1, int64 shape2>
             {
                 out1 = Reshape(input, shape1)
                 out2 = Transpose<perm=%s>(out1)
                 output = Reshape(out2, shape2)
             }
-            """ % (input_shape, output_shape, order)
+            """ % (case_name, input_shape, output_shape, order)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([r1, r2])
         self.onnx_and_test(graph_def)
@@ -5317,7 +5318,7 @@ class ONNX_IR_TESTER(object):
         weight = helper.make_tensor("weight", TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor("bias", TensorProto.FLOAT, list(bias_data.shape), bias_data)
         graph_txt = """
-            PermuteToReorg2 (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             <int64 shape1, int64 shape2, float weight, float bias>
             {
                 out1 = Reshape(input, shape1)
@@ -5325,7 +5326,7 @@ class ONNX_IR_TESTER(object):
                 out3 = Reshape(out2, shape2)
                 output = Conv<kernel_shape=%s, pads=%s, strides=%s, dilations=%s, group=1>(out3, weight, bias)
             }
-            """ % (input_shape, output_shape, order, kernel, padding, stride, dilation)
+            """ % (case_name, input_shape, output_shape, order, kernel, padding, stride, dilation)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([r1, r2, weight, bias])
         self.onnx_and_test(graph_def)
@@ -5342,11 +5343,11 @@ class ONNX_IR_TESTER(object):
             print("order:", order)
             output_shape = [input_shape[order[i]] for i in range(0, len(order))]
             graph_txt = """
-                Permute5dSplit_%s (float%s input) => (float%s output)
+                %s_%s (float%s input) => (float%s output)
                 {
                     output = Transpose<perm=%s>(input)
                 }
-                """ % (i, input_shape, output_shape, order)
+                """ % (case_name, i, input_shape, output_shape, order)
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def)
 
@@ -5422,7 +5423,7 @@ class ONNX_IR_TESTER(object):
         out_shape[-1] = kk
         shape[-1] = kkk
         graph_txt = """
-            If (float[1] X, float%s Y, float%s Z, float%s M, float%s N, float%s J) => (float%s out)
+            %s (float[1] X, float%s Y, float%s Z, float%s M, float%s N, float%s J) => (float%s out)
             <float zero = {0}, int64[1] K = {4}>
             {
                 cond = Greater(X, zero)
@@ -5446,7 +5447,7 @@ class ONNX_IR_TESTER(object):
                 y_value, y_index = TopK<axis=-1, largest=0>(out1, K)
                 out = Add(y_value, J)
             }
-            """ % (input_shape, input_shape, input_shape, out_shape, shape, shape, out_shape,
+            """ % (case_name, input_shape, input_shape, input_shape, out_shape, shape, shape, out_shape,
                    out_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, static_shape=False)
@@ -5454,7 +5455,7 @@ class ONNX_IR_TESTER(object):
     def test_Loop(self, case_name):
         x = np.array(10000).astype(np.int64)
         graph_txt = """
-            Loop (float[1] input_0) => (int32[1] up_bound, int32[1] new_start_v2)
+            %s (float[1] input_0) => (int32[1] up_bound, int32[1] new_start_v2)
             <float[1] const_fold_opt__17 = {10}, int64[1] reshape = {0}, int32[1] init_v = {1}, int32[1] up_value = {101}, int32[1] start_value = {10}, int64[1] while_maximum_iterations_0 = {10000}>
             {
                 while_cond_158_while_Less_0 = Less(input_0, const_fold_opt__17)
@@ -5470,7 +5471,7 @@ class ONNX_IR_TESTER(object):
                 up_bound = Add(up, init_v)
                 new_start_v2 = Sub(new_cout, init_v)
             }
-            """
+            """ % (case_name)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, quant_modes=["f32", "f16", "bf16"])
 
@@ -5478,13 +5479,13 @@ class ONNX_IR_TESTER(object):
         input_shape = [2, 3, 4]
         output_shape = [1]
         graph_txt = """
-            Shape (float%s input) => (int64%s output)
+            %s (float%s input) => (int64%s output)
             <int64 starts, int64 ends, int64 axes, int64 steps>
             {
                 shapeinfo = Shape<start=0, end=2>(input)
                 output = Slice(shapeinfo, starts, ends, axes, steps)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         starts = helper.make_tensor('starts', TensorProto.INT64, [1], np.array([0], np.int64))
         ends = helper.make_tensor('ends', TensorProto.INT64, [1], np.array([1], np.int64))
@@ -5502,13 +5503,13 @@ class ONNX_IR_TESTER(object):
         axes = helper.make_tensor('axes', TensorProto.INT64, [1], np.array([0], np.int64))
         steps = helper.make_tensor('steps', TensorProto.INT64, [1], np.array([1], np.int64))
         graph_txt = """
-            ShapeSlice (float%s X) => (int64[1] K)
+            %s (float%s X) => (int64[1] K)
             <int64 starts, int64 ends, int64 axes, int64 steps>
             {
                 X_Shape = Shape(X)
                 K = Slice(X_Shape, starts, ends, axes, steps)
             }
-            """ % (shape)
+            """ % (case_name, shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([starts, ends, axes, steps])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
@@ -5522,14 +5523,14 @@ class ONNX_IR_TESTER(object):
         axes = helper.make_tensor('axes', TensorProto.INT64, [1], np.array([0], np.int64))
         steps = helper.make_tensor('steps', TensorProto.INT64, [1], np.array([1], np.int64))
         graph_txt = """
-            ShapeCast (float%s X) => (float%s Y_Value, int64%s Y_Index)
+            %s (float%s X) => (float%s Y_Value, int64%s Y_Index)
             <int64 starts, int64 ends, int64 axes, int64 steps>
             {
                 X_Shape = Shape(X)
                 K = Slice(X_Shape, starts, ends, axes, steps)
                 Y_Value, Y_Index = TopK<axis=-1, largest=1>(X, K)
             }
-            """ % (shape, o_shape, o_shape)
+            """ % (case_name, shape, o_shape, o_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([starts, ends, axes, steps])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
@@ -5537,12 +5538,12 @@ class ONNX_IR_TESTER(object):
     def test_ConstOfShape(self, case_name):
         input_shape = [4, 10, 27, 27]
         graph_txt = """
-            ConstOfShape (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 soutput = Shape(input)
                 output = ConstantOfShape(soutput)
             }
-            """ % (input_shape, input_shape)
+            """ % (case_name, input_shape, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def, case_name, static_shape=False)
 
@@ -5555,13 +5556,13 @@ class ONNX_IR_TESTER(object):
         axes_tensor = numpy_helper.from_array(np.array(axes, dtype=np.int64), name="axes")
         unsqueeze_shape = [1, output_shape[0], 1]
         graph_txt = """
-            ShapeUnsqueeze (float%s input) => (int64%s unsqueezeinfo)
+            %s (float%s input) => (int64%s unsqueezeinfo)
             <int64 axes>
             {
                 shapeinfo = Shape(input)
                 unsqueezeinfo = Unsqueeze(shapeinfo, axes)
             }
-            """ % (input_shape, unsqueeze_shape)
+            """ % (case_name, input_shape, unsqueeze_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([axes_tensor])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
@@ -5579,14 +5580,14 @@ class ONNX_IR_TESTER(object):
         axes_squeeze_tensor = numpy_helper.from_array(np.array(axes, dtype=np.int64),
                                                       name="axes_squeeze")
         graph_txt = """
-            ShapeSqueeze (float%s input) => (int64%s squeezeinfo)
+            %s (float%s input) => (int64%s squeezeinfo)
             <int64 axes_unsqueeze, int64 axes_squeeze>
             {
                 shapeinfo = Shape(input)
                 unsqueezeinfo = Unsqueeze(shapeinfo, axes_unsqueeze)
                 squeezeinfo = Squeeze(unsqueezeinfo, axes_squeeze)
             }
-            """ % (input_shape, squeeze_shape)
+            """ % (case_name, input_shape, squeeze_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([axes_squeeze_tensor, axes_unsqueeze_tensor])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
@@ -5599,13 +5600,13 @@ class ONNX_IR_TESTER(object):
                                      dims=[1],
                                      vals=indices_data)
         graph_txt = """
-            Gather2 (float%s input) => (int64 output)
+            %s (float%s input) => (int64 output)
             <int64 indices>
             {
                 shapeinfo = Shape(input)
                 output = Gather(shapeinfo, indices)
             }
-            """ % (input_shape)
+            """ % (case_name, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([indices])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
@@ -5633,13 +5634,13 @@ class ONNX_IR_TESTER(object):
                                     dims=[2],
                                     vals=[1, 2])
         graph_txt = """
-            Concat3 (float%s input) => (int64 output)
+            %s (float%s input) => (int64 output)
             <int64 input2>
             {
                 shapeinfo = Shape(input)
                 output = Concat<axis=0>(shapeinfo, input2)
             }
-            """ % (input_shape)
+            """ % (case_name, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         graph_def.initializer.extend([input2])
         self.onnx_and_test(graph_def, case_name, static_shape=False)
@@ -5688,12 +5689,12 @@ class ONNX_IR_TESTER(object):
                                            dims=[1],
                                            vals=np.array([d], dtype=np.int64))
             graph_txt = """
-                CumSum (float%s input) => (float%s output)
+                %s (float%s input) => (float%s output)
                 <int64 dim>
                 {
                     output = CumSum(input, dim)
                 }
-                """ % (input_shape, input_shape)
+                """ % (case_name, input_shape, input_shape)
             graph_def = onnx.parser.parse_graph(graph_txt)
             graph_def.initializer.extend([dim_input])
             input_data = {
@@ -5705,11 +5706,11 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 16, 64, 64]
         output_shape = [1, 16, 64, 64]
         graph_txt = """
-            Round (float%s input) => (float%s output)
+            %s (float%s input) => (float%s output)
             {
                 output = Round(input)
             }
-            """ % (input_shape, output_shape)
+            """ % (case_name, input_shape, output_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 
