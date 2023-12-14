@@ -104,7 +104,6 @@ def model_inference(inputs: dict, model_file: str, dump_all = True) -> dict:
     size = os.path.getsize(model_file)
     pack_bmodel_context = (iter([None]) if is_cv18xx else pack_bmodel_context_generator(
         model_file, net))
-
     next(pack_bmodel_context) # save input_data
 
     if size > 0x10000000:
@@ -266,6 +265,59 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         os.remove(onnx_file)
         return dict(filter(lambda x: isinstance(x[1], np.ndarray), zip(output_keys, outs)))
 
+def paddle_inference(inputs : dict, paddle_file : str, dump_all : bool = True) -> dict:
+    import paddle
+    paddle.enable_static()
+    all_valid_nodes = dict()
+    if paddle_file.endswith('.pdmodel'):
+        paddle_file = paddle_file[:-len('.pdmodel')]
+    exe = paddle.static.Executor(paddle.CPUPlace())
+    [inference_program, feed_target_names, fetch_targets] = (
+        paddle.static.load_inference_model(paddle_file, exe))
+
+    if(dump_all):
+        out_name = list()
+        for o in fetch_targets:
+            out_name.append(o.name)
+        for op in inference_program.block(0).ops:
+            if 'Out' in op.output_names:
+                        output_vars = op.output('Out')
+            elif 'Output' in op.output_names:
+                output_vars = op.output('Output')
+            all_valid_nodes[output_vars[0]] = op.type
+        for name in all_valid_nodes:
+            if name not in feed_target_names and name != 'fetch':
+                out_name.append(name)
+        feed_dict = dict()
+        for i in inputs:
+            feed_dict[feed_target_names[0]] = inputs[i].astype(np.float32)
+        out_data = exe.run(
+            inference_program,
+            feed = feed_dict,
+            fetch_list = out_name
+        )
+        outputs = dict()
+        for i in range(len(out_name)):
+            new_name = out_name[i] + f'_{all_valid_nodes[out_name[i]]}'
+            outputs[new_name] = np.array(out_data[i])
+        return outputs
+    else:
+        out_name = []
+        feed_dict = dict()
+        for i in inputs:
+            feed_dict[feed_target_names[0]] = inputs[i].astype(np.float32)
+        for o in fetch_targets:
+            out_name.append(o.name)
+        out_data = exe.run(
+            inference_program,
+            feed = feed_dict,
+            fetch_list = out_name
+        )
+        outputs = dict()
+        for i in range(len(out_name)):
+            outputs[out_name[i]] = out_data[i]
+        return outputs
+
 
 def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool = True) -> dict:
     import caffe
@@ -420,6 +472,8 @@ if __name__ == '__main__':
         output = onnx_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".tflite"):
         output = tflite_inference(data, args.model, args.dump_all_tensors)
+    elif args.model.endswith(".pdmodel"):
+        output = paddle_inference(data,args.model)
     elif args.model.endswith(".prototxt") and args.weight.endswith(".caffemodel"):
         output = caffe_inference(data, args.model, args.weight, args.dump_all_tensors)
     elif args.model.endswith(".pt") or args.model.endswith(".pth"):

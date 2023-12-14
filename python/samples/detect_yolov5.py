@@ -15,7 +15,7 @@ import os
 import sys
 import argparse
 import cv2
-from tools.model_runner import mlir_inference, model_inference, onnx_inference, torch_inference
+from tools.model_runner import mlir_inference, model_inference, onnx_inference, torch_inference,paddle_inference
 from utils.preprocess import supported_customization_format
 
 COCO_CLASSES = ("person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck",
@@ -230,6 +230,7 @@ def preproc(img, input_size, pixel_format, channel_format, fuse_pre, swap=(2, 0,
         padded_img = np.ones(input_size, dtype=np.uint8) * 114  # 114
 
     r = min(input_size[0] / img.shape[0], input_size[1] / img.shape[1])
+
     resized_img = cv2.resize(
         img,
         (int(img.shape[1] * r), int(img.shape[0] * r)),
@@ -241,6 +242,7 @@ def preproc(img, input_size, pixel_format, channel_format, fuse_pre, swap=(2, 0,
 
     if (channel_format == 'nchw'):
         padded_img = padded_img.transpose(swap)  # HWC to CHW
+    # if (pixel_format == 'rgb'):
     if (pixel_format == 'rgb'):
         padded_img = padded_img[::-1]  # BGR to RGB
 
@@ -336,6 +338,8 @@ def main():
         output = onnx_inference(data, args.model, False)
     elif args.model.endswith('.pt') or args.model.endswith('.pth'):
         output = torch_inference(data, args.model, False)
+    elif args.model.endswith('.pdmodel'):
+        output = paddle_inference(data, args.model, False)
     elif args.model.endswith('.mlir'):
         output = mlir_inference(data, args.model, False)
     elif args.model.endswith(".bmodel"):
@@ -355,6 +359,7 @@ def main():
             raise RuntimeError("model:[{}] nothing detect out:{}".format(args.model, args.input))
         final_boxes, final_scores, final_cls_inds = dets[:, :4], dets[:, 4], dets[:, 5]
         final_boxes /= ratio
+
         fix_img = vis(origin_img,
                       final_boxes,
                       final_scores,

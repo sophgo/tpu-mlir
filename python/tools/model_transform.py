@@ -209,6 +209,25 @@ class TorchTransformer(ModelTransformer):
         return torch_inference(inputs, self.model_def)
 
 
+class PaddleTransformer(ModelTransformer):
+    def __init__(self,
+                 model_name,
+                 model_def,
+                 input_shapes: list = [],
+                 output_names:list = [],
+                 preprocessor: dict = {}
+                 ):
+        super().__init__(model_name, model_def)
+        from transform.paddleConverter import PaddleConverter
+        self.converter = PaddleConverter(self.model_name,self.model_def,input_shapes,output_names,
+                                         preprocessor)
+
+    def origin_inference(self,inputs:dict):
+        from tools.model_runner import paddle_inference
+        return paddle_inference(inputs,self.model_def)
+
+
+
 def get_model_transform(args):
     preprocessor = preprocess()
     preprocessor.config(**vars(args))
@@ -231,6 +250,9 @@ def get_model_transform(args):
     elif args.model_def.endswith('.pt'):
         tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
                                 args.input_types, args.output_names, preprocessor.to_dict())
+    elif args.model_def.endswith('.pdmodel'):
+        args.model_def = args.model_def[:-len('.pdmodel')]
+        tool = PaddleTransformer(args.model_name,args.model_def,args.input_shapes,args.output_names,preprocessor.to_dict())
     else:
         # TODO: support more deep learning model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))
