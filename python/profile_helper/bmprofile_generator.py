@@ -966,6 +966,53 @@ class BMProfileGenerator:
                     tensor_bytes *= s
                 total_bytes += tensor_bytes
             return total_bytes
+        def get_layer_peak_tops(dtypes, layer_type, BDPeriod):
+            tiu_freq = 1.0 / BDPeriod # MHz
+            peak_tops = 32
+            layer_type = layer_type.lower()
+            if layer_type in ["conv", "conv2d", "matmul", "batch_matmul", "deconv"]:
+                if "INT8" in dtypes or "UINT8" in dtypes:
+                    peak_tops = 32 * tiu_freq / 1000
+                elif ("FP16" in dtypes or "BF16" in dtypes or "INT16" in dtypes or "UINT16" in dtypes):
+                    peak_tops = 16 * tiu_freq / 1000
+                else:
+                    peak_tops = 2 * tiu_freq / 1000
+            elif layer_type in ["pool", "pool2d", "fc"]:
+                if "INT8" in dtypes or "UINT8" in dtypes:
+                    peak_tops = 8 * tiu_freq / 1000
+                elif ("FP16" in dtypes or "BF16" in dtypes or "INT16" in dtypes or "UINT16" in dtypes):
+                    peak_tops = 4 * tiu_freq / 1000
+                else:
+                    peak_tops = 2 * tiu_freq / 1000
+            else:
+                if "INT8" in dtypes or "UINT8" in dtypes:
+                    peak_tops = 4 * tiu_freq / 1000
+                elif ("FP16" in dtypes or "BF16" in dtypes or "INT16" in dtypes or "UINT16" in dtypes):
+                    peak_tops = 2 * tiu_freq / 1000
+                else:
+                    peak_tops = 1 * tiu_freq / 1000
+            return peak_tops
+        def get_peak_tops(dtype_ops_map, BDPeriod):
+            tiu_freq = 1.0 / BDPeriod # MHz
+            max_ops = 0
+            max_dtype = "si8"
+            peak_tops = 32
+            for dtype, ops in dtype_ops_map.items():
+                if (ops > max_ops):
+                    max_dtype = dtype
+                    max_ops = ops
+            if max_dtype in ["si8", "ui8"]:
+                peak_tops = 32 * tiu_freq / 1000
+            elif max_dtype in ["f16", "bf16", "si16", "ui16"]:
+                peak_tops = 16 * tiu_freq / 1000
+            else:
+                peak_tops = 2 * tiu_freq / 1000
+            return peak_tops
+        def get_gdma_theo_time(s2l_bytes, l2s_bytes, s2s_bytes, GDMAPeriod):
+            gdma_freq = 1.0 / GDMAPeriod
+            s2l_bw, l2s_bw, s2s_bw = 64 * gdma_freq / 1000, 48 * gdma_freq / 1000, 32 * gdma_freq / 1000 # For 1684x, it changes with freq
+            gdma_theo_time = (s2l_bytes / 2**30 / s2l_bw + l2s_bytes / 2**30 / l2s_bw + s2s_bytes / 2**30 / s2s_bw) * 1e6
+            return gdma_theo_time
         def get_ratio_str(x, y):
             return '%.3f%%'%(x/y*100) if y != 0 else "--"
 
@@ -973,14 +1020,21 @@ class BMProfileGenerator:
                        "des_res0_n", "des_res0_c", "des_res0_h", "des_res0_w", "des_opd0_n", "des_opd0_c", "des_opd0_h", "des_opd0_w", "des_opd1_n", "des_opd1_c", "des_opd1_h", "des_opd1_w", "des_res0_n_str", "des_res0_c_str", "des_opd0_n_str",
                        "des_opd0_c_str", "des_opd1_n_str", "des_opd1_c_str", "des_opd2_n_str", "des_opd2_c_str", "des_res0_addr", "des_opd0_addr", "des_opd1_addr", "des_opd2_addr", "des_res0_h_str", "des_res0_w_str", "des_opd0_h_str", "des_opd0_w_str", "des_opd1_h_str", "des_opd1_w_str", "des_opd2_h_str", "des_opd2_w_str", "des_res1_addr", "des_opd3_addr", "des_res_op_x_str", "des_res_op_y_str", "des_opd0_prec", "des_res0_prec"]
         reg_begin_index = inst_header.index("des_res0_n")
-        layer_header = ["Layer ID", "Type", "TPU/CPU", "DataType", "Function",
+        layer_header = ["LayerID", "Type", "TPU/CPU", "DataType", "Function",
                         "Load Bandwidth(GBps)", "Store Bandwidth(GBps)",
                         "kh", "kw", "KStrideH", "KStrideW", "Padding", "in", "ic", "ih", "iw", "on", "oc", "oh", "ow",
                         "ifm(B)", "ofm(B)", "weight(B)",
                         "AlgorithmOps", "Other info",
-                        "uArch URate", "uArch Ops", "uArch CModel Cycle", "uArch Cycle Ratio",
-                        "1684x Cycle", "1684x Time Ratio"]
+                        "uArchRate", "uArchOps", "uArchCModelCycle", "uArchCModelCycleRatio",
+                        "tiuCycle", "tiuTimeRatio",
+                        "s2lBytes", "l2sBytes", "s2sBytes",
+                        "gdmaCycle", "tiuTime(us)", "gdmaTime(us)", "layerTime(us)",
+                        "peakTops", "actualTops",
+                        "macUtil", "ddrUtil", "parallelism",
+                        "ddrRate", "ddrTimeRatio"]
+        model_summary_header = []
 
+        dtype_ops_map = dict()
         layer_id_map = dict()
         inst_data = []
         null_regs = [""] * (len(inst_header) - reg_begin_index)
@@ -988,6 +1042,7 @@ class BMProfileGenerator:
         total_arch_cycles = 0
         total_arch_ops = 0
         total_alg_ops = 0
+        total_gdma_cycles = 0
         for layer in layer_info:
             layer_type = get_layer_type(layer, "", False)
             layer_alg_ops = 0
@@ -1023,6 +1078,8 @@ class BMProfileGenerator:
                         conv_pad[2] = max(conv_pad[2], reg.opd0_lf_pad)
                         conv_pad[3] = max(conv_pad[3], reg.opd0_rt_pad)
 
+                dtype = get_inst_io_dtype(n.pmu_info.command)[0]
+                dtype_ops_map[dtype] = dtype_ops_map.get(dtype, 0) + alg_ops
                 layer_alg_ops += alg_ops
                 layer_arch_ops += arch_ops
                 item = [0, command_type, 0, "-", *get_inst_io_dtype(n.pmu_info.command), layer.layer_id,
@@ -1038,6 +1095,8 @@ class BMProfileGenerator:
             load_time = 0
             store_bytes = 0
             store_time = 0
+            s2s_bytes = 0
+            s2s_time = 0
             for n in layer.gdma_nodes:
                 if not n.pmu_info:
                     continue
@@ -1058,23 +1117,28 @@ class BMProfileGenerator:
                         "-", "-", "-",
                         *dma_param]
                 inst_data.append(item)
-                if m.d0_wr_bytes + m.d1_wr_bytes > 0:
-                    store_bytes += m.d0_wr_bytes + m.d1_wr_bytes
-                    store_time += n.pmu_info.inst_end_time - n.pmu_info.inst_start_time
-                if m.d0_ar_bytes + m.d1_ar_bytes > 0:
-                    load_bytes += m.d0_ar_bytes + m.d1_ar_bytes
-                    load_time += n.pmu_info.inst_end_time - n.pmu_info.inst_start_time
+                # S2S
+                if m.d0_wr_bytes + m.d1_wr_bytes > 0 and m.d0_ar_bytes + m.d1_ar_bytes > 0:
+                    s2s_bytes += m.d0_wr_bytes + m.d1_wr_bytes
+                    s2s_time += n.pmu_info.inst_end_time - n.pmu_info.inst_start_time
+                else:
+                    if m.d0_wr_bytes + m.d1_wr_bytes > 0:
+                        store_bytes += m.d0_wr_bytes + m.d1_wr_bytes
+                        store_time += n.pmu_info.inst_end_time - n.pmu_info.inst_start_time
+                    if m.d0_ar_bytes + m.d1_ar_bytes > 0:
+                        load_bytes += m.d0_ar_bytes + m.d1_ar_bytes
+                        load_time += n.pmu_info.inst_end_time - n.pmu_info.inst_start_time
 
             if layer.layer_id == -1:
                 continue
             if layer.begin_usec is None:
                 # print("WARNING: layer_id={} layer_type={} has no time info".format(layer.layer_id, layer_type))
                 continue
-            if len(layer.bd_nodes) == 0:
-                continue
+            # if len(layer.bd_nodes) == 0:
+            #     continue
             tiu_cycles = sum([n.pmu_info.inst_end_time - n.pmu_info.inst_start_time if n.pmu_info else 0 for n in layer.bd_nodes])
-            if tiu_cycles == 0:
-                continue
+            # if tiu_cycles == 0:
+            #     continue
             arch_cycles = sum(
                 int(1000 * n.sim_info.cost_time) if n.sim_info else 0
                 for n in layer.bd_nodes
@@ -1083,10 +1147,22 @@ class BMProfileGenerator:
             total_arch_cycles += arch_cycles
             total_alg_ops += layer_alg_ops
             total_arch_ops += layer_arch_ops
+            total_gdma_cycles += (load_time + store_time + s2s_time)
 
             load_bandwidth = load_bytes/(1024*1024*1024)/(load_time*GDMAPeriod*1e-6) if load_time > 0 else 0
             store_bandwidth = store_bytes/(1024*1024*1024)/(store_time*GDMAPeriod*1e-6) if store_time > 0 else 0
 
+            gdma_cycles = (load_time + s2s_time + store_time)
+            layer_time = layer.end_usec - layer.begin_usec
+            peak_tops = get_layer_peak_tops(get_layer_dtype(layer), layer_type, BDPeriod)
+            tiu_time = 0
+            gdma_time = 0
+            actual_tops = 0
+            ddr_rate = 0
+            mac_util = 0
+            ddr_util = 0
+            parallelism = 0
+            ddr_time_ratio = 0
             if layer.layer_id not in layer_id_map:
                 item = [layer.layer_id,
                         "local" if layer.is_local else "global",
@@ -1098,32 +1174,59 @@ class BMProfileGenerator:
                         *get_layer_nchw(layer, True), *get_layer_nchw(layer, False),
                         get_layer_bytes(layer, True), get_layer_bytes(layer, False), get_layer_weight_size(layer),  #"ifm(B)", "ofm(B)", "Weight(B)"
                         layer_alg_ops, layer.io_info(), #"AlgorithmOps", "Other info",
-                        0, layer_arch_ops, arch_cycles, 0, #"uArch URate", "uArch Ops", "uArch Cycle", "uArch Cycle Ratio",
-                        tiu_cycles, 0]
+                        0, layer_arch_ops, arch_cycles, 0, #"uArchRate", "uArchOps", "uArchCModelCycle", "uArchCModelCycleRatio",
+                        tiu_cycles, 0, # tiuCycle, tiuTimeRatio
+                        load_bytes, store_bytes, s2s_bytes,
+                        gdma_cycles, tiu_time, gdma_time, layer_time,
+                        peak_tops, actual_tops,
+                        mac_util, ddr_util, parallelism,
+                        ddr_rate, ddr_time_ratio,
+                ]
                 layer_id_map[layer.layer_id] = item
             else:
                 layer_id_map[layer.layer_id][3] |= get_layer_dtype(layer)
-                layer_id_map[layer.layer_id][-2] += tiu_cycles
-                layer_id_map[layer.layer_id][-4] += arch_cycles
-                layer_id_map[layer.layer_id][-5] += layer_arch_ops
-                layer_id_map[layer.layer_id][-8] += layer_alg_ops
+                layer_id_map[layer.layer_id][-16] += tiu_cycles
+                layer_id_map[layer.layer_id][-18] += arch_cycles
+                layer_id_map[layer.layer_id][-19] += layer_arch_ops
+                layer_id_map[layer.layer_id][-22] += layer_alg_ops
+                layer_id_map[layer.layer_id][-11] += gdma_cycles
+                layer_id_map[layer.layer_id][-8] += layer_time
+
 
         layer_data = layer_id_map.values()
-        layer_data = sorted(layer_data, key=lambda x: x[-2], reverse=True)
+        layer_data = sorted(layer_data, key=lambda x: x[-16], reverse=True)
         for layer in layer_data:
-            layer[-1] = get_ratio_str(layer[-2], total_tiu_cycles)
-            layer[-3] = get_ratio_str(layer[-4], total_arch_cycles)
-            layer[-6] = get_ratio_str(layer[-8], layer[-5])
+            layer[-15] = get_ratio_str(layer[-16], total_tiu_cycles) # tiuCycleRatio = tiuCycle / total_tiu_cycles
+            layer[-17] = get_ratio_str(layer[-18], total_arch_cycles) # uArchCModelCycleRatio = uArchCModelCycle / total_arch_cycles
+            layer[-20] = get_ratio_str(layer[-22], layer[-19]) # uArchRate = AlgorithmOps / uArchOps
+            layer[-10] = layer[-16] * BDPeriod # tiuTime
+            layer[-9] = layer[-11] * GDMAPeriod # gdmaTime
+            layer[-6] = layer[-22] / layer[-8] / 1e6 if layer[-8] > 0 else "--" # actual_tops
+            gdma_theo_time = get_gdma_theo_time(layer[-14], layer[-13], layer[-12], GDMAPeriod)
+            layer[-5] = get_ratio_str(layer[-6], layer[-7]) if layer[1] == "global" else "--" # macUtil
+            layer[-4] = get_ratio_str(gdma_theo_time, layer[-8]) if layer[1] == "global" else "--" # gdmaUtil
+            layer[-3] = get_ratio_str(layer[-10] + layer[-9], layer[-8]) if layer[1] == "global" else "--" # parallelism
+            layer[-2] = get_ratio_str(gdma_theo_time, layer[-9]) # ddrRate
+            layer[-1] = get_ratio_str(layer[-11], total_gdma_cycles) # ddrTimeRatio
 
         layer_file = os.path.join(out_dir, "layer.csv")
         inst_file = os.path.join(out_dir, "instruction.csv")
         summary_file = os.path.join(out_dir, "summary.csv")
 
         layer_summary_map = dict()
-        layer_summary_header = ["Function", "Algorithm Ops", "Algorithm Tops Ratio", "Weight Size", "uArch Tops", "uArch URate", "uArch Tops Ratio", "1684x Cycles", "1684x Ratio", "1684x FPS or Token/s", "Layer Types"]
+        layer_summary_header = ["Function", "AlgorithmOps", "AlgorithmOpsRatio",
+                                "uArchOps", "uArchOpsRatio", "weight(B)",
+                                "s2lBytes", "l2sBytes", "s2sBytes",
+                                "tiuCycles", "tiuTime(us)", "tiuTimeRatio",
+                                "gdmaCycles", "gdmaTime(us)", "gdmaTimeRatio",
+                                "tiuTheoTime(us)", "uArchRate",
+                                "gdmaTheoTime(us)", "ddrRate",
+                                "1684x FPS or Token/s", "peakTops", "DataTypes", "LayerTypes"]
         layer_summary_row_map = {
                               "conv":"Conv",
                               "conv2d":"Conv",
+                              "deconv": "Deconv",
+                              "deconv2d": "Deconv",
                               "pool":"Pool",
                               "pool2d":"Pool",
                               "fc":"Matmul",
@@ -1140,22 +1243,52 @@ class BMProfileGenerator:
                               "mul":"Eltwise",
                               "add":"Eltwise",
                               "broadcast_binary":"Eltwise",
+                              "active": "Active",
+                              "load": "Load",
+                              "store": "Store",
                               }
         total_weight_size = 0
+        total_s2l_bytes = 0
+        total_l2s_bytes = 0
+        total_s2s_bytes = 0
+        # total_time = 0 # total_time cannot be computed by simply adding together
+        total_tiu_time = 0
+        total_gdma_time = 0
         for layer in layer_data:
             layer_type = layer[4]
             row_name = layer_summary_row_map.get(layer_type.lower(), "Others")
-            layer_alg_ops = layer[-8]
-            layer_arch_ops = layer[-5]
-            weight_size = layer[-9]
-            layer_cycles = layer[-2]
+            layer_alg_ops = layer[-22]
+            layer_arch_ops = layer[-19]
+            weight_size = layer[-23]
+            tiu_cycles = layer[-16]
+            gdma_cycles = layer[-11]
+            s2l_bytes = layer[-14]
+            l2s_bytes = layer[-13]
+            s2s_bytes = layer[-12]
+            tiu_time = layer[-10]
+            gdma_time = layer[-9]
+            layer_time = layer[-8]
+            data_types = layer[3]
+            total_s2l_bytes += s2l_bytes
+            total_l2s_bytes += l2s_bytes
+            total_s2s_bytes += s2s_bytes
+            # total_time += layer_time
+            total_tiu_time += tiu_time
+            total_gdma_time += gdma_time
             total_weight_size += weight_size
-            item = [row_name, layer_alg_ops, 0, weight_size, layer_arch_ops, 0, 0, layer_cycles, 0, 0, {layer_type}]
+            item = [row_name, layer_alg_ops, 0,
+                    layer_arch_ops, 0, weight_size,
+                    s2l_bytes, l2s_bytes, s2s_bytes,
+                    tiu_cycles, tiu_time, 0,
+                    gdma_cycles, gdma_time, 0,
+                    0, 0, 0, 0,
+                    0, 0, data_types, {layer_type}]
             if row_name not in layer_summary_map:
                 layer_summary_map[row_name] = item
             else:
-                for i in range(1, len(item)-1):
+                for i in range(1, len(item)-4):
                     layer_summary_map[row_name][i] += item[i]
+                layer_summary_map[row_name][-2] |= item[-2]
                 layer_summary_map[row_name][-1] |= item[-1]
 
         layer_summary_data = []
@@ -1167,20 +1300,44 @@ class BMProfileGenerator:
             "BatchNorm",
             "LayerNorm",
             "Eltwise",
+            "Deconv",
+            "Active",
+            "Load",
+            "Store",
             "Others",
         ]
-        null_row = [0]*(len(layer_summary_header)-2) + [set()]
+        null_row = [0]*(len(layer_summary_header)-3) + [set(), set()]
         for row in layer_summary_rows:
             layer_summary_data.append(layer_summary_map.get(row, [row] + null_row))
 
         for summary in layer_summary_data:
-            summary[2] = get_ratio_str(summary[1], total_alg_ops)
-            summary[6] = get_ratio_str(summary[4], total_arch_ops)
-            summary[5] = get_ratio_str(summary[1], summary[4])
-            summary[8] = get_ratio_str(summary[7], total_tiu_cycles)
+            summary[2] = get_ratio_str(summary[1], total_alg_ops) # AlgorithmOpsRatio
+            summary[4] = get_ratio_str(summary[3], total_arch_ops) # uArchOpsRatio
+            summary[11] = get_ratio_str(summary[9], total_tiu_cycles) # tiuTimeRatio
+            summary[14] = get_ratio_str(summary[12], total_gdma_cycles) # gdmaTimeRatio
+            peak_tops = get_layer_peak_tops(summary[-2], summary[0], BDPeriod)
+            summary[15] = summary[1] / (peak_tops * 1e6) # tiuTheoTime
+            summary[16] = get_ratio_str(summary[1], summary[3]) # uArchRate
+            summary[17] = get_gdma_theo_time(summary[6], summary[7], summary[8], GDMAPeriod) # gdmaTheoTime
+            summary[18] = get_ratio_str(summary[17], summary[13]) # ddrRate
+            summary[-3] = peak_tops
+            summary[-2] = ",".join(summary[-2])
             summary[-1] = ",".join(summary[-1])
+        peak_tops = get_peak_tops(dtype_ops_map, BDPeriod)
+        total_tiu_theo_time = total_alg_ops / (peak_tops * 1e6)
         total_arch_urate = get_ratio_str(total_alg_ops, total_arch_ops)
-        layer_summary_data.append(["Overall", total_alg_ops, "100%", total_weight_size, total_arch_ops, total_arch_urate, "100%", total_tiu_cycles, "100%", 1e6/(total_tiu_cycles*BDPeriod) if total_tiu_cycles != 0 else "--", ""])
+        total_gdma_theo_time = get_gdma_theo_time(total_s2l_bytes, total_l2s_bytes, total_s2s_bytes, GDMAPeriod)
+        total_ddr_rate = get_ratio_str(total_gdma_theo_time, total_gdma_time)
+
+        layer_summary_data.append(["Overall", total_alg_ops, "100%",
+                                   total_arch_ops, "100%", total_weight_size,
+                                   total_s2l_bytes, total_l2s_bytes, total_s2s_bytes,
+                                   total_tiu_cycles, total_tiu_time, "100%",
+                                   total_gdma_cycles, total_gdma_time, "100%",
+                                   total_tiu_theo_time, total_arch_urate,
+                                   total_gdma_theo_time, total_ddr_rate,
+                                   1e6/(total_tiu_cycles*BDPeriod) if total_tiu_cycles != 0 else "--",
+                                   peak_tops, "", ""])
         self.__write_csv(inst_file, inst_header, inst_data)
         if layer_data:
             self.__write_csv(layer_file, layer_header, layer_data)
