@@ -34,6 +34,10 @@ void MatMul::right_init(float *right, int64_t right_zp, int64_t batch,
     right_has_zp_ = right_zp != 0;
     right_transpose_ = right_transpose;
   }
+  if (need_broadcast_) {
+    right_broadcasted = std::make_shared<std::vector<float>>(weight_len);
+    p_right = right_broadcasted->data();
+  }
 }
 
 void MatMul::input_init(float *input, int64_t input_zp, int64_t batch,
@@ -47,6 +51,10 @@ void MatMul::input_init(float *input, int64_t input_zp, int64_t batch,
     p_input = input_after_init->data();
     input_has_zp_ = input_zp != 0;
     input_transpose_ = input_transpose;
+  }
+  if (need_broadcast_) {
+    input_broadcasted = std::make_shared<std::vector<float>>(input_len);
+    p_input = input_broadcasted->data();
   }
 }
 
@@ -65,11 +73,43 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t batch_low, int64_t M, int64_t K,
                    int64_t N, bool do_relu, double relu_limit, int64_t right_zp,
                    int64_t input_zp, bool right_transpose, bool input_transpose,
-                   bool output_transpose, bool hdim_is_batch) {
+                   bool output_transpose, bool hdim_is_batch, const std::vector<int64_t> &L_shape,
+                   const std::vector<int64_t> &R_shape, int dims_merge_2_M) {
   // printf("MatMul ldt:%ld, rdt:%ld, bdt:%ld, odt:%ld, rshift:%ld\n", ldt, rdt,
   // bdt, odt, rshift);
   memory::dims src_dims = {batch * batch_low, M, K};
   memory::dims weights_dims = {batch * batch_low, K, N};
+  if (L_shape.size() && R_shape.size()) {
+    L_shape_ = L_shape;
+    R_shape_ = R_shape;
+    while (L_shape_.size() < 4) {
+      L_shape_.insert(L_shape_.begin(), 1);
+    }
+    while (R_shape_.size() < 4) {
+      R_shape_.insert(R_shape_.begin(), 1);
+    }
+    l_b = 1;
+    r_b = 1;
+    for (int i = 0; i < L_shape_.size() - 2; i++) {
+      l_b *= L_shape_[i];
+    }
+    for (int i = 0; i < R_shape_.size() - 2; i++) {
+      r_b *= R_shape_[i];
+    }
+    
+    if (L_shape_.size() == R_shape_.size()) {
+      for (int i = 0; i < R_shape_.size() - 2; i++) {
+        if (L_shape_[i] != R_shape_[i] &&
+            (L_shape_[i] == 1 ||
+             (R_shape_[i] == 1 && (R_shape_.size() - 2 - dims_merge_2_M) > i))) {
+          need_broadcast_ = true;
+          if (L_shape_.size() > 4)
+            llvm_unreachable("Not support broadcast in MatMul of dims larger than 4");
+          break;
+        }
+      }
+    }
+  }
   memory::dims bias_dims = {1, 1, N};
   memory::dims dst_dims = {batch * batch_low, M, N};
   right_init(right, right_zp, batch, batch_low, K, N, right_transpose);
@@ -127,11 +167,30 @@ void MatMul::run() {
     int64_t weight_len = batch_ * batch_low_ * K_ * N_;
     tensor_sub_zp(right_after_init->data(), p_right_after, weight_len,
                   right_zp_);
+    p_right_after = right_after_init->data();
   }
   if (input_has_zp_) {
     int64_t input_len = batch_ * batch_low_ * K_ * M_;
     tensor_sub_zp(input_after_init->data(), p_input_after, input_len,
                   input_zp_);
+    p_input_after = input_after_init->data();
+  }
+
+  if (need_broadcast_) {
+    int l_length = K_ * M_;
+    int r_length = K_ * N_;
+    int max_n = std::max(L_shape_[0], R_shape_[0]);
+    int max_c = std::max(L_shape_[1], R_shape_[1]);
+    for (int i = 0; i < max_n; i++) {
+      for (int j = 0; j < max_c; j++) {
+        memcpy(input_broadcasted->data() + (i * max_c + j) * l_length,
+               p_input_after + ((i % L_shape_[0]) * L_shape_[1] + j % L_shape_[1]) * l_length,
+               l_length * sizeof(float));
+        memcpy(right_broadcasted->data() + (i * max_c + j) * r_length,
+               p_right_after + ((i % R_shape_[0]) * R_shape_[1] + j % R_shape_[1]) * r_length,
+               r_length * sizeof(float));
+      }
+    }
   }
   prim.execute(engine_stream, {{DNNL_ARG_SRC, src_mem},
                                {DNNL_ARG_WEIGHTS, weight_mem},

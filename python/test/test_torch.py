@@ -1029,6 +1029,9 @@ class TORCH_IR_TESTER(object):
                 return out
 
         self.trace_and_test([(4, 8, 49, 32), (4, 8, 32, 49), (1, 1, 1, 49)], Model())
+        self.trace_and_test([(1, 8, 3, 2), (4, 1, 2, 3), (1, 1, 3, 3)], Model())
+        self.trace_and_test([(1, 4, 20, 6), (2, 1, 6, 3), (1, 1, 3)], Model())
+        self.trace_and_test([(4, 20, 6), (1, 6, 3), (1, 1, 3)], Model())
 
     #######################################################################
     # test Connect Pass
