@@ -128,9 +128,17 @@ public:
         // Check Shape (left.shape[-1] == right.shape[-2])
         if (!(l_in_shape.size() >= 2 && r_in_shape.size() >= 2))
           return failure();
-        if (!(l_in_shape[l_in_shape.size() - 1] ==
-              r_in_shape[r_in_shape.size() - 2]))
-          return failure();
+        if (!r_trans) {
+          if (!(l_in_shape[l_in_shape.size() - 1] ==
+                r_in_shape[r_in_shape.size() - 2])) {
+            return failure();
+          }
+        } else {
+          if (!(l_in_shape[l_in_shape.size() - 1] !=
+                r_in_shape[r_in_shape.size() - 2])) {
+            return failure();
+          }
+        }
         if (l_in_shape.size() > 2 && r_in_shape.size() > 2) {
           int min_len = std::min(l_in_shape.size(), r_in_shape.size());
           for (int i = 0; i < min_len - 2; i++) {
@@ -1363,7 +1371,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             MaskedFillPermuteMove, PermuteFuse, PermuteFuseAddSoftmax,
             patterns::FuseRepeatPattern<tpu::ReshapeOp>, PermuteReshapeFuse,
             GatherElementsPattern, ScatterElementsPattern,
-            PermuteReorderPattern, PermutePadSwap>(ctx, 8);
+            PermutePadSwap>(ctx, 8);
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
 }
 } // namespace tpu
