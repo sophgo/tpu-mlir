@@ -950,6 +950,8 @@ class BMProfileGenerator:
             total_bytes = 0
             tensors = layer.in_tensors if is_in else layer.out_tensors
             for tensor in tensors:
+                if tensor.is_const:
+                    continue
                 tensor_bytes = get_dtype_size(tensor.dtype)
                 for s in tensor.shape:
                     tensor_bytes *= s
@@ -1191,7 +1193,9 @@ class BMProfileGenerator:
                 layer_id_map[layer.layer_id][-22] += layer_alg_ops
                 layer_id_map[layer.layer_id][-11] += gdma_cycles
                 layer_id_map[layer.layer_id][-8] += layer_time
-
+                layer_id_map[layer.layer_id][-14] += load_bytes
+                layer_id_map[layer.layer_id][-13] += store_bytes
+                layer_id_map[layer.layer_id][-12] += s2s_bytes
 
         layer_data = layer_id_map.values()
         layer_data = sorted(layer_data, key=lambda x: x[-16], reverse=True)
