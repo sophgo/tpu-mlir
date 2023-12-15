@@ -465,7 +465,8 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
       // EU_NUM align,
       // so we can only specify the align type to bias memory layout
       // but skip the oc/g>32 cases.
-      if (attr.oc / attr.groups > CV18xx::NPU_NUM) {
+      auto chunk_size = attr.oc / attr.groups;
+      if (chunk_size > CV18xx::NPU_NUM || chunk_size % 2) {
         return failure();
       }
     }
