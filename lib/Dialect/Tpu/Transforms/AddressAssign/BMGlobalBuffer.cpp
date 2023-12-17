@@ -909,6 +909,40 @@ public:
     return success();
   }
 };
+
+class TopKGlobalBuffer : public OpRewritePattern<tpu::TopKOp> {
+public:
+  using OpRewritePattern<tpu::TopKOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::TopKOp TopKOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(TopKOp.getBufferVal()) || !module::isNone(TopKOp.getBufferIdx())) {
+      return failure();
+    }
+
+    if (!module::isBM1684XFamily()) {
+      return failure();
+    }
+
+    int64_t num_elements = module::getNumElements(TopKOp.getInput());
+    auto val_type = module::getStorageType(TopKOp.getValues());
+    auto idx_type = module::getStorageType(TopKOp.getIndices());
+    std::vector<int64_t> buffer_shape = {num_elements};
+    auto val_buffer_type = RankedTensorType::get(buffer_shape, val_type);
+    auto idx_buffer_type = RankedTensorType::get(buffer_shape, idx_type);
+
+    OpBuilder builder(TopKOp->getContext());
+    builder.setInsertionPoint(TopKOp);
+    auto val_loc = module::getLocLike(TopKOp, "buffer_val");
+    auto val_buf_op = builder.create<tpu::BufferOp>(val_loc, val_buffer_type);
+    auto idx_loc = module::getLocLike(TopKOp, "buffer_idx");
+    auto idx_buf_op = builder.create<tpu::BufferOp>(idx_loc, idx_buffer_type);
+
+    TopKOp.setOperand(TopKOp.getNumOperands() - 2, val_buf_op);
+    TopKOp.setOperand(TopKOp.getNumOperands() - 1, idx_buf_op);
+    return success();
+  }
+};
 } // namespace bm168x
 
 namespace tpu {
@@ -939,7 +973,8 @@ void populateGlobalBufferBM168xPatterns(RewritePatternSet *patterns) {
       ScatterNDGlobalBuffer,
       NmsGlobalBuffer,
       YoloDetectionGlobalBuffer,
-      DetectionOutputGlobalBuffer
+      DetectionOutputGlobalBuffer,
+      TopKGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }

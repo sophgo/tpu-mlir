@@ -38,6 +38,8 @@ int64_t tpu::TopKOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.k = getK();
   spec.dim = getAxis();
   spec.descending = getLargest();
+  spec.buffer_val_addr = module::getAddress(getBufferVal());
+  spec.buffer_idx_addr = module::getAddress(getBufferIdx());
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 

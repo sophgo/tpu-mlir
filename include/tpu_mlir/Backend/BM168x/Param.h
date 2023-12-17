@@ -1423,6 +1423,8 @@ typedef struct {
   int k;
   int dim;
   int descending;
+  uint64_t buffer_val_addr;
+  uint64_t buffer_idx_addr;
 } topk_spec_t;
 
 typedef struct attention_common_spec {
