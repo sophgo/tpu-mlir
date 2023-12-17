@@ -4775,6 +4775,26 @@ class ONNX_IR_TESTER(object):
                                   input_data=input_data,
                                   only_cmp_with_bmodel=True)
 
+    def test_TopK3(self, case_name):
+        # This is for testing topk gmem overflow hardware bug
+        shape = [1, 11400]
+        const = 200
+        X = helper.make_tensor_value_info('X', TensorProto.FLOAT, shape)
+        C = helper.make_tensor("C", TensorProto.FLOAT, [1], np.array([1.0]).astype(np.float64))
+        K = helper.make_tensor("K", TensorProto.INT64, [1], np.array([const]).astype(np.int64))
+        o_shape = list(shape)
+        o_shape[-1] = const
+        Y_Index = helper.make_tensor_value_info('Y_Index', TensorProto.INT64, o_shape)
+        Add_Value = helper.make_tensor_value_info('add_out', TensorProto.FLOAT, shape)
+        add_node = helper.make_node("Add", inputs=["X", "C"], outputs=["add_out"])
+        topk_node = helper.make_node('TopK', ['X', 'K'], ['Y_Value', 'Y_Index'],
+                                     axis=-1,
+                                     largest=True)
+        graph_def = helper.make_graph([add_node, topk_node],
+                                      case_name, [X], [Y_Index, Add_Value],
+                                      initializer=[K, C])
+        self.onnx_and_test(graph_def)
+
     def test_QDQConv(self, case_name):
         oc = 32
         input_shape = [10, 3, 224, 224]
