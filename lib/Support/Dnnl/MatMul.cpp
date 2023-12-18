@@ -82,7 +82,7 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   if (L_shape.size() && R_shape.size()) {
     L_shape_ = L_shape;
     R_shape_ = R_shape;
-    while (L_shape_.size() && L_shape_[L_shape_.size() - 1] != K) {
+    while (L_shape_.size() - 2 >= 0 && L_shape_[L_shape_.size() - 1] != K) {
       L_shape_[L_shape_.size() - 2] *= L_shape_[L_shape_.size() - 1];
       L_shape_.pop_back();
     }
