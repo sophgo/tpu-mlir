@@ -66,9 +66,9 @@ int64_t tpu::SubOp::getBufferSize_bm1684x(
   } else if (out_type.isBF16() || out_type.isF16()) {
     return out_lmem_bytes;
   } else if (in0_type.isFloat8E4M3FN() && in1_type.isFloat8E4M3FN()) {
-    return 4 * out_lmem_bytes * sizeof(int16_t);
-  } else if (in0_type.isFloat8E4M3FN() && in1_type.isF16()) {
     return 3 * out_lmem_bytes * sizeof(int16_t);
+  } else if (in0_type.isFloat8E4M3FN() && in1_type.isF16()) {
+    return 2 * out_lmem_bytes * sizeof(int16_t);
   }
   return 0;
 }

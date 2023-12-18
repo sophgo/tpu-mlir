@@ -14,11 +14,9 @@
 namespace tpu_mlir {
 
 float get_f8e4m3_max();
-
 float get_f8e4m3_min();
 
 float get_f8e5m2_max();
-
 float get_f8e5m2_min();
 
 /*
@@ -36,7 +34,7 @@ float f8e4m3_to_f16(uint8_t src);
 float f8e5m2_to_f16(uint8_t src);
 
 /*
-  convert f32 to f8r4m3 and back to f32
+  convert f32 to f8e4m3 and back to f32
 */
 float F8E4M3(float src, float step, bool satu);
 float F8E5M2(float src, float step, bool satu);
