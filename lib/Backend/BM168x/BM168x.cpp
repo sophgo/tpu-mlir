@@ -399,11 +399,6 @@ void BM168x::start_env() {
   if (0 != dl_cmodel_init(0, CMODEL_GMEM_SIZE)) {
     llvm_unreachable("cmodel init failed");
   }
-  if (BM1688::classof(this)) {
-    if (0 != dl_cmodel_init(1, CMODEL_GMEM_SIZE)) {
-      llvm_unreachable("cmodel init failed");
-    }
-  }
   code->bmcpu_handle = dl_bmcpu_init();
   code->cmdid_node = dl_create_cmd_id_node();
   code->bdc_node = dl_create_cmd_id_node();
@@ -419,9 +414,6 @@ void BM168x::end_env() {
       dl_destroy_cmd_id_node(code->cmdid_node);
     }
     dl_cmodel_deinit(0);
-    if (BM1688::classof(this)) {
-      dl_cmodel_deinit(1);
-    }
   }
 }
 
