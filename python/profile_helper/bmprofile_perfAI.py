@@ -166,16 +166,14 @@ class BMProfileParserPerfAI(BMProfileParser):
         zero_position.append(idx)
     if len(zero_position) < 2:
       left = 1
-      right = len(tmp) - 1
+      right = len(tmp)
     elif len(zero_position) == 2:
       left = zero_position[0] + 1
-      right = zero_position[1] - 1
+      right = zero_position[1]
     else:
       left = zero_position[1]
-      right= zero_position[-1] - 1
-    length = right - left
-
-    self.gdma_monitor.append(tmp[left:length])
+      right= zero_position[-1]
+    self.gdma_monitor.append(tmp[left:right])
     monitor_gdma.append(tmp)
   def __parse_command_info(self, command_info:List, raw_data):
     command_info.append(self._BMProfileParser__parse_command_info(raw_data))
@@ -245,5 +243,5 @@ class BMProfileParserPerfAI(BMProfileParser):
 
 if __name__ == "__main__":
   bmProfile = BMProfileParserPerfAI()
-  bmProfile.parse("/workspace/PerfAI_Release_20231114/1688profile")
+  bmProfile.parse("/workspace/easytools/resnet50_int8")
   bmProfile.to_txt('tmp')

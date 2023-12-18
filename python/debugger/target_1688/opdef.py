@@ -238,13 +238,12 @@ class mm_op(TiuCmd):
             lk, m = m, lk
         assert lk == rk
         k = lk
-        res_add = self.reg.res_add
         has_bias = len(self.operands) > 2
         if is_arch:
             dtype = self.operands[0].dtype
             # align the column of B
             n = ALIGN(self.reg.res0_c, NPU_NUM) * ALIGN(self.reg.res0_w, EU_NUM(dtype))
-        return m * n * (2 * k - 1 + has_bias + res_add)
+        return m * n * (2 * k - 1 + has_bias)
 
 
 class smm_op(mm_op):

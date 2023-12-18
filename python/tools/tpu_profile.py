@@ -45,7 +45,7 @@ if __name__ == "__main__":
     elif args.mode == "check":
         bmprofile_check_command(args.input_dir, args.output_dir, args.test, arch=args.arch)
     elif args.mode == "perfAI":
-        assert args.arch == "A2", "Only support a2, not support arch={}".format(args.arch)
+        # assert args.arch == "A2", "Only support a2, not support arch={}".format(args.arch)
         bmprofile_parse_perfAI(args.input_dir, args.output_dir, args.test, arch=args.arch)
     else:
         assert 0, "Not support mode={}".format(args.mode)
