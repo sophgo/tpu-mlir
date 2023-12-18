@@ -55,9 +55,13 @@ int64_t tpu::MulOp::getBufferSize_bm1684x(
     if (getMultiplier() != 1 || getRshift() != 0) {
       buffer_size = out_lmem_bytes * 2;
     }
-  } else if (dtype_A == DTYPE_F8E4M3 ) {
+  } else if (dtype_A == DTYPE_F8E4M3) {
     //calc method keep the same as add/sub at backend
-    buffer_size = 4 * out_lmem_bytes * sizeof(int16_t);
+    if (dtype_B == DTYPE_F8E4M3) {
+      buffer_size = 3 * out_lmem_bytes * sizeof(int16_t);
+    } else if (dtype_B == DTYPE_FP16) {
+      buffer_size = 2 * out_lmem_bytes * sizeof(int16_t);
+    }
   } else if ((BM168x::getFmtBytes(dtype_A) > BM168x::getFmtBytes(dtype_O)) &&
              (is_sign(dtype_A) || is_sign(dtype_B)) && (!is_sign(dtype_O))) {
     buffer_size = out_lmem_bytes;

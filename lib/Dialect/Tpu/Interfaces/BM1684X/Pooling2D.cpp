@@ -114,9 +114,17 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
               dtype_bytes;
     }
     if (p.is_global) {
-      auto dtype_bytes = BM168x::getFmtBytes(BM168x::getDataType(getOutput()));
-      int64_t eu_num = BM168x::eu_num(dtype_bytes);
-      size += out_nslice * eu_num * ceiling_func(p.c, npu_num) * dtype_bytes;
+      auto odtype_bytes = BM168x::getFmtBytes(BM168x::getDataType(getOutput()));
+      int64_t eu_num = BM168x::eu_num(odtype_bytes);
+      const auto idtype = BM168x::getDataType(getInput());
+      if (!(idtype == DTYPE_F8E4M3 || idtype == DTYPE_F8E5M2)) {
+        size += out_nslice * eu_num * ceiling_func(p.c, npu_num) * odtype_bytes;
+      } else {
+        size += out_nslice * eu_num * ceiling_func(p.c, npu_num) * sizeof(float);
+        if (odtype_bytes < 4) {
+          size += out_nslice * ceiling_func(p.c, npu_num) * sizeof(float);
+        }
+      }
     }
     return size;
   }
