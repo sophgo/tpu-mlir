@@ -82,6 +82,10 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   if (L_shape.size() && R_shape.size()) {
     L_shape_ = L_shape;
     R_shape_ = R_shape;
+    while (L_shape_.size() && L_shape_[L_shape_.size() - 1] != K) {
+      L_shape_[L_shape_.size() - 2] *= L_shape_[L_shape_.size() - 1];
+      L_shape_.pop_back();
+    }
     while (L_shape_.size() < 4) {
       L_shape_.insert(L_shape_.begin(), 1);
     }
@@ -96,12 +100,11 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
     for (int i = 0; i < R_shape_.size() - 2; i++) {
       r_b *= R_shape_[i];
     }
-    
     if (L_shape_.size() == R_shape_.size()) {
       for (int i = 0; i < R_shape_.size() - 2; i++) {
-        if (L_shape_[i] != R_shape_[i] &&
-            (L_shape_[i] == 1 ||
-             (R_shape_[i] == 1 && (R_shape_.size() - 2 - dims_merge_2_M) > i))) {
+        if (L_shape_[i] != R_shape_[i] && R_shape.size() > 2 &&
+            (L_shape_[i] == 1 || (R_shape_[i] == 1 && (R_shape_.size() - 2 -
+                                                       dims_merge_2_M) > i))) {
           need_broadcast_ = true;
           if (L_shape_.size() > 4)
             llvm_unreachable("Not support broadcast in MatMul of dims larger than 4");
