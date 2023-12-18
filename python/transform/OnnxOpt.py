@@ -223,7 +223,11 @@ class ConstantFolding(object):
             import tempfile
             with tempfile.TemporaryDirectory() as tmpdirname:
                 model_path = os.path.join(tmpdirname, 'model.onnx')
-                onnx.save(model, model_path, save_as_external_data=True)
+                onnx.save(model,
+                          model_path,
+                          save_as_external_data=True,
+                          location="temp_external_data",
+                          size_threshold=1024000000)
                 sess = rt.InferenceSession(model_path)
 
         input_names = self.get_input_names()

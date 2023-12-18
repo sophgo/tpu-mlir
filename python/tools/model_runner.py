@@ -208,7 +208,6 @@ def free_mlir_module():
 def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     import onnx
     import onnxruntime
-
     def generate_onnx_with_all(onnx_file: str):
         # for dump all activations
         # plz refre https://github.com/microsoft/onnxruntime/issues/1455
@@ -228,7 +227,11 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
                 model.graph.output.append(intermediate_layer_value_info)
                 output_keys.append(intermediate_layer_value_info.name + '_' + x.op_type)
         dump_all_tensors_onnx = onnx_file.replace('.onnx', '_all.onnx', 1)
-        onnx.save(model, dump_all_tensors_onnx, save_as_external_data=True)
+        onnx.save(model,
+                  dump_all_tensors_onnx,
+                  save_as_external_data=True,
+                  location="model_runner_external_data",
+                  size_threshold=1024000000)
         return output_keys, dump_all_tensors_onnx
 
     output_keys = []
