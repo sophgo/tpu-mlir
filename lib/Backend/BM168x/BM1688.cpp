@@ -15,7 +15,6 @@ void BM1688::load_functions() {
   BM1684X::load_functions();
   CAST_FUNCTION(tpu_sync_all);
   CAST_FUNCTION(tpu_core_context_setup);
-  CAST_FUNCTION(set_cur_nodechip_idx);
 }
 
 void BM1688::before_codegen() {
@@ -53,7 +52,6 @@ int BM1688::getCurrentCoreID() {
 }
 
 void BM1688::useCore(int coreID) {
-  dl_set_cur_nodechip_idx(coreID);
   if (code == multiCode[coreID]) {
     return;
   }
