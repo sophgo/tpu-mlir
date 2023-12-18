@@ -34,7 +34,37 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     LoweringF16(rewriter, op);
     return;
   }
-  if (auto filterOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
+
+  //note: trick for imgToCol pattern
+  const auto defByWeightOp = [&] (Operation *Op) {
+    using TYPE = std::function<std::pair<bool, Operation *>(Operation *op)>;
+    TYPE f;
+    f = [&] (Operation *op) -> decltype(std::declval<TYPE>()(op)) {
+      if (isa<top::WeightOp>(op))
+        return std::make_pair(true, op);
+      else if (!isa<top::ReshapeOp>(op)) {
+        return std::make_pair(false, nullptr);
+      } else
+        return f(op->getOperand(0).getDefiningOp());};
+    return f(Op);};
+
+  const auto defByWeightReshapeOp = [&] (Operation *op) -> std::pair<bool, Operation *>{
+    if (op && isa<top::ReshapeOp>(op) && defByWeightOp(op).first)
+      return std::make_pair(true, op);
+    else
+      return std::make_pair(false, nullptr);};
+
+  auto eliminateInvalidOp = [&] (bool yes, Operation *op) {
+      if (yes && isa<top::ReshapeOp>(op))
+        rewriter.eraseOp(op);
+      return true;};
+
+  auto [righIsReshapeOp, rightReshapeOp] = defByWeightReshapeOp(op.getRight().getDefiningOp());
+  auto [biasIsReshapeOp, biasReshapeOp] = defByWeightReshapeOp(op.getBias().getDefiningOp());
+  auto [isWeight, rightOp] = defByWeightOp(op.getRight().getDefiningOp());
+
+  if (isWeight) {
+    auto filterOp = dyn_cast<top::WeightOp>(rightOp);
     auto filter_f32 = filterOp.read<float>();
     int64_t in_zp = 0, out_zp = 0;
     double in_scale = 1, out_scale = 1, w_scale = 1;
@@ -61,7 +91,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     i32_array_t bias_int32;
     std::shared_ptr<std::vector<float>> bias_fp32;
     if (p.with_bias) {
-      auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
+      auto [isWeight, bias] = defByWeightOp(op.getBias().getDefiningOp());
+      assert(isWeight);
+      auto biasOp = cast<top::WeightOp>(bias);
       bias_fp32 = biasOp.read<float>();
       bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
     } else if (in_zp) {
@@ -108,6 +140,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   } else { // mutable tensor or MatMul
     int64_t in_zp = 0, w_zp = 0, out_zp = 0;
     double in_scale = 1, w_scale = 1, out_scale = 1;
+
     module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric);
     module::getScaleAndZeroPoint(op.getRight(), w_scale, w_zp, asymmetric);
     module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
@@ -142,6 +175,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   }
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+  //trick for Img2Col
+  eliminateInvalidOp(righIsReshapeOp, rightReshapeOp);
+  eliminateInvalidOp(biasIsReshapeOp, biasReshapeOp);
 }
 
 void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,

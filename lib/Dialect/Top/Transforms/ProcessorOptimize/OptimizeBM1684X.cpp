@@ -712,6 +712,116 @@ public:
   }
 };
 
+class ConvertConv2DToImg2Col final
+  : public OpRewritePattern<top::ConvOp> {
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ConvOp convOp,
+                                PatternRewriter &rewriter) const override {
+    Value input = convOp.getInput();
+    Value filter = convOp.getFilter();
+    Value bias = convOp.getBias();
+    Value output = convOp.getOutput();
+    auto inputType = llvm::cast<ShapedType>(input.getType());
+    auto filterType = llvm::cast<ShapedType>(filter.getType());
+    auto outputType = llvm::cast<ShapedType>(output.getType());
+    bool with_bias = !module::isNone(bias);
+    auto strides = module::getI64Array(convOp.getStrides());
+    //note: current support Conv2D
+    if (!filterType.hasStaticShape()
+         || !inputType.hasStaticShape()
+           || module::getShape(output).size() != 4) {
+      return failure();
+    }
+
+    auto hasAllOneValues = [&](mlir::ArrayAttr attr) -> bool{
+      return llvm::all_of(
+            attr.getAsRange<IntegerAttr>(),
+              [](IntegerAttr element) { return element.getInt() == 1; }); };
+    if (convOp.getDilations().has_value()
+        && !hasAllOneValues(convOp.getDilations().value()))
+      return failure();
+
+    auto filterShape = filterType.getShape();
+    auto outputShape = outputType.getShape();
+
+    const int n = outputShape[0];
+    const int oc = outputShape[1];
+    const int oh = outputShape[2];
+    const int ow = outputShape[3];
+    const int ic = filterShape[1];
+    const int kh = filterShape[2];
+    const int kw = filterShape[3];
+    if (!(ic <= 3 && kh >= 16 && kw >= 16
+        && strides->at(0) == kh
+        && strides->at(1) == kw)) {
+      return failure();
+    }
+    int id = 0;
+    auto loc_name = module::getName(convOp.getOperation()).str();
+    //1. Input->Reshape+permute+Reshape(reorder the input)
+    SmallVector<int64_t> colTensorShape = {n, ic, oh, kh, ow, kw};
+    auto reshapeOp = rewriter.create<top::ReshapeOp>
+                                                (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+                                                 RankedTensorType::get(colTensorShape, inputType.getElementType()),
+                                                ValueRange{input});
+    std::vector<int64_t> order = {0, 2, 4, 1, 3, 5};
+    std::vector<NamedAttribute> attrs;
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
+
+    auto perMuteOp = rewriter.create<top::PermuteOp>(NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+                                                     RankedTensorType::get({n, oh, ow, ic, kh, kw}, inputType.getElementType()),
+                                                     ValueRange{reshapeOp}, attrs);
+
+    auto reshapeOp_2 = rewriter.create<top::ReshapeOp>
+                                                (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+                                                 RankedTensorType::get({n, oh * ow, ic * kh * kw}, inputType.getElementType()),
+                                                ValueRange{perMuteOp});
+    //2. filter->reshape
+    auto reshapeOp_3 = rewriter.create<top::ReshapeOp>
+                                                (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+                                                 RankedTensorType::get({oc, ic * kh * kw}, filterType.getElementType()),
+                                                ValueRange{filter});
+    std::vector<Value> operands;
+    operands.emplace_back(reshapeOp_2);
+    operands.emplace_back(reshapeOp_3);
+    //3. bias->reshape
+    if (with_bias) {
+      auto reshapeOp_4 = rewriter.create<top::ReshapeOp>
+                                                  (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+                                                  RankedTensorType::get({1, 1, oc}, llvm::cast<ShapedType>(bias.getType()).getElementType()),
+                                                  ValueRange{bias});
+      operands.emplace_back(reshapeOp_4);
+    } else {
+      operands.emplace_back(bias);
+    }
+
+    attrs.clear();
+    attrs.emplace_back(
+        rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(true)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("output_transpose", rewriter.getBoolAttr(false)));
+    //4. matmul
+    auto matmulOp = rewriter.create<top::MatMulOp>(
+            NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+            RankedTensorType::get({n, oh * ow, oc}, outputType.getElementType()),
+            operands, attrs);
+    attrs.clear();
+    attrs.emplace_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0,2,1})));
+    //5. permute
+    auto perMuteOp_2 = rewriter.create<top::PermuteOp>(NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+                                                     RankedTensorType::get({n, oc, oh * ow}, outputType.getElementType()),
+                                                     ValueRange{matmulOp}, attrs);
+    //6. reshape the output
+    auto reshapeOp_5 = rewriter.create<top::ReshapeOp>
+                                      (NameLoc::get(rewriter.getStringAttr(loc_name + "_" + std::to_string(id++))),
+                                        RankedTensorType::get({n, oc, oh, ow}, outputType.getElementType()),
+                                       ValueRange{perMuteOp_2});
+    rewriter.replaceOp(convOp, ArrayRef<Value>{reshapeOp_5});
+    return success();
+  }
+};
 } // namespace bm1684x
 
 namespace top {
@@ -720,7 +830,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns->add<ConvertGLMTilePermute, ConvertMatMulWithRightTranspose,
                 ConvertMatMul2Attention, ReshapeReorderPattern,
-                ConvertMultiInputAdd, WhereBroadcastToTile>(
+                ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col>(
       patterns->getContext(), 8);
   if (module::getChip() == module::Chip::SG2260) {
     patterns->add<ConvertScaleToMAOp>(patterns->getContext(), /*PatternBenefit*/ 8);
