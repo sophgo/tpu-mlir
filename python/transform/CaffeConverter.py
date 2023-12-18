@@ -571,8 +571,18 @@ class CaffeConverter(BaseConverter):
         if with_bias:
             bias_op = self.blob_to_weight_op(layer, 1)
         output_shape = self.getShape(layer.top[0])
+        # reshape
+        in_shape = np.cumprod(self.getShape(layer.bottom[0]))
+        reshape_attrs = {'loc': self.get_loc(layer.bottom[0] + "_reshape")}
+        output_shape = self.getShape(layer.top[0])
+
+        reshape_op = top.ReshapeOp(self.mlir.get_tensor_type([in_shape[0], in_shape[-1]]),
+                                       in_op,
+                                       **reshape_attrs,
+                                       ip=self.mlir.insert_point).output
+
         new_op = top.MatMulOp(self.mlir.get_tensor_type(output_shape),
-                              in_op,
+                              reshape_op,
                               filter_op,
                               bias_op,
                               **attrs,
