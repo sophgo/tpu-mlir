@@ -10,7 +10,8 @@
 #include "AddressAssign/CVAddressAssign.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Float16.h"
 using namespace llvm;
 
 namespace tpu_mlir {
@@ -94,9 +95,17 @@ static void WeightFolder(Operation *op) {
       new_op = top::WeightOp::create(op, "folder", datas[i], out_type);
     } else if (dtype.isF16()) {
       auto castData = std::make_shared<std::vector<uint16_t>>(datas[i].size());
+      std::transform(datas[i].begin(), datas[i].end(),
+                   (*castData).begin(),
+                   [](float c) {
+                     return f32_to_f16(c); });
       new_op = top::WeightOp::create(op, "folder", *castData, out_type);
     } else if (dtype.isBF16()) {
       auto castData = std::make_shared<std::vector<uint16_t>>(datas[i].size());
+      std::transform(datas[i].begin(), datas[i].end(),
+                   (*castData).begin(),
+                   [](float c) {
+                     return f32_to_bf16(c); });
       new_op = top::WeightOp::create(op, "folder", *castData, out_type);
     } else if (dtype.isUnsignedInteger(16)) {
       auto castData = std::make_shared<std::vector<uint16_t>>(datas[i].size());
