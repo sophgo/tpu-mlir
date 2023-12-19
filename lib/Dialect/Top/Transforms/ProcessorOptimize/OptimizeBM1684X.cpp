@@ -347,9 +347,7 @@ public:
       return failure();
     Value matmul_out2 = is_permute_reshape(permute0.getInput());
     if (matmul_out2 == NULL) {
-      matmul_out2 = is_permute_reshape(matmul0.getRight());
-      if (matmul_out2 == NULL)
-        return failure();
+      return failure();
     }
     auto matmul_keys = dyn_cast<top::MatMulOp>(matmul_out2.getDefiningOp());
     if (!matmul_keys || !module::isWeight(matmul_keys.getRight())) {
