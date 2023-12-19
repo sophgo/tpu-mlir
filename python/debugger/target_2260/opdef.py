@@ -64,7 +64,7 @@ class TiuCmd(BaseTpuCmd, Tiu):
         return 0
 
     @property
-    def detail_name(self):
+    def op_name(self):
         op_name = self.reg.OP_NAME
         op_info = tiu_cls[self.reg.OP_NAME]
         eu_type_id = self.reg["tsk_eu_typ"]
@@ -99,12 +99,12 @@ class TiuCmd(BaseTpuCmd, Tiu):
                 if "msg_id" in tmp_attr:
                     msg_id = tmp_attr.pop("msg_id")
                     return (
-                        f'%B{self.cmd_id}C{ci} = "{self.detail_name}"'
+                        f'%B{self.cmd_id}C{ci} = "{self.op_name}"'
                         + f"(%D{self.cmd_id_dep}C{ci}, %msg{msg_id})"
                         + attribute
                     )
                 return (
-                    f'%B{self.cmd_id}C{ci} = "{self.detail_name}"'
+                    f'%B{self.cmd_id}C{ci} = "{self.op_name}"'
                     + f"(%D{self.cmd_id_dep}C{ci})"
                     + attribute
                 )
@@ -117,7 +117,7 @@ class TiuCmd(BaseTpuCmd, Tiu):
         if self.attribute:
             attribute_dic.update(self.attribute)
 
-        op_name = self.detail_name
+        op_name = self.op_name
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
 
@@ -177,7 +177,7 @@ class DmaCmd(BaseTpuCmd, Dma):
                 msg_id = tmp_attr.pop("msg_id")
                 attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
                 return (
-                    f'%D{self.cmd_id}C{ci} = "{self.detail_name}"'
+                    f'%D{self.cmd_id}C{ci} = "{self.op_name}"'
                     + f"(%B{self.cmd_id_dep}C{ci}, %msg{msg_id})"
                     + attribute
                 )
@@ -190,7 +190,7 @@ class DmaCmd(BaseTpuCmd, Dma):
         if self.attribute:
             attribute_dic.update(self.attribute)
 
-        op_name = self.detail_name
+        op_name = self.op_name
 
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
@@ -203,7 +203,7 @@ class DmaCmd(BaseTpuCmd, Dma):
         )
 
     @property
-    def detail_name(self):
+    def op_name(self):
         op_name = self.reg.OP_NAME
         op_info = dma_cls[self.reg.OP_NAME]
         sp_func_id = self.reg["cmd_special_function"]

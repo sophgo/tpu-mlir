@@ -197,14 +197,14 @@ def __main():
             outs = {
                 _id: {
                     "tiu": [
-                        {"name": getattr(x, "detail_name", x.name), "cmd": dict(x.reg)}
+                        {"name": getattr(x, "op_name", x.name), "cmd": dict(x.reg)}
                         for x in ops.tiu
-                        if not_visited(getattr(x, "detail_name", x.name))
+                        if not_visited(getattr(x, "op_name", x.name))
                     ],
                     "dma": [
-                        {"name": getattr(x, "detail_name", x.name), "cmd": dict(x.reg)}
+                        {"name": getattr(x, "op_name", x.name), "cmd": dict(x.reg)}
                         for x in ops.dma
-                        if not_visited(getattr(x, "detail_name", x.name))
+                        if not_visited(getattr(x, "op_name", x.name))
                     ],
                 }
                 for _id, ops in module

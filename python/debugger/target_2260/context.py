@@ -95,7 +95,7 @@ class SG2260Context(BModelContext):
                     # same as v.op_code == 12, changed because short cmd do not have op_code
                     v.cmd_id_dep = (
                         tiu_cmd[i + 1].cmd_id_dep
-                        if tiu_cmd[i + 1].cmd_id_dep != 0
+                        if tiu_cmd[i + 1].cmd_id_dep != None
                         else tiu_cmd[i + 2].cmd_id_dep
                     )
 

@@ -62,7 +62,7 @@ class TiuCmd(BaseTpuCmd, Tiu):
         if self.attribute:
             attribute_dic.update(self.attribute)
 
-        op_name = self.name
+        op_name = self.op_name
 
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
@@ -74,7 +74,7 @@ class TiuCmd(BaseTpuCmd, Tiu):
         )
 
     @property
-    def name(self):
+    def op_name(self):
         op_info = tiu_cls[self.reg.OP_NAME]
         eu_type_id = self.reg["tsk_eu_typ"]
         op_name = self.reg.OP_NAME
@@ -129,7 +129,7 @@ class DmaCmd(BaseTpuCmd, Dma):
         if self.attribute:
             attribute_dic.update(self.attribute)
 
-        op_name = self.name
+        op_name = self.op_name
         attribute = f"{attribute_dic}" if len(attribute_dic) > 0 else ""
         attribute = f" {attribute}".replace(":", " =").replace("'", "")
         return (
@@ -140,7 +140,7 @@ class DmaCmd(BaseTpuCmd, Dma):
         )
 
     @property
-    def name(self):
+    def op_name(self):
         op_info = dma_cls[self.reg.OP_NAME]
         sp_func_id = self.reg["cmd_special_function"]
         op_name = self.reg.OP_NAME
