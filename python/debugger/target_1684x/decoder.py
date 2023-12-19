@@ -89,7 +89,7 @@ class Decoder(DecoderBase):
         op_clazz = op_class_dic[op_info.name]
         reg = self.decode_reg(op_clazz, reg_buf, offset=offset)
         buf = reg_buf[offset : offset + op_clazz.length // 8]
-        cmd = TiuCmd(reg, buf=buf, subnet_id=subnet_id)
+        cmd = op_info(reg, buf=buf, subnet_id=subnet_id)
         return cmd
 
     def decode_dma_cmd(self, reg_buf: memoryview, *, offset, subnet_id) -> BaseTpuCmd:
@@ -105,7 +105,7 @@ class Decoder(DecoderBase):
         op_clazz = op_class_dic[op_info.name]
         reg = self.decode_reg(op_clazz, reg_buf, offset=offset)
         buf = reg_buf[offset : offset + op_clazz.length // 8]
-        cmd = DmaCmd(reg, buf=buf, subnet_id=subnet_id)
+        cmd = op_info(reg, buf=buf, subnet_id=subnet_id)
         return cmd
 
     def decode_dma_cmds(

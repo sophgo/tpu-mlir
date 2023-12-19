@@ -122,12 +122,12 @@ class BMProfileParserPerfAI(BMProfileParser):
 
     # remove first wait
     for bd_cmd, bd_monitor in zip(self.bd_cmd, self.bd_monitor):
-      if bd_cmd[bd_monitor[0].inst_id].detail_name == "system.send_msg":
+      if bd_cmd[bd_monitor[0].inst_id].op_name == "system.send_msg":
         bd_monitor.pop(0)
     # find first wait in core 0 and core 1
     for i in self.bd_cmd:
       for j in i:
-        if j.detail_name == "system.wait_msg":
+        if j.op_name == "system.wait_msg":
           first_wait_cmd_id.append(j.cmd_id)
           break
     for cmd_id, item in zip(first_wait_cmd_id, self.bd_monitor):

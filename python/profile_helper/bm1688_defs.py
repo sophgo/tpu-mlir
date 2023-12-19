@@ -235,7 +235,7 @@ def get_tiu_info(monitor_info, reg_info):
     tiu_info1["Msg Id"] = reg_info.imm & 0b1111111
     tiu_info1["Sd\Wt Count"] = (reg_info.imm >> 16) & 0b111
 
-  tiu_info0["Function Name"] = _reg_info.detail_name
+  tiu_info0["Function Name"] = _reg_info.op_name
   tiu_info0["Function Type"] = reg_info.OP_NAME
   tiu_info0["Start Cycle"] = monitor_info.inst_start_time
   tiu_info0["End Cycle"] = monitor_info.inst_end_time
