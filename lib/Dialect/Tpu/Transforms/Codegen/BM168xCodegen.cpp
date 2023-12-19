@@ -926,9 +926,29 @@ Offset<bmodel::SubNet> BMCodegen::CreateSubNet(ModuleOp s, func::CallOp call) {
       core_commands.push_back(ccb.Finish());
     }
   } else {
-    auto cmd_group_v = CreateCmdGroupVector();
-    cmd_group_vs.insert(cmd_group_vs.end(), cmd_group_v->begin(),
-                        cmd_group_v->end());
+    auto sdma_cmds_bin = CreateCmdVector("sdma:0:0");
+    auto hau_cmds_bin = CreateCmdVector("hau:0:0");
+    if (sdma_cmds_bin->size() || hau_cmds_bin->size()) {
+      // Support HAU or SDMA in single core
+      auto cmd_group_v = CreateCmdGroupVector();
+      auto cmd_group = builder.CreateVector(*cmd_group_v);
+      auto sdma_cmds = builder.CreateVectorOfStructs(sdma_cmds_bin->data(),
+                                                     sdma_cmds_bin->size());
+      auto hau_cmds = builder.CreateVectorOfStructs(hau_cmds_bin->data(),
+                                                    hau_cmds_bin->size());
+      bmodel::CoreCommandsBuilder ccb(builder);
+      ccb.add_gdma_tiu_commands(cmd_group);
+      if (sdma_cmds_bin->size())
+        ccb.add_sdma_commands(sdma_cmds);
+      if (hau_cmds_bin->size())
+        ccb.add_hau_commands(hau_cmds);
+
+      core_commands.push_back(ccb.Finish());
+    } else {
+      auto cmd_group_v = CreateCmdGroupVector();
+      cmd_group_vs.insert(cmd_group_vs.end(), cmd_group_v->begin(),
+                          cmd_group_v->end());
+    }
   }
 
   cmd_group_all->insert(cmd_group_all->end(), cmd_group_vs.begin(),
