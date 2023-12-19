@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.md": "markdown",
         "*.inc": "cpp",
         "*.txt": "makefile",
         "*.go": "go",
@@ -79,7 +80,8 @@
         "numbers": "cpp",
         "semaphore": "cpp",
         "span": "cpp",
-        "stop_token": "cpp"
+        "stop_token": "cpp",
+        "*.gen": "cpp"
     },
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,

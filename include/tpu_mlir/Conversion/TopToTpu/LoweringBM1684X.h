@@ -14,15 +14,14 @@
 namespace tpu_mlir {
 namespace bm1684x {
 void populateTopCfOpToTpuConversionPatterns(RewritePatternSet &patterns,
-                                           TypeConverter &typeConverter,
-                                           MLIRContext *ctx);
+                                            TypeConverter &typeConverter,
+                                            MLIRContext *ctx);
 void populateTopShapeToTpuConversionPatterns(RewritePatternSet *patterns);
 
 #define SHAPE_LOWERING_BM1684X(OP)                                             \
   struct OP##TryLowering : public TopShapeLowering<top::OP##Op> {              \
     OP##TryLowering(MLIRContext *ctx) : TopShapeLowering<top::OP##Op>(ctx) {}  \
-    void Lowering(PatternRewriter &rewriter,                                   \
-                  top::OP##Op op) const override;                              \
+    void Lowering(PatternRewriter &rewriter, top::OP##Op op) const override;   \
   };
 
 SHAPE_LOWERING_BM1684X(Shape)
@@ -50,8 +49,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
                       top::OP##Op op) const override;                          \
     void LoweringF16(PatternRewriter &rewriter,                                \
                      top::OP##Op op) const override;                           \
-    void LoweringF8(PatternRewriter &rewriter,                                 \
-                     top::OP##Op op) const override;                           \
+    void LoweringF8(PatternRewriter &rewriter, top::OP##Op op) const override; \
     void LoweringF32(PatternRewriter &rewriter,                                \
                      top::OP##Op op) const override;                           \
     void LoweringQuantized(PatternRewriter &rewriter,                          \
@@ -110,6 +108,7 @@ LOWERING_BM1684X(MaxUnpool)
 LOWERING_BM1684X(Min)
 LOWERING_BM1684X(MinConst)
 LOWERING_BM1684X(Mish)
+LOWERING_BM1684X(Mod)
 LOWERING_BM1684X(Mul)
 LOWERING_BM1684X(MulConst)
 LOWERING_BM1684X(NonZero)

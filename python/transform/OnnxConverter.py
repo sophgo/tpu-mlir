@@ -195,6 +195,7 @@ class OnnxConverter(BaseConverter):
             "Max": lambda node: self.convert_max_op(node),
             "MaxPool": lambda node: self.convert_maxpool_op(node),
             "Min": lambda node: self.convert_min_op(node),
+            "Mod": lambda node: self.convert_mod_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
             "Neg": lambda node: self.convert_neg_op(node),
             "NonMaxSuppression": lambda node: self.convert_nms_op(node),
@@ -1060,7 +1061,7 @@ class OnnxConverter(BaseConverter):
             if scale_h == 1.0 and scale_w == 1.0:
                 self.addOperand(onnx_node.name, op)
                 return
- 
+
         coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
         self.resize_to_interp(onnx_node,
                               op,
@@ -1316,6 +1317,19 @@ class OnnxConverter(BaseConverter):
                            op,
                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                            ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_mod_op(self, onnx_node):
+        assert (onnx_node.op_type == "Mod")
+        assert (len(onnx_node.inputs) == 2)
+        lhs = onnx_node.inputs[0]
+        rhs = onnx_node.inputs[1]
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        lhs_op = self.getOp(lhs)
+        rhs_op = self.getOp(rhs)
+        new_op = top.DivOp(self.unranked_type, [lhs_op, rhs_op],
+                            loc=self.get_loc(name),
+                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
 
     def convert_elu_op(self, onnx_node):

@@ -97,6 +97,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       CompareLowering,
       CompareConstLowering,
       MishLowering,
+      ModLowering,
       SoftsignLowering,
       MaskedFillLowering,
       WhereLowering,

@@ -112,6 +112,7 @@ class fx2mlir(object):
             "_to_copy":lambda node: self.convert_copy_op(node),
             "var":lambda node:self.convert_var_op(node),
             "div":lambda node:self.convert_div_op(node),
+            "mod":lambda node:self.convert_mod_op(node, "mod"),
             "rsqrt":lambda node:self.convert_rsqrt_op(node),
             "sub":lambda node:self.convert_sub_op(node),
             "addmm":lambda node:self.convert_addmm_op(node),
@@ -1115,6 +1116,18 @@ class fx2mlir(object):
                                     is_reverse=is_reverse,
                                     loc=self.get_loc(node),
                                     ip=self.insert_point).output
+        self.operands[node] = new_op
+
+    def convert_mod_op(self,node,is_reverse=False):
+        dtype = self.get_output_dtypes(node)
+        shape = self.get_output_shapes(node)
+        op0 = self.operands[node.args[0]]
+        op1 = self.operands[node.args[1]]
+        new_op = top.ModOp(*self.get_tensor_type(shape, dtype),
+                            [op0,op1],
+                            is_reverse=is_reverse,
+                            loc=self.get_loc(node.name),
+                            ip=self.insert_point).output
         self.operands[node] = new_op
 
     def convert_addmm_op(self,node):

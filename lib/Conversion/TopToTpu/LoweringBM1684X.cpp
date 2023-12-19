@@ -115,6 +115,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       MinLowering,
       MinConstLowering,
       MishLowering,
+      ModLowering,
       MulLowering,
       MulConstLowering,
       NonZeroLowering,

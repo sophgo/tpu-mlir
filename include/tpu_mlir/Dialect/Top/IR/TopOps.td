@@ -1443,6 +1443,21 @@ def Top_DivOp: Top_Op<"Div"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_ModOp: Top_Op<"Mod"> {
+  let summary = "Mod operator";
+
+  let description = [{
+    Performs element-wise binary modulus.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 def Top_SqueezeOp: Top_Op<"Squeeze"> {
   let summary = "Squeeze operator";
 

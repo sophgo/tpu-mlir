@@ -576,6 +576,21 @@ def Tpu_AddOp: Tpu_Op<"Add", [
   }];
 }
 
+def Tpu_ModOp: Tpu_Op<"Mod",[SupportElementwise]> {
+  let summary = "Mod operator";
+
+  let description = [{
+    Performs element-wise binary modulus.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 def Tpu_AddConstOp: Tpu_Op<"AddConst", [
   SupportFuseRelu, InOutSameShape, SupportElementwise,
   DeclareOpInterfaceMethods<LocalGenInterface>,

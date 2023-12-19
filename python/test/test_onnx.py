@@ -126,6 +126,7 @@ class ONNX_IR_TESTER(object):
             "Max":          (self.test_Max,           Y, Y, Y, Y, Y),
             "MaxBcast":     (self.test_MaxBcast,      Y, Y, Y, N, Y),
             "Not":          (self.test_Not,           N, Y, Y, N, Y),
+            "Mod":          (self.test_Mod,           Y, Y, Y, Y, Y),
             "Mul":          (self.test_Mul,           Y, Y, Y, Y, Y),
             "MulMerge":     (self.test_MulMerge,      Y, Y, Y, N, Y),
             "MulBcast":     (self.test_MulBcast,      Y, Y, Y, N, Y),
@@ -2004,6 +2005,19 @@ class ONNX_IR_TESTER(object):
                 """ % (bcast_shapes[i], s, bcast_shapes[i], out_shapes[i])
             graph_def = onnx.parser.parse_graph(graph_txt)
             self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
+
+    def test_Mod(self, case_name):
+        input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
+        output_shape = [1, 3, 27, 27]
+        input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
+        graph_txt = """
+                agraph (float[1, 3, 27, 27] input1,float[1, 3, 27, 27] input2) => (float%s output)
+                {
+                    output = Mod(input1, input2)
+                }
+                """ % (output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_ConvTrans(self, case_name):
         oc, ic = 16, 8
