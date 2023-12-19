@@ -1214,9 +1214,9 @@ bool ConvertTopToTpu::isSISO(Operation *op) {
     return (std::distance(op->getResult(0).user_begin(), op->getResult(0).user_end()) == 1);
   }
 
-  // return a set of end layernorms after ffn , the count would be the number of
+  // return a list of end layernorms after ffn , the count would be the number of
   // encoder ffn part
-void ConvertTopToTpu::match_bert_ffn(std::set<Operation *> &ffn) {
+void ConvertTopToTpu::match_bert_ffn(std::vector<Operation *> &ffn) {
     mainFunc_.walk([&](Operation *op) {
       if (auto lnop = dyn_cast<top::LayerNormOp>(op)) {
         if (auto addop =
@@ -1252,7 +1252,7 @@ void ConvertTopToTpu::match_bert_ffn(std::set<Operation *> &ffn) {
                   !geluop.getOutput().hasOneUse() ||
                   !mmop1.getOutput().hasOneUse())
                 return;
-              ffn.insert(lnop);
+              ffn.push_back(lnop);
               return;
             }
           }
@@ -1263,7 +1263,7 @@ void ConvertTopToTpu::match_bert_ffn(std::set<Operation *> &ffn) {
 
   // return a set of end layernorms after ffn , the count would be the number of
   // encoder ffn part
-void ConvertTopToTpu::match_bert_mha(std::set<Operation *> &mha) {
+void ConvertTopToTpu::match_bert_mha(std::vector<Operation *> &mha) {
     mainFunc_.walk([&](Operation *op) {
       if (auto lnop = dyn_cast<top::LayerNormOp>(op)) {
         if (auto addop =
@@ -1395,24 +1395,25 @@ void ConvertTopToTpu::match_bert_mha(std::set<Operation *> &mha) {
           }
           if (inputs != 2)
             return;
-          mha.insert(lnop);
+          mha.push_back(lnop);
         }
       }
     });
   }
 
-void ConvertTopToTpu::match_attention(std::set<Operation *> &attention) {
+void ConvertTopToTpu::match_attention(std::vector<Operation *> &attention) {
     mainFunc_.walk([&](Operation *op) {
       if (auto atop = dyn_cast<top::AttentionOp>(op)) {
-        attention.insert(op);
+        attention.push_back(op);
       }
     });
   }
 
+static int partial_float_bert_ffn = -1;
 bool ConvertTopToTpu::bert_mix_precision() {
-    std::set<Operation *> ffn;
-    std::set<Operation *> mha;
-    std::set<Operation *> attention;
+    std::vector<Operation *> ffn;
+    std::vector<Operation *> mha;
+    std::vector<Operation *> attention;
 
     match_bert_ffn(ffn);
     match_bert_mha(mha);
@@ -1435,7 +1436,9 @@ bool ConvertTopToTpu::bert_mix_precision() {
               {module::getName(addop.getOperation()).str(), module::Mode::F16});
         }
       }
+      int cnt = 0;
       for (auto op : ffn) {
+	cnt ++;
         auto addop = dyn_cast_or_null<top::AddOp>(
             dyn_cast<top::LayerNormOp>(op).getInput().getDefiningOp());
         if (addop == NULL)
@@ -1448,11 +1451,51 @@ bool ConvertTopToTpu::bert_mix_precision() {
         }
         for (auto in : addop.getOperands()) {
           if (auto mmop = dyn_cast<top::MatMulOp>(in.getDefiningOp())) {
+	    if (cnt >= 5 && (partial_float_bert_ffn > 0))
+                continue;
             if (LoweringConfig::quantize_map.find(
                     module::getName(mmop.getOperation()).str()) ==
                 LoweringConfig::quantize_map.end()) {
               LoweringConfig::quantize_map.insert(
                   {module::getName(mmop.getOperation()).str(),
+                   module::Mode::F16});
+            }
+          }
+        }
+      }
+
+      for (auto op : attention) {
+        auto atenop = dyn_cast_or_null<top::AttentionOp>(op);
+        assert(atenop != NULL);
+        auto lnop = dyn_cast_or_null<top::LayerNormOp>(atenop.getInput().getDefiningOp());
+        if (lnop == NULL)
+          return false;
+        for (auto out : lnop.getResult().getUsers()) {
+          if (auto addop = dyn_cast<top::AddOp>(*out)) {
+            if (LoweringConfig::quantize_map.find(
+                    module::getName(addop.getOperation()).str()) ==
+                LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(addop.getOperation()).str(),
+                   module::Mode::F16});
+            }
+          }
+        }
+      }
+
+      for (auto op : attention) {
+        auto atenop = dyn_cast_or_null<top::AttentionOp>(op);
+        assert(atenop != NULL);
+        auto lnop = dyn_cast_or_null<top::LayerNormOp>(atenop.getInput().getDefiningOp());
+        if (lnop == NULL)
+          return false;
+        for (auto out : lnop.getResult().getUsers()) {
+          if (auto addop = dyn_cast<top::AddOp>(*out)) {
+            if (LoweringConfig::quantize_map.find(
+                    module::getName(addop.getOperation()).str()) ==
+                LoweringConfig::quantize_map.end()) {
+              LoweringConfig::quantize_map.insert(
+                  {module::getName(addop.getOperation()).str(),
                    module::Mode::F16});
             }
           }
