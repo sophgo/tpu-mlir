@@ -1279,7 +1279,7 @@ class BMProfileGenerator:
             # total_time += layer_time
             total_tiu_time += tiu_time
             total_gdma_time += gdma_time
-            total_weight_size += weight_size
+            total_weight_size += weight_size if row_name not in ["Load", "Store"] else 0
             item = [row_name, layer_alg_ops, 0,
                     layer_arch_ops, 0, weight_size,
                     s2l_bytes, l2s_bytes, s2s_bytes,
@@ -1314,6 +1314,8 @@ class BMProfileGenerator:
         for row in layer_summary_rows:
             layer_summary_data.append(layer_summary_map.get(row, [row] + null_row))
 
+        total_tiu_theo_time = 0
+        total_gdma_theo_time = 0
         for summary in layer_summary_data:
             summary[2] = get_ratio_str(summary[1], total_alg_ops) # AlgorithmOpsRatio
             summary[4] = get_ratio_str(summary[3], total_arch_ops) # uArchOpsRatio
@@ -1327,11 +1329,13 @@ class BMProfileGenerator:
             summary[-3] = peak_tops
             summary[-2] = ",".join(summary[-2])
             summary[-1] = ",".join(summary[-1])
+            total_tiu_theo_time += summary[15]
+            total_gdma_theo_time += summary[17]
         peak_tops = get_peak_tops(dtype_ops_map, BDPeriod)
-        total_tiu_theo_time = total_alg_ops / (peak_tops * 1e6)
         total_arch_urate = get_ratio_str(total_alg_ops, total_arch_ops)
-        total_gdma_theo_time = get_gdma_theo_time(total_s2l_bytes, total_l2s_bytes, total_s2s_bytes, GDMAPeriod)
         total_ddr_rate = get_ratio_str(total_gdma_theo_time, total_gdma_time)
+        # total_tiu_theo_time = total_alg_ops / (peak_tops * 1e6)
+        # total_gdma_theo_time = get_gdma_theo_time(total_s2l_bytes, total_l2s_bytes, total_s2s_bytes, GDMAPeriod)
 
         layer_summary_data.append(["Overall", total_alg_ops, "100%",
                                    total_arch_ops, "100%", total_weight_size,
