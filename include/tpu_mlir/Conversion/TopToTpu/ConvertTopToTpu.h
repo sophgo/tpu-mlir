@@ -27,9 +27,9 @@ protected:
   void relu_process();
   void cast_process();
   bool isSISO(Operation *op);
-  void match_bert_ffn(std::set<Operation *> &ffn);
-  void match_bert_mha(std::set<Operation *> &mha);
-  void match_attention(std::set<Operation *> &attention);
+  void match_bert_ffn(std::vector<Operation *> &ffn);
+  void match_bert_mha(std::vector<Operation *> &mha);
+  void match_attention(std::vector<Operation *> &attention);
   bool bert_mix_precision();
   void match_vit_mlp(std::vector<Operation *> &mlp);
   void match_vit_mha(std::vector<Operation *> &mha);
