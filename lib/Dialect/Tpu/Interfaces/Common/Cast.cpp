@@ -11,41 +11,7 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
-float requant(const float &data, const quant::UniformQuantizedType &qtype) {
-  auto stype = qtype.getExpressedType();
-  if (stype.isF32()) {
-    return std::round(data * (float)(1.0 / qtype.getScale())) +
-           qtype.getZeroPoint();
-  }
-  if (stype.isF16()) {
-    return std::round(F16(data * F16(1.0 / qtype.getScale()))) +
-           qtype.getZeroPoint();
-  }
-  if (stype.isBF16()) {
-    return std::round(BF16(data * BF16(1.0 / qtype.getScale()))) +
-           qtype.getZeroPoint();
-  }
-  qtype.dump();
-  llvm_unreachable("Unsupport type");
-}
-
-static float dequant(const float &data,
-                     const quant::UniformQuantizedType &qtype) {
-  auto stype = qtype.getExpressedType();
-  if (stype.isF32()) {
-    return (float)qtype.getScale() * (data - (float)qtype.getZeroPoint());
-  }
-  if (stype.isF16()) {
-    return F16(F16(qtype.getScale()) * F16(data - (float)qtype.getZeroPoint()));
-  }
-  if (stype.isBF16()) {
-    return BF16(BF16(qtype.getScale()) *
-                BF16(data - (float)qtype.getZeroPoint()));
-  }
-  qtype.dump();
-  llvm_unreachable("Unsupport type");
-}
+#include "tpu_mlir/Support/CastUtils.h"
 
 static void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale, int num,
                              bool is_tpu) {

@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/LutFunc.h"
+#include "tpu_mlir/Support/CastUtils.h"
 
 namespace tpu_mlir {
 
@@ -70,6 +71,42 @@ Value create_lookup_table(Value in, Value out, bool asymmetric,
     }
   } else {
     assert(0 && "only support bit_width 8 & 32");
+  }
+}
+
+Value create_lookup_table_fp(Value in, Value out, activate_f &&func) {
+  auto qtype = module::getUniformQuantizedType(in);
+  auto storage_otype = module::getStorageType(out);
+  auto table_type = RankedTensorType::get({1, 1, 1, 256}, storage_otype);
+  int sign = module::isSign(in);
+  int min = -sign * 128;
+  int max = min + 256;
+  if (storage_otype.isF32()) {
+    std::vector<float> table(256, 0);
+    for (int i = min; i < max; i++) {
+      int index = i < 0 ? 256 + i : i;
+      table[index] = func(dequant(i, qtype));
+    }
+    return top::WeightOp::create(out.getDefiningOp(), "table", table,
+                                 table_type);
+  } else if (storage_otype.isF16()) {
+    std::vector<uint16_t> table(256, 0);
+    for (int i = min; i < max; i++) {
+      int index = i < 0 ? 256 + i : i;
+      table[index] = f32_to_f16(F16(func(dequant(i, qtype))));
+    }
+    return top::WeightOp::create(out.getDefiningOp(), "table", table,
+                                 table_type);
+  } else if (storage_otype.isBF16()) {
+    std::vector<uint16_t> table(256, 0);
+    for (int i = min; i < max; i++) {
+      int index = i < 0 ? 256 + i : i;
+      table[index] = f32_to_bf16(BF16(func(dequant(i, qtype))));
+    }
+    return top::WeightOp::create(out.getDefiningOp(), "table", table,
+                                 table_type);
+  } else {
+    assert(0);
   }
 }
 

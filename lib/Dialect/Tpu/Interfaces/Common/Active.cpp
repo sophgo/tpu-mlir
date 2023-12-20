@@ -10,35 +10,12 @@
 
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/LutFunc.h"
+#include "tpu_mlir/Support/ActiveUtils.h"
 
 static mlir::Type t;
 
 LogicalResult tpu::ActiveOp::init(InferenceParameter &p) { return success(); }
 void tpu::ActiveOp::deinit(InferenceParameter &p) {}
-
-static inline double elu(double x, double alpha) {
-  return x > 0 ? x : alpha * (std::exp(x) - 1);
-}
-
-static inline double hsigmoid(double x, double alpha, double beta) {
-  return std::max(0.0, std::min(1.0, alpha * x + beta));
-}
-
-static inline double gelu(double x) {
-  return 0.5 * x * (1.0 + std::erf(x / std::sqrt(2.0)));
-}
-
-static inline double square(double x) { return x * x; }
-
-static inline double hswish(double x) {
-  if (t.isBF16()) {
-    return BF16(x * std::max(0.0f, std::min(1.0f, BF16(BF16(x + 3.0) / 6.0))));
-  }
-  if (t.isF16()) {
-    return F16(x * std::max(0.0f, std::min(1.0f, F16(F16(x + 3.0) / 6.0))));
-  }
-  return x * std::max(0.0, std::min(1.0, (x + 3.0) / 6.0));
-}
 
 static void active_func(InferenceParameter &p, int64_t num, activate_f func) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
@@ -50,121 +27,7 @@ static void active_func(InferenceParameter &p, int64_t num, activate_f func) {
 LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   t = module::getStorageType(getOutput());
   auto num_element = module::getNumElements(getInput());
-  switch (getMode()) {
-  case ActiveMode::ABSVAL:
-    active_func(p, num_element, [](double val) { return std::abs(val); });
-    break;
-  case ActiveMode::CEIL:
-    active_func(p, num_element, [](double val) { return std::ceil(val); });
-    break;
-  case ActiveMode::ELU: {
-    const auto coeffs_ = module::getF64Array(getCoeffs(), 1, 0);
-    const double alpha = coeffs_->at(0);
-    active_func(p, num_element,
-                [alpha](double val) { return elu(val, alpha); });
-    break;
-  }
-  case ActiveMode::ERF:
-    active_func(p, num_element, [](double val) { return std::erf(val); });
-    break;
-  case ActiveMode::EXP:
-    active_func(p, num_element, [](double val) { return std::exp(val); });
-    break;
-  case ActiveMode::LN:
-    active_func(p, num_element, [](double val) { return std::log(val); });
-    break;
-  case ActiveMode::LOG2:
-    active_func(p, num_element, [](double val) { return std::log2(val); });
-    break;
-  case ActiveMode::SQRT:
-    active_func(p, num_element, [](double val) { return std::sqrt(val); });
-    break;
-  case ActiveMode::SQUARE:
-    active_func(p, num_element, [](double val) { return square(val); });
-    break;
-  case ActiveMode::SILU:
-    active_func(p, num_element,
-                [](double val) { return val / (1 + std::exp(-val)); });
-    break;
-  case ActiveMode::SIGMOID:
-    active_func(p, num_element,
-                [](double val) { return 1 / (1 + std::exp(-val)); });
-    break;
-  case ActiveMode::LOG_SIGMOID:
-    active_func(p, num_element,
-                [](double val) { return std::log(1 / (1 + std::exp(-val))); });
-    break;
-  case ActiveMode::HSIGMOID: {
-    const auto coeffs_ = module::getF64Array(getCoeffs(), 2, 0);
-    const double alpha = coeffs_->at(1);
-    const double beta = coeffs_->at(0);
-    active_func(p, num_element, [alpha, beta](double val) {
-      return hsigmoid(val, alpha, beta);
-    });
-    break;
-  }
-  case ActiveMode::HSWISH:
-    active_func(p, num_element, [](double val) { return hswish(val); });
-    break;
-  case ActiveMode::ARCCOS:
-    active_func(p, num_element, [](double val) { return std::acos(val); });
-    break;
-  case ActiveMode::ARCTANH:
-    active_func(p, num_element, [](double val) { return std::atanh(val); });
-    break;
-  case ActiveMode::TAN:
-    active_func(p, num_element, [](double val) { return std::tan(val); });
-    break;
-  case ActiveMode::TANH:
-    active_func(p, num_element, [](double val) { return std::tanh(val); });
-    break;
-  case ActiveMode::GELU:
-    active_func(p, num_element, [](double val) { return gelu(val); });
-    break;
-  case ActiveMode::SOFT_PLUS:
-    active_func(p, num_element, [](double val) {
-      return val > 20 ? val : std::log(std::exp(val) + 1);
-    });
-    break;
-  case ActiveMode::FLOOR:
-    active_func(p, num_element, [](double val) { return std::floor(val); });
-    break;
-  case ActiveMode::SOFT_SIGN:
-    active_func(p, num_element,
-                [](double val) { return val / (1 + std::abs(val)); });
-    break;
-  case ActiveMode::MISH:
-    active_func(p, num_element, activate_f(my_mish_activate));
-    break;
-  case ActiveMode::COS:
-    active_func(p, num_element, [](double val) { return std::cos(val); });
-    break;
-  case ActiveMode::COSH:
-    active_func(p, num_element, [](double val) { return std::cosh(val); });
-    break;
-  case ActiveMode::SIN:
-    active_func(p, num_element, [](double val) { return std::sin(val); });
-    break;
-  case ActiveMode::SINH:
-    active_func(p, num_element, [](double val) { return std::sinh(val); });
-    break;
-  case ActiveMode::ROUND:
-    active_func(p, num_element, [](double val) { return std::round(val); });
-    break;
-  case ActiveMode::SIGN:
-    active_func(p, num_element, [](double val) {
-      if (val < 0) {
-        return -1;
-      } else if (val > 0) {
-        return 1;
-      } else {
-        return 0;
-      }
-    });
-    break;
-  default:
-    llvm_unreachable("Not Implemented");
-  }
+  active_func(p, num_element, getActivateFunc(*this));
   if (t.isBF16()) {
     BF16(p.outputs[0], p.outputs[0], num_element);
   } else if (t.isF16()) {
