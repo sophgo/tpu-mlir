@@ -11,6 +11,7 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include "tpu_mlir/Support/Float8.h"
+#include "tpu_mlir/Support/ActiveUtils.h"
 #include <regex>
 
 namespace tpu_mlir {
@@ -831,6 +832,48 @@ struct TryInsertTileMatMulPattern : public OpRewritePattern<top::MatMulOp> {
   }
 };
 
+// cast(u8->fp32) + active -> lut(u8->fp32)
+// cast(u8->fp32) + active(fp32) + cast(fp32->fp16) -> lut(u8->fp16)
+struct CastActivePattern : public OpRewritePattern<tpu::ActiveOp> {
+  using OpRewritePattern<tpu::ActiveOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::ActiveOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in_op = op.getInput().getDefiningOp();
+    if (!isa<tpu::CastOp>(in_op) || !in_op->hasOneUse()) {
+      return failure();
+    }
+    auto in = dyn_cast<tpu::CastOp>(in_op).getInput();
+    auto out = op.getOutput();
+    auto storage_itype = module::getStorageType(in);
+    if (!storage_itype.isInteger(8) || !module::isUniformQuantized(in)) {
+      return failure();
+    }
+    auto storage_type = module::getStorageType(out);
+    if (!storage_type.isF32() && !storage_type.isF16() && !storage_type.isBF16()) {
+      return failure();
+    }
+    auto ctx = in.getContext();
+    OpBuilder builder(ctx);
+    builder.setInsertionPointAfterValue(in);
+    auto op_to_repl = op.getOperation();
+    // if (op->hasOneUse()) {
+    //   if (auto cast_op2 = dyn_cast<tpu::CastOp>(*out.getUsers().begin())) {
+    //     auto out2 = cast_op2.getOutput();
+    //     auto storage_type = module::getStorageType(out2);
+    //     if (storage_type.isF16() || storage_type.isBF16()) {
+    //       out = out2;
+    //       op_to_repl = cast_op2.getOperation();
+    //     }
+    //   }
+    // }
+    auto table = create_lookup_table_fp(in, out, getActivateFunc(op));
+    rewriter.replaceOpWithNewOp<tpu::LutOp>(op_to_repl, out.getType(),
+                                            ValueRange{in, table});
+    return success();
+  }
+};
+
 void ConvertTopToTpu::runOnOperation() {
     module_ = getOperation();
     ctx_ = &getContext();
@@ -923,6 +966,11 @@ void ConvertTopToTpu::runOnOperation() {
     patterns.add<ForwardTypePattern<tpu::ReshapeOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     cast_process();
+    if (module::isBM1684XFamily()) {
+      patterns.clear();
+      patterns.add<CastActivePattern>(ctx_);
+      applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    }
     relu_process();
     if (module::isCV18xx()) {
       patterns.clear();

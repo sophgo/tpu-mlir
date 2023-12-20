@@ -47,6 +47,8 @@ Value create_lookup_table(Value in, Value out, bool asymmetric,
 Value create_lookup_table(Operation *owner, const std::vector<float> &table);
 Value create_lookup_table(Operation *owner, const std::vector<int> &table);
 
+Value create_lookup_table_fp(Value in, Value out, activate_f &&func);
+
 void bf16_gen_base_slope_table(float *base_table, float *slope_table,
                                float range_start, float range_end,
                                activate_f &&func);
