@@ -698,9 +698,10 @@ public:
 
     rewriter.setInsertionPointAfterValue(output);
     std::vector<NamedAttribute> attrs;
-    attrs.emplace_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(l_permute_order)));
-    auto new_permute_op =
-        rewriter.create<tpu::PermuteOp>(loc, output_type, ValueRange{output, module::getNoneOp(op)}, attrs);
+    attrs.emplace_back(rewriter.getNamedAttr(
+        "order", rewriter.getI64ArrayAttr(l_permute_order)));
+    auto new_permute_op = rewriter.create<tpu::PermuteOp>(
+        loc, output_type, ValueRange{output, module::getNoneOp(op)}, attrs);
     output.replaceAllUsesExcept(new_permute_op.getOutput(), new_permute_op);
     return success();
   }
@@ -1153,7 +1154,7 @@ struct ScatterElementsPattern
   }
 };
 
-// permute + add + cast + softmax + cast + permute
+// permute + (mulconst) + add + cast + softmax + cast + permute
 // -> add + cast + softmax + cast
 struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -1189,11 +1190,12 @@ struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
     }
     auto mul_const_op =
         dyn_cast<tpu::MulConstOp>(add_op->getOperand(0).getDefiningOp());
-    if (!mul_const_op) {
-      return failure();
-    }
     auto permute_op =
-        dyn_cast<tpu::PermuteOp>(mul_const_op->getOperand(0).getDefiningOp());
+        dyn_cast<tpu::PermuteOp>(add_op->getOperand(0).getDefiningOp());
+    if (mul_const_op) {
+      permute_op =
+          dyn_cast<tpu::PermuteOp>(mul_const_op->getOperand(0).getDefiningOp());
+    }
     if (!permute_op) {
       return failure();
     }
@@ -1212,8 +1214,10 @@ struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
     // Define Param
     auto ori_shape = module::getShape(out);
     // MulConstOp
-    module::setShape(mul_const_op->getOperand(0), ori_shape);
-    module::setShape(mul_const_op->getResult(0), ori_shape);
+    if (mul_const_op) {
+      module::setShape(mul_const_op->getOperand(0), ori_shape);
+      module::setShape(mul_const_op->getResult(0), ori_shape);
+    }
     // AddOp
     module::setShape(add_op->getOperand(0), ori_shape);
     module::setShape(add_op->getResult(0), ori_shape);
@@ -1245,7 +1249,11 @@ struct PermuteFuseAddSoftmax : public OpRewritePattern<tpu::PermuteOp> {
           new_mask_type, add_op->getOperand(1));
       add_op->setOperand(1, reshape_op->getResult(0));
     }
-    mul_const_op->setOperand(0, permute_op->getOperand(0));
+    if (mul_const_op) {
+      mul_const_op->setOperand(0, permute_op->getOperand(0));
+    } else {
+      add_op->setOperand(0, permute_op->getOperand(0));
+    }
     rewriter.eraseOp(permute_op);
 
     // PermuteOp
@@ -1365,13 +1373,12 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<LargePadConvPattern>(ctx, 9);
   patterns
       ->add<MatMulHdimBatchPattern, MatMulRemoveReshapePattern,
-            MatMulLeftReusePattern, GroupConv2NormalConv,
-            MovePermuteAfterAdd, MoveReshapeAfterAdd,
-            TpuReshapeReorderPattern, PermuteAddWeightReorderPattern,
-            MaskedFillPermuteMove, PermuteFuse, PermuteFuseAddSoftmax,
-            patterns::FuseRepeatPattern<tpu::ReshapeOp>, PermuteReshapeFuse,
-            GatherElementsPattern, ScatterElementsPattern,
-            PermutePadSwap>(ctx, 8);
+            MatMulLeftReusePattern, GroupConv2NormalConv, MovePermuteAfterAdd,
+            MoveReshapeAfterAdd, TpuReshapeReorderPattern,
+            PermuteAddWeightReorderPattern, MaskedFillPermuteMove, PermuteFuse,
+            PermuteFuseAddSoftmax, patterns::FuseRepeatPattern<tpu::ReshapeOp>,
+            PermuteReshapeFuse, GatherElementsPattern, ScatterElementsPattern,
+            PermuteReorderPattern, PermutePadSwap>(ctx, 8);
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
 }
 } // namespace tpu
