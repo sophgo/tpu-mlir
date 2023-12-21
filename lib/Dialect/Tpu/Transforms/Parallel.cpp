@@ -122,7 +122,7 @@ std::optional<SmallVector<Type>> getSplitTypes(Attribute valueMap, Value value,
 
 bool forAll(IndexingMapsInterface op, int num_core = 1) {
   auto indexMap = op.getIndexingMaps();
-  if (!indexMap || indexMap.size() == 0)
+  if (!indexMap || indexMap.empty())
     return false;
 
   // for each dim slice, we should create many operations for each of them.
@@ -258,7 +258,7 @@ bool forAll(IndexingMapsInterface op, int num_core = 1) {
 
 class ParallelPass : public ParallelBase<ParallelPass> {
 public:
-  ParallelPass() {}
+  ParallelPass() = default;
   void runOnOperation() override {
     module::setCoreNum(num_core);
     if (num_core < 2) {

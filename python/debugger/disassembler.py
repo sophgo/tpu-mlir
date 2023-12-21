@@ -180,7 +180,9 @@ class Binary(FBSOptional):
         return np.frombuffer(self.bytes, dtype=dtype)
 
     def __repr__(self):
-        return f"bin:{len(self.bytes)}"
+        if self:
+            return f"bin:{len(self.bytes)}"
+        return ""
 
 
 class CmdGroup(FBSOptional):
@@ -205,6 +207,7 @@ class CmdGroup(FBSOptional):
     def __repr__(self):
         if self:
             return f"tiu_cmd[{self.tiu_num}], dma_cmd[{self.dma_num}]"
+        return ""
 
 
 class CoreCmdGroup(FBSOptional):
@@ -241,6 +244,7 @@ class CoreCmdGroup(FBSOptional):
                 + f", hau_commands: {self.hau_commands}"
                 + f", cdma_commands: {self.cdma_commands}"
             )
+        return ""
 
 
 class ROData(FBSOptional):
@@ -270,6 +274,7 @@ class ROData(FBSOptional):
         if self:
             check_code = "".join(f"{x:0>2x}" for x in self.check_code)
             return f"[data: {self.address}, shr256: {check_code}]"
+        return ""
 
 
 class Tensor(FBSOptional):
@@ -388,7 +393,9 @@ class KernelModule(FBSOptional):
         return module.End(builder)
 
     def __repr__(self) -> str:
-        return f"kernel: {self.file_name}"
+        if self:
+            return f"kernel: {self.file_name}"
+        return ""
 
 
 # /workspace/nntoolchain/tpu-runtime/include/bmruntime.h:112
@@ -486,6 +493,7 @@ class SubNet(FBSOptional):
     def __repr__(self):
         if self:
             return pformat(self.__dict__, indent=2)
+        return ""
 
 
 class NetStatic(FBSOptional):

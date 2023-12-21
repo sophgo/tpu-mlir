@@ -10,7 +10,6 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
 using namespace llvm;
 
 namespace tpu_mlir {
@@ -32,6 +31,15 @@ public:
   LogicalResult matchAndRewrite(Op op,
                                 PatternRewriter &rewriter) const override;
 };
+
+template <class Op, typename T>
+class WeightDeReorder : public OpRewritePattern<Op> {
+public:
+  using OpRewritePattern<Op>::OpRewritePattern;
+  LogicalResult matchAndRewrite(Op op,
+                                PatternRewriter &rewriter) const override;
+};
+
 } // namespace bm1684x
 
 namespace cv18xx {
