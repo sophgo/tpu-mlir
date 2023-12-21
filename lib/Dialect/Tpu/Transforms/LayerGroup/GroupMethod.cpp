@@ -51,7 +51,7 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
   }
   for (auto op : group_ops) {
     if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MulConstOp, MatMulOp,
-             SoftmaxOp, RMSNormOp>(op)) {
+             SoftmaxOp, RMSNormOp, ReshapeOp>(op)) {
       return false;
     }
     auto shape = module::getShape(op->getOperand(0));
@@ -73,12 +73,21 @@ static bool can_be_group_small_c(std::vector<Operation *> &group_ops) {
       if (hdim_is_batch) {
         return false;
       }
+    } else if (auto op_ = dyn_cast<ReshapeOp>(op)) {
+      auto ishape = module::getShape(op_.getInput());
+      auto oshape = module::getShape(op_.getOutput());
+      if (!(ishape.size()>2 && oshape.size()>2 && ishape[0] == oshape[0] && ishape[1] == oshape[1])) {
+        return false;
+      }
     }
 
     if ((shape.size() == 4 &&
          shape[0] * shape[1] * shape[2] % Arch::NPU_NUM == 0) ||
         (shape.size() == 5 &&
          shape[0] * shape[1] * shape[2] * shape[3] % Arch::NPU_NUM == 0)) {
+      continue;
+    }
+    if ((shape.size() == 3 && shape[0] == 16 && shape[1] == 197)) {
       continue;
     }
 
@@ -110,10 +119,7 @@ static bool can_be_group_mm(std::vector<Operation *> &group_ops) {
     } else if (auto op_ = dyn_cast<ReshapeOp>(op)) {
       auto ishape = module::getShape(op_.getInput());
       auto oshape = module::getShape(op_.getOutput());
-      if (!(ishape.size() == 3 && oshape.size() == 4 &&
-            ishape[2] == oshape[2] * oshape[3]) &&
-          !(ishape.size() == 4 && oshape.size() == 3 &&
-            oshape[2] == ishape[2] * ishape[3])) {
+      if (!(ishape.size()>2 && oshape.size()>2 && ishape[0] == oshape[0] && ishape[1] == oshape[1])) {
         return false;
       }
     } else if (auto op_ = dyn_cast<SoftmaxOp>(op)) {

@@ -48,7 +48,7 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
       }
       max_nsecs = std::min(max_nsecs, ceiling_func(n, n_align));
 
-      if (lg_info.type == GROUP_MM &&
+      if ((lg_info.type == GROUP_MM || lg_info.type == GROUP_SMALL_C) &&
           succeeded(lgOp.AllowDataSplit(1, lg_info.type))) {
         int64_t csecs = ceiling_func(c, Arch::NPU_NUM);
         max_csecs = std::min(max_csecs, csecs);
@@ -161,11 +161,11 @@ bool init_group_data_secs(const LgInfo &lg_info, shape_secs_t &shape_secs) {
     shape_secs.nsecs =
         std::max(std::min(total_secs, max_shape_secs.nsecs), shape_secs.nsecs);
     total_secs = ceiling_func(total_secs, shape_secs.nsecs);
-    if (lg_info.type == GROUP_MM) {
+    if (lg_info.type == GROUP_MM || lg_info.type == GROUP_SMALL_C) {
       if (total_secs > max_shape_secs.csecs) {
         shape_secs.csecs = max_shape_secs.csecs;
       } else {
-        int64_t cslice_per_npu = ceiling_func(max_shape_secs.csecs, total_secs);
+        int64_t cslice_per_npu = max_shape_secs.csecs / total_secs;
         shape_secs.csecs =
             std::max(ceiling_func(max_shape_secs.csecs, cslice_per_npu),
                      shape_secs.csecs);

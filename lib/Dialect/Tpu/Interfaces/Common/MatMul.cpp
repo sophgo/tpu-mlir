@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Float8.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Codegen/Dynamic/DynamicLayer.hpp"
 
 // clang-format off
 // case 1: [5, 6] * [6, 7] = [5, 7] => batch = 1, M = 5, K = 6, N = 7
@@ -123,10 +123,10 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
     for (int i = 1; i < b_dims - 2; i++) {
       b_temp *= b_s[i];
     }
-    if (a_s[0] == b_s[0] && b_temp == 1 && b_dims > 2){
+    if (a_s[0] == b_s[0] && b_temp == 1 && b_dims > 2) {
       p.batch = b_s[0];
       int a_temp = 1;
-      for(int i = 1; i < a_dims - 2; i++){
+      for (int i = 1; i < a_dims - 2; i++) {
         a_temp *= a_s[i];
       }
       p.M = a_s[o_dims - 2] * a_temp;
@@ -270,7 +270,8 @@ LogicalResult tpu::MatMulOp::canonicalize(tpu::MatMulOp op,
   auto o_shape = module::getShape(out);
   auto a_shape = module::getShape(another);
   auto num_elem = module::getNumElements(another);
-  if (a_shape.back() != num_elem || o_shape.back() != num_elem || o_shape.size() == 1) {
+  if (a_shape.back() != num_elem || o_shape.back() != num_elem ||
+      o_shape.size() == 1) {
     return failure();
   }
   op->setOperand(2, another);
@@ -320,7 +321,8 @@ LogicalResult tpu::MatMulOp::AllowDataSplit(int64_t axis,
   }
 
   auto lshape = module::getShape(getInput());
-  if (group_type == GROUP_MM && axis == 1 && lshape.size() > 2) {
+  if ((group_type == GROUP_MM || group_type == GROUP_SMALL_C) && axis == 1 &&
+      lshape.size() > 2) {
     return success();
   }
 
@@ -427,7 +429,7 @@ ArrayAttr tpu::MatMulOp::getIndexingMaps() {
 
   // batch broadcast case: (B, M, K) x (1, K, N), 1 can not be sliced
   if (rightParalleDims == 1 && rightShape[0] == 1) {
-    rightParalleDims =0;
+    rightParalleDims = 0;
   }
 
   AffineMap inputMap =
