@@ -100,9 +100,9 @@ public:
         rewriter.eraseOp(r_trans_op);
       } else if (isa<tpu::ReshapeOp>(l_op) && isa<tpu::PermuteOp>(r_op)) {
         // Case2
-        // Left  -> Reshape -\              Left  -\
-        //                   ->  MatMul ->         -> MatMul
-        // Right -> Permute -/              Right -/
+        // Left  -> Reshape -\              Left(+ Reshape)-\
+        //                   ->  MatMul ->                  -> MatMul
+        // Right -> Permute -/              Right          -/
         auto l_trans_op = dyn_cast<tpu::ReshapeOp>(l_op);
         auto r_trans_op = dyn_cast<tpu::PermuteOp>(r_op);
         if (!l_trans_op->hasOneUse() || !r_trans_op->hasOneUse()) {
@@ -120,29 +120,42 @@ public:
           return failure();
         }
 
+        auto l_trans = op.getLeftTranspose();
         auto r_trans = op.getRightTranspose();
         if (r_order->at(2) == 3 && r_order->at(3) == 1) {
           r_trans = !r_trans;
         }
 
         // Check Shape (left.shape[-1] == right.shape[-2])
+        bool remove_reshape = l_in_shape.size() == l_out_shape.size();
         if (!(l_in_shape.size() >= 2 && r_in_shape.size() >= 2))
           return failure();
-        if (!r_trans) {
-          if (!(l_in_shape[l_in_shape.size() - 1] ==
-                r_in_shape[r_in_shape.size() - 2])) {
-            return failure();
-          }
-        } else {
-          if (!(l_in_shape[l_in_shape.size() - 1] !=
-                r_in_shape[r_in_shape.size() - 2])) {
+        int l_K_dim = l_in_shape.size() - 1 - l_trans - l_trans * hdim_is_batch;
+        int r_K_dim = r_in_shape.size() - 2 + r_trans + r_trans * hdim_is_batch - hdim_is_batch;
+        if (l_in_shape[l_K_dim] != r_in_shape[r_K_dim]) {
+          if (l_out_shape.size() == 4 && l_out_shape[2] == 1) {
+            std::vector<int64_t> new_l_shape = l_out_shape;
+            new_l_shape[2] = l_out_shape[1];
+            new_l_shape[1] = 1;
+            module::setShape(l_trans_op.getOutput(), new_l_shape);
+            l_trans_op.getOutput().dump();
+            remove_reshape = false;
+            l_out_shape = module::getShape(l_trans_op.getOutput());
+          } else {
             return failure();
           }
         }
-        if (l_in_shape.size() > 2 && r_in_shape.size() > 2) {
-          int min_len = std::min(l_in_shape.size(), r_in_shape.size());
+
+        if (!hdim_is_batch && l_in_shape.size() > 2 && r_in_shape.size() > 2) {
+          int min_len = std::min(remove_reshape * l_in_shape.size() +
+                                     (1 - remove_reshape) * l_out_shape.size(),
+                                 r_in_shape.size());
           for (int i = 0; i < min_len - 2; i++) {
-            int ls = l_in_shape[l_in_shape.size() - 3 - i];
+            int ls;
+            if (remove_reshape)
+              ls = l_in_shape[l_in_shape.size() - 3 - i];
+            else
+              ls = l_out_shape[l_out_shape.size() - 3 - i];
             int rs = r_in_shape[r_in_shape.size() - 3 - i];
             if (!(ls == rs || ls == 1 || rs == 1)) {
               return failure();
@@ -154,9 +167,11 @@ public:
         op->setAttr("hdim_is_batch", rewriter.getBoolAttr(!hdim_is_batch));
         op->setAttr("left_transpose", rewriter.getBoolAttr(false));
         op->setAttr("right_transpose", rewriter.getBoolAttr(r_trans));
-        op->setOperand(0, l_trans_op.getInput());
+        if (remove_reshape) {
+          op->setOperand(0, l_trans_op.getInput());
+          rewriter.eraseOp(l_trans_op);
+        }
         op->setOperand(1, r_trans_op.getInput());
-        rewriter.eraseOp(l_trans_op);
         rewriter.eraseOp(r_trans_op);
       } else if (!isa<tpu::PermuteOp>(l_op) && isa<tpu::PermuteOp>(r_op)) {
         // Case3
