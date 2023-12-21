@@ -168,7 +168,8 @@ def get_dma_info(monitor_info, reg_info):
       dma_info[trans_key] = value
   dma_info["mask_start_addr_h8"] = dma_info.get("mask_start_addr_h8", 0)
   dma_info["mask_start_addr_l32"] = dma_info.get("mask_start_addr_l32", 0)
-
+  dma_info["dst_start_addr"] = (int(dma_info["dst_start_addr_h8"]) << 32)  + int(dma_info["dst_start_addr_l32"])
+  dma_info["src_start_addr"] = (int(dma_info["src_start_addr_h8"]) << 32)  + int(dma_info["src_start_addr_l32"])
 
   # step2: get custom information
   src_type = MEMTYPE(dma_info['src_start_addr_h8'] >> 7).name

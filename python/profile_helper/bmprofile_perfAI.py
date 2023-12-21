@@ -60,9 +60,10 @@ class BMProfileParserPerfAI(BMProfileParser):
         self.__read_command_data(cmd_info, core_num)
 
   def to_txt(self, out_dir):
-    self.__align_engine_cycle()
-    self.__align_core_cycle()
-    self.__shift_cycle()
+    self.__cycle2time()
+    self.__align_core_time()
+    self.__shift_time()
+    self.__time2cycle()
     self.out_dir = out_dir
 
     #1. make file
@@ -102,11 +103,11 @@ class BMProfileParserPerfAI(BMProfileParser):
           # f.write("".join(f"\tdes_{key}: {value}\n" for key, value in dict(reg_info).items()))
           # f.write("\tMsg Id: \n\tSd\Wt Count: \n")
 
-    # write totalCycle
-    with open(total_cycle_file, 'w') as f:
-      f.write("totalCycle: {}\n".format(end_cycle - start_cycle))
+    # deprecated 
+    # with open(total_cycle_file, 'w') as f:
+    #   f.write("totalCycle: {}\n".format(end_cycle - start_cycle))
 
-  def __align_engine_cycle(self):
+  def __cycle2time(self):
     for i in self.gdma_monitor:
       for j in i:
         j.inst_start_time = int(j.inst_start_time / self.archlib.GDMA_FREQ * 1000)
@@ -116,7 +117,17 @@ class BMProfileParserPerfAI(BMProfileParser):
         j.inst_start_time = int(j.inst_start_time / self.archlib.BD_FREQ * 1000)
         j.inst_end_time = int(j.inst_end_time / self.archlib.BD_FREQ * 1000)
 
-  def __align_core_cycle(self):
+  def __time2cycle(self):
+    for i in self.gdma_monitor:
+      for j in i:
+        j.inst_start_time = int(j.inst_start_time * self.archlib.GDMA_FREQ / 1000)
+        j.inst_end_time = int(j.inst_end_time * self.archlib.GDMA_FREQ / 1000)
+    for i in self.bd_monitor:
+      for j in i:
+        j.inst_start_time = int(j.inst_start_time * self.archlib.BD_FREQ / 1000)
+        j.inst_end_time = int(j.inst_end_time * self.archlib.BD_FREQ / 1000)
+
+  def __align_core_time(self):
     first_wait_cmd_id = []
     first_wait_cmd_cycle = []
 
@@ -145,7 +156,7 @@ class BMProfileParserPerfAI(BMProfileParser):
         j1.inst_start_time = int(j1.inst_start_time - delta_cyle)
         j1.inst_end_time = int(j1.inst_end_time - delta_cyle)
 
-  def __shift_cycle(self):
+  def __shift_time(self):
     start_cycle = self.gdma_monitor[0][0].inst_start_time
     for _, (bd, gdma) in enumerate(zip(self.bd_monitor, self.gdma_monitor)):
       start_cycle = min(bd[0].inst_start_time, start_cycle, gdma[0].inst_start_time)
@@ -164,7 +175,10 @@ class BMProfileParserPerfAI(BMProfileParser):
     for idx, dma in enumerate(tmp):
       if dma.inst_id ==0:
         zero_position.append(idx)
-    if len(zero_position) < 2:
+    if len(zero_position) == 0:
+      left = 0
+      right = len(tmp)
+    elif len(zero_position) < 2:
       left = 1
       right = len(tmp)
     elif len(zero_position) == 2:
