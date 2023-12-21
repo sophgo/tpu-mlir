@@ -129,6 +129,12 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   if (module::isBM1688() && getCoeffMerged()) {
     if (module::isUniformQuantized(getInput()) && p.kernel_zp != 0)
       return int32_size * 2;
+    if (p.groups > 1) {
+      sz += in_nslice * ic_per_npu * align_up(in_hslice * in_wslice, eu_num) *
+            in_type_len;
+      sz += ic_per_npu * 2 * in_type_len;
+      return sz;
+    }
     if(use_3ic_optimize == 0)
       return 0;
   }
