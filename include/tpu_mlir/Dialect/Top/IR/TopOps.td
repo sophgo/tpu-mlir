@@ -1192,6 +1192,19 @@ def Top_TopKOp:Top_Op<"TopK"> {
   );
 }
 
+def Top_TriluOp:Top_Op<"Trilu"> {
+  let summary = "Trilu operation";
+  let description = [{
+     Returns the upper or lower triangular part of input.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    SI32Attr:$upper,
+    SI32Attr:$diagonal
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_NonZeroOp:Top_Op<"NonZero"> {
   let summary = "NonZero operation";
   let description = [{

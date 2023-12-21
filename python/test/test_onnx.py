@@ -192,6 +192,7 @@ class ONNX_IR_TESTER(object):
             "TileDyn":      (self.test_TileDyn,       N, Y, Y, N, Y),
             "Transpose":    (self.test_Transpose,     Y, Y, Y, Y, Y),
             "Transpose2":   (self.test_Transpose2,    Y, Y, Y, Y, Y),
+            "Trilu":        (self.test_Trilu,         N, Y, N, N, N),
             "TopK":         (self.test_TopK,          N, Y, Y, N, Y),
             "TopK2":        (self.test_TopK2,         N, Y, N, N, Y),
             "Upsample":     (self.test_Upsample,      Y, Y, Y, N, Y),
@@ -371,7 +372,7 @@ class ONNX_IR_TESTER(object):
                      model_name: str,
                      quant_modes: list,
                      static_shape=True,
-                     version=13):
+                     version=14):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
@@ -610,7 +611,7 @@ class ONNX_IR_TESTER(object):
             onnx_file,
             export_params=True,
             verbose=True,
-            opset_version=13,  # export hardswish needed
+            opset_version=14,  # export hardswish needed
             input_names=in_names)
         onnx_model = onnx.load(onnx_file)
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
@@ -626,7 +627,7 @@ class ONNX_IR_TESTER(object):
                       static_shape=True,
                       check_last: bool = False,
                       quant_modes=None,
-                      version=13):
+                      version=14):
         if quant_modes is None:
             quant_modes = self.quant_modes
         if input_data is None:
@@ -680,7 +681,7 @@ class ONNX_IR_TESTER(object):
                              check_last: bool = False,
                              quant_modes=None,
                              only_cmp_with_bmodel=False,
-                             version=13):
+                             version=14):
         if quant_modes is None:
             quant_modes = self.quant_modes
         if input_data is None:
@@ -1202,6 +1203,18 @@ class ONNX_IR_TESTER(object):
                 output = Mul(input, x1)
             }
             """ % (case_name, input_shape, output_shape)
+        graph_def = onnx.parser.parse_graph(graph_txt)
+        self.onnx_and_test(graph_def)
+
+    def test_Trilu(self, case_name):
+        input_shape = [1, 16, 64, 64]
+
+        graph_txt = """
+            %s (float%s input) => (float%s output)
+            {
+                output = Trilu<upper=1>(input)
+            }
+            """ % (case_name, input_shape, input_shape)
         graph_def = onnx.parser.parse_graph(graph_txt)
         self.onnx_and_test(graph_def)
 

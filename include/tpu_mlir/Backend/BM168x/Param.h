@@ -1562,6 +1562,11 @@ typedef struct where_spec {
   uint64_t buffer_addr;
 } where_spec_t;
 
+typedef struct {
+  int is_upper;
+  int diagonal;
+} triangularize_common_spec_t;
+
 typedef struct conv3d_common_spec {
   int32_t groups;
   int32_t output_c;
