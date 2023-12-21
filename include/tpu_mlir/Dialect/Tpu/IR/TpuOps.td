@@ -3285,4 +3285,20 @@ def Tpu_ConvBwdWeightOp:Tpu_Op<"ConvBwd_Weight">{
     convbwd_weight_attr_t parseParam();
   }];
 }
+
+def Tpu_TriluOp:Tpu_Op<"Trilu", [
+  DeclareOpInterfaceMethods<LocalGenInterface>, 
+  DeclareOpInterfaceMethods<DynLocalGenInterface>
+  ]> {
+  let summary = "Trilu operation";
+  let description = [{
+     Returns the upper or lower triangular part of input.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    SI32Attr:$upper,
+    SI32Attr:$diagonal
+  );
+  let results = (outs AnyTensor:$output);
+}
 #endif // TPU_OPS

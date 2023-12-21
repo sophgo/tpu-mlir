@@ -85,7 +85,6 @@ void DeformConv2DLowering::LoweringF32(PatternRewriter &rewriter,
   auto deform_gather_op = rewriter.create<tpu::DeformGatherOp>(
       deform_gather_loc, gather_type, gather_operands, gather_attrs);
 
-
   conv_operands.push_back(deform_gather_op.getOutput()); // gather output
   conv_operands.push_back(op->getOperand(1)); //weight
   conv_operands.push_back(op->getOperand(4)); //bias

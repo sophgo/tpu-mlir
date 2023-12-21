@@ -243,6 +243,7 @@ class OnnxConverter(BaseConverter):
             "Tanh": lambda node: self.convert_tanh_op(node),
             "Tile": lambda node: self.convert_tile_op(node),
             "TopK": lambda node: self.convert_topk_op(node),
+            "Trilu": lambda node: self.convert_trilu_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "Upsample": lambda node: self.convert_upsample_op(node),
@@ -1877,6 +1878,19 @@ class OnnxConverter(BaseConverter):
         lhs_op = self.getWeightOp(lhs) if self.isWeight(lhs) else self.getOp(lhs)
         rhs_op = self.getWeightOp(rhs) if self.isWeight(rhs) else self.getOp(rhs)
         new_op = top.MaxOp(self.unranked_type, [lhs_op, rhs_op],
+                           loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
+                           ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_trilu_op(self, onnx_node):
+        assert (onnx_node.op_type == 'Trilu')
+        upper = onnx_node.attrs.get('upper', 1)
+        diagonal = 0
+        operand = self.getOperand(onnx_node.inputs[0])
+        new_op = top.TriluOp(self.unranked_type,
+                           operand,
+                           upper,
+                           diagonal,
                            loc=self.get_loc("{}_{}".format(onnx_node.name, onnx_node.op_type)),
                            ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, new_op)
