@@ -96,6 +96,9 @@ LogicalResult tpu::AttentionOp::AllowDataSplit(int64_t axis,
 mlir::Type tpu::AttentionOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   if (opd_idx == 0 || opd_idx == 1) {
     return type_verify_case_i32(getOperation(), opd_idx, mode);
+  }  else if (opd_idx == 11) { // mask should be f32
+    auto ftype = RankedTensorType::get(module::getShape(getMusk()), Builder(getOperation()).getF32Type());
+    return type_verify_case_type(getOperation(), opd_idx, ftype, mode);
   }
   return type_verify_case_same(getOperation(), opd_idx, mode);
 }
