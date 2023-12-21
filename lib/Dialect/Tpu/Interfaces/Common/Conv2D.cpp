@@ -531,15 +531,34 @@ void tpu::Conv2DOp::assign_fw_param(void *param) {
 
 ArrayAttr tpu::Conv2DOp::getIndexingMaps() {
   MLIRContext *context = getContext();
-  // TODO: split OC
-  AffineMap identity1Map = AffineMap::getMultiDimIdentityMap(1, context);
-  AffineMap emptyMap = AffineMap::get(1, 0, context);
+  AffineMap inputMap, filterMap, outputMap, empty;
 
-  SmallVector<AffineMap> indexingMaps{identity1Map, emptyMap};
+  if (getGroup() != 1 || getCoeffMerged()) {
+    // TODO: group conv, int8 conv
+    inputMap = AffineMap::getMultiDimIdentityMap(1, context);
+    outputMap = AffineMap::getMultiDimIdentityMap(1, context);
+    filterMap = AffineMap::get(1, 0, context);
+    empty = AffineMap::get(1, 0, context);
+  } else {
+    AffineExpr d0, d1;
+    bindDims(context, d0, d1);
+    auto c0 = mlir::getAffineConstantExpr(0, context);
+    inputMap = AffineMap::get(2, 0, d0);
+    // n = 1 after reordered.
+    // c0 is a placeholder, signaling the parallelPass to leave this dimension
+    // unchanged.
+    filterMap = AffineMap::get(2, 0, {c0, d1}, context);
+    outputMap = AffineMap::getMultiDimIdentityMap(2, context);
+    empty = AffineMap::get(2, 0, context);
+  }
+  SmallVector<AffineMap> indexingMaps{inputMap, filterMap};
 
   for (int i = 2, n = getNumOperands(); i < n; ++i) {
-    indexingMaps.push_back(emptyMap);
+    if (isa_and_nonnull<top::NoneOp>(getOperand(i).getDefiningOp()))
+      indexingMaps.push_back(empty);
+    else
+      indexingMaps.push_back(filterMap);
   }
-  indexingMaps.push_back(identity1Map);
+  indexingMaps.push_back(outputMap);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
