@@ -26,24 +26,37 @@ int64_t data_copy(top::WeightOp weight, int64_t offset,
 }
 
 template <typename T>
+void weight_reorder(T *dst, T* src, int dst_c, int dst_h, int dst_w, int src_w) {
+  for (int c = 0; c < dst_c; ++c) {
+    for (int h = 0; h < dst_h; ++h) {
+      T *dst_p = dst + (c * dst_h + h) * dst_w;
+      T *src_p = src + (h * dst_c + c) * src_w;
+      memcpy(dst_p, src_p, src_w * sizeof(T));
+    }
+  }
+}
+
+template <typename T>
 Value weight_reorder(tpu::AttentionOp op, Type to_type, int N_q, int N_k,
                      int d) {
   auto q_w = op.getQueriesWeight().getDefiningOp<top::WeightOp>();
   auto k_w = op.getKeysWeight().getDefiningOp<top::WeightOp>();
   auto v_w = op.getValuesWeight().getDefiningOp<top::WeightOp>();
-  int64_t weight_h = (align_up(N_q, BM168x::NPU_NUM) + align_up(N_k, BM168x::NPU_NUM) + N_k);
+  int64_t weight_h = (align_up(N_q, BM168x::NPU_NUM) + align_up(N_k, BM168x::NPU_NUM) * 2);
+  auto bytes = sizeof(T);
+  auto EU_NUM = BM168x::eu_num(bytes);
   auto new_weight = std::make_shared<std::vector<T>>(weight_h * d);
 
   int offset = data_copy(q_w, 0, new_weight);
   offset = data_copy(k_w, offset, new_weight);
   offset = data_copy(v_w, offset, new_weight);
-  // auto new_weight1 = std::make_shared<std::vector<T>>(weight_h * d * 3);
-  // tensor_hc_transpose(new_weight1.data(), new_weight.data(), 1, N_q, d*3, 1);
+  auto new_weight1 = std::make_shared<std::vector<T>>(weight_h * align_up(d, EU_NUM));
+  weight_reorder(new_weight1->data(), new_weight->data(), BM168x::NPU_NUM, weight_h / BM168x::NPU_NUM, align_up(d, EU_NUM), d);
 
-  std::vector<int64_t> weight_shape = {1, weight_h, d};
+  std::vector<int64_t> weight_shape = {1, BM168x::NPU_NUM, weight_h / BM168x::NPU_NUM, align_up(d, EU_NUM)};
   auto new_type = RankedTensorType::get(weight_shape, to_type);
   auto new_op =
-      top::WeightOp::create(op, "filter_reorder", *new_weight, new_type);
+      top::WeightOp::create(op, "filter_reorder", *new_weight1, new_type);
   return new_op;
 }
 

@@ -35,6 +35,7 @@ void tpu::AttentionOp::codegen_global_bm1684x() {
   common.hasbias = getHasBias();
   common.head = getHead();
   common.dim = getDim();
+  common.weight_reshape = true;
   common.scale = getScale().convertToDouble();
   common.hasmusk = !module::isNone(getMusk());
   common.input_num = module::isNone(getKeys()) ? 1 :
@@ -130,6 +131,7 @@ void tpu::AttentionOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   common.hasbias = getHasBias();
   common.head = getHead();
   common.dim = getDim();
+  common.weight_reshape = true;
   common.scale = getScale().convertToDouble();
   common.hasmusk = !module::isNone(getMusk());
   common.input_num = module::isNone(getKeys()) ? 1 :
