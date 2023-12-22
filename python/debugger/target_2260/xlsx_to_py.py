@@ -7,6 +7,7 @@
 #
 # ==============================================================================
 
+import math
 from time import gmtime, strftime
 import re
 import numpy as np
@@ -17,7 +18,7 @@ from jinja2 import Template
 match_illegal = re.compile("[（）& /()]")
 
 ctype_template_str = """
-class {{class_name}}_reg(cmd_base_reg):
+class {{class_name}}_reg(atomic_reg):
     OP_NAME = "{{op_name}}"
     _fields_ = [{% for field, field_length in fields %}
         ("{{field}}", ctypes.c_uint64, {{field_length}}),
@@ -42,12 +43,12 @@ def pd_to_dict(df):
     valid = ~df.iloc[:, 1].isnull()
     df = df[valid].copy()
     fields = list(df.iloc[:, 0])
-    fields = [i.replace("des_", "") for i in fields]
+    fields = [i.replace("des_", "") if isinstance(i, str) else str(i) for i in fields]
     return list(zip(fields, numpy.cumsum(df.iloc[:, 1].astype(int))))
 
 
-tiu_reg_a2 = "./SG2260_TPU_TIU_Reg0.6.xlsx"
-dma_reg_a2 = "./GDMA_SG2260_DES_REG.xlsx"
+tiu_reg_a2 = "./SG2260_TPU_TIU_Reg0.12.xlsx"
+dma_reg_a2 = "./GDMA_SG2260_DES_REG_12_21.xlsx"
 
 bdc_sheet_name = [
     "CONV",
@@ -82,7 +83,7 @@ bdc_sheet_name = [
     "SYS",
     "SYSID",
     "SYS_TR_ACC",
-    "RAND"
+    "RAND",
 ]
 
 dma_sheet_name = [
@@ -101,7 +102,7 @@ dma_sheet_name = [
     "DMA_lossy_compress",
     "DMA_lossy_decompress",
     "DMA_randmask",
-    "DMA_tansfer"
+    "DMA_tansfer",
 ]
 
 
@@ -132,14 +133,14 @@ file_head = f"""# ==============================================================
 
 from typing import Dict, Type
 import ctypes
-from ..target_common import cmd_base_reg
+from ..target_common import atomic_reg
 
 """
 
 
 tail_template_str = """
 
-op_class_dic: Dict[str, Type[cmd_base_reg]] = {
+op_class_dic: Dict[str, Type[atomic_reg]] = {
     {% for cmd_type, class_name in cmd %}
     "{{cmd_type}}": {{class_name}}_reg,
     {%- endfor %}
@@ -178,18 +179,22 @@ with open("regdef.py", "w") as fb:
     cmds = []
     for key in cmd_reg:
         cmd_reg_def = cmd_reg[key]
-
         field_keys, high_bits = zip(*cmd_reg_def)
-        if not all(64 * x in high_bits for x in range(1, high_bits[-1] // 64 + 1)):
+        if not all(
+            64 * x in high_bits for x in range(1, math.ceil(high_bits[-1] / 64))
+        ):
             if key in {"SYS"}:
-                field_keys = list(field_keys)[:10]
-                high_bits = list(high_bits)[:10]
+                field_keys = list(field_keys)[:11]
+                high_bits = list(high_bits)[:11]
             elif key in {"SYSID", "SYS_TR_ACC"}:
                 field_keys = list(field_keys)[:8]
                 high_bits = list(high_bits)[:8]
             print(key)
 
-        assert all(64 * x in high_bits for x in range(1, high_bits[-1] // 64 + 1))
+        if key != "sLIN":
+            assert all(
+                64 * x in high_bits for x in range(1, math.ceil(high_bits[-1] / 64))
+            )
 
         bits_width = np.diff(high_bits, prepend=0)
         fields = [(k, l) for k, l in zip(field_keys, bits_width)]

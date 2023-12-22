@@ -146,7 +146,7 @@ class DType(IntEnum):
     f8e4m3 = f8 + 16  # type: ignore
 
     def is_float(self):
-        return self in (DType.f32, DType.f16, DType.bf16)
+        return self in (DType.f32, DType.f16, DType.bf16, DType.f8e4m3, DType.f8e5m2, DType.f8)
 
     def is_int(self):
         return not self.is_float()
