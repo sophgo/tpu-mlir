@@ -34,7 +34,8 @@ class TiuHead(HeadDef):
     _fields_ = [
         ("cmd_short", ctypes.c_uint64, 1),
         ("reserved", ctypes.c_uint64, 16),
-        ("cmd_id_dep", ctypes.c_uint64, 24),
+        ("cmd_id_dep", ctypes.c_uint64, 23),
+        ("dbg_mode", ctypes.c_uint64, 1),
         ("tsk_typ", ctypes.c_uint64, 4),
         ("tsk_eu_typ", ctypes.c_uint64, 5),
     ]

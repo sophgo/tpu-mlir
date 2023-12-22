@@ -230,7 +230,7 @@ class FinalMlirIndexPlugin(TdbPlugin):
 
         if tdb.context.device == tdb.context.device.BM1688:
             # temporarily hack for BM1688, which use arith_copy cmd to workaround sync bug
-            no_arith_copy = tdb.index_df.op_name != 'arith.copy'
+            no_arith_copy = tdb.index_df.op_name != 'sAR'
             assert tdb.index_df[no_loc_mask & no_static_mask & no_arith_copy].is_sys.all()
         else:
             assert tdb.index_df[no_loc_mask & no_static_mask].is_sys.all()

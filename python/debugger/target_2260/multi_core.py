@@ -61,17 +61,15 @@ class SYS_TYPE(Enum):
 class Status(Enum):
     # for msg use
     PRODUCING = 0
-    WAITING = 1  # normally won't appear
-    RECIEVING = 2
-    CONSUMED = 3
+    RECIEVING = 1
+    CONSUMED = 2
     # for op use
-    OP = 4
+    OP = 3
 
 
 class Msg:
     def __init__(self):
         self.sent_cnt = 0
-        self.remain_wait_cnt = 0
 
 
 class MsgCore(Node):
@@ -276,31 +274,15 @@ class MultiCore(Node):
     def consume_send(self, cmd: BaseTpuCmd):
         msg_id = MultiCore.get_msg_id(cmd)
         self.msges[msg_id].sent_cnt += 1
-        if self.msges[msg_id].remain_wait_cnt == 0:
-            self.msges[msg_id].remain_wait_cnt = int(
-                MultiCore.get_msg_cnt(cmd) / self.core_nums
-            )
-        else:
-            assert self.msges[msg_id].remain_wait_cnt == int(
-                MultiCore.get_msg_cnt(cmd) / self.core_nums
-            )
-
         return Status.PRODUCING
 
     def consume_wait(self, cmd: BaseTpuCmd):
         msg_id = MultiCore.get_msg_id(cmd)
-        if (
-            int(MultiCore.get_msg_cnt(cmd) / self.core_nums)
-            != self.msges[msg_id].sent_cnt
-        ):
-            return Status.WAITING
+        self.msges[msg_id].sent_cnt -= 1
+        if self.msges[msg_id].sent_cnt == 0:
+            return Status.CONSUMED
         else:
-            self.msges[msg_id].remain_wait_cnt -= 1
-            if self.msges[msg_id].remain_wait_cnt == 0:
-                self.msges[msg_id].sent_cnt = 0
-                return Status.CONSUMED
-            else:
-                return Status.RECIEVING
+            return Status.RECIEVING
 
     def __str__(self):
         return "\n".join([str(msgcore) for msgcore in self.msgcores])

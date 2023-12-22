@@ -212,9 +212,18 @@ class Block(Node):
                     self.operations.extend(msgcore.mlir_cmds)
                 return
 
-            self.cmds = [
-                decode_cmdgroup(context, x, self.subnet_id) for x in subnet.cmd_group
-            ]
+            if subnet.cmd_group:
+                self.cmds = [
+                    decode_cmdgroup(context, x, self.subnet_id)
+                    for x in subnet.cmd_group
+                ]
+            else:
+                self.cmds = [
+                    decode_cmdgroup(context, cmd, self.subnet_id, core_id)
+                    for core_id, x in enumerate(subnet.core_commands)
+                    for cmd in x.gdma_tiu_commands
+                ]
+
             for x in self.cmds:
                 self.operations.extend(x.all)
 

@@ -13,7 +13,7 @@ should be maintained manully.
 """
 from typing import Dict, Tuple
 from ..target_common import BaseTpuCmd, atomic_reg, OpInfo, Tiu, Dma, ALIGN, RegIndex
-from .regdef import SYS_TR_ACC_reg
+from .regdef import SYS_TR_ACC_reg, SYS_reg, sDMA_sys_reg
 
 # global data and type
 # ------------------------------------------------------------
@@ -27,7 +27,7 @@ def fix_cmd_id_dep(value):
     if value is None:
         return None
 
-    value = value & 0x0FFFF
+    value = value & 0x0FFFFF
     return value
 
 
