@@ -237,7 +237,7 @@ def parse_args(args=None):
         help="The ddr_size of cmodel.",
     )
     parser.add_argument(
-        "-v", "--verbose", action="store_true", default=False, help="use progress bar"
+        "--quiet", action="store_true", default=False, help="disable progress bar"
     )
 
     return parser.parse_args(args)
@@ -272,7 +272,7 @@ def get_tdb(args=None):
     else:
         extra_plugins = extra_plugins.split(",")
 
-    if args.verbose:
+    if not args.quiet:
         extra_plugins.append("progress")
 
     if args.edit:

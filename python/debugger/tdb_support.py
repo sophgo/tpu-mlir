@@ -22,6 +22,7 @@ from .disassembler import BModel
 from .target_1688.context import BM1688Context
 from .target_2260.context import SG2260Context
 import pandas as pd
+import builtins
 
 
 class TdbStatus(Enum):
@@ -118,6 +119,16 @@ def add_callback(name=None, *filter):
     return outer
 
 
+def safe_command(func):
+    def outer(self, *args):
+        try:
+            func(self, *args)
+        except Exception as e:
+            self.tdb.error(e)
+
+    return outer
+
+
 def complete_file(self, text: str, line, begidx, endidx):
     text = text.split(" ")[-1]
     head = os.path.dirname(text)
@@ -165,6 +176,7 @@ class TdbCmdBackend(cmd.Cmd):
         self.reference_data_fns = reference_data_fn
         self.ddr_size = ddr_size
         self.status = TdbStatus.UNINIT
+        builtins.tdb = self
 
         # should be import locally to avoid circular import
         from .static_check import Checker
@@ -198,6 +210,9 @@ class TdbCmdBackend(cmd.Cmd):
         self.extra_check = extra_check
 
         self.message(f"Load plugins: {self.plugins}")
+        self.message(
+            f"Type `s` to initialize bmodel, type `r` to run full commands, or `help` to see other commands."
+        )
 
     @add_callback("load")
     def _reset(self):
@@ -207,6 +222,12 @@ class TdbCmdBackend(cmd.Cmd):
         self.status = TdbStatus.IDLE
         self.static_mode = False
         self._build_index()
+
+        if self.get_plugin("progress") is None:
+            self.message(
+                "You are in quiet mode, add `-v/--verbose` argument to open prograss bar,\n"
+                "or use `info progress` to show progress information."
+            )
 
     def _load_bmodel(self):
         bmodel_file = self.bmodel_file
@@ -238,7 +259,9 @@ class TdbCmdBackend(cmd.Cmd):
         coeff = self.atomic_mlir.functions[0].regions[0].data
         if coeff:
             address = coeff.address
-            if isinstance(self.context, BM1688Context) or isinstance(self.context, SG2260Context):
+            if isinstance(self.context, BM1688Context) or isinstance(
+                self.context, SG2260Context
+            ):
                 address = self.context.fix_addr(address)
             addr_offset_ddr = address - self.context.memmap[MType.G][0]
             # load constant data
@@ -259,7 +282,7 @@ class TdbCmdBackend(cmd.Cmd):
     def _load_data(self):
         file = self.input_data_fn
         if file is None or not os.path.isfile(file):
-            self.error(f"file {file} is invalid")
+            self.error(f"input data file `{file}` is invalid")
             return
 
         if file.endswith(".dat"):

@@ -56,13 +56,9 @@ def main():
         help="The inputs data of the BModel.",
     )
     parser.add_argument(
-        "-v",
-        "--verbose",
-        type=str,
-        nargs="?",
-        const="",
-        help="Control the report information.",
+        "--quiet", action="store_true", default=False, help="disable progress bar"
     )
+
     parser.add_argument("--no_interactive", action="store_true")
     args = parser.parse_args()
     return args
@@ -87,7 +83,7 @@ if __name__ == "__main__":
     cos_t, euc_t = eval(args.tolerance)
 
     extra_plugins = []
-    if args.verbose is not None:
+    if not args.quiet:
         extra_plugins.append("progress")
 
     if args.excepts:

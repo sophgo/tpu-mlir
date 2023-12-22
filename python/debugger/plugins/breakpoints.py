@@ -118,6 +118,7 @@ class CmdFileLineBreakpoint(Breakpoint):
     """
     set breakpoint for bmodel_dis.py
     """
+
     type = "file-line(cmd)"
     pattern = re.compile("^::[0-9]+")
 
@@ -350,6 +351,7 @@ class BreakpointPlugin(TdbPlugin, TdbPluginCmd):
             return
         break_hit = self.breakpoints.should_break(tdb)
         if break_hit:
+            self.stoped_op = cmd
             tdb.message(f"Hit: {break_hit}")
             raise BreakpointStop(break_hit)
 

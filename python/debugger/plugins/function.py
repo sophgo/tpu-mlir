@@ -1,10 +1,11 @@
-from ..tdb_support import TdbPlugin, TdbPluginCmd, codelike_format
+from ..tdb_support import TdbPlugin, TdbPluginCmd, codelike_format, safe_command
 from .common import FinalMlirIndexPlugin
 from .breakpoints import BreakpointPlugin
 
 
 class InfoPlugin(TdbPlugin, TdbPluginCmd):
     name = "info"
+    func_names = ["info", "list"]
 
     def parse_comon(self, arg):
         arg_lis = [i for i in arg.strip().split() if i != ""]
@@ -128,29 +129,37 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
         b: BreakpointPlugin = self.tdb.get_plugin(BreakpointPlugin)
         return str(b.breakpoints)
 
+    @safe_command
     def do_status(self, arg):
         self.tdb.message(self.tdb.status)
 
+    @safe_command
     def do_mlir(self, arg):
         self.tdb.message(self.info_mlir(arg))
 
+    @safe_command
     def do_asm(self, arg):
         self.tdb.message(self.info_asm(arg))
 
+    @safe_command
     def do_loc(self, arg):
         self.tdb.message(self.info_loc(arg))
 
+    @safe_command
     def do_reg(self, arg):
         print(self.info_reg(arg))
 
+    @safe_command
     def do_buf(self, arg):
         print(self.info_buf(arg))
 
+    @safe_command
     def do_break(self, arg):
         self.tdb.message(self.info_break(arg))
 
     do_b = do_break
 
+    @safe_command
     def do_progress(self, arg):
         self.tdb.message(f"asm: {self.tdb.cmd_point} / {len(self.tdb.cmditer)}")
         index_plugin = self.tdb.get_plugin(
@@ -165,3 +174,9 @@ class InfoPlugin(TdbPlugin, TdbPluginCmd):
                 self.tdb.error(
                     f"{type(self.tdb.get_cmd()).__name__} cmd has no mlir context."
                 )
+
+    def emptyline(self, *args):
+        self.do_asm("5")
+
+    def default(self, line: str) -> None:
+        self.do_asm(line)
