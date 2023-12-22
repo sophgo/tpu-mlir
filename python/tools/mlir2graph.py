@@ -40,7 +40,8 @@ def escape(name: str):
 
 label_template = """
 <<table border="0" cellborder="1" cellspacing="0">
-    <tr><td align="center">{res_ids} = {op_type}({opd_ids}) -&gt; {shape}</td></tr>
+    <tr><td align="center">{res_ids} = {op_type}({opd_ids})</td></tr>
+    <tr><td align="center"> -&gt; {shape}</td></tr>
     <tr><td align="center">{name}</td></tr>
 </table>>
 """.strip()
@@ -225,6 +226,7 @@ if __name__ == "__main__":
         failed_keys.update(
             {k.split("_asm_")[0] for k in list(report.files) if "actual" in k}
         )
+
     if args.failed_keys is not None:
         failed_keys.update({i.strip() for i in args.failed_keys.split(",")})
 
@@ -267,6 +269,9 @@ if __name__ == "__main__":
 
             oop_loc = get_op_loc(op)
             node_attrs = {}
+            if oop_loc in failed_keys:
+                node_attrs["failed"] = True
+                node_attrs["color"] = FAILED_COLOR
             # node_attrs["shape"] = "box"
             node = create_node(op, oop_loc, node_attrs)
             node.set_tooltip(make_tooltips(op))
@@ -302,8 +307,6 @@ if __name__ == "__main__":
 
                 dot.add_edge(edge)
 
-            if op_loc in failed_keys:
-                node_attrs["color"] = FAILED_COLOR
         return group_graph
 
     def draw_func_op(func: FuncOp):
