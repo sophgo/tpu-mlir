@@ -26,19 +26,22 @@ def setup_logger(name, log_level="INFO"):
     if name in log_name:
         return log_name[name]
 
+    logger = logging.getLogger(name)
+    logger.setLevel(logging._nameToLevel[log_level])
+
     formatter = logging.Formatter(
         datefmt="%Y/%m/%d %H:%M:%S", fmt="%(asctime)s - %(levelname)s : %(message)s"
     )
 
-    handler = logging.StreamHandler(stream=sys.stderr)
-    handler.setFormatter(formatter)
 
-    logger = logging.getLogger(name)
-    logger.setLevel(logging._nameToLevel[log_level])
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(logging.INFO)
+    stdout_handler.setFormatter(formatter)
+    logger.addHandler(stdout_handler)
 
-    logger.addHandler(handler)
     log_name[name] = logger
-    logger.print = wrap_print(logger)
+    logger.parent = None
+    # logger.print = wrap_print(logger)
     return logger
 
 

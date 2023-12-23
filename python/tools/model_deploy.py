@@ -18,7 +18,10 @@ from utils.auto_remove import file_mark, file_clean
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 import pymlir
 from utils.misc import str2bool
+from utils.cache_tool import CacheTool
+from utils.log_setting import setup_logger
 
+logger = setup_logger("deploy")
 
 def str2list(v):
     files = v.split(',')
@@ -45,7 +48,7 @@ def getCustomFormat(pixel_format, channel_format):
     elif pixel_format == "rgba":
         custom_format == "RGBA_PLANAR"
     else:
-        print("pixel_format of {} no supported!".format(pixel_format))
+        logger.info("pixel_format of {} no supported!".format(pixel_format))
         assert (0)
     return custom_format
 
@@ -99,6 +102,8 @@ class DeployTool:
                 self.prefix += "_asym"
             else:
                 self.prefix += "_sym"
+        self.cache_tool = CacheTool(args.cache_skip)
+        self.cache_skip = args.cache_skip
         self._prepare_input_npz()
 
     def cleanup(self):
@@ -123,7 +128,7 @@ class DeployTool:
                           self.asymmetric, self.quantize_table, self.customization_format,
                           self.fuse_preprocess, self.aligned_input, self.ignore_f16_overflow,
                           self.do_winograd, self.q_group_size)
-            if self.do_validate:
+            if self.do_validate and self.cache_tool.do_tpu_validate(self.tpu_mlir, self.tpu_npz, self.tolerance, self.embed_debug_info):
                 tool.validate_tpu_mlir()
 
     def _prepare_input_npz(self):
@@ -176,7 +181,7 @@ class DeployTool:
                             'pad_value': ppa.pad_value,
                             'chip': self.chip,
                         }
-                        print("Add preprocess, set the following params:")
+                        logger.info("Add preprocess, set the following params:")
                         ppb = preprocess()
                         ppb.config(**config)
                         self.inputs[op.name + "_raw"] = ppb.run(infile)
@@ -206,7 +211,11 @@ class DeployTool:
             top_outputs = mlir_inference(gen_input_f32, self.mlir_file)
             np.savez(self.ref_npz, **top_outputs)
         self.tpu_npz = "{}_tpu_outputs.npz".format(self.prefix)
-        file_mark(self.tpu_npz)
+        if not self.cache_skip:
+            file_mark(self.tpu_npz)
+        self.model_npz = "{}_model_outputs.npz".format(self.prefix)
+        if not self.cache_skip:
+            file_mark(self.model_npz)
 
     def validate_tpu_mlir(self):
         show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz)
@@ -214,6 +223,7 @@ class DeployTool:
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
+        self.cache_tool.mark_tpu_success()
 
     def build_model(self):
         if self.chip == 'cpu':
@@ -224,13 +234,11 @@ class DeployTool:
                           self.quant_output_list, self.disable_layer_group, self.opt,
                           self.merge_weight, self.op_divide, self.num_device, self.num_core,
                           self.embed_debug_info, self.model_version)
-            if not self.skip_validation and self.do_validate:
+            if not self.skip_validation and self.do_validate and self.cache_tool.do_model_validate(self.model, self.model_npz):
                 tool.validate_model()
 
     def validate_model(self):
-        size = os.path.getsize(self.model)
-        self.model_npz = "{}_model_outputs.npz".format(self.prefix)
-        file_mark(self.model_npz)
+
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
         model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
@@ -239,9 +247,10 @@ class DeployTool:
         else:
             f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts, True)
 
+        self.cache_tool.mark_model_success()
 
 if __name__ == '__main__':
-    print("SOPHGO Toolchain {}".format(pymlir.module().version))
+    logger.info("SOPHGO Toolchain {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--mlir", required=True,
@@ -303,6 +312,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_core", default=1, type=int,
                         help="The number of TPU cores used for parallel computation.")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
+    parser.add_argument("--cache_skip", action='store_true', help='skip checking the correctness when generate same mlir and bmodel.')
     parser.add_argument("--skip_validation", action='store_true', help='skip checking the correctness of bmodel.')
     parser.add_argument("--merge_weight", action="store_true", default=False,
                         help="merge weights into one weight binary with previous generated cvimodel")
