@@ -637,6 +637,7 @@ class BModel:
                 )
             bmodel: bmodel_fbs.Model = bmodel_fbs.Model.GetRootAsModel(binary_desc, 0)
 
+            self.binary = binary
             self.chip = bmodel.Chip().decode()
             self.version = bmodel.Version().decode()
             self.type = bmodel.Type().decode()

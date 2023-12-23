@@ -18,8 +18,11 @@ from utils.mlir_parser import *
 from utils.misc import *
 from utils.auto_remove import file_mark, file_clean
 from utils.preprocess import get_preprocess_parser, preprocess
+from utils.cache_tool import CacheTool
+from utils.log_setting import setup_logger
 import pymlir
 
+logger = setup_logger("transform")
 
 class ModelTransformer(object):
 
@@ -28,6 +31,8 @@ class ModelTransformer(object):
         self.model_def = model_def
         self.do_mlir_infer = True
         self.converter = BaseConverter()
+        self.in_f32_npz = self.model_name + '_in_f32.npz'
+        self.ref_npz = self.model_name + '_ref_outputs.npz'
 
     def cleanup(self):
         file_clean()
@@ -49,7 +54,7 @@ class ModelTransformer(object):
         file_mark(mlir_origin)
         self.converter.generate_mlir(mlir_origin)
         mlir_opt_for_top(mlir_origin, self.mlir_file, add_postprocess)
-        print("Mlir file generated:{}".format(mlir_file))
+        logger.info("Mlir file generated:{}".format(mlir_file))
 
         self.module_parsered = MlirParser(self.mlir_file)
         self.input_num = self.module_parsered.get_input_num()
@@ -57,7 +62,6 @@ class ModelTransformer(object):
     def model_validate(self, file_list: str, tolerance, excepts, test_result):
         from tools.model_runner import mlir_inference, free_mlir_module, show_fake_cmd
         import gc
-        in_f32_npz = self.model_name + '_in_f32.npz'
         inputs = dict()
         if len(file_list) == 1 and file_list[0].endswith('.npz'):
             npz_in = np.load(file_list[0])
@@ -85,32 +89,32 @@ class ModelTransformer(object):
             for name, file in zip(self.converter.input_names, file_list):
                 assert (file.endswith('.npy'))
                 inputs[name] = np.load(file)
-        np.savez(in_f32_npz, **inputs)
+        np.savez(self.in_f32_npz, **inputs)
         # original model inference to get blobs of all layer
-        ref_npz = self.model_name + '_ref_outputs.npz'
-        show_fake_cmd(in_f32_npz, self.model_def, ref_npz)
+        show_fake_cmd(self.in_f32_npz, self.model_def, self.ref_npz)
         ref_outputs = self.origin_inference(inputs)
         if not self.do_mlir_infer:
-            print("Saving {}".format(test_result))
+            logger.info("Saving {}".format(test_result))
             np.savez(test_result, **ref_outputs)
             return
-        print("Saving {}".format(ref_npz))
-        np.savez(ref_npz, **ref_outputs)
+        logger.info("Saving {}".format(self.ref_npz))
+        np.savez(self.ref_npz, **ref_outputs)
         del self.converter  #save memory
         del ref_outputs
         gc.collect()
 
         # inference of mlir model
-        show_fake_cmd(in_f32_npz, self.mlir_file, test_result)
+        show_fake_cmd(self.in_f32_npz, self.mlir_file, test_result)
         f32_outputs = mlir_inference(inputs, self.mlir_file)
-        print("Saving {}".format(test_result))
+        logger.info("Saving {}".format(test_result))
         np.savez(test_result, **f32_outputs)
         del f32_outputs
         free_mlir_module()
         gc.collect()
         # compare all blobs layer by layers
-        f32_blobs_compare(test_result, ref_npz, tolerance, excepts=excepts)
-        file_mark(ref_npz)
+        f32_blobs_compare(test_result, self.ref_npz, tolerance, excepts=excepts)
+        file_mark(self.ref_npz)
+        cache_tool.mark_top_success()
 
     @abc.abstractmethod
     def origin_inference(self, inputs: dict) -> dict:
@@ -241,7 +245,7 @@ def get_model_transform(args):
 
 
 if __name__ == '__main__':
-    print("SOPHGO Toolchain {}".format(pymlir.module().version))
+    logger.info("SOPHGO Toolchain {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--model_name", required=True, help="model name")
@@ -258,6 +262,7 @@ if __name__ == '__main__':
                         "if has more than one input, join jpg or npy with semicolon")
     parser.add_argument("--test_result", default="", type=str,
                         help="if input is set, result is mlir inference result")
+    parser.add_argument("--cache_skip", action='store_true', help='skip checking the correctness when generate same mlir and bmodel.')
     parser.add_argument("--tolerance", default='0.99,0.99',
                         help="minimum similarity tolerance to model transform")
     parser.add_argument("--excepts", default='-', help="excepts")
@@ -272,9 +277,11 @@ if __name__ == '__main__':
     args, unknown_args = parser.parse_known_args()
     if unknown_args:
         args.unknown_params += unknown_args
+
+    cache_tool = CacheTool(args.cache_skip)
     tool = get_model_transform(args)
     tool.model_transform(args.mlir, args.add_postprocess)
-    if args.test_input:
+    if args.test_input and cache_tool.do_top_validate(tool.mlir_file, tool.in_f32_npz, args.tolerance, args.debug):
         assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)
     if not args.debug:
