@@ -4,7 +4,7 @@ LayerGroup
 Basic Concepts
 --------------
 
-TPU memory can be divided into global memory (GMEM) and local memory (LMEM).
+The memory in a Tensor Computing Processor can be categorized into global memory (GMEM) and local memory (LMEM).
 
 Usually the global memory is very large (e.g., 4GB) while the local memory is quite limited (e.g., 16MB).
 

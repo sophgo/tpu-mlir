@@ -842,7 +842,8 @@ Common problems of model deployment
 2 Is the model preprocessing slow?
 ``````````````````````````````````````
 
-  2.1 Add the ``--fuse_preprocess`` parameter when running model_deploy, which will put the preprocessing inside the TPU for processing.
+  2.1 Add the ``--fuse_preprocess`` parameter when running model_deploy, which
+  will put the preprocessing inside the Tensor Computing Processor for processing.
 
   2.2 If the image is obtained from vpss or vi, you can use ``--fuse_preprocess``, ``--aligned_input`` when converting to the model. Then use an interface such as CVI_NN_SetTensorPhysicalAddr to set the input tensor address directly to the physical address of the image, reducing the data copy time.
 
@@ -854,7 +855,7 @@ Common problems of model deployment
 4 Support multi-model inference parallel?
 ````````````````````````````````````````````
 
-  Multithreading is supported, but models are inferred on TPU in serial.
+  Multithreading is supported, but models are inferred on Tensor Computing Processor in serial.
 
 5 Fill input tensor related interface
 `````````````````````````````````````````
@@ -933,4 +934,3 @@ Others
    output_path = model.name + ".onnx"
 
    model_proto, _ = tf2onnx.convert.from_keras(model, input_signature=spec, opset=13, output_path=output_path)
-

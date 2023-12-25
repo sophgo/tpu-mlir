@@ -1,7 +1,7 @@
 Compile the Torch Model
 =======================
 
-This chapter takes ``yolov5s.pt`` as an example to introduce how to compile and transfer an pytorch model to run on the BM1684X TPU platform.
+This chapter takes ``yolov5s.pt`` as an example to introduce how to compile and transfer an pytorch model to run on the BM1684X platform.
 
 
 This chapter requires the tpu_mlir python package.

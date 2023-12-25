@@ -1,7 +1,7 @@
 Compile the TFLite model
 ========================
 
-This chapter takes the ``lite-model_mobilebert_int8_1.tflite`` model as an example to introduce how to compile and transfer a TFLite model to run on the BM1684X TPU platform.
+This chapter takes the ``lite-model_mobilebert_int8_1.tflite`` model as an example to introduce how to compile and transfer a TFLite model to run on the BM1684X platform.
 
 This chapter requires the tpu_mlir python package.
 

@@ -1,7 +1,7 @@
 编译ONNX模型
 ============
 
-本章以 ``yolov5s.onnx`` 为例, 介绍如何编译迁移一个onnx模型至TPU平台运行。
+本章以 ``yolov5s.onnx`` 为例, 介绍如何编译迁移一个onnx模型至深度学习处理器平台运行。
 
 该模型来自yolov5的官网: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
@@ -396,7 +396,7 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 从上面输出可以看到以下信息:
 
 1. 05-08行是bmodel的网络输入输出信息
-2. 19行是在TPU上运行的时间, 其中TPU用时4009us, 非加速用时113us。这里非加速用时主要是指在HOST端调用等待时间
+2. 19行是运行时间, 其中深度学习处理器用时4009us, 非加速用时113us。这里非加速用时主要是指在HOST端调用等待时间
 3. 24行是加载数据到NPU的DDR的时间
 4. 25行相当于19行的总时间
 5. 26行是输出数据取回时间

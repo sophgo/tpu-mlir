@@ -1,7 +1,8 @@
 Compile the ONNX model
 ======================
 
-This chapter takes ``yolov5s.onnx`` as an example to introduce how to compile and transfer an onnx model to run on the BM1684X TPU platform.
+This chapter takes ``yolov5s.onnx`` as an example to introduce how to compile
+and transfer an onnx model to run on the BM1684X platform.
 
 The model is from the official website of yolov5: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
@@ -399,7 +400,7 @@ Take the output of the last command as an example (the log is partially truncate
 The following information can be learned from the output above:
 
 1. Lines 05-08: the input and output information of bmodel
-2. Line 19: running time on the TPU, of which the TPU takes 4009us and the non-accelerated part takes 113us. The time of the latter mainly refers to the waiting time of calling at HOST
+2. Line 19: running time on the Tensor Computing Processor, of which the processor takes 4009us and the non-accelerated part takes 113us. The time of the latter mainly refers to the waiting time of calling at HOST
 3. Line 24: the time to load data into the NPU's DDR
 4. Line 25: the total time of Line 19
 5. Line 26: the output data retrieval time
