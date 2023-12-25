@@ -11,7 +11,12 @@ TPU-MLIR already includes a rich library of operators that can fulfill the needs
 
 The functionality of custom operators allows users to freely use the interfaces in TPU-Kernel to compute tensors on the TPU, and encapsulate this computation process as backend operators (refer to the TPU-KERNEL Technical Reference Manual for backend operator development). The backend operator calculation involves operations related to the global layer and local layer:
 
-  a. The operator must implement the global layer. The input and output data of the global layer are stored in DDR. The data needs to be transferred from global memory to local memory for execution and then transferred back to global memory. The advantage is that local memory can be used flexibly, but it has the disadvantage of generating a considerable number of GDMA transfers, resulting in lower TPU utilization.
+  a. The operator must implement the global layer. The input and output data of
+     the global layer are stored in DDR. The data needs to be transferred from
+     global memory to local memory for execution and then transferred back to
+     global memory. The advantage is that local memory can be used flexibly, but
+     it has the disadvantage of generating a considerable number of GDMA
+     transfers, resulting in lower the Tensor Competing Processor utilization.
 
 
   b. The operator can optionally implement the local layer. The input and output data of the local layer are stored in local memory. It can be combined with other layers for layer group optimization, avoiding the need to transfer data to and from global memory during the calculation of this layer. The advantage is that it saves GDMA transfers and achieves higher computational efficiency. However, it is more complex to implement. The local memory needs to be allocated in advance during model deployment, limiting its usage and making it impractical for certain operators.

@@ -395,7 +395,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
      - The number of devices to run for distributed computation
    * - num_core
      - N
-     - The number of TPU cores used for parallel computation
+     - The number of Tensor Computing Processor cores used for parallel computation
    * - skip_validation
      - N
      - Skip checking the correctness of bmodel

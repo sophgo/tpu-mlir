@@ -1,7 +1,7 @@
 编译TFLite模型
 ================
 
-本章以 ``lite-model_mobilebert_int8_1.tflite`` 模型为例, 介绍如何编译迁移一个TFLite模型至BM1684X TPU平台运行。
+本章以 ``lite-model_mobilebert_int8_1.tflite`` 模型为例, 介绍如何编译迁移一个TFLite模型至BM1684X 平台运行。
 
 本章需要安装tpu_mlir。
 

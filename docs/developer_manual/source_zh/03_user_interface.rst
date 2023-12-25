@@ -483,7 +483,7 @@ model_deploy.py
      - 用于并行计算的设备数量，默认1
    * - num_core
      - 否
-     - 用于并行计算的TPU核心数量，默认1
+     - 用于并行计算的智能视觉深度学习处理器核心数量，默认1
    * - skip_validation
      - 否
      - 跳过检查 bmodel 的正确性

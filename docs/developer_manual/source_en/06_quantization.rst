@@ -145,7 +145,7 @@ Substitute it into the int8 quantization formula, the derivation is as follows:
    step 1(Symmetric) \quad & => q_y = (q_a * M_a + q_b * M_b)_{i16} >> rshift_{i8} \\
    step 1(Asymmetric) \quad & => q_y = requant(dequant(q_a) + dequant(q_b))
 
-The way to implement Add with TPU is related to specific TPU instructions.
+The way to implement Add with Tensor Computing Processor is related to specific processor instructions.
 
 The symmetric method here is to use INT16 as the intermediate buffer.
 

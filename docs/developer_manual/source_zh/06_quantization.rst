@@ -145,7 +145,7 @@ Add
    step 1(对称) \quad & => q_y = (q_a * M_a + q_b * M_b)_{i16} >> rshift_{i8} \\
    step 1(非对称) \quad & => q_y = requant(dequant(q_a) + dequant(q_b))
 
-加法最终如何用TPU实现, 与TPU具体的指令有关。
+加法最终如何用智能深度学习处理器实现, 与处理器具体的指令有关。
 
 这里对称提供的方式是用INT16做中间buffer;
 

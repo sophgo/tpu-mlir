@@ -57,7 +57,9 @@ processor-tpu-optimize
 weight-reorder
    Reorder the weights of individual OP based on processor characteristics, such as filter and bias for convolution.
 subnet-divide
-   Split the network into different subnets according to the type of processor, if all operators are TPU, there is only one subnet.
+   Divide the network into various subnets based on the processor type. If the
+   Tensor Competing Processor can compute all operators, then it forms a single
+   subnet.
 op-reorder
    Reorder op to make sure ops are close to their users.
 layer-group

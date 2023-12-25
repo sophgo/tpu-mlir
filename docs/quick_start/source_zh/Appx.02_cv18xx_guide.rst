@@ -489,7 +489,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 aarch 64位  (如cv183x aarch64位平台)
 ``````````````````````````````````````
 
-TPU sdk准备:
+SDK准备:
 
 .. code-block:: shell
 
@@ -522,7 +522,7 @@ TPU sdk准备:
 arm 32位  (如cv183x平台32位、cv182x平台)
 ``````````````````````````````````````````
 
-TPU sdk准备:
+SDK准备:
 
 .. code-block:: shell
 
@@ -564,7 +564,7 @@ TPU sdk准备:
 uclibc 32位平台 (cv182x uclibc平台)
 ``````````````````````````````````````
 
-TPU sdk准备:
+SDK准备:
 
 .. code-block:: shell
 
@@ -606,7 +606,7 @@ TPU sdk准备:
 riscv64位 musl平台 (如cv181x、cv180x riscv64位 musl平台)
 ``````````````````````````````````````````````````````````````
 
-TPU sdk准备:
+SDK准备:
 
 .. code-block:: shell
 
@@ -638,7 +638,7 @@ TPU sdk准备:
 riscv64位 glibc平台 (如cv181x、cv180x riscv64位glibc平台)
 ``````````````````````````````````````````````````````````
 
-TPU sdk准备:
+SDK准备:
 
 .. code-block:: shell
 
@@ -844,7 +844,7 @@ FAQ
 2 模型预处理速度比较慢?
 ```````````````````````
 
-  2.1 转模型的时候可以在运行 ``model_deploy`` 时加上 ``fuse_preprocess`` 参数, 将预处理放到TPU内部来处理。
+  2.1 转模型的时候可以在运行 ``model_deploy`` 时加上 ``fuse_preprocess`` 参数, 将预处理放到深度学习处理器内部来处理。
 
   2.2 如果图片是从vpss或者vi获取, 那么可以在转模型时使用 ``fuse_preprocess、aligned_input`` , 然后使用 ``CVI_NN_SetTensorPhysicalAddr`` 等接口直接将input tensor地址设置为图片的物理地址, 减少数据拷贝耗时。
 
@@ -856,7 +856,7 @@ FAQ
 4 如果要跑多个模型支持多线程并行吗?
 ````````````````````````````````````
 
-  支持多线程, 但是多个模型在TPU上推理时是串行进行的。
+  支持多线程, 但是多个模型在深度学习处理器上推理时是串行进行的。
 
 5 填充input tensor相关接口区别
 ```````````````````````````````
@@ -935,5 +935,3 @@ FAQ
    output_path = model.name + ".onnx"
 
    model_proto, _ = tf2onnx.convert.from_keras(model, input_signature=spec, opset=13, output_path=output_path)
-
-

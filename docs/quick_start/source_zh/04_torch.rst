@@ -1,7 +1,7 @@
 编译TORCH模型
 =============
 
-本章以 ``yolov5s.pt`` 为例, 介绍如何编译迁移一个pytorch模型至BM1684X TPU平台运行。
+本章以 ``yolov5s.pt`` 为例, 介绍如何编译迁移一个pytorch模型至BM1684X 平台运行。
 
 本章需要安装tpu_mlir。
 

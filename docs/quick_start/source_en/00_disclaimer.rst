@@ -44,13 +44,13 @@
      - Adjusted the mixed quantization example
    * - v1.1.0
      - 2023.05.26
-     - Added using TPU for post-processing
+     - Added using Tensor Computing Processor for post-processing
    * - v1.0.0
      - 2023.04.10
      - Support for PyTorch, added section introducing the conversion to PyTorch models
    * - v0.8.0
      - 2023.02.28
-     - Added using TPU for pre-processing
+     - Added using Tensor Computing Processor for pre-processing
    * - v0.6.0
      - 2022.11.05
      - Support mix precision
