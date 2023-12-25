@@ -23,7 +23,7 @@ chip_support = {
     "cv182x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv183x":    (N,   N,   Y,    Y,        N,         N,        N,      N,      N,       "cvimodel"),
     "cv186x":    (Y,   Y,   Y,    Y,        N,         Y,        N,      N,      N,       "bmodel"),
-    "sg2260":    (Y,   Y,   Y,    N,        N,         Y,        Y,      N,      N,       "bmodel"),
+    "sg2260":    (Y,   Y,   Y,    N,        N,         Y,        N,      N,      N,       "bmodel"),
 }
 
 '''
@@ -49,6 +49,7 @@ basic_model_list = {
     "nmt_encode":                 (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
     "nmt_decode10":               (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
     "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
+    "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
 }
 
 
