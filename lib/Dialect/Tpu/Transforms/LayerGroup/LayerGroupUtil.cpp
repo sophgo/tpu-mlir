@@ -1120,6 +1120,42 @@ void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
   op->setAttr(LocalGenInterface::kLayerGroupAttrName, lg_attr);
 }
 
+
+// MatMul weight split case
+// case1 : [4, 5, 6] * [4, 6, 7] = [4, 5, 7]  => batch = 4, M = 5, k = 6, N = 7
+// case2 : [3, 4, 5, 6] * [3, 4, 6, 7] => batch = 12, M = 5, K = 6, N = 7
+// other cases TODO
+bool check_split_matmul(Operation *op) {
+  if (!isa<tpu::MatMulOp>(op)){
+    return false;
+  }
+  auto matmulOp = dyn_cast<tpu::MatMulOp>(op);
+
+  auto a_s = SmallVector<int64_t>(module::getShape(matmulOp.getInput()));
+  auto b_s = SmallVector<int64_t>(module::getShape(matmulOp.getRight()));
+  auto o_s = SmallVector<int64_t>(module::getShape(matmulOp.getOutput()));
+
+  if(a_s.size() != b_s.size()){
+    return false;
+  }
+
+  // case 1
+  if(a_s.size() == 3 && a_s[0] == b_s[0] && a_s[0] != 1 && a_s[2] == b_s[1]){
+      return true;
+  }
+
+  // case 2
+  if(a_s.size() == 4 && a_s[0] == b_s[0] && a_s[0] != 1 && a_s[1] == b_s[1] 
+      && b_s[1] != 1 && a_s[3] == b_s[2]){
+      return true;
+  }
+
+  // other cases
+  // TODO 
+
+  return false;
+}
+
 void set_weight_allow_split_attr(Operation *op) {
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
@@ -1127,6 +1163,10 @@ void set_weight_allow_split_attr(Operation *op) {
           tpu::MaxOp, tpu::CompareOp, tpu::ConcatOp, tpu::MatMulOp>(op) &&
       (module::isWeight(op->getOperand(0)) ||
        module::isWeight(op->getOperand(1)))) {
+
+    if (isa<tpu::MatMulOp>(op) && !check_split_matmul(op)){
+      return;
+    }
     top::WeightOp weight_op;
     if (module::isWeight(op->getOperand(0))) {
       weight_op = dyn_cast<top::WeightOp>(op->getOperand(0).getDefiningOp());
