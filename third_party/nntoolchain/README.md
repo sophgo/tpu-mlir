@@ -51,15 +51,15 @@ popd
 ```
 
 
-## tpu-runtime 2023-09-18
-build from tpu-runtime 969fb471519b9c2cf34398d914e69f27786e8f52
+## tpu-runtime 2023-12-25
+build from tpu-runtime ea2ef0c38706056162f82bf0117f5d113445aaee
 ``` bash
 pushd libsophon
 mkdir -p build && cd build
-cmake -G Ninja -DPLATFORM=cmode ..
+cmake -G Ninja -DPLATFORM=cmodel -DCMAKE_BUILD_TYPE=Debug ../
 ninja
-cp tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
-cp bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp -P tpu-runtime/libbmrt.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
+cp -P bmlib/libbmlib.so* /workspace/tpu-mlir/third_party/nntoolchain/lib/
 popd
 ```
 
