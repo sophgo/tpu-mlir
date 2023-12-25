@@ -17,9 +17,9 @@ TEST(TensorManipulation, Chain) {
   std::vector<int> data = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
                            11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
   auto a = TensorManipulation(data, {4, 5});
-  auto b = a.resize(SmallVector{2, 2}, SmallVector{3, 3})
+  auto b = a.resize(std::array{2, 2}, std::array{3, 3})
                .reshape(4, 9)
-               .slice(2, SmallVector{2, 5})
+               .slice(2, std::array{2, 5})
                .transpose(1, 0)
                .slice(3, 2)
                .getTensor();

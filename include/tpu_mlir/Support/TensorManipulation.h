@@ -208,16 +208,13 @@ public:
 
 private:
   template <typename T>
-  TensorManipulation &dimRecord(SmallVector<T> rank) {
-    assert(rank.size() == 2);
+  void dimRecord(std::array<T, 2> rank) {
     compDims.push_back(std::array<int64_t, 2>{rank[0], rank[1]});
-    return *this;
   }
 
   template <typename T>
-  TensorManipulation &dimRecord(T rank) {
+  void dimRecord(T rank) {
     compDims.push_back(rank);
-    return *this;
   }
 
   TensorManipulation &reset() {
@@ -231,20 +228,20 @@ private:
 
     SmallVector<int64_t> flattenShape;
     SmallVector<int64_t> shape;
-    for (auto &rank : compDims) {
-      if (auto *value = std::get_if<int64_t>(&rank)) {
+    for (int i = 0, n = compDims.size(); i < n; i++) {
+      if (auto *value = std::get_if<int64_t>(&compDims[i])) {
         flattenShape.push_back(*value);
         shape.push_back(*value);
       } else {
-        auto pack = std::get<Dim2Type>(rank);
+        auto pack = std::get<Dim2Type>(compDims[i]);
         flattenShape.push_back(pack[0] * pack[1]);
         shape.push_back(pack[0]);
         shape.push_back(pack[1]);
       }
+      copySize.push_back(std::min(flattenShape.back(), source.getShape()[i]));
     }
     target.reshape(flattenShape);
     target.resetData(0);
-    copySize = source.getShape();
     doCopy();
     target.reshape(shape);
     source.swap(target);
