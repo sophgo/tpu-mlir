@@ -76,6 +76,7 @@ full_model_list = {
     "shufflenet_v2":              (N,      Y,       Y,      Y,      N,      Y,      Y,      Y,     N),
     "squeezenet1.0":              (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
     "ssd-12":                     (N,      Y,       Y,      N,      N,      N,      N,      Y,     Y),
+    "swin_transformer":           (Y,      Y,       Y,      N,      N,      N,      N,      Y,     N),
     "ultraface_640":              (N,      Y,       Y,      N,      N,      N,      N,      Y,     N),
     "unet":                       (N,      N,       N,      N,      N,      N,      Y,      N,     N),
     "unet_plusplus":              (N,      N,       N,      N,      N,      N,      N,      N,     N),
