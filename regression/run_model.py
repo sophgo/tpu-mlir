@@ -32,7 +32,7 @@ class MODEL_RUN(object):
                  aligned_input: bool = False,
                  save_log: bool = False,
                  disable_thread: bool = True,
-                 debug:bool = False,
+                 debug: bool = False,
                  num_core: int = 1):
         self.model_name = model_name
         self.chip = chip
