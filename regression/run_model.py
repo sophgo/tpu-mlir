@@ -80,6 +80,7 @@ class MODEL_RUN(object):
             "f8e5m2": config.get(self.arch, "f8e5m2_tolerance", fallback="0.7,0.4"),
         }
         # set quant_modes according to argument and config files
+        # Note: the order of quant modes should be consistent with chip_support in chip.py
         self.quant_modes = {
             "f32": 0,
             "f16": 0,
