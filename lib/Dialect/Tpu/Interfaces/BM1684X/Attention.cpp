@@ -73,7 +73,7 @@ int64_t tpu::AttentionOp::getBufferSize_bm1684x(
 
   int64_t buffer_size = 0;
   int c_per_npu = ceiling_func(M_q, BM168x::NPU_NUM);
-  if (out_type.isInteger(8)) {
+  if (out_type.isInteger(32)) {
     auto eu_num_i32 = BM168x::eu_num(sizeof(int));
     auto eu_num_i8 = BM168x::eu_num(sizeof(int8_t));
     int64_t d_size = align_up(d, eu_num_i8) * sizeof(int8_t);
