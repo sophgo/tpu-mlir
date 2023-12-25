@@ -90,16 +90,16 @@ model-zoo的目录结构如下：
 ImageNet
 --------
 
-下载 `imagenet 2012 数据集 <https://image-net.org/challenges/LSVRC/2012/>`_ 的
 
-ILSVRC2012_img_val.tar（MD5 29b22e2961454d5413ddabcf34fc5622）。
+下载 `imagenet 2012 数据集 <https://www.kaggle.com/competitions/imagenet-object-localization-challenge/data?select=ILSVRC>`_ 。
 
-将 ILSVRC2012_img_val.tar 解压到 ``dataset/ILSVRC2012/ILSVRC2012_img_val`` 目录中：
+解压后，将 Data/CLS_LOC/val 下的数据移动到 model-zoo 如下目录中：
 
 .. code :: shell
 
-   $ cd path/to/model-zoo
-   $ tar xvf path/to/ILSVRC2012_img_val.tar -C dataset/ILSVRC2012/ILSVRC2012_img_val
+   cd path/to/sophon/model-zoo
+   mv path/to/imagenet-object-localization-challenge/Data/CLS_LOC/val dataset/ILSVRC2012/ILSVRC2012_img_val
+   # 也可以通过软链接 ln -s 将目录映射为 dataset/ILSVRC2012/ILSVRC2012_img_val
 
 COCO (可选)
 -----------
