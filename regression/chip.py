@@ -26,6 +26,12 @@ chip_support = {
     "sg2260":    (Y,   Y,   Y,    N,        N,         Y,        N,      N,      N,       "bmodel"),
 }
 
+multi_core_info = {
+    # chip_name : num_core
+    "bm1688": 2,
+    "sg2260": 8,
+}
+
 '''
     basic_model_list is for each commit test
     full_model_list is for daily test
@@ -51,7 +57,6 @@ basic_model_list = {
     "nmt_decode20":               (N,      N,       N,      N,      N,      Y,      Y,     N,     N),
     "bert-tiny_from_pt":          (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     Y),
 }
-
 
 full_model_list = {
     # model_name:              (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
@@ -146,4 +151,16 @@ full_model_list = {
     "pp_ocr_cls":                 (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
     "pp_ocr_rec":                 (N,      Y,       Y,      N,      N,      N,      N,      Y,     N),
     "pp_hgnet":                   (N,      Y,       Y,      N,      N,      Y,      Y,      Y,     N),
+}
+
+basic_multi_core_model_list = {
+    # model_name:                 (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
+    ######## onnx ###############
+    "attention_2batch_block_0_1": (N,      N,       N,      N,      N,      N,      N,      N,      Y),
+}
+
+full_multi_core_model_list = {
+    # model_name:                 (bm1684, bm1684x, bm1688, cv180x, cv181x, cv182x, cv183x, cv186x, sg2260)
+    ######## onnx ###############
+    "attention_2batch_block_0_1": (N,      N,       N,      N,      N,      N,      N,      N,      Y),
 }

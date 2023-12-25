@@ -68,6 +68,7 @@ class MAIN_ENTRY(object):
             "op": self.run_op_test,
             "script": self.run_script_test,
             "model": self.run_model_test,
+            "multi_core_model": self.run_multi_core_test,
         }
 
         self.results = []
@@ -81,8 +82,8 @@ class MAIN_ENTRY(object):
             "error_cases": error_cases
         })
 
-    def run_regression_net(self, model_name, chip, finished_list):
-        case_name = f"{model_name}_{chip}"
+    def run_regression_net(self, model_name, chip, num_core, finished_list):
+        case_name = f"{model_name}_{chip}_num_core_{num_core}"
         # set the file for saving output stream
         log_filename = case_name + ".log"
 
@@ -91,7 +92,7 @@ class MAIN_ENTRY(object):
         file_handler.setFormatter(logging.Formatter('%(message)s'))
         self.logger.addHandler(file_handler)
 
-        print(f"======= run_models.py {model_name} {chip} {self.test_type}=====")
+        print(f"======= run_models.py {model_name} {chip} {self.test_type} num_core: {num_core} =====")
         dir = os.path.expandvars(f"$REGRESSION_PATH/regression_out/{model_name}_{chip}")
         os.makedirs(dir, exist_ok=True)
         os.chdir(dir)
@@ -99,6 +100,7 @@ class MAIN_ENTRY(object):
                               chip,
                               self.test_type,
                               save_log=True,
+                              num_core = num_core,
                               disable_thread=self.disable_thread)
         ret = regressor.run_full()
         finished_list.append({
@@ -164,9 +166,20 @@ class MAIN_ENTRY(object):
                     return 1
             self.time_cost.append(f"run_{op_source}: {int(t.elapsed_time())} seconds")
 
-    def run_model_test(self):
-        model_list = basic_model_list if self.is_basic else full_model_list
+    def run_model_test(self, multi_core: bool = False):
+        model_list = None
+        if multi_core:
+            model_list = basic_multi_core_model_list if self.is_basic else full_multi_core_model_list
+        else:
+            model_list = basic_model_list if self.is_basic else full_model_list
+
         for idx, chip in enumerate(chip_support.keys()):
+            num_core = 1
+            if multi_core:
+                if chip not in multi_core_info.keys():
+                    continue
+                num_core = multi_core_info[chip]
+
             t = Timer()
             cur_model_list = [
                 model_name for model_name, do_test in model_list.items() if do_test[idx]
@@ -174,7 +187,7 @@ class MAIN_ENTRY(object):
             if self.disable_thread:
                 finished_list = list()
                 for model in cur_model_list:
-                    self.run_regression_net(model, chip, finished_list)
+                    self.run_regression_net(model, chip, num_core, finished_list)
                 self.results.extend(finished_list)
                 if self.is_basic:
                     for result in finished_list:
@@ -191,7 +204,7 @@ class MAIN_ENTRY(object):
                     name = f"{model}_{chip}"
                     p = multiprocessing.Process(target=self.run_regression_net,
                                                 name=name,
-                                                args=(model, chip, finished_list))
+                                                args=(model, chip, num_core, finished_list))
                     processes.append(p)
                     if len(processes) == process_number:
                         collect_process(processes, error_cases, 1200)
@@ -212,6 +225,8 @@ class MAIN_ENTRY(object):
                             return 1
             self.time_cost.append(f"run models for {chip}: {int(t.elapsed_time())} seconds")
 
+    def run_multi_core_test(self):
+        self.run_model_test(multi_core=True)
 
     def run_all(self, test_set):
         t = Timer()
@@ -229,7 +244,7 @@ if __name__ == "__main__":
     # yapf: disable
     parser.add_argument("--test_type", default="all", type=str.lower, choices=['all', 'basic'],
                         help="whether do all model test, 'all' runs all modes, 'baisc' runs basic models f16 and int8 sym only")
-    choices = ["op", "script", "model"]
+    choices = ["op", "script", "model", "multi_core_model"]
     parser.add_argument("--test_set", default=choices, type=str.lower, nargs="+", choices=choices,
                         help="run test set individually.")
     parser.add_argument("--disable_thread", action="store_true", help='do test without multi thread')
