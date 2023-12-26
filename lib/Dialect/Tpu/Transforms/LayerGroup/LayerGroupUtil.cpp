@@ -1141,17 +1141,18 @@ bool check_split_matmul(Operation *op) {
 
   // case 1
   if(a_s.size() == 3 && a_s[0] == b_s[0] && a_s[0] != 1 && a_s[2] == b_s[1]){
+  // if(a_s.size() == 3 && /*a_s[0] == b_s[0] && a_s[0] != 1 && */ a_s[2] == b_s[1]){
       return true;
   }
 
   // case 2
-  if(a_s.size() == 4 && a_s[0] == b_s[0] && a_s[0] != 1 && a_s[1] == b_s[1] 
+  if(a_s.size() == 4 && a_s[0] == b_s[0] && a_s[0] != 1 && a_s[1] == b_s[1]
       && b_s[1] != 1 && a_s[3] == b_s[2]){
       return true;
   }
 
   // other cases
-  // TODO 
+  // TODO
 
   return false;
 }

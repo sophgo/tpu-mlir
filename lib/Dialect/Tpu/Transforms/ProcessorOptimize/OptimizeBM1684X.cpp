@@ -9,6 +9,7 @@
 
 #include "Common.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Distribute/DistributeUtils.h"
 
 using namespace llvm;
 using namespace tpu_mlir::backend;
@@ -1403,11 +1404,72 @@ public:
     }
     //indicate don;t codegen later
     op->setAttr("discard", rewriter.getBoolAttr(true));
-    return success();
   }
 };
 #endif
 
+#if 1
+//  split the pattern if batch=1
+class MatMulActiveMatMulPattern : public OpRewritePattern<tpu::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto left0 = op.getInput();
+    auto right0 = op.getRight();
+    auto mm0_left_shape = module::getShape(left0);
+    if (!isa<top::WeightOp>(right0.getDefiningOp()) || mm0_left_shape[0] > 8) {
+      return failure();
+    }
+
+    auto cast0 = dyn_cast<tpu::CastOp>(left0.getDefiningOp());
+    if (!cast0) {
+      return failure();
+    }
+    auto active0 = dyn_cast<tpu::ActiveOp>(cast0.getInput().getDefiningOp());
+    if (!active0) {
+      return failure();
+    }
+    auto cast1 = dyn_cast<tpu::CastOp>(active0.getInput().getDefiningOp());
+    if (!cast1) {
+      return failure();
+    }
+    auto mm1 = dyn_cast<tpu::MatMulOp>(cast1.getInput().getDefiningOp());
+    if (!mm1) {
+      return failure();
+    }
+    auto left1 = mm1.getInput();
+    auto right1 = mm1.getRight();
+    if (!isa<top::WeightOp>(right1.getDefiningOp())) {
+      return failure();
+    }
+    if (!left1.hasOneUse()) {
+      return failure();
+    }
+
+    // split the pattern
+    std::vector<Value> operands;
+    for (int i = 0; i < 2; ++i) {
+      auto cur_out = left1;
+      Operation *next_op = mm1.getOperation();
+      auto suffix = std::to_string(i);
+      next_op = tpu::cloneColParallelMatMul(rewriter, next_op, cur_out, 2, i);
+      next_op = tpu::cloneCommonOp(rewriter, next_op, cur_out, suffix);
+      next_op = tpu::cloneRowParallelMatMul(rewriter, next_op, cur_out, 2, i);
+      operands.push_back(cur_out);
+    }
+
+    rewriter.setInsertionPointAfterValue(operands[0]);
+    std::string suffix = std::string("add_");
+    auto loc = module::getLocLike(operands[1], suffix);
+    auto add = rewriter.create<tpu::AddOp>(loc, operands[0].getType(),
+        mlir::ValueRange{operands[0], operands[1]});
+    op.getOutput().replaceAllUsesWith(add.getOutput());
+    return success();
+  }
+};
+#endif
 
 namespace tpu {
 using namespace bm1684x;
@@ -1421,7 +1483,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
             PermuteAddWeightReorderPattern, MaskedFillPermuteMove, PermuteFuse,
             PermuteFuseAddSoftmax, patterns::FuseRepeatPattern<tpu::ReshapeOp>,
             PermuteReshapeFuse, GatherElementsPattern, ScatterElementsPattern,
-            PermuteReorderPattern, PermutePadSwap>(ctx, 8);
+            PermuteReorderPattern, PermutePadSwap, MatMulActiveMatMulPattern>(ctx, 8);
   patterns->add<TileMatMulHdimBatchPattern>(ctx, 7);
 }
 } // namespace tpu
