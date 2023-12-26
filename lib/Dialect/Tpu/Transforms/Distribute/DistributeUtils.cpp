@@ -1078,7 +1078,8 @@ Operation *cloneColParallelMatMul(PatternRewriter &rewriter, Operation *next_op,
   }
   Value new_bias = bias;
   if (auto biasOp = dyn_cast<top::WeightOp>(bias.getDefiningOp())) {
-    new_bias = module::opSliceAxis(bias, num_dims - 1, offset, length);
+    int bias_num_dims = module::getShape(bias).size();
+    new_bias = module::opSliceAxis(bias, bias_num_dims - 1, offset, length);
   }
 
   Operation *new_op;
