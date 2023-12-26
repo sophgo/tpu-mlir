@@ -640,7 +640,7 @@ public:
       return failure();
     }
     if (!module::isBM1684Family()
-        && (!module::isBM1684XFamily())) {
+        && (!module::isBM1684XFamily()) && (!module::isSG2260Family())) {
       llvm_unreachable("Not Implemented");
       return failure();
     }
