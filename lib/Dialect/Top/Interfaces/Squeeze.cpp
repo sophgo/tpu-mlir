@@ -50,4 +50,10 @@ void top::SqueezeOp::shape_inference() {
     out_shape.push_back(1);
   }
   module::setShapeOrVerify(getOutput(), out_shape);
+  if (module::isShape(getInput())) {
+    auto input_v = module::getShapeTensorValue(getInput());
+    auto output_shape_v =
+        module::commonShapeValInfer(getOperation(), {input_v}, out_shape);
+    module::bindShapeTensorValue(getOutput(), output_shape_v);
+  }
 }

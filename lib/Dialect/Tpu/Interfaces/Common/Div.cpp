@@ -111,7 +111,7 @@ void tpu::DivOp::assign_sec_info(int64_t n_step, int64_t c_step, int64_t h_step,
 void tpu::DivOp::assign_fw_param(void *param) {
   fw_broadcast_binary_layer_param_t *fw_broadcast_binary_layer_param =
       (fw_broadcast_binary_layer_param_t *)param;
-  fw_broadcast_binary_layer_param->binary_op = BINARY_MUL;
+  fw_broadcast_binary_layer_param->binary_op = BINARY_DIV;
   fw_broadcast_binary_layer_param->a_is_coeff =
       module::isWeight(getInputs()[0]);
   fw_broadcast_binary_layer_param->b_is_coeff =

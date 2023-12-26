@@ -156,6 +156,12 @@ class ConstantFolding(object):
                 and ((len(node.input) > 2 and node.input[2] not in self.const_tensors) \
                     or (len(node.input) > 3 and node.input[3] not in self.const_tensors)):
             return True
+        if node.op_type in ["Slice"] \
+                and ((len(node.input) > 1 and node.input[1] not in self.const_tensors) \
+                    or (len(node.input) > 2 and node.input[2] not in self.const_tensors) \
+                    or (len(node.input) > 3 and node.input[3] not in self.const_tensors) \
+                    or (len(node.input) > 4 and node.input[4] not in self.const_tensors)):
+            return True
         return False
 
     def has_subgraph_in_node(self, node):
@@ -231,7 +237,7 @@ class ConstantFolding(object):
             for name in inputs_npz.files:
                 elem_type = self.get_elem_type(name)
                 elem_type = self.get_np_type_from_elem_type(elem_type)
-                inputs[name] = inputs_npz[name].astype(elem_type)    
+                inputs[name] = inputs_npz[name].astype(elem_type)
         else:
             inputs.update(self.generate_specific_rand_input(input_shapes))
 
