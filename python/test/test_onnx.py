@@ -3961,7 +3961,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_GatherElements(self, case_name):
-        if self.chip in ['bm1684x']:
+        if self.chip in ['bm1684x', 'sg2260']:
             # samples too large for regression is commented
             # but all samples following should be passed
             input_data = [
@@ -4026,7 +4026,7 @@ class ONNX_IR_TESTER(object):
                 indices_,
             )
 
-            if self.chip in ['bm1684x']:
+            if self.chip in ['bm1684x', 'sg2260']:
                 graph_txt = """
                     %s (float%s data) => (float%s gather_output)
                     <int64%s indices>

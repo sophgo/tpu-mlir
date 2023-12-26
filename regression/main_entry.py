@@ -201,7 +201,7 @@ class MAIN_ENTRY(object):
                 finished_list = multiprocessing.Manager().list()
                 error_cases = multiprocessing.Manager().list()
                 for model in cur_model_list:
-                    name = f"{model}_{chip}"
+                    name = f"{model}_{chip}_num_core_{num_core}"
                     p = multiprocessing.Process(target=self.run_regression_net,
                                                 name=name,
                                                 args=(model, chip, num_core, finished_list))

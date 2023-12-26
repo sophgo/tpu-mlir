@@ -304,7 +304,7 @@ class MODEL_RUN(object):
         if self.num_core != 1:
             cmd += [f"--num_core {self.num_core}"]
 
-        # add for int8 mode
+        # add for quant modes which require calibration
         if (quant_mode.startswith("int8") or quant_mode.startswith("int4") or quant_mode.startswith("f8")):
             if self.do_cali:
                 cmd += [f"--calibration_table {self.cali_table}"]
