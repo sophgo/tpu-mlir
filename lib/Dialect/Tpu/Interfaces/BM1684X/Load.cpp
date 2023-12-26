@@ -69,6 +69,35 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t c_step,
   gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   auto g_addr = module::getAddress(getInput());
+#if 0
+  //note: trick for imgToCol pattern
+  const auto defBySliceOp = [&] (Value v) {
+      std::function<std::pair<bool, Operation *>(Value)>
+         f = [&f] (Value v) -> std::pair<bool, Operation *> {
+      if (isa<BlockArgument>(v)) {
+        auto argument = cast<BlockArgument>(v);
+        int index = argument.getArgNumber();
+        auto op = argument.getOwner()->getParentOp();
+        if (isa<FunctionOpInterface>(op))
+          return std::make_pair(false, nullptr);
+        else {
+          auto in = op->getOpOperand(index).get();
+          return  f(in);
+        }
+      } else if (isa<tpu::ReshapeOp>(v.getDefiningOp())) {
+        auto in = v.getDefiningOp()->getOpOperand(0).get();
+        return f(in);
+      } else if (isa<tpu::SliceOp>(v.getDefiningOp())) {
+        auto sliceOp = cast<tpu::SliceOp>(v.getDefiningOp());
+        if (sliceOp.getDiscard())
+          return std::make_pair(true, v.getDefiningOp());
+        else
+          return std::make_pair(false, nullptr);
+      } else
+        return std::make_pair(false, nullptr);};
+    return f(v);};
+  auto [fromSlice, sliceOp] = defBySliceOp(getInput());
+#endif
   // int64_t dhw = D * H * W;
   // int64_t eu_num = BM168x::eu_num(fmt_bytes);
   int64_t use_3ic = getUse_3icOptimize();

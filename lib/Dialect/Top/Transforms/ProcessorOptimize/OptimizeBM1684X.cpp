@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Common.h"
-
+#include <future>
 namespace tpu_mlir {
 
 namespace bm1684x {
@@ -823,6 +823,189 @@ class ConvertConv2DToImg2Col final
     return success();
   }
 };
+
+/* for to reduce the data move, split the matmul
+   to multiple matmul if match below pattern:
+                /--->SliceOp
+   MatMul--Reshape(maybe no exist)---->SliceOp
+               \---->SliceOp
+                \ ---->SliceOp
+*/
+class SplitMatMulPattern : public OpRewritePattern<top::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    Value input = op.getInput();
+    Value right = op.getRight();
+    Value bias = op.getBias();
+    Value output = op.getOutput();
+    auto rightType = llvm::cast<ShapedType>(right.getType());
+    auto outputType = llvm::cast<ShapedType>(output.getType());
+    bool with_bias = !module::isNone(bias);
+    int32_t id = 0;
+    auto loc_name = module::getName(op.getOperation()).str();
+    if (!(isa<top::WeightOp>(right.getDefiningOp())
+          && ((with_bias && isa<top::WeightOp>(bias.getDefiningOp())) || !with_bias))) {
+      return failure();
+    }
+
+    const auto canSplit = [&](Operation *op) {
+      using TYPE = std::function<std::pair<bool,  std::vector<Operation *>>(Operation *op)>;
+      TYPE f;
+      f = [&] (Operation *op) -> decltype(std::declval<TYPE>()(op)) {
+        if (std::distance(op->user_begin(), op->user_end()) == 1
+          && isa<top::ReshapeOp>(*(op->user_begin()))) {
+          return f(*(op->user_begin()));
+        } else if (std::distance(op->user_begin(), op->user_end()) > 1) {
+          std::vector<Operation *> ops;
+          for (Operation *user: op->getUsers())
+          {
+            if (!isa<top::SliceOp>(user))
+              return std::make_pair(false, std::vector<Operation *>());
+            else {
+              ops.emplace_back(user);
+            }
+          }
+          return std::make_pair(true, ops);
+        } else {
+          return std::make_pair(false, std::vector<Operation *>());
+        }
+      };
+      return f(op);};
+
+    auto split = canSplit(op.getOperation());
+    if (!split.first)
+      return failure();
+    //current just support weight's col
+    auto matmul_shape = module::getShape(output);
+    auto right_shape = module::getShape(right);
+    llvm::ArrayRef<int64_t> bias_shape;
+    int32_t total_slice_width = 0;
+    std::vector<int32_t> slice_width;
+
+    //sort the slices ops by offset
+    std::packaged_task<std::vector<Operation*>(std::vector<Operation *> &)>
+       sortOps([&](std::vector<Operation *> &ops) {
+      int32_t index;
+      std::vector<Operation *> sorted;
+      auto first_offset = module::getI64Array
+                         (cast<top::SliceOp>(ops[0]).getOffset());
+      auto last_offset = module::getI64Array
+                         (cast<top::SliceOp>(ops[ops.size()-1]).getOffset());
+      for (int32_t i = 0; i < first_offset->size(); i++) {
+        if (first_offset->at(i) != last_offset->at(i)) {
+          index = i;
+          break;
+        }
+      }
+
+      std::vector<int32_t> offsets;
+      for (int32_t i = 0; i < ops.size(); i++) {
+        auto offset = module::getI64Array
+                         (cast<top::SliceOp>(ops[i]).getOffset());
+        offsets.push_back(offset->at(index));
+      }
+
+      std::vector<int32_t> indexs(ops.size());
+      std::iota(indexs.begin(), indexs.end(), 0);
+      std::sort(indexs.begin(), indexs.end(),
+                [&](const int32_t &a, const int32_t &b) {
+                  return offsets[a] < offsets[b];});
+      for (int32_t i = 0; i < ops.size(); i ++) {
+        sorted.push_back(ops[indexs[i]]);
+      }
+      return std::move(sorted);
+    });
+
+    std::future<std::vector<Operation *>> orderedOps = sortOps.get_future();
+    sortOps(split.second);
+    std::vector<Operation *> sortedOps = std::move(orderedOps.get());
+    for (Operation *user: sortedOps) {
+      auto slice_out_shape = module::getShape(cast<top::SliceOp>(user).getOutput());
+      int32_t w = 1;
+      for (int32_t i = matmul_shape.size() - 1; i < slice_out_shape.size(); i++)
+        w *= slice_out_shape[i];
+      slice_width.push_back(w);
+      total_slice_width += w;
+    }
+
+    if (matmul_shape[matmul_shape.size() - 1] != total_slice_width)
+      return failure();
+
+    int32_t right_first_ndim_size = 1;
+    int32_t bias_first_ndim_size = 1;
+    for (int32_t i = 0; i < right_shape.size() - 1; i++)
+      right_first_ndim_size *= right_shape[i];
+    if (with_bias) {
+      bias_shape = module::getShape(bias);
+      for (int32_t i = 0; i < bias_shape.size() - 1; i++)
+        bias_first_ndim_size *= bias_shape[i];
+    }
+
+    auto rightOp = cast<top::WeightOp>(right.getDefiningOp());
+    auto filter_f32 = rightOp.read_as_float();
+    std::shared_ptr<std::vector<float>> bias_f32 = nullptr;
+    if (with_bias) {
+      auto biasOp = cast<top::WeightOp>(bias.getDefiningOp());
+      bias_f32 = biasOp.read_as_float();
+    }
+    for (auto [idx, value]: llvm::enumerate(sortedOps)) {
+      std::vector<Value> operands;
+      operands.emplace_back(input);
+
+      auto new_filter_f32 =
+        std::make_shared<std::vector<float>>(right_first_ndim_size * slice_width[idx]);
+      int32_t offset = std::accumulate(slice_width.begin(), slice_width.begin() + idx, 0, std::plus<int32_t>());
+      for (int32_t i = 0; i < right_first_ndim_size; i++) {
+        for (int32_t k = 0; k < slice_width[idx]; k++)
+          new_filter_f32->at(i * slice_width[idx] + k) = filter_f32->at(i * right_shape[right_shape.size() - 1] + k + offset);
+      }
+      SmallVector<int64_t> new_right_shape(right_shape);
+      new_right_shape[new_right_shape.size() - 1] = slice_width[idx];
+      auto new_right_type = RankedTensorType::get(new_right_shape, rightType.getElementType());
+      auto new_filter =
+        top::WeightOp::create(op, "_filter_" + std::to_string(id), *new_filter_f32, new_right_type);
+      operands.emplace_back(new_filter);
+
+      if (with_bias) {
+        auto new_bias_f32 = std::make_shared<std::vector<float>>(bias_first_ndim_size * slice_width[idx]);
+        for (int32_t i = 0; i < bias_first_ndim_size; i++) {
+          for (int32_t k = 0; k < slice_width[idx]; k++)
+            new_bias_f32->at(i * slice_width[idx] + k) = bias_f32->at(i * bias_shape[bias_shape.size() - 1] + k + offset);
+        }
+        SmallVector<int64_t> new_bias_shape(bias_shape);
+        new_bias_shape[new_bias_shape.size() - 1] = slice_width[idx];
+        auto new_bias_type = RankedTensorType::get(new_bias_shape, llvm::cast<ShapedType>(bias.getType()).getElementType());
+        auto new_bias =
+            top::WeightOp::create(op, "_bias_" + std::to_string(id), *new_bias_f32, new_bias_type);
+        operands.emplace_back(new_bias);
+      } else {
+       operands.emplace_back(bias);
+      }
+
+      SmallVector<int64_t> new_matmul_shape(matmul_shape);
+      new_matmul_shape[new_matmul_shape.size() - 1] = slice_width[idx];
+      auto matmulOp = rewriter.create<top::MatMulOp>(
+            NameLoc::get(rewriter.getStringAttr(loc_name + "_matmul_" + std::to_string(++id))),
+            RankedTensorType::get(new_matmul_shape, outputType.getElementType()),
+            operands, op->getAttrs());
+
+      auto new_reshape_shape = module::getShape(cast<top::SliceOp>(value).getOutput());
+      if (new_reshape_shape.size() != new_matmul_shape.size()) {
+        auto reshapeOp = rewriter.create<top::ReshapeOp>
+                            (NameLoc::get(rewriter.getStringAttr(loc_name + "_reshape_" + std::to_string(id))),
+                            RankedTensorType::get(new_reshape_shape, outputType.getElementType()),
+                            ValueRange{matmulOp});
+        rewriter.replaceOp(value, reshapeOp);
+      } else {
+        rewriter.replaceOp(value, matmulOp);
+      }
+    }
+
+    return success();
+  }
+};
 } // namespace bm1684x
 
 namespace top {
@@ -831,7 +1014,7 @@ void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
   patterns->add<MergeScale2Conv>(patterns->getContext(), /*PatternBenefit*/ 9);
   patterns->add<ConvertGLMTilePermute, ConvertMatMulWithRightTranspose,
                 ConvertMatMul2Attention, ReshapeReorderPattern,
-                ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col>(
+                ConvertMultiInputAdd, WhereBroadcastToTile, ConvertConv2DToImg2Col, SplitMatMulPattern>(
       patterns->getContext(), 8);
   if (module::getChip() == module::Chip::SG2260) {
     patterns->add<ConvertScaleToMAOp>(patterns->getContext(), /*PatternBenefit*/ 8);

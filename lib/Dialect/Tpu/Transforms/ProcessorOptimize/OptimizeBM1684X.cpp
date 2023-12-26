@@ -1381,6 +1381,34 @@ public:
   }
 };
 
+#if 0
+/* for to reduce the data move, mark on the Redundancy SliceOp if match below pattern:
+          /--->SliceOp
+   reshape---->SliceOp
+         \---->SliceOp
+      */
+class MarkRedundancySlicePattern : public OpRewritePattern<tpu::SliceOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::SliceOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!isa<tpu::ReshapeOp>(op.getInput().getDefiningOp())) {
+      return failure();
+    }
+
+    auto srcOp = op.getInput().getDefiningOp();
+    for (Operation *user: srcOp->getUsers()) {
+      if (!isa<tpu::SliceOp>(user))
+        return failure();
+    }
+    //indicate don;t codegen later
+    op->setAttr("discard", rewriter.getBoolAttr(true));
+    return success();
+  }
+};
+#endif
+
+
 namespace tpu {
 using namespace bm1684x;
 void populateOptimizeBM1684XPatterns(RewritePatternSet *patterns) {
