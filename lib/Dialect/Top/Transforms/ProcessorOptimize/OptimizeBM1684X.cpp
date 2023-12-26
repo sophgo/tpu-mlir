@@ -986,20 +986,34 @@ public:
 
       SmallVector<int64_t> new_matmul_shape(matmul_shape);
       new_matmul_shape[new_matmul_shape.size() - 1] = slice_width[idx];
+      //rewriter.setInsertionPoint(value);
       auto matmulOp = rewriter.create<top::MatMulOp>(
             NameLoc::get(rewriter.getStringAttr(loc_name + "_matmul_" + std::to_string(++id))),
             RankedTensorType::get(new_matmul_shape, outputType.getElementType()),
             operands, op->getAttrs());
 
-      auto new_reshape_shape = module::getShape(cast<top::SliceOp>(value).getOutput());
-      if (new_reshape_shape.size() != new_matmul_shape.size()) {
+      if (std::distance(value->user_begin(), value->user_end()) == 1
+           && isa<top::ReshapeOp, top::SqueezeOp>(*(value->user_begin())))
+      {
+        //trick or temp workaround: op order influence layer group
+        auto new_reshape_shape = module::getShape((*(value->user_begin()))->getResult(0));
         auto reshapeOp = rewriter.create<top::ReshapeOp>
+                          (NameLoc::get(rewriter.getStringAttr(loc_name + "_reshape_" + std::to_string(id++))),
+                          RankedTensorType::get(new_reshape_shape, outputType.getElementType()),
+                          ValueRange{matmulOp});
+        rewriter.replaceOp(*(value->user_begin()), reshapeOp);
+        rewriter.eraseOp(value);
+      } else {
+        auto new_reshape_shape = module::getShape(cast<top::SliceOp>(value).getOutput());
+        if (new_reshape_shape.size() != new_matmul_shape.size()) {
+          auto reshapeOp = rewriter.create<top::ReshapeOp>
                             (NameLoc::get(rewriter.getStringAttr(loc_name + "_reshape_" + std::to_string(id))),
                             RankedTensorType::get(new_reshape_shape, outputType.getElementType()),
                             ValueRange{matmulOp});
-        rewriter.replaceOp(value, reshapeOp);
-      } else {
-        rewriter.replaceOp(value, matmulOp);
+          rewriter.replaceOp(value, reshapeOp);
+        } else {
+          rewriter.replaceOp(value, matmulOp);
+        }
       }
     }
 
